@@ -10,13 +10,11 @@ import {CallRecordingEventTypes, COMMON_EVENT_KEYS, RecordingEvent} from '../Eve
 import {Eventing} from '../Events/impl';
 import {
   DeleteRecordingOptions,
-  GetRecordingsOptions,
+  GetCallRecordingRequest,
   ICallRecording,
   LoggerInterface,
   RecordingDeleteResponse,
-  RecordingListResponse,
-  RecordingMetadataResponse,
-  RecordingResponse,
+  RecordingResponseFor,
 } from './types';
 import {WxcCallRecordingConnector} from './WxcCallRecordingConnector';
 import {CALL_RECORDING_FILE, METHODS} from './constants';
@@ -100,40 +98,14 @@ export class CallRecording extends Eventing<CallRecordingEventTypes> implements 
   }
 
   /**
-   * Fetches the converged recordings for the current user.
-   * @param options - Optional filters and pagination parameters.
+   * Reads Post Call Recordings, delegating to the active backend connector. The operation is
+   * selected by the request `type` and the response type is inferred per request.
+   * @param request - The discriminated read request.
    */
-  public async getRecordings(options?: GetRecordingsOptions): Promise<RecordingListResponse> {
-    return this.backendConnector.getRecordings(options);
-  }
-
-  /**
-   * Fetches a single converged recording by its id.
-   * @param recordingId - The recording id (`id`).
-   */
-  public async getRecording(recordingId: string): Promise<RecordingResponse> {
-    return this.backendConnector.getRecording(recordingId);
-  }
-
-  /**
-   * Returns all recordings linked to a given call session id.
-   * @param callSessionId - The call session id to filter by.
-   * @param options - Optional list query forwarded to `getRecordings` to control the set of
-   *   recordings scanned before filtering.
-   */
-  public async getRecordingsByCallSessionId(
-    callSessionId: string,
-    options?: GetRecordingsOptions
-  ): Promise<RecordingListResponse> {
-    return this.backendConnector.getRecordingsByCallSessionId(callSessionId, options);
-  }
-
-  /**
-   * Fetches the metadata for a single recording.
-   * @param recordingId - The recording id (`id`).
-   */
-  public async getRecordingMetadata(recordingId: string): Promise<RecordingMetadataResponse> {
-    return this.backendConnector.getRecordingMetadata(recordingId);
+  public getCallRecording<T extends GetCallRecordingRequest>(
+    request: T
+  ): Promise<RecordingResponseFor<T>> {
+    return this.backendConnector.getCallRecording(request);
   }
 
   /**

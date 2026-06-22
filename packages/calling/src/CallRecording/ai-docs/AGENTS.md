@@ -3,8 +3,9 @@
 ## Overview
 
 The `CallRecording` module provides read access to **Post Call Recordings** (recordings, transcripts,
-summaries, and action items) produced for Webex Calling sessions, supports permanently deleting a
-recording, and forwards recording lifecycle events received over Mercury as typed SDK events.
+summaries, and action items) produced for Webex Calling sessions through a single
+`getCallRecording` method, supports permanently deleting a recording, and forwards recording
+lifecycle events received over Mercury as typed SDK events.
 
 Recordings are fetched from the **Webex public developer API (hydra)** — catalog service
 `hydraDeveloperApi` (e.g. `https://integration.webexapis.com/v1`) — whose base URL is resolved
@@ -52,13 +53,34 @@ created.
 
 ### ICallRecording Interface
 
+All reads go through a **single** `getCallRecording` method, which dispatches on the request
+`type` (a `RecordingRequestType`) and infers the concrete response type per request via
+`RecordingResponseFor<T>`. Permanent deletion stays a separate method (different verb + scope).
+
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `getRecordings` | `(options?: GetRecordingsOptions): Promise<RecordingListResponse>` | Lists converged recordings for the current user |
-| `getRecording` | `(recordingId: string): Promise<RecordingResponse>` | Fetches a single recording by `id` |
-| `getRecordingsByCallSessionId` | `(callSessionId: string, options?: GetRecordingsOptions): Promise<RecordingListResponse>` | Returns recordings for a call session (client-side filter; `options` widen the scanned list) |
-| `getRecordingMetadata` | `(recordingId: string): Promise<RecordingMetadataResponse>` | Fetches metadata for a recording |
+| `getCallRecording` | `<T extends GetCallRecordingRequest>(request: T): Promise<RecordingResponseFor<T>>` | Reads recordings; the `request.type` selects LIST / DETAIL / METADATA / BY_CALL_SESSION |
 | `deleteRecording` | `(recordingId: string, options?: DeleteRecordingOptions): Promise<RecordingDeleteResponse>` | Permanently deletes a recording (cannot be recovered); needs `spark-compliance:recordings_write`. Optional `reason`/`comment` for Compliance Officer deletions |
+
+### Helpers (exported from `@webex/calling`)
+
+| Helper | Signature | Description |
+| ------ | --------- | ----------- |
+| `getRemoteParty` | `(serviceData?: RecordingServiceData): RecordingParty \| undefined` | Resolves the *other* party of the call from `serviceData` using `personality` (`originator` → `calledParty`, `terminator` → `callingParty`). |
+| `getRemotePartyId` | `(serviceData?: RecordingServiceData): string \| undefined` | The remote party's Webex person UUID, for the avatar (`@webex/internal-plugin-avatar`) and presence (DSS) services. `undefined` for list-only `serviceData` or external/PSTN parties (fall back to `getRemoteParty(...)?.name`). |
+
+> Party details (`personality`, `callingParty`, `calledParty`) are only on the **metadata**
+> `serviceData`, not the `LIST` response, so resolving avatar/presence for a list needs a `METADATA`
+> call per recording — fetch lazily for visible rows and cache by `recordingId`.
+
+#### `getCallRecording` request types
+
+| `request.type` (`RecordingRequestType`) | Request shape | Maps to | Resolves with |
+| --- | --- | --- | --- |
+| `LIST` | `{type, options?}` | `GET /convergedRecordings` | `RecordingListResponse` |
+| `DETAIL` | `{type, recordingId}` | `GET /convergedRecordings/{id}` | `RecordingResponse` |
+| `METADATA` | `{type, recordingId}` | `GET /convergedRecordings/{id}/metadata` | `RecordingMetadataResponse` |
+| `BY_CALL_SESSION` | `{type, callSessionId, options?}` | client-side filter over the list | `RecordingListResponse` |
 
 ### Inherited from Eventing\<CallRecordingEventTypes\>
 
@@ -98,9 +120,15 @@ created.
 
 | Type | Description |
 | ---- | ----------- |
+| `RecordingRequestType` | Discriminant enum for `getCallRecording`: `LIST`, `DETAIL`, `METADATA`, `BY_CALL_SESSION` |
+| `GetCallRecordingRequest` | Discriminated union of the read requests passed to `getCallRecording` (`ListRecordingsRequest` \| `DetailRecordingRequest` \| `MetadataRecordingRequest` \| `CallSessionRecordingsRequest`) |
+| `RecordingResponseFor<T>` | Maps a request member to its response type so `getCallRecording` infers the return per request |
 | `Recording` | A converged recording. Key fields: `id`, `topic`, `createTime`, `timeRecorded`, `status`, `serviceType`, `durationSeconds`, `sizeBytes`, `ownerId`, `ownerEmail`, `serviceData` (`locationId`, `callSessionId`), `temporaryDirectDownloadLinks` |
-| `RecordingServiceData` | Service-specific data: `locationId`, `callSessionId` |
-| `RecordingMetadata` | Metadata document: `owner`, `session`, `participants`, `mediaStreams`, `extensionData` |
+| `RecordingServiceData` | Service-specific data: `callRecordingId`, `locationId`, `callSessionId`, and (metadata only) the call parties `personality`, `callingParty`, `calledParty` |
+| `RecordingPersonality` | Which side the owner was on: `'originator'` (remote = `calledParty`) \| `'terminator'` (remote = `callingParty`) |
+| `RecordingParty` | A call party: `actor` (`{type, id, email}`), `number`, `name`. `actor.id` is the person UUID for avatar/presence |
+| `RecordingActor` | The acting entity behind a party: `type`, `id` (person UUID for Webex users), `email` |
+| `RecordingMetadata` | Metadata document: `owner`, `session`, `participants`, `mediaStreams`, `extensionData`, `serviceData` (with the call parties) |
 | `GetRecordingsOptions` | Optional `from`, `to`, `days`, `status`, `max`, `serviceType`, `format`, `ownerType`, `storageRegion`, `locationId`, `topic`, `webexUserRequest` |
 | `RecordingStatus` | Enum: `available`, `deleted` |
 | `RecordingListResponse` | `{statusCode, data: {recordings?, error?}, message}` |
@@ -114,11 +142,12 @@ created.
 
 | Concept | Field |
 | ------- | ----- |
-| Recording id (for `getRecording`/`getRecordingMetadata`) | `id` |
-| Call session id (for `getRecordingsByCallSessionId`) | `serviceData.callSessionId` |
+| Recording id (for `DETAIL` / `METADATA` requests) | `id` |
+| Call session id (for the `BY_CALL_SESSION` request) | `serviceData.callSessionId` |
 | Location | `serviceData.locationId` |
 | Owner | `ownerId` / `ownerEmail` / `ownerType` |
-| Direct media links (single `getRecording`) | `temporaryDirectDownloadLinks` |
+| Remote party (avatar / presence) | `getRemotePartyId(metadata.serviceData)` — only on the `METADATA` response |
+| Direct media links (single `DETAIL` request) | `temporaryDirectDownloadLinks` |
 
 ---
 
@@ -131,7 +160,9 @@ The `CallRecording` constructor accepts:
 | `webex` | `WebexSDK` | Yes | An initialized Webex SDK instance (with the `hydraDeveloperApi` service in its u2c catalog) |
 | `logger` | `LoggerInterface` | Yes | Logger interface with a `level` property |
 
-### `getRecordings` Options (`GetRecordingsOptions`)
+### List Options (`GetRecordingsOptions`)
+
+These apply to the `LIST` and `BY_CALL_SESSION` requests (passed as `request.options`).
 
 | Field | Type | Default | Description |
 | ----- | ---- | ------- | ----------- |
@@ -166,7 +197,12 @@ and access it as `calling.callRecordingClient`.
 ### List Recordings
 
 ```typescript
-const response = await callRecording.getRecordings({max: 30, status: RecordingStatus.AVAILABLE});
+import {RecordingRequestType, RecordingStatus} from '@webex/calling';
+
+const response = await callRecording.getCallRecording({
+  type: RecordingRequestType.LIST,
+  options: {max: 30, status: RecordingStatus.AVAILABLE},
+});
 
 if (response.statusCode === 200) {
   console.log(`Retrieved ${response.data.recordings?.length} recordings`);
@@ -176,17 +212,26 @@ if (response.statusCode === 200) {
 ### Get a Single Recording and Metadata
 
 ```typescript
-const recordingResponse = await callRecording.getRecording('recording-uuid');
-const metadataResponse = await callRecording.getRecordingMetadata('recording-uuid');
+const recordingResponse = await callRecording.getCallRecording({
+  type: RecordingRequestType.DETAIL,
+  recordingId: 'recording-uuid',
+});
+const metadataResponse = await callRecording.getCallRecording({
+  type: RecordingRequestType.METADATA,
+  recordingId: 'recording-uuid',
+});
 
-console.log(recordingResponse.data.recording?.recordingPlaybackLinks);
+console.log(recordingResponse.data.recording?.temporaryDirectDownloadLinks);
 console.log(metadataResponse.data.metadata?.participants);
 ```
 
 ### Get Recordings by Call Session Id
 
 ```typescript
-const response = await callRecording.getRecordingsByCallSessionId('call-session-id');
+const response = await callRecording.getCallRecording({
+  type: RecordingRequestType.BY_CALL_SESSION,
+  callSessionId: 'call-session-id',
+});
 
 console.log(`Found ${response.data.recordings?.length} recordings for the session`);
 ```
@@ -204,7 +249,7 @@ await callRecording.deleteRecording('recording-uuid', {
 });
 
 if (response.statusCode === 200) {
-  // Recording is permanently deleted (cannot be recovered) and no longer appears in getRecordings().
+  // Recording is permanently deleted (cannot be recovered) and no longer appears in a LIST request.
 }
 ```
 
@@ -249,7 +294,8 @@ All read methods use `this.webex.request({uri, method: GET, service: 'hydraDevel
 
 ### URL Construction
 
-`getRecordings()` builds the list URL as:
+Internally `getCallRecording` dispatches to one operation per `request.type`. A `LIST` request
+builds the list URL as:
 
 ```
 {recordingServiceUrl}/convergedRecordings?from={now-days}&to={now}&status=available&max=30
@@ -258,14 +304,14 @@ All read methods use `this.webex.request({uri, method: GET, service: 'hydraDevel
 - A `from` lower bound is always sent (like CallHistory's mandatory `from` date) so the API returns results; it is derived as `now - days` (default 30) when not provided. `to` defaults to `now` when not supplied. The list API only accepts a `from`/`to` interval of at most 30 days, so the default stays within that limit and custom `days`/`from` values must too.
 - The sort/filter/pagination params default to the values used by the Webex web client and are overridable via `GetRecordingsOptions`.
 - The raw list response is `{ "items": [ ... ] }`; the client maps `items` to `data.recordings`.
-- `getRecording`: `{recordingServiceUrl}/convergedRecordings/{recordingId}`.
-- `getRecordingMetadata`: `{recordingServiceUrl}/convergedRecordings/{recordingId}/metadata`.
+- `DETAIL`: `GET {recordingServiceUrl}/convergedRecordings/{recordingId}`.
+- `METADATA`: `GET {recordingServiceUrl}/convergedRecordings/{recordingId}/metadata`.
 - `deleteRecording`: `DELETE {recordingServiceUrl}/convergedRecordings/{recordingId}` (permanent; optional `{reason, comment}` body).
 
-### `getRecordingsByCallSessionId` (API gap)
+### `BY_CALL_SESSION` request (API gap)
 
 There is no confirmed server-side query parameter to filter by call session id. The client fetches
-a list via `getRecordings(options)` and filters client-side on
+a list (the same operation as a `LIST` request, using `request.options`) and filters client-side on
 `serviceData.callSessionId === callSessionId`. Because the scan is bounded by that list query, it
 only searches the default time window/status and first `max` records unless `options` are passed.
 Forward `GetRecordingsOptions` (e.g. a wider `days`/`from`–`to` window, a different `status`, or a

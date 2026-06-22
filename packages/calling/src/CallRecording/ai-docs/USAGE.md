@@ -43,17 +43,34 @@ client — no dedicated recording plugin is required.
 
 ## Methods
 
-### `getRecordings(options?)`
+Reads go through a single `getCallRecording` method. The request `type`
+(a `RecordingRequestType`) selects the operation and the response type is inferred per request:
+
+```typescript
+getCallRecording<T extends GetCallRecordingRequest>(request: T): Promise<RecordingResponseFor<T>>
+```
+
+| `request.type` | Request shape | Resolves with |
+| -------------- | ------------- | ------------- |
+| `RecordingRequestType.LIST` | `{type, options?}` | `RecordingListResponse` |
+| `RecordingRequestType.DETAIL` | `{type, recordingId}` | `RecordingResponse` |
+| `RecordingRequestType.METADATA` | `{type, recordingId}` | `RecordingMetadataResponse` |
+| `RecordingRequestType.BY_CALL_SESSION` | `{type, callSessionId, options?}` | `RecordingListResponse` |
+
+Permanent deletion stays a separate method (`deleteRecording`) — see below.
+
+### `LIST` — list recordings
 
 Lists the current user's converged recordings.
 
 **Signature**
 
 ```typescript
-getRecordings(options?: GetRecordingsOptions): Promise<RecordingListResponse>
+callRecording.getCallRecording({type: RecordingRequestType.LIST, options?: GetRecordingsOptions})
+  // => Promise<RecordingListResponse>
 ```
 
-**Parameters**
+**Parameters** (`options`)
 
 | Name | Type | Required | Description | Default |
 | ---- | ---- | -------- | ----------- | ------- |
@@ -115,17 +132,18 @@ The raw API returns `{ "items": [ ... ] }`; the client maps `items` to `data.rec
 
 ---
 
-### `getRecording(recordingId)`
+### `DETAIL` — get a single recording
 
 Fetches a single recording (including download/playback links).
 
 **Signature**
 
 ```typescript
-getRecording(recordingId: string): Promise<RecordingResponse>
+callRecording.getCallRecording({type: RecordingRequestType.DETAIL, recordingId: string})
+  // => Promise<RecordingResponse>
 ```
 
-| Name | Type | Required | Description |
+| Field | Type | Required | Description |
 | ---- | ---- | -------- | ----------- |
 | `recordingId` | `string` | Yes | The recording id (`id`) |
 
@@ -162,7 +180,7 @@ GET {recordingServiceUrl}/convergedRecordings/{recordingId}
 
 ---
 
-### `getRecordingsByCallSessionId(callSessionId, options?)`
+### `BY_CALL_SESSION` — get recordings by call session id
 
 Returns all recordings tied to a call session id. Filtered client-side on
 `serviceData.callSessionId` (no confirmed server-side filter). The scan is bounded by the list
@@ -173,16 +191,17 @@ larger `max`) when the target session may fall outside the defaults.
 **Signature**
 
 ```typescript
-getRecordingsByCallSessionId(
+callRecording.getCallRecording({
+  type: RecordingRequestType.BY_CALL_SESSION,
   callSessionId: string,
-  options?: GetRecordingsOptions
-): Promise<RecordingListResponse>
+  options?: GetRecordingsOptions,
+}) // => Promise<RecordingListResponse>
 ```
 
-| Name | Type | Required | Description |
+| Field | Type | Required | Description |
 | ---- | ---- | -------- | ----------- |
 | `callSessionId` | `string` | Yes | The call session id to filter by |
-| `options` | `GetRecordingsOptions` | No | List query forwarded to `getRecordings` to widen the scanned set |
+| `options` | `GetRecordingsOptions` | No | List query used to widen the scanned set |
 
 **Success response (no matches)**
 
@@ -196,17 +215,18 @@ getRecordingsByCallSessionId(
 
 ---
 
-### `getRecordingMetadata(recordingId)`
+### `METADATA` — get recording metadata
 
 Fetches the metadata document for a recording.
 
 **Signature**
 
 ```typescript
-getRecordingMetadata(recordingId: string): Promise<RecordingMetadataResponse>
+callRecording.getCallRecording({type: RecordingRequestType.METADATA, recordingId: string})
+  // => Promise<RecordingMetadataResponse>
 ```
 
-| Name | Type | Required | Description |
+| Field | Type | Required | Description |
 | ---- | ---- | -------- | ----------- |
 | `recordingId` | `string` | Yes | The recording id (`id`) |
 
@@ -229,12 +249,55 @@ GET {recordingServiceUrl}/convergedRecordings/{recordingId}/metadata
       "participants": [
         {"name": "Bob", "joinTime": "...", "leaveTime": "..."},
         {"name": "Alice", "joinTime": "...", "leaveTime": "..."}
-      ]
+      ],
+      "serviceData": {
+        "personality": "originator",
+        "callingParty": {
+          "actor": {"type": "USER", "id": "716360ac-b556-4f1b-9080-1358be2b4c19", "email": "bob@example.com"},
+          "number": "9902",
+          "name": "Bob"
+        },
+        "calledParty": {
+          "actor": {"type": "USER", "id": "1f13bcd1-b4dc-42b2-8726-6f77a3a9de1f", "email": "alice@example.com"},
+          "number": "9903",
+          "name": "Alice"
+        }
+      }
     }
   },
   "message": "SUCCESS"
 }
 ```
+
+#### Resolving avatar / presence (the remote party)
+
+The `LIST` response only carries `serviceData.locationId`/`callSessionId` and `ownerId` (the
+recording owner — usually the current user), so it is **not** enough to show who the call was with.
+The other party's identity lives on the **metadata** `serviceData` (`personality` +
+`callingParty`/`calledParty`). Use `getRemotePartyId` to resolve the remote party's Webex person
+UUID, which is the id accepted by the avatar (`@webex/internal-plugin-avatar`) and presence (DSS)
+services:
+
+```typescript
+import {getRemotePartyId, getRemoteParty, RecordingRequestType} from '@webex/calling';
+
+const {data} = await callRecording.getCallRecording({
+  type: RecordingRequestType.METADATA,
+  recordingId,
+});
+
+const remotePartyId = getRemotePartyId(data.metadata?.serviceData);
+if (remotePartyId) {
+  // feed remotePartyId to the avatar + presence services
+} else {
+  // external/PSTN party (no Webex user) — fall back to initials
+  const name = getRemoteParty(data.metadata?.serviceData)?.name;
+}
+```
+
+> Because the party details are only on the metadata document, resolving avatar/presence for a list
+> requires a `METADATA` call per recording. Fetch them lazily for visible rows and cache by
+> `recordingId` to avoid N requests on list load.
 
 ### `deleteRecording(recordingId, options?)`
 
@@ -279,7 +342,7 @@ DELETE {recordingServiceUrl}/convergedRecordings/{recordingId}
 }
 ```
 
-> After deletion the recording no longer appears in a `getRecordings()` list.
+> After deletion the recording no longer appears in a `LIST` request result.
 
 ---
 
@@ -366,7 +429,10 @@ All methods **return** (never throw) an error envelope. The shape matches the su
 **Recommended handling**
 
 ```javascript
-const response = await callRecording.getRecording(recordingId);
+const response = await callRecording.getCallRecording({
+  type: RecordingRequestType.DETAIL,
+  recordingId,
+});
 
 if (response.statusCode !== 200) {
   console.error(`Failed (${response.statusCode}): ${response.data.error}`);

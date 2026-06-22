@@ -33,6 +33,7 @@ export const RECORDING_NOT_FOUND_MESSAGE = 'No recordings found for the given ca
 // Method names (for structured logging).
 export const METHODS = {
   INITIALIZE_BACKEND_CONNECTOR: 'initializeBackendConnector',
+  GET_CALL_RECORDING: 'getCallRecording',
   GET_RECORDINGS: 'getRecordings',
   GET_RECORDING: 'getRecording',
   GET_RECORDINGS_BY_CALL_SESSION_ID: 'getRecordingsByCallSessionId',

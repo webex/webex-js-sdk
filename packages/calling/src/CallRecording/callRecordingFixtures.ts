@@ -67,24 +67,44 @@ export const MOCK_RECORDING_BODY = {
   body: RECORDING_ONE,
 };
 
+export const RECORDING_OWNER_ID = '8a67806f-fc4d-446b-a131-31e71ea5b0e9';
+export const RECORDING_REMOTE_PARTY_ID = '0fea4a63-4e27-46ee-99c3-2472cb12bf68';
+
 export const MOCK_RECORDING_METADATA: RecordingMetadata = {
   id: RECORDING_ONE.id,
   callSessionId: CALL_SESSION_ID,
   owner: {
-    ownerID: '8a67806f-fc4d-446b-a131-31e71ea5b0e9',
+    ownerID: RECORDING_OWNER_ID,
     ownerEmail: 'owner@cisco.com',
     ownerName: 'Mark',
     orgID: '1704d30d-a131-4bc7-9449-948487643793',
   },
   participants: [
-    {id: '8a67806f-fc4d-446b-a131-31e71ea5b0e9', name: 'Mark', email: 'owner@cisco.com'},
-    {id: '0fea4a63-4e27-46ee-99c3-2472cb12bf68', name: 'Alice', email: 'alice@cisco.com'},
+    {id: RECORDING_OWNER_ID, name: 'Mark', email: 'owner@cisco.com'},
+    {id: RECORDING_REMOTE_PARTY_ID, name: 'Alice', email: 'alice@cisco.com'},
   ],
   mediaStreams: [{streamId: 'audio-1', type: 'audio', codec: 'opus', durationMS: 65000}],
   extensionData: {
     callData: {direction: 'OUTGOING'},
     acd: {},
     redirectInfo: {},
+  },
+  // The owner placed the call (`originator`), so the remote party is `calledParty`.
+  serviceData: {
+    callRecordingId: RECORDING_ONE.id,
+    locationId: 'loc-1',
+    callSessionId: CALL_SESSION_ID,
+    personality: 'originator',
+    callingParty: {
+      actor: {type: 'USER', id: RECORDING_OWNER_ID, email: 'owner@cisco.com'},
+      number: '9902',
+      name: 'Mark',
+    },
+    calledParty: {
+      actor: {type: 'USER', id: RECORDING_REMOTE_PARTY_ID, email: 'alice@cisco.com'},
+      number: '9903',
+      name: 'Alice',
+    },
   },
 };
 

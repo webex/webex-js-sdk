@@ -3,7 +3,7 @@ import {LOGGER} from '../Logger/types';
 import {getTestUtilsWebex} from '../common/testUtil';
 import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
 import {WxcCallRecordingConnector} from './WxcCallRecordingConnector';
-import {RecordingStatus} from './types';
+import {RecordingRequestType, RecordingStatus} from './types';
 import {
   CALL_SESSION_ID,
   ERROR_DETAILS_400,
@@ -57,7 +57,7 @@ describe('WxcCallRecordingConnector tests', () => {
       const payload = <WebexRequestPayload>(<unknown>MOCK_RECORDING_LIST_BODY);
       webex.request.mockResolvedValue(payload);
 
-      const response = await connector.getRecordings();
+      const response = await connector.getCallRecording({type: RecordingRequestType.LIST});
 
       expect(response.statusCode).toBe(200);
       expect(response.message).toBe('SUCCESS');
@@ -71,18 +71,21 @@ describe('WxcCallRecordingConnector tests', () => {
       const payload = <WebexRequestPayload>(<unknown>MOCK_RECORDING_LIST_BODY);
       webex.request.mockResolvedValue(payload);
 
-      await connector.getRecordings({
-        from: '2024-05-01T00:00:00.000Z',
-        to: '2024-05-31T00:00:00.000Z',
-        status: RecordingStatus.DELETED,
-        max: 25,
-        serviceType: 'calling',
-        format: 'MP3',
-        ownerType: 'user',
-        storageRegion: 'US',
-        locationId: 'location-123',
-        topic: 'Call with User7',
-        webexUserRequest: true,
+      await connector.getCallRecording({
+        type: RecordingRequestType.LIST,
+        options: {
+          from: '2024-05-01T00:00:00.000Z',
+          to: '2024-05-31T00:00:00.000Z',
+          status: RecordingStatus.DELETED,
+          max: 25,
+          serviceType: 'calling',
+          format: 'MP3',
+          ownerType: 'user',
+          storageRegion: 'US',
+          locationId: 'location-123',
+          topic: 'Call with User7',
+          webexUserRequest: true,
+        },
       });
 
       const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
@@ -111,7 +114,7 @@ describe('WxcCallRecordingConnector tests', () => {
       const payload = <WebexRequestPayload>(<unknown>MOCK_RECORDING_LIST_BODY);
       webex.request.mockResolvedValue(payload);
 
-      await connector.getRecordings();
+      await connector.getCallRecording({type: RecordingRequestType.LIST});
 
       const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
       expect(callArgs.uri).toContain('from=');
@@ -136,7 +139,7 @@ describe('WxcCallRecordingConnector tests', () => {
 
       jest.useFakeTimers().setSystemTime(new Date('2024-06-15T12:00:00.000Z'));
 
-      await connector.getRecordings({days: 7});
+      await connector.getCallRecording({type: RecordingRequestType.LIST, options: {days: 7}});
 
       const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
       expect(callArgs.uri).toContain(`from=${encodeURIComponent('2024-06-08T12:00:00.000Z')}`);
@@ -149,7 +152,7 @@ describe('WxcCallRecordingConnector tests', () => {
       const payload = <WebexRequestPayload>(<unknown>MOCK_RECORDING_LIST_BODY);
       webex.request.mockResolvedValue(payload);
 
-      await connector.getRecordings();
+      await connector.getCallRecording({type: RecordingRequestType.LIST});
 
       const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
       expect(callArgs.headers).toBeUndefined();
@@ -159,7 +162,7 @@ describe('WxcCallRecordingConnector tests', () => {
       const payload = <WebexRequestPayload>(<unknown>MOCK_EMPTY_RECORDING_LIST_BODY);
       webex.request.mockResolvedValue(payload);
 
-      const response = await connector.getRecordings();
+      const response = await connector.getCallRecording({type: RecordingRequestType.LIST});
 
       expect(response.statusCode).toBe(200);
       expect(response.data.recordings).toEqual([]);
@@ -173,7 +176,7 @@ describe('WxcCallRecordingConnector tests', () => {
       const failurePayload = {statusCode};
       webex.request.mockRejectedValue(<WebexRequestPayload>(<unknown>failurePayload));
 
-      const response = await connector.getRecordings();
+      const response = await connector.getCallRecording({type: RecordingRequestType.LIST});
 
       expect(response).toStrictEqual(expected);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith({statusCode}, loggerContext);
@@ -192,7 +195,10 @@ describe('WxcCallRecordingConnector tests', () => {
       const payload = <WebexRequestPayload>(<unknown>MOCK_RECORDING_BODY);
       webex.request.mockResolvedValue(payload);
 
-      const response = await connector.getRecording(RECORDING_ONE.id);
+      const response = await connector.getCallRecording({
+        type: RecordingRequestType.DETAIL,
+        recordingId: RECORDING_ONE.id,
+      });
 
       expect(response.statusCode).toBe(200);
       expect(response.message).toBe('SUCCESS');
@@ -211,7 +217,10 @@ describe('WxcCallRecordingConnector tests', () => {
     it('handles a 404 error when the recording does not exist', async () => {
       webex.request.mockRejectedValue(<WebexRequestPayload>(<unknown>{statusCode: 404}));
 
-      const response = await connector.getRecording('missing-id');
+      const response = await connector.getCallRecording({
+        type: RecordingRequestType.DETAIL,
+        recordingId: 'missing-id',
+      });
 
       expect(response).toStrictEqual(ERROR_DETAILS_404);
       expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
@@ -223,7 +232,10 @@ describe('WxcCallRecordingConnector tests', () => {
       const payload = <WebexRequestPayload>(<unknown>MOCK_RECORDING_LIST_BODY);
       webex.request.mockResolvedValue(payload);
 
-      const response = await connector.getRecordingsByCallSessionId(CALL_SESSION_ID);
+      const response = await connector.getCallRecording({
+        type: RecordingRequestType.BY_CALL_SESSION,
+        callSessionId: CALL_SESSION_ID,
+      });
 
       expect(response.statusCode).toBe(200);
       expect(response.data.recordings).toHaveLength(1);
@@ -234,7 +246,10 @@ describe('WxcCallRecordingConnector tests', () => {
       const payload = <WebexRequestPayload>(<unknown>MOCK_RECORDING_LIST_BODY);
       webex.request.mockResolvedValue(payload);
 
-      const response = await connector.getRecordingsByCallSessionId('non-existent-session');
+      const response = await connector.getCallRecording({
+        type: RecordingRequestType.BY_CALL_SESSION,
+        callSessionId: 'non-existent-session',
+      });
 
       expect(response.statusCode).toBe(200);
       expect(response.data.recordings).toEqual([]);
@@ -243,7 +258,10 @@ describe('WxcCallRecordingConnector tests', () => {
     it('propagates the error response from the underlying list call', async () => {
       webex.request.mockRejectedValue(<WebexRequestPayload>(<unknown>{statusCode: 401}));
 
-      const response = await connector.getRecordingsByCallSessionId(CALL_SESSION_ID);
+      const response = await connector.getCallRecording({
+        type: RecordingRequestType.BY_CALL_SESSION,
+        callSessionId: CALL_SESSION_ID,
+      });
 
       expect(response).toStrictEqual(ERROR_DETAILS_401);
     });
@@ -252,11 +270,15 @@ describe('WxcCallRecordingConnector tests', () => {
       const payload = <WebexRequestPayload>(<unknown>MOCK_RECORDING_LIST_BODY);
       webex.request.mockResolvedValue(payload);
 
-      await connector.getRecordingsByCallSessionId(CALL_SESSION_ID, {
-        from: '2024-05-01T00:00:00.000Z',
-        to: '2024-05-31T00:00:00.000Z',
-        status: RecordingStatus.DELETED,
-        max: 100,
+      await connector.getCallRecording({
+        type: RecordingRequestType.BY_CALL_SESSION,
+        callSessionId: CALL_SESSION_ID,
+        options: {
+          from: '2024-05-01T00:00:00.000Z',
+          to: '2024-05-31T00:00:00.000Z',
+          status: RecordingStatus.DELETED,
+          max: 100,
+        },
       });
 
       const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
@@ -274,7 +296,10 @@ describe('WxcCallRecordingConnector tests', () => {
       const payload = <WebexRequestPayload>(<unknown>MOCK_RECORDING_METADATA_BODY);
       webex.request.mockResolvedValue(payload);
 
-      const response = await connector.getRecordingMetadata(RECORDING_ONE.id);
+      const response = await connector.getCallRecording({
+        type: RecordingRequestType.METADATA,
+        recordingId: RECORDING_ONE.id,
+      });
 
       expect(response.statusCode).toBe(200);
       expect(response.message).toBe('SUCCESS');
@@ -289,7 +314,10 @@ describe('WxcCallRecordingConnector tests', () => {
     it('handles a 400 error', async () => {
       webex.request.mockRejectedValue(<WebexRequestPayload>(<unknown>{statusCode: 400}));
 
-      const response = await connector.getRecordingMetadata('bad-id');
+      const response = await connector.getCallRecording({
+        type: RecordingRequestType.METADATA,
+        recordingId: 'bad-id',
+      });
 
       expect(response).toStrictEqual(ERROR_DETAILS_400);
       expect(errorSpy).toHaveBeenCalledWith(

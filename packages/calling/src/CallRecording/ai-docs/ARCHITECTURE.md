@@ -80,7 +80,7 @@ flowchart TB
 
     App -->|createCallRecordingClient| CR
     CR -->|getCallingBackEnd == WXC: new| WC
-    CR -->|delegates getRecordings/getRecording/getRecordingMetadata/deleteRecording| WC
+    CR -->|delegates getCallRecording/deleteRecording| WC
     WC -->|services.get hydraDeveloperApi| Catalog
     WC -->|GET/DELETE /convergedRecordings| WxApp
 
@@ -136,9 +136,9 @@ sequenceDiagram
     participant CR as CallRecording
     participant WxApp as Recording API (hydra)
 
-    App->>CR: getRecordings({from, to, days, status, max})
+    App->>CR: getCallRecording({type: LIST, options: {from, to, days, status, max}})
     activate CR
-    CR->>CR: buildRecordingsUrl(options)
+    CR->>CR: dispatchGetCallRecording -> buildRecordingsUrl(options)
     Note over CR: from=now-days (default 30d), to=now, status=available, max=30
     CR->>WxApp: GET /convergedRecordings?from={now-days}&to={now}&status=available&max=30
     WxApp-->>CR: 200 {items: [...]}
@@ -154,12 +154,12 @@ sequenceDiagram
     participant CR as CallRecording
     participant WxApp as Recording API (hydra)
 
-    App->>CR: getRecording(recordingId)
+    App->>CR: getCallRecording({type: DETAIL, recordingId})
     CR->>WxApp: GET /convergedRecordings/{recordingId}
     WxApp-->>CR: 200 {id, topic, status, serviceData, temporaryDirectDownloadLinks, ...}
     CR-->>App: {statusCode, data: {recording}, message: 'SUCCESS'}
 
-    App->>CR: getRecordingMetadata(recordingId)
+    App->>CR: getCallRecording({type: METADATA, recordingId})
     CR->>WxApp: GET /convergedRecordings/{recordingId}/metadata
     WxApp-->>CR: 200 {owner, session, participants, mediaStreams, extensionData}
     CR-->>App: {statusCode, data: {metadata}, message: 'SUCCESS'}
@@ -178,7 +178,7 @@ sequenceDiagram
     participant CR as CallRecording
     participant WxApp as Recording API (hydra)
 
-    App->>CR: getRecordingsByCallSessionId(callSessionId)
+    App->>CR: getCallRecording({type: BY_CALL_SESSION, callSessionId})
     activate CR
     CR->>WxApp: GET /convergedRecordings?from={now-days}&to={now}&status=available&max=30
     WxApp-->>CR: 200 {items: [...]}
@@ -296,13 +296,13 @@ A config override can be supplied via `config.recording.recordingServiceUrl`.
 
 ### 2. Empty Recording List
 
-**Symptoms:** `getRecordings` returns an empty `recordings` array.
+**Symptoms:** a `LIST` request (`getCallRecording({type: LIST})`) returns an empty `recordings` array.
 
 **Possible Causes:**
 - No recordings match the requested `status` filter (e.g. only `deleted` recordings exist while querying `available`).
 - The `from`/`to` window contains no recordings, or the auth token lacks the `spark:recordings_read` scope.
 
-### 3. `getRecordingsByCallSessionId` Returns Empty
+### 3. `BY_CALL_SESSION` Request Returns Empty
 
 **What happens internally:** The full list is fetched then filtered client-side on
 `serviceData.callSessionId`. An empty result logs
@@ -320,10 +320,11 @@ array. If the underlying list call fails, the original error response is returne
 
 ### 5. 401 / 429 Responses
 
-**Symptoms:** `getRecordings`/`getRecording` return `statusCode: 401` or `429`.
+**Symptoms:** `getCallRecording` requests (`LIST`/`DETAIL`) return `statusCode: 401` or `429`.
 
 **Notes:** Errors are returned (not thrown) via `serviceErrorCodeHandler`. For ad-hoc rate-limit
-bypass on explicit end-user actions, pass `getRecordings({webexUserRequest: true})` to send the
+bypass on explicit end-user actions, pass
+`getCallRecording({type: LIST, options: {webexUserRequest: true}})` to send the
 `WebexUserRequest: true` header.
 
 ---

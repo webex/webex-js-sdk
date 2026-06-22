@@ -16,6 +16,7 @@ import {
 import {Eventing} from '../Events/impl';
 import {
   DeleteRecordingOptions,
+  GetCallRecordingRequest,
   GetRecordingsOptions,
   ICallRecording,
   LoggerInterface,
@@ -25,7 +26,9 @@ import {
   RecordingListResponse,
   RecordingMetadata,
   RecordingMetadataResponse,
+  RecordingRequestType,
   RecordingResponse,
+  RecordingResponseFor,
 } from './types';
 import {
   CALL_RECORDING_FILE,
@@ -158,10 +161,54 @@ export class WxcCallRecordingConnector
   }
 
   /**
+   * Reads Post Call Recordings, dispatching to the matching operation based on the request `type`.
+   * The concrete response type is inferred per request via {@link RecordingResponseFor}.
+   *
+   * @param request - The discriminated read request.
+   */
+  public getCallRecording<T extends GetCallRecordingRequest>(
+    request: T
+  ): Promise<RecordingResponseFor<T>> {
+    return this.dispatchGetCallRecording(request) as Promise<RecordingResponseFor<T>>;
+  }
+
+  /**
+   * Internal dispatcher for {@link getCallRecording}. Routes the discriminated request to the
+   * backend-specific read method. Kept separate from the public generic signature so the switch
+   * runs against a concrete union (with exhaustiveness checking) and the conditional return type is
+   * narrowed in exactly one place.
+   *
+   * @param request - The discriminated read request.
+   */
+  private dispatchGetCallRecording(
+    request: GetCallRecordingRequest
+  ): Promise<RecordingListResponse | RecordingResponse | RecordingMetadataResponse> {
+    switch (request.type) {
+      case RecordingRequestType.LIST:
+        return this.getRecordings(request.options);
+
+      case RecordingRequestType.DETAIL:
+        return this.getRecording(request.recordingId);
+
+      case RecordingRequestType.METADATA:
+        return this.getRecordingMetadata(request.recordingId);
+
+      case RecordingRequestType.BY_CALL_SESSION:
+        return this.getRecordingsByCallSessionId(request.callSessionId, request.options);
+
+      default: {
+        const exhaustiveCheck: never = request;
+
+        throw new Error(`Unsupported recording request type: ${JSON.stringify(exhaustiveCheck)}`);
+      }
+    }
+  }
+
+  /**
    * Fetches the converged recordings for the current user.
    * @param options - Optional filters and pagination parameters.
    */
-  public async getRecordings(options?: GetRecordingsOptions): Promise<RecordingListResponse> {
+  private async getRecordings(options?: GetRecordingsOptions): Promise<RecordingListResponse> {
     const loggerContext = {
       file: CALL_RECORDING_FILE,
       method: METHODS.GET_RECORDINGS,
@@ -214,7 +261,7 @@ export class WxcCallRecordingConnector
    * Fetches a single converged recording by its id.
    * @param recordingId - The recording id (`id`).
    */
-  public async getRecording(recordingId: string): Promise<RecordingResponse> {
+  private async getRecording(recordingId: string): Promise<RecordingResponse> {
     const loggerContext = {
       file: CALL_RECORDING_FILE,
       method: METHODS.GET_RECORDING,
@@ -267,7 +314,7 @@ export class WxcCallRecordingConnector
    * @param options - Optional list query forwarded to {@link getRecordings} to control the
    *   set of recordings scanned before filtering.
    */
-  public async getRecordingsByCallSessionId(
+  private async getRecordingsByCallSessionId(
     callSessionId: string,
     options?: GetRecordingsOptions
   ): Promise<RecordingListResponse> {
@@ -310,7 +357,7 @@ export class WxcCallRecordingConnector
    * Fetches the metadata for a single recording.
    * @param recordingId - The recording id (`id`).
    */
-  public async getRecordingMetadata(recordingId: string): Promise<RecordingMetadataResponse> {
+  private async getRecordingMetadata(recordingId: string): Promise<RecordingMetadataResponse> {
     const loggerContext = {
       file: CALL_RECORDING_FILE,
       method: METHODS.GET_RECORDING_METADATA,

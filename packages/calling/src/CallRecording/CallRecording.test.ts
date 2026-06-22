@@ -4,7 +4,7 @@ import {getTestUtilsWebex} from '../common/testUtil';
 import {CALLING_BACKEND} from '../common/types';
 import {CallRecording, createCallRecordingClient} from './CallRecording';
 import {WxcCallRecordingConnector} from './WxcCallRecordingConnector';
-import {ICallRecording} from './types';
+import {ICallRecording, RecordingRequestType} from './types';
 import {
   MOCK_RECORDING_CREATED_EVENT,
   MOCK_RECORDING_DELETED_EVENT,
@@ -93,55 +93,51 @@ describe('CallRecording facade tests', () => {
   });
 
   describe('delegation to the backend connector', () => {
-    it('delegates getRecordings to the connector and returns its result', async () => {
-      const connector = callRecording['backendConnector'] as WxcCallRecordingConnector;
-      const expected = {statusCode: 200, data: {recordings: []}, message: 'SUCCESS'};
-      const spy = jest.spyOn(connector, 'getRecordings').mockResolvedValue(expected);
+    /**
+     * TestCase inputs for getCallRecording delegation
+     * name: TestCase name
+     * request: the discriminated read request passed to the facade
+     * expected: the response the connector is mocked to return
+     */
+    const getCallRecordingData = [
+      {
+        name: 'LIST request',
+        request: {type: RecordingRequestType.LIST, options: {max: 10}},
+        expected: {statusCode: 200, data: {recordings: []}, message: 'SUCCESS'},
+      },
+      {
+        name: 'DETAIL request',
+        request: {type: RecordingRequestType.DETAIL, recordingId: RECORDING_ONE.id},
+        expected: {statusCode: 200, data: {recording: RECORDING_ONE}, message: 'SUCCESS'},
+      },
+      {
+        name: 'METADATA request',
+        request: {type: RecordingRequestType.METADATA, recordingId: RECORDING_ONE.id},
+        expected: {statusCode: 200, data: {metadata: {} as never}, message: 'SUCCESS'},
+      },
+      {
+        name: 'BY_CALL_SESSION request',
+        request: {
+          type: RecordingRequestType.BY_CALL_SESSION,
+          callSessionId: 'session-id',
+          options: {days: 30, max: 100},
+        },
+        expected: {statusCode: 200, data: {recordings: [RECORDING_ONE]}, message: 'SUCCESS'},
+      },
+    ] as const;
 
-      const options = {max: 10};
-      const response = await callRecording.getRecordings(options);
+    it.each(getCallRecordingData)(
+      'delegates getCallRecording ($name) to the connector and returns its result',
+      async ({request, expected}) => {
+        const connector = callRecording['backendConnector'] as WxcCallRecordingConnector;
+        const spy = jest.spyOn(connector, 'getCallRecording').mockResolvedValue(expected as never);
 
-      expect(spy).toBeCalledOnceWith(options);
-      expect(response).toStrictEqual(expected);
-    });
+        const response = await callRecording.getCallRecording(request);
 
-    it('delegates getRecording to the connector and returns its result', async () => {
-      const connector = callRecording['backendConnector'] as WxcCallRecordingConnector;
-      const expected = {
-        statusCode: 200,
-        data: {recording: RECORDING_ONE},
-        message: 'SUCCESS',
-      };
-      const spy = jest.spyOn(connector, 'getRecording').mockResolvedValue(expected);
-
-      const response = await callRecording.getRecording(RECORDING_ONE.id);
-
-      expect(spy).toBeCalledOnceWith(RECORDING_ONE.id);
-      expect(response).toStrictEqual(expected);
-    });
-
-    it('delegates getRecordingsByCallSessionId to the connector and returns its result', async () => {
-      const connector = callRecording['backendConnector'] as WxcCallRecordingConnector;
-      const expected = {statusCode: 200, data: {recordings: [RECORDING_ONE]}, message: 'SUCCESS'};
-      const spy = jest.spyOn(connector, 'getRecordingsByCallSessionId').mockResolvedValue(expected);
-
-      const options = {days: 30, max: 100};
-      const response = await callRecording.getRecordingsByCallSessionId('session-id', options);
-
-      expect(spy).toBeCalledOnceWith('session-id', options);
-      expect(response).toStrictEqual(expected);
-    });
-
-    it('delegates getRecordingMetadata to the connector and returns its result', async () => {
-      const connector = callRecording['backendConnector'] as WxcCallRecordingConnector;
-      const expected = {statusCode: 200, data: {metadata: {} as never}, message: 'SUCCESS'};
-      const spy = jest.spyOn(connector, 'getRecordingMetadata').mockResolvedValue(expected);
-
-      const response = await callRecording.getRecordingMetadata(RECORDING_ONE.id);
-
-      expect(spy).toBeCalledOnceWith(RECORDING_ONE.id);
-      expect(response).toStrictEqual(expected);
-    });
+        expect(spy).toBeCalledOnceWith(request);
+        expect(response).toStrictEqual(expected);
+      }
+    );
 
     it('delegates deleteRecording (with options) to the connector and returns its result', async () => {
       const connector = callRecording['backendConnector'] as WxcCallRecordingConnector;

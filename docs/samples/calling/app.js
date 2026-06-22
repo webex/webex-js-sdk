@@ -1153,7 +1153,7 @@ function registerCallRecordingListeners() {
 async function fetchRecordings() {
   try {
     callRecordingElm.disabled = true;
-    const response = await callRecording.getRecordings();
+    const response = await callRecording.getCallRecording({type: 'list'});
 
     console.log('Call Recording list response ', response);
     renderRecordingsTable(response.data?.recordings);
@@ -1171,7 +1171,7 @@ async function fetchRecording() {
   const recordingId = document.getElementById('recordingId').value;
 
   try {
-    const response = await callRecording.getRecording(recordingId);
+    const response = await callRecording.getCallRecording({type: 'detail', recordingId});
 
     console.log('Call Recording get response ', response);
     recordingDataElm.innerText = JSON.stringify(response.data?.recording ?? response.data, null, 2);
@@ -1188,7 +1188,7 @@ async function fetchRecordingMetadata() {
   const recordingId = document.getElementById('recordingId').value;
 
   try {
-    const response = await callRecording.getRecordingMetadata(recordingId);
+    const response = await callRecording.getCallRecording({type: 'metadata', recordingId});
 
     console.log('Call Recording metadata response ', response);
     recordingDataElm.innerText = JSON.stringify(response.data?.metadata ?? response.data, null, 2);
@@ -1236,7 +1236,7 @@ async function fetchRecordingsBySession() {
   const callSessionId = document.getElementById('callSessionId').value;
 
   try {
-    const response = await callRecording.getRecordingsByCallSessionId(callSessionId);
+    const response = await callRecording.getCallRecording({type: 'byCallSession', callSessionId});
 
     console.log('Call Recording by session response ', response);
     recordingSessionDataElm.innerText = JSON.stringify(response.data, null, 2);

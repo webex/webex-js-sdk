@@ -28,12 +28,53 @@ export enum AiGenerationStatus {
 }
 
 /**
- * Service-specific data attached to a converged recording. For calling recordings this carries
- * the `locationId` and the `callSessionId` shared with the originating call session.
+ * Which side of the call the recording owner was on, as reported by `serviceData.personality`:
+ * - `originator`: the owner placed the call (the remote party is `calledParty`).
+ * - `terminator`: the owner received the call (the remote party is `callingParty`).
+ *
+ * Use {@link getRemoteParty} / {@link getRemotePartyId} to resolve the other party without having to
+ * branch on this manually.
+ */
+export type RecordingPersonality = 'originator' | 'terminator';
+
+/**
+ * The acting entity behind a call party. For Webex users `type` is `USER` and `id` is the Webex
+ * person UUID — the identifier accepted by the avatar (`@webex/internal-plugin-avatar`) and
+ * presence (DSS) services. External/PSTN parties may have only a `number`/`name` on the parent
+ * {@link RecordingParty} and no `actor.id`.
+ */
+export type RecordingActor = {
+  type?: string;
+  id?: string;
+  email?: string;
+};
+
+/**
+ * A party (calling or called) involved in the recorded call. `actor.id` is the resolvable person
+ * UUID when the party is a Webex user; `number`/`name` are the dialable number and display name.
+ */
+export type RecordingParty = {
+  actor?: RecordingActor;
+  number?: string;
+  name?: string;
+};
+
+/**
+ * Service-specific data attached to a converged recording. For calling recordings this carries the
+ * `locationId` and the `callSessionId` shared with the originating call session.
+ *
+ * The party details (`personality`, `callingParty`, `calledParty`) identify who the call was with
+ * and are returned by the metadata endpoint (`GET /convergedRecordings/{recordingId}/metadata`);
+ * the list endpoint only populates `locationId`/`callSessionId`. Resolve the remote participant's
+ * person UUID (for avatar/presence) via {@link getRemotePartyId}.
  */
 export type RecordingServiceData = {
+  callRecordingId?: string;
   locationId?: string;
   callSessionId?: string;
+  personality?: RecordingPersonality;
+  callingParty?: RecordingParty;
+  calledParty?: RecordingParty;
   [key: string]: unknown;
 };
 
@@ -124,6 +165,12 @@ export type RecordingMetadata = {
   participants?: RecordingMetadataParticipant[];
   mediaStreams?: RecordingMediaStream[];
   extensionData?: RecordingExtensionData;
+  /**
+   * Service-specific data, including the call party details (`personality`, `callingParty`,
+   * `calledParty`) used to resolve the remote participant for avatar/presence. See
+   * {@link getRemotePartyId}.
+   */
+  serviceData?: RecordingServiceData;
   [key: string]: unknown;
 };
 
@@ -220,81 +267,122 @@ export type DeleteRecordingOptions = {
 };
 
 /**
+ * Discriminator for {@link GetCallRecordingRequest}. Selects which read operation
+ * {@link ICallRecording.getCallRecording} performs based on the request body.
+ *
+ * - `LIST`: list the current user's recordings.
+ * - `DETAIL`: fetch a single recording (with download/playback links).
+ * - `METADATA`: fetch a single recording's metadata document.
+ * - `BY_CALL_SESSION`: list recordings tied to a call session id (client-side filter).
+ */
+export enum RecordingRequestType {
+  LIST = 'list',
+  DETAIL = 'detail',
+  METADATA = 'metadata',
+  BY_CALL_SESSION = 'byCallSession',
+}
+
+/**
+ * Lists the current user's converged recordings.
+ * Maps to `GET /convergedRecordings` with the query params from {@link GetRecordingsOptions}.
+ */
+export type ListRecordingsRequest = {
+  type: RecordingRequestType.LIST;
+  options?: GetRecordingsOptions;
+};
+
+/**
+ * Fetches a single converged recording by id.
+ * Maps to `GET /convergedRecordings/{recordingId}`.
+ */
+export type DetailRecordingRequest = {
+  type: RecordingRequestType.DETAIL;
+  recordingId: string;
+};
+
+/**
+ * Fetches the metadata document for a single recording.
+ * Maps to `GET /convergedRecordings/{recordingId}/metadata`.
+ */
+export type MetadataRecordingRequest = {
+  type: RecordingRequestType.METADATA;
+  recordingId: string;
+};
+
+/**
+ * Returns the recordings tied to a call session id (`serviceData.callSessionId`).
+ * Fetches a list and filters client-side; `options` widen the scanned set.
+ */
+export type CallSessionRecordingsRequest = {
+  type: RecordingRequestType.BY_CALL_SESSION;
+  callSessionId: string;
+  options?: GetRecordingsOptions;
+};
+
+/**
+ * Discriminated union of every read request accepted by {@link ICallRecording.getCallRecording}.
+ * The `type` field selects the operation and constrains the rest of the body, while
+ * {@link RecordingResponseFor} maps each member to its concrete response type so the caller keeps
+ * full type inference from a single method.
+ */
+export type GetCallRecordingRequest =
+  | ListRecordingsRequest
+  | DetailRecordingRequest
+  | MetadataRecordingRequest
+  | CallSessionRecordingsRequest;
+
+/**
+ * Maps a {@link GetCallRecordingRequest} member to the response type
+ * {@link ICallRecording.getCallRecording} resolves with for that request, preserving per-request
+ * return-type inference behind the single method.
+ */
+export type RecordingResponseFor<T extends GetCallRecordingRequest> =
+  T extends DetailRecordingRequest
+    ? RecordingResponse
+    : T extends MetadataRecordingRequest
+    ? RecordingMetadataResponse
+    : RecordingListResponse;
+
+/**
  * Interface for the CallRecording client.
  *
- * Provides read access to Post Call Recordings (listing, single fetch, lookup by call session,
- * and metadata), permanent deletion of a recording, and emits recording lifecycle events received
- * over Mercury.
+ * Provides read access to Post Call Recordings through a single {@link getCallRecording} method
+ * (listing, single fetch, lookup by call session, and metadata — selected by the request `type`),
+ * permanent deletion of a recording, and emits recording lifecycle events received over Mercury.
  */
 export interface ICallRecording extends Eventing<CallRecordingEventTypes> {
   /**
-   * Fetches the converged recordings for the current user.
+   * Reads Post Call Recordings. The {@link GetCallRecordingRequest} `type` selects the operation
+   * and constrains the rest of the request body; the resolved response type is inferred per
+   * request via {@link RecordingResponseFor}:
    *
-   * Calls `GET /convergedRecordings?from={now-days}&to={now}&status=available&max=30`,
-   * with each query param overridable via {@link GetRecordingsOptions}. Both a `from` lower bound
-   * (derived from `days` when not provided) and a `to` upper bound (defaults to `now`) are always
-   * sent, because the API only returns results when the time window is bounded on both ends.
+   * - `LIST` (`GET /convergedRecordings`) -> {@link RecordingListResponse}. The query params come
+   *   from {@link GetRecordingsOptions}; both a `from` lower bound (derived from `days` when not
+   *   provided) and a `to` upper bound (defaults to `now`) are always sent, because the API only
+   *   returns results when the time window is bounded on both ends.
+   * - `DETAIL` (`GET /convergedRecordings/{recordingId}`) -> {@link RecordingResponse}.
+   * - `METADATA` (`GET /convergedRecordings/{recordingId}/metadata`) ->
+   *   {@link RecordingMetadataResponse}.
+   * - `BY_CALL_SESSION` -> {@link RecordingListResponse}. The recording API has no confirmed
+   *   server-side filter for call session id, so this fetches a list and filters client-side on
+   *   `serviceData.callSessionId`. The scan is bounded by the list query, so pass `options` to
+   *   widen the time window/status/page when the target session may fall outside the defaults.
    *
-   * @param options - Optional filters and pagination parameters.
-   *
-   * @example
-   * ```javascript
-   * const response = await callRecording.getRecordings({max: 30});
-   * ```
-   */
-  getRecordings(options?: GetRecordingsOptions): Promise<RecordingListResponse>;
-
-  /**
-   * Fetches a single converged recording by its UUID.
-   *
-   * Calls `GET /convergedRecordings/{recordingId}`.
-   *
-   * @param recordingId - The recording id (`id`).
+   * @param request - The discriminated read request.
    *
    * @example
    * ```javascript
-   * const response = await callRecording.getRecording(recordingId);
+   * const list = await callRecording.getCallRecording({type: RecordingRequestType.LIST, options: {max: 30}});
+   * const one = await callRecording.getCallRecording({type: RecordingRequestType.DETAIL, recordingId});
+   * const meta = await callRecording.getCallRecording({type: RecordingRequestType.METADATA, recordingId});
+   * const bySession = await callRecording.getCallRecording({
+   *   type: RecordingRequestType.BY_CALL_SESSION,
+   *   callSessionId,
+   *   options: {days: 30, max: 100},
+   * });
    * ```
    */
-  getRecording(recordingId: string): Promise<RecordingResponse>;
-
-  /**
-   * Returns all recordings linked to a given call session id (`serviceData.callSessionId`).
-   *
-   * The recording API has no confirmed server-side filter for call session id, so this fetches a
-   * list via {@link getRecordings} and filters client-side. The scan is therefore bounded by the
-   * list query: by default only the first `max` recordings within the default time window/status
-   * are searched. If the target session may fall outside those defaults (older than the default
-   * window, a non-`available` status, or beyond the first page), pass `options` to widen the
-   * window/status/page so the recording is included before filtering.
-   *
-   * @param callSessionId - The call session id to filter by.
-   * @param options - Optional list query (time window/filter/pagination) forwarded to
-   *   {@link getRecordings} to control the set of recordings scanned.
-   *
-   * @example
-   * ```javascript
-   * const response = await callRecording.getRecordingsByCallSessionId(callSessionId, {days: 30, max: 100});
-   * ```
-   */
-  getRecordingsByCallSessionId(
-    callSessionId: string,
-    options?: GetRecordingsOptions
-  ): Promise<RecordingListResponse>;
-
-  /**
-   * Fetches the metadata for a single recording.
-   *
-   * Calls `GET /convergedRecordings/{recordingId}/metadata`.
-   *
-   * @param recordingId - The recording id (`id`).
-   *
-   * @example
-   * ```javascript
-   * const response = await callRecording.getRecordingMetadata(recordingId);
-   * ```
-   */
-  getRecordingMetadata(recordingId: string): Promise<RecordingMetadataResponse>;
+  getCallRecording<T extends GetCallRecordingRequest>(request: T): Promise<RecordingResponseFor<T>>;
 
   /**
    * Permanently deletes a single recording.
