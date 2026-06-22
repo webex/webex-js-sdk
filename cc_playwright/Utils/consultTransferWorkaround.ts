@@ -18,20 +18,24 @@ export async function executeConsultTransfer(page: Page): Promise<void> {
           const consultTransferBtn = document.querySelector(
             '#consult-transfer'
           ) as HTMLButtonElement | null;
-          const consultDestinationInput = document.querySelector('#consult-destination') as
-            | HTMLInputElement
-            | HTMLSelectElement
-            | null;
+          const consultDestinationInput = document.querySelector(
+            '#consultDestination, #consult-destination'
+          ) as HTMLInputElement | HTMLSelectElement | null;
           const consultDestinationType = document.querySelector(
             '#consult-destination-type'
           ) as HTMLSelectElement | null;
           const consultationData = globalScope.consultationData;
-          const payloadTarget =
-            consultationData?.to || consultDestinationInput?.value?.trim() || '';
+          const domConsultTarget = consultDestinationInput?.value?.trim() || '';
+          const domConsultDestinationType = consultDestinationType?.value || '';
+          const payloadTarget = consultationData?.to || domConsultTarget;
           const payloadDestinationType =
-            consultationData?.destinationType || consultDestinationType?.value || '';
+            consultationData?.destinationType || domConsultDestinationType;
+          const fallbackTarget = task?.data?.destAgentId || task?.data?.consultingAgentId || '';
           const canUseHiddenConsultTransfer =
-            Boolean(consultTransferBtn) && !consultTransferBtn?.disabled;
+            Boolean(consultTransferBtn) &&
+            !consultTransferBtn?.disabled &&
+            Boolean(domConsultTarget) &&
+            Boolean(domConsultDestinationType);
           const canUsePayloadTransfer =
             typeof task?.transfer === 'function' &&
             Boolean(payloadTarget) &&
@@ -50,17 +54,23 @@ export async function executeConsultTransfer(page: Page): Promise<void> {
             return (
               transferBtn.offsetParent !== null &&
               style.display !== 'none' &&
-              style.visibility !== 'hidden'
+              style.visibility !== 'hidden' &&
+              (Boolean(fallbackTarget) || canUseConferenceTransfer)
             );
           })();
+          const canUseFunctionTransfer =
+            (typeof globalScope.toggleTransferOptions === 'function' ||
+              typeof globalScope.initiateConsultTransfer === 'function') &&
+            (Boolean(domConsultTarget && domConsultDestinationType) ||
+              Boolean(fallbackTarget) ||
+              canUseConferenceTransfer);
 
           return (
             canUseHiddenConsultTransfer ||
             canUsePayloadTransfer ||
             canUseConferenceTransfer ||
             canUseVisibleTransfer ||
-            typeof globalScope.toggleTransferOptions === 'function' ||
-            typeof globalScope.initiateConsultTransfer === 'function'
+            canUseFunctionTransfer
           );
         }),
       {timeout: OPERATION_TIMEOUT, intervals: [500, 1000, 2000]}
@@ -78,10 +88,9 @@ export async function executeConsultTransfer(page: Page): Promise<void> {
     const consultTransferBtn = document.querySelector(
       '#consult-transfer'
     ) as HTMLButtonElement | null;
-    const consultDestinationInput = document.querySelector('#consult-destination') as
-      | HTMLInputElement
-      | HTMLSelectElement
-      | null;
+    const consultDestinationInput = document.querySelector(
+      '#consultDestination, #consult-destination'
+    ) as HTMLInputElement | HTMLSelectElement | null;
     const consultDestinationType = document.querySelector(
       '#consult-destination-type'
     ) as HTMLSelectElement | null;
@@ -115,14 +124,37 @@ export async function executeConsultTransfer(page: Page): Promise<void> {
       strategy: string,
       action: () => Promise<void> | void
     ): Promise<{ok: boolean; strategy: string} | null> => {
+      const alerts: string[] = [];
+      const consoleErrors: string[] = [];
+      const originalAlert = window.alert;
+      const originalConsoleError = console.error;
+
       try {
+        window.alert = (message?: unknown) => {
+          alerts.push(String(message ?? ''));
+        };
+        console.error = (...args: unknown[]) => {
+          consoleErrors.push(args.map(errorMessage).join(' '));
+          originalConsoleError.apply(console, args);
+        };
+
         await withTimeout(action(), strategy);
+        const reportedFailure = [...alerts, ...consoleErrors].find((message) =>
+          /failed|not ready|please enter|please try|error/i.test(message)
+        );
+
+        if (reportedFailure) {
+          throw new Error(reportedFailure);
+        }
 
         return {ok: true, strategy};
       } catch (error) {
         errors.push(`${strategy}: ${errorMessage(error)}`);
 
         return null;
+      } finally {
+        window.alert = originalAlert;
+        console.error = originalConsoleError;
       }
     };
 
@@ -172,6 +204,18 @@ export async function executeConsultTransfer(page: Page): Promise<void> {
     };
 
     try {
+      const consultationData = globalScope.consultationData;
+      const domConsultTarget = consultDestinationInput?.value?.trim() || '';
+      const domConsultDestinationType = consultDestinationType?.value || '';
+      const payloadTarget = consultationData?.to || domConsultTarget || '';
+      const payloadDestinationType =
+        consultationData?.destinationType || domConsultDestinationType || '';
+      const fallbackTarget = task?.data?.destAgentId || task?.data?.consultingAgentId || '';
+      const fallbackDestinationType = task?.data?.destinationType || 'agent';
+      const canUseDomConsultTransfer =
+        Boolean(domConsultTarget) && Boolean(domConsultDestinationType);
+      const canUseFallbackTransfer = Boolean(fallbackTarget) && Boolean(fallbackDestinationType);
+
       if (
         task?.data?.isConferenceInProgress === true &&
         typeof task?.transferConference === 'function'
@@ -184,10 +228,6 @@ export async function executeConsultTransfer(page: Page): Promise<void> {
         }
       }
 
-      const consultationData = globalScope.consultationData;
-      const payloadTarget = consultationData?.to || consultDestinationInput?.value?.trim() || '';
-      const payloadDestinationType =
-        consultationData?.destinationType || consultDestinationType?.value || '';
       const payloadTransferResult = await tryTransferWithPayload(
         payloadTarget,
         payloadDestinationType,
@@ -197,7 +237,7 @@ export async function executeConsultTransfer(page: Page): Promise<void> {
         return payloadTransferResult;
       }
 
-      if (typeof globalScope.initiateConsultTransfer === 'function') {
+      if (typeof globalScope.initiateConsultTransfer === 'function' && canUseDomConsultTransfer) {
         const result = await runStrategy('initiate-consult-transfer', () =>
           globalScope.initiateConsultTransfer!()
         );
@@ -206,7 +246,7 @@ export async function executeConsultTransfer(page: Page): Promise<void> {
         }
       }
 
-      if (consultTransferBtn && !consultTransferBtn.disabled) {
+      if (consultTransferBtn && !consultTransferBtn.disabled && canUseDomConsultTransfer) {
         const result = await runStrategy('hidden-consult-transfer-button', () =>
           invokeButton(consultTransferBtn, 'hidden-consult-transfer-button')
         );
@@ -215,8 +255,6 @@ export async function executeConsultTransfer(page: Page): Promise<void> {
         }
       }
 
-      const fallbackTarget = task?.data?.destAgentId || task?.data?.consultingAgentId || '';
-      const fallbackDestinationType = task?.data?.destinationType || 'agent';
       const taskTransferResult = await tryTransferWithPayload(
         fallbackTarget,
         fallbackDestinationType,
@@ -226,7 +264,10 @@ export async function executeConsultTransfer(page: Page): Promise<void> {
         return taskTransferResult;
       }
 
-      if (isVisibleEnabled(transferBtn)) {
+      if (
+        isVisibleEnabled(transferBtn) &&
+        (canUseFallbackTransfer || task?.data?.isConferenceInProgress === true)
+      ) {
         const result = await runStrategy('visible-transfer-button', () =>
           invokeButton(transferBtn!, 'visible-transfer-button')
         );
@@ -235,7 +276,10 @@ export async function executeConsultTransfer(page: Page): Promise<void> {
         }
       }
 
-      if (typeof globalScope.toggleTransferOptions === 'function') {
+      if (
+        typeof globalScope.toggleTransferOptions === 'function' &&
+        (canUseFallbackTransfer || task?.data?.isConferenceInProgress === true)
+      ) {
         const result = await runStrategy('toggle-transfer-options', () =>
           globalScope.toggleTransferOptions!()
         );

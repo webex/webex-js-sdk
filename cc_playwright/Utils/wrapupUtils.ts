@@ -51,7 +51,7 @@ export async function submitWrapup(page: Page, reason: WrapupReason): Promise<vo
   const wrapupDropdown = page.locator('#wrapupCodesDropdown');
   const wrapupButton = page.locator('#wrapup');
 
-  const canWrapup = await expect
+  await expect
     .poll(
       async () => {
         const dropdownEnabled = await wrapupDropdown.isEnabled().catch(() => false);
@@ -62,15 +62,9 @@ export async function submitWrapup(page: Page, reason: WrapupReason): Promise<vo
       },
       {timeout: WRAPUP_TIMEOUT, intervals: [500, 1000, 2000]}
     )
-    .toBeTruthy()
-    .then(async () => {
-      const taskCompleted = await isTaskCleared(page);
+    .toBeTruthy();
 
-      return !taskCompleted;
-    })
-    .catch(() => false);
-
-  if (!canWrapup) {
+  if (await isTaskCleared(page)) {
     return;
   }
 
@@ -95,7 +89,11 @@ export async function submitWrapup(page: Page, reason: WrapupReason): Promise<vo
 
   const buttonEnabled = await wrapupButton.isEnabled().catch(() => false);
   if (!buttonEnabled) {
-    return;
+    if (await isTaskCleared(page)) {
+      return;
+    }
+
+    throw new Error('Wrapup button is not enabled and task is still active');
   }
 
   await dismissAgentStatePopupIfPresent(page);

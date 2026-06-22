@@ -55,7 +55,7 @@ export default function createAdvanceCombinationsTests() {
       }
 
       delayedForFullSuiteCallingResources = true;
-      await sleep(7 * 60 * 1000);
+      await sleep(3 * 60 * 1000);
     };
 
     test.describe.configure({mode: 'serial', timeout: advancedCallingTestTimeout});

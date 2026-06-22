@@ -808,6 +808,12 @@ export async function acceptIncomingTask(
       return 'waiting';
     };
 
+    const clickCallAcceptControls = async (): Promise<void> => {
+      await taskListAcceptButton.click({force: true, timeout: 5000}).catch(() => false);
+      await acceptCurrentTaskModel(page);
+      await clickDomButton(page, '#answer');
+    };
+
     for (let attempt = 0; attempt < 3; attempt += 1) {
       let callAcceptanceState = await expect
         .poll(getCallAcceptanceState, {timeout: 10000, intervals: [500, 1000, 2000]})
@@ -848,18 +854,19 @@ export async function acceptIncomingTask(
       }
 
       if (callAcceptanceState === 'accepted') {
-        throw new Error('Call task accepted, but connected controls did not initialize');
+        await clickCallAcceptControls();
+        await page.waitForTimeout(2500);
+        continue;
       }
 
       if (callAcceptanceState === 'answerable') {
         await page.waitForTimeout(1000);
-        await taskListAcceptButton.click({force: true, timeout: 5000}).catch(() => false);
+        await clickCallAcceptControls();
         await page.waitForTimeout(2500);
         callAcceptanceState = await getCallAcceptanceState();
 
         if (callAcceptanceState !== 'connected') {
-          await acceptCurrentTaskModel(page);
-          await clickDomButton(page, '#answer');
+          await clickCallAcceptControls();
           await page.waitForTimeout(2500);
         }
       }
@@ -987,11 +994,115 @@ export async function acceptExtensionCall(page: Page) {
 
 export async function declineExtensionCall(page: Page) {
   await page.bringToFront();
-  await page.waitForTimeout(2000);
-  await page.evaluate(() => {
-    const callObj = (window as unknown as {call?: {end?: () => void}}).call;
-    callObj?.end?.();
+  const answerBtn = page.locator('#answer').first();
+  const endBtn = page.locator('#end').first();
+  const endCallBtn = page.locator('#end-call').first();
+
+  const getCallingPageState = async (): Promise<
+    'answerable' | 'connected' | 'disconnected' | 'waiting'
+  > => {
+    const answerEnabled = await answerBtn
+      .evaluate((el) => !(el as HTMLButtonElement).disabled)
+      .catch(() => false);
+    const endEnabled = await endBtn
+      .evaluate((el) => !(el as HTMLButtonElement).disabled)
+      .catch(() => false);
+    const endCallEnabled = await endCallBtn
+      .evaluate((el) => !(el as HTMLButtonElement).disabled)
+      .catch(() => false);
+    const statusText = (
+      await page
+        .locator('#call-object')
+        .innerText()
+        .catch(() => '')
+    ).toLowerCase();
+
+    if (answerEnabled) {
+      return 'answerable';
+    }
+    if (
+      endEnabled ||
+      endCallEnabled ||
+      statusText.includes('established') ||
+      statusText.includes('connected')
+    ) {
+      return 'connected';
+    }
+    if (statusText.includes('disconnected')) {
+      return 'disconnected';
+    }
+
+    return 'waiting';
+  };
+
+  await expect
+    .poll(
+      async () => {
+        const state = await getCallingPageState();
+
+        return state === 'answerable' || state === 'connected' || state === 'disconnected';
+      },
+      {timeout: EXTENSION_REGISTRATION_TIMEOUT, intervals: [500, 1000, 2000]}
+    )
+    .toBeTruthy();
+
+  if ((await getCallingPageState()) === 'disconnected') {
+    return;
+  }
+
+  await page.waitForTimeout(1000);
+  await page.evaluate(async () => {
+    const endButton = (document.querySelector('#end') ||
+      document.querySelector('#end-call')) as HTMLButtonElement | null;
+    if (!endButton) {
+      throw new Error('End button not found');
+    }
+
+    try {
+      if (endButton.onclick) {
+        const result = endButton.onclick(new MouseEvent('click'));
+        if (result && typeof result.then === 'function') {
+          await result;
+        }
+      } else {
+        endButton.click();
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes("Failed to execute 'removeChild' on 'Node'")) {
+        throw error;
+      }
+    }
   });
+
+  await expect
+    .poll(
+      async () => {
+        const answerEnabled = await answerBtn
+          .evaluate((el) => !(el as HTMLButtonElement).disabled)
+          .catch(() => false);
+        const endEnabled = await endBtn
+          .evaluate((el) => !(el as HTMLButtonElement).disabled)
+          .catch(() => false);
+        const endCallEnabled = await endCallBtn
+          .evaluate((el) => !(el as HTMLButtonElement).disabled)
+          .catch(() => false);
+        const statusText = (
+          await page
+            .locator('#call-object')
+            .innerText()
+            .catch(() => '')
+        ).toLowerCase();
+
+        return (
+          !answerEnabled &&
+          (!endEnabled || statusText.includes('disconnected')) &&
+          (!endCallEnabled || statusText.includes('disconnected'))
+        );
+      },
+      {timeout: AWAIT_TIMEOUT, intervals: [250, 500, 1000, 2000]}
+    )
+    .toBeTruthy();
 }
 
 /**
