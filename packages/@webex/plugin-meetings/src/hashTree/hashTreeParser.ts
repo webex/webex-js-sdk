@@ -1215,10 +1215,9 @@ class HashTreeParser {
    *
    * @param {HashTreeMessage} message - The hash tree message containing data sets and objects to be processed
    * @param {string} [debugText] - Optional debug text to include in logs
-   * @param {string} [trackingId] - Tracking id of the /sync request; set only for body-mode syncs, where it is used to record the message-received milestone and complete the sync latency metric
    * @returns {void}
    */
-  handleMessage(message: HashTreeMessage, debugText?: string, trackingId?: string) {
+  handleMessage(message: HashTreeMessage, debugText?: string) {
     if (this.state === 'stopped') {
       return;
     }
@@ -1238,27 +1237,10 @@ class HashTreeParser {
       this.handleRootHashHeartBeatMessage(message);
       this.resetHeartbeatWatchdogs(message.dataSets);
     } else {
-      // trackingId is only set here for body-mode syncs, where the locus state elements are
-      // returned in the /sync HTTP response body and no separate LLM push follows. In that case we
-      // record the message-received milestone and complete the metric directly using the sync
-      // request's tracking id. For LLM-push syncs trackingId is undefined here and completion is
-      // driven from Meeting#processLocusLLMEvent once the matching LLM message arrives.
-      if (trackingId) {
-        message.dataSets.forEach((dataSet) => {
-          if (this.shouldCollectSyncMetrics(dataSet.name)) {
-            this.callbacks.syncLatencyTracker?.saveTimestamp({
-              key: 'internal.client.locus.sync.message.received',
-              options: this.getSyncLatencyTimestampOptions(dataSet.name, undefined, trackingId),
-            });
-          }
-        });
-
-        this.callbacks.syncLatencyTracker?.completeLocusSyncLatency?.(
-          this.syncLatencyMeetingId,
-          trackingId
-        );
-      }
-
+      // Completion of the sync latency metric (client.locus.sync.complete) is driven solely from
+      // Meeting#processLocusLLMEvent once the matching LLM message arrives. body-mode syncs return
+      // the locus state elements in the /sync HTTP response body, but per design the CA metric is
+      // emitted only from the LLM message path, so no completion happens here.
       const updatedObjects = this.parseMessage(message, debugText);
 
       this.resetHeartbeatWatchdogs(message.dataSets);
@@ -1547,8 +1529,7 @@ class HashTreeParser {
           syncResponse,
           `via sync API (${
             isInitialization ? 'init' : `${Object.keys(leavesData).length} mismatched leaves`
-          })`,
-          syncTrackingId
+          })`
         );
       }
     } catch (error) {

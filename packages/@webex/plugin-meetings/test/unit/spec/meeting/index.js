@@ -14911,11 +14911,12 @@ describe('plugin-meetings', () => {
       });
 
       describe('#processLocusLLMEvent', () => {
-        it('routes the LLM event through locusInfo.parse and completes the sync metric with the tracking id', () => {
+        it('routes the LLM event through locusInfo.parse and completes the sync metric with payload tracking id', () => {
           const event = {
             data: {
               eventType: 'locus.state_message',
               dataSets: [],
+              trackingId: 'payload-sync-tracking-id',
             },
             trackingId: 'webex-web-client-tracking-id',
           };
@@ -14933,8 +14934,26 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(
             meeting.submitLocusSyncCompleteMetric,
             meeting.id,
-            event.trackingId
+            event.data.trackingId
           );
+        });
+
+        it('does not attempt sync completion when payload tracking id is missing', () => {
+          const event = {
+            data: {
+              eventType: 'locus.state_message',
+              dataSets: [],
+            },
+            trackingId: 'envelope-tracking-id',
+          };
+
+          meeting.locusInfo.parse = sinon.stub();
+          meeting.submitLocusSyncCompleteMetric = sinon.stub();
+
+          meeting.processLocusLLMEvent(event);
+
+          assert.calledOnceWithExactly(meeting.locusInfo.parse, meeting, event.data);
+          assert.notCalled(meeting.submitLocusSyncCompleteMetric);
         });
 
       });

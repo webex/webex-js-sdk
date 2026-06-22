@@ -5647,50 +5647,7 @@ describe('HashTreeParser', () => {
       assert.notCalled(syncLatencyTracker.completeLocusSyncLatency);
     });
 
-    it('records message received timestamp and completes when handleMessage is called with a tracking id (body-mode)', () => {
-      const syncLatencyTracker = {
-        saveLatency: sinon.stub(),
-        saveTimestamp: sinon.stub(),
-        getLocusSyncLatency: sinon.stub(),
-        clearLocusSyncLatency: sinon.stub(),
-        completeLocusSyncLatency: sinon.stub(),
-      };
-      const parser = createHashTreeParser(undefined, undefined, undefined, syncLatencyTracker);
-
-      parser.handleMessage(
-        {
-          dataSets: [
-            {
-              ...createDataSet('main', 16, 1001),
-              root: 'newroot',
-            },
-          ],
-          visibleDataSetsUrl,
-          locusUrl,
-          locusStateElements: [],
-        },
-        'trigger sync metrics',
-        'body-mode-sync-tracking-id'
-      );
-
-      assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
-        key: 'internal.client.locus.sync.message.received',
-        options: {
-          meetingId: 'meeting-1',
-          dataSetName: 'main',
-          trackingId: 'body-mode-sync-tracking-id',
-        },
-      });
-      // when handleMessage is called with a tracking id (body-mode sync), completion is driven here
-      assert.calledOnceWithExactly(
-        syncLatencyTracker.completeLocusSyncLatency,
-        'meeting-1',
-        'body-mode-sync-tracking-id'
-      );
-      assert.notCalled(syncLatencyTracker.getLocusSyncLatency);
-    });
-
-    it('completes sync metrics when sync response has body', async () => {
+    it('does not complete sync metrics when sync response has body (completion is LLM-only)', async () => {
       const syncLatencyTracker = {
         saveLatency: sinon.stub(),
         saveTimestamp: sinon.stub(),
@@ -5742,9 +5699,11 @@ describe('HashTreeParser', () => {
           trackingId: 'our-sync-tracking-id',
         },
       });
-      // body-mode syncs return the state elements in the /sync HTTP response, so completion is
-      // driven here (the meeting never receives a separate LLM push for this data)
-      assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
+      // body-mode syncs return the state elements in the /sync HTTP response, but per the LLM-only
+      // design the CA metric is completed solely from Meeting#processLocusLLMEvent once the matching
+      // LLM message arrives. handleMessage must not record the message-received milestone nor
+      // complete the metric here.
+      assert.neverCalledWith(syncLatencyTracker.saveTimestamp, {
         key: 'internal.client.locus.sync.message.received',
         options: {
           meetingId: 'meeting-1',
@@ -5752,11 +5711,7 @@ describe('HashTreeParser', () => {
           trackingId: 'our-sync-tracking-id',
         },
       });
-      assert.calledOnceWithExactly(
-        syncLatencyTracker.completeLocusSyncLatency,
-        'meeting-1',
-        'our-sync-tracking-id'
-      );
+      assert.notCalled(syncLatencyTracker.completeLocusSyncLatency);
     });
 
   });
