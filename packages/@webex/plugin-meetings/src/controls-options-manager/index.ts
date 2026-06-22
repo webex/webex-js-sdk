@@ -4,7 +4,7 @@ import PermissionError from '../common/errors/permission';
 import MeetingRequest from '../meeting/request';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {Control, Setting} from './enums';
-import {ControlConfig} from './types';
+import {ControlConfig, ViewTheParticipantListProperties} from './types';
 import Util from './util';
 import {CAN_SET, CAN_UNSET, ENABLED} from './constants';
 
@@ -56,6 +56,10 @@ export default class ControlsOptionsManager {
    */
   private mainLocusUrl: string;
 
+  private getControls: () => Record<string, any> = () => ({});
+
+  private isWebinar: () => boolean = () => false;
+
   /**
    * @param {MeetingRequest} request
    * @param {Object} options
@@ -67,6 +71,8 @@ export default class ControlsOptionsManager {
     options?: {
       locusUrl: string;
       displayHints?: Array<string>;
+      getControls?: () => Record<string, any>;
+      isWebinar?: () => boolean;
     }
   ) {
     this.initialize(request);
@@ -89,7 +95,12 @@ export default class ControlsOptionsManager {
    * @public
    * @memberof ControlsOptionsManager
    */
-  public set(options?: {locusUrl: string; displayHints?: Array<string>}) {
+  public set(options?: {
+    locusUrl: string;
+    displayHints?: Array<string>;
+    getControls?: () => Record<string, any>;
+    isWebinar?: () => boolean;
+  }) {
     this.extract(options);
   }
 
@@ -141,9 +152,20 @@ export default class ControlsOptionsManager {
    * @private
    * @memberof ControlsOptionsManager
    */
-  private extract(options?: {locusUrl: string; displayHints?: Array<string>}) {
+  private extract(options?: {
+    locusUrl: string;
+    displayHints?: Array<string>;
+    getControls?: () => Record<string, any>;
+    isWebinar?: () => boolean;
+  }) {
     this.setDisplayHints(options?.displayHints);
     this.setLocusUrl(options?.locusUrl);
+    if (options?.getControls) {
+      this.getControls = options.getControls;
+    }
+    if (options?.isWebinar) {
+      this.isWebinar = options.isWebinar;
+    }
   }
 
   /**
@@ -172,8 +194,22 @@ export default class ControlsOptionsManager {
         );
       }
 
+      let {properties} = control;
+
+      if (control.scope === Control.viewTheParticipantList) {
+        const props = properties as ViewTheParticipantListProperties;
+        const current = this.getControls()?.viewTheParticipantList;
+        properties = {
+          enabled: props.enabled ?? current?.enabled ?? false,
+          ...(this.isWebinar() && {
+            panelistEnabled: props.panelistEnabled ?? current?.panelistEnabled ?? false,
+            attendeeCount: props.attendeeCount ?? Boolean(current?.attendeeCount) ?? false,
+          }),
+        };
+      }
+
       return {
-        [control.scope]: control.properties,
+        [control.scope]: properties,
       };
     });
 
@@ -184,10 +220,7 @@ export default class ControlsOptionsManager {
         mainLocusUrl: this.mainLocusUrl,
       });
 
-      return previous.then(() =>
-        // @ts-ignore
-        this.request.request(requestParams)
-      );
+      return previous.then(() => this.sendControlsRequest(requestParams));
     }, Promise.resolve());
   }
 
@@ -274,8 +307,27 @@ export default class ControlsOptionsManager {
       mainLocusUrl: this.mainLocusUrl,
     });
 
-    // @ts-ignore
-    return this.request.request(requestParams);
+    return this.sendControlsRequest(requestParams);
+  }
+
+  /**
+   * Sends a controls request to Locus. When authorizingLocusUrl is present in the body,
+   * we use a plain request() because the response contains the main session Locus DTO
+   * instead of the breakout we're in, so we don't want to parse it as a delta.
+   * Otherwise we use locusDeltaRequest() for normal delta processing.
+   *
+   * @param {Object} requestParams - The request parameters from getControlsRequestParams.
+   * @returns {Promise<any>}
+   */
+  private sendControlsRequest(requestParams: {
+    uri: string;
+    body: Record<string, any>;
+    method: string;
+  }): Promise<any> {
+    return requestParams.body.authorizingLocusUrl
+      ? // @ts-ignore
+        this.request.request(requestParams)
+      : this.request.locusDeltaRequest(requestParams);
   }
 
   /**

@@ -7,6 +7,8 @@ import {METHOD_START_MESSAGE} from '../common/constants';
 import {
   filterMobiusUris,
   handleCallingClientErrors,
+  normalizeMobiusUris,
+  isValidServiceDomain,
   uploadLogs,
   validateServiceData,
 } from '../common/Utils';
@@ -27,6 +29,7 @@ import {
   ALLOWED_SERVICES,
   HTTP_METHODS,
   MobiusServers,
+  ServiceData,
   WebexRequestPayload,
   RegistrationStatus,
   UploadLogsResponse,
@@ -34,7 +37,7 @@ import {
   Devices,
 } from '../common/types';
 import {ICallingClient, CallingClientConfig} from './types';
-import {ICall, ICallManager} from './calling/types';
+import {ICall, ICallManager, MobiusAsyncEvent, MobiusEventType} from './calling/types';
 import log from '../Logger';
 import {getCallManager} from './calling/callManager';
 import {
@@ -50,6 +53,7 @@ import {
   METHODS,
   NETWORK_FLAP_TIMEOUT,
   DEVICES_ENDPOINT_RESOURCE,
+  WCC_CALLING_RTMS_DOMAIN,
 } from './constants';
 import Line from './line';
 import {ILine} from './line/types';
@@ -60,9 +64,11 @@ import {
   IMetricManager,
   CONNECTION_ACTION,
   MOBIUS_SERVER_ACTION,
+  MOBIUS_SOCKET_ACTION,
 } from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
 import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
+import {APIRequest} from './utils/request';
 
 /**
  * The `CallingClient` module provides a set of APIs for line registration and calling functionalities within the SDK.
@@ -88,9 +94,15 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
   private sdkConfig?: CallingClientConfig;
 
+  private serviceData: ServiceData;
+
   private primaryMobiusUris: string[];
 
   private backupMobiusUris: string[];
+
+  private primaryWssMobiusUris: string[];
+
+  private backupWssMobiusUris: string[];
 
   private mobiusClusters: ServiceHost[];
 
@@ -99,6 +111,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   public mediaEngine: typeof Media;
 
   private lineDict: Record<string, ILine> = {};
+
+  private apiRequest: APIRequest;
 
   private isNetworkDown = false;
 
@@ -128,16 +142,16 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.webex = this.sdkConnector.getWebex();
 
     this.sdkConfig = config;
-    const serviceData = this.sdkConfig?.serviceData?.indicator
+    this.serviceData = this.sdkConfig?.serviceData?.indicator
       ? this.sdkConfig.serviceData
       : {indicator: ServiceIndicator.CALLING, domain: ''};
 
     const logLevel = this.sdkConfig?.logger?.level ? this.sdkConfig.logger.level : LOGGER.ERROR;
     log.setLogger(logLevel, CALLING_CLIENT_FILE);
-    validateServiceData(serviceData);
+    validateServiceData(this.serviceData);
 
-    this.callManager = getCallManager(this.webex, serviceData.indicator);
-    this.metricManager = getMetricManager(this.webex, serviceData.indicator);
+    this.callManager = getCallManager(this.webex, this.serviceData.indicator);
+    this.metricManager = getMetricManager(this.webex, this.serviceData.indicator);
 
     this.mediaEngine = Media;
 
@@ -154,8 +168,12 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
+    this.primaryWssMobiusUris = [];
+    this.backupWssMobiusUris = [];
     this.mobiusClusters = this.webex.internal.services.getMobiusClusters();
     this.mobiusHost = '';
+
+    this.apiRequest = APIRequest.getInstance({webex: this.webex});
 
     this.registerSessionsListener();
 
@@ -175,6 +193,13 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * @ignore
    */
   public async init() {
+    const loggerContext = {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.INIT,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
     // Only for Windows Chromium based browsers we need to do the ICE warmup
     if (typeof window !== 'undefined' && window?.navigator?.userAgent) {
       const ua = window.navigator.userAgent;
@@ -202,9 +227,68 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }
 
     await this.getMobiusServers();
-    await this.createLine();
+    if (this.apiRequest.isSocketEnabled()) {
+      this.apiRequest.registerMobiusSocketConnectionListener({
+        onConnected: () => this.emit(CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED),
+        onDisconnected: (reason) =>
+          this.emit(CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED, {reason}),
+      });
+      await this.connectToMobiusSocket();
+      this.apiRequest.registerMobiusSocketListener(this.handleMobiusAsyncEvent);
+    }
 
+    // Auto-fetch RTMS domain from service catalog for contact-center flows
+    if (
+      this.serviceData.indicator === ServiceIndicator.CONTACT_CENTER &&
+      !this.serviceData.domain
+    ) {
+      const rtmsDomain = this.getRTMSDomain();
+
+      this.serviceData.domain = rtmsDomain;
+      if (this.sdkConfig?.serviceData) {
+        this.sdkConfig.serviceData.domain = this.serviceData.domain;
+      }
+    }
+
+    if (!isValidServiceDomain(this.serviceData)) {
+      throw new Error('Invalid service domain.');
+    }
+
+    await this.createLine();
     this.setupNetworkEventListeners();
+
+    log.log('CallingClient initialization complete', loggerContext);
+  }
+
+  /**
+   * Retrieves the RTMS domain from the service catalog for contact-center flows.
+   *
+   * @returns The RTMS domain from catalog when available.
+   */
+  private getRTMSDomain(): string {
+    log.info('Fetching RTMS domain from service catalog', {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.GET_RTMS_DOMAIN,
+    });
+
+    try {
+      const rtmsURL = this.webex.internal.services.get(WCC_CALLING_RTMS_DOMAIN);
+      const url = new URL(rtmsURL);
+
+      log.info(`RTMS domain resolved from catalog: ${url.hostname}`, {
+        file: CALLING_CLIENT_FILE,
+        method: METHODS.GET_RTMS_DOMAIN,
+      });
+
+      return url.hostname;
+    } catch (error) {
+      log.warn(`Failed to fetch RTMS domain from service catalog: ${error}`, {
+        file: CALLING_CLIENT_FILE,
+        method: METHODS.GET_RTMS_DOMAIN,
+      });
+
+      return '';
+    }
   }
 
   /**
@@ -483,7 +567,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       });
 
       const regionInfo = await this.getClientRegionInfo();
-
       clientRegion = regionInfo.clientRegion;
       countryCode = regionInfo.countryCode;
     }
@@ -538,6 +621,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           const mobiusUris = filterMobiusUris(mobiusServers, this.mobiusHost);
           this.primaryMobiusUris = mobiusUris.primary;
           this.backupMobiusUris = mobiusUris.backup;
+          this.primaryWssMobiusUris = mobiusUris.primaryWss;
+          this.backupWssMobiusUris = mobiusUris.backupWss;
 
           log.log(
             `Final list of Mobius Servers, primary: ${mobiusUris.primary} and backup: ${mobiusUris.backup}`,
@@ -602,6 +687,101 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       this.primaryMobiusUris = [`${this.mobiusHost}${URL_ENDPOINT}`];
     }
   }
+
+  /**
+   * Connects to the Mobius WebSocket using WSS URIs discovered during Mobius server discovery.
+   * Attempts primary WSS URIs first, then falls back to backup WSS URIs.
+   * If all attempts fail, logs a warning and continues without a socket connection.
+   */
+  private async connectToMobiusSocket(): Promise<void> {
+    const loggerContext = {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.CONNECT_TO_MOBIUS_SOCKET,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
+    if (!this.primaryWssMobiusUris.length) {
+      log.warn(
+        'No WSS URIs available from Mobius discovery for primary, skipping socket connection',
+        loggerContext
+      );
+
+      return;
+    }
+
+    // Attempt to establish the socket connection with mobius if primary wss urls are present
+    // If wss url is not present for primary/backup, registration will be attempted with http even when feature flag is enabled for mobius socket
+    for (const wssUri of this.primaryWssMobiusUris) {
+      try {
+        log.log(`Trying primary WSS URI: ${wssUri}`, loggerContext);
+        // eslint-disable-next-line no-await-in-loop
+        await this.apiRequest.connectToMobiusSocket(wssUri);
+        log.log(
+          `Successfully connected to Mobius socket on primary WSS URI: ${wssUri}`,
+          loggerContext
+        );
+
+        return;
+      } catch (err: unknown) {
+        log.warn(`Primary WSS URI connection failed for ${wssUri}: ${err}`, loggerContext);
+      }
+    }
+
+    log.warn('All primary WSS URI connection attempts failed', loggerContext);
+  }
+
+  private handleMobiusAsyncEvent = async (event?: MobiusAsyncEvent) => {
+    const loggerContext = {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.HANDLE_MOBIUS_ASYNC_EVENT,
+    };
+
+    const eventType = event?.data.eventType;
+
+    log.trace(
+      `Mobius async event received - eventType: ${eventType ?? 'undefined'}`,
+      loggerContext
+    );
+
+    if (!eventType) {
+      log.warn('Dropping unsupported mobius socket payload', loggerContext);
+
+      return;
+    }
+
+    if (eventType === MobiusEventType.REGISTRATION_DOWN) {
+      log.warn(`Received ${eventType} event from Mobius.`, loggerContext);
+      const line = Object.values(this.lineDict)[0];
+
+      if (!line) {
+        log.warn('No line found, skipping registration down event', loggerContext);
+
+        return;
+      }
+
+      await line.registration.handleRegistrationDownEvent(event);
+
+      this.metricManager.submitMobiusSocketMetric(
+        METRIC_EVENT.MOBIUS_SOCKET_ERROR,
+        MOBIUS_SOCKET_ACTION.REGISTRATION_DOWN,
+        METRIC_TYPE.BEHAVIORAL,
+        undefined,
+        event?.trackingId,
+        undefined,
+        eventType
+      );
+
+      return;
+    }
+
+    this.callManager.dequeueWsEvents(event);
+
+    log.trace(
+      `Mobius async event dispatched to CallManager - eventType: ${eventType}`,
+      loggerContext
+    );
+  };
 
   /**
    * Registers a listener/handler for ALL_CALLS_CLEARED
@@ -699,14 +879,27 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       file: CALLING_CLIENT_FILE,
       method: METHODS.CREATE_LINE,
     });
+    // When the Mobius socket is enabled, fall back to the HTTP URIs per group when that
+    // group has no WSS URL, so registration is still attempted (primary and backup are
+    // resolved independently). When the socket is disabled, always use the HTTP URIs.
+    const socketEnabled = this.apiRequest.isSocketEnabled();
+    const primaryUris =
+      socketEnabled && this.primaryWssMobiusUris.length
+        ? normalizeMobiusUris(this.primaryWssMobiusUris)
+        : this.primaryMobiusUris;
+    const backupUris =
+      socketEnabled && this.backupWssMobiusUris.length
+        ? normalizeMobiusUris(this.backupWssMobiusUris)
+        : this.backupMobiusUris;
+
     const line = new Line(
       this.webex.internal.device.userId,
       this.webex.internal.device.url,
       this.mutex,
-      this.primaryMobiusUris,
-      this.backupMobiusUris,
+      primaryUris,
+      backupUris,
       this.getLoggingLevel(),
-      this.sdkConfig?.serviceData,
+      this.serviceData,
       this.sdkConfig?.jwe
     );
 
@@ -745,7 +938,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       )}`;
       try {
         // eslint-disable-next-line no-await-in-loop
-        const response = <WebexRequestPayload>await this.webex.request({
+        const response = (await this.webex.request({
           uri,
           method: HTTP_METHODS.GET,
           service: ALLOWED_SERVICES.MOBIUS,
@@ -753,7 +946,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
             [CISCO_DEVICE_URL]: this.webex.internal.device.url,
             [SPARK_USER_AGENT]: CALLING_USER_AGENT,
           },
-        });
+        })) as WebexRequestPayload;
 
         if (response.statusCode !== 200) {
           throw new Error(`API call failed with ${response.statusCode}`);
@@ -810,6 +1003,17 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     });
 
     return connectCall;
+  }
+
+  /**
+   * Indicates whether the Mobius WebSocket transport is currently connected.
+   *
+   * The `MOBIUS_SOCKET_CONNECTED` event is emitted during `init()`, so consumers that
+   * subscribe afterwards may miss it; this lets them reconcile the current state. Returns
+   * `false` when the WebSocket transport is not enabled.
+   */
+  public isMobiusSocketConnected(): boolean {
+    return this.apiRequest.isSocketEnabled() && this.apiRequest.isSocketConnected();
   }
 
   /**

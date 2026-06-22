@@ -231,6 +231,7 @@ Does this match your intent? (Yes / No / Adjust)
 | `common`        | shared helpers (`handle*Errors`, `serviceErrorCodeHandler`, `uploadLogs`) | `src/common/Utils.ts`, `src/common/types.ts`, `src/common/constants.ts`                                  |
 | `Metrics`       | metric manager + event taxonomy                                           | `src/Metrics/`                                                                                           |
 | `SDKConnector`  | singleton webex bridge and listeners                                      | `src/SDKConnector/`                                                                                      |
+| `mobius-socket` | Mobius WebSocket transport (singleton client), reconnect, shutdown switchover, token refresh, message dispatch | `src/mobius-socket/`, `src/mobius-socket/ai-docs/AGENTS.md`, `src/mobius-socket/ai-docs/ARCHITECTURE.md` |
 
 ---
 
@@ -254,6 +255,10 @@ packages/calling/
 │   │   ├── registration/             # Mobius device registration
 │   │   │   ├── register.ts           # Registration class
 │   │   │   └── webWorker.ts          # Keepalive web worker
+│   │   ├── utils/                     # Transport-agnostic API request layer
+│   │   │   ├── request.ts            # APIRequest (HTTP / Mobius WSS transport selector)
+│   │   │   ├── mobiusSocketMapper.ts # URI + HTTP method → MOBIUS_SOCKET_MESSAGE_TYPE mapping
+│   │   │   └── wsFeatureFlag.ts      # WDM/localStorage WSS feature-flag resolution
 │   │   └── ai-docs/                   # CallingClient AI documentation
 │   │       ├── AGENTS.md              # Module guide
 │   │       └── ARCHITECTURE.md        # Module architecture
@@ -272,7 +277,16 @@ packages/calling/
 │   │   └── catalog/                   # CallError, LineError, CallingClientError
 │   ├── Logger/                        # Logger module
 │   ├── Metrics/                       # MetricManager singleton
-│   └── SDKConnector/                  # Webex SDK integration singleton
+│   ├── SDKConnector/                  # Webex SDK integration singleton
+│   └── mobius-socket/                 # Mobius WebSocket transport (singleton client)
+│       ├── mobius-socket.ts           # MobiusSocket class (connect/disconnect/sendWssRequest)
+│       ├── socket/                    # Low-level WebSocket abstraction (Node `ws` + browser shim)
+│       ├── config.ts                  # MobiusSocketConfig defaults
+│       ├── errors.ts                  # Connection + response error classes
+│       ├── types.ts                   # Public type aliases
+│       └── ai-docs/                   # mobius-socket AI documentation
+│           ├── AGENTS.md              # Module guide
+│           └── ARCHITECTURE.md        # Module architecture
 ├── ai-docs/                           # AI documentation
 │   ├── README.md                      # Navigation hub
 │   ├── RULES.md                       # Coding standards

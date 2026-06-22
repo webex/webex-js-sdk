@@ -1,12 +1,15 @@
 /* globals window */
 
 import {
+  _CALL_,
   _CREATED_,
   _INCOMING_,
   _JOINED_,
   _LEFT_,
   DESTINATION_TYPE,
   _MOVED_,
+  _SIP_BRIDGE_,
+  _SPACE_SHARE_,
   BREAKOUTS,
   EVENT_TRIGGERS,
   LOCUS,
@@ -18,6 +21,7 @@ import Trigger from '../common/events/trigger-proxy';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import Metrics from '../metrics';
 import {MEETING_KEY} from './meetings.types';
+import {EndMeetingReason, LocusFullState} from '../locus-info/types';
 
 /**
  * Meetings Media Codec Missing Event
@@ -152,6 +156,30 @@ MeetingsUtil.parseDefaultSiteFromMeetingPreferences = (userPreferences) => {
   return result;
 };
 
+MeetingsUtil.getSiteName = (site: string, multipartSitePrefixList: string[] = []) => {
+  if (!site) {
+    return null;
+  }
+
+  let siteName: string | undefined;
+
+  multipartSitePrefixList.forEach((multipartSitePrefix) => {
+    if (!siteName && site.includes(multipartSitePrefix)) {
+      const secondDot = site.indexOf('.', site.indexOf('.') + 1);
+
+      siteName = site.substring(0, secondDot);
+    }
+  });
+
+  if (siteName) {
+    return siteName;
+  }
+
+  siteName = site.substring(0, site.indexOf('.'));
+
+  return siteName;
+};
+
 /**
  * Will check to see if the H.264 media codec is supported.
  * @async
@@ -264,6 +292,49 @@ MeetingsUtil.getThisDevice = (newLocus: any, deviceUrl: string) => {
   }
 
   return null;
+};
+
+/**
+ * Checks if the fullState indicates the meeting has fully ended (not just a breakout move).
+ * @param {Object} fullState locus fullState data
+ * @returns {boolean}
+ */
+MeetingsUtil.isWholeMeetingEnded = (fullState: LocusFullState): boolean => {
+  return (
+    fullState.state === LOCUS.STATE.INACTIVE &&
+    fullState.endMeetingReason !== EndMeetingReason.breakoutEnded
+  );
+};
+
+/**
+ * Checks if the self state in a locus indicates a breakout move or breakout end.
+ * Returns true when:
+ * - self state is LEFT with reason MOVED (regular breakout move), OR
+ * - fullState is INACTIVE with endMeetingReason BREAKOUT_ENDED (breakout session ended)
+ * @param {Object} locus locus data
+ * @returns {boolean}
+ */
+MeetingsUtil.isSelfMovedOrBreakoutEnded = (locus: any): boolean => {
+  const isSelfLeftMoved = locus?.self?.state === _LEFT_ && locus?.self?.reason === _MOVED_;
+  const isBreakoutEnded =
+    locus?.fullState?.state === LOCUS.STATE.INACTIVE &&
+    locus?.fullState?.endMeetingReason === EndMeetingReason.breakoutEnded;
+
+  return isSelfLeftMoved || isBreakoutEnded;
+};
+
+/**
+ * Checks if a locus is a 1:1 call using locus.fullState.type.
+ * Returns true when fullState.type is CALL, SIP_BRIDGE, or SPACE_SHARE.
+ * @param {Object} locus locus data
+ * @returns {boolean}
+ */
+MeetingsUtil.isOneOnOneCall = (locus: any): boolean => {
+  const fullStateType = locus?.fullState?.type;
+
+  return (
+    fullStateType === _CALL_ || fullStateType === _SIP_BRIDGE_ || fullStateType === _SPACE_SHARE_
+  );
 };
 
 /**

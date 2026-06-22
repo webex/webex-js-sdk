@@ -92,7 +92,7 @@ class Calling extends EventEmitter {
 
     for (const line of lines) {
       if (line.getStatus() === 'active') {
-        line.deregister();
+        line.deregister(true); // Close Mobius WSS by passing true
       }
     }
 

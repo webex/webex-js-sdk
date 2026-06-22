@@ -114,6 +114,8 @@ describe('plugin-meetings', () => {
         canDisablePollingQA: null,
         canAttendeeRequestAiAssistantEnabled: null,
         isAttendeeRequestAiAssistantDeclinedAll: null,
+        isAnonymizeDisplayNamesEnabled: null,
+        canViewTheParticipantList: null,
 
         ...expected,
       };
@@ -234,6 +236,8 @@ describe('plugin-meetings', () => {
       'canDisablePollingQA',
       'canAttendeeRequestAiAssistantEnabled',
       'isAttendeeRequestAiAssistantDeclinedAll',
+      'isAnonymizeDisplayNamesEnabled',
+      'canViewTheParticipantList',
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();

@@ -1,6 +1,8 @@
 // @ts-ignore
 import {hydraTypes} from '@webex/common';
 
+export {LLM_DEFAULT_SESSION, LLM_PRACTICE_SESSION} from '@webex/internal-plugin-llm';
+
 export type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 // *********** LOWERCASE / CAMELCASE STRINGS ************
@@ -44,7 +46,6 @@ export const LOCAL = 'local';
 export const LOCI = 'loci';
 export const LOCUS_URL = 'locusUrl';
 export const END = 'end';
-export const LLM_PRACTICE_SESSION = 'llm-practice-session';
 
 export const MAX_RANDOM_DELAY_FOR_MEETING_INFO = 3 * 60 * 1000;
 export const MEETINGINFO = 'meetingInfo';
@@ -391,6 +392,7 @@ export const EVENT_TRIGGERS = {
   MEETING_CAPTION_RECEIVED: 'meeting:caption-received',
   MEETING_PARTICIPANT_REASON_CHANGED: 'meeting:participant-reason-changed',
   MEETING_AI_ENABLE_REQUEST: 'meeting:aiEnableRequest',
+  MEETING_SRTP_CIPHER_UPDATED: 'meeting:srtpCipher:updated',
 };
 
 export const EVENT_TYPES = {
@@ -417,7 +419,7 @@ export const HEADERS = {
 // Meeting actually ended
 export const MEETING_REMOVED_REASON = {
   SELF_REMOVED: 'SELF_REMOVED', // server or host removed you from the meeting
-  MEETING_INACTIVE_TERMINATING: 'MEETING_INACTIVE_TERMINATING', // Meeting got ended or everyone left the meeting
+  MEETING_INACTIVE_TERMINATING: 'MEETING_INACTIVE_TERMINATING', // Meeting got ended or everyone left the meeting (historically was sent on Locus TERMINATING or INACTIVE, but now only on INACTIVE as that's the final state)
   CLIENT_LEAVE_REQUEST: 'CLIENT_LEAVE_REQUEST', // You triggered leave meeting
   CLIENT_LEAVE_REQUEST_TAB_CLOSED: 'CLIENT_LEAVE_REQUEST_TAB_CLOSED', // You triggered leave meeting, such as closing the browser tab directly
   USER_ENDED_SHARE_STREAMS: 'USER_ENDED_SHARE_STREAMS', // user triggered stop share
@@ -700,6 +702,12 @@ export const INTERPRETATION = {
     DECLINED: 'DECLINED',
   },
   RESOURCE_TYPE: 'SiHandover',
+  CAPABILITIES: {
+    HOST_CONTROL_SI_SUPPORTED: 'HOST_CONTROL_SI_SUPPORTED',
+    INTERPRETER_CONTROL_SI_SUPPORTED: 'INTERPRETER_CONTROL_SI_SUPPORTED',
+    SI_HANDOVER_SUPPORTED: 'SI_HANDOVER_SUPPORTED',
+    SIGN_INTERPRETER_SUPPORTED: 'SIGN_INTERPRETER_SUPPORTED',
+  },
 };
 
 export const LOCUSINFO = {
@@ -1031,6 +1039,8 @@ export const DISPLAY_HINTS = {
   // participants list
   DISABLE_VIEW_THE_PARTICIPANT_LIST: 'DISABLE_VIEW_THE_PARTICIPANT_LIST',
   ENABLE_VIEW_THE_PARTICIPANT_LIST: 'ENABLE_VIEW_THE_PARTICIPANT_LIST',
+  VIEW_THE_PARTICIPANT_LIST: 'VIEW_THE_PARTICIPANT_LIST',
+  CAN_VIEW_THE_PARTICIPANT_LIST: 'CAN_VIEW_THE_PARTICIPANT_LIST',
   // for webinar participants list
   DISABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST: 'DISABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST',
   ENABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST: 'ENABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST',
@@ -1093,6 +1103,9 @@ export const DISPLAY_HINTS = {
   // AI
   ATTENDEE_REQUEST_AI_ASSISTANT_ENABLED: 'ATTENDEE_REQUEST_AI_ASSISTANT_ENABLED',
   ATTENDEE_REQUEST_AI_ASSISTANT_DECLINED_ALL: 'ATTENDEE_REQUEST_AI_ASSISTANT_DECLINED_ALL',
+
+  // Anonymous Display Names
+  ANONYMOUS_DISPLAY_NAMES_ENABLED: 'ANONYMOUS_DISPLAY_NAMES_ENABLED',
 };
 
 export const INTERSTITIAL_DISPLAY_HINTS = [DISPLAY_HINTS.VOIP_IS_ENABLED];
@@ -1102,6 +1115,7 @@ export const SELF_ROLES = {
   MODERATOR: 'MODERATOR',
   ATTENDEE: 'ATTENDEE',
   PANELIST: 'PANELIST',
+  PRESENTER: 'PRESENTER',
 };
 
 export const MEETING_STATE = {

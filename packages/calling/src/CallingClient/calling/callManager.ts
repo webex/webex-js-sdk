@@ -1,5 +1,6 @@
 /* eslint-disable dot-notation */
 /* eslint-disable valid-jsdoc */
+import {APIRequest} from '../utils/request';
 import {METHOD_START_MESSAGE} from '../../common/constants';
 import {CALL_MANAGER_FILE, METHODS} from '../constants';
 import {CALLING_CLIENT_EVENT_KEYS, CallEventTypes, LINE_EVENT_KEYS} from '../../Events/types';
@@ -12,7 +13,8 @@ import {
   ICallManager,
   MediaState,
   MidCallEvent,
-  MobiusCallEvent,
+  MobiusAsyncEvent,
+  MobiusCallData,
   MobiusEventType,
 } from './types';
 import {createCall} from './call';
@@ -37,6 +39,10 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
 
   private lineDict: Record<string, ILine>;
 
+  private apiRequest: APIRequest;
+
+  private isMobiusSocketListenerRegistered = false;
+
   /**
    * @param webex -.
    * @param indicator - Service Indicator.
@@ -50,6 +56,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
     }
     this.lineDict = {};
     this.webex = this.sdkConnector.getWebex();
+    this.apiRequest = APIRequest.getInstance({webex: this.webex});
     this.callCollection = {};
     this.activeMobiusUrl = '';
     this.listenForWsEvents();
@@ -121,19 +128,48 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
       file: CALL_MANAGER_FILE,
       method: METHODS.UPDATE_ACTIVE_MOBIUS,
     });
+
+    /*
+     * The active transport is resolved per Mobius server group during registration: a
+     * group with no WSS URL falls back to HTTP even while the Mobius socket feature is
+     * enabled, so the final transport is only known once registration succeeds. Re-align
+     * the Mobius event source with that transport now that the device has registered.
+     */
+    this.listenForWsEvents();
   }
 
   /**
-   * A listener for Mobius events.
+   * Aligns the Mobius event source with the active transport.
+   *
+   * Call events reach {@link dequeueWsEvents} over one of two paths:
+   * - HTTP transport: a Mercury `event:mobius` listener owned by this CallManager.
+   * - WebSocket transport: CallingClient forwards Mobius socket events to dequeueWsEvents().
+   *
+   * Because the transport can fall back from WSS to HTTP per server group during
+   * registration, this is invoked both at construction and whenever the active Mobius
+   * URL changes. It registers the Mercury listener for HTTP and removes it for the
+   * WebSocket transport, and is idempotent so repeated calls do not duplicate listeners.
    */
   private listenForWsEvents() {
-    this.sdkConnector.registerListener('event:mobius', async (event) => {
-      this.dequeueWsEvents(event);
-    });
-    log.info('Successfully registered listener for Mobius events', {
-      file: CALL_MANAGER_FILE,
-      method: METHODS.REGISTER_SESSIONS_LISTENER,
-    });
+    const socketEnabled = this.apiRequest.isSocketEnabled();
+
+    if (!socketEnabled && !this.isMobiusSocketListenerRegistered) {
+      this.sdkConnector.registerListener('event:mobius', async (event) => {
+        this.dequeueWsEvents(event);
+      });
+      this.isMobiusSocketListenerRegistered = true;
+      log.info('Successfully registered listener for Mobius events', {
+        file: CALL_MANAGER_FILE,
+        method: METHODS.REGISTER_SESSIONS_LISTENER,
+      });
+    } else if (socketEnabled && this.isMobiusSocketListenerRegistered) {
+      this.sdkConnector.unregisterListener('event:mobius');
+      this.isMobiusSocketListenerRegistered = false;
+      log.info('Unregistered Mercury listener for Mobius events; using WebSocket transport', {
+        file: CALL_MANAGER_FILE,
+        method: METHODS.REGISTER_SESSIONS_LISTENER,
+      });
+    }
   }
 
   /**
@@ -143,13 +179,14 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
    *
    * @param event - Mobius Events.
    */
-  private dequeueWsEvents(event: unknown) {
+  public dequeueWsEvents(event: MobiusAsyncEvent | unknown) {
     log.info(`${METHOD_START_MESSAGE} with event ${event}`, {
       file: CALL_MANAGER_FILE,
       method: METHODS.DEQUEUE_WS_EVENTS,
     });
-    const mobiusEvent = event as MobiusCallEvent;
-    const {callId, correlationId} = mobiusEvent.data;
+    const mobiusEvent = event as MobiusAsyncEvent;
+
+    const {callId, correlationId} = mobiusEvent.data as MobiusCallData;
 
     switch (mobiusEvent.data.eventType) {
       case MobiusEventType.CALL_SETUP: {
@@ -258,6 +295,22 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
         }
 
         call.sendCallStateMachineEvt({type: 'E_RECV_CALL_PROGRESS', data: mobiusEvent.data});
+        break;
+      }
+      case MobiusEventType.CALL_INFO: {
+        log.log(`Received call info mobiusEvent for call: ${correlationId}`, {
+          file: CALL_MANAGER_FILE,
+          method: METHODS.DEQUEUE_WS_EVENTS,
+        });
+        const call = this.getCall(correlationId);
+
+        if (call && mobiusEvent.data.callerId) {
+          log.info('Processing Caller-Id data', {
+            file: CALL_MANAGER_FILE,
+            method: METHODS.DEQUEUE_WS_EVENTS,
+          });
+          call.startCallerIdResolution(mobiusEvent.data.callerId);
+        }
         break;
       }
       case MobiusEventType.CALL_MEDIA: {

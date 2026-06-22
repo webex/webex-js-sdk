@@ -1,13 +1,23 @@
 import {Page, BrowserContext, Browser} from '@playwright/test';
-import {AccountRole, UserSet, getToken, getUserSet, isIntProject} from './test-data';
+import {
+  AccountRole,
+  UserSet,
+  getToken,
+  getUserSet,
+  isIntProject,
+  isMobiusWsMode,
+} from './test-data';
 import {
   navigateToCallingApp,
   initializeCallingSDK,
   verifySDKInitialized,
   setServiceIndicator,
   setEnvironmentToInt,
+  setMobiusWebSocket,
+  verifyMobiusWebSocketEnabled,
 } from './utils/setup';
-import {registerLine, verifyLineRegistered} from './utils/registration';
+import {registerLine, verifyLineRegistered, unregisterLine} from './utils/registration';
+import {cleanupActiveCalls, getMediaStreams} from './utils/call';
 import {ServiceIndicator} from './constants';
 
 interface SetupConfig {
@@ -15,8 +25,14 @@ interface SetupConfig {
   initSDK?: boolean;
   /** Register the line after SDK init */
   register?: boolean;
+  /** Get media streams after registration (needed for call tests) */
+  media?: boolean;
   /** Service indicator to set before init (default: 'calling') */
   service?: ServiceIndicator;
+  /** Force the sample app Mobius WebSocket override before init */
+  mobiusWss?: boolean;
+  /** Configure context/page before navigation and SDK init, e.g. route setup */
+  beforeInit?: (context: BrowserContext, page: Page, role: AccountRole) => Promise<void>;
 }
 
 interface ManagedContext {
@@ -32,12 +48,12 @@ interface ManagedContext {
  * so that suites never need to hardcode role strings.
  *
  * Single-user usage (registration tests):
- *   const tm = new TestManager('SET_1');
+ *   const tm = new TestManager('SET_REGISTRATION_1');
  *   await tm.setupContext(browser, 0, {initSDK: true, register: true});
  *   // tm.page, tm.context ready — uses USER_1 account automatically
  *
  * Multi-user usage (call tests):
- *   const tm = new TestManager('SET_2USER');
+ *   const tm = new TestManager('SET_CALL');
  *   await Promise.all([
  *     tm.setupContext(browser, 0, {initSDK: true, register: true}),   // USER_1
  *     tm.setupContext(browser, 1, {initSDK: true, register: true}),   // USER_2
@@ -109,10 +125,22 @@ export class TestManager {
       );
     }
 
+    // Tear down existing context for this role to avoid leaked registrations
+    const existing = this.contexts.get(role);
+    if (existing) {
+      await cleanupActiveCalls(existing.page).catch(() => {});
+      await unregisterLine(existing.page).catch(() => {});
+      await existing.context.close().catch(() => {});
+    }
+
     const context = await browser.newContext({ignoreHTTPSErrors: true});
     const page = await context.newPage();
     const mc: ManagedContext = {context, page, role};
     this.contexts.set(role, mc);
+
+    if (config.beforeInit) {
+      await config.beforeInit(context, page, role);
+    }
 
     if (config.initSDK) {
       await navigateToCallingApp(page);
@@ -122,12 +150,23 @@ export class TestManager {
       if (config.service) {
         await setServiceIndicator(page, config.service);
       }
+      const mobiusWss = config.mobiusWss ?? isMobiusWsMode();
+      if (mobiusWss) {
+        await setMobiusWebSocket(page, true);
+      }
       await initializeCallingSDK(page, getToken(role, this.isInt));
       await verifySDKInitialized(page);
+      if (mobiusWss) {
+        await verifyMobiusWebSocketEnabled(page);
+      }
 
       if (config.register) {
         await registerLine(page);
         await verifyLineRegistered(page);
+      }
+
+      if (config.media) {
+        await getMediaStreams(page);
       }
     }
 
@@ -135,9 +174,18 @@ export class TestManager {
   }
 
   /**
-   * Close all managed contexts.
+   * Deregister all lines, then close all managed contexts.
    */
   async cleanup(): Promise<void> {
+    await Promise.all(
+      Array.from(this.contexts.values()).map((mc) => cleanupActiveCalls(mc.page).catch(() => {}))
+    );
+    // Deregister lines before closing — prevents stale backend registrations
+    // that block subsequent tests reusing the same account.
+    await Promise.all(
+      Array.from(this.contexts.values()).map((mc) => unregisterLine(mc.page).catch(() => {}))
+    );
+
     const closePromises = Array.from(this.contexts.values()).map((mc) =>
       mc.context.close().catch(() => {})
     );

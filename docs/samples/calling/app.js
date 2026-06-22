@@ -170,6 +170,17 @@ if (localStorage.getItem('date') > new Date().getTime()) {
   localStorage.removeItem('access-token');
 }
 
+// Initialize Mobius WSS dropdown from localStorage
+const mobiusWssCheckbox = document.getElementById('mobius-wss');
+const storedMobiusWss = localStorage.getItem('mobius-wss-enabled');
+if (storedMobiusWss === 'true') {
+  mobiusWssCheckbox.value = 'true';
+} else if (storedMobiusWss === 'false') {
+  mobiusWssCheckbox.value = 'false';
+} else {
+  mobiusWssCheckbox.value = 'default';
+}
+
 tokenElm.addEventListener('change', (event) => {
   localStorage.setItem('access-token', event.target.value);
   localStorage.setItem('date', new Date().getTime() + 12 * 60 * 60 * 1000);
@@ -178,6 +189,20 @@ tokenElm.addEventListener('change', (event) => {
 function changeEnv() {
   enableProd = !enableProd;
   enableProduction.innerHTML = enableProd ? 'In Production' : 'In Integration';
+}
+
+function toggleMobiusWss() {
+  const value = mobiusWssCheckbox.value;
+  if (value === 'true') {
+    localStorage.setItem('mobius-wss-enabled', 'true');
+    console.log('Mobius WebSocket force-enabled via samples page');
+  } else if (value === 'false') {
+    localStorage.setItem('mobius-wss-enabled', 'false');
+    console.log('Mobius WebSocket force-disabled via samples page');
+  } else {
+    localStorage.removeItem('mobius-wss-enabled');
+    console.log('Mobius WebSocket using backend flag (override cleared)');
+  }
 }
 
 // Guest access token via Service App - Logic deployed on the AWS Lambda
@@ -341,8 +366,9 @@ async function initCalling(e) {
       registerElm.disabled = false;
 
       if(window.callingClient === undefined && calling.callingClient !== undefined) {
-      callingClient = window.callingClient = calling.callingClient;
-    }
+        callingClient = window.callingClient = calling.callingClient;
+        monitorMobiusSocket();
+      }
 
       if (window.contacts === undefined) {
         contacts = window.contacts = calling.contactClient;
@@ -408,6 +434,24 @@ function userSession() {
     console.log('Users recent session data : ', sessionData.data.userSessions.userSessions[0]);
     userSessionData.innerText = `${JSON.stringify(sessionData.data.userSessions.userSessions[0])}`;
   });
+}
+
+function monitorMobiusSocket() {
+  if (!callingClient) return;
+
+  callingClient.on('callingClient:mobius_socket_connected', () => {
+    console.log('Mobius socket connected');
+  });
+
+  callingClient.on('callingClient:mobius_socket_disconnected', (event) => {
+    console.log('Mobius socket disconnected, reason: ', event.reason);
+  });
+
+  // The connected event is emitted during client init, before this listener is
+  // attached, so reconcile the current state to avoid missing the initial connection.
+  if (callingClient.isMobiusSocketConnected()) {
+    console.log('Mobius socket connected');
+  }
 }
 
 function createDevice() {

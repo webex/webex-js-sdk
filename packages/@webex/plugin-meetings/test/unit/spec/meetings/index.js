@@ -14,12 +14,14 @@ import StaticConfig from '@webex/plugin-meetings/src/common/config';
 import TriggerProxy from '@webex/plugin-meetings/src/common/events/trigger-proxy';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
+import ParameterError from '@webex/plugin-meetings/src/common/errors/parameter';
 import Meeting, {CallStateForMetrics} from '@webex/plugin-meetings/src/meeting';
 import {Services} from '@webex/webex-core';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import Meetings from '@webex/plugin-meetings/src/meetings';
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
+import {SitePreferenceSelectOption} from '@webex/plugin-meetings/src/meetings/meetings.types';
 import PersonalMeetingRoom from '@webex/plugin-meetings/src/personal-meeting-room';
 import Reachability from '@webex/plugin-meetings/src/reachability';
 import Metrics from '@webex/plugin-meetings/src/metrics';
@@ -420,6 +422,33 @@ describe('plugin-meetings', () => {
         it('should update meetings to enable audio twcc support', () => {
           webex.meetings._toggleEnableAudioTwccForMultistream(true);
           assert.equal(webex.meetings.config.enableAudioTwccForMultistream, true);
+        });
+      });
+    });
+
+    describe('#_toggleEnableAv1SlidesSupport', () => {
+      it('should have _toggleEnableAv1SlidesSupport', () => {
+        assert.equal(typeof webex.meetings._toggleEnableAv1SlidesSupport, 'function');
+      });
+
+      describe('success', () => {
+        it('should update meetings config to enable AV1 slides support', () => {
+          webex.meetings._toggleEnableAv1SlidesSupport(true);
+          assert.equal(webex.meetings.config.enableAv1SlidesSupport, true);
+
+          webex.meetings._toggleEnableAv1SlidesSupport(false);
+          assert.equal(webex.meetings.config.enableAv1SlidesSupport, false);
+        });
+
+        it('should not update config when called with a non-boolean value', () => {
+          webex.meetings._toggleEnableAv1SlidesSupport(true);
+          assert.equal(webex.meetings.config.enableAv1SlidesSupport, true);
+
+          webex.meetings._toggleEnableAv1SlidesSupport('invalid');
+          assert.equal(webex.meetings.config.enableAv1SlidesSupport, true);
+
+          webex.meetings._toggleEnableAv1SlidesSupport(undefined);
+          assert.equal(webex.meetings.config.enableAv1SlidesSupport, true);
         });
       });
     });
@@ -1356,6 +1385,87 @@ describe('plugin-meetings', () => {
             );
           });
         });
+        describe('#fetchSitePreferencesMeViaSite', () => {
+          const sitePreferencesResponse = {
+            scheduling: {
+              supportScheduleWebinar: true,
+              webinarWebLink: 'https://go.webex.com/webappng/sites/go/webinar/scheduler',
+            },
+          };
+
+          beforeEach(() => {
+            webex.meetings.request.fetchSitePreferencesMeViaSite = sinon
+              .stub()
+              .resolves(sitePreferencesResponse);
+          });
+
+          it('should have #fetchSitePreferencesMeViaSite', () => {
+            assert.exists(webex.meetings.fetchSitePreferencesMeViaSite);
+          });
+
+          it('fetches scheduling preferences for the preferred Webex site by default', async () => {
+            webex.meetings.preferredWebexSite = 'go.webex.com';
+
+            const result = await webex.meetings.fetchSitePreferencesMeViaSite();
+
+            assert.deepEqual(result, sitePreferencesResponse);
+            assert.calledOnceWithExactly(
+              webex.meetings.request.fetchSitePreferencesMeViaSite,
+              {
+                siteUrl: 'go.webex.com',
+              }
+            );
+          });
+
+          it('uses the provided Webex site instead of the preferred Webex site', async () => {
+            webex.meetings.preferredWebexSite = 'preferred.webex.com';
+
+            await webex.meetings.fetchSitePreferencesMeViaSite({siteUrl: 'go.webex.com'});
+
+            assert.calledOnceWithExactly(
+              webex.meetings.request.fetchSitePreferencesMeViaSite,
+              {
+                siteUrl: 'go.webex.com',
+              }
+            );
+          });
+
+          it('forwards custom site name and preference sections to the request helper', async () => {
+            webex.meetings.preferredWebexSite = 'go.webex.com';
+
+            await webex.meetings.fetchSitePreferencesMeViaSite({
+              siteName: 'custom-site',
+              selectOptions: [SitePreferenceSelectOption.SCHEDULING],
+            });
+
+            assert.calledOnceWithExactly(
+              webex.meetings.request.fetchSitePreferencesMeViaSite,
+              {
+                siteUrl: 'go.webex.com',
+                siteName: 'custom-site',
+                selectOptions: [SitePreferenceSelectOption.SCHEDULING],
+              }
+            );
+          });
+
+          it('throws when no Webex site is available', () => {
+            webex.meetings.preferredWebexSite = '';
+            webex.meetings.request.fetchSitePreferencesMeViaSite.throws(
+              new ParameterError(
+                'No siteUrl available. Call register() before fetching site preferences or provide options.siteUrl.'
+              )
+            );
+
+            assert.throws(
+              () => webex.meetings.fetchSitePreferencesMeViaSite(),
+              ParameterError,
+              'No siteUrl available. Call register() before fetching site preferences or provide options.siteUrl.'
+            );
+            assert.calledOnceWithExactly(webex.meetings.request.fetchSitePreferencesMeViaSite, {
+              siteUrl: '',
+            });
+          });
+        });
         describe('Static shortcut proxy methods', () => {
           describe('MeetingCollection getByKey proxies', () => {
             beforeEach(() => {
@@ -1489,7 +1599,7 @@ describe('plugin-meetings', () => {
                   url: url1,
                 },
                 hashTreeMessage: undefined,
-              });
+              }, sinon.match.func);
             });
           });
           describe('when destroying meeting is needed', () => {
@@ -1628,6 +1738,40 @@ describe('plugin-meetings', () => {
 
             assert.calledOnce(destroySpy);
             assert.calledWith(destroySpy, meetingCollectionMeetings.breakoutMeeting);
+          });
+        });
+
+        describe('skipHashTreeSync parameter', () => {
+          it('should skip syncAllHashTreeDatasets when skipHashTreeSync is true', async () => {
+            const mockLocusInfo = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
+            };
+
+            webex.meetings.request.getActiveMeetings = sinon.stub().resolves({loci: []});
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              meeting1: {locusInfo: mockLocusInfo},
+            });
+
+            await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: true});
+
+            assert.calledOnce(webex.meetings.request.getActiveMeetings);
+            assert.notCalled(mockLocusInfo.syncAllHashTreeDatasets);
+          });
+
+          it('should call syncAllHashTreeDatasets when skipHashTreeSync is false (default)', async () => {
+            const mockLocusInfo = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
+            };
+
+            webex.meetings.request.getActiveMeetings = sinon.stub().resolves({loci: []});
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              meeting1: {locusInfo: mockLocusInfo},
+            });
+
+            await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: false});
+
+            assert.calledOnce(webex.meetings.request.getActiveMeetings);
+            assert.calledOnce(mockLocusInfo.syncAllHashTreeDatasets);
           });
         });
 
@@ -2137,7 +2281,7 @@ describe('plugin-meetings', () => {
                 },
               },
               hashTreeMessage: undefined,
-            });
+            }, sinon.match.func);
           });
           it('should setup the meeting from a hash tree event', async () => {
             const selfData = {};
@@ -2171,7 +2315,7 @@ describe('plugin-meetings', () => {
                 info: infoData,
               },
               hashTreeMessage,
-            });
+            }, sinon.match.func);
           });
 
           it('should ignore hash tree event when created locus has INACTIVE fullState', async () => {
@@ -2251,7 +2395,7 @@ describe('plugin-meetings', () => {
                 },
               },
               hashTreeMessage: undefined,
-            });
+            }, sinon.match.func);
           });
 
           it('sends client event correctly on finally', async () => {
@@ -2327,7 +2471,7 @@ describe('plugin-meetings', () => {
                 },
               },
               hashTreeMessage: undefined,
-            });
+            }, sinon.match.func);
           });
 
           const generateFakeLocusData = (isUnifiedSpaceMeeting) => ({
@@ -3002,6 +3146,30 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
           });
+
+          [
+            {fullStateType: 'CALL'},
+            {fullStateType: 'SIP_BRIDGE'},
+            {fullStateType: 'SPACE_SHARE'},
+          ].forEach(({fullStateType}) => {
+            it(`skips meeting info fetch when LOCUS_ID destination is a 1:1 call (fullState.type ${fullStateType})`, async () => {
+              const locusDestination = {
+                fullState: {type: fullStateType},
+              };
+
+              const meeting = await webex.meetings.createMeeting(
+                locusDestination,
+                DESTINATION_TYPE.LOCUS_ID
+              );
+
+              assert.instanceOf(
+                meeting,
+                Meeting,
+                'createMeeting should eventually resolve to a Meeting Object'
+              );
+              assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
+            });
+          });
         });
 
         describe('rejected MeetingInfo.#fetchMeetingInfo - does not log for known Error types', () => {
@@ -3425,10 +3593,13 @@ describe('plugin-meetings', () => {
       };
 
       it('triggers correct event when SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE emitted', async () => {
+        sinon.stub(meeting, 'updateMeetingActions');
         checkSelfTrigger(
           LOCUSINFO.EVENTS.SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE,
           EVENT_TRIGGERS.MEETING_SELF_CANNOT_VIEW_PARTICIPANT_LIST
         );
+        assert.calledOnce(meeting.updateMeetingActions);
+        meeting.updateMeetingActions.restore();
       });
 
       it('triggers correct event when SELF_IS_SHARING_BLOCKED_CHANGE emitted', async () => {
@@ -3581,6 +3752,21 @@ describe('plugin-meetings', () => {
           'Meetings:index#isNeedHandleMainLocus --> self device left&moved in main locus with self joined status, not need to handle'
         );
       });
+
+      it('check breakout ended with self removed, return false', () => {
+        webex.meetings.meetingCollection.getActiveBreakoutLocus = sinon.stub().returns(null);
+        newLocus.self.state = 'LEFT';
+        newLocus.self.reason = 'OTHER';
+        newLocus.self.removed = true;
+        newLocus.fullState = {state: 'INACTIVE', endMeetingReason: 'BREAKOUT_ENDED'};
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleMainLocus(meeting, newLocus);
+        assert.equal(result, false);
+        assert.calledWith(
+          LoggerProxy.logger.log,
+          'Meetings:index#isNeedHandleMainLocus --> self moved main locus with self removed status or with device resource moved, not need to handle'
+        );
+      });
     });
 
     describe('#isNeedHandleLocusDTO', () => {
@@ -3637,6 +3823,18 @@ describe('plugin-meetings', () => {
         newLocus.self.state = 'LEFT';
         newLocus.self.reason = 'MOVED';
         newLocus.self.devices = [];
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleLocusDTO(meeting, newLocus);
+        assert.equal(result, false);
+      });
+      it('breakout session with breakout ended, return false', () => {
+        newLocus.controls.breakout = {
+          sessionType: 'BREAKOUT',
+        };
+        newLocus.self.state = 'LEFT';
+        newLocus.self.reason = 'OTHER';
+        newLocus.self.devices = [];
+        newLocus.fullState = {state: 'INACTIVE', endMeetingReason: 'BREAKOUT_ENDED'};
         LoggerProxy.logger.log = sinon.stub();
         const result = webex.meetings.isNeedHandleLocusDTO(meeting, newLocus);
         assert.equal(result, false);

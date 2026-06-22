@@ -26,6 +26,7 @@ import {
   FAILOVER_UTIL,
   KEEPALIVE_UTIL,
   MINUTES_TO_SEC_MFACTOR,
+  REGISTER_UTIL,
   REGISTRATION_FILE,
   REGISTRATION_UTIL,
   REG_429_RETRY_UTIL,
@@ -39,6 +40,13 @@ import {LINE_EVENTS} from '../line/types';
 import {createLineError} from '../../Errors/catalog/LineError';
 import {IRegistration} from './types';
 import {METRIC_EVENT, REG_ACTION, METRIC_TYPE} from '../../Metrics/types';
+import {APIRequest} from '../utils/request';
+
+jest.mock('../../mobius-socket', () => ({
+  getMobiusSocketInstance: jest.fn().mockReturnValue({
+    sendWssRequest: jest.fn(),
+  }),
+}));
 
 const webex = getTestUtilsWebex();
 const MockServiceData = {
@@ -158,6 +166,8 @@ describe('Registration Tests', () => {
   };
 
   beforeEach(() => {
+    APIRequest.resetInstance();
+    APIRequest.getInstance({webex, isMobiusSocketEnabled: false});
     setupRegistration(MockServiceData);
   });
 
@@ -194,7 +204,7 @@ describe('Registration Tests', () => {
       `Registration successful for deviceId: ${mockPostResponse.device.deviceId} userId: ${mockPostResponse.userId} responseTrackingId: webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15`,
       expect.objectContaining({
         file: REGISTRATION_FILE,
-        method: 'register',
+        method: REGISTER_UTIL,
       })
     );
     expect(metricSpy).toBeCalledWith(
@@ -258,25 +268,29 @@ describe('Registration Tests', () => {
       })
       .mockResolvedValueOnce({
         statusCode: 200,
+        body: mockDeleteResponse,
+      })
+      .mockResolvedValueOnce({
+        statusCode: 200,
         body: mockPostResponse,
         headers: {
           trackingid: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
         },
       });
 
-    global.fetch = jest.fn(() => Promise.resolve({json: () => mockDeleteResponse})) as jest.Mock;
-
     expect(reg.getStatus()).toEqual(RegistrationStatus.IDLE);
     await reg.triggerRegistration();
-    expect(webex.request).toBeCalledTimes(2);
+    expect(webex.request).toBeCalledTimes(3);
     expect(webex.request).toBeCalledWith({
       ...mockResponse,
       method: 'POST',
     });
-    expect(global.fetch).toBeCalledOnceWith(mockPostResponse.device.uri, {
-      method: 'DELETE',
-      headers: expect.anything(),
-    });
+    expect(webex.request).toBeCalledWith(
+      expect.objectContaining({
+        uri: mockPostResponse.device.uri,
+        method: 'DELETE',
+      })
+    );
 
     expect(warnSpy).toBeCalledWith('User device limit exceeded', expect.anything());
     expect(infoSpy).toBeCalledWith('Registration restoration in progress.', expect.anything());
@@ -1345,11 +1359,8 @@ describe('Registration Tests', () => {
       expect(postMessageSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'START_KEEPALIVE',
-          accessToken: expect.any(String),
-          deviceUrl: expect.any(String),
           interval: expect.any(Number),
           retryCountThreshold: expect.any(Number),
-          url: expect.any(String),
         })
       );
 
@@ -1680,11 +1691,16 @@ describe('Registration Tests', () => {
       const postMessageSpy = jest.spyOn(Worker.prototype, 'postMessage');
       const clearTimerSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
       const retry429Spy = jest.spyOn(reg, 'handle429Retry');
+      const keepaliveInterval = reg.deviceInfo.keepaliveInterval as number;
+      // Choose a retryAfter strictly greater than keepaliveInterval so the
+      // adjusted resume delay (retryAfter - keepaliveInterval) is positive and verifiable.
+      const retryAfter = keepaliveInterval + 30;
+      const adjustedResumeDelayMs = (retryAfter - keepaliveInterval) * SEC_TO_MSEC_MFACTOR;
 
       reg.webWorker.onmessage({
         data: {
           type: WorkerMessageType.KEEPALIVE_FAILURE,
-          err: {statusCode: 429, headers: {'retry-after': 20}},
+          err: {statusCode: 429, headers: {'retry-after': retryAfter}},
           keepAliveRetryCount: 1,
         },
       } as MessageEvent);
@@ -1698,7 +1714,7 @@ describe('Registration Tests', () => {
         })
       );
       expect(handleErrorSpy).toBeCalledOnceWith(
-        {statusCode: 429, headers: {'retry-after': 20}},
+        {statusCode: 429, headers: {'retry-after': retryAfter}},
         expect.anything(),
         {
           file: REGISTRATION_FILE,
@@ -1706,21 +1722,28 @@ describe('Registration Tests', () => {
         },
         expect.anything()
       );
-      expect(retry429Spy).toBeCalledOnceWith(20, 'startKeepaliveTimer');
+      expect(retry429Spy).toBeCalledOnceWith(retryAfter, 'startKeepaliveTimer');
       expect(clearTimerSpy).toBeCalledTimes(1);
       expect(reg.reconnectPending).toStrictEqual(false);
       expect(reg.keepaliveTimer).toBe(undefined);
       expect(reg.webWorker).toBeUndefined();
 
-      jest.advanceTimersByTime(20 * SEC_TO_MSEC_MFACTOR);
+      // Resume timer must NOT fire before the adjusted (retryAfter - keepaliveInterval) interval.
+      jest.advanceTimersByTime(adjustedResumeDelayMs - 1);
+      await flushPromises();
+      expect(keepaliveSpy).not.toBeCalled();
+      expect(reg.webWorker).toBeUndefined();
+
+      // Advance the remaining 1ms to hit the exact adjusted timeout; keepalive must resume now.
+      jest.advanceTimersByTime(1);
       await flushPromises();
 
       expect(keepaliveSpy).toBeCalledOnceWith(
         reg.deviceInfo.device?.uri as string,
-        reg.deviceInfo.keepaliveInterval as number,
+        keepaliveInterval,
         'UNKNOWN'
       );
-      expect(logSpy).toBeCalledWith('Resuming keepalive after 20 seconds', {
+      expect(logSpy).toBeCalledWith(`Resuming keepalive after ${retryAfter} seconds`, {
         file: REGISTRATION_FILE,
         method: 'handle429Retry',
       });
@@ -1728,14 +1751,56 @@ describe('Registration Tests', () => {
       expect(postMessageSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'START_KEEPALIVE',
-          accessToken: expect.any(String),
-          deviceUrl: expect.any(String),
           interval: expect.any(Number),
           retryCountThreshold: expect.any(Number),
-          url: expect.any(String),
         })
       );
     });
+
+    it.each([
+      {
+        description: 'retryAfter less than keepaliveInterval -> negative delay fires immediately',
+        retryAfterDelta: -10,
+      },
+      {
+        description: 'retryAfter equal to keepaliveInterval -> zero delay fires immediately',
+        retryAfterDelta: 0,
+      },
+    ])(
+      'adjusts retry-after with keepaliveInterval on 429 keepalive failure ($description)',
+      async ({retryAfterDelta}) => {
+        await beforeEachSetupForKeepalive();
+        const keepaliveSpy = jest.spyOn(reg, 'startKeepaliveTimer');
+        const keepaliveInterval = reg.deviceInfo.keepaliveInterval as number;
+        const retryAfter = keepaliveInterval + retryAfterDelta;
+
+        reg.webWorker.onmessage({
+          data: {
+            type: WorkerMessageType.KEEPALIVE_FAILURE,
+            err: {statusCode: 429, headers: {'retry-after': retryAfter}},
+            keepAliveRetryCount: 1,
+          },
+        } as MessageEvent);
+        await flushPromises();
+
+        expect(reg.webWorker).toBeUndefined();
+        expect(keepaliveSpy).not.toBeCalled();
+
+        // With a non-positive adjusted delay, the timer should fire on the next tick.
+        jest.advanceTimersByTime(0);
+        await flushPromises();
+
+        expect(keepaliveSpy).toBeCalledOnceWith(
+          reg.deviceInfo.device?.uri as string,
+          keepaliveInterval,
+          'UNKNOWN'
+        );
+        expect(logSpy).toBeCalledWith(`Resuming keepalive after ${retryAfter} seconds`, {
+          file: REGISTRATION_FILE,
+          method: 'handle429Retry',
+        });
+      }
+    );
 
     it('ensure retryAfter is set when 429 occurs during failover retry', async () => {
       await beforeEachSetupForKeepalive();
@@ -1819,6 +1884,184 @@ describe('Registration Tests', () => {
         ...getMockRequestTemplate(),
       });
       expect(status).toEqual(false);
+    });
+  });
+
+  describe('handleRegistrationDownEvent tests', () => {
+    const registrationDownEvent = {
+      type: 'async_event',
+      eventId: 'evt-1',
+      trackingId: 'tid-1',
+      data: {
+        eventType: 'registration.down',
+        deviceInfo: {
+          userId: 'u1',
+          device: {deviceId: 'd1', uri: 'https://mobius/device/d1', status: 'ACTIVE'},
+        },
+      },
+    };
+
+    beforeEach(async () => {
+      postRegistrationSpy.mockResolvedValueOnce(successPayload);
+      await reg.triggerRegistration();
+      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
+    });
+
+    afterEach(() => {
+      const calls = Object.values(reg.callManager.getActiveCalls()) as ICall[];
+
+      calls.forEach((call) => {
+        call.end();
+      });
+      reg.callManager.callCollection = {};
+    });
+
+    it('runs cleanup immediately when no active calls are present (socket disabled)', async () => {
+      const clearKeepaliveSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
+      const setStatusSpy = jest.spyOn(reg, 'setStatus');
+      const disconnectSocketSpy = jest.spyOn(
+        APIRequest.getInstance({webex}),
+        'disconnectFromMobiusSocket'
+      );
+
+      lineEmitter.mockClear();
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
+
+      await reg.handleRegistrationDownEvent(registrationDownEvent as any);
+
+      expect(clearKeepaliveSpy).toHaveBeenCalled();
+      expect(setStatusSpy).toHaveBeenCalledWith(RegistrationStatus.INACTIVE);
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
+      expect(reg.reconnectPending).toBe(false);
+      expect(reg.scheduled429Retry).toBe(false);
+      expect(reg.failoverImmediately).toBe(false);
+      expect(reg.retryAfter).toBeUndefined();
+      expect(reg.registerRetry).toBe(false);
+      expect(disconnectSocketSpy).not.toHaveBeenCalled();
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+    });
+
+    it('ends the active call and still runs cleanup when an active call is present', async () => {
+      const clearKeepaliveSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
+      const setStatusSpy = jest.spyOn(reg, 'setStatus');
+
+      const activeCall = reg.callManager.createCall() as ICall;
+      const endSpy = jest.spyOn(activeCall, 'end');
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(1);
+
+      lineEmitter.mockClear();
+
+      await reg.handleRegistrationDownEvent(registrationDownEvent as any);
+
+      expect(endSpy).toHaveBeenCalledTimes(1);
+      expect(clearKeepaliveSpy).toHaveBeenCalled();
+      expect(setStatusSpy).toHaveBeenCalledWith(RegistrationStatus.INACTIVE);
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+    });
+
+    it('runs cleanup without calling end when no active call is present on re-invocation', async () => {
+      const clearKeepaliveSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
+      const setStatusSpy = jest.spyOn(reg, 'setStatus');
+
+      await reg.handleRegistrationDownEvent(registrationDownEvent as any);
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
+      clearKeepaliveSpy.mockClear();
+      setStatusSpy.mockClear();
+      lineEmitter.mockClear();
+
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
+
+      await reg.handleRegistrationDownEvent(registrationDownEvent as any);
+
+      expect(clearKeepaliveSpy).toHaveBeenCalled();
+      expect(setStatusSpy).toHaveBeenCalledWith(RegistrationStatus.INACTIVE);
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+    });
+
+    it('disconnects the Mobius WebSocket when socket is enabled', async () => {
+      const apiRequest = APIRequest.getInstance({webex});
+      jest.spyOn(apiRequest, 'isSocketEnabled').mockReturnValue(true);
+      const disconnectSocketSpy = jest
+        .spyOn(apiRequest, 'disconnectFromMobiusSocket')
+        .mockResolvedValue();
+
+      lineEmitter.mockClear();
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
+
+      await reg.handleRegistrationDownEvent(registrationDownEvent as any);
+
+      expect(disconnectSocketSpy).toHaveBeenCalledWith({
+        code: 3050,
+        reason: 'done (permanent)',
+      });
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+    });
+
+    it('still emits UNREGISTERED when socket disconnect fails', async () => {
+      const apiRequest = APIRequest.getInstance({webex});
+      jest.spyOn(apiRequest, 'isSocketEnabled').mockReturnValue(true);
+      const disconnectSocketSpy = jest
+        .spyOn(apiRequest, 'disconnectFromMobiusSocket')
+        .mockRejectedValue(new Error('socket teardown failed'));
+
+      lineEmitter.mockClear();
+
+      await reg.handleRegistrationDownEvent(registrationDownEvent as any);
+
+      expect(disconnectSocketSpy).toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Mobius socket disconnect failed after registration-down'),
+        {file: REGISTRATION_FILE, method: METHODS.HANDLE_REGISTRATION_DOWN_EVENT}
+      );
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+    });
+  });
+
+  describe('attemptRegistrationWithServers transport alignment', () => {
+    let apiRequest: APIRequest;
+    let setSocketEnabledSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      apiRequest = APIRequest.getInstance({webex});
+      // Keep the actual transport on HTTP (no-op) so the registration flow stays simple;
+      // we only assert which boolean the method derives from the server group's URL scheme.
+      setSocketEnabledSpy = jest.spyOn(apiRequest, 'setSocketEnabled').mockImplementation(() => {});
+      webex.request.mockResolvedValue(successPayload);
+    });
+
+    it('enables the WebSocket transport when the server group uses the wss:// scheme', async () => {
+      await reg.attemptRegistrationWithServers(REGISTRATION_UTIL, [
+        'wss://mobius.example.com/api/v1/calling/web/',
+      ]);
+
+      expect(setSocketEnabledSpy).toHaveBeenCalledWith(true);
+    });
+
+    it('falls back to the HTTP transport when the server group uses the https:// scheme', async () => {
+      await reg.attemptRegistrationWithServers(REGISTRATION_UTIL, [
+        'https://mobius.example.com/api/v1/calling/web/',
+      ]);
+
+      expect(setSocketEnabledSpy).toHaveBeenCalledWith(false);
+    });
+
+    it('does not change the transport when the server group is empty', async () => {
+      await reg.attemptRegistrationWithServers(REGISTRATION_UTIL, []);
+
+      expect(setSocketEnabledSpy).not.toHaveBeenCalled();
+    });
+
+    it('derives the transport from the first server in the group', async () => {
+      await reg.attemptRegistrationWithServers(REGISTRATION_UTIL, [
+        'wss://primary.example.com/api/v1/calling/web/',
+        'https://backup.example.com/api/v1/calling/web/',
+      ]);
+
+      expect(setSocketEnabledSpy).toHaveBeenCalledWith(true);
     });
   });
 });

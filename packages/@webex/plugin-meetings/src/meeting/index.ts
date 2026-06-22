@@ -22,7 +22,6 @@ import {
   MediaConnectionEventNames,
   MediaContent,
   MediaType,
-  MediaCodecMimeType,
   RemoteTrackType,
   RoapMessage,
   StatsAnalyzer,
@@ -31,7 +30,7 @@ import {
   NetworkQualityMonitor,
   StatsMonitor,
   StatsMonitorEventNames,
-  InboundAudioIssueSubTypes,
+  MediaCodecMimeType,
 } from '@webex/internal-media-core';
 
 import {DataChannelTokenType} from '@webex/internal-plugin-llm';
@@ -137,6 +136,8 @@ import {
   STAGE_MANAGER_TYPE,
   LOCUSEVENT,
   LOCUS_LLM_EVENT,
+  LLM_DEFAULT_SESSION,
+  LLM_PRACTICE_SESSION,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -190,6 +191,7 @@ import AIEnableRequest from '../aiEnableRequest';
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
 
 const LLM_HEALTHCHECK_TIMER_MS = 3 * 60 * 1000;
+const JOIN_WITH_MEDIA_RETRY_MAX_COUNT = 2;
 
 const logRequest = (request: any, {logText = ''}) => {
   LoggerProxy.logger.info(`${logText} - sending request`);
@@ -612,7 +614,7 @@ export default class Meeting extends StatelessWebexPlugin {
   webinar: any;
   conversationUrl: string;
   callStateForMetrics: CallStateForMetrics;
-  destination: string;
+  destination: string | LocusDTO;
   destinationType: DESTINATION_TYPE;
   deviceUrl: string;
   hostId: string;
@@ -651,6 +653,8 @@ export default class Meeting extends StatelessWebexPlugin {
   floorGrantPending: boolean;
   hasJoinedOnce: boolean;
   hasWebsocketConnected: boolean;
+  private mercuryOnlineHandler?: () => void;
+  private mercuryOfflineHandler?: () => void;
   inMeetingActions: InMeetingActions;
   isLocalShareLive: boolean;
   isRoapInProgress: boolean;
@@ -662,6 +666,7 @@ export default class Meeting extends StatelessWebexPlugin {
   joinedWith?: any;
   selfId?: string;
   roles: any[];
+  canNotViewTheParticipantList?: boolean;
   // ... there is more ... see SelfUtils.parse()
   // end of the group
   locusMediaRequest?: LocusMediaRequest;
@@ -790,7 +795,13 @@ export default class Meeting extends StatelessWebexPlugin {
   private deferSDPAnswer?: Defer; // used for waiting for a response
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
   private hasMediaConnectionConnectedAtLeastOnce: boolean;
-  private joinWithMediaRetryInfo?: {isRetry: boolean; prevJoinResponse?: any};
+  private joinWithMediaRetryInfo: {
+    retryCount: number;
+    prevJoinResponse?: any;
+    firstError?: Error;
+    prevError?: Error;
+  };
+
   private connectionStateHandler?: ConnectionStateHandler;
   private iceCandidateErrors: Map<string, number>;
   private iceCandidatesCount: number;
@@ -935,7 +946,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.simultaneousInterpretation = new SimultaneousInterpretation({}, {parent: this.webex});
 
     // @ts-ignore
-    this.aiEnableRequest = new AIEnableRequest({}, {parent: this.webex});
+    this.aiEnableRequest = new AIEnableRequest({locusUrl: this.locusUrl}, {parent: this.webex});
 
     /**
      * @instance
@@ -966,6 +977,7 @@ export default class Meeting extends StatelessWebexPlugin {
       },
       (csi: CSI) => (this.members.findMemberByCsi(csi) as any)?.id
     );
+
     /**
      * Object containing helper classes for managing media requests for audio/video/screenshare (for multistream media connections)
      * All multistream media requests sent out for this meeting have to go through them.
@@ -985,6 +997,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        this.getIngressPayloadTypeCallback.bind(this),
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1006,6 +1019,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        this.getIngressPayloadTypeCallback.bind(this),
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1027,6 +1041,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        this.getIngressPayloadTypeCallback.bind(this),
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1048,11 +1063,14 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        this.getIngressPayloadTypeCallback.bind(this),
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'video',
           trimRequestsToNumOfSources: false,
+          // @ts-ignore - config coming from registerPlugin
+          enableAv1: this.config.enableAv1SlidesSupport,
         }
       ),
     };
@@ -1557,6 +1575,8 @@ export default class Meeting extends StatelessWebexPlugin {
     this.controlsOptionsManager = new ControlsOptionsManager(this.meetingRequest, {
       locusUrl: this.locusInfo?.url,
       displayHints: [],
+      getControls: () => this.locusInfo?.controls,
+      isWebinar: () => this.locusInfo?.info?.isWebinar,
     });
 
     this.setUpLocusInfoListeners();
@@ -1655,11 +1675,11 @@ export default class Meeting extends StatelessWebexPlugin {
     /**
      * Information needed for a retry of a call to joinWithMedia
      * @instance
-     * @type {{isRetry: boolean; prevJoinResponse?: any}}
+     * @type {{retryCount: number; prevJoinResponse?: any}}
      * @private
      * @memberof Meeting
      */
-    this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
+    this.joinWithMediaRetryInfo = {retryCount: 0, prevJoinResponse: undefined};
 
     /**
      * Connection state handler
@@ -1711,6 +1731,37 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.mediaServerIp = undefined;
+  }
+
+  /**
+   * Get the ingress payload type for a given media type and codec mime type
+   * @param {MediaType} mediaType - The media type
+   * @param {MediaCodecMimeType} codecMimeType - The codec mime type
+   * @returns {number | undefined} - The ingress payload type
+   * @private
+   * @memberof Meeting
+   */
+  private getIngressPayloadTypeCallback(
+    mediaType: MediaType,
+    codecMimeType: MediaCodecMimeType
+  ): number | undefined {
+    if (this.isMultistream) {
+      try {
+        return this.mediaProperties.webrtcMediaConnection.getIngressPayloadType(
+          mediaType,
+          codecMimeType
+        );
+      } catch (error) {
+        LoggerProxy.logger.info(
+          `Meeting:index#mediaRequestManager --> failed to get ingress payload type for mediaType=${mediaType}, codecMimeType=${codecMimeType}`,
+          error
+        );
+
+        return undefined;
+      }
+    }
+
+    return undefined;
   }
 
   /**
@@ -2789,7 +2840,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private setupLocusControlsListener() {
     this.locusInfo.on(
       LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
-      ({state, modifiedBy, lastModified}) => {
+      ({state, modifiedBy, lastModified, modifiedByServiceAppName, modifiedByServiceAppId}) => {
         let event;
 
         switch (state) {
@@ -2815,6 +2866,8 @@ export default class Meeting extends StatelessWebexPlugin {
           state: state === RECORDING_STATE.RESUMED ? RECORDING_STATE.RECORDING : state,
           modifiedBy,
           lastModified,
+          modifiedByServiceAppName,
+          modifiedByServiceAppId,
         };
         Trigger.trigger(
           this,
@@ -3459,13 +3512,12 @@ export default class Meeting extends StatelessWebexPlugin {
         this.breakouts.locusUrlUpdate(url);
         this.simultaneousInterpretation.locusUrlUpdate(url);
         this.annotation.locusUrlUpdate(url);
+        this.aiEnableRequest.locusUrlUpdate(url);
         this.locusUrl = url;
         this.locusId = this.locusUrl?.split('/').pop();
         this.recordingController.setLocusUrl(this.locusUrl);
         this.controlsOptionsManager.setLocusUrl(this.locusUrl, !!isMainLocus);
         this.webinar.locusUrlUpdate(url);
-        // @ts-ignore
-        this.webex.internal.llm.setRefreshHandler(() => this.refreshDataChannelToken());
 
         Trigger.trigger(
           this,
@@ -3734,7 +3786,7 @@ export default class Meeting extends StatelessWebexPlugin {
       });
       this.updateLLMConnection();
     });
-    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, (payload) => {
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, async (payload) => {
       this.stopKeepAlive();
 
       if (payload) {
@@ -3761,13 +3813,15 @@ export default class Meeting extends StatelessWebexPlugin {
       }
       this.rtcMetrics?.sendNextMetrics();
 
-      this.ensureDefaultDatachannelTokenAfterAdmit().catch((error) => {
+      try {
+        await this.ensureDefaultDatachannelTokenAfterAdmit();
+      } catch (error) {
         LoggerProxy.logger.warn(
           `Meeting:index#setUpLocusInfoSelfListener --> failed post-admit token prefetch flow: ${
             error?.message || String(error)
           }`
         );
-      });
+      }
 
       this.updateLLMConnection();
     });
@@ -3813,6 +3867,9 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE, (payload) => {
+      // canViewTheParticipantList meeting action depends on this value, so we need to update meeting actions
+      this.updateMeetingActions();
+
       Trigger.trigger(
         this,
         {
@@ -4611,6 +4668,13 @@ export default class Meeting extends StatelessWebexPlugin {
           ),
           isAttendeeRequestAiAssistantDeclinedAll:
             MeetingUtil.attendeeRequestAiAssistantDeclinedAll(this.userDisplayHints),
+          isAnonymizeDisplayNamesEnabled: MeetingUtil.isAnonymizeDisplayNamesEnabled(
+            this.userDisplayHints
+          ),
+          canViewTheParticipantList: MeetingUtil.canViewTheParticipantList(
+            this.userDisplayHints,
+            this.canNotViewTheParticipantList ?? false
+          ),
         }) || changed;
     }
     if (changed) {
@@ -4657,6 +4721,34 @@ export default class Meeting extends StatelessWebexPlugin {
   setSipUri(sipUri: string) {
     // This can be tel no, device id or a sip uri, user Id
     this.sipUri = sipUri;
+  }
+
+  /**
+   * After initial locus setup, refreshes destination with synced locus data and optionally
+   * performs deferred meeting info fetch when initial locus was incomplete.
+   * @param {LocusDTO} locus
+   * @returns {void}
+   */
+  public async finalizeMeetingAfterInitialLocusSetup(locus: LocusDTO): Promise<void> {
+    if (locus && this?.destinationType === DESTINATION_TYPE.LOCUS_ID) {
+      // destination is initialized from the initial locus snapshot in constructor,
+      // so refresh it after locus sync to avoid stale partial hash-tree data.
+      this.destination = locus;
+    }
+    if (
+      (!this.meetingInfo || isEmpty(this.meetingInfo)) &&
+      (this.destination as LocusDTO)?.info &&
+      !this.fetchMeetingInfoTimeoutId &&
+      !MeetingsUtil.isOneOnOneCall(locus)
+    ) {
+      try {
+        await this.fetchMeetingInfo({});
+      } catch (error: any) {
+        LoggerProxy.logger.info(
+          `Meeting:index#finalizeMeetingAfterInitialLocusSetup --> deferred fetchMeetingInfo failed: ${error.message}`
+        );
+      }
+    }
   }
 
   /**
@@ -5130,8 +5222,7 @@ export default class Meeting extends StatelessWebexPlugin {
   public setMercuryListener() {
     // Client will have a socket manager and handle reconnecting to mercury, when we reconnect to mercury
     // if the meeting has active peer connections, it should try to reconnect.
-    // @ts-ignore
-    this.webex.internal.mercury.on(ONLINE, () => {
+    this.mercuryOnlineHandler = () => {
       LoggerProxy.logger.info('Meeting:index#setMercuryListener --> Web socket online');
 
       // Only send restore event when it was disconnected before and for connected later
@@ -5141,15 +5232,47 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       }
       this.hasWebsocketConnected = true;
-    });
+    };
 
-    // @ts-ignore
-    this.webex.internal.mercury.on(OFFLINE, () => {
+    this.mercuryOfflineHandler = () => {
       LoggerProxy.logger.error('Meeting:index#setMercuryListener --> Web socket offline');
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MERCURY_CONNECTION_FAILURE, {
         correlation_id: this.correlationId,
       });
-    });
+    };
+
+    // @ts-ignore
+    this.webex.internal.mercury.on(ONLINE, this.mercuryOnlineHandler);
+    // @ts-ignore
+    this.webex.internal.mercury.on(OFFLINE, this.mercuryOfflineHandler);
+  }
+
+  /**
+   * Removes this meeting's Mercury ONLINE/OFFLINE event listeners registered
+   * by setMercuryListener(). Must be called before Locus /leave to avoid
+   * unnecessary syncs/metrics triggered by events received while leaving
+   * (per Locus team recommendation).
+   *
+   * Mercury is a process-wide singleton shared with other plugins, so we
+   * pass the bound handler refs to .off() to avoid clearing every listener
+   * for ONLINE/OFFLINE on the shared emitter.
+   *
+   * Idempotent: subsequent calls are no-ops because the handler refs are
+   * cleared after detaching.
+   * @private
+   * @returns {void}
+   */
+  private stopListeningForMercuryEvents() {
+    if (this.mercuryOnlineHandler) {
+      // @ts-ignore
+      this.webex.internal.mercury.off(ONLINE, this.mercuryOnlineHandler);
+      this.mercuryOnlineHandler = undefined;
+    }
+    if (this.mercuryOfflineHandler) {
+      // @ts-ignore
+      this.webex.internal.mercury.off(OFFLINE, this.mercuryOfflineHandler);
+      this.mercuryOfflineHandler = undefined;
+    }
   }
 
   /**
@@ -5460,7 +5583,7 @@ export default class Meeting extends StatelessWebexPlugin {
     } = {}
   ) {
     const {mediaOptions, joinOptions = {}} = options;
-    const {isRetry, prevJoinResponse} = this.joinWithMediaRetryInfo;
+    const {retryCount, prevJoinResponse, prevError} = this.joinWithMediaRetryInfo;
 
     if (!mediaOptions?.allowMediaInLobby) {
       return Promise.reject(
@@ -5486,12 +5609,17 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     }
 
+    const shouldJoin =
+      !joinResponse || // first try, when the join response is empty
+      (prevError && prevError instanceof UserNotJoinedError) || // last try failed with UserNotJoinedError
+      MeetingUtil.isUserInLeftState(this.locusInfo); // locus dropped the connection before we can re-try addMedia
+
     try {
       let turnServerInfo;
       let turnDiscoverySkippedReason;
       let forceTurnDiscovery = false;
 
-      if (!joinResponse) {
+      if (shouldJoin) {
         // This is the 1st attempt or a retry after join request failed -> we need to do a join with TURN discovery
 
         const turnDiscoveryRequest = await this.roap.generateTurnDiscoveryRequestMessage(
@@ -5532,14 +5660,17 @@ export default class Meeting extends StatelessWebexPlugin {
 
       const mediaResponse = await this.addMediaInternal(
         () => {
-          return this.joinWithMediaRetryInfo.isRetry ? 'JOIN_MEETING_FINAL' : 'JOIN_MEETING_RETRY';
+          // callback is not called when UserNotJoinedError is thrown
+          return this.joinWithMediaRetryInfo.retryCount >= 1
+            ? 'JOIN_MEETING_FINAL'
+            : 'JOIN_MEETING_RETRY';
         },
         turnServerInfo,
         forceTurnDiscovery,
         mediaOptions
       );
 
-      this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
+      this.joinWithMediaRetryInfo = {retryCount: 0, prevJoinResponse: undefined};
 
       return {
         join: joinResponse,
@@ -5553,8 +5684,10 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.roap.abortTurnDiscovery();
 
-      // if this was the first attempt, let's do a retry
-      let shouldRetry = !isRetry;
+      // let's do a retry
+      let shouldRetry =
+        retryCount < 1 ||
+        (error instanceof UserNotJoinedError && retryCount < JOIN_WITH_MEDIA_RETRY_MAX_COUNT);
 
       if (
         CallDiagnosticUtils.isSdpOfferCreationError(error) ||
@@ -5579,8 +5712,8 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       }
 
-      // we only want to call leave if join was successful and this was a retry or we won't be doing any more retries
-      if (joined && (isRetry || !shouldRetry)) {
+      // we only want to call leave if join was successful, and we won't be doing any more retries
+      if (joined && !shouldRetry) {
         try {
           await this.leave({resourceId: joinOptions?.resourceId, reason: 'joinWithMedia failure'});
         } catch (e) {
@@ -5597,7 +5730,7 @@ export default class Meeting extends StatelessWebexPlugin {
           reason: error.message,
           stack: error.stack,
           leaveErrorReason: leaveError?.message,
-          isRetry,
+          isRetry: retryCount > 0,
         },
         {
           type: error.name,
@@ -5606,15 +5739,26 @@ export default class Meeting extends StatelessWebexPlugin {
 
       if (shouldRetry) {
         LoggerProxy.logger.warn('Meeting:index#joinWithMedia --> retrying call to joinWithMedia');
-        this.joinWithMediaRetryInfo.isRetry = true;
+        this.joinWithMediaRetryInfo.retryCount = retryCount + 1;
         this.joinWithMediaRetryInfo.prevJoinResponse = joinResponse;
+        this.joinWithMediaRetryInfo.prevError = error;
+        if (!this.joinWithMediaRetryInfo.firstError) {
+          this.joinWithMediaRetryInfo.firstError = error;
+        }
 
         return this.joinWithMedia(options);
       }
 
-      this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
+      const {firstError} = this.joinWithMediaRetryInfo;
 
-      throw error;
+      this.joinWithMediaRetryInfo = {
+        retryCount: 0,
+        prevJoinResponse: undefined,
+        firstError: undefined,
+        prevError: undefined,
+      };
+
+      throw firstError ?? error;
     }
   }
 
@@ -5866,12 +6010,40 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   /**
+   * Verifies the relay event was delivered for the active LLM session binding.
+   * @param {RelayEvent} event Event object coming from LLM Connection
+   * @returns {boolean}
+   */
+  private isRelayEventRouteValid(event: RelayEvent): boolean {
+    const route = event?.headers?.route;
+
+    if (!route) {
+      return true;
+    }
+
+    const {llm} = (this as any).webex.internal;
+    const isPracticeSession = llm.isConnected(LLM_PRACTICE_SESSION);
+    const expectedBinding = isPracticeSession
+      ? llm.getBinding(LLM_PRACTICE_SESSION)
+      : llm.getBinding();
+
+    if (!expectedBinding || route === expectedBinding) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Callback called when a relay event is received from meeting LLM Connection
    * @param {RelayEvent} e Event object coming from LLM Connection
    * @private
    * @returns {void}
    */
   private processRelayEvent = (e: RelayEvent): void => {
+    if (!this.isRelayEventRouteValid(e)) {
+      return;
+    }
     switch (e.data.relayType) {
       case REACTION_RELAY_TYPES.REACTION:
         if (
@@ -6002,6 +6174,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private handleLLMOnline = (): void => {
     this.restoreLLMSubscriptionsIfNeeded();
+    this.locusInfo.syncAllHashTreeDatasets({onlyLLM: true});
 
     Trigger.trigger(
       this,
@@ -6302,7 +6475,56 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Removes LLM event listeners and clears the health check timer.
+   * Must be called before Locus /leave to avoid unnecessary syncs triggered
+   * by events received while leaving (per Locus team recommendation).
+   * Idempotent: safe to call multiple times; .off() is a no-op when no
+   * matching listener is registered.
+   * @private
+   * @returns {void}
+   */
+  private stopListeningForLLMEvents() {
+    // @ts-ignore - fix types
+    this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
+    // @ts-ignore - fix types
+    this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+    this.clearLLMHealthCheckTimer();
+  }
+
+  /**
+   * Stops listening on every event bus (LLM, Mercury, voicea/transcription,
+   * annotation) that could otherwise deliver events to this meeting while
+   * Locus is processing /leave or /end. Per the Locus team recommendation,
+   * this must run before the Locus request is dispatched to avoid
+   * unnecessary syncs triggered by in-flight events.
+   *
+   * Voicea (transcription) subscribes to llm 'event:relay.event' internally,
+   * and the annotation plugin subscribes to both mercury and llm, so both
+   * must be torn down alongside the direct LLM/Mercury listeners.
+   *
+   * Idempotent: safe to call multiple times; .off() is a no-op when no
+   * matching listener is registered, and stopTranscription is guarded.
+   * @private
+   * @returns {void}
+   */
+  private stopListeningForMeetingEvents() {
+    this.stopListeningForLLMEvents();
+    this.stopListeningForMercuryEvents();
+    if (this.transcription) {
+      this.stopTranscription();
+      this.transcription = undefined;
+    }
+    this.annotation.deregisterEvents();
+  }
+
+  /**
    * Disconnects and cleans up the default LLM session listeners/timers.
+   *
+   * Ownership-aware: only calls `disconnectLLM` when this meeting is the
+   * current owner of the default LLM session (or when no owner is recorded).
+   * Event listeners belonging to this meeting instance are always detached
+   * so they do not receive another meeting's relay events.
+   *
    * @param {Object} options
    * @param {boolean} [options.removeOnlineListener=true] removes the one-time online listener
    * @param {boolean} [options.throwOnError=true] rethrows disconnect errors when true
@@ -6315,12 +6537,29 @@ export default class Meeting extends StatelessWebexPlugin {
     removeOnlineListener?: boolean;
     throwOnError?: boolean;
   } = {}): Promise<void> => {
+    // @ts-ignore - Fix type
+    // @ts-ignore - Fix type
+    const {currentOwner, isOwner} = this.webex.internal.llm.resolveSessionOwnership(
+      this.id,
+      LLM_DEFAULT_SESSION
+    );
+
     try {
-      // @ts-ignore - Fix type
-      await this.webex.internal.llm.disconnectLLM({
-        code: 3050,
-        reason: 'done (permanent)',
-      });
+      if (isOwner) {
+        // @ts-ignore - Fix type
+        await this.webex.internal.llm.disconnectLLM(
+          {
+            code: 3050,
+            reason: 'done (permanent)',
+          },
+          LLM_DEFAULT_SESSION,
+          this.id
+        );
+      } else {
+        LoggerProxy.logger.info(
+          `Meeting:index#cleanupLLMConneciton --> skipping disconnect; LLM owned by meeting ${currentOwner}, not ${this.id}`
+        );
+      }
     } catch (error) {
       LoggerProxy.logger.error(
         'Meeting:index#cleanupLLMConneciton --> Failed to disconnect default LLM session',
@@ -6335,23 +6574,33 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('online', this.handleLLMOnline);
       }
-      // @ts-ignore - fix types
-      this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
-      // @ts-ignore - Fix type
-      this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+      this.stopListeningForLLMEvents();
 
-      this.clearLLMHealthCheckTimer();
+      // Re-check ownership after awaiting disconnectLLM. If ownership changed
+      // while cleanup was in flight, do not clear another meeting's owner tag.
+      if (isOwner) {
+        const {currentOwner: currentOwnerAfterCleanup} =
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.resolveSessionOwnership(this.id, LLM_DEFAULT_SESSION);
+
+        if (currentOwnerAfterCleanup === this.id) {
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.setOwnerMeetingId?.(undefined);
+        }
+      }
     }
   };
 
   /**
-   * Clears all data channel tokens stored in LLM.
-   * Called during meeting cleanup to ensure stale tokens are not reused.
+   * Clears data channel tokens associated with this meeting ownership.
+   * Ownership checks are enforced in internal-plugin-llm.
    * @returns {void}
    */
   clearDataChannelToken(): void {
     // @ts-ignore
-    this.webex.internal.llm.resetDatachannelTokens();
+    this.webex.internal.llm.clearDatachannelToken(LLM_DEFAULT_SESSION, this.id);
+    // @ts-ignore
+    this.webex.internal.llm.clearDatachannelToken(LLM_PRACTICE_SESSION, this.id);
   }
 
   /**
@@ -6366,14 +6615,15 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (datachannelToken) {
       // @ts-ignore
-      this.webex.internal.llm.setDatachannelToken(datachannelToken, DataChannelTokenType.Default);
+      this.webex.internal.llm.setDatachannelToken(datachannelToken, LLM_DEFAULT_SESSION, this.id);
     }
 
     if (practiceSessionDatachannelToken) {
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(
         practiceSessionDatachannelToken,
-        DataChannelTokenType.PracticeSession
+        LLM_PRACTICE_SESSION,
+        this.id
       );
     }
   }
@@ -6386,7 +6636,10 @@ export default class Meeting extends StatelessWebexPlugin {
   private async ensureDefaultDatachannelTokenAfterAdmit(): Promise<boolean> {
     try {
       // @ts-ignore
-      const datachannelToken = this.webex.internal.llm.getDatachannelToken();
+      const datachannelToken = this.webex.internal.llm.getDatachannelToken(
+        LLM_DEFAULT_SESSION,
+        this.id
+      );
       // @ts-ignore
       const isDataChannelTokenEnabled = await this.webex.internal.llm.isDataChannelTokenEnabled();
 
@@ -6408,7 +6661,8 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(
         fetchedDatachannelToken,
-        DataChannelTokenType.Default
+        LLM_DEFAULT_SESSION,
+        this.id
       );
 
       return true;
@@ -6435,15 +6689,58 @@ export default class Meeting extends StatelessWebexPlugin {
 
     const isJoined = this.isJoined();
 
-    // @ts-ignore
-    const datachannelToken = this.webex.internal.llm.getDatachannelToken(
-      DataChannelTokenType.Default
-    );
-
     const dataChannelUrl = datachannelUrl;
 
+    // Ownership guard: when the default LLM session is already connected and
+    // owned by a *different* Meeting instance, do not disconnect or reconfigure
+    // it. Another meeting's `updateLLMConnection` must be ignored here to
+    // avoid killing the socket it relies on. We only proceed to manage the
+    // connection when this meeting is the current owner, or when no owner is
+    // set yet (first claim).
     // @ts-ignore - Fix type
-    if (this.webex.internal.llm.isConnected()) {
+    const {currentOwner} = this.webex.internal.llm.resolveSessionOwnership(
+      this.id,
+      LLM_DEFAULT_SESSION
+    );
+
+    // Capture connectivity before any reconnect attempt. If LLM was already
+    // connected, we must respect current ownership. If it was disconnected,
+    // this flow may reclaim stale owner tags after a fresh connect.
+    // @ts-ignore - Fix type
+    const wasConnected = this.webex.internal.llm.isConnected();
+
+    // Prefer ownership-scoped token read. For disconnected stale-owner reclaim
+    // flows, fallback to ownerless read so initial register can still carry a
+    // token and recover from stale ownership without 401/403 dead-end.
+    // @ts-ignore - Fix type
+    let datachannelToken = this.webex.internal.llm.getDatachannelToken(
+      LLM_DEFAULT_SESSION,
+      this.id
+    );
+
+    if (!datachannelToken && !wasConnected && currentOwner && currentOwner !== this.id) {
+      // @ts-ignore - Fix type
+      datachannelToken = this.webex.internal.llm.getDatachannelToken(LLM_DEFAULT_SESSION);
+    }
+
+    // @ts-ignore - Fix type
+    if (wasConnected) {
+      if (currentOwner && currentOwner !== this.id) {
+        // Another meeting owns the live LLM socket. We must not disconnect
+        // or reconfigure it -- doing so would tear down a session the
+        // owning meeting still relies on. Locus/datachannel URL mismatch is
+        // expected here (each meeting has its own locus URL) and is NOT a
+        // valid signal of staleness, so we never reclaim from this path.
+        // The only safe reclaim mechanism is the `finally`-block owner-tag
+        // release in `cleanupLLMConneciton`, which fires when this meeting
+        // itself is being torn down.
+        LoggerProxy.logger.info(
+          `Meeting:index#updateLLMConnection --> skipping; LLM owned by meeting ${currentOwner}, not ${this.id}`
+        );
+
+        return undefined;
+      }
+
       if (
         // @ts-ignore - Fix type
         url === this.webex.internal.llm.getLocusUrl() &&
@@ -6460,10 +6757,56 @@ export default class Meeting extends StatelessWebexPlugin {
       return undefined;
     }
 
+    // Bind refresh handler before registration so interceptor-triggered token
+    // refresh during register POST can resolve a valid handler.
+    // Prefer this meeting as owner, but allow owner-less fallback when a stale
+    // foreign owner tag is present on a disconnected session.
+    const refreshHandlerOwnerMeetingId =
+      currentOwner && currentOwner !== this.id ? undefined : this.id;
+    const shouldAlignRefreshHandlerAfterOwnershipClaim = refreshHandlerOwnerMeetingId !== this.id;
+    // @ts-ignore - Fix type
+    this.webex.internal.llm.setRefreshHandler(
+      () => this.refreshDataChannelToken(),
+      LLM_DEFAULT_SESSION,
+      refreshHandlerOwnerMeetingId
+    );
+
     // @ts-ignore - Fix type
     return this.webex.internal.llm
       .registerAndConnect(url, dataChannelUrl, datachannelToken)
       .then((registerAndConnectResult) => {
+        this.locusInfo.syncAllHashTreeDatasets({onlyLLM: true});
+        // Record ownership of the default LLM session for this meeting so
+        // subsequent cross-meeting `updateLLMConnection` / `cleanupLLMConneciton`
+        // calls can detect and skip work that doesn't belong to them.
+        // @ts-ignore - Fix type
+        const {isOwner} = this.webex.internal.llm.resolveSessionOwnership(
+          this.id,
+          LLM_DEFAULT_SESSION
+        );
+        const canReclaimAfterDisconnectedStart = !wasConnected;
+
+        // Refresh handler is pre-bound before registerAndConnect so token
+        // refresh can work even during the registration request itself.
+        if (isOwner || canReclaimAfterDisconnectedStart) {
+          // Record ownership of the default LLM session for this meeting so
+          // subsequent cross-meeting `updateLLMConnection` / `cleanupLLMConneciton`
+          // calls can detect and skip work that doesn't belong to them.
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.setOwnerMeetingId?.(this.id);
+
+          // If we pre-bound refresh ownerlessly (stale-owner reclaim path),
+          // align the handler with the newly claimed owner immediately after
+          // ownership is updated.
+          if (shouldAlignRefreshHandlerAfterOwnershipClaim) {
+            // @ts-ignore - Fix type
+            this.webex.internal.llm.setRefreshHandler(
+              () => this.refreshDataChannelToken(),
+              LLM_DEFAULT_SESSION,
+              this.id
+            );
+          }
+        }
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
         // @ts-ignore - Fix type
@@ -7504,6 +7847,33 @@ export default class Meeting extends StatelessWebexPlugin {
         }
       }
     });
+    this.statsAnalyzer.on(StatsAnalyzerEventNames.STATS_UPDATE, (data) => {
+      // Extract srtpCipher from transport stats
+      let srtpCipher: string | undefined;
+      for (const stats of data.stats.values()) {
+        if (stats.type === 'transport' && stats.srtpCipher) {
+          srtpCipher = stats.srtpCipher as string;
+          break;
+        }
+      }
+
+      // Only emit event if srtpCipher has changed
+      if (srtpCipher && srtpCipher !== this.mediaProperties.srtpCipher) {
+        LoggerProxy.logger.info(
+          `Meeting:index#setupStatsAnalyzerEventHandlers --> SRTP cipher changed from ${this.mediaProperties.srtpCipher} to ${srtpCipher}`
+        );
+        this.mediaProperties.srtpCipher = srtpCipher;
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setupStatsAnalyzerEventHandlers',
+          },
+          EVENT_TRIGGERS.MEETING_SRTP_CIPHER_UPDATED,
+          {srtpCipher}
+        );
+      }
+    });
   };
 
   getMediaConnectionDebugId() {
@@ -7550,6 +7920,8 @@ export default class Meeting extends StatelessWebexPlugin {
         disableAudioMainDtx: this.config.experimental.disableAudioMainDtx,
         // @ts-ignore - config coming from registerPlugin
         enableAudioTwcc: this.config.enableAudioTwccForMultistream,
+        // @ts-ignore - config coming from registerPlugin
+        enableAv1SlidesSupport: this.config.enableAv1SlidesSupport,
         stopIceGatheringAfterFirstRelayCandidate:
           // @ts-ignore - config coming from registerPlugin
           this.config.stopIceGatheringAfterFirstRelayCandidate,
@@ -8387,7 +8759,7 @@ export default class Meeting extends StatelessWebexPlugin {
         numTransports,
         isMultistream: this.isMultistream,
         retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
-        isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
+        isJoinWithMediaRetry: this.joinWithMediaRetryInfo.retryCount > 0,
         ...reachabilityMetrics,
         ...iceCandidateErrors,
         iceCandidatesCount: this.iceCandidatesCount,
@@ -8432,7 +8804,7 @@ export default class Meeting extends StatelessWebexPlugin {
         turnServerUsed: this.turnServerUsed,
         retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
         isMultistream: this.isMultistream,
-        isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
+        isJoinWithMediaRetry: this.joinWithMediaRetryInfo.retryCount > 0,
         signalingState:
           this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
             ?.signalingState ||
@@ -8796,6 +9168,8 @@ export default class Meeting extends StatelessWebexPlugin {
         options: {meetingId: this.id},
       });
     LoggerProxy.logger.log('Meeting:index#leave --> Leaving a meeting');
+
+    this.stopListeningForMeetingEvents();
 
     return MeetingUtil.leaveMeeting(this, options)
       .then(async (leave) => {
@@ -9661,6 +10035,8 @@ export default class Meeting extends StatelessWebexPlugin {
       locus_id: this.locusId,
     });
 
+    this.stopListeningForMeetingEvents();
+
     return MeetingUtil.endMeetingForAll(this)
       .then(async (end) => {
         this.meetingFiniteStateMachine.end();
@@ -9722,12 +10098,15 @@ export default class Meeting extends StatelessWebexPlugin {
     }
     this.queuedMediaUpdates = [];
 
-    this.stopTranscription();
-    this.transcription = undefined;
-
-    this.annotation.deregisterEvents();
-
+    // Listener teardown (transcription, annotation, llm/mercury) runs in
+    // stopListeningForMeetingEvents() before /leave and /end so events
+    // received mid-teardown do not trigger Locus syncs. Calling it here
+    // again would double-emit MEETING_STOPPED_RECEIVING_TRANSCRIPTION
+    // because stopTranscription() always fires its trigger.
+    //
+    // Ownership-aware token clear is encapsulated inside clearDataChannelToken().
     this.clearDataChannelToken();
+
     await this.cleanupLLMConneciton({throwOnError: false});
   };
 
@@ -9804,15 +10183,12 @@ export default class Meeting extends StatelessWebexPlugin {
    * @public
    * @memberof Meeting
    */
-  public sendReaction(reactionType: ReactionServerType, skinToneType?: SkinToneType) {
+  public sendReaction(reactionType: string, skinToneType?: SkinToneType) {
     const reactionChannelUrl = this.locusInfo?.controls?.reactions?.reactionChannelUrl as string;
     const participantId = this.members.selfId;
 
-    const reactionData = Reactions[reactionType];
+    const reactionData = Reactions[reactionType] || {type: reactionType};
 
-    if (!reactionData) {
-      return Promise.reject(new Error(`${reactionType} is not a valid reaction.`));
-    }
     const skinToneData = SkinTones[skinToneType] || SkinTones.normal;
     const reaction: Reaction = {
       ...reactionData,

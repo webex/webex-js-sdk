@@ -39,6 +39,13 @@
                     require token with spark:calls_write scope.</p>
                   <button id="enableProduction" type="button" class="btn-code" onclick=changeEnv()>In Production</button><span class="text-color"> ( Click to change the environment )</span>
                   <input id="fedramp" type="checkbox"> Enable FedRAMP
+                  <label style="margin-left: 1rem;">Mobius WebSocket:
+                    <select id="mobius-wss" onchange="toggleMobiusWss()">
+                      <option value="default">Use Backend Flag</option>
+                      <option value="true">Force Enable</option>
+                      <option value="false">Force Disable</option>
+                    </select>
+                  </label>
                   <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text" style="margin: 1rem 0 0.5rem 0;" required>
 
                   <div id="guest-container" class="hidden">
@@ -143,7 +150,7 @@
                 class="btn-code">getMediaStreams()</button>
             </div>
             <div class="u-mv">
-              <button id="bnr-button" type="button" onclick="toggleNoiseReductionEffect()" 
+              <button id="bnr-button" type="button" onclick="toggleNoiseReductionEffect()"
                 class="btn-code">Enable BNR</button>
             </div>
           </fieldset>
@@ -286,14 +293,7 @@
               </div>
             </fieldset>
 
-            <!-- calling / incoming -->
-            <fieldset id="incomingsection" class="hidden">
-              <legend>Incoming Call</legend>
-              <div class="u-mv">
-                <button onclick="answer(this)" id="answer" class="btn--green">Answer</button>
-                <button onclick="reject(this)" id="reject" class="btn--red">Reject</button>
-              </div>
-            </fieldset>
+
             <!-- Call history section -->
             <fieldset id="callHistorysection">
               <legend>Call History</legend>
@@ -425,7 +425,7 @@
                       <div class="u-mv">
                         <label>When not answered
                           <input type="checkbox" id="vmNotAnsweredCb" name="vmNotAnsweredCb" checked="" onchange="changeElementVisibility(document.getElementById('vmNotAnsweredCb'),
-                              document.getElementById('notAnsweredRings'))" disabled="true">
+                              document.getElementById('vmNotAnsweredRings'))" disabled="true">
                           <input type="string" id="vmNotAnsweredRings" name="vmNotAnsweredRings"
                             placeholder="Number of rings" disabled="true">
                         </label>

@@ -82,9 +82,15 @@ class Package {
         return Promise.all(files.map((file) => file.build({
           destination,
           generateSourceMap: !!generateSourceMaps,
-        })));
+        }))).then(() => files.length);
       })
-      .then(() => this);
+      .then((fileCount) => {
+        const packageName = path.basename(this.data.packageRoot);
+
+        console.log(`Built ${packageName}: ${fileCount} files → ${destination}`);
+
+        return this;
+      });
   }
 
   /**

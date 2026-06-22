@@ -276,6 +276,31 @@ describe('plugin-meetings', () => {
         assert.notCalled(meeting.locusInfo.handleLocusAPIResponse);
       });
 
+      it('should call handleLocusAPIResponse when response body is an unwrapped LocusDTO', () => {
+        const meeting = {
+          locusInfo: {
+            handleLocusAPIResponse: sinon.stub(),
+          },
+        };
+
+        const originalResponse = {
+          body: {
+            url: 'https://locus-a.wbx2.com/locus/api/v1/loci/some-id',
+            participants: [],
+            self: {},
+          },
+        };
+
+        const response = MeetingUtil.updateLocusFromApiResponse(meeting, originalResponse);
+
+        assert.deepEqual(response, originalResponse);
+        assert.calledOnceWithExactly(
+          meeting.locusInfo.handleLocusAPIResponse,
+          meeting,
+          originalResponse.body
+        );
+      });
+
       it('should work with an undefined meeting', () => {
         const originalResponse = {
           body: {
@@ -942,6 +967,55 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('canViewTheParticipantList', () => {
+      it('returns true when both VIEW_THE_PARTICIPANT_LIST and CAN_VIEW_THE_PARTICIPANT_LIST hints are present and canNotViewTheParticipantList is false', () => {
+        assert.isTrue(
+          MeetingUtil.canViewTheParticipantList(
+            ['VIEW_THE_PARTICIPANT_LIST', 'CAN_VIEW_THE_PARTICIPANT_LIST'],
+            false
+          )
+        );
+      });
+
+      it('returns false when VIEW_THE_PARTICIPANT_LIST hint is missing', () => {
+        assert.isFalse(
+          MeetingUtil.canViewTheParticipantList(['CAN_VIEW_THE_PARTICIPANT_LIST'], false)
+        );
+      });
+
+      it('returns false when CAN_VIEW_THE_PARTICIPANT_LIST hint is missing', () => {
+        assert.isFalse(
+          MeetingUtil.canViewTheParticipantList(['VIEW_THE_PARTICIPANT_LIST'], false)
+        );
+      });
+
+      it('returns false when canNotViewTheParticipantList is true', () => {
+        assert.isFalse(
+          MeetingUtil.canViewTheParticipantList(
+            ['VIEW_THE_PARTICIPANT_LIST', 'CAN_VIEW_THE_PARTICIPANT_LIST'],
+            true
+          )
+        );
+      });
+
+      it('returns false when display hints array is empty', () => {
+        assert.isFalse(MeetingUtil.canViewTheParticipantList([], false));
+      });
+
+      it('returns false when both conditions are violated', () => {
+        assert.isFalse(MeetingUtil.canViewTheParticipantList([], true));
+      });
+
+      it('returns true when canNotViewTheParticipantList is undefined (not yet set on meeting)', () => {
+        assert.isTrue(
+          MeetingUtil.canViewTheParticipantList(
+            ['VIEW_THE_PARTICIPANT_LIST', 'CAN_VIEW_THE_PARTICIPANT_LIST'],
+            undefined
+          )
+        );
+      });
+    });
+
     describe('canAttendeeRequestAiAssistantEnabled', () => {
       it('returns false when user is a cohost', () => {
         assert.deepEqual(
@@ -1150,6 +1224,10 @@ describe('plugin-meetings', () => {
       {functionName: 'canSelectSpokenLanguages', displayHint: 'DISPLAY_NON_ENGLISH_ASR'},
       {functionName: 'waitingForOthersToJoin', displayHint: 'WAITING_FOR_OTHERS'},
       {functionName: 'showAutoEndMeetingWarning', displayHint: 'SHOW_AUTO_END_MEETING_WARNING'},
+      {
+        functionName: 'isAnonymizeDisplayNamesEnabled',
+        displayHint: 'ANONYMOUS_DISPLAY_NAMES_ENABLED',
+      },
     ].forEach(({functionName, displayHint}) => {
       describe(functionName, () => {
         it('works as expected', () => {

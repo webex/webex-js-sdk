@@ -26,6 +26,29 @@ export type Model = {
   };
 };
 
+export type WDMDevice = {
+  url: string;
+  userId: string;
+  orgId: string;
+  version: string;
+  callingBehavior: string;
+  registered?: boolean;
+  webSocketUrl?: string;
+  register?: () => Promise<unknown>;
+  refresh?: () => Promise<unknown>;
+  /** WDM / device-registration settings (e.g. `webrtc-calling-over-ws`). */
+  settings?: Record<string, {value?: boolean} | undefined>;
+  features: {
+    developer: {
+      models: Model[];
+      get: (key: string) => {value: boolean} | undefined;
+    };
+    entitlement: {
+      models: Model[];
+    };
+  };
+};
+
 export type ServiceCatalog = {
   serviceGroups: {
     // cSpell:disable
@@ -73,13 +96,19 @@ export interface WebexSDK {
     del: (namespace: string, key: string) => Promise<void>;
   };
   // top level primitives/funcs
-  config: {fedramp: boolean};
+  config: {
+    fedramp: boolean;
+    defaultMobiusSocketOptions?: Record<string, unknown>;
+  };
   version: string;
   canAuthorize: boolean;
   credentials: {
     getUserToken: () => Promise<string>;
+    canRefresh?: boolean;
+    refresh?: (options: {force: boolean}) => Promise<unknown>;
   };
   ready: boolean;
+  sessionId?: string;
   request: <T>(payload: WebexRequestPayload) => Promise<T>;
   // internal plugins
   internal: {
@@ -89,19 +118,11 @@ export interface WebexSDK {
       connected: boolean;
       connecting: boolean;
     };
-    calendar: unknown;
-    device: {
-      url: string;
-      userId: string;
-      orgId: string;
-      version: string;
-      callingBehavior: string;
-      features: {
-        entitlement: {
-          models: Model[];
-        };
-      };
+    feature?: {
+      updateFeature?: (featureToggle: unknown) => void;
     };
+    calendar: unknown;
+    device: WDMDevice;
     encryption: {
       decryptText: (encryptionKeyUrl: string, encryptedData?: string) => Promise<string>;
       encryptText: (encryptionKeyUrl: string, text?: string) => Promise<string>;
@@ -145,6 +166,8 @@ export interface WebexSDK {
       get: (service: string) => string;
       getMobiusClusters: () => ServiceHost[];
       fetchClientRegionInfo: () => Promise<ClientRegionInfo>;
+      invalidateCache?: (timestamp: unknown) => void;
+      switchActiveClusterIds?: (activeClusters: unknown) => void;
     };
     metrics: {
       submitClientMetrics: (name: string, data: unknown) => void;
