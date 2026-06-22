@@ -25,7 +25,7 @@ import {LOGIN_MODE, RONA_OPTIONS, TASK_TYPES, USER_STATES, WRAPUP_REASONS} from 
 import {runWithTimeout, waitForState} from '../Utils/helperUtils';
 import {submitWrapup} from '../Utils/wrapupUtils';
 import {telephonyLogin} from '../Utils/stationLoginUtils';
-import {findVisibleEnabledActionButton} from '../Utils/controlUtils';
+import {findVisibleEnabledActionButton, isTaskCleared} from '../Utils/controlUtils';
 
 export default function createIncomingTaskAndControlsMultiSessionTests() {
   let testManager: TestManager;
@@ -481,10 +481,35 @@ export default function createIncomingTaskAndControlsMultiSessionTests() {
   };
 
   const submitWrapupOnAnySession = async (): Promise<void> => {
-    await submitWrapup(testManager.agent1Page, WRAPUP_REASONS.RESOLVED).catch(() => false);
-    await submitWrapup(testManager.multiSessionAgent1Page, WRAPUP_REASONS.RESOLVED).catch(
-      () => false
-    );
+    const results = await Promise.allSettled([
+      submitWrapup(testManager.agent1Page, WRAPUP_REASONS.RESOLVED),
+      submitWrapup(testManager.multiSessionAgent1Page, WRAPUP_REASONS.RESOLVED),
+    ]);
+
+    if (results.every((result) => result.status === 'rejected')) {
+      throw new Error(
+        `Wrapup failed on both sessions: ${results
+          .map((result) =>
+            result.status === 'rejected' && result.reason instanceof Error
+              ? result.reason.message
+              : String(result)
+          )
+          .join('; ')}`
+      );
+    }
+
+    await expect
+      .poll(
+        async () => {
+          if (await isTaskCleared(testManager.agent1Page)) {
+            return true;
+          }
+
+          return isTaskCleared(testManager.multiSessionAgent1Page);
+        },
+        {timeout: 15000, intervals: [500, 1000, 2000]}
+      )
+      .toBeTruthy();
   };
 
   test.beforeAll(async ({browser}, testInfo) => {

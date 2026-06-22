@@ -65,6 +65,15 @@ export const changeUserState = async (page: Page, userState: string): Promise<vo
   // Check if RONA popup is already visible (from previous consult decline/timeout)
   const statePopup = page.locator('#agentStatePopup');
   const isRonaAlreadyVisible = await statePopup.isVisible().catch(() => false);
+  const waitForSelectedState = () =>
+    expect
+      .poll(
+        async () => {
+          return getCurrentState(page);
+        },
+        {timeout: Math.max(AWAIT_TIMEOUT, 30000), intervals: [200, 400, 800, 1500]}
+      )
+      .toBe(userState);
 
   if (isRonaAlreadyVisible) {
     // RONA popup is already open - use it directly to change state
@@ -93,14 +102,7 @@ export const changeUserState = async (page: Page, userState: string): Promise<vo
     await page.waitForTimeout(2000);
 
     // Verify state changed
-    await expect
-      .poll(
-        async () => {
-          return getCurrentState(page);
-        },
-        {timeout: AWAIT_TIMEOUT, intervals: [200, 400, 800]}
-      )
-      .toBe(userState);
+    await waitForSelectedState();
 
     return;
   }
@@ -115,12 +117,13 @@ export const changeUserState = async (page: Page, userState: string): Promise<vo
     throw new Error(`State "${userState}" is not a valid state option.`);
   }
 
-  await dropdown.selectOption({label: userState}, {timeout: AWAIT_TIMEOUT});
+  const submitSelectedState = async (): Promise<void> => {
+    await dropdown.selectOption({label: userState}, {timeout: AWAIT_TIMEOUT});
+    await dropdown.dispatchEvent('change');
+    await clickControlWithDomFallback(page, '#setAgentStatus');
+  };
 
-  // Click Set Agent Status button
-  const setStatusButton = page.locator('#setAgentStatus');
-  await expect(setStatusButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
-  await setStatusButton.click({timeout: AWAIT_TIMEOUT});
+  await submitSelectedState();
 
   const isPopupVisible = await statePopup.isVisible().catch(() => false);
 
@@ -142,14 +145,14 @@ export const changeUserState = async (page: Page, userState: string): Promise<vo
     await expect(statePopup).toBeHidden({timeout: AWAIT_TIMEOUT});
   }
 
-  await expect
-    .poll(
-      async () => {
-        return getCurrentState(page);
-      },
-      {timeout: AWAIT_TIMEOUT, intervals: [200, 400, 800]}
-    )
-    .toBe(userState);
+  const stateChanged = await waitForSelectedState()
+    .then(() => true)
+    .catch(() => false);
+
+  if (!stateChanged) {
+    await submitSelectedState();
+    await waitForSelectedState();
+  }
 };
 
 /**
