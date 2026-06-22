@@ -139,13 +139,7 @@ describe('UserPreference', () => {
         'UserPreference: userId is not available.'
       );
 
-      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.USER_PREFERENCE_GET_FAILED,
-        expect.objectContaining({
-          error: 'Missing userId. Ensure user is logged in or provide a userId.',
-        }),
-        ['behavioral', 'operational']
-      );
+      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
     });
 
     it('should handle API errors', async () => {
@@ -231,13 +225,7 @@ describe('UserPreference', () => {
         'UserPreference: userId is required to create user preferences.'
       );
 
-      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.USER_PREFERENCE_CREATE_FAILED,
-        expect.objectContaining({
-          error: 'Missing userId in request data.',
-        }),
-        ['behavioral', 'operational']
-      );
+      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
     });
 
     it('should handle API errors', async () => {
@@ -322,13 +310,7 @@ describe('UserPreference', () => {
         'UserPreference: userId is required to update user preferences.'
       );
 
-      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.USER_PREFERENCE_UPDATE_FAILED,
-        expect.objectContaining({
-          error: 'Missing userId parameter.',
-        }),
-        ['behavioral', 'operational']
-      );
+      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
     });
 
     it('should handle API errors', async () => {
@@ -396,13 +378,7 @@ describe('UserPreference', () => {
         'UserPreference: userId is required to delete user preferences.'
       );
 
-      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.USER_PREFERENCE_DELETE_FAILED,
-        expect.objectContaining({
-          error: 'Missing userId parameter.',
-        }),
-        ['behavioral', 'operational']
-      );
+      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
     });
 
     it('should handle API errors', async () => {

@@ -93,7 +93,6 @@ export class UserPreference {
   public async getUserPreference(
     params?: GetUserPreferenceParams
   ): Promise<UserPreferenceResponse> {
-    const startTime = Date.now();
     const {userId, page, pageSize} = params || {};
     const targetUserId = userId || this.getUserId();
     const orgId = this.webex.credentials.getOrgId();
@@ -109,24 +108,16 @@ export class UserPreference {
       },
     });
 
-    this.metricsManager.timeEvent(METRIC_EVENT_NAMES.USER_PREFERENCE_GET_SUCCESS);
-
     if (!targetUserId) {
-      const errorData = {
-        orgId,
-        userId: targetUserId,
-        error: 'Missing userId. Ensure user is logged in or provide a userId.',
-      };
       LoggerProxy.error('getUserPreference called without a valid userId', {
         module: 'UserPreference',
         method: 'getUserPreference',
-        data: errorData,
+        data: {
+          orgId,
+          userId: targetUserId,
+          error: 'Missing userId. Ensure user is logged in or provide a userId.',
+        },
       });
-
-      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.USER_PREFERENCE_GET_FAILED, errorData, [
-        'behavioral',
-        'operational',
-      ]);
 
       throw new Error('UserPreference: userId is not available.');
     }
@@ -151,20 +142,20 @@ export class UserPreference {
         },
       });
 
+      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.USER_PREFERENCE_GET_SUCCESS);
+      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.USER_PREFERENCE_GET_FAILED);
+
       const response = await this.webexRequest.request({
         service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.GET,
       });
 
-      const duration = Date.now() - startTime;
-
       LoggerProxy.info('Successfully retrieved user preferences', {
         module: 'UserPreference',
         method: 'getUserPreference',
         data: {
           statusCode: response.statusCode,
-          duration,
           userId: targetUserId,
         },
       });
@@ -220,7 +211,6 @@ export class UserPreference {
   public async createUserPreference(
     data: CreateUserPreferenceRequest
   ): Promise<UserPreferenceResponse> {
-    const startTime = Date.now();
     const orgId = this.webex.credentials.getOrgId();
 
     LoggerProxy.info('Creating user preferences', {
@@ -232,23 +222,15 @@ export class UserPreference {
       },
     });
 
-    this.metricsManager.timeEvent(METRIC_EVENT_NAMES.USER_PREFERENCE_CREATE_SUCCESS);
-
     if (!data.userId) {
-      const errorData = {
-        orgId,
-        error: 'Missing userId in request data.',
-      };
       LoggerProxy.error('createUserPreference called without a valid userId', {
         module: 'UserPreference',
         method: 'createUserPreference',
-        data: errorData,
+        data: {
+          orgId,
+          error: 'Missing userId in request data.',
+        },
       });
-
-      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.USER_PREFERENCE_CREATE_FAILED, errorData, [
-        'behavioral',
-        'operational',
-      ]);
 
       throw new Error('UserPreference: userId is required to create user preferences.');
     }
@@ -265,6 +247,9 @@ export class UserPreference {
         },
       });
 
+      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.USER_PREFERENCE_CREATE_SUCCESS);
+      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.USER_PREFERENCE_CREATE_FAILED);
+
       const response = await this.webexRequest.request({
         service: WCC_API_GATEWAY,
         resource,
@@ -272,14 +257,11 @@ export class UserPreference {
         body: data,
       });
 
-      const duration = Date.now() - startTime;
-
       LoggerProxy.info('Successfully created user preferences', {
         module: 'UserPreference',
         method: 'createUserPreference',
         data: {
           statusCode: response.statusCode,
-          duration,
           userId: data.userId,
         },
       });
@@ -336,7 +318,6 @@ export class UserPreference {
     userId: string,
     data: UpdateUserPreferenceRequest
   ): Promise<UserPreferenceResponse> {
-    const startTime = Date.now();
     const orgId = this.webex.credentials.getOrgId();
 
     LoggerProxy.info('Updating user preferences', {
@@ -348,23 +329,15 @@ export class UserPreference {
       },
     });
 
-    this.metricsManager.timeEvent(METRIC_EVENT_NAMES.USER_PREFERENCE_UPDATE_SUCCESS);
-
     if (!userId) {
-      const errorData = {
-        orgId,
-        error: 'Missing userId parameter.',
-      };
       LoggerProxy.error('updateUserPreference called without a valid userId', {
         module: 'UserPreference',
         method: 'updateUserPreference',
-        data: errorData,
+        data: {
+          orgId,
+          error: 'Missing userId parameter.',
+        },
       });
-
-      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.USER_PREFERENCE_UPDATE_FAILED, errorData, [
-        'behavioral',
-        'operational',
-      ]);
 
       throw new Error('UserPreference: userId is required to update user preferences.');
     }
@@ -381,6 +354,9 @@ export class UserPreference {
         },
       });
 
+      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.USER_PREFERENCE_UPDATE_SUCCESS);
+      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.USER_PREFERENCE_UPDATE_FAILED);
+
       const response = await this.webexRequest.request({
         service: WCC_API_GATEWAY,
         resource,
@@ -388,14 +364,11 @@ export class UserPreference {
         body: data,
       });
 
-      const duration = Date.now() - startTime;
-
       LoggerProxy.info('Successfully updated user preferences', {
         module: 'UserPreference',
         method: 'updateUserPreference',
         data: {
           statusCode: response.statusCode,
-          duration,
           userId,
         },
       });
@@ -446,7 +419,6 @@ export class UserPreference {
    * ```
    */
   public async deleteUserPreference(userId: string): Promise<void> {
-    const startTime = Date.now();
     const orgId = this.webex.credentials.getOrgId();
 
     LoggerProxy.info('Deleting user preferences', {
@@ -458,23 +430,15 @@ export class UserPreference {
       },
     });
 
-    this.metricsManager.timeEvent(METRIC_EVENT_NAMES.USER_PREFERENCE_DELETE_SUCCESS);
-
     if (!userId) {
-      const errorData = {
-        orgId,
-        error: 'Missing userId parameter.',
-      };
       LoggerProxy.error('deleteUserPreference called without a valid userId', {
         module: 'UserPreference',
         method: 'deleteUserPreference',
-        data: errorData,
+        data: {
+          orgId,
+          error: 'Missing userId parameter.',
+        },
       });
-
-      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.USER_PREFERENCE_DELETE_FAILED, errorData, [
-        'behavioral',
-        'operational',
-      ]);
 
       throw new Error('UserPreference: userId is required to delete user preferences.');
     }
@@ -491,20 +455,20 @@ export class UserPreference {
         },
       });
 
+      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.USER_PREFERENCE_DELETE_SUCCESS);
+      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.USER_PREFERENCE_DELETE_FAILED);
+
       const response = await this.webexRequest.request({
         service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.DELETE,
       });
 
-      const duration = Date.now() - startTime;
-
       LoggerProxy.info('Successfully deleted user preferences', {
         module: 'UserPreference',
         method: 'deleteUserPreference',
         data: {
           statusCode: response.statusCode,
-          duration,
           userId,
         },
       });
