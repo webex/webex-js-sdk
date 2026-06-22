@@ -15,97 +15,18 @@ import {
   waitForCallingClientRegistered,
 } from '../Utils/incomingTaskUtils';
 import {TASK_TYPES, USER_STATES, WRAPUP_REASONS, RONA_OPTIONS, LOGIN_MODE} from '../constants';
-import {waitForState, handleStrayTasks} from '../Utils/helperUtils';
+import {handleStrayTasks, setupStateWrapupConsoleLogging, waitForState} from '../Utils/helperUtils';
 import {stationLogout, telephonyLogin} from '../Utils/stationLoginUtils';
 import {TestManager} from '../test-manager';
 import {ensureHealthyCallerPage as ensureHealthyCallerPageBase} from '../Utils/callerPageUtils';
 import {ensureHealthyDesktopAgent as ensureHealthyDesktopAgentBase} from '../Utils/desktopAgentUtils';
 
 const moduleCapturedLogs: string[] = [];
+const setupConsoleLogging = (page: Page): void => {
+  setupStateWrapupConsoleLogging(page, moduleCapturedLogs);
+};
 
 // NOTE : Make Sure to set RONA Timeout to 18 seconds before running this test.
-
-/**
- * Verifies the captured logs for wrapup and state change events
- * @param capturedLogs - Array of log messages
- * @param expectedWrapupReason - The expected wrapup reason to verify
- * @param expectedState - The expected state name to verify
- * @param shouldWrapupComeFirst - Whether the wrapup log should come before the state change log (default: true)
- * @returns Promise<boolean> - True if verification is successful, otherwise throws an error
- * @throws Error if logs do not match expected values or order
- * @description Checks the last wrapup reason and state name in logs against expected values, ensuring correct order if specified
- * @example
- * ```typescript
- * await verifyCallbackLogs(capturedLogs, WRAPUP_REASONS.SALE, USER_STATES.AVAILABLE);
- * ```
- */
-
-export async function verifyCallbackLogs(
-  capturedLogs: string[],
-  expectedWrapupReason: string,
-  expectedState: string,
-  shouldWrapupComeFirst = true
-): Promise<boolean> {
-  const wrapupLogs = capturedLogs.filter((log) => log.includes('onWrapup invoked with reason :'));
-  const stateChangeLogs = capturedLogs.filter((log) =>
-    log.includes('onStateChange invoked with state name:')
-  );
-
-  if (wrapupLogs.length === 0 || stateChangeLogs.length === 0) {
-    throw new Error('Missing required logs, check callbacks for wrapup or statechange');
-  }
-
-  const lastWrapupLog = wrapupLogs[wrapupLogs.length - 1];
-  const lastStateChangeLog = stateChangeLogs[stateChangeLogs.length - 1];
-
-  const wrapupLogIndex = capturedLogs.lastIndexOf(lastWrapupLog);
-  const stateChangeLogIndex = capturedLogs.lastIndexOf(lastStateChangeLog);
-
-  if (shouldWrapupComeFirst && wrapupLogIndex >= stateChangeLogIndex) {
-    throw new Error('Wrapup log should come before state change log');
-  }
-
-  const wrapupMatch = lastWrapupLog.match(/onWrapup invoked with reason : (.+)$/);
-  const stateMatch = lastStateChangeLog.match(/onStateChange invoked with state name:\s*(.+)$/);
-
-  if (!wrapupMatch || !stateMatch) {
-    throw new Error('Could not extract values from logs');
-  }
-
-  const actualWrapupReason = wrapupMatch[1].trim();
-  const actualStateName = stateMatch[1].trim();
-
-  // Verify expected values
-  if (actualWrapupReason !== expectedWrapupReason) {
-    throw new Error(
-      `Wrapup reason mismatch, expected ${expectedWrapupReason}, got ${actualWrapupReason}`
-    );
-  }
-
-  if (actualStateName !== expectedState) {
-    throw new Error(`State name mismatch, expected ${expectedState}, got ${actualStateName}`);
-  }
-
-  return true;
-}
-
-function setupConsoleLogging(page: Page): () => void {
-  moduleCapturedLogs.length = 0;
-
-  const consoleHandler = (msg: any) => {
-    const logText = msg.text();
-    if (
-      logText.includes('onStateChange invoked with state name:') ||
-      logText.includes('onWrapup invoked with reason :')
-    ) {
-      moduleCapturedLogs.push(logText);
-    }
-  };
-
-  page.on('console', consoleHandler);
-
-  return () => page.off('console', consoleHandler);
-}
 
 async function waitForExtensionIncomingAnswerEnabled(page: Page, timeout = 40000): Promise<void> {
   const answerButton = page.locator('#answer').first();
@@ -204,8 +125,9 @@ export default function createIncomingTelephonyTaskTests() {
       throw lastError;
     };
 
-    test.beforeEach(async (_context, testInfo) => {
-      testInfo.setTimeout(Math.max(testInfo.timeout, 6 * 60 * 1000));
+    test.beforeEach(async ({browserName}, testInfo) => {
+      const timeoutFloorMs = browserName ? 6 * 60 * 1000 : 6 * 60 * 1000;
+      testInfo.setTimeout(Math.max(testInfo.timeout, timeoutFloorMs));
       moduleCapturedLogs.length = 0;
 
       await handleStrayTasks(testManager.agent1Page).catch(() => {});
@@ -220,7 +142,7 @@ export default function createIncomingTelephonyTaskTests() {
       testManager = new TestManager(projectName);
       await testManager.setupForIncomingTaskDesktop(browser);
 
-      setupConsoleLogging(testManager.agent1Page);
+      setupStateWrapupConsoleLogging(testManager.agent1Page, moduleCapturedLogs);
 
       await ensureHealthyDesktopAgent();
 
@@ -598,7 +520,7 @@ export default function createIncomingTelephonyTaskTests() {
       const projectName = testInfo.project.name;
       testManager = new TestManager(projectName);
       await testManager.setupForIncomingTaskExtension(browser);
-      setupConsoleLogging(testManager.agent1Page);
+      setupStateWrapupConsoleLogging(testManager.agent1Page, moduleCapturedLogs);
       await resetExtensionStationSession();
       await ensureHealthyCallerPage(true);
       await refreshAvailableExtensionRoutingState();

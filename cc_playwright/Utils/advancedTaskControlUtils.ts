@@ -1,6 +1,6 @@
 /* eslint-disable no-await-in-loop, no-plusplus */
 import {Locator, Page, expect} from '@playwright/test';
-import {holdCallToggle, isCallHeld} from './taskControlUtils';
+import {callTaskControlCheck, endTask, holdCallToggle, isCallHeld} from './taskControlUtils';
 import {
   clickFirstVisibleEnabledControl,
   clickDomButton,
@@ -10,9 +10,20 @@ import {
   getTaskReadinessSnapshot,
   hasAnyVisibleControl,
   hasVisibleEnabledActionButton,
+  isTaskCleared,
 } from './controlUtils';
 import {acceptCurrentTaskModel, acceptIncomingTask} from './incomingTaskUtils';
-import {ACCEPT_TASK_TIMEOUT, AWAIT_TIMEOUT, OPERATION_TIMEOUT, TASK_TYPES} from '../constants';
+import {
+  ACCEPT_TASK_TIMEOUT,
+  AWAIT_TIMEOUT,
+  OPERATION_TIMEOUT,
+  TASK_TYPES,
+  USER_STATES,
+  WrapupReason,
+  WRAPUP_REASONS,
+} from '../constants';
+import {waitForState} from './helperUtils';
+import {submitWrapup} from './wrapupUtils';
 
 const capturedAdvancedLogs: string[] = [];
 const pollTruthy = (
@@ -121,7 +132,7 @@ export const verifyConsultEndSuccessLogs = (page?: Page): Promise<void> =>
 export const verifyConsultTransferredLogs = (page?: Page): Promise<void> =>
   verifyCapturedAdvancedLog('AgentConsultTransferred', page);
 
-export async function getConsultSnapshot(page: Page) {
+async function getConsultSnapshot(page: Page) {
   return page
     .evaluate(() => {
       const globalScope = globalThis as typeof globalThis & {
@@ -241,6 +252,214 @@ const isControlEnabled = async (page: Page, selector: string): Promise<boolean> 
     .locator(selector)
     .evaluate((el) => !(el as HTMLButtonElement).disabled)
     .catch(() => false);
+
+async function isWrapupReady(page: Page): Promise<boolean> {
+  const [wrapupDropdownEnabled, wrapupButtonEnabled] = await Promise.all([
+    page
+      .locator('#wrapupCodesDropdown')
+      .evaluate((el) => !(el as HTMLSelectElement).disabled)
+      .catch(() => false),
+    page
+      .locator('#wrapup')
+      .evaluate((el) => !(el as HTMLButtonElement).disabled)
+      .catch(() => false),
+  ]);
+
+  return wrapupDropdownEnabled && wrapupButtonEnabled;
+}
+
+async function hasClearedTaskUi(page: Page): Promise<boolean> {
+  const [taskCleared, taskListText, incomingText] = await Promise.all([
+    isTaskCleared(page),
+    page
+      .locator('#taskList')
+      .innerText()
+      .then((text) => text.toLowerCase().trim())
+      .catch(() => ''),
+    page
+      .locator('#incoming-task')
+      .innerText()
+      .then((text) => text.toLowerCase().trim())
+      .catch(() => ''),
+  ]);
+
+  return (
+    taskCleared ||
+    ((taskListText === '' || taskListText.includes('no tasks available')) &&
+      (incomingText === '' || incomingText.includes('no incoming tasks')))
+  );
+}
+
+async function getTransferSourceCompletionState(
+  page: Page
+): Promise<'wrapup' | 'available' | 'waiting'> {
+  if (await isWrapupReady(page)) {
+    return 'wrapup';
+  }
+
+  return (await hasClearedTaskUi(page)) ? 'available' : 'waiting';
+}
+
+async function getTransferredTaskCompletionState(
+  page: Page
+): Promise<'active' | 'wrapup' | 'cleared' | 'waiting'> {
+  if (await isWrapupReady(page)) {
+    return 'wrapup';
+  }
+
+  if (await hasConnectedCall(page)) {
+    return 'active';
+  }
+
+  if (await hasClearedTaskUi(page)) {
+    return 'cleared';
+  }
+
+  const currentState = await page
+    .locator('#idleCodesDropdown')
+    .inputValue()
+    .catch(() => '');
+  const acceptButtons = page.getByRole('button', {name: 'Accept'});
+  const acceptVisible =
+    (await acceptButtons.count().catch(() => 0)) > 0
+      ? await acceptButtons
+          .first()
+          .isVisible()
+          .catch(() => false)
+      : false;
+  const hasVisibleTaskControls =
+    (await hasVisibleEnabledActionButton(page, 'Consult', '#consult')) ||
+    (await hasVisibleEnabledActionButton(page, 'Transfer', '#transfer')) ||
+    (await hasVisibleEnabledActionButton(page, 'End', '#end')) ||
+    (await hasVisibleEnabledActionButton(page, 'End Consult', '#end-consult')) ||
+    (await hasVisibleEnabledActionButton(page, 'Switch', '#switch-to-consult')) ||
+    (await hasVisibleEnabledActionButton(page, 'Merge', '#merge-conference'));
+
+  return currentState !== '' && !acceptVisible && !hasVisibleTaskControls ? 'cleared' : 'waiting';
+}
+
+async function waitForTransferredTaskCompletion(
+  page: Page,
+  timeout = ACCEPT_TASK_TIMEOUT
+): Promise<'active' | 'wrapup' | 'cleared'> {
+  await page.bringToFront();
+
+  const completionReached = await expect
+    .poll(() => getTransferredTaskCompletionState(page), {
+      timeout,
+      intervals: [500, 1000, 2000],
+    })
+    .not.toBe('waiting')
+    .then(() => true)
+    .catch(() => false);
+
+  const finalState = await getTransferredTaskCompletionState(page);
+  if (completionReached || finalState !== 'waiting') {
+    return finalState === 'waiting' ? 'cleared' : finalState;
+  }
+
+  throw new Error('Transferred task never reached active, wrapup, or cleared state');
+}
+
+export async function ensureTransferCapableCall(page: Page, timeout = 30000): Promise<void> {
+  await page.bringToFront();
+
+  await expect
+    .poll(
+      async () => {
+        const transferEnabled = await hasVisibleEnabledActionButton(page, 'Transfer', '#transfer');
+        if (transferEnabled) {
+          return 'transfer-ready';
+        }
+
+        if (await hasVisibleEnabledActionButton(page, 'Wrapup', '#wrapup')) {
+          return 'wrapup-only';
+        }
+
+        const incomingText = (
+          await page
+            .locator('#incoming-task')
+            .innerText()
+            .catch(() => '')
+        ).toLowerCase();
+
+        return incomingText.includes('connected') ? 'connected-no-transfer' : 'waiting';
+      },
+      {timeout, intervals: [500, 1000, 2000]}
+    )
+    .toBe('transfer-ready');
+}
+
+export async function submitTransferSourceWrapup(
+  page: Page,
+  reason: WrapupReason = WRAPUP_REASONS.SALE,
+  beforeSubmit: () => Promise<void> = async () => {}
+): Promise<void> {
+  await page.bringToFront();
+
+  const completionState = await expect
+    .poll(() => getTransferSourceCompletionState(page), {
+      timeout: 30000,
+      intervals: [500, 1000, 2000],
+    })
+    .not.toBe('waiting')
+    .then(() => getTransferSourceCompletionState(page))
+    .then((state) => (state === 'waiting' ? 'available' : state))
+    .catch(() => 'available' as const);
+
+  if (completionState !== 'wrapup') {
+    return;
+  }
+
+  await beforeSubmit();
+  await submitWrapup(page, reason);
+  await waitForState(page, USER_STATES.AVAILABLE);
+}
+
+export async function completeTransferredTask(
+  page: Page,
+  wrapupReason: WrapupReason
+): Promise<void> {
+  const immediateCompletionState = await waitForTransferredTaskCompletion(page, 5000).catch(
+    () => null as 'active' | 'wrapup' | 'cleared' | null
+  );
+
+  if (immediateCompletionState === 'wrapup') {
+    await submitWrapup(page, wrapupReason);
+
+    return;
+  }
+
+  if (immediateCompletionState === 'cleared') {
+    return;
+  }
+
+  const endActiveTask = async (): Promise<'active' | 'wrapup' | 'cleared'> => {
+    await callTaskControlCheck(page);
+    await endTask(page);
+    await page.waitForTimeout(3000);
+
+    return waitForTransferredTaskCompletion(page, 30000);
+  };
+
+  if (immediateCompletionState === 'active') {
+    const postEndState = await endActiveTask();
+    if (postEndState === 'wrapup') {
+      await submitWrapup(page, wrapupReason);
+    }
+
+    return;
+  }
+
+  let completionState = await waitForTransferredTaskCompletion(page, ACCEPT_TASK_TIMEOUT);
+  if (completionState === 'active') {
+    completionState = await endActiveTask();
+  }
+
+  if (completionState === 'wrapup') {
+    await submitWrapup(page, wrapupReason);
+  }
+}
 
 export const hasConnectedCall = async (page: Page): Promise<boolean> => {
   const currentTask = await getTaskReadinessSnapshot(page);

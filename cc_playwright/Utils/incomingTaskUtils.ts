@@ -26,9 +26,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export function isCallingRegistrationStatusTextRegistered(
-  text: string | null | undefined
-): boolean {
+function isCallingRegistrationStatusTextRegistered(text: string | null | undefined): boolean {
   const normalized = (text ?? '').trim().toLowerCase();
 
   return normalized.startsWith('registered');

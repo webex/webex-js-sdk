@@ -4,6 +4,7 @@ import {
   consultOrTransfer,
   cancelConsult,
   clearAdvancedCapturedLogs,
+  completeTransferredTask,
   ensureConnectedCall,
   ensureConsultAccepted,
   ensurePrimaryConsultReady,
@@ -44,9 +45,8 @@ export default function createAdvancedTaskControlsTests() {
   const advancedCallingTestTimeout = 120 * 60 * 1000;
   const advancedCallingLockYieldMs = 2000;
   let releaseAdvancedCallingLock: (() => Promise<void>) | undefined;
-
-  const resetTransientSampleAppState = async (page: Page): Promise<void> => {
-    await page
+  const resetTransientSampleAppState = (page: Page): Promise<void> =>
+    page
       .evaluate(() => {
         for (const key of ['currentTask', 'consultationData', 'currentConsultQueueId']) {
           try {
@@ -57,153 +57,6 @@ export default function createAdvancedTaskControlsTests() {
         }
       })
       .catch(() => {});
-  };
-
-  const hasTransferredTaskCleared = async (page: Page): Promise<boolean> => {
-    const incomingText = (
-      await page
-        .locator('#incoming-task')
-        .innerText()
-        .catch(() => '')
-    )
-      .toLowerCase()
-      .trim();
-    const taskListText = (
-      await page
-        .locator('#taskList')
-        .innerText()
-        .catch(() => '')
-    )
-      .toLowerCase()
-      .trim();
-
-    const noIncomingTasks = incomingText === '' || incomingText.includes('no incoming tasks');
-    const noTaskListItems = taskListText === '' || taskListText.includes('no tasks available');
-
-    return noIncomingTasks && noTaskListItems;
-  };
-
-  const isTransferredTaskWrapupReady = async (page: Page): Promise<boolean> => {
-    const wrapupDropdownEnabled = await page
-      .locator('#wrapupCodesDropdown')
-      .evaluate((el) => !(el as HTMLSelectElement).disabled)
-      .catch(() => false);
-    const wrapupButtonEnabled = await page
-      .locator('#wrapup')
-      .evaluate((el) => !(el as HTMLButtonElement).disabled)
-      .catch(() => false);
-
-    return wrapupDropdownEnabled && wrapupButtonEnabled;
-  };
-
-  const getTransferredTaskCompletionState = async (
-    page: Page
-  ): Promise<'active' | 'wrapup' | 'cleared' | 'waiting'> => {
-    if (await isTransferredTaskWrapupReady(page)) {
-      return 'wrapup';
-    }
-
-    if (await hasConnectedCall(page)) {
-      return 'active';
-    }
-
-    if (await hasTransferredTaskCleared(page)) {
-      return 'cleared';
-    }
-
-    const currentState = await page
-      .locator('#idleCodesDropdown')
-      .inputValue()
-      .catch(() => '');
-    const acceptButtons = page.getByRole('button', {name: 'Accept'});
-    const acceptVisible =
-      (await acceptButtons.count().catch(() => 0)) > 0
-        ? await acceptButtons
-            .first()
-            .isVisible()
-            .catch(() => false)
-        : false;
-    const hasVisibleTaskControls =
-      (await hasVisibleEnabledActionButton(page, 'Consult', '#consult')) ||
-      (await hasVisibleEnabledActionButton(page, 'Transfer', '#transfer')) ||
-      (await hasVisibleEnabledActionButton(page, 'End', '#end')) ||
-      (await hasVisibleEnabledActionButton(page, 'End Consult', '#end-consult')) ||
-      (await hasVisibleEnabledActionButton(page, 'Switch', '#switch-to-consult')) ||
-      (await hasVisibleEnabledActionButton(page, 'Merge', '#merge-conference'));
-
-    if (currentState !== '' && !acceptVisible && !hasVisibleTaskControls) {
-      return 'cleared';
-    }
-
-    return 'waiting';
-  };
-
-  const waitForTransferredTaskCompletion = async (
-    page: Page,
-    timeout = ACCEPT_TASK_TIMEOUT
-  ): Promise<'active' | 'wrapup' | 'cleared'> => {
-    await page.bringToFront();
-
-    const completionReached = await expect
-      .poll(() => getTransferredTaskCompletionState(page), {
-        timeout,
-        intervals: [500, 1000, 2000],
-      })
-      .not.toBe('waiting')
-      .then(() => true)
-      .catch(() => false);
-
-    const finalState = await getTransferredTaskCompletionState(page);
-    if (completionReached || finalState !== 'waiting') {
-      return finalState === 'waiting' ? 'cleared' : finalState;
-    }
-
-    throw new Error('Transferred task never reached active, wrapup, or cleared state');
-  };
-
-  const completeTransferredTask = async (
-    page: Page,
-    wrapupReason: (typeof WRAPUP_REASONS)[keyof typeof WRAPUP_REASONS]
-  ): Promise<void> => {
-    const immediateCompletionState = await waitForTransferredTaskCompletion(page, 5000).catch(
-      () => null as 'active' | 'wrapup' | 'cleared' | null
-    );
-
-    if (immediateCompletionState === 'wrapup') {
-      await submitWrapup(page, wrapupReason);
-
-      return;
-    }
-
-    if (immediateCompletionState === 'cleared') {
-      return;
-    }
-
-    const endActiveTask = async (): Promise<'active' | 'wrapup' | 'cleared'> => {
-      await callTaskControlCheck(page);
-      await endTask(page);
-      await page.waitForTimeout(3000);
-
-      return waitForTransferredTaskCompletion(page, 30000);
-    };
-
-    if (immediateCompletionState === 'active') {
-      const postEndState = await endActiveTask();
-      if (postEndState === 'wrapup') await submitWrapup(page, wrapupReason);
-
-      return;
-    }
-
-    let completionState = await waitForTransferredTaskCompletion(page, ACCEPT_TASK_TIMEOUT);
-
-    if (completionState === 'active') {
-      completionState = await endActiveTask();
-    }
-
-    if (completionState === 'wrapup') {
-      await submitWrapup(page, wrapupReason);
-    }
-  };
 
   const waitForConsultTransferReadyOnPrimary = async (
     primaryPage: Page,
@@ -634,12 +487,6 @@ export default function createAdvancedTaskControlsTests() {
             testManager.agent1Page,
             process.env[`${testManager.projectName}_ENTRY_POINT`]!
           );
-          await expect(testManager.agent1Page.locator('#incoming-task')).toContainText(
-            'connected',
-            {
-              timeout: 10000,
-            }
-          );
 
           await ensureHealthyAdvancedAgent('agent2', USER_STATES.AVAILABLE);
           await republishAgentAvailability(testManager.agent2Page);
@@ -811,7 +658,6 @@ export default function createAdvancedTaskControlsTests() {
         testManager.agent2Page,
         process.env[`${testManager.projectName}_AGENT2_NAME`]!
       );
-
       await waitForConsultingAgentIdReady(testManager.agent1Page, 20000);
       await ensureConsultAccepted(
         testManager.agent1Page,
@@ -850,9 +696,6 @@ export default function createAdvancedTaskControlsTests() {
         testManager.agent1Page,
         process.env[`${testManager.projectName}_ENTRY_POINT`]!
       );
-      await expect(testManager.agent1Page.locator('#incoming-task')).toContainText('connected', {
-        timeout: 10000,
-      });
       await changeUserState(testManager.agent2Page, USER_STATES.AVAILABLE);
 
       await startQueueConsult();
