@@ -301,6 +301,8 @@ export default class TaskManager extends EventEmitter {
               task = this.updateTaskData(task, payload.data);
               task.emit(TASK_EVENTS.TASK_ASSIGNED, task);
             }
+            // We emit the event to the task manager to send the task data to the instance without mobius registration in case of multi login with desktop login
+            this.emit(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
             task = this.updateTaskData(task, {
@@ -506,6 +508,8 @@ export default class TaskManager extends EventEmitter {
               // Fire only if you are the agent who initiated the consult
               task.emit(TASK_EVENTS.TASK_CONSULTING, task);
             }
+            // Also hydrate multi-login listeners when consulting state is received.
+            this.emit(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, task);
             break;
           case CC_EVENTS.AGENT_CONSULT_FAILED:
             // This can only be received by the agent who initiated the consult.
