@@ -5,8 +5,10 @@ import {
   consultOrTransfer,
   clearAdvancedCapturedLogs,
   ensureConnectedCall,
+  ensureTransferCapableCall,
   ensurePrimaryConsultReady as ensureMainCallConsultReady,
   setupAdvancedConsoleLogging,
+  submitTransferSourceWrapup,
   waitForPrimaryCallAfterConsult,
   verifyConsultStartSuccessLogs,
   waitForConsultingAgentIdReady,
@@ -34,98 +36,6 @@ import {
   getDesktopAgentPage as getDesktopAgentPageBase,
   recreateDesktopAgentPage as recreateDesktopAgentPageBase,
 } from '../Utils/desktopAgentUtils';
-
-async function ensureTransferCapableCall(page: Page): Promise<void> {
-  await page.bringToFront();
-
-  await expect
-    .poll(
-      async () => {
-        const incomingText = (
-          await page
-            .locator('#incoming-task')
-            .innerText()
-            .catch(() => '')
-        ).toLowerCase();
-        const transferEnabled = await hasVisibleEnabledActionButton(page, 'Transfer', '#transfer');
-        const wrapupEnabled = await hasVisibleEnabledActionButton(page, 'Wrapup', '#wrapup');
-
-        if (transferEnabled) {
-          return 'transfer-ready';
-        }
-
-        if (wrapupEnabled) {
-          return 'wrapup-only';
-        }
-
-        if (incomingText.includes('connected')) {
-          return 'connected-no-transfer';
-        }
-
-        return 'waiting';
-      },
-      {timeout: 30000, intervals: [500, 1000, 2000]}
-    )
-    .toBe('transfer-ready');
-}
-
-async function waitForTransferSourceCompletion(page: Page): Promise<'wrapup' | 'available'> {
-  await page.bringToFront();
-
-  const getCompletionState = async (): Promise<'wrapup' | 'available' | 'waiting'> => {
-    const wrapupEnabled = await page
-      .locator('#wrapupCodesDropdown')
-      .evaluate((el) => !(el as HTMLSelectElement).disabled)
-      .catch(() => false);
-
-    if (wrapupEnabled) {
-      return 'wrapup';
-    }
-
-    const incomingText = (
-      await page
-        .locator('#incoming-task')
-        .innerText()
-        .catch(() => '')
-    ).toLowerCase();
-    const taskListText = (
-      await page
-        .locator('#taskList')
-        .innerText()
-        .catch(() => '')
-    ).toLowerCase();
-    const noIncomingTask = incomingText.trim() === '' || incomingText.includes('no incoming tasks');
-    const noTaskListEntries =
-      taskListText.trim() === '' || taskListText.includes('no tasks available');
-
-    if (noIncomingTask && noTaskListEntries) {
-      return 'available';
-    }
-
-    return 'waiting';
-  };
-
-  return expect
-    .poll(getCompletionState, {timeout: 30000, intervals: [500, 1000, 2000]})
-    .not.toBe('waiting')
-    .then(() => getCompletionState())
-    .then((state) => (state === 'waiting' ? 'available' : state))
-    .catch(() => 'available');
-}
-
-async function submitTransferSourceWrapup(
-  page: Page,
-  reason = WRAPUP_REASONS.SALE,
-  beforeSubmit: () => Promise<void> = () => Promise.resolve()
-): Promise<void> {
-  if ((await waitForTransferSourceCompletion(page)) !== 'wrapup') {
-    return;
-  }
-
-  await beforeSubmit();
-  await submitWrapup(page, reason);
-  await waitForState(page, USER_STATES.AVAILABLE);
-}
 
 export default function createAdvanceCombinationsTests() {
   test.describe('Advanced Combinations Tests ', () => {

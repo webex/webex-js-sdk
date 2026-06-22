@@ -4,6 +4,7 @@ import {
   cancelConsult,
   consultOrTransfer,
   clearAdvancedCapturedLogs,
+  ensureConnectedCall,
   ensureConsultAccepted,
   setupAdvancedConsoleLogging,
   verifyConsultStartSuccessLogs,
@@ -17,7 +18,6 @@ import {
   verifyCurrentState,
 } from '../Utils/userStateUtils';
 import {
-  acceptCurrentTaskModel,
   createCallTask,
   acceptExtensionCall,
   endCallTask,
@@ -286,68 +286,6 @@ export default function createDialNumberTaskControlTests() {
     const createAndAcceptAgent1Call = async (): Promise<void> => {
       const entryPoint = process.env[`${testManager.projectName}_ENTRY_POINT`]!;
       let lastError: unknown;
-
-      const waitForAgent1Offer = async (timeout = 60000): Promise<void> => {
-        const incomingTaskSummary = testManager.agent1Page.locator('#incoming-task').first();
-        const incomingTaskDiv = testManager.agent1Page
-          .locator('#taskList .task-item-content')
-          .first();
-        const taskListAcceptButton = incomingTaskDiv.getByRole('button', {name: 'Accept'}).first();
-        const mainAnswerButton = testManager.agent1Page.locator('#answer').first();
-
-        await expect
-          .poll(
-            async () => {
-              const taskListAcceptVisible = await taskListAcceptButton
-                .isVisible()
-                .catch(() => false);
-              const summaryText = (
-                await incomingTaskSummary.innerText().catch(() => '')
-              ).toLowerCase();
-              const hasIncomingSummary =
-                summaryText !== '' && !summaryText.includes('no incoming tasks');
-              const answerEnabled = await mainAnswerButton.isEnabled().catch(() => false);
-
-              return taskListAcceptVisible || hasIncomingSummary || answerEnabled;
-            },
-            {timeout, intervals: [500, 1000, 2000]}
-          )
-          .toBeTruthy();
-      };
-
-      const acceptAgent1Offer = async (): Promise<void> => {
-        const incomingTaskDiv = testManager.agent1Page
-          .locator('#taskList .task-item-content')
-          .first();
-        const taskListAcceptButton = incomingTaskDiv.getByRole('button', {name: 'Accept'}).first();
-        const mainAnswerButton = testManager.agent1Page.locator('#answer').first();
-
-        const taskListAcceptVisible = await taskListAcceptButton.isVisible().catch(() => false);
-        if (taskListAcceptVisible) {
-          await expect(taskListAcceptButton).toBeEnabled({timeout: 5000});
-          await taskListAcceptButton.click({timeout: 5000}).catch(async () => {
-            await taskListAcceptButton.click({force: true, timeout: 5000});
-          });
-          await testManager.agent1Page.waitForTimeout(2000);
-
-          const retryAcceptVisible = await taskListAcceptButton.isVisible().catch(() => false);
-          if (retryAcceptVisible) {
-            await taskListAcceptButton.click({force: true, timeout: 5000}).catch(() => {});
-            await testManager.agent1Page.waitForTimeout(2000);
-          }
-        }
-
-        const answerEnabled = await mainAnswerButton.isEnabled().catch(() => false);
-        if (answerEnabled) {
-          await clickDomButton(testManager.agent1Page, '#answer');
-          await testManager.agent1Page.waitForTimeout(5000);
-
-          return;
-        }
-
-        await acceptCurrentTaskModel(testManager.agent1Page);
-        await testManager.agent1Page.waitForTimeout(3000);
-      };
       for (let attempt = 0; attempt < 3; attempt += 1) {
         try {
           await clearPendingCallAndWrapup(testManager.agent1Page).catch(() => {});
@@ -357,14 +295,7 @@ export default function createDialNumberTaskControlTests() {
           await testManager.agent1Page.waitForTimeout(2000);
 
           await createCallTask(testManager.callerPage!, entryPoint);
-          await waitForAgent1Offer(attempt === 0 ? 60000 : 90000);
-          await acceptAgent1Offer();
-          await expect(testManager.agent1Page.locator('#incoming-task')).toContainText(
-            'connected',
-            {
-              timeout: 15000,
-            }
-          );
+          await ensureConnectedCall(testManager.agent1Page, attempt === 0 ? 60000 : 90000);
 
           return;
         } catch (error) {
@@ -384,8 +315,9 @@ export default function createDialNumberTaskControlTests() {
       await testManager.setupForDialNumber(browser);
     });
 
-    test.beforeEach(async (_context, testInfo) => {
-      testInfo.setTimeout(Math.max(testInfo.timeout, 10 * 60 * 1000));
+    test.beforeEach(async ({browserName}, testInfo) => {
+      const timeoutFloorMs = browserName ? 10 * 60 * 1000 : 10 * 60 * 1000;
+      testInfo.setTimeout(Math.max(testInfo.timeout, timeoutFloorMs));
 
       await cleanupStrayTasks(testManager.agent1Page);
       await cleanupStrayTasks(testManager.agent2Page);
@@ -406,7 +338,6 @@ export default function createDialNumberTaskControlTests() {
 
       test('Two-hop: consult to Agent then consult-transfer to Dial Number', async () => {
         test.setTimeout(7 * 60 * 1000);
-        test.skip(!process.env.PW_DIAL_NUMBER_NAME, 'PW_DIAL_NUMBER_NAME not set');
 
         await clearPendingCallAndWrapup(testManager.agent1Page);
         await clearPendingCallAndWrapup(testManager.agent2Page);
@@ -414,11 +345,6 @@ export default function createDialNumberTaskControlTests() {
         await ensureHealthyAgent(testManager.agent1Page, USER_STATES.AVAILABLE);
         await testManager.agent1Page.waitForTimeout(5000);
         await createAndAcceptAgent1Call();
-
-        // Desktop mode doesn't auto-transition to Engaged - verify call connected instead
-        await expect(testManager.agent1Page.locator('#incoming-task')).toContainText('connected', {
-          timeout: 10000,
-        });
 
         await republishAgentAvailability(testManager.agent2Page);
         await testManager.agent1Page.waitForTimeout(2000);
@@ -465,10 +391,6 @@ export default function createDialNumberTaskControlTests() {
       test('Dial Number Consult: cancel, decline, accept/end, and transfer scenarios are handled correctly in sequence', async () => {
         await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
         await createAndAcceptAgent1Call();
-
-        await expect(testManager.agent1Page.locator('#incoming-task')).toContainText('connected', {
-          timeout: 10000,
-        });
 
         clearAdvancedCapturedLogs();
         await consultOrTransfer(
@@ -535,8 +457,8 @@ export default function createDialNumberTaskControlTests() {
           'consult',
           process.env.PW_DIAL_NUMBER_NAME
         );
-        await acceptDialNumberConsultIfNeeded();
         await testManager.agent1Page.waitForTimeout(3000);
+        await acceptDialNumberConsultIfNeeded();
         await executeConsultTransfer(testManager.agent1Page);
         await submitWrapup(testManager.agent1Page, WRAPUP_REASONS.SALE);
         await testManager.dialNumberPage.waitForTimeout(2000);
@@ -557,11 +479,6 @@ export default function createDialNumberTaskControlTests() {
         await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
         await changeUserState(testManager.agent2Page, USER_STATES.MEETING);
         await createAndAcceptAgent1Call();
-
-        // Desktop mode doesn't auto-transition to Engaged - verify call connected instead
-        await expect(testManager.agent1Page.locator('#incoming-task')).toContainText('connected', {
-          timeout: 10000,
-        });
 
         // Open consult dialog
         await clickDomButton(testManager.agent1Page, '#consult');
@@ -606,16 +523,9 @@ export default function createDialNumberTaskControlTests() {
       });
 
       test('Dial Number: consult then end consult returns UI to normal', async () => {
-        test.skip(!process.env.PW_DIAL_NUMBER_NAME, 'PW_DIAL_NUMBER_NAME not set');
-
         await changeUserState(testManager.agent2Page, USER_STATES.MEETING);
         await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
         await createAndAcceptAgent1Call();
-
-        // Desktop mode doesn't auto-transition to Engaged - verify call connected instead
-        await expect(testManager.agent1Page.locator('#incoming-task')).toContainText('connected', {
-          timeout: 10000,
-        });
         clearAdvancedCapturedLogs();
         await consultOrTransfer(
           testManager.agent1Page,
@@ -635,8 +545,6 @@ export default function createDialNumberTaskControlTests() {
       });
 
       test('Dial Number: consult then transfer completes and remote ends', async () => {
-        test.skip(!process.env.PW_DIAL_NUMBER_NAME, 'PW_DIAL_NUMBER_NAME not set');
-
         await changeUserState(testManager.agent2Page, USER_STATES.MEETING);
         await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
         await createAndAcceptAgent1Call();
@@ -667,13 +575,7 @@ export default function createDialNumberTaskControlTests() {
       });
 
       test('Blind Transfer to DialNumber', async () => {
-        // Create call and agent 1 accepts
         await createAndAcceptAgent1Call();
-
-        // Desktop mode doesn't auto-transition to Engaged - verify call connected instead
-        await expect(testManager.agent1Page.locator('#incoming-task')).toContainText('connected', {
-          timeout: 10000,
-        });
         clearAdvancedCapturedLogs();
 
         await consultOrTransfer(
@@ -699,13 +601,7 @@ export default function createDialNumberTaskControlTests() {
         // or this scenario isn't supported. Direct dial number transfers work (test 7 passes).
         // Needs investigation: Is "queue with dn e2e" configured to route to dial number?
 
-        // Create call and agent 1 accepts
         await createAndAcceptAgent1Call();
-
-        // Desktop mode doesn't auto-transition to Engaged - verify call connected instead
-        await expect(testManager.agent1Page.locator('#incoming-task')).toContainText('connected', {
-          timeout: 10000,
-        });
         clearAdvancedCapturedLogs();
 
         await consultOrTransfer(testManager.agent1Page, 'queue', 'transfer', 'queue with dn e2e');
@@ -719,11 +615,6 @@ export default function createDialNumberTaskControlTests() {
 
       test('Consult then end consult returns UI to normal', async () => {
         await createAndAcceptAgent1Call();
-
-        // Desktop mode doesn't auto-transition to Engaged - verify call connected instead
-        await expect(testManager.agent1Page.locator('#incoming-task')).toContainText('connected', {
-          timeout: 10000,
-        });
 
         clearAdvancedCapturedLogs();
         await consultOrTransfer(

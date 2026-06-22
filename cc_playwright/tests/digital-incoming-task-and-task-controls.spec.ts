@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import {test, Page, expect, ConsoleMessage} from '@playwright/test';
+import {test, Page, expect} from '@playwright/test';
 import {changeUserState, verifyCurrentState} from '../Utils/userStateUtils';
 import {
   createCallTask,
@@ -24,6 +24,8 @@ import {
   waitForWrapupReasonLogs,
   getLastWrapupReasonFromLogs,
   clearClosedDigitalTaskUi,
+  setupStateWrapupConsoleLogging,
+  verifyCallbackLogs,
 } from '../Utils/helperUtils';
 import {TestManager} from '../test-manager';
 import {clickDomButton, hasVisibleEnabledActionButton} from '../Utils/controlUtils';
@@ -41,57 +43,6 @@ const TIMEOUTS = {
   WRAPUP_POLL: 30000,
 } as const;
 
-/**
- * Verifies callback logs match expected wrapup reason and state.
- * @throws Error if logs don't match or order is incorrect
- */
-export async function verifyCallbackLogs(
-  capturedLogs: string[],
-  expectedWrapupReason: string,
-  expectedState: string,
-  shouldWrapupComeFirst = true
-): Promise<boolean> {
-  const wrapupLogs = capturedLogs.filter((log) => log.includes('onWrapup invoked with reason :'));
-  const stateChangeLogs = capturedLogs.filter((log) =>
-    log.includes('onStateChange invoked with state name:')
-  );
-
-  if (wrapupLogs.length === 0 || stateChangeLogs.length === 0) {
-    throw new Error('Missing required logs, check callbacks for wrapup or statechange');
-  }
-
-  const lastWrapupLog = wrapupLogs[wrapupLogs.length - 1];
-  const lastStateChangeLog = stateChangeLogs[stateChangeLogs.length - 1];
-
-  const wrapupLogIndex = capturedLogs.lastIndexOf(lastWrapupLog);
-  const stateChangeLogIndex = capturedLogs.lastIndexOf(lastStateChangeLog);
-
-  if (shouldWrapupComeFirst && wrapupLogIndex >= stateChangeLogIndex) {
-    throw new Error('Wrapup log should come before state change log');
-  }
-
-  const wrapupMatch = lastWrapupLog.match(/onWrapup invoked with reason : (.+)$/);
-  const stateMatch = lastStateChangeLog.match(/onStateChange invoked with state name:\s*(.+)$/);
-
-  if (!wrapupMatch || !stateMatch) {
-    throw new Error('Could not extract values from logs');
-  }
-
-  const actualWrapupReason = wrapupMatch[1].trim();
-  const actualStateName = stateMatch[1].trim();
-
-  if (actualWrapupReason !== expectedWrapupReason) {
-    throw new Error(
-      `Wrapup reason mismatch, expected ${expectedWrapupReason}, got ${actualWrapupReason}`
-    );
-  }
-
-  if (actualStateName !== expectedState) {
-    throw new Error(`State name mismatch, expected ${expectedState}, got ${actualStateName}`);
-  }
-
-  return true;
-}
 async function clearStrayDigitalTasks(page: Page): Promise<void> {
   const taskList = page.locator('#taskList');
   const clearAcceptedTask = async (): Promise<void> => {
@@ -185,24 +136,6 @@ async function waitForRonaPopupIfVisible(page: Page, timeout: number): Promise<b
     .waitFor({state: 'visible', timeout})
     .then(() => true)
     .catch(() => false);
-}
-
-function setupConsoleLogging(page: Page): () => void {
-  moduleCapturedLogs.length = 0;
-
-  const consoleHandler = (msg: ConsoleMessage) => {
-    const logText = msg.text();
-    if (
-      logText.includes('onStateChange invoked with state name:') ||
-      logText.includes('onWrapup invoked with reason :')
-    ) {
-      moduleCapturedLogs.push(logText);
-    }
-  };
-
-  page.on('console', consoleHandler);
-
-  return () => page.off('console', consoleHandler);
 }
 
 export default function createDigitalIncomingTaskAndTaskControlsTests() {
@@ -332,11 +265,12 @@ export default function createDigitalIncomingTaskAndTaskControlsTests() {
     const projectName = testInfo.project.name;
     testManager = new TestManager(projectName);
     await testManager.setupForIncomingTaskExtension(browser);
-    setupConsoleLogging(testManager.agent1Page);
+    setupStateWrapupConsoleLogging(testManager.agent1Page, moduleCapturedLogs);
   });
 
-  test.afterAll(async (_context, testInfo) => {
-    testInfo.setTimeout(Math.max(testInfo.timeout, 5 * 60 * 1000));
+  test.afterAll(async ({browserName}, testInfo) => {
+    const timeoutFloorMs = browserName ? 5 * 60 * 1000 : 5 * 60 * 1000;
+    testInfo.setTimeout(Math.max(testInfo.timeout, timeoutFloorMs));
     if (testManager) {
       await testManager.cleanup();
     }

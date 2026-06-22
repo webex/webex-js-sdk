@@ -216,6 +216,71 @@ export const waitForWrapupReasonLogs = (logs: string[], reason: WrapupReason, ti
     `Timed out waiting for wrapup reason "${reason}" in logs`
   );
 
+export async function verifyCallbackLogs(
+  capturedLogs: string[],
+  expectedWrapupReason: string,
+  expectedState: string,
+  shouldWrapupComeFirst = true
+): Promise<boolean> {
+  const wrapupLogs = capturedLogs.filter((log) => log.includes('onWrapup invoked with reason :'));
+  const stateChangeLogs = capturedLogs.filter((log) =>
+    log.includes('onStateChange invoked with state name:')
+  );
+
+  if (wrapupLogs.length === 0 || stateChangeLogs.length === 0) {
+    throw new Error('Missing required logs, check callbacks for wrapup or statechange');
+  }
+
+  const lastWrapupLog = wrapupLogs[wrapupLogs.length - 1];
+  const lastStateChangeLog = stateChangeLogs[stateChangeLogs.length - 1];
+  const wrapupLogIndex = capturedLogs.lastIndexOf(lastWrapupLog);
+  const stateChangeLogIndex = capturedLogs.lastIndexOf(lastStateChangeLog);
+
+  if (shouldWrapupComeFirst && wrapupLogIndex >= stateChangeLogIndex) {
+    throw new Error('Wrapup log should come before state change log');
+  }
+
+  const wrapupMatch = lastWrapupLog.match(/onWrapup invoked with reason : (.+)$/);
+  const stateMatch = lastStateChangeLog.match(/onStateChange invoked with state name:\s*(.+)$/);
+
+  if (!wrapupMatch || !stateMatch) {
+    throw new Error('Could not extract values from logs');
+  }
+
+  const actualWrapupReason = wrapupMatch[1].trim();
+  const actualStateName = stateMatch[1].trim();
+
+  if (actualWrapupReason !== expectedWrapupReason) {
+    throw new Error(
+      `Wrapup reason mismatch, expected ${expectedWrapupReason}, got ${actualWrapupReason}`
+    );
+  }
+
+  if (actualStateName !== expectedState) {
+    throw new Error(`State name mismatch, expected ${expectedState}, got ${actualStateName}`);
+  }
+
+  return true;
+}
+
+export function setupStateWrapupConsoleLogging(page: Page, capturedLogs: string[]): () => void {
+  capturedLogs.length = 0;
+
+  const consoleHandler = (msg) => {
+    const logText = msg.text();
+    if (
+      logText.includes('onStateChange invoked with state name:') ||
+      logText.includes('onWrapup invoked with reason :')
+    ) {
+      capturedLogs.push(logText);
+    }
+  };
+
+  page.on('console', consoleHandler);
+
+  return () => page.off('console', consoleHandler);
+}
+
 /**
  * Compares two RGB color strings to check if they are within a specified tolerance
  * @param receivedColor - The color received from the UI (e.g., "rgb(255, 0, 0)")
