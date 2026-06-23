@@ -539,9 +539,73 @@ export default class TaskManager extends EventEmitter {
       case CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION:
         return this.handleCampaignPreviewReservation(context);
 
+      case CC_EVENTS.CAMPAIGN_CONTACT_UPDATED:
+        return this.handleCampaignContactUpdated(context);
+
       default:
         return {task: context.task};
     }
+  }
+
+  private handleCampaignContactUpdated(context: EventContext) {
+    const {payload} = context;
+    let {task} = context;
+    // CampaignContactUpdated is a non-terminal event (e.g., next contact after skip/remove).
+    // Update the task data and emit an event so consumers can react to the updated contact.
+    // Do NOT remove the task or emit TASK_END — cleanup is handled by CONTACT_ENDED.
+    if (task) {
+      // Carry forward campaign preview fields from existing task data since the updated
+      // contact payload may not include them, and reconcileData would delete them.
+      const existingCpd = task.data?.interaction?.callProcessingDetails;
+      const updatedData: TaskData = {...payload};
+
+      if (existingCpd) {
+        const campaignFields = {
+          ...(existingCpd.campaignPreviewAutoAction && {
+            campaignPreviewAutoAction: existingCpd.campaignPreviewAutoAction,
+          }),
+          ...(existingCpd.campaignPreviewOfferTimeout && {
+            campaignPreviewOfferTimeout: existingCpd.campaignPreviewOfferTimeout,
+          }),
+          ...(existingCpd.campaignPreviewSkipDisabled && {
+            campaignPreviewSkipDisabled: existingCpd.campaignPreviewSkipDisabled,
+          }),
+          ...(existingCpd.campaignPreviewRemoveDisabled && {
+            campaignPreviewRemoveDisabled: existingCpd.campaignPreviewRemoveDisabled,
+          }),
+        };
+
+        if (!updatedData.interaction) {
+          updatedData.interaction = {} as typeof updatedData.interaction;
+        }
+
+        updatedData.interaction = {
+          ...updatedData.interaction,
+          callProcessingDetails: {
+            ...campaignFields,
+            ...(updatedData.interaction.callProcessingDetails || {}),
+          } as typeof existingCpd,
+        };
+      }
+
+      LoggerProxy.log('Campaign contact updated - carrying forward preview fields', {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.REGISTER_TASK_LISTENERS,
+        interactionId: payload.interactionId,
+        data: {
+          hasCpd: !!updatedData.interaction?.callProcessingDetails,
+          autoAction: updatedData.interaction?.callProcessingDetails?.campaignPreviewAutoAction,
+          skipDisabled: updatedData.interaction?.callProcessingDetails?.campaignPreviewSkipDisabled,
+          removeDisabled:
+            updatedData.interaction?.callProcessingDetails?.campaignPreviewRemoveDisabled,
+        },
+      });
+
+      task = this.updateTaskData(task, updatedData);
+      task.emit(TASK_EVENTS.TASK_CAMPAIGN_CONTACT_UPDATED, task);
+    }
+
+    return {task};
   }
 
   /**
