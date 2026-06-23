@@ -28,6 +28,7 @@ export {default as Task} from './services/task/Task';
 // API exports (AddressBook is public, EntryPoint and Queue are accessed via cc wrappers)
 export {default as AddressBook} from './services/AddressBook';
 export {default as ApiAIAssistant} from './services/ApiAiAssistant';
+export {default as UserPreference} from './services/UserPreference';
 
 /** EntryPoint API types */
 export type {
@@ -40,6 +41,10 @@ export type {
   ContactServiceQueuesResponse,
   ContactServiceQueueSearchParams,
   ContactServiceQueue,
+  UserPreference as UserPreferenceResponse,
+  GetUserPreferenceParams,
+  CreateUserPreferenceRequest,
+  UpdateUserPreferenceRequest,
 } from './types';
 
 // Enums

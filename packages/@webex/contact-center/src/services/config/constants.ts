@@ -298,4 +298,28 @@ export const endPointMap = {
     `organization/${orgId}/v2/outdial-ani/${outdialANI}/entry${
       queryParams ? `?${queryParams}` : ''
     }`,
+
+  /**
+   * Gets the endpoint for user preferences by user ID.
+   * @param orgId - Organization ID.
+   * @param userId - User ID (CI user ID).
+   * @returns The endpoint URL string.
+   * @public
+   * @example
+   * const url = endPointMap.userPreference('org123', 'user456');
+   * @ignore
+   */
+  userPreference: (orgId: string, userId: string) =>
+    `organization/${orgId}/user-preference/${userId}`,
+
+  /**
+   * Gets the endpoint for creating user preferences.
+   * @param orgId - Organization ID.
+   * @returns The endpoint URL string.
+   * @public
+   * @example
+   * const url = endPointMap.userPreferenceCreate('org123');
+   * @ignore
+   */
+  userPreferenceCreate: (orgId: string) => `organization/${orgId}/user-preference`,
 };

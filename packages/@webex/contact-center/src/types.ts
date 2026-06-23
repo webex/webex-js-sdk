@@ -539,7 +539,9 @@ export type RequestBody =
   | Contact.ConsultTransferPayLoad
   | Contact.cancelCtq
   | Contact.WrapupPayLoad
-  | Contact.DialerPayload;
+  | Contact.DialerPayload
+  | CreateUserPreferenceRequest
+  | UpdateUserPreferenceRequest;
 
 /**
  * Represents the options to fetch buddy agents for the logged in agent.
@@ -964,3 +966,59 @@ export type HistoricTranscriptsResponse = {
   /** Transcript messages */
   data: TranscriptMessage[];
 };
+
+/**
+ * User Preference types
+ */
+
+/**
+ * Represents a user preference record.
+ * @public
+ */
+export interface UserPreference {
+  /** Unique identifier for the preference record */
+  id?: string;
+  /** Organization ID */
+  organizationId?: string;
+  /** User ID (CI user ID) */
+  userId: string;
+  /** Desktop preference data as a JSON string */
+  desktopPreference?: string;
+  /** Creation timestamp in epoch millis */
+  createdTime?: number;
+  /** Last updated timestamp in epoch millis */
+  lastUpdatedTime?: number;
+}
+
+/**
+ * Parameters for fetching user preferences.
+ * @public
+ */
+export interface GetUserPreferenceParams {
+  /** User ID to fetch preferences for. Defaults to current user's CI user ID. */
+  userId?: string;
+  /** Page number (0-indexed). Default: 0 */
+  page?: number;
+  /** Number of items per page. Default: 100 */
+  pageSize?: number;
+}
+
+/**
+ * Request payload for creating user preferences.
+ * @public
+ */
+export interface CreateUserPreferenceRequest {
+  /** User ID (CI user ID) */
+  userId: string;
+  /** Desktop preference data as a JSON string (required) */
+  desktopPreference: string;
+}
+
+/**
+ * Request payload for updating user preferences.
+ * @public
+ */
+export interface UpdateUserPreferenceRequest {
+  /** Desktop preference data as a JSON string (required) */
+  desktopPreference: string;
+}
