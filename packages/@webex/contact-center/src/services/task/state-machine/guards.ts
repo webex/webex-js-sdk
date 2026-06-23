@@ -372,7 +372,7 @@ export const guards = {
   },
 
   isCampaignReservationAccept: ({event}: GuardParams): boolean => {
-    return event?.isCampaignReservationAccept === true;
+    return event?.type === TaskEvent.TASK_INCOMING && event.isCampaignReservationAccept === true;
   },
 
   // Server State Guards
