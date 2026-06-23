@@ -112,8 +112,10 @@ describe('webex.cc', () => {
 
     mockApiAIAssistant = {
       sendEvent: jest.fn(),
+      getSuggestedResponse: jest.fn(),
       fetchHistoricTranscripts: jest.fn(),
       setAIFeatureFlags: jest.fn(),
+      setAgentId: jest.fn(),
     };
 
     // Mock Services instance

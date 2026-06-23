@@ -544,6 +544,73 @@ export const handleStrayTasks = async (
     }
 
     // ============================================
+    // STEP 5: Check TaskList for stray incoming tasks (chat/email can stack here)
+    // ============================================
+    const taskList = page.locator('#taskList');
+    const taskItems = taskList.locator('.task-item-content');
+    const taskCount = await taskItems.count().catch(() => 0);
+
+    if (taskCount > 0) {
+      try {
+        const firstTask = taskItems.first();
+
+        // Try Decline button FIRST (faster for cleanup, no session establishment needed)
+        const declineBtn = firstTask.getByRole('button', {name: 'Decline'}).first();
+        const declineVisible = await declineBtn.isVisible().catch(() => false);
+
+        // Try Accept button as fallback (for tasks that can't be declined)
+        const acceptBtn = firstTask.getByRole('button', {name: 'Accept'}).first();
+        const acceptVisible = await acceptBtn.isVisible().catch(() => false);
+
+        if (declineVisible) {
+          // Decline the task (faster, no need to wait for session establishment)
+          await declineBtn.click({timeout: AWAIT_TIMEOUT}).catch(() => {});
+          await page.waitForTimeout(1000);
+
+          // Handle RONA popup if it appears (digital channels)
+          const ronaAfterDecline = await ronaPopup.isVisible().catch(() => false);
+          if (ronaAfterDecline) {
+            await submitRonaPopup(page, RONA_OPTIONS.AVAILABLE).catch(() => {});
+            await page.waitForTimeout(500);
+          }
+          actionTaken = true;
+          continue;
+        } else if (acceptVisible) {
+          // Accept the task as fallback, then end it and wrapup to clear it
+          // Note: Digital channels need 15-30s for session establishment
+          await acceptBtn.click({timeout: AWAIT_TIMEOUT}).catch(() => {});
+          await page.waitForTimeout(2000);
+
+          // Wait for task to be active, then end it
+          const endAfterAccept = page.locator('#end').first();
+          // For digital channels, wait up to 30s for session establishment and End button to be enabled
+          try {
+            await endAfterAccept.waitFor({state: 'visible', timeout: 30000});
+            await page.waitForTimeout(1000); // Let UI settle
+            const endEnabled = await endAfterAccept.isEnabled().catch(() => false);
+            if (endEnabled) {
+              await endAfterAccept.click({timeout: AWAIT_TIMEOUT}).catch(() => {});
+              await page.waitForTimeout(1000);
+
+              // Submit wrapup to complete cleanup
+              const wrapupAfterEnd = await wrapupButton.isVisible().catch(() => false);
+              if (wrapupAfterEnd) {
+                await submitWrapup(page, WRAPUP_REASONS.SALE).catch(() => {});
+                await page.waitForTimeout(500);
+              }
+            }
+          } catch {
+            /* Ignore - task might have been handled already */
+          }
+          actionTaken = true;
+          continue;
+        }
+      } catch {
+        /* Ignore - not critical */
+      }
+    }
+
+    // ============================================
     // Check if anything is still pending that we couldn't handle
     // ============================================
     if (!actionTaken) {

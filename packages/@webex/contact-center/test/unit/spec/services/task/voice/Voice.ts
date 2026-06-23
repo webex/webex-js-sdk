@@ -72,6 +72,30 @@ describe('Voice Task', () => {
     jest.clearAllMocks();
   });
 
+  describe('emitTaskOutdialFailed', () => {
+    it('emits the failure reason string instead of the Task object', () => {
+      const taskData = createBaseData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {});
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      voice.sendStateMachineEvent({
+        type: TaskEvent.OUTBOUND_FAILED,
+        taskData,
+        reason: 'CUSTOMER_BUSY',
+      });
+
+      const outdialFailedCall = emitSpy.mock.calls.find(
+        (call) => call[0] === 'task:outdialFailed'
+      );
+      expect(outdialFailedCall).toBeDefined();
+      expect(outdialFailedCall![1]).toBe('CUSTOMER_BUSY');
+    });
+  });
+
   it('hides end and endConsult when disabled', () => {
     const voice = new Voice(dummyContact, createBaseData(), {
       isEndTaskEnabled: false,
@@ -113,6 +137,26 @@ describe('Voice Task', () => {
     const voice = new Voice(dummyContact, taskData, {});
     primeHeldState(voice, taskData);
     voice.data.interaction.media.media1.isHold = false;
+
+    await voice.holdResume();
+
+    expect(dummyContact.unHold).toHaveBeenCalledWith({
+      interactionId: 'int1',
+      data: {mediaResourceId: 'media1'},
+    });
+  });
+
+  it('calls contact.unHold when state is conferencing and main media is held', async () => {
+    const heldConferenceData = createBaseData({
+      interaction: {
+        state: 'conference',
+        media: {media1: {mediaResourceId: 'media1', isHold: true}},
+      } as any,
+    }) as any;
+    const voice = new Voice(dummyContact, heldConferenceData, {});
+    primeConnectedState(voice, heldConferenceData);
+    voice.stateMachineService?.send({type: TaskEvent.CONFERENCE_START, taskData: heldConferenceData});
+    expect(voice.stateMachineService?.getSnapshot().value).toBe(TaskState.CONFERENCING);
 
     await voice.holdResume();
 

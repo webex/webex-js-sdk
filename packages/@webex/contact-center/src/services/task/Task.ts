@@ -602,10 +602,44 @@ export default abstract class Task extends EventEmitter implements ITask {
    */
   public updateTaskData(updatedData: TaskData, shouldOverwrite = false): ITask {
     this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
+    if (!shouldOverwrite) {
+      this.pruneStaleInteractionMaps(updatedData);
+    }
     this.updateUiControls();
     this.setupAutoWrapupTimer();
 
     return this;
+  }
+
+  /**
+   * The backend sends `interaction.media` and `interaction.participants` as complete snapshots
+   * of the current call state. `reconcileData` deep-merges and never removes keys, so entries the
+   * backend dropped (e.g. a consult leg's media and consultee participant after the consult ends)
+   * linger in `this.data`. That stale data drives incorrect UI controls (e.g. the consult button
+   * staying disabled after the consult leg is gone, until a page refresh re-hydrates cleanly).
+   * Make only these two snapshot maps authoritative to the incoming payload, leaving every other
+   * field on the generic deep-merge path (CAD and other partial updates still merge as before).
+   */
+  private pruneStaleInteractionMaps(incoming: TaskData): void {
+    const incomingInteraction = incoming?.interaction;
+    const currentInteraction = this.data?.interaction;
+    if (!incomingInteraction || !currentInteraction) {
+      return;
+    }
+
+    (['media', 'participants'] as const).forEach((mapKey) => {
+      const incomingMap = incomingInteraction[mapKey] as Record<string, unknown> | undefined;
+      const currentMap = currentInteraction[mapKey] as Record<string, unknown> | undefined;
+      if (!incomingMap || !currentMap || typeof incomingMap !== 'object') {
+        return;
+      }
+
+      Object.keys(currentMap).forEach((id) => {
+        if (!(id in incomingMap)) {
+          delete currentMap[id];
+        }
+      });
+    });
   }
 
   /**

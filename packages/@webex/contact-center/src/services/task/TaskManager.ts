@@ -99,7 +99,12 @@ export default class TaskManager extends EventEmitter {
         return;
       }
 
-      task.emit(payload.type, payload.data);
+      switch (payload.type) {
+        case CC_EVENTS.REAL_TIME_TRANSCRIPTION:
+        case CC_EVENTS.SUGGESTED_RESPONSE:
+          task.emit(payload.type, payload.data);
+          break;
+      }
     } catch (error) {
       LoggerProxy.error('Failed to parse RTD WebSocket message', {
         module: TASK_MANAGER_FILE,
@@ -307,7 +312,7 @@ export default class TaskManager extends EventEmitter {
         return {type: TaskEvent.RONA, taskData: payload, reason: payload.reason};
 
       case CC_EVENTS.AGENT_OUTBOUND_FAILED:
-        return {type: TaskEvent.OUTBOUND_FAILED, reason: payload.reason};
+        return {type: TaskEvent.OUTBOUND_FAILED, taskData: payload, reason: payload.reason};
 
       case CC_EVENTS.CAMPAIGN_PREVIEW_ACCEPT_FAILED:
         return {type: TaskEvent.CAMPAIGN_PREVIEW_ACCEPT_FAILED, taskData: payload};
@@ -911,7 +916,7 @@ export default class TaskManager extends EventEmitter {
   private requestRealTimeTranscripts(eventType: string, interactionId: string): void {
     const action = TRANSCRIPT_EVENT_MAP[eventType];
     if (!action || !this.apiAIAssistant) return;
-    if (this.configFlags?.aiFeature?.realtimeTranscripts?.enable === false) return;
+    if (this.configFlags?.aiFeature?.realtimeTranscripts?.enable !== true) return;
 
     this.apiAIAssistant
       .sendEvent(

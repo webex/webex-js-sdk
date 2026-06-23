@@ -78,6 +78,15 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
       [TaskEvent.HYDRATE]: {
         actions: ['updateTaskData', 'emitTaskHydrate'],
       },
+      // AgentConsultCreated from Stable Prod while already HELD/CONNECTED (external consult).
+      // Child states do not handle CONSULT_CREATED; wire here so updateTaskData + setConsultInitiator run.
+      [TaskEvent.CONSULT_CREATED]: {
+        actions: ['updateTaskData', 'setConsultInitiator'],
+      },
+      // AgentConsultFailed (RONA) while HELD/CONNECTED without passing through CONSULT_INITIATING.
+      [TaskEvent.CONSULT_FAILED]: {
+        actions: ['updateTaskData', 'handleConsultFailed'],
+      },
     },
     states: {
       [TaskState.IDLE]: {
@@ -130,16 +139,22 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             },
           ],
 
+          // AgentOutboundFailed can arrive before TASK_INCOMING due to race conditions
+          [TaskEvent.OUTBOUND_FAILED]: {
+            target: TaskState.TERMINATED,
+            actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+          },
+
           // EP-DN split-leg ordering can deliver AgentConsulting before HYDRATE/TASK_INCOMING.
           // Do not drop it in IDLE; bootstrap to CONSULTING using event taskData.
           [TaskEvent.CONSULTING_ACTIVE]: {
             target: TaskState.CONSULTING,
             actions: [
-              'updateTaskData',
               'setConsultInitiator',
               'setConsultDestination',
               'setConsultFromConference',
               'setConsultAgentJoined',
+              'updateTaskData',
               'emitTaskConsultAccepted',
               'emitTaskConsulting',
             ],
@@ -197,7 +212,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             },
             {
               target: TaskState.TERMINATED,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskReject'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
             },
           ],
           [TaskEvent.CAMPAIGN_PREVIEW_ACCEPT_FAILED]: {
@@ -214,8 +229,9 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               target: TaskState.CONSULTING,
               actions: [
-                'updateTaskData',
                 'setConsultAgentJoined',
+                'setConsultDestination',
+                'updateTaskData',
                 'emitTaskConsultAccepted',
                 'emitTaskConsulting',
               ],
@@ -235,22 +251,32 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // the consulted agent (Agent 2) accepts. Clears the incoming notification.
           [TaskEvent.CONSULT_END]: {
             target: TaskState.TERMINATED,
-            actions: ['updateTaskData', 'clearConsultState', 'emitTaskReject'],
+            actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
           },
         },
       },
 
       [TaskState.CONNECTED]: {
         on: {
+          // AgentConsultConferenced / ParticipantJoinedConference can arrive while connected.
+          [TaskEvent.CONFERENCE_START]: {
+            target: TaskState.CONFERENCING,
+            actions: [
+              'updateTaskData',
+              'syncTaskDataFromEvent',
+              'clearConsultState',
+              'emitTaskConferenceStarted',
+            ],
+          },
           // AgentConsulting may arrive while machine is CONNECTED (EP-DN/event ordering).
           // Derive consultInitiator from payload so controls are set correctly.
           [TaskEvent.CONSULTING_ACTIVE]: {
             target: TaskState.CONSULTING,
             actions: [
-              'updateTaskData',
               'setConsultInitiator',
               'setConsultDestination',
               'setConsultAgentJoined',
+              'updateTaskData',
               'emitTaskConsultAccepted',
               'emitTaskConsulting',
             ],
@@ -293,6 +319,24 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.TRANSFER_FAILED]: {
             actions: ['updateTaskData'],
           },
+          // AgentConsultEnded from Stable Prod while on connected leg (external end consult).
+          [TaskEvent.CONSULT_END]: [
+            {
+              guard: ({context, event}) => {
+                if (context.consultInitiator !== true) return false;
+                const taskData = getTaskDataFromEvent(event);
+                const mainId = taskData?.interaction?.mainInteractionId || taskData?.interactionId;
+
+                return Boolean(mainId && taskData?.interaction?.media?.[mainId]?.isHold === true);
+              },
+              target: TaskState.HELD,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+            {
+              guard: ({context}) => context.consultInitiator === true,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+          ],
           // AgentContactEnded Event
           [TaskEvent.CONTACT_ENDED]: [
             {
@@ -349,6 +393,22 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.HELD]: {
         on: {
+          // Conference can be merged while this agent is in held state after refresh/recovery.
+          [TaskEvent.CONFERENCE_START]: {
+            target: TaskState.CONFERENCING,
+            actions: [
+              'updateTaskData',
+              'syncTaskDataFromEvent',
+              'clearConsultState',
+              'emitTaskConferenceStarted',
+            ],
+          },
+          [TaskEvent.PAUSE_RECORDING]: {
+            actions: ['updateTaskData', 'setRecordingState', 'emitTaskRecordingPaused'],
+          },
+          [TaskEvent.RESUME_RECORDING]: {
+            actions: ['updateTaskData', 'setRecordingState', 'emitTaskRecordingResumed'],
+          },
           // Click of the unhold button
           [TaskEvent.UNHOLD_INITIATED]: {
             target: TaskState.RESUME_INITIATING,
@@ -362,6 +422,18 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.CONSULT]: {
             target: TaskState.CONSULT_INITIATING,
             actions: ['setConsultInitiator', 'setConsultDestination'],
+          },
+          // AgentConsulting while main leg is held (Task Refactor / Stable Prod consult accept).
+          [TaskEvent.CONSULTING_ACTIVE]: {
+            target: TaskState.CONSULTING,
+            actions: [
+              'setConsultInitiator',
+              'setConsultDestination',
+              'setConsultAgentJoined',
+              'updateTaskData',
+              'emitTaskConsultAccepted',
+              'emitTaskConsulting',
+            ],
           },
           // TODO: This may not be a valid transition, need to be removed
           // AgentConsultTransferred / AgentVTeamTransferred / AgentBlindTransferred
@@ -401,6 +473,10 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
             },
           ],
+          // AgentConsultEnded from Stable Prod while main leg is held (external end consult).
+          [TaskEvent.CONSULT_END]: {
+            actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+          },
           // TODO: This may not be a valid transition, this needs to be checked as well
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.WRAPPING_UP,
@@ -436,6 +512,18 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.CONSULTING,
             actions: ['updateTaskData', 'setConsultInitiator'],
           },
+          // AgentConsulting (Task Refactor: AgentConsulting event, not CONSULT_SUCCESS)
+          [TaskEvent.CONSULTING_ACTIVE]: {
+            target: TaskState.CONSULTING,
+            actions: [
+              'setConsultInitiator',
+              'setConsultDestination',
+              'setConsultAgentJoined',
+              'updateTaskData',
+              'emitTaskConsultAccepted',
+              'emitTaskConsulting',
+            ],
+          },
           // AgentConsultFailed, API Failures, AgentCtqFailed
           [TaskEvent.CONSULT_FAILED]: [
             {
@@ -466,6 +554,18 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'clearConsultState'],
             },
           ],
+          // AgentConsultEnded from Stable Prod during consult initiation (external end consult).
+          [TaskEvent.CONSULT_END]: [
+            {
+              guard: guards.isPrimaryMediaOnHold,
+              target: TaskState.HELD,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+          ],
         },
       },
 
@@ -474,22 +574,64 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentConsulting updates consulted agent arrival
           [TaskEvent.CONSULTING_ACTIVE]: {
             actions: [
-              'updateTaskData',
               'setConsultAgentJoined',
               'setConsultDestination',
+              'updateTaskData',
               'emitTaskConsulting',
             ],
           },
 
+          // AgentConsultFailed (RONA / consultee declined) while the initiator is already in
+          // CONSULTING (AgentConsulting arrived during ringing). Mirror CONSULT_INITIATING so the
+          // initiator returns to their own leg (HELD when main is on hold, else CONNECTED) instead
+          // of staying in CONSULTING. Without this, handleConsultFailed clears consultInitiator but
+          // the machine stays in CONSULTING, so the trailing AgentConsultEnded falls through the
+          // CONSULT_END "consulted agent" branch to TERMINATED and wrongly clears the task.
+          [TaskEvent.CONSULT_FAILED]: [
+            {
+              guard: ({context}) => context.consultFromConference === true,
+              target: TaskState.CONFERENCING,
+              actions: ['updateTaskData', 'handleConsultFailed'],
+            },
+            {
+              guard: guards.isPrimaryMediaOnHold,
+              target: TaskState.HELD,
+              actions: ['updateTaskData', 'handleConsultFailed'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'handleConsultFailed'],
+            },
+          ],
+
           // AgentConsultEnded
           [TaskEvent.CONSULT_END]: [
             {
-              // Initiator returning to conference (flag set OR backend still shows conference)
+              // Initiator returning to conference only while conference is still active.
               guard: ({context, event}) =>
                 context.consultInitiator === true &&
-                (context.consultFromConference === true ||
-                  guards.conferenceInProgressFromEvent({context, event})),
+                guards.conferenceInProgressFromEvent({context, event}),
               target: TaskState.CONFERENCING,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+            {
+              // Conference consult ended after conference downgrade while main leg is held.
+              guard: ({context, event}) =>
+                context.consultInitiator === true &&
+                context.consultFromConference === true &&
+                !guards.conferenceInProgressFromEvent({context, event}) &&
+                guards.isConferenceHoldParticipantFromEvent({context, event}),
+              target: TaskState.HELD,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+            {
+              // Conference consult ended after conference downgrade while main leg is connected.
+              guard: ({context, event}) =>
+                context.consultInitiator === true &&
+                context.consultFromConference === true &&
+                !guards.conferenceInProgressFromEvent({context, event}) &&
+                !guards.isConferenceHoldParticipantFromEvent({context, event}),
+              target: TaskState.CONNECTED,
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
             {
@@ -500,13 +642,18 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
             {
-              // Customer left during consult → WRAPPING_UP
+              // Interaction terminated during consult (customer left) → WRAPPING_UP
               guard: ({context, event}) => {
+                // if (context.consultInitiator !== true) return false;
+                // const taskData = getTaskDataFromEvent(event);
                 const taskData = getTaskDataFromEvent(event);
                 const cpd = taskData?.interaction?.callProcessingDetails;
                 if (cpd?.hasCustomerLeft !== 'true') return false;
 
-                return shouldWrapUpForThisAgent(context, taskData);
+                return (
+                  taskData?.interaction?.isTerminated === true &&
+                  shouldWrapUpForThisAgent(context, taskData)
+                );
               },
               target: TaskState.WRAPPING_UP,
               actions: [
@@ -724,17 +871,59 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             },
           ],
 
-          [TaskEvent.HOLD_SUCCESS]: {
-            actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
-          },
-          [TaskEvent.UNHOLD_SUCCESS]: {
-            actions: ['updateTaskData', 'syncTaskDataFromEvent', 'setHoldState', 'emitTaskResume'],
-          },
+          [TaskEvent.HOLD_SUCCESS]: [
+            {
+              // Conference already downgraded (no other agents) and backend hold arrives.
+              // Move to HELD so the UI renders resume action.
+              guard: guards.shouldDowngradeConferenceToConnected,
+              target: TaskState.HELD,
+              actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
+            },
+            {
+              actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
+            },
+          ],
+          [TaskEvent.UNHOLD_SUCCESS]: [
+            {
+              // Conference already downgraded (no other agents) and backend unhold arrives.
+              // Move to CONNECTED so hold action is available again.
+              guard: guards.shouldDowngradeConferenceToConnected,
+              target: TaskState.CONNECTED,
+              actions: [
+                'updateTaskData',
+                'syncTaskDataFromEvent',
+                'setHoldState',
+                'emitTaskResume',
+              ],
+            },
+            {
+              actions: [
+                'updateTaskData',
+                'syncTaskDataFromEvent',
+                'setHoldState',
+                'emitTaskResume',
+              ],
+            },
+          ],
 
           // Start a new consult from within an active conference
           [TaskEvent.CONSULT]: {
             target: TaskState.CONSULT_INITIATING,
             actions: ['setConsultInitiator', 'setConsultDestination', 'setConsultFromConference'],
+          },
+
+          // AgentConsulting while still in conference (EP-DN/external ordering).
+          [TaskEvent.CONSULTING_ACTIVE]: {
+            target: TaskState.CONSULTING,
+            actions: [
+              'setConsultInitiator',
+              'setConsultDestination',
+              'setConsultFromConference',
+              'setConsultAgentJoined',
+              'updateTaskData',
+              'emitTaskConsultAccepted',
+              'emitTaskConsulting',
+            ],
           },
 
           // Participant leaves - handle conference downgrade scenarios

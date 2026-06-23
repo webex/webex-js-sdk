@@ -25,7 +25,7 @@ import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
-import {TaskState, TaskEvent} from '../state-machine';
+import {TaskState, TaskEvent, TaskActionArgs} from '../state-machine';
 import {WrapupData} from '../../config/types';
 import {getConsultMediaResourceId, getIsConferenceInProgress} from '../TaskUtils';
 
@@ -150,7 +150,10 @@ export default class Voice extends Task implements IVoice {
           });
           throw error;
         }
-      } else if (!state.matches(TaskState.HELD)) {
+      } else if (
+        !state.matches(TaskState.HELD) &&
+        !(state.matches(TaskState.CONFERENCING) && mediaHoldState === true)
+      ) {
         const error = new Error(`Cannot resume call in current state: ${currentState}`);
         LoggerProxy.error('Resume operation not allowed', {
           module: CC_FILE,
@@ -1252,9 +1255,13 @@ export default class Voice extends Task implements IVoice {
         TASK_EVENTS.TASK_CONFERENCE_TRANSFER_FAILED,
         {updateTaskData: true}
       ),
-      emitTaskOutdialFailed: this.createEmitSelfAction(TASK_EVENTS.TASK_OUTDIAL_FAILED, {
-        updateTaskData: true,
-      }),
+      emitTaskOutdialFailed: ({event}: TaskActionArgs) => {
+        if (event && 'taskData' in event && event.taskData) {
+          this.updateTaskData(event.taskData as TaskData);
+        }
+        const reason = (event as {reason?: string})?.reason || 'Outdial failed';
+        this.emit(TASK_EVENTS.TASK_OUTDIAL_FAILED, reason);
+      },
     };
   }
 }

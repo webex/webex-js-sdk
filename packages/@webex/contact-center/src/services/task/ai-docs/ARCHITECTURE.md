@@ -400,6 +400,18 @@ this.webSocketManager.on('message', (event) => {
 });
 ```
 
+### RTD / AI Assistant event routing
+
+`TaskManager.handleRealtimeWebsocketEvent()` handles payloads arriving on the realtime subscription socket used for AI features. It:
+
+1. Normalizes the websocket envelope (`payload.data` vs direct payload form)
+2. Resolves the owning task via `conversationId`
+3. Emits `REAL_TIME_TRANSCRIPTION` on the task for transcript payloads
+4. Emits `SUGGESTED_RESPONSE` on the task only when the backend payload is a final suggestion (`data.type === 'SUGGESTION'`)
+5. Ignores `SUGGESTED_RESPONSE_ACKNOWLEDGE` for public SDK emission
+
+This keeps transcript and suggestion delivery aligned on the same per-task event surface.
+
 ---
 
 ## WebRTC Integration

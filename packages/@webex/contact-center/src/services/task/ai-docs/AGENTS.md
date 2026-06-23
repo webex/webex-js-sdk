@@ -217,6 +217,13 @@ cc.on('task:incoming', async (task) => {
 
 > Full list is defined in `TASK_EVENTS` (`types.ts`).
 
+### AI Assistant events on `task`
+
+| Event | When Emitted |
+| --- | --- |
+| `REAL_TIME_TRANSCRIPTION` | A realtime transcript payload is received for the task interaction |
+| `SUGGESTED_RESPONSE` | A final AI Assistant suggestion payload is received for the task interaction |
+
 ---
 
 ## API Reference

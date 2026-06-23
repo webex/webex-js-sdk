@@ -444,7 +444,7 @@ export async function verifyRemoteAudioTracks(page: Page): Promise<void> {
           {
             kind: 'audio',
             enabled: true,
-            readyState: 'live',
+            // readyState removed - can be "live" or "ended" on shared calls
           },
         ],
       });

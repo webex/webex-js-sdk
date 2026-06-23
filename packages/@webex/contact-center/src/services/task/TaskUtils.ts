@@ -16,13 +16,14 @@ const CAMPAIGN_PREVIEW_OUTBOUND_TYPES = ['STANDARD_PREVIEW_CAMPAIGN', 'DIRECT_PR
  * @returns true if customer is in the call
  */
 export const getIsCustomerInCall = (interaction: Interaction, interactionId: string): boolean => {
-  const mainCallMedia = interaction.media[interactionId];
-  if (!mainCallMedia?.participants) {
+  const mainCallMedia = interaction.media?.[interactionId];
+  const participants = interaction.participants;
+  if (!mainCallMedia?.participants || !participants) {
     return false;
   }
 
   return mainCallMedia.participants.some((participantId: string) => {
-    const participant = interaction.participants[participantId];
+    const participant = participants[participantId];
 
     return participant?.pType === PARTICIPANT_TYPE.CUSTOMER && !participant.hasLeft;
   });
@@ -40,14 +41,15 @@ export const getConferenceParticipantsCount = (
   interaction: Interaction,
   interactionId: string
 ): number => {
-  const mainCallMedia = interaction.media[interactionId];
-  if (!mainCallMedia?.participants) {
+  const mainCallMedia = interaction.media?.[interactionId];
+  const participants = interaction.participants;
+  if (!mainCallMedia?.participants || !participants) {
     return 0;
   }
 
   let count = 0;
   for (const participantId of mainCallMedia.participants) {
-    const participant = interaction.participants[participantId];
+    const participant = participants[participantId];
     if (
       participant &&
       participant.pType !== PARTICIPANT_TYPE.CUSTOMER &&
@@ -90,10 +92,12 @@ export const getIsConsultInProgressForConferenceControls = (
       if (!p || p.hasLeft) return false;
       if (selfAgentId && participantId === selfAgentId) return false;
 
+      const consultState = p.consultState as string | undefined;
+      const isRonaPendingConsultee = consultState === 'consultReserved' && p.hasJoined === false;
       const consultLegActive =
-        p.consultState === 'consulting' ||
-        p.isConsulted === true ||
-        p.currentState === 'consulting';
+        consultState === 'consulting' ||
+        p.currentState === 'consulting' ||
+        (p.isConsulted === true && consultState !== 'consultCompleted' && !isRonaPendingConsultee);
 
       return consultLegActive && !mainSet.has(participantId);
     });

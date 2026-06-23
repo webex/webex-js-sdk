@@ -192,6 +192,94 @@ describe('State Machine Guards', () => {
         false
       );
     });
+
+    it('isInteractionConsulting returns true for pending self consult on hydrate', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        isConsulted: false,
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'conference',
+          participants: {
+            'agent-123': {
+              ...createParticipant('agent-123', 'Agent'),
+              consultState: 'consultInitiated',
+              isConsulted: false,
+            },
+            'agent-456': {
+              ...createParticipant('agent-456', 'Agent'),
+              hasJoined: false,
+              consultState: 'consultReserved',
+              isConsulted: true,
+            },
+          },
+          media: {
+            [INTERACTION_ID]: {
+              mediaResourceId: INTERACTION_ID,
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123'],
+              mType: 'mainCall',
+              isHold: true,
+              holdTimestamp: Date.now(),
+            },
+            'consult-media': {
+              mediaResourceId: 'consult-media',
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123', 'agent-456'],
+              mType: 'consult',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        } as any,
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(true);
+    });
+
+    it('isInteractionConsulting returns false for consulted agent pending consult state', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        isConsulted: true,
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'conference',
+          participants: {
+            'agent-123': {
+              ...createParticipant('agent-123', 'Agent'),
+              consultState: 'consultInitiated',
+              isConsulted: true,
+            },
+          },
+          media: {
+            [INTERACTION_ID]: {
+              mediaResourceId: INTERACTION_ID,
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123'],
+              mType: 'mainCall',
+              isHold: true,
+              holdTimestamp: Date.now(),
+            },
+            'consult-media': {
+              mediaResourceId: 'consult-media',
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123'],
+              mType: 'consult',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        } as any,
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
+    });
   });
 
   describe('Wrap-up Guards', () => {

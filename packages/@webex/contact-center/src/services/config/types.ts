@@ -131,6 +131,14 @@ export const CC_TASK_EVENTS = {
   CAMPAIGN_PREVIEW_REMOVE_FAILED: 'CampaignPreviewRemoveFailed',
   /** Event emitted when a real-time transcript chunk is received */
   REAL_TIME_TRANSCRIPTION: 'REAL_TIME_TRANSCRIPTION',
+  /** Event emitted when an AI assistant suggested response is available */
+  SUGGESTED_RESPONSE: 'SUGGESTED_RESPONSE',
+  /** Event emitted when backend acknowledges it is listening for more context */
+  SUGGESTED_RESPONSE_ACKNOWLEDGE: 'SUGGESTED_RESPONSE_ACKNOWLEDGE',
+  /** Event emitted when a mid-call summary is available */
+  MID_CALL_SUMMARY: 'MID_CALL_SUMMARY',
+  /** Event emitted when a post-call summary is available */
+  POST_CALL_SUMMARY: 'POST_CALL_SUMMARY',
 } as const;
 
 /**
