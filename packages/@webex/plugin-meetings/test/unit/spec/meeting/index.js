@@ -14912,14 +14912,13 @@ describe('plugin-meetings', () => {
       });
 
       describe('#processLocusLLMEvent', () => {
-        it('routes the LLM event through locusInfo.parse and records the LLM message with the payload tracking id', () => {
+        it('routes the LLM event through locusInfo.parse and records the LLM message with the top-level tracking id', () => {
           const event = {
             data: {
               eventType: 'locus.state_message',
               dataSets: [],
-              trackingId: 'payload-sync-tracking-id',
             },
-            trackingId: 'webex-web-client-tracking-id',
+            trackingId: 'envelope-tracking-id',
           };
 
           meeting.locusInfo.parse = sinon.stub();
@@ -14930,22 +14929,22 @@ describe('plugin-meetings', () => {
           // The LLM message is parsed without the tracking id - completion is driven from the
           // meeting's LLM handler, not threaded through locusInfo.
           assert.calledOnceWithExactly(meeting.locusInfo.parse, meeting, event.data);
-          // Only the client whose /sync request tracking id matches the LLM payload tracking id
-          // records the LLM arrival; onLocusSyncLlmMessage is a no-op otherwise.
+          // Only the client whose /sync request tracking id matches the tracking id echoed back on
+          // the top-level LLM event envelope records the LLM arrival; onLocusSyncLlmMessage is a
+          // no-op otherwise.
           assert.calledOnceWithExactly(
             meeting.onLocusSyncLlmMessage,
             meeting.id,
-            event.data.trackingId
+            event.trackingId
           );
         });
 
-        it('does not attempt sync completion when payload tracking id is missing', () => {
+        it('does not attempt sync completion when the tracking id is missing', () => {
           const event = {
             data: {
               eventType: 'locus.state_message',
               dataSets: [],
             },
-            trackingId: 'envelope-tracking-id',
           };
 
           meeting.locusInfo.parse = sinon.stub();

@@ -6222,15 +6222,15 @@ export default class Meeting extends StatelessWebexPlugin {
         storeEventForDebugging('llm', event.data);
       }
 
-      const trackingId = event.data?.trackingId;
+      const {trackingId} = event;
 
       this.locusInfo.parse(this, event.data);
 
-      // Only the client whose /sync request tracking id matches the tracking id echoed back on
-      // this LLM message should emit client.locus.sync.complete. The tracking id lives on the LLM
-      // business payload (event.data.trackingId), not the top-level HOMER envelope. When it is
-      // absent there is nothing to correlate, so skip. onLocusSyncLlmMessage records the LLM
-      // arrival time and is a no-op unless a stored record for this meeting matches the tracking id.
+      // Only the client whose /sync request tracking id matches the tracking id echoed back on this
+      // LLM message should emit client.locus.sync.complete. The tracking id lives at the top level
+      // of the received LLM event envelope. When it is absent there is nothing to correlate, so
+      // skip. onLocusSyncLlmMessage records the LLM arrival time and is a no-op unless a stored
+      // record for this meeting matches the tracking id.
       if (trackingId) {
         this.onLocusSyncLlmMessage(this.id, trackingId);
       }

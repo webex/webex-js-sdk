@@ -714,31 +714,20 @@ describe('plugin-llm', () => {
         const clock = sinon.useFakeTimers();
 
         llmService.isDataChannelTokenEnabled = sinon.stub().resolves(false);
-        llmService.register = sinon.stub().callsFake(() => {
-          return new Promise((resolve) => {
-            setTimeout(() => {
-              const sessionData = llmService.connections.get('llm-default-session') || {};
+        llmService.register = sinon.stub().callsFake(async () => {
+          clock.tick(37);
 
-              sessionData.webSocketUrl = 'wss://example.com/socket';
-              sessionData.binding = 'binding';
-              llmService.connections.set('llm-default-session', sessionData);
+          const sessionData = llmService.connections.get('llm-default-session') || {};
 
-              resolve();
-            }, 37);
-          });
+          sessionData.webSocketUrl = 'wss://example.com/socket';
+          sessionData.binding = 'binding';
+          llmService.connections.set('llm-default-session', sessionData);
         });
-        llmService.connect = sinon.stub().callsFake(() => {
-          return new Promise((resolve) => {
-            setTimeout(resolve, 23);
-          });
+        llmService.connect = sinon.stub().callsFake(async () => {
+          clock.tick(23);
         });
 
-        const resultPromise = llmService.registerAndConnect(locusUrl, datachannelUrl, undefined);
-
-        await clock.tickAsync(37);
-        await clock.tickAsync(23);
-
-        const result = await resultPromise;
+        const result = await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined);
 
         assert.deepEqual(result, {
           clientLLMDatachannelResponseTime: 37,
