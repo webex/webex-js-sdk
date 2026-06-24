@@ -50,7 +50,6 @@ export type LocusLLMEvent = {
   trackingId?: string;
   data: {
     eventType: typeof LOCUSEVENT.HASH_TREE_DATA_UPDATED;
-    trackingId?: string;
     stateElementsMessage: HashTreeMessage;
   };
 };
