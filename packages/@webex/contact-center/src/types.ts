@@ -823,7 +823,24 @@ export type BuddyAgentsResponse = Agent.BuddyAgentsSuccess | Error;
  */
 export type UpdateDeviceTypeResponse = Agent.DeviceTypeUpdateSuccess | Error;
 
-export type TranscriptAction = 'START' | 'STOP';
+export const AIAssistantEventAction = {
+  START: 'START',
+  STOP: 'STOP',
+  REQUEST: 'REQUEST',
+  CANCEL: 'CANCEL',
+  CONSULT: 'CONSULT',
+  TRANSFER: 'TRANSFER',
+} as const;
+
+export type AIAssistantEventAction = Enum<typeof AIAssistantEventAction>;
+export type TranscriptAction =
+  | typeof AIAssistantEventAction.START
+  | typeof AIAssistantEventAction.STOP;
+export type HandoffSummaryRequestAction = typeof AIAssistantEventAction.REQUEST;
+export type HandoffSummaryResponseAction =
+  | typeof AIAssistantEventAction.CANCEL
+  | typeof AIAssistantEventAction.CONSULT
+  | typeof AIAssistantEventAction.TRANSFER;
 
 export const AIAssistantEventType = {
   CUSTOM_EVENT: 'CUSTOM_EVENT',
@@ -842,6 +859,27 @@ export const AIAssistantEventName = {
 } as const;
 
 export type AIAssistantEventName = Enum<typeof AIAssistantEventName>;
+
+export type HandoffSummaryRequestParams = {
+  agentId: string;
+  interactionId: string;
+};
+
+export const HandoffSummaryRequestDisabledReason = {
+  CONSULT_TRANSFER_SUMMARIES_DISABLED: 'CONSULT_TRANSFER_SUMMARIES_DISABLED',
+} as const;
+
+export type HandoffSummaryRequestDisabledReason = Enum<typeof HandoffSummaryRequestDisabledReason>;
+
+export type HandoffSummaryRequestResult =
+  | {
+      enabled: false;
+      reason: HandoffSummaryRequestDisabledReason;
+    }
+  | {
+      enabled: true;
+      response: Record<string, unknown>;
+    };
 
 export type TranscriptMessage = {
   role: string;

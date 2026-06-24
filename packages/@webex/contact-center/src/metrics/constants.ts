@@ -168,12 +168,15 @@ export const METRIC_EVENT_NAMES = {
   CAMPAIGN_PREVIEW_REMOVE_SUCCESS: 'Campaign Preview Remove Success',
   CAMPAIGN_PREVIEW_REMOVE_FAILED: 'Campaign Preview Remove Failed',
 
-  // AI Assistant transcript events
+  // AI Assistant events
   AI_ASSISTANT_SEND_EVENT_SUCCESS: 'AI Assistant Send Event Success',
   AI_ASSISTANT_SEND_EVENT_FAILED: 'AI Assistant Send Event Failed',
   AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS:
     'AI Assistant Fetch Historic Transcripts Success',
   AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED: 'AI Assistant Fetch Historic Transcripts Failed',
+  AI_ASSISTANT_HANDOFF_SUMMARY_REQUEST_SUCCESS: 'AI Assistant Handoff Summary Request Success',
+  AI_ASSISTANT_HANDOFF_SUMMARY_REQUEST_FAILED: 'AI Assistant Handoff Summary Request Failed',
+  AI_ASSISTANT_HANDOFF_SUMMARY_REQUEST_DISABLED: 'AI Assistant Handoff Summary Request Disabled',
 } as const;
 
 /**

@@ -82,6 +82,13 @@ export {CC_AGENT_EVENTS} from './services/config/types';
 export {CC_EVENTS} from './services/config/types';
 export type {CC_EVENTS as ContactCenterEvents} from './services/config/types';
 
+export {
+  AIAssistantEventAction,
+  AIAssistantEventName,
+  AIAssistantEventType,
+  HandoffSummaryRequestDisabledReason,
+} from './types';
+
 // Interfaces
 /** Main types and interfaces for Contact Center functionality */
 export type {
@@ -120,6 +127,13 @@ export type {
   GenericError,
   /** Set state response */
   SetStateResponse,
+  HandoffSummaryRequestAction,
+  HandoffSummaryRequestParams,
+  HandoffSummaryRequestResult,
+  HandoffSummaryResponseAction,
+  HistoricTranscriptsResponse,
+  TranscriptAction,
+  TranscriptMessage,
 } from './types';
 
 /** Task related types */
@@ -213,6 +227,10 @@ export type {
   DialPlan,
   /** Auxiliary code type (IDLE_CODE or WRAP_UP_CODE) */
   AuxCodeType,
+  /** AI feature flags */
+  AIFeatureFlags,
+  /** AI feature flags list response */
+  AIFeatureFlagsResponse,
 } from './services/config/types';
 
 // Constants

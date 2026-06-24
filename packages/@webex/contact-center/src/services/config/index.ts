@@ -62,7 +62,14 @@ export default class AgentConfigService {
       const orgSettingsPromise = this.getOrganizationSetting(orgId);
       const tenantDataPromise = this.getTenantData(orgId);
       const urlMappingPromise = this.getURLMapping(orgId);
-      const aiFeatureFlagsPromise = this.getAIFeatureFlags(orgId);
+      const aiFeatureFlagsPromise = this.getAIFeatureFlags(orgId).catch(() => {
+        LoggerProxy.info('AI feature resources unavailable; continuing with AI features disabled', {
+          module: CONFIG_FILE_NAME,
+          method: METHODS.GET_AI_FEATURE_FLAGS,
+        });
+
+        return {data: []} as AIFeatureFlagsResponse;
+      });
       const auxCodesPromise = this.getAllAuxCodes(
         orgId,
         DEFAULT_PAGE_SIZE,
@@ -656,10 +663,10 @@ export default class AgentConfigService {
   }
 
   /**
-   * Fetches AI feature resources for the organization.
+   * Fetches AI feature resources for the given orgId.
    * @ignore
    * @param {string} orgId - organization ID for which AI feature resources are to be fetched.
-   * @returns {Promise<AIFeatureFlagsResponse>} - AI feature resources response.
+   * @returns {Promise<AIFeatureFlagsResponse>} - A promise that resolves to AI feature resources.
    * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
    * @private
    */
@@ -668,6 +675,7 @@ export default class AgentConfigService {
       module: CONFIG_FILE_NAME,
       method: METHODS.GET_AI_FEATURE_FLAGS,
     });
+
     try {
       const resource = endPointMap.aiFeature(orgId);
       const response = await this.webexReq.request({

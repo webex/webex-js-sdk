@@ -55,4 +55,5 @@ export const METHODS = {
   GET_BASE_URL: 'getBaseUrl',
   SEND_EVENT: 'sendEvent',
   FETCH_HISTORIC_TRANSCRIPTS: 'fetchHistoricTranscripts',
+  REQUEST_HANDOFF_SUMMARY: 'requestHandoffSummary',
 };

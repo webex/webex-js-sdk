@@ -3,39 +3,46 @@ import MetricsManager from '../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
 import {CC_FILE, METHODS} from '../constants';
 import {
-  HTTP_METHODS,
-  WebexSDK,
-  IHttpResponse,
-  TranscriptAction,
-  AIAssistantEventType,
+  AIAssistantEventAction,
   AIAssistantEventName,
+  AIAssistantEventType,
+  HandoffSummaryRequestDisabledReason,
+  HandoffSummaryRequestParams,
+  HandoffSummaryRequestResult,
   HistoricTranscriptsResponse,
+  HTTP_METHODS,
+  IHttpResponse,
+  WebexSDK,
 } from '../types';
 import {getErrorDetails} from './core/Utils';
 import {
+  AI_ASSISTANT_API_URLS,
   AI_ASSISTANT_BASE_URL_TEMPLATE,
   AI_ASSISTANT_ENV_MAP,
-  AI_ASSISTANT_API_URLS,
   WCC_API_GATEWAY,
 } from './constants';
 import {AIFeatureFlags} from './config/types';
 
 /**
- * ApiAIAssistant provides AI Assistant APIs for transcript controls.
+ * ApiAIAssistant provides AI Assistant APIs for transcript and handoff-summary controls.
  * @public
  */
 export class ApiAIAssistant {
   private webex: WebexSDK;
   private metricsManager: MetricsManager;
-  public aiFeature: AIFeatureFlags;
+  public aiFeature?: AIFeatureFlags;
 
   constructor(webex: WebexSDK) {
     this.webex = webex;
     this.metricsManager = MetricsManager.getInstance({webex});
   }
 
-  public setAIFeatureFlags(aiFeature: AIFeatureFlags): void {
+  public setAIFeatureFlags(aiFeature?: AIFeatureFlags): void {
     this.aiFeature = aiFeature;
+  }
+
+  public isHandoffSummaryEnabled(): boolean {
+    return this.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled === true;
   }
 
   private getBaseUrl(): string {
@@ -70,20 +77,28 @@ export class ApiAIAssistant {
     return AI_ASSISTANT_BASE_URL_TEMPLATE.replace('%s', resolvedEnv);
   }
 
+  private static getSanitizedError(error: unknown): string {
+    if (error instanceof Error) {
+      return error.name || 'Error';
+    }
+
+    return typeof error;
+  }
+
   /**
    * Sends an event to the AI Assistant service.
    * @param agentId - agent identifier
    * @param interactionId - interaction/conversation identifier
-   * @param eventType - the type of event (e.g. 'CUSTOM_EVENT')
-   * @param eventName - the name of the event (e.g. 'GET_TRANSCRIPTS')
-   * @param action - action within eventDetails (e.g. 'START' or 'STOP')
+   * @param eventType - the type of event
+   * @param eventName - the name of the event
+   * @param action - action within eventDetails
    */
   public async sendEvent(
     agentId: string,
     interactionId: string,
     eventType: AIAssistantEventType,
     eventName: AIAssistantEventName,
-    action: TranscriptAction
+    action: AIAssistantEventAction
   ): Promise<Record<string, unknown>> {
     LoggerProxy.info('Sending event', {
       module: CC_FILE,
@@ -133,13 +148,89 @@ export class ApiAIAssistant {
           eventType,
           eventName,
           action,
-          error: error instanceof Error ? error.message : String(error),
+          error: ApiAIAssistant.getSanitizedError(error),
         },
         ['operational']
       );
 
       const {error: detailedError} = getErrorDetails(error, METHODS.SEND_EVENT, CC_FILE);
       throw detailedError;
+    }
+  }
+
+  public async requestHandoffSummary(
+    params: HandoffSummaryRequestParams
+  ): Promise<HandoffSummaryRequestResult> {
+    const {agentId, interactionId} = params;
+    const eventName = AIAssistantEventName.GET_MID_CALL_SUMMARY;
+    const action = AIAssistantEventAction.REQUEST;
+
+    LoggerProxy.info('Requesting handoff summary', {
+      module: CC_FILE,
+      method: METHODS.REQUEST_HANDOFF_SUMMARY,
+      interactionId,
+      data: {eventName, enabled: this.isHandoffSummaryEnabled()},
+    });
+
+    if (!this.isHandoffSummaryEnabled()) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_HANDOFF_SUMMARY_REQUEST_DISABLED,
+        {
+          agentId,
+          interactionId,
+          eventName,
+        },
+        ['operational']
+      );
+
+      return {
+        enabled: false,
+        reason: HandoffSummaryRequestDisabledReason.CONSULT_TRANSFER_SUMMARIES_DISABLED,
+      };
+    }
+
+    try {
+      const response = await this.sendEvent(
+        agentId,
+        interactionId,
+        AIAssistantEventType.CUSTOM_EVENT,
+        eventName,
+        action
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_HANDOFF_SUMMARY_REQUEST_SUCCESS,
+        {
+          agentId,
+          interactionId,
+          eventName,
+          action,
+        },
+        ['operational']
+      );
+
+      return {enabled: true, response};
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_HANDOFF_SUMMARY_REQUEST_FAILED,
+        {
+          agentId,
+          interactionId,
+          eventName,
+          action,
+          error: ApiAIAssistant.getSanitizedError(error),
+        },
+        ['operational']
+      );
+
+      LoggerProxy.error('Handoff summary request failed', {
+        module: CC_FILE,
+        method: METHODS.REQUEST_HANDOFF_SUMMARY,
+        interactionId,
+        data: {eventName, action, error: ApiAIAssistant.getSanitizedError(error)},
+      });
+
+      throw error;
     }
   }
 
@@ -197,7 +288,7 @@ export class ApiAIAssistant {
         METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED,
         {
           interactionId,
-          error: error instanceof Error ? error.message : String(error),
+          error: ApiAIAssistant.getSanitizedError(error),
         },
         ['operational']
       );

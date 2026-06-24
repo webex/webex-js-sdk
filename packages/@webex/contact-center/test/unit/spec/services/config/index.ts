@@ -495,12 +495,25 @@ describe('AgentConfigService', () => {
       const mockResponse = {
         statusCode: 200,
         body: {
-          realtimeTranscripts: {enable: true},
+          data: [
+            {
+              id: 'ai-feature-1',
+              generatedSummaries: {
+                consultTransferSummariesEnabled: true,
+              },
+            },
+          ],
         },
       };
       mockWebexRequest.request.mockResolvedValue(mockResponse);
 
       const result = await agentConfigService.getAIFeatureFlags(mockOrgId);
+
+      expect(mockWebexRequest.request).toHaveBeenCalledWith({
+        service: mockWccAPIURL,
+        resource: `organization/${mockOrgId}/v2/ai-feature?page=0&pageSize=100`,
+        method: 'GET',
+      });
       expect(result).toEqual(mockResponse.body);
       expect(LoggerProxy.log).toHaveBeenCalledWith('getAIFeatureFlags api success.', {
         module: CONFIG_FILE_NAME,
@@ -508,7 +521,7 @@ describe('AgentConfigService', () => {
       });
     });
 
-    it('should throw an error if API call returns non-200 status code', async () => {
+    it('should throw an error if AI feature flags API returns non-200 status code', async () => {
       const mockError = {statusCode: 500};
       mockWebexRequest.request.mockResolvedValue(mockError);
 
@@ -794,14 +807,21 @@ describe('AgentConfigService', () => {
         {key: 'ACQUEON_CONSOLE_URL', url: 'https://console.example.com'},
       ];
 
+      const mockAiFeatureFlags = {
+        data: [
+          {
+            id: 'ai-feature-1',
+            generatedSummaries: {
+              consultTransferSummariesEnabled: true,
+            },
+          },
+        ],
+      };
+
       const mockAuxCodes = [
         {id: 'aux1', type: 'WRAP_UP_CODE', name: 'Wrap Up Code 1', isDefault: true},
         {id: 'aux2', type: 'IDLE_CODE', name: 'Idle Code 1', isDefault: true},
       ];
-      const mockAIFeatureFlags = {
-        data: [{realtimeTranscripts: {enable: true}}],
-      };
-
       const parseAgentConfigsSpy = jest.spyOn(util, 'parseAgentConfigs');
       agentConfigService.getUserUsingCI = jest.fn().mockResolvedValue(mockUserConfig);
       agentConfigService.getOrgInfo = jest.fn().mockResolvedValue(mockOrgInfo);
@@ -809,7 +829,7 @@ describe('AgentConfigService', () => {
       agentConfigService.getSiteInfo = jest.fn().mockResolvedValue(mockSiteInfo);
       agentConfigService.getTenantData = jest.fn().mockResolvedValue(mockTenantData);
       agentConfigService.getURLMapping = jest.fn().mockResolvedValue(mockURLMapping);
-      agentConfigService.getAIFeatureFlags = jest.fn().mockResolvedValue(mockAIFeatureFlags);
+      agentConfigService.getAIFeatureFlags = jest.fn().mockResolvedValue(mockAiFeatureFlags);
       agentConfigService.getAllAuxCodes = jest.fn().mockResolvedValue(mockAuxCodes);
       agentConfigService.getDesktopProfileById = jest.fn().mockResolvedValue(mockAgentProfile);
       agentConfigService.getDialPlanData = jest.fn().mockResolvedValue(mockDialPlanData);
@@ -817,6 +837,7 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
+      expect(result.aiFeature).toEqual(mockAiFeatureFlags.data[0]);
       expect(LoggerProxy.info).toHaveBeenCalledWith(
         `Fetched user data, userId: ${mockUserConfig.ciUserId}`,
         {
@@ -849,7 +870,7 @@ describe('AgentConfigService', () => {
         dialPlanData: mockDialPlanData,
         urlMapping: mockURLMapping,
         multimediaProfileId: mockSiteInfo.multimediaProfileId,
-        aiFeatureFlags: mockAIFeatureFlags,
+        aiFeatureFlags: mockAiFeatureFlags,
       });
     });
 
@@ -940,14 +961,21 @@ describe('AgentConfigService', () => {
         {key: 'ACQUEON_CONSOLE_URL', url: 'https://console.example.com'},
       ];
 
+      const mockAiFeatureFlags = {
+        data: [
+          {
+            id: 'ai-feature-2',
+            generatedSummaries: {
+              consultTransferSummariesEnabled: false,
+            },
+          },
+        ],
+      };
+
       const mockAuxCodes = [
         {id: 'aux1', type: 'WRAP_UP_CODE', name: 'Wrap Up Code 1'},
         {id: 'aux2', type: 'IDLE_CODE', name: 'Idle Code 1'},
       ];
-      const mockAIFeatureFlags = {
-        data: [{realtimeTranscripts: {enable: true}}],
-      };
-
       const parseAgentConfigsSpy = jest.spyOn(util, 'parseAgentConfigs');
       agentConfigService.getUserUsingCI = jest.fn().mockResolvedValue(mockUserConfig);
       agentConfigService.getOrgInfo = jest.fn().mockResolvedValue(mockOrgInfo);
@@ -955,7 +983,7 @@ describe('AgentConfigService', () => {
       agentConfigService.getSiteInfo = jest.fn().mockResolvedValue(mockSiteInfo);
       agentConfigService.getTenantData = jest.fn().mockResolvedValue(mockTenantData);
       agentConfigService.getURLMapping = jest.fn().mockResolvedValue(mockURLMapping);
-      agentConfigService.getAIFeatureFlags = jest.fn().mockResolvedValue(mockAIFeatureFlags);
+      agentConfigService.getAIFeatureFlags = jest.fn().mockResolvedValue(mockAiFeatureFlags);
       agentConfigService.getAllAuxCodes = jest.fn().mockResolvedValue(mockAuxCodes);
       agentConfigService.getDesktopProfileById = jest.fn().mockResolvedValue(mockAgentProfile);
       agentConfigService.getDialPlanData = jest.fn().mockResolvedValue(mockDialPlanData);
@@ -963,6 +991,7 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
+      expect(result.aiFeature).toEqual(mockAiFeatureFlags.data[0]);
       expect(LoggerProxy.info).toHaveBeenCalledWith(
         `Fetched user data, userId: ${mockUserConfig.ciUserId}`,
         {
@@ -995,7 +1024,7 @@ describe('AgentConfigService', () => {
         dialPlanData: mockDialPlanData,
         urlMapping: mockURLMapping,
         multimediaProfileId: mockSiteInfo.multimediaProfileId,
-        aiFeatureFlags: mockAIFeatureFlags,
+        aiFeatureFlags: mockAiFeatureFlags,
       });
     });
 
@@ -1016,6 +1045,53 @@ describe('AgentConfigService', () => {
       await expect(agentConfigService.getAgentConfig(mockOrgId, mockAgentId)).rejects.toThrow(
         'API call failed'
       );
+    });
+
+    it('should continue with AI features disabled if AI feature flags fail to load', async () => {
+      const mockProfile = {aiFeature: undefined};
+      const parseAgentConfigsSpy = jest
+        .spyOn(util, 'parseAgentConfigs')
+        .mockReturnValue(mockProfile as any);
+
+      agentConfigService.getUserUsingCI = jest.fn().mockResolvedValue({
+        ciUserId: 'agent001',
+        agentProfileId: 'profile123',
+        siteId: 'site789',
+        teamIds: [],
+      });
+      agentConfigService.getOrgInfo = jest.fn().mockResolvedValue({});
+      agentConfigService.getOrganizationSetting = jest.fn().mockResolvedValue({});
+      agentConfigService.getTenantData = jest.fn().mockResolvedValue({});
+      agentConfigService.getURLMapping = jest.fn().mockResolvedValue([]);
+      agentConfigService.getAIFeatureFlags = jest
+        .fn()
+        .mockRejectedValue(new Error('AI feature unavailable'));
+      agentConfigService.getAllAuxCodes = jest.fn().mockResolvedValue([]);
+      agentConfigService.getDesktopProfileById = jest.fn().mockResolvedValue({
+        dialPlanEnabled: false,
+      });
+      agentConfigService.getSiteInfo = jest.fn().mockResolvedValue({
+        multimediaProfileId: 'multimedia-profile-1',
+      });
+      agentConfigService.getAllTeams = jest.fn().mockResolvedValue([]);
+
+      const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
+
+      expect(result).toEqual(mockProfile);
+      expect(parseAgentConfigsSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          aiFeatureFlags: {data: []},
+        })
+      );
+      expect(LoggerProxy.info).toHaveBeenCalledWith(
+        'AI feature resources unavailable; continuing with AI features disabled',
+        {
+          module: CONFIG_FILE_NAME,
+          method: 'getAIFeatureFlags',
+        }
+      );
+
+      parseAgentConfigsSpy.mockRestore();
     });
   });
 
