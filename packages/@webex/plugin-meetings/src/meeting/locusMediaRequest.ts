@@ -18,6 +18,7 @@ export type RoapRequest = {
   reachability: any;
   clientMediaPreferences: ClientMediaPreferences;
   sequence?: any;
+  __selfUrlRetryCount?: number;
 };
 
 export type LocalMuteRequest = {
@@ -29,6 +30,7 @@ export type LocalMuteRequest = {
     audioMuted?: boolean;
     videoMuted?: boolean;
   };
+  __selfUrlRetryCount?: number;
 };
 
 export type Request = RoapRequest | LocalMuteRequest;
@@ -195,6 +197,12 @@ export class LocusMediaRequest extends WebexPlugin {
    * Prepares the uri and body for the media request to be sent to Locus
    */
   private sendHttpRequest(request: Request) {
+    // Resolve selfUrl lazily at send time — Locus rotates it on session
+    // transitions (breakout end, move-to, lobby admit) and the value
+    // captured upstream in roap/index.ts may be stale by the time we
+    // leave the queue. Persist the resolved URL on the request so a
+    // retry can detect a further rotation.
+    request.selfUrl = this.getCurrentSelfUrl(request.selfUrl);
     const uri = `${request.selfUrl}/${MEDIA}`;
 
     const {audioMuted, videoMuted} = this.getLatestMuteState();
@@ -265,6 +273,17 @@ export class LocusMediaRequest extends WebexPlugin {
       })
       .catch((e) => {
         if (
+          (e?.statusCode === 409 || e?.code === 409) &&
+          this.shouldRetryOnSelfUrlChange(request)
+        ) {
+          // In-flight race: selfUrl rotated after we left the queue but
+          // before Locus rejected the request. Re-send — getCurrentSelfUrl
+          // will pick up the new URL. The returned promise replaces the
+          // rejection, so the caller's pendingPromise resolves correctly.
+          return this.sendHttpRequest(request);
+        }
+
+        if (
           isRequestAffectingConfluenceState(request) &&
           this.confluenceState === 'creation in progress'
         ) {
@@ -299,6 +318,56 @@ export class LocusMediaRequest extends WebexPlugin {
     }
 
     return promise;
+  }
+
+  /**
+   * Returns the latest selfUrl for this meeting, falling back to the value
+   * captured when the request was enqueued.
+   */
+  private getCurrentSelfUrl(fallbackUrl: string): string {
+    // @ts-ignore
+    const meeting = this.webex.meetings.meetingCollection.getByKey(
+      'correlationId',
+      this.config.correlationId
+    );
+
+    if (meeting?.selfUrl && meeting.selfUrl !== fallbackUrl) {
+      LoggerProxy.logger.info(
+        `Meeting:LocusMediaRequest#getCurrentSelfUrl --> selfUrl updated since enqueue, using ${meeting.selfUrl}`
+      );
+
+      return meeting.selfUrl;
+    }
+
+    return fallbackUrl;
+  }
+
+  /**
+   * Decides whether a 409 warrants a retry against the meeting's latest
+   * selfUrl. Mutates the retry counter when it returns true so the recursion
+   * is bounded.
+   */
+  private shouldRetryOnSelfUrlChange(request: Request): boolean {
+    const retryCount = request.__selfUrlRetryCount ?? 0;
+    if (retryCount >= 2) {
+      return false;
+    }
+
+    // @ts-ignore
+    const meeting = this.webex.meetings.meetingCollection.getByKey(
+      'correlationId',
+      this.config.correlationId
+    );
+    if (!meeting?.selfUrl || meeting.selfUrl === request.selfUrl) {
+      return false;
+    }
+
+    request.__selfUrlRetryCount = retryCount + 1;
+    LoggerProxy.logger.info(
+      `Meeting:LocusMediaRequest#sendHttpRequest --> 409 conflict, retrying ${request.type} with updated selfUrl`
+    );
+
+    return true;
   }
 
   /**
