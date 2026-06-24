@@ -5509,23 +5509,23 @@ describe('HashTreeParser', () => {
 
       assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
         key: 'internal.client.locus.sync.start',
-        options: {meetingId: 'meeting-1', dataSetName: 'main'},
+        options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: undefined},
       });
       assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
         key: 'internal.client.locus.hashtree.request',
-        options: {meetingId: 'meeting-1', dataSetName: 'main'},
+        options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: undefined},
       });
       assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
         key: 'internal.client.locus.hashtree.response',
-        options: {meetingId: 'meeting-1', dataSetName: 'main'},
+        options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: undefined},
       });
       assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
         key: 'internal.client.locus.sync.request',
-        options: {meetingId: 'meeting-1', dataSetName: 'main'},
+        options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: undefined},
       });
       assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
         key: 'internal.client.locus.sync.response',
-        options: {meetingId: 'meeting-1', dataSetName: 'main'},
+        options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: undefined},
       });
       assert.notCalled(syncLatencyTracker.getLocusSyncLatency);
     });
