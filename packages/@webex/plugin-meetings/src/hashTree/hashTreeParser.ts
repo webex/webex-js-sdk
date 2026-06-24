@@ -86,16 +86,6 @@ export type LocusInfoUpdate = {
 
 export type LocusInfoUpdateCallback = (update: LocusInfoUpdate) => void;
 
-export interface SyncLatencyMetrics {
-  randomBackoffTime: number;
-  hashtreePrepTime: number;
-  hashtreeResponseTime: number;
-  syncPrepTime: number;
-  syncResponseTime: number;
-  syncMessageReceiveTime: number;
-  totalTime: number;
-}
-
 export type SyncLatencyTracker = {
   saveLatency: (
     key: 'internal.client.locus.sync.random.backoff',
@@ -113,13 +103,7 @@ export type SyncLatencyTracker = {
       trackingId?: string;
     };
   }) => void;
-  getLocusSyncLatency: (
-    dataSetName: string,
-    meetingId: string,
-    trackingId: string
-  ) => SyncLatencyMetrics | undefined;
   clearLocusSyncLatency: (dataSetName: string, meetingId: string) => void;
-  completeLocusSyncLatency: (meetingId: string, trackingId: string) => void;
 };
 
 export type HashTreeParserCallbacks = {

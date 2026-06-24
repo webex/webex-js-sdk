@@ -27,7 +27,6 @@ type SaveTimestampOptions = {
 };
 
 type SaveLatencyOptions = {
-  accumulate?: boolean;
   meetingId?: string;
   dataSetName?: string;
 };
@@ -68,6 +67,11 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   // meetingId that the current latencies are for
   private meetingId?: string;
   private MAX_INTEGER = 2147483647;
+
+  // Aligned with UCF desktop (MekleFlowSyncMetricsTracker::kSleepWakeSkewThresholdMs): if any
+  // measured Locus sync segment exceeds this threshold the record is assumed to be corrupted by a
+  // clock jump (sleep/wake) and is discarded instead of being reported.
+  private LOCUS_SYNC_SKEW_THRESHOLD_MS = 10 * 60 * 1000;
 
   /**
    * @constructor
@@ -113,16 +117,16 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
 
   /**
    * Calculates Locus sync latency values from stored milestone timestamps.
-   * @param dataSetName dataset name
    * @param meetingId meeting id
+   * @param trackingId sync tracking id used to match the record
    * @returns sync latency metrics
    */
-  public getLocusSyncLatency(dataSetName: string, meetingId: string, trackingId: string) {
+  public getLocusSyncLatency(meetingId: string, trackingId: string) {
     if (!trackingId) {
       return undefined;
     }
 
-    const record = this.getLatestLocusSyncLatencyRecord(meetingId, dataSetName, trackingId);
+    const record = this.getLocusSyncLatencyRecord(meetingId, trackingId);
 
     if (!record) {
       return undefined;
@@ -146,9 +150,11 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       'syncRequest',
       'syncResponse'
     );
+    // Aligned with UCF: syncMessageReceiveTime is measured from the sync request start (not the
+    // sync response), i.e. how long after we asked Locus to sync the resulting state update arrived.
     const syncMessageReceiveTime = this.getDiffBetweenLocusSyncTimestamps(
       record,
-      'syncResponse',
+      'syncRequest',
       'messageReceived'
     );
     const totalTimeFromMessageReceived = this.getDiffBetweenLocusSyncTimestamps(
@@ -164,18 +170,43 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
 
     // messageReceived can occasionally be out of order due to race conditions.
     // Ensure totalTime is never less than syncStart->syncResponse when both exist.
+    // Aligned with UCF desktop: the LLM broadcast is NOT required, so when it never arrived we
+    // fall back to the /sync response for the total time.
     const totalTime =
       typeof totalTimeFromMessageReceived === 'number' &&
       typeof totalTimeFromSyncResponse === 'number'
         ? Math.max(totalTimeFromMessageReceived, totalTimeFromSyncResponse)
-        : totalTimeFromMessageReceived;
+        : totalTimeFromMessageReceived ?? totalTimeFromSyncResponse;
 
-    if (
-      typeof syncPrepTime !== 'number' ||
-      typeof syncResponseTime !== 'number' ||
-      typeof syncMessageReceiveTime !== 'number' ||
-      typeof totalTime !== 'number'
-    ) {
+    if (typeof syncPrepTime !== 'number' || typeof totalTime !== 'number') {
+      return undefined;
+    }
+
+    // Aligned with UCF desktop (MekleFlowSyncMetricsTracker kSleepWakeSkewThresholdMs): if any
+    // individual segment is larger than the skew threshold the timestamps were almost certainly
+    // distorted by a clock jump (device sleep/wake), so discard the whole record.
+    const skewedSegment = [
+      record.randomBackoffTime,
+      hashtreePrepTime,
+      hashtreeResponseTime,
+      syncPrepTime,
+      syncResponseTime,
+      syncMessageReceiveTime,
+      totalTime,
+    ].some((segment) => typeof segment === 'number' && segment > this.LOCUS_SYNC_SKEW_THRESHOLD_MS);
+
+    if (skewedSegment) {
+      return undefined;
+    }
+
+    // Aligned with UCF desktop (MekleFlowSyncMetricsTracker): emit whenever at least one measured
+    // segment is non-zero, regardless of whether the resulting LLM broadcast was ever observed.
+    const hasMeaningfulSegment =
+      hashtreeResponseTime > 0 ||
+      (typeof syncResponseTime === 'number' && syncResponseTime > 0) ||
+      (typeof syncMessageReceiveTime === 'number' && syncMessageReceiveTime > 0);
+
+    if (!hasMeaningfulSegment) {
       return undefined;
     }
 
@@ -184,34 +215,93 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       hashtreePrepTime,
       hashtreeResponseTime,
       syncPrepTime,
-      syncResponseTime,
-      syncMessageReceiveTime,
+      ...(typeof syncResponseTime === 'number' ? {syncResponseTime} : {}),
+      ...(typeof syncMessageReceiveTime === 'number' ? {syncMessageReceiveTime} : {}),
       totalTime,
     };
   }
 
   /**
-   * Complete and remove the latest Locus sync latency record for a meeting.
+   * Records the time the LLM state-update message for a Locus sync arrived. This is the milestone
+   * that gates the client.locus.sync.complete metric: the metric is emitted only for flows where
+   * the update came over LLM (aligned with the agreed requirement that body/http-only syncs do not
+   * emit). The record is matched by meeting id + tracking id, regardless of which other milestones
+   * are present yet, so the real arrival time is captured even if the /sync response has not landed.
    * @param meetingId meeting id
    * @param trackingId sync tracking id used to match the pending record
-   * @returns completed sync latency metric payload
+   * @returns void
    */
-  public completeLocusSyncLatency(meetingId: string, trackingId: string) {
+  public recordLocusSyncMessageReceived(meetingId: string, trackingId: string) {
+    if (!trackingId) {
+      return;
+    }
+
+    const record = this.getLocusSyncLatencyRecord(meetingId, trackingId);
+
+    if (record && typeof record.messageReceived !== 'number') {
+      record.messageReceived = new Date().getTime();
+    }
+  }
+
+  /**
+   * Whether a pending Locus sync latency record exists for a meeting + tracking id. Used by the
+   * orchestration layer to decide whether to wait (with a timeout) for the missing milestone.
+   * @param meetingId meeting id
+   * @param trackingId sync tracking id
+   * @returns whether a matching pending record exists
+   */
+  public hasPendingLocusSyncLatencyRecord(meetingId: string, trackingId: string) {
+    if (!trackingId) {
+      return false;
+    }
+
+    return Boolean(this.getLocusSyncLatencyRecord(meetingId, trackingId));
+  }
+
+  /**
+   * Complete and remove the latest Locus sync latency record for a meeting.
+   *
+   * Two completion modes:
+   * - eager (requireSyncResponse=true, default): completes immediately when BOTH the LLM message
+   *   and the /sync response have arrived. If either is missing the record is kept so the other
+   *   milestone can still arrive (or the wait-for-both timeout can complete it).
+   * - timeout (requireSyncResponse=false): the wait-for-both timer fired. Aligned with UCF desktop,
+   *   completes with whatever milestones are present - the LLM broadcast is NOT required. The
+   *   record is still discarded without emitting when no measurable segment exists.
+   * @param meetingId meeting id
+   * @param trackingId sync tracking id used to match the pending record
+   * @param options completion options
+   * @returns completed sync latency metric payload, or undefined when not completed
+   */
+  public completeLocusSyncLatency(
+    meetingId: string,
+    trackingId: string,
+    {requireSyncResponse = true}: {requireSyncResponse?: boolean} = {}
+  ) {
     if (!trackingId) {
       return undefined;
     }
 
-    const record = this.getLatestCompletableLocusSyncLatencyRecord(meetingId, trackingId);
+    const record = this.getLocusSyncLatencyRecord(meetingId, trackingId);
 
     if (!record) {
       return undefined;
     }
 
-    if (typeof record.messageReceived !== 'number') {
-      record.messageReceived = new Date().getTime();
-    }
+    const hasMessageReceived = typeof record.messageReceived === 'number';
+    const hasSyncResponse = typeof record.syncResponse === 'number';
 
-    const syncLatency = this.getLocusSyncLatency(record.dataSetName, meetingId, trackingId);
+    if (requireSyncResponse) {
+      // Eager: wait until both milestones are present before emitting.
+      if (!hasMessageReceived || !hasSyncResponse) {
+        return undefined;
+      }
+    }
+    // Timeout (requireSyncResponse=false): aligned with UCF desktop, emit with whatever milestones
+    // are present - the LLM broadcast is NOT required. getLocusSyncLatency below still discards
+    // records that have no measurable segment.
+
+    const syncLatency = this.getLocusSyncLatency(meetingId, trackingId);
 
     this.removeLocusSyncLatencyRecord(record);
 
@@ -268,71 +358,21 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
-   * Checks whether a Locus sync latency record has the milestones required to calculate sync metrics.
-   * @param record Locus sync latency record
-   * @returns whether the record can be used to complete sync metrics
-   */
-  private hasRequiredSyncMilestones(record: LocusSyncLatencyRecord) {
-    return (
-      typeof record.syncStart === 'number' &&
-      typeof record.syncRequest === 'number' &&
-      typeof record.syncResponse === 'number'
-    );
-  }
-
-  /**
-   * Get the latest Locus sync latency record for a meeting and tracking id.
+   * Get the Locus sync latency record for a meeting and tracking id.
    * @param meetingId meeting id
-   * @param dataSetName dataset name
    * @param trackingId /sync response tracking id
-   * @returns latest matching Locus sync latency record
+   * @returns matching Locus sync latency record
    */
-  private getLatestLocusSyncLatencyRecord(
-    meetingId: string,
-    dataSetName: string | undefined,
-    trackingId: string
-  ) {
+  private getLocusSyncLatencyRecord(meetingId: string, trackingId: string) {
     const records = this.meetingLatencies.get(meetingId);
 
     if (!records) {
       return undefined;
     }
 
-    return [...records].reverse().find((record) => {
-      const dataSetMatches = !dataSetName || record.locusSync.dataSetName === dataSetName;
-      const trackingIdMatches = record.locusSync.trackingId === trackingId;
-
-      return dataSetMatches && trackingIdMatches;
-    })?.locusSync;
+    return [...records].find((record) => record.locusSync.trackingId === trackingId)?.locusSync;
   }
 
-  /**
-   * Get the latest Locus sync latency record that has enough milestones to complete metrics.
-   * @param meetingId meeting id
-   * @param trackingId sync tracking id
-   * @returns latest matching completable Locus sync latency record
-   */
-  private getLatestCompletableLocusSyncLatencyRecord(meetingId: string, trackingId: string) {
-    const records = this.meetingLatencies.get(meetingId);
-
-    if (!records) {
-      return undefined;
-    }
-
-    return [...records].reverse().find((record) => {
-      const trackingIdMatches = record.locusSync.trackingId === trackingId;
-
-      return trackingIdMatches && this.hasRequiredSyncMilestones(record.locusSync);
-    })?.locusSync;
-  }
-
-  /**
-   * Remove a completed Locus sync latency record along with any older records for the same
-   * dataset that never completed. Once a newer sync for a dataset completes, any earlier record
-   * that never received its completing LLM event (matching tracking id) is stale and would
-   * otherwise leak forever, so it is cleaned up here.
-   * @param recordToRemove the record that was just completed
-   */
   private removeLocusSyncLatencyRecord(recordToRemove: LocusSyncLatencyRecord) {
     const records = this.meetingLatencies.get(recordToRemove.meetingId);
 
@@ -340,21 +380,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       return;
     }
 
-    const completedIndex = records.findIndex((record) => record.locusSync === recordToRemove);
-
-    const remainingRecords = records.filter((record, index) => {
-      // remove the record that was just completed
-      if (record.locusSync === recordToRemove) {
-        return false;
-      }
-
-      // remove older, never-completed records for the same dataset, which a newer
-      // completed sync has now superseded
-      const isStaleOlderRecordForSameDataSet =
-        index < completedIndex && record.locusSync.dataSetName === recordToRemove.dataSetName;
-
-      return !isStaleOlderRecordForSameDataSet;
-    });
+    const remainingRecords = records.filter((record) => record.locusSync !== recordToRemove);
 
     if (remainingRecords.length > 0) {
       this.meetingLatencies.set(recordToRemove.meetingId, remainingRecords);
@@ -449,10 +475,10 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       const pendingRecord = this.getLatestPendingLocusSyncLatencyRecord(meetingId, dataSetName);
 
       if (pendingRecord) {
-        if (randomBackoffTime !== undefined) {
+        if (typeof randomBackoffTime === 'number') {
           pendingRecord.randomBackoffTime = randomBackoffTime;
         }
-        if (trackingId !== undefined) {
+        if (trackingId) {
           pendingRecord.trackingId = trackingId;
         }
         pendingRecord.syncStart = value;
@@ -477,10 +503,9 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     }
 
     // Every sync milestone after sync.start is stamped with the same tracking id that was
-    // generated up-front and forced onto the /sync request, so the record is located purely by
-    // meeting id + tracking id. The dataset name is stored on the record but is NOT part of the
-    // lookup key (per design, meetingLatencies is keyed by meeting id only).
-    const record = this.getLatestLocusSyncLatencyRecord(meetingId, undefined, trackingId);
+    // generated up-front and forced onto the /sync request, so the record is located by
+    // meeting id + tracking id.
+    const record = this.getLocusSyncLatencyRecord(meetingId, trackingId);
 
     if (!record) {
       return;
@@ -587,25 +612,31 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * Store precomputed latency value
    * @param key - key
    * @param value - value
-   * @param options - store options. When `accumulate` is true, the existing value is overwritten
-   * with the sum of the current value and the new measurement, otherwise the new measurement just
-   * replaces it. `meetingId`/`dataSetName` are used for meeting-scoped latencies (Locus sync).
+   * @param accumulate - when it is true, it overwrites existing value with sum of the current value and the new measurement otherwise just store the new measurement
    * @throws
    * @returns
    */
-  public saveLatency(key: PreComputedLatencies, value: number, options: SaveLatencyOptions = {}) {
-    const {accumulate = false, meetingId, dataSetName} = options;
-
-    if (key === 'internal.client.locus.sync.random.backoff' && meetingId && dataSetName) {
+  public saveLatency(
+    key: PreComputedLatencies,
+    value: number,
+    accumulateOrOptions: boolean | SaveLatencyOptions = false
+  ) {
+    if (
+      key === 'internal.client.locus.sync.random.backoff' &&
+      typeof accumulateOrOptions === 'object' &&
+      accumulateOrOptions.meetingId &&
+      accumulateOrOptions.dataSetName
+    ) {
       this.saveLocusSyncBackoffLatency({
-        meetingId,
-        dataSetName,
+        meetingId: accumulateOrOptions.meetingId,
+        dataSetName: accumulateOrOptions.dataSetName,
         randomBackoffTime: value,
       });
 
       return;
     }
 
+    const accumulate = typeof accumulateOrOptions === 'boolean' ? accumulateOrOptions : false;
     const existingValue = accumulate ? this.precomputedLatencies.get(key) || 0 : 0;
     this.precomputedLatencies.set(key, value + existingValue);
   }
@@ -625,7 +656,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const start = performance.now();
 
     return callback().finally(() => {
-      this.saveLatency(key, performance.now() - start, {accumulate});
+      this.saveLatency(key, performance.now() - start, accumulate);
     });
   }
 

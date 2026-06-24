@@ -34,6 +34,7 @@ import {
   ONLINE,
   OFFLINE,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
+  LOCUS_SYNC_COMPLETE_TIMEOUT,
   LOCUS_LLM_EVENT,
   LLM_PRACTICE_SESSION,
   RECORDING_STATE,
@@ -14911,7 +14912,7 @@ describe('plugin-meetings', () => {
       });
 
       describe('#processLocusLLMEvent', () => {
-        it('routes the LLM event through locusInfo.parse and completes the sync metric with payload tracking id', () => {
+        it('routes the LLM event through locusInfo.parse and records the LLM message with the payload tracking id', () => {
           const event = {
             data: {
               eventType: 'locus.state_message',
@@ -14922,17 +14923,17 @@ describe('plugin-meetings', () => {
           };
 
           meeting.locusInfo.parse = sinon.stub();
-          meeting.submitLocusSyncCompleteMetric = sinon.stub();
+          meeting.onLocusSyncLlmMessage = sinon.stub();
 
           meeting.processLocusLLMEvent(event);
 
           // The LLM message is parsed without the tracking id - completion is driven from the
           // meeting's LLM handler, not threaded through locusInfo.
           assert.calledOnceWithExactly(meeting.locusInfo.parse, meeting, event.data);
-          // Only the client whose /sync request tracking id matches the LLM tracking id should
-          // emit client.locus.sync.complete; submitLocusSyncCompleteMetric is a no-op otherwise.
+          // Only the client whose /sync request tracking id matches the LLM payload tracking id
+          // records the LLM arrival; onLocusSyncLlmMessage is a no-op otherwise.
           assert.calledOnceWithExactly(
-            meeting.submitLocusSyncCompleteMetric,
+            meeting.onLocusSyncLlmMessage,
             meeting.id,
             event.data.trackingId
           );
@@ -14948,34 +14949,120 @@ describe('plugin-meetings', () => {
           };
 
           meeting.locusInfo.parse = sinon.stub();
-          meeting.submitLocusSyncCompleteMetric = sinon.stub();
+          meeting.onLocusSyncLlmMessage = sinon.stub();
 
           meeting.processLocusLLMEvent(event);
 
           assert.calledOnceWithExactly(meeting.locusInfo.parse, meeting, event.data);
-          assert.notCalled(meeting.submitLocusSyncCompleteMetric);
+          assert.notCalled(meeting.onLocusSyncLlmMessage);
         });
 
       });
 
-      describe('#submitLocusSyncCompleteMetric', () => {
-        it('submits client.locus.sync.complete when the metrics plugin returns a completed record', () => {
-          webex.internal.newMetrics.submitClientEvent.resetHistory();
+      describe('#onLocusSyncLlmMessage', () => {
+        it('records the LLM arrival time and then tries to complete the metric', () => {
+          webex.internal.newMetrics.callDiagnosticLatencies.recordLocusSyncMessageReceived =
+            sinon.stub();
+          meeting.tryCompleteLocusSyncLatency = sinon.stub();
+
+          meeting.onLocusSyncLlmMessage('meeting-1', 'sync-tracking-id');
+
+          assert.calledOnceWithExactly(
+            webex.internal.newMetrics.callDiagnosticLatencies.recordLocusSyncMessageReceived,
+            'meeting-1',
+            'sync-tracking-id'
+          );
+          assert.calledOnceWithExactly(
+            meeting.tryCompleteLocusSyncLatency,
+            'meeting-1',
+            'sync-tracking-id'
+          );
+          // the arrival time must be recorded before completion is attempted
+          assert.callOrder(
+            webex.internal.newMetrics.callDiagnosticLatencies.recordLocusSyncMessageReceived,
+            meeting.tryCompleteLocusSyncLatency
+          );
+        });
+      });
+
+      describe('#tryCompleteLocusSyncLatency', () => {
+        beforeEach(() => {
+          webex.internal.newMetrics.callDiagnosticLatencies.hasPendingLocusSyncLatencyRecord =
+            sinon.stub();
+          meeting.emitLocusSyncCompleteMetric = sinon.stub();
+        });
+
+        it('emits the metric and clears the timer when both milestones are in (eager success)', () => {
+          const completed = {dataSet: 'main', syncLatency: {totalTime: 50}};
           webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency = sinon
             .stub()
-            .returns({
-              dataSet: 'main',
-              syncLatency: {totalTime: 50},
-            });
-          webex.internal.llm.getWebSocketUrl = sinon.stub().returns('wss://llm-websocket-url');
+            .returns(completed);
+          const clearSpy = sinon.spy(meeting, 'clearLocusSyncCompleteTimer');
 
-          meeting.submitLocusSyncCompleteMetric('meeting-1', 'sync-tracking-id');
+          meeting.tryCompleteLocusSyncLatency('meeting-1', 'sync-tracking-id');
 
           assert.calledOnceWithExactly(
             webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency,
             'meeting-1',
-            'sync-tracking-id'
+            'sync-tracking-id',
+            {requireSyncResponse: true}
           );
+          assert.calledOnceWithExactly(clearSpy, 'sync-tracking-id');
+          assert.calledOnceWithExactly(
+            meeting.emitLocusSyncCompleteMetric,
+            'meeting-1',
+            completed
+          );
+          // when eager completion succeeds we never check for a pending record / start a timer
+          assert.notCalled(
+            webex.internal.newMetrics.callDiagnosticLatencies.hasPendingLocusSyncLatencyRecord
+          );
+        });
+
+        it('starts the wait-for-both timeout when only one milestone is in and a record is pending', () => {
+          webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency = sinon
+            .stub()
+            .returns(undefined);
+          webex.internal.newMetrics.callDiagnosticLatencies.hasPendingLocusSyncLatencyRecord = sinon
+            .stub()
+            .returns(true);
+          const startSpy = sinon.spy(meeting, 'startLocusSyncCompleteTimeout');
+
+          meeting.tryCompleteLocusSyncLatency('meeting-1', 'sync-tracking-id');
+
+          assert.notCalled(meeting.emitLocusSyncCompleteMetric);
+          assert.calledOnceWithExactly(startSpy, 'meeting-1', 'sync-tracking-id');
+        });
+
+        it('does not start a timeout when no record is pending (unrelated LLM broadcast)', () => {
+          webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency = sinon
+            .stub()
+            .returns(undefined);
+          webex.internal.newMetrics.callDiagnosticLatencies.hasPendingLocusSyncLatencyRecord = sinon
+            .stub()
+            .returns(false);
+          const startSpy = sinon.spy(meeting, 'startLocusSyncCompleteTimeout');
+
+          meeting.tryCompleteLocusSyncLatency('meeting-1', 'sync-tracking-id');
+
+          assert.notCalled(meeting.emitLocusSyncCompleteMetric);
+          assert.notCalled(startSpy);
+        });
+      });
+
+      describe('#emitLocusSyncCompleteMetric', () => {
+        it('submits client.locus.sync.complete with the llm websocket url and sync latency', () => {
+          webex.internal.newMetrics.submitClientEvent.resetHistory();
+          webex.internal.llm.getWebSocketUrl = sinon.stub().returns('wss://llm-websocket-url');
+
+          meeting.emitLocusSyncCompleteMetric(
+            'meeting-1',
+            {
+              dataSet: 'main',
+              syncLatency: {totalTime: 50},
+            }
+          );
+
           assert.calledOnceWithExactly(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.locus.sync.complete',
             payload: {
@@ -14983,9 +15070,6 @@ describe('plugin-meetings', () => {
                 llmWebsocketUrl: 'wss://llm-websocket-url',
               },
               syncLatency: {totalTime: 50},
-              llmInfo: {
-                dataSet: 'main',
-              },
             },
             options: {
               meetingId: 'meeting-1',
@@ -14993,15 +15077,131 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('does not submit any CA event when there is no matching completed record', () => {
+        it('submits with an undefined llm websocket url when it is unavailable', () => {
           webex.internal.newMetrics.submitClientEvent.resetHistory();
+          webex.internal.llm.getWebSocketUrl = sinon.stub().returns(undefined);
+
+          meeting.emitLocusSyncCompleteMetric(
+            'meeting-1',
+            {
+              dataSet: 'main',
+              syncLatency: {totalTime: 50},
+            }
+          );
+
+          assert.calledOnceWithExactly(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.locus.sync.complete',
+            payload: {
+              identifiers: {
+                llmWebsocketUrl: undefined,
+              },
+              syncLatency: {totalTime: 50},
+            },
+            options: {
+              meetingId: 'meeting-1',
+            },
+          });
+        });
+      });
+
+      describe('client.locus.sync.complete timeout', () => {
+        beforeEach(() => {
+          meeting.emitLocusSyncCompleteMetric = sinon.stub();
+        });
+
+        it('completes the metric in timeout mode and emits when the LLM-only flow times out', () => {
+          const completed = {dataSet: 'main', syncLatency: {totalTime: 50}};
+          webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency = sinon
+            .stub()
+            .returns(completed);
+
+          meeting.startLocusSyncCompleteTimeout('meeting-1', 'sync-tracking-id');
+
+          assert.notCalled(meeting.emitLocusSyncCompleteMetric);
+
+          fakeClock.tick(LOCUS_SYNC_COMPLETE_TIMEOUT);
+
+          assert.calledOnceWithExactly(
+            webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency,
+            'meeting-1',
+            'sync-tracking-id',
+            {requireSyncResponse: false}
+          );
+          assert.calledOnceWithExactly(
+            meeting.emitLocusSyncCompleteMetric,
+            'meeting-1',
+            completed
+          );
+        });
+
+        it('does not emit when nothing is completable at timeout (body/http-only flow)', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency = sinon
             .stub()
             .returns(undefined);
 
-          meeting.submitLocusSyncCompleteMetric('meeting-1', 'sync-tracking-id');
+          meeting.startLocusSyncCompleteTimeout('meeting-1', 'sync-tracking-id');
 
-          assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+          fakeClock.tick(LOCUS_SYNC_COMPLETE_TIMEOUT);
+
+          assert.calledOnce(
+            webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency
+          );
+          assert.notCalled(meeting.emitLocusSyncCompleteMetric);
+        });
+
+        it('does not fire after the timer was cleared', () => {
+          webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency = sinon
+            .stub()
+            .returns(undefined);
+
+          meeting.startLocusSyncCompleteTimeout('meeting-1', 'sync-tracking-id');
+          meeting.clearLocusSyncCompleteTimer('sync-tracking-id');
+
+          fakeClock.tick(LOCUS_SYNC_COMPLETE_TIMEOUT);
+
+          assert.notCalled(
+            webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency
+          );
+          assert.notCalled(meeting.emitLocusSyncCompleteMetric);
+        });
+
+        it('replaces an existing timer when started again for the same tracking id', () => {
+          webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency = sinon
+            .stub()
+            .returns(undefined);
+
+          meeting.startLocusSyncCompleteTimeout('meeting-1', 'sync-tracking-id');
+          fakeClock.tick(LOCUS_SYNC_COMPLETE_TIMEOUT - 1);
+          // restarting resets the countdown, so the first timer must not fire
+          meeting.startLocusSyncCompleteTimeout('meeting-1', 'sync-tracking-id');
+          fakeClock.tick(1);
+
+          assert.notCalled(
+            webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency
+          );
+
+          fakeClock.tick(LOCUS_SYNC_COMPLETE_TIMEOUT - 1);
+
+          assert.calledOnce(
+            webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency
+          );
+        });
+
+        it('clears all pending timers so none fire after cleanup', () => {
+          webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency = sinon
+            .stub()
+            .returns(undefined);
+
+          meeting.startLocusSyncCompleteTimeout('meeting-1', 'sync-tracking-1');
+          meeting.startLocusSyncCompleteTimeout('meeting-1', 'sync-tracking-2');
+
+          meeting.clearAllLocusSyncCompleteTimers();
+
+          fakeClock.tick(LOCUS_SYNC_COMPLETE_TIMEOUT);
+
+          assert.notCalled(
+            webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency
+          );
         });
       });
 

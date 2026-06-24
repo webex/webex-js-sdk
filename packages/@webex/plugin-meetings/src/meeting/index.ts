@@ -128,6 +128,7 @@ import {
   MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC,
   MEETING_PERMISSION_TOKEN_REFRESH_REASON,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
+  LOCUS_SYNC_COMPLETE_TIMEOUT,
   NAMED_MEDIA_GROUP_TYPE_AUDIO,
   WEBINAR_ERROR_WEBCAST,
   WEBINAR_ERROR_REGISTRATION_ID,
@@ -812,6 +813,13 @@ export default class Meeting extends StatelessWebexPlugin {
   private mediaServerIp: string;
   private llmHealthCheckTimer?: ReturnType<typeof setTimeout>;
 
+  // Pending client.locus.sync.complete timeout timers, keyed by sync tracking id. Started when the
+  // /sync response milestone is recorded and cleared once the matching LLM message completes the
+  // metric. If the LLM message never arrives, the timer fires and the metric is emitted with the
+  // milestones gathered so far (aligned with UCF, which waits with a timeout for both the sync
+  // response and the resulting state update before emitting).
+  private locusSyncCompleteTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+
   /**
    * @param {Object} attrs
    * @param {Object} options
@@ -1400,18 +1408,34 @@ export default class Meeting extends StatelessWebexPlugin {
           // facade. Wire each method to the layer that owns that responsibility.
           saveLatency: (...args) =>
             (this as any).webex.internal.newMetrics.callDiagnosticLatencies.saveLatency(...args),
-          saveTimestamp: (...args) =>
-            (this as any).webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp(...args),
-          getLocusSyncLatency: (...args) =>
-            (this as any).webex.internal.newMetrics.callDiagnosticLatencies.getLocusSyncLatency(
-              ...args
-            ),
+          saveTimestamp: (saveTimestampOptions: {
+            key: string;
+            value?: number;
+            options: {meetingId: string; dataSetName: string; trackingId?: string};
+          }) => {
+            (this as any).webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp(
+              saveTimestampOptions
+            );
+
+            // The /sync response is one of the two milestones (the other is the LLM message) that
+            // can complete client.locus.sync.complete. Try to complete eagerly: if the LLM message
+            // already arrived the metric is emitted now, otherwise a wait-for-both timeout is
+            // started so we still emit (best-effort) if the LLM message never arrives. Aligned with
+            // UCF's wait-for-both behaviour.
+            if (
+              saveTimestampOptions.key === 'internal.client.locus.sync.response' &&
+              saveTimestampOptions.options?.trackingId
+            ) {
+              this.tryCompleteLocusSyncLatency(
+                saveTimestampOptions.options.meetingId,
+                saveTimestampOptions.options.trackingId
+              );
+            }
+          },
           clearLocusSyncLatency: (...args) =>
             (this as any).webex.internal.newMetrics.callDiagnosticLatencies.clearLocusSyncLatency(
               ...args
             ),
-          completeLocusSyncLatency: (meetingId: string, trackingId: string) =>
-            this.submitLocusSyncCompleteMetric(meetingId, trackingId),
         },
       },
       // @ts-ignore
@@ -2404,46 +2428,173 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Completes a Locus sync latency measurement and, when the metrics plugin has a
-   * matching record for the given meeting and tracking id, submits the
-   * client.locus.sync.complete Call Analyzer event.
+   * Handles the LLM state-update message that resulted from a Locus /sync. Records the LLM arrival
+   * time (the milestone that gates client.locus.sync.complete - the metric is emitted only for LLM
+   * flows) and then tries to complete the metric.
+   * @param {string} meetingId meeting id
+   * @param {string} trackingId sync tracking id echoed back on the LLM message
+   * @returns {void}
+   * @private
+   * @memberof Meeting
+   */
+  private onLocusSyncLlmMessage(meetingId: string, trackingId: string) {
+    // @ts-ignore
+    this.webex.internal.newMetrics.callDiagnosticLatencies.recordLocusSyncMessageReceived(
+      meetingId,
+      trackingId
+    );
+
+    this.tryCompleteLocusSyncLatency(meetingId, trackingId);
+  }
+
+  /**
+   * Attempts to complete the Locus sync latency metric eagerly - i.e. emits
+   * client.locus.sync.complete immediately when BOTH the /sync response and the resulting LLM
+   * message have arrived. If only one of the two is in, a wait-for-both timeout is (re)started so
+   * the metric is still emitted (best-effort) if the other never arrives. Mirrors UCF.
    * @param {string} meetingId meeting id
    * @param {string} trackingId sync tracking id used to match the pending record
    * @returns {void}
    * @private
    * @memberof Meeting
    */
-  private submitLocusSyncCompleteMetric(meetingId: string, trackingId: string) {
+  private tryCompleteLocusSyncLatency(meetingId: string, trackingId: string) {
     const completed =
       // @ts-ignore
       this.webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency(
         meetingId,
-        trackingId
+        trackingId,
+        {requireSyncResponse: true}
       );
 
-    if (!completed) {
+    if (completed) {
+      this.clearLocusSyncCompleteTimer(trackingId);
+      this.emitLocusSyncCompleteMetric(meetingId, completed);
+
       return;
     }
 
+    // Eager completion is not possible yet (only one of the two milestones is in). Only schedule a
+    // fallback timeout if a record is actually pending for this tracking id, so unrelated LLM
+    // broadcasts that share no pending sync record do not spin up stray timers.
+    const hasPendingRecord =
+      // @ts-ignore
+      this.webex.internal.newMetrics.callDiagnosticLatencies.hasPendingLocusSyncLatencyRecord(
+        meetingId,
+        trackingId
+      );
+
+    if (hasPendingRecord) {
+      this.startLocusSyncCompleteTimeout(meetingId, trackingId);
+    }
+  }
+
+  /**
+   * Submits the client.locus.sync.complete Call Analyzer event for a completed Locus sync latency
+   * measurement.
+   * @param {string} meetingId meeting id
+   * @param {object} completed completed sync latency payload from the metrics plugin
+   * @returns {void}
+   * @private
+   * @memberof Meeting
+   */
+  private emitLocusSyncCompleteMetric(
+    meetingId: string,
+    completed: {dataSet: string; syncLatency: object}
+  ) {
     // @ts-ignore
     const llmWebsocketUrl = this.webex.internal.llm?.getWebSocketUrl?.() || undefined;
 
-    // @ts-ignore
-    this.webex.internal.newMetrics.submitClientEvent({
+    // Aligned with UCF desktop (HashTreeSyncComplete): the event carries only the LLM websocket url
+    // identifier and the syncLatency block - no llmInfo/dataSet field.
+    const clientEvent = {
       name: 'client.locus.sync.complete',
       payload: {
         identifiers: {
           llmWebsocketUrl,
         },
         syncLatency: completed.syncLatency,
-        llmInfo: {
-          dataSet: completed.dataSet,
-        },
       },
       options: {
         meetingId,
       },
-    });
+    };
+
+    // @ts-ignore
+    this.webex.internal.newMetrics.submitClientEvent(clientEvent);
+  }
+
+  /**
+   * Starts the wait-for-both timeout. When it fires, the metric is completed in timeout mode: it is
+   * emitted with whatever milestones are present (the LLM broadcast is not required, aligned with
+   * UCF desktop). Mirrors UCF's 5s wait. Any existing timer for the same tracking id is replaced.
+   * @param {string} meetingId meeting id
+   * @param {string} trackingId sync tracking id used to match the pending record
+   * @returns {void}
+   * @private
+   * @memberof Meeting
+   */
+  private startLocusSyncCompleteTimeout(meetingId: string, trackingId: string) {
+    this.clearLocusSyncCompleteTimer(trackingId);
+
+    const timer = safeSetTimeout(() => {
+      this.onLocusSyncCompleteTimeout(meetingId, trackingId);
+    }, LOCUS_SYNC_COMPLETE_TIMEOUT);
+
+    this.locusSyncCompleteTimers.set(trackingId, timer);
+  }
+
+  /**
+   * Handles the wait-for-both timeout firing: completes the metric best-effort with whatever
+   * milestones are present and emits client.locus.sync.complete if there is something to emit.
+   * @param {string} meetingId meeting id
+   * @param {string} trackingId sync tracking id used to match the pending record
+   * @returns {void}
+   * @private
+   * @memberof Meeting
+   */
+  private onLocusSyncCompleteTimeout(meetingId: string, trackingId: string) {
+    this.locusSyncCompleteTimers.delete(trackingId);
+
+    const completed =
+      // @ts-ignore
+      this.webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency(
+        meetingId,
+        trackingId,
+        {requireSyncResponse: false}
+      );
+
+    if (completed) {
+      this.emitLocusSyncCompleteMetric(meetingId, completed);
+    }
+  }
+
+  /**
+   * Clears the pending client.locus.sync.complete timeout for a tracking id, if any.
+   * @param {string} trackingId sync tracking id
+   * @returns {void}
+   * @private
+   * @memberof Meeting
+   */
+  private clearLocusSyncCompleteTimer(trackingId: string) {
+    const timer = this.locusSyncCompleteTimers.get(trackingId);
+
+    if (timer) {
+      clearTimeout(timer);
+      this.locusSyncCompleteTimers.delete(trackingId);
+    }
+  }
+
+  /**
+   * Clears all pending client.locus.sync.complete timeout timers. Called during meeting cleanup so
+   * that no metric is emitted for a meeting that has already been torn down.
+   * @returns {void}
+   * @public
+   * @memberof Meeting
+   */
+  public clearAllLocusSyncCompleteTimers() {
+    this.locusSyncCompleteTimers.forEach((timer) => clearTimeout(timer));
+    this.locusSyncCompleteTimers.clear();
   }
 
   /**
@@ -6071,15 +6222,18 @@ export default class Meeting extends StatelessWebexPlugin {
         storeEventForDebugging('llm', event.data);
       }
 
-      const {trackingId} = event;
+      const trackingId = event.data?.trackingId;
 
       this.locusInfo.parse(this, event.data);
 
       // Only the client whose /sync request tracking id matches the tracking id echoed back on
-      // this LLM message should emit client.locus.sync.complete. completeLocusSyncLatency (called
-      // by submitLocusSyncCompleteMetric) is a no-op unless a stored record for this meeting
-      // matches the tracking id, so this is safe to call for every hash tree LLM event.
-      this.submitLocusSyncCompleteMetric(this.id, trackingId);
+      // this LLM message should emit client.locus.sync.complete. The tracking id lives on the LLM
+      // business payload (event.data.trackingId), not the top-level HOMER envelope. When it is
+      // absent there is nothing to correlate, so skip. onLocusSyncLlmMessage records the LLM
+      // arrival time and is a no-op unless a stored record for this meeting matches the tracking id.
+      if (trackingId) {
+        this.onLocusSyncLlmMessage(this.id, trackingId);
+      }
     } else {
       LoggerProxy.logger.warn(
         `Meeting:index#processLocusLLMEvent --> Unknown event type: ${event.data.eventType}`

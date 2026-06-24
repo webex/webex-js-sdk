@@ -203,6 +203,9 @@ export const RETRY_TIMEOUT = 3000;
 
 export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 20000;
 export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 35000;
+// Time to wait for the LLM message that follows a /sync before emitting client.locus.sync.complete
+// with the milestones gathered so far (aligned with UCF's 5 second wait-for-both timeout).
+export const LOCUS_SYNC_COMPLETE_TIMEOUT = 5000;
 export const WEBINAR_ERROR_WEBCAST = [403026];
 export const WEBINAR_ERROR_REGISTRATION_ID = [403037, 403137];
 export const JOIN_BEFORE_HOST = 403003;
