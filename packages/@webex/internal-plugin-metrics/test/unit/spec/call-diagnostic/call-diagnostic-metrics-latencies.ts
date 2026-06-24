@@ -166,13 +166,16 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('calculates sync latency values from milestones', () => {
+        cdl.saveLatency('internal.client.locus.sync.random.backoff', 10.4, {
+          meetingId: 'meeting-1',
+          dataSetName: 'main',
+        });
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.start',
           value: 100,
           options: {
             meetingId: 'meeting-1',
             dataSetName: 'main',
-            randomBackoffTime: 10.4,
             trackingId: 'sync-tracking-id',
           },
         });
@@ -917,7 +920,7 @@ describe('internal-plugin-metrics', () => {
           cdl.saveTimestamp({
             key: 'internal.client.locus.sync.start',
             value: 100,
-            options: {meetingId: 'meeting-1', dataSetName: 'main', randomBackoffTime: 0, trackingId},
+            options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId},
           });
         };
 
@@ -999,7 +1002,7 @@ describe('internal-plugin-metrics', () => {
           cdl.saveTimestamp({
             key: 'internal.client.locus.sync.start',
             value: 100,
-            options: {meetingId: 'meeting-1', dataSetName: 'main', randomBackoffTime: 0, trackingId},
+            options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId},
           });
           cdl.saveTimestamp({
             key: 'internal.client.locus.sync.request',

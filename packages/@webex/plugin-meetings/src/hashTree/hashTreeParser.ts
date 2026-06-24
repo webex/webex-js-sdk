@@ -1272,28 +1272,18 @@ class HashTreeParser {
   /**
    * Build options for a Locus sync latency milestone.
    * @param {string} dataSetName dataset name
-   * @param {number} [randomBackoffTime] random backoff time
    * @param {string} [trackingId] tracking id
    * @returns {object} sync latency timestamp options
    */
-  private getSyncLatencyTimestampOptions(
-    dataSetName: string,
-    randomBackoffTime?: number,
-    trackingId?: string
-  ) {
+  private getSyncLatencyTimestampOptions(dataSetName: string, trackingId?: string) {
     const options: {
       meetingId: string;
       dataSetName: string;
-      randomBackoffTime?: number;
       trackingId?: string;
     } = {
       meetingId: this.syncLatencyMeetingId,
       dataSetName,
     };
-
-    if (typeof randomBackoffTime === 'number') {
-      options.randomBackoffTime = randomBackoffTime;
-    }
 
     if (trackingId) {
       options.trackingId = trackingId;
@@ -1414,7 +1404,7 @@ class HashTreeParser {
     if (shouldCollectMetrics) {
       this.callbacks.syncLatencyTracker?.saveTimestamp({
         key: 'internal.client.locus.sync.start',
-        options: this.getSyncLatencyTimestampOptions(dataSet.name, undefined, syncTrackingId),
+        options: this.getSyncLatencyTimestampOptions(dataSet.name, syncTrackingId),
       });
     }
 
@@ -2060,7 +2050,7 @@ class HashTreeParser {
     if (this.shouldCollectSyncMetrics(dataSetName)) {
       this.callbacks.syncLatencyTracker?.saveTimestamp({
         key: 'internal.client.locus.hashtree.request',
-        options: this.getSyncLatencyTimestampOptions(dataSetName, undefined, metricTrackingId),
+        options: this.getSyncLatencyTimestampOptions(dataSetName, metricTrackingId),
       });
     }
 
@@ -2078,7 +2068,7 @@ class HashTreeParser {
         if (this.shouldCollectSyncMetrics(dataSetName)) {
           this.callbacks.syncLatencyTracker?.saveTimestamp({
             key: 'internal.client.locus.hashtree.response',
-            options: this.getSyncLatencyTimestampOptions(dataSetName, undefined, metricTrackingId),
+            options: this.getSyncLatencyTimestampOptions(dataSetName, metricTrackingId),
           });
         }
 
@@ -2181,7 +2171,7 @@ class HashTreeParser {
     if (shouldCollectMetrics) {
       this.callbacks.syncLatencyTracker?.saveTimestamp({
         key: 'internal.client.locus.sync.request',
-        options: this.getSyncLatencyTimestampOptions(dataSet.name, undefined, trackingId),
+        options: this.getSyncLatencyTimestampOptions(dataSet.name, trackingId),
       });
     }
 
@@ -2200,7 +2190,7 @@ class HashTreeParser {
         if (shouldCollectMetrics) {
           this.callbacks.syncLatencyTracker?.saveTimestamp({
             key: 'internal.client.locus.sync.response',
-            options: this.getSyncLatencyTimestampOptions(dataSet.name, undefined, trackingId),
+            options: this.getSyncLatencyTimestampOptions(dataSet.name, trackingId),
           });
         }
 

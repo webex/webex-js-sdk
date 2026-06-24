@@ -22,7 +22,6 @@ type LocusSyncLatencyMilestone = {
 type SaveTimestampOptions = {
   meetingId?: string;
   dataSetName?: string;
-  randomBackoffTime?: number;
   trackingId?: string;
 };
 
@@ -465,9 +464,13 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     key,
     value,
     trackingId,
-    randomBackoffTime,
-  }: LocusSyncLatencyMilestone & {randomBackoffTime?: number}) {
+  }: LocusSyncLatencyMilestone) {
     if (!trackingId) {
+      // @ts-ignore
+      this.webex.logger.warn(
+        `CallDiagnosticLatencies: saveLocusSyncLatencyTimestamp called without a trackingId for key "${key}"; skipping Locus sync milestone`
+      );
+
       return;
     }
 
@@ -475,12 +478,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       const pendingRecord = this.getLatestPendingLocusSyncLatencyRecord(meetingId, dataSetName);
 
       if (pendingRecord) {
-        if (typeof randomBackoffTime === 'number') {
-          pendingRecord.randomBackoffTime = randomBackoffTime;
-        }
-        if (trackingId) {
-          pendingRecord.trackingId = trackingId;
-        }
+        pendingRecord.trackingId = trackingId;
         pendingRecord.syncStart = value;
 
         return;
@@ -492,7 +490,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
         locusSync: {
           meetingId,
           dataSetName,
-          randomBackoffTime: randomBackoffTime ?? 0,
+          randomBackoffTime: 0,
           trackingId,
           syncStart: value,
         },
@@ -583,7 +581,6 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
         key,
         value,
         trackingId: options.trackingId,
-        randomBackoffTime: options.randomBackoffTime,
       });
 
       return;
