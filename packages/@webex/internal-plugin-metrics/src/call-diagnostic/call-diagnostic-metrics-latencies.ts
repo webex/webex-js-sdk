@@ -302,7 +302,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
 
     const syncLatency = this.getLocusSyncLatency(meetingId, trackingId);
 
-    this.removeLocusSyncLatencyRecord(record);
+    this.removeLocusSyncLatencyRecord(meetingId, trackingId);
 
     if (!syncLatency) {
       return undefined;
@@ -372,19 +372,25 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     return [...records].find((record) => record.locusSync.trackingId === trackingId)?.locusSync;
   }
 
-  private removeLocusSyncLatencyRecord(recordToRemove: LocusSyncLatencyRecord) {
-    const records = this.meetingLatencies.get(recordToRemove.meetingId);
+  /**
+   * Remove the Locus sync latency record for a meeting and tracking id.
+   * @param meetingId meeting id
+   * @param trackingId sync tracking id used to match the record
+   * @returns void
+   */
+  private removeLocusSyncLatencyRecord(meetingId: string, trackingId: string) {
+    const records = this.meetingLatencies.get(meetingId);
 
     if (!records) {
       return;
     }
 
-    const remainingRecords = records.filter((record) => record.locusSync !== recordToRemove);
+    const remainingRecords = records.filter((record) => record.locusSync.trackingId !== trackingId);
 
     if (remainingRecords.length > 0) {
-      this.meetingLatencies.set(recordToRemove.meetingId, remainingRecords);
+      this.meetingLatencies.set(meetingId, remainingRecords);
     } else {
-      this.meetingLatencies.delete(recordToRemove.meetingId);
+      this.meetingLatencies.delete(meetingId);
     }
   }
 
