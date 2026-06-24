@@ -168,9 +168,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     );
 
     // messageReceived can occasionally be out of order due to race conditions.
-    // Ensure totalTime is never less than syncStart->syncResponse when both exist.
-    // Aligned with UCF desktop: the LLM broadcast is NOT required, so when it never arrived we
-    // fall back to the /sync response for the total time.
+    // Ensure totalTime is never less than syncStart->syncResponse when both exist. In timeout mode
+    // the /sync response may be missing, in which case totalTime comes from messageReceived alone.
     const totalTime =
       typeof totalTimeFromMessageReceived === 'number' &&
       typeof totalTimeFromSyncResponse === 'number'
@@ -198,8 +197,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       return undefined;
     }
 
-    // Aligned with UCF desktop (MekleFlowSyncMetricsTracker): emit whenever at least one measured
-    // segment is non-zero, regardless of whether the resulting LLM broadcast was ever observed.
+    // Emit whenever at least one measured segment is non-zero. The LLM broadcast itself is gated
+    // in completeLocusSyncLatency(); this only guards against an all-zero (unmeasurable) record.
     const hasMeaningfulSegment =
       hashtreeResponseTime > 0 ||
       (typeof syncResponseTime === 'number' && syncResponseTime > 0) ||
@@ -260,13 +259,15 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   /**
    * Complete and remove the latest Locus sync latency record for a meeting.
    *
+   * The LLM broadcast (messageReceived) is always required - the event is only emitted when the
+   * client that issued the /sync request received the matching LLM broadcast for its tracking id.
    * Two completion modes:
    * - eager (requireSyncResponse=true, default): completes immediately when BOTH the LLM message
    *   and the /sync response have arrived. If either is missing the record is kept so the other
    *   milestone can still arrive (or the wait-for-both timeout can complete it).
-   * - timeout (requireSyncResponse=false): the wait-for-both timer fired. Aligned with UCF desktop,
-   *   completes with whatever milestones are present - the LLM broadcast is NOT required. The
-   *   record is still discarded without emitting when no measurable segment exists.
+   * - timeout (requireSyncResponse=false): the wait-for-both timer fired. Completes with the LLM
+   *   milestone even if the /sync response never landed; if the LLM broadcast never arrived the
+   *   record is discarded without emitting.
    * @param meetingId meeting id
    * @param trackingId sync tracking id used to match the pending record
    * @param options completion options
@@ -290,15 +291,21 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const hasMessageReceived = typeof record.messageReceived === 'number';
     const hasSyncResponse = typeof record.syncResponse === 'number';
 
-    if (requireSyncResponse) {
-      // Eager: wait until both milestones are present before emitting.
-      if (!hasMessageReceived || !hasSyncResponse) {
-        return undefined;
-      }
+    // The LLM broadcast (messageReceived) is always required: client.locus.sync.complete is only
+    // emitted when the client that issued the /sync request actually received the matching LLM
+    // broadcast for its tracking id. If that message never arrives there is nothing to correlate
+    // (sync cancel, or a sync storm where the final broadcast echoed another client's tracking id),
+    // so the record is dropped instead of emitted.
+    if (!hasMessageReceived) {
+      return undefined;
     }
-    // Timeout (requireSyncResponse=false): aligned with UCF desktop, emit with whatever milestones
-    // are present - the LLM broadcast is NOT required. getLocusSyncLatency below still discards
-    // records that have no measurable segment.
+
+    // Eager mode (requireSyncResponse=true) additionally waits for the /sync response. Timeout mode
+    // (requireSyncResponse=false) emits with the LLM milestone even if the /sync response never
+    // landed. getLocusSyncLatency below still discards records that have no measurable segment.
+    if (requireSyncResponse && !hasSyncResponse) {
+      return undefined;
+    }
 
     const syncLatency = this.getLocusSyncLatency(meetingId, trackingId);
 

@@ -1420,8 +1420,8 @@ export default class Meeting extends StatelessWebexPlugin {
             // The /sync response is one of the two milestones (the other is the LLM message) that
             // can complete client.locus.sync.complete. Try to complete eagerly: if the LLM message
             // already arrived the metric is emitted now, otherwise a wait-for-both timeout is
-            // started so we still emit (best-effort) if the LLM message never arrives. Aligned with
-            // UCF's wait-for-both behaviour.
+            // started. The LLM broadcast is always required - if it never arrives the record is
+            // dropped at timeout instead of being emitted.
             if (
               saveTimestampOptions.key === 'internal.client.locus.sync.response' &&
               saveTimestampOptions.options?.trackingId
@@ -2451,7 +2451,8 @@ export default class Meeting extends StatelessWebexPlugin {
    * Attempts to complete the Locus sync latency metric eagerly - i.e. emits
    * client.locus.sync.complete immediately when BOTH the /sync response and the resulting LLM
    * message have arrived. If only one of the two is in, a wait-for-both timeout is (re)started so
-   * the metric is still emitted (best-effort) if the other never arrives. Mirrors UCF.
+   * the metric is emitted once both arrive. The LLM message is always required - the timeout can
+   * emit without the /sync response, but never without the LLM broadcast.
    * @param {string} meetingId meeting id
    * @param {string} trackingId sync tracking id used to match the pending record
    * @returns {void}
@@ -2526,8 +2527,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Starts the wait-for-both timeout. When it fires, the metric is completed in timeout mode: it is
-   * emitted with whatever milestones are present (the LLM broadcast is not required, aligned with
-   * UCF desktop). Mirrors UCF's 5s wait. Any existing timer for the same tracking id is replaced.
+   * emitted with the milestones present. The LLM broadcast is still required, so a record that
+   * never received it is dropped (not emitted). Mirrors UCF's 5s wait; any existing timer is replaced.
    * @param {string} meetingId meeting id
    * @param {string} trackingId sync tracking id used to match the pending record
    * @returns {void}
@@ -2545,8 +2546,8 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Handles the wait-for-both timeout firing: completes the metric best-effort with whatever
-   * milestones are present and emits client.locus.sync.complete if there is something to emit.
+   * Handles the wait-for-both timeout firing: completes the metric with the milestones present. The
+   * LLM broadcast is still required, so if it never arrived nothing is emitted.
    * @param {string} meetingId meeting id
    * @param {string} trackingId sync tracking id used to match the pending record
    * @returns {void}

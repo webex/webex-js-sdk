@@ -869,7 +869,7 @@ describe('internal-plugin-metrics', () => {
         });
 
         assert.deepEqual(cdl.getLocusSyncLatency('meeting-1', 'sync-tracking-1'), {
-          randomBackoffTime: 10,
+          randomBackoffTime: 0,
           hashtreePrepTime: 0,
           hashtreeResponseTime: 0,
           syncPrepTime: 10,
@@ -878,7 +878,7 @@ describe('internal-plugin-metrics', () => {
           totalTime: 50,
         });
         assert.deepEqual(cdl.getLocusSyncLatency('meeting-2', 'sync-tracking-2'), {
-          randomBackoffTime: 23,
+          randomBackoffTime: 0,
           hashtreePrepTime: 0,
           hashtreeResponseTime: 0,
           syncPrepTime: 17,
@@ -1062,27 +1062,19 @@ describe('internal-plugin-metrics', () => {
           assert.isUndefined(cdl.meetingLatencies.get('meeting-1'));
         });
 
-        it('timeout mode emits without syncMessageReceiveTime when no LLM message arrived (aligned with desktop)', () => {
+        it('does not emit when the LLM broadcast never arrived, even at timeout', () => {
           recordSyncRequest('sync-tracking-id');
           recordSyncResponse('sync-tracking-id');
 
-          assert.deepEqual(
+          // The event correlates a /sync with its matching LLM broadcast. Without the LLM message
+          // there is nothing to correlate, so the metric is not emitted even when the timeout fires.
+          assert.isUndefined(
             cdl.completeLocusSyncLatency('meeting-1', 'sync-tracking-id', {
               requireSyncResponse: false,
-            }),
-            {
-              dataSet: 'main',
-              syncLatency: {
-                randomBackoffTime: 0,
-                hashtreePrepTime: 0,
-                hashtreeResponseTime: 0,
-                syncPrepTime: 10,
-                syncResponseTime: 20,
-                totalTime: 30,
-              },
-            }
+            })
           );
-          assert.isUndefined(cdl.meetingLatencies.get('meeting-1'));
+          // the record is left in place for cleanup, not consumed by an emit
+          assert.lengthOf(cdl.meetingLatencies.get('meeting-1')!, 1);
         });
       });
     });
