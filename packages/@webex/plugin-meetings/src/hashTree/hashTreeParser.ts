@@ -118,11 +118,6 @@ const SYNC_METRICS_DATA_SETS = [
   DataSetNames.ATD_UNMUTED,
 ];
 
-interface SyncRequestResult {
-  message: HashTreeMessage | null;
-  trackingId?: string;
-}
-
 interface LeafInfo {
   type: ObjectType;
   id: number;
@@ -1449,22 +1444,20 @@ class HashTreeParser {
       let syncResponse: HashTreeMessage | null = null;
 
       if (isInitialization) {
-        const syncResult = await this.sendSyncRequestToLocus(
+        syncResponse = await this.sendSyncRequestToLocus(
           dataSet,
           {isInitialization: true},
           syncTrackingId
         );
 
-        syncResponse = syncResult.message;
         syncRequestSent = true;
       } else if (Object.keys(leavesData).length > 0) {
-        const syncResult = await this.sendSyncRequestToLocus(
+        syncResponse = await this.sendSyncRequestToLocus(
           dataSet,
           {mismatchedLeavesData: leavesData},
           syncTrackingId
         );
 
-        syncResponse = syncResult.message;
         syncRequestSent = true;
       }
 
@@ -2116,13 +2109,13 @@ class HashTreeParser {
    * @param {InternalDataSet} dataSet The data set to sync.
    * @param {Object} options Either `{ isInitialization: true }` for init syncs (uses leafCount=1 with empty leaf data) or `{ mismatchedLeavesData }` for normal syncs.
    * @param {string} [trackingId] tracking id
-   * @returns {Promise<SyncRequestResult>}
+   * @returns {Promise<HashTreeMessage | null>}
    */
   private sendSyncRequestToLocus(
     dataSet: InternalDataSet,
     options: {isInitialization: true} | {mismatchedLeavesData: Record<number, LeafDataItem[]>},
     trackingId?: string
-  ): Promise<SyncRequestResult> {
+  ): Promise<HashTreeMessage | null> {
     LoggerProxy.logger.info(
       `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Sending sync request for data set "${dataSet.name}"`
     );
@@ -2196,10 +2189,10 @@ class HashTreeParser {
             `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Got ${resp.statusCode} with empty body for sync request for data set "${dataSet.name}", data should arrive via messages`
           );
 
-          return {message: null, trackingId};
+          return null;
         }
 
-        return {message: resp.body as HashTreeMessage, trackingId};
+        return resp.body as HashTreeMessage;
       })
       .catch((error) => {
         LoggerProxy.logger.error(
