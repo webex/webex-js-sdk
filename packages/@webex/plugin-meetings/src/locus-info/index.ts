@@ -1167,7 +1167,7 @@ export default class LocusInfo extends EventsScope {
         });
 
         // handle the message with the new parser
-        parser.handleMessage(message, undefined);
+        parser.handleMessage(message);
       }
 
       return true;
@@ -1217,7 +1217,7 @@ export default class LocusInfo extends EventsScope {
 
     // the check is just for typescript, the case of no entry in hashTreeParsers is handled in handleHashTreeParserSwitch() above
     if (entry) {
-      entry.parser.handleMessage(message, undefined);
+      entry.parser.handleMessage(message);
     }
   }
 
