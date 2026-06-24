@@ -319,6 +319,10 @@ describe('TaskManager', () => {
       TASK_EVENTS.TASK_ASSIGNED,
       taskManager.getTask(taskId)
     );
+    expect(taskIncomingSpy).toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
+      taskManager.getTask(taskId)
+    );
   });
 
   it('should handle WebSocket message for AGENT_CONTACT_RESERVED and emit task:incoming for extension case', () => {
@@ -1537,11 +1541,16 @@ describe('TaskManager', () => {
     });
 
     const taskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
+    const taskManagerEmitSpy = jest.spyOn(taskManager, 'emit');
     webSocketManagerMock.emit('message', JSON.stringify(initialConsultingPayload));
     webSocketManagerMock.emit('message', JSON.stringify(consultingPayload));
     expect(taskManager.getTask(taskId).data.isConsulted).toBe(true);
     expect(taskEmitSpy).toHaveBeenCalledWith(
       TASK_EVENTS.TASK_CONSULT_ACCEPTED,
+      taskManager.getTask(taskId)
+    );
+    expect(taskManagerEmitSpy).toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
       taskManager.getTask(taskId)
     );
   });
@@ -1812,6 +1821,7 @@ describe('TaskManager', () => {
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
     taskManager.getTask(taskId).data.isConsulted = false;
     const taskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
+    const taskManagerEmitSpy = jest.spyOn(taskManager, 'emit');
     const consultingPayload = {
       data: {
         ...initalPayload.data,
@@ -1823,6 +1833,10 @@ describe('TaskManager', () => {
     expect(taskEmitSpy).toHaveBeenCalledWith(CC_EVENTS.AGENT_CONSULTING, consultingPayload.data);
     expect(taskEmitSpy).toHaveBeenCalledWith(
       TASK_EVENTS.TASK_CONSULTING,
+      taskManager.getTask(taskId)
+    );
+    expect(taskManagerEmitSpy).toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
       taskManager.getTask(taskId)
     );
   });
