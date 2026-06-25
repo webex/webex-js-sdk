@@ -824,7 +824,7 @@ describe('plugin-dss', () => {
 
       it('works correctly with multiple phone numbers, some found', async () => {
         const phoneNumbers = [PHONE_1, PHONE_2, PHONE_3];
-        
+
         const {requestId, promise} = await testMakeRequest({
           method: 'lookupByPhoneNumbers',
           resource: '/lookup/orgid/userOrgId/phonenumbers',
@@ -850,7 +850,7 @@ describe('plugin-dss', () => {
 
       it('works correctly with all phone numbers not found', async () => {
         const phoneNumbers = [PHONE_1, PHONE_2];
-        
+
         const {requestId, promise} = await testMakeRequest({
           method: 'lookupByPhoneNumbers',
           resource: '/lookup/orgid/userOrgId/phonenumbers',

@@ -869,6 +869,7 @@ describe('webex-core', () => {
         );
       });
     });
+
     describe('#isValidHost', () => {
       beforeEach(() => {
         // Setting up a mock host catalog
