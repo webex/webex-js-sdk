@@ -149,7 +149,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       const sessionData = this.connections.get(sessionId) || {};
 
       if (!sessionData.webSocketUrl) {
-        return undefined;
+        throw new Error(`LLM registration for ${sessionId} returned no websocket URL`);
       }
 
       const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();

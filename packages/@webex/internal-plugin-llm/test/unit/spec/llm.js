@@ -173,6 +173,19 @@ describe('plugin-llm', () => {
 
         buildSpy.restore();
       });
+
+      it('rejects when the registration response has no websocket URL', async () => {
+        llmService.connections.set('llm-default-session', {});
+        llmService.register = sinon.stub().resolves();
+
+        await assert.isRejected(
+          llmService.registerAndConnect(locusUrl, datachannelUrl),
+          /returned no websocket URL/
+        );
+
+        sinon.assert.notCalled(llmService.connect);
+        assert.equal(llmService.isConnected(), false);
+      });
     });
 
     describe('#register', () => {
