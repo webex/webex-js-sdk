@@ -117,185 +117,6 @@ function changeEnv() {
   changeEnvBtn.innerHTML = enableProd ? 'In Production' : 'In Integration';
 }
 
-const liveTranscriptEntries = [];
-const MAX_TRANSCRIPT_LINES = 200;
-let activeTranscriptConversationId = null;
-
-function setTranscriptTab(tabName) {
-  const isIvrTab = tabName === 'ivr';
-  ivrTranscriptTabButton?.classList.toggle('active', isIvrTab);
-  liveTranscriptTabButton?.classList.toggle('active', !isIvrTab);
-  ivrTranscriptTabButton?.setAttribute('aria-selected', String(isIvrTab));
-  liveTranscriptTabButton?.setAttribute('aria-selected', String(!isIvrTab));
-  ivrTranscriptPanel?.classList.toggle('active', isIvrTab);
-  ivrTranscriptPanel?.classList.toggle('hidden', !isIvrTab);
-  liveTranscriptPanel?.classList.toggle('active', !isIvrTab);
-  liveTranscriptPanel?.classList.toggle('hidden', isIvrTab);
-}
-
-function formatTranscriptTimestamp(value) {
-  if (value === undefined || value === null || value === '') {
-    return '00:00';
-  }
-
-  let timestamp = Number(value);
-  if (Number.isNaN(timestamp)) {
-    timestamp = Date.parse(value);
-  }
-
-  if (Number.isNaN(timestamp)) {
-    return '00:00';
-  }
-
-  if (timestamp < 1_000_000_000_000) {
-    timestamp *= 1000;
-  }
-
-  return new Date(timestamp).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function normalizeTranscriptPayload(payload) {
-  const source = payload?.data?.data || payload?.data || payload || {};
-
-  const textCandidate = source.content || source.transcript || source.text || source.message || source.action || '';
-  const transcriptText = Array.isArray(textCandidate)
-    ? textCandidate.join(' ')
-    : String(textCandidate || '').trim();
-  if (!transcriptText) {
-    return null;
-  }
-
-  const rawSpeaker = source.speaker || source.speakerType || source.participantType || source.role || source.source || '';
-  const speakerLower = String(rawSpeaker).toLowerCase();
-  const isSystem = speakerLower.includes('tombstone') || speakerLower.includes('system') || speakerLower.includes('event');
-  const isCustomer = speakerLower.includes('customer');
-
-  const speaker = isSystem ? 'Tombstone' : isCustomer ? 'Customer' : 'You';
-  const timestamp = source.timestamp || source.createdTime || source.time || source.receivedAt;
-
-  return {
-    type: isSystem ? 'system' : 'speech',
-    speaker,
-    text: transcriptText,
-    timeLabel: formatTranscriptTimestamp(timestamp),
-    conversationId: source.conversationId || source.interactionId || null,
-  };
-}
-
-function renderLiveTranscripts() {
-  if (!realtimeTranscriptsElm) {
-    return;
-  }
-
-  realtimeTranscriptsElm.innerHTML = '';
-  if (liveTranscriptEntries.length === 0) {
-    const emptyState = document.createElement('div');
-    emptyState.className = 'realtime-transcript-empty';
-    emptyState.textContent = 'No live transcript available.';
-    realtimeTranscriptsElm.appendChild(emptyState);
-    return;
-  }
-
-  liveTranscriptEntries.forEach((entry) => {
-    if (entry.type === 'system') {
-      const systemLine = document.createElement('div');
-      systemLine.className = 'realtime-transcript-system';
-      systemLine.textContent = `%${entry.speaker} - ${entry.text}%. ${entry.timeLabel}`;
-      realtimeTranscriptsElm.appendChild(systemLine);
-      return;
-    }
-
-    const row = document.createElement('div');
-    row.className = 'realtime-transcript-event';
-
-    const avatar = document.createElement('div');
-    avatar.className = `realtime-transcript-avatar ${entry.speaker === 'You' ? 'you' : ''}`.trim();
-    avatar.textContent = entry.speaker === 'Customer' ? 'CU' : 'YO';
-
-    const content = document.createElement('div');
-    const meta = document.createElement('div');
-    meta.className = 'realtime-transcript-meta';
-
-    const speaker = document.createElement('span');
-    speaker.className = 'realtime-transcript-speaker';
-    speaker.textContent = `%${entry.speaker}%`;
-
-    const time = document.createElement('button');
-    time.className = 'realtime-transcript-time';
-    time.type = 'button';
-    time.textContent = entry.timeLabel;
-
-    const text = document.createElement('p');
-    text.className = 'realtime-transcript-text';
-    text.textContent = entry.text;
-
-    meta.appendChild(speaker);
-    meta.appendChild(time);
-    content.appendChild(meta);
-    content.appendChild(text);
-    row.appendChild(avatar);
-    row.appendChild(content);
-    realtimeTranscriptsElm.appendChild(row);
-  });
-
-  realtimeTranscriptsElm.scrollTop = realtimeTranscriptsElm.scrollHeight;
-}
-
-function resetLiveTranscripts() {
-  liveTranscriptEntries.length = 0;
-  activeTranscriptConversationId = null;
-  renderLiveTranscripts();
-}
-
-function appendRealtimeTranscript(payload) {
-  const entry = normalizeTranscriptPayload(payload);
-  if (!entry) {
-    return;
-  }
-
-  if (entry.conversationId && activeTranscriptConversationId && activeTranscriptConversationId !== entry.conversationId) {
-    resetLiveTranscripts();
-  }
-
-  if (entry.conversationId) {
-    activeTranscriptConversationId = entry.conversationId;
-  }
-
-  liveTranscriptEntries.push(entry);
-  if (liveTranscriptEntries.length > MAX_TRANSCRIPT_LINES) {
-    liveTranscriptEntries.shift();
-  }
-
-  renderLiveTranscripts();
-}
-
-function renderIvrTranscript(task) {
-  if (!ivrTranscriptContentElm) {
-    return;
-  }
-
-  const ivrText = task?.data?.interaction?.callProcessingDetails?.convIvrTranscript;
-  if (typeof ivrText === 'string' && ivrText.trim()) {
-    ivrTranscriptContentElm.textContent = ivrText;
-  } else {
-    ivrTranscriptContentElm.textContent = 'No IVR transcript available.';
-  }
-}
-
-if (clearTranscriptsButton) {
-  clearTranscriptsButton.addEventListener('click', () => {
-    resetLiveTranscripts();
-  });
-}
-
-ivrTranscriptTabButton?.addEventListener('click', () => setTranscriptTab('ivr'));
-liveTranscriptTabButton?.addEventListener('click', () => setTranscriptTab('live'));
-setTranscriptTab('live');
-renderLiveTranscripts();
-
 let isMultiLoginEnabled = localStorage.getItem('isMultiLoginEnabled') === 'true';
 if (multiLoginCheckbox) {
   multiLoginCheckbox.checked = isMultiLoginEnabled;
@@ -318,6 +139,7 @@ function toggleWebRTCRegistration() {
 }
 
 const transcriptEntries = [];
+const MAX_TRANSCRIPT_LINES = 200;
 const registeredTaskListeners = new WeakSet();
 
 function formatTranscriptTime(epochMillis) {
@@ -1904,6 +1726,7 @@ function registerTaskListeners(task) {
   registeredTaskListeners.add(task);
 
   task.on('REAL_TIME_TRANSCRIPTION', (payload) => {
+    console.info('Received real-time transcription:', payload);
     appendRealtimeTranscript(payload);
   });
 
@@ -2213,7 +2036,6 @@ function registerTaskListeners(task) {
     updateCampaignPreviewButtons(cpd);
     document.getElementById('acceptPreviewContact').disabled = false;
   });
-}
 
   // Conference ended event - conference is over, but call may continue as regular call
   // This happens when agents leave and <2 agents remain, downgrading to CONNECTED state
@@ -3512,8 +3334,6 @@ function renderTaskList(taskList) {
     engageElm.innerHTML = ``;
     currentTask = undefined;
     participantListElm.style.display = 'none';
-    renderIvrTranscript(undefined);
-    resetLiveTranscripts();
     return;
   }
 
@@ -3704,6 +3524,8 @@ function updateIncomingTaskDisplay(task) {
   const callerDisplay = task.data.interaction?.callAssociatedDetails?.ani || 'Unknown';
   const mediaType = task.data.interaction?.mediaType;
   const chatAndSocial = ['chat', 'social'];
+  const isNew = isIncomingTask(task, agentId);
+  const isAutoAnswering = task.data.isAutoAnswering || false;
   
   if (mediaType === 'telephony') {
     if (agentDeviceType === 'BROWSER') {
@@ -3746,8 +3568,6 @@ function handleTaskSelect(task) {
   // Update incoming task display text and apply all button states from uiControls
   updateIncomingTaskDisplay(task);
   updateCallControlUI(task);
-  enableAnswerDeclineButtons(task);
-  renderIvrTranscript(task);
   engageElm.innerHTML = ``;
   engageElm.style.height = "100px"
   const chatAndSocial = ['chat', 'social'];
