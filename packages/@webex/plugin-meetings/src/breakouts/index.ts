@@ -399,24 +399,28 @@ const Breakouts = WebexPlugin.extend({
   /**
    * Sends the LLM-enhanced breakout join response metric when both breakout state and LLM latency
    * are available. LLM reconnects can also happen while leaving a breakout, before stale breakout
-   * fields are fully cleared, so the active-breakout check lives with the breakout state.
+   * fields are fully cleared, so the joined-session check lives with the breakout state.
+   *
+   * The joined session changes both when joining a breakout and when returning to the main
+   * session, and the client reconnects LLM in both directions. Mirroring the desktop client, we
+   * emit the join response for either transition, so the active-breakout check also accepts the
+   * main session. Non-breakout meetings never carry a breakoutMoveId, and a given move id is
+   * reported at most once, so accepting the main session here cannot leak spurious events.
    * @returns {void}
    */
   submitLLMBreakoutJoinResponseMetric() {
     const eventInfo = this.llmBreakoutJoinResponseInfo;
-    const isActiveBreakout =
-      this.isActiveBreakout ||
-      (this.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
-        [BREAKOUTS.STATUS.OPEN, BREAKOUTS.STATUS.CLOSING].includes(this.status));
 
-    if (
-      !eventInfo ||
-      !this.breakoutMoveId ||
-      eventInfo.breakoutMoveId !== this.breakoutMoveId ||
-      !this.currentBreakoutSession?.sessionId ||
-      !this.currentBreakoutSession?.groupId ||
-      !isActiveBreakout
-    ) {
+    // The breakout update and the LLM response arrive independently, so only emit once both the
+    // breakout move and its matching LLM latency are available for a session we have actually joined.
+    const hasMatchingMoveId =
+      !!this.breakoutMoveId && eventInfo?.breakoutMoveId === this.breakoutMoveId;
+    const hasSessionIdentifiers =
+      !!this.currentBreakoutSession?.sessionId && !!this.currentBreakoutSession?.groupId;
+    // isActiveBreakout already covers an open/closing breakout; isInMainSession covers return-to-main.
+    const isJoinedSession = this.isActiveBreakout || this.isInMainSession;
+
+    if (!eventInfo || !hasMatchingMoveId || !hasSessionIdentifiers || !isJoinedSession) {
       return;
     }
 
