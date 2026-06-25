@@ -812,9 +812,6 @@ export default class Meeting extends StatelessWebexPlugin {
   private mediaServerIp: string;
   private llmHealthCheckTimer?: ReturnType<typeof setTimeout>;
 
-  // Pending client.locus.sync.complete timeout timers, keyed by sync tracking id. Started when the
-  // /sync response milestone is recorded and cleared once the matching LLM message completes the
-  // metric. If the LLM message never arrives, the timer fires and the metric is emitted with the
   /**
    * @param {Object} attrs
    * @param {Object} options
