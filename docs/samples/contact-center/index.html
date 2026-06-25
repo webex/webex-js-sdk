@@ -60,6 +60,7 @@
           </p>
         </fieldset>
 
+        <button id="changeEnv" type="button" class="btn-code" onclick=changeEnv()>In Production</button><span class="text-color"> ( Click to change the environment )</span>
         <div>
           <select name="auth-type" id="auth-type" onchange="changeAuthType()">
             <option value="accessToken">Access Token</option>
@@ -342,6 +343,61 @@
               <div id="realtime-transcripts-content" class="transcript-list">
                 <div class="transcript-empty">No live transcript received.</div>
               </div>
+      <!-- Campaign Preview Section -->
+      <div id="campaignPreviewSection">
+        <fieldset>
+          <legend>Campaign Preview Contact</legend>
+          <p class="note">NOTE: Enter the Interaction ID and Campaign ID from the campaign reservation event, or they will auto-populate when a reservation event arrives.</p>
+          <div id="campaign-preview-details" style="margin-bottom: 10px;">
+            <div style="display: flex; gap: 10px; margin-bottom: 8px;">
+              <input id="campaign-interaction-id" placeholder="Interaction ID" value="" type="text" style="flex: 1;">
+              <input id="campaign-id" placeholder="Campaign ID" value="" type="text" style="flex: 1;">
+            </div>
+            <p id="campaign-preview-status" class="status-par">Waiting for campaign contact...</p>
+          </div>
+          <div id="campaign-timer-section" style="display: none; margin-bottom: 10px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #f9f9f9;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+              <span style="font-weight: bold;">Countdown:</span>
+              <span id="campaign-countdown" style="font-size: 1.2em; font-weight: bold; color: #333;">--:--</span>
+              <span style="font-weight: bold; margin-left: 12px;">Auto-Action:</span>
+              <span id="campaign-auto-action" style="font-weight: bold; color: #555;">N/A</span>
+            </div>
+            <div style="display: flex; gap: 16px;">
+              <span>Skip allowed: <strong id="campaign-skip-allowed">--</strong></span>
+              <span>Remove allowed: <strong id="campaign-remove-allowed">--</strong></span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button id="acceptPreviewContact" class="btn--green" onclick="acceptPreviewContact()">Accept</button>
+            <button id="skipPreviewContact" class="btn--blue" onclick="skipPreviewContact()">Skip</button>
+            <button id="removePreviewContact" class="btn--red" onclick="removePreviewContact()">Remove</button>
+          </div>
+        </fieldset>
+      </div>
+      <div id="realtimeTranscriptsSection">
+        <fieldset>
+          <legend>Real-time Transcripts</legend>
+          <div class="realtime-transcript-card">
+            <div class="realtime-transcript-header">
+              <h3>Conversation</h3>
+              <button id="clear-transcripts" type="button" class="btn btn-secondary">Clear</button>
+            </div>
+
+            <div class="realtime-transcript-tabs" role="tablist" aria-label="Transcript tabs">
+              <button id="ivr-transcript-tab" class="realtime-transcript-tab" role="tab" aria-selected="false" aria-controls="ivr-transcript-panel" type="button">
+                IVR transcript
+              </button>
+              <button id="live-transcript-tab" class="realtime-transcript-tab active" role="tab" aria-selected="true" aria-controls="live-transcript-panel" type="button">
+                Live transcript
+              </button>
+            </div>
+
+            <div id="ivr-transcript-panel" class="realtime-transcript-panel hidden" role="tabpanel" aria-labelledby="ivr-transcript-tab">
+              <div id="ivr-transcript-content" class="realtime-transcript-empty">No IVR transcript available.</div>
+            </div>
+
+            <div id="live-transcript-panel" class="realtime-transcript-panel active" role="tabpanel" aria-labelledby="live-transcript-tab">
+              <div id="realtime-transcripts-content" class="realtime-transcript-list"></div>
             </div>
           </div>
         </fieldset>

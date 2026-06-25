@@ -651,6 +651,10 @@ export const actions: TaskActionsMap = {
   cleanupResources: () => undefined,
 
   // Event emitters - placeholders overridden by consumers
+  emitTaskCampaignPreviewReservation: () => undefined,
+  emitTaskCampaignPreviewAcceptFailed: () => undefined,
+  emitTaskCampaignPreviewSkipFailed: () => undefined,
+  emitTaskCampaignPreviewRemoveFailed: () => undefined,
   emitTaskIncoming: () => undefined,
   emitTaskHydrate: () => undefined,
   emitTaskOfferContact: () => undefined,
