@@ -3050,7 +3050,7 @@ describe('plugin-meetings', () => {
               });
             });
 
-            it('does not emit breakout join response metric when leaving breakout session', async () => {
+            it('emits breakout join response metric with llmLatency when returning to main session', async () => {
               sinon.stub(meeting, 'isJoined').returns(true);
               sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
               sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves({
@@ -3076,7 +3076,11 @@ describe('plugin-meetings', () => {
                 .getCalls()
                 .filter((call) => call.args[0]?.name === 'client.breakout-session.join.response');
 
-              assert.lengthOf(joinResponseCalls, 0);
+              assert.lengthOf(joinResponseCalls, 1);
+              assert.deepEqual(joinResponseCalls[0].args[0].payload.llmLatency, {
+                clientLLMDatachannelResponseTime: 10,
+                clientLLMWebSocketConnectTime: 20,
+              });
             });
 
             it('clears the LLM health check timer when disconnecting LLM', async () => {
