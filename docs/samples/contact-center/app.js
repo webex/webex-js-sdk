@@ -105,6 +105,7 @@ const aiAssistantRawToggleBtn = document.querySelector('#assistant-raw-output-to
 const aiAssistantRawOutputPanelElm = document.querySelector('#assistant-raw-output-panel');
 const aiAssistantRawOutputContentElm = document.querySelector('#assistant-raw-output-content');
 const multiLoginCheckbox = document.querySelector('#multiLoginFlag');
+const disableWebRTCRegistrationCheckbox = document.querySelector('#disableWebRTCRegistrationFlag');
 deregisterBtn.style.backgroundColor = 'red';
 
 let isMultiLoginEnabled = localStorage.getItem('isMultiLoginEnabled') === 'true';
@@ -112,9 +113,20 @@ if (multiLoginCheckbox) {
   multiLoginCheckbox.checked = isMultiLoginEnabled;
 }
 
+let isWebRTCRegistrationDisabled =
+  localStorage.getItem('isWebRTCRegistrationDisabled') === 'true';
+if (disableWebRTCRegistrationCheckbox) {
+  disableWebRTCRegistrationCheckbox.checked = isWebRTCRegistrationDisabled;
+}
+
 function toggleMultiLogin() {
   isMultiLoginEnabled = multiLoginCheckbox.checked;
   localStorage.setItem('isMultiLoginEnabled', String(isMultiLoginEnabled));
+}
+
+function toggleWebRTCRegistration() {
+  isWebRTCRegistrationDisabled = disableWebRTCRegistrationCheckbox.checked;
+  localStorage.setItem('isWebRTCRegistrationDisabled', String(isWebRTCRegistrationDisabled));
 }
 
 const transcriptEntries = [];
@@ -2213,6 +2225,7 @@ function generateWebexConfig({credentials}) {
     },
     cc: {
       allowMultiLogin: isMultiLoginEnabled,
+      disableWebRTCRegistration: isWebRTCRegistrationDisabled,
     },
     credentials,
   };

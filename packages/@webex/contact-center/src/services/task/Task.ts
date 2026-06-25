@@ -278,7 +278,9 @@ export default abstract class Task extends EventEmitter implements ITask {
     const currentState = snapshot.value as TaskState;
     const context = snapshot.context as TaskContext;
 
-    return computeUIControls(currentState, context, this.data);
+    const uiControls = computeUIControls(currentState, context, this.data);
+
+    return uiControls;
   }
 
   /**
@@ -418,9 +420,11 @@ export default abstract class Task extends EventEmitter implements ITask {
       emitTaskOfferContact: this.createEmitSelfAction(TASK_EVENTS.TASK_OFFER_CONTACT, {
         updateTaskData: true,
       }),
-      emitTaskAssigned: this.createEmitSelfAction(TASK_EVENTS.TASK_ASSIGNED, {
-        updateTaskData: true,
-      }),
+      emitTaskAssigned: ({event}: TaskActionArgs) => {
+        this.updateTaskFromEvent(event);
+        this.emit(TASK_EVENTS.TASK_ASSIGNED, this);
+        this.emit(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this);
+      },
       emitTaskEnd: this.createEmitSelfAction(TASK_EVENTS.TASK_END, {updateTaskData: true}),
       emitTaskOfferConsult: this.createEmitSelfAction(TASK_EVENTS.TASK_OFFER_CONSULT, {
         updateTaskData: true,
@@ -435,6 +439,7 @@ export default abstract class Task extends EventEmitter implements ITask {
         } else {
           this.emit(TASK_EVENTS.TASK_CONSULTING, this);
         }
+        this.emit(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this);
       },
       emitTaskConsultAccepted: this.createEmitSelfAction(TASK_EVENTS.TASK_CONSULT_ACCEPTED),
       emitTaskConsultEnd: this.createEmitSelfAction(TASK_EVENTS.TASK_CONSULT_END, {
