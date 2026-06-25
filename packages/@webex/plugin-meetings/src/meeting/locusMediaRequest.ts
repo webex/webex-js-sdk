@@ -93,6 +93,7 @@ export type Config = {
   correlationId: string;
   meetingId: string;
   preferTranscoding: boolean;
+  resolveMediaSelfUrl?: () => string | undefined | Promise<string | undefined>;
 };
 
 /**
@@ -196,13 +197,13 @@ export class LocusMediaRequest extends WebexPlugin {
   /**
    * Prepares the uri and body for the media request to be sent to Locus
    */
-  private sendHttpRequest(request: Request) {
+  private async sendHttpRequest(request: Request) {
     // Resolve selfUrl lazily at send time — Locus rotates it on session
     // transitions (breakout end, move-to, lobby admit) and the value
     // captured upstream in roap/index.ts may be stale by the time we
     // leave the queue. Persist the resolved URL on the request so a
     // retry can detect a further rotation.
-    request.selfUrl = this.getCurrentSelfUrl(request.selfUrl);
+    request.selfUrl = await this.getCurrentSelfUrl(request);
     const uri = `${request.selfUrl}/${MEDIA}`;
 
     const {audioMuted, videoMuted} = this.getLatestMuteState();
@@ -271,10 +272,10 @@ export class LocusMediaRequest extends WebexPlugin {
 
         return result;
       })
-      .catch((e) => {
+      .catch(async (e) => {
         if (
           (e?.statusCode === 409 || e?.code === 409) &&
-          this.shouldRetryOnSelfUrlChange(request)
+          (await this.shouldRetryOnSelfUrlChange(request))
         ) {
           // In-flight race: selfUrl rotated after we left the queue but
           // before Locus rejected the request. Re-send — getCurrentSelfUrl
@@ -324,14 +325,26 @@ export class LocusMediaRequest extends WebexPlugin {
    * Returns the latest selfUrl for this meeting, falling back to the value
    * captured when the request was enqueued.
    */
-  private getCurrentSelfUrl(fallbackUrl: string): string {
+  private async getCurrentSelfUrl(request: Request): Promise<string> {
+    if (request.type === 'RoapMessage') {
+      const resolvedSelfUrl = await this.config.resolveMediaSelfUrl?.();
+
+      if (resolvedSelfUrl && resolvedSelfUrl !== request.selfUrl) {
+        LoggerProxy.logger.info(
+          `Meeting:LocusMediaRequest#getCurrentSelfUrl --> resolved updated selfUrl, using ${resolvedSelfUrl}`
+        );
+
+        return resolvedSelfUrl;
+      }
+    }
+
     // @ts-ignore
     const meeting = this.webex.meetings.meetingCollection.getByKey(
       'correlationId',
       this.config.correlationId
     );
 
-    if (meeting?.selfUrl && meeting.selfUrl !== fallbackUrl) {
+    if (meeting?.selfUrl && meeting.selfUrl !== request.selfUrl) {
       LoggerProxy.logger.info(
         `Meeting:LocusMediaRequest#getCurrentSelfUrl --> selfUrl updated since enqueue, using ${meeting.selfUrl}`
       );
@@ -339,7 +352,7 @@ export class LocusMediaRequest extends WebexPlugin {
       return meeting.selfUrl;
     }
 
-    return fallbackUrl;
+    return request.selfUrl;
   }
 
   /**
@@ -347,18 +360,18 @@ export class LocusMediaRequest extends WebexPlugin {
    * selfUrl. Mutates the retry counter when it returns true so the recursion
    * is bounded.
    */
-  private shouldRetryOnSelfUrlChange(request: Request): boolean {
+  private async shouldRetryOnSelfUrlChange(request: Request): Promise<boolean> {
+    if (request.type !== 'RoapMessage') {
+      return false;
+    }
+
     const retryCount = request.__selfUrlRetryCount ?? 0;
     if (retryCount >= 2) {
       return false;
     }
 
-    // @ts-ignore
-    const meeting = this.webex.meetings.meetingCollection.getByKey(
-      'correlationId',
-      this.config.correlationId
-    );
-    if (!meeting?.selfUrl || meeting.selfUrl === request.selfUrl) {
+    const latestSelfUrl = await this.getCurrentSelfUrl(request);
+    if (!latestSelfUrl || latestSelfUrl === request.selfUrl) {
       return false;
     }
 

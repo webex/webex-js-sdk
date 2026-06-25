@@ -34,6 +34,7 @@ import {
   _JOIN_,
   _INCOMING_,
   LOCUS,
+  BREAKOUTS,
   _LEFT_,
   _ID_,
   MEETING_REMOVED_REASON,
@@ -73,7 +74,7 @@ import {HashTreeObject} from '../hashTree/types';
 import {isSelf} from '../hashTree/utils';
 
 import {createLocusFromHashTreeMessage, findMeetingForHashTreeMessage} from '../locus-info';
-import {LocusDTO} from '../locus-info/types';
+import {EndMeetingReason, LocusDTO} from '../locus-info/types';
 
 let mediaLogger;
 
@@ -513,6 +514,20 @@ export default class Meetings extends WebexPlugin {
       if (meeting && !MeetingsUtil.isBreakoutLocusDTO(data.locus)) {
         meeting.locusInfo.updateMainSessionLocusCache(data.locus); // here data.locus will never be a complete locus
       }
+
+      const isBreakoutEnded =
+        MeetingsUtil.isBreakoutLocusDTO(data.locus) &&
+        data.locus?.fullState?.state === LOCUS.STATE.INACTIVE &&
+        data.locus?.fullState?.endMeetingReason === EndMeetingReason.breakoutEnded;
+
+      if (
+        meeting &&
+        isBreakoutEnded &&
+        meeting.breakouts?.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT
+      ) {
+        meeting.updateClosedBreakoutLocus(data.locus);
+      }
+
       if (!this.isNeedHandleLocusDTO(meeting, data.locus)) {
         LoggerProxy.logger.log(
           `Meetings:index#handleLocusEvent --> doesn't need to process locus event`
