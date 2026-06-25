@@ -41,7 +41,6 @@ export default class Services {
   constructor(options: {webex: WebexSDK; connectionConfig: SubscribeRequest}) {
     const {webex, connectionConfig} = options;
     this.webSocketManager = new WebSocketManager({webex});
-    // TODO: Implement reconnection logic for this websocket in upcoming PR
     this.rtdWebSocketManager = new WebSocketManager({webex});
     const aqmReq = new AqmReqs(this.webSocketManager);
     this.config = new AgentConfigService();

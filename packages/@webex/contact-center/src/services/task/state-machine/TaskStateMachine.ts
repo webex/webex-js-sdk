@@ -126,18 +126,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'emitTaskHydrate'],
             },
           ],
-          // AgentContactReserved (direct incoming/consult/transfer/outdial, or campaign preview accept)
-          [TaskEvent.TASK_INCOMING]: [
-            {
-              guard: guards.isCampaignReservationAccept,
-              target: TaskState.OFFERED,
-              actions: ['initializeTask', 'emitTaskCampaignPreviewReservation'],
-            },
-            {
-              target: TaskState.OFFERED,
-              actions: ['initializeTask', 'emitTaskIncoming'],
-            },
-          ],
+          // AgentContactReserved (applicable for direct incoming/consult/transfer/outdial)
+          [TaskEvent.TASK_INCOMING]: {
+            target: TaskState.OFFERED,
+            actions: ['initializeTask', 'emitTaskIncoming'],
+          },
 
           // AgentOutboundFailed can arrive before TASK_INCOMING due to race conditions
           [TaskEvent.OUTBOUND_FAILED]: {
@@ -215,15 +208,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
             },
           ],
-          [TaskEvent.CAMPAIGN_PREVIEW_ACCEPT_FAILED]: {
-            actions: ['updateTaskData', 'emitTaskCampaignPreviewAcceptFailed'],
-          },
-          [TaskEvent.CAMPAIGN_PREVIEW_SKIP_FAILED]: {
-            actions: ['updateTaskData', 'emitTaskCampaignPreviewSkipFailed'],
-          },
-          [TaskEvent.CAMPAIGN_PREVIEW_REMOVE_FAILED]: {
-            actions: ['updateTaskData', 'emitTaskCampaignPreviewRemoveFailed'],
-          },
           // AgentConsulting comes for received after the initial consult is accepted
           [TaskEvent.CONSULTING_ACTIVE]: [
             {
@@ -282,10 +266,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             ],
           },
           // AgentContactAssigned can be resent after consult transfers; keep context in sync
-          /* TODO: This transition needs to be checked if this is even needed as receiver will
-           * be in Consult Accept state which can be consulting state and ASSIGNED will be only
-           * for the receiver. So receuving ASSIGNED in Connected state is highly unlikely.
-           */
           [TaskEvent.ASSIGN]: {
             target: TaskState.CONNECTED,
             actions: ['updateTaskData', 'emitTaskAssigned'],
@@ -339,12 +319,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           ],
           // AgentContactEnded Event
           [TaskEvent.CONTACT_ENDED]: [
-            {
-              // Campaign preview ContactEnded is terminal cleanup; never enter wrapup.
-              guard: guards.isCampaignPreviewContactEnded,
-              target: TaskState.TERMINATED,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
-            },
             {
               // Conference still active → CONFERENCING
               guard: guards.conferenceInProgressFromEvent,
@@ -452,12 +426,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: ['updateTaskData'],
           },
           [TaskEvent.CONTACT_ENDED]: [
-            {
-              // Campaign preview ContactEnded is terminal cleanup; never enter wrapup.
-              guard: guards.isCampaignPreviewContactEnded,
-              target: TaskState.TERMINATED,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
-            },
             {
               guard: guards.conferenceInProgressFromEvent,
               target: TaskState.CONFERENCING,

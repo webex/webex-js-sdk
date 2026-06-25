@@ -58,7 +58,6 @@ export const AGENT = 'agent';
  * @ignore
  */
 export const SUBSCRIBE_API = 'v1/notification/subscribe';
-
 /**
  * API path for realtime transcription subscription.
  * @type {string}

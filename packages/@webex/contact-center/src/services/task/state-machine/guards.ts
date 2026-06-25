@@ -26,7 +26,6 @@ import {
   getIsCustomerInCall,
   getConferenceParticipantsCount,
   getIsConferenceInProgress,
-  isCampaignPreviewTask,
 } from '../TaskUtils';
 import {TaskEvent, INTERACTION_STATE, CONSULT_STATE, MEDIA_TYPE_CONSULT} from './constants';
 
@@ -297,14 +296,6 @@ export const guards = {
   },
 
   // Wrapup Guards
-  isCampaignPreviewContactEnded: ({event}: GuardParams): boolean => {
-    if (event?.type !== TaskEvent.CONTACT_ENDED) {
-      return false;
-    }
-
-    return isCampaignPreviewTask(getTaskDataFromEvent(event));
-  },
-
   shouldWrapUp: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
     if (!taskData) return false;
@@ -369,10 +360,6 @@ export const guards = {
     }
 
     return false;
-  },
-
-  isCampaignReservationAccept: ({event}: GuardParams): boolean => {
-    return event?.type === TaskEvent.TASK_INCOMING && event.isCampaignReservationAccept === true;
   },
 
   // Server State Guards

@@ -3,9 +3,7 @@ import {WebSocketManager} from '../../../../../../src/services/core/websocket/We
 import {SubscribeRequest} from '../../../../../../src/types';
 import LoggerProxy from '../../../../../../src/logger-proxy';
 import {CONNECTIVITY_CHECK_INTERVAL} from '../../../../../../src/services/core/constants';
-import { CONNECTION_SERVICE_FILE } from '../../../../../../src/constants';
-import {SUBSCRIBE_API} from '../../../../../../src/services/constants';
-
+import {CONNECTION_SERVICE_FILE} from '../../../../../../src/constants';
 
 jest.mock('../../../../../../src/services/core/websocket/WebSocketManager');
 jest.mock('../../../../../../src/logger-proxy', () => ({
@@ -111,7 +109,10 @@ describe('ConnectionService', () => {
       'event=socketConnectionRetry | Trying to reconnect to websocket',
       {module: CONNECTION_SERVICE_FILE, method: 'handleSocketClose'}
     );
-    expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({body: mockSubscribeRequest, resource: SUBSCRIBE_API});
+    expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
+      body: mockSubscribeRequest,
+      resource: 'v1/notification/subscribe',
+    });
   });
 
   describe('ConnectionService onPing', () => {

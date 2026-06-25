@@ -163,15 +163,7 @@ export const METRIC_EVENT_NAMES = {
   OUTDIAL_ANI_EP_FETCH_SUCCESS: 'Outdial ANI Entries Fetch Success',
   OUTDIAL_ANI_EP_FETCH_FAILED: 'Outdial ANI Entries Fetch Failed',
 
-  // Campaign Preview API Events
-  CAMPAIGN_PREVIEW_ACCEPT_SUCCESS: 'Campaign Preview Accept Success',
-  CAMPAIGN_PREVIEW_ACCEPT_FAILED: 'Campaign Preview Accept Failed',
-  CAMPAIGN_PREVIEW_SKIP_SUCCESS: 'Campaign Preview Skip Success',
-  CAMPAIGN_PREVIEW_SKIP_FAILED: 'Campaign Preview Skip Failed',
-  CAMPAIGN_PREVIEW_REMOVE_SUCCESS: 'Campaign Preview Remove Success',
-  CAMPAIGN_PREVIEW_REMOVE_FAILED: 'Campaign Preview Remove Failed',
-
-  // AI Assistant Transcript events
+  // AI Assistant events
   AI_ASSISTANT_SEND_EVENT_SUCCESS: 'AI Assistant Send Event Success',
   AI_ASSISTANT_SEND_EVENT_FAILED: 'AI Assistant Send Event Failed',
   AI_ASSISTANT_GET_SUGGESTED_RESPONSE_SUCCESS: 'AI Assistant Get Suggested Response Success',

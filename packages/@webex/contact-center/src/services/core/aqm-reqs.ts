@@ -20,40 +20,18 @@ export default class AqmReqs {
     this.webSocketManager.on('message', this.onMessage.bind(this));
   }
 
-  /**
-   * Creates a request function for an API call with parameters
-   * @param c - The configuration for the request
-   * @returns A function that makes the API request
-   */
   req<TRes, TErr, TReq>(c: Conf<TRes, TErr, TReq>): Res<TRes, TReq> {
     return (p: TReq, cbRes?: CbRes<TRes>) => this.makeAPIRequest(c(p), cbRes);
   }
 
-  /**
-   * Creates a request function for an API call with no parameters
-   * @param c - The configuration for the request
-   * @returns A function that makes the API request
-   */
   reqEmpty<TRes, TErr>(c: ConfEmpty<TRes, TErr>): ResEmpty<TRes> {
     return (cbRes?: CbRes<TRes>) => this.makeAPIRequest(c(), cbRes);
   }
 
-  /**
-   * Makes an API request
-   * @param c - The request configuration
-   * @param cbRes - The callback for the response
-   * @returns A promise that resolves with the response or rejects with an error
-   */
   private async makeAPIRequest<TRes, TErr>(c: Req<TRes, TErr>, cbRes?: CbRes<TRes>): Promise<TRes> {
     return this.createPromise(c, cbRes);
   }
 
-  /**
-   * Creates a promise for an API request
-   * @param c - The request configuration
-   * @param cbRes - The callback for the response
-   * @returns A promise that resolves with the response or rejects with an error
-   */
   private createPromise<TRes, TErr>(c: Req<TRes, TErr>, cbRes?: CbRes<TRes>) {
     return new Promise<TRes>((resolve, reject) => {
       const keySuccess = this.bindPrint(c.notifSuccess.bind);
@@ -176,13 +154,10 @@ export default class AqmReqs {
             if (response?.headers) {
               response.headers.Authorization = '*';
             }
-            LoggerProxy.error(
-              `Routing request timeout${keySuccess}${JSON.stringify(response)}${c.url}`,
-              {
-                module: AQM_REQS_FILE,
-                method: METHODS.CREATE_PROMISE,
-              }
-            );
+            LoggerProxy.error(`Routing request timeout${keySuccess}${response!}${c.url}`, {
+              module: AQM_REQS_FILE,
+              method: METHODS.CREATE_PROMISE,
+            });
             reject(
               new Err.Details('Service.aqm.reqs.Timeout', {
                 key: keySuccess,
@@ -196,60 +171,39 @@ export default class AqmReqs {
     });
   }
 
-  /**
-   * Converts a bind object to a string representation
-   * @param bind - The bind object to convert
-   * @returns A string representation of the bind object
-   */
-  private bindPrint(bind: any): string {
+  private bindPrint(bind: any) {
     let result = '';
-    for (const key of Object.keys(bind).filter((prop) => prop !== '__typeMap')) {
-      const value = bind[key];
-
-      if (Array.isArray(value)) {
-        result += `${key}=[${value.join(',')}],`;
-      } else if (typeof value === 'object' && value !== null) {
-        result += `${key}=(${this.bindPrint(value)}),`;
+    // eslint-disable-next-line no-restricted-syntax
+    for (const k in bind) {
+      if (Array.isArray(bind[k])) {
+        result += `${k}=[${bind[k].join(',')}],`;
+      } else if (typeof bind[k] === 'object' && bind[k] !== null) {
+        result += `${k}=(${this.bindPrint(bind[k])}),`;
       } else {
-        result += `${key}=${value},`;
+        result += `${k}=${bind[k]},`;
       }
     }
 
     return result ? result.slice(0, -1) : result;
   }
 
-  /**
-   * Checks if a message matches a bind object
-   * @param bind - The bind object to check against
-   * @param msg - The message to check
-   * @returns True if the message matches the bind object, false otherwise
-   */
-  private bindCheck(bind: any, msg: any): boolean {
-    // Handle type-dependent field matching if __typeMap is present
-    if (bind.__typeMap && typeof bind.__typeMap === 'object') {
-      if (!AqmReqs.typeMapCheck(bind.__typeMap, msg)) {
-        return false;
-      }
-    }
-
-    for (const key of Object.keys(bind).filter((prop) => prop !== '__typeMap')) {
-      const bindValue = bind[key];
-      const msgValue = msg[key];
-
-      if (Array.isArray(bindValue)) {
+  private bindCheck(bind: any, msg: any) {
+    // eslint-disable-next-line no-restricted-syntax
+    for (const k in bind) {
+      if (Array.isArray(bind[k])) {
         // Check if the message value matches any of the values in the array
-        if (!bindValue.includes(msgValue)) {
+        if (!bind[k].includes(msg[k])) {
           return false;
         }
-      } else if (typeof bindValue === 'object' && bindValue !== null) {
-        if (typeof msgValue === 'object' && msgValue !== null) {
-          if (!this.bindCheck(bindValue, msgValue)) {
+      } else if (typeof bind[k] === 'object' && bind[k] !== null) {
+        if (typeof msg[k] === 'object' && msg[k] !== null) {
+          if (!this.bindCheck(bind[k], msg[k])) {
             return false;
           }
         } else {
           return false;
         }
-      } else if (!msgValue || msgValue !== bindValue) {
+      } else if (!msg[k] || msg[k] !== bind[k]) {
         return false;
       }
     }
@@ -257,39 +211,7 @@ export default class AqmReqs {
     return true;
   }
 
-  /**
-   * Checks type-dependent field conditions defined in __typeMap.
-   * @param typeMap - The type map to check against
-   * @param msg - The message to check
-   * @returns True if the message matches the type map, false otherwise
-   * The typeMap has the shape:
-   *   { typeField: "type", conditions: { EventA: { field: value }, EventB: { field: value } } }
-   * It reads msg[typeField] to determine which condition set to apply,
-   * then verifies all fields in that condition match the message.
-   */
-  private static typeMapCheck(typeMap: any, msg: any): boolean {
-    const typeField = typeMap.typeField || 'type';
-    const msgType = msg[typeField];
-
-    if (typeMap.conditions && typeMap.conditions[msgType]) {
-      const condition = typeMap.conditions[msgType];
-      for (const field of Object.keys(condition)) {
-        if (!msg[field] || msg[field] !== condition[field]) {
-          return false;
-        }
-      }
-
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * Handles incoming messages from the WebSocket (must be a lambda fn)
-   * @param msg - The message to handle
-   * @returns
-   */
+  // must be lambda
   private readonly onMessage = (msg: any) => {
     const event = JSON.parse(msg);
     if (event.type === 'Welcome') {

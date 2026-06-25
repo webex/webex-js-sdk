@@ -19,13 +19,7 @@ import {METHODS, TRANSCRIPT_EVENT_MAP} from './constants';
 import {CC_EVENTS, WrapupData} from '../config/types';
 import {ConfigFlags, LoginOption, AIAssistantEventType, AIAssistantEventName} from '../../types';
 import LoggerProxy from '../../logger-proxy';
-import {
-  getIsConferenceInProgress,
-  isCampaignPreviewTask,
-  isCampaignPreviewReservation,
-  isSecondaryEpDnAgent,
-  shouldAutoAnswerTask,
-} from './TaskUtils';
+import {getIsConferenceInProgress, isSecondaryEpDnAgent, shouldAutoAnswerTask} from './TaskUtils';
 import TaskFactory from './TaskFactory';
 import WebRTC from './voice/WebRTC';
 import {TaskEvent, type TaskEventPayload} from './state-machine';
@@ -150,8 +144,7 @@ export default class TaskManager extends EventEmitter {
 
   private handleIncomingWebCall = (call: ICall) => {
     const currentTask = Object.values(this.taskCollection).find(
-      (task) =>
-        task.data.interaction.mediaType === 'telephony' && !isCampaignPreviewReservation(task)
+      (t) => t.data.interaction.mediaType === MEDIA_CHANNEL.TELEPHONY
     );
 
     if (currentTask) {
@@ -202,13 +195,6 @@ export default class TaskManager extends EventEmitter {
       // CC -> TaskEvent mappings (see TaskStateMachine comment for quick reference)
       case CC_EVENTS.AGENT_CONTACT_RESERVED: // AgentContactReserved -> TASK_INCOMING
         return {type: TaskEvent.TASK_INCOMING, taskData: payload};
-
-      case CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION: // -> TASK_INCOMING (campaign branch via guard)
-        return {
-          type: TaskEvent.TASK_INCOMING,
-          taskData: payload,
-          isCampaignReservationAccept: true,
-        };
 
       case CC_EVENTS.AGENT_OFFER_CONTACT: // AgentOfferContact -> TASK_OFFERED
         return {type: TaskEvent.TASK_OFFERED, taskData: payload};
@@ -296,9 +282,7 @@ export default class TaskManager extends EventEmitter {
           type: TaskEvent.CONTACT_ENDED,
           taskData: {
             ...payload,
-            wrapUpRequired: isCampaignPreviewTask(payload)
-              ? false
-              : payload.agentsPendingWrapUp?.includes(agentId || '') || false,
+            wrapUpRequired: payload.interaction?.state !== 'new',
           },
         };
 
@@ -313,15 +297,6 @@ export default class TaskManager extends EventEmitter {
 
       case CC_EVENTS.AGENT_OUTBOUND_FAILED:
         return {type: TaskEvent.OUTBOUND_FAILED, taskData: payload, reason: payload.reason};
-
-      case CC_EVENTS.CAMPAIGN_PREVIEW_ACCEPT_FAILED:
-        return {type: TaskEvent.CAMPAIGN_PREVIEW_ACCEPT_FAILED, taskData: payload};
-
-      case CC_EVENTS.CAMPAIGN_PREVIEW_SKIP_FAILED:
-        return {type: TaskEvent.CAMPAIGN_PREVIEW_SKIP_FAILED, taskData: payload};
-
-      case CC_EVENTS.CAMPAIGN_PREVIEW_REMOVE_FAILED:
-        return {type: TaskEvent.CAMPAIGN_PREVIEW_REMOVE_FAILED, taskData: payload};
 
       case CC_EVENTS.CONTACT_RECORDING_STARTED:
         return {type: TaskEvent.RECORDING_STARTED, taskData: payload};
@@ -459,20 +434,7 @@ export default class TaskManager extends EventEmitter {
     }
 
     const interactionId = message.data.interactionId;
-    const reservationInteractionId = message.data.reservationInteractionId;
-    let task = this.taskCollection[interactionId];
-
-    // When a campaign preview contact is accepted, the assigned event may arrive
-    // with a new interactionId while the task is stored under the original
-    // reservationInteractionId. Fall back to that key so the task is found.
-    if (!task && reservationInteractionId) {
-      task = this.taskCollection[reservationInteractionId];
-      if (task) {
-        // Re-key the task under the new interaction ID and remove the old entry
-        delete this.taskCollection[reservationInteractionId];
-        this.taskCollection[interactionId] = task;
-      }
-    }
+    const task = this.taskCollection[interactionId];
 
     const wasConsultedTask = Boolean(task?.data?.isConsulted);
     const computeWrapUpRequired = () => {
@@ -541,113 +503,9 @@ export default class TaskManager extends EventEmitter {
       case CC_EVENTS.CONTACT_MERGED:
         return this.handleContactMergedEvent(context);
 
-      case CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION:
-        return this.handleCampaignPreviewReservation(context);
-
-      case CC_EVENTS.CAMPAIGN_CONTACT_UPDATED:
-        return this.handleCampaignContactUpdated(context);
-
       default:
         return {task: context.task};
     }
-  }
-
-  private handleCampaignContactUpdated(context: EventContext) {
-    const {payload} = context;
-    let {task} = context;
-    // CampaignContactUpdated is a non-terminal event (e.g., next contact after skip/remove).
-    // Update the task data and emit an event so consumers can react to the updated contact.
-    // Do NOT remove the task or emit TASK_END — cleanup is handled by CONTACT_ENDED.
-    if (task) {
-      // Carry forward campaign preview fields from existing task data since the updated
-      // contact payload may not include them, and reconcileData would delete them.
-      const existingCpd = task.data?.interaction?.callProcessingDetails;
-      const updatedData: TaskData = {...payload};
-
-      if (existingCpd) {
-        const campaignFields = {
-          ...(existingCpd.campaignPreviewAutoAction && {
-            campaignPreviewAutoAction: existingCpd.campaignPreviewAutoAction,
-          }),
-          ...(existingCpd.campaignPreviewOfferTimeout && {
-            campaignPreviewOfferTimeout: existingCpd.campaignPreviewOfferTimeout,
-          }),
-          ...(existingCpd.campaignPreviewSkipDisabled && {
-            campaignPreviewSkipDisabled: existingCpd.campaignPreviewSkipDisabled,
-          }),
-          ...(existingCpd.campaignPreviewRemoveDisabled && {
-            campaignPreviewRemoveDisabled: existingCpd.campaignPreviewRemoveDisabled,
-          }),
-        };
-
-        if (!updatedData.interaction) {
-          updatedData.interaction = {} as typeof updatedData.interaction;
-        }
-
-        updatedData.interaction = {
-          ...updatedData.interaction,
-          callProcessingDetails: {
-            ...campaignFields,
-            ...(updatedData.interaction.callProcessingDetails || {}),
-          } as typeof existingCpd,
-        };
-      }
-
-      LoggerProxy.log('Campaign contact updated - carrying forward preview fields', {
-        module: TASK_MANAGER_FILE,
-        method: METHODS.REGISTER_TASK_LISTENERS,
-        interactionId: payload.interactionId,
-        data: {
-          hasCpd: !!updatedData.interaction?.callProcessingDetails,
-          autoAction: updatedData.interaction?.callProcessingDetails?.campaignPreviewAutoAction,
-          skipDisabled: updatedData.interaction?.callProcessingDetails?.campaignPreviewSkipDisabled,
-          removeDisabled:
-            updatedData.interaction?.callProcessingDetails?.campaignPreviewRemoveDisabled,
-        },
-      });
-
-      task = this.updateTaskData(task, updatedData);
-      task.emit(TASK_EVENTS.TASK_CAMPAIGN_CONTACT_UPDATED, task);
-    }
-
-    return {task};
-  }
-
-  /**
-   * Creates or updates a task for campaign preview reservation.
-   * TASK_CAMPAIGN_PREVIEW_RESERVATION is emitted by the state machine (campaign TASK_INCOMING branch).
-   */
-  private handleCampaignPreviewReservation(context: EventContext): TaskEventActions {
-    const {payload} = context;
-    let {task} = context;
-
-    LoggerProxy.log('Campaign preview reservation received', {
-      module: TASK_MANAGER_FILE,
-      method: METHODS.REGISTER_TASK_LISTENERS,
-      interactionId: payload.interactionId,
-    });
-
-    if (!task) {
-      task = TaskFactory.createTask(
-        this.contact,
-        this.webCallingService,
-        {
-          ...payload,
-          wrapUpRequired: false,
-          isConferenceInProgress: false,
-          isAutoAnswering: false,
-        },
-        this.configFlags,
-        this.wrapupData,
-        this.agentId
-      );
-      this.setupTaskListeners(task);
-      this.taskCollection[payload.interactionId] = task;
-    } else {
-      task = this.updateTaskData(task, payload);
-    }
-
-    return {task};
   }
 
   /**
@@ -766,16 +624,6 @@ export default class TaskManager extends EventEmitter {
       this.emit(TASK_EVENTS.TASK_INCOMING, t);
     });
 
-    task.on(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, (t: ITask) => {
-      LoggerProxy.log(`Campaign preview reservation event received`, {
-        module: TASK_MANAGER_FILE,
-        method: METHODS.REGISTER_TASK_LISTENERS,
-        interactionId: t.data?.interactionId,
-      });
-
-      this.emit(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, t);
-    });
-
     // Listen for TASK_HYDRATE on the task and re-emit on TaskManager
     task.on(TASK_EVENTS.TASK_HYDRATE, (t: ITask) => {
       // Task data is already updated by the task itself before emitting
@@ -883,7 +731,6 @@ export default class TaskManager extends EventEmitter {
    * @private
    */
   private handleTaskCleanup(task: ITask) {
-    // Clean up Desktop/WebRTC calling resources for browser-based telephony tasks
     if (
       this.webCallingService.loginOption === LoginOption.BROWSER &&
       task.data.interaction.mediaType === MEDIA_CHANNEL.TELEPHONY &&
@@ -895,16 +742,13 @@ export default class TaskManager extends EventEmitter {
 
     const isOutdial = task.data.interaction.outboundType === 'OUTDIAL';
     const isNew = task.data.interaction.state === 'new';
-    const needsWrapUp = task.data.agentsPendingWrapUp?.includes(this.agentId) ?? false;
+    const needsWrapUp = task.data.agentsPendingWrapUp?.length > 0;
 
     // For OUTDIAL: only remove if NOT terminated (user-declined, no wrap-up follows)
+    // If terminated, keep task for wrap-up flow (CONTACT_ENDED → AGENT_WRAPUP)
     // For non-OUTDIAL: remove if state is 'new'
     // Always remove if secondary EpDn agent
-    if (
-      (isNew && !(isOutdial && needsWrapUp)) ||
-      isSecondaryEpDnAgent(task.data.interaction) ||
-      (!needsWrapUp && isOutdial) // For outdial tasks, needs wrap-up is false and state is "WRAPUP". We need to just remove the task.
-    ) {
+    if ((isNew && !(isOutdial && needsWrapUp)) || isSecondaryEpDnAgent(task.data.interaction)) {
       this.removeTaskFromCollection(task);
     }
   }

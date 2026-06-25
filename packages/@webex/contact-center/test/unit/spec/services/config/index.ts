@@ -746,7 +746,7 @@ describe('AgentConfigService', () => {
         agentProfileId: 'profile123',
         siteId: 'site789',
         dbId: 'db123',
-        deafultDialledNumber: '1234567890',
+        defaultDialledNumber: '1234567890',
         id: 'user001',
         teamIds: ['team1', 'team2'],
       };
@@ -775,17 +775,6 @@ describe('AgentConfigService', () => {
 
       const mockDialPlanData = [];
 
-      const mockTeamData = [
-        {id: 'team1', name: 'Support Team'},
-        {id: 'team2', name: 'Sales Team'},
-      ];
-
-      const mockOrgInfo = {
-        tenantId: 'tenant123',
-        timezone: 'GMT',
-        environment: 'produs1',
-      };
-
       const mockOrgSettings = {
         campaignManagerEnabled: true,
         webRtcEnabled: true,
@@ -809,9 +798,6 @@ describe('AgentConfigService', () => {
         {id: 'aux1', type: 'WRAP_UP_CODE', name: 'Wrap Up Code 1', isDefault: true},
         {id: 'aux2', type: 'IDLE_CODE', name: 'Idle Code 1', isDefault: true},
       ];
-      const mockAIFeatureFlags = {
-        data: [{realtimeTranscripts: {enable: true}}],
-      };
 
       const parseAgentConfigsSpy = jest.spyOn(util, 'parseAgentConfigs');
       agentConfigService.getUserUsingCI = jest.fn().mockResolvedValue(mockUserConfig);
@@ -875,7 +861,7 @@ describe('AgentConfigService', () => {
         skillProfileId: 'skillProfile456',
         siteId: 'site789',
         dbId: 'db123',
-        deafultDialledNumber: '1234567890',
+        defaultDialledNumber: '1234567890',
         id: 'user001',
         teamIds: ['team1', 'team2'],
       };
@@ -909,17 +895,6 @@ describe('AgentConfigService', () => {
         {id: 'dialPlan2', name: 'Plan 2'},
       ];
 
-      const mockTeamData = [
-        {id: 'team1', name: 'Support Team'},
-        {id: 'team2', name: 'Sales Team'},
-      ];
-
-      const mockOrgInfo = {
-        tenantId: 'tenant123',
-        timezone: 'GMT',
-        environment: 'produs1',
-      };
-
       const mockOrgSettings = {
         campaignManagerEnabled: true,
         webRtcEnabled: true,
@@ -944,9 +919,6 @@ describe('AgentConfigService', () => {
         {id: 'aux1', type: 'WRAP_UP_CODE', name: 'Wrap Up Code 1'},
         {id: 'aux2', type: 'IDLE_CODE', name: 'Idle Code 1'},
       ];
-      const mockAIFeatureFlags = {
-        data: [{realtimeTranscripts: {enable: true}}],
-      };
 
       const parseAgentConfigsSpy = jest.spyOn(util, 'parseAgentConfigs');
       agentConfigService.getUserUsingCI = jest.fn().mockResolvedValue(mockUserConfig);
