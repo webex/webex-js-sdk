@@ -49,7 +49,6 @@ describe('plugin-meetings', () => {
       meeting.closeRemoteStreams = sinon.stub().returns(Promise.resolve());
       meeting.closePeerConnections = sinon.stub().returns(Promise.resolve());
       meeting.stopPeriodicLogUpload = sinon.stub();
-      meeting.clearAllLocusSyncCompleteTimers = sinon.stub();
 
       meeting.unsetRemoteStreams = sinon.stub();
       meeting.unsetPeerConnections = sinon.stub();

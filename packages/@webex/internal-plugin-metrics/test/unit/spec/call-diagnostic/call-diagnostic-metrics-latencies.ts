@@ -738,7 +738,7 @@ describe('internal-plugin-metrics', () => {
         assert.lengthOf(cdl.meetingLatencies.get('meeting-1')!, 2);
 
         // completing the second sync removes only its own record; the stale first record is
-        // left for its own wait-for-both timeout (in the orchestration layer) to discard
+        // left to be discarded by stale cleanup / meeting teardown
         const completed = cdl.completeLocusSyncLatency('meeting-1', 'sync-tracking-2');
 
         assert.isDefined(completed);
@@ -970,34 +970,7 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      describe('hasPendingLocusSyncLatencyRecord', () => {
-        beforeEach(() => {
-          cdl.saveTimestamp({
-            key: 'internal.client.locus.sync.start',
-            value: 100,
-            options: {
-              meetingId: 'meeting-1',
-              dataSetName: 'main',
-              randomBackoffTime: 0,
-              trackingId: 'sync-tracking-id',
-            },
-          });
-        });
-
-        it('returns true when a record exists for the meeting and tracking id', () => {
-          assert.isTrue(cdl.hasPendingLocusSyncLatencyRecord('meeting-1', 'sync-tracking-id'));
-        });
-
-        it('returns false when no record matches the tracking id', () => {
-          assert.isFalse(cdl.hasPendingLocusSyncLatencyRecord('meeting-1', 'other-tracking-id'));
-        });
-
-        it('returns false when trackingId is empty', () => {
-          assert.isFalse(cdl.hasPendingLocusSyncLatencyRecord('meeting-1', ''));
-        });
-      });
-
-      describe('completeLocusSyncLatency wait-for-both modes', () => {
+      describe('completeLocusSyncLatency requires both milestones', () => {
         const recordSyncRequest = (trackingId: string) => {
           cdl.saveTimestamp({
             key: 'internal.client.locus.sync.start',
@@ -1023,7 +996,7 @@ describe('internal-plugin-metrics', () => {
             options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId},
           });
 
-        it('eager mode returns undefined and keeps the record when only the /sync response is present', () => {
+        it('returns undefined and keeps the record when only the /sync response is present', () => {
           recordSyncRequest('sync-tracking-id');
           recordSyncResponse('sync-tracking-id');
 
@@ -1031,7 +1004,7 @@ describe('internal-plugin-metrics', () => {
           assert.lengthOf(cdl.meetingLatencies.get('meeting-1')!, 1);
         });
 
-        it('eager mode returns undefined and keeps the record when only the LLM message is present', () => {
+        it('returns undefined and keeps the record when only the LLM message is present', () => {
           recordSyncRequest('sync-tracking-id');
           recordMessageReceived('sync-tracking-id');
 
@@ -1039,42 +1012,44 @@ describe('internal-plugin-metrics', () => {
           assert.lengthOf(cdl.meetingLatencies.get('meeting-1')!, 1);
         });
 
-        it('timeout mode emits without syncResponseTime when only the LLM message arrived', () => {
+        it('emits and consumes the record when the /sync response arrives after the LLM message', () => {
           recordSyncRequest('sync-tracking-id');
+          // LLM message arrives first, before the HTTP response
           recordMessageReceived('sync-tracking-id');
+          assert.isUndefined(cdl.completeLocusSyncLatency('meeting-1', 'sync-tracking-id'));
 
-          assert.deepEqual(
-            cdl.completeLocusSyncLatency('meeting-1', 'sync-tracking-id', {
-              requireSyncResponse: false,
-            }),
-            {
-              dataSet: 'main',
-              syncLatency: {
-                randomBackoffTime: 0,
-                hashtreePrepTime: 0,
-                hashtreeResponseTime: 0,
-                syncPrepTime: 10,
-                syncMessageReceiveTime: 40,
-                totalTime: 50,
-              },
-            }
-          );
+          // /sync response lands second -> now both milestones are in
+          recordSyncResponse('sync-tracking-id');
+
+          assert.deepEqual(cdl.completeLocusSyncLatency('meeting-1', 'sync-tracking-id'), {
+            dataSet: 'main',
+            syncLatency: {
+              randomBackoffTime: 0,
+              hashtreePrepTime: 0,
+              hashtreeResponseTime: 0,
+              syncPrepTime: 10,
+              syncResponseTime: 20,
+              syncMessageReceiveTime: 40,
+              totalTime: 50,
+            },
+          });
           assert.isUndefined(cdl.meetingLatencies.get('meeting-1'));
         });
 
-        it('does not emit when the LLM broadcast never arrived, even at timeout', () => {
+        it('emits and consumes the record when the LLM message arrives after the /sync response', () => {
           recordSyncRequest('sync-tracking-id');
+          // HTTP response arrives first
           recordSyncResponse('sync-tracking-id');
+          assert.isUndefined(cdl.completeLocusSyncLatency('meeting-1', 'sync-tracking-id'));
 
-          // The event correlates a /sync with its matching LLM broadcast. Without the LLM message
-          // there is nothing to correlate, so the metric is not emitted even when the timeout fires.
-          assert.isUndefined(
-            cdl.completeLocusSyncLatency('meeting-1', 'sync-tracking-id', {
-              requireSyncResponse: false,
-            })
-          );
-          // the record is left in place for cleanup, not consumed by an emit
-          assert.lengthOf(cdl.meetingLatencies.get('meeting-1')!, 1);
+          // LLM message lands second
+          recordMessageReceived('sync-tracking-id');
+
+          const completed = cdl.completeLocusSyncLatency('meeting-1', 'sync-tracking-id');
+
+          assert.isDefined(completed);
+          assert.equal(completed!.dataSet, 'main');
+          assert.isUndefined(cdl.meetingLatencies.get('meeting-1'));
         });
       });
     });

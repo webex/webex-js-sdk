@@ -368,7 +368,6 @@ const MeetingUtil = {
   cleanUp: (meeting) => {
     meeting.getWebexObject().internal.device.meetingEnded();
     meeting.stopPeriodicLogUpload();
-    meeting.clearAllLocusSyncCompleteTimers();
 
     meeting.breakouts.cleanUp();
     meeting.webinar.cleanUp();
