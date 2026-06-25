@@ -1292,7 +1292,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.$config?.allowMultiLogin === false
     ) {
       throw new Error(
-        'Invalid Contact Center configuration: disableWebRTCRegistration cannot be true when allowMultiLogin is false. Enable allowMultiLogin or allow WebRTC registration so an SDK instance can receive Mobius events.'
+        'Invalid Contact Center configuration: disableWebRTCRegistration cannot be true when allowMultiLogin is false. Enable allowMultiLogin or allow WebRTC registration so an SDK instance can receive Mobius/WebRTC task events.'
       );
     }
   }
