@@ -374,6 +374,27 @@ describe('plugin-meetings', () => {
         assert.calledOnce(breakouts.clearBreakouts);
       });
 
+      it('preserves the last non-empty breakoutMoveId when a later update omits it', () => {
+        breakouts.updateBreakout({
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          sessionType: 'BREAKOUT',
+          status: 'active',
+          breakoutMoveId: 'move-id-1',
+        });
+        assert.equal(breakouts.breakoutMoveId, 'move-id-1');
+
+        // a later controls update arrives without a replaces entry -> null move id
+        breakouts.updateBreakout({
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          sessionType: 'BREAKOUT',
+          status: 'active',
+          breakoutMoveId: null,
+        });
+        assert.equal(breakouts.breakoutMoveId, 'move-id-1');
+      });
+
       it('updates the current breakout session, call onBreakoutJoinResponse when session changed', () => {
         breakouts.webex.meetings = {
           getMeetingByType: sinon.stub().returns({

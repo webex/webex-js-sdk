@@ -332,8 +332,10 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   updateBreakout(params) {
+    const breakoutMoveId = params.breakoutMoveId || this.breakoutMoveId;
+
     this.set(params);
-    this.set('breakoutMoveId', params.breakoutMoveId);
+    this.set('breakoutMoveId', breakoutMoveId);
     // These values are set manually so they are unset when they are not included in params
     this.set('groups', params.groups);
     this.set('startTime', params.startTime);
@@ -368,7 +370,7 @@ const Breakouts = WebexPlugin.extend({
         {
           currentSession: this.currentBreakoutSession,
           meeting,
-          breakoutMoveId: params.breakoutMoveId,
+          breakoutMoveId,
         },
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
