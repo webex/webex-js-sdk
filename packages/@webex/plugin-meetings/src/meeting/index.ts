@@ -4218,22 +4218,18 @@ export default class Meeting extends StatelessWebexPlugin {
     const targetMember = this.members.membersCollection.get(memberId);
 
     if (targetMember?.isInMeeting) {
-      return this.members.transferHostToMember(memberId, undefined, moderator);
+      return this.members.transferHostToMember(memberId, moderator);
     }
 
-    let breakoutLocusUrl: string | undefined;
+    const breakout = this.breakouts?.breakouts?.models?.find((bo: any) => {
+      const breakoutMember = bo.members?.membersCollection?.get(memberId);
 
-    this.breakouts?.breakouts?.forEach((breakout: any) => {
-      if (breakoutLocusUrl) {
-        return;
-      }
-      const breakoutMember = breakout.members?.membersCollection?.get(memberId);
-      if (breakoutMember?.isInMeeting) {
-        breakoutLocusUrl = breakout.breakoutRosterLocus?.url;
-      }
+      return breakoutMember?.isInMeeting;
     });
 
-    return this.members.transferHostToMember(memberId, breakoutLocusUrl, moderator);
+    const breakoutLocusUrl = breakout?.breakoutRosterLocus?.url;
+
+    return this.members.transferHostToMember(memberId, moderator, breakoutLocusUrl);
   }
 
   /**

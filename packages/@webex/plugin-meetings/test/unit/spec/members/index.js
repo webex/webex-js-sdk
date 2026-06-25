@@ -323,7 +323,7 @@ describe('plugin-meetings', () => {
         const {membersRequest} = members;
         sandbox.spy(membersRequest, 'transferHostToMember');
 
-        await members.transferHostToMember('bob', undefined, true);
+        await members.transferHostToMember('bob', true);
 
         assert.calledOnceWithExactly(
           MembersUtil.generateTransferHostMemberOptions,
@@ -347,7 +347,7 @@ describe('plugin-meetings', () => {
 
         const breakoutLocusUrl = 'https://example.com/breakout-locus';
 
-        await members.transferHostToMember('bob', breakoutLocusUrl, true);
+        await members.transferHostToMember('bob', true, breakoutLocusUrl);
 
         assert.calledOnceWithExactly(
           MembersUtil.generateTransferHostMemberOptions,

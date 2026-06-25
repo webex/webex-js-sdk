@@ -1095,14 +1095,14 @@ export default class Members extends StatelessWebexPlugin {
   /**
    * Transfers the host to another member
    * @param {String} memberId
+   * @param {boolean} [moderator] default true
    * @param {String} [breakoutLocusUrl] when provided, the request is sent against this locus url
    * (i.e. the breakout session's locus) instead of the main session's locus url
-   * @param {boolean} [moderator] default true
    * @returns {Promise}
    * @public
    * @memberof Members
    */
-  public transferHostToMember(memberId: string, breakoutLocusUrl?: string, moderator = true) {
+  public transferHostToMember(memberId: string, moderator = true, breakoutLocusUrl = '') {
     const locusUrl = breakoutLocusUrl || this.locusUrl;
 
     if (!locusUrl) {
