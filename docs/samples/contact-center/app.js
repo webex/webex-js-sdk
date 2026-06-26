@@ -26,6 +26,7 @@ const saveElm = document.querySelector('#access-token-save');
 const authStatusElm = document.querySelector('#access-token-status');
 const oauthFormElm = document.querySelector('#oauth');
 const oauthStatusElm = document.querySelector('#oauth-status');
+const disableWebRTCRegistrationElm = document.querySelector('#disable-webrtc-registration');
 const registerBtn = document.querySelector('#webexcc-register');
 const deregisterBtn = document.querySelector('#webexcc-deregister');
 const teamsDropdown = document.querySelector('#teamsDropdown');
@@ -405,7 +406,14 @@ function initOauth() {
   }
 
   webex = window.webex = Webex.init({
-    config: webexConfig
+    config: {
+      ...webexConfig,
+      cc: {
+        ...(webexConfig.cc || {}),
+        allowMultiLogin: true,
+        disableWebRTCRegistration: disableWebRTCRegistrationElm?.checked === true,
+      },
+    }
   });
 
   localStorage.setItem('OAuth', true);
@@ -1878,7 +1886,14 @@ function initWebex(e) {
   }
 
   webex = window.webex = Webex.init({
-    config: webexConfig,
+    config: {
+      ...webexConfig,
+      cc: {
+        ...(webexConfig.cc || {}),
+        allowMultiLogin: true,
+        disableWebRTCRegistration: disableWebRTCRegistrationElm?.checked === true,
+      },
+    },
     credentials: {
       access_token: tokenElm.value
     }

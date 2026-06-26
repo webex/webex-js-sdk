@@ -160,6 +160,8 @@ export interface CCPluginConfig {
   };
   /** Configuration for the calling client */
   callingClientConfig: CallingClientConfig;
+  /** Whether to skip Mobius/WebRTC registration for browser login flows */
+  disableWebRTCRegistration?: boolean;
 }
 
 /**
