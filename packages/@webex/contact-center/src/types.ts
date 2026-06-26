@@ -863,6 +863,8 @@ export type SuggestedResponseParams = {
   agentId: string;
   /** Interaction identifier for which suggestion should be generated */
   interactionId: string;
+  /** Consumer-provided client timestamp for the request in milliseconds since epoch */
+  actionTimeStamp?: number;
   /** Optional additional context that should refine the suggestion */
   context?: string;
   /** Optional language code for suggestions (for example, 'en'). Defaults to 'en'. */

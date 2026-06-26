@@ -79,6 +79,8 @@ export class ApiAIAssistant {
    * @param eventType - the type of event (e.g. 'CUSTOM_EVENT')
    * @param eventName - the name of the event (e.g. 'GET_TRANSCRIPTS')
    * @param action - action within eventDetails (e.g. 'START' or 'STOP')
+   * @param actionTimeStamp - consumer-provided client timestamp for the request
+   * @param conversationId - conversation identifier derived from the interaction
    */
   public async sendEvent(
     agentId: string,
@@ -88,7 +90,9 @@ export class ApiAIAssistant {
     action?: TranscriptAction,
     context?: string,
     languageCode?: string,
-    trackingId?: string
+    trackingId?: string,
+    actionTimeStamp?: number,
+    conversationId?: string
   ): Promise<Record<string, unknown>> {
     LoggerProxy.info('Sending event', {
       module: CC_FILE,
@@ -116,9 +120,10 @@ export class ApiAIAssistant {
           eventDetails: {
             data: {
               interactionId,
+              conversationId,
               action,
               context,
-              actionTimeStamp: String(Date.now()),
+              actionTimeStamp: String(actionTimeStamp ?? Date.now()),
               languageCode,
               trackingId,
             },
@@ -159,8 +164,9 @@ export class ApiAIAssistant {
    * @public
    */
   public async getSuggestedResponse(params: SuggestedResponseParams): Promise<any> {
-    const {agentId, interactionId, context} = params;
+    const {agentId, interactionId, actionTimeStamp, context} = params;
     const trimmedContext = context?.trim();
+    const conversationId = interactionId;
     const languageCode = params.languageCode ?? 'en';
     const trackingId = `WX_CC_SDK_${uuidv4()}`;
     const eventName = trimmedContext
@@ -184,12 +190,12 @@ export class ApiAIAssistant {
 
     try {
       if (!this.aiFeature?.suggestedResponses?.enable) {
-        const {error: detailedError} = getErrorDetails(
-          new Error('SUGGESTED_RESPONSES_NOT_ENABLED'),
-          METHODS.GET_SUGGESTED_RESPONSE,
-          CC_FILE
-        );
-        throw detailedError;
+        const featureFlagError = new Error('SUGGESTED_RESPONSES_NOT_ENABLED') as Error & {
+          details: {data: {reason: string}};
+        };
+        featureFlagError.details = {data: {reason: 'SUGGESTED_RESPONSES_NOT_ENABLED'}};
+
+        throw featureFlagError;
       }
 
       const orgId = this.webex.credentials.getOrgId();
@@ -202,7 +208,9 @@ export class ApiAIAssistant {
         undefined,
         trimmedContext,
         languageCode,
-        trackingId
+        trackingId,
+        actionTimeStamp,
+        conversationId
       );
 
       this.metricsManager.trackEvent(
