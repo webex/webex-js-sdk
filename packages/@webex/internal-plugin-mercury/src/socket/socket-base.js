@@ -315,11 +315,7 @@ export default class Socket extends EventEmitter {
    */
   onmessage(event) {
     try {
-      const rawData =
-        event.data instanceof ArrayBuffer
-          ? new TextDecoder('utf-8').decode(event.data)
-          : event.data;
-      const data = JSON.parse(rawData);
+      const data = JSON.parse(event.data);
       const sequenceNumber = parseInt(data.sequenceNumber, 10);
 
       this.logger.debug(`socket,${this._domain}: sequence number: `, sequenceNumber);

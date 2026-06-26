@@ -59,31 +59,7 @@ export class LLMPlugin extends (WebexPlugin as any) {
   ): Promise<void> {
     const channel = this.getOrCreateSession(sessionId);
 
-    // Deduplicate concurrent calls for the same session while a connection is in-flight.
-    if (channel.connectingPromise) {
-      return channel.connectingPromise;
-    }
-
-    // If the channel is already connected to the exact same datachannel URL,
-    // there is nothing to do — avoid triggering a reconnect that would cause
-    // the server to replace the existing connection with 4000 Replaced.
-    if (
-      channel.isConnected() &&
-      channel.getDatachannelUrl() === datachannelUrl &&
-      channel.getLocusUrl() === locusUrl
-    ) {
-      return Promise.resolve();
-    }
-
-    const promise = channel
-      .registerAndConnect(locusUrl, datachannelUrl, datachannelToken)
-      .finally(() => {
-        channel.connectingPromise = undefined;
-      });
-
-    channel.connectingPromise = promise;
-
-    return promise;
+    return channel.registerAndConnect(locusUrl, datachannelUrl, datachannelToken);
   }
 
   public disconnectLLM(
@@ -120,7 +96,10 @@ export class LLMPlugin extends (WebexPlugin as any) {
   }
 
   public isConnected(sessionId: string = LLM_DEFAULT_SESSION): boolean {
-    return this.getSession(sessionId)?.isConnected() ?? false;
+    const session = this.getSession(sessionId);
+    const connected = session?.isConnected() ?? false;
+
+    return connected;
   }
 
   public getBinding(sessionId: string = LLM_DEFAULT_SESSION): string | undefined {

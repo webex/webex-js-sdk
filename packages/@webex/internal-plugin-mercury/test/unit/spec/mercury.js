@@ -107,14 +107,12 @@ describe('plugin-mercury', () => {
       // Clean up Mercury connections and internal state
       if (mercury) {
         try {
-          await mercury.disconnectAll();
+          await mercury.disconnect();
         } catch (e) {
           // Ignore cleanup errors
         }
-        // Clear any remaining connection promises
-        if (mercury._connectPromises) {
-          mercury._connectPromises.clear();
-        }
+        // Clear any remaining connection promise
+        mercury._connectPromise = null;
       }
 
       // Ensure mock socket is properly closed

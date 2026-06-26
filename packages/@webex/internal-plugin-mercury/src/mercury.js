@@ -45,6 +45,14 @@ const Mercury = WebexPlugin.extend({
       default: undefined,
       type: 'number',
     },
+    backoffCall: 'object',
+    _connectPromise: 'object',
+    _shutdownSwitchoverBackoffCall: 'object',
+    _shutdownSwitchoverInProgress: {
+      default: false,
+      type: 'boolean',
+    },
+    _shutdownSwitchoverId: 'string',
   },
 
   derived: {
@@ -116,6 +124,8 @@ const Mercury = WebexPlugin.extend({
    * @returns {void}
    */
   _handleImminentShutdown() {
+    const oldSocket = this.socket;
+
     try {
       if (this._shutdownSwitchoverInProgress) {
         this.logger.info(`${this.namespace}: [shutdown] switchover already in progress`);
@@ -137,7 +147,6 @@ const Mercury = WebexPlugin.extend({
               `${this.namespace}: [shutdown] switchover connected, url: ${webSocketUrl}`
             );
 
-            const oldSocket = this.socket;
             // Atomically switch active socket reference
             this.socket = newSocket;
             this.connected = true; // remain connected throughout
@@ -185,17 +194,32 @@ const Mercury = WebexPlugin.extend({
       return Promise.resolve();
     }
 
+    // If already connecting, return the existing promise so callers can await it
+    if (this._connectPromise) {
+      this.logger.info(
+        `${this.namespace}: connection already in progress, returning existing promise`
+      );
+
+      return this._connectPromise;
+    }
+
     this.connecting = true;
 
     this.logger.info(`${this.namespace}: starting connection attempt`);
 
-    return Promise.resolve(
+    this._connectPromise = Promise.resolve(
       this.webex.internal.device.registered || this.webex.internal.device.register()
-    ).then(() => {
-      this.logger.info(`${this.namespace}: connecting`);
+    )
+      .then(() => {
+        this.logger.info(`${this.namespace}: connecting`);
 
-      return this._connectWithBackoff(webSocketUrl);
-    });
+        return this._connectWithBackoff(webSocketUrl);
+      })
+      .finally(() => {
+        this._connectPromise = null;
+      });
+
+    return this._connectPromise;
   },
 
   disconnect(options) {
@@ -219,7 +243,9 @@ const Mercury = WebexPlugin.extend({
       if (this.socket) {
         this.socket.removeAllListeners('message');
         this.once('offline', resolve);
-        resolve(this.socket.close(options || undefined));
+        this.socket.close(options || undefined);
+
+        return;
       }
 
       resolve();
@@ -314,6 +340,8 @@ const Mercury = WebexPlugin.extend({
         }
 
         webSocketUrl.query.clientTimestamp = Date.now();
+
+        delete webSocketUrl.search;
 
         return url.format(webSocketUrl);
       });
@@ -489,11 +517,6 @@ const Mercury = WebexPlugin.extend({
           options = {...options, ...this.webex.config.defaultMercuryOptions};
         }
 
-        // Allow subclasses to inject extra socket options (e.g. skipBufferState for LLM)
-        if (this._extraSocketOptions) {
-          options = {...options, ...this._extraSocketOptions};
-        }
-
         this.logger.info(`${this.namespace}: ${logPrefix} url: ${webSocketUrl}`);
 
         return socket.open(webSocketUrl, options).then(() => webSocketUrl);
@@ -610,12 +633,18 @@ const Mercury = WebexPlugin.extend({
     try {
       this.trigger(...args);
     } catch (error) {
-      this.logger.error(
-        `${this.namespace}: error occurred in event handler:`,
-        error,
-        ' with args: ',
-        args
-      );
+      try {
+        this.logger.error(
+          `${this.namespace}: error occurred in event handler:`,
+          error,
+          ' with args: ',
+          args
+        );
+      } catch (logError) {
+        // If even logging fails, just ignore to prevent cascading errors during cleanup
+        // eslint-disable-next-line no-console
+        console.error('Mercury _emit error handling failed:', logError);
+      }
     }
   },
 
@@ -648,11 +677,7 @@ const Mercury = WebexPlugin.extend({
       const reason = event.reason && event.reason.toLowerCase();
 
       let socketUrl;
-      if (isActiveSocket && this.socket) {
-        // Active socket closed - get URL from current socket reference
-        socketUrl = this.socket.url;
-      } else if (sourceSocket) {
-        // Old socket closed - get URL from the closed socket
+      if (sourceSocket) {
         socketUrl = sourceSocket.url;
       }
 

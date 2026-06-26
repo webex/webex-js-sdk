@@ -60,16 +60,8 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   /** Owning meeting ID — set by LLMPlugin to prevent cross-meeting teardown. */
   public ownerMeetingId?: string;
 
-  /** In-flight connection promise for deduplication — set/cleared by LLMPlugin. */
-  public connectingPromise?: Promise<void>;
-
-  /**
-   * The LLM data-channel does not send a mercury.buffer_state acknowledgement,
-   * so the socket should not block in _authorize() waiting for it.
-   * Mercury's _prepareAndOpenSocket merges this into the socket's open() options,
-   * and socket-base.js _authorize() skips the buffer_state wait when this is set.
-   */
-  protected _extraSocketOptions = {skipBufferState: true};
+  /** In-flight connection promise for deduplication. */
+  private connectingPromise?: Promise<void>;
 
   /**
    * Register to the websocket
@@ -100,7 +92,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   };
 
   /**
-   * Register and connect to the websocket
+   * Register and connect to the websocket.
+   * Handles deduplication: returns existing promise if connection in progress,
+   * or resolves immediately if already connected to the same URLs.
    * @param {string} locusUrl
    * @param {string} datachannelUrl
    * @param {string} datachannelToken
@@ -111,19 +105,42 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     datachannelUrl: string,
     datachannelToken?: string
   ): Promise<void> => {
+    // Deduplicate concurrent calls while a connection is in-flight
+    if (this.connectingPromise) {
+      return this.connectingPromise;
+    }
+
+    // If already connected to the exact same datachannel URL, avoid triggering
+    // a reconnect that would cause the server to replace with 4000 Replaced
+    if (
+      this.isConnected() &&
+      this.datachannelUrl === datachannelUrl &&
+      this.locusUrl === locusUrl
+    ) {
+      return Promise.resolve();
+    }
+
     this.locusUrl = locusUrl;
     this.datachannelUrl = datachannelUrl;
 
-    return this.register(datachannelUrl, datachannelToken).then(async () => {
-      const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
+    const promise = this.register(datachannelUrl, datachannelToken)
+      .then(async () => {
+        const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
 
-      const connectUrl =
-        isDataChannelTokenEnabled && this.webSocketUrl
-          ? LLMChannel.buildUrlWithAwareSubchannels(this.webSocketUrl, AWARE_DATA_CHANNEL)
-          : this.webSocketUrl;
+        const connectUrl =
+          isDataChannelTokenEnabled && this.webSocketUrl
+            ? LLMChannel.buildUrlWithAwareSubchannels(this.webSocketUrl, AWARE_DATA_CHANNEL)
+            : this.webSocketUrl;
 
-      return this.connect(connectUrl);
-    });
+        return this.connect(connectUrl);
+      })
+      .finally(() => {
+        this.connectingPromise = undefined;
+      });
+
+    this.connectingPromise = promise;
+
+    return promise;
   };
 
   /**
