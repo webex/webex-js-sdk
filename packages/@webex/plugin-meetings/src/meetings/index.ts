@@ -515,19 +515,6 @@ export default class Meetings extends WebexPlugin {
         meeting.locusInfo.updateMainSessionLocusCache(data.locus); // here data.locus will never be a complete locus
       }
 
-      const isBreakoutEnded =
-        MeetingsUtil.isBreakoutLocusDTO(data.locus) &&
-        data.locus?.fullState?.state === LOCUS.STATE.INACTIVE &&
-        data.locus?.fullState?.endMeetingReason === EndMeetingReason.breakoutEnded;
-
-      if (
-        meeting &&
-        isBreakoutEnded &&
-        meeting.breakouts?.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT
-      ) {
-        meeting.updateClosedBreakoutLocus(data.locus);
-      }
-
       if (!this.isNeedHandleLocusDTO(meeting, data.locus)) {
         LoggerProxy.logger.log(
           `Meetings:index#handleLocusEvent --> doesn't need to process locus event`

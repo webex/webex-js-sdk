@@ -810,8 +810,6 @@ export default class Meeting extends StatelessWebexPlugin {
   private logUploadIntervalIndex: number;
   private mediaServerIp: string;
   private llmHealthCheckTimer?: ReturnType<typeof setTimeout>;
-  private returnToMainRoapLocus?: LocusDTO;
-  private returnToMainSelfUrlPromise?: Promise<string>;
 
   /**
    * @param {Object} attrs
@@ -4068,108 +4066,6 @@ export default class Meeting extends StatelessWebexPlugin {
       Object.keys(object).forEach((key) => {
         this[key] = object[key];
       });
-    }
-  }
-
-  /**
-   * Marks that ROAP should resolve the main session selfUrl before sending because
-   * the current breakout locus has ended and may no longer accept /media requests.
-   * @param {LocusDTO} closedBreakoutLocus closed breakout locus
-   * @returns {void}
-   * @public
-   * @memberof Meeting
-   */
-  public updateClosedBreakoutLocus(closedBreakoutLocus: LocusDTO) {
-    this.returnToMainRoapLocus = closedBreakoutLocus;
-  }
-
-  /**
-   * Returns the selfUrl that ROAP /media should target.
-   * In the normal case this is just meeting.selfUrl. During a confirmed
-   * breakout-ended transition we first resolve the main session participant
-   * selfUrl so ROAP is not sent to the inactive breakout locus.
-   * @returns {Promise<string>}
-   * @public
-   * @memberof Meeting
-   */
-  public async resolveRoapMediaSelfUrl(): Promise<string> {
-    const closedBreakoutLocus = this.returnToMainRoapLocus;
-
-    if (!closedBreakoutLocus) {
-      if (!this.selfUrl) {
-        throw new Error('Cannot send ROAP: meeting selfUrl is not available');
-      }
-
-      return this.selfUrl;
-    }
-
-    if (!this.returnToMainSelfUrlPromise) {
-      this.returnToMainSelfUrlPromise = (async () => {
-        const cachedMainLocus = this.locusInfo?.mainSessionLocusCache;
-        let mainLocus =
-          cachedMainLocus?.self?.url &&
-          cachedMainLocus?.controls?.breakout?.sessionType !== BREAKOUTS.SESSION_TYPES.BREAKOUT &&
-          !cachedMainLocus?.self?.removed
-            ? cachedMainLocus
-            : undefined;
-
-        if (!mainLocus) {
-          const mainLocusUrl =
-            this.breakouts?.mainLocusUrl ||
-            cachedMainLocus?.url ||
-            MeetingsUtil.getThisDevice(closedBreakoutLocus, this.deviceUrl)?.replaces?.[0]
-              ?.locusUrl;
-
-          if (!mainLocusUrl) {
-            throw new Error('Cannot send ROAP: main locus URL is not available');
-          }
-
-          const response = await this.meetingRequest.getLocusDTO({url: mainLocusUrl});
-
-          mainLocus = response.body;
-        }
-
-        if (
-          !mainLocus?.self?.url ||
-          mainLocus?.controls?.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT ||
-          mainLocus?.self?.removed
-        ) {
-          throw new Error('Cannot send ROAP: main locus does not contain usable selfUrl');
-        }
-
-        const currentLocusUrl = this.locusUrl;
-
-        if (
-          currentLocusUrl &&
-          closedBreakoutLocus.url &&
-          mainLocus.url &&
-          currentLocusUrl !== closedBreakoutLocus.url &&
-          currentLocusUrl !== mainLocus.url
-        ) {
-          throw new Error(
-            'Cannot send ROAP: meeting moved to another locus during breakout return'
-          );
-        }
-
-        this.locusInfo.updateMainSessionLocusCache(mainLocus);
-        this.locusInfo.onFullLocus('return-to-main media selfUrl before ROAP', mainLocus);
-
-        if (this.selfUrl !== mainLocus.self.url) {
-          this.updateMeetingObject({selfUrl: mainLocus.self.url});
-        }
-
-        return mainLocus.self.url;
-      })();
-    }
-
-    try {
-      const selfUrl = await this.returnToMainSelfUrlPromise;
-
-      this.returnToMainRoapLocus = undefined;
-
-      return selfUrl;
-    } finally {
-      this.returnToMainSelfUrlPromise = undefined;
     }
   }
 
@@ -8663,7 +8559,7 @@ export default class Meeting extends StatelessWebexPlugin {
           regionCode: this.webex.meetings.geoHintInfo?.regionCode,
         },
         preferTranscoding: !this.isMultistream,
-        resolveMediaSelfUrl: () => this.resolveRoapMediaSelfUrl(),
+        getCurrentSelfUrl: () => this.selfUrl,
       },
       {
         // @ts-ignore
