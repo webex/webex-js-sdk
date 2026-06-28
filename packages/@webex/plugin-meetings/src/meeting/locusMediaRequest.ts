@@ -275,6 +275,22 @@ export class LocusMediaRequest extends WebexPlugin {
           e?.statusCode === 409 &&
           (await this.shouldRetryOnSelfUrlChange(request, selfUrlRetryCount))
         ) {
+          const roapRequest = request.type === 'RoapMessage' ? request : undefined;
+
+          // @ts-ignore
+          this.webex.internal.newMetrics.submitClientEvent({
+            name: 'client.locus.media.retry',
+            options: {
+              meetingId: this.config.meetingId,
+              rawError: e,
+            },
+            payload: {
+              reason: 'selfUrlChangedAfter409',
+              retryAttempt: selfUrlRetryCount + 1,
+              roapMessageType: roapRequest?.roapMessage?.messageType,
+            },
+          });
+
           // In-flight race: selfUrl rotated after we left the queue but
           // before Locus rejected the request. Re-send; getCurrentSelfUrl
           // will pick up the new URL. The returned promise replaces the
@@ -331,6 +347,14 @@ export class LocusMediaRequest extends WebexPlugin {
         `Meeting:LocusMediaRequest#getCurrentSelfUrl --> resolved updated selfUrl, using ${currentSelfUrl}`
       );
 
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.locus.selfUrlUpdated',
+        options: {
+          meetingId: this.config.meetingId,
+        },
+      });
+
       return currentSelfUrl;
     }
 
@@ -339,8 +363,7 @@ export class LocusMediaRequest extends WebexPlugin {
 
   /**
    * Decides whether a 409 warrants a retry against the meeting's latest
-   * selfUrl. Mutates the retry counter when it returns true so the recursion
-   * is bounded.
+   * selfUrl.
    */
   private async shouldRetryOnSelfUrlChange(
     request: Request,
