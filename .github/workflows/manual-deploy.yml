@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version number to deploy (e.g., 1.2.3, 1.2.3-beta.1, 1.2.3+build.5). Leave blank to auto-generate a minor bump of the current stable release.'
+        description: 'Version number to deploy (e.g., 1.2.3). Leave blank to auto-generate a minor bump of the current stable release.'
         required: false
         type: string
       dist-tag:
@@ -92,18 +92,19 @@ jobs:
             echo "No version provided; it will be auto-generated during the resolve job."
             exit 0
           fi
-          # Only accept the version shapes package-tools can round-trip. Its
-          # changelog parser (Package.parseVersionStringToObject) reads a
-          # version as `major.minor.patch` plus an optional `-<tag>.<release>`
-          # suffix; it discards build metadata (`+...`) and rewrites a bare
-          # prerelease (`-beta`) to `-beta.0`. Allowing those shapes would make
-          # the docs/changelog point at a different version than the one
-          # published to NPM and tagged in git, so restrict input to plain
-          # releases and fully-qualified `-<tag>.<release>` prereleases.
-          if ! grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+\.[0-9]+)?$' <<< "$VERSION"; then
+          # Only `latest` is exposed as a dist-tag, so accept only plain
+          # `major.minor.patch` releases. A prerelease (e.g. 1.2.3-beta.1)
+          # published under `latest` would become the default install for every
+          # consumer, so reject it here rather than let Phase 2 mis-tag it.
+          # Build metadata (`+...`) and bare prereleases (`-beta`) are also
+          # rejected because the changelog tooling
+          # (Package.parseVersionStringToObject) cannot round-trip them, which
+          # would make the docs/changelog point at a different version than the
+          # one published to NPM and tagged in git.
+          if ! grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' <<< "$VERSION"; then
             echo "Error: Version '$VERSION' is not a supported release version."
-            echo "Expected x.y.z or x.y.z-<tag>.<n> (e.g., 1.2.3 or 1.2.3-beta.1)."
-            echo "Build metadata (+...) and bare prereleases (-beta) are not supported because the changelog tooling cannot preserve them."
+            echo "Expected a plain release version x.y.z (e.g., 1.2.3)."
+            echo "Prereleases (-beta.1), build metadata (+...), and bare prereleases (-beta) are not supported: only the 'latest' dist-tag is published, and the changelog tooling cannot preserve those shapes."
             exit 1
           fi
 
