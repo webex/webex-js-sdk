@@ -971,7 +971,7 @@ function answer() {
 function renderContacts(contacts, groupIdDisplayNameMap) {
   contactsTable.innerHTML = contacts.reduce((acc, contact,i) => {
     const parentGroups = [];
-    contact.groups.forEach(groupId => parentGroups.push(groupIdDisplayNameMap[groupId]));
+    contact.groups?.forEach(groupId => parentGroups.push(groupIdDisplayNameMap[groupId]));
 
     const phoneNumbers = contact.phoneNumbers?.reduce((acc, currValue)=> acc + `<p>${currValue.type}:${currValue.value}</p>`, '');
     return acc +
