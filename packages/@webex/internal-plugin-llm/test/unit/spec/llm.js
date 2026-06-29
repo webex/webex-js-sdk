@@ -2,21 +2,20 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import Mercury from '@webex/internal-plugin-mercury';
-import LLMService from '@webex/internal-plugin-llm';
 import LLMChannel from '@webex/internal-plugin-llm/src/llm';
 
 describe('plugin-llm', () => {
   const locusUrl = 'locusUrl';
   const datachannelUrl = 'datachannelUrl';
 
-  describe('llm', () => {
-    let webex, llmService;
+  describe('LLMChannel', () => {
+    let webex, llmChannel;
 
     beforeEach(() => {
       webex = new MockWebex({
         children: {
           mercury: Mercury,
-          llm: LLMService,
+          llm: LLMChannel,
         },
       });
 
@@ -25,199 +24,135 @@ describe('plugin-llm', () => {
         getFeature: sinon.stub().resolves(true),
       };
 
-      llmService = webex.internal.llm;
-      llmService.webSocketUrl = 'wss://example.com/socket';
-      llmService.disconnect = sinon.stub().resolves(true);
-      llmService.request = sinon.stub().resolves({
+      llmChannel = webex.internal.llm;
+      llmChannel.disconnect = sinon.stub().resolves();
+      llmChannel.request = sinon.stub().resolves({
         headers: {},
         body: {
           binding: 'binding',
           webSocketUrl: 'wss://example.com/socket',
         },
       });
-      const sockets = new Map();
-
-      llmService.connect = sinon.stub().callsFake((url, sessionId) => {
-        sockets.set(sessionId, {connected: true});
-        llmService.getSocket = sinon.stub().callsFake((sid) => sockets.get(sid));
+      llmChannel.connect = sinon.stub().callsFake(() => {
+        llmChannel.connected = true;
       });
-            llmService.connections.set('llm-default-session',{
-            webSocketUrl: 'wss://example.com/socket',
-        })
     });
 
     afterEach(() => sinon.restore());
 
     describe('#registerAndConnect', () => {
-      it('registers connection', async () => {
-        llmService.register = sinon.stub().callsFake(async () => {
-          llmService.binding = 'binding';
-          llmService.webSocketUrl = 'wss://example.com/socket';
-          return {
-            body: {
-              binding: 'binding',
-              webSocketUrl: 'wss://example.com/socket',
-            },
-          };
-        });
-
-        assert.equal(llmService.isConnected('llm-default-session'), false);
-        await llmService.registerAndConnect(locusUrl, datachannelUrl,undefined);
-        assert.equal(llmService.isConnected('llm-default-session'), true);
-      });
-
-      it("doesn't register connection for invalid input", async () => {
-        llmService.register = sinon.stub().callsFake(async () => {
-          llmService.binding = 'binding';
-          llmService.webSocketUrl = 'wss://example.com/socket';
-          return {
-            body: {
-              binding: 'binding',
-              webSocketUrl: 'wss://example.com/socket',
-            },
-          };
-        });
-
-        await llmService.registerAndConnect();
-        assert.equal(llmService.isConnected(), false);
-      });
-
-      it('registers connection with token', async () => {
-        llmService.register = sinon.stub().callsFake(async () => {
-          llmService.binding = 'binding';
-          llmService.webSocketUrl = 'wss://example.com/socket';
-          return {
-            body: {
-              binding: 'binding',
-              webSocketUrl: 'wss://example.com/socket',
-            },
-          };
-        });
-
-        assert.equal(llmService.isConnected(), false);
-
-        await llmService.registerAndConnect(locusUrl, datachannelUrl,'abc123');
-
-        sinon.assert.calledOnceWithExactly(
-          llmService.register,
-          datachannelUrl,
-          'abc123',
-          'llm-default-session'
-        );
-
-        assert.equal(llmService.isConnected(), true);
+      it('registers and connects', async () => {
+        assert.equal(llmChannel.isConnected(), false);
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+        assert.equal(llmChannel.isConnected(), true);
+        assert.equal(llmChannel.getLocusUrl(), locusUrl);
+        assert.equal(llmChannel.getDatachannelUrl(), datachannelUrl);
       });
 
       it('connects with subscriptionAwareSubchannels when token enabled', async () => {
-        llmService.isDataChannelTokenEnabled = sinon.stub().returns(true);
+        llmChannel.isDataChannelTokenEnabled = sinon.stub().resolves(true);
 
-        llmService.register = sinon.stub().callsFake(async () => {
-          llmService.binding = 'binding';
-          llmService.webSocketUrl = 'wss://example.com/socket';
-          return {
-            body: {
-              binding: 'binding',
-              webSocketUrl: 'wss://example.com/socket',
-            },
-          };
-        });
+        const buildSpy = sinon.spy(LLMChannel, 'buildUrlWithAwareSubchannels');
 
-        const buildSpy = sinon.spy(LLMService, 'buildUrlWithAwareSubchannels');
-
-        await llmService.registerAndConnect(locusUrl, datachannelUrl,'abc123');
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl, 'abc123');
 
         sinon.assert.calledOnce(buildSpy);
-        sinon.assert.calledOnce(llmService.connect);
+        sinon.assert.calledOnce(llmChannel.connect);
 
-        const calledUrl = llmService.connect.getCall(0).args[0];
+        const calledUrl = llmChannel.connect.getCall(0).args[0];
         assert.include(calledUrl, 'subscriptionAwareSubchannels=');
       });
 
       it('connects without subscriptionAwareSubchannels when token disabled', async () => {
-        llmService.isDataChannelTokenEnabled = sinon.stub().returns(false);
+        llmChannel.isDataChannelTokenEnabled = sinon.stub().resolves(false);
 
-        llmService.register = sinon.stub().callsFake(async () => {
-          llmService.binding = 'binding';
-          llmService.webSocketUrl = 'wss://example.com/socket';
-          return {
-            body: {
-              binding: 'binding',
-              webSocketUrl: 'wss://example.com/socket',
-            },
-          };
-        });
+        const buildSpy = sinon.spy(LLMChannel, 'buildUrlWithAwareSubchannels');
 
-        const buildSpy = sinon.spy(LLMService, 'buildUrlWithAwareSubchannels');
-
-        await llmService.registerAndConnect(locusUrl, datachannelUrl);
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
 
         sinon.assert.notCalled(buildSpy);
-        sinon.assert.calledOnce(llmService.connect);
+        sinon.assert.calledOnce(llmChannel.connect);
 
-        const calledUrl = llmService.connect.getCall(0).args[0];
-        assert.equal(calledUrl, llmService.webSocketUrl);
+        const calledUrl = llmChannel.connect.getCall(0).args[0];
+        assert.equal(calledUrl, 'wss://example.com/socket');
       });
 
-      it('connects without subscriptionAwareSubchannels when token enabled BUT token missing', async () => {
-        llmService.isDataChannelTokenEnabled = sinon.stub().resolves(true);
+      it('connects with subscriptionAwareSubchannels when token enabled but token missing', async () => {
+        llmChannel.isDataChannelTokenEnabled = sinon.stub().resolves(true);
 
-        const buildSpy = sinon.spy(LLMService, 'buildUrlWithAwareSubchannels');
+        const buildSpy = sinon.spy(LLMChannel, 'buildUrlWithAwareSubchannels');
 
-        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined);
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl, undefined);
 
         sinon.assert.calledOnce(buildSpy);
-        sinon.assert.calledOnce(llmService.connect);
+        sinon.assert.calledOnce(llmChannel.connect);
 
-        const calledUrl = llmService.connect.getCall(0).args[0];
+        const calledUrl = llmChannel.connect.getCall(0).args[0];
         assert.include(calledUrl, 'subscriptionAwareSubchannels=');
 
         buildSpy.restore();
       });
-    });
 
-    describe('#register', () => {
-      beforeEach(() => {
-        llmService.isDataChannelTokenEnabled = sinon.stub();
+      it('deduplicates concurrent calls', async () => {
+        const promise1 = llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+        const promise2 = llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+
+        assert.strictEqual(promise1, promise2);
+        await promise1;
       });
 
-      it('registers connection with token header', async () => {
-        llmService.isDataChannelTokenEnabled.resolves(true);
-        await llmService.register(datachannelUrl, 'abc123');
+      it('avoids reconnect if already connected to same URLs', async () => {
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+        sinon.assert.calledOnce(llmChannel.connect);
+
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+        sinon.assert.calledOnce(llmChannel.connect);
+      });
+    });
+
+    describe('#register (via registerAndConnect)', () => {
+      it('sends request with token header when token enabled and provided', async () => {
+        llmChannel.isDataChannelTokenEnabled = sinon.stub().resolves(true);
+
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl, 'abc123');
 
         sinon.assert.calledOnceWithExactly(
-          llmService.request,
+          llmChannel.request,
           sinon.match({
             method: 'POST',
-            url: `${datachannelUrl}`,
+            url: datachannelUrl,
             body: {deviceUrl: webex.internal.device.url},
             headers: {'Data-Channel-Auth-Token': 'abc123'},
           })
         );
       });
 
-      it('registers connection without token header when none provided', async () => {
-        await llmService.register(datachannelUrl);
+      it('sends request without token header when none provided', async () => {
+        llmChannel.isDataChannelTokenEnabled = sinon.stub().resolves(true);
+
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
 
         sinon.assert.calledOnceWithExactly(
-          llmService.request,
+          llmChannel.request,
           sinon.match({
             method: 'POST',
-            url: `${datachannelUrl}`,
+            url: datachannelUrl,
             body: {deviceUrl: webex.internal.device.url},
             headers: {},
           })
         );
       });
 
-      it('registers connection without token header when toggle disabled', async () => {
-        llmService.isDataChannelTokenEnabled.resolves(false);
+      it('sends request without token header when toggle disabled', async () => {
+        llmChannel.isDataChannelTokenEnabled = sinon.stub().resolves(false);
 
-        await llmService.register(datachannelUrl,'abc123');
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl, 'abc123');
+
         sinon.assert.calledOnceWithExactly(
-          llmService.request,
+          llmChannel.request,
           sinon.match({
             method: 'POST',
-            url: `${datachannelUrl}`,
+            url: datachannelUrl,
             body: {deviceUrl: webex.internal.device.url},
             headers: {},
           })
@@ -227,189 +162,98 @@ describe('plugin-llm', () => {
 
     describe('#getLocusUrl', () => {
       it('gets LocusUrl', async () => {
-        llmService.register = sinon.stub().callsFake(async () => {
-          llmService.binding = 'binding';
-          llmService.webSocketUrl = 'wss://example.com/socket';
-          return {
-            body: {
-              binding: 'binding',
-              webSocketUrl: 'wss://example.com/socket',
-            },
-          };
-        });
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+        assert.equal(llmChannel.getLocusUrl(), locusUrl);
+      });
 
-        await llmService.registerAndConnect(locusUrl, datachannelUrl);
-        assert.equal(llmService.getLocusUrl(), locusUrl);
+      it('returns undefined before connection', () => {
+        assert.equal(llmChannel.getLocusUrl(), undefined);
       });
     });
 
     describe('#getDatachannelUrl', () => {
       it('gets dataChannel Url', async () => {
-        llmService.register = sinon.stub().callsFake(async () => {
-          llmService.binding = 'binding';
-          llmService.webSocketUrl = 'wss://example.com/socket';
-          return {
-            body: {
-              binding: 'binding',
-              webSocketUrl: 'wss://example.com/socket',
-            },
-          };
-        });
-        await llmService.registerAndConnect(locusUrl, datachannelUrl);
-        assert.equal(llmService.getDatachannelUrl(), datachannelUrl);
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+        assert.equal(llmChannel.getDatachannelUrl(), datachannelUrl);
+      });
+
+      it('returns undefined before connection', () => {
+        assert.equal(llmChannel.getDatachannelUrl(), undefined);
       });
     });
 
-    describe('#disconnect', () => {
-      it('disconnects mercury', async () => {
-        await llmService.disconnect();
-        sinon.assert.calledOnce(llmService.disconnect);
-        assert.equal(llmService.isConnected(), false);
-        assert.equal(llmService.getLocusUrl(), undefined);
-        assert.equal(llmService.getDatachannelUrl(), undefined);
-        assert.equal(llmService.getBinding(), undefined);
+    describe('#getBinding', () => {
+      it('gets binding after connection', async () => {
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+        assert.equal(llmChannel.getBinding(), 'binding');
+      });
+
+      it('returns undefined before connection', () => {
+        assert.equal(llmChannel.getBinding(), undefined);
       });
     });
 
     describe('#disconnectLLM', () => {
-      let instance;
+      it('calls disconnect and clears all connection state', async () => {
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+        llmChannel.setDatachannelToken('token123');
+        llmChannel.ownerMeetingId = 'meeting-1';
 
-      beforeEach(() => {
-        instance = {
-          disconnect: jest.fn(() => Promise.resolve()),
-          connections: new Map([
-            ['llm-default-session', { foo: 'bar', datachannelToken: 'session-token' }],
-          ]),
+        assert.equal(llmChannel.isConnected(), true);
+        assert.equal(llmChannel.getLocusUrl(), locusUrl);
+        assert.equal(llmChannel.getDatachannelUrl(), datachannelUrl);
+        assert.equal(llmChannel.getBinding(), 'binding');
+        assert.equal(llmChannel.getDatachannelToken(), 'token123');
+        assert.equal(llmChannel.ownerMeetingId, 'meeting-1');
 
-          disconnectLLM: function (
-            options,
-            sessionId = 'llm-default-session',
-            ownerMeetingId = 'meeting-1'
-          ) {
-            if (!ownerMeetingId) {
-              return Promise.reject(new Error('ownerMeetingId is required'));
-            }
+        await llmChannel.disconnectLLM({code: 1000, reason: 'test'});
 
-            return this.disconnect(options, sessionId).then(() => {
-              this.connections.delete(sessionId);
-            });
-          },
-        };
+        sinon.assert.calledOnceWithExactly(llmChannel.disconnect, {code: 1000, reason: 'test'});
+        assert.equal(llmChannel.getLocusUrl(), undefined);
+        assert.equal(llmChannel.getDatachannelUrl(), undefined);
+        assert.equal(llmChannel.getBinding(), undefined);
+        assert.equal(llmChannel.getDatachannelToken(), undefined);
+        assert.equal(llmChannel.ownerMeetingId, undefined);
       });
 
-      it('calls disconnect and clears session connection (including token stored in session)', async () => {
-        await instance.disconnectLLM({ code: 3000, reason: 'bye' }, 'llm-default-session', 'meeting-1');
+      it('works without options', async () => {
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
 
-        expect(instance.disconnect).toHaveBeenCalledWith(
-          { code: 3000, reason: 'bye' },
-          'llm-default-session'
-        );
+        await llmChannel.disconnectLLM();
 
-        expect(instance.connections.has('llm-default-session')).toBe(false);
-      });
-
-      it('disconnectLLM supports legacy call with options only', async () => {
-        llmService.disconnect = sinon.stub().resolves(true);
-
-        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 'llm-default-session');
-
-        const options = {code: 1000, reason: 'legacy'};
-        const disconnected = await llmService.disconnectLLM(options);
-
-        assert.equal(disconnected, true);
-        sinon.assert.calledOnceWithExactly(llmService.disconnect, options, 'llm-default-session');
-        assert.equal(llmService.getAllConnections().has('llm-default-session'), false);
-      });
-
-      it('disconnectLLM supports legacy call with options and sessionId', async () => {
-        llmService.disconnect = sinon.stub().resolves(true);
-
-        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
-
-        const options = {code: 1000, reason: 'legacy'};
-        const disconnected = await llmService.disconnectLLM(options, 's1');
-
-        assert.equal(disconnected, true);
-        sinon.assert.calledOnceWithExactly(llmService.disconnect, options, 's1');
-        assert.equal(llmService.getAllConnections().has('s1'), false);
-      });
-
-      it('disconnectLLM treats null sessionId as default session', async () => {
-        llmService.disconnect = sinon.stub().resolves(true);
-
-        await llmService.registerAndConnect(
-          locusUrl,
-          datachannelUrl,
-          undefined,
-          'llm-default-session'
-        );
-
-        const options = {code: 1000, reason: 'legacy-null-session'};
-        const disconnected = await llmService.disconnectLLM(options, null);
-
-        assert.equal(disconnected, true);
-        sinon.assert.calledOnceWithExactly(llmService.disconnect, options, 'llm-default-session');
-        assert.equal(llmService.getAllConnections().has('llm-default-session'), false);
+        sinon.assert.calledOnceWithExactly(llmChannel.disconnect, undefined);
       });
 
       it('propagates disconnect errors', async () => {
-        instance.disconnect.mockRejectedValue(new Error('disconnect failed'));
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+        llmChannel.disconnect = sinon.stub().rejects(new Error('disconnect failed'));
 
-        await expect(
-          instance.disconnectLLM({ code: 3000, reason: 'bye' }, 'llm-default-session', 'meeting-1')
-        ).rejects.toThrow('disconnect failed');
+        try {
+          await llmChannel.disconnectLLM({code: 1000, reason: 'test'});
+          assert.fail('should have thrown');
+        } catch (error) {
+          assert.equal(error.message, 'disconnect failed');
+        }
       });
     });
 
     describe('#setRefreshHandler', () => {
-      beforeEach(() => {
-        llmService.setRefreshHandler = LLMChannel.prototype.setRefreshHandler.bind(llmService);
-        llmService.refreshDataChannelToken = LLMChannel.prototype.refreshDataChannelToken.bind(llmService);
-      });
+      it('stores the provided handler', async () => {
+        const handler = sinon.stub().resolves({body: {datachannelToken: 'newToken'}});
+        llmChannel.setRefreshHandler(handler);
 
-      it('defaults to llm-default-session when sessionId is omitted', () => {
-        const handler = sinon.stub().resolves({ body: { datachannelToken: 'legacyToken' } });
+        const result = await llmChannel.refreshDataChannelToken();
 
-        llmService.setRefreshHandler(handler);
-
-        return llmService.refreshDataChannelToken().then((result) => {
-          assert.equal(result.body.datachannelToken, 'legacyToken');
-          sinon.assert.calledOnce(handler);
-        });
-      });
-
-      it('stores the provided handler', () => {
-        const handler = sinon.stub().resolves({ body: { datachannelToken: 'newToken' } });
-        llmService.setRefreshHandler(handler, 'llm-default-session');
-
-        return llmService.refreshDataChannelToken().then((result) => {
-          assert.equal(result.body.datachannelToken, 'newToken');
-          sinon.assert.calledOnce(handler);
-        });
-      });
-
-      it('stores handlers per session id', () => {
-        const handlerS1 = sinon.stub().resolves({ body: { datachannelToken: 'token-s1' } });
-        const handlerS2 = sinon.stub().resolves({ body: { datachannelToken: 'token-s2' } });
-
-        llmService.setRefreshHandler(handlerS1, 's1');
-        llmService.setRefreshHandler(handlerS2, 's2');
-
-        return Promise.all([
-          llmService.refreshDataChannelToken('s1'),
-          llmService.refreshDataChannelToken('s2'),
-        ]).then(([resultS1, resultS2]) => {
-          assert.equal(resultS1.body.datachannelToken, 'token-s1');
-          assert.equal(resultS2.body.datachannelToken, 'token-s2');
-        });
+        assert.equal(result.body.datachannelToken, 'newToken');
+        sinon.assert.calledOnce(handler);
       });
     });
 
     describe('#isDataChannelTokenEnabled', () => {
-      it('works correctly', async () => {
-        webex.internal.feature.getFeature.returns(true);
+      it('returns value from feature toggle', async () => {
+        webex.internal.feature.getFeature.resolves(true);
 
-        const result = await llmService.isDataChannelTokenEnabled();
+        const result = await llmChannel.isDataChannelTokenEnabled();
 
         sinon.assert.calledOnceWithExactly(
           webex.internal.feature.getFeature,
@@ -422,44 +266,24 @@ describe('plugin-llm', () => {
     });
 
     describe('#refreshDataChannelToken', () => {
-      beforeEach(() => {
-        llmService.setRefreshHandler = LLMChannel.prototype.setRefreshHandler.bind(llmService);
-        llmService.refreshDataChannelToken = LLMChannel.prototype.refreshDataChannelToken.bind(llmService);
-      });
-
       it('returns null and logs warn if no handler is set', async () => {
-        const warnSpy = llmService.logger.warn
+        const warnSpy = llmChannel.logger.warn;
 
-        const result = await llmService.refreshDataChannelToken();
+        const result = await llmChannel.refreshDataChannelToken();
 
         assert.equal(result, null);
 
         sinon.assert.calledOnce(warnSpy);
-        sinon.assert.calledWithMatch(
-          warnSpy,
-          sinon.match('LLM refreshHandler is not set for session')
-        );
+        sinon.assert.calledWithMatch(warnSpy, sinon.match('LLM refreshHandler is not set'));
       });
 
       it('returns token when handler resolves', async () => {
-        const mockToken = { body: { datachannelToken: 'newToken', isPracticeSession: false } };
+        const mockToken = {body: {datachannelToken: 'newToken', datachannelTokenType: 'default'}};
         const handler = sinon.stub().resolves(mockToken);
 
-        llmService.setRefreshHandler(handler, 'llm-default-session');
+        llmChannel.setRefreshHandler(handler);
 
-        const token = await llmService.refreshDataChannelToken();
-
-        assert.equal(token, mockToken);
-        sinon.assert.calledOnce(handler);
-      });
-
-      it('uses the handler for the provided session id', async () => {
-        const mockToken = { body: { datachannelToken: 'session-token', isPracticeSession: true } };
-        const handler = sinon.stub().resolves(mockToken);
-
-        llmService.setRefreshHandler(handler, 's2');
-
-        const token = await llmService.refreshDataChannelToken('s2');
+        const token = await llmChannel.refreshDataChannelToken();
 
         assert.equal(token, mockToken);
         sinon.assert.calledOnce(handler);
@@ -467,247 +291,134 @@ describe('plugin-llm', () => {
 
       it('logs warn and returns null when handler rejects', async () => {
         const handler = sinon.stub().rejects(new Error('throw error'));
-        llmService.setRefreshHandler(handler, 'llm-default-session');
+        llmChannel.setRefreshHandler(handler);
 
-        const warnSpy = llmService.logger.warn
+        const warnSpy = llmChannel.logger.warn;
 
-        const result = await llmService.refreshDataChannelToken();
+        const result = await llmChannel.refreshDataChannelToken();
 
         assert.equal(result, null);
 
         sinon.assert.calledOnce(warnSpy);
-        sinon.assert.calledWithMatch(
-          warnSpy,
-          sinon.match('DataChannel token refresh failed'),
-        );
+        sinon.assert.calledWithMatch(warnSpy, sinon.match('DataChannel token refresh failed'));
       });
     });
 
-    describe('#getDatachannelToken / #setDatachannelToken', () => {
+    describe('#getDatachannelToken / #setDatachannelToken / #clearDatachannelToken', () => {
       it('sets and gets datachannel token', () => {
-        llmService.setDatachannelToken('abc123','llm-default-session');
-        assert.equal(llmService.getDatachannelToken('llm-default-session'), 'abc123');
-        llmService.setDatachannelToken('123abc','llm-practice-session');
-        assert.equal(llmService.getDatachannelToken('llm-practice-session'), '123abc');
+        llmChannel.setDatachannelToken('abc123');
+        assert.equal(llmChannel.getDatachannelToken(), 'abc123');
       });
 
-      it('supports arbitrary session id token keys', () => {
-        llmService.setDatachannelToken('token-s1', 'session-custom-1');
-
-        assert.equal(llmService.getDatachannelToken('session-custom-1'), 'token-s1');
+      it('returns undefined when no token is set', () => {
+        assert.equal(llmChannel.getDatachannelToken(), undefined);
       });
 
-    });
+      it('clears datachannel token', () => {
+        llmChannel.setDatachannelToken('abc123');
+        assert.equal(llmChannel.getDatachannelToken(), 'abc123');
 
-    describe('#setOwnerMeetingId / #getOwnerMeetingId', () => {
-      it('stores and returns the owner meeting id for the default session', () => {
-        // beforeEach seeds connections with the default session entry
-        llmService.setOwnerMeetingId('meeting-1');
-
-        assert.equal(llmService.getOwnerMeetingId(), 'meeting-1');
-      });
-
-      it('returns undefined when no owner has been set yet', () => {
-        assert.equal(llmService.getOwnerMeetingId(), undefined);
-      });
-
-      it('is a no-op when there is no session data for the given sessionId', () => {
-        // Default session exists (seeded in beforeEach), but an arbitrary
-        // session id does not — setOwnerMeetingId must not create entries.
-        llmService.setOwnerMeetingId('meeting-1', 'unknown-session');
-
-        assert.equal(llmService.getOwnerMeetingId('unknown-session'), undefined);
-      });
-
-      it('allows clearing ownership by passing undefined', () => {
-        llmService.setOwnerMeetingId('meeting-1');
-        assert.equal(llmService.getOwnerMeetingId(), 'meeting-1');
-
-        llmService.setOwnerMeetingId(undefined);
-
-        assert.equal(llmService.getOwnerMeetingId(), undefined);
-      });
-
-      it('tracks ownership per session id', () => {
-        llmService.connections.set('session-A', {webSocketUrl: 'wss://a'});
-        llmService.connections.set('session-B', {webSocketUrl: 'wss://b'});
-
-        llmService.setOwnerMeetingId('meeting-A', 'session-A');
-        llmService.setOwnerMeetingId('meeting-B', 'session-B');
-
-        assert.equal(llmService.getOwnerMeetingId('session-A'), 'meeting-A');
-        assert.equal(llmService.getOwnerMeetingId('session-B'), 'meeting-B');
-      });
-
-      it('clears ownerMeetingId naturally when disconnectLLM deletes the session entry', async () => {
-        llmService.register = sinon.stub().callsFake(async () => ({
-          body: {binding: 'binding', webSocketUrl: 'wss://example.com/socket'},
-        }));
-
-        await llmService.registerAndConnect(locusUrl, datachannelUrl);
-        llmService.setOwnerMeetingId('meeting-1');
-        assert.equal(llmService.getOwnerMeetingId(), 'meeting-1');
-
-        await llmService.disconnectLLM(
-          {code: 3050, reason: 'done (permanent)'},
-          'llm-default-session',
-          'meeting-1'
-        );
-
-        // Session entry was deleted, so ownerMeetingId is gone.
-        assert.equal(llmService.getOwnerMeetingId(), undefined);
+        llmChannel.clearDatachannelToken();
+        assert.equal(llmChannel.getDatachannelToken(), undefined);
       });
     });
 
-    describe('multi-connection logic', () => {
-      const locusUrl2 = 'locusUrl2';
-      const datachannelUrl2 = 'datachannelUrl2';
+    describe('#ownerMeetingId', () => {
+      it('stores and returns the owner meeting id', () => {
+        llmChannel.ownerMeetingId = 'meeting-1';
 
-      it('tracks multiple sessions independently', async () => {
-        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
-        await llmService.registerAndConnect(locusUrl2, datachannelUrl2, undefined, 's2');
-
-        assert.equal(llmService.isConnected('s1'), true);
-        assert.equal(llmService.isConnected('s2'), true);
-        assert.equal(llmService.getLocusUrl('s1'), locusUrl);
-        assert.equal(llmService.getLocusUrl('s2'), locusUrl2);
-        assert.equal(llmService.getDatachannelUrl('s1'), datachannelUrl);
-        assert.equal(llmService.getDatachannelUrl('s2'), datachannelUrl2);
-
-        const all = llmService.getAllConnections();
-        assert.equal(all.has('s1'), true);
-        assert.equal(all.has('s2'), true);
+        assert.equal(llmChannel.ownerMeetingId, 'meeting-1');
       });
 
-      it('disconnectLLM clears only the targeted session', async () => {
-        llmService.disconnect = sinon.stub().resolves(true);
-
-        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
-        await llmService.registerAndConnect(locusUrl2, datachannelUrl2, undefined, 's2');
-
-        const options = {code: 1000, reason: 'test'};
-        const disconnected = await llmService.disconnectLLM(options, 's1', 'meeting-1');
-
-        assert.equal(disconnected, true);
-        sinon.assert.calledOnceWithExactly(llmService.disconnect, options, 's1');
-
-        const all = llmService.getAllConnections();
-        assert.equal(all.has('s1'), false);
-        assert.equal(all.has('s2'), true);
-        assert.equal(llmService.getDatachannelToken('s1'), undefined);
+      it('returns undefined when no owner has been set', () => {
+        assert.equal(llmChannel.ownerMeetingId, undefined);
       });
 
-      it('disconnectLLM skips disconnect when ownerMeetingId does not match', async () => {
-        llmService.disconnect = sinon.stub().resolves(true);
+      it('allows clearing ownership by setting undefined', () => {
+        llmChannel.ownerMeetingId = 'meeting-1';
+        assert.equal(llmChannel.ownerMeetingId, 'meeting-1');
 
-        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
-        llmService.setOwnerMeetingId('meeting-1', 's1');
+        llmChannel.ownerMeetingId = undefined;
 
-        const options = {code: 1000, reason: 'test'};
-        const disconnected = await llmService.disconnectLLM(options, 's1', 'meeting-2');
-
-        assert.equal(disconnected, false);
-        sinon.assert.notCalled(llmService.disconnect);
-        assert.equal(llmService.getAllConnections().has('s1'), true);
+        assert.equal(llmChannel.ownerMeetingId, undefined);
       });
 
-      it('disconnectAllLLM clears all sessions', async () => {
-        llmService.disconnectAll = sinon.stub().resolves(true);
+      it('is cleared by disconnectLLM', async () => {
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+        llmChannel.ownerMeetingId = 'meeting-1';
+        assert.equal(llmChannel.ownerMeetingId, 'meeting-1');
 
-        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
-        await llmService.registerAndConnect(locusUrl2, datachannelUrl2, undefined, 's2');
+        await llmChannel.disconnectLLM({code: 1000, reason: 'test'});
 
-        await llmService.disconnectAllLLM({code: 1000, reason: 'all'});
-
-        sinon.assert.calledOnce(llmService.disconnectAll);
-        assert.equal(llmService.getAllConnections().size, 0);
+        assert.equal(llmChannel.ownerMeetingId, undefined);
       });
     });
 
-    describe('#getLocusUrlByDatachannelUrl', () => {
-      const locusUrl2 = 'https://locus-b.wbx2.com/locus/api/v1/loci/456';
-      const datachannelUrl2 = 'https://board-b.wbx2.com/datachannel/api/v1/locus/ps-encoded/registrations';
+    describe('.matchesDatachannelRequestUrl', () => {
+      it('returns true when request URL starts with registration URL', () => {
+        const registrationUrl =
+          'https://board.wbx2.com/datachannel/api/v1/locus/ps-encoded/registrations';
+        const requestUrl = registrationUrl + '/some-path';
 
-      // Ampersand State.extend() does not always propagate prototype methods
-      // added to child classes, so we bind the method from the class prototype
-      // directly onto the test instance.
-      beforeEach(() => {
-        llmService.getLocusUrlByDatachannelUrl = LLMChannel.prototype.getLocusUrlByDatachannelUrl.bind(llmService);
+        const result = LLMChannel.matchesDatachannelRequestUrl(requestUrl, registrationUrl);
+
+        assert.equal(result, true);
       });
 
-      it('returns locusUrl when request URL matches a session datachannelUrl', async () => {
-        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
-        await llmService.registerAndConnect(locusUrl2, datachannelUrl2, undefined, 's2');
+      it('returns false when URLs do not match', () => {
+        const registrationUrl =
+          'https://board.wbx2.com/datachannel/api/v1/locus/ps-encoded/registrations';
+        const requestUrl = 'https://unknown.example.com/path';
 
-        const result = llmService.getLocusUrlByDatachannelUrl(datachannelUrl2 + '/some-path');
+        const result = LLMChannel.matchesDatachannelRequestUrl(requestUrl, registrationUrl);
 
-        assert.equal(result, locusUrl2);
+        assert.equal(result, false);
       });
 
-      it('returns undefined when no session matches the request URL', async () => {
-        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
-
-        const result = llmService.getLocusUrlByDatachannelUrl('https://unknown.example.com/path');
-
-        assert.equal(result, undefined);
-      });
-
-      it('matches locusUrl when request host is rewritten but pathname matches', async () => {
-        await llmService.registerAndConnect(locusUrl2, datachannelUrl2, undefined, 's2');
-
-        const rewrittenHostRequestUrl =
+      it('returns true when request host is rewritten but pathname matches', () => {
+        const registrationUrl =
+          'https://board-b.wbx2.com/datachannel/api/v1/locus/ps-encoded/registrations';
+        const requestUrl =
           'https://hostmap-rewritten.example.com/datachannel/api/v1/locus/ps-encoded/registrations/events';
-        const result = llmService.getLocusUrlByDatachannelUrl(rewrittenHostRequestUrl);
 
-        assert.equal(result, locusUrl2);
+        const result = LLMChannel.matchesDatachannelRequestUrl(requestUrl, registrationUrl);
+
+        assert.equal(result, true);
       });
 
-      it('returns undefined when no connections exist', () => {
-        const result = llmService.getLocusUrlByDatachannelUrl(datachannelUrl);
-
-        assert.equal(result, undefined);
-      });
-    });
-
-    describe('#getSessionIdByDatachannelUrl', () => {
-      const datachannelUrl2 = 'https://board-b.wbx2.com/datachannel/api/v1/locus/ps-encoded/registrations';
-
-      beforeEach(() => {
-        llmService.getSessionIdByDatachannelUrl = LLMChannel.prototype.getSessionIdByDatachannelUrl.bind(llmService);
+      it('returns false for empty or null URLs', () => {
+        assert.equal(LLMChannel.matchesDatachannelRequestUrl('', 'https://example.com'), false);
+        assert.equal(LLMChannel.matchesDatachannelRequestUrl('https://example.com', ''), false);
+        assert.equal(LLMChannel.matchesDatachannelRequestUrl(null, 'https://example.com'), false);
+        assert.equal(LLMChannel.matchesDatachannelRequestUrl('https://example.com', null), false);
       });
 
-      it('returns sessionId when request URL matches a session datachannelUrl', async () => {
-        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
-        await llmService.registerAndConnect('https://locus-b.wbx2.com/locus/api/v1/loci/456', datachannelUrl2, undefined, 's2');
+      it('returns false for invalid URLs', () => {
+        const result = LLMChannel.matchesDatachannelRequestUrl('not-a-url', 'also-not-a-url');
 
-        const result = llmService.getSessionIdByDatachannelUrl(datachannelUrl2 + '/some-path');
-
-        assert.equal(result, 's2');
-      });
-
-      it('returns undefined when no session matches the request URL', async () => {
-        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
-
-        const result = llmService.getSessionIdByDatachannelUrl('https://unknown.example.com/path');
-
-        assert.equal(result, undefined);
-      });
-
-      it('matches sessionId when request host is rewritten but pathname matches', async () => {
-        await llmService.registerAndConnect(
-          'https://locus-b.wbx2.com/locus/api/v1/loci/456',
-          datachannelUrl2,
-          undefined,
-          's2'
-        );
-
-        const rewrittenHostRequestUrl =
-          'https://hostmap-rewritten.example.com/datachannel/api/v1/locus/ps-encoded/registrations/messages';
-        const result = llmService.getSessionIdByDatachannelUrl(rewrittenHostRequestUrl);
-
-        assert.equal(result, 's2');
+        assert.equal(result, false);
       });
     });
 
+    describe('.buildUrlWithAwareSubchannels', () => {
+      it('adds subscriptionAwareSubchannels query param', () => {
+        const baseUrl = 'wss://example.com/socket';
+        const subchannels = ['channel1', 'channel2'];
+
+        const result = LLMChannel.buildUrlWithAwareSubchannels(baseUrl, subchannels);
+
+        assert.include(result, 'subscriptionAwareSubchannels=channel1%2Cchannel2');
+      });
+
+      it('preserves existing query params', () => {
+        const baseUrl = 'wss://example.com/socket?existing=param';
+        const subchannels = ['channel1'];
+
+        const result = LLMChannel.buildUrlWithAwareSubchannels(baseUrl, subchannels);
+
+        assert.include(result, 'existing=param');
+        assert.include(result, 'subscriptionAwareSubchannels=channel1');
+      });
+    });
   });
 });
