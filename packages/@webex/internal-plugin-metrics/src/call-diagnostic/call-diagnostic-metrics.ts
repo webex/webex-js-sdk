@@ -108,6 +108,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   private isMercuryConnected = false;
   private eventLimitTracker: Map<string, number> = new Map();
   private eventLimitWarningsLogged: Set<string> = new Set();
+  private telemetryOptOut: NonNullable<ClientEventPayload>['telemetryOptOut'] = undefined;
 
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
@@ -143,6 +144,22 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     }
 
     return null;
+  }
+
+  /**
+   * Returns the telemetryOptOut value of the current user
+   * @returns one of 'manual', 'automatic', undefined
+   */
+  getTelemetryOptOut() {
+    return this.telemetryOptOut;
+  }
+
+  /**
+   * Sets the telemetryOptOut value of the current user
+   * @param value - one of 'manual', 'automatic', undefined
+   */
+  public setTelemetryOptOut(value: NonNullable<ClientEventPayload>['telemetryOptOut']) {
+    this.telemetryOptOut = value;
   }
 
   /**
@@ -990,7 +1007,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       sessionCorrelationId,
     });
 
-    // create common event object structur
+    // create common event object structure
     const commonEventObject = {
       name,
       canProceed: true,
@@ -1003,6 +1020,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         'loginType' in meeting.callStateForMetrics
           ? meeting.callStateForMetrics.loginType
           : this.getCurLoginType(),
+      telemetryOptOut: this.getTelemetryOptOut(),
       isConvergedArchitectureEnabled: this.getIsConvergedArchitectureEnabled({
         meetingId,
       }),
@@ -1133,6 +1151,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         isMercuryConnected: this.isMercuryConnected,
       },
       loginType: this.getCurLoginType(),
+      telemetryOptOut: this.getTelemetryOptOut(),
       // @ts-ignore
       webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
       isAutomatedUser:
