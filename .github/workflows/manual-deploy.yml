@@ -121,7 +121,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
-      - name: Restore Dependencies Cache
+      - name: Uncache Dependencies
         uses: actions/cache@v4
         with:
           path: '**/node_modules'
@@ -153,7 +153,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
-      - name: Restore Dependencies Cache
+      - name: Uncache Dependencies
         uses: actions/cache@v4
         with:
           path: '**/node_modules'
