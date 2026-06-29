@@ -624,6 +624,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
           startTime: new Date().toISOString(),
         },
+        webexSubServiceType: this.getSubServiceType(meeting),
       };
 
       // merge any new properties, or override existing ones

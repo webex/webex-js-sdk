@@ -3188,6 +3188,7 @@ describe('internal-plugin-metrics', () => {
               mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
               startTime: now.toISOString(),
             },
+            webexSubServiceType: undefined,
           },
           options
         );
@@ -3228,6 +3229,7 @@ describe('internal-plugin-metrics', () => {
                 mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
                 startTime: now.toISOString(),
               },
+              webexSubServiceType: undefined,
             },
           },
         });
@@ -3266,8 +3268,46 @@ describe('internal-plugin-metrics', () => {
               mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
               startTime: now.toISOString(),
             },
+            webexSubServiceType: undefined,
           },
         });
+      });
+
+      it('includes webexSubServiceType in the media quality event payload', () => {
+        const meeting = {
+          ...fakeMeeting,
+          meetingInfo: {
+            enableConvergedArchitecture: true,
+            enableEvent: true,
+            enableConvergedWebinarLargeScale: true,
+          },
+        };
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        webex.meetings.getBasicMeetingInformation = sinon.stub().returns(meeting);
+
+        const options = {
+          networkType: 'wifi' as const,
+          meetingId: fakeMeeting.id,
+        };
+
+        cd.submitMQE({
+          name: 'client.mediaquality.event',
+          payload: {
+            //@ts-ignore
+            intervals: [{}],
+          },
+          options,
+        });
+
+        assert.calledOnceWithExactly(
+          prepareDiagnosticEventSpy,
+          sinon.match({
+            name: 'client.mediaquality.event',
+            webexSubServiceType: 'LargeScaleWebinar',
+          }),
+          options
+        );
       });
 
       it('throws if meeting id not provided', () => {
