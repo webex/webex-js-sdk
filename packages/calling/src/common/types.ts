@@ -7,6 +7,7 @@ export type SettingEnabled = boolean;
 export enum ALLOWED_SERVICES {
   MOBIUS = 'mobius',
   JANUS = 'janus',
+  HYDRA_DEVELOPER_API = 'hydraDeveloperApi',
 }
 export enum HTTP_METHODS {
   GET = 'GET',
