@@ -22,9 +22,6 @@ on:
         default: latest
         options:
           - latest
-          - next
-          - beta
-          - alpha
       dry-run:
         description: 'Dry run — validate packaging without publishing to NPM, pushing docs, or creating a git tag.'
         required: false
@@ -86,22 +83,12 @@ jobs:
       - name: Validate Version Format
         env:
           VERSION: ${{ inputs.version }}
-          DIST_TAG: ${{ inputs.dist-tag }}
         run: |
-          # A blank version is valid only for the `latest` tag: the resolve job
-          # auto-generates a minor bump of the current stable release. For
-          # non-`latest` tags an auto-bump would still advance the stable
-          # version, then publish that stable-looking version under the
-          # prerelease tag (npm's --tag does not move `latest`). The stable
-          # version number would be burned and the next stable auto-release
-          # would resolve an already-published version and fail. Require an
-          # explicit version for prerelease tags.
+          # A blank version auto-generates a minor bump of the current stable
+          # release during the resolve job. This is only ever published under
+          # the `latest` tag (the sole dist-tag option), so no prerelease-tag
+          # guard is needed here.
           if [ -z "$VERSION" ]; then
-            if [ "$DIST_TAG" != "latest" ]; then
-              echo "Error: a version is required when publishing under the '$DIST_TAG' tag."
-              echo "Auto-version is only supported for the 'latest' tag; provide an explicit version (e.g., 1.2.3-$DIST_TAG.1)."
-              exit 1
-            fi
             echo "No version provided; it will be auto-generated during the resolve job."
             exit 0
           fi
