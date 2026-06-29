@@ -92,6 +92,7 @@ export type Config = {
   meetingId: string;
   preferTranscoding: boolean;
   getCurrentSelfUrl?: () => string | undefined;
+  waitForSelfUrlChange?: () => Promise<void>;
 };
 
 /**
@@ -380,7 +381,19 @@ export class LocusMediaRequest extends WebexPlugin {
     const currentSelfUrl = this.getCurrentSelfUrl(request);
 
     if (!currentSelfUrl || currentSelfUrl === request.selfUrl) {
-      return false;
+      if (this.config.waitForSelfUrlChange) {
+        await this.config.waitForSelfUrlChange();
+      }
+
+      const latestSelfUrl = this.getCurrentSelfUrl(request);
+
+      if (!latestSelfUrl || latestSelfUrl === request.selfUrl) {
+        LoggerProxy.logger.info(
+          `Meeting:LocusMediaRequest#sendHttpRequest --> 409 conflict, no new selfUrl even after waiting`
+        );
+
+        return false;
+      }
     }
 
     selfUrlRetryCount += 1;

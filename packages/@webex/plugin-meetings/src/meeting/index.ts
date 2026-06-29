@@ -741,6 +741,8 @@ export default class Meeting extends StatelessWebexPlugin {
   registrationIdStatus: string;
   brbState: BrbState;
 
+  private promisesWaitingForPropUpdate: Record<string, Defer> = {};
+
   voiceaListenerCallbacks: object = {
     [VOICEAEVENTS.VOICEA_ANNOUNCEMENT]: (payload: Transcription['languageOptions']) => {
       this.transcription.languageOptions = payload;
@@ -4065,6 +4067,11 @@ export default class Meeting extends StatelessWebexPlugin {
     if (object && Object.keys(object).length) {
       Object.keys(object).forEach((key) => {
         this[key] = object[key];
+
+        if (this.promisesWaitingForPropUpdate[key]) {
+          this.promisesWaitingForPropUpdate[key].resolve();
+          delete this.promisesWaitingForPropUpdate[key];
+        }
       });
     }
   }
@@ -8560,12 +8567,28 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         preferTranscoding: !this.isMultistream,
         getCurrentSelfUrl: () => this.selfUrl,
+        waitForSelfUrlChange: () => this.waitForSelfUrlChange(),
       },
       {
         // @ts-ignore
         parent: this.webex,
       }
     );
+  }
+
+  private waitForSelfUrlChange(): Promise<void> {
+    if (!this.promisesWaitingForPropUpdate.selfUrl) {
+      const d = new Defer();
+      this.promisesWaitingForPropUpdate.selfUrl = d;
+      setTimeout(() => {
+        if (this.promisesWaitingForPropUpdate.selfUrl === d) {
+          delete this.promisesWaitingForPropUpdate.selfUrl;
+          d.resolve();
+        }
+      }, 5000);
+    }
+
+    return this.promisesWaitingForPropUpdate.selfUrl.promise;
   }
 
   /**
