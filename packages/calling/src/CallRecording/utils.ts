@@ -12,6 +12,9 @@ import {RecordingParty, RecordingServiceData} from './types';
  * populates `locationId`/`callSessionId`) or when `personality` is unknown. The party details are
  * returned by the metadata endpoint (`GET /convergedRecordings/{recordingId}/metadata`).
  *
+ * Use `getRemoteParty(serviceData)?.actor?.id` for the Webex person UUID (avatar/presence
+ * services). External/PSTN parties may have no `actor.id`; fall back to `?.name` for display.
+ *
  * @param serviceData - The `serviceData` from a {@link Recording} or {@link RecordingMetadata}.
  * @returns The remote {@link RecordingParty}, or `undefined` when it cannot be determined.
  */
@@ -31,17 +34,3 @@ export const getRemoteParty = (serviceData?: RecordingServiceData): RecordingPar
       return undefined;
   }
 };
-
-/**
- * Resolves the Webex person UUID of the remote party of a recorded call, suitable for the avatar
- * (`@webex/internal-plugin-avatar`) and presence (DSS) services.
- *
- * Returns `undefined` when the remote party cannot be resolved (see {@link getRemoteParty}) or when
- * the remote party is an external/PSTN caller with no Webex `actor.id` (only a `number`/`name`); in
- * that case callers should fall back to initials from `getRemoteParty(serviceData)?.name`.
- *
- * @param serviceData - The `serviceData` from a {@link Recording} or {@link RecordingMetadata}.
- * @returns The remote party's person UUID, or `undefined` when unavailable.
- */
-export const getRemotePartyId = (serviceData?: RecordingServiceData): string | undefined =>
-  getRemoteParty(serviceData)?.actor?.id;

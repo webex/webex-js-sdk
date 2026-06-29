@@ -66,8 +66,7 @@ All reads go through a **single** `getCallRecording` method, which dispatches on
 
 | Helper | Signature | Description |
 | ------ | --------- | ----------- |
-| `getRemoteParty` | `(serviceData?: RecordingServiceData): RecordingParty \| undefined` | Resolves the *other* party of the call from `serviceData` using `personality` (`originator` → `calledParty`, `terminator` → `callingParty`). |
-| `getRemotePartyId` | `(serviceData?: RecordingServiceData): string \| undefined` | The remote party's Webex person UUID, for the avatar (`@webex/internal-plugin-avatar`) and presence (DSS) services. `undefined` for list-only `serviceData` or external/PSTN parties (fall back to `getRemoteParty(...)?.name`). |
+| `getRemoteParty` | `(serviceData?: RecordingServiceData): RecordingParty \| undefined` | Resolves the *other* party of the call from `serviceData` using `personality` (`originator` → `calledParty`, `terminator` → `callingParty`). Use `getRemoteParty(serviceData)?.actor?.id` for the Webex person UUID (avatar/presence); `undefined` for list-only `serviceData` or external/PSTN parties (fall back to `?.name`). |
 
 > Party details (`personality`, `callingParty`, `calledParty`) are only on the **metadata**
 > `serviceData`, not the `LIST` response, so resolving avatar/presence for a list needs a `METADATA`
@@ -146,7 +145,7 @@ All reads go through a **single** `getCallRecording` method, which dispatches on
 | Call session id (for the `BY_CALL_SESSION` request) | `serviceData.callSessionId` |
 | Location | `serviceData.locationId` |
 | Owner | `ownerId` / `ownerEmail` / `ownerType` |
-| Remote party (avatar / presence) | `getRemotePartyId(metadata.serviceData)` — only on the `METADATA` response |
+| Remote party (avatar / presence) | `getRemoteParty(metadata.serviceData)?.actor?.id` — only on the `METADATA` response |
 | Direct media links (single `DETAIL` request) | `temporaryDirectDownloadLinks` |
 
 ---

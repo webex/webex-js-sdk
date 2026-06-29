@@ -146,21 +146,6 @@ export class WxcCallRecordingConnector
   }
 
   /**
-   * Builds optional request headers. Adds the `WebexUserRequest` header only when explicitly
-   * requested (ad-hoc rate-limit bypass).
-   *
-   * @param webexUserRequest - When true, includes the `WebexUserRequest: true` header.
-   * @returns A headers object, or undefined when no extra headers are needed.
-   */
-  private buildHeaders(webexUserRequest?: boolean): {[key: string]: string} | undefined {
-    if (webexUserRequest) {
-      return {[WEBEX_USER_REQUEST_HEADER]: 'true'};
-    }
-
-    return undefined;
-  }
-
-  /**
    * Reads Post Call Recordings, dispatching to the matching operation based on the request `type`.
    * The concrete response type is inferred per request via {@link RecordingResponseFor}.
    *
@@ -226,7 +211,7 @@ export class WxcCallRecordingConnector
         uri: url,
         method: HTTP_METHODS.GET,
         service: ALLOWED_SERVICES.HYDRA_DEVELOPER_API,
-        headers: this.buildHeaders(options?.webexUserRequest),
+        ...(options?.webexUserRequest ? {headers: {[WEBEX_USER_REQUEST_HEADER]: 'true'}} : {}),
       });
 
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
@@ -455,10 +440,14 @@ export class WxcCallRecordingConnector
     }
   }
 
+  // `event` is optional because SDKConnector.registerListener invokes callbacks as `(data?: T)`.
+  // `data` uses optional chaining at runtime because malformed Mercury payloads may omit it.
   handleRecordingCreatedEvent = async (event?: RecordingEvent) => {
-    if (event?.data?.activity) {
-      this.emit(COMMON_EVENT_KEYS.CALL_RECORDING_CREATED, event as RecordingEvent);
+    if (!event?.data?.activity) {
+      return;
     }
+
+    this.emit(COMMON_EVENT_KEYS.CALL_RECORDING_CREATED, event);
   };
 
   /**
@@ -480,22 +469,24 @@ export class WxcCallRecordingConnector
     switch (event.data.eventSubType) {
       case RECORDING_EVENT_SUBTYPE.TRASH:
       case RECORDING_EVENT_SUBTYPE.PURGE:
-        this.emit(COMMON_EVENT_KEYS.CALL_RECORDING_DELETED, event as RecordingEvent);
+        this.emit(COMMON_EVENT_KEYS.CALL_RECORDING_DELETED, event);
         break;
 
       case RECORDING_EVENT_SUBTYPE.RESTORE:
-        this.emit(COMMON_EVENT_KEYS.CALL_RECORDING_CREATED, event as RecordingEvent);
+        this.emit(COMMON_EVENT_KEYS.CALL_RECORDING_CREATED, event);
         break;
 
       default:
-        this.emit(COMMON_EVENT_KEYS.CALL_RECORDING_UPDATED, event as RecordingEvent);
+        this.emit(COMMON_EVENT_KEYS.CALL_RECORDING_UPDATED, event);
     }
   };
 
   handleRecordingDeletedEvent = async (event?: RecordingEvent) => {
-    if (event?.data?.activity) {
-      this.emit(COMMON_EVENT_KEYS.CALL_RECORDING_DELETED, event as RecordingEvent);
+    if (!event?.data?.activity) {
+      return;
     }
+
+    this.emit(COMMON_EVENT_KEYS.CALL_RECORDING_DELETED, event);
   };
 
   /**

@@ -35,17 +35,9 @@ export {
   GetRecordingsOptions,
   RecordingRequestType,
   GetCallRecordingRequest,
-  ListRecordingsRequest,
-  DetailRecordingRequest,
-  MetadataRecordingRequest,
-  CallSessionRecordingsRequest,
   RecordingResponseFor,
-  RecordingServiceData,
-  RecordingPersonality,
-  RecordingParty,
-  RecordingActor,
 } from './CallRecording/types';
-export {getRemoteParty, getRemotePartyId} from './CallRecording/utils';
+export {getRemoteParty} from './CallRecording/utils';
 export {
   CallForwardSetting,
   CallForwardAlwaysSetting,

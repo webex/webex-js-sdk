@@ -1,5 +1,5 @@
 import {RecordingParty, RecordingServiceData} from './types';
-import {getRemoteParty, getRemotePartyId} from './utils';
+import {getRemoteParty} from './utils';
 
 describe('CallRecording utils', () => {
   const callingParty: RecordingParty = {
@@ -45,58 +45,35 @@ describe('CallRecording utils', () => {
         serviceData: undefined,
         expected: undefined,
       },
-    ];
-
-    it.each(testData)('$name', ({serviceData, expected}) => {
-      expect(getRemoteParty(serviceData)).toStrictEqual(expected);
-    });
-  });
-
-  describe('getRemotePartyId', () => {
-    /**
-     * TestCase inputs
-     * name: TestCase name
-     * serviceData: the recording serviceData under test
-     * expected: the remote party person UUID expected to be resolved
-     */
-    const testData: {
-      name: string;
-      serviceData?: RecordingServiceData;
-      expected: string | undefined;
-    }[] = [
       {
-        name: 'returns the calledParty actor id when the owner is the originator',
-        serviceData: {personality: 'originator', callingParty, calledParty},
-        expected: 'called-id',
-      },
-      {
-        name: 'returns the callingParty actor id when the owner is the terminator',
-        serviceData: {personality: 'terminator', callingParty, calledParty},
-        expected: 'calling-id',
-      },
-      {
-        name: 'returns undefined for an external party with no actor id',
+        name: 'has no actor id for an external party',
         serviceData: {
           personality: 'originator',
           callingParty,
           calledParty: {number: '+15551234567'},
         },
-        expected: undefined,
-      },
-      {
-        name: 'returns undefined when personality is missing',
-        serviceData: {callingParty, calledParty},
-        expected: undefined,
-      },
-      {
-        name: 'returns undefined when serviceData is undefined',
-        serviceData: undefined,
-        expected: undefined,
+        expected: {number: '+15551234567'},
       },
     ];
 
     it.each(testData)('$name', ({serviceData, expected}) => {
-      expect(getRemotePartyId(serviceData)).toStrictEqual(expected);
+      expect(getRemoteParty(serviceData)).toStrictEqual(expected);
+    });
+
+    it('returns the remote party person UUID via actor.id', () => {
+      expect(
+        getRemoteParty({personality: 'originator', callingParty, calledParty})?.actor?.id
+      ).toBe('called-id');
+      expect(
+        getRemoteParty({personality: 'terminator', callingParty, calledParty})?.actor?.id
+      ).toBe('calling-id');
+      expect(
+        getRemoteParty({
+          personality: 'originator',
+          callingParty,
+          calledParty: {number: '+15551234567'},
+        })?.actor?.id
+      ).toBeUndefined();
     });
   });
 });

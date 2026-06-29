@@ -32,8 +32,7 @@ export enum AiGenerationStatus {
  * - `originator`: the owner placed the call (the remote party is `calledParty`).
  * - `terminator`: the owner received the call (the remote party is `callingParty`).
  *
- * Use {@link getRemoteParty} / {@link getRemotePartyId} to resolve the other party without having to
- * branch on this manually.
+ * Use {@link getRemoteParty} to resolve the other party without having to branch on this manually.
  */
 export type RecordingPersonality = 'originator' | 'terminator';
 
@@ -66,7 +65,7 @@ export type RecordingParty = {
  * The party details (`personality`, `callingParty`, `calledParty`) identify who the call was with
  * and are returned by the metadata endpoint (`GET /convergedRecordings/{recordingId}/metadata`);
  * the list endpoint only populates `locationId`/`callSessionId`. Resolve the remote participant's
- * person UUID (for avatar/presence) via {@link getRemotePartyId}.
+ * person UUID (for avatar/presence) via `getRemoteParty(serviceData)?.actor?.id`.
  */
 export type RecordingServiceData = {
   callRecordingId?: string;
@@ -168,7 +167,7 @@ export type RecordingMetadata = {
   /**
    * Service-specific data, including the call party details (`personality`, `callingParty`,
    * `calledParty`) used to resolve the remote participant for avatar/presence. See
-   * {@link getRemotePartyId}.
+   * {@link getRemoteParty}.
    */
   serviceData?: RecordingServiceData;
   [key: string]: unknown;
