@@ -1146,23 +1146,28 @@ describe('plugin-mercury', () => {
           mercury._applyOverrides.restore();
         });
 
-        it('should throw when envelope.data (nested) is undefined', () => {
+        it('should emit generic event and return early when envelope.data (nested) is undefined', async () => {
           const event = {
             data: {
               type: 'someType',
-              // no nested data property - will cause TypeError when accessing data.eventType
+              // no nested data property
             },
           };
 
-          assert.throws(() => mercury._onmessage(event), TypeError);
+          const result = mercury._onmessage(event);
+
+          assert.instanceOf(result, Promise);
+          await result;
+          assert.calledOnceWithExactly(mercury._emit, 'event', event.data);
+          assert.notCalled(mercury._applyOverrides);
         });
 
-        it('should handle when data.eventType is undefined', async () => {
+        it('should emit generic event and return early when data.eventType is undefined', async () => {
           const event = {
             data: {
               type: 'someType',
               data: {
-                // no eventType property - will use empty string fallback
+                // no eventType property
                 someField: 'value',
               },
             },
@@ -1172,7 +1177,8 @@ describe('plugin-mercury', () => {
 
           assert.instanceOf(result, Promise);
           await result;
-          assert.calledWith(mercury._emit, 'event', event.data);
+          assert.calledOnceWithExactly(mercury._emit, 'event', event.data);
+          assert.notCalled(mercury._applyOverrides);
         });
 
         it('should emit generic event for messages without eventType (e.g. subscription responses)', async () => {
@@ -1190,7 +1196,8 @@ describe('plugin-mercury', () => {
 
           assert.instanceOf(result, Promise);
           await result;
-          assert.calledWith(mercury._emit, 'event', event.data);
+          assert.calledOnceWithExactly(mercury._emit, 'event', event.data);
+          assert.notCalled(mercury._applyOverrides);
         });
 
         it('should still process messages with a valid eventType', async () => {
@@ -1212,12 +1219,16 @@ describe('plugin-mercury', () => {
       });
 
       describe('#_getEventHandlers()', () => {
-        it('should throw when eventType is undefined', () => {
-          assert.throws(() => mercury._getEventHandlers(undefined), TypeError);
+        it('should return an empty array when eventType is undefined', () => {
+          const result = mercury._getEventHandlers(undefined);
+
+          assert.deepEqual(result, []);
         });
 
-        it('should throw when eventType is null', () => {
-          assert.throws(() => mercury._getEventHandlers(null), TypeError);
+        it('should return an empty array when eventType is null', () => {
+          const result = mercury._getEventHandlers(null);
+
+          assert.deepEqual(result, []);
         });
 
         it('should return an empty array when eventType is an empty string', () => {
