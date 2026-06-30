@@ -3,27 +3,24 @@ import {EnableReachabilityChecksConfig, ResolvedReachabilityProtocols} from './r
 
 /**
  * Resolves `enableReachabilityChecks` into explicit per-protocol flags.
+ * Defaults to all protocols enabled when not configured.
  * UDP is always tested unless reachability is disabled entirely (`false`).
  *
- * @param {EnableReachabilityChecksConfig} config value of config.meetings.enableReachabilityChecks
+ * @param {EnableReachabilityChecksConfig} enabled value of config.meetings.enableReachabilityChecks
  * @returns {ResolvedReachabilityProtocols} resolved per-protocol flags
  */
 export function resolveReachabilityProtocols(
-  config: EnableReachabilityChecksConfig | undefined
+  enabled: EnableReachabilityChecksConfig = true
 ): ResolvedReachabilityProtocols {
-  if (config === false) {
-    return {udp: false, tcp: false, tls: false};
+  if (typeof enabled === 'object') {
+    return {
+      udp: true,
+      tcp: enabled.tcp ?? true,
+      tls: enabled.tls ?? true,
+    };
   }
 
-  if (config === undefined || config === true) {
-    return {udp: true, tcp: true, tls: true};
-  }
-
-  return {
-    udp: true,
-    tcp: config.tcp ?? true,
-    tls: config.tls ?? true,
-  };
+  return {udp: enabled, tcp: enabled, tls: enabled};
 }
 
 /**
@@ -32,7 +29,7 @@ export function resolveReachabilityProtocols(
  * @param {EnableReachabilityChecksConfig} config value of config.meetings.enableReachabilityChecks
  * @returns {boolean} true if any protocol is enabled
  */
-export function isReachabilityEnabled(config: EnableReachabilityChecksConfig | undefined): boolean {
+export function isReachabilityEnabled(config: EnableReachabilityChecksConfig = true): boolean {
   const {udp, tcp, tls} = resolveReachabilityProtocols(config);
 
   return udp || tcp || tls;
