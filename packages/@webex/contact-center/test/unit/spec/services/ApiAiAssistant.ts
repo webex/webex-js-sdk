@@ -92,7 +92,7 @@ describe('ApiAIAssistant', () => {
     expect(result).toEqual(responseBody as any);
   });
 
-  it('should request suggested response without extra context using sendEvent', async () => {
+  it('AC-3 / spec 3: should request suggested response without extra context using sendEvent', async () => {
     const sendEventSpy = jest.spyOn(apiAIAssistant, 'sendEvent').mockResolvedValue({ok: true});
     apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
 
@@ -117,7 +117,60 @@ describe('ApiAIAssistant', () => {
     expect(result).toEqual({ok: true});
   });
 
-  it('should request suggested response with extra context using sendEvent', async () => {
+  it('AC-1 / AC-2 / spec 3,5,6: getSuggestedResponse forwards actionTimeStamp and derived conversationId into sendEvent', async () => {
+    const sendEventSpy = jest.spyOn(apiAIAssistant, 'sendEvent').mockResolvedValue({ok: true});
+    apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
+
+    await apiAIAssistant.getSuggestedResponse({
+      agentId: 'test-agent-id',
+      interactionId: 'interaction-1',
+      actionTimeStamp: 1777479641173,
+    });
+
+    expect(sendEventSpy).toHaveBeenCalledTimes(1);
+    expect(sendEventSpy.mock.calls[0][8]).toBe(1777479641173);
+    expect(sendEventSpy.mock.calls[0][9]).toBe('interaction-1');
+  });
+
+  it('AC-2 / spec 3,5,6: sendEvent includes conversationId derived from interactionId in the request body', async () => {
+    (mockWebex.request as jest.Mock).mockResolvedValue({body: {ok: true}});
+
+    await apiAIAssistant.sendEvent(
+      'test-agent-id',
+      'interaction-1',
+      'CUSTOM_EVENT',
+      'GET_SUGGESTIONS',
+      undefined,
+      undefined,
+      'en',
+      'WX_CC_SDK_test',
+      1777479641173,
+      'interaction-1'
+    );
+
+    const requestArgs = (mockWebex.request as jest.Mock).mock.calls[0][0];
+
+    expect(requestArgs.body.eventDetails.data.actionTimeStamp).toBe('1777479641173');
+    expect(requestArgs.body.eventDetails.data.conversationId).toBe('interaction-1');
+  });
+
+  it('AC-1 / spec 7: sendEvent falls back to Date.now when actionTimeStamp is omitted', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1777479641174);
+    (mockWebex.request as jest.Mock).mockResolvedValue({body: {ok: true}});
+
+    await apiAIAssistant.sendEvent(
+      'test-agent-id',
+      'interaction-1',
+      'CUSTOM_EVENT',
+      'GET_SUGGESTIONS'
+    );
+
+    const requestArgs = (mockWebex.request as jest.Mock).mock.calls[0][0];
+
+    expect(requestArgs.body.eventDetails.data.actionTimeStamp).toBe('1777479641174');
+  });
+
+  it('AC-3 / spec 3: should request suggested response with extra context using sendEvent', async () => {
     const sendEventSpy = jest.spyOn(apiAIAssistant, 'sendEvent').mockResolvedValue({ok: true});
     apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
 
@@ -143,7 +196,7 @@ describe('ApiAIAssistant', () => {
     expect(result).toEqual({ok: true});
   });
 
-  it('should treat whitespace-only context as GET_SUGGESTIONS', async () => {
+  it('AC-3 / spec 3: should treat whitespace-only context as GET_SUGGESTIONS', async () => {
     const sendEventSpy = jest.spyOn(apiAIAssistant, 'sendEvent').mockResolvedValue({ok: true});
     apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
 
@@ -202,7 +255,8 @@ describe('ApiAIAssistant', () => {
     expect(errorMessage).toBe('Error while performing fetchHistoricTranscripts');
   });
 
-  it('should fail when suggested responses feature is disabled', async () => {
+  it('AC-4 / spec 7: should fail when suggested responses feature is disabled', async () => {
+    const sendEventSpy = jest.spyOn(apiAIAssistant, 'sendEvent');
     apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: false}} as any);
     let errorMessage = '';
 
@@ -216,5 +270,7 @@ describe('ApiAIAssistant', () => {
     }
 
     expect(errorMessage).toBe('Error while performing getSuggestedResponse');
+    expect(sendEventSpy).not.toHaveBeenCalled();
+    expect(mockWebex.request).not.toHaveBeenCalled();
   });
 });
