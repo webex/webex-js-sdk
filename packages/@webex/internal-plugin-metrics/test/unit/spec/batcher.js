@@ -179,7 +179,7 @@ describe('plugin-metrics', () => {
         });
 
         it('rejects the deferred without reenqueuing when batcherRetryOnNetworkError is false', () => {
-          webex.config.metrics.batcherRetryOnNetworkError = false;
+          webex.config.metrics = {...config.metrics, batcherRetryOnNetworkError: false};
 
           webex.request = function () {
             // noop
