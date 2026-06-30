@@ -443,39 +443,6 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#_setReachabilityConfig', () => {
-      it('should have _setReachabilityConfig', () => {
-        assert.equal(typeof webex.meetings._setReachabilityConfig, 'function');
-      });
-
-      describe('success', () => {
-        it('should update config when called with a boolean value', () => {
-          webex.meetings._setReachabilityConfig(true);
-          assert.equal(webex.meetings.config.enableReachabilityChecks, true);
-
-          webex.meetings._setReachabilityConfig(false);
-          assert.equal(webex.meetings.config.enableReachabilityChecks, false);
-        });
-
-        it('should update config when called with a per-protocol object', () => {
-          const protocols = {tcp: false, tls: true};
-          webex.meetings._setReachabilityConfig(protocols);
-          assert.deepEqual(webex.meetings.config.enableReachabilityChecks, protocols);
-        });
-
-        it('should not update config when called with an invalid value', () => {
-          webex.meetings._setReachabilityConfig(true);
-          assert.equal(webex.meetings.config.enableReachabilityChecks, true);
-
-          webex.meetings._setReachabilityConfig('invalid');
-          assert.equal(webex.meetings.config.enableReachabilityChecks, true);
-
-          webex.meetings._setReachabilityConfig(null);
-          assert.equal(webex.meetings.config.enableReachabilityChecks, true);
-        });
-      });
-    });
-
     describe('Public API Contracts', () => {
       describe('#register', () => {
         it('emits an event and resolves when register succeeds', async () => {

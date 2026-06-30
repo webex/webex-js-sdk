@@ -50,7 +50,6 @@ import MeetingInfoV2 from '../meeting-info/meeting-info-v2';
 import Meeting, {CallStateForMetrics, storeEventForDebugging} from '../meeting';
 import PersonalMeetingRoom from '../personal-meeting-room';
 import Reachability from '../reachability';
-import {EnableReachabilityChecksConfig} from '../reachability/reachability.types';
 import Request from './request';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
@@ -940,25 +939,6 @@ export default class Meetings extends WebexPlugin {
       // @ts-ignore
       this.config.stopIceGatheringAfterFirstRelayCandidate = newValue;
     }
-  }
-
-  /**
-   * API to set which media reachability protocols are checked. Accepts `true`/`false`
-   * to enable/disable all checks, or an object to toggle TCP/TLS individually (UDP is
-   * always tested unless reachability is disabled entirely).
-   *
-   * @param {EnableReachabilityChecksConfig} config new enableReachabilityChecks value
-   * @private
-   * @memberof Meetings
-   * @returns {undefined}
-   */
-  private _setReachabilityConfig(config: EnableReachabilityChecksConfig) {
-    if (typeof config !== 'boolean' && (typeof config !== 'object' || config === null)) {
-      return;
-    }
-
-    // @ts-ignore
-    this.config.enableReachabilityChecks = config;
   }
 
   /**
