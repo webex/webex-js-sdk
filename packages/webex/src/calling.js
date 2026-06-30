@@ -141,6 +141,14 @@ class Calling extends EventEmitter {
     this.callSettingsClient = clientConfig.callSettings
       ? WebexCalling.createCallSettingsClient(this.webex, logger)
       : undefined;
+
+    if (clientConfig.callRecording === undefined) {
+      clientConfig.callRecording = false;
+    }
+
+    this.callRecordingClient = clientConfig.callRecording
+      ? WebexCalling.createCallRecordingClient(this.webex, logger)
+      : undefined;
   }
 
   static get createMicrophoneStream() {
