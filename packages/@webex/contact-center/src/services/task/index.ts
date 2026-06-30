@@ -3,7 +3,7 @@ import {CALL_EVENT_KEYS, LocalMicrophoneStream} from '@webex/calling';
 import {CallId} from '@webex/calling/dist/types/common/types';
 import {generateTaskErrorObject, calculateDestAgentId, calculateDestType} from '../core/Utils';
 import {Failure} from '../core/GlobalTypes';
-import {LoginOption} from '../../types';
+import {AIAssistantEventName, AIAssistantEventType, LoginOption} from '../../types';
 import {TASK_FILE} from '../../constants';
 import {METHODS, KEYS_TO_NOT_DELETE} from './constants';
 import routingContact from './contact';
@@ -21,9 +21,12 @@ import {
   TransferPayLoad,
   DESTINATION_TYPE,
   ConsultTransferPayLoad,
+  HandoffSummaryRequestPayload,
+  HandoffSummaryResponsePayload,
   MEDIA_CHANNEL,
 } from './types';
 import WebCallingService from '../WebCallingService';
+import ApiAIAssistant from '../ApiAiAssistant';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import AutoWrapup from './AutoWrapup';
@@ -135,6 +138,7 @@ export default class Task extends EventEmitter implements ITask {
   private wrapupData: WrapupData;
   public autoWrapup?: AutoWrapup;
   private agentId: string;
+  private apiAIAssistant?: ApiAIAssistant;
 
   /**
    * Creates a new Task instance which provides the following features:
@@ -148,7 +152,8 @@ export default class Task extends EventEmitter implements ITask {
     webCallingService: WebCallingService,
     data: TaskData,
     wrapupData: WrapupData,
-    agentId: string
+    agentId: string,
+    apiAIAssistant?: ApiAIAssistant
   ) {
     super();
     this.contact = contact;
@@ -160,6 +165,7 @@ export default class Task extends EventEmitter implements ITask {
     this.registerWebCallListeners();
     this.setupAutoWrapupTimer();
     this.agentId = agentId;
+    this.apiAIAssistant = apiAIAssistant;
   }
 
   /**
@@ -1522,6 +1528,117 @@ export default class Task extends EventEmitter implements ITask {
         },
         ['operational', 'behavioral', 'business']
       );
+      throw err;
+    }
+  }
+
+  private getHandoffSummaryInteractionId(interactionId?: string): string {
+    return interactionId || this.data?.interactionId || this.data?.interaction?.interactionId;
+  }
+
+  private isHandoffSummaryEnabled(): boolean {
+    return (
+      this.apiAIAssistant?.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled === true
+    );
+  }
+
+  /**
+   * Requests a generated handoff summary for this task.
+   *
+   * @param payload - optional interaction override and backend-owned event detail fields
+   * @returns Promise resolving with the AI Assistant response body
+   */
+  public async requestHandoffSummary(
+    payload: HandoffSummaryRequestPayload = {}
+  ): Promise<Record<string, unknown>> {
+    try {
+      const interactionId = this.getHandoffSummaryInteractionId(payload.interactionId);
+
+      if (!this.apiAIAssistant) {
+        throw new Error('AI_ASSISTANT_NOT_AVAILABLE');
+      }
+
+      if (!this.isHandoffSummaryEnabled()) {
+        throw new Error('HANDOFF_SUMMARY_NOT_ENABLED');
+      }
+
+      if (!interactionId) {
+        throw new Error('INVALID_INTERACTION_ID');
+      }
+
+      LoggerProxy.info(`Requesting handoff summary`, {
+        module: TASK_FILE,
+        method: METHODS.REQUEST_HANDOFF_SUMMARY,
+        interactionId,
+      });
+
+      return await this.apiAIAssistant.sendEvent(
+        this.agentId,
+        interactionId,
+        AIAssistantEventType.CUSTOM_EVENT,
+        AIAssistantEventName.GET_MID_CALL_SUMMARY,
+        undefined,
+        payload.eventData
+      );
+    } catch (error) {
+      const err = generateTaskErrorObject(error, METHODS.REQUEST_HANDOFF_SUMMARY, TASK_FILE);
+      LoggerProxy.error(`Failed to request handoff summary`, {
+        module: TASK_FILE,
+        method: METHODS.REQUEST_HANDOFF_SUMMARY,
+        interactionId: this.getHandoffSummaryInteractionId(payload.interactionId),
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Responds to a generated handoff summary decision for this task.
+   *
+   * @param payload - handoff action and optional backend-owned event detail fields
+   * @returns Promise resolving with the AI Assistant response body
+   */
+  public async respondToHandoffSummary(
+    payload: HandoffSummaryResponsePayload
+  ): Promise<Record<string, unknown>> {
+    try {
+      const interactionId = this.getHandoffSummaryInteractionId(payload.interactionId);
+
+      if (!this.apiAIAssistant) {
+        throw new Error('AI_ASSISTANT_NOT_AVAILABLE');
+      }
+
+      if (!payload?.action) {
+        throw new Error('HANDOFF_SUMMARY_ACTION_REQUIRED');
+      }
+
+      if (!interactionId) {
+        throw new Error('INVALID_INTERACTION_ID');
+      }
+
+      LoggerProxy.info(`Responding to handoff summary`, {
+        module: TASK_FILE,
+        method: METHODS.RESPOND_TO_HANDOFF_SUMMARY,
+        interactionId,
+        data: {action: payload.action},
+      });
+
+      return await this.apiAIAssistant.sendEvent(
+        this.agentId,
+        interactionId,
+        AIAssistantEventType.CUSTOM_EVENT,
+        AIAssistantEventName.MID_CALL_SUMMARY_RESPONSE,
+        payload.action,
+        payload.eventData
+      );
+    } catch (error) {
+      const err = generateTaskErrorObject(error, METHODS.RESPOND_TO_HANDOFF_SUMMARY, TASK_FILE);
+      LoggerProxy.error(`Failed to respond to handoff summary`, {
+        module: TASK_FILE,
+        method: METHODS.RESPOND_TO_HANDOFF_SUMMARY,
+        interactionId: this.getHandoffSummaryInteractionId(payload?.interactionId),
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw err;
     }
   }

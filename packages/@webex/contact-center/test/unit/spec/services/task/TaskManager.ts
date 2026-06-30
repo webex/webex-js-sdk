@@ -11,6 +11,26 @@ import WebCallingService from '../../../../../src/services/WebCallingService';
 import config from '../../../../../src/config';
 import {CC_TASK_EVENTS} from '../../../../../src/services/config/types';
 
+jest.mock('@webex/calling', () => ({
+  CALL_EVENT_KEYS: {
+    DISCONNECT: 'disconnect',
+    REMOTE_MEDIA: 'remote_media',
+  },
+  LINE_EVENTS: {
+    INCOMING_CALL: 'incoming_call',
+    REGISTERED: 'registered',
+    UNREGISTERED: 'unregistered',
+  },
+  LOGGER: {
+    INFO: 'info',
+  },
+  ServiceIndicator: {
+    CONTACT_CENTER: 'contact-center',
+  },
+  LocalMicrophoneStream: jest.fn(),
+  createClient: jest.fn(),
+}));
+
 describe('TaskManager', () => {
   let mockCall;
   let mockApiAIAssistant;
@@ -52,6 +72,9 @@ describe('TaskManager', () => {
       aiFeature: {
         realtimeTranscripts: {
           enable: true,
+        },
+        generatedSummaries: {
+          consultTransferSummariesEnabled: true,
         },
       },
     };
@@ -224,6 +247,72 @@ describe('TaskManager', () => {
       CC_EVENTS.REAL_TIME_TRANSCRIPTION,
       realtimePayload.data
     );
+  });
+
+  it('should emit handoff summary events from task object', () => {
+    const task = taskManager.getTask(taskId);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const summaryPayload = {
+      type: CC_EVENTS.MID_CALL_SUMMARY,
+      data: {
+        conversationId: taskId,
+        summary: 'handoff summary',
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(summaryPayload));
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_HANDOFF_SUMMARY,
+      summaryPayload.data
+    );
+    expect(taskEmitSpy).toHaveBeenCalledWith(CC_EVENTS.MID_CALL_SUMMARY, summaryPayload.data);
+  });
+
+  it('should emit subsequent-agent handoff summary response events from task object', () => {
+    const task = taskManager.getTask(taskId);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const responsePayload = {
+      type: CC_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+      data: {
+        conversationId: taskId,
+        action: 'TRANSFER',
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(responsePayload));
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_HANDOFF_SUMMARY_RESPONSE,
+      responsePayload.data
+    );
+    expect(taskEmitSpy).toHaveBeenCalledWith(
+      CC_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+      responsePayload.data
+    );
+  });
+
+  it('should update handoff summary feature enablement from websocket payload', () => {
+    const enablementPayload = {
+      type: CC_EVENTS.FEATURE_ENABLEMENT,
+      data: {
+        conversationId: taskId,
+        generatedSummaries: {
+          consultTransferSummariesEnabled: false,
+        },
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(enablementPayload));
+
+    expect(mockApiAIAssistant.setAIFeatureFlags).toHaveBeenCalledWith({
+      realtimeTranscripts: {
+        enable: true,
+      },
+      generatedSummaries: {
+        consultTransferSummariesEnabled: false,
+      },
+    });
   });
 
   it('should emit REAL_TIME_TRANSCRIPTION from RTD websocket payload on task object', () => {

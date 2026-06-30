@@ -6,7 +6,7 @@ import {
   HTTP_METHODS,
   WebexSDK,
   IHttpResponse,
-  TranscriptAction,
+  AIAssistantEventAction,
   AIAssistantEventType,
   AIAssistantEventName,
   HistoricTranscriptsResponse,
@@ -76,14 +76,16 @@ export class ApiAIAssistant {
    * @param interactionId - interaction/conversation identifier
    * @param eventType - the type of event (e.g. 'CUSTOM_EVENT')
    * @param eventName - the name of the event (e.g. 'GET_TRANSCRIPTS')
-   * @param action - action within eventDetails (e.g. 'START' or 'STOP')
+   * @param action - optional action within eventDetails (e.g. 'START', 'STOP', 'TRANSFER')
+   * @param eventData - optional additional backend-owned event details
    */
   public async sendEvent(
     agentId: string,
     interactionId: string,
     eventType: AIAssistantEventType,
     eventName: AIAssistantEventName,
-    action: TranscriptAction
+    action?: AIAssistantEventAction,
+    eventData: Record<string, unknown> = {}
   ): Promise<Record<string, unknown>> {
     LoggerProxy.info('Sending event', {
       module: CC_FILE,
@@ -110,8 +112,9 @@ export class ApiAIAssistant {
           eventName,
           eventDetails: {
             data: {
+              ...eventData,
               interactionId,
-              action,
+              ...(action ? {action} : {}),
               actionTimeStamp: String(Date.now()),
             },
           },

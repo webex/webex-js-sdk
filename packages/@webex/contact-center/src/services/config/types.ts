@@ -123,6 +123,12 @@ export const CC_TASK_EVENTS = {
   CAMPAIGN_PREVIEW_REMOVE_FAILED: 'CampaignPreviewRemoveFailed',
   /** Event emitted when a real-time transcript chunk is received */
   REAL_TIME_TRANSCRIPTION: 'REAL_TIME_TRANSCRIPTION',
+  /** Event emitted when backend sends a handoff summary payload */
+  MID_CALL_SUMMARY: 'MID_CALL_SUMMARY',
+  /** Event emitted when backend sends a handoff summary response for the subsequent agent */
+  MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT: 'MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT',
+  /** Event emitted when backend sends runtime feature enablement state */
+  FEATURE_ENABLEMENT: 'FEATURE_ENABLEMENT',
 } as const;
 
 /**

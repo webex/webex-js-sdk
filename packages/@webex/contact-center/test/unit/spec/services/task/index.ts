@@ -9,6 +9,7 @@ import config from '../../../../../src/config';
 import WebCallingService from '../../../../../src/services/WebCallingService';
 import {
   TASK_EVENTS,
+  HANDOFF_SUMMARY_ACTION,
   TaskResponse,
   AgentContact,
   ConsultEndPayload,
@@ -23,7 +24,25 @@ import MetricsManager from '../../../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../../../src/metrics/constants';
 import LoggerProxy from '../../../../../src/logger-proxy';
 
-jest.mock('@webex/calling');
+jest.mock('@webex/calling', () => ({
+  CALL_EVENT_KEYS: {
+    DISCONNECT: 'disconnect',
+    REMOTE_MEDIA: 'remote_media',
+  },
+  LINE_EVENTS: {
+    INCOMING_CALL: 'incoming_call',
+    REGISTERED: 'registered',
+    UNREGISTERED: 'unregistered',
+  },
+  LOGGER: {
+    INFO: 'info',
+  },
+  ServiceIndicator: {
+    CONTACT_CENTER: 'contact-center',
+  },
+  LocalMicrophoneStream: jest.fn(),
+  createClient: jest.fn(),
+}));
 jest.mock('../../../../../src/logger-proxy');
 
 describe('Task', () => {
@@ -41,6 +60,7 @@ describe('Task', () => {
   let loggerErrorSpy;
   let calculateDestAgentIdSpy;
   let calculateDestTypeSpy;
+  let mockApiAIAssistant;
 
   const taskId = '0ae913a4-c857-4705-8d49-76dd3dde75e4';
   const mockTrack = {} as MediaStreamTrack;
@@ -84,6 +104,15 @@ describe('Task', () => {
     mockMetricsManager = {
       trackEvent: jest.fn(),
       timeEvent: jest.fn(),
+    };
+
+    mockApiAIAssistant = {
+      sendEvent: jest.fn().mockResolvedValue({ok: true}),
+      aiFeature: {
+        generatedSummaries: {
+          consultTransferSummariesEnabled: true,
+        },
+      },
     };
 
     jest.spyOn(MetricsManager, 'getInstance').mockReturnValue(mockMetricsManager);
@@ -183,7 +212,7 @@ describe('Task', () => {
       wrapUpProps: { wrapUpReasonList: [] },
       autoWrapEnabled: false,
       autoWrapAfterSeconds: 0
-    }, taskDataMock.agentId);
+    }, taskDataMock.agentId, mockApiAIAssistant);
 
     // Mock navigator.mediaDevices
     global.navigator.mediaDevices = {
@@ -246,6 +275,45 @@ describe('Task', () => {
     remoteMediaCb(mockTrack);
 
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_MEDIA, mockTrack);
+  });
+
+  it('requests a handoff summary when generated consult transfer summaries are enabled', async () => {
+    const result = await task.requestHandoffSummary({eventData: {source: 'consult-popup'}});
+
+    expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledWith(
+      taskDataMock.agentId,
+      taskId,
+      'CUSTOM_EVENT',
+      'GET_MID_CALL_SUMMARY',
+      undefined,
+      {source: 'consult-popup'}
+    );
+    expect(result).toEqual({ok: true});
+  });
+
+  it('does not request a handoff summary when generated consult transfer summaries are disabled', async () => {
+    mockApiAIAssistant.aiFeature.generatedSummaries.consultTransferSummariesEnabled = false;
+
+    await expect(task.requestHandoffSummary()).rejects.toThrow();
+
+    expect(mockApiAIAssistant.sendEvent).not.toHaveBeenCalled();
+  });
+
+  it('responds to a handoff summary with a typed action', async () => {
+    const result = await task.respondToHandoffSummary({
+      action: HANDOFF_SUMMARY_ACTION.TRANSFER,
+      eventData: {reason: 'agent-selected'},
+    });
+
+    expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledWith(
+      taskDataMock.agentId,
+      taskId,
+      'CUSTOM_EVENT',
+      'MID_CALL_SUMMARY_RESPONSE',
+      HANDOFF_SUMMARY_ACTION.TRANSFER,
+      {reason: 'agent-selected'}
+    );
+    expect(result).toEqual({ok: true});
   });
 
   describe('updateTaskData cases', () => {

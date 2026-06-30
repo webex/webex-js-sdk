@@ -142,20 +142,22 @@ export default class TaskManager extends EventEmitter {
   private registerTaskListeners() {
     this.webSocketManager.on('message', (event) => {
       const payload = JSON.parse(event);
+      const payloadType = payload.data?.type || payload.type;
       // Re-emit the task events to the task object
       let task: ITask;
-      if (payload.data?.type || payload.type) {
-        if (Object.values(CC_TASK_EVENTS).includes(payload.data.type || payload.type)) {
+      if (payloadType) {
+        if (Object.values(CC_TASK_EVENTS).includes(payloadType)) {
           task =
             this.taskCollection[payload.data?.interactionId] ||
+            this.taskCollection[payload.data?.conversationId] ||
             this.taskCollection[payload.data?.data?.conversationId];
         }
-        LoggerProxy.info(`Handling task event ${payload.data?.type}`, {
+        LoggerProxy.info(`Handling task event ${payloadType}`, {
           module: TASK_MANAGER_FILE,
           method: METHODS.REGISTER_TASK_LISTENERS,
           interactionId: payload.data?.interactionId,
         });
-        switch (payload.data.type) {
+        switch (payloadType) {
           case CC_EVENTS.AGENT_CONTACT:
             // Case1 : Task is already present in taskCollection
             if (this.taskCollection[payload.data.interactionId]) {
@@ -192,7 +194,8 @@ export default class TaskManager extends EventEmitter {
                   isAutoAnswering: shouldAutoAnswer, // Set flag before emitting
                 },
                 this.wrapupData,
-                this.agentId
+                this.agentId,
+                this.apiAIAssistant
               );
               this.taskCollection[payload.data.interactionId] = task;
               // Condition 1: The state is=new i.e it is a incoming task
@@ -239,7 +242,8 @@ export default class TaskManager extends EventEmitter {
                 isAutoAnswering: shouldAutoAnswerReserved, // Set flag before emitting
               },
               this.wrapupData,
-              this.agentId
+              this.agentId,
+              this.apiAIAssistant
             );
             this.taskCollection[payload.data.interactionId] = task;
             if (
@@ -661,7 +665,8 @@ export default class TaskManager extends EventEmitter {
                   isAutoAnswering: false,
                 },
                 this.wrapupData,
-                this.agentId
+                this.agentId,
+                this.apiAIAssistant
               );
               this.taskCollection[payload.data.interactionId] = task;
             } else {
@@ -672,11 +677,25 @@ export default class TaskManager extends EventEmitter {
             break;
           }
 
+          case CC_EVENTS.FEATURE_ENABLEMENT:
+            this.handleHandoffSummaryFeatureEnablement(payload.data || {}, task);
+            break;
+          case CC_EVENTS.MID_CALL_SUMMARY:
+            if (task) {
+              task.emit(TASK_EVENTS.TASK_HANDOFF_SUMMARY, payload.data);
+            }
+            break;
+          case CC_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT:
+            if (task) {
+              task.emit(TASK_EVENTS.TASK_HANDOFF_SUMMARY_RESPONSE, payload.data);
+            }
+            break;
+
           default:
             break;
         }
         if (task) {
-          task.emit(payload.data.type, payload.data);
+          task.emit(payloadType, payload.data);
         }
 
         const transcriptInteractionId =
@@ -684,8 +703,8 @@ export default class TaskManager extends EventEmitter {
           payload.data?.data?.conversationId ||
           task?.data?.interactionId;
 
-        if (TRANSCRIPT_EVENT_MAP[payload.data.type] && transcriptInteractionId) {
-          this.requestRealTimeTranscripts(payload.data.type, transcriptInteractionId);
+        if (TRANSCRIPT_EVENT_MAP[payloadType] && transcriptInteractionId) {
+          this.requestRealTimeTranscripts(payloadType, transcriptInteractionId);
         }
       }
     });
@@ -716,6 +735,34 @@ export default class TaskManager extends EventEmitter {
       });
 
       return task;
+    }
+  }
+
+  private handleHandoffSummaryFeatureEnablement(
+    payloadData: Record<string, any>,
+    task?: ITask
+  ): void {
+    const consultTransferSummariesEnabled =
+      payloadData?.consultTransferSummariesEnabled ??
+      payloadData?.generatedSummaries?.consultTransferSummariesEnabled ??
+      payloadData?.data?.consultTransferSummariesEnabled ??
+      payloadData?.data?.generatedSummaries?.consultTransferSummariesEnabled;
+
+    if (typeof consultTransferSummariesEnabled === 'boolean' && this.apiAIAssistant) {
+      const currentAiFeature = this.apiAIAssistant.aiFeature || ({} as any);
+      this.apiAIAssistant.setAIFeatureFlags({
+        ...currentAiFeature,
+        generatedSummaries: {
+          ...currentAiFeature.generatedSummaries,
+          consultTransferSummariesEnabled,
+        },
+      });
+    }
+
+    if (task) {
+      task.emit(TASK_EVENTS.TASK_HANDOFF_SUMMARY_FEATURE_ENABLEMENT, payloadData);
+    } else {
+      this.emit(TASK_EVENTS.TASK_HANDOFF_SUMMARY_FEATURE_ENABLEMENT, payloadData);
     }
   }
 
@@ -757,7 +804,8 @@ export default class TaskManager extends EventEmitter {
           isConferenceInProgress: getIsConferenceInProgress(taskData),
         },
         this.wrapupData,
-        this.agentId
+        this.agentId,
+        this.apiAIAssistant
       );
       this.taskCollection[taskData.interactionId] = task;
     }
