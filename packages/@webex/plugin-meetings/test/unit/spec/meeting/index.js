@@ -900,16 +900,18 @@ describe('plugin-meetings', () => {
         it('should transfer host using breakout locus when the target member is joined in a breakout session', async () => {
           sinon.stub(meeting.members.membersCollection, 'get').withArgs(uuid2).returns({isInMeeting: false});
           meeting.members.transferHostToMember = sinon.stub().resolves(test1);
-          meeting.breakouts.breakouts = [
-            {
-              members: {
-                membersCollection: {
-                  get: sinon.stub().withArgs(uuid2).returns({isInMeeting: true}),
+          meeting.breakouts.breakouts = {
+            models: [
+              {
+                members: {
+                  membersCollection: {
+                    get: sinon.stub().withArgs(uuid2).returns({isInMeeting: true}),
+                  },
                 },
+                breakoutRosterLocus: {url: 'https://example.com/breakout-locus'},
               },
-              breakoutRosterLocus: {url: 'https://example.com/breakout-locus'},
-            },
-          ];
+            ],
+          };
 
           await meeting.transfer(uuid2, false);
 
@@ -924,16 +926,18 @@ describe('plugin-meetings', () => {
         it('should not use breakout locus when the breakout member is not in meeting', async () => {
           sinon.stub(meeting.members.membersCollection, 'get').withArgs(uuid2).returns({isInMeeting: false});
           meeting.members.transferHostToMember = sinon.stub().resolves(test1);
-          meeting.breakouts.breakouts = [
-            {
-              members: {
-                membersCollection: {
-                  get: sinon.stub().withArgs(uuid2).returns({isInMeeting: false}),
+          meeting.breakouts.breakouts = {
+            models: [
+              {
+                members: {
+                  membersCollection: {
+                    get: sinon.stub().withArgs(uuid2).returns({isInMeeting: false}),
+                  },
                 },
+                breakoutRosterLocus: {url: 'https://example.com/breakout-locus'},
               },
-              breakoutRosterLocus: {url: 'https://example.com/breakout-locus'},
-            },
-          ];
+            ],
+          };
 
           await meeting.transfer(uuid2, false);
 
