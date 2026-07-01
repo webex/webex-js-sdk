@@ -25,6 +25,8 @@ import {
   TransportResultForBackend,
   GetClustersTrigger,
   NatType,
+  SubnetDetailForBackend,
+  ClusterUrls,
 } from './reachability.types';
 import {
   ClientMediaIpsUpdatedEventData,
@@ -68,6 +70,7 @@ export default class Reachability extends EventsScope {
   startTime = undefined;
   totalDuration = undefined;
   natType = NatType.Unknown;
+  private reachabilityDoneEmitted = false;
 
   protected lastTrigger?: string;
 
@@ -435,6 +438,20 @@ export default class Reachability extends EventsScope {
           break;
         case 'latencyInMilliseconds':
           output.latencyInMilliseconds = value.toString();
+          output.minLatency = value as number;
+          break;
+        case 'details':
+          if (Array.isArray(value) && value.length > 0) {
+            output.details = value.map(
+              (detail): SubnetDetailForBackend => ({
+                serverIPs: detail.serverIp,
+                port: detail.port,
+                'answered-tx': detail.answeredTx,
+                'lost-tx': detail.lostTx,
+                latencies: detail.latencies,
+              })
+            );
+          }
           break;
         default:
           output[key] = value;
@@ -603,7 +620,7 @@ export default class Reachability extends EventsScope {
   private getNumberOfReachableClusters(): number {
     let count = 0;
 
-    Object.entries(this.clusterReachability).forEach(([key, clusterReachability]) => {
+    Object.entries(this.clusterReachability).forEach(([, clusterReachability]) => {
       const result = clusterReachability.getResult();
 
       if (
@@ -768,6 +785,29 @@ export default class Reachability extends EventsScope {
   }
 
   /**
+   * Emits the reachability:done event and sets the reachabilityDoneEmitted flag.
+   * The guard ensures the event is only emitted once, regardless of how many
+   * code paths converge here.
+   *
+   * @returns {void}
+   */
+  private emitReachabilityDoneEvent() {
+    if (this.reachabilityDoneEmitted) {
+      return;
+    }
+    this.reachabilityDoneEmitted = true;
+    this.emit(
+      {
+        file: 'reachability',
+        function: 'emitReachabilityDoneEvent',
+      },
+      'reachability:done',
+      {}
+    );
+    this.sendMetric();
+  }
+
+  /**
    * Starts all the timers used for various timeouts
    *
    * @returns {void}
@@ -802,15 +842,7 @@ export default class Reachability extends EventsScope {
     this.overallTimer = setTimeout(() => {
       this.overallTimer = undefined;
       this.abortClusterReachability();
-      this.emit(
-        {
-          file: 'reachability',
-          function: 'overallTimer timeout',
-        },
-        'reachability:done',
-        {}
-      );
-      this.sendMetric();
+      this.emitReachabilityDoneEvent();
 
       LoggerProxy.logger.log(
         `Reachability:index#startTimers --> Reachability checks fully timed out (${OVERALL_TIMEOUT}s)`
@@ -899,6 +931,7 @@ export default class Reachability extends EventsScope {
     );
 
     this.resetResultCounters();
+    this.reachabilityDoneEmitted = false;
 
     // sanitize the urls in the clusterList
     Object.keys(clusterList).forEach((key) => {
@@ -922,7 +955,7 @@ export default class Reachability extends EventsScope {
         cluster.xtls = [];
       }
 
-      // initialize the result for this cluster
+      // Initialize the result for this cluster
       results[key] = {
         udp: {result: cluster.udp.length > 0 ? 'unreachable' : 'untested'},
         tcp: {result: cluster.tcp.length > 0 ? 'unreachable' : 'untested'},
@@ -951,15 +984,7 @@ export default class Reachability extends EventsScope {
     if (!clusterList || !Object.keys(clusterList).length) {
       // nothing to do, finish immediately
       this.resolveReachabilityPromise(false);
-
-      this.emit(
-        {
-          file: 'reachability',
-          function: 'performReachabilityChecks',
-        },
-        'reachability:done',
-        {}
-      );
+      this.emitReachabilityDoneEvent();
 
       return;
     }
@@ -976,10 +1001,25 @@ export default class Reachability extends EventsScope {
         // @ts-ignore
         this.webex.config.meetings.enablePerUdpUrlReachability
       );
-      this.clusterReachability[key].on(Events.resultReady, async (data: ResultEventData) => {
-        const {protocol, result, clientMediaIPs, latencyInMilliseconds} = data;
 
-        if (isFirstResult[protocol]) {
+      // Hydrate results with pre-populated subnet details from the ClusterReachability instance.
+      // This ensures that even if no resultReady events fire (e.g., RTCPeerConnection creation fails),
+      // the unreachable subnet entries are persisted to storage.
+      const initialResult = this.clusterReachability[key].getResult();
+      if (initialResult.udp.details?.length) {
+        results[key].udp.details = initialResult.udp.details;
+      }
+      if (initialResult.tcp.details?.length) {
+        results[key].tcp.details = initialResult.tcp.details;
+      }
+      if (initialResult.xtls.details?.length) {
+        results[key].xtls.details = initialResult.xtls.details;
+      }
+
+      this.clusterReachability[key].on(Events.resultReady, async (data: ResultEventData) => {
+        const {protocol, result, clientMediaIPs, latencyInMilliseconds, details} = data;
+
+        if (isFirstResult[protocol] && result === 'reachable') {
           this.emit(
             {
               file: 'reachability',
@@ -992,27 +1032,42 @@ export default class Reachability extends EventsScope {
           );
           isFirstResult[protocol] = false;
         }
-        this.resultsCount[cluster.isVideoMesh ? 'videoMesh' : 'public'][protocol] += 1;
+        if (result === 'reachable') {
+          this.resultsCount[cluster.isVideoMesh ? 'videoMesh' : 'public'][protocol] += 1;
+        }
 
         const areAllResultsReady = this.areAllResultsReady();
 
         results[key][protocol].result = result;
         results[key][protocol].clientMediaIPs = clientMediaIPs;
         results[key][protocol].latencyInMilliseconds = latencyInMilliseconds;
+        if (details) {
+          results[key][protocol].details = details;
+        }
+
+        if (areAllResultsReady) {
+          // Re-read final details from all clusters before storing, to capture fully merged
+          // UDP results. In per-URL mode, each resultReady event only carries details for a
+          // single URL; getResult() holds the accumulated state across all URLs.
+          Object.keys(this.clusterReachability).forEach((clusterKey) => {
+            const finalResult = this.clusterReachability[clusterKey].getResult();
+            if (finalResult.udp.details) {
+              results[clusterKey].udp.details = finalResult.udp.details;
+            }
+            if (finalResult.tcp.details) {
+              results[clusterKey].tcp.details = finalResult.tcp.details;
+            }
+            if (finalResult.xtls.details) {
+              results[clusterKey].xtls.details = finalResult.xtls.details;
+            }
+          });
+        }
 
         await this.storeResults(results);
 
         if (areAllResultsReady) {
           this.clearTimer('overallTimer');
-          this.emit(
-            {
-              file: 'reachability',
-              function: 'performReachabilityChecks',
-            },
-            'reachability:done',
-            {}
-          );
-          this.sendMetric();
+          this.emitReachabilityDoneEvent();
 
           LoggerProxy.logger.log(
             `Reachability:index#gatherReachability --> Reachability checks fully completed`
@@ -1040,6 +1095,9 @@ export default class Reachability extends EventsScope {
 
       this.clusterReachability[key].start(); // not awaiting on purpose
     });
+
+    // Store results with pre-populated details.
+    await this.storeResults(results);
   }
 
   /**
@@ -1095,5 +1153,24 @@ export default class Reachability extends EventsScope {
 
     // for version 1 we don't attach anything to Roap messages, reachability report is sent inside clientMediaPreferences
     return undefined;
+  }
+
+  /**
+   * Gets the list of all cluster URLs used during the reachability checks (IP addresses or domain names with ports)
+   * grouped by cluster and protocol.
+   *
+   * @returns {ClusterUrls} An object containing clusters as keys,
+   * protocols as nested keys, and arrays of "ip:port" or "domain:port" strings.
+   * @public
+   * @memberof Reachability
+   */
+  public getAllClustersInfo(): ClusterUrls {
+    const result: ClusterUrls = {};
+
+    Object.entries(this.clusterReachability).forEach(([clusterName, clusterReachability]) => {
+      result[clusterName] = clusterReachability.getClusterUrls();
+    });
+
+    return result;
   }
 }

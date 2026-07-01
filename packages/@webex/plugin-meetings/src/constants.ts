@@ -1423,6 +1423,14 @@ export const INITIAL_REGISTRATION_STATUS = {
   checkH264Support: false,
 };
 
+// Regex to parse STUN/TURN URLs with IPv6 support
+// Captures: [1]=IPv6 (inside brackets), [2]=IPv4/domain, [3]=port
+export const STUN_TURN_URL_REGEX =
+  /^(?:stun|turn|turns):(?:\[([^\]]+)\]|([^:/?]+))(?::(\d+))?(?:\?.*)?$/;
+
+// List of protocols for reachability
+export const PROTOCOLS_LIST: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
+
 export const STAGE_MANAGER_TYPE = {
   LOGO: 0b001,
   BACKGROUND: 0b010,

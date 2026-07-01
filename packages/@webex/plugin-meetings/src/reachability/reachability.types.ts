@@ -6,7 +6,7 @@ export type Protocol = 'udp' | 'tcp' | 'xtls';
  * Events emitted by ReachabilityPeerConnection
  */
 export const ReachabilityPeerConnectionEvents = {
-  resultReady: 'resultReady', // emitted when successfully reached over a protocol
+  resultReady: 'resultReady', // emitted when a reachability result is available for a protocol; when per-URL mode is disabled, emitted only for reachable URLs; when per-URL mode is enabled, emitted for both reachable and unreachable URLs
   clientMediaIpsUpdated: 'clientMediaIpsUpdated', // emitted when new public IPs are found
   natTypeUpdated: 'natTypeUpdated', // emitted when NAT type is determined
   reachedSubnets: 'reachedSubnets', // emitted when server IP (subnet) is discovered
@@ -14,11 +14,30 @@ export const ReachabilityPeerConnectionEvents = {
 
 export type ReachabilityPeerConnectionEvents = Enum<typeof ReachabilityPeerConnectionEvents>;
 
+// Subnet detail for internal use (tracks per-server reachability)
+export type SubnetDetail = {
+  serverIp: string;
+  port: number;
+  answeredTx: number; // 1 if reachable, 0 if not
+  lostTx: number; // 0 if reachable, 1 if not
+  latencies: number[]; // latencies in milliseconds
+};
+
+// Subnet detail format expected by backend
+export type SubnetDetailForBackend = {
+  serverIPs: string;
+  port: number;
+  'answered-tx': number;
+  'lost-tx': number;
+  latencies: number[];
+};
+
 // result for a specific transport protocol (like udp or tcp)
 export type TransportResult = {
   result: 'reachable' | 'unreachable' | 'untested';
   latencyInMilliseconds?: number; // amount of time it took to get the first ICE candidate
   clientMediaIPs?: string[];
+  details?: SubnetDetail[]; // per-subnet reachability details
 };
 
 export enum NatType {
@@ -58,6 +77,8 @@ export type TransportResultForBackend = {
   latencyInMilliseconds?: string;
   clientMediaIPs?: string[];
   untested?: 'true';
+  details?: SubnetDetailForBackend[];
+  minLatency?: number;
 };
 
 export type ReachabilityResultForBackend = {
@@ -103,3 +124,15 @@ export interface ClientMediaPreferences {
 
 /* Orpheus API supports more triggers, but we don't use them yet */
 export type GetClustersTrigger = 'startup' | 'early-call/no-min-reached';
+
+/**
+ * Type for getAllClustersInfo return value
+ */
+export type ClusterUrls = Record<
+  string,
+  {
+    udp: string[];
+    tcp: string[];
+    xtls: string[];
+  }
+>;

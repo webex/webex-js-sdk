@@ -210,6 +210,12 @@ describe('ClusterReachability', () => {
       const udpRpc1 = (perUdpClusterReachability as any).reachabilityPeerConnectionsForUdp[0];
       const udpRpc2 = (perUdpClusterReachability as any).reachabilityPeerConnectionsForUdp[1];
 
+      // Stub getResult so aggregateUdpResults() sees udpRpc1 as reachable with latency 50
+      sinon.stub(udpRpc1, 'getResult').returns({
+        udp: {result: 'reachable', latencyInMilliseconds: 50, clientMediaIPs: ['1.1.1.1']},
+        tcp: {result: 'untested'}, xtls: {result: 'untested'},
+      });
+
       udpRpc1.emit({file: 'test', function: 'test'}, ReachabilityPeerConnectionEvents.resultReady, {
         protocol: 'udp',
         result: 'reachable',
@@ -737,6 +743,155 @@ describe('ClusterReachability', () => {
         },
         tcp: {result: 'reachable', latencyInMilliseconds: 20},
         xtls: {result: 'reachable', latencyInMilliseconds: 20},
+      });
+    });
+  });
+
+  describe('#subnet details', () => {
+    let clock;
+
+    beforeEach(() => {
+      clock = sinon.useFakeTimers();
+    });
+
+    afterEach(() => {
+      clock.restore();
+    });
+
+    it('populates subnet details with IP-based URLs when enablePerUdpUrlReachability is true', async () => {
+      // Override RTCPeerConnection stub to return separate objects per call,
+      // because per-URL mode creates multiple PeerConnections and closing one
+      // (which nulls onicecandidate) must not affect the others.
+      const allFakePcs: Record<string, unknown>[] = [];
+      (global.RTCPeerConnection as sinon.SinonStub).callsFake(() => {
+        const pc: Record<string, unknown> = {
+          createOffer: sinon.stub().resolves(FAKE_OFFER),
+          setLocalDescription: sinon.stub().resolves(),
+          close: sinon.stub(),
+          iceGatheringState: 'new',
+        };
+        allFakePcs.push(pc);
+        return pc;
+      });
+
+      const perUrlCluster = new ClusterReachability(
+        'testCluster',
+        {
+          isVideoMesh: false,
+          udp: ['stun:192.168.1.1:5004'],
+          tcp: ['stun:10.0.0.1:5004'],
+          xtls: [],
+        },
+        true // enablePerUdpUrlReachability
+      );
+
+      // With per-URL mode: 1 UDP peer connection + 1 TCP/TLS peer connection = 2 total
+      const promise = perUrlCluster.start();
+      await testUtils.flushPromises();
+
+      // Send srflx candidate on the UDP peer connection (first one created)
+      const udpPc = allFakePcs[0];
+      await clock.tickAsync(25);
+      udpPc.onicecandidate({
+        candidate: {type: 'srflx', address: 'publicIp1', url: 'stun:192.168.1.1:5004'},
+      });
+      udpPc.iceGatheringState = 'complete';
+      udpPc.onicegatheringstatechange();
+
+      // Send relay candidate on the TCP/TLS peer connection (second one created)
+      const tcpPc = allFakePcs[1];
+      await testUtils.flushPromises();
+      await clock.tickAsync(10);
+      tcpPc.onicecandidate({
+        candidate: {type: 'relay', address: '10.0.0.1', port: 5004},
+      });
+      tcpPc.iceGatheringState = 'complete';
+      tcpPc.onicegatheringstatechange();
+
+      await promise;
+
+      const result = perUrlCluster.getResult();
+
+      // UDP details: pre-populated entry should be marked reachable
+      assert.equal(result.udp.result, 'reachable');
+      assert.isArray(result.udp.details);
+      assert.equal(result.udp.details.length, 1);
+      assert.deepEqual(result.udp.details[0], {
+        serverIp: '192.168.1.1',
+        port: 5004,
+        answeredTx: 1,
+        lostTx: 0,
+        latencies: [result.udp.details[0].latencies[0]],
+      });
+      assert.equal(result.udp.details[0].latencies.length, 1);
+
+      // TCP details: should also be marked reachable
+      assert.equal(result.tcp.result, 'reachable');
+      assert.isArray(result.tcp.details);
+      assert.equal(result.tcp.details.length, 1);
+      assert.equal(result.tcp.details[0].answeredTx, 1);
+      assert.equal(result.tcp.details[0].lostTx, 0);
+    });
+
+    it('does not populate details when enablePerUdpUrlReachability is false', () => {
+      const noDetailsCluster = new ClusterReachability(
+        'testCluster',
+        {
+          isVideoMesh: false,
+          udp: ['stun:192.168.1.1:5004'],
+          tcp: ['stun:10.0.0.1:5004'],
+          xtls: ['stun:xtls.webex.com:443'],
+        },
+        false // enablePerUdpUrlReachability = false (default)
+      );
+
+      const result = noDetailsCluster.getResult();
+
+      // All protocols should have details=undefined when flag is false
+      assert.equal(result.udp.details, undefined);
+      assert.equal(result.tcp.details, undefined);
+      assert.equal(result.xtls.details, undefined);
+    });
+
+    it('preserves unreachable details (answeredTx=0, lostTx=1) after abort with no candidates', async () => {
+      const perUrlCluster = new ClusterReachability(
+        'testCluster',
+        {
+          isVideoMesh: false,
+          udp: ['stun:192.168.1.1:5004', 'stun:192.168.1.2:5004'],
+          tcp: ['stun:10.0.0.1:5004'],
+          xtls: [],
+        },
+        true // enablePerUdpUrlReachability
+      );
+
+      const promise = perUrlCluster.start();
+      await testUtils.flushPromises();
+
+      // Abort immediately without any ICE candidates
+      perUrlCluster.abort();
+      await promise;
+
+      const result = perUrlCluster.getResult();
+
+      // UDP should be unreachable with pre-populated details still showing answeredTx=0
+      assert.equal(result.udp.result, 'unreachable');
+      assert.isArray(result.udp.details);
+      assert.equal(result.udp.details.length, 2);
+      result.udp.details.forEach((detail) => {
+        assert.equal(detail.answeredTx, 0);
+        assert.equal(detail.lostTx, 1);
+        assert.deepEqual(detail.latencies, []);
+      });
+
+      // TCP should be unreachable with pre-populated details
+      assert.equal(result.tcp.result, 'unreachable');
+      assert.isArray(result.tcp.details);
+      assert.equal(result.tcp.details.length, 1);
+      result.tcp.details.forEach((detail) => {
+        assert.equal(detail.answeredTx, 0);
+        assert.equal(detail.lostTx, 1);
+        assert.deepEqual(detail.latencies, []);
       });
     });
   });

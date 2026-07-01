@@ -2319,22 +2319,22 @@ describe('getReachabilityResults', () => {
       // expected result (same as above, but with values converted and isVideoMesh and someOtherField stripped out):
       {
         cluster1: {
-          udp: {reachable: 'true', latencyInMilliseconds: '100'},
+          udp: {reachable: 'true', latencyInMilliseconds: '100', minLatency: 100},
           tcp: {reachable: 'false'},
           xtls: {untested: 'true'},
         },
         cluster2: {
-          udp: {reachable: 'true', latencyInMilliseconds: '200'},
+          udp: {reachable: 'true', latencyInMilliseconds: '200', minLatency: 200},
           tcp: {reachable: 'false'},
           xtls: {untested: 'true'},
         },
         cluster3: {
           udp: {reachable: 'false'},
-          tcp: {reachable: 'true', latencyInMilliseconds: '100', clientMediaIPs: ['10.10.10.10']},
+          tcp: {reachable: 'true', latencyInMilliseconds: '100', minLatency: 100, clientMediaIPs: ['10.10.10.10']},
           xtls: {untested: 'true'},
         },
         cluster4: {
-          udp: {reachable: 'true', latencyInMilliseconds: '300'},
+          udp: {reachable: 'true', latencyInMilliseconds: '300', minLatency: 300},
           tcp: {untested: 'true'},
           xtls: {untested: 'true'},
         },
