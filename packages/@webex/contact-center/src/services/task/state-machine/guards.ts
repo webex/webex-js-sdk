@@ -297,12 +297,29 @@ export const guards = {
   },
 
   // Wrapup Guards
-  isCampaignPreviewContactEnded: ({event}: GuardParams): boolean => {
+  isCampaignPreviewContactEnded: ({context, event}: GuardParams): boolean => {
     if (event?.type !== TaskEvent.CONTACT_ENDED) {
       return false;
     }
 
-    return isCampaignPreviewTask(getTaskDataFromEvent(event));
+    const taskData = getTaskDataFromEvent(event);
+    if (!isCampaignPreviewTask(taskData)) {
+      return false;
+    }
+
+    const selfAgentId = getSelfAgentId(context, taskData);
+    const pending = taskData?.agentsPendingWrapUp;
+    const isPendingWrapUp =
+      Array.isArray(pending) && !!selfAgentId && pending.includes(selfAgentId);
+    const participantIsWrapUp =
+      !!selfAgentId && taskData?.interaction?.participants?.[selfAgentId]?.isWrapUp === true;
+    const explicitWrapUp =
+      taskData?.wrapUpRequired === true ||
+      participantIsWrapUp ||
+      isPendingWrapUp ||
+      taskData?.interaction?.state === 'wrapUp';
+
+    return !explicitWrapUp;
   },
 
   shouldWrapUp: ({context, event}: GuardParams): boolean => {

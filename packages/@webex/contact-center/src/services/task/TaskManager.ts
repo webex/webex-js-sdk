@@ -201,6 +201,14 @@ export default class TaskManager extends EventEmitter {
     switch (ccEvent) {
       // CC -> TaskEvent mappings (see TaskStateMachine comment for quick reference)
       case CC_EVENTS.AGENT_CONTACT_RESERVED: // AgentContactReserved -> TASK_INCOMING
+        if (isCampaignPreviewTask(payload)) {
+          return {
+            type: TaskEvent.TASK_INCOMING,
+            taskData: payload,
+            isCampaignReservationAccept: true,
+          };
+        }
+
         return {type: TaskEvent.TASK_INCOMING, taskData: payload};
 
       case CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION: // -> TASK_INCOMING (campaign branch via guard)

@@ -7,6 +7,7 @@ import {CC_EVENTS} from '../config/types';
 import {OUTBOUND_TYPE, OUTDIAL_DIRECTION, OUTDIAL_MEDIA_TYPE} from '../../constants';
 
 const CAMPAIGN_PREVIEW_OUTBOUND_TYPES = ['STANDARD_PREVIEW_CAMPAIGN', 'DIRECT_PREVIEW_CAMPAIGN'];
+const CAMPAIGN_PREVIEW_CAMPAIGN_TYPES = ['preview_standard', 'preview_direct'];
 
 /**
  * Checks if the customer is still in the call (not left)
@@ -248,7 +249,16 @@ export const isSecondaryEpDnAgent = (interaction: Interaction): boolean => {
  * Campaign preview ContactEnded events are terminal cleanup events and should not trigger wrapup.
  */
 export const isCampaignPreviewTask = (taskData?: TaskData | null): boolean => {
-  return CAMPAIGN_PREVIEW_OUTBOUND_TYPES.includes(taskData?.interaction?.outboundType ?? '');
+  const outboundType = taskData?.interaction?.outboundType ?? '';
+  const cpd = taskData?.interaction?.callProcessingDetails as unknown as
+    | Record<string, string | undefined>
+    | undefined;
+  const campaignType = cpd?.campaignType ?? '';
+
+  return (
+    CAMPAIGN_PREVIEW_OUTBOUND_TYPES.includes(outboundType) ||
+    CAMPAIGN_PREVIEW_CAMPAIGN_TYPES.includes(campaignType)
+  );
 };
 
 /**
