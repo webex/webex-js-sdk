@@ -116,7 +116,10 @@ export default class RedirectInterceptor extends Interceptor {
         options.uri = newUrl[0]; // params are already present in the qs
       } else {
         // for GET requests
-        options.uri = options.uri.replace(/(?<=https:\/\/)[^/]+/, response.body.data.siteFullUrl);
+        options.uri = options.uri.replace(
+          /(https:\/\/)[^/]+/,
+          `$1${response.body.data.siteFullUrl}`
+        );
       }
 
       if (options.resource === 'preJoin' && options.service === 'webex-appapi-service') {

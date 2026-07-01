@@ -115,6 +115,7 @@ describe('plugin-meetings', () => {
     });
 
     describe('#changeVideoLayout', () => {
+
       const locusUrl = 'locusURL';
       const deviceUrl = 'deviceUrl';
       const layoutType = 'Equal';
@@ -916,6 +917,75 @@ describe('plugin-meetings', () => {
           locusId,
         }
       });
+    });
+  });
+
+  describe('#fetchDatachannelToken', () => {
+    const locusUrl = 'https://locus.example.com/locus/api/v1/loci/123';
+    const participantId = 'participant-123';
+
+    beforeEach(() => {
+      sinon.restore();
+      locusDeltaRequestSpy = sinon.stub(meetingsRequest, 'locusDeltaRequest');
+    });
+
+    it('sends GET request to regular datachannel token endpoint', async () => {
+      locusDeltaRequestSpy.resolves({body: {}});
+
+      await meetingsRequest.fetchDatachannelToken({
+        locusUrl,
+        requestingParticipantId: participantId,
+        isPracticeSession: false,
+      });
+
+      assert.calledOnceWithExactly(locusDeltaRequestSpy, {
+        method: 'GET',
+        uri: `${locusUrl}/participant/${participantId}/datachannel/token`,
+      });
+    });
+
+    it('sends GET request to practice session datachannel token endpoint', async () => {
+      locusDeltaRequestSpy.resolves({body: {}});
+
+      await meetingsRequest.fetchDatachannelToken({
+        locusUrl,
+        requestingParticipantId: participantId,
+        isPracticeSession: true,
+      });
+
+      assert.calledOnceWithExactly(locusDeltaRequestSpy, {
+        method: 'GET',
+        uri: `${locusUrl}/participant/${participantId}/practiceSession/datachannel/token`,
+      });
+    });
+
+    it('rejects when locusUrl or participantId is missing', async () => {
+      await assert.isRejected(
+        meetingsRequest.fetchDatachannelToken({
+          locusUrl: null,
+          requestingParticipantId: participantId,
+        }),
+        /locusUrl and participantId are required/
+      );
+
+      await assert.isRejected(
+        meetingsRequest.fetchDatachannelToken({
+          locusUrl,
+          requestingParticipantId: null,
+        }),
+        /locusUrl and participantId are required/
+      );
+    });
+
+    it('returns null when locusDeltaRequest fails', async () => {
+      locusDeltaRequestSpy.rejects(new Error('network error'));
+
+      const result = await meetingsRequest.fetchDatachannelToken({
+        locusUrl,
+        requestingParticipantId: participantId,
+      });
+
+      assert.equal(result, null);
     });
   });
 });

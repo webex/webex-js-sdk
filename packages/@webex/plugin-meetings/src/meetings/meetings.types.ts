@@ -31,3 +31,22 @@ export type MeetingRegistrationStatus = {
   mercuryConnect: boolean;
   checkH264Support: boolean;
 };
+
+export enum SitePreferenceSelectOption {
+  SCHEDULING = 'scheduling',
+}
+
+export type FetchSitePreferencesMeViaSiteOptions = {
+  siteUrl?: string;
+  siteName?: string;
+  selectOptions?: SitePreferenceSelectOption[];
+};
+
+export const DEFAULT_SITE_PREFERENCE_SELECT_OPTIONS = [SitePreferenceSelectOption.SCHEDULING];
+
+export type SitePreferencesResponse = {
+  scheduling?: {
+    supportScheduleWebinar?: boolean;
+    webinarWebLink?: string;
+  };
+};

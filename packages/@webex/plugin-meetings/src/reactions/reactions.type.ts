@@ -40,6 +40,7 @@ export enum SkinToneType {
 }
 
 export type Sender = {
+  displayName: string;
   participantId: string;
 };
 
@@ -59,4 +60,7 @@ type RelayEventData = {
 
 export type RelayEvent = {
   data: RelayEventData;
+  headers?: {
+    route?: string;
+  };
 };

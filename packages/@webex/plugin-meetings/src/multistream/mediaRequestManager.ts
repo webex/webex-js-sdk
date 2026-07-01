@@ -9,13 +9,19 @@ import {
   getRecommendedMaxBitrateForFrameSize,
   RecommendedOpusBitrates,
   NamedMediaGroup,
+  AV1Codec,
+  SupportedResolution,
+  AV1EncodingParams,
+  MediaType,
+  MediaCodecMimeType,
 } from '@webex/internal-media-core';
-import {cloneDeepWith, debounce, isEmpty} from 'lodash';
+import {cloneDeepWith, debounce} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
 import {MAX_FS_VALUES} from './remoteMedia';
+import {AV1_CODEC_PARAMETERS, H264_CODEC_PARAMETERS} from './codec/constants';
 
 export interface ActiveSpeakerPolicyInfo {
   policy: 'active-speaker';
@@ -54,33 +60,48 @@ export interface MediaRequest {
 
 export type MediaRequestId = string;
 
-const CODEC_DEFAULTS = {
-  h264: {
-    maxFs: 8192,
-    maxFps: 3000,
-    maxMbps: 245760,
-  },
-};
-
 const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
+
+const RESOLUTION_BUCKETS: Array<[SupportedResolution, number]> = [
+  ['90p', MAX_FS_VALUES['90p']],
+  ['180p', MAX_FS_VALUES['180p']],
+  ['360p', MAX_FS_VALUES['360p']],
+  ['540p', MAX_FS_VALUES['540p']],
+  ['720p', MAX_FS_VALUES['720p']],
+];
 
 type DegradationPreferences = {
   maxMacroblocksLimit: number;
 };
 
 type SendMediaRequestsCallback = (streamRequests: StreamRequest[]) => void;
+type GetIngressPayloadTypeCallback = (
+  mediaType: MediaType,
+  codecMimeType: MediaCodecMimeType
+) => number | undefined;
 type Kind = 'audio' | 'video';
 
-type Options = {
+type AudioMediaRequestManagerOptions = {
   degradationPreferences: DegradationPreferences;
-  kind: Kind;
+  kind: 'audio';
   trimRequestsToNumOfSources: boolean; // if enabled, AS speaker requests will be trimmed based on the calls to setNumCurrentSources()
 };
+
+type VideoMediaRequestManagerOptions = {
+  degradationPreferences: DegradationPreferences;
+  kind: 'video';
+  trimRequestsToNumOfSources: boolean;
+  enableAv1?: boolean;
+};
+
+type Options = AudioMediaRequestManagerOptions | VideoMediaRequestManagerOptions;
 
 type ClientRequestsMap = {[key: MediaRequestId]: MediaRequest};
 
 export class MediaRequestManager {
   private sendMediaRequestsCallback: SendMediaRequestsCallback;
+
+  private getIngressPayloadTypeCallback: GetIngressPayloadTypeCallback;
 
   private kind: Kind;
 
@@ -94,14 +115,18 @@ export class MediaRequestManager {
 
   private debouncedSourceUpdateListener: () => void;
 
-  private previousStreamRequests: Array<StreamRequest> = [];
-
   private trimRequestsToNumOfSources: boolean;
+  private enableAv1: boolean;
   private numTotalSources: number;
   private numLiveSources: number;
 
-  constructor(sendMediaRequestsCallback: SendMediaRequestsCallback, options: Options) {
+  constructor(
+    sendMediaRequestsCallback: SendMediaRequestsCallback,
+    getIngressPayloadTypeCallback: GetIngressPayloadTypeCallback,
+    options: Options
+  ) {
     this.sendMediaRequestsCallback = sendMediaRequestsCallback;
+    this.getIngressPayloadTypeCallback = getIngressPayloadTypeCallback;
     this.counter = 0;
     this.numLiveSources = 0;
     this.numTotalSources = 0;
@@ -109,6 +134,7 @@ export class MediaRequestManager {
     this.degradationPreferences = options.degradationPreferences;
     this.kind = options.kind;
     this.trimRequestsToNumOfSources = options.trimRequestsToNumOfSources;
+    this.enableAv1 = options.kind === 'video' && !!options.enableAv1;
     this.sourceUpdateListener = this.commit.bind(this);
     this.debouncedSourceUpdateListener = debounce(
       this.sourceUpdateListener,
@@ -137,8 +163,8 @@ export class MediaRequestManager {
       Object.values(clientRequests).forEach((mr) => {
         if (mr.codecInfo) {
           mr.codecInfo.maxFs = Math.min(
-            mr.preferredMaxFs || CODEC_DEFAULTS.h264.maxFs,
-            mr.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs,
+            mr.preferredMaxFs || H264_CODEC_PARAMETERS.maxFs,
+            mr.codecInfo.maxFs || H264_CODEC_PARAMETERS.maxFs,
             maxFsLimits[i]
           );
           // we only consider sources with "live" state
@@ -162,36 +188,6 @@ export class MediaRequestManager {
   }
 
   /**
-   * Returns true if two stream requests are the same, false otherwise.
-   *
-   * @param {StreamRequest} streamRequestA - Stream request A for comparison.
-   * @param {StreamRequest} streamRequestB - Stream request B for comparison.
-   * @returns {boolean} - Whether they are equal.
-   */
-  // eslint-disable-next-line class-methods-use-this
-  public isEqual(streamRequestA: StreamRequest, streamRequestB: StreamRequest) {
-    return (
-      JSON.stringify(streamRequestA._toJmpStreamRequest()) ===
-      JSON.stringify(streamRequestB._toJmpStreamRequest())
-    );
-  }
-
-  /**
-   * Compares new stream requests to previous ones and determines
-   * if they are the same.
-   *
-   * @param {StreamRequest[]} newRequests - Array with new requests.
-   * @returns {boolean} - True if they are equal, false otherwise.
-   */
-  private checkIsNewRequestsEqualToPrev(newRequests: StreamRequest[]) {
-    return (
-      !isEmpty(this.previousStreamRequests) &&
-      this.previousStreamRequests.length === newRequests.length &&
-      this.previousStreamRequests.every((req, idx) => this.isEqual(req, newRequests[idx]))
-    );
-  }
-
-  /**
    * Returns the maxPayloadBitsPerSecond per Stream
    *
    * If MediaRequestManager kind is "audio", a constant bitrate will be returned.
@@ -208,7 +204,7 @@ export class MediaRequestManager {
     }
 
     return getRecommendedMaxBitrateForFrameSize(
-      mediaRequest.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs
+      mediaRequest.codecInfo.maxFs || H264_CODEC_PARAMETERS.maxFs
     );
   }
 
@@ -224,19 +220,78 @@ export class MediaRequestManager {
   // eslint-disable-next-line class-methods-use-this
   private getH264MaxMbps(mediaRequest: MediaRequest): number {
     // fallback for maxFps (not needed for maxFs, since there is a fallback already in getDegradedClientRequests)
-    const maxFps = mediaRequest.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps;
+    const maxFps = mediaRequest.codecInfo.maxFps || H264_CODEC_PARAMETERS.maxFps;
 
     // divided by 100 since maxFps is 3000 (for 30 frames per seconds)
     return (mediaRequest.codecInfo.maxFs * maxFps) / 100;
   }
 
   /**
-   * Clears the previous stream requests.
-   *
-   * @returns {void}
+   * Returns the AV1 encoding parameters for a media request
+   * @param mediaRequest - The media request to get the AV1 encoding parameters for
+   * @returns {AV1EncodingParams} The AV1 encoding parameters
    */
-  public clearPreviousRequests(): void {
-    this.previousStreamRequests = [];
+  // eslint-disable-next-line class-methods-use-this
+  private getAv1EncodingParams(mediaRequest: MediaRequest): AV1EncodingParams {
+    const frameSize = mediaRequest.codecInfo.maxFs || H264_CODEC_PARAMETERS.maxFs;
+    const resolution = RESOLUTION_BUCKETS.find(([, maxFs]) => frameSize <= maxFs)?.[0] ?? '1080p';
+
+    return AV1_CODEC_PARAMETERS[resolution];
+  }
+
+  private buildH264CodecInfo(mr: MediaRequest): WcmeCodecInfo | undefined {
+    if (!mr.codecInfo) {
+      return undefined;
+    }
+
+    const h264PayloadType = this.getIngressPayloadTypeCallback(
+      mr.receiveSlots[0].mediaType,
+      MediaCodecMimeType.H264
+    );
+
+    if (h264PayloadType === undefined) {
+      return undefined;
+    }
+
+    return WcmeCodecInfo.fromH264(
+      h264PayloadType,
+      new H264Codec(
+        mr.codecInfo.maxFs,
+        mr.codecInfo.maxFps || H264_CODEC_PARAMETERS.maxFps,
+        this.getH264MaxMbps(mr),
+        mr.codecInfo.maxWidth,
+        mr.codecInfo.maxHeight
+      )
+    );
+  }
+
+  private buildAv1CodecInfo(mr: MediaRequest): WcmeCodecInfo | undefined {
+    if (!this.enableAv1 || !mr.codecInfo) {
+      return undefined;
+    }
+
+    const av1PayloadType = this.getIngressPayloadTypeCallback(
+      mr.receiveSlots[0].mediaType,
+      MediaCodecMimeType.AV1
+    );
+
+    if (av1PayloadType === undefined) {
+      return undefined;
+    }
+
+    const av1EncodingParams = this.getAv1EncodingParams(mr);
+
+    return WcmeCodecInfo.fromAv1(
+      av1PayloadType,
+      new AV1Codec(
+        av1EncodingParams.levelIdx,
+        av1EncodingParams.tier,
+        mr.codecInfo.maxWidth || av1EncodingParams.maxWidth,
+        mr.codecInfo.maxHeight || av1EncodingParams.maxHeight,
+        av1EncodingParams.maxPicSize,
+        av1EncodingParams.maxDecodeRate
+      )
+    );
   }
 
   /** Modifies the passed in clientRequests and makes sure that in total they don't ask
@@ -339,6 +394,12 @@ export class MediaRequestManager {
     // map all the client media requests to wcme stream requests
     Object.values(clientRequests).forEach((mr) => {
       if (mr.receiveSlots.length > 0) {
+        const codecInfos: WcmeCodecInfo[] = mr.codecInfo
+          ? [this.buildH264CodecInfo(mr), this.buildAv1CodecInfo(mr)].filter(
+              (info): info is WcmeCodecInfo => info !== undefined
+            )
+          : [];
+
         streamRequests.push(
           new StreamRequest(
             mr.policyInfo.policy === 'active-speaker'
@@ -355,34 +416,14 @@ export class MediaRequestManager {
               : new ReceiverSelectedInfo(mr.policyInfo.csi),
             mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot),
             this.getMaxPayloadBitsPerSecond(mr),
-            mr.codecInfo && [
-              new WcmeCodecInfo(
-                0x80,
-                new H264Codec(
-                  mr.codecInfo.maxFs,
-                  mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
-                  this.getH264MaxMbps(mr),
-                  mr.codecInfo.maxWidth,
-                  mr.codecInfo.maxHeight
-                )
-              ),
-            ]
+            codecInfos
           )
         );
       }
     });
 
-    //! IMPORTANT: this is only a temporary fix. This will soon be done in the jmp layer (@webex/json-multistream)
-    // https://jira-eng-gpk2.cisco.com/jira/browse/WEBEX-326713
-    if (!this.checkIsNewRequestsEqualToPrev(streamRequests)) {
-      this.sendMediaRequestsCallback(streamRequests);
-      this.previousStreamRequests = streamRequests;
-      LoggerProxy.logger.info(`multistream:sendRequests --> media requests sent. `);
-    } else {
-      LoggerProxy.logger.info(
-        `multistream:sendRequests --> detected duplicate WCME requests, skipping them... `
-      );
-    }
+    this.sendMediaRequestsCallback(streamRequests);
+    LoggerProxy.logger.info(`multistream:sendRequests --> media requests sent.`);
   }
 
   public addRequest(mediaRequest: MediaRequest, commit = true): MediaRequestId {

@@ -14,12 +14,14 @@ import StaticConfig from '@webex/plugin-meetings/src/common/config';
 import TriggerProxy from '@webex/plugin-meetings/src/common/events/trigger-proxy';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
+import ParameterError from '@webex/plugin-meetings/src/common/errors/parameter';
 import Meeting, {CallStateForMetrics} from '@webex/plugin-meetings/src/meeting';
 import {Services} from '@webex/webex-core';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import Meetings from '@webex/plugin-meetings/src/meetings';
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
+import {SitePreferenceSelectOption} from '@webex/plugin-meetings/src/meetings/meetings.types';
 import PersonalMeetingRoom from '@webex/plugin-meetings/src/personal-meeting-room';
 import Reachability from '@webex/plugin-meetings/src/reachability';
 import Metrics from '@webex/plugin-meetings/src/metrics';
@@ -91,6 +93,7 @@ describe('plugin-meetings', () => {
       locusInfo = {
         parse: sinon.stub().returns(true),
         updateMainSessionLocusCache: sinon.stub(),
+        syncAllHashTreeDatasets: sinon.stub(),
       };
       webex = new MockWebex({
         children: {
@@ -423,9 +426,39 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#_toggleEnableAv1SlidesSupport', () => {
+      it('should have _toggleEnableAv1SlidesSupport', () => {
+        assert.equal(typeof webex.meetings._toggleEnableAv1SlidesSupport, 'function');
+      });
+
+      describe('success', () => {
+        it('should update meetings config to enable AV1 slides support', () => {
+          webex.meetings._toggleEnableAv1SlidesSupport(true);
+          assert.equal(webex.meetings.config.enableAv1SlidesSupport, true);
+
+          webex.meetings._toggleEnableAv1SlidesSupport(false);
+          assert.equal(webex.meetings.config.enableAv1SlidesSupport, false);
+        });
+
+        it('should not update config when called with a non-boolean value', () => {
+          webex.meetings._toggleEnableAv1SlidesSupport(true);
+          assert.equal(webex.meetings.config.enableAv1SlidesSupport, true);
+
+          webex.meetings._toggleEnableAv1SlidesSupport('invalid');
+          assert.equal(webex.meetings.config.enableAv1SlidesSupport, true);
+
+          webex.meetings._toggleEnableAv1SlidesSupport(undefined);
+          assert.equal(webex.meetings.config.enableAv1SlidesSupport, true);
+        });
+      });
+    });
+
     describe('#_toggleStopIceGatheringAfterFirstRelayCandidate', () => {
       it('should have _toggleStopIceGatheringAfterFirstRelayCandidate', () => {
-        assert.equal(typeof webex.meetings._toggleStopIceGatheringAfterFirstRelayCandidate, 'function');
+        assert.equal(
+          typeof webex.meetings._toggleStopIceGatheringAfterFirstRelayCandidate,
+          'function'
+        );
       });
 
       describe('success', () => {
@@ -602,6 +635,196 @@ describe('plugin-meetings', () => {
 
           clock.restore();
         });
+
+        it('returns the same promise when register is called multiple times concurrently', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          // Make registration take some time
+          let resolveRegistration;
+          const registrationDelay = new Promise((resolve) => {
+            resolveRegistration = resolve;
+          });
+
+          webex.internal.device.register.returns(registrationDelay);
+          webex.internal.mercury.connect.returns(Promise.resolve());
+
+          // Start first registration
+          const firstRegisterPromise = webex.meetings.register();
+
+          // Immediately start second registration while first is in progress
+          const secondRegisterPromise = webex.meetings.register();
+
+          // Start third registration
+          const thirdRegisterPromise = webex.meetings.register();
+
+          // All should return the same promise
+          assert.strictEqual(firstRegisterPromise, secondRegisterPromise);
+          assert.strictEqual(secondRegisterPromise, thirdRegisterPromise);
+
+          // Complete the registration
+          resolveRegistration();
+
+          await firstRegisterPromise;
+          await secondRegisterPromise;
+          await thirdRegisterPromise;
+
+          // Device registration and mercury connect should only be called once
+          assert.calledOnce(webex.internal.device.register);
+          assert.calledOnce(webex.internal.mercury.connect);
+          assert.isTrue(webex.meetings.registered);
+        });
+
+        it('prevents duplicate registrations when register is called during in-flight registration', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          let deviceRegisterCallCount = 0;
+          let mercuryConnectCallCount = 0;
+
+          // Track actual calls
+          webex.internal.device.register = sinon.stub().callsFake(() => {
+            deviceRegisterCallCount++;
+            return Promise.resolve();
+          });
+          webex.internal.mercury.connect = sinon.stub().callsFake(() => {
+            mercuryConnectCallCount++;
+            return Promise.resolve();
+          });
+
+          // Start registration without awaiting
+          const promise1 = webex.meetings.register();
+
+          // Call register again while first is in progress
+          const promise2 = webex.meetings.register();
+
+          // Wait for both
+          await Promise.all([promise1, promise2]);
+
+          // Should only register once
+          assert.equal(deviceRegisterCallCount, 1, 'device.register should only be called once');
+          assert.equal(mercuryConnectCallCount, 1, 'mercury.connect should only be called once');
+          assert.isTrue(webex.meetings.registered);
+        });
+
+        it('handles concurrent register calls when first registration fails', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          const registrationError = new Error('registration failed');
+          webex.internal.device.register.rejects(registrationError);
+
+          // Start first registration
+          const firstRegisterPromise = webex.meetings.register();
+
+          // Start second registration while first is in progress
+          const secondRegisterPromise = webex.meetings.register();
+
+          // Both should reject with the same error
+          await assert.isRejected(firstRegisterPromise, 'registration failed');
+          await assert.isRejected(secondRegisterPromise, 'registration failed');
+
+          // Should still only attempt registration once
+          assert.calledOnce(webex.internal.device.register);
+          assert.isFalse(webex.meetings.registered);
+        });
+
+        it('allows new registration after previous registration completes', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          // First registration
+          await webex.meetings.register();
+          assert.isTrue(webex.meetings.registered);
+
+          // Reset for second registration
+          webex.meetings.registered = false;
+          webex.internal.device.register.resetHistory();
+          webex.internal.mercury.connect.resetHistory();
+
+          // Second registration should work normally
+          await webex.meetings.register();
+          assert.calledOnce(webex.internal.device.register);
+          assert.calledOnce(webex.internal.mercury.connect);
+          assert.isTrue(webex.meetings.registered);
+        });
+
+        it('clears registrationPromise after successful registration', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          await webex.meetings.register();
+
+          assert.isTrue(webex.meetings.registered);
+          assert.isNull(webex.meetings.registrationPromise);
+        });
+
+        it('clears registrationPromise after failed registration', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          webex.internal.device.register.rejects(new Error('registration failed'));
+
+          await assert.isRejected(webex.meetings.register());
+
+          assert.isFalse(webex.meetings.registered);
+          assert.isNull(webex.meetings.registrationPromise);
+        });
+
+        it('waits for unregistration to complete before registering', async () => {
+          webex.canAuthorize = true;
+
+          assert.isFalse(webex.meetings.registered);
+
+          // First, register successfully
+          await webex.meetings.register();
+          assert.isTrue(webex.meetings.registered);
+
+          // Start unregistration (but don't await it)
+          const unregisterPromise = webex.meetings.unregister();
+          assert.isDefined(webex.meetings.unregistrationPromise);
+
+          // Immediately try to register while unregister is in progress
+          const registerPromise = webex.meetings.register();
+
+          // Wait for register to complete
+          await registerPromise;
+
+          // Should have completed registration
+          assert.isTrue(webex.meetings.registered);
+
+          // Now await the original unregister promise - this should have already completed
+          // and should NOT affect the registered state since register() took over
+          await unregisterPromise;
+
+          // Should STILL be registered because register() took over
+          assert.isTrue(webex.meetings.registered);
+        });
+
+        it('handles multiple register calls during unregistration', async () => {
+          webex.canAuthorize = true;
+
+          // First, register successfully
+          await webex.meetings.register();
+          assert.isTrue(webex.meetings.registered);
+
+          // Start unregistration
+          const unregistrationPromise = webex.meetings.unregister();
+
+          // Try to register once while unregister is in progress
+          await webex.meetings.register();
+
+          // Should be registered again
+          assert.isTrue(
+            webex.meetings.registered,
+            'Expected meetings to be registered after unregister and register cycle'
+          );
+
+          await unregistrationPromise;
+
+          // Should STILL be registered because register() took over
+          assert.isTrue(webex.meetings.registered);
+        });
       });
 
       describe('#unregister', () => {
@@ -618,6 +841,18 @@ describe('plugin-meetings', () => {
               'meetings:unregistered'
             );
             assert.isFalse(webex.meetings.registered);
+            done();
+          });
+        });
+
+        it('calls mercury.disconnect with code 3050 and reason to prevent auto-reconnect', (done) => {
+          webex.meetings.registered = true;
+          webex.meetings.unregister().then(() => {
+            assert.calledOnce(webex.internal.mercury.disconnect);
+            assert.calledWith(webex.internal.mercury.disconnect, {
+              code: 3050,
+              reason: 'meetings unregister',
+            });
             done();
           });
         });
@@ -669,6 +904,335 @@ describe('plugin-meetings', () => {
             assert.deepEqual(webex.meetings.registrationStatus, INITIAL_REGISTRATION_STATUS);
             done();
           });
+        });
+
+        it('waits for registration to complete before unregistering when called during registration', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          let resolveRegistration;
+          const registrationDelay = new Promise((resolve) => {
+            resolveRegistration = resolve;
+          });
+
+          webex.internal.device.register.returns(registrationDelay);
+          webex.internal.mercury.connect.returns(Promise.resolve());
+
+          // Start registration (don't await)
+          const registerPromise = webex.meetings.register();
+
+          // Verify registration is in progress
+          assert.exists(webex.meetings.registrationPromise);
+          assert.isFalse(webex.meetings.registered);
+
+          // Call unregister while registration is in progress
+          const unregisterPromise = webex.meetings.unregister();
+
+          // Registration should still be in progress
+          assert.exists(webex.meetings.registrationPromise);
+
+          // Complete the registration
+          resolveRegistration();
+          await registerPromise;
+
+          // Now unregister should proceed
+          await unregisterPromise;
+
+          // Verify final state
+          assert.isFalse(webex.meetings.registered);
+          assert.isNull(webex.meetings.registrationPromise);
+          assert.calledOnce(webex.internal.device.unregister);
+          assert.calledOnce(webex.internal.mercury.disconnect);
+        });
+
+        it('handles unregister called during registration that fails', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          const registrationError = new Error('registration failed');
+          let rejectRegistration;
+          const registrationDelay = new Promise((resolve, reject) => {
+            rejectRegistration = reject;
+          });
+
+          webex.internal.device.register.returns(registrationDelay);
+
+          // Start registration (don't await)
+          const registerPromise = webex.meetings.register();
+
+          // Call unregister while registration is in progress
+          const unregisterPromise = webex.meetings.unregister();
+
+          // Fail the registration
+          rejectRegistration(registrationError);
+
+          // Registration should fail
+          await assert.isRejected(registerPromise, 'registration failed');
+
+          // // Unregister should resolve immediately since registration failed
+          await unregisterPromise;
+
+          // Verify final state - not registered
+          assert.isFalse(webex.meetings.registered);
+          assert.isNull(webex.meetings.registrationPromise);
+          // Device unregister should not be called because registration never completed
+          assert.notCalled(webex.internal.device.unregister);
+        });
+
+        it('handles multiple unregister calls during registration', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          let resolveRegistration;
+          const registrationDelay = new Promise((resolve) => {
+            resolveRegistration = resolve;
+          });
+
+          webex.internal.device.register.returns(registrationDelay);
+          webex.internal.mercury.connect.returns(Promise.resolve());
+
+          // Start registration
+          const registerPromise = webex.meetings.register();
+
+          // Call unregister multiple times while registration is in progress
+          const unregisterPromise1 = webex.meetings.unregister();
+          const unregisterPromise2 = webex.meetings.unregister();
+          const unregisterPromise3 = webex.meetings.unregister();
+
+          // Complete registration
+          resolveRegistration();
+          await registerPromise;
+
+          // All unregister calls should complete
+          await Promise.all([unregisterPromise1, unregisterPromise2, unregisterPromise3]);
+
+          // Verify final state
+          assert.isFalse(webex.meetings.registered);
+          // Disconnect and unregister should be called, but not multiple times
+          assert.calledOnce(webex.internal.mercury.disconnect);
+          assert.calledOnce(webex.internal.device.unregister);
+        });
+
+        it('completes unregister correctly after waiting for registration', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          const stopListeningForEventsSpy = sinon.spy(webex.meetings, 'stopListeningForEvents');
+
+          let resolveRegistration;
+          const registrationDelay = new Promise((resolve) => {
+            resolveRegistration = resolve;
+          });
+
+          webex.internal.device.register.returns(registrationDelay);
+          webex.internal.mercury.connect.returns(Promise.resolve());
+
+          // Start registration
+          const registerPromise = webex.meetings.register();
+
+          // Call unregister during registration
+          const unregisterPromise = webex.meetings.unregister();
+
+          // stopListeningForEvents should not be called yet
+          assert.notCalled(stopListeningForEventsSpy);
+
+          // Complete registration
+          resolveRegistration();
+          await registerPromise;
+
+          // After registration completes, the meetings plugin should be registered
+          assert.isTrue(webex.meetings.registered);
+
+          // Now unregister should proceed
+          await unregisterPromise;
+
+          // Verify unregister completed properly
+          assert.calledOnce(stopListeningForEventsSpy);
+          assert.calledOnce(webex.internal.mercury.disconnect);
+          assert.calledOnce(webex.internal.device.unregister);
+          assert.isFalse(webex.meetings.registered);
+          assert.deepEqual(webex.meetings.registrationStatus, INITIAL_REGISTRATION_STATUS);
+        });
+
+        it('logs appropriate message when unregister is called during registration', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          const loggerSpy = sinon.spy(LoggerProxy.logger, 'info');
+
+          let resolveRegistration;
+          const registrationDelay = new Promise((resolve) => {
+            resolveRegistration = resolve;
+          });
+
+          webex.internal.device.register.returns(registrationDelay);
+          webex.internal.mercury.connect.returns(Promise.resolve());
+
+          // Start registration
+          const registerPromise = webex.meetings.register();
+
+          // Call unregister during registration
+          const unregisterPromise = webex.meetings.unregister();
+
+          // Should log that it's waiting
+          assert.calledWith(
+            loggerSpy,
+            'Meetings:index#unregister --> INFO, Meetings plugin registration in progress, waiting to unregister'
+          );
+
+          // Complete registration and unregistration
+          resolveRegistration();
+          await registerPromise;
+          await unregisterPromise;
+
+          loggerSpy.restore();
+        });
+
+        it('returns the same promise when unregister is called multiple times concurrently', async () => {
+          webex.meetings.registered = true;
+
+          // Make unregistration take some time
+          let resolveUnregistration;
+          const unregistrationDelay = new Promise((resolve) => {
+            resolveUnregistration = resolve;
+          });
+
+          webex.internal.mercury.disconnect.returns(unregistrationDelay);
+          webex.internal.device.unregister.returns(Promise.resolve());
+
+          // Start first unregistration
+          const firstUnregisterPromise = webex.meetings.unregister();
+
+          // Immediately start second unregistration while first is in progress
+          const secondUnregisterPromise = webex.meetings.unregister();
+
+          // Start third unregistration
+          const thirdUnregisterPromise = webex.meetings.unregister();
+
+          // All should return the same promise
+          assert.strictEqual(firstUnregisterPromise, secondUnregisterPromise);
+          assert.strictEqual(secondUnregisterPromise, thirdUnregisterPromise);
+
+          // Complete the unregistration
+          resolveUnregistration();
+
+          await firstUnregisterPromise;
+          await secondUnregisterPromise;
+          await thirdUnregisterPromise;
+
+          // Mercury disconnect and device unregister should only be called once
+          assert.calledOnce(webex.internal.mercury.disconnect);
+          assert.calledOnce(webex.internal.device.unregister);
+          assert.isFalse(webex.meetings.registered);
+        });
+
+        it('clears unregistrationPromise after successful unregistration', async () => {
+          webex.meetings.registered = true;
+
+          await webex.meetings.unregister();
+
+          assert.isFalse(webex.meetings.registered);
+          assert.isNull(webex.meetings.unregistrationPromise);
+        });
+
+        it('clears unregistrationPromise after failed unregistration', async () => {
+          webex.meetings.registered = true;
+
+          webex.internal.mercury.disconnect.rejects(new Error('disconnect failed'));
+
+          await assert.isRejected(webex.meetings.unregister());
+
+          assert.isTrue(webex.meetings.registered);
+          assert.isNull(webex.meetings.unregistrationPromise);
+        });
+
+        it('allows new unregistration after previous unregistration completes', async () => {
+          webex.meetings.registered = true;
+
+          // First unregistration
+          await webex.meetings.unregister();
+          assert.isFalse(webex.meetings.registered);
+
+          // Register again
+          webex.canAuthorize = true;
+          await webex.meetings.register();
+          assert.isTrue(webex.meetings.registered);
+
+          // Reset history
+          webex.internal.mercury.disconnect.resetHistory();
+          webex.internal.device.unregister.resetHistory();
+
+          // Second unregistration should work normally
+          await webex.meetings.unregister();
+          assert.calledOnce(webex.internal.mercury.disconnect);
+          assert.calledOnce(webex.internal.device.unregister);
+          assert.isFalse(webex.meetings.registered);
+        });
+
+        it('handles register called during unregistration that fails', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = true;
+
+          const unregistrationError = new Error('unregistration failed');
+          let rejectUnregistration;
+          const unregistrationDelay = new Promise((resolve, reject) => {
+            rejectUnregistration = reject;
+          });
+
+          webex.internal.mercury.disconnect.returns(unregistrationDelay);
+
+          // Start unregistration (don't await)
+          const unregisterPromise = webex.meetings.unregister();
+
+          // Call register while unregistration is in progress
+          const registerPromise = webex.meetings.register();
+
+          // Fail the unregistration
+          rejectUnregistration(unregistrationError);
+
+          // Unregistration should fail
+          await assert.isRejected(unregisterPromise, 'unregistration failed');
+
+          // Register should still succeed (retry after unregister failure)
+          await registerPromise;
+
+          // Verify final state - should be registered
+          assert.isTrue(webex.meetings.registered);
+          assert.isNull(webex.meetings.unregistrationPromise);
+        });
+
+        it('logs appropriate message when register is called during unregistration', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = true;
+
+          const loggerSpy = sinon.spy(LoggerProxy.logger, 'info');
+
+          let resolveUnregistration;
+          const unregistrationDelay = new Promise((resolve) => {
+            resolveUnregistration = resolve;
+          });
+
+          webex.internal.mercury.disconnect.returns(unregistrationDelay);
+          webex.internal.device.unregister.returns(Promise.resolve());
+
+          // Start unregistration
+          const unregisterPromise = webex.meetings.unregister();
+
+          // Call register during unregistration
+          const registerPromise = webex.meetings.register();
+
+          // Should log that it's waiting
+          assert.calledWith(
+            loggerSpy,
+            'Meetings:index#register --> INFO, Meetings plugin unregistration in progress, waiting to register'
+          );
+
+          // Complete unregistration and registration
+          resolveUnregistration();
+          await unregisterPromise;
+          await registerPromise;
+
+          loggerSpy.restore();
         });
       });
 
@@ -732,7 +1296,7 @@ describe('plugin-meetings', () => {
           };
         });
 
-        it('creates noise reduction effect', async () => {
+        it('creates noise reduction effect with BNR model', async () => {
           const result = await webex.meetings.createNoiseReductionEffect({audioContext: {}});
 
           assert.exists(result);
@@ -744,29 +1308,50 @@ describe('plugin-meetings', () => {
             authToken: 'fake_token',
             mode: 'WORKLET',
             avoidSimd: false,
+            model: 'bnr',
           });
           assert.exists(result.enable);
           assert.exists(result.disable);
           assert.exists(result.dispose);
         });
 
-        it('creates noise reduction effect with custom options passed', async () => {
-          const effectOptions = {
+        it('creates noise reduction effect with OFMV model', async () => {
+          const result = await webex.meetings.createNoiseReductionEffect({
             audioContext: {},
-            mode: 'LEGACY',
-            env: 'int',
-            avoidSimd: true,
-          };
-
-          const result = await webex.meetings.createNoiseReductionEffect(effectOptions);
+            model: 'ofmv',
+          });
 
           assert.exists(result);
           assert.instanceOf(result, NoiseReductionEffect);
           assert.containsAllKeys(result, ['audioContext', 'isEnabled', 'isReady', 'options']);
-          assert.deepEqual(result.options, {...effectOptions, authToken: 'fake_token'});
+          assert.equal(result.options.authToken, 'fake_token');
+          assert.deepEqual(result.options, {
+            audioContext: {},
+            authToken: 'fake_token',
+            mode: 'WORKLET',
+            avoidSimd: false,
+            model: 'ofmv',
+          });
           assert.exists(result.enable);
           assert.exists(result.disable);
           assert.exists(result.dispose);
+        });
+
+        it('passes custom options to noise reduction effect', async () => {
+          const result = await webex.meetings.createNoiseReductionEffect({
+            audioContext: {},
+            mode: 'LEGACY',
+            env: 'int',
+            avoidSimd: true,
+          });
+
+          assert.exists(result);
+          assert.instanceOf(result, NoiseReductionEffect);
+          assert.equal(result.options.mode, 'LEGACY');
+          assert.equal(result.options.env, 'int');
+          assert.equal(result.options.avoidSimd, true);
+          assert.equal(result.options.authToken, 'fake_token');
+          assert.equal(result.options.model, 'bnr');
         });
       });
 
@@ -798,6 +1383,87 @@ describe('plugin-meetings', () => {
               PersonalMeetingRoom,
               'should be a personal meeting room instance'
             );
+          });
+        });
+        describe('#fetchSitePreferencesMeViaSite', () => {
+          const sitePreferencesResponse = {
+            scheduling: {
+              supportScheduleWebinar: true,
+              webinarWebLink: 'https://go.webex.com/webappng/sites/go/webinar/scheduler',
+            },
+          };
+
+          beforeEach(() => {
+            webex.meetings.request.fetchSitePreferencesMeViaSite = sinon
+              .stub()
+              .resolves(sitePreferencesResponse);
+          });
+
+          it('should have #fetchSitePreferencesMeViaSite', () => {
+            assert.exists(webex.meetings.fetchSitePreferencesMeViaSite);
+          });
+
+          it('fetches scheduling preferences for the preferred Webex site by default', async () => {
+            webex.meetings.preferredWebexSite = 'go.webex.com';
+
+            const result = await webex.meetings.fetchSitePreferencesMeViaSite();
+
+            assert.deepEqual(result, sitePreferencesResponse);
+            assert.calledOnceWithExactly(
+              webex.meetings.request.fetchSitePreferencesMeViaSite,
+              {
+                siteUrl: 'go.webex.com',
+              }
+            );
+          });
+
+          it('uses the provided Webex site instead of the preferred Webex site', async () => {
+            webex.meetings.preferredWebexSite = 'preferred.webex.com';
+
+            await webex.meetings.fetchSitePreferencesMeViaSite({siteUrl: 'go.webex.com'});
+
+            assert.calledOnceWithExactly(
+              webex.meetings.request.fetchSitePreferencesMeViaSite,
+              {
+                siteUrl: 'go.webex.com',
+              }
+            );
+          });
+
+          it('forwards custom site name and preference sections to the request helper', async () => {
+            webex.meetings.preferredWebexSite = 'go.webex.com';
+
+            await webex.meetings.fetchSitePreferencesMeViaSite({
+              siteName: 'custom-site',
+              selectOptions: [SitePreferenceSelectOption.SCHEDULING],
+            });
+
+            assert.calledOnceWithExactly(
+              webex.meetings.request.fetchSitePreferencesMeViaSite,
+              {
+                siteUrl: 'go.webex.com',
+                siteName: 'custom-site',
+                selectOptions: [SitePreferenceSelectOption.SCHEDULING],
+              }
+            );
+          });
+
+          it('throws when no Webex site is available', () => {
+            webex.meetings.preferredWebexSite = '';
+            webex.meetings.request.fetchSitePreferencesMeViaSite.throws(
+              new ParameterError(
+                'No siteUrl available. Call register() before fetching site preferences or provide options.siteUrl.'
+              )
+            );
+
+            assert.throws(
+              () => webex.meetings.fetchSitePreferencesMeViaSite(),
+              ParameterError,
+              'No siteUrl available. Call register() before fetching site preferences or provide options.siteUrl.'
+            );
+            assert.calledOnceWithExactly(webex.meetings.request.fetchSitePreferencesMeViaSite, {
+              siteUrl: '',
+            });
           });
         });
         describe('Static shortcut proxy methods', () => {
@@ -836,7 +1502,7 @@ describe('plugin-meetings', () => {
         it('should have #syncMeetings', () => {
           assert.exists(webex.meetings.syncMeetings);
         });
-        it('should do nothing and return a resolved promise if unverified guest', async () => {
+        it('should skip getActiveMeetings but still call syncAllHashTreeDatasets if unverified guest', async () => {
           webex.meetings.request.getActiveMeetings = sinon.stub().returns(
             Promise.resolve({
               loci: [
@@ -849,13 +1515,23 @@ describe('plugin-meetings', () => {
           webex.credentials.isUnverifiedGuest = true;
           LoggerProxy.logger.info = sinon.stub();
 
+          const mockLocusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+          };
+          webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+            meeting1: {locusInfo: mockLocusInfo},
+            meeting2: {locusInfo: undefined},
+            meeting3: {},
+          });
+
           await webex.meetings.syncMeetings();
 
           assert.notCalled(webex.meetings.request.getActiveMeetings);
           assert.calledWith(
             LoggerProxy.logger.info,
-            'Meetings:index#syncMeetings --> skipping meeting sync as unverified guest'
+            'Meetings:index#syncMeetings --> user is unverified guest, skipping calling Locus for meeting sync'
           );
+          assert.calledOnce(mockLocusInfo.syncAllHashTreeDatasets);
         });
         describe('succesful requests', () => {
           beforeEach(() => {
@@ -874,6 +1550,9 @@ describe('plugin-meetings', () => {
               webex.meetings.meetingCollection.getByKey = sinon.stub().returns({
                 locusInfo,
               });
+              webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+                meeting1: {locusInfo, locusUrl: url1},
+              });
             });
             it('tests the sync meeting calls for existing meeting', async () => {
               await webex.meetings.syncMeetings();
@@ -881,6 +1560,7 @@ describe('plugin-meetings', () => {
               assert.calledOnce(webex.meetings.meetingCollection.getByKey);
               assert.calledOnce(locusInfo.parse);
               assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+              assert.calledOnce(locusInfo.syncAllHashTreeDatasets);
             });
           });
           describe('when meeting is not returned', () => {
@@ -918,8 +1598,8 @@ describe('plugin-meetings', () => {
                 locus: {
                   url: url1,
                 },
-                hashTreeMessage: undefined
-              });
+                hashTreeMessage: undefined,
+              }, sinon.match.func);
             });
           });
           describe('when destroying meeting is needed', () => {
@@ -965,7 +1645,7 @@ describe('plugin-meetings', () => {
             it('destroy any meeting that has no active locus url if keepOnlyLocusMeetings is not defined', async () => {
               await webex.meetings.syncMeetings();
               assert.calledOnce(webex.meetings.request.getActiveMeetings);
-              assert.calledOnce(webex.meetings.meetingCollection.getAll);
+              assert.calledTwice(webex.meetings.meetingCollection.getAll);
               assert.calledWith(destroySpy, meetingCollectionMeetings.noLongerValidLocusMeeting);
               assert.calledWith(destroySpy, meetingCollectionMeetings.otherNonLocusMeeting1);
               assert.calledWith(destroySpy, meetingCollectionMeetings.otherNonLocusMeeting2);
@@ -977,7 +1657,7 @@ describe('plugin-meetings', () => {
             it('destroy any meeting that has no active locus url if keepOnlyLocusMeetings === true', async () => {
               await webex.meetings.syncMeetings({keepOnlyLocusMeetings: true});
               assert.calledOnce(webex.meetings.request.getActiveMeetings);
-              assert.calledOnce(webex.meetings.meetingCollection.getAll);
+              assert.calledTwice(webex.meetings.meetingCollection.getAll);
               assert.calledWith(destroySpy, meetingCollectionMeetings.noLongerValidLocusMeeting);
               assert.calledWith(destroySpy, meetingCollectionMeetings.otherNonLocusMeeting1);
               assert.calledWith(destroySpy, meetingCollectionMeetings.otherNonLocusMeeting2);
@@ -989,12 +1669,153 @@ describe('plugin-meetings', () => {
             it('destroy any LOCUS meetings that have no active locus url if keepOnlyLocusMeetings === false', async () => {
               await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false});
               assert.calledOnce(webex.meetings.request.getActiveMeetings);
-              assert.calledOnce(webex.meetings.meetingCollection.getAll);
+              assert.calledTwice(webex.meetings.meetingCollection.getAll);
               assert.calledWith(destroySpy, meetingCollectionMeetings.noLongerValidLocusMeeting);
               assert.callCount(destroySpy, 1);
 
               assert.calledOnce(MeetingUtil.cleanUp);
             });
+          });
+        });
+
+        describe('when globalMeetingId preserves breakout meetings', () => {
+          let destroySpy;
+          let cleanUpSpy;
+
+          beforeEach(() => {
+            destroySpy = sinon.spy(webex.meetings, 'destroy');
+            cleanUpSpy = sinon.stub(MeetingUtil, 'cleanUp').returns(Promise.resolve());
+          });
+
+          afterEach(() => {
+            cleanUpSpy.restore();
+          });
+
+          it('should not destroy a meeting whose globalMeetingId matches an active locus', async () => {
+            const meetingCollectionMeetings = {
+              breakoutMeeting: {
+                locusUrl: 'breakout-url',
+                locusInfo: {
+                  info: {globalMeetingId: 'gmid-123'},
+                  syncAllHashTreeDatasets: sinon.stub().resolves(),
+                },
+                sendCallAnalyzerMetrics: sinon.stub(),
+              },
+            };
+
+            webex.meetings.meetingCollection.getAll = sinon
+              .stub()
+              .returns(meetingCollectionMeetings);
+            webex.meetings.request.getActiveMeetings = sinon.stub().resolves({
+              loci: [{url: 'main-url', info: {globalMeetingId: 'gmid-123'}}],
+            });
+
+            await webex.meetings.syncMeetings();
+
+            assert.notCalled(destroySpy);
+          });
+
+          it('should destroy a meeting whose globalMeetingId does NOT match any active locus', async () => {
+            const meetingCollectionMeetings = {
+              breakoutMeeting: {
+                locusUrl: 'breakout-url',
+                locusInfo: {
+                  info: {globalMeetingId: 'gmid-other'},
+                  syncAllHashTreeDatasets: sinon.stub().resolves(),
+                },
+                sendCallAnalyzerMetrics: sinon.stub(),
+              },
+            };
+
+            webex.meetings.meetingCollection.getAll = sinon
+              .stub()
+              .returns(meetingCollectionMeetings);
+            webex.meetings.request.getActiveMeetings = sinon.stub().resolves({
+              loci: [{url: 'main-url', info: {globalMeetingId: 'gmid-123'}}],
+            });
+
+            await webex.meetings.syncMeetings();
+
+            assert.calledOnce(destroySpy);
+            assert.calledWith(destroySpy, meetingCollectionMeetings.breakoutMeeting);
+          });
+        });
+
+        describe('skipHashTreeSync parameter', () => {
+          it('should skip syncAllHashTreeDatasets when skipHashTreeSync is true', async () => {
+            const mockLocusInfo = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
+            };
+
+            webex.meetings.request.getActiveMeetings = sinon.stub().resolves({loci: []});
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              meeting1: {locusInfo: mockLocusInfo},
+            });
+
+            await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: true});
+
+            assert.calledOnce(webex.meetings.request.getActiveMeetings);
+            assert.notCalled(mockLocusInfo.syncAllHashTreeDatasets);
+          });
+
+          it('should call syncAllHashTreeDatasets when skipHashTreeSync is false (default)', async () => {
+            const mockLocusInfo = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
+            };
+
+            webex.meetings.request.getActiveMeetings = sinon.stub().resolves({loci: []});
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              meeting1: {locusInfo: mockLocusInfo},
+            });
+
+            await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: false});
+
+            assert.calledOnce(webex.meetings.request.getActiveMeetings);
+            assert.calledOnce(mockLocusInfo.syncAllHashTreeDatasets);
+          });
+        });
+
+        describe('syncAllHashTreeDatasets in syncMeetings', () => {
+          it('should call syncAllHashTreeDatasets for multiple meetings, skipping those without locusInfo', async () => {
+            const mockLocusInfo1 = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
+            };
+            const mockLocusInfo2 = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
+            };
+
+            webex.meetings.request.getActiveMeetings = sinon.stub().resolves({loci: []});
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              meeting1: {locusInfo: mockLocusInfo1},
+              meeting2: {locusInfo: undefined},
+              meeting3: {locusInfo: mockLocusInfo2},
+              meeting4: {},
+            });
+
+            await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false});
+
+            assert.calledOnce(mockLocusInfo1.syncAllHashTreeDatasets);
+            assert.calledOnce(mockLocusInfo2.syncAllHashTreeDatasets);
+          });
+
+          it('should not call syncAllHashTreeDatasets when getActiveMeetings throws an error', async () => {
+            const mockLocusInfo = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
+            };
+
+            webex.meetings.request.getActiveMeetings = sinon.stub().rejects(new Error('network error'));
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              meeting1: {locusInfo: mockLocusInfo},
+            });
+
+            try {
+              await webex.meetings.syncMeetings();
+              assert.fail('should have thrown');
+            } catch (err) {
+              assert.equal(err.message, 'network error');
+            }
+
+            assert.notCalled(mockLocusInfo.syncAllHashTreeDatasets);
           });
         });
       });
@@ -1203,8 +2024,30 @@ describe('plugin-meetings', () => {
 
         it('calls createMeeting with classificationId and returns its promise', async () => {
           await checkCallCreateMeeting(
-            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, undefined, true, callStateForMetrics, undefined, undefined, undefined, classificationId],
-            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, callStateForMetrics, true, undefined, undefined, classificationId],
+            [
+              test1,
+              test2,
+              FAKE_USE_RANDOM_DELAY,
+              {},
+              undefined,
+              true,
+              callStateForMetrics,
+              undefined,
+              undefined,
+              undefined,
+              classificationId,
+            ],
+            [
+              test1,
+              test2,
+              FAKE_USE_RANDOM_DELAY,
+              {},
+              callStateForMetrics,
+              true,
+              undefined,
+              undefined,
+              classificationId,
+            ]
           );
         });
 
@@ -1437,36 +2280,80 @@ describe('plugin-meetings', () => {
                   webExMeetingId,
                 },
               },
-              hashTreeMessage: undefined
-            });
+              hashTreeMessage: undefined,
+            }, sinon.match.func);
           });
           it('should setup the meeting from a hash tree event', async () => {
-            const locus = {
-              id: uuid1,
-              self: {},
-              info: {
-                webExMeetingId,
-              },
+            const selfData = {};
+            const infoData = {webExMeetingId};
+            const hashTreeMessage = {
+              locusUrl: url1,
+              locusStateElements: [
+                {
+                  htMeta: {elementId: {type: 'Self', id: 1, version: 1}},
+                  data: selfData,
+                },
+                {
+                  htMeta: {elementId: {type: 'Info', id: 2, version: 1}},
+                  data: infoData,
+                },
+              ],
             };
-            const hashTreeMessage = {something: 'hashTreeData'};
             await webex.meetings.handleLocusEvent({
-              locus,
               eventType: 'locus.state_message',
               locusUrl: url1,
               stateElementsMessage: hashTreeMessage,
             });
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
-            assert.calledWith(
-              webex.meetings.meetingCollection.getByKey,
-              'meetingNumber',
-              webExMeetingId
-            );
             assert.calledOnce(initialSetup);
             assert.calledWith(initialSetup, {
               trigger: 'locus-message',
-              locus,
+              locus: {
+                participants: [],
+                url: url1,
+                self: selfData,
+                info: infoData,
+              },
               hashTreeMessage,
+            }, sinon.match.func);
+          });
+
+          it('should ignore hash tree event when created locus has INACTIVE fullState', async () => {
+            const hashTreeMessage = {
+              locusUrl: url1,
+              locusStateElements: [
+                {
+                  htMeta: {elementId: {type: 'FullState', id: 1, version: 1}},
+                  data: {state: 'INACTIVE'},
+                },
+              ],
+            };
+            await webex.meetings.handleLocusEvent({
+              eventType: 'locus.state_message',
+              locusUrl: url1,
+              stateElementsMessage: hashTreeMessage,
             });
+            assert.notCalled(webex.meetings.create);
+            assert.notCalled(initialSetup);
+          });
+
+          it('should ignore hash tree event when created locus has self LEFT and removed', async () => {
+            const hashTreeMessage = {
+              locusUrl: url1,
+              locusStateElements: [
+                {
+                  htMeta: {elementId: {type: 'Self', id: 1, version: 1}},
+                  data: {state: 'LEFT', removed: true},
+                },
+              ],
+            };
+            await webex.meetings.handleLocusEvent({
+              eventType: 'locus.state_message',
+              locusUrl: url1,
+              stateElementsMessage: hashTreeMessage,
+            });
+            assert.notCalled(webex.meetings.create);
+            assert.notCalled(initialSetup);
           });
           it('should setup the meeting by difference event without replaces', async () => {
             await webex.meetings.handleLocusEvent({
@@ -1507,8 +2394,8 @@ describe('plugin-meetings', () => {
                   webExMeetingId,
                 },
               },
-              hashTreeMessage: undefined
-            });
+              hashTreeMessage: undefined,
+            }, sinon.match.func);
           });
 
           it('sends client event correctly on finally', async () => {
@@ -1583,8 +2470,8 @@ describe('plugin-meetings', () => {
                   webExMeetingId,
                 },
               },
-              hashTreeMessage: undefined
-            });
+              hashTreeMessage: undefined,
+            }, sinon.match.func);
           });
 
           const generateFakeLocusData = (isUnifiedSpaceMeeting) => ({
@@ -2212,6 +3099,39 @@ describe('plugin-meetings', () => {
             checkCreateMeetingWithNoMeetingInfo(true, true);
           });
 
+          it('does not emit meeting:added when meeting is destroyed due to missing meeting info', async () => {
+            // Make destroy actually remove the meeting from the collection
+            // so that getMeetingByType returns null in the finally block
+            webex.meetings.destroy = sinon.stub().callsFake((meeting) => {
+              webex.meetings.meetingCollection.delete(meeting.id);
+            });
+
+            try {
+              await webex.meetings.createMeeting(
+                'test destination',
+                'test type',
+                undefined,
+                undefined,
+                undefined,
+                true
+              );
+              assert.fail('should have thrown NoMeetingInfoError');
+            } catch (err) {
+              assert.instanceOf(err, NoMeetingInfoError);
+            }
+
+            assert.calledOnce(webex.meetings.destroy);
+
+            // meeting:added should NOT have been triggered since the meeting was destroyed
+            assert.neverCalledWith(
+              TriggerProxy.trigger,
+              sinon.match.any,
+              sinon.match({function: 'createMeeting'}),
+              'meeting:added',
+              sinon.match.any
+            );
+          });
+
           it('creates the meeting avoiding meeting info fetch by passing type as DESTINATION_TYPE.ONE_ON_ONE_CALL', async () => {
             const meeting = await webex.meetings.createMeeting(
               'test destination',
@@ -2225,6 +3145,30 @@ describe('plugin-meetings', () => {
             );
 
             assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
+          });
+
+          [
+            {fullStateType: 'CALL'},
+            {fullStateType: 'SIP_BRIDGE'},
+            {fullStateType: 'SPACE_SHARE'},
+          ].forEach(({fullStateType}) => {
+            it(`skips meeting info fetch when LOCUS_ID destination is a 1:1 call (fullState.type ${fullStateType})`, async () => {
+              const locusDestination = {
+                fullState: {type: fullStateType},
+              };
+
+              const meeting = await webex.meetings.createMeeting(
+                locusDestination,
+                DESTINATION_TYPE.LOCUS_ID
+              );
+
+              assert.instanceOf(
+                meeting,
+                Meeting,
+                'createMeeting should eventually resolve to a Meeting Object'
+              );
+              assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
+            });
           });
         });
 
@@ -2805,6 +3749,21 @@ describe('plugin-meetings', () => {
           'Meetings:index#isNeedHandleMainLocus --> self device left&moved in main locus with self joined status, not need to handle'
         );
       });
+
+      it('check breakout ended with self removed, return false', () => {
+        webex.meetings.meetingCollection.getActiveBreakoutLocus = sinon.stub().returns(null);
+        newLocus.self.state = 'LEFT';
+        newLocus.self.reason = 'OTHER';
+        newLocus.self.removed = true;
+        newLocus.fullState = {state: 'INACTIVE', endMeetingReason: 'BREAKOUT_ENDED'};
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleMainLocus(meeting, newLocus);
+        assert.equal(result, false);
+        assert.calledWith(
+          LoggerProxy.logger.log,
+          'Meetings:index#isNeedHandleMainLocus --> self moved main locus with self removed status or with device resource moved, not need to handle'
+        );
+      });
     });
 
     describe('#isNeedHandleLocusDTO', () => {
@@ -2865,6 +3824,18 @@ describe('plugin-meetings', () => {
         const result = webex.meetings.isNeedHandleLocusDTO(meeting, newLocus);
         assert.equal(result, false);
       });
+      it('breakout session with breakout ended, return false', () => {
+        newLocus.controls.breakout = {
+          sessionType: 'BREAKOUT',
+        };
+        newLocus.self.state = 'LEFT';
+        newLocus.self.reason = 'OTHER';
+        newLocus.self.devices = [];
+        newLocus.fullState = {state: 'INACTIVE', endMeetingReason: 'BREAKOUT_ENDED'};
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleLocusDTO(meeting, newLocus);
+        assert.equal(result, false);
+      });
       it('moved to lobby, return true', () => {
         newLocus.controls.breakout = {
           sessionType: 'MAIN',
@@ -2911,7 +3882,7 @@ describe('plugin-meetings', () => {
           conversationUrl: 'conversationUrl1',
         };
 
-        sinon.stub(MeetingsUtil, 'checkForCorrelationId').returns('correlationId1');
+        sinon.stub(MeetingsUtil, 'getCorrelationIdForDevice').returns('correlationId1');
       });
       afterEach(() => {
         sinon.restore();
@@ -3016,6 +3987,197 @@ describe('plugin-meetings', () => {
           'conversationUrl1'
         );
         assert.calledWith(webex.meetings.meetingCollection.getByKey, 'meetingNumber', '123456');
+      });
+
+      describe('when receiving hash tree events', () => {
+        let hashTreeEvent;
+
+        beforeEach(() => {
+          MeetingsUtil.getCorrelationIdForDevice.restore();
+          sinon.spy(MeetingsUtil, 'getCorrelationIdForDevice');
+
+          hashTreeEvent = {
+            eventType: 'locus.state_message',
+            stateElementsMessage: {
+              locusUrl: url1,
+              locusStateElements: [
+                {
+                  htMeta: {
+                    elementId: {
+                      type: 'participant',
+                      id: 2,
+                      version: 1,
+                    },
+                    dataSetNames: ['main'],
+                  },
+                  data: {
+                    id: 'participant1',
+                  },
+                },
+                {
+                  htMeta: {
+                    elementId: {
+                      type: 'Self',
+                      id: 1,
+                      version: 1,
+                    },
+                    dataSetNames: ['self'],
+                  },
+                  data: {
+                    callbackInfo: {
+                      callbackAddress: 'address1',
+                    },
+                    devices: [
+                      {
+                        url: 'deviceUrl',
+                        correlationId: 'correlationId1',
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          };
+
+          webex.internal.device.url = 'deviceUrl';
+        });
+
+        it('should find meeting by locusUrl from stateElementsMessage', () => {
+          mockGetByKey('locusUrl');
+          const result = webex.meetings.getCorrespondingMeetingByLocus(hashTreeEvent);
+          assert.deepEqual(result, mockReturnMeeting);
+          assert.calledOnceWithExactly(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+        });
+
+        it('should extract self data from locusStateElements and try correlationId when locusUrl not found', () => {
+          mockGetByKey('correlationId');
+          const result = webex.meetings.getCorrespondingMeetingByLocus(hashTreeEvent);
+          assert.deepEqual(result, mockReturnMeeting);
+          assert.callCount(webex.meetings.meetingCollection.getByKey, 2);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+          assert.calledWith(
+            webex.meetings.meetingCollection.getByKey,
+            'correlationId',
+            'correlationId1'
+          );
+          assert.calledOnceWithExactly(
+            MeetingsUtil.getCorrelationIdForDevice,
+            'deviceUrl',
+            hashTreeEvent.stateElementsMessage.locusStateElements[1].data
+          );
+        });
+
+        it('should extract self data from locusStateElements and try sipUri when locusUrl and correlationId not found', () => {
+          mockGetByKey('sipUri');
+          const result = webex.meetings.getCorrespondingMeetingByLocus(hashTreeEvent);
+          assert.deepEqual(result, mockReturnMeeting);
+          assert.callCount(webex.meetings.meetingCollection.getByKey, 3);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+          assert.calledWith(
+            webex.meetings.meetingCollection.getByKey,
+            'correlationId',
+            'correlationId1'
+          );
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'sipUri', 'address1');
+        });
+
+        it('should try all keys when no meeting found', () => {
+          mockGetByKey();
+          const result = webex.meetings.getCorrespondingMeetingByLocus(hashTreeEvent);
+          assert.isNull(result);
+          assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+          assert.calledWith(
+            webex.meetings.meetingCollection.getByKey,
+            'correlationId',
+            'correlationId1'
+          );
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'sipUri', 'address1');
+          // these remaining 2 will never work for hash trees, but just checking that
+          // the calls are made and we don't crash
+          assert.calledWith(
+            webex.meetings.meetingCollection.getByKey,
+            'conversationUrl',
+            undefined
+          );
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'meetingNumber', undefined);
+        });
+
+        it('should handle hash tree event with no self object', () => {
+          mockGetByKey();
+          hashTreeEvent.stateElementsMessage.locusStateElements = [
+            {
+              htMeta: {
+                elementId: {
+                  type: 'participant',
+                  id: 2,
+                  version: 1,
+                },
+                dataSetNames: ['dataset1'],
+              },
+              data: {
+                id: 'participant1',
+              },
+            },
+          ];
+
+          const result = webex.meetings.getCorrespondingMeetingByLocus(hashTreeEvent);
+          assert.isNull(result);
+          assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'correlationId', false);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'sipUri', undefined);
+          // these remaining 2 will never work for hash trees, but just checking that
+          // the calls are made and we don't crash
+          assert.calledWith(
+            webex.meetings.meetingCollection.getByKey,
+            'conversationUrl',
+            undefined
+          );
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'meetingNumber', undefined);
+        });
+
+        it('should handle hash tree event with empty locusStateElements', () => {
+          mockGetByKey();
+          hashTreeEvent.stateElementsMessage.locusStateElements = [];
+          const result = webex.meetings.getCorrespondingMeetingByLocus(hashTreeEvent);
+          assert.isNull(result);
+          assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'correlationId', false);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'sipUri', undefined);
+          // these remaining 2 will never work for hash trees, but just checking that
+          // the calls are made and we don't crash
+          assert.calledWith(
+            webex.meetings.meetingCollection.getByKey,
+            'conversationUrl',
+            undefined
+          );
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'meetingNumber', undefined);
+        });
+
+        it('should handle hash tree event with self object but no callbackAddress', () => {
+          mockGetByKey('meetingNumber');
+          delete hashTreeEvent.stateElementsMessage.locusStateElements[1].data.callbackInfo;
+          const result = webex.meetings.getCorrespondingMeetingByLocus(hashTreeEvent);
+          assert.deepEqual(result, mockReturnMeeting);
+          assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+          assert.calledWith(
+            webex.meetings.meetingCollection.getByKey,
+            'correlationId',
+            'correlationId1'
+          );
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'sipUri', undefined);
+          // these remaining 2 will never work for hash trees, but just checking that
+          // the calls are made and we don't crash
+          assert.calledWith(
+            webex.meetings.meetingCollection.getByKey,
+            'conversationUrl',
+            undefined
+          );
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'meetingNumber', undefined);
+        });
       });
     });
 
@@ -3131,7 +4293,7 @@ describe('plugin-meetings', () => {
           },
         });
         assert.calledWith(webex.meetings.handleLocusEvent, {
-          eventType: LOCUSEVENT.SDK_NO_EVENT,
+          eventType: LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS,
           locus: breakoutLocus,
           locusUrl: breakoutLocus.url,
         });

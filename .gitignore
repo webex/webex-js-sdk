@@ -31,7 +31,6 @@ tasks/selenium
 
 .DS_Store
 .env
-cc_playwright/.env
 .grunt
 .github-publish
 .idea
@@ -43,8 +42,10 @@ cc_playwright/.env
 .yarn/install-state.gz
 .sauce.tid
 browsers.processed.js
-docs/samples/*.min.js
-docs/samples/*.min.js.map
+docs/samples/webex.min.js
+docs/samples/webex.min.js.map
+docs/samples/meetings.min.js
+docs/samples/meetings.min.js.map
 coverage
 
 # patch-package

@@ -1,3 +1,32 @@
+/*
+ * CSS Variables for consistent theming
+ *
+ * Usage in CSS: background-color: var(--color-webex-blue);
+ * Usage in JS: element.style.backgroundColor = 'var(--color-success)';
+ *
+ * Available variables:
+ * --color-success: Success state (green)
+ * --color-success-hover: Success hover state
+ * --color-danger: Error/danger state (red)
+ * --color-danger-hover: Danger hover state
+ * --color-error-bg: Error message background (light red)
+ * --color-error-text: Error message text color
+ * --color-webex-blue: Primary brand color
+ * --color-webex-blue-hover: Primary brand hover color
+ * --color-background: Page background color (light gray)
+ */
+:root {
+    --color-success: #28a745;
+    --color-success-hover: #218838;
+    --color-danger: #dc3545;
+    --color-danger-hover: #c82333;
+    --color-error-bg: #fee;
+    --color-error-text: #721c24;
+    --color-webex-blue: #00bceb;
+    --color-webex-blue-hover: #0099ba;
+    --color-background: #f5f5f5;
+}
+
 * {
     box-sizing: border-box;
 }
@@ -15,7 +44,7 @@
 
 body {
     font-family: 'Roboto', sans-serif;
-    background-color: #f5f5f5;
+    background-color: var(--color-background);
     margin: 0;
     display: flex;
     flex-direction: column;
@@ -29,7 +58,7 @@ body {
 #header {
     position: sticky;
     top: 0;
-    background-color: #00bceb; /* Webex blue */
+    background-color: var(--color-webex-blue);
     color: white;
     padding: 20px;
     margin: 0;
@@ -45,14 +74,14 @@ body {
 }
 
 #footer {
-    background-color: #f5f5f5;
+    background-color: var(--color-background);
     text-align: center;
     padding: 10px;
     box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.2);
 }
 
 #footer a {
-    color: #00bceb; /* Webex blue */
+    color: var(--color-webex-blue);
     text-decoration: none;
     font-weight: bold;
 }
@@ -83,8 +112,18 @@ select {
     box-sizing: border-box;
 }
 
+
+.search-container select {
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 2.5em;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23555' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5em center;
+}
+
 button {
-    background-color: #00bceb; /* Webex blue */
+    background-color: var(--color-webex-blue);
     color: white;
     padding: 10px 20px;
     border: none;
@@ -95,7 +134,7 @@ button {
 }
 
 button:hover {
-    background-color: #0099ba; /* Darker Webex blue */
+    background-color: var(--color-webex-blue-hover);
 }
 
 table {
@@ -113,7 +152,7 @@ th, td {
 }
 
 th {
-    background-color: #f5f5f5;
+    background-color: var(--color-background);
 }
 
 .search-container {
@@ -140,6 +179,59 @@ th {
 
 .full-width {
     margin: 0 10px; /* Add margin to maintain spacing */
+}
+
+.select-with-clear {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.select-with-clear .full-width {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Match version select height so clear button can match */
+.select-with-clear select.full-width {
+    min-height: 42px;
+    margin-bottom: 0;
+}
+
+.select-with-clear .btn-clear-circle {
+    flex-shrink: 0;
+}
+
+/* Clear button: one circle only, light grey/white, red X inside (same height as version select) */
+.btn-clear-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    min-width: 42px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: #f5f5f5;
+    line-height: 0;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-clear-circle:hover {
+    background: #eee;
+    border-color: rgba(0, 0, 0, 0.2);
+}
+
+.btn-clear-circle:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-clear-circle svg {
+    display: block;
+    stroke: #e53935;  /* red X inside circle */
 }
 
 .results-container {
@@ -264,7 +356,7 @@ footer .copyright {
 
 .alert-info {
     background-color: #f0f9ff;
-    border-left: 6px solid #00bceb;
+    border-left: 6px solid var(--color-webex-blue);
     color: #333;
     padding: 10px;
     margin-bottom: 20px;
@@ -272,7 +364,7 @@ footer .copyright {
 
 .alert-info p.note {
     font-weight: bold;
-    color: #00bceb;
+    color: var(--color-webex-blue);
 }
 
 .alert-info p.warning {
@@ -280,3 +372,201 @@ footer .copyright {
     color: #ff7f0e;
     display: inline;
 }
+
+/* ============================================
+   VERSION COMPARISON STYLES
+   ============================================ */
+
+/* Mode Toggle Buttons */
+.mode-toggle {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.mode-toggle button {
+    flex: 1;
+    padding: 12px 20px;
+    border: 2px solid var(--color-webex-blue);
+    background-color: white;
+    color: var(--color-webex-blue);
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.mode-toggle button:hover {
+    background-color: #e6f7fb;
+}
+
+.mode-toggle button.active {
+    background-color: var(--color-webex-blue);
+    color: white;
+}
+
+/* Hide utility class */
+.hide {
+    display: none !important;
+}
+
+/* Required field asterisk */
+.required-asterisk {
+    color: var(--color-danger);
+}
+
+/* Form help text */
+.help-text {
+    font-weight: normal;
+    font-size: 12px;
+    color: #666;
+}
+
+/* Pre-release row: hidden by default; JS toggles visibility */
+#comparison-prerelease-row {
+    display: none;
+}
+
+/* Comparison helper tip paragraph */
+.comparison-helper-tip {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #e7f3ff;
+    border-radius: 5px;
+    font-size: 13px;
+}
+
+/* Inline error message */
+.error-text {
+    color: var(--color-danger);
+}
+
+/* Package versions table heading (in comparison template) */
+.comparison-package-versions-heading {
+    margin-top: 20px;
+    margin-bottom: 15px;
+}
+
+/* Comparison Form */
+#comparison-form {
+    margin-top: 20px;
+}
+
+/* Comparison Results Table */
+#comparison-results .table-wrapper {
+    max-height: 500px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 10px;
+    position: relative;
+}
+
+.comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0;
+    font-size: 14px;
+}
+
+.comparison-table th,
+.comparison-table td {
+    padding: 12px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+.comparison-table th {
+    background-color: var(--color-webex-blue);
+    color: white;
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.comparison-table tbody tr {
+    transition: background-color 0.2s;
+}
+
+.comparison-table tbody tr:hover {
+    background-color: var(--color-background) !important;
+}
+
+/* Color Coding for Changes */
+.comparison-table tr.version-changed {
+    background-color: #fff3cd; /* Yellow - version changed */
+    border-left: 4px solid #ffc107;
+}
+
+.comparison-table tr.only-in-a {
+    background-color: #f8d7da; /* Red - removed in B */
+    border-left: 4px solid #dc3545;
+}
+
+.comparison-table tr.only-in-b {
+    background-color: #d4edda; /* Green - added in B */
+    border-left: 4px solid #28a745;
+}
+
+.comparison-table tr.unchanged {
+    background-color: #ffffff; /* White - no change */
+}
+
+/* Comparison Summary */
+.comparison-summary {
+    background: linear-gradient(135deg, #e7f3ff 0%, #f0f9ff 100%);
+    padding: 25px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 5px solid var(--color-webex-blue);
+}
+
+.comparison-summary h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--color-webex-blue);
+    font-size: 1.5em;
+}
+
+.summary-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.stat-item {
+    padding: 10px 20px;
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-size: 14px;
+}
+
+.stat-item.changed {
+    border-left: 4px solid #ffc107;
+}
+
+.stat-item.unchanged {
+    border-left: 4px solid #6c757d;
+}
+
+.stat-item.added {
+    border-left: 4px solid #28a745;
+}
+
+.stat-item.removed {
+    border-left: 4px solid #dc3545;
+}
+
+.stat-item.commits {
+    border-left: 4px solid #6f42c1;
+}
+
+.stat-item strong {
+    font-size: 1.2em;
+    color: #333;
+}
+

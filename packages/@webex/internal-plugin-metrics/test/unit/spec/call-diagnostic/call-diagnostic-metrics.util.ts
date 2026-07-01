@@ -10,6 +10,7 @@ import {
   ICE_AND_REACHABILITY_FAILED_CLIENT_CODE,
   ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
   MISSING_ROAP_ANSWER_CLIENT_CODE,
+  BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP,
 } from '../../../../src/call-diagnostic/config';
 import Logger from '@webex/plugin-logger';
 
@@ -26,6 +27,7 @@ const {
   isUnauthorizedError,
   generateClientErrorCodeForIceFailure,
   isSdpOfferCreationError,
+  isWebrtcApiNotAvailableError,
 } = CallDiagnosticUtils;
 
 describe('internal-plugin-metrics', () => {
@@ -205,6 +207,29 @@ describe('internal-plugin-metrics', () => {
     });
   });
 
+  describe('isWebrtcApiNotAvailableError', () => {
+    type TestWebrtcApiNotAvailableError = {
+      code: number;
+      message: string;
+      name: string;
+    };
+
+    const error: TestWebrtcApiNotAvailableError = {
+      code: 30007,
+      name: 'WebrtcApiNotAvailableError',
+      message: 'RTCPeerConnection API is not available in this environment',
+    };
+
+    [
+      ['WebrtcApiNotAvailableError', error, true],
+      ['generic error', new Error('this is an error'), false],
+    ].forEach(([errorType, rawError, expected]) => {
+      it(`for ${errorType} rawError returns the correct result`, () => {
+        assert.strictEqual(isWebrtcApiNotAvailableError(rawError), expected);
+      });
+    });
+  });
+
   describe('isBrowserMediaErrorName', () => {
     [
       ['PermissionDeniedError', true],
@@ -286,7 +311,7 @@ describe('internal-plugin-metrics', () => {
           origin: {
             buildType: 'prod',
             networkType: 'unknown',
-            upgradeChannel: expectedUpgradeChannel
+            upgradeChannel: expectedUpgradeChannel,
           },
           event: {name: eventName, ...expectedEvent},
         },
@@ -368,7 +393,7 @@ describe('internal-plugin-metrics', () => {
             totalJmt: undefined,
             clientJmt: undefined,
             downloadTime: undefined,
-            clickToInterstitialWithUserDelay:   undefined,
+            clickToInterstitialWithUserDelay: undefined,
             totalJMTWithUserDelay: undefined,
           },
         },
@@ -405,7 +430,6 @@ describe('internal-plugin-metrics', () => {
             totalMediaJMT: undefined,
             interstitialToMediaOKJMT: undefined,
             callInitMediaEngineReady: undefined,
-            stayLobbyTime: undefined,
             totalMediaJMTWithUserDelay: undefined,
             totalJMTWithUserDelay: undefined,
           },
@@ -419,6 +443,14 @@ describe('internal-plugin-metrics', () => {
           },
           videoSetupDelay: {
             joinRespTxStart: undefined,
+          },
+        },
+      ],
+      [
+        'client.lobby.exited',
+        {
+          joinTimes: {
+            stayLobbyTime: undefined,
           },
         },
       ],
@@ -683,6 +715,36 @@ describe('internal-plugin-metrics', () => {
           errorCode
         );
       });
+    });
+  });
+
+  describe('isBrowserMediaError', () => {
+    it('should return true if error name is in BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP', () => {
+      // Use a known browser media error name from the config map
+      const errorName = Object.keys(BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP)[0];
+      const error = {name: errorName};
+      assert.isTrue(CallDiagnosticUtils.isBrowserMediaError(error));
+    });
+
+    it('should return false if error name is not in BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP', () => {
+      const error = {name: 'SomeOtherError'};
+      assert.isFalse(CallDiagnosticUtils.isBrowserMediaError(error));
+    });
+  });
+
+  describe('getBrowserMediaErrorCode', () => {
+    it('should return correct error code for known error name', () => {
+      const errorName = Object.keys(BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP)[0];
+      const error = {name: errorName};
+      assert.strictEqual(
+        CallDiagnosticUtils.getBrowserMediaErrorCode(error),
+        BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[errorName]
+      );
+    });
+
+    it('should return undefined for unknown error name', () => {
+      const error = {name: 'UnknownError'};
+      assert.isUndefined(CallDiagnosticUtils.getBrowserMediaErrorCode(error));
     });
   });
 });

@@ -83,6 +83,13 @@ export default {
   metrics: {
     type: ['behavioral', 'operational'],
   },
+  calling: {
+    /**
+     * Controls whether U2C service catalogs should be cached and warmed from cache.
+     * When false, the services layer will skip reading and writing the U2C cache.
+     */
+    cacheU2C: false,
+  },
   payloadTransformer: {
     predicates: [],
     transforms: [],

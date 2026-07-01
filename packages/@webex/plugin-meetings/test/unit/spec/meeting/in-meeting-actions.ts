@@ -26,6 +26,7 @@ describe('plugin-meetings', () => {
         canLowerAllHands: null,
         canLowerSomeoneElsesHand: null,
         bothLeaveAndEndMeetingAvailable: null,
+        requireHostEndMeetingBeforeLeave: null,
         canEnableClosedCaption: null,
         canStartTranscribing: null,
         canStopTranscribing: null,
@@ -35,8 +36,8 @@ describe('plugin-meetings', () => {
         isLocalRecordingStarted: null,
         isLocalRecordingStopped: null,
         isLocalRecordingPaused: null,
-        isLocalStreamingStarted:null,
-        isLocalStreamingStopped:null,
+        isLocalStreamingStarted: null,
+        isLocalStreamingStopped: null,
         isManualCaptionActive: null,
         isPremiseRecordingEnabled: null,
         isSaveTranscriptsEnabled: null,
@@ -111,6 +112,9 @@ describe('plugin-meetings', () => {
         canMoveToLobby: null,
         canEnablePollingQA: null,
         canDisablePollingQA: null,
+        canAttendeeRequestAiAssistantEnabled: null,
+        isAttendeeRequestAiAssistantDeclinedAll: null,
+        isAnonymizeDisplayNamesEnabled: null,
 
         ...expected,
       };
@@ -149,6 +153,7 @@ describe('plugin-meetings', () => {
       'canLowerAllHands',
       'canLowerSomeoneElsesHand',
       'bothLeaveAndEndMeetingAvailable',
+      'requireHostEndMeetingBeforeLeave',
       'canEnableClosedCaption',
       'canStopTranscribing',
       'isClosedCaptionActive',
@@ -228,6 +233,9 @@ describe('plugin-meetings', () => {
       'canMoveToLobby',
       'canEnablePollingQA',
       'canDisablePollingQA',
+      'canAttendeeRequestAiAssistantEnabled',
+      'isAttendeeRequestAiAssistantDeclinedAll',
+      'isAnonymizeDisplayNamesEnabled',
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();
