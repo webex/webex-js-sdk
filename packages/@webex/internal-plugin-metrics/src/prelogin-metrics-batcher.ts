@@ -113,7 +113,16 @@ const PreLoginMetricsBatcher = Batcher.extend({
     }
 
     if (statusCode === 200) {
-      this.webex.internal.newMetrics?.callDiagnosticMetrics?.setTelemetryOptOut('automatic');
+      if (
+        this.webex.internal.newMetrics?.callDiagnosticMetrics?.getTelemetryOptOut() !== 'manual'
+      ) {
+        this.webex.internal.newMetrics?.callDiagnosticMetrics?.setTelemetryOptOut('automatic');
+      }
+    } else if (
+      this.webex.internal.newMetrics?.callDiagnosticMetrics?.getTelemetryOptOut() === 'manual'
+    ) {
+      // If we had set the telemetry opt-out to 'automatic' and the request now responds with something other than 200, we should revert it back to undefined.
+      this.webex.internal.newMetrics?.callDiagnosticMetrics?.setTelemetryOptOut(undefined);
     }
   },
 });

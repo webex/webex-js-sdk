@@ -446,6 +446,26 @@ describe('internal-plugin-metrics', () => {
         );
       });
 
+      it('does not set telemetry opt out to automatic when current telemetry opt out is manual and status is 200', () => {
+        webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut = sinon.stub();
+        webex.internal.newMetrics.callDiagnosticMetrics.getTelemetryOptOut = sinon
+          .stub()
+          .returns('manual');
+
+        webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.handleHttpResponseStatus(
+          200,
+          [
+            {
+              eventPayload: {event: 'my.event'},
+              type: ['diagnostic-event'],
+              markTelemetryOptOutOnResponse: true,
+            },
+          ]
+        );
+
+        assert.notCalled(webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut);
+      });
+
       it('does not set telemetry opt out when payload is marked but status is not 200', () => {
         webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut = sinon.stub();
 
@@ -461,6 +481,29 @@ describe('internal-plugin-metrics', () => {
         );
 
         assert.notCalled(webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut);
+      });
+
+      it('resets telemetry opt out to undefined when payload is marked, status is not 200 and current telemetry opt out is manual', () => {
+        webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut = sinon.stub();
+        webex.internal.newMetrics.callDiagnosticMetrics.getTelemetryOptOut = sinon
+          .stub()
+          .returns('manual');
+
+        webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.handleHttpResponseStatus(
+          503,
+          [
+            {
+              eventPayload: {event: 'my.event'},
+              type: ['diagnostic-event'],
+              markTelemetryOptOutOnResponse: true,
+            },
+          ]
+        );
+
+        assert.calledOnceWithExactly(
+          webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut,
+          undefined
+        );
       });
     });
   });
