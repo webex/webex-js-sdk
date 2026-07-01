@@ -17,12 +17,31 @@ import {ContactsClient, createContactsClient} from './Contacts/ContactsClient';
 import {IContacts, Contact, ContactGroup} from './Contacts/types';
 import {Voicemail, createVoicemailClient} from './Voicemail/Voicemail';
 import {IVoicemail, VoicemailResponseEvent} from './Voicemail/types';
+import {CallRecording, createCallRecordingClient} from './CallRecording/CallRecording';
+import {
+  ICallRecording,
+  Recording,
+  RecordingListResponse,
+  RecordingMetadata,
+  RecordingMetadataResponse,
+  RecordingResponse,
+  GetRecordingsOptions,
+} from './CallRecording/types';
 
 // Interfaces
-export {ILine, ICall, ICallHistory, ICallSettings, ICallingClient, IContacts, IVoicemail};
+export {
+  ILine,
+  ICall,
+  ICallHistory,
+  ICallSettings,
+  ICallingClient,
+  IContacts,
+  IVoicemail,
+  ICallRecording,
+};
 
 // Classes
-export {CallHistory, CallSettings, CallingClient, ContactsClient, Voicemail};
+export {CallHistory, CallSettings, CallingClient, ContactsClient, Voicemail, CallRecording};
 
 // Types
 export {
@@ -32,6 +51,12 @@ export {
   CallForwardAlwaysSetting,
   VoicemailSetting,
   VoicemailResponseEvent,
+  Recording,
+  RecordingListResponse,
+  RecordingMetadata,
+  RecordingMetadataResponse,
+  RecordingResponse,
+  GetRecordingsOptions,
 };
 
 // Methods
@@ -41,4 +66,5 @@ export {
   createClient,
   createContactsClient,
   createVoicemailClient,
+  createCallRecordingClient,
 };
