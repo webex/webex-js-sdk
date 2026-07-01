@@ -391,8 +391,8 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
   item.eventPayload.origin = Object.assign(origin, item.eventPayload.origin);
 
   // Mark call milestones in logs for easier filtering and analysis
-  if (item.eventPayload.event.name) {
-    webex.logger.log(`Milestone,CallDiagnostic: ${item.eventPayload.event.name}`);
+  if (eventName) {
+    webex.logger.log('Milestone,CallDiagnostic', eventName);
   }
 
   webex.logger.log(
