@@ -91,6 +91,25 @@ export const MEDIA_CHANNEL = {
 export type MEDIA_CHANNEL = Enum<typeof MEDIA_CHANNEL>;
 
 /**
+ * Defines the supported response actions for handoff summary decisions.
+ * @public
+ */
+export const HANDOFF_SUMMARY_ACTION = {
+  /** Cancel the handoff summary decision flow */
+  CANCEL: 'CANCEL',
+  /** Continue with consult after reviewing the summary */
+  CONSULT: 'CONSULT',
+  /** Continue with transfer after reviewing the summary */
+  TRANSFER: 'TRANSFER',
+} as const;
+
+/**
+ * Type representing valid handoff summary response actions.
+ * @public
+ */
+export type HandoffSummaryAction = Enum<typeof HANDOFF_SUMMARY_ACTION>;
+
+/**
  * Enumeration of all task-related events that can occur in the contact center system
  * These events represent different states and actions in the task lifecycle
  * @public
@@ -616,6 +635,39 @@ export enum TASK_EVENTS {
    */
 
   TASK_MULTI_LOGIN_HYDRATE = 'task:multiLoginHydrate',
+
+  /**
+   * Triggered when a handoff summary is delivered for a task
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_HANDOFF_SUMMARY, (payload) => {
+   *   console.log('Handoff summary received:', payload);
+   * });
+   * ```
+   */
+  TASK_HANDOFF_SUMMARY = 'task:handoffSummary',
+
+  /**
+   * Triggered when a subsequent-agent handoff summary response is delivered for a task
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_HANDOFF_SUMMARY_RESPONSE, (payload) => {
+   *   console.log('Handoff summary response received:', payload);
+   * });
+   * ```
+   */
+  TASK_HANDOFF_SUMMARY_RESPONSE = 'task:handoffSummaryResponse',
+
+  /**
+   * Triggered when backend sends runtime handoff summary feature enablement state
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_HANDOFF_SUMMARY_FEATURE_ENABLEMENT, (payload) => {
+   *   console.log('Handoff summary enablement changed:', payload);
+   * });
+   * ```
+   */
+  TASK_HANDOFF_SUMMARY_FEATURE_ENABLEMENT = 'task:handoffSummaryFeatureEnablement',
 }
 
 /**
@@ -1099,6 +1151,44 @@ export type ConsultPayload = {
 };
 
 /**
+ * Optional payload for requesting a handoff summary.
+ * The backend owns the exact additional event fields, so eventData is intentionally schema-free.
+ * @public
+ */
+export type HandoffSummaryRequestPayload = {
+  /** Optional interaction identifier override; defaults to the task interactionId */
+  interactionId?: string;
+  /** Optional additional AI Assistant event details */
+  eventData?: Record<string, unknown>;
+};
+
+/**
+ * Payload for responding to a handoff summary.
+ * @public
+ */
+export type HandoffSummaryResponsePayload = {
+  /** Handoff summary response action */
+  action: HandoffSummaryAction;
+  /** Optional interaction identifier override; defaults to the task interactionId */
+  interactionId?: string;
+  /** Optional additional AI Assistant event details */
+  eventData?: Record<string, unknown>;
+};
+
+/**
+ * Handoff summary websocket payload passed through from backend messages.
+ * @public
+ */
+export type HandoffSummaryPayload = {
+  /** Optional interaction identifier */
+  interactionId?: string;
+  /** Optional backend payload body */
+  data?: Record<string, unknown>;
+  /** Additional backend-owned fields */
+  [key: string]: unknown;
+};
+
+/**
  * Parameters for ending a consultation task
  * @public
  */
@@ -1442,6 +1532,29 @@ export interface ITask extends EventEmitter {
    * ```
    */
   consultTransfer(consultTransferPayload?: ConsultTransferPayLoad): Promise<TaskResponse>;
+
+  /**
+   * Requests a generated handoff summary for the current task.
+   * The request is sent only when generated consult-transfer summaries are enabled.
+   * @param payload - Optional interaction override and backend-owned event detail fields
+   * @returns Promise resolving with the AI Assistant response body
+   * @example
+   * ```typescript
+   * await task.requestHandoffSummary();
+   * ```
+   */
+  requestHandoffSummary(payload?: HandoffSummaryRequestPayload): Promise<Record<string, unknown>>;
+
+  /**
+   * Responds to a handoff summary decision.
+   * @param payload - Handoff action and optional backend-owned event detail fields
+   * @returns Promise resolving with the AI Assistant response body
+   * @example
+   * ```typescript
+   * await task.respondToHandoffSummary({action: HANDOFF_SUMMARY_ACTION.TRANSFER});
+   * ```
+   */
+  respondToHandoffSummary(payload: HandoffSummaryResponsePayload): Promise<Record<string, unknown>>;
 
   /**
    * Initiates a consult conference (merge consult call with main call).

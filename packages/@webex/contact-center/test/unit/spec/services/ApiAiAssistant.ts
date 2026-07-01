@@ -73,6 +73,40 @@ describe('ApiAIAssistant', () => {
     expect(result).toEqual({ok: true});
   });
 
+  it('should send event details without an action when action is not provided', async () => {
+    (mockWebex.request as jest.Mock).mockResolvedValue({body: {ok: true}});
+
+    await apiAIAssistant.sendEvent(
+      'test-agent-id',
+      'interaction-1',
+      'CUSTOM_EVENT',
+      'GET_MID_CALL_SUMMARY',
+      undefined,
+      {source: 'consult-popup'}
+    );
+
+    expect(mockWebex.request).toHaveBeenCalledWith({
+      uri: 'https://api-ai-assistant.produs1.ciscoccservice.com/event',
+      method: HTTP_METHODS.POST,
+      addAuthHeader: true,
+      body: {
+        agentId: 'test-agent-id',
+        orgId: 'test-org-id',
+        eventType: 'CUSTOM_EVENT',
+        eventName: 'GET_MID_CALL_SUMMARY',
+        eventDetails: {
+          data: expect.objectContaining({
+            interactionId: 'interaction-1',
+            source: 'consult-popup',
+          }),
+        },
+      },
+    });
+    expect((mockWebex.request as jest.Mock).mock.calls[0][0].body.eventDetails.data).not.toHaveProperty(
+      'action'
+    );
+  });
+
   it('should fetch historic transcripts with mapped base URL', async () => {
     const responseBody = {interactionId: 'interaction-1', data: []};
     (mockWebex.request as jest.Mock).mockResolvedValue({body: responseBody});

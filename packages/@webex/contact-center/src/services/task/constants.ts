@@ -71,6 +71,8 @@ export const METHODS = {
   CONSULT_CONFERENCE: 'consultConference',
   EXIT_CONFERENCE: 'exitConference',
   TRANSFER_CONFERENCE: 'transferConference',
+  REQUEST_HANDOFF_SUMMARY: 'requestHandoffSummary',
+  RESPOND_TO_HANDOFF_SUMMARY: 'respondToHandoffSummary',
   UPDATE_TASK_DATA: 'updateTaskData',
   RECONCILE_DATA: 'reconcileData',
 
@@ -85,6 +87,7 @@ export const METHODS = {
   GET_TASK_MANAGER: 'getTaskManager',
   SETUP_AUTO_WRAPUP_TIMER: 'setupAutoWrapupTimer',
   CANCEL_AUTO_WRAPUP_TIMER: 'cancelAutoWrapupTimer',
+  HANDLE_HANDOFF_SUMMARY_FEATURE_ENABLEMENT: 'handleHandoffSummaryFeatureEnablement',
 };
 
 export const TRANSCRIPT_EVENT_MAP = {

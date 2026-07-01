@@ -49,7 +49,7 @@ export type {
  * @enum {string}
  * @category Enums
  */
-export {TASK_EVENTS} from './services/task/types';
+export {HANDOFF_SUMMARY_ACTION, TASK_EVENTS} from './services/task/types';
 export type {TASK_EVENTS as TaskEvents} from './services/task/types';
 
 /**
@@ -134,6 +134,10 @@ export type {
   ConsultPayload,
   ConsultEndPayload,
   ConsultTransferPayLoad,
+  HandoffSummaryAction,
+  HandoffSummaryPayload,
+  HandoffSummaryRequestPayload,
+  HandoffSummaryResponsePayload,
   /** Dialer payload */
   DialerPayload,
   TransferPayLoad,

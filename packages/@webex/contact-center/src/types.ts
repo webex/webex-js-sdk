@@ -824,6 +824,7 @@ export type BuddyAgentsResponse = Agent.BuddyAgentsSuccess | Error;
 export type UpdateDeviceTypeResponse = Agent.DeviceTypeUpdateSuccess | Error;
 
 export type TranscriptAction = 'START' | 'STOP';
+export type AIAssistantEventAction = TranscriptAction | 'CANCEL' | 'CONSULT' | 'TRANSFER';
 
 export const AIAssistantEventType = {
   CUSTOM_EVENT: 'CUSTOM_EVENT',
