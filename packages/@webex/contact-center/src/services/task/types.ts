@@ -628,6 +628,17 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_POST_CALL_ACTIVITY = 'task:postCallActivity',
+
+  /**
+   * Triggered when a multi-login task update should hydrate SDK instances without Mobius registration.
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, (task: ITask) => {
+   *   console.log('Multi-login hydrate:', task.data.interactionId);
+   * });
+   * ```
+   */
+  TASK_MULTI_LOGIN_HYDRATE = 'task:multiLoginHydrate',
 }
 
 /**

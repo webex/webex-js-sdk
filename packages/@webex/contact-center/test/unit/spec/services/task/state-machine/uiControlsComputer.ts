@@ -1784,6 +1784,53 @@ describe('uiControlsComputer outdial accept/decline controls', () => {
   });
 });
 
+describe('uiControlsComputer WebRTC call-control end button', () => {
+  function createConnectedContext(voiceVariant: 'webrtc' | 'pstn'): TaskContext {
+    const taskData = createTaskData({
+      interaction: {
+        state: 'connected',
+      } as any,
+    });
+
+    return {
+      taskData,
+      consultInitiator: false,
+      exitingConference: false,
+      consultFromConference: false,
+      transferConferenceRequested: false,
+      consultDestinationType: null,
+      consultDestinationAgentId: null,
+      consultDestinationAgentJoined: false,
+      consultCallHeld: false,
+      recordingControlsAvailable: true,
+      recordingInProgress: true,
+      uiControlConfig: {
+        isEndTaskEnabled: false,
+        isEndConsultEnabled: true,
+        channelType: TASK_CHANNEL_TYPE.VOICE,
+        isRecordingEnabled: true,
+        agentId: taskData.agentId,
+        voiceVariant,
+      },
+      uiControls: getDefaultUIControls(),
+    };
+  }
+
+  it('shows main end for connected WebRTC call-control tasks even when end task is disabled', () => {
+    const context = createConnectedContext('webrtc');
+    const uiControls = computeUIControls(TaskState.CONNECTED, context, context.taskData);
+
+    expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: true});
+  });
+
+  it('keeps main end hidden for non-WebRTC voice tasks when end task is disabled', () => {
+    const context = createConnectedContext('pstn');
+    const uiControls = computeUIControls(TaskState.CONNECTED, context, context.taskData);
+
+    expect(uiControls.main.end).toEqual({isVisible: false, isEnabled: false});
+  });
+});
+
 describe('uiControlsComputer conference controls', () => {
   function createConferenceTaskData(participantCount: number) {
     const participants: Record<string, any> = {

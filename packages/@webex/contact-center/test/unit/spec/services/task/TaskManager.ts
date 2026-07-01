@@ -92,6 +92,10 @@ describe('TaskManager', () => {
         }
       }
 
+      if ([TaskEvent.ASSIGN, TaskEvent.CONSULTING_ACTIVE].includes(event.type as TaskEvent)) {
+        task.emit(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, task);
+      }
+
       // Auto-answer is now handled at the Task layer (triggered by state machine actions)
       if (
         [TaskEvent.TASK_OFFERED, TaskEvent.OFFER_CONSULT].includes(event.type as TaskEvent) &&
@@ -494,11 +498,16 @@ describe('TaskManager', () => {
       taskManager.getTask(payload.data.interactionId),
       'emit'
     );
+    const taskManagerEmitSpy = jest.spyOn(taskManager, 'emit');
 
     webSocketManagerMock.emit('message', JSON.stringify(assignedPayload));
 
     expect(currentTaskAssignedSpy).toHaveBeenCalledWith(
       TASK_EVENTS.TASK_ASSIGNED,
+      taskManager.getTask(taskId)
+    );
+    expect(taskManagerEmitSpy).toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
       taskManager.getTask(taskId)
     );
   });
@@ -1837,6 +1846,7 @@ describe('TaskManager', () => {
     taskManager.getTask(taskId).data.isConsulted = false;
     const task = taskManager.getTask(taskId);
     const sendStateMachineEventSpy = jest.spyOn(task, 'sendStateMachineEvent');
+    const taskManagerEmitSpy = jest.spyOn(taskManager, 'emit');
     const consultingPayload = {
       data: {
         ...initalPayload.data,
@@ -1846,6 +1856,10 @@ describe('TaskManager', () => {
     };
     webSocketManagerMock.emit('message', JSON.stringify(consultingPayload));
     expectLastStateMachineEvent(sendStateMachineEventSpy, TaskEvent.CONSULTING_ACTIVE);
+    expect(taskManagerEmitSpy).toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
+      taskManager.getTask(taskId)
+    );
     sendStateMachineEventSpy.mockRestore();
   });
 
