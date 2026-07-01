@@ -64,9 +64,23 @@ describe('isAnyPublicClusterReachable', () => {
     );
   });
 
+  it('returns true when only xtls is reachable', async () => {
+    await checkIsClusterReachable(
+      {x: {udp: {result: 'unreachable'}, tcp: {result: 'unreachable'}, xtls: {result: 'reachable'}}},
+      true
+    );
+  });
+
   it('returns false when both tcp and udp are unreachable', async () => {
     await checkIsClusterReachable(
       {x: {udp: {result: 'unreachable'}, tcp: {result: 'unreachable'}}},
+      false
+    );
+  });
+
+  it('returns false when udp, tcp and xtls are all unreachable', async () => {
+    await checkIsClusterReachable(
+      {x: {udp: {result: 'unreachable'}, tcp: {result: 'unreachable'}, xtls: {result: 'unreachable'}}},
       false
     );
   });
