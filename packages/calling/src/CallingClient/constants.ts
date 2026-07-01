@@ -238,6 +238,7 @@ export const METHODS = {
   GET_SDK_CONNECTOR: 'getSDKConnector',
   GET_CONNECTED_CALL: 'getConnectedCall',
   CONNECT_TO_MOBIUS_SOCKET: 'connectToMobiusSocket',
+  SET_SOCKET_ENABLED: 'setSocketEnabled',
   REGISTER_MOBIUS_SOCKET_LISTENER: 'registerMobiusSocketListener',
   UNREGISTER_MOBIUS_SOCKET_LISTENER: 'unregisterMobiusSocketListener',
   REGISTER_MOBIUS_SOCKET_CONNECTION_LISTENER: 'registerMobiusSocketConnectionListener',

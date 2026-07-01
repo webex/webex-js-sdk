@@ -21,46 +21,46 @@ export function callLifecycleTests() {
   test.describe('Call Lifecycle', () => {
     test.describe.configure({mode: 'serial', timeout: 180000});
 
-    let tm: TestManager;
+    let testManager: TestManager;
     let calleeNumber: string;
 
     test.beforeAll(async ({browser}, testInfo) => {
-      tm = new TestManager(testInfo.project.name);
+      testManager = new TestManager(testInfo.project.name);
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      calleeNumber = getPhoneNumber(tm.userSet.accounts[1]);
+      calleeNumber = getPhoneNumber(testManager.userSet.accounts[1], testManager.isInt);
     });
 
     test.afterEach(async () => {
       await Promise.all([
-        cleanupActiveCalls(tm.getPage(tm.userSet.accounts[0])),
-        cleanupActiveCalls(tm.getPage(tm.userSet.accounts[1])),
+        cleanupActiveCalls(testManager.getPage(testManager.userSet.accounts[0])),
+        cleanupActiveCalls(testManager.getPage(testManager.userSet.accounts[1])),
       ]);
       // Settle time for backend state between calls
-      if (!tm.page.isClosed()) {
-        await tm.page.waitForTimeout(3000);
+      if (!testManager.page.isClosed()) {
+        await testManager.page.waitForTimeout(3000);
       }
     });
 
     test.afterAll(async () => {
-      await tm.cleanup();
+      await testManager.cleanup();
     });
 
     test('CALL-001: Outgoing call happy path - full event sequence', async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
 
@@ -88,8 +88,8 @@ export function callLifecycleTests() {
     });
 
     test('CALL-002: Incoming call answer flow - verify callee perspective', async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
 
@@ -98,8 +98,8 @@ export function callLifecycleTests() {
     });
 
     test('CALL-003: Incoming call reject flow - callee rejects call', async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await makeCall(callerPage, calleeNumber);
       await waitForIncomingCall(calleePage);
@@ -120,45 +120,45 @@ export function callLifecycleMediaTests() {
   test.describe('Call Lifecycle - Media & Disconnect', () => {
     test.describe.configure({mode: 'serial', timeout: 180000});
 
-    let tm: TestManager;
+    let testManager: TestManager;
     let calleeNumber: string;
 
     test.beforeAll(async ({browser}, testInfo) => {
-      tm = new TestManager(testInfo.project.name);
+      testManager = new TestManager(testInfo.project.name);
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      calleeNumber = getPhoneNumber(tm.userSet.accounts[1]);
+      calleeNumber = getPhoneNumber(testManager.userSet.accounts[1], testManager.isInt);
     });
 
     test.afterEach(async () => {
       await Promise.all([
-        cleanupActiveCalls(tm.getPage(tm.userSet.accounts[0])),
-        cleanupActiveCalls(tm.getPage(tm.userSet.accounts[1])),
+        cleanupActiveCalls(testManager.getPage(testManager.userSet.accounts[0])),
+        cleanupActiveCalls(testManager.getPage(testManager.userSet.accounts[1])),
       ]);
-      if (!tm.page.isClosed()) {
-        await tm.page.waitForTimeout(3000);
+      if (!testManager.page.isClosed()) {
+        await testManager.page.waitForTimeout(3000);
       }
     });
 
     test.afterAll(async () => {
-      await tm.cleanup();
+      await testManager.cleanup();
     });
 
     test('CALL-004: Local disconnect - establish call, caller hangs up', async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
 
@@ -167,8 +167,8 @@ export function callLifecycleMediaTests() {
     });
 
     test('CALL-005: Remote disconnect - establish call, callee hangs up', async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
 
@@ -177,8 +177,8 @@ export function callLifecycleMediaTests() {
     });
 
     test('CALL-006: Unanswered call - caller hangs up after no answer', async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await makeCall(callerPage, calleeNumber);
       await waitForIncomingCall(calleePage);
@@ -200,8 +200,8 @@ export function callLifecycleMediaTests() {
     });
 
     test('CALL-007: ROAP success - verify remote media after call established', async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
       await callerPage.waitForTimeout(2000);
@@ -226,8 +226,8 @@ export function callLifecycleMediaTests() {
     });
 
     test('CALL-008: Call metrics - verify call quality data available during call', async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
       await callerPage.waitForTimeout(5000);
