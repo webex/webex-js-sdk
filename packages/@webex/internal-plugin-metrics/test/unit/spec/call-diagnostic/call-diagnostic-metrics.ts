@@ -978,6 +978,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
@@ -1008,6 +1009,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
@@ -1049,6 +1051,7 @@ describe('internal-plugin-metrics', () => {
                 userId: 'userId',
               },
               loginType: 'login-ci',
+              telemetryOptOut: undefined,
               name: 'client.alert.displayed',
               userType: 'host',
               isConvergedArchitectureEnabled: undefined,
@@ -1126,6 +1129,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
@@ -1156,6 +1160,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
@@ -1197,6 +1202,7 @@ describe('internal-plugin-metrics', () => {
                 userId: 'userId',
               },
               loginType: 'login-ci',
+              telemetryOptOut: undefined,
               name: 'client.alert.displayed',
               userType: 'host',
               isConvergedArchitectureEnabled: undefined,
@@ -1275,6 +1281,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
@@ -1306,6 +1313,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
@@ -1348,6 +1356,7 @@ describe('internal-plugin-metrics', () => {
                 userId: 'userId',
               },
               loginType: 'login-ci',
+              telemetryOptOut: undefined,
               name: 'client.alert.displayed',
               userType: 'host',
               isConvergedArchitectureEnabled: undefined,
@@ -1425,6 +1434,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             webClientPreload: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
@@ -1456,6 +1466,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             webClientPreload: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
@@ -1498,6 +1509,7 @@ describe('internal-plugin-metrics', () => {
                 userId: 'userId',
               },
               loginType: 'login-ci',
+              telemetryOptOut: undefined,
               webClientPreload: undefined,
               name: 'client.alert.displayed',
               userType: 'host',
@@ -1575,6 +1587,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             userNameInput: 'test',
@@ -1608,6 +1621,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             userNameInput: 'test',
@@ -1652,6 +1666,7 @@ describe('internal-plugin-metrics', () => {
                 userId: 'userId',
               },
               loginType: 'login-ci',
+              telemetryOptOut: undefined,
               name: 'client.alert.displayed',
               userType: 'host',
               userNameInput: 'test',
@@ -1785,6 +1800,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
@@ -1809,6 +1825,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
@@ -1885,6 +1902,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'myPreLoginId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
@@ -1915,6 +1933,7 @@ describe('internal-plugin-metrics', () => {
               },
               eventData: {webClientDomain: 'whatever', isMercuryConnected: true},
               loginType: 'login-ci',
+              telemetryOptOut: undefined,
               webClientPreload: undefined,
               isAutomatedUser: false,
             },
@@ -1978,6 +1997,7 @@ describe('internal-plugin-metrics', () => {
             userNameInput: 'current',
             emailInput: 'current',
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
@@ -2008,6 +2028,7 @@ describe('internal-plugin-metrics', () => {
               },
               eventData: {webClientDomain: 'whatever', isMercuryConnected: true},
               loginType: 'login-ci',
+              telemetryOptOut: undefined,
               userNameInput: 'current',
               emailInput: 'current',
               webClientPreload: undefined,
@@ -2051,6 +2072,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'fakeLoginType',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             joinFlowVersion: 'Other',
@@ -2108,6 +2130,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'fakeLoginType',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             joinFlowVersion: 'Other',
@@ -2170,6 +2193,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             webClientPreload: true,
             isAutomatedUser: false,
@@ -2194,6 +2218,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             webClientPreload: true,
             isAutomatedUser: false,
@@ -2260,6 +2285,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
@@ -2291,6 +2317,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
@@ -2361,6 +2388,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
@@ -2392,6 +2420,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
@@ -2468,6 +2497,7 @@ describe('internal-plugin-metrics', () => {
               },
             ],
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
@@ -2552,6 +2582,7 @@ describe('internal-plugin-metrics', () => {
               },
             ],
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
@@ -2630,6 +2661,7 @@ describe('internal-plugin-metrics', () => {
               },
             ],
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
@@ -2706,6 +2738,7 @@ describe('internal-plugin-metrics', () => {
               },
             ],
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
@@ -2789,6 +2822,7 @@ describe('internal-plugin-metrics', () => {
               },
             ],
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
@@ -3154,6 +3188,7 @@ describe('internal-plugin-metrics', () => {
               mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
               startTime: now.toISOString(),
             },
+            webexSubServiceType: undefined,
           },
           options
         );
@@ -3194,6 +3229,7 @@ describe('internal-plugin-metrics', () => {
                 mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
                 startTime: now.toISOString(),
               },
+              webexSubServiceType: undefined,
             },
           },
         });
@@ -3232,8 +3268,46 @@ describe('internal-plugin-metrics', () => {
               mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
               startTime: now.toISOString(),
             },
+            webexSubServiceType: undefined,
           },
         });
+      });
+
+      it('includes webexSubServiceType in the media quality event payload', () => {
+        const meeting = {
+          ...fakeMeeting,
+          meetingInfo: {
+            enableConvergedArchitecture: true,
+            enableEvent: true,
+            enableConvergedWebinarLargeScale: true,
+          },
+        };
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        webex.meetings.getBasicMeetingInformation = sinon.stub().returns(meeting);
+
+        const options = {
+          networkType: 'wifi' as const,
+          meetingId: fakeMeeting.id,
+        };
+
+        cd.submitMQE({
+          name: 'client.mediaquality.event',
+          payload: {
+            //@ts-ignore
+            intervals: [{}],
+          },
+          options,
+        });
+
+        assert.calledOnceWithExactly(
+          prepareDiagnosticEventSpy,
+          sinon.match({
+            name: 'client.mediaquality.event',
+            webexSubServiceType: 'LargeScaleWebinar',
+          }),
+          options
+        );
       });
 
       it('throws if meeting id not provided', () => {
@@ -3956,6 +4030,19 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
+    describe('#getTelemetryOptOut', () => {
+      ['manual', 'automatic', undefined].forEach((telemetryOptOut) => {
+        it(`returns ${telemetryOptOut} if telemetryOptOut is ${telemetryOptOut}`, () => {
+          cd.setTelemetryOptOut(telemetryOptOut);
+          assert.deepEqual(cd.getTelemetryOptOut(), telemetryOptOut);
+        });
+
+        it('returns undefined if telemetryOptOut is not set', () => {
+          assert.deepEqual(cd.getTelemetryOptOut(), undefined);
+        });
+      });
+    });
+
     describe('#getSubServiceType', () => {
       it('returns subServicetype as PMR when PMR meeting', () => {
         fakeMeeting.meetingInfo = {
@@ -4074,6 +4161,7 @@ describe('internal-plugin-metrics', () => {
                       userId: 'userId',
                     },
                     loginType: 'login-ci',
+                    telemetryOptOut: undefined,
                     name: 'client.exit.app',
                     trigger: 'user-interaction',
                     userType: 'host',
@@ -4481,6 +4569,7 @@ describe('internal-plugin-metrics', () => {
             eventData: {webClientDomain: 'whatever'},
             userType: 'host',
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
@@ -4522,6 +4611,7 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            telemetryOptOut: undefined,
             name: 'client.feature.meeting.summary',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
