@@ -327,8 +327,7 @@ export default class Members extends StatelessWebexPlugin {
   clearMembers() {
     // capture CSIs of all current members before reset so findMemberByCsi can
     // still resolve them if a member is later re-added (e.g. when leaving a
-    // breakout session) with a participant payload that no longer contains the
-    // original CSIs
+    // breakout session)
     Object.values(this.membersCollection.getAll()).forEach((member) => {
       MemberUtil.extractCsis(member.participant).forEach((csi) =>
         this.memberIdByHistoryCsi.set(csi, member.id)
