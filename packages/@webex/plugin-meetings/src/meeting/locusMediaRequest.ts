@@ -284,7 +284,7 @@ export class LocusMediaRequest extends WebexPlugin {
           // before Locus rejected the request. Re-send; getCurrentSelfUrl
           // will pick up the new URL. The returned promise replaces the
           // rejection, so the caller's pendingPromise resolves correctly.
-          return this.sendHttpRequest(request, selfUrlRetryCount + 1);
+          return this.sendHttpRequest(request, selfUrlRetryCount);
         }
 
         if (
@@ -355,17 +355,13 @@ export class LocusMediaRequest extends WebexPlugin {
     request: Request,
     selfUrlRetryCount: number
   ): Promise<boolean> {
-    const roapRequest = request.type === 'RoapMessage' ? request : undefined;
-
     if (selfUrlRetryCount >= MAX_SELF_URL_RETRY_COUNT) {
       return false;
     }
 
     const currentSelfUrl = this.getCurrentSelfUrl(request);
-    let waitedForSelfUrlChange = false;
 
     if (!currentSelfUrl || currentSelfUrl === request.selfUrl) {
-      waitedForSelfUrlChange = true;
       await this.config.waitForSelfUrlChange();
 
       const latestSelfUrl = this.getCurrentSelfUrl(request);
@@ -384,10 +380,11 @@ export class LocusMediaRequest extends WebexPlugin {
         return false;
       }
 
+      selfUrlRetryCount += 1;
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LOCUS_MEDIA_REQUEST_RETRY, {
         correlation_id: this.config.correlationId,
         reason: 'selfUrlChangedAfterWait',
-        retryAttempt: selfUrlRetryCount + 1,
+        retryAttempt: selfUrlRetryCount,
         roapMessageType: roapRequest?.roapMessage?.messageType,
       });
     }
