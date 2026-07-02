@@ -108,6 +108,20 @@ describe('plugin-llm', () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
         sinon.assert.calledOnce(llmChannel.connect);
       });
+
+      it('propagates error when registration request fails', async () => {
+        const error = new Error('Network failure');
+        llmChannel.request = sinon.stub().rejects(error);
+
+        try {
+          await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+          assert.fail('should have thrown');
+        } catch (e) {
+          assert.equal(e.message, 'Network failure');
+        }
+
+        sinon.assert.notCalled(llmChannel.connect);
+      });
     });
 
     describe('#register (via registerAndConnect)', () => {
