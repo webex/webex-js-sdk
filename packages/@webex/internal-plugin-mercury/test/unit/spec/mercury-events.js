@@ -267,7 +267,7 @@ describe('plugin-mercury', () => {
           },
           {
             code: 4000,
-            action: 'replace',
+            action: 'reconnect',
           },
           {
             action: 'close',

@@ -901,9 +901,23 @@ const Mercury = WebexPlugin.extend({
           break;
         case 4000:
           // metric: disconnect
-          this.logger.info(`${this.namespace}: socket ${sessionId} replaced; will not reconnect`);
-          if (isActiveSocket) this._emit(sessionId, 'offline.replaced', event);
-          // If not active, nothing to do
+          if (isActiveSocket) {
+            // 4000 received directly from Mercury on the currently active socket.
+            // Treat as a transient disconnect and reconnect to recover.
+            this.logger.info(
+              `${this.namespace}: active socket ${sessionId} closed with 4000; reconnecting`
+            );
+            this._emit(sessionId, 'offline.transient', event);
+            this._reconnect(socketUrl, sessionId);
+          } else {
+            // 4000 received on an old/replaced connection (e.g. the SDK connected
+            // twice). The old socket is closed; the active connection remains and
+            // no reconnect should be triggered.
+            this.logger.info(
+              `${this.namespace}: old socket ${sessionId} replaced; will not reconnect`
+            );
+            this._emit(sessionId, 'offline.replaced', event);
+          }
           break;
         case 4001:
           // replaced during shutdown

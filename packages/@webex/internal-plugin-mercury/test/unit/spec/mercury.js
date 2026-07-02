@@ -1394,6 +1394,75 @@ describe('plugin-mercury', () => {
         });
       });
 
+      describe('#_onclose() with code 4000 (replaced connection)', () => {
+        let mockSocket, anotherSocket;
+
+        beforeEach(() => {
+          mockSocket = {
+            url: 'ws://active-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          anotherSocket = {
+            url: 'ws://old-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          mercury.socket = mockSocket;
+          mercury.sockets.set(mercury.defaultSessionId, mockSocket);
+          mercury.connected = true;
+          sinon.stub(mercury, '_emit');
+          sinon.stub(mercury, '_reconnect');
+          sinon.stub(mercury, 'unset');
+        });
+
+        afterEach(() => {
+          mercury._emit.restore();
+          mercury._reconnect.restore();
+          mercury.unset.restore();
+        });
+
+        it('should reconnect when the active socket is closed with 4000', () => {
+          const closeEvent = {
+            code: 4000,
+            reason: 'replaced',
+          };
+
+          mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
+
+          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.transient', closeEvent);
+          assert.calledOnceWithExactly(
+            mercury._reconnect,
+            mockSocket.url,
+            mercury.defaultSessionId
+          );
+          assert.isFalse(mercury.connected);
+        });
+
+        it('should not reconnect when a non-active (old) socket is closed with 4000', () => {
+          const closeEvent = {
+            code: 4000,
+            reason: 'replaced',
+          };
+
+          mercury._onclose(mercury.defaultSessionId, closeEvent, anotherSocket);
+
+          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.replaced', closeEvent);
+          assert.notCalled(mercury._reconnect);
+          assert.isTrue(mercury.connected); // active connection remains
+          assert.notCalled(mercury.unset);
+        });
+
+        it('should clean up listeners from the old socket closed with 4000', () => {
+          const closeEvent = {
+            code: 4000,
+            reason: 'replaced',
+          };
+
+          mercury._onclose(mercury.defaultSessionId, closeEvent, anotherSocket);
+
+          assert.calledOnce(anotherSocket.removeAllListeners);
+        });
+      });
+
       describe('shutdown switchover with retry logic', () => {
         let connectWithBackoffStub;
         const sessionId = 'mercury-default-session';
