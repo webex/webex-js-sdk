@@ -64,10 +64,10 @@ describe('isAnyPublicClusterReachable', () => {
     );
   });
 
-  it('returns true when only xtls is reachable', async () => {
+  it('returns false when only xtls is reachable', async () => {
     await checkIsClusterReachable(
       {x: {udp: {result: 'unreachable'}, tcp: {result: 'unreachable'}, xtls: {result: 'reachable'}}},
-      true
+      false
     );
   });
 
@@ -2146,7 +2146,7 @@ describe('gatherReachability', () => {
         receivedEvents[event] = receivedEvents[event] + 1 || 1;
       });
     };
-    
+
     it('works as expected', async () => {
       setListener('reachability:stopped');
       setListener('reachability:done');
