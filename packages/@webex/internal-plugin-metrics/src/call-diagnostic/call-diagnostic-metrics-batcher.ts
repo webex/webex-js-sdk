@@ -91,9 +91,9 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
 
     if (statusCode === 200) {
       if (
-        this.webex.internal.newMetrics?.callDiagnosticMetrics?.getTelemetryOptOut() !== 'manual'
+        this.webex.internal.newMetrics?.callDiagnosticMetrics?.getTelemetryOptOut() === undefined
       ) {
-        // If telemetry opt-out is not set to 'manual', we can set it to 'automatic' on a 200 response. 'manual' opt out takes precedence over 'automatic' opt out.
+        // If telemetry opt-out is not set, we can set it to 'automatic' on a 200 response. 'manual' opt out takes precedence over 'automatic' opt out.
         this.webex.internal.newMetrics?.callDiagnosticMetrics?.setTelemetryOptOut('automatic');
       }
     } else if (
