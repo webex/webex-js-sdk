@@ -7,4 +7,5 @@ WebexCore.registerInternalPlugin('llm', LLMChannel, {
 });
 
 export {DataChannelTokenType};
+export {LLM_DEFAULT_SESSION, LLM_PRACTICE_SESSION} from './constants';
 export {default} from './llm';

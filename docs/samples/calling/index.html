@@ -150,7 +150,7 @@
                 class="btn-code">getMediaStreams()</button>
             </div>
             <div class="u-mv">
-              <button id="bnr-button" type="button" onclick="toggleNoiseReductionEffect()" 
+              <button id="bnr-button" type="button" onclick="toggleNoiseReductionEffect()"
                 class="btn-code">Enable BNR</button>
             </div>
           </fieldset>
@@ -293,14 +293,7 @@
               </div>
             </fieldset>
 
-            <!-- calling / incoming -->
-            <fieldset id="incomingsection" class="hidden">
-              <legend>Incoming Call</legend>
-              <div class="u-mv">
-                <button onclick="answer(this)" id="answer" class="btn--green">Answer</button>
-                <button onclick="reject(this)" id="reject" class="btn--red">Reject</button>
-              </div>
-            </fieldset>
+
             <!-- Call history section -->
             <fieldset id="callHistorysection">
               <legend>Call History</legend>
@@ -312,6 +305,47 @@
                 </table>
               </div>
             </fieldset>
+            <!-- Call Recording section -->
+            <form id="callrecording-form">
+              <fieldset id="callRecordingsection">
+                <legend>Call Recording</legend>
+                <div class="u-mv">
+                  <button id="Call-recording" type="button" onclick="fetchRecordings()" class="btn-code">List
+                    Recordings</button>
+                  <table>
+                    <thead id="callRecordingHeaderId"></thead>
+                    <tbody id="callRecordingTableId"></tbody>
+                  </table>
+
+                  <h3>Get recording by id</h3>
+                  <p>
+                    <input id="recordingId" name="recordingId" type="string" placeholder="Recording Id">
+                  </p>
+                  <p>
+                    <button id="getRecording" type="button" onclick="fetchRecording()" class="btn-code">Get
+                      Recording</button>
+                    <button id="getRecordingMetadata" type="button" onclick="fetchRecordingMetadata()"
+                      class="btn-code">Get Metadata</button>
+                    <button id="deleteRecording" type="button" onclick="removeRecording()" class="btn--red">Delete
+                      Recording</button>
+                  </p>
+                  <pre id="recording-data"></pre>
+
+                  <h3>Get recordings by call session id</h3>
+                  <p>
+                    <input id="callSessionId" name="callSessionId" type="string" placeholder="Call Session ID">
+                  </p>
+                  <p>
+                    <button id="getRecordingsBySession" type="button" onclick="fetchRecordingsBySession()"
+                      class="btn-code">Get By Session</button>
+                  </p>
+                  <pre id="recording-session-data"></pre>
+
+                  <h3>Recording events</h3>
+                  <pre id="recording-events"></pre>
+                </div>
+              </fieldset>
+            </form>
             <!-- Voice Mail section -->
             <form id="voicemail-form">
               <fieldset id="voiceMailsection">
@@ -432,7 +466,7 @@
                       <div class="u-mv">
                         <label>When not answered
                           <input type="checkbox" id="vmNotAnsweredCb" name="vmNotAnsweredCb" checked="" onchange="changeElementVisibility(document.getElementById('vmNotAnsweredCb'),
-                              document.getElementById('notAnsweredRings'))" disabled="true">
+                              document.getElementById('vmNotAnsweredRings'))" disabled="true">
                           <input type="string" id="vmNotAnsweredRings" name="vmNotAnsweredRings"
                             placeholder="Number of rings" disabled="true">
                         </label>

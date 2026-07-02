@@ -5,7 +5,9 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import uuid from 'uuid';
 import sinon from 'sinon';
 import {DataChannelTokenType} from '@webex/internal-plugin-llm';
-import {LLM_PRACTICE_SESSION, SHARE_STATUS} from '@webex/plugin-meetings/src/constants';
+import {LLM_PRACTICE_SESSION, LOCUS_LLM_EVENT, SHARE_STATUS} from '@webex/plugin-meetings/src/constants';
+
+const PRACTICE_SESSION_KEY = LLM_PRACTICE_SESSION || DataChannelTokenType.PracticeSession;
 
 describe('plugin-meetings', () => {
     describe('Webinar', () => {
@@ -33,6 +35,17 @@ describe('plugin-meetings', () => {
       webex.internal.llm = {
         getDatachannelToken: sinon.stub().returns(undefined),
         setDatachannelToken: sinon.stub(),
+        setRefreshHandler: sinon.stub(),
+        getOwnerMeetingId: sinon.stub().returns(undefined),
+        resolveSessionOwnership: sinon.stub().callsFake((ownerMeetingId, sessionId) => {
+          const currentOwner = webex.internal.llm.getOwnerMeetingId(sessionId);
+
+          return {
+            currentOwner,
+            isOwner: !currentOwner || !ownerMeetingId || currentOwner === ownerMeetingId,
+          };
+        }),
+        setOwnerMeetingId: sinon.stub(),
         isDataChannelTokenEnabled: sinon.stub().resolves(false),
         isConnected: sinon.stub().returns(false),
         disconnectLLM: sinon.stub().resolves(),
@@ -226,8 +239,9 @@ describe('plugin-meetings', () => {
       let relayListener;
 
       beforeEach(() => {
+        webinar.meetingId = 'meeting-id';
         relayListener = sinon.stub();
-        webinar._practiceSessionRelayListener = relayListener;
+        webinar.llmListeners = {relay: relayListener, locusLLM: null};
       });
 
       it('disconnects the practice session channel and removes the tracked relay listener', async () => {
@@ -236,25 +250,97 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(
           webex.internal.llm.disconnectLLM,
           {code: 3050, reason: 'done (permanent)'},
-          LLM_PRACTICE_SESSION
+          PRACTICE_SESSION_KEY,
+          webinar.meetingId
         );
-        assert.calledOnceWithExactly(
+        assert.calledWithExactly(
           webex.internal.llm.off,
-          `event:relay.event:${LLM_PRACTICE_SESSION}`,
+          `event:relay.event:${PRACTICE_SESSION_KEY}`,
           relayListener
         );
-        assert.isNull(webinar._practiceSessionRelayListener);
+        assert.isNull(webinar.llmListeners.relay);
+      });
+
+      it('skips disconnect when practice-session owner is another meeting', async () => {
+        webex.internal.llm.getOwnerMeetingId.returns('other-meeting-id');
+        webex.internal.llm.disconnectLLM.resolves(false);
+
+        await webinar.cleanupPSDataChannel();
+
+        assert.calledOnceWithExactly(
+          webex.internal.llm.disconnectLLM,
+          {code: 3050, reason: 'done (permanent)'},
+          PRACTICE_SESSION_KEY,
+          webinar.meetingId
+        );
+        assert.notCalled(webex.internal.llm.setOwnerMeetingId);
+        assert.calledOnceWithExactly(
+          webex.internal.llm.off,
+          `event:relay.event:${PRACTICE_SESSION_KEY}`,
+          relayListener
+        );
       });
 
       it('skips relay listener removal when no listener has been tracked', async () => {
-        webinar._practiceSessionRelayListener = null;
+        webinar.llmListeners.relay = null;
 
         await webinar.cleanupPSDataChannel();
 
         const relayOffCalls = webex.internal.llm.off.args.filter(
-          ([event]) => event === `event:relay.event:${LLM_PRACTICE_SESSION}`
+          ([event]) => event === `event:relay.event:${PRACTICE_SESSION_KEY}`
         );
         assert.equal(relayOffCalls.length, 0);
+      });
+
+      it('removes tracked relay listener even when disconnect throws', async () => {
+        const disconnectError = new Error('disconnect failed');
+        webex.internal.llm.disconnectLLM.rejects(disconnectError);
+
+        let caughtError;
+
+        try {
+          await webinar.cleanupPSDataChannel();
+        } catch (error) {
+          caughtError = error;
+        }
+
+        assert.equal(caughtError, disconnectError);
+        assert.calledOnceWithExactly(
+          webex.internal.llm.setOwnerMeetingId,
+          undefined,
+          PRACTICE_SESSION_KEY
+        );
+        assert.calledOnceWithExactly(
+          webex.internal.llm.off,
+          `event:relay.event:${PRACTICE_SESSION_KEY}`,
+          relayListener
+        );
+        assert.notOk(webinar._practiceSessionRelayListener);
+       });
+
+      it('disconnects and removes the tracked locusLLM listener', async () => {
+        const locusLLMListener = sinon.stub();
+        webinar.llmListeners.locusLLM = locusLLMListener;
+
+        await webinar.cleanupPSDataChannel();
+
+        assert.calledWithExactly(
+          webex.internal.llm.off,
+          `${LOCUS_LLM_EVENT}:${LLM_PRACTICE_SESSION}`,
+          locusLLMListener
+        );
+        assert.isNull(webinar.llmListeners.locusLLM);
+      });
+
+      it('skips locusLLM listener removal when no listener has been tracked', async () => {
+        webinar.llmListeners.locusLLM = null;
+
+        await webinar.cleanupPSDataChannel();
+
+        const locusLLMOffCalls = webex.internal.llm.off.args.filter(
+          ([event]) => event === `${LOCUS_LLM_EVENT}:${LLM_PRACTICE_SESSION}`
+        );
+        assert.equal(locusLLMOffCalls.length, 0);
       });
 
       it('does not consult the meeting collection during cleanup', async () => {
@@ -289,13 +375,18 @@ describe('plugin-meetings', () => {
     describe('#updatePSDataChannel', () => {
       let meeting;
       let processRelayEvent;
+      let processLocusLLMEvent;
 
       beforeEach(() => {
+        webinar.meetingId = 'meeting-id';
         processRelayEvent = sinon.stub();
+        processLocusLLMEvent = sinon.stub();
         meeting = {
+          id: 'meeting-id',
           locusUrl: 'locusUrl',
           isJoined: sinon.stub().returns(true),
           processRelayEvent,
+          processLocusLLMEvent,
           locusInfo: {
             url: 'locus-url',
             info: {practiceSessionDatachannelUrl: 'dc-url'},
@@ -306,7 +397,7 @@ describe('plugin-meetings', () => {
 
         // Default session is connected by default; practice session is not
         webex.internal.llm.isConnected = sinon.stub().callsFake((sessionId) => {
-          return sessionId !== LLM_PRACTICE_SESSION;
+          return sessionId !== PRACTICE_SESSION_KEY;
         });
 
         // Token is pre-saved into LLM by saveDataChannelToken
@@ -342,14 +433,15 @@ describe('plugin-meetings', () => {
         assert.calledWithExactly(
           webex.internal.llm.setDatachannelToken,
           'ps-token-from-refresh',
-          DataChannelTokenType.PracticeSession
+          DataChannelTokenType.PracticeSession,
+          'meeting-id'
         );
         assert.calledWith(
           webex.internal.llm.registerAndConnect,
           'locus-url',
           'dc-url',
           'ps-token-from-refresh',
-          LLM_PRACTICE_SESSION
+          PRACTICE_SESSION_KEY
         );
       });
 
@@ -409,6 +501,8 @@ describe('plugin-meetings', () => {
         const result = await webinar.updatePSDataChannel();
 
         assert.isUndefined(result);
+        assert.notCalled(webex.internal.llm.setRefreshHandler);
+        assert.notCalled(webex.internal.llm.setOwnerMeetingId);
         assert.notCalled(webex.internal.llm.registerAndConnect);
       });
 
@@ -429,12 +523,17 @@ describe('plugin-meetings', () => {
         const result = await webinar.updatePSDataChannel();
 
         assert.calledOnce(webex.internal.llm.registerAndConnect);
+        assert.calledWithExactly(
+          webex.internal.llm.setOwnerMeetingId,
+          'meeting-id',
+          PRACTICE_SESSION_KEY
+        );
         assert.calledWith(
           webex.internal.llm.registerAndConnect,
           'locus-url',
           'dc-url',
           'ps-token',
-          LLM_PRACTICE_SESSION
+          PRACTICE_SESSION_KEY
         );
         assert.calledOnceWithExactly(webex.internal.voicea.announce);
         assert.equal(result, 'REGISTER_AND_CONNECT_RESULT');
@@ -450,7 +549,8 @@ describe('plugin-meetings', () => {
 
         assert.calledWithExactly(
           webex.internal.llm.getDatachannelToken,
-          DataChannelTokenType.PracticeSession
+          DataChannelTokenType.PracticeSession,
+          webinar.meetingId
         );
         assert.notCalled(webex.internal.llm.setDatachannelToken);
         assert.calledWith(
@@ -458,7 +558,7 @@ describe('plugin-meetings', () => {
           'locus-url',
           'dc-url',
           'cached-token',
-          LLM_PRACTICE_SESSION
+          PRACTICE_SESSION_KEY
         );
       });
 
@@ -476,26 +576,51 @@ describe('plugin-meetings', () => {
         await webinar.updatePSDataChannel();
 
         // Stores the exact listener reference for deterministic cleanup
-        assert.equal(webinar._practiceSessionRelayListener, processRelayEvent);
+        assert.equal(webinar.llmListeners.relay, processRelayEvent);
         assert.calledWith(
           webex.internal.llm.on,
-          `event:relay.event:${LLM_PRACTICE_SESSION}`,
+          `event:relay.event:${PRACTICE_SESSION_KEY}`,
           processRelayEvent
         );
       });
 
       it('removes a previously tracked relay listener before re-binding on reconnect', async () => {
         const previousListener = sinon.stub();
-        webinar._practiceSessionRelayListener = previousListener;
+        webinar.llmListeners = {relay: previousListener, locusLLM: null};
 
         await webinar.updatePSDataChannel();
 
         assert.calledWith(
           webex.internal.llm.off,
-          `event:relay.event:${LLM_PRACTICE_SESSION}`,
+          `event:relay.event:${PRACTICE_SESSION_KEY}`,
           previousListener
         );
-        assert.equal(webinar._practiceSessionRelayListener, processRelayEvent);
+        assert.equal(webinar.llmListeners.relay, processRelayEvent);
+      });
+
+      it('tracks and binds the locusLLM listener after successful connect', async () => {
+        await webinar.updatePSDataChannel();
+
+        assert.equal(webinar.llmListeners.locusLLM, processLocusLLMEvent);
+        assert.calledWith(
+          webex.internal.llm.on,
+          `${LOCUS_LLM_EVENT}:${LLM_PRACTICE_SESSION}`,
+          processLocusLLMEvent
+        );
+      });
+
+      it('removes a previously tracked locusLLM listener before re-binding on reconnect', async () => {
+        const previousListener = sinon.stub();
+        webinar.llmListeners = {relay: null, locusLLM: previousListener};
+
+        await webinar.updatePSDataChannel();
+
+        assert.calledWith(
+          webex.internal.llm.off,
+          `${LOCUS_LLM_EVENT}:${LLM_PRACTICE_SESSION}`,
+          previousListener
+        );
+        assert.equal(webinar.llmListeners.locusLLM, processLocusLLMEvent);
       });
 
       it('subscribes to transcription when caption intent is enabled', async () => {
@@ -525,6 +650,8 @@ describe('plugin-meetings', () => {
         // Should register an 'online' listener but NOT call registerAndConnect yet
         assert.calledWith(webex.internal.llm.on, 'online', sinon.match.func);
         assert.notCalled(webex.internal.llm.registerAndConnect);
+        assert.notCalled(webex.internal.llm.setRefreshHandler);
+        assert.notCalled(webex.internal.llm.setOwnerMeetingId);
         // Should store the pending listener
         assert.isNotNull(webinar._pendingOnlineListener);
       });
@@ -556,7 +683,7 @@ describe('plugin-meetings', () => {
 
         // Now simulate default session coming online
         webex.internal.llm.isConnected = sinon.stub().callsFake((sessionId) => {
-          return sessionId !== LLM_PRACTICE_SESSION;
+          return sessionId !== PRACTICE_SESSION_KEY;
         });
 
         // Fire the captured listener
@@ -583,7 +710,7 @@ describe('plugin-meetings', () => {
 
         // Now default session comes online
         webex.internal.llm.isConnected = sinon.stub().callsFake((sessionId) => {
-          return sessionId !== LLM_PRACTICE_SESSION;
+          return sessionId !== PRACTICE_SESSION_KEY;
         });
 
         // Fire the listener — re-invokes updatePSDataChannel which will see isPracticeSession = false
@@ -596,7 +723,7 @@ describe('plugin-meetings', () => {
       it('proceeds immediately when default session is already connected', async () => {
         // Default session already connected, practice session not
         webex.internal.llm.isConnected = sinon.stub().callsFake((sessionId) => {
-          return sessionId !== LLM_PRACTICE_SESSION;
+          return sessionId !== PRACTICE_SESSION_KEY;
         });
 
         const result = await webinar.updatePSDataChannel();
@@ -607,6 +734,115 @@ describe('plugin-meetings', () => {
         assert.isNull(webinar._pendingOnlineListener);
         assert.calledOnce(webex.internal.llm.registerAndConnect);
         assert.equal(result, 'REGISTER_AND_CONNECT_RESULT');
+      });
+
+      it('does not override practice refresh handler or reconnect when owned by another meeting', async () => {
+        webex.internal.llm.getOwnerMeetingId.returns('other-meeting-id');
+        webex.internal.llm.isConnected = sinon.stub().callsFake((sessionId) => {
+          return sessionId !== undefined;
+        });
+
+        const result = await webinar.updatePSDataChannel();
+
+        assert.isUndefined(result);
+        assert.notCalled(webex.internal.llm.setRefreshHandler);
+        assert.notCalled(webex.internal.llm.registerAndConnect);
+      });
+
+      it('does not reconnect when practice session is disconnected but owned by another meeting', async () => {
+        webex.internal.llm.getOwnerMeetingId.returns('other-meeting-id');
+        webex.internal.llm.isConnected = sinon.stub().returns(false);
+
+        const result = await webinar.updatePSDataChannel();
+
+        assert.isUndefined(result);
+        assert.notCalled(webex.internal.llm.setRefreshHandler);
+        assert.notCalled(webex.internal.llm.setOwnerMeetingId);
+        assert.notCalled(webex.internal.llm.registerAndConnect);
+      });
+
+      it('does not write owner or connect if ownership changes before pre-connect owner write', async () => {
+        let ownerMeetingId = 'meeting-id';
+
+        webex.internal.llm.getOwnerMeetingId.callsFake(() => ownerMeetingId);
+        webex.internal.llm.isDataChannelTokenEnabled.resolves(true);
+        webex.internal.llm.getDatachannelToken = sinon.stub().returns(undefined);
+
+        let resolveRefresh;
+        meeting.refreshDataChannelToken = sinon.stub().returns(
+          new Promise((resolve) => {
+            resolveRefresh = resolve;
+          })
+        );
+
+        const updatePromise = webinar.updatePSDataChannel();
+
+        ownerMeetingId = 'other-meeting-id';
+        resolveRefresh({
+          body: {
+            datachannelToken: 'ps-token-from-refresh',
+            dataChannelTokenType: DataChannelTokenType.PracticeSession,
+          },
+        });
+
+        const result = await updatePromise;
+
+        assert.isUndefined(result);
+        assert.notCalled(webex.internal.llm.setRefreshHandler);
+        assert.notCalled(webex.internal.llm.setOwnerMeetingId);
+        assert.notCalled(webex.internal.llm.registerAndConnect);
+      });
+
+      it('does not overwrite owner after connect when ownership changed during registerAndConnect', async () => {
+        let ownerMeetingId = 'meeting-id';
+
+        webex.internal.llm.getOwnerMeetingId.callsFake(() => ownerMeetingId);
+        webex.internal.llm.registerAndConnect = sinon.stub().callsFake(async () => {
+          ownerMeetingId = 'other-meeting-id';
+
+          return 'REGISTER_AND_CONNECT_RESULT';
+        });
+
+        const result = await webinar.updatePSDataChannel();
+
+        assert.equal(result, 'REGISTER_AND_CONNECT_RESULT');
+        assert.calledOnce(webex.internal.llm.setOwnerMeetingId);
+        assert.calledWithExactly(
+          webex.internal.llm.setOwnerMeetingId,
+          'meeting-id',
+          PRACTICE_SESSION_KEY
+        );
+      });
+
+      it('clears pre-claimed owner when registerAndConnect rejects', async () => {
+        const registerError = new Error('register failed');
+        let ownerMeetingId = 'meeting-id';
+
+        webex.internal.llm.getOwnerMeetingId.callsFake(() => ownerMeetingId);
+        webex.internal.llm.setOwnerMeetingId.callsFake((id) => {
+          ownerMeetingId = id;
+        });
+        webex.internal.llm.registerAndConnect = sinon.stub().rejects(registerError);
+
+        try {
+          await webinar.updatePSDataChannel();
+          assert.fail('Expected updatePSDataChannel to reject when registerAndConnect fails');
+        } catch (error) {
+          assert.equal(error, registerError);
+        }
+
+        assert.calledTwice(webex.internal.llm.setOwnerMeetingId);
+        assert.calledWithExactly(
+          webex.internal.llm.setOwnerMeetingId.firstCall,
+          'meeting-id',
+          PRACTICE_SESSION_KEY
+        );
+        assert.calledWithExactly(
+          webex.internal.llm.setOwnerMeetingId.secondCall,
+          undefined,
+          PRACTICE_SESSION_KEY
+        );
+        assert.isUndefined(ownerMeetingId);
       });
       });
 
