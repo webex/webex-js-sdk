@@ -20,7 +20,10 @@ export default function createCallTaskControlsTests() {
 
     // Check if call is active
     const taskList = testManager.agent1Page.locator('#taskList');
-    const taskCount = await taskList.locator('.task-item-content').count().catch(() => 0);
+    const taskCount = await taskList
+      .locator('.task-item-content')
+      .count()
+      .catch(() => 0);
 
     if (taskCount === 0) {
       // No active call - create one

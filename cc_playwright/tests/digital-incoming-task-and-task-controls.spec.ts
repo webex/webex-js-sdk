@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import {test, Page, expect, ConsoleMessage} from '@playwright/test';
 import {changeUserState, verifyCurrentState} from '../Utils/userStateUtils';
 import {
@@ -114,7 +115,9 @@ async function clearStrayDigitalTasks(page: Page): Promise<void> {
     }
   }
 
-  await expect(taskList).toContainText('No tasks available', {timeout: TIMEOUTS.TASK_CLEANUP}).catch(() => false);
+  await expect(taskList)
+    .toContainText('No tasks available', {timeout: TIMEOUTS.TASK_CLEANUP})
+    .catch(() => false);
 }
 
 function setupConsoleLogging(page: Page): () => void {
@@ -270,6 +273,7 @@ export default function createDigitalIncomingTaskAndTaskControlsTests() {
       .poll(
         async () => {
           const text = await taskList.innerText().catch(() => '');
+
           return text;
         },
         {timeout: TIMEOUTS.WRAPUP_POLL, intervals: [1000, 2000]}
@@ -339,6 +343,7 @@ export default function createDigitalIncomingTaskAndTaskControlsTests() {
       .poll(
         async () => {
           const text = await taskList.innerText().catch(() => '');
+
           return text;
         },
         {timeout: 15000, intervals: [1000, 2000]}
@@ -373,6 +378,7 @@ export default function createDigitalIncomingTaskAndTaskControlsTests() {
         async () => {
           const isVisible = await endButton.isVisible().catch(() => false);
           const isEnabled = await endButton.isEnabled().catch(() => false);
+
           return isVisible && isEnabled;
         },
         {
@@ -512,7 +518,9 @@ export default function createDigitalIncomingTaskAndTaskControlsTests() {
 
     await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT);
 
-    await expect(testManager.agent1Page.locator('#transfer')).toBeEnabled({timeout: TIMEOUTS.SESSION_ESTABLISH});
+    await expect(testManager.agent1Page.locator('#transfer')).toBeEnabled({
+      timeout: TIMEOUTS.SESSION_ESTABLISH,
+    });
     await testManager.agent1Page.waitForTimeout(2000);
 
     try {
@@ -535,7 +543,9 @@ export default function createDigitalIncomingTaskAndTaskControlsTests() {
     await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, TIMEOUTS.EMAIL_TASK);
     await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL);
 
-    await expect(testManager.agent1Page.locator('#transfer')).toBeEnabled({timeout: TIMEOUTS.SESSION_ESTABLISH});
+    await expect(testManager.agent1Page.locator('#transfer')).toBeEnabled({
+      timeout: TIMEOUTS.SESSION_ESTABLISH,
+    });
     await testManager.agent1Page.waitForTimeout(2000);
 
     try {

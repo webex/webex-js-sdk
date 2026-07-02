@@ -43,6 +43,7 @@ export default class MediaProperties {
   shareAudioStream?: LocalSystemAudioStream;
   videoDeviceId: any;
   videoStream?: LocalCameraStream;
+  srtpCipher: string | undefined;
   namespace = MEETINGS;
   mediaIssueCounters: {[key: string]: number} = {};
   throttledSendMediaIssueMetric: ReturnType<typeof throttle>;
@@ -196,11 +197,13 @@ export default class MediaProperties {
   /**
    * Waits for the webrtc media connection to be connected.
    *
+   * @param {string} correlationId
    * @returns {Promise<void>}
    */
-  waitForMediaConnectionConnected(): Promise<void> {
+  waitForMediaConnectionConnected(correlationId: string): Promise<void> {
     const mediaConnectionAwaiter = new MediaConnectionAwaiter({
       webrtcMediaConnection: this.webrtcMediaConnection,
+      correlationId,
     });
 
     return mediaConnectionAwaiter.waitForMediaConnectionConnected();

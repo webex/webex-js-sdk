@@ -18,6 +18,7 @@ import {
   CALL_REMOVED_REASON,
   RECORDING_STATE,
   Enum,
+  SELF_ROLES,
 } from '../constants';
 
 import InfoUtils from './infoUtils';
@@ -33,12 +34,16 @@ import BEHAVIORAL_METRICS from '../metrics/constants';
 import HashTreeParser, {
   DataSet,
   HashTreeMessage,
-  HashTreeObject,
-  isSelf,
+  LocusInfoUpdate,
   LocusInfoUpdateType,
+  Metadata,
 } from '../hashTree/hashTreeParser';
-import {ObjectType} from '../hashTree/types';
-import {LocusDTO} from './types';
+import {HashTreeObject, ObjectType, ObjectTypeToLocusKeyMap} from '../hashTree/types';
+import {isMetadata, isSelf} from '../hashTree/utils';
+import {Links, LocusDTO, ReplacesInfo} from './types';
+import MeetingsUtil from '../meetings/util';
+import {MEETING_KEY} from '../meetings/meetings.types';
+import MeetingCollection from '../meetings/collection';
 
 export type LocusLLMEvent = {
   data: {
@@ -47,9 +52,12 @@ export type LocusLLMEvent = {
   };
 };
 
+// list of top level keys in Locus DTO relevant for Hash Tree DTOs processing
+// it does not contain fields specific to classic Locus DTOs like sequence or baseSequence
 const LocusDtoTopLevelKeys = [
   'controls',
   'fullState',
+  'embeddedApps',
   'host',
   'info',
   'links',
@@ -64,10 +72,13 @@ const LocusDtoTopLevelKeys = [
   'htMeta', // only exists when hash trees are used
 ];
 
-export type LocusApiResponseBody = {
-  dataSets?: DataSet[];
-  locus: LocusDTO; // this LocusDTO here might not be the full one (for example it won't have all the participants, but it should have self)
-};
+export type LocusApiResponseBody =
+  | {
+      dataSets?: DataSet[];
+      locus: LocusDTO; // this LocusDTO here might not be the full one (for example it won't have all the participants, but it should have self)
+      metadata?: Metadata;
+    }
+  | LocusDTO; // when we invoke APIs on the whole Locus like "mute all" backend returns the whole Locus in the response like this
 
 const LocusObjectStateAfterUpdates = {
   unchanged: 'unchanged',
@@ -76,6 +87,168 @@ const LocusObjectStateAfterUpdates = {
 } as const;
 
 type LocusObjectStateAfterUpdates = Enum<typeof LocusObjectStateAfterUpdates>;
+
+export type HashTreeParserEntry = {
+  parser: HashTreeParser;
+  replacedAt?: string;
+  initializedFromHashTree: boolean;
+};
+
+/**
+ * Gets the replacement information
+ *
+ * @param {any} self - "self" object from Locus DTO
+ * @param {string} deviceUrl - The URL of the specified device
+ * @returns {any} The replace information if available, otherwise undefined
+ */
+function getReplaceInfoFromSelf(self: any, deviceUrl: string): ReplacesInfo | undefined {
+  if (self) {
+    const device = MeetingsUtil.getThisDevice({self}, deviceUrl);
+
+    if (device?.replaces?.length > 0) {
+      return device.replaces[0];
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Finds a meeting by its locus URL in meeting collection. It checks all HashTreeParsers of all meetings in the collection.
+ *
+ * @param {MeetingCollection} meetingCollection - The collection of meetings to search
+ * @param {string} locusUrl - The locus URL to search for
+ * @returns {any} The meeting if found, otherwise undefined
+ */
+function findLocusUrlInAnyHashTreeParser(
+  meetingCollection: MeetingCollection,
+  locusUrl: string
+): any {
+  for (const meeting of Object.values(meetingCollection.getAll()) as any[]) {
+    if (meeting?.locusInfo?.hashTreeParsers?.has(locusUrl)) {
+      return meeting;
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Finds a meeting for a given hash tree message.
+ *
+ * @param {HashTreeMessage} message - The hash tree message to find the meeting for
+ * @param {MeetingCollection} meetingCollection - The collection of meetings to search
+ * @returns {any} The meeting if found, otherwise undefined
+ */
+export function findMeetingForHashTreeMessage(
+  message: HashTreeMessage | undefined,
+  meetingCollection: MeetingCollection
+): any {
+  if (!message) {
+    return undefined;
+  }
+  let foundMeeting = findLocusUrlInAnyHashTreeParser(meetingCollection, message.locusUrl);
+
+  if (foundMeeting) {
+    return foundMeeting;
+  }
+
+  // if we haven't found anything, it may mean that message has a new locusUrl
+  // check if it indicates that it replaces some existing current locusUrl (this is indicated in "self")
+  const self = message.locusStateElements?.find((el) => isSelf(el))?.data;
+  const replaces = getReplaceInfoFromSelf(self, self?.deviceUrl);
+
+  if (replaces?.locusUrl) {
+    foundMeeting = findLocusUrlInAnyHashTreeParser(meetingCollection, replaces.locusUrl);
+
+    return foundMeeting;
+  }
+
+  return undefined;
+}
+
+/**
+ * Creates a locus object from the objects received in a hash tree message. It usually will be
+ * incomplete, because hash tree messages only contain the parts of locus that have changed,
+ * and some updates come separately over Mercury or LLM in separate messages.
+ *
+ * @param {HashTreeMessage} message hash tree message to created the locus from
+ * @returns {Object} the created locus object and metadata if present
+ */
+export function createLocusFromHashTreeMessage(message: HashTreeMessage): {
+  locus: LocusDTO;
+  metadata?: Metadata;
+} {
+  const locus: LocusDTO = {
+    participants: [],
+    url: message.locusUrl,
+  };
+  let metadata: Metadata | undefined;
+
+  if (!message.locusStateElements) {
+    return {locus, metadata};
+  }
+
+  for (const element of message.locusStateElements) {
+    if (!element.data) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    const type = element.htMeta.elementId.type.toLowerCase();
+
+    switch (type) {
+      case ObjectType.locus: {
+        // spread locus object data onto the top level, but remove keys managed by other ObjectTypes
+        const locusObjectData = {...element.data};
+
+        Object.values(ObjectTypeToLocusKeyMap).forEach((locusDtoKey) => {
+          delete locusObjectData[locusDtoKey];
+        });
+
+        Object.assign(locus, locusObjectData);
+        break;
+      }
+      case ObjectType.participant:
+        locus.participants.push(element.data);
+        break;
+      case ObjectType.mediaShare:
+        if (!locus.mediaShares) {
+          locus.mediaShares = [];
+        }
+        locus.mediaShares.push(element.data);
+        break;
+      case ObjectType.embeddedApp:
+        if (!locus.embeddedApps) {
+          locus.embeddedApps = [];
+        }
+        locus.embeddedApps.push(element.data);
+        break;
+      case ObjectType.control:
+        if (!locus.controls) {
+          locus.controls = {};
+        }
+        Object.assign(locus.controls, element.data);
+        break;
+      case ObjectType.links:
+      case ObjectType.info:
+      case ObjectType.fullState:
+      case ObjectType.self: {
+        const locusDtoKey = ObjectTypeToLocusKeyMap[type];
+        locus[locusDtoKey] = element.data;
+        break;
+      }
+      case ObjectType.metadata:
+        // metadata is not part of Locus DTO
+        metadata = {...element.data, htMeta: element.htMeta} as Metadata;
+        break;
+      default:
+        break;
+    }
+  }
+
+  return {locus, metadata};
+}
 
 /**
  * @description LocusInfo extends ChildEmitter to convert locusInfo info a private emitter to parent object
@@ -94,10 +267,7 @@ export default class LocusInfo extends EventsScope {
   aclUrl: any;
   baseSequence: any;
   created: any;
-  identities: any;
-  membership: any;
   participants: any;
-  participantsUrl: any;
   replaces: any;
   scheduledMeeting: any;
   sequence: any;
@@ -109,13 +279,11 @@ export default class LocusInfo extends EventsScope {
   info: any;
   roles: any;
   mediaShares: any;
-  replace: any;
   url: any;
-  services: any;
-  resources: any;
+  links?: Links;
   mainSessionLocusCache: any;
   self: any;
-  hashTreeParser?: HashTreeParser;
+  hashTreeParsers: Map<string, HashTreeParserEntry>;
   hashTreeObjectId2ParticipantId: Map<number, string>; // mapping of hash tree object ids to participant ids
   classicVsHashTreeMismatchMetricCounter = 0;
 
@@ -137,6 +305,7 @@ export default class LocusInfo extends EventsScope {
     this.meetingId = meetingId;
     this.updateMeeting = updateMeeting;
     this.locusParser = new LocusDeltaParser();
+    this.hashTreeParsers = new Map();
     this.hashTreeObjectId2ParticipantId = new Map();
   }
 
@@ -242,7 +411,7 @@ export default class LocusInfo extends EventsScope {
             'Locus-info:index#doLocusSync --> got full DTO when we asked for delta'
           );
         }
-        meeting.locusInfo.onFullLocus(res.body);
+        meeting.locusInfo.onFullLocus('classic Locus sync', res.body);
       })
       .catch((e) => {
         LoggerProxy.logger.info(
@@ -326,13 +495,10 @@ export default class LocusInfo extends EventsScope {
   init(locus: any = {}) {
     this.created = locus.created || null;
     this.scheduledMeeting = locus.meeting || null;
-    this.participantsUrl = locus.participantsUrl || null;
     this.replaces = locus.replaces || null;
     this.aclUrl = locus.aclUrl || null;
     this.baseSequence = locus.baseSequence || null;
     this.sequence = locus.sequence || null;
-    this.membership = locus.membership || null;
-    this.identities = locus.identities || null;
     this.participants = locus.participants || null;
 
     /**
@@ -358,33 +524,65 @@ export default class LocusInfo extends EventsScope {
     this.updateSelf(locus.self);
     this.updateHostInfo(locus.host);
     this.updateMediaShares(locus.mediaShares);
-    this.updateServices(locus.links?.services);
-    this.updateResources(locus.links?.resources);
+    this.updateLinks(locus.links);
   }
 
   /**
-   * Creates the HashTreeParser instance.
-   * @param {Object} initial locus data
-   * @returns {void}
+   * Creates a HashTreeParser instance for a given locusUrl and stores it in the map.
+   * @param {Object} params
+   * @param {string} params.locusUrl - the locus URL used as the map key
+   * @param {Object} params.initialLocus - initial locus data
+   * @param {Object} params.metadata - hash tree metadata
+   * @param {string} params.replacedAt - timestamp from Locus indicating when the replacement happened
+   * @returns {HashTreeParser} the newly created parser
    */
   private createHashTreeParser({
+    locusUrl,
     initialLocus,
+    metadata,
+    replacedAt,
   }: {
+    locusUrl: string;
     initialLocus: {
       dataSets: Array<DataSet>;
       locus: any;
     };
-  }) {
-    return new HashTreeParser({
+    metadata: Metadata | null;
+    replacedAt?: string;
+  }): HashTreeParser {
+    const parser = new HashTreeParser({
       initialLocus,
+      metadata,
       webexRequest: this.webex.request.bind(this.webex),
-      locusInfoUpdateCallback: this.updateFromHashTree.bind(this),
-      debugId: `HT-${this.meetingId.substring(0, 4)}`,
+      locusInfoUpdateCallback: this.updateFromHashTree.bind(this, locusUrl),
+      debugId: `HT-${locusUrl.split('/')?.pop()?.substring(0, 4)}`,
+      excludedDataSets: this.webex.config.meetings.locus?.excludedDataSets,
     });
+
+    // When a new HashTreeParser is created, previous one should be stopped.
+    // Locus will only be sending us updates for the current one.
+    for (const [existingLocusUrl, existingEntry] of this.hashTreeParsers) {
+      if (existingEntry.parser.state !== 'stopped') {
+        existingEntry.parser.stop();
+        if (replacedAt) {
+          existingEntry.replacedAt = replacedAt;
+        } else {
+          LoggerProxy.logger.warn(
+            `Locus-info:index#createHashTreeParser --> no replacedAt timestamp provided for new HashTreeParser with locusUrl ${locusUrl}, replacing ${existingLocusUrl}`
+          );
+        }
+      }
+    }
+
+    this.hashTreeParsers.set(locusUrl, {parser, initializedFromHashTree: false});
+    this.hashTreeObjectId2ParticipantId.clear();
+
+    return parser;
   }
 
   /**
    * @param {Object} data - data to initialize locus info with. It may be from a join or GET /loci response or from a Mercury event that triggers a creation of meeting object
+   * @param {Function} [onLocusSynced] - optional callback that will be called at the end of initial setup, when locus info is fully synced. It will be called with the full locus snapshot as an argument (which may be null if we haven't received any full locus DTOs during the initial setup, for example in case we receive only hash tree messages without full locus DTOs)
    * @returns {undefined}
    * @memberof LocusInfo
    */
@@ -394,6 +592,7 @@ export default class LocusInfo extends EventsScope {
           trigger: 'join-response';
           locus: LocusDTO;
           dataSets?: DataSet[];
+          metadata?: Metadata;
         }
       | {
           trigger: 'locus-message';
@@ -403,46 +602,58 @@ export default class LocusInfo extends EventsScope {
       | {
           trigger: 'get-loci-response';
           locus?: LocusDTO;
-        }
+        },
+    onLocusSynced?: (locus: LocusDTO) => void
   ) {
+    let initialFullLocus: LocusDTO | null = null;
     switch (data.trigger) {
       case 'locus-message':
         if (data.hashTreeMessage) {
-          // we need the SELF object to be in the received message, because it contains visibleDataSets
+          // we need the Metadata object to be in the received message, because it contains visibleDataSets
           // and these are needed to initialize all the hash trees
-          const selfObject = data.hashTreeMessage.locusStateElements?.find((el) => isSelf(el));
+          const metadataObject = data.hashTreeMessage.locusStateElements?.find((el) =>
+            isMetadata(el)
+          );
 
-          if (!selfObject?.data?.visibleDataSets) {
-            LoggerProxy.logger.warn(
-              `Locus-info:index#initialSetup --> cannot initialize HashTreeParser, SELF object with visibleDataSets is missing in the message`
+          if (!metadataObject?.data?.visibleDataSets) {
+            // this is a common case (not an error)
+            // it happens for example after we leave the meeting and still get some heartbeats or delayed messages
+            LoggerProxy.logger.info(
+              `Locus-info:index#initialSetup --> cannot initialize HashTreeParser, Metadata object with visibleDataSets is missing in the message`
             );
 
-            throw new Error('SELF object with visibleDataSets is missing in the message');
+            // throw so that handleLocusEvent() catches it and destroys the partially created meeting object
+            throw new Error('Metadata object with visibleDataSets is missing in the message');
           }
 
           LoggerProxy.logger.info(
             'Locus-info:index#initialSetup --> creating HashTreeParser from message'
           );
           // first create the HashTreeParser, but don't initialize it with any data yet
-          // pass just a fake locus that contains only the visibleDataSets
-          this.hashTreeParser = this.createHashTreeParser({
+          const hashTreeParser = this.createHashTreeParser({
+            locusUrl: data.hashTreeMessage.locusUrl,
             initialLocus: {
-              locus: {self: {visibleDataSets: selfObject.data.visibleDataSets}},
-              dataSets: [], // empty, because they will be populated in initializeFromMessage() call  // dataSets: data.hashTreeMessage.dataSets,
+              locus: null,
+              dataSets: data.hashTreeMessage.dataSets,
+            },
+            metadata: {
+              htMeta: metadataObject.htMeta,
+              visibleDataSets: metadataObject.data.visibleDataSets,
             },
           });
 
           // now handle the message - that should populate all the visible datasets
-          await this.hashTreeParser.initializeFromMessage(data.hashTreeMessage);
+          await hashTreeParser.initializeFromMessage(data.hashTreeMessage);
         } else {
           // "classic" Locus case, no hash trees involved
           this.updateLocusCache(data.locus);
-          this.onFullLocus(data.locus, undefined);
+          this.onFullLocus('classic locus message', data.locus, undefined);
         }
         break;
       case 'join-response':
         this.updateLocusCache(data.locus);
-        this.onFullLocus(data.locus, undefined, data.dataSets);
+        this.onFullLocus('join response', data.locus, undefined, data.dataSets, data.metadata);
+        initialFullLocus = data.locus;
         break;
       case 'get-loci-response':
         if (data.locus?.links?.resources?.visibleDataSets?.url) {
@@ -450,24 +661,60 @@ export default class LocusInfo extends EventsScope {
             'Locus-info:index#initialSetup --> creating HashTreeParser from get-loci-response'
           );
           // first create the HashTreeParser, but don't initialize it with any data yet
-          // pass just a fake locus that contains only the visibleDataSets
-          this.hashTreeParser = this.createHashTreeParser({
+          const hashTreeParser = this.createHashTreeParser({
+            locusUrl: data.locus.url as string,
             initialLocus: {
-              locus: {self: {visibleDataSets: data.locus?.self?.visibleDataSets}},
+              locus: null,
               dataSets: [], // empty, because we don't have them yet
             },
+            metadata: null, // get-loci-response doesn't contain Metadata object
           });
 
           // now initialize all the data
-          await this.hashTreeParser.initializeFromGetLociResponse(data.locus);
+          await hashTreeParser.initializeFromGetLociResponse(data.locus);
         } else {
           // "classic" Locus case, no hash trees involved
           this.updateLocusCache(data.locus);
-          this.onFullLocus(data.locus, undefined);
+          this.onFullLocus('classic get-loci-response', data.locus, undefined);
+          initialFullLocus = data.locus || null;
         }
     }
+
+    if (onLocusSynced) {
+      try {
+        onLocusSynced(initialFullLocus || this.getCurrentLocusSnapshot());
+      } catch (error) {
+        LoggerProxy.logger.warn(
+          `Locus-info:index#initialSetup --> onLocusSynced callback failed: ${error}`
+        );
+      }
+    }
+
     // Change it to true after it receives it first locus object
     this.emitChange = true;
+  }
+
+  /**
+   * Builds a full locus DTO snapshot from current internal locus state.
+   *
+   * @returns {LocusDTO}
+   */
+  private getCurrentLocusSnapshot(): LocusDTO {
+    const locus: Record<string, any> = {};
+
+    LocusDtoTopLevelKeys.forEach((key) => {
+      const value = (this as Record<string, any>)[key];
+
+      if (value !== undefined && value !== null) {
+        locus[key] = cloneDeep(value);
+      }
+    });
+
+    if (!Array.isArray(locus.participants)) {
+      locus.participants = [];
+    }
+
+    return locus as LocusDTO;
   }
 
   /**
@@ -476,28 +723,55 @@ export default class LocusInfo extends EventsScope {
    * @param {LocusApiResponseBody} responseBody body of the http response from Locus API call
    * @returns {void}
    */
-  handleLocusAPIResponse(meeting, responseBody: LocusApiResponseBody): void {
-    if (this.hashTreeParser) {
-      // API responses with hash tree are a bit problematic and not fully confirmed how they will look like
-      // we don't really need them, because all updates are guaranteed to come via Mercury or LLM messages anyway
-      // so it's OK to skip them for now
-      LoggerProxy.logger.info(
-        'Locus-info:index#handleLocusAPIResponse: skipping handling of API http response with hashTreeParser'
-      );
-    } else {
-      if (responseBody.dataSets) {
-        this.sendClassicVsHashTreeMismatchMetric(
-          meeting,
-          `unexpected hash tree dataSets in API response`
-        );
+  handleLocusAPIResponse(meeting: any, responseBody: LocusApiResponseBody): void {
+    const isWrapped = 'locus' in responseBody;
+    const locusUrl = isWrapped ? responseBody.locus?.url : responseBody.url;
+    const hashTreeParserEntry = locusUrl && this.hashTreeParsers.get(locusUrl);
+    const locus = isWrapped
+      ? (responseBody as {locus: LocusDTO}).locus
+      : (responseBody as LocusDTO);
+
+    if (this.hashTreeParsers.size > 0) {
+      // We are in hash tree mode. Check if we need to create/reactivate a parser for this locusUrl.
+      if (!hashTreeParserEntry || hashTreeParserEntry.parser.state === 'stopped') {
+        if (!locusUrl) {
+          LoggerProxy.logger.warn(
+            'Locus-info:index#handleLocusAPIResponse --> API response has no locusUrl, cannot handle hash tree parser switch'
+          );
+
+          return;
+        }
+
+        this.handleHashTreeParserSwitchForAPIResponse(locusUrl, locus);
+
+        return;
       }
-      // classic Locus delta
-      this.handleLocusDelta(responseBody.locus, meeting);
+
+      // Active parser found - pass the API response to it
+      if (isWrapped) {
+        // update the data in our hash trees
+        hashTreeParserEntry.parser.handleLocusUpdate(responseBody);
+      } else {
+        // LocusDTO without wrapper - pass it through as if it had no dataSets nor metadata
+        hashTreeParserEntry.parser.handleLocusUpdate({locus: responseBody});
+      }
+
+      return;
     }
+
+    // No hash tree parsers - classic Locus mode
+    if (isWrapped && responseBody.dataSets) {
+      this.sendClassicVsHashTreeMismatchMetric(
+        meeting,
+        `unexpected hash tree dataSets in API response`
+      );
+    }
+
+    // classic Locus delta
+    this.handleLocusDelta(locus, meeting);
   }
 
   /**
-   *
    * @param {HashTreeObject} object data set object
    * @param {any} locus
    * @returns {void}
@@ -505,29 +779,39 @@ export default class LocusInfo extends EventsScope {
   updateLocusFromHashTreeObject(object: HashTreeObject, locus: LocusDTO): LocusDTO {
     const type = object.htMeta.elementId.type.toLowerCase();
 
+    const addParticipantObject = (obj: HashTreeObject) => {
+      if (!locus.participants) {
+        locus.participants = [];
+      }
+      locus.participants.push(obj.data);
+      this.hashTreeObjectId2ParticipantId.set(obj.htMeta.elementId.id, obj.data.id);
+    };
+
     switch (type) {
       case ObjectType.locus: {
         if (!object.data) {
           // not doing anything here, as we need Locus to always be there (at least some fields)
           // and that's already taken care of in updateFromHashTree()
           LoggerProxy.logger.info(
-            `Locus-info:index#updateLocusFromHashTreeObject --> LOCUS object removed`
+            `Locus-info:index#updateLocusFromHashTreeObject --> LOCUS object removed, version=${object.htMeta.elementId.version}`
           );
 
           return locus;
         }
         // replace the main locus
 
-        // The Locus object we receive from backend has empty participants, so removing them to avoid it overriding the ones in our current locus object
-        // Also, other fields like mediaShares are managed by other ObjectType updates, so removing them too
-        // BTW, it also doesn't have "self". That's OK as it won't override existing locus.self and also existing SDK code can handle that missing self in Locus updates
+        // The Locus object we receive from backend has empty participants array,
+        // and may have (although it shouldn't) other fields that are managed by other ObjectTypes
+        // like "fullState" or "info", so we're making sure to delete them here
         const locusObjectFromData = object.data;
-        delete locusObjectFromData.participants;
-        delete locusObjectFromData.mediaShares;
+
+        Object.values(ObjectTypeToLocusKeyMap).forEach((locusDtoKey) => {
+          delete locusObjectFromData[locusDtoKey];
+        });
 
         locus = {...locus, ...locusObjectFromData};
         LoggerProxy.logger.info(
-          `Locus-info:index#updateLocusFromHashTreeObject --> LOCUS object updated`
+          `Locus-info:index#updateLocusFromHashTreeObject --> LOCUS object updated to version=${object.htMeta.elementId.version}`
         );
         break;
       }
@@ -540,7 +824,7 @@ export default class LocusInfo extends EventsScope {
               object.data.name === 'content'
                 ? `floor=${object.data.floor?.disposition}, ${object.data.floor?.beneficiary?.id}`
                 : ''
-            }`
+            } version=${object.htMeta.elementId.version}`
           );
           const existingMediaShare = locus.mediaShares?.find(
             (ms) => ms.htMeta.elementId.id === object.htMeta.elementId.id
@@ -554,9 +838,34 @@ export default class LocusInfo extends EventsScope {
           }
         } else {
           LoggerProxy.logger.info(
-            `Locus-info:index#updateLocusFromHashTreeObject --> mediaShare id=${object.htMeta.elementId.id} removed`
+            `Locus-info:index#updateLocusFromHashTreeObject --> mediaShare id=${object.htMeta.elementId.id} removed, version=${object.htMeta.elementId.version}`
           );
           locus.mediaShares = locus.mediaShares?.filter(
+            (ms) => ms.htMeta.elementId.id !== object.htMeta.elementId.id
+          );
+        }
+        break;
+      case ObjectType.embeddedApp:
+        if (object.data) {
+          LoggerProxy.logger.info(
+            `Locus-info:index#updateLocusFromHashTreeObject --> embeddedApp id=${object.htMeta.elementId.id} url='${object.data.url}' updated version=${object.htMeta.elementId.version}:`,
+            object.data
+          );
+          const existingEmbeddedApp = locus.embeddedApps?.find(
+            (ms) => ms.htMeta.elementId.id === object.htMeta.elementId.id
+          );
+
+          if (existingEmbeddedApp) {
+            Object.assign(existingEmbeddedApp, object.data);
+          } else {
+            locus.embeddedApps = locus.embeddedApps || [];
+            locus.embeddedApps.push(object.data);
+          }
+        } else {
+          LoggerProxy.logger.info(
+            `Locus-info:index#updateLocusFromHashTreeObject --> embeddedApp id=${object.htMeta.elementId.id} removed, version=${object.htMeta.elementId.version}`
+          );
+          locus.embeddedApps = locus.embeddedApps?.filter(
             (ms) => ms.htMeta.elementId.id !== object.htMeta.elementId.id
           );
         }
@@ -565,16 +874,10 @@ export default class LocusInfo extends EventsScope {
         LoggerProxy.logger.info(
           `Locus-info:index#updateLocusFromHashTreeObject --> participant id=${
             object.htMeta.elementId.id
-          } ${object.data ? 'updated' : 'removed'}`
+          } ${object.data ? 'updated' : 'removed'} version=${object.htMeta.elementId.version}`
         );
         if (object.data) {
-          if (!locus.participants) {
-            locus.participants = [];
-          }
-          const participantObject = object.data;
-          participantObject.htMeta = object.htMeta;
-          locus.participants.push(participantObject);
-          this.hashTreeObjectId2ParticipantId.set(object.htMeta.elementId.id, participantObject.id);
+          addParticipantObject(object);
         } else {
           const participantId = this.hashTreeObjectId2ParticipantId.get(object.htMeta.elementId.id);
 
@@ -584,20 +887,83 @@ export default class LocusInfo extends EventsScope {
           locus.jsSdkMeta.removedParticipantIds.push(participantId);
           this.hashTreeObjectId2ParticipantId.delete(object.htMeta.elementId.id);
         }
+        // Create self from the participant if it matches self identity and is being moved.
+        // We need this, because participant update comes in LLM message often before the self update from Mercury.
+        // Other parts of the code detect move only by looking at self, while some other parts of the SDK/webapp code
+        // look at participant for roles etc, so if participant is updated but not self, then it looks like we our lost roles temporarily
+        // (until self is updated)
+        // This will be fixed properly in SPARK-790239
+        if (
+          object.data &&
+          object.data.identity === locus.self?.identity &&
+          object.data.state === 'LEFT' &&
+          object.data.reason === 'MOVED'
+        ) {
+          LoggerProxy.logger.info(
+            `Locus-info:index#updateLocusFromHashTreeObject --> FOUND a match for MOVED self in participant object ${object.htMeta.elementId.id}`
+          );
+          Object.assign(locus[ObjectTypeToLocusKeyMap[ObjectType.self]], object.data);
+        }
         break;
+      case ObjectType.control:
+        if (object.data) {
+          Object.keys(object.data).forEach((controlKey) => {
+            LoggerProxy.logger.info(
+              `Locus-info:index#updateLocusFromHashTreeObject --> control ${controlKey} updated:`,
+              object.data[controlKey]
+            );
+            if (!locus.controls) {
+              locus.controls = {};
+            }
+            locus.controls[controlKey] = object.data[controlKey];
+          });
+        } else {
+          LoggerProxy.logger.warn(
+            `Locus-info:index#updateLocusFromHashTreeObject --> control object update without data - this is not expected!`
+          );
+        }
+        break;
+      case ObjectType.links:
+      case ObjectType.info:
+      case ObjectType.fullState:
       case ObjectType.self:
         if (!object.data) {
           // self without data is handled inside HashTreeParser and results in LocusInfoUpdateType.MEETING_ENDED, so we should never get here
+          // all other types info, fullstate, etc - Locus should never send them without data
           LoggerProxy.logger.warn(
-            `Locus-info:index#updateLocusFromHashTreeObject --> received SELF object without data, this is not expected!`
+            `Locus-info:index#updateLocusFromHashTreeObject --> received ${type} object without data, this is not expected! version=${object.htMeta.elementId.version}`
           );
+        } else {
+          LoggerProxy.logger.info(
+            `Locus-info:index#updateLocusFromHashTreeObject --> ${type} object updated to version ${object.htMeta.elementId.version}`
+          );
+          const locusDtoKey = ObjectTypeToLocusKeyMap[type];
+          locus[locusDtoKey] = object.data;
 
-          return locus;
+          /* Hash tree based webinar attendees don't receive a Participant object for themselves from Locus,
+             but a lot of existing code in SDK and web app expects a member object for self to exist,
+             so whenever SELF changes for a webinar attendee, we copy it into a participant object.
+             We can do it, because SELF has always all the same properties as a participant object.
+          */
+          if (
+            type === ObjectType.self &&
+            locus.info?.isWebinar &&
+            object.data.controls?.role?.roles?.find(
+              (r) => r.type === SELF_ROLES.ATTENDEE && r.hasRole
+            )
+          ) {
+            LoggerProxy.logger.info(
+              `Locus-info:index#updateLocusFromHashTreeObject --> webinar attendee: creating participant object from self`
+            );
+            addParticipantObject(object);
+          }
         }
+        break;
+      case ObjectType.metadata:
         LoggerProxy.logger.info(
-          `Locus-info:index#updateLocusFromHashTreeObject --> SELF object updated`
+          `Locus-info:index#updateLocusFromHashTreeObject --> metadata object updated to version ${object.htMeta.elementId.version}`
         );
-        locus.self = object.data;
+        // we don't use hash tree metadata right now for anything, it's mainly used internally by HashTreeParser
         break;
       default:
         LoggerProxy.logger.warn(
@@ -632,6 +998,176 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
+   * Helper that handles the common logic for reactivating a stopped HashTreeParser when
+   * a newer "replaces" is detected. Used by both the message and API response parser switch methods.
+   *
+   * @param {string} callerName - name of the calling method, used in log messages
+   * @param {string} locusUrl - the locus URL of the stopped parser
+   * @param {HashTreeParserEntry} stoppedEntry - the stopped parser entry
+   * @param {ReplacesInfo} replaces - replacement info extracted from self
+   * @param {Function} resumeCallback - callback to invoke after reactivation to resume the parser
+   * @returns {void}
+   */
+  private resumeStoppedParser(
+    callerName: string,
+    locusUrl: string,
+    stoppedEntry: HashTreeParserEntry,
+    replaces: ReplacesInfo | undefined,
+    resumeCallback: () => void
+  ): void {
+    // this check is just for typescript, it should never happen, replaces should always be defined
+    if (!replaces) {
+      LoggerProxy.logger.info(
+        `Locus-info:index#${callerName} --> received data for stopped HashTreeParser with locusUrl ${locusUrl}, but no replaces info provided, so not re-activating the parser`
+      );
+
+      return;
+    }
+
+    if (replaces.replacedAt <= (stoppedEntry.replacedAt || '')) {
+      LoggerProxy.logger.info(
+        `Locus-info:index#${callerName} --> received data for stopped HashTreeParser with locusUrl ${locusUrl}, but replaces info provided is not newer, so not re-activating the parser`
+      );
+
+      return;
+    }
+
+    LoggerProxy.logger.info(
+      `Locus-info:index#${callerName} --> reactivating HashTreeParser for locusUrl=${locusUrl}, which replaces ${replaces.locusUrl}`
+    );
+
+    const replacedEntry = this.hashTreeParsers.get(replaces.locusUrl);
+
+    if (replacedEntry) {
+      replacedEntry.replacedAt = replaces.replacedAt;
+      replacedEntry.parser.stop();
+    } else {
+      LoggerProxy.logger.warn(
+        `Locus-info:index#${callerName} --> the parser that is supposed to be replaced with the currently reactivated parser is not found, locusUrl=${replaces.locusUrl}`
+      );
+    }
+
+    stoppedEntry.initializedFromHashTree = false;
+    this.hashTreeObjectId2ParticipantId.clear();
+
+    resumeCallback();
+  }
+
+  /**
+   * Handles an API response whose locusUrl doesn't match any active HashTreeParser
+   * (either no entry exists, or the existing entry is stopped).
+   * Creates a new parser or reactivates a stopped one using initializeFromGetLociResponse.
+   *
+   * @param {string} locusUrl - the locus URL from the API response
+   * @param {LocusDTO} locus - the locus DTO from the API response
+   * @returns {void}
+   */
+  private handleHashTreeParserSwitchForAPIResponse(locusUrl: string, locus: LocusDTO): void {
+    const entry = this.hashTreeParsers.get(locusUrl);
+
+    const replaces = getReplaceInfoFromSelf(
+      locus.self,
+      // @ts-ignore
+      this.webex.internal.device.url
+    );
+
+    if (!entry) {
+      LoggerProxy.logger.info(
+        `Locus-info:index#handleHashTreeParserSwitchForAPIResponse --> no parser for locusUrl ${locusUrl}, creating a new one`
+      );
+
+      const parser = this.createHashTreeParser({
+        locusUrl,
+        initialLocus: {locus: null, dataSets: []},
+        metadata: null,
+        replacedAt: replaces?.replacedAt,
+      });
+
+      parser.initializeFromGetLociResponse(locus);
+
+      return;
+    }
+
+    if (entry.parser.state !== 'stopped') {
+      LoggerProxy.logger.warn(
+        `Locus-info:index#handleHashTreeParserSwitchForAPIResponse --> unexpected parser state "${entry.parser.state}" for locusUrl ${locusUrl}`
+      );
+
+      return;
+    }
+
+    this.resumeStoppedParser(
+      'handleHashTreeParserSwitchForAPIResponse',
+      locusUrl,
+      entry,
+      replaces,
+      () => entry.parser.resumeFromApiResponse(locus)
+    );
+  }
+
+  /**
+   * Checks if the hash tree message should trigger a switch to a different HashTreeParser
+   *
+   * @param {HashTreeMessage} message incoming hash tree message
+   * @returns {boolean} true if the message was handled as a parser switch, false otherwise
+   */
+  private handleHashTreeParserSwitch(message: HashTreeMessage): boolean {
+    const entry = this.hashTreeParsers.get(message.locusUrl);
+
+    const self = message.locusStateElements?.find((el) => isSelf(el))?.data;
+    const replaces = getReplaceInfoFromSelf(
+      self,
+      // @ts-ignore
+      this.webex.internal.device.url
+    );
+
+    if (!entry) {
+      // Metadata object that contains information about visible datasets is needed to initialize the HashTreeParser,
+      // but it's buried inside the message, we need to find it and pass it to HashTreeParser constructor
+      const metadata = message.locusStateElements?.find((el) => isMetadata(el));
+
+      if (metadata && metadata.data?.visibleDataSets?.length > 0) {
+        LoggerProxy.logger.info(
+          `Locus-info:index#handleHashTreeParserSwitch --> no hash tree parser found for locusUrl ${message.locusUrl}, creating a new one`
+        );
+
+        const parser = this.createHashTreeParser({
+          locusUrl: message.locusUrl,
+          initialLocus: {
+            locus: null,
+            dataSets: message.dataSets,
+          },
+          metadata: {
+            htMeta: metadata.htMeta,
+            visibleDataSets: metadata.data.visibleDataSets,
+          },
+          replacedAt: replaces?.replacedAt,
+        });
+
+        // handle the message with the new parser
+        parser.handleMessage(message);
+      }
+
+      return true;
+    }
+    if (entry.parser.state === 'stopped') {
+      // the message matches a stopped parser, we need to check if maybe this is a new "replacement" and we need to re-activate the parser
+      // this happens when you move from breakout A -> breakout B -> back to breakout A
+      this.resumeStoppedParser(
+        'handleHashTreeParserSwitch',
+        message.locusUrl,
+        entry,
+        replaces,
+        () => entry.parser.resumeFromMessage(message)
+      );
+
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Handles a hash tree message received from Locus.
    *
    * @param {Meeting} meeting - The meeting object
@@ -649,33 +1185,61 @@ export default class LocusInfo extends EventsScope {
       return;
     }
 
-    this.hashTreeParser.handleMessage(message);
+    const parserSwitched = this.handleHashTreeParserSwitch(message);
+
+    if (parserSwitched) {
+      return;
+    }
+
+    const entry = this.hashTreeParsers.get(message.locusUrl);
+
+    // the check is just for typescript, the case of no entry in hashTreeParsers is handled in handleHashTreeParserSwitch() above
+    if (entry) {
+      entry.parser.handleMessage(message);
+    }
+  }
+
+  /**
+   * Triggers a sync of all hash tree datasets for all hash tree parsers associated with this meeting.
+   * The syncs are executed sequentially within each parser.
+   *
+   * @param {Object} [options={}] - Options for syncing
+   * @param {boolean} [options.onlyLLM=false] - Whether to sync only LLM based data sets
+   * @returns {Promise<void>}
+   */
+  async syncAllHashTreeDatasets(options: {onlyLLM?: boolean} = {}): Promise<void> {
+    for (const [, entry] of this.hashTreeParsers) {
+      if (entry.parser) {
+        // eslint-disable-next-line no-await-in-loop
+        await entry.parser.syncAllDatasets(options);
+      }
+    }
   }
 
   /**
    * Callback registered with HashTreeParser to receive locus info updates.
    * Updates our locus info based on the data parsed by the hash tree parser.
    *
-   * @param {LocusInfoUpdateType} updateType - The type of update received.
-   * @param {Object} [data] - Additional data for the update, if applicable.
+   * @param {string} locusUrl - the locus URL for which the update is received
+   * @param {LocusInfoUpdate} update - Details about the update.
    * @returns {void}
    */
-  private updateFromHashTree(
-    updateType: LocusInfoUpdateType,
-    data?: {updatedObjects: HashTreeObject[]}
-  ) {
-    switch (updateType) {
+  private updateFromHashTree(locusUrl: string, update: LocusInfoUpdate) {
+    switch (update.updateType) {
       case LocusInfoUpdateType.OBJECTS_UPDATED: {
         // initialize our new locus
         let locus: LocusDTO = {
           participants: [],
-          jsSdkMeta: {removedParticipantIds: []},
+          jsSdkMeta: {
+            removedParticipantIds: [],
+            forceReplaceMembers: false,
+          },
         };
 
         // first go over all the updates and check what happens with the main locus object
         let locusObjectStateAfterUpdates: LocusObjectStateAfterUpdates =
           LocusObjectStateAfterUpdates.unchanged;
-        data.updatedObjects.forEach((object) => {
+        update.updatedObjects.forEach((object) => {
           if (object.htMeta.elementId.type.toLowerCase() === ObjectType.locus) {
             if (locusObjectStateAfterUpdates === LocusObjectStateAfterUpdates.updated) {
               // this code doesn't supported it right now,
@@ -702,34 +1266,64 @@ export default class LocusInfo extends EventsScope {
           }
         });
 
-        // if Locus object is unchanged or removed, we need to keep using the existing locus
-        // because the rest of the locusInfo code expects locus to always be present (with at least some of the fields)
-        // if it gets updated, we don't need to do anything and we start with an empty one
-        // so that when it gets updated, if the new one is missing some field, that field will
-        // be removed from our locusInfo
-        if (
+        const hashTreeParserEntry = this.hashTreeParsers.get(locusUrl);
+
+        if (!hashTreeParserEntry) {
+          LoggerProxy.logger.warn(
+            `Locus-info:index#updateFromHashTree --> no HashTreeParser found for locusUrl ${locusUrl} when trying to apply updates from hash tree`
+          );
+
+          return;
+        }
+
+        if (!hashTreeParserEntry.initializedFromHashTree) {
+          // this is the first time we're getting an update for this locusUrl,
+          // so it's probably a move to/from breakout. We need to start from a clean state,
+          // so empty locus and we rely on Locus giving us sufficient data in the updates to populate it.
+          LoggerProxy.logger.info(
+            `Locus-info:index#updateFromHashTree --> first INITIAL update for locusUrl ${locusUrl}, starting from empty state`
+          );
+          hashTreeParserEntry.initializedFromHashTree = true;
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          locus.jsSdkMeta!.forceReplaceMembers = true;
+        } else if (
+          // if Locus object is unchanged or removed, we need to keep using the existing locus
+          // because the rest of the locusInfo code expects locus to always be present (with at least some of the fields)
+          // if it gets updated, we only need to have the fields that are not part of "locus" object (like "info" or "mediaShares")
+          // so that when Locus object gets updated, if the new one is missing some field, that field will
+          // be removed from our locusInfo
           locusObjectStateAfterUpdates === LocusObjectStateAfterUpdates.unchanged ||
           locusObjectStateAfterUpdates === LocusObjectStateAfterUpdates.removed
         ) {
-          // copy over existing locus
+          // copy over all of existing locus except participants
           LocusDtoTopLevelKeys.forEach((key) => {
             if (key !== 'participants') {
-              locus[key] = cloneDeep(this[key]);
+              (locus as Record<string, any>)[key] = cloneDeep((this as Record<string, any>)[key]);
+            }
+          });
+        } else {
+          // initialize only the fields that are not part of main "Locus" object
+          // (except participants, which need to stay empty - that means "no participant changes")
+          Object.values(ObjectTypeToLocusKeyMap).forEach((locusDtoKey) => {
+            if (locusDtoKey !== 'participants') {
+              (locus as Record<string, any>)[locusDtoKey] = cloneDeep(
+                (this as Record<string, any>)[locusDtoKey]
+              );
             }
           });
         }
 
         LoggerProxy.logger.info(
           `Locus-info:index#updateFromHashTree --> LOCUS object is ${locusObjectStateAfterUpdates}, all updates: ${JSON.stringify(
-            data.updatedObjects.map((o) => ({
+            update.updatedObjects.map((o) => ({
               type: o.htMeta.elementId.type,
               id: o.htMeta.elementId.id,
-              hasData: o.data !== undefined,
+              hasData: !!o.data,
             }))
           )}`
         );
         // now apply all the updates from the hash tree onto the locus
-        data.updatedObjects.forEach((object) => {
+        update.updatedObjects.forEach((object) => {
           locus = this.updateLocusFromHashTreeObject(object, locus);
         });
 
@@ -740,11 +1334,29 @@ export default class LocusInfo extends EventsScope {
       }
 
       case LocusInfoUpdateType.MEETING_ENDED: {
-        LoggerProxy.logger.info(
-          `Locus-info:index#updateFromHashTree --> received signal that meeting ended, destroying meeting ${this.meetingId}`
-        );
         const meeting = this.webex.meetings.meetingCollection.get(this.meetingId);
-        this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.SELF_REMOVED);
+
+        if (meeting) {
+          LoggerProxy.logger.info(
+            `Locus-info:index#updateFromHashTree --> received signal that meeting ended, destroying meeting ${this.meetingId}`
+          );
+          this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.SELF_REMOVED);
+        }
+        break;
+      }
+
+      case LocusInfoUpdateType.LOCUS_NOT_FOUND: {
+        LoggerProxy.logger.info(
+          `Locus-info:index#updateFromHashTree --> received LOCUS_NOT_FOUND for ${locusUrl}, triggering syncMeetings`
+        );
+        this.webex.meetings
+          .syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: true})
+          .catch((syncError) => {
+            LoggerProxy.logger.error(
+              `Locus-info:index#updateFromHashTree --> syncMeetings failed after LOCUS_NOT_FOUND: ${syncError}`
+            );
+          });
+        break;
       }
     }
   }
@@ -756,15 +1368,31 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   parse(meeting: any, data: any) {
-    if (this.hashTreeParser) {
-      this.handleHashTreeMessage(
-        meeting,
-        data.eventType,
-        data.stateElementsMessage as HashTreeMessage
-      );
+    if (this.hashTreeParsers.size > 0) {
+      if (data.eventType === LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS) {
+        // sync meetings response follows the format of "not wrapped" locus API responses,
+        // so has no dataSets nor Metadata
+        this.handleLocusAPIResponse(meeting, {...data.locus});
+      } else {
+        this.handleHashTreeMessage(
+          meeting,
+          data.eventType,
+          data.stateElementsMessage as HashTreeMessage
+        );
+      }
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-shadow
       const {eventType} = data;
+
+      if (eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
+        // this can happen when we get an event before join http response
+        // it's OK to just ignore it
+        LoggerProxy.logger.info(
+          `Locus-info:index#parse --> received locus hash tree event before hashTreeParser is created`
+        );
+
+        return;
+      }
+
       const locus = this.getTheLocusToUpdate(data.locus);
       LoggerProxy.logger.info(`Locus-info:index#parse --> received locus data: ${eventType}`);
 
@@ -785,16 +1413,10 @@ export default class LocusInfo extends EventsScope {
         case LOCUSEVENT.PARTICIPANT_DECLINED:
         case LOCUSEVENT.FLOOR_GRANTED:
         case LOCUSEVENT.FLOOR_RELEASED:
-          this.onFullLocus(locus, eventType);
+          this.onFullLocus(`classic locus event ${eventType}`, locus, eventType);
           break;
         case LOCUSEVENT.DIFFERENCE:
           this.handleLocusDelta(locus, meeting);
-          break;
-        case LOCUSEVENT.HASH_TREE_DATA_UPDATED:
-          this.sendClassicVsHashTreeMismatchMetric(
-            meeting,
-            `got ${eventType}, expected classic events`
-          );
           break;
 
         default:
@@ -819,46 +1441,64 @@ export default class LocusInfo extends EventsScope {
   /**
    * Function for handling full locus when it's using hash trees (so not the "classic" one).
    *
+   * @param {string} debugText string explaining the trigger for this call, added to logs for debugging purposes
    * @param {object} locus locus object
-   * @param {string} eventType locus event
+   * @param {object} metadata locus hash trees metadata
    * @param {DataSet[]} dataSets
+   * @param {string} eventType locus event
    * @returns {void}
    */
-  private onFullLocusWithHashTrees(locus: any, eventType?: string, dataSets?: Array<DataSet>) {
-    if (!this.hashTreeParser) {
-      LoggerProxy.logger.info(`Locus-info:index#onFullLocus --> creating hash tree parser`);
+  private onFullLocusWithHashTrees(
+    debugText: string,
+    locus: any,
+    metadata: Metadata,
+    dataSets: Array<DataSet>,
+    eventType?: string
+  ) {
+    if (!this.hashTreeParsers.has(locus.url)) {
       LoggerProxy.logger.info(
-        'Locus-info:index#onFullLocus --> dataSets:',
+        `Locus-info:index#onFullLocus (${debugText}) --> creating hash tree parser for locusUrl=${locus.url}`
+      );
+      LoggerProxy.logger.info(
+        `Locus-info:index#onFullLocus (${debugText}) --> dataSets:`,
         dataSets,
         ' and locus:',
-        locus
+        locus,
+        ' and metadata:',
+        metadata
       );
-      this.hashTreeParser = this.createHashTreeParser({
+      this.createHashTreeParser({
+        locusUrl: locus.url,
         initialLocus: {locus, dataSets},
+        metadata,
       });
+      // we have a full locus to start with, so we consider Locus info to be "initialized"
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      this.hashTreeParsers.get(locus.url)!.initializedFromHashTree = true;
       this.onFullLocusCommon(locus, eventType);
     } else {
       // in this case the Locus we're getting is not necessarily the full one
       // so treat it like if we just got it in any api response
 
       LoggerProxy.logger.info(
-        'Locus-info:index#onFullLocus --> hash tree parser already exists, handling it like a normal API response'
+        `Locus-info:index#onFullLocus (${debugText}) --> hash tree parser already exists, handling it like a normal API response`
       );
-      this.handleLocusAPIResponse(undefined, {dataSets, locus});
+      this.handleLocusAPIResponse(undefined, {dataSets, locus, metadata});
     }
   }
 
   /**
    * Function for handling full locus when it's the "classic" one (not hash trees)
    *
+   * @param {string} debugText string explaining the trigger for this call, added to logs for debugging purposes
    * @param {object} locus locus object
    * @param {string} eventType locus event
    * @returns {void}
    */
-  private onFullLocusClassic(locus: any, eventType?: string) {
+  private onFullLocusClassic(debugText: string, locus: any, eventType?: string) {
     if (!this.locusParser.isNewFullLocus(locus)) {
       LoggerProxy.logger.info(
-        `Locus-info:index#onFullLocus --> ignoring old full locus DTO, eventType=${eventType}`
+        `Locus-info:index#onFullLocus (${debugText}) --> ignoring old full locus DTO, eventType=${eventType}`
       );
 
       return;
@@ -868,24 +1508,37 @@ export default class LocusInfo extends EventsScope {
 
   /**
    * updates the locus with full locus object
+   * @param {string} debugText string explaining the trigger for this call, added to logs for debugging purposes
    * @param {object} locus locus object
    * @param {string} eventType locus event
    * @param {DataSet[]} dataSets
+   * @param {object} metadata locus hash trees metadata
    * @returns {object} null
    * @memberof LocusInfo
    */
-  onFullLocus(locus: any, eventType?: string, dataSets?: Array<DataSet>) {
+  onFullLocus(
+    debugText: string,
+    locus: any,
+    eventType?: string,
+    dataSets?: Array<DataSet>,
+    metadata?: Metadata
+  ) {
     if (!locus) {
       LoggerProxy.logger.error(
-        'Locus-info:index#onFullLocus --> object passed as argument was invalid, continuing.'
+        `Locus-info:index#onFullLocus (${debugText}) --> object passed as argument was invalid, continuing.`
       );
     }
 
     if (dataSets) {
+      if (!metadata) {
+        throw new Error(
+          `Locus-info:index#onFullLocus (${debugText}) --> hash tree metadata is missing with full Locus`
+        );
+      }
       // this is the new hashmap Locus DTO format (only applicable to webinars for now)
-      this.onFullLocusWithHashTrees(locus, eventType, dataSets);
+      this.onFullLocusWithHashTrees(debugText, locus, metadata, dataSets, eventType);
     } else {
-      this.onFullLocusClassic(locus, eventType);
+      this.onFullLocusClassic(debugText, locus, eventType);
     }
   }
 
@@ -900,7 +1553,7 @@ export default class LocusInfo extends EventsScope {
     this.participants = locus.participants;
     this.participants?.forEach((participant) => {
       // participant.htMeta is set only for hash tree based locus
-      if (participant.htMeta?.elementId.id) {
+      if (typeof participant.htMeta?.elementId.id === 'number') {
         this.hashTreeObjectId2ParticipantId.set(participant.htMeta.elementId.id, participant.id);
       }
     });
@@ -927,8 +1580,8 @@ export default class LocusInfo extends EventsScope {
   // eslint-disable-next-line @typescript-eslint/no-shadow
   handleOneOnOneEvent(eventType: string) {
     if (
-      this.parsedLocus.fullState.type === _CALL_ ||
-      this.parsedLocus.fullState.type === _SIP_BRIDGE_
+      this.parsedLocus.fullState?.type === _CALL_ ||
+      this.parsedLocus.fullState?.type === _SIP_BRIDGE_
     ) {
       // for 1:1 bob calls alice and alice declines, notify the meeting state
       if (eventType === LOCUSEVENT.PARTICIPANT_DECLINED) {
@@ -964,19 +1617,60 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
+   * Makes sure that passed in locus object has a participant object for self.
+   *
+   * @param {LocusDTO} locus The locus object to check and modify if needed
+   * @returns {void}
+   */
+  ensureSelfParticipantExists(locus: any) {
+    const {self} = locus;
+
+    // sanity check, this should never fail
+    if (!self?.identity || !Array.isArray(locus.participants)) {
+      LoggerProxy.logger.warn(
+        `Locus-info:index#ensureSelfParticipantExists --> locus object is missing required fields, cannot ensure self participant exists. self?.identity="${self?.identity}"`
+      );
+
+      return;
+    }
+
+    const selfExists = locus.participants.some(
+      (participant) => participant.identity === self.identity
+    );
+
+    if (!selfExists) {
+      locus.participants.push({...self});
+    }
+  }
+
+  /**
    * @param {Object} locus
    * @returns {undefined}
    * @memberof LocusInfo
    */
   onDeltaLocus(locus: any) {
-    const isReplaceMembers = ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
+    const isReplaceMembers =
+      locus.jsSdkMeta?.forceReplaceMembers !== undefined
+        ? locus.jsSdkMeta.forceReplaceMembers
+        : ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
+
+    if (isReplaceMembers) {
+      // when we're moving between breakouts, Locus sometimes doesn't send us
+      // any participants at all for a few seconds
+      // Web app relies on having at least the self participant always there
+      // so we copy self into participants if it's not there.
+      this.ensureSelfParticipantExists(locus);
+    }
     this.mergeParticipants(this.participants, locus.participants);
-    this.updateLocusInfo(locus);
-    this.updateParticipants(
-      locus.participants,
-      locus.jsSdkMeta?.removedParticipantIds,
-      isReplaceMembers
-    );
+    const updatesApplied = this.updateLocusInfo(locus);
+
+    if (updatesApplied) {
+      this.updateParticipants(
+        locus.participants,
+        locus.jsSdkMeta?.removedParticipantIds,
+        isReplaceMembers
+      );
+    }
     this.isMeetingActive();
   }
 
@@ -986,11 +1680,11 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   updateLocusInfo(locus) {
-    if (locus.self?.reason === 'MOVED' && locus.self?.state === 'LEFT') {
+    if (MeetingsUtil.isSelfMovedOrBreakoutEnded(locus)) {
       // When moved to a breakout session locus sends a message for the previous locus
       // indicating that we have been moved. It isn't helpful to continue parsing this
       // as it gets interpreted as if we have left the call
-      return;
+      return false;
     }
 
     this.updateControls(locus.controls, locus.self);
@@ -1001,19 +1695,17 @@ export default class LocusInfo extends EventsScope {
     this.updateLocusUrl(locus.url, ControlsUtils.isMainSessionDTO(locus));
     this.updateMeetingInfo(locus.info, locus.self);
     this.updateMediaShares(locus.mediaShares);
-    this.updateParticipantsUrl(locus.participantsUrl);
-    this.updateReplace(locus.replace);
+    this.updateReplaces(locus.replaces);
     this.updateSelf(locus.self);
     this.updateAclUrl(locus.aclUrl);
     this.updateBasequence(locus.baseSequence);
     this.updateSequence(locus.sequence);
-    this.updateMemberShip(locus.membership);
-    this.updateIdentifiers(locus.identities);
     this.updateEmbeddedApps(locus.embeddedApps);
-    this.updateServices(locus.links?.services);
-    this.updateResources(locus.links?.resources);
+    this.updateLinks(locus.links);
     this.compareAndUpdate();
     // update which required to compare different objects from locus
+
+    return true;
   }
 
   /**
@@ -1045,9 +1737,9 @@ export default class LocusInfo extends EventsScope {
    */
   isMeetingActive() {
     if (
-      this.parsedLocus.fullState.type === _CALL_ ||
-      this.parsedLocus.fullState.type === _SIP_BRIDGE_ ||
-      this.parsedLocus.fullState.type === _SPACE_SHARE_
+      this.parsedLocus.fullState?.type === _CALL_ ||
+      this.parsedLocus.fullState?.type === _SIP_BRIDGE_ ||
+      this.parsedLocus.fullState?.type === _SPACE_SHARE_
     ) {
       // @ts-ignore
       const partner = this.getLocusPartner(this.participants, this.self);
@@ -1140,15 +1832,10 @@ export default class LocusInfo extends EventsScope {
           }
         );
       }
-    } else if (this.parsedLocus.fullState.type === _MEETING_) {
-      if (
-        this.fullState &&
-        (this.fullState.state === LOCUS.STATE.INACTIVE ||
-          // @ts-ignore
-          this.fullState.state === LOCUS.STATE.TERMINATING)
-      ) {
+    } else if (this.parsedLocus.fullState?.type === _MEETING_) {
+      if (this.fullState && MeetingsUtil.isWholeMeetingEnded(this.fullState)) {
         LoggerProxy.logger.warn(
-          'Locus-info:index#isMeetingActive --> Meeting is ending due to inactive or terminating'
+          'Locus-info:index#isMeetingActive --> Meeting is ending due to inactive'
         );
 
         // @ts-ignore
@@ -1166,27 +1853,6 @@ export default class LocusInfo extends EventsScope {
           EVENTS.DESTROY_MEETING,
           {
             reason: MEETING_REMOVED_REASON.MEETING_INACTIVE_TERMINATING,
-            shouldLeave: false,
-          }
-        );
-      } else if (this.fullState && this.fullState.removed) {
-        // user has been dropped from a meeting
-
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.call.remote-ended',
-          options: {
-            meetingId: this.meetingId,
-          },
-        });
-        this.emitScoped(
-          {
-            file: 'locus-info',
-            function: 'isMeetingActive',
-          },
-          EVENTS.DESTROY_MEETING,
-          {
-            reason: MEETING_REMOVED_REASON.FULLSTATE_REMOVED,
             shouldLeave: false,
           }
         );
@@ -1237,6 +1903,7 @@ export default class LocusInfo extends EventsScope {
   compareSelfAndHost() {
     // In some cases the host info is not present but the moderator values changes from null to false so it triggers an update
     if (
+      this.parsedLocus.self &&
       this.parsedLocus.self.selfIdentity === this.parsedLocus.host?.hostId &&
       this.parsedLocus.self.moderator
     ) {
@@ -1323,6 +1990,8 @@ export default class LocusInfo extends EventsScope {
           hasRecordingPausedChanged,
           hasMeetingContainerChanged,
           hasTranscribeChanged,
+          hasHesiodLLMIdChanged,
+          hasAiSummaryNotificationChanged,
           hasTranscribeSpokenLanguageChanged,
           hasManualCaptionChanged,
           hasEntryExitToneChanged,
@@ -1429,6 +2098,8 @@ export default class LocusInfo extends EventsScope {
             state,
             modifiedBy: current.record.modifiedBy,
             lastModified: current.record.lastModified,
+            modifiedByServiceAppName: current.record.modifiedByServiceAppName,
+            modifiedByServiceAppId: current.record.modifiedByServiceAppId,
           }
         );
       }
@@ -1460,6 +2131,34 @@ export default class LocusInfo extends EventsScope {
           {
             transcribing,
             caption,
+          }
+        );
+      }
+
+      if (hasHesiodLLMIdChanged) {
+        const {hesiodLlmId} = current.transcribe;
+
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED,
+          {
+            hesiodLlmId,
+          }
+        );
+      }
+
+      if (hasAiSummaryNotificationChanged) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_AI_SUMMARY_NOTIFICATION_UPDATED,
+          {
+            aiSummaryNotification: current.transcribe.aiSummaryNotification,
           }
         );
       }
@@ -1496,6 +2195,7 @@ export default class LocusInfo extends EventsScope {
 
       if (hasBreakoutChanged) {
         const {breakout} = current;
+
         breakout.breakoutMoveId = SelfUtils.getReplacedBreakoutMoveId(
           self,
           this.webex.internal.device.url
@@ -1663,17 +2363,19 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
-   * @param {Object} services
+   * Updates links and emits appropriate events if services or resources have changed
+   * @param {Object} links
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  updateServices(services: Record<'breakout' | 'record', {url: string}>) {
-    if (services && !isEqual(this.services, services)) {
-      this.services = services;
+  updateLinks(links?: Links) {
+    const {services, resources} = links || {};
+
+    if (services && !isEqual(this.links?.services, services)) {
       this.emitScoped(
         {
           file: 'locus-info',
-          function: 'updateServices',
+          function: 'updateLinks',
         },
         LOCUSINFO.EVENTS.LINKS_SERVICES,
         {
@@ -1681,20 +2383,12 @@ export default class LocusInfo extends EventsScope {
         }
       );
     }
-  }
 
-  /**
-   * @param {Object} resources
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateResources(resources: Record<'webcastInstance', {url: string}>) {
-    if (resources && !isEqual(this.resources, resources)) {
-      this.resources = resources;
+    if (resources && !isEqual(this.links?.resources, resources)) {
       this.emitScoped(
         {
           file: 'locus-info',
-          function: 'updateResources',
+          function: 'updateLinks',
         },
         LOCUSINFO.EVENTS.LINKS_RESOURCES,
         {
@@ -1702,6 +2396,8 @@ export default class LocusInfo extends EventsScope {
         }
       );
     }
+
+    this.links = links;
   }
 
   /**
@@ -1888,24 +2584,13 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
-   * @param {String} participantsUrl
+   * @param {Object} replaces
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  updateParticipantsUrl(participantsUrl: string) {
-    if (participantsUrl && !isEqual(this.participantsUrl, participantsUrl)) {
-      this.participantsUrl = participantsUrl;
-    }
-  }
-
-  /**
-   * @param {Object} replace
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateReplace(replace: object) {
-    if (replace && !isEqual(this.replace, replace)) {
-      this.replace = replace;
+  updateReplaces(replaces: object) {
+    if (replaces && !isEqual(this.replaces, replaces)) {
+      this.replaces = replaces;
     }
   }
 
@@ -1936,14 +2621,14 @@ export default class LocusInfo extends EventsScope {
       }
 
       // TODO: check if we need to save the sipUri here as well
-      // this.emit(LOCUSINFO.EVENTS.MEETING_UPDATE, SelfUtils.getSipUrl(this.getLocusPartner(participants, self), this.parsedLocus.fullState.type, this.parsedLocus.info.sipUri));
+      // this.emit(LOCUSINFO.EVENTS.MEETING_UPDATE, SelfUtils.getSipUrl(this.getLocusPartner(participants, self), this.parsedLocus.fullState?.type, this.parsedLocus.info?.sipUri));
       const result = SelfUtils.getSipUrl(
         this.getLocusPartner(this.participants, self),
-        this.parsedLocus.fullState.type,
-        this.parsedLocus.info.sipUri
+        this.parsedLocus.fullState?.type,
+        this.parsedLocus.info?.sipUri
       );
 
-      if (result.sipUri) {
+      if (result?.sipUri) {
         this.updateMeeting(result);
       }
 
@@ -1984,6 +2669,19 @@ export default class LocusInfo extends EventsScope {
           LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
           {
             brb: parsedSelves.current.brb,
+          }
+        );
+      }
+
+      if (parsedSelves.updates.selfIdChanged) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_ID_CHANGED,
+          {
+            selfId: parsedSelves.current.selfId,
           }
         );
       }
@@ -2071,6 +2769,7 @@ export default class LocusInfo extends EventsScope {
           {
             muted: parsedSelves.current.remoteMuted,
             unmuteAllowed: parsedSelves.current.unmuteAllowed,
+            modifiedBy: parsedSelves.current.modifiedBy ?? null,
           }
         );
       }
@@ -2243,28 +2942,6 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
-   * @param {Object} membership
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateMemberShip(membership: object) {
-    if (membership && !isEqual(this.membership, membership)) {
-      this.membership = membership;
-    }
-  }
-
-  /**
-   * @param {Array} identities
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateIdentifiers(identities: Array<any>) {
-    if (identities && !isEqual(this.identities, identities)) {
-      this.identities = identities;
-    }
-  }
-
-  /**
    * check the locus is main session's one or not, if is main session's, update main session cache
    * @param {Object} locus
    * @returns {undefined}
@@ -2364,5 +3041,18 @@ export default class LocusInfo extends EventsScope {
    */
   clearMainSessionLocusCache() {
     this.mainSessionLocusCache = null;
+  }
+
+  /**
+   * Cleans up all hash tree parsers and clears internal maps.
+   * @returns {void}
+   * @memberof LocusInfo
+   */
+  cleanUp() {
+    this.hashTreeParsers.forEach((entry) => {
+      entry.parser.cleanUp();
+    });
+    this.hashTreeParsers.clear();
+    this.hashTreeObjectId2ParticipantId.clear();
   }
 }

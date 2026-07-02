@@ -1,6 +1,19 @@
-import {Enum} from '../constants';
-import {ObjectType, HtMeta} from './types';
-import {LocusDTO} from '../locus-info/types';
+import {cloneDeep, isEmpty, zip} from 'lodash';
+import HashTree, {LeafDataItem} from './hashTree';
+import LoggerProxy from '../common/logs/logger-proxy';
+import Metrics from '../metrics';
+import BEHAVIORAL_METRICS from '../metrics/constants';
+import {Enum, HTTP_VERBS} from '../constants';
+import {DataSetNames, DATA_SET_INIT_PRIORITY, EMPTY_HASH, LLM_DATASET_NAMES} from './constants';
+import {ObjectType, HtMeta, HashTreeObject} from './types';
+import {LocusDTO, LocusErrorCodes} from '../locus-info/types';
+import {deleteNestedObjectsWithHtMeta, isMetadata, sleep, sortByInitPriority} from './utils';
+
+export enum SyncAllBackoffType {
+  NONE = 'none',
+  ONLY_LLM = 'onlyLLM',
+  ALL = 'all',
+}
 
 export interface DataSet {
   url: string;
@@ -15,11 +28,6 @@ export interface DataSet {
   };
 }
 
-export interface HashTreeObject {
-  htMeta: HtMeta;
-  data: Record<string, any>;
-}
-
 export interface RootHashMessage {
   dataSets: Array<DataSet>;
 }
@@ -29,11 +37,25 @@ export interface HashTreeMessage {
   locusStateElements?: Array<HashTreeObject>;
   locusSessionId?: string;
   locusUrl: string;
+  heartbeatIntervalMs?: number;
+}
+
+export interface VisibleDataSetInfo {
+  name: string;
+  url: string;
+  dataChannelUrl?: string;
+}
+
+export interface Metadata {
+  htMeta: HtMeta;
+  visibleDataSets: VisibleDataSetInfo[];
 }
 
 interface InternalDataSet extends DataSet {
-  // hashTree?: HashTree; // set only for visible data sets
+  hashTree?: HashTree; // set only for visible data sets
   timer?: ReturnType<typeof setTimeout>;
+  heartbeatWatchdogTimer?: ReturnType<typeof setTimeout>;
+  syncAbortController?: AbortController;
 }
 
 type WebexRequestMethod = (options: Record<string, any>) => Promise<any>;
@@ -41,28 +63,55 @@ type WebexRequestMethod = (options: Record<string, any>) => Promise<any>;
 export const LocusInfoUpdateType = {
   OBJECTS_UPDATED: 'OBJECTS_UPDATED',
   MEETING_ENDED: 'MEETING_ENDED',
+  LOCUS_NOT_FOUND: 'LOCUS_NOT_FOUND',
 } as const;
 
 export type LocusInfoUpdateType = Enum<typeof LocusInfoUpdateType>;
-export type LocusInfoUpdateCallback = (
-  updateType: LocusInfoUpdateType,
-  data?: {updatedObjects: HashTreeObject[]}
-) => void;
+
+interface LocusUpdatePayloads {
+  [LocusInfoUpdateType.OBJECTS_UPDATED]: {updatedObjects: HashTreeObject[]};
+  [LocusInfoUpdateType.MEETING_ENDED]: unknown; // No extra data
+  [LocusInfoUpdateType.LOCUS_NOT_FOUND]: unknown; // No extra data
+}
+
+export type LocusInfoUpdate = {
+  [K in keyof LocusUpdatePayloads]: {
+    updateType: K;
+  } & LocusUpdatePayloads[K];
+}[keyof LocusUpdatePayloads];
+
+export type LocusInfoUpdateCallback = (update: LocusInfoUpdate) => void;
+
+interface LeafInfo {
+  type: ObjectType;
+  id: number;
+  version: number;
+  data?: any;
+}
 
 /**
  * This error is thrown if we receive information that the meeting has ended while we're processing some hash messages.
  * It's handled internally by HashTreeParser and results in MEETING_ENDED being sent up.
  */
-class MeetingEndedError extends Error {}
+export class MeetingEndedError extends Error {}
 
 /**
- * Checks if the given hash tree object is of type "self"
- * @param {HashTreeObject} object object to check
- * @returns {boolean} True if the object is of type "self", false otherwise
+ * This error is thrown when a 404 is received from Locus hash tree endpoints, indicating that the locus URL
+ * is no longer valid (e.g. participant moved to a breakout room, or meeting ended).
+ * It's handled internally by HashTreeParser and results in LOCUS_NOT_FOUND being sent up.
  */
-export function isSelf(object: HashTreeObject) {
-  return object.htMeta.elementId.type.toLowerCase() === ObjectType.self;
-}
+export class LocusNotFoundError extends Error {}
+
+/* Currently Locus always sends Metadata objects only in the "self" dataset.
+ * If this ever changes, update all the code that relies on this constant.
+ */
+const MetadataDataSetName = DataSetNames.SELF;
+
+const PossibleSentinelMessageDataSetNames = [
+  DataSetNames.MAIN,
+  DataSetNames.SELF,
+  DataSetNames.UNJOINED,
+];
 
 /**
  * Parses hash tree eventing locus data
@@ -72,8 +121,18 @@ class HashTreeParser {
   visibleDataSetsUrl: string; // url from which we can get info about all data sets
   webexRequest: WebexRequestMethod;
   locusInfoUpdateCallback: LocusInfoUpdateCallback;
-  visibleDataSets: string[];
+  visibleDataSets: VisibleDataSetInfo[];
   debugId: string;
+  heartbeatIntervalMs?: number;
+  private excludedDataSets: string[];
+  state: 'active' | 'stopped';
+  private syncQueue: Array<{dataSetName: string; reason: string; isInitialization?: boolean}> = [];
+  private isSyncInProgress = false;
+  // tracks whether syncAllDatasets is currently in its backoff delay phase and with what scope
+  private syncAllBackoffType: SyncAllBackoffType = SyncAllBackoffType.NONE;
+  // datasets that received messages during the syncAllDatasets backoff sleep and should be skipped
+  private dataSetsSyncedDuringBackoff: Set<string> = new Set();
+  private syncQueueProcessingPromise: Promise<void> = Promise.resolve();
 
   /**
    * Constructor for HashTreeParser
@@ -85,16 +144,177 @@ class HashTreeParser {
       dataSets: Array<DataSet>;
       locus: any;
     };
+    metadata: Metadata | null;
     webexRequest: WebexRequestMethod;
     locusInfoUpdateCallback: LocusInfoUpdateCallback;
     debugId: string;
+    excludedDataSets?: string[];
   }) {
-    const {locus} = options.initialLocus;
+    const {dataSets, locus} = options.initialLocus; // extract dataSets from initialLocus
 
     this.debugId = options.debugId;
     this.webexRequest = options.webexRequest;
     this.locusInfoUpdateCallback = options.locusInfoUpdateCallback;
-    this.visibleDataSets = locus?.self?.visibleDataSets || [];
+    this.excludedDataSets = options.excludedDataSets || [];
+    this.visibleDataSetsUrl = locus?.links?.resources?.visibleDataSets?.url;
+    this.setVisibleDataSets(options.metadata?.visibleDataSets || [], dataSets);
+
+    this.state = 'active';
+
+    if (options.metadata?.visibleDataSets?.length === 0) {
+      LoggerProxy.logger.warn(
+        `HashTreeParser#constructor --> ${this.debugId} No visibleDataSets found in Metadata`
+      );
+    }
+    // object mapping dataset names to arrays of leaf data
+    const leafData = this.analyzeLocusHtMeta(locus);
+
+    if (options.metadata) {
+      // add also the metadata that's outside of locus object itself
+      this.analyzeMetadata(leafData, options.metadata);
+    }
+
+    LoggerProxy.logger.info(
+      `HashTreeParser#constructor --> ${
+        this.debugId
+      } creating HashTreeParser for datasets: ${JSON.stringify(
+        dataSets.map((ds) => ds.name)
+      )} with visible datasets: ${JSON.stringify(this.visibleDataSets.map((vds) => vds.name))}`
+    );
+
+    for (const dataSet of dataSets) {
+      const {name, leafCount} = dataSet;
+
+      this.dataSets[name] = {
+        ...dataSet,
+        hashTree: this.isVisibleDataSet(name)
+          ? new HashTree(leafData[name] || [], leafCount)
+          : undefined,
+      };
+    }
+  }
+
+  /**
+   * Sets the visible data sets list for the HashTreeParser. This method should be called only at the start, to initialize
+   * the visible data sets, before any message processsing, so for example from the constructor or when resuming the parser.
+   *
+   * @param {Array<VisibleDataSetInfo>} visibleDataSets - The visible data sets to set
+   * @param {Array<DataSet>} dataSets - The "dataSets" list from Locus (yes, Locus sends visibleDataSets and dataSets as separate lists and they can differ)
+   * @returns {void}
+   */
+  private setVisibleDataSets(visibleDataSets: VisibleDataSetInfo[], dataSets: Array<DataSet>) {
+    this.visibleDataSets = cloneDeep(visibleDataSets).filter(
+      (vds) =>
+        // exclude data sets we will never care about
+        !this.isExcludedDataSet(vds.name) &&
+        // and make sure that visibleDataSets list is consistent with dataSets list
+        dataSets.some((ds) => ds.name === vds.name)
+    );
+  }
+
+  /**
+   * Checks if the given data set name is in the list of visible data sets
+   * @param {string} dataSetName data set name to check
+   * @returns {Boolean} True if the data set is visible, false otherwise
+   */
+  private isVisibleDataSet(dataSetName: string): boolean {
+    return this.visibleDataSets.some((vds) => vds.name === dataSetName);
+  }
+
+  /**
+   * Checks if the given data set name is in the excluded list
+   * @param {string} dataSetName data set name to check
+   * @returns {boolean} True if the data set is excluded, false otherwise
+   */
+  private isExcludedDataSet(dataSetName: string): boolean {
+    return this.excludedDataSets.some((name) => name === dataSetName);
+  }
+
+  /**
+   * Adds a data set to the visible data sets list, unless it is in the excluded list.
+   * @param {VisibleDataSetInfo} dataSetInfo data set info to add
+   * @returns {boolean} True if the data set was added, false if it was excluded
+   */
+  private addToVisibleDataSetsList(dataSetInfo: VisibleDataSetInfo): boolean {
+    if (this.isExcludedDataSet(dataSetInfo.name)) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#addToVisibleDataSetsList --> ${this.debugId} Data set "${dataSetInfo.name}" is in the excluded list, ignoring`
+      );
+
+      return false;
+    }
+
+    this.visibleDataSets.push(dataSetInfo);
+
+    return true;
+  }
+
+  /**
+   * Initializes a new visible data set by creating a hash tree for it, adding it to all the internal structures,
+   * and sending an initial sync request to Locus with empty leaf data - that will trigger Locus to gives us all the data
+   * from that dataset (in the response or via messages).
+   *
+   * @param {VisibleDataSetInfo} visibleDataSetInfo Information about the new visible data set
+   * @param {DataSet} dataSetInfo The new data set to be added
+   * @returns {Promise}
+   */
+  private async initializeNewVisibleDataSet(
+    visibleDataSetInfo: VisibleDataSetInfo,
+    dataSetInfo: DataSet
+  ): Promise<void> {
+    if (this.isVisibleDataSet(dataSetInfo.name)) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#initializeNewVisibleDataSet --> ${this.debugId} Data set "${dataSetInfo.name}" already exists, skipping init`
+      );
+
+      return;
+    }
+
+    LoggerProxy.logger.info(
+      `HashTreeParser#initializeNewVisibleDataSet --> ${this.debugId} Adding visible data set "${dataSetInfo.name}"`
+    );
+
+    if (!this.addToVisibleDataSetsList(visibleDataSetInfo)) {
+      return;
+    }
+
+    const hashTree = new HashTree([], dataSetInfo.leafCount);
+
+    this.dataSets[dataSetInfo.name] = {
+      ...dataSetInfo,
+      hashTree,
+    };
+
+    this.enqueueSyncForDataset(dataSetInfo.name, 'new visible data set initialization', true);
+    await this.syncQueueProcessingPromise;
+  }
+
+  /**
+   * Queries Locus for all up-to-date information about all visible data sets
+   *
+   * @returns {Promise}
+   */
+  private getAllVisibleDataSetsFromLocus() {
+    if (!this.visibleDataSetsUrl) {
+      LoggerProxy.logger.warn(
+        `HashTreeParser#getAllVisibleDataSetsFromLocus --> ${this.debugId} No visibleDataSetsUrl, cannot get data sets information`
+      );
+
+      return Promise.resolve([]);
+    }
+
+    return this.webexRequest({
+      method: HTTP_VERBS.GET,
+      uri: this.visibleDataSetsUrl,
+    })
+      .then((response) => {
+        return response.body.dataSets as Array<DataSet>;
+      })
+      .catch((error) => {
+        this.checkForSentinelHttpResponse(error);
+
+        throw error;
+      });
   }
 
   /**
@@ -104,7 +324,14 @@ class HashTreeParser {
    * @returns {Promise}
    */
   async initializeFromMessage(message: HashTreeMessage) {
-    // todo
+    this.visibleDataSetsUrl = message.visibleDataSetsUrl;
+
+    LoggerProxy.logger.info(
+      `HashTreeParser#initializeFromMessage --> ${this.debugId} visibleDataSetsUrl=${this.visibleDataSetsUrl}`
+    );
+    const visibleDataSets = await this.getAllVisibleDataSetsFromLocus();
+
+    await this.initializeDataSets(visibleDataSets, 'initialization from message');
   }
 
   /**
@@ -117,7 +344,343 @@ class HashTreeParser {
    * @returns {Promise}
    */
   async initializeFromGetLociResponse(locus: LocusDTO) {
-    // todo
+    if (!locus?.links?.resources?.visibleDataSets?.url) {
+      LoggerProxy.logger.warn(
+        `HashTreeParser#initializeFromGetLociResponse --> ${this.debugId} missing visibleDataSets url in GET Loci response, cannot initialize hash trees`
+      );
+
+      return;
+    }
+    this.visibleDataSetsUrl = locus.links.resources.visibleDataSets.url;
+
+    LoggerProxy.logger.info(
+      `HashTreeParser#initializeFromGetLociResponse --> ${this.debugId} visibleDataSets url: ${this.visibleDataSetsUrl}`
+    );
+
+    const visibleDataSets = await this.getAllVisibleDataSetsFromLocus();
+
+    await this.initializeDataSets(visibleDataSets, 'initialization from GET /loci response');
+  }
+
+  /**
+   * Initializes data sets by doing an initialization sync on each visible data set that doesn't have a hash tree yet.
+   *
+   * @param {DataSet[]} visibleDataSets Array of visible DataSet objects to initialize
+   * @param {string} debugText Text to include in logs for debugging purposes
+   * @returns {Promise}
+   */
+  private async initializeDataSets(visibleDataSets: Array<DataSet>, debugText: string) {
+    if (this.state === 'stopped') {
+      return;
+    }
+
+    for (const dataSet of sortByInitPriority(visibleDataSets, DATA_SET_INIT_PRIORITY)) {
+      const {name, leafCount, url} = dataSet;
+
+      if (!this.dataSets[name]) {
+        LoggerProxy.logger.info(
+          `HashTreeParser#initializeDataSets --> ${this.debugId} initializing dataset "${name}" (${debugText})`
+        );
+
+        this.dataSets[name] = {
+          ...dataSet,
+        };
+      } else {
+        LoggerProxy.logger.info(
+          `HashTreeParser#initializeDataSets --> ${this.debugId} dataset "${name}" already exists (${debugText})`
+        );
+      }
+
+      if (!this.isVisibleDataSet(name)) {
+        if (
+          !this.addToVisibleDataSetsList({
+            name,
+            url,
+          })
+        ) {
+          // dataset is excluded, skip it
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+      }
+
+      if (!this.dataSets[name].hashTree) {
+        LoggerProxy.logger.info(
+          `HashTreeParser#initializeDataSets --> ${this.debugId} creating hash tree for visible dataset "${name}" (${debugText})`
+        );
+        this.dataSets[name].hashTree = new HashTree([], leafCount);
+
+        this.enqueueSyncForDataset(name, `initialization sync for ${debugText}`, true);
+      }
+    }
+
+    // wait for all enqueued initialization syncs to complete
+    await this.syncQueueProcessingPromise;
+  }
+
+  /**
+   * Each dataset exists at a different place in the dto
+   * iterate recursively over the locus and if it has a htMeta key,
+   * create an object with the type, id and version and add it to the appropriate leafData array
+   *
+   * @param {any} locus - The current part of the locus being processed
+   * @param {Object} [options]
+   * @param {boolean} [options.copyData=false] - Whether to copy the data for each leaf into returned result
+   * @returns {any} - An object mapping dataset names to arrays of leaf data
+   */
+  private analyzeLocusHtMeta(locus: any, options?: {copyData?: boolean}) {
+    const {copyData = false} = options || {};
+    // object mapping dataset names to arrays of leaf data
+    const leafInfo: Record<string, Array<LeafInfo>> = {};
+
+    const findAndStoreMetaData = (currentLocusPart: any, currentLocusPartName: string) => {
+      if (typeof currentLocusPart !== 'object' || currentLocusPart === null) {
+        return;
+      }
+
+      if (currentLocusPart.htMeta && currentLocusPart.htMeta.dataSetNames) {
+        const {type, id, version} = currentLocusPart.htMeta.elementId;
+        const {dataSetNames} = currentLocusPart.htMeta;
+        const newLeafInfo: LeafInfo = {
+          type,
+          id,
+          version,
+        };
+
+        if (copyData) {
+          if ((type as string).toLowerCase() === ObjectType.control) {
+            // control entries require special handling, because they are signalled by Locus
+            // differently when coming in messages vs API responses
+            newLeafInfo.data = {
+              [currentLocusPartName]: cloneDeep(currentLocusPart),
+            };
+          } else {
+            newLeafInfo.data = cloneDeep(currentLocusPart);
+
+            // remove any nested other objects that have their own htMeta
+            deleteNestedObjectsWithHtMeta(newLeafInfo.data);
+          }
+        }
+
+        for (const dataSetName of dataSetNames) {
+          if (!leafInfo[dataSetName]) {
+            leafInfo[dataSetName] = [];
+          }
+          leafInfo[dataSetName].push(newLeafInfo);
+        }
+      }
+
+      if (Array.isArray(currentLocusPart)) {
+        for (const [index, item] of currentLocusPart.entries()) {
+          findAndStoreMetaData(item, index.toString());
+        }
+      } else {
+        for (const key of Object.keys(currentLocusPart)) {
+          if (Object.prototype.hasOwnProperty.call(currentLocusPart, key)) {
+            findAndStoreMetaData(currentLocusPart[key], key);
+          }
+        }
+      }
+    };
+
+    findAndStoreMetaData(locus, 'locus');
+
+    return leafInfo;
+  }
+
+  /**
+   * Analyzes the Metadata object that is sent outside of Locus object, and appends its data to passed in leafInfo
+   * structure.
+   *
+   * @param {Record<string, LeafInfo[]>} leafInfo the structure to which the Metadata info will be appended
+   * @param {Metadata} metadata Metadata object
+   * @returns {void}
+   */
+  private analyzeMetadata(leafInfo: Record<string, LeafInfo[]>, metadata: Metadata) {
+    const {htMeta} = metadata;
+
+    if (
+      htMeta?.dataSetNames?.length === 1 &&
+      htMeta.dataSetNames[0].toLowerCase() === MetadataDataSetName
+    ) {
+      const {type, id, version} = metadata.htMeta.elementId;
+
+      const dataSetName = htMeta.dataSetNames[0];
+
+      if (!leafInfo[dataSetName]) {
+        leafInfo[dataSetName] = [];
+      }
+
+      leafInfo[dataSetName].push({
+        type,
+        id,
+        version,
+      });
+    } else {
+      throw new Error(
+        `${this.debugId} Metadata htMeta has unexpected dataSetNames: ${
+          htMeta && htMeta.dataSetNames.join(',')
+        }`
+      );
+    }
+  }
+
+  /**
+   * Checks if the provided hash tree message indicates the end of the meeting and that there won't be any more updates.
+   *
+   * @param {HashTreeMessage} message - The hash tree message to check
+   * @returns {boolean} - Returns true if the message indicates the end of the meeting, false otherwise
+   */
+  private isEndMessage(message: HashTreeMessage) {
+    return message.dataSets.some((dataSet) => {
+      if (
+        dataSet.leafCount === 1 &&
+        dataSet.root === EMPTY_HASH &&
+        (!this.dataSets[dataSet.name] || this.dataSets[dataSet.name].version < dataSet.version) &&
+        PossibleSentinelMessageDataSetNames.includes(dataSet.name.toLowerCase())
+      ) {
+        // this is a special way for Locus to indicate that this meeting has ended
+        return true;
+      }
+
+      return false;
+    });
+  }
+
+  /**
+   * Handles the root hash heartbeat message
+   *
+   * @param {RootHashMessage} message - The root hash heartbeat message
+   * @returns {void}
+   */
+  private handleRootHashHeartBeatMessage(message: RootHashMessage): void {
+    const {dataSets} = message;
+
+    LoggerProxy.logger.info(
+      `HashTreeParser#handleRootHashMessage --> ${
+        this.debugId
+      } Received heartbeat root hash message with data sets: ${JSON.stringify(
+        dataSets.map(({name, root, leafCount, version}) => ({
+          name,
+          root,
+          leafCount,
+          version,
+        }))
+      )}`
+    );
+
+    this.cancelPendingSyncsForDataSets(dataSets.map((ds) => ds.name));
+
+    dataSets.forEach((dataSet) => {
+      this.updateDataSetInfo(dataSet);
+      this.runSyncAlgorithm(dataSet);
+    });
+  }
+
+  /**
+   * Handles known errors that can happen during syncs
+   *
+   * @param {any} error - The error to handle
+   * @returns {boolean} true if the error was recognized and handled, false otherwise
+   */
+  private handleSyncErrors(error: any) {
+    if (error instanceof MeetingEndedError) {
+      this.callLocusInfoUpdateCallback({
+        updateType: LocusInfoUpdateType.MEETING_ENDED,
+      });
+
+      return true;
+    }
+    if (error instanceof LocusNotFoundError) {
+      this.callLocusInfoUpdateCallback({
+        updateType: LocusInfoUpdateType.LOCUS_NOT_FOUND,
+      });
+      this.stop();
+
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Asynchronously initializes new visible data sets
+   *
+   * @param {VisibleDataSetInfo[]} dataSetsRequiringInitialization list of datasets to initialize
+   * @returns {void}
+   */
+  private queueInitForNewVisibleDataSets(dataSetsRequiringInitialization: VisibleDataSetInfo[]) {
+    LoggerProxy.logger.info(
+      `HashTreeParser#queueInitForNewVisibleDataSets --> ${
+        this.debugId
+      } queuing initialization of new visible datasets: ${dataSetsRequiringInitialization
+        .map((ds) => ds.name)
+        .join(', ')}`
+    );
+    queueMicrotask(() => {
+      this.initializeNewVisibleDataSets(dataSetsRequiringInitialization).catch((error) => {
+        if (!this.handleSyncErrors(error)) {
+          LoggerProxy.logger.warn(
+            `HashTreeParser#queueInitForNewVisibleDataSets --> ${
+              this.debugId
+            } error while initializing new visible datasets: ${dataSetsRequiringInitialization
+              .map((ds) => ds.name)
+              .join(', ')}: `,
+            error
+          );
+        }
+      });
+    });
+  }
+
+  /**
+   * Handles updates to Metadata object that we receive from Locus via other means than messages. Right now
+   * that means only in the API response alongside locus object.
+   *
+   * @param {Metadata} metadata received in Locus update other than a message (for example in an API response)
+   * @param {HashTreeObject[]} updatedObjects a list of updated hash tree objects to which any updates resulting from new Metadata will be added
+   * @returns {void}
+   */
+  handleMetadataUpdate(metadata: Metadata, updatedObjects: HashTreeObject[]): void {
+    let dataSetsRequiringInitialization: VisibleDataSetInfo[] = [];
+
+    // current assumption based on Locus docs is that Metadata object lives always in "self" data set
+    const hashTree = this.dataSets[MetadataDataSetName]?.hashTree;
+
+    if (!hashTree) {
+      LoggerProxy.logger.warn(
+        `HashTreeParser#handleLocusUpdate --> ${this.debugId} received Metadata object but no hash tree for "${MetadataDataSetName}" data set exists`
+      );
+    } else {
+      const metadataUpdated = hashTree.putItem(metadata.htMeta.elementId);
+
+      if (metadataUpdated) {
+        // metadata in Locus API response is in a slightly different format than the objects in messages, so need to adapt it
+        const metadataObject: HashTreeObject = {
+          htMeta: metadata.htMeta,
+          data: metadata,
+        };
+
+        updatedObjects.push(metadataObject);
+
+        const {changeDetected, removedDataSets, addedDataSets} = this.checkForVisibleDataSetChanges(
+          [metadataObject]
+        );
+
+        if (changeDetected) {
+          dataSetsRequiringInitialization = this.processVisibleDataSetChanges(
+            removedDataSets,
+            addedDataSets,
+            updatedObjects
+          );
+        }
+
+        if (dataSetsRequiringInitialization.length > 0) {
+          // there are some data sets that we need to initialize asynchronously
+          this.queueInitForNewVisibleDataSets(dataSetsRequiringInitialization);
+        }
+      }
+    }
   }
 
   /**
@@ -127,8 +690,458 @@ class HashTreeParser {
    * @param {Object} update - The locus update containing data sets and locus information
    * @returns {void}
    */
-  handleLocusUpdate(update: {dataSets?: Array<DataSet>; locus: any}): void {
-    // todo
+  handleLocusUpdate(update: {dataSets?: Array<DataSet>; locus: any; metadata?: Metadata}): void {
+    if (this.state === 'stopped') {
+      return;
+    }
+
+    const {dataSets, locus, metadata} = update;
+
+    LoggerProxy.logger.info(
+      `HashTreeParser#handleLocusUpdate --> ${this.debugId} received update with dataSets=${dataSets
+        ?.map((ds) => ds.name)
+        .join(',')} metadata=${metadata ? 'yes' : 'no'}`
+    );
+
+    if (!dataSets) {
+      // this happens for example when we handle GET /loci response
+      LoggerProxy.logger.info(
+        `HashTreeParser#handleLocusUpdate --> ${this.debugId} received hash tree update without dataSets`
+      );
+    } else {
+      for (const dataSet of dataSets) {
+        this.updateDataSetInfo(dataSet);
+      }
+    }
+    const updatedObjects: HashTreeObject[] = [];
+
+    // first, analyze the locus object to extract the hash tree objects' htMeta and data from it
+    const leafInfo = this.analyzeLocusHtMeta(locus, {copyData: true});
+
+    // if we got metadata, process it (currently that means only potential visible data set list changes)
+    if (metadata) {
+      this.handleMetadataUpdate(metadata, updatedObjects);
+    }
+
+    // then process the data in hash trees, if it is a new version, then add it to updatedObjects
+    Object.keys(leafInfo).forEach((dataSetName) => {
+      if (this.dataSets[dataSetName]) {
+        if (this.dataSets[dataSetName].hashTree) {
+          const appliedChangesList = this.dataSets[dataSetName].hashTree.putItems(
+            leafInfo[dataSetName].map((leaf) => ({
+              id: leaf.id,
+              type: leaf.type,
+              version: leaf.version,
+            }))
+          );
+
+          zip(appliedChangesList, leafInfo[dataSetName]).forEach(([changeApplied, leaf]) => {
+            if (changeApplied) {
+              updatedObjects.push({
+                htMeta: {
+                  elementId: {
+                    type: leaf.type,
+                    id: leaf.id,
+                    version: leaf.version,
+                  },
+                  dataSetNames: [dataSetName],
+                },
+                data: leaf.data,
+              });
+            }
+          });
+        } else {
+          // no hash tree means that the data set is not visible
+          LoggerProxy.logger.warn(
+            `HashTreeParser#handleLocusUpdate --> ${this.debugId} received leaf data for data set "${dataSetName}" that has no hash tree created, ignoring`
+          );
+        }
+      } else {
+        LoggerProxy.logger.info(
+          `HashTreeParser#handleLocusUpdate --> ${this.debugId} received leaf data for unknown data set "${dataSetName}", ignoring`
+        );
+      }
+    });
+
+    if (updatedObjects.length === 0) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#handleLocusUpdate --> ${this.debugId} No objects updated as a result of received API response`
+      );
+    } else {
+      this.callLocusInfoUpdateCallback({
+        updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
+        updatedObjects,
+      });
+    }
+  }
+
+  /**
+   * Updates the internal data set information based on the received data set from Locus.
+   *
+   * @param {DataSet} receivedDataSet - The latest data set information received from Locus to update the internal state.
+   * @returns {void}
+   */
+  private updateDataSetInfo(receivedDataSet: DataSet) {
+    if (!this.dataSets[receivedDataSet.name]) {
+      this.dataSets[receivedDataSet.name] = {
+        ...receivedDataSet,
+      };
+
+      LoggerProxy.logger.info(
+        `HashTreeParser#updateDataSetInfo --> ${this.debugId} created entry for "${receivedDataSet.name}" dataset: version=${receivedDataSet.version}, root=${receivedDataSet.root}`
+      );
+
+      return;
+    }
+    // update our version of the dataSet
+    if (this.dataSets[receivedDataSet.name].version < receivedDataSet.version) {
+      this.dataSets[receivedDataSet.name].version = receivedDataSet.version;
+      this.dataSets[receivedDataSet.name].root = receivedDataSet.root;
+      this.dataSets[receivedDataSet.name].idleMs = receivedDataSet.idleMs;
+      this.dataSets[receivedDataSet.name].backoff = {
+        maxMs: receivedDataSet.backoff.maxMs,
+        exponent: receivedDataSet.backoff.exponent,
+      };
+      LoggerProxy.logger.info(
+        `HashTreeParser#updateDataSetInfo --> ${this.debugId} updated "${receivedDataSet.name}" dataset to version=${receivedDataSet.version}, root=${receivedDataSet.root}`
+      );
+    }
+  }
+
+  /**
+   * Updates the leaf count for a data set, resizing its hash tree accordingly.
+   *
+   * @param {InternalDataSet} dataSet - The data set to update
+   * @param {number} newLeafCount - The new leaf count
+   * @returns {void}
+   */
+  private updateDataSetLeafCount(dataSet: InternalDataSet, newLeafCount: number): void {
+    dataSet.hashTree?.resize(newLeafCount);
+    dataSet.leafCount = newLeafCount;
+  }
+
+  /**
+   * Checks for changes in the visible data sets based on the updated objects.
+   * @param {HashTreeObject[]} updatedObjects - The list of updated hash tree objects.
+   * @returns {Object} An object containing the removed and added visible data sets.
+   */
+  private checkForVisibleDataSetChanges(updatedObjects: HashTreeObject[]) {
+    let removedDataSets: VisibleDataSetInfo[] = [];
+    let addedDataSets: VisibleDataSetInfo[] = [];
+
+    // visibleDataSets can only be changed by Metadata object updates
+    updatedObjects.forEach((object) => {
+      if (isMetadata(object) && object.data?.visibleDataSets) {
+        const newVisibleDataSets = object.data.visibleDataSets.filter(
+          (vds) => !this.isExcludedDataSet(vds.name)
+        );
+
+        removedDataSets = this.visibleDataSets.filter(
+          (ds) => !newVisibleDataSets.some((nvs) => nvs.name === ds.name)
+        );
+        addedDataSets = newVisibleDataSets.filter((nvs) =>
+          this.visibleDataSets.every((ds) => ds.name !== nvs.name)
+        );
+
+        if (removedDataSets.length > 0 || addedDataSets.length > 0) {
+          LoggerProxy.logger.info(
+            `HashTreeParser#checkForVisibleDataSetChanges --> ${
+              this.debugId
+            } visible data sets change: removed: ${removedDataSets
+              .map((ds) => ds.name)
+              .join(', ')}, added: ${addedDataSets.map((ds) => ds.name).join(', ')}`
+          );
+        }
+      }
+    });
+
+    return {
+      changeDetected: removedDataSets.length > 0 || addedDataSets.length > 0,
+      removedDataSets,
+      addedDataSets,
+    };
+  }
+
+  /**
+   * Deletes the hash tree for the specified data set.
+   *
+   * @param {string} dataSetName name of the data set to delete
+   * @returns {void}
+   */
+  private deleteHashTree(dataSetName: string) {
+    this.dataSets[dataSetName].hashTree = undefined;
+    this.dataSets[dataSetName].syncAbortController?.abort();
+    this.dataSets[dataSetName].syncAbortController = undefined;
+
+    // we also need to stop the timers as there is no hash tree anymore to sync
+    if (this.dataSets[dataSetName].timer) {
+      clearTimeout(this.dataSets[dataSetName].timer);
+      this.dataSets[dataSetName].timer = undefined;
+    }
+    if (this.dataSets[dataSetName].heartbeatWatchdogTimer) {
+      clearTimeout(this.dataSets[dataSetName].heartbeatWatchdogTimer);
+      this.dataSets[dataSetName].heartbeatWatchdogTimer = undefined;
+    }
+  }
+
+  /**
+   * Adds entries to the passed in updateObjects array
+   * for the changes that result from removing visible data sets and creates hash
+   * trees for the new visible data sets, but without populating the hash trees.
+   *
+   * This function is synchronous. If we are missing information about some new
+   * visible data sets and they require async initialization, the names of these data sets
+   * are returned in an array.
+   *
+   * @param {VisibleDataSetInfo[]} removedDataSets - The list of removed data sets.
+   * @param {VisibleDataSetInfo[]} addedDataSets - The list of added data sets.
+   * @param {HashTreeObject[]} updatedObjects - The list of updated hash tree objects to which changes will be added.
+   * @returns {VisibleDataSetInfo[]} list of data sets that couldn't be initialized synchronously
+   */
+  private processVisibleDataSetChanges(
+    removedDataSets: VisibleDataSetInfo[],
+    addedDataSets: VisibleDataSetInfo[],
+    updatedObjects: HashTreeObject[]
+  ): VisibleDataSetInfo[] {
+    const dataSetsRequiringInitialization: VisibleDataSetInfo[] = [];
+
+    // if a visible data set was removed, we need to tell our client that all objects from it are removed
+    const removedObjects: HashTreeObject[] = [];
+
+    removedDataSets.forEach((ds) => {
+      if (this.dataSets[ds.name]?.hashTree) {
+        for (let i = 0; i < this.dataSets[ds.name].hashTree.numLeaves; i += 1) {
+          removedObjects.push(
+            ...this.dataSets[ds.name].hashTree.getLeafData(i).map((elementId) => ({
+              htMeta: {
+                elementId,
+                dataSetNames: [ds.name],
+              },
+              data: null,
+            }))
+          );
+        }
+
+        this.deleteHashTree(ds.name);
+      }
+    });
+    this.visibleDataSets = this.visibleDataSets.filter(
+      (vds) => !removedDataSets.some((rds) => rds.name === vds.name)
+    );
+    updatedObjects.push(...removedObjects);
+
+    // now setup the new visible data sets
+    for (const ds of addedDataSets) {
+      const dataSetInfo = this.dataSets[ds.name];
+
+      if (dataSetInfo) {
+        if (this.isVisibleDataSet(dataSetInfo.name)) {
+          LoggerProxy.logger.info(
+            `HashTreeParser#processVisibleDataSetChanges --> ${this.debugId} Data set "${ds.name}" is already visible, skipping`
+          );
+
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        LoggerProxy.logger.info(
+          `HashTreeParser#processVisibleDataSetChanges --> ${this.debugId} Adding visible data set "${ds.name}"`
+        );
+
+        if (!this.addToVisibleDataSetsList(ds)) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        const hashTree = new HashTree([], dataSetInfo.leafCount);
+
+        this.dataSets[dataSetInfo.name] = {
+          ...dataSetInfo,
+          hashTree,
+        };
+
+        // this call is needed here for the edge case where we receive a message with new visible data sets
+        // and there are no objects belonging to these data sets in the message but we already have the info about them in this.dataSets
+        this.runSyncAlgorithm(this.dataSets[dataSetInfo.name]);
+      } else {
+        LoggerProxy.logger.info(
+          `HashTreeParser#processVisibleDataSetChanges --> ${this.debugId} visible data set "${ds.name}" added but no info about it in our dataSets structures`
+        );
+        // todo: add a metric here
+        dataSetsRequiringInitialization.push(ds);
+      }
+    }
+
+    return dataSetsRequiringInitialization;
+  }
+
+  /**
+   * Adds entries to the passed in updateObjects array
+   * for the changes that result from adding and removing visible data sets.
+   *
+   * @param {VisibleDataSetInfo[]} addedDataSets - The list of added data sets.
+   * @returns {Promise<void>}
+   */
+  private async initializeNewVisibleDataSets(addedDataSets: VisibleDataSetInfo[]): Promise<void> {
+    if (this.state === 'stopped') {
+      return;
+    }
+    const allDataSets = await this.getAllVisibleDataSetsFromLocus();
+
+    for (const ds of sortByInitPriority(addedDataSets, DATA_SET_INIT_PRIORITY)) {
+      const dataSetInfo = allDataSets.find((d) => d.name === ds.name);
+
+      LoggerProxy.logger.info(
+        `HashTreeParser#initializeNewVisibleDataSets --> ${this.debugId} initializing data set "${ds.name}"`
+      );
+
+      if (!dataSetInfo) {
+        LoggerProxy.logger.warn(
+          `HashTreeParser#initializeNewVisibleDataSets --> ${this.debugId} missing info about data set "${ds.name}" in Locus response from visibleDataSetsUrl`
+        );
+      } else {
+        // eslint-disable-next-line no-await-in-loop
+        await this.initializeNewVisibleDataSet(ds, dataSetInfo);
+      }
+    }
+  }
+
+  /**
+   * Parses incoming hash tree messages, updates the hash trees and returns information about the changes
+   *
+   * @param {HashTreeMessage} message - The hash tree message containing data sets and objects to be processed
+   * @param {string} [debugText] - Optional debug text to include in logs
+   * @returns {HashTreeObject[]} list of hash tree objects that were updated as a result of processing the message
+   */
+  private parseMessage(message: HashTreeMessage, debugText?: string): HashTreeObject[] {
+    if (this.state === 'stopped') {
+      return [];
+    }
+
+    const {dataSets, visibleDataSetsUrl} = message;
+
+    LoggerProxy.logger.info(
+      `HashTreeParser#parseMessage --> ${this.debugId} ${
+        debugText || ''
+      } dataSets: ${message.dataSets
+        ?.map(({name, version}) => `${name}:${version}`)
+        .join(',')}, elements: ${message.locusStateElements
+        ?.map(
+          (el) =>
+            `${el.htMeta.elementId.type}:${el.htMeta.elementId.id}:${el.htMeta.elementId.version}${
+              el.data ? '+' : '-'
+            }`
+        )
+        .join(',')}`
+    );
+
+    if (message.locusStateElements?.length === 0) {
+      LoggerProxy.logger.warn(
+        `HashTreeParser#parseMessage --> ${this.debugId} got empty locusStateElements!!!`
+      );
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_EMPTY_LOCUS_STATE_ELEMENTS, {
+        debugId: this.debugId,
+      });
+    }
+
+    // first, update our metadata about the datasets with info from the message
+    this.visibleDataSetsUrl = visibleDataSetsUrl;
+    dataSets.forEach((dataSet) => this.updateDataSetInfo(dataSet));
+    this.cancelPendingSyncsForDataSets(dataSets.map((ds) => ds.name));
+
+    const updatedObjects: HashTreeObject[] = [];
+
+    // when we detect new visible datasets, it may be that the metadata about them is not
+    // available in the message, they will require separate async initialization
+    let dataSetsRequiringInitialization: VisibleDataSetInfo[] = [];
+
+    // first find out if there are any visible data set changes - they're signalled in Metadata object updates
+    const metadataUpdates = (message.locusStateElements || []).filter((object) =>
+      isMetadata(object)
+    );
+
+    if (metadataUpdates.length > 0) {
+      const updatedMetadataObjects: HashTreeObject[] = [];
+
+      metadataUpdates.forEach((object) => {
+        // todo: once Locus supports it, we will use the "view" field here instead of dataSetNames
+        for (const dataSetName of object.htMeta.dataSetNames) {
+          const hashTree = this.dataSets[dataSetName]?.hashTree;
+
+          if (hashTree && object.data) {
+            if (hashTree.putItem(object.htMeta.elementId)) {
+              updatedMetadataObjects.push(object);
+            }
+          }
+        }
+      });
+
+      updatedObjects.push(...updatedMetadataObjects);
+
+      const {changeDetected, removedDataSets, addedDataSets} =
+        this.checkForVisibleDataSetChanges(updatedMetadataObjects);
+
+      if (changeDetected) {
+        dataSetsRequiringInitialization = this.processVisibleDataSetChanges(
+          removedDataSets,
+          addedDataSets,
+          updatedObjects
+        );
+      }
+    }
+
+    if (message.locusStateElements && message.locusStateElements.length > 0) {
+      // by this point we now have this.dataSets setup for data sets from this message
+      // and hash trees created for the new visible data sets,
+      // so we can now process all the updates from the message
+      dataSets.forEach((dataSet) => {
+        if (this.dataSets[dataSet.name]) {
+          const {hashTree} = this.dataSets[dataSet.name];
+
+          if (hashTree) {
+            const locusStateElementsForThisSet = message.locusStateElements.filter((object) =>
+              object.htMeta.dataSetNames.includes(dataSet.name)
+            );
+
+            const appliedChangesList = hashTree.updateItems(
+              locusStateElementsForThisSet.map((object) =>
+                object.data
+                  ? {operation: 'update', item: object.htMeta.elementId}
+                  : {operation: 'remove', item: object.htMeta.elementId}
+              )
+            );
+
+            zip(appliedChangesList, locusStateElementsForThisSet).forEach(
+              ([changeApplied, object]) => {
+                if (changeApplied) {
+                  // add to updatedObjects so that our locus DTO will get updated with the new object
+                  updatedObjects.push(object);
+                }
+              }
+            );
+          } else {
+            LoggerProxy.logger.info(
+              `Locus-info:index#parseMessage --> ${this.debugId} unexpected (not visible) dataSet ${dataSet.name} received in hash tree message`
+            );
+          }
+        }
+
+        this.runSyncAlgorithm(dataSet);
+      });
+    }
+
+    if (dataSetsRequiringInitialization.length > 0) {
+      // there are some data sets that we need to initialize asynchronously
+      this.queueInitForNewVisibleDataSets(dataSetsRequiringInitialization);
+    }
+
+    if (updatedObjects.length === 0) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#parseMessage --> ${this.debugId} No objects updated as a result of received message`
+      );
+    }
+
+    return updatedObjects;
   }
 
   /**
@@ -138,8 +1151,872 @@ class HashTreeParser {
    * @param {string} [debugText] - Optional debug text to include in logs
    * @returns {void}
    */
-  async handleMessage(message: HashTreeMessage, debugText?: string): Promise<void> {
-    // todo
+  handleMessage(message: HashTreeMessage, debugText?: string) {
+    if (this.state === 'stopped') {
+      return;
+    }
+
+    if (message.heartbeatIntervalMs) {
+      this.heartbeatIntervalMs = message.heartbeatIntervalMs;
+    }
+    if (this.isEndMessage(message)) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#handleMessage --> ${this.debugId} received sentinel END MEETING message`
+      );
+      this.stopAllTimers();
+
+      this.callLocusInfoUpdateCallback({updateType: LocusInfoUpdateType.MEETING_ENDED});
+    } else if (message.locusStateElements === undefined) {
+      this.handleRootHashHeartBeatMessage(message);
+      this.resetHeartbeatWatchdogs(message.dataSets);
+    } else {
+      const updatedObjects = this.parseMessage(message, debugText);
+
+      this.resetHeartbeatWatchdogs(message.dataSets);
+      this.callLocusInfoUpdateCallback({
+        updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
+        updatedObjects,
+      });
+    }
+  }
+
+  /**
+   * Calls the updateInfo callback if there are any updates to report
+   *
+   * @param {Object} updates parsed from a Locus message
+   * @returns {void}
+   */
+  private callLocusInfoUpdateCallback(updates: LocusInfoUpdate) {
+    if (this.state === 'stopped') {
+      return;
+    }
+
+    const {updateType} = updates;
+
+    if (updateType === LocusInfoUpdateType.OBJECTS_UPDATED && updates.updatedObjects?.length > 0) {
+      // Filter out updates for objects that already have a higher version in their datasets,
+      // or removals for objects that still exist in any of their datasets
+      const filteredUpdates = updates.updatedObjects.filter((object) => {
+        const {elementId} = object.htMeta;
+        const {type, id, version} = elementId;
+
+        // Check all datasets
+        for (const dataSetName of Object.keys(this.dataSets)) {
+          const dataSet = this.dataSets[dataSetName];
+
+          // only visible datasets have hash trees set
+          if (dataSet?.hashTree) {
+            const existingVersion = dataSet.hashTree.getItemVersion(id, type);
+            if (existingVersion !== undefined) {
+              if (object.data) {
+                // For updates: filter out if any dataset has a higher version
+                if (existingVersion > version) {
+                  LoggerProxy.logger.info(
+                    `HashTreeParser#callLocusInfoUpdateCallback --> ${this.debugId} Filtering out update for ${type}:${id} v${version} because dataset "${dataSetName}" has v${existingVersion}`
+                  );
+
+                  return false;
+                }
+              } else if (existingVersion >= version) {
+                // For removals: filter out if the object still exists in any dataset
+                LoggerProxy.logger.info(
+                  `HashTreeParser#callLocusInfoUpdateCallback --> ${this.debugId} Filtering out removal for ${type}:${id} v${version} because dataset "${dataSetName}" still has v${existingVersion}`
+                );
+
+                return false;
+              }
+            }
+          }
+        }
+
+        return true;
+      });
+
+      if (filteredUpdates.length > 0) {
+        this.locusInfoUpdateCallback({updateType, updatedObjects: filteredUpdates});
+      }
+    } else if (updateType !== LocusInfoUpdateType.OBJECTS_UPDATED) {
+      this.locusInfoUpdateCallback({updateType});
+    }
+  }
+
+  /**
+   * Calculates a weighted backoff time that should be used for syncs
+   *
+   * @param {Object} backoff - The backoff configuration containing maxMs and exponent
+   * @returns {number} - A weighted backoff time based on the provided configuration, using algorithm supplied by Locus team
+   */
+  private getWeightedBackoffTime(backoff: {maxMs: number; exponent: number}): number {
+    const {maxMs, exponent} = backoff;
+
+    const randomValue = Math.random();
+
+    return Math.round(randomValue ** exponent * maxMs);
+  }
+
+  /**
+   * Performs a sync for the given data set.
+   *
+   * @param {InternalDataSet} dataSet - The data set to sync
+   * @param {string} reason - The reason for the sync (used for logging)
+   * @param {boolean} [isInitialization] - Whether this is an initialization sync (sends empty leaves data instead of comparing hashes)
+   * @returns {Promise<void>}
+   */
+  private async performSync(
+    dataSet: InternalDataSet,
+    reason: string,
+    isInitialization?: boolean
+  ): Promise<void> {
+    if (!dataSet.hashTree) {
+      return;
+    }
+
+    const abortController = dataSet.syncAbortController ?? new AbortController();
+    dataSet.syncAbortController = abortController;
+
+    const {hashTree} = dataSet;
+    const rootHash = hashTree.getRootHash();
+
+    try {
+      LoggerProxy.logger.info(
+        `HashTreeParser#performSync --> ${this.debugId} ${reason}, syncing data set "${dataSet.name}"`
+      );
+
+      let leavesData: Record<number, LeafDataItem[]> = {};
+
+      if (!isInitialization) {
+        if (dataSet.leafCount !== 1) {
+          let receivedHashes;
+
+          try {
+            // request hashes from sender
+            const hashesResult = await this.getHashesFromLocus(dataSet.name, rootHash);
+
+            if (!hashesResult) {
+              // hashes match, no sync needed
+              return;
+            }
+
+            receivedHashes = hashesResult.hashes;
+
+            this.updateDataSetLeafCount(dataSet, hashesResult.dataSet.leafCount);
+          } catch (error: any) {
+            if (error?.statusCode === 409) {
+              // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
+              LoggerProxy.logger.info(
+                `HashTreeParser#getHashesFromLocus --> ${this.debugId} Got 409 when fetching hashes for data set "${dataSet.name}": ${error.message}`
+              );
+
+              return;
+            }
+            throw error;
+          }
+
+          // identify mismatched leaves
+          const mismatchedLeaveIndexes = hashTree.diffHashes(receivedHashes);
+
+          mismatchedLeaveIndexes.forEach((index) => {
+            leavesData[index] = hashTree.getLeafData(index);
+          });
+        } else {
+          leavesData = {0: hashTree.getLeafData(0)};
+        }
+      }
+
+      if (abortController.signal.aborted) {
+        LoggerProxy.logger.info(
+          `HashTreeParser#performSync --> ${this.debugId} abandoning sync for "${dataSet.name}" before /sync - message received during sync`
+        );
+
+        return;
+      }
+      // request sync for mismatched leaves
+      let syncResponse: HashTreeMessage | null = null;
+
+      if (isInitialization) {
+        syncResponse = await this.sendSyncRequestToLocus(dataSet, {isInitialization: true});
+      } else if (Object.keys(leavesData).length > 0) {
+        syncResponse = await this.sendSyncRequestToLocus(dataSet, {
+          mismatchedLeavesData: leavesData,
+        });
+      }
+
+      // sync API may return nothing (in that case data will arrive via messages)
+      // or it may return a response in the same format as messages
+      // We still need to restart the sync timer as a safety net in case the messages don't arrive.
+      this.runSyncAlgorithm(dataSet);
+
+      if (syncResponse) {
+        // clear the abort controller before processing the response so that
+        // parseMessage() -> cancelPendingSyncsForDataSets() doesn't log a
+        // misleading "aborting sync" message for this already-completed sync
+        dataSet.syncAbortController = undefined;
+
+        // the format of sync response is the same as messages, so we can reuse the same handler
+        this.handleMessage(
+          syncResponse,
+          `via sync API (${
+            isInitialization ? 'init' : `${Object.keys(leavesData).length} mismatched leaves`
+          })`
+        );
+      }
+    } catch (error) {
+      if (!this.handleSyncErrors(error)) {
+        LoggerProxy.logger.warn(
+          `HashTreeParser#performSync --> ${this.debugId} error during sync for data set "${dataSet.name}":`,
+          error
+        );
+      }
+    } finally {
+      dataSet.syncAbortController = undefined;
+    }
+  }
+
+  /**
+   * Cancels any pending or in-flight syncs for the specified data sets.
+   * This removes matching entries from the sync queue and aborts any in-flight sync HTTP requests.
+   *
+   * @param {string[]} dataSetNames - The names of the data sets to cancel syncs for
+   * @returns {void}
+   */
+  private cancelPendingSyncsForDataSets(dataSetNames: string[]): void {
+    const previousLength = this.syncQueue.length;
+
+    this.syncQueue = this.syncQueue.filter((entry) => !dataSetNames.includes(entry.dataSetName));
+
+    if (previousLength !== this.syncQueue.length) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#cancelPendingSyncsForDataSets --> ${this.debugId} removed ${
+          previousLength - this.syncQueue.length
+        } entries from sync queue for data sets: ${dataSetNames.join(', ')}`
+      );
+    }
+
+    this.markDataSetsForSyncAllBackoffSkip(dataSetNames);
+    this.abortInFlightSyncs(dataSetNames);
+  }
+
+  /**
+   * If a syncAllDatasets backoff sleep is in progress, marks the given data sets to be skipped
+   * after the sleep completes.
+   *
+   * @param {string[]} dataSetNames - The names of the data sets to mark
+   * @returns {void}
+   */
+  private markDataSetsForSyncAllBackoffSkip(dataSetNames: string[]): void {
+    if (this.syncAllBackoffType !== SyncAllBackoffType.NONE) {
+      for (const name of dataSetNames) {
+        this.dataSetsSyncedDuringBackoff.add(name);
+      }
+    }
+  }
+
+  /**
+   * Aborts any in-flight sync HTTP requests for the specified data sets.
+   *
+   * @param {string[]} dataSetNames - The names of the data sets whose syncs should be aborted
+   * @returns {void}
+   */
+  private abortInFlightSyncs(dataSetNames: string[]): void {
+    for (const name of dataSetNames) {
+      if (this.dataSets[name]?.syncAbortController) {
+        LoggerProxy.logger.info(
+          `HashTreeParser#cancelPendingSyncsForDataSets --> ${this.debugId} aborting in-flight sync for data set "${name}"`
+        );
+        this.dataSets[name].syncAbortController.abort();
+      }
+    }
+  }
+
+  /**
+   * Enqueues a sync for the given data set. If the data set is already in the queue, the request is ignored.
+   * This ensures that all syncs are executed sequentially and no more than 1 sync runs at a time.
+   *
+   * @param {string} dataSetName - The name of the data set to sync
+   * @param {string} reason - The reason for the sync (used for logging)
+   * @param {boolean} [isInitialization=false] - Whether this is an initialization sync (uses empty leaves data instead of hash comparison)
+   * @returns {void}
+   */
+  private enqueueSyncForDataset(
+    dataSetName: string,
+    reason: string,
+    isInitialization = false
+  ): void {
+    if (this.state === 'stopped') return;
+
+    const existingEntry = this.syncQueue.find((entry) => entry.dataSetName === dataSetName);
+
+    if (existingEntry) {
+      if (isInitialization) {
+        existingEntry.isInitialization = true;
+      }
+      LoggerProxy.logger.info(
+        `HashTreeParser#enqueueSyncForDataset --> ${this.debugId} data set "${dataSetName}" already in sync queue, skipping`
+      );
+
+      return;
+    }
+
+    this.syncQueue.push({dataSetName, reason, isInitialization});
+
+    if (!this.isSyncInProgress) {
+      this.syncQueueProcessingPromise = this.processSyncQueue();
+    }
+  }
+
+  /**
+   * Processes the sync queue sequentially. Only one instance of this method runs at a time.
+   *
+   * @returns {Promise<void>}
+   */
+  private async processSyncQueue(): Promise<void> {
+    if (this.isSyncInProgress) return;
+
+    this.isSyncInProgress = true;
+    try {
+      while (this.syncQueue.length > 0 && this.state !== 'stopped') {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const {dataSetName, reason, isInitialization} = this.syncQueue.shift()!;
+        const dataSet = this.dataSets[dataSetName];
+
+        if (!dataSet?.hashTree) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        // eslint-disable-next-line no-await-in-loop
+        await this.performSync(dataSet, reason, isInitialization);
+      }
+    } finally {
+      this.isSyncInProgress = false;
+    }
+  }
+
+  /**
+   * sets the backoff type for syncAllDatasets calls, which determines the scope of datasets that will be synced after the backoff delay.
+   *
+   * @param {boolean} onlyLLM - Whether the backoff is for a syncAllDatasets call that is syncing only LLM datasets
+   * @returns {void}
+   */
+  private setSyncAllBackoffType(onlyLLM: boolean): void {
+    this.syncAllBackoffType = onlyLLM ? SyncAllBackoffType.ONLY_LLM : SyncAllBackoffType.ALL;
+  }
+
+  /**
+   * Checks if a syncAll backoff is already in progress. If so, upgrades the scope from
+   * onlyLLM to all datasets when the new call has a broader scope.
+   *
+   * @param {boolean} onlyLLM - Whether the current call is for LLM datasets only
+   * @returns {boolean} true if a backoff is already pending (caller should return early)
+   */
+  private tryUpgradePendingBackoff(onlyLLM: boolean): boolean {
+    if (this.syncAllBackoffType !== SyncAllBackoffType.NONE) {
+      if (!onlyLLM && this.syncAllBackoffType === SyncAllBackoffType.ONLY_LLM) {
+        this.setSyncAllBackoffType(false);
+        LoggerProxy.logger.info(
+          `HashTreeParser#syncAllDatasets --> ${this.debugId} upgraded pending syncAll from onlyLLM to all datasets`
+        );
+      }
+
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Syncs all data sets that have hash trees, one by one in sequence, using the priority order
+   * provided by sortByInitPriority().
+   *
+   * If a call is already waiting in the backoff delay phase, a new call with a broader scope
+   * (onlyLLM=false) will upgrade the pending scope, and the dataset list will be computed after
+   * the backoff using the upgraded scope. After the backoff, the sync queue handles deduplication
+   * so no guard is needed.
+   *
+   * @param {Object} [options={}] - Options for syncing
+   * @param {boolean} [options.onlyLLM=false] - Whether to sync only LLM based data sets
+   * @returns {Promise<void>}
+   */
+  public async syncAllDatasets(options: {onlyLLM?: boolean} = {}): Promise<void> {
+    const {onlyLLM = false} = options;
+    if (this.state === 'stopped') return;
+
+    // if we're already in the backoff delay phase, try to upgrade the scope instead of starting a new one
+    if (this.tryUpgradePendingBackoff(onlyLLM)) {
+      return;
+    }
+
+    const dataSetsToSync = this.getSortedDataSetsWithHashTrees(onlyLLM);
+
+    if (dataSetsToSync.length === 0) return;
+
+    this.setSyncAllBackoffType(onlyLLM);
+
+    const delay = this.getWeightedBackoffTime(dataSetsToSync[0].backoff);
+
+    LoggerProxy.logger.info(
+      `HashTreeParser#syncAllDatasets --> ${this.debugId} starting backoff delay of ${delay}ms (onlyLLM=${onlyLLM})`
+    );
+
+    // delay the start of the syncs - this is a Locus requirement to avoid thundering herd issues
+    await sleep(delay);
+
+    // read the (possibly upgraded) scope and clear the backoff flag
+    const effectiveBackoffType = this.syncAllBackoffType;
+    const skippedDataSets = this.dataSetsSyncedDuringBackoff;
+
+    this.syncAllBackoffType = SyncAllBackoffType.NONE;
+    this.dataSetsSyncedDuringBackoff = new Set();
+
+    if ((this.state as string) === 'stopped') return;
+
+    // re-evaluate the dataset list after the sleep, since the scope may have been upgraded
+    // and exclude datasets that received messages during the backoff sleep
+    const effectiveDataSetsToSync = this.getSortedDataSetsWithHashTrees(
+      effectiveBackoffType === SyncAllBackoffType.ONLY_LLM
+    ).filter((ds) => !skippedDataSets.has(ds.name));
+
+    if (skippedDataSets.size > 0) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#syncAllDatasets --> ${
+          this.debugId
+        } skipping datasets that received messages during backoff: ${[...skippedDataSets].join(
+          ', '
+        )}`
+      );
+    }
+
+    LoggerProxy.logger.info(
+      `HashTreeParser#syncAllDatasets --> ${this.debugId} syncing ${
+        effectiveBackoffType === SyncAllBackoffType.ONLY_LLM ? 'only LLM' : 'all'
+      } datasets: ${effectiveDataSetsToSync.map((ds) => ds.name).join(', ')}`
+    );
+
+    for (const ds of effectiveDataSetsToSync) {
+      this.enqueueSyncForDataset(ds.name, 'syncAllDatasets');
+    }
+
+    await this.syncQueueProcessingPromise;
+  }
+
+  /**
+   * Returns the list of data sets that have hash trees, sorted by the priority order provided by sortByInitPriority().
+   *
+   * @param {boolean} onlyLLM - Whether to include only LLM based data sets
+   * @returns {Array<{name: string, backoff: {maxMs: number, exponent: number}}>} The sorted list of data sets with their backoff configurations
+   */
+  private getSortedDataSetsWithHashTrees(onlyLLM: boolean) {
+    let dataSets = Object.values(this.dataSets)
+      .filter((dataSet) => dataSet?.hashTree)
+      .map((dataSet) => ({name: dataSet.name, backoff: dataSet.backoff}));
+
+    if (onlyLLM) {
+      dataSets = dataSets.filter((ds) => LLM_DATASET_NAMES.includes(ds.name));
+    }
+
+    return sortByInitPriority(dataSets, DATA_SET_INIT_PRIORITY);
+  }
+
+  /**
+   * Runs the sync algorithm for the given data set.
+   *
+   * @param {DataSet} receivedDataSet - The data set to run the sync algorithm for.
+   * @returns {void}
+   */
+  private runSyncAlgorithm(receivedDataSet: DataSet) {
+    const dataSet = this.dataSets[receivedDataSet.name];
+
+    if (!dataSet) {
+      LoggerProxy.logger.warn(
+        `HashTreeParser#runSyncAlgorithm --> ${this.debugId} No data set found for ${receivedDataSet.name}, skipping sync algorithm`
+      );
+
+      return;
+    }
+
+    if (!dataSet.hashTree) {
+      // no hash tree, so no need to do any syncing
+      // we fall into this branch often, because Locus sends dataSets in messages that are not visible to us
+
+      return;
+    }
+
+    dataSet.hashTree.resize(receivedDataSet.leafCount);
+
+    const delay = dataSet.idleMs + this.getWeightedBackoffTime(dataSet.backoff);
+
+    if (delay > 0) {
+      if (dataSet.timer) {
+        clearTimeout(dataSet.timer);
+      }
+
+      dataSet.timer = setTimeout(() => {
+        dataSet.timer = undefined;
+
+        if (!dataSet.hashTree) {
+          LoggerProxy.logger.warn(
+            `HashTreeParser#runSyncAlgorithm --> ${this.debugId} Data set "${dataSet.name}" no longer has a hash tree, cannot run sync algorithm`
+          );
+
+          return;
+        }
+
+        const rootHash = dataSet.hashTree.getRootHash();
+
+        if (dataSet.root !== rootHash) {
+          this.enqueueSyncForDataset(
+            dataSet.name,
+            `Root hash mismatch: received=${dataSet.root}, ours=${rootHash}`
+          );
+        }
+      }, delay);
+    } else {
+      LoggerProxy.logger.info(
+        `HashTreeParser#runSyncAlgorithm --> ${this.debugId} No delay for "${dataSet.name}" data set, skipping sync timer reset/setup`
+      );
+    }
+  }
+
+  /**
+   * Resets the heartbeat watchdog timers for the specified data sets. Each data set has its own
+   * watchdog timer that monitors whether heartbeats are being received within the expected interval.
+   * If a heartbeat is not received for a specific data set within heartbeatIntervalMs plus
+   * a backoff-calculated time, the sync algorithm is initiated for that data set
+   *
+   * @param {Array<DataSet>} receivedDataSets - The data sets from the received message for which watchdog timers should be reset
+   * @returns {void}
+   */
+  private resetHeartbeatWatchdogs(receivedDataSets: Array<DataSet>): void {
+    if (!this.heartbeatIntervalMs) {
+      return;
+    }
+
+    for (const receivedDataSet of receivedDataSets) {
+      const dataSet = this.dataSets[receivedDataSet.name];
+
+      if (!dataSet?.hashTree) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      if (dataSet.heartbeatWatchdogTimer) {
+        clearTimeout(dataSet.heartbeatWatchdogTimer);
+        dataSet.heartbeatWatchdogTimer = undefined;
+      }
+
+      const backoffTime = this.getWeightedBackoffTime(dataSet.backoff);
+      const delay = this.heartbeatIntervalMs + backoffTime;
+
+      dataSet.heartbeatWatchdogTimer = setTimeout(() => {
+        dataSet.heartbeatWatchdogTimer = undefined;
+
+        LoggerProxy.logger.warn(
+          `HashTreeParser#resetHeartbeatWatchdogs --> ${this.debugId} Heartbeat watchdog fired for data set "${dataSet.name}" - no heartbeat received within expected interval, initiating sync`
+        );
+
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED, {
+          debugId: this.debugId,
+          dataSetName: dataSet.name,
+        });
+
+        this.enqueueSyncForDataset(dataSet.name, `heartbeat watchdog expired`);
+        this.resetHeartbeatWatchdogs([dataSet]);
+      }, delay);
+    }
+  }
+
+  /**
+   * Stops all timers for the data sets to prevent any further sync attempts.
+   * @returns {void}
+   */
+  private stopAllTimers() {
+    Object.values(this.dataSets).forEach((dataSet) => {
+      if (dataSet.timer) {
+        clearTimeout(dataSet.timer);
+        dataSet.timer = undefined;
+      }
+      if (dataSet.heartbeatWatchdogTimer) {
+        clearTimeout(dataSet.heartbeatWatchdogTimer);
+        dataSet.heartbeatWatchdogTimer = undefined;
+      }
+    });
+  }
+
+  /**
+   * Stops the HashTreeParser, preventing it from processing any further messages and clearing all timers.
+   * It also clears all the hash trees, so if the parser is resumed later, it will need to do a sync
+   * to be up-to-date.
+   * @returns {void}
+   */
+  public stop() {
+    LoggerProxy.logger.info(
+      `HashTreeParser#stop --> ${this.debugId} Stopping HashTreeParser, clearing timers and hash trees`
+    );
+    this.stopAllTimers();
+    this.syncQueue = [];
+    this.syncAllBackoffType = SyncAllBackoffType.NONE;
+    this.dataSetsSyncedDuringBackoff = new Set();
+    Object.values(this.dataSets).forEach((dataSet) => {
+      dataSet.syncAbortController?.abort();
+      dataSet.syncAbortController = undefined;
+      dataSet.hashTree = undefined;
+    });
+    this.visibleDataSets = [];
+    this.state = 'stopped';
+  }
+
+  /**
+   * Cleans up the HashTreeParser, stopping all timers and clearing all internal state.
+   * After calling this, the parser should not be used anymore.
+   * @returns {void}
+   */
+  public cleanUp() {
+    this.stop();
+    this.dataSets = {};
+  }
+
+  /**
+   * Resumes the HashTreeParser that was previously stopped, using a hash tree message.
+   * @param {HashTreeMessage} message - The message to resume with, it must contain metadata with visible data sets info
+   * @returns {void}
+   */
+  public resumeFromMessage(message: HashTreeMessage) {
+    // check that message contains metadata with visible data sets - this is essential to be able to resume
+    const metadataObject = message.locusStateElements?.find((el) => isMetadata(el));
+
+    if (!metadataObject?.data?.visibleDataSets) {
+      LoggerProxy.logger.warn(
+        `HashTreeParser#resumeFromMessage --> ${this.debugId} Cannot resume HashTreeParser because the message is missing metadata with visible data sets info`
+      );
+
+      return;
+    }
+    this.setVisibleDataSets(
+      metadataObject.data.visibleDataSets as VisibleDataSetInfo[],
+      message.dataSets
+    );
+
+    this.dataSets = {};
+
+    for (const dataSet of message.dataSets) {
+      const {name, leafCount} = dataSet;
+
+      this.dataSets[name] = {
+        ...dataSet,
+        hashTree: this.isVisibleDataSet(name) ? new HashTree([], leafCount) : undefined,
+      };
+    }
+    LoggerProxy.logger.info(
+      `HashTreeParser#resumeFromMessage --> ${
+        this.debugId
+      } Resuming HashTreeParser with data sets: ${Object.keys(this.dataSets).join(
+        ', '
+      )}, visible data sets: ${this.visibleDataSets.map((ds) => ds.name).join(', ')}`
+    );
+    this.state = 'active';
+
+    this.handleMessage(message, 'on resume');
+  }
+
+  /**
+   * Resumes the HashTreeParser that was previously stopped, using a Locus API response.
+   * Unlike resumeFromMessage(), this does not require metadata/dataSets in the input,
+   * as it fetches all necessary information from Locus via initializeFromGetLociResponse.
+   * @param {LocusDTO} locus - locus object from an API response
+   * @returns {Promise}
+   */
+  public async resumeFromApiResponse(locus: LocusDTO) {
+    this.state = 'active';
+    this.dataSets = {};
+
+    LoggerProxy.logger.info(
+      `HashTreeParser#resumeFromApiResponse --> ${this.debugId} Resuming HashTreeParser from API response`
+    );
+
+    await this.initializeFromGetLociResponse(locus);
+  }
+
+  private checkForSentinelHttpResponse(error: any, dataSetName?: string) {
+    // 404 for any dataset means the locus is no longer available at this URL - could be replaced or ended
+    // if a dataset is just not visible, we would get a 400
+    if (error.statusCode === 404) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#checkForSentinelHttpResponse --> ${this.debugId} Received 404 for data set "${dataSetName}", locus not found`
+      );
+      this.stopAllTimers();
+
+      throw new LocusNotFoundError();
+    }
+
+    const isValidDataSetForSentinel =
+      dataSetName === undefined ||
+      PossibleSentinelMessageDataSetNames.includes(dataSetName.toLowerCase());
+
+    if (
+      error.statusCode === 409 &&
+      error.body?.errorCode === LocusErrorCodes.LOCUS_INACTIVE &&
+      isValidDataSetForSentinel
+    ) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#checkForSentinelHttpResponse --> ${this.debugId} Received ${error.statusCode}/${error.body?.errorCode} for data set "${dataSetName}", indicating that the meeting has ended`
+      );
+      this.stopAllTimers();
+
+      throw new MeetingEndedError();
+    }
+  }
+
+  /**
+   * Gets the current hashes from the locus for a specific data set.
+   * @param {string} dataSetName
+   * @param {string} currentRootHash
+   * @returns {Object|null} An object containing the hashes and leaf count, or null if the hashes match and no sync is needed
+   */
+  private getHashesFromLocus(dataSetName: string, currentRootHash: string) {
+    LoggerProxy.logger.info(
+      `HashTreeParser#getHashesFromLocus --> ${this.debugId} Requesting hashes for data set "${dataSetName}"`
+    );
+
+    const dataSet = this.dataSets[dataSetName];
+
+    const url = `${dataSet.url}/hashtree`;
+
+    return this.webexRequest({
+      method: HTTP_VERBS.GET,
+      uri: url,
+      qs: {
+        rootHash: currentRootHash,
+      },
+    })
+      .then((response) => {
+        if (!response.body || isEmpty(response.body)) {
+          // 204 with empty body means our hashes match Locus, no sync needed
+          LoggerProxy.logger.info(
+            `HashTreeParser#getHashesFromLocus --> ${this.debugId} Got ${response.statusCode} with empty body for data set "${dataSetName}", hashes match - no sync needed`
+          );
+
+          return null;
+        }
+
+        const hashes = response.body?.hashes as string[] | undefined;
+        const dataSetFromResponse = response.body?.dataSet;
+
+        if (!hashes || !Array.isArray(hashes)) {
+          LoggerProxy.logger.warn(
+            `HashTreeParser#getHashesFromLocus --> ${this.debugId} Locus returned invalid hashes, response body=`,
+            response.body
+          );
+          throw new Error(`Locus returned invalid hashes: ${hashes}`);
+        }
+
+        LoggerProxy.logger.info(
+          `HashTreeParser#getHashesFromLocus --> ${
+            this.debugId
+          } Received hashes for data set "${dataSetName}": ${JSON.stringify(hashes)}`
+        );
+
+        return {
+          hashes,
+          dataSet: dataSetFromResponse as DataSet,
+        };
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error(
+          `HashTreeParser#getHashesFromLocus --> ${this.debugId} Error ${error.statusCode} fetching hashes for data set "${dataSetName}":`,
+          error
+        );
+        this.checkForSentinelHttpResponse(error, dataSet.name);
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_SYNC_FAILURE, {
+          debugId: this.debugId,
+          dataSetName,
+          request: 'GET /hashtree',
+          statusCode: error.statusCode,
+          reason: error.message,
+        });
+
+        throw error;
+      });
+  }
+
+  /**
+   * Sends a sync request to Locus for the specified data set.
+   *
+   * @param {InternalDataSet} dataSet The data set to sync.
+   * @param {Object} options Either `{ isInitialization: true }` for init syncs (uses leafCount=1 with empty leaf data) or `{ mismatchedLeavesData }` for normal syncs.
+   * @returns {Promise<HashTreeMessage|null>}
+   */
+  private sendSyncRequestToLocus(
+    dataSet: InternalDataSet,
+    options: {isInitialization: true} | {mismatchedLeavesData: Record<number, LeafDataItem[]>}
+  ): Promise<HashTreeMessage | null> {
+    LoggerProxy.logger.info(
+      `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Sending sync request for data set "${dataSet.name}"`
+    );
+
+    const isInitialization = 'isInitialization' in options;
+
+    const url = `${dataSet.url}/sync`;
+    const body: {
+      leafCount: number;
+      leafDataEntries: {leafIndex: number; elementIds: LeafDataItem[]}[];
+    } = {
+      leafCount: isInitialization ? 1 : dataSet.leafCount,
+      leafDataEntries: [],
+    };
+
+    if (isInitialization) {
+      // initialization sync: Locus requires leafCount=1 with a single empty leaf
+      body.leafDataEntries.push({leafIndex: 0, elementIds: []});
+    } else {
+      const {mismatchedLeavesData} = options;
+
+      Object.keys(mismatchedLeavesData).forEach((index) => {
+        const leafIndex = parseInt(index, 10);
+
+        body.leafDataEntries.push({
+          leafIndex,
+          elementIds: mismatchedLeavesData[leafIndex],
+        });
+      });
+    }
+
+    const ourCurrentRootHash = dataSet.hashTree ? dataSet.hashTree.getRootHash() : EMPTY_HASH;
+
+    return this.webexRequest({
+      method: HTTP_VERBS.POST,
+      uri: url,
+      qs: {
+        rootHash: ourCurrentRootHash,
+      },
+      body,
+    })
+      .then((resp) => {
+        if (!resp.body || isEmpty(resp.body)) {
+          LoggerProxy.logger.info(
+            `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Got ${resp.statusCode} with empty body for sync request for data set "${dataSet.name}", data should arrive via messages`
+          );
+
+          return null;
+        }
+
+        return resp.body as HashTreeMessage;
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error(
+          `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Error ${error.statusCode} sending sync request for data set "${dataSet.name}":`,
+          error
+        );
+        this.checkForSentinelHttpResponse(error, dataSet.name);
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_SYNC_FAILURE, {
+          debugId: this.debugId,
+          dataSetName: dataSet.name,
+          request: 'POST /sync',
+          statusCode: error.statusCode,
+          reason: error.message,
+        });
+
+        throw error;
+      });
   }
 }
 
