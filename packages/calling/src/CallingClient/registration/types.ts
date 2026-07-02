@@ -70,7 +70,7 @@ export interface IRegistration {
   /**
    * Deregisters the device.
    */
-  deregister(): void;
+  deregister(closeMobiusWss: boolean): void;
 
   /**
    * Sets the active Mobius server URL to use for registration.

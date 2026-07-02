@@ -2856,6 +2856,7 @@ describe('plugin-meetings', () => {
 
         // set the info initially as locusInfo.info starts as undefined
         expectedMeeting = {
+          attendee: {},
           coHost: {
             LOWER_SOMEONE_ELSES_HAND: true,
           },
@@ -2864,10 +2865,12 @@ describe('plugin-meetings', () => {
           moderator: {
             LOWER_SOMEONE_ELSES_HAND: true,
           },
+          panelist: {},
           policy: {
             LOCK_STATUS_UNLOCKED: true,
             ROSTER_IN_MEETING: true,
           },
+          presenter: {},
           userDisplayHints: ['ROSTER_IN_MEETING', 'LOCK_STATUS_UNLOCKED'],
         };
         locusInfo.updateMeetingInfo(initialInfo, self);
@@ -2882,6 +2885,7 @@ describe('plugin-meetings', () => {
 
         // Updating with different info should trigger the event
         expectedMeeting = {
+          attendee: {},
           coHost: {
             LOWER_SOMEONE_ELSES_HAND: true,
             LOCK_CONTROL_LOCK: true,
@@ -2891,10 +2895,12 @@ describe('plugin-meetings', () => {
           moderator: {
             LOWER_SOMEONE_ELSES_HAND: true,
           },
+          panelist: {},
           policy: {
             LOCK_STATUS_UNLOCKED: true,
             ROSTER_IN_MEETING: true,
           },
+          presenter: {},
           userDisplayHints: ['ROSTER_IN_MEETING', 'LOCK_STATUS_UNLOCKED'],
         };
         locusInfo.updateMeetingInfo(newInfo, self);
@@ -2903,6 +2909,7 @@ describe('plugin-meetings', () => {
 
         // update it with the same info
         expectedMeeting = {
+          attendee: {},
           coHost: {
             LOWER_SOMEONE_ELSES_HAND: true,
             LOCK_CONTROL_LOCK: true,
@@ -2912,10 +2919,12 @@ describe('plugin-meetings', () => {
           moderator: {
             LOWER_SOMEONE_ELSES_HAND: true,
           },
+          panelist: {},
           policy: {
             LOCK_STATUS_UNLOCKED: true,
             ROSTER_IN_MEETING: true,
           },
+          presenter: {},
           userDisplayHints: ['ROSTER_IN_MEETING', 'LOCK_STATUS_UNLOCKED'],
         };
         locusInfo.updateMeetingInfo(newInfo, self);
@@ -2930,6 +2939,7 @@ describe('plugin-meetings', () => {
           hasRole: true,
         });
         expectedMeeting = {
+          attendee: {},
           coHost: {
             LOWER_SOMEONE_ELSES_HAND: true,
             LOCK_CONTROL_LOCK: true,
@@ -2939,10 +2949,12 @@ describe('plugin-meetings', () => {
           moderator: {
             LOWER_SOMEONE_ELSES_HAND: true,
           },
+          panelist: {},
           policy: {
             LOCK_STATUS_UNLOCKED: true,
             ROSTER_IN_MEETING: true,
           },
+          presenter: {},
           userDisplayHints: [
             'ROSTER_IN_MEETING',
             'LOCK_STATUS_UNLOCKED',

@@ -92,7 +92,7 @@ class Calling extends EventEmitter {
 
     for (const line of lines) {
       if (line.getStatus() === 'active') {
-        line.deregister();
+        line.deregister(true); // Close Mobius WSS by passing true
       }
     }
 
@@ -140,6 +140,14 @@ class Calling extends EventEmitter {
 
     this.callSettingsClient = clientConfig.callSettings
       ? WebexCalling.createCallSettingsClient(this.webex, logger)
+      : undefined;
+
+    if (clientConfig.callRecording === undefined) {
+      clientConfig.callRecording = false;
+    }
+
+    this.callRecordingClient = clientConfig.callRecording
+      ? WebexCalling.createCallRecordingClient(this.webex, logger)
       : undefined;
   }
 

@@ -3,12 +3,18 @@ import {getMobiusSocketInstance} from '../../mobius-socket';
 import {WebexRequestPayload} from '../../common/types';
 import {WebexSDK} from '../../SDKConnector/types';
 import log from '../../Logger';
-import {APIRequestConfig, APIRequestOptions, MobiusAsyncEvent, MobiusSocketResponse} from './types';
+import {
+  APIRequestConfig,
+  APIRequestOptions,
+  MobiusAsyncEvent,
+  MobiusSocketConnectionListener,
+  MobiusSocketResponse,
+} from './types';
 import {
   deriveMobiusSocketMessageType,
   isSupplementaryServiceMessageType,
 } from './mobiusSocketMapper';
-import {MOBIUS_SOCKET_MESSAGE_TYPE} from './constants';
+import {MOBIUS_SOCKET_DISCONNECT_REASON, MOBIUS_SOCKET_MESSAGE_TYPE} from './constants';
 import {isMobiusWssEnabled} from './wsFeatureFlag';
 import {CALLING_USER_AGENT, METHODS, REQUEST_FILE} from '../constants';
 import {getMetricManager} from '../../Metrics';
@@ -110,6 +116,25 @@ export class APIRequest {
   }
 
   /**
+   * Overrides the active Mobius transport for subsequent requests.
+   *
+   * The constructor seeds this from the `webrtc-calling-over-ws` feature flag, but
+   * registration may need to fall back to HTTP for a Mobius server group that has no
+   * WSS URL (even while the feature is enabled). Toggling this keeps all transport-gated
+   * paths (connect, teardown, makeRequest) consistent for the group being registered.
+   *
+   * @param enabled - `true` to route over the Mobius WebSocket, `false` for HTTP.
+   */
+  public setSocketEnabled(enabled: boolean): void {
+    this.isMobiusSocketEnabled = enabled;
+
+    log.info(`APIRequest transport set to: ${enabled ? 'WSS' : 'HTTP'}`, {
+      file: REQUEST_FILE,
+      method: METHODS.SET_SOCKET_ENABLED,
+    });
+  }
+
+  /**
    * Ensures the Mobius WebSocket is connected before sending API requests.
    * If the socket is already connected, resolves immediately. Otherwise,
    * initiates a new connection to the provided WebSocket URL.
@@ -157,6 +182,10 @@ export class APIRequest {
 
       throw normalizeWsError(err);
     }
+  }
+
+  public getConnectedWebSocketUrl() {
+    return this.mobiusSocket.getConnectedWebSocketUrl();
   }
 
   /**
@@ -299,6 +328,69 @@ export class APIRequest {
       MOBIUS_SOCKET_ACTION.LISTENER_UNREGISTERED,
       METRIC_TYPE.BEHAVIORAL
     );
+  }
+
+  /**
+   * Bridges the underlying Mobius socket connect/disconnect lifecycle to the caller.
+   * The socket emits `online` on every successful (re)connect and `offline.*` on close,
+   * where the suffix distinguishes the disconnect reason.
+   *
+   * @param listener - Callbacks invoked on connect and disconnect transitions.
+   */
+  public registerMobiusSocketConnectionListener(listener: MobiusSocketConnectionListener): void {
+    const logContext = {
+      file: REQUEST_FILE,
+      method: METHODS.REGISTER_MOBIUS_SOCKET_CONNECTION_LISTENER,
+    };
+
+    log.info('Attaching Mobius socket connection listener', logContext);
+
+    this.mobiusSocket.on('online', () => {
+      log.log('Mobius socket connected', logContext);
+      listener.onConnected();
+    });
+
+    this.mobiusSocket.on('offline.permanent', () => {
+      log.log('Mobius socket disconnected (permanent)', logContext);
+      listener.onDisconnected(MOBIUS_SOCKET_DISCONNECT_REASON.PERMANENT);
+    });
+
+    this.mobiusSocket.on('offline.transient', () => {
+      log.log('Mobius socket disconnected (transient)', logContext);
+      listener.onDisconnected(MOBIUS_SOCKET_DISCONNECT_REASON.TRANSIENT);
+    });
+
+    this.mobiusSocket.on('offline.replaced', () => {
+      log.log('Mobius socket disconnected (replaced)', logContext);
+      listener.onDisconnected(MOBIUS_SOCKET_DISCONNECT_REASON.REPLACED);
+    });
+
+    log.log('Mobius socket connection listener attached', logContext);
+  }
+
+  /**
+   * Whether the underlying Mobius WebSocket is currently connected.
+   *
+   * Useful for consumers that subscribe to connection events after the socket may
+   * already be up (the socket only emits `online` on a fresh (re)connect), so they
+   * can reconcile the initial connected state instead of waiting for the next event.
+   */
+  public isSocketConnected(): boolean {
+    return this.mobiusSocket.isConnected();
+  }
+
+  public unregisterMobiusSocketConnectionListener(): void {
+    const logContext = {
+      file: REQUEST_FILE,
+      method: METHODS.UNREGISTER_MOBIUS_SOCKET_CONNECTION_LISTENER,
+    };
+
+    log.info('Detaching Mobius socket connection listener', logContext);
+    this.mobiusSocket.off('online');
+    this.mobiusSocket.off('offline.permanent');
+    this.mobiusSocket.off('offline.transient');
+    this.mobiusSocket.off('offline.replaced');
+    log.log('Mobius socket connection listener detached', logContext);
   }
 }
 

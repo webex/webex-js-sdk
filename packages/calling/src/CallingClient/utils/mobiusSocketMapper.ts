@@ -95,7 +95,7 @@ export function deriveMobiusSocketMessageType(
   // --- Device-level operations ---
 
   // Device keepalive: .../devices/{deviceId}/status  (no /calls/ in path)
-  if (uri.includes('/devices/') && uri.endsWith('/status')) {
+  if (!uri.includes('/calls/') && uri.endsWith('/status')) {
     return MOBIUS_SOCKET_MESSAGE_TYPE.DEVICE_STATUS;
   }
 

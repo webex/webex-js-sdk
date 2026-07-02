@@ -1,6 +1,8 @@
 // @ts-ignore
 import {hydraTypes} from '@webex/common';
 
+export {LLM_DEFAULT_SESSION, LLM_PRACTICE_SESSION} from '@webex/internal-plugin-llm';
+
 export type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 // *********** LOWERCASE / CAMELCASE STRINGS ************
@@ -44,7 +46,6 @@ export const LOCAL = 'local';
 export const LOCI = 'loci';
 export const LOCUS_URL = 'locusUrl';
 export const END = 'end';
-export const LLM_PRACTICE_SESSION = 'llm-practice-session';
 
 export const MAX_RANDOM_DELAY_FOR_MEETING_INFO = 3 * 60 * 1000;
 export const MEETINGINFO = 'meetingInfo';
@@ -701,6 +702,12 @@ export const INTERPRETATION = {
     DECLINED: 'DECLINED',
   },
   RESOURCE_TYPE: 'SiHandover',
+  CAPABILITIES: {
+    HOST_CONTROL_SI_SUPPORTED: 'HOST_CONTROL_SI_SUPPORTED',
+    INTERPRETER_CONTROL_SI_SUPPORTED: 'INTERPRETER_CONTROL_SI_SUPPORTED',
+    SI_HANDOVER_SUPPORTED: 'SI_HANDOVER_SUPPORTED',
+    SIGN_INTERPRETER_SUPPORTED: 'SIGN_INTERPRETER_SUPPORTED',
+  },
 };
 
 export const LOCUSINFO = {
@@ -1032,6 +1039,8 @@ export const DISPLAY_HINTS = {
   // participants list
   DISABLE_VIEW_THE_PARTICIPANT_LIST: 'DISABLE_VIEW_THE_PARTICIPANT_LIST',
   ENABLE_VIEW_THE_PARTICIPANT_LIST: 'ENABLE_VIEW_THE_PARTICIPANT_LIST',
+  VIEW_THE_PARTICIPANT_LIST: 'VIEW_THE_PARTICIPANT_LIST',
+  CAN_VIEW_THE_PARTICIPANT_LIST: 'CAN_VIEW_THE_PARTICIPANT_LIST',
   // for webinar participants list
   DISABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST: 'DISABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST',
   ENABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST: 'ENABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST',
@@ -1106,6 +1115,7 @@ export const SELF_ROLES = {
   MODERATOR: 'MODERATOR',
   ATTENDEE: 'ATTENDEE',
   PANELIST: 'PANELIST',
+  PRESENTER: 'PRESENTER',
 };
 
 export const MEETING_STATE = {

@@ -196,6 +196,19 @@ const CredentialsConfig = AmpState.extend({
     },
 
     /**
+     * URL used to initiate the IdBroker third-party (social provider)
+     * sign-in flow.
+     * @type {string}
+     */
+    thirdPartyLoginUrl: {
+      deps: ['idbroker.url'],
+      fn() {
+        return `${this.idbroker.url}/idb/ThirdPartyLogin`;
+      },
+      cache: false,
+    },
+
+    /**
      * Set password URL
      * @type {string}
      */

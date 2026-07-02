@@ -641,6 +641,10 @@ describe('TaskManager', () => {
       TASK_EVENTS.TASK_ASSIGNED,
       taskManager.getTask(taskId)
     );
+    expect(taskIncomingSpy).toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
+      taskManager.getTask(taskId)
+    );
   });
 
   it('should handle WebSocket message for AGENT_CONTACT_RESERVED and emit task:incoming for extension case', () => {

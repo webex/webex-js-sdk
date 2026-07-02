@@ -177,6 +177,49 @@ describe('plugin-metrics', () => {
               assert.lengthOf(webex.internal.metrics.batcher.queue, 0);
             });
         });
+
+        it('rejects the deferred without reenqueuing when batcherRetryOnNetworkError is false', () => {
+          webex.config.metrics = {...config.metrics, batcherRetryOnNetworkError: false};
+
+          webex.request = function () {
+            // noop
+          };
+
+          sinon.stub(webex, 'request').callsFake((options) => {
+            options.headers = {
+              trackingid: 'test-no-retry',
+            };
+
+            return Promise.reject(
+              new WebexHttpError.NetworkOrCORSError({
+                statusCode: 0,
+                options,
+              })
+            );
+          });
+
+          const promise = webex.internal.metrics.batcher.request({
+            key: 'testMetric',
+          });
+
+          return promiseTick(50)
+            .then(() => assert.lengthOf(webex.internal.metrics.batcher.queue, 1))
+            .then(() => clock.tick(config.metrics.batcherWait))
+            .then(() => assert.calledOnce(webex.request))
+            .then(() => promiseTick(50))
+            .then(() =>
+              promise.then(
+                () => {
+                  assert.fail('promise should have been rejected');
+                },
+                (reason) => {
+                  assert.instanceOf(reason, WebexHttpError.NetworkOrCORSError);
+                  assert.lengthOf(webex.internal.metrics.batcher.queue, 0);
+                  assert.calledOnce(webex.request);
+                }
+              )
+            );
+        });
       });
     });
   });

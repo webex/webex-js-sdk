@@ -967,6 +967,55 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('canViewTheParticipantList', () => {
+      it('returns true when both VIEW_THE_PARTICIPANT_LIST and CAN_VIEW_THE_PARTICIPANT_LIST hints are present and canNotViewTheParticipantList is false', () => {
+        assert.isTrue(
+          MeetingUtil.canViewTheParticipantList(
+            ['VIEW_THE_PARTICIPANT_LIST', 'CAN_VIEW_THE_PARTICIPANT_LIST'],
+            false
+          )
+        );
+      });
+
+      it('returns false when VIEW_THE_PARTICIPANT_LIST hint is missing', () => {
+        assert.isFalse(
+          MeetingUtil.canViewTheParticipantList(['CAN_VIEW_THE_PARTICIPANT_LIST'], false)
+        );
+      });
+
+      it('returns false when CAN_VIEW_THE_PARTICIPANT_LIST hint is missing', () => {
+        assert.isFalse(
+          MeetingUtil.canViewTheParticipantList(['VIEW_THE_PARTICIPANT_LIST'], false)
+        );
+      });
+
+      it('returns false when canNotViewTheParticipantList is true', () => {
+        assert.isFalse(
+          MeetingUtil.canViewTheParticipantList(
+            ['VIEW_THE_PARTICIPANT_LIST', 'CAN_VIEW_THE_PARTICIPANT_LIST'],
+            true
+          )
+        );
+      });
+
+      it('returns false when display hints array is empty', () => {
+        assert.isFalse(MeetingUtil.canViewTheParticipantList([], false));
+      });
+
+      it('returns false when both conditions are violated', () => {
+        assert.isFalse(MeetingUtil.canViewTheParticipantList([], true));
+      });
+
+      it('returns true when canNotViewTheParticipantList is undefined (not yet set on meeting)', () => {
+        assert.isTrue(
+          MeetingUtil.canViewTheParticipantList(
+            ['VIEW_THE_PARTICIPANT_LIST', 'CAN_VIEW_THE_PARTICIPANT_LIST'],
+            undefined
+          )
+        );
+      });
+    });
+
     describe('canAttendeeRequestAiAssistantEnabled', () => {
       it('returns false when user is a cohost', () => {
         assert.deepEqual(

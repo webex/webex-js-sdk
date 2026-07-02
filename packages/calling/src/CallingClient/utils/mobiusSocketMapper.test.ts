@@ -158,6 +158,14 @@ describe('mobiusSocketMapper', () => {
         expect(warnSpy).not.toHaveBeenCalled();
       });
 
+      it('should return DEVICE_STATUS for /status URI without /devices/ segment in path', () => {
+        const uri = '/api/v1/calling/web/status';
+        const result = deriveMobiusSocketMessageType(uri, HTTP_METHODS.POST);
+
+        expect(result).toBe(MOBIUS_SOCKET_MESSAGE_TYPE.DEVICE_STATUS);
+        expect(warnSpy).not.toHaveBeenCalled();
+      });
+
       it('should return DEVICE_LIST for devices list URI without trailing ID', () => {
         const uri = '/api/v1/calling/web/devices';
         const result = deriveMobiusSocketMessageType(uri, HTTP_METHODS.GET);
@@ -216,11 +224,15 @@ describe('mobiusSocketMapper', () => {
         );
       });
 
-      it('should handle URI with /calls/ in path correctly for DEVICE_STATUS (not call-related)', () => {
-        const uri = '/api/v1/calling/web/devices/device-123/status';
+      it('should never return DEVICE_STATUS when /calls/ is present in path ending with /status', () => {
+        // The DEVICE_STATUS check explicitly excludes URIs containing /calls/. Any
+        // call-scoped /status URI must resolve to CALL_STATUS via the earlier branch,
+        // and must never fall through to DEVICE_STATUS even if check ordering changes.
+        const uri = '/api/v1/calling/web/devices/device-123/calls/call-456/status';
         const result = deriveMobiusSocketMessageType(uri, HTTP_METHODS.PATCH);
 
-        expect(result).toBe(MOBIUS_SOCKET_MESSAGE_TYPE.DEVICE_STATUS);
+        expect(result).toBe(MOBIUS_SOCKET_MESSAGE_TYPE.CALL_STATUS);
+        expect(result).not.toBe(MOBIUS_SOCKET_MESSAGE_TYPE.DEVICE_STATUS);
         expect(warnSpy).not.toHaveBeenCalled();
       });
 

@@ -12,7 +12,7 @@ import {BadRequest, NotAuthorized, Forbidden, UnknownResponse, ConnectionError} 
 import mobiusConfig from './config';
 import Socket from './socket';
 import {skipInBrowser} from './test/mocha-helpers';
-import {MESSAGE_TYPES} from './socket/constants';
+import {MESSAGE_TYPES, MOBIUS_SOCKET_4001_EVENT} from './socket/constants';
 
 import promiseTick from './test/promise-tick';
 
@@ -172,6 +172,14 @@ describe('plugin-mobius-socket', () => {
       });
 
       mobiusSocket = new MobiusSocket(webex, {...mobiusConfig.mobiusSocket});
+
+      (mobiusSocket as any).logger = {
+        debug: jest.fn(),
+        error: jest.fn(),
+        info: jest.fn(),
+        log: jest.fn(),
+        warn: jest.fn(),
+      };
     });
 
     afterEach(async () => {
@@ -1298,7 +1306,7 @@ describe('plugin-mobius-socket', () => {
           mobiusSocket.reconnect.restore();
         });
 
-        it('should handle active socket close with 4001 - permanent failure', () => {
+        it('should handle active socket close with 4001 - emits registration.down, offline.permanent, and tears down state', () => {
           const closeEvent = {
             code: 4001,
             reason: 'replaced during shutdown',
@@ -1306,12 +1314,16 @@ describe('plugin-mobius-socket', () => {
 
           mobiusSocket.onclose(closeEvent, mockSocket);
 
+          assert.calledWith(mobiusSocket.emitEvent, 'offline', closeEvent);
+          assert.calledWith(mobiusSocket.emitEvent, 'event:async_event', MOBIUS_SOCKET_4001_EVENT);
+          // 4001 will not reconnect, so connection-lifecycle listeners must be notified
+          // via the suffixed offline.permanent event in addition to registration.down.
           assert.calledWith(mobiusSocket.emitEvent, 'offline.permanent', closeEvent);
           assert.notCalled(mobiusSocket.reconnect);
           assert.isFalse(mobiusSocket.connected);
         });
 
-        it('should handle non-active socket close with 4001 - no reconnect needed', () => {
+        it('should handle non-active socket close with 4001 - emits registration.down without tearing down state', () => {
           const closeEvent = {
             code: 4001,
             reason: 'replaced during shutdown',
@@ -1319,27 +1331,34 @@ describe('plugin-mobius-socket', () => {
 
           mobiusSocket.onclose(closeEvent, anotherSocket);
 
-          assert.calledWith(mobiusSocket.emitEvent, 'offline.replaced', closeEvent);
+          assert.calledWith(mobiusSocket.emitEvent, 'event:async_event', MOBIUS_SOCKET_4001_EVENT);
+          assert.neverCalledWith(mobiusSocket.emitEvent, 'offline.replaced', closeEvent);
+          assert.neverCalledWith(mobiusSocket.emitEvent, 'offline', closeEvent);
+          // Non-active socket close must not surface a disconnect to lifecycle listeners.
+          assert.neverCalledWith(mobiusSocket.emitEvent, 'offline.permanent', closeEvent);
           assert.notCalled(mobiusSocket.reconnect);
           assert.isTrue(mobiusSocket.connected);
           assert.strictEqual(mobiusSocket.socket, mockSocket);
         });
 
-        it('should distinguish between active and non-active socket closes', () => {
+        it('should emit registration.down for both active and non-active socket closes with 4001', () => {
           const closeEvent = {
             code: 4001,
             reason: 'replaced during shutdown',
           };
 
-          // Test non-active socket
+          // Non-active socket: only registration.down is emitted (no 'offline' / 'offline.permanent')
           mobiusSocket.onclose(closeEvent, anotherSocket);
-          assert.calledWith(mobiusSocket.emitEvent, 'offline.replaced', closeEvent);
+          assert.calledWith(mobiusSocket.emitEvent, 'event:async_event', MOBIUS_SOCKET_4001_EVENT);
+          assert.neverCalledWith(mobiusSocket.emitEvent, 'offline', closeEvent);
+          assert.neverCalledWith(mobiusSocket.emitEvent, 'offline.permanent', closeEvent);
 
-          // Reset the spy call history
           mobiusSocket.emitEvent.resetHistory();
 
-          // Test active socket
+          // Active socket: 'offline' and 'offline.permanent' are emitted alongside registration.down
           mobiusSocket.onclose(closeEvent, mockSocket);
+          assert.calledWith(mobiusSocket.emitEvent, 'offline', closeEvent);
+          assert.calledWith(mobiusSocket.emitEvent, 'event:async_event', MOBIUS_SOCKET_4001_EVENT);
           assert.calledWith(mobiusSocket.emitEvent, 'offline.permanent', closeEvent);
         });
 
@@ -1351,7 +1370,9 @@ describe('plugin-mobius-socket', () => {
 
           mobiusSocket.onclose(closeEvent, undefined);
 
-          assert.calledWith(mobiusSocket.emitEvent, 'offline.replaced', closeEvent);
+          assert.calledWith(mobiusSocket.emitEvent, 'event:async_event', MOBIUS_SOCKET_4001_EVENT);
+          assert.neverCalledWith(mobiusSocket.emitEvent, 'offline.replaced', closeEvent);
+          assert.neverCalledWith(mobiusSocket.emitEvent, 'offline.permanent', closeEvent);
           assert.notCalled(mobiusSocket.reconnect);
         });
 
@@ -1375,6 +1396,61 @@ describe('plugin-mobius-socket', () => {
           mobiusSocket.onclose(closeEvent, mockSocket);
 
           assert.calledOnce(mockSocket.removeAllListeners);
+        });
+      });
+
+      describe('#_onclose() with code 4429 (too many requests)', () => {
+        let mockSocket;
+        let anotherSocket;
+
+        beforeEach(() => {
+          mockSocket = {
+            url: 'ws://active-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          anotherSocket = {
+            url: 'ws://old-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          mobiusSocket.socket = mockSocket;
+          mobiusSocket.connected = true;
+          sinon.stub(mobiusSocket, 'emitEvent');
+          sinon.stub(mobiusSocket, 'reconnect');
+        });
+
+        afterEach(() => {
+          mobiusSocket.emitEvent.restore();
+          mobiusSocket.reconnect.restore();
+        });
+
+        it('should emit offline.permanent and tear down state on active socket close, without reconnecting', () => {
+          const closeEvent = {
+            code: 4429,
+            reason: 'too many requests',
+          };
+
+          mobiusSocket.onclose(closeEvent, mockSocket);
+
+          assert.calledWith(mobiusSocket.emitEvent, 'offline', closeEvent);
+          // 4429 tears down without auto-reconnect, so lifecycle listeners must be notified.
+          assert.calledWith(mobiusSocket.emitEvent, 'offline.permanent', closeEvent);
+          assert.notCalled(mobiusSocket.reconnect);
+          assert.isFalse(mobiusSocket.connected);
+        });
+
+        it('should not emit offline.permanent for a non-active socket close', () => {
+          const closeEvent = {
+            code: 4429,
+            reason: 'too many requests',
+          };
+
+          mobiusSocket.onclose(closeEvent, anotherSocket);
+
+          assert.neverCalledWith(mobiusSocket.emitEvent, 'offline', closeEvent);
+          assert.neverCalledWith(mobiusSocket.emitEvent, 'offline.permanent', closeEvent);
+          assert.notCalled(mobiusSocket.reconnect);
+          assert.isTrue(mobiusSocket.connected);
+          assert.strictEqual(mobiusSocket.socket, mockSocket);
         });
       });
 

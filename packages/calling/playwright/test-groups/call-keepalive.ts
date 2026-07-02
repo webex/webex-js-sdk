@@ -1,7 +1,8 @@
 import {test, expect} from '@playwright/test';
 import {TestManager} from '../test-manager';
-import {getPhoneNumber} from '../test-data';
+import {getPhoneNumber, isMobiusWsMode} from '../test-data';
 import {endCall, waitForCallDisconnect, establishCall, cleanupActiveCalls} from '../utils/call';
+import {MOBIUS_WS_MESSAGE, MobiusWsInterceptor} from '../utils/mobius-ws';
 
 /**
  * Helper: get the active call object and clear the SDK's 10-minute keepalive timer,
@@ -56,47 +57,47 @@ export function callKeepaliveTests() {
   test.describe('Call Keepalive', () => {
     test.describe.configure({mode: 'serial', timeout: 180000});
 
-    let tm: TestManager;
+    let testManager: TestManager;
     let calleeNumber: string;
 
     test.beforeAll(async ({browser}, testInfo) => {
-      tm = new TestManager(testInfo.project.name);
+      testManager = new TestManager(testInfo.project.name);
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      calleeNumber = getPhoneNumber(tm.userSet.accounts[1]);
+      calleeNumber = getPhoneNumber(testManager.userSet.accounts[1], testManager.isInt);
     });
 
     test.afterEach(async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       // Unroute any intercepted requests from this test
       await callerPage.unrouteAll({behavior: 'ignoreErrors'}).catch(() => {});
       await Promise.all([cleanupActiveCalls(callerPage), cleanupActiveCalls(calleePage)]);
-      if (!tm.page.isClosed()) {
-        await tm.page.waitForTimeout(3000);
+      if (!testManager.page.isClosed()) {
+        await testManager.page.waitForTimeout(3000);
       }
     });
 
     test.afterAll(async () => {
-      await tm.cleanup();
+      await testManager.cleanup();
     });
 
-    test('CALL-024: Keepalive success - postStatus 200 keeps call alive', async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+    test('CALL-009: Keepalive success - postStatus 200 keeps call alive', async () => {
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
       await disableAutoKeepalive(callerPage);
@@ -117,23 +118,43 @@ export function callKeepaliveTests() {
       await Promise.all([waitForCallDisconnect(callerPage), waitForCallDisconnect(calleePage)]);
     });
 
-    test('CALL-025: Keepalive 401 - expired token tears down call', async ({browser}) => {
+    test('CALL-010: Keepalive 401 - expired token tears down call', async ({browser}) => {
+      const mobiusWsMode = isMobiusWsMode();
+      let failStatus = false;
+      let interceptor: MobiusWsInterceptor | undefined;
+      if (mobiusWsMode) {
+        interceptor = new MobiusWsInterceptor({
+          onRequest: (frame) => {
+            if (failStatus && frame.type === MOBIUS_WS_MESSAGE.CALL_STATUS) {
+              return {
+                statusCode: 401,
+                statusMessage: 'Unauthorized',
+                data: {message: 'Token expired'},
+              };
+            }
+
+            return undefined;
+          },
+        });
+      }
+
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
+          beforeInit: interceptor ? (ctx) => interceptor!.install(ctx) : undefined,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
       await disableAutoKeepalive(callerPage);
@@ -149,13 +170,17 @@ export function callKeepaliveTests() {
       });
 
       // Intercept the status POST and return 401
-      await callerPage.route('**/calls/**/status', (route) => {
-        route.fulfill({
-          status: 401,
-          contentType: 'application/json',
-          body: JSON.stringify({message: 'Token expired'}),
+      if (mobiusWsMode) {
+        failStatus = true;
+      } else {
+        await callerPage.route('**/calls/**/status', (route) => {
+          route.fulfill({
+            status: 401,
+            contentType: 'application/json',
+            body: JSON.stringify({message: 'Token expired'}),
+          });
         });
-      });
+      }
 
       // Trigger the keepalive error path via the SDK's internal handler.
       // We call handleCallKeepaliveError indirectly by invoking postStatus
@@ -184,46 +209,74 @@ export function callKeepaliveTests() {
       await callerPage.unrouteAll({behavior: 'ignoreErrors'});
     });
 
-    test('CALL-026: Keepalive 500 with retry - transient failure then recovery', async ({
+    test('CALL-011: Keepalive 500 with retry - transient failure then recovery', async ({
       browser,
     }) => {
+      const mobiusWsMode = isMobiusWsMode();
+      let statusRequestCount = 0;
+      let interceptStatus = false;
+      let interceptor: MobiusWsInterceptor | undefined;
+      if (mobiusWsMode) {
+        interceptor = new MobiusWsInterceptor({
+          onRequest: (frame) => {
+            if (interceptStatus && frame.type === MOBIUS_WS_MESSAGE.CALL_STATUS) {
+              statusRequestCount += 1;
+
+              if (statusRequestCount === 1) {
+                return {
+                  statusCode: 500,
+                  statusMessage: 'Internal Server Error',
+                  metadata: {'retry-after': '2'},
+                  data: {error: 'Internal Server Error'},
+                };
+              }
+            }
+
+            return undefined;
+          },
+        });
+      }
+
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
+          beforeInit: interceptor ? (ctx) => interceptor!.install(ctx) : undefined,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
       await disableAutoKeepalive(callerPage);
 
-      // Track status request count
-      let statusRequestCount = 0;
-      await callerPage.route('**/calls/**/status', (route) => {
-        statusRequestCount += 1;
-        if (statusRequestCount === 1) {
-          // First request: 500 with retry-after
-          route.fulfill({
-            status: 500,
-            headers: {'retry-after': '2'},
-            contentType: 'application/json',
-            body: JSON.stringify({error: 'Internal Server Error'}),
-          });
-        } else {
-          // Subsequent requests: let through to real backend
-          route.continue();
-        }
-      });
+      if (mobiusWsMode) {
+        interceptStatus = true;
+      } else {
+        await callerPage.route('**/calls/**/status', (route) => {
+          statusRequestCount += 1;
+          if (statusRequestCount === 1) {
+            // First request: 500 with retry-after
+            route.fulfill({
+              status: 500,
+              headers: {'retry-after': '2'},
+              contentType: 'application/json',
+              body: JSON.stringify({error: 'Internal Server Error'}),
+            });
+          } else {
+            // Subsequent requests: let through to real backend
+            route.continue();
+          }
+        });
+      }
 
       // Trigger the keepalive error flow
       await callerPage.evaluate(() => {
@@ -259,38 +312,65 @@ export function callKeepaliveTests() {
       await Promise.all([waitForCallDisconnect(callerPage), waitForCallDisconnect(calleePage)]);
     });
 
-    test('CALL-027: Keepalive max retries exhausted - all status POSTs fail', async ({browser}) => {
+    test('CALL-012: Keepalive max retries exhausted - all status POSTs fail', async ({browser}) => {
+      const mobiusWsMode = isMobiusWsMode();
+      let statusRequestCount = 0;
+      let failStatus = false;
+      let interceptor: MobiusWsInterceptor | undefined;
+      if (mobiusWsMode) {
+        interceptor = new MobiusWsInterceptor({
+          onRequest: (frame) => {
+            if (failStatus && frame.type === MOBIUS_WS_MESSAGE.CALL_STATUS) {
+              statusRequestCount += 1;
+
+              return {
+                statusCode: 500,
+                statusMessage: 'Internal Server Error',
+                metadata: {'retry-after': '1'},
+                data: {error: 'Internal Server Error'},
+              };
+            }
+
+            return undefined;
+          },
+        });
+      }
+
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
+          beforeInit: interceptor ? (ctx) => interceptor!.install(ctx) : undefined,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
       await disableAutoKeepalive(callerPage);
 
-      // Track how many status requests are made
-      let statusRequestCount = 0;
-      await callerPage.route('**/calls/**/status', (route) => {
-        statusRequestCount += 1;
-        route.fulfill({
-          status: 500,
-          headers: {'retry-after': '1'},
-          contentType: 'application/json',
-          body: JSON.stringify({error: 'Internal Server Error'}),
+      if (mobiusWsMode) {
+        failStatus = true;
+      } else {
+        // Track how many status requests are made
+        await callerPage.route('**/calls/**/status', (route) => {
+          statusRequestCount += 1;
+          route.fulfill({
+            status: 500,
+            headers: {'retry-after': '1'},
+            contentType: 'application/json',
+            body: JSON.stringify({error: 'Internal Server Error'}),
+          });
         });
-      });
+      }
 
       // Listen for call_error events
       await callerPage.evaluate(() => {
