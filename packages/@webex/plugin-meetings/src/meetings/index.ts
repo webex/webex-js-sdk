@@ -34,7 +34,6 @@ import {
   _JOIN_,
   _INCOMING_,
   LOCUS,
-  BREAKOUTS,
   _LEFT_,
   _ID_,
   MEETING_REMOVED_REASON,
@@ -74,7 +73,7 @@ import {HashTreeObject} from '../hashTree/types';
 import {isSelf} from '../hashTree/utils';
 
 import {createLocusFromHashTreeMessage, findMeetingForHashTreeMessage} from '../locus-info';
-import {EndMeetingReason, LocusDTO} from '../locus-info/types';
+import {LocusDTO} from '../locus-info/types';
 
 let mediaLogger;
 

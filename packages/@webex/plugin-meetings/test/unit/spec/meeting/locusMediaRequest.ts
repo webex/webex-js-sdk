@@ -13,11 +13,14 @@ import {
 import testUtils from '../../../utils/testUtils';
 import {Defer} from '@webex/common';
 import {IP_VERSION} from '../../../../src/constants';
+import Metrics from '../../../../src/metrics';
+import BEHAVIORAL_METRICS from '../../../../src/metrics/constants';
 
 describe('LocusMediaRequest.send()', () => {
   let locusMediaRequest: LocusMediaRequest;
   let webexRequestStub;
   let mockWebex;
+  let sendBehavioralMetricStub;
 
   const fakeLocusResponse = {
     locus: {something: 'whatever'},
@@ -50,8 +53,16 @@ describe('LocusMediaRequest.send()', () => {
       },
       ipver: IP_VERSION.only_ipv4,
       reachability: {
-        version: '1',
-        result: 'some fake reachability result',
+        version: 1,
+        result: {
+          usedDiscoveryOptions: {
+            'early-call-min-clusters': 3,
+          },
+          metrics: {
+            'total-duration-ms': 10,
+          },
+          tests: {},
+        },
       },
     },
   };
@@ -132,6 +143,7 @@ describe('LocusMediaRequest.send()', () => {
         submitClientEvent: sinon.stub(),
       },
     };
+    sendBehavioralMetricStub = sinon.stub(Metrics, 'sendBehavioralMetric');
 
     locusMediaRequest = new LocusMediaRequest(
       {
@@ -143,12 +155,17 @@ describe('LocusMediaRequest.send()', () => {
         correlationId: 'correlationId',
         meetingId: 'meetingId',
         preferTranscoding: true,
+        getCurrentSelfUrl: () => undefined,
       },
       {
         parent: mockWebex,
       }
     );
     webexRequestStub = sinon.stub(locusMediaRequest, 'request').resolves(fakeLocusResponse);
+  });
+
+  afterEach(() => {
+    sendBehavioralMetricStub.restore();
   });
 
   const sendLocalMute = (muteOptions, overrides = {}) =>
@@ -167,6 +184,7 @@ describe('LocusMediaRequest.send()', () => {
 
     webexRequestStub.resetHistory();
     mockWebex.internal.newMetrics.submitClientEvent.resetHistory();
+    sendBehavioralMetricStub.resetHistory();
   };
 
   it('sends a roap message', async () => {
@@ -181,6 +199,214 @@ describe('LocusMediaRequest.send()', () => {
       upload: sinon.match.instanceOf(EventEmitter),
       download: sinon.match.instanceOf(EventEmitter),
     });
+  });
+
+  it('uses the latest resolved selfUrl when a queued roap message is sent', async () => {
+    let currentSelfUrl = 'oldSelfUrl';
+    locusMediaRequest = new LocusMediaRequest(
+      {
+        device: {
+          url: 'deviceUrl',
+          deviceType: 'deviceType',
+          regionCode: 'regionCode',
+        },
+        correlationId: 'correlationId',
+        meetingId: 'meetingId',
+        preferTranscoding: true,
+        getCurrentSelfUrl: () => currentSelfUrl,
+      },
+      {
+        parent: mockWebex,
+      }
+    );
+    webexRequestStub = sinon.stub(locusMediaRequest, 'request').resolves(fakeLocusResponse);
+
+    const request = cloneDeep(exampleRoapRequestBody);
+
+    request.selfUrl = 'oldSelfUrl';
+    currentSelfUrl = 'newSelfUrl';
+
+    const result = await locusMediaRequest.send(request);
+
+    assert.equal(result, fakeLocusResponse);
+    assert.calledOnce(webexRequestStub);
+    assert.equal(webexRequestStub.getCall(0).args[0].uri, 'newSelfUrl/media');
+    assert.calledOnceWithExactly(sendBehavioralMetricStub, BEHAVIORAL_METRICS.ADD_MEDIA_RETRY, {
+      correlation_id: 'correlationId',
+      reason: 'selfUrlUpdatedBeforeMediaRequest',
+    });
+  });
+
+  it('retries a roap message with the latest resolved selfUrl after a conflict', async () => {
+    let currentSelfUrl = 'oldSelfUrl';
+    const conflictError = {statusCode: 409, message: 'conflict'};
+
+    locusMediaRequest = new LocusMediaRequest(
+      {
+        device: {
+          url: 'deviceUrl',
+          deviceType: 'deviceType',
+          regionCode: 'regionCode',
+        },
+        correlationId: 'correlationId',
+        meetingId: 'meetingId',
+        preferTranscoding: true,
+        getCurrentSelfUrl: () => currentSelfUrl,
+      },
+      {
+        parent: mockWebex,
+      }
+    );
+    webexRequestStub = sinon.stub(locusMediaRequest, 'request');
+    webexRequestStub.onFirstCall().callsFake(() => {
+      currentSelfUrl = 'newSelfUrl';
+
+      return Promise.reject(conflictError);
+    });
+    webexRequestStub.onSecondCall().resolves(fakeLocusResponse);
+
+    const request = cloneDeep(exampleRoapRequestBody);
+
+    request.selfUrl = 'oldSelfUrl';
+    request.roapMessage.messageType = 'ANSWER';
+
+    const result = await locusMediaRequest.send(request);
+
+    assert.equal(result, fakeLocusResponse);
+    assert.calledTwice(webexRequestStub);
+    assert.equal(webexRequestStub.getCall(0).args[0].uri, 'oldSelfUrl/media');
+    assert.equal(webexRequestStub.getCall(1).args[0].uri, 'newSelfUrl/media');
+    assert.calledWith(sendBehavioralMetricStub, BEHAVIORAL_METRICS.ADD_MEDIA_RETRY, {
+      correlation_id: 'correlationId',
+      reason: 'selfUrlUpdatedBeforeMediaRequest',
+    });
+    assert.calledWith(sendBehavioralMetricStub, BEHAVIORAL_METRICS.ADD_MEDIA_RETRY, {
+      correlation_id: 'correlationId',
+      reason: 'selfUrlChangedAfter409',
+      retryAttempt: 1,
+      roapMessageType: 'ANSWER',
+    });
+  });
+
+  it('does not retry a roap conflict when the resolved selfUrl has not changed', async () => {
+    locusMediaRequest = new LocusMediaRequest(
+      {
+        device: {
+          url: 'deviceUrl',
+          deviceType: 'deviceType',
+          regionCode: 'regionCode',
+        },
+        correlationId: 'correlationId',
+        meetingId: 'meetingId',
+        preferTranscoding: true,
+        getCurrentSelfUrl: () => 'sameSelfUrl',
+      },
+      {
+        parent: mockWebex,
+      }
+    );
+    webexRequestStub = sinon.stub(locusMediaRequest, 'request').rejects({
+      statusCode: 409,
+      message: 'conflict',
+    });
+
+    const request = cloneDeep(exampleRoapRequestBody);
+
+    request.selfUrl = 'sameSelfUrl';
+    request.roapMessage.messageType = 'ANSWER';
+
+    await assert.isRejected(locusMediaRequest.send(request));
+
+    assert.calledOnce(webexRequestStub);
+    assert.equal(webexRequestStub.getCall(0).args[0].uri, 'sameSelfUrl/media');
+  });
+
+  it('retries a local mute request with the latest resolved selfUrl after a conflict', async () => {
+    let currentSelfUrl = 'oldSelfUrl';
+    await ensureConfluenceCreated();
+
+    locusMediaRequest = new LocusMediaRequest(
+      {
+        device: {
+          url: 'deviceUrl',
+          deviceType: 'deviceType',
+          regionCode: 'regionCode',
+        },
+        correlationId: 'correlationId',
+        meetingId: 'meetingId',
+        preferTranscoding: true,
+        getCurrentSelfUrl: () => currentSelfUrl,
+      },
+      {
+        parent: mockWebex,
+      }
+    );
+    webexRequestStub = sinon.stub(locusMediaRequest, 'request');
+    webexRequestStub.onFirstCall().callsFake(() => {
+      currentSelfUrl = 'newSelfUrl';
+
+      return Promise.reject({statusCode: 409, message: 'conflict'});
+    });
+    webexRequestStub.onSecondCall().resolves(fakeLocusResponse);
+
+    const result = await locusMediaRequest.send({
+      ...exampleLocalMuteRequestBody,
+      selfUrl: 'oldSelfUrl',
+      muteOptions: {audioMuted: false, videoMuted: true},
+    });
+
+    assert.equal(result, fakeLocusResponse);
+    assert.calledTwice(webexRequestStub);
+    assert.equal(webexRequestStub.getCall(0).args[0].uri, 'oldSelfUrl/media');
+    assert.equal(webexRequestStub.getCall(1).args[0].uri, 'newSelfUrl/media');
+  });
+
+  it('stops retrying roap conflicts after the selfUrl retry limit', async () => {
+    let currentSelfUrl = 'oldSelfUrl';
+    locusMediaRequest = new LocusMediaRequest(
+      {
+        device: {
+          url: 'deviceUrl',
+          deviceType: 'deviceType',
+          regionCode: 'regionCode',
+        },
+        correlationId: 'correlationId',
+        meetingId: 'meetingId',
+        preferTranscoding: true,
+        getCurrentSelfUrl: () => currentSelfUrl,
+      },
+      {
+        parent: mockWebex,
+      }
+    );
+    webexRequestStub = sinon.stub(locusMediaRequest, 'request');
+    webexRequestStub.onFirstCall().callsFake(() => {
+      currentSelfUrl = 'secondSelfUrl';
+
+      return Promise.reject({statusCode: 409, message: 'conflict'});
+    });
+    webexRequestStub.onSecondCall().callsFake(() => {
+      currentSelfUrl = 'thirdSelfUrl';
+
+      return Promise.reject({statusCode: 409, message: 'conflict'});
+    });
+    webexRequestStub.onThirdCall().callsFake(() => {
+      currentSelfUrl = 'fourthSelfUrl';
+
+      return Promise.reject({statusCode: 409, message: 'conflict'});
+    });
+
+    const request = cloneDeep(exampleRoapRequestBody);
+
+    request.selfUrl = 'oldSelfUrl';
+    request.roapMessage.messageType = 'ANSWER';
+
+    await assert.isRejected(locusMediaRequest.send(request));
+
+    assert.calledThrice(webexRequestStub);
+    assert.equal(webexRequestStub.getCall(0).args[0].uri, 'oldSelfUrl/media');
+    assert.equal(webexRequestStub.getCall(1).args[0].uri, 'secondSelfUrl/media');
+    assert.equal(webexRequestStub.getCall(2).args[0].uri, 'thirdSelfUrl/media');
   });
 
   it('sends correct metric event when roap message fails', async () => {

@@ -6,6 +6,8 @@ import {WebexPlugin} from '@webex/webex-core';
 import {MEDIA, HTTP_VERBS, ROAP} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {ClientMediaPreferences} from '../reachability/reachability.types';
+import Metrics from '../metrics';
+import BEHAVIORAL_METRICS from '../metrics/constants';
 
 export type MediaRequestType = 'RoapMessage' | 'LocalMute';
 export type RequestResult = any;
@@ -91,9 +93,11 @@ export type Config = {
   correlationId: string;
   meetingId: string;
   preferTranscoding: boolean;
-  getCurrentSelfUrl?: () => string | undefined;
+  getCurrentSelfUrl: () => string | undefined;
   waitForSelfUrlChange?: () => Promise<void>;
 };
+
+const MAX_SELF_URL_RETRY_COUNT = 2;
 
 /**
  * Returns true if the request is triggering confluence creation in the server
@@ -278,18 +282,11 @@ export class LocusMediaRequest extends WebexPlugin {
         ) {
           const roapRequest = request.type === 'RoapMessage' ? request : undefined;
 
-          // @ts-ignore
-          this.webex.internal.newMetrics.submitClientEvent({
-            name: 'client.locus.media.retry',
-            options: {
-              meetingId: this.config.meetingId,
-              rawError: e,
-            },
-            payload: {
-              reason: 'selfUrlChangedAfter409',
-              retryAttempt: selfUrlRetryCount + 1,
-              roapMessageType: roapRequest?.roapMessage?.messageType,
-            },
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_RETRY, {
+            correlation_id: this.config.correlationId,
+            reason: 'selfUrlChangedAfter409',
+            retryAttempt: selfUrlRetryCount + 1,
+            roapMessageType: roapRequest?.roapMessage?.messageType,
           });
 
           // In-flight race: selfUrl rotated after we left the queue but
@@ -341,19 +338,16 @@ export class LocusMediaRequest extends WebexPlugin {
    * captured when the request was enqueued.
    */
   private getCurrentSelfUrl(request: Request): string {
-    const currentSelfUrl = this.config.getCurrentSelfUrl?.();
+    const currentSelfUrl = this.config.getCurrentSelfUrl();
 
-    if (request.type === 'RoapMessage' && currentSelfUrl && currentSelfUrl !== request.selfUrl) {
+    if (currentSelfUrl && currentSelfUrl !== request.selfUrl) {
       LoggerProxy.logger.info(
         `Meeting:LocusMediaRequest#getCurrentSelfUrl --> resolved updated selfUrl, using ${currentSelfUrl}`
       );
 
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.locus.selfUrlUpdated',
-        options: {
-          meetingId: this.config.meetingId,
-        },
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_RETRY, {
+        correlation_id: this.config.correlationId,
+        reason: 'selfUrlUpdatedBeforeMediaRequest',
       });
 
       return currentSelfUrl;
@@ -370,11 +364,7 @@ export class LocusMediaRequest extends WebexPlugin {
     request: Request,
     selfUrlRetryCount: number
   ): Promise<boolean> {
-    if (request.type !== 'RoapMessage') {
-      return false;
-    }
-
-    if (selfUrlRetryCount >= 2) {
+    if (selfUrlRetryCount >= MAX_SELF_URL_RETRY_COUNT) {
       return false;
     }
 
