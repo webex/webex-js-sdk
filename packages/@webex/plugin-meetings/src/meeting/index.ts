@@ -4065,9 +4065,15 @@ export default class Meeting extends StatelessWebexPlugin {
     // is not changed by any delta event
     if (object && Object.keys(object).length) {
       Object.keys(object).forEach((key) => {
+        const previousValue = this[key];
+
         this[key] = object[key];
 
-        if (this.promisesWaitingForPropUpdate[key]) {
+        const shouldResolveWaiter =
+          key !== 'selfUrl' ||
+          (this.promisesWaitingForPropUpdate[key] && previousValue !== object[key]);
+
+        if (this.promisesWaitingForPropUpdate[key] && shouldResolveWaiter) {
           this.promisesWaitingForPropUpdate[key].resolve();
           delete this.promisesWaitingForPropUpdate[key];
         }

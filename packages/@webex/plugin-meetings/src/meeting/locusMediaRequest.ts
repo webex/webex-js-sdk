@@ -94,7 +94,7 @@ export type Config = {
   meetingId: string;
   preferTranscoding: boolean;
   getCurrentSelfUrl: () => string | undefined;
-  waitForSelfUrlChange?: () => Promise<void>;
+  waitForSelfUrlChange: () => Promise<void>;
 };
 
 const MAX_SELF_URL_RETRY_COUNT = 2;
@@ -280,20 +280,11 @@ export class LocusMediaRequest extends WebexPlugin {
           e?.statusCode === 409 &&
           (await this.shouldRetryOnSelfUrlChange(request, selfUrlRetryCount))
         ) {
-          const roapRequest = request.type === 'RoapMessage' ? request : undefined;
-
-          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_RETRY, {
-            correlation_id: this.config.correlationId,
-            reason: 'selfUrlChangedAfter409',
-            retryAttempt: selfUrlRetryCount + 1,
-            roapMessageType: roapRequest?.roapMessage?.messageType,
-          });
-
           // In-flight race: selfUrl rotated after we left the queue but
           // before Locus rejected the request. Re-send; getCurrentSelfUrl
           // will pick up the new URL. The returned promise replaces the
           // rejection, so the caller's pendingPromise resolves correctly.
-          return this.sendHttpRequest(request, selfUrlRetryCount);
+          return this.sendHttpRequest(request, selfUrlRetryCount + 1);
         }
 
         if (
@@ -345,7 +336,7 @@ export class LocusMediaRequest extends WebexPlugin {
         `Meeting:LocusMediaRequest#getCurrentSelfUrl --> resolved updated selfUrl, using ${currentSelfUrl}`
       );
 
-      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_RETRY, {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LOCUS_MEDIA_REQUEST_RETRY, {
         correlation_id: this.config.correlationId,
         reason: 'selfUrlUpdatedBeforeMediaRequest',
       });
@@ -364,27 +355,42 @@ export class LocusMediaRequest extends WebexPlugin {
     request: Request,
     selfUrlRetryCount: number
   ): Promise<boolean> {
+    const roapRequest = request.type === 'RoapMessage' ? request : undefined;
+
     if (selfUrlRetryCount >= MAX_SELF_URL_RETRY_COUNT) {
       return false;
     }
 
     const currentSelfUrl = this.getCurrentSelfUrl(request);
+    let waitedForSelfUrlChange = false;
 
     if (!currentSelfUrl || currentSelfUrl === request.selfUrl) {
-      await this.config.waitForSelfUrlChange?.();
+      waitedForSelfUrlChange = true;
+      await this.config.waitForSelfUrlChange();
 
       const latestSelfUrl = this.getCurrentSelfUrl(request);
 
       if (!latestSelfUrl || latestSelfUrl === request.selfUrl) {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LOCUS_MEDIA_REQUEST_RETRY, {
+          correlation_id: this.config.correlationId,
+          reason: 'selfUrlNotChangedAfterWait',
+          retryAttempt: selfUrlRetryCount + 1,
+          roapMessageType: roapRequest?.roapMessage?.messageType,
+        });
         LoggerProxy.logger.info(
           'Meeting:LocusMediaRequest#sendHttpRequest --> 409 conflict, no new selfUrl even after waiting'
         );
 
         return false;
       }
-    }
 
-    selfUrlRetryCount += 1;
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LOCUS_MEDIA_REQUEST_RETRY, {
+        correlation_id: this.config.correlationId,
+        reason: 'selfUrlChangedAfterWait',
+        retryAttempt: selfUrlRetryCount + 1,
+        roapMessageType: roapRequest?.roapMessage?.messageType,
+      });
+    }
     LoggerProxy.logger.info(
       `Meeting:LocusMediaRequest#sendHttpRequest --> 409 conflict, retrying ${request.type} with updated selfUrl`
     );
