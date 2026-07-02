@@ -954,8 +954,9 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(
             meeting.addMediaInternal,
             sinon.match.any,
-            fakeTurnServerInfo,
             false,
+            fakeTurnServerInfo,
+            undefined,
             mediaOptions
           );
 
@@ -987,8 +988,9 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(
             meeting.addMediaInternal,
             sinon.match.any,
-            undefined,
             false,
+            undefined,
+            undefined,
             mediaOptions
           );
 
@@ -1022,8 +1024,9 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(
             meeting.addMediaInternal,
             sinon.match.any,
-            undefined,
             false,
+            undefined,
+            undefined,
             mediaOptions
           );
 
@@ -1577,8 +1580,9 @@ describe('plugin-meetings', () => {
           assert.calledWith(
             meeting.addMediaInternal.firstCall,
             sinon.match.any,
-            fakeTurnServerInfo,
             false,
+            fakeTurnServerInfo,
+            undefined,
             mediaOptions
           );
 
@@ -1586,8 +1590,9 @@ describe('plugin-meetings', () => {
           assert.calledWith(
             meeting.addMediaInternal.secondCall,
             sinon.match.any,
-            undefined,
             true,
+            undefined,
+            undefined,
             mediaOptions
           );
 
@@ -1605,7 +1610,7 @@ describe('plugin-meetings', () => {
 
           meeting.addMediaInternal = sinon
             .stub()
-            .callsFake((icePhaseCallback, _turnServerInfo, _forceTurnDiscovery) => {
+            .callsFake((icePhaseCallback, _forceTurnDiscovery, _turnServerInfo) => {
               const defer = new Defer();
 
               icePhaseCallbacks.push(icePhaseCallback);
@@ -1819,6 +1824,7 @@ describe('plugin-meetings', () => {
             sinon.match.any,
             sinon.match.any,
             sinon.match.any,
+            sinon.match.any,
             sinon.match.has('videoEnabled', false).and(sinon.match.has('allowMediaInLobby', true))
           );
         });
@@ -1836,6 +1842,7 @@ describe('plugin-meetings', () => {
 
           assert.calledWithMatch(
             meeting.addMediaInternal,
+            sinon.match.any,
             sinon.match.any,
             sinon.match.any,
             sinon.match.any,
@@ -1857,6 +1864,7 @@ describe('plugin-meetings', () => {
 
           assert.calledWith(
             meeting.addMediaInternal,
+            sinon.match.any,
             sinon.match.any,
             sinon.match.any,
             sinon.match.any,
