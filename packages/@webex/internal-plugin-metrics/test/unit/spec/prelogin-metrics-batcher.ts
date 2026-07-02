@@ -483,11 +483,11 @@ describe('internal-plugin-metrics', () => {
         assert.notCalled(webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut);
       });
 
-      it('resets telemetry opt out to undefined when payload is marked, status is not 200 and current telemetry opt out is manual', () => {
+      it('resets telemetry opt out to undefined when payload is marked, status is not 200 and current telemetry opt out is automatic', () => {
         webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut = sinon.stub();
         webex.internal.newMetrics.callDiagnosticMetrics.getTelemetryOptOut = sinon
           .stub()
-          .returns('manual');
+          .returns('automatic');
 
         webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.handleHttpResponseStatus(
           503,

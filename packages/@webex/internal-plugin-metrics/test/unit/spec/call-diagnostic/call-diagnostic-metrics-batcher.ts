@@ -593,8 +593,7 @@ describe('plugin-metrics', () => {
     });
 
     describe('#handleHttpResponseStatus', () => {
-      it('does not log or set telemetry opt out when payload items are not marked', () => {
-        webex.logger.log = sinon.stub();
+      it('does nothing when payload items are not marked', () => {
         webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut = sinon.stub();
 
         webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.handleHttpResponseStatus(
@@ -606,9 +605,56 @@ describe('plugin-metrics', () => {
         assert.notCalled(webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut);
       });
 
-      it('logs and sets telemetry opt out when payload is marked and status is 200', () => {
-        webex.logger.log = sinon.stub();
-        webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut = sinon.stub();
+      [undefined, 'manual', 'automatic'].forEach((currentTelemetryOptOut) => {
+        it('does nothing when payload is marked but status is not 200 and current telemetry opt out is not automatic', () => {
+          webex.internal.newMetrics.callDiagnosticMetrics.getTelemetryOptOut = sinon
+            .stub()
+            .returns(currentTelemetryOptOut);
+
+          webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.handleHttpResponseStatus(
+            503,
+            [
+              {
+                eventPayload: {event: 'my.event'},
+                type: ['diagnostic-event'],
+                markTelemetryOptOutOnResponse: true,
+              },
+            ]
+          );
+
+          assert.notCalled(webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut);
+        });
+      });
+
+      [undefined, 'automatic'].forEach((currentTelemetryOptOut) => {
+        it('sets current telemetry opt out to automatic when payload is marked, current telemetry opt out is not manual and status is 200', () => {
+          webex.internal.newMetrics.callDiagnosticMetrics.getTelemetryOptOut = sinon
+            .stub()
+            .returns(currentTelemetryOptOut);
+
+          webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.handleHttpResponseStatus(
+            200,
+            [
+              {
+                eventPayload: {event: 'my.event'},
+                type: ['diagnostic-event'],
+                markTelemetryOptOutOnResponse: true,
+              },
+            ]
+          );
+
+          assert.calledOnce(webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut);
+          assert.calledWithExactly(
+            webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut,
+            'automatic'
+          );
+        });
+      });
+
+      it('does nothing when payload is marked, current telemetry opt out is manual and status is 200', () => {
+        webex.internal.newMetrics.callDiagnosticMetrics.getTelemetryOptOut = sinon
+          .stub()
+          .returns('manual');
 
         webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.handleHttpResponseStatus(
           200,
@@ -621,16 +667,40 @@ describe('plugin-metrics', () => {
           ]
         );
 
+        assert.notCalled(webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut);
+      });
+
+      it('resets telemetry opt out to undefined when payload is marked, status is not 200 and current telemetry opt out is automatic', () => {
+        webex.logger.log = sinon.stub();
+        webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut = sinon.stub();
+        webex.internal.newMetrics.callDiagnosticMetrics.getTelemetryOptOut = sinon
+          .stub()
+          .returns('automatic');
+
+        webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.handleHttpResponseStatus(
+          503,
+          [
+            {
+              eventPayload: {event: 'my.event'},
+              type: ['diagnostic-event'],
+              markTelemetryOptOutOnResponse: true,
+            },
+          ]
+        );
+
         assert.calledOnce(webex.logger.log);
         assert.calledOnceWithExactly(
           webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut,
-          'automatic'
+          undefined
         );
       });
 
-      it('logs but does not set telemetry opt out when payload is marked and status is not 200', () => {
+      it('does not reset telemetry opt out to undefined when payload is marked, status is not 200 and current telemetry opt out is manual', () => {
         webex.logger.log = sinon.stub();
         webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut = sinon.stub();
+        webex.internal.newMetrics.callDiagnosticMetrics.getTelemetryOptOut = sinon
+          .stub()
+          .returns('manual');
 
         webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.handleHttpResponseStatus(
           503,
