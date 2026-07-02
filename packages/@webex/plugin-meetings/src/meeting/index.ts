@@ -8410,6 +8410,13 @@ export default class Meeting extends StatelessWebexPlugin {
         ({turnServerInfo} = await this.doTurnDiscovery(isReconnecting, isForced));
       }
 
+      if (!turnServerInfo && iceTransportPolicy === 'relay') {
+        LoggerProxy.logger.info(
+          `${LOG_HEADER} cannot do iceTransportPolicy=relay, because there is no turn server info available`
+        );
+        // drop the forced relay policy and use the default, because we don't have a TURN server
+        iceTransportPolicy = undefined;
+      }
       const mc = await this.createMediaConnection(turnServerInfo, bundlePolicy, iceTransportPolicy);
 
       LoggerProxy.logger.info(
@@ -8650,7 +8657,7 @@ export default class Meeting extends StatelessWebexPlugin {
         options
       )}, turnServerInfo=${JSON.stringify(
         turnServerInfo
-      )}, forceTurnDiscovery=${forceTurnDiscovery}`
+      )}, forceTurnDiscovery=${forceTurnDiscovery}, iceTransportPolicy=${iceTransportPolicy}`
     );
 
     if (options.allowMediaInLobby !== true && this.meetingState !== FULL_STATE.ACTIVE) {
