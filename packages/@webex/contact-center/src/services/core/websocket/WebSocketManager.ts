@@ -48,8 +48,16 @@ export class WebSocketManager extends EventEmitter {
     body: SubscribeRequest;
     resource: string;
   }): Promise<WelcomeResponse> {
-    const {body, resource} = options;
-    await this.register(body, resource);
+    const {body: connectionConfig, resource} = options;
+    try {
+      await this.register(connectionConfig, resource);
+    } catch (error) {
+      LoggerProxy.error(`[WebSocketStatus] | Error in registering Websocket ${error}`, {
+        module: WEB_SOCKET_MANAGER_FILE,
+        method: METHODS.INIT_WEB_SOCKET,
+      });
+      throw error;
+    }
 
     return new Promise((resolve, reject) => {
       this.welcomePromiseResolve = resolve;
@@ -81,11 +89,23 @@ export class WebSocketManager extends EventEmitter {
 
   private async register(connectionConfig: SubscribeRequest, resource: string) {
     try {
+      // X-ORGANIZATION-ID header is only required for INT environments
+      const isIntEnv = this.webex.internal?.services?.isIntegrationEnvironment() || false;
+      const orgId = this.webex.credentials.getOrgId();
+
+      if (isIntEnv && orgId) {
+        LoggerProxy.log(`[WebSocketManager] Adding X-ORGANIZATION-ID header for INT environment`, {
+          module: WEB_SOCKET_MANAGER_FILE,
+          method: METHODS.REGISTER,
+        });
+      }
+
       const subscribeResponse: SubscribeResponse = await this.webex.request({
         service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.POST,
         body: connectionConfig,
+        headers: isIntEnv && orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,
       });
       this.url = subscribeResponse.body.webSocketUrl;
     } catch (e) {
@@ -93,6 +113,7 @@ export class WebSocketManager extends EventEmitter {
         `Register API Failed, Request to RoutingNotifs websocket registration API failed ${e}`,
         {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.REGISTER}
       );
+      throw e;
     }
   }
 

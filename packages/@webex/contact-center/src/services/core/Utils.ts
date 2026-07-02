@@ -14,6 +14,7 @@ import {
   InteractionParticipant,
 } from '../task/types';
 import {PARTICIPANT_TYPES, STATE_CONSULT} from './constants';
+import {DialPlan} from '../config/types';
 
 /**
  * Extracts common error details from a Webex request payload.
@@ -30,11 +31,72 @@ const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
   };
 };
 
-export const isValidDialNumber = (input: string): boolean => {
-  // This regex checks for a valid dial number format for only few countries such as US, Canada.
-  const regexForDn = /1[0-9]{3}[2-9][0-9]{6}([,]{1,10}[0-9]+){0,1}/;
+/**
+ * Strips characters defined in the dial plan entry from the input string.
+ *
+ * @param input - The dial number to sanitize
+ * @param strippedChars - String of characters to remove from the input
+ * @returns The sanitized input with specified characters removed
+ */
+export const stripDialPlanChars = (input: string, strippedChars: string): string => {
+  if (!strippedChars) {
+    return input;
+  }
 
-  return regexForDn.test(input);
+  const charsToStrip = new Set(strippedChars.split(''));
+
+  return input
+    .split('')
+    .filter((c) => !charsToStrip.has(c))
+    .join('');
+};
+
+/**
+ * Validates a dial number against the provided dial plan regex patterns.
+ * A number is valid if it matches at least one regex pattern in the dial plans.
+ * Skips validation when no dial plan entries are configured, deferring to the server.
+ *
+ * @param input - The dial number to validate
+ * @param dialPlanEntries - Array of dial plan entries containing regex patterns
+ * @returns true if the input matches at least one dial plan regex pattern or no entries are configured, false otherwise
+ */
+export const isValidDialNumber = (
+  input: string,
+  dialPlanEntries: DialPlan['dialPlanEntity']
+): boolean => {
+  if (!input) {
+    LoggerProxy.warn('Dial number is empty or undefined.', {
+      module: 'Utils',
+      method: 'isValidDialNumber',
+    });
+
+    return false;
+  }
+
+  if (!dialPlanEntries || dialPlanEntries.length === 0) {
+    LoggerProxy.log(
+      'No dial plan entries found. Skipping client-side validation, deferring to server.',
+      {module: 'Utils', method: 'isValidDialNumber'}
+    );
+
+    return true;
+  }
+
+  return dialPlanEntries.some((entry) => {
+    try {
+      const sanitizedInput = stripDialPlanChars(input, entry.strippedChars);
+      const regex = new RegExp(entry.regex);
+
+      return regex.test(sanitizedInput);
+    } catch (e) {
+      LoggerProxy.warn(`Failed to validate dial number against entry "${entry.name}": ${e}`, {
+        module: 'Utils',
+        method: 'isValidDialNumber',
+      });
+
+      return false;
+    }
+  });
 };
 
 export const getStationLoginErrorData = (failure: Failure, loginOption: LoginOption) => {
@@ -56,7 +118,7 @@ export const getStationLoginErrorData = (failure: Failure, loginOption: LoginOpt
     },
     INVALID_DIAL_NUMBER: {
       message:
-        'Enter a valid US dial number. For help, reach out to your administrator or support team.',
+        'Enter a valid dial number. For help, reach out to your administrator or support team.',
       fieldName: loginOption,
     },
   };
@@ -199,6 +261,7 @@ export const createErrDetailsObject = (errObj: WebexRequestPayload) => {
 };
 
 /*
+/**
  * Gets the consulted agent ID from the media object by finding the agent
  * in the consult media participants (excluding the current agent).
  *

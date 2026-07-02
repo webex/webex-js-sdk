@@ -56,7 +56,13 @@ import {
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
-import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/types';
+import {
+  ITask,
+  TASK_EVENTS,
+  TaskResponse,
+  DialerPayload,
+  PreviewContactPayload,
+} from './services/task/types';
 import MetricsManager from './metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from './metrics/constants';
 import {Failure} from './services/core/GlobalTypes';
@@ -121,6 +127,7 @@ import type {
  *   - `task:established` - Task/call has been connected
  *   - `task:ended` - Task/call has ended
  *   - `task:error` - An error occurred during task handling
+ *   - `task:campaignPreviewReservation` - Campaign preview contact offered to agent
  *
  * @public
  *
@@ -364,7 +371,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webex: this.$webex,
         connectionConfig: this.getConnectionConfig(),
       });
-      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       this.webCallingService = new WebCallingService(this.$webex);
       this.apiAIAssistant = new ApiAIAssistant(this.$webex);
@@ -428,6 +434,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   /**
+   * Handles campaign preview reservation events when a contact is offered to the agent
+   * @private
+   * @param {ITask} task The campaign reservation task
+   */
+  private handleCampaignPreviewReservation = (task: ITask) => {
+    // @ts-ignore
+    this.trigger(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, task);
+  };
+
+  private handleRTDWebsocketMessage = (event: string) => {
+    this.taskManager.handleRealtimeWebsocketEvent(event);
+  };
+
+  /**
    * Sets up event listeners for incoming tasks and task hydration
    * Subscribes to task events from the task manager
    * @private
@@ -437,6 +457,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
     this.taskManager.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
     this.taskManager.on(TASK_EVENTS.TASK_MERGED, this.handleTaskMerged);
+    this.taskManager.on(
+      TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+      this.handleCampaignPreviewReservation
+    );
   }
 
   /**
@@ -476,7 +500,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async register(): Promise<Profile> {
-    LoggerProxy.info('Starting CC SDK registration', {
+    LoggerProxy.log('Starting CC SDK registration', {
       module: CC_FILE,
       method: METHODS.REGISTER,
     });
@@ -486,6 +510,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
       ]);
       this.setupEventListeners();
+      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       const resp = await this.connectWebsocket();
       // Ensure 'dn' is always populated from 'defaultDn'
@@ -566,6 +591,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
       this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
       this.taskManager.off(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
+      this.taskManager.off(
+        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+        this.handleCampaignPreviewReservation
+      );
       this.taskManager.unregisterIncomingCallEvent();
 
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
@@ -594,6 +623,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
       if (this.services.rtdWebSocketManager && !this.services.rtdWebSocketManager.isSocketClosed) {
         this.services.rtdWebSocketManager.close(false, 'Unregistering the SDK');
+      }
+
+      if (this.services.rtdWebSocketManager && !this.services.rtdWebSocketManager.isSocketClosed) {
+        this.services.rtdWebSocketManager.close(false, 'Unregistering the RTD websocket');
       }
 
       // Clear any cached agent configuration
@@ -716,107 +749,110 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private async connectWebsocket() {
-    LoggerProxy.info('Connecting to websocket', {
+    LoggerProxy.log('Connecting to websocket', {
       module: CC_FILE,
       method: METHODS.CONNECT_WEBSOCKET,
     });
-    try {
-      return this.services.webSocketManager
-        .initWebSocket({
-          body: this.getConnectionConfig(),
-          resource: SUBSCRIBE_API,
-        })
-        .then(async (data: WelcomeEvent) => {
-          const agentId = data.agentId;
-          const orgId = this.$webex.credentials.getOrgId();
-          this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
-          LoggerProxy.log(`Agent config is fetched successfully`, {
-            module: CC_FILE,
-            method: METHODS.CONNECT_WEBSOCKET,
-          });
 
-          const configFlags: ConfigFlags = {
-            isEndTaskEnabled: this.agentConfig.isEndTaskEnabled,
-            isEndConsultEnabled: this.agentConfig.isEndConsultEnabled,
-            webRtcEnabled: this.agentConfig.webRtcEnabled,
-            autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
-            aiFeature: this.agentConfig.aiFeature,
-          };
-          this.taskManager.setConfigFlags(configFlags);
-          // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
-          this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
-          this.taskManager.setAgentId(this.agentConfig.agentId);
-          this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
-          this.apiAIAssistant.setAIFeatureFlags(this.agentConfig.aiFeature);
-          /**
-           * RTD websocket currently supports realtime transcripts and suggested responses.
-           * Extend this condition when additional AI RTD features are introduced.
-           */
-          if (
-            this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||
-            this.agentConfig.aiFeature?.suggestedResponses?.enable
-          ) {
-            LoggerProxy.info('Connecting to RTD websocket', {
+    try {
+      const data = (await this.services.webSocketManager.initWebSocket({
+        body: this.getConnectionConfig(),
+        resource: SUBSCRIBE_API,
+      })) as WelcomeEvent;
+
+      const agentId = data.agentId;
+      const orgId = this.$webex.credentials.getOrgId();
+      this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
+
+      LoggerProxy.log(`Agent config is fetched successfully`, {
+        module: CC_FILE,
+        method: METHODS.CONNECT_WEBSOCKET,
+      });
+
+      const configFlags: ConfigFlags = {
+        isEndTaskEnabled: this.agentConfig.isEndTaskEnabled,
+        isEndConsultEnabled: this.agentConfig.isEndConsultEnabled,
+        webRtcEnabled: this.agentConfig.webRtcEnabled,
+        autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
+        aiFeature: this.agentConfig.aiFeature,
+      };
+      this.taskManager.setConfigFlags(configFlags);
+      // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
+      this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
+      this.taskManager.setAgentId(this.agentConfig.agentId);
+      this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
+      this.apiAIAssistant.setAIFeatureFlags(this.agentConfig.aiFeature);
+
+      /**
+       * RTD websocket currently supports realtime transcripts and suggested responses.
+       * Extend this condition when additional AI RTD features are introduced.
+       */
+      if (
+        this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||
+        this.agentConfig.aiFeature?.suggestedResponses?.enable
+      ) {
+        LoggerProxy.info('Connecting to RTD websocket', {
+          module: CC_FILE,
+          method: METHODS.CONNECT_WEBSOCKET,
+        });
+
+        this.services.rtdWebSocketManager
+          .initWebSocket({
+            body: this.getConnectionConfig(),
+            resource: RTD_SUBSCRIBE_API,
+          })
+          .then(() => {
+            LoggerProxy.log('RTD websocket connected successfully', {
               module: CC_FILE,
               method: METHODS.CONNECT_WEBSOCKET,
             });
+            this.services.rtdWebSocketManager.on('message', this.handleRTDWebsocketMessage);
+          })
+          .catch((error) => {
+            LoggerProxy.error(`Error connecting to RTD websocket ${error}`, {
+              module: CC_FILE,
+              method: METHODS.CONNECT_WEBSOCKET,
+            });
+          });
+      }
 
-            this.services.rtdWebSocketManager
-              .initWebSocket({
-                body: this.getConnectionConfig(),
-                resource: RTD_SUBSCRIBE_API,
-              })
-              .then(() => {
-                LoggerProxy.log('RTD websocket connected successfully', {
-                  module: CC_FILE,
-                  method: METHODS.CONNECT_WEBSOCKET,
-                });
-                this.services.rtdWebSocketManager.on('message', this.handleRTDWebsocketMessage);
-              })
-              .catch((error) => {
-                LoggerProxy.error(`Error connecting to RTD websocket ${error}`, {
-                  module: CC_FILE,
-                  method: METHODS.CONNECT_WEBSOCKET,
-                });
-              });
+      if (
+        this.agentConfig.webRtcEnabled &&
+        this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER) &&
+        !this.isWebRTCRegistrationDisabled()
+      ) {
+        try {
+          await this.$webex.internal.mercury.connect();
+          LoggerProxy.log('Authentication: webex.internal.mercury.connect successful', {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          });
+        } catch (error) {
+          LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          });
+        }
+      } else if (this.isWebRTCRegistrationDisabled()) {
+        LoggerProxy.info(
+          'Skipping Mobius registration because disableWebRTCRegistration is enabled',
+          {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
           }
-          if (
-            this.agentConfig.webRtcEnabled &&
-            this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER) &&
-            !this.isWebRTCRegistrationDisabled()
-          ) {
-            this.$webex.internal.mercury
-              .connect()
-              .then(() => {
-                LoggerProxy.log('Authentication: webex.internal.mercury.connect successful', {
-                  module: CC_FILE,
-                  method: METHODS.CONNECT_WEBSOCKET,
-                });
-              })
-              .catch((error) => {
-                LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
-                  module: CC_FILE,
-                  method: METHODS.CONNECT_WEBSOCKET,
-                });
-              });
-          } else if (this.isWebRTCRegistrationDisabled()) {
-            LoggerProxy.info(
-              'Skipping Mobius registration because disableWebRTCRegistration is enabled',
-              {
-                module: CC_FILE,
-                method: METHODS.CONNECT_WEBSOCKET,
-              }
-            );
-          }
-          if (this.$config && this.$config.allowAutomatedRelogin) {
-            await this.silentRelogin();
-          }
+        );
+      }
 
-          return this.agentConfig;
-        })
-        .catch((error) => {
-          throw error;
+      if (this.$config && this.$config.allowAutomatedRelogin) {
+        await this.silentRelogin();
+      } else {
+        LoggerProxy.log('Skipping silent relogin: allowAutomatedRelogin is disabled', {
+          module: CC_FILE,
+          method: METHODS.CONNECT_WEBSOCKET,
         });
+      }
+
+      return this.agentConfig;
     } catch (error) {
       LoggerProxy.error(`Error during register: ${error}`, {
         module: CC_FILE,
@@ -856,22 +892,37 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
-    LoggerProxy.info('Starting agent station login', {
-      module: CC_FILE,
-      method: METHODS.STATION_LOGIN,
-    });
+    const loggerContext = {module: CC_FILE, method: METHODS.STATION_LOGIN};
+
     try {
+      LoggerProxy.log(
+        `Starting agent station login | loginOption: ${data?.loginOption} teamId: ${data?.teamId}`,
+        loggerContext
+      );
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
         METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
       ]);
 
-      if (data.loginOption === LoginOption.AGENT_DN && !isValidDialNumber(data.dialNumber)) {
-        const error = new Error('INVALID_DIAL_NUMBER');
-        // @ts-ignore - adding custom key to the error object
-        error.details = {data: {reason: 'INVALID_DIAL_NUMBER'}} as Failure;
+      const dialPlanEntries = this.agentConfig?.dialPlan?.dialPlanEntity ?? [];
+      if (data.loginOption === LoginOption.AGENT_DN) {
+        LoggerProxy.log(
+          `Validating dial number | dialPlanEnabled: ${!!this.agentConfig
+            ?.dialPlan} | dialPlanEntryCount: ${dialPlanEntries.length}`,
+          loggerContext
+        );
 
-        throw error;
+        if (!isValidDialNumber(data.dialNumber, dialPlanEntries)) {
+          LoggerProxy.log(
+            `Dial number validation failed | dialNumber: ${data.dialNumber} | dialPlanEntryCount: ${dialPlanEntries.length}`,
+            loggerContext
+          );
+          const error = new Error('INVALID_DIAL_NUMBER');
+          // @ts-ignore - adding custom key to the error object
+          error.details = {data: {reason: 'INVALID_DIAL_NUMBER'}} as Failure;
+
+          throw error;
+        }
       }
 
       const loginResponse = await this.services.agent.stationLogin({
@@ -1269,10 +1320,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   };
 
-  private handleRTDWebsocketMessage = (event: string) => {
-    this.taskManager.handleRealtimeWebsocketEvent(event);
-  };
-
   /**
    * Checks whether Mobius/WebRTC registration should be skipped by config
    * @returns {boolean} True when browser WebRTC registration is disabled
@@ -1328,13 +1375,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private async handleConnectionLost(msg: ConnectionLostDetails): Promise<void> {
     if (msg.isConnectionLost) {
       // TODO: Emit an event saying connection is lost
-      LoggerProxy.info('event=handleConnectionLost | Connection lost', {
+      LoggerProxy.log('event=handleConnectionLost | Connection lost', {
         module: CC_FILE,
         method: METHODS.HANDLE_CONNECTION_LOST,
       });
     } else if (msg.isSocketReconnected) {
       // TODO: Emit an event saying connection is re-estabilished
-      LoggerProxy.info(
+      LoggerProxy.log(
         'event=handleConnectionReconnect | Connection reconnected attempting to request silent relogin',
         {module: CC_FILE, method: METHODS.HANDLE_CONNECTION_LOST}
       );
@@ -1349,7 +1396,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private async silentRelogin(): Promise<void> {
-    LoggerProxy.info('Starting silent relogin process', {
+    LoggerProxy.log('Starting silent relogin process', {
       module: CC_FILE,
       method: METHODS.SILENT_RELOGIN,
     });
@@ -1371,7 +1418,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       await this.handleDeviceType(deviceType as LoginOption, dn);
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
-        LoggerProxy.info(
+        LoggerProxy.log(
           'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
           {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
         );
@@ -1400,8 +1447,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
       this.agentConfig.lastStateAuxCodeId = auxCodeId;
       this.agentConfig.isAgentLoggedIn = true;
-      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
-      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       LoggerProxy.log(
         `Silent relogin process completed successfully with login Option: ${reLoginResponse.data.deviceType} teamId: ${reLoginResponse.data.teamId}`,
@@ -1640,6 +1685,239 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
       const {error: detailedError} = getErrorDetails(error, METHODS.START_OUTDIAL, CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Accepts a campaign preview contact, initiating the outbound call.
+   *
+   * When a campaign manager reserves a contact for an agent, the agent receives an
+   * `AgentOfferCampaignReservation` event. The agent can then accept the preview contact
+   * to initiate the outbound call.
+   *
+   * @param {PreviewContactPayload} payload - The preview contact payload containing interactionId and campaignId (campaign name, not UUID).
+   * @returns {Promise<TaskResponse>} Promise resolving with agent contact on success.
+   * @throws {Error} If the operation fails (network error, customer unavailable, etc.)
+   *
+   * @example
+   * ```typescript
+   * webex.cc.on('task:campaignPreviewReservation', async (task) => {
+   *   const { interactionId } = task.data;
+   *   // campaignId is the campaign name (e.g. "MyCampaign"), not a UUID
+   *   const campaignId = task.data.interaction.callProcessingDetails.campaignId;
+   *
+   *   const result = await webex.cc.acceptPreviewContact({ interactionId, campaignId });
+   * });
+   * ```
+   */
+  public async acceptPreviewContact(payload: PreviewContactPayload): Promise<TaskResponse> {
+    LoggerProxy.info('Accepting campaign preview contact', {
+      module: CC_FILE,
+      method: METHODS.ACCEPT_PREVIEW_CONTACT,
+    });
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_SUCCESS,
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_FAILED,
+      ]);
+
+      const result = await this.services.dialer.acceptPreviewContact({data: payload});
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+          interactionId: payload.interactionId,
+          campaignId: payload.campaignId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.log('Campaign preview contact accepted successfully', {
+        module: CC_FILE,
+        method: METHODS.ACCEPT_PREVIEW_CONTACT,
+        trackingId: result.trackingId,
+        interactionId: payload.interactionId,
+      });
+
+      return result;
+    } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          interactionId: payload.interactionId,
+          campaignId: payload.campaignId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+      const {error: detailedError} = getErrorDetails(
+        error,
+        METHODS.ACCEPT_PREVIEW_CONTACT,
+        CC_FILE
+      );
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Skips a campaign preview contact, requesting the next contact from the campaign.
+   *
+   * When a campaign manager reserves a contact for an agent, the agent receives an
+   * `AgentOfferCampaignReservation` event. Instead of accepting, the agent can skip the
+   * preview contact to move to the next contact in the campaign.
+   *
+   * @param {PreviewContactPayload} payload - The preview contact payload containing interactionId and campaignId (campaign name, not UUID).
+   * @returns {Promise<TaskResponse>} Promise resolving with agent contact on success.
+   * @throws {Error} If the operation fails (network error, etc.)
+   *
+   * @example
+   * ```typescript
+   * webex.cc.on('task:campaignPreviewReservation', async (task) => {
+   *   const { interactionId } = task.data;
+   *   const campaignId = task.data.interaction.callProcessingDetails.campaignId;
+   *
+   *   const result = await webex.cc.skipPreviewContact({ interactionId, campaignId });
+   * });
+   * ```
+   */
+  public async skipPreviewContact(payload: PreviewContactPayload): Promise<TaskResponse> {
+    const task = this.taskManager.getTask(payload.interactionId);
+    if (task?.data?.interaction?.callProcessingDetails?.campaignPreviewSkipDisabled === 'true') {
+      LoggerProxy.warn('Skip action is disabled for this campaign preview contact', {
+        module: CC_FILE,
+        method: METHODS.SKIP_PREVIEW_CONTACT,
+        interactionId: payload.interactionId,
+      });
+      throw new Error('Skip action is disabled for this campaign preview contact');
+    }
+
+    LoggerProxy.info('Skipping campaign preview contact', {
+      module: CC_FILE,
+      method: METHODS.SKIP_PREVIEW_CONTACT,
+    });
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_SKIP_SUCCESS,
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_SKIP_FAILED,
+      ]);
+
+      const result = await this.services.dialer.skipPreviewContact({data: payload});
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_SKIP_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+          interactionId: payload.interactionId,
+          campaignId: payload.campaignId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.log('Campaign preview contact skipped successfully', {
+        module: CC_FILE,
+        method: METHODS.SKIP_PREVIEW_CONTACT,
+        trackingId: result.trackingId,
+        interactionId: payload.interactionId,
+      });
+
+      return result;
+    } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_SKIP_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          interactionId: payload.interactionId,
+          campaignId: payload.campaignId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+      const {error: detailedError} = getErrorDetails(error, METHODS.SKIP_PREVIEW_CONTACT, CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Removes a campaign preview contact from the campaign list entirely.
+   *
+   * When a campaign manager reserves a contact for an agent, the agent receives an
+   * `AgentOfferCampaignReservation` event. Instead of accepting or skipping, the agent can
+   * remove the preview contact to permanently take it out of the campaign contact list.
+   *
+   * @param {PreviewContactPayload} payload - The preview contact payload containing interactionId and campaignId (campaign name, not UUID).
+   * @returns {Promise<TaskResponse>} Promise resolving with agent contact on success.
+   * @throws {Error} If the operation fails (network error, etc.)
+   *
+   * @example
+   * ```typescript
+   * webex.cc.on('task:campaignPreviewReservation', async (task) => {
+   *   const { interactionId } = task.data;
+   *   const campaignId = task.data.interaction.callProcessingDetails.campaignId;
+   *
+   *   const result = await webex.cc.removePreviewContact({ interactionId, campaignId });
+   * });
+   * ```
+   */
+  public async removePreviewContact(payload: PreviewContactPayload): Promise<TaskResponse> {
+    const task = this.taskManager.getTask(payload.interactionId);
+    if (task?.data?.interaction?.callProcessingDetails?.campaignPreviewRemoveDisabled === 'true') {
+      LoggerProxy.warn('Remove action is disabled for this campaign preview contact', {
+        module: CC_FILE,
+        method: METHODS.REMOVE_PREVIEW_CONTACT,
+        interactionId: payload.interactionId,
+      });
+      throw new Error('Remove action is disabled for this campaign preview contact');
+    }
+
+    LoggerProxy.info('Removing campaign preview contact', {
+      module: CC_FILE,
+      method: METHODS.REMOVE_PREVIEW_CONTACT,
+    });
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_REMOVE_SUCCESS,
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_REMOVE_FAILED,
+      ]);
+
+      const result = await this.services.dialer.removePreviewContact({data: payload});
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_REMOVE_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+          interactionId: payload.interactionId,
+          campaignId: payload.campaignId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.log('Campaign preview contact removed successfully', {
+        module: CC_FILE,
+        method: METHODS.REMOVE_PREVIEW_CONTACT,
+        trackingId: result.trackingId,
+        interactionId: payload.interactionId,
+      });
+
+      return result;
+    } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_REMOVE_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          interactionId: payload.interactionId,
+          campaignId: payload.campaignId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+      const {error: detailedError} = getErrorDetails(
+        error,
+        METHODS.REMOVE_PREVIEW_CONTACT,
+        CC_FILE
+      );
       throw detailedError;
     }
   }

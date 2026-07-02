@@ -302,6 +302,9 @@ export class ApiAIAssistant {
         ['operational']
       );
 
+      if (error instanceof Error) {
+        throw error;
+      }
       const {error: detailedError} = getErrorDetails(
         error,
         METHODS.FETCH_HISTORIC_TRANSCRIPTS,

@@ -84,7 +84,11 @@ type BaseEvent<T extends TaskEvent> = {type: T};
  * Event payload mapping - defines the payload for each event type
  */
 interface TaskEventPayloadMap {
-  [TaskEvent.TASK_INCOMING]: BaseEvent<TaskEvent.TASK_INCOMING> & {taskData: TaskData};
+  [TaskEvent.TASK_INCOMING]: BaseEvent<TaskEvent.TASK_INCOMING> & {
+    taskData: TaskData;
+    /** Set when campaign preview reservation accept is receieved */
+    isCampaignReservationAccept?: boolean;
+  };
   [TaskEvent.TASK_OFFERED]: BaseEvent<TaskEvent.TASK_OFFERED> & {taskData: TaskData};
   [TaskEvent.OFFER_CONSULT]: BaseEvent<TaskEvent.OFFER_CONSULT> & {taskData: TaskData};
   [TaskEvent.HYDRATE]: BaseEvent<TaskEvent.HYDRATE> & {taskData: TaskData; agentId?: string};
@@ -171,6 +175,15 @@ interface TaskEventPayloadMap {
   [TaskEvent.INVITE_FAILED]: BaseEvent<TaskEvent.INVITE_FAILED> & {reason?: string};
   [TaskEvent.OUTBOUND_FAILED]: BaseEvent<TaskEvent.OUTBOUND_FAILED> & {
     reason?: string;
+    taskData?: TaskData;
+  };
+  [TaskEvent.CAMPAIGN_PREVIEW_ACCEPT_FAILED]: BaseEvent<TaskEvent.CAMPAIGN_PREVIEW_ACCEPT_FAILED> & {
+    taskData?: TaskData;
+  };
+  [TaskEvent.CAMPAIGN_PREVIEW_SKIP_FAILED]: BaseEvent<TaskEvent.CAMPAIGN_PREVIEW_SKIP_FAILED> & {
+    taskData?: TaskData;
+  };
+  [TaskEvent.CAMPAIGN_PREVIEW_REMOVE_FAILED]: BaseEvent<TaskEvent.CAMPAIGN_PREVIEW_REMOVE_FAILED> & {
     taskData?: TaskData;
   };
   [TaskEvent.SWITCH_TO_MAIN_CALL]: BaseEvent<TaskEvent.SWITCH_TO_MAIN_CALL>;
