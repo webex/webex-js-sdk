@@ -200,11 +200,17 @@ describe('WebCallingService', () => {
 
     it('should reject if registration times out', async () => {
       line = callingClient.getLines().line1 as ILine;
+      jest.spyOn(global, 'setTimeout').mockImplementation(((handler: TimerHandler) => {
+        if (typeof handler === 'function') {
+          handler();
+        }
+        return 0 as unknown as NodeJS.Timeout;
+      }) as typeof setTimeout);
 
       const promise = webRTCCalling.registerWebCallingLine();
 
       await expect(promise).rejects.toThrow('WebCallingService Registration timed out');
-    }, 20003); // Increased timeout to 20 seconds
+    });
 
     it('should handle incoming calls', async () => {
       line = callingClient.getLines().line1 as ILine;

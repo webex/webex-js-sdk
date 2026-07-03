@@ -9,7 +9,7 @@ import CONSTANTS from './package.constants';
 import type { BuildConfig, Data, TestConfig } from './package.types';
 
 /**
- * The Package class, which represents an entire local JavaScript package.
+ * The Package class, which represents an entire local JavaScript package
  *
  * @remarks
  * This class is used to manage any action against a specific package.
