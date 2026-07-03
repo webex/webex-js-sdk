@@ -66,7 +66,6 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-
       expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching user data using CI', {
         module: CONFIG_FILE_NAME,
         method: 'getUserUsingCI',
@@ -124,7 +123,6 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-
       expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching desktop profile', {
         module: CONFIG_FILE_NAME,
         method: 'getDesktopProfileById',
@@ -183,7 +181,6 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-
       expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching list of teams', {
         module: CONFIG_FILE_NAME,
         method: 'getListOfTeams',
@@ -267,7 +264,6 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-
       expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching list of aux codes', {
         module: CONFIG_FILE_NAME,
         method: 'getListOfAuxCodes',
@@ -495,7 +491,7 @@ describe('AgentConfigService', () => {
       const mockResponse = {
         statusCode: 200,
         body: {
-          realtimeTranscripts: {enable: true},
+          data: [{realtimeTranscripts: {enable: true}}],
         },
       };
       mockWebexRequest.request.mockResolvedValue(mockResponse);
@@ -710,6 +706,32 @@ describe('AgentConfigService', () => {
   });
 
   describe('getAgentConfig', () => {
+    const mockTeamData = [
+      {id: 'team1', name: 'Support Team'},
+      {id: 'team2', name: 'Sales Team'},
+    ];
+
+    const mockOrgInfo = {
+      tenantId: 'tenant123',
+      timezone: 'GMT',
+      environment: 'produs1',
+    };
+
+    const mockSiteInfo = {
+      id: 'c6a5451f-5ba7-49a1-aee8-fbef70c19ece',
+      name: 'Site-1',
+      multimediaProfileId: 'c5888e6f-5661-4871-9936-cbcec7658d41',
+    };
+
+    const mockURLMapping = [
+      {key: 'ACQUEON_API_URL', url: 'https://api.example.com'},
+      {key: 'ACQUEON_CONSOLE_URL', url: 'https://console.example.com'},
+    ];
+
+    const mockAIFeatureFlags = {
+      data: [{realtimeTranscripts: {enable: true}}],
+    };
+
     beforeEach(() => {
       jest.clearAllMocks();
     });
@@ -770,12 +792,6 @@ describe('AgentConfigService', () => {
         maskSensitiveData: false,
       };
 
-      const mockSiteInfo = {
-        id: 'c6a5451f-5ba7-49a1-aee8-fbef70c19ece',
-        name: 'Site-1',
-        multimediaProfileId: 'c5888e6f-5661-4871-9936-cbcec7658d41',
-      };
-
       const mockTenantData = {
         timeoutDesktopInactivityEnabled: false,
         timeoutDesktopInactivityMins: 15,
@@ -788,11 +804,6 @@ describe('AgentConfigService', () => {
         endConsultEnabled: true,
         callVariablesSuppressed: false,
       };
-
-      const mockURLMapping = [
-        {key: 'ACQUEON_API_URL', url: 'https://api.example.com'},
-        {key: 'ACQUEON_CONSOLE_URL', url: 'https://console.example.com'},
-      ];
 
       const mockAuxCodes = [
         {id: 'aux1', type: 'WRAP_UP_CODE', name: 'Wrap Up Code 1', isDefault: true},
@@ -915,12 +926,6 @@ describe('AgentConfigService', () => {
         maskSensitiveData: true,
       };
 
-      const mockSiteInfo = {
-        id: 'c6a5451f-5ba7-49a1-aee8-fbef70c19ece',
-        name: 'Site-1',
-        multimediaProfileId: 'c5888e6f-5661-4871-9936-cbcec7658d41',
-      };
-
       const mockTenantData = {
         timeoutDesktopInactivityEnabled: true,
         timeoutDesktopInactivityMins: 15,
@@ -934,11 +939,6 @@ describe('AgentConfigService', () => {
         callVariablesSuppressed: false,
         lostConnectionRecoveryTimeout: 30,
       };
-
-      const mockURLMapping = [
-        {key: 'ACQUEON_API_URL', url: 'https://api.example.com'},
-        {key: 'ACQUEON_CONSOLE_URL', url: 'https://console.example.com'},
-      ];
 
       const mockAuxCodes = [
         {id: 'aux1', type: 'WRAP_UP_CODE', name: 'Wrap Up Code 1'},

@@ -33,7 +33,7 @@
   },
   "scripts": {
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
-    "build": " yarn workspace @webex/calling run build:src && yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "build": " yarn workspace @webex/calling run build:src && yarn exec tsc --declaration true --declarationDir ./dist/types",
     "fix:lint": "eslint 'src/**/*.ts' --fix",
     "build:docs": "typedoc --out ../../../docs/wxcc",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
@@ -53,7 +53,9 @@
     "@webex/plugin-logger": "workspace:*",
     "@webex/webex-core": "workspace:*",
     "jest-html-reporters": "3.0.11",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "uuid": "^3.3.2",
+    "xstate": "5.24.0"
   },
   "devDependencies": {
     "@babel/core": "^7.22.11",
@@ -66,6 +68,7 @@
     "@webex/jest-config-legacy": "workspace:*",
     "@webex/legacy-tools": "workspace:*",
     "@webex/test-helper-mock-webex": "workspace:*",
+    "@xstate/inspect": "^0.8.0",
     "eslint": "^8.24.0",
     "eslint-config-airbnb-base": "15.0.0",
     "eslint-config-prettier": "8.3.0",
@@ -78,6 +81,6 @@
     "jest-junit": "13.0.0",
     "prettier": "2.5.1",
     "typedoc": "^0.25.0",
-    "typescript": "4.9.5"
+    "typescript": "5.4.5"
   }
 }
