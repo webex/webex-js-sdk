@@ -699,3 +699,68 @@ describe('extractMediaStatus', () => {
     assert.deepEqual(mediaStatus, {audio: 'RECVONLY', video: 'SENDRECV'});
   });
 });
+
+describe('MemberUtil.extractCsis', () => {
+  it('returns an empty array when participant is undefined', () => {
+    assert.deepEqual(MemberUtil.extractCsis(undefined), []);
+  });
+
+  it('returns an empty array when participant has no devices', () => {
+    assert.deepEqual(MemberUtil.extractCsis({}), []);
+  });
+
+  it('returns an empty array when devices have no csis or mediaSessions', () => {
+    const participant = {devices: [{}, {csis: [], mediaSessions: []}]};
+
+    assert.deepEqual(MemberUtil.extractCsis(participant), []);
+  });
+
+  it('collects CSIs from device.csis arrays', () => {
+    const participant = {
+      devices: [{csis: [1, 2]}, {csis: [3]}],
+    };
+
+    assert.deepEqual(MemberUtil.extractCsis(participant), [1, 2, 3]);
+  });
+
+  it('collects CSIs from device.mediaSessions[].csi values', () => {
+    const participant = {
+      devices: [
+        {mediaSessions: [{csi: 10}, {csi: 11}]},
+        {mediaSessions: [{csi: 12}]},
+      ],
+    };
+
+    assert.deepEqual(MemberUtil.extractCsis(participant), [10, 11, 12]);
+  });
+
+  it('merges CSIs from both csis and mediaSessions, deduplicated', () => {
+    const participant = {
+      devices: [
+        {csis: [1, 2], mediaSessions: [{csi: 2}, {csi: 3}]},
+        {csis: [3, 4], mediaSessions: [{csi: 5}]},
+      ],
+    };
+
+    assert.deepEqual(MemberUtil.extractCsis(participant), [1, 2, 3, 4, 5]);
+  });
+
+  it('ignores non-numeric csi values', () => {
+    const participant = {
+      devices: [
+        {csis: [1, '2', null, undefined]},
+        {mediaSessions: [{csi: 'abc'}, {csi: null}, {csi: 3}, {}]},
+      ],
+    };
+
+    assert.deepEqual(MemberUtil.extractCsis(participant), [1, 3]);
+  });
+
+  it('skips falsy devices and mediaSessions entries', () => {
+    const participant = {
+      devices: [null, undefined, {csis: [7], mediaSessions: [null, {csi: 8}, undefined]}],
+    };
+
+    assert.deepEqual(MemberUtil.extractCsis(participant), [7, 8]);
+  });
+});
