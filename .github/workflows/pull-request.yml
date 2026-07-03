@@ -10,6 +10,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  actions: write
+  contents: read
+
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
   SKIP_FLAKY_TESTS: ${{ secrets.SKIP_FLAKY_TESTS }}
@@ -157,7 +161,7 @@ jobs:
         run: yarn workspaces foreach --parallel --topological --verbose run build:src
 
       - name: Cache Distributables
-        uses: actions/cache@v5
+        uses: actions/cache/save@v5
         with:
           path: '**/dist'
           key: dist-${{ env.rid }}
