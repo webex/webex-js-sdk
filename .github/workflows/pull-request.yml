@@ -10,10 +10,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-permissions:
-  actions: write
-  contents: read
-
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
   SKIP_FLAKY_TESTS: ${{ secrets.SKIP_FLAKY_TESTS }}
