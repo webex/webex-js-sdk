@@ -569,6 +569,32 @@ export default class Reachability extends EventsScope {
   }
 
   /**
+   * Checks if any cluster is reachable via the given protocol based on stored reachability results.
+   *
+   * @param {string} protocol - the protocol to check ('udp', 'tcp', or 'xtls')
+   * @returns {Promise<boolean>} true if at least one cluster has a 'reachable' result for the given protocol
+   */
+  async isAnyClusterReachableViaProtocol(protocol: 'udp' | 'tcp' | 'xtls'): Promise<boolean> {
+    try {
+      // @ts-ignore
+      const resultsJson = await this.webex.boundedStorage.get(
+        this.namespace,
+        REACHABILITY.localStorageResult
+      );
+
+      const results: ReachabilityResults = JSON.parse(resultsJson);
+
+      return Object.values(results).some((result) => result[protocol]?.result === 'reachable');
+    } catch (e) {
+      LoggerProxy.logger.warn(
+        `Reachability:index#isAnyClusterReachableViaProtocol --> Error reading reachability data: ${e}`
+      );
+
+      return false;
+    }
+  }
+
+  /**
    * Get list of all unreachable clusters
    * @returns {array} Unreachable clusters
    * @private

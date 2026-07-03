@@ -5658,12 +5658,19 @@ export default class Meeting extends StatelessWebexPlugin {
         joined = true;
       }
 
-      const isDtlsFailure = this.isDtlsHandshakeFailure(prevError);
+      let shouldForceRelay = false;
 
-      if (isDtlsFailure) {
-        LoggerProxy.logger.info(
-          'Meeting:index#joinWithMedia --> previous attempt failed due to DTLS handshake failure, retrying with iceTransportPolicy=relay'
-        );
+      if (this.isDtlsHandshakeFailure(prevError) && prevError?.connectionType === 'UDP') {
+        // @ts-ignore
+        const hasTlsReachability =
+          await this.webex.meetings.reachability.isAnyClusterReachableViaProtocol('xtls');
+
+        if (hasTlsReachability) {
+          shouldForceRelay = true;
+          LoggerProxy.logger.info(
+            'Meeting:index#joinWithMedia --> previous attempt failed due to DTLS handshake failure over UDP and TLS reachability is available, retrying with iceTransportPolicy=relay'
+          );
+        }
       }
 
       const mediaResponse = await this.addMediaInternal(
@@ -5675,7 +5682,7 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         forceTurnDiscovery,
         turnServerInfo,
-        isDtlsFailure ? 'relay' : undefined,
+        shouldForceRelay ? 'relay' : undefined,
         mediaOptions
       );
 
@@ -8828,14 +8835,16 @@ export default class Meeting extends StatelessWebexPlugin {
       // We can log ReceiveSlot SSRCs only after the SDP exchange, so doing it here:
       this.remoteMediaManager?.logAllReceiveSlots();
       this.startPeriodicLogUpload();
-    } catch (error) {
+    } catch (error: any) {
       LoggerProxy.logger.error(`${LOG_HEADER} failed to establish media connection: `, error);
 
       // @ts-ignore
       const reachabilityMetrics = await this.getMediaReachabilityMetricFields();
 
-      const {selectedCandidatePairChanges, numTransports} =
+      const {connectionType, selectedCandidatePairChanges, numTransports} =
         await this.mediaProperties.getCurrentConnectionInfo();
+
+      error.connectionType = connectionType;
 
       const iceCandidateErrors = Object.fromEntries(this.iceCandidateErrors);
 
