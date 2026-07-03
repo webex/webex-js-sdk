@@ -160,6 +160,7 @@ describe('WebSocketManager', () => {
       resource: RTD_SUBSCRIBE_API,
       method: 'POST',
       body: fakeSubscribeRequest,
+      headers: {'X-ORGANIZATION-ID': 'test-org-id'},
     });
   });
 

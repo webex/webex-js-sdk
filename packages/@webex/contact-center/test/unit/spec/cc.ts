@@ -403,12 +403,7 @@ describe('webex.cc', () => {
         isEndConsultEnabled: mockAgentProfile.isEndConsultEnabled,
         webRtcEnabled: mockAgentProfile.webRtcEnabled,
         autoWrapup: mockAgentProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
-      });
-      expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith({
-        isEndTaskEnabled: mockAgentProfile.isEndTaskEnabled,
-        isEndConsultEnabled: mockAgentProfile.isEndConsultEnabled,
-        webRtcEnabled: mockAgentProfile.webRtcEnabled,
-        autoWrapup: mockAgentProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
+        aiFeature: mockAgentProfile.aiFeature,
       });
       expect(reloadSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
