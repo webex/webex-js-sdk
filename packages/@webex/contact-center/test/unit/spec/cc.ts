@@ -202,6 +202,35 @@ describe('webex.cc', () => {
     webex.emit('ready');
   });
 
+  it('should throw when WebRTC registration is disabled without multi-login', () => {
+    const invalidWebex = MockWebex({
+      children: {
+        mercury: Mercury,
+      },
+      logger: {
+        log: jest.fn(),
+        error: jest.fn(),
+        info: jest.fn(),
+      },
+      credentials: {
+        getOrgId: jest.fn(() => 'mockOrgId'),
+      },
+      config: {
+        ...config,
+        cc: {
+          ...config.cc,
+          allowMultiLogin: false,
+          disableWebRTCRegistration: true,
+        },
+      },
+      once: jest.fn((event, callback) => callback()),
+    }) as unknown as WebexSDK;
+
+    expect(() => new ContactCenter({parent: invalidWebex})).toThrow(
+      'Invalid Contact Center configuration: disableWebRTCRegistration cannot be true when allowMultiLogin is false. Enable allowMultiLogin or allow WebRTC registration so an SDK instance can receive Mobius/WebRTC task events.'
+    );
+  });
+
   describe('cc.getDeviceId', () => {
     it('should return dialNumber when loginOption is EXTENSION', () => {
       const loginOption = LoginOption.EXTENSION;
@@ -334,6 +363,10 @@ describe('webex.cc', () => {
       );
       expect(mockTaskManager.on).toHaveBeenCalledWith(
         TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
+      expect(mockTaskManager.on).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
         expect.any(Function)
       );
       expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
@@ -482,6 +515,10 @@ describe('webex.cc', () => {
       );
       expect(mockTaskManager.on).toHaveBeenCalledWith(
         TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
+      expect(mockTaskManager.on).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
         expect.any(Function)
       );
       expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
@@ -1586,6 +1623,10 @@ describe('webex.cc', () => {
         TASK_EVENTS.TASK_HYDRATE,
         expect.any(Function)
       );
+      expect(mockTaskManager.off).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
+        expect.any(Function)
+      );
       expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
       expect(webex.cc.services.rtdWebSocketManager.off).toHaveBeenCalledWith(
         'message',
@@ -1642,6 +1683,13 @@ describe('webex.cc', () => {
       const [, hydrateCallback] = hydrateCalls[0];
       expect(hydrateCallback).toBe(webex.cc['handleTaskHydrate']);
 
+      const multiLoginHydrateCalls = mockTaskManager.off.mock.calls.filter(
+        ([evt]) => evt === TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE
+      );
+      expect(multiLoginHydrateCalls).toHaveLength(1);
+      const [, multiLoginHydrateCallback] = multiLoginHydrateCalls[0];
+      expect(multiLoginHydrateCallback).toBe(webex.cc['handleTaskMultiLoginHydrate']);
+
       const messageCalls = mockWebSocketManager.off.mock.calls.filter(([evt]) => evt === 'message');
       expect(messageCalls).toHaveLength(1);
       const [, messageCallback] = messageCalls[0];
@@ -1665,6 +1713,10 @@ describe('webex.cc', () => {
       );
       expect(mockTaskManager.off).toHaveBeenCalledWith(
         TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
+      expect(mockTaskManager.off).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
         expect.any(Function)
       );
       expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
@@ -1708,6 +1760,10 @@ describe('webex.cc', () => {
       );
       expect(mockTaskManager.off).toHaveBeenCalledWith(
         TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
+      expect(mockTaskManager.off).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
         expect.any(Function)
       );
 

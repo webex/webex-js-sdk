@@ -83,6 +83,7 @@ export function getTestUtilsWebex() {
           mercuryApi: 'https://mercury-api-intb.ciscospark.com/v1',
           'ucmgmt-gateway': 'https://gw.telemetry.int-ucmgmt.cisco.com',
           contactsService: 'https://contacts-service-a.wbx2.com/contact/api/v1',
+          hydraDeveloperApi: 'https://integration.webexapis.com/v1',
         },
         fetchClientRegionInfo: jest.fn(),
         getMobiusClusters: jest.fn(),

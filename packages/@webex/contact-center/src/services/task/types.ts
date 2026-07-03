@@ -602,6 +602,20 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_CAMPAIGN_CONTACT_UPDATED = 'task:campaignContactUpdated',
+
+  /**
+   * Triggered when a we get accept an incoming web call
+   * This is used to send task data to the instance without mobius registration in case of multi login
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_MULIT_LOGIN_HYDRATE, (task: ITask) => {
+   *   console.log('Mulit login detected:', task.data.interactionId);
+   *   // Handle mulit login
+   * });
+   * ```
+   */
+
+  TASK_MULTI_LOGIN_HYDRATE = 'task:multiLoginHydrate',
 }
 
 /**
