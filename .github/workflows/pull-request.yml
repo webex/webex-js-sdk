@@ -83,13 +83,6 @@ jobs:
           path: './.env'
           key: env-${{ env.rid }}
 
-      - id: restore-dependencies
-        name: Restore Dependencies
-        uses: actions/cache/restore@v5
-        with:
-          path: '**/node_modules'
-          key: node-modules-${{ hashFiles('./yarn.lock') }}
-
       - id: lock-hash
         name: Store Lock Hash
         run: echo "hash=$(echo ${{ hashFiles('./yarn.lock') }})" >> $GITHUB_OUTPUT
@@ -116,10 +109,9 @@ jobs:
 
       - name: Cache Dependencies
         uses: actions/cache/save@v5
-        if: steps.restore-dependencies.outputs.cache-hit != 'true'
         with:
           path: '**/node_modules'
-          key: ${{ steps.restore-dependencies.outputs.cache-primary-key }}
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
 
   build:
     name: Build Packages
