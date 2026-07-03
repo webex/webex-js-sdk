@@ -513,6 +513,7 @@ const WebexCore = AmpState.extend({
 
   /**
    * Invokes all `onBeforeLogout` handlers in the scope of their plugin, clears
+   * test
    * all stores, and revokes the access token
    * Note: If you're using the sdk in a server environment, you may be more
    * interested in {@link `webex.internal.mercury.disconnect()`| Mercury#disconnect()}
