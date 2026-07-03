@@ -25,7 +25,7 @@ export default class Services {
   public readonly dialer: ReturnType<typeof aqmDialer>;
   /** WebSocket manager for handling real-time communications */
   public readonly webSocketManager: WebSocketManager;
-  /** RTD WebSocket manager for handling realtime transcription */
+  /** RTD WebSocket manager for handling real-time transcription */
   public readonly rtdWebSocketManager: WebSocketManager;
   /** Connection service for managing websocket connections */
   public readonly connectionService: ConnectionService;
