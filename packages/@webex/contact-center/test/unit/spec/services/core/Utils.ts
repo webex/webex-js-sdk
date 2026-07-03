@@ -865,7 +865,7 @@ describe('Utils', () => {
       };
 
       const result = Utils.calculateDestAgentId(interaction, currentAgentId);
-      expect(result).toBeUndefined();
+      expect(result).toBe('');
     });
 
     it('should handle CBT scenario when phone number is not a direct participant key', () => {
