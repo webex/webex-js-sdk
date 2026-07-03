@@ -682,7 +682,7 @@ describe('internal-plugin-metrics', () => {
         }
       });
 
-      it('removes only the completed record and leaves an older never-completed record intact', () => {
+      it('cleans up older never-completed record for the same dataset when newer sync completes', () => {
         // first sync: all sync milestones recorded, but its completing LLM event never arrives
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.start',
@@ -737,18 +737,14 @@ describe('internal-plugin-metrics', () => {
         // both records exist before completion
         assert.lengthOf(cdl.meetingLatencies.get('meeting-1')!, 2);
 
-        // completing the second sync removes only its own record; the stale first record is
-        // left to be discarded by stale cleanup / meeting teardown
+        // completing the second sync removes its own record and also clears the stale first
+        // record for the same dataset
         const completed = cdl.completeLocusSyncLatency('meeting-1', 'sync-tracking-2');
 
         assert.isDefined(completed);
         assert.equal(completed!.dataSet, 'main');
 
-        const records = cdl.meetingLatencies.get('meeting-1');
-
-        assert.isDefined(records);
-        assert.lengthOf(records!, 1);
-        assert.equal(records![0].locusSync.trackingId, 'sync-tracking-1');
+        assert.isFalse(cdl.meetingLatencies.has('meeting-1'));
       });
 
       it('does not clean up never-completed records for a different dataset', () => {

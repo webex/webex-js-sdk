@@ -348,6 +348,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
 
   /**
    * Remove the Locus sync latency record for a meeting and tracking id.
+   * Also removes older never-completed records for the same dataset, because once a newer sync
+   * for that dataset completes, earlier incomplete attempts are stale.
    * @param meetingId meeting id
    * @param trackingId sync tracking id used to match the record
    * @returns void
@@ -359,7 +361,37 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       return;
     }
 
-    const remainingRecords = records.filter((record) => record.locusSync.trackingId !== trackingId);
+    const completedRecord = records.find(
+      (record) => record.locusSync.trackingId === trackingId
+    )?.locusSync;
+
+    if (!completedRecord) {
+      return;
+    }
+
+    const remainingRecords = records.filter((record) => {
+      const {locusSync} = record;
+
+      // Always remove the record that just completed.
+      if (locusSync.trackingId === trackingId) {
+        return false;
+      }
+
+      // Only stale cleanup records from the same dataset.
+      if (locusSync.dataSetName !== completedRecord.dataSetName) {
+        return true;
+      }
+
+      const isOlderRecord =
+        typeof locusSync.syncStart === 'number' &&
+        typeof completedRecord.syncStart === 'number' &&
+        locusSync.syncStart < completedRecord.syncStart;
+      const isNeverCompleted =
+        typeof locusSync.syncResponse !== 'number' || typeof locusSync.messageReceived !== 'number';
+
+      // Remove only older never-completed records for the same dataset.
+      return !(isOlderRecord && isNeverCompleted);
+    });
 
     if (remainingRecords.length > 0) {
       this.meetingLatencies.set(meetingId, remainingRecords);
