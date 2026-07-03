@@ -1815,7 +1815,7 @@ describe('Get XSI Action Endpoint tests', () => {
 
     const result = await getXsiActionEndpoint(wxcWebex, loggerContext, CALLING_BACKEND.WXC);
 
-    expect(wxcWebex.request).toHaveBeenCalledOnceWith({
+    expect(wxcWebex.request).toBeCalledOnceWith({
       method: HTTP_METHODS.GET,
       uri: `${hydraEndpoint}/${XSI_ACTION_ENDPOINT_ORG_URL_PARAM}`,
     });
@@ -1844,8 +1844,8 @@ describe('Get XSI Action Endpoint tests', () => {
 
     const result = await getXsiActionEndpoint(wxcWebex, loggerContext, CALLING_BACKEND.WXC);
 
-    expect(wxcWebex.internal.services.get).toHaveBeenCalledOnceWith(activeHydraCluster);
-    expect(wxcWebex.request).toHaveBeenCalledOnceWith({
+    expect(wxcWebex.internal.services.get).toBeCalledOnceWith(activeHydraCluster);
+    expect(wxcWebex.request).toBeCalledOnceWith({
       method: HTTP_METHODS.GET,
       uri: `${hydraEndpoint}/${XSI_ACTION_ENDPOINT_ORG_URL_PARAM}`,
     });
