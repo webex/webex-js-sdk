@@ -66,6 +66,7 @@ import {
   NoMediaEstablishedYetError,
   UserNotJoinedError,
   AddMediaFailed,
+  MediaConnectionTimedOutError,
   SdpResponseTimeoutError,
 } from '../common/errors/webex-errors';
 
@@ -76,6 +77,7 @@ import Roap, {type TurnDiscoveryResult, type TurnDiscoverySkipReason} from '../r
 import {type TurnServerInfo} from '../roap/types';
 import Media, {type BundlePolicy} from '../media';
 import MediaProperties from '../media/properties';
+import {type FailureResult as MediaConnectionAwaiterFailureResult} from '../media/MediaConnectionAwaiter';
 import MeetingStateMachine from './state';
 import {createMuteState} from './muteState';
 import LocusInfo, {LocusLLMEvent} from '../locus-info';
@@ -5658,7 +5660,7 @@ export default class Meeting extends StatelessWebexPlugin {
         joined = true;
       }
 
-      const shouldUseOnlyTurnTLS = await this.shouldUseOnlyTurnTLS(prevError);
+      const shouldRetryMediaWithOnlyTurnTLS = await this.shouldRetryMediaWithOnlyTurnTLS(prevError);
 
       const mediaResponse = await this.addMediaInternal(
         () => {
@@ -5669,7 +5671,7 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         forceTurnDiscovery,
         turnServerInfo,
-        shouldUseOnlyTurnTLS ? 'relay' : undefined,
+        shouldRetryMediaWithOnlyTurnTLS ? 'relay' : undefined,
         mediaOptions
       );
 
@@ -7891,7 +7893,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {Error} prevError - The error from the previous addMedia attempt
    * @returns {Promise<boolean>}
    */
-  private async shouldUseOnlyTurnTLS(prevError: Error | undefined): Promise<boolean> {
+  private async shouldRetryMediaWithOnlyTurnTLS(prevError: Error | undefined): Promise<boolean> {
     if (
       prevError instanceof AddMediaFailed &&
       prevError.isDtlsHandshakeFailure &&
@@ -7903,7 +7905,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       if (hasTlsReachability) {
         LoggerProxy.logger.info(
-          'Meeting:index#shouldUseOnlyTurnTLS --> previous attempt failed due to DTLS handshake failure over UDP and TLS reachability is available'
+          'Meeting:index#shouldRetryMediaWithOnlyTurnTLS --> previous attempt failed due to DTLS handshake failure over UDP and TLS reachability is available'
         );
 
         return true;
@@ -8075,7 +8077,7 @@ export default class Meeting extends StatelessWebexPlugin {
     try {
       await this.mediaProperties.waitForMediaConnectionConnected(this.correlationId);
     } catch (error) {
-      const {iceConnected} = error;
+      const {iceConnected} = error as MediaConnectionAwaiterFailureResult;
 
       if (!this.hasMediaConnectionConnectedAtLeastOnce) {
         // Only send CA event for join flow if we haven't successfully connected media yet
@@ -8115,13 +8117,10 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       }
 
-      const timedOutError = new Error(
-        `Timed out waiting for media connection to be connected, correlationId=${this.correlationId}`
+      throw new MediaConnectionTimedOutError(
+        `Timed out waiting for media connection to be connected, correlationId=${this.correlationId}`,
+        iceConnected
       );
-
-      timedOutError.cause = error;
-
-      throw timedOutError;
     }
   }
 
@@ -8337,11 +8336,14 @@ export default class Meeting extends StatelessWebexPlugin {
       const {connectionType, selectedCandidatePairChanges, numTransports} =
         await this.mediaProperties.getCurrentConnectionInfo();
 
+      const iceConnected = error instanceof MediaConnectionTimedOutError && error.iceConnected;
+
       throw new AddMediaFailed({
         cause: error,
         connectionType,
         selectedCandidatePairChanges,
         numTransports,
+        iceConnected,
       });
     }
   }

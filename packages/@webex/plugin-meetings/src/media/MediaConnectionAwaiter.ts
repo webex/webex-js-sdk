@@ -10,6 +10,10 @@ export interface MediaConnectionAwaiterProps {
   correlationId: string;
 }
 
+export interface FailureResult {
+  iceConnected: boolean;
+}
+
 /**
  * @class MediaConnectionAwaiter
  */
@@ -105,7 +109,7 @@ export default class MediaConnectionAwaiter {
 
       this.defer.reject({
         iceConnected: this.iceConnected,
-      });
+      } satisfies FailureResult);
     }
 
     if (!this.isConnected()) {
@@ -249,13 +253,13 @@ export default class MediaConnectionAwaiter {
 
     this.defer.reject({
       iceConnected: this.iceConnected,
-    });
+    } satisfies FailureResult);
   }
 
   /**
    * Waits for the webrtc media connection to be connected.
    *
-   * @returns {Promise}
+   * @returns {Promise<void>} In case of failure, the promise is rejected with FailureResult
    */
   waitForMediaConnectionConnected(): Promise<void> {
     if (this.isConnected()) {
