@@ -20,6 +20,7 @@ import {
   WebexRequestPayload,
   CALLING_BACKEND,
   RegistrationStatus,
+  HTTP_METHODS,
 } from './types';
 import log from '../Logger';
 import {
@@ -65,7 +66,9 @@ import {
   SCIM_ENDPOINT_RESOURCE,
   SCIM_USER_FILTER,
   WEBEX_API_BTS,
+  XSI_ACTION_ENDPOINT_ORG_URL_PARAM,
 } from './constants';
+import {xsiEndpointUrlResponse} from '../CallSettings/testFixtures';
 import {CALL_EVENT_KEYS} from '../Events/types';
 import SDKConnector from '../SDKConnector';
 
@@ -1783,6 +1786,71 @@ describe('Get XSI Action Endpoint tests', () => {
     file: 'testFile',
     method: 'testMethod',
   };
+
+  const expectedXsiEndpoint = 'https://api-proxy-si.broadcloudpbx.net/com.broadsoft.xsi-actions';
+
+  beforeEach(() => {
+    mockWebex.request.mockClear();
+  });
+
+  it('should return xsiEndpoint for WXC backend using _serviceUrls.hydra', async () => {
+    const hydraEndpoint = 'https://hydra-a.wbx2.com/v1/';
+    const wxcWebex = {
+      request: jest.fn().mockResolvedValue({
+        statusCode: 200,
+        body: xsiEndpointUrlResponse,
+      }),
+      internal: {
+        services: {
+          _serviceUrls: {
+            hydra: hydraEndpoint,
+          },
+          _activeServices: {
+            hydra: 'urn:TEAM:us-east-2_a:hydra',
+          },
+          get: jest.fn(),
+        },
+      },
+    };
+
+    const result = await getXsiActionEndpoint(wxcWebex, loggerContext, CALLING_BACKEND.WXC);
+
+    expect(wxcWebex.request).toBeCalledOnceWith({
+      method: HTTP_METHODS.GET,
+      uri: `${hydraEndpoint}/${XSI_ACTION_ENDPOINT_ORG_URL_PARAM}`,
+    });
+    expect(result).toBe(expectedXsiEndpoint);
+    expect(wxcWebex.internal.services.get).not.toHaveBeenCalled();
+  });
+
+  it('should return xsiEndpoint for WXC backend using services.get when _serviceUrls is undefined', async () => {
+    const hydraEndpoint = 'https://hydra-a.wbx2.com/v1/';
+    const activeHydraCluster = 'urn:TEAM:us-east-2_a:hydra';
+    const wxcWebex = {
+      request: jest.fn().mockResolvedValue({
+        statusCode: 200,
+        body: xsiEndpointUrlResponse,
+      }),
+      internal: {
+        services: {
+          _serviceUrls: undefined,
+          _activeServices: {
+            hydra: activeHydraCluster,
+          },
+          get: jest.fn().mockReturnValue(hydraEndpoint),
+        },
+      },
+    };
+
+    const result = await getXsiActionEndpoint(wxcWebex, loggerContext, CALLING_BACKEND.WXC);
+
+    expect(wxcWebex.internal.services.get).toBeCalledOnceWith(activeHydraCluster);
+    expect(wxcWebex.request).toBeCalledOnceWith({
+      method: HTTP_METHODS.GET,
+      uri: `${hydraEndpoint}/${XSI_ACTION_ENDPOINT_ORG_URL_PARAM}`,
+    });
+    expect(result).toBe(expectedXsiEndpoint);
+  });
 
   it('should return xsiEndpoint for BWRKS backend when URL ends with /v2.0', async () => {
     const mockResponse = {
