@@ -34046,6 +34046,7 @@ __metadata:
     "@webex/legacy-tools": "workspace:*"
     "@webex/plugin-attachment-actions": "workspace:*"
     "@webex/plugin-authorization": "workspace:*"
+    "@webex/plugin-authorization-browser-first-party": "workspace:*"
     "@webex/plugin-device-manager": "workspace:*"
     "@webex/plugin-encryption": "workspace:*"
     "@webex/plugin-logger": "workspace:*"
