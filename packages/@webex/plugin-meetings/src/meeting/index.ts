@@ -5658,20 +5658,7 @@ export default class Meeting extends StatelessWebexPlugin {
         joined = true;
       }
 
-      let shouldForceRelay = false;
-
-      if (this.isDtlsHandshakeFailure(prevError) && prevError?.connectionType === 'UDP') {
-        // @ts-ignore
-        const hasTlsReachability =
-          await this.webex.meetings.reachability.isAnyClusterReachableViaProtocol('xtls');
-
-        if (hasTlsReachability) {
-          shouldForceRelay = true;
-          LoggerProxy.logger.info(
-            'Meeting:index#joinWithMedia --> previous attempt failed due to DTLS handshake failure over UDP and TLS reachability is available, retrying with iceTransportPolicy=relay'
-          );
-        }
-      }
+      const shouldUseOnlyTurnTLS = await this.shouldUseOnlyTurnTLS(prevError);
 
       const mediaResponse = await this.addMediaInternal(
         () => {
@@ -5682,7 +5669,7 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         forceTurnDiscovery,
         turnServerInfo,
-        shouldForceRelay ? 'relay' : undefined,
+        shouldUseOnlyTurnTLS ? 'relay' : undefined,
         mediaOptions
       );
 
@@ -7897,23 +7884,30 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Checks if the error indicates a DTLS handshake failure
-   * (ICE connected successfully but the overall connection failed)
+   * Determines if the next media attempt should use only TURN-TLS (iceTransportPolicy='relay').
+   * This is true when the previous attempt failed due to a DTLS handshake failure over a direct
+   * UDP connection and TLS reachability is available as a fallback.
    *
-   * @param {Error} error
-   * @returns {boolean}
+   * @param {Error} prevError - The error from the previous addMedia attempt
+   * @returns {Promise<boolean>}
    */
-  private isDtlsHandshakeFailure(error: any): boolean {
-    // The error chain is: AddMediaFailed -> Error("Timed out...") -> {iceConnected: true}
-    const cause = error?.cause;
+  private async shouldUseOnlyTurnTLS(prevError: Error | undefined): Promise<boolean> {
+    if (
+      prevError instanceof AddMediaFailed &&
+      prevError.isDtlsHandshakeFailure &&
+      prevError.connectionType === 'UDP'
+    ) {
+      const hasTlsReachability =
+        // @ts-ignore
+        await this.webex.meetings.reachability.isAnyClusterReachableViaProtocol('xtls');
 
-    if (cause?.cause?.iceConnected === true) {
-      return true;
-    }
+      if (hasTlsReachability) {
+        LoggerProxy.logger.info(
+          'Meeting:index#shouldUseOnlyTurnTLS --> previous attempt failed due to DTLS handshake failure over UDP and TLS reachability is available'
+        );
 
-    // Also handle the case where cause itself has iceConnected
-    if (cause?.iceConnected === true) {
-      return true;
+        return true;
+      }
     }
 
     return false;
@@ -8340,7 +8334,15 @@ export default class Meeting extends StatelessWebexPlugin {
         error
       );
 
-      throw new AddMediaFailed(error);
+      const {connectionType, selectedCandidatePairChanges, numTransports} =
+        await this.mediaProperties.getCurrentConnectionInfo();
+
+      throw new AddMediaFailed({
+        cause: error,
+        connectionType,
+        selectedCandidatePairChanges,
+        numTransports,
+      });
     }
   }
 
@@ -8841,10 +8843,10 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       const reachabilityMetrics = await this.getMediaReachabilityMetricFields();
 
-      const {connectionType, selectedCandidatePairChanges, numTransports} =
-        await this.mediaProperties.getCurrentConnectionInfo();
-
-      error.connectionType = connectionType;
+      const {selectedCandidatePairChanges, numTransports} =
+        error instanceof AddMediaFailed
+          ? error
+          : await this.mediaProperties.getCurrentConnectionInfo();
 
       const iceCandidateErrors = Object.fromEntries(this.iceCandidateErrors);
 
