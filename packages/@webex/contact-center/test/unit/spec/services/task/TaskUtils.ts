@@ -8,6 +8,12 @@ import {
   isDigitalOutbound,
   hasAgentInitiatedOutdial,
   shouldAutoAnswerTask,
+  getIsCustomerInCall,
+  getConferenceParticipantsCount,
+  isSecondaryAgent,
+  isSecondaryEpDnAgent,
+  getConsultMediaResourceId,
+  getIsConsultInProgressForConferenceControls,
 } from '../../../../../src/services/task/TaskUtils';
 import {ITask, Interaction, TaskData} from '../../../../../src/services/task/types';
 import {LoginOption} from '../../../../../src/types';
@@ -428,6 +434,206 @@ describe('TaskUtils', () => {
           expect(shouldAutoAnswerTask(mockTaskData, '', LoginOption.BROWSER, true)).toBe(false);
         });
       });
+    });
+  });
+
+  // Additional coverage for conference/consult utility functions
+  describe('Conference Utility Functions', () => {
+    const interactionId = 'interaction-123';
+    const createInteraction = (media: any = {}, participants: any = {}) =>
+      ({interactionId, mainInteractionId: interactionId, media, participants}) as any;
+
+    it('getIsCustomerInCall returns true when customer active', () => {
+      const interaction = createInteraction(
+        {[interactionId]: {mType: 'mainCall', participants: ['c1']}},
+        {'c1': {pType: 'Customer', hasLeft: false}}
+      );
+      expect(getIsCustomerInCall(interaction, interactionId)).toBe(true);
+    });
+
+    it('getIsCustomerInCall returns false when participants map is missing', () => {
+      const interaction = createInteraction(
+        {[interactionId]: {mType: 'mainCall', participants: ['c1']}},
+        undefined
+      );
+      expect(getIsCustomerInCall(interaction, interactionId)).toBe(false);
+    });
+
+    it('getConferenceParticipantsCount counts active agents only', () => {
+      const interaction = createInteraction(
+        {[interactionId]: {mType: 'mainCall', participants: ['a1', 'a2', 'c1']}},
+        {'a1': {pType: 'Agent', hasLeft: false}, 'a2': {pType: 'Agent', hasLeft: false}, 'c1': {pType: 'Customer', hasLeft: false}}
+      );
+      expect(getConferenceParticipantsCount(interaction, interactionId)).toBe(2);
+    });
+
+    it('getConferenceParticipantsCount returns 0 when participants map is missing', () => {
+      const interaction = createInteraction(
+        {[interactionId]: {mType: 'mainCall', participants: ['a1', 'a2', 'c1']}},
+        undefined
+      );
+      expect(getConferenceParticipantsCount(interaction, interactionId)).toBe(0);
+    });
+
+    it('isSecondaryAgent returns true for consult with parentInteractionId', () => {
+      const interaction = createInteraction();
+      interaction.callProcessingDetails = {relationshipType: 'consult', parentInteractionId: 'parent-456'};
+      expect(isSecondaryAgent(interaction)).toBe(true);
+    });
+
+    it('isSecondaryEpDnAgent returns true for telephony secondary agent', () => {
+      const interaction = createInteraction();
+      interaction.mediaType = 'telephony';
+      interaction.callProcessingDetails = {relationshipType: 'consult', parentInteractionId: 'parent-456'};
+      expect(isSecondaryEpDnAgent(interaction)).toBe(true);
+    });
+  });
+
+  describe('getConsultMediaResourceId', () => {
+    it('returns consultMediaResourceId directly when provided', () => {
+      const result = getConsultMediaResourceId(undefined, 'consult-media-1', 'agent1');
+      expect(result).toBe('consult-media-1');
+    });
+
+    it('returns undefined when no interaction and no consultMediaResourceId', () => {
+      const result = getConsultMediaResourceId(undefined, undefined, 'agent1');
+      expect(result).toBeUndefined();
+    });
+
+    it('returns undefined when no agentId and no consultMediaResourceId', () => {
+      const interaction = {media: {}} as any;
+      const result = getConsultMediaResourceId(interaction, undefined, undefined);
+      expect(result).toBeUndefined();
+    });
+
+    it('finds consult media leg by mType and agent participation', () => {
+      const interaction = {
+        media: {
+          'main-media': {
+            mediaResourceId: 'main-media',
+            mType: 'mainCall',
+            participants: ['agent1', 'customer1'],
+          },
+          'consult-media': {
+            mediaResourceId: 'consult-media',
+            mType: 'consult',
+            participants: ['agent1', 'agent2'],
+          },
+        },
+      } as any;
+      const result = getConsultMediaResourceId(interaction, undefined, 'agent1');
+      expect(result).toBe('consult-media');
+    });
+
+    it('returns undefined when no consult media leg matches the agent', () => {
+      const interaction = {
+        media: {
+          'main-media': {
+            mediaResourceId: 'main-media',
+            mType: 'mainCall',
+            participants: ['agent1', 'customer1'],
+          },
+          'consult-media': {
+            mediaResourceId: 'consult-media',
+            mType: 'consult',
+            participants: ['agent2', 'agent3'],
+          },
+        },
+      } as any;
+      const result = getConsultMediaResourceId(interaction, undefined, 'agent1');
+      expect(result).toBeUndefined();
+    });
+
+    it('returns undefined when media has no consult type entries', () => {
+      const interaction = {
+        media: {
+          'main-media': {
+            mediaResourceId: 'main-media',
+            mType: 'mainCall',
+            participants: ['agent1', 'customer1'],
+          },
+        },
+      } as any;
+      const result = getConsultMediaResourceId(interaction, undefined, 'agent1');
+      expect(result).toBeUndefined();
+    });
+
+    it('prioritizes direct consultMediaResourceId over interaction search', () => {
+      const interaction = {
+        media: {
+          'consult-media': {
+            mediaResourceId: 'consult-media',
+            mType: 'consult',
+            participants: ['agent1', 'agent2'],
+          },
+        },
+      } as any;
+      const result = getConsultMediaResourceId(interaction, 'direct-id', 'agent1');
+      expect(result).toBe('direct-id');
+    });
+  });
+
+  describe('getIsConsultInProgressForConferenceControls', () => {
+    it('returns false when consultee is reserved but has not joined (RONA)', () => {
+      const interaction = {
+        participants: {
+          'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false, isConsulted: false},
+          'agent-2': {
+            id: 'agent-2',
+            pType: 'Agent',
+            hasLeft: false,
+            hasJoined: false,
+            isConsulted: true,
+            consultState: 'consultReserved',
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+        },
+        media: {
+          'interaction-1': {
+            mType: 'mainCall',
+            participants: ['customer-1', 'agent-1'],
+          },
+          'consult-media': {
+            mType: 'consult',
+            participants: ['agent-2', 'agent-1'],
+          },
+        },
+      } as any;
+
+      expect(
+        getIsConsultInProgressForConferenceControls(interaction, 'interaction-1', 'agent-1')
+      ).toBe(false);
+    });
+
+    it('returns true when consultee is actively consulting', () => {
+      const interaction = {
+        participants: {
+          'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false, isConsulted: false},
+          'agent-2': {
+            id: 'agent-2',
+            pType: 'Agent',
+            hasLeft: false,
+            hasJoined: true,
+            isConsulted: true,
+            consultState: 'consulting',
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+        },
+        media: {
+          'interaction-1': {
+            mType: 'mainCall',
+            participants: ['customer-1', 'agent-1'],
+          },
+          'consult-media': {
+            mType: 'consult',
+            participants: ['agent-2', 'agent-1'],
+          },
+        },
+      } as any;
+
+      expect(
+        getIsConsultInProgressForConferenceControls(interaction, 'interaction-1', 'agent-1')
+      ).toBe(true);
     });
   });
 });

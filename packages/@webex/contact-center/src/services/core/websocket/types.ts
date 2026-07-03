@@ -1,5 +1,5 @@
 import {SubscribeRequest} from '../../../types';
-import {WebSocketManager} from './WebSocketManager';
+import type WebSocketManager from './WebSocketManager';
 
 /**
  * Options for initializing a connection service.
