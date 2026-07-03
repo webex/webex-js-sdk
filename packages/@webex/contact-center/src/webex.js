@@ -10,6 +10,8 @@ import './index';
 
 import config from './webex-config';
 
+export * from './index';
+
 /**
  * Ensures global Buffer is defined, which is required for SDK functionality in some environments.
  * @ignore

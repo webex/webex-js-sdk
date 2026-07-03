@@ -25,6 +25,7 @@ import {
   UploadLogsResponse,
   UpdateDeviceTypeResponse,
   GenericError,
+  ConfigFlags,
 } from './types';
 import {
   READY,
@@ -325,7 +326,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * });
    * ```
    */
-  private queue: Queue;
+  public queue: Queue;
 
   /**
    * API instance for AI Assistant operations such as transcript controls.
@@ -378,7 +379,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.apiAIAssistant,
         this.services.contact,
         this.webCallingService,
-        this.services.webSocketManager
+        this.services.webSocketManager,
+        this.services.rtdWebSocketManager
       );
       this.incomingTaskListener();
 
@@ -412,6 +414,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   /**
+   * Handles multi-login hydrate events for SDK instances without Mobius registration
+   * @private
+   * @param {ITask} task The task object associated with the multi-login hydrate
+   */
+  private handleTaskMultiLoginHydrate = (task: ITask) => {
+    // @ts-ignore
+    this.trigger(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, task);
+  };
+
+  /**
    * Handles task merged events when tasks are combined eg: EPDN merge/transfer
    * @private
    * @param {ITask} task The task object that has been merged
@@ -431,18 +443,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.trigger(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, task);
   };
 
-  /**
-   * Handles multi-login hydrate events emitted when browser login accepts an incoming call.
-   * @private
-   * @param {ITask} task The task object associated with multi-login hydrate
-   */
-  private handleTaskMultiLoginHydrate = (task: ITask) => {
-    // @ts-ignore
-    this.trigger(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, task);
-  };
-
-  private handleRTDWebsocketMessage = (payload: string) => {
-    this.taskManager.handleRealtimeWebsocketEvent(payload);
+  private handleRTDWebsocketMessage = (event: string) => {
+    this.taskManager.handleRealtimeWebsocketEvent(event);
   };
 
   /**
@@ -453,8 +455,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private incomingTaskListener() {
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
     this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
-    this.taskManager.on(TASK_EVENTS.TASK_MERGED, this.handleTaskMerged);
     this.taskManager.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
+    this.taskManager.on(TASK_EVENTS.TASK_MERGED, this.handleTaskMerged);
     this.taskManager.on(
       TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
       this.handleCampaignPreviewReservation
@@ -619,6 +621,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (!this.services.webSocketManager.isSocketClosed) {
         this.services.webSocketManager.close(false, 'Unregistering the SDK');
       }
+      if (this.services.rtdWebSocketManager && !this.services.rtdWebSocketManager.isSocketClosed) {
+        this.services.rtdWebSocketManager.close(false, 'Unregistering the SDK');
+      }
 
       if (this.services.rtdWebSocketManager && !this.services.rtdWebSocketManager.isSocketClosed) {
         this.services.rtdWebSocketManager.close(false, 'Unregistering the RTD websocket');
@@ -738,30 +743,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Checks whether WebRTC registration should be skipped by config.
-   * @returns {boolean}
-   * @private
-   */
-  private isWebRTCRegistrationDisabled(): boolean {
-    return this.$config?.disableWebRTCRegistration === true;
-  }
-
-  /**
-   * Validates contact-center plugin configuration before service initialization
-   * @private
-   */
-  private validatePluginConfig(): void {
-    if (
-      this.$config?.disableWebRTCRegistration === true &&
-      this.$config?.allowMultiLogin === false
-    ) {
-      throw new Error(
-        'Invalid Contact Center configuration: disableWebRTCRegistration cannot be true when allowMultiLogin is false. Enable allowMultiLogin or allow WebRTC registration so an SDK instance can receive Mobius/WebRTC task events.'
-      );
-    }
-  }
-
-  /**
    * Connects to the websocket and fetches the agent profile
    * @returns {Promise<Profile>} Agent profile information
    * @throws {Error} If connection fails or profile cannot be fetched
@@ -788,19 +769,34 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         method: METHODS.CONNECT_WEBSOCKET,
       });
 
+      const configFlags: ConfigFlags = {
+        isEndTaskEnabled: this.agentConfig.isEndTaskEnabled,
+        isEndConsultEnabled: this.agentConfig.isEndConsultEnabled,
+        webRtcEnabled: this.agentConfig.webRtcEnabled,
+        autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
+        aiFeature: this.agentConfig.aiFeature,
+      };
+      this.taskManager.setConfigFlags(configFlags);
       // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
       this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
       this.taskManager.setAgentId(this.agentConfig.agentId);
       this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
       this.apiAIAssistant.setAIFeatureFlags(this.agentConfig.aiFeature);
 
-      if (this.agentConfig.aiFeature?.realtimeTranscripts?.enable) {
-        LoggerProxy.log('Connecting to RTD websocket', {
+      /**
+       * RTD websocket currently supports realtime transcripts and suggested responses.
+       * Extend this condition when additional AI RTD features are introduced.
+       */
+      if (
+        this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||
+        this.agentConfig.aiFeature?.suggestedResponses?.enable
+      ) {
+        LoggerProxy.info('Connecting to RTD websocket', {
           module: CC_FILE,
           method: METHODS.CONNECT_WEBSOCKET,
         });
 
-        await this.services.rtdWebSocketManager
+        this.services.rtdWebSocketManager
           .initWebSocket({
             body: this.getConnectionConfig(),
             resource: RTD_SUBSCRIBE_API,
@@ -813,7 +809,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             this.services.rtdWebSocketManager.on('message', this.handleRTDWebsocketMessage);
           })
           .catch((error) => {
-            LoggerProxy.error(`Error during RTD websocket setup: ${error}`, {
+            LoggerProxy.error(`Error connecting to RTD websocket ${error}`, {
               module: CC_FILE,
               method: METHODS.CONNECT_WEBSOCKET,
             });
@@ -1323,6 +1319,30 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         break;
     }
   };
+
+  /**
+   * Checks whether Mobius/WebRTC registration should be skipped by config
+   * @returns {boolean} True when browser WebRTC registration is disabled
+   * @private
+   */
+  private isWebRTCRegistrationDisabled(): boolean {
+    return this.$config?.disableWebRTCRegistration === true;
+  }
+
+  /**
+   * Validates contact-center plugin configuration before service initialization
+   * @private
+   */
+  private validatePluginConfig(): void {
+    if (
+      this.$config?.disableWebRTCRegistration === true &&
+      this.$config?.allowMultiLogin === false
+    ) {
+      throw new Error(
+        'Invalid Contact Center configuration: disableWebRTCRegistration cannot be true when allowMultiLogin is false. Enable allowMultiLogin or allow WebRTC registration so an SDK instance can receive Mobius/WebRTC task events.'
+      );
+    }
+  }
 
   /**
    * Initializes event listeners for the Contact Center service
