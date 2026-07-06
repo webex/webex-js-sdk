@@ -1,3 +1,4 @@
+import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import { CapabilityState, WebCapabilities } from '@webex/web-capabilities';
@@ -63,9 +64,23 @@ describe('isAnyPublicClusterReachable', () => {
     );
   });
 
+  it('returns false when only xtls is reachable', async () => {
+    await checkIsClusterReachable(
+      {x: {udp: {result: 'unreachable'}, tcp: {result: 'unreachable'}, xtls: {result: 'reachable'}}},
+      false
+    );
+  });
+
   it('returns false when both tcp and udp are unreachable', async () => {
     await checkIsClusterReachable(
       {x: {udp: {result: 'unreachable'}, tcp: {result: 'unreachable'}}},
+      false
+    );
+  });
+
+  it('returns false when udp, tcp and xtls are all unreachable', async () => {
+    await checkIsClusterReachable(
+      {x: {udp: {result: 'unreachable'}, tcp: {result: 'unreachable'}, xtls: {result: 'unreachable'}}},
       false
     );
   });
@@ -510,10 +525,7 @@ describe('gatherReachability', () => {
         return mockInstance;
       });
 
-    webex.config.meetings.experimental = {
-      enableTcpReachability: false,
-      enableTlsReachability: false,
-    };
+    webex.config.meetings.enableReachabilityChecks = {tcp: false, tls: false};
   });
 
   afterEach(() => {
@@ -1229,10 +1241,7 @@ describe('gatherReachability', () => {
       expectedMetrics,
     }) =>
       it(`works correctly for the case: ${title}`, async () => {
-        webex.config.meetings.experimental = {
-          enableTcpReachability: true,
-          enableTlsReachability: true,
-        };
+        webex.config.meetings.enableReachabilityChecks = true;
 
         // the metrics related to ipver and trigger are not tested in these tests and are all the same, so setting them up here
         const expectedMetricsFull = {
@@ -1367,10 +1376,7 @@ describe('gatherReachability', () => {
   });
 
   it(`starts ip network version detection and includes the results in the metrics`, async () => {
-    webex.config.meetings.experimental = {
-      enableTcpReachability: true,
-      enableTlsReachability: true,
-    };
+    webex.config.meetings.enableReachabilityChecks = true;
     webex.internal.device.ipNetworkDetector = {
       supportsIpV4: true,
       supportsIpV6: true,
@@ -1447,10 +1453,7 @@ describe('gatherReachability', () => {
   });
 
   it('keeps updating reachability results after the 3s public cloud timeout expires', async () => {
-    webex.config.meetings.experimental = {
-      enableTcpReachability: true,
-      enableTlsReachability: true,
-    };
+    webex.config.meetings.enableReachabilityChecks = true;
 
     const reachability = new Reachability(webex);
 
@@ -1546,10 +1549,7 @@ describe('gatherReachability', () => {
   });
 
   it('handles clientMediaIpsUpdated event by updating clientMediaIps in results', async () => {
-    webex.config.meetings.experimental = {
-      enableTcpReachability: true,
-      enableTlsReachability: true,
-    };
+    webex.config.meetings.enableReachabilityChecks = true;
 
     const reachability = new Reachability(webex);
 
@@ -1634,10 +1634,7 @@ describe('gatherReachability', () => {
   });
 
   it('starts ClusterReachability on each media cluster', async () => {
-    webex.config.meetings.experimental = {
-      enableTcpReachability: true,
-      enableTlsReachability: true,
-    };
+    webex.config.meetings.enableReachabilityChecks = true;
 
     const getClustersResult = {
       clusters: {
@@ -1686,10 +1683,7 @@ describe('gatherReachability', () => {
   });
 
   it('does not do TCP reachability if it is disabled in config', async () => {
-    webex.config.meetings.experimental = {
-      enableTcpReachability: false,
-      enableTlsReachability: true,
-    };
+    webex.config.meetings.enableReachabilityChecks = {tcp: false, tls: true};
 
     const getClustersResult = {
       clusters: {
@@ -1720,10 +1714,7 @@ describe('gatherReachability', () => {
   });
 
   it('does not do TLS reachability if it is disabled in config', async () => {
-    webex.config.meetings.experimental = {
-      enableTcpReachability: true,
-      enableTlsReachability: false,
-    };
+    webex.config.meetings.enableReachabilityChecks = {tcp: true, tls: false};
 
     const getClustersResult = {
       clusters: {
@@ -1755,10 +1746,7 @@ describe('gatherReachability', () => {
   });
 
   it('does not do TCP or TLS reachability if it is disabled in config', async () => {
-    webex.config.meetings.experimental = {
-      enableTcpReachability: false,
-      enableTlsReachability: false,
-    };
+    webex.config.meetings.enableReachabilityChecks = {tcp: false, tls: false};
 
     const getClustersResult = {
       clusters: {
@@ -1789,11 +1777,39 @@ describe('gatherReachability', () => {
     }, undefined);
   });
 
-  it('retry of getClusters is succesfull', async () => {
-    webex.config.meetings.experimental = {
-      enableTcpReachability: true,
-      enableTlsReachability: false,
+  it('does UDP, TCP and TLS reachability by default (enableReachabilityChecks=true)', async () => {
+    webex.config.meetings.enableReachabilityChecks = true;
+
+    const getClustersResult = {
+      clusters: {
+        'cluster name': {
+          udp: ['testUDP1', 'testUDP2'],
+          tcp: ['testTCP1', 'testTCP2'],
+          xtls: ['testXTLS1', 'testXTLS2'],
+          isVideoMesh: false,
+        },
+      },
+      joinCookie: {id: 'id'},
     };
+
+    const reachability = new Reachability(webex);
+
+    reachability.reachabilityRequest.getClusters = sinon.stub().returns(getClustersResult);
+
+    const promise = reachability.gatherReachability('test');
+    await simulateTimeout();
+    await promise;
+
+    assert.calledOnceWithExactly(clusterReachabilityCtorStub, 'cluster name', {
+      isVideoMesh: false,
+      udp: ['testUDP1', 'testUDP2'],
+      tcp: ['testTCP1', 'testTCP2'],
+      xtls: ['testXTLS1', 'testXTLS2'],
+    }, undefined);
+  });
+
+  it('retry of getClusters is succesfull', async () => {
+    webex.config.meetings.enableReachabilityChecks = {tcp: true, tls: false};
 
     const getClustersResult = {
       clusters: {
@@ -1866,10 +1882,7 @@ describe('gatherReachability', () => {
     };
 
     beforeEach(() => {
-      webex.config.meetings.experimental = {
-        enableTcpReachability: true,
-        enableTlsReachability: true,
-      };
+      webex.config.meetings.enableReachabilityChecks = true;
 
       receivedEvents = {
         done: 0,
@@ -2133,7 +2146,7 @@ describe('gatherReachability', () => {
         receivedEvents[event] = receivedEvents[event] + 1 || 1;
       });
     };
-    
+
     it('works as expected', async () => {
       setListener('reachability:stopped');
       setListener('reachability:done');
