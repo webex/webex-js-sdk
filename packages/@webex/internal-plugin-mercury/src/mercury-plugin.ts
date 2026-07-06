@@ -40,6 +40,11 @@ export class MercuryPlugin extends (WebexPlugin as any) {
     return this._mercury?.socket;
   }
 
+  /** Cluster service URLs received from registration status event. */
+  get localClusterServiceUrls(): any {
+    return this._mercury?.localClusterServiceUrls;
+  }
+
   getLastError(): any {
     return this._mercury?.getLastError();
   }

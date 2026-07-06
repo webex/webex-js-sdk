@@ -6767,8 +6767,8 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore - Fix type
     this.webex.internal.llm.setRefreshHandler(
       () => this.refreshDataChannelToken(),
-      LLM_DEFAULT_SESSION,
-      refreshHandlerOwnerMeetingId
+      refreshHandlerOwnerMeetingId,
+      LLM_DEFAULT_SESSION
     );
 
     // @ts-ignore - Fix type
@@ -6802,8 +6802,8 @@ export default class Meeting extends StatelessWebexPlugin {
             // @ts-ignore - Fix type
             this.webex.internal.llm.setRefreshHandler(
               () => this.refreshDataChannelToken(),
-              LLM_DEFAULT_SESSION,
-              this.id
+              this.id,
+              LLM_DEFAULT_SESSION
             );
           }
         }

@@ -29,8 +29,15 @@ export class LLMPlugin extends (WebexPlugin as any) {
       // Forward all events emitted by the channel up through the plugin so that
       // callers doing llm.on('event:relay.event', ...) or llm.on('online', ...)
       // receive events from whichever session channel emits them.
+      // Non-default sessions emit events with :<sessionId> suffix so that
+      // practice-session consumers can subscribe to session-specific names
+      // like `event:relay.event:llm-practice-session`.
       channel.on('all', (eventName: string, ...args: any[]) => {
-        this.trigger(eventName, ...args);
+        if (sessionId === LLM_DEFAULT_SESSION) {
+          this.trigger(eventName, ...args);
+        } else {
+          this.trigger(`${eventName}:${sessionId}`, ...args);
+        }
       });
       this.sessions.set(sessionId, channel);
     }

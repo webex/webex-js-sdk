@@ -469,5 +469,51 @@ describe('plugin-llm', () => {
         sinon.assert.notCalled(mockChannel.setRefreshHandler);
       });
     });
+
+    describe('event forwarding', () => {
+      let triggerSpy;
+
+      beforeEach(() => {
+        triggerSpy = sinon.spy(plugin, 'trigger');
+      });
+
+      it('forwards default session events without suffix', () => {
+        // Create a session via getOrCreateSession (creates real LLMChannel with event handler)
+        const channel = plugin.getOrCreateSession(LLM_DEFAULT_SESSION);
+
+        // Trigger an event on the channel - the 'all' handler should forward it
+        channel.trigger('event:relay.event', {data: 'test'});
+
+        sinon.assert.calledOnceWithExactly(triggerSpy, 'event:relay.event', {data: 'test'});
+      });
+
+      it('forwards non-default session events with sessionId suffix', () => {
+        const practiceSession = 'llm-practice-session';
+
+        // Create a session via getOrCreateSession (creates real LLMChannel with event handler)
+        const channel = plugin.getOrCreateSession(practiceSession);
+
+        // Trigger an event on the channel - the 'all' handler should forward it with suffix
+        channel.trigger('event:relay.event', {data: 'test'});
+
+        sinon.assert.calledOnceWithExactly(triggerSpy, `event:relay.event:${practiceSession}`, {
+          data: 'test',
+        });
+      });
+
+      it('forwards locus events with sessionId suffix for practice session', () => {
+        const practiceSession = 'llm-practice-session';
+
+        const channel = plugin.getOrCreateSession(practiceSession);
+
+        channel.trigger('event:locus.state_message', {locusData: 'test'});
+
+        sinon.assert.calledOnceWithExactly(
+          triggerSpy,
+          `event:locus.state_message:${practiceSession}`,
+          {locusData: 'test'}
+        );
+      });
+    });
   });
 });

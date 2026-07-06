@@ -97,6 +97,23 @@ describe('plugin-mercury', () => {
       });
     });
 
+    describe('#localClusterServiceUrls', () => {
+      it('returns undefined when not set', () => {
+        assert.isUndefined(mercuryPlugin.localClusterServiceUrls);
+      });
+
+      it('returns the localClusterServiceUrls when set', () => {
+        const urls = {mercuryConnectionServiceClusterUrl: 'https://mercury.example.com'};
+        mercuryPlugin._mercury.localClusterServiceUrls = urls;
+        assert.deepEqual(mercuryPlugin.localClusterServiceUrls, urls);
+      });
+
+      it('returns undefined when _mercury is undefined', () => {
+        mercuryPlugin._mercury = undefined;
+        assert.isUndefined(mercuryPlugin.localClusterServiceUrls);
+      });
+    });
+
     describe('#getLastError()', () => {
       it('returns undefined when no error occurred', () => {
         assert.isUndefined(mercuryPlugin.getLastError());
