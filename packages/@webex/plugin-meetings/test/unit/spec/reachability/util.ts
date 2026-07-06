@@ -3,9 +3,40 @@ import {assert} from '@webex/test-helper-chai';
 import {
   convertStunUrlToTurn,
   convertStunUrlToTurnTls,
+  isReachabilityEnabled,
+  resolveReachabilityProtocols,
 } from '@webex/plugin-meetings/src/reachability/util';
 
 describe('plugin-meetings/src/reachability/util', () => {
+  describe('#resolveReachabilityProtocols()', () => {
+    [
+      {title: 'undefined defaults to all enabled', config: undefined, expected: {udp: true, tcp: true, tls: true}},
+      {title: 'true enables all protocols', config: true, expected: {udp: true, tcp: true, tls: true}},
+      {title: 'false disables all protocols', config: false, expected: {udp: false, tcp: false, tls: false}},
+      {title: 'empty object keeps udp on and defaults tcp/tls to enabled', config: {}, expected: {udp: true, tcp: true, tls: true}},
+      {title: 'object can disable tcp', config: {tcp: false}, expected: {udp: true, tcp: false, tls: true}},
+      {title: 'object can disable tls', config: {tls: false}, expected: {udp: true, tcp: true, tls: false}},
+      {title: 'object can disable both tcp and tls but udp stays on', config: {tcp: false, tls: false}, expected: {udp: true, tcp: false, tls: false}},
+    ].forEach(({title, config, expected}) => {
+      it(`resolves: ${title}`, () => {
+        assert.deepEqual(resolveReachabilityProtocols(config as any), expected);
+      });
+    });
+  });
+
+  describe('#isReachabilityEnabled()', () => {
+    [
+      {title: 'undefined', config: undefined, expected: true},
+      {title: 'true', config: true, expected: true},
+      {title: 'false', config: false, expected: false},
+      {title: 'object disabling tcp and tls (udp still on)', config: {tcp: false, tls: false}, expected: true},
+    ].forEach(({title, config, expected}) => {
+      it(`returns ${expected} for ${title}`, () => {
+        assert.equal(isReachabilityEnabled(config as any), expected);
+      });
+    });
+  });
+
   describe('#convertStunUrlToTurn()', () => {
     [
       {
