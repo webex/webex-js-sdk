@@ -7,11 +7,11 @@ import {
 import * as Agent from './services/agent/types';
 import * as Contact from './services/task/types';
 import {
+  AIFeatureFlags,
   Profile,
   CreateUserPreferenceRequest,
   UpdateUserPreferenceRequest,
 } from './services/config/types';
-import {AIFeatureFlags, Profile} from './services/config/types';
 import {PaginatedResponse, BaseSearchParams} from './utils/PageCache';
 
 /**
