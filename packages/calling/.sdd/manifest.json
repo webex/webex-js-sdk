@@ -2,90 +2,1052 @@
   "manifest_version": 1,
   "repository": {
     "name": "@webex/calling",
-    "purpose": "Published Webex JavaScript calling SDK package providing calling clients, call control, settings, history, recording, contacts, voicemail, telemetry, and Mobius signaling.",
+    "purpose": "TypeScript SDK package for Webex Calling clients, registration, call control and media, call history and recordings, settings, contacts, voicemail, telemetry, and Mobius WebSocket transport.",
     "category": "cat1-legacy",
-    "primary_languages": ["typescript"]
+    "primary_languages": [
+      "typescript",
+      "javascript"
+    ]
   },
   "topology": "Single-repo",
   "commands": {
-    "install": {"command": "yarn install", "source_file": "package.json"},
-    "build": {"command": "yarn workspace @webex/calling build", "source_file": "packages/calling/package.json"},
-    "test": {"command": "yarn workspace @webex/calling test:unit", "source_file": "packages/calling/package.json"},
-    "lint": {"command": "yarn workspace @webex/calling test:style", "source_file": "packages/calling/package.json"},
-    "docs": {"command": "yarn workspace @webex/calling build:docs", "source_file": "packages/calling/package.json"},
-    "e2e": {"command": "yarn workspace @webex/calling test:e2e", "source_file": "packages/calling/package.json"}
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "verified_at": "2026-07-06T10:46:38Z"
+    },
+    "build": {
+      "command": "yarn workspace @webex/calling build:src",
+      "source_file": "packages/calling/package.json",
+      "verified_at": "2026-07-06T10:46:38Z"
+    },
+    "test_unit": {
+      "command": "yarn workspace @webex/calling test:unit",
+      "source_file": "packages/calling/package.json",
+      "verified_at": "2026-07-06T10:46:38Z"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/calling test:style",
+      "source_file": "packages/calling/package.json",
+      "verified_at": "2026-07-06T10:46:38Z"
+    },
+    "test_e2e": {
+      "command": "yarn workspace @webex/calling test:e2e",
+      "source_file": "packages/calling/package.json",
+      "verified_at": "2026-07-06T10:46:38Z"
+    },
+    "docs": {
+      "command": "yarn workspace @webex/calling build:docs",
+      "source_file": "packages/calling/package.json",
+      "verified_at": "2026-07-06T10:46:38Z"
+    }
   },
   "coverage_status_definitions": {
-    "specced": ">=80% complete with no critical gaps and drift <5%; spec is authoritative",
-    "partial": "40-80% complete; spec is useful but code must be cross-checked",
-    "untracked": "<40% complete; code is the source of truth"
+    "specced": ">=80% public surface specced, drift <5% \u2014 spec is authoritative",
+    "partial": "40-80% specced \u2014 spec is a hint, cross-check code",
+    "untracked": "<40% specced \u2014 code is the source of truth"
   },
   "spec_source_policy": {
-    "mode": "reconcile",
+    "mode": "migrate-existing",
     "decided_by": "repository user",
-    "decided_at": "2026-07-04T00:00:00+05:30",
-    "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+    "decided_at": "2026-07-06T10:46:38Z",
+    "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
   },
   "spec_sources": [
-    {"path": "AGENTS.md", "scope": "repo", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "AGENTS.md"},
-    {"path": "ai-docs/README.md", "scope": "repo", "role": "superseded", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "ai-docs/SPEC_INDEX.md"},
-    {"path": "ai-docs/RULES.md", "scope": "repo", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "ai-docs/RULES.md"},
-    {"path": "src/ai-docs/AGENTS.md", "scope": "repo", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "ai-docs/SPEC_INDEX.md"},
-    {"path": "src/ai-docs/ARCHITECTURE.md", "scope": "repo", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "ai-docs/ARCHITECTURE.md"},
-    {"path": "ai-docs/patterns/", "scope": "reference", "role": "reference-only", "canonical": false, "use_by_agents": "context-only", "canonical_target": "ai-docs/patterns/", "notes": "Five existing pattern documents remain reference candidates and are checked against source."},
-    {"path": "ai-docs/templates/", "scope": "reference", "role": "superseded", "canonical": false, "use_by_agents": "source-for-reconciliation", "notes": "Legacy task workflows remain in place; SDLC lifecycle skills own future routing."},
-    {"path": "src/CallHistory/ai-docs/AGENTS.md", "scope": "module", "module": "src/CallHistory/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/CallHistory/ai-docs/call-history-spec.md"},
-    {"path": "src/CallHistory/ai-docs/ARCHITECTURE.md", "scope": "module", "module": "src/CallHistory/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/CallHistory/ai-docs/call-history-spec.md"},
-    {"path": "src/CallRecording/ai-docs/AGENTS.md", "scope": "module", "module": "src/CallRecording/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/CallRecording/ai-docs/call-recording-spec.md"},
-    {"path": "src/CallRecording/ai-docs/ARCHITECTURE.md", "scope": "module", "module": "src/CallRecording/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/CallRecording/ai-docs/call-recording-spec.md"},
-    {"path": "src/CallSettings/ai-docs/AGENTS.md", "scope": "module", "module": "src/CallSettings/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/CallSettings/ai-docs/call-settings-spec.md"},
-    {"path": "src/CallSettings/ai-docs/ARCHITECTURE.md", "scope": "module", "module": "src/CallSettings/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/CallSettings/ai-docs/call-settings-spec.md"},
-    {"path": "src/CallingClient/ai-docs/AGENTS.md", "scope": "module", "module": "src/CallingClient/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/CallingClient/ai-docs/calling-client-spec.md"},
-    {"path": "src/CallingClient/ai-docs/ARCHITECTURE.md", "scope": "module", "module": "src/CallingClient/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/CallingClient/ai-docs/calling-client-spec.md"},
-    {"path": "src/CallingClient/calling/ai-docs/AGENTS.md", "scope": "module", "module": "src/CallingClient/calling/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/CallingClient/calling/ai-docs/calling-spec.md"},
-    {"path": "src/CallingClient/calling/ai-docs/ARCHITECTURE.md", "scope": "module", "module": "src/CallingClient/calling/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/CallingClient/calling/ai-docs/calling-spec.md"},
-    {"path": "src/CallingClient/calling/CallerId/ai-docs/AGENTS.md", "scope": "module", "module": "src/CallingClient/calling/CallerId/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/CallingClient/calling/CallerId/ai-docs/caller-id-spec.md"},
-    {"path": "src/CallingClient/line/ai-docs/AGENTS.md", "scope": "module", "module": "src/CallingClient/line/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/CallingClient/line/ai-docs/line-spec.md"},
-    {"path": "src/CallingClient/line/ai-docs/ARCHITECTURE.md", "scope": "module", "module": "src/CallingClient/line/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/CallingClient/line/ai-docs/line-spec.md"},
-    {"path": "src/CallingClient/registration/ai-docs/AGENTS.md", "scope": "module", "module": "src/CallingClient/registration/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/CallingClient/registration/ai-docs/registration-spec.md"},
-    {"path": "src/CallingClient/registration/ai-docs/ARCHITECTURE.md", "scope": "module", "module": "src/CallingClient/registration/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/CallingClient/registration/ai-docs/registration-spec.md"},
-    {"path": "src/Contacts/ai-docs/AGENTS.md", "scope": "module", "module": "src/Contacts/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/Contacts/ai-docs/contacts-spec.md"},
-    {"path": "src/Contacts/ai-docs/ARCHITECTURE.md", "scope": "module", "module": "src/Contacts/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/Contacts/ai-docs/contacts-spec.md"},
-    {"path": "src/Metrics/ai-docs/AGENTS.md", "scope": "module", "module": "src/Metrics/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/Metrics/ai-docs/metrics-spec.md"},
-    {"path": "src/Metrics/ai-docs/ARCHITECTURE.md", "scope": "module", "module": "src/Metrics/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/Metrics/ai-docs/metrics-spec.md"},
-    {"path": "src/Voicemail/ai-docs/AGENTS.md", "scope": "module", "module": "src/Voicemail/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/Voicemail/ai-docs/voicemail-spec.md"},
-    {"path": "src/Voicemail/ai-docs/ARCHITECTURE.md", "scope": "module", "module": "src/Voicemail/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/Voicemail/ai-docs/voicemail-spec.md"},
-    {"path": "src/mobius-socket/ai-docs/AGENTS.md", "scope": "module", "module": "src/mobius-socket/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/mobius-socket/ai-docs/mobius-socket-spec.md"},
-    {"path": "src/mobius-socket/ai-docs/ARCHITECTURE.md", "scope": "module", "module": "src/mobius-socket/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-reconciliation", "canonical_target": "src/mobius-socket/ai-docs/mobius-socket-spec.md"}
+    {
+      "path": "AGENTS.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": true,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "notes": "Migrated in place into the canonical agent-entry template while preserving package routing and safety rules."
+    },
+    {
+      "path": "ai-docs/README.md",
+      "scope": "repo",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "canonical_target": "ai-docs/SPEC_INDEX.md",
+      "notes": "Retained as a navigation hub and updated to point at canonical SDD docs."
+    },
+    {
+      "path": "ai-docs/RULES.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": true,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "ai-docs/RULES.md",
+      "notes": "Migrated in place into the canonical rules template."
+    },
+    {
+      "path": "src/ai-docs/AGENTS.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "ai-docs/ARCHITECTURE.md",
+      "notes": "Package-source orientation content migrates into standing architecture and contract docs."
+    },
+    {
+      "path": "src/ai-docs/ARCHITECTURE.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "ai-docs/ARCHITECTURE.md",
+      "notes": "Package-source architecture content migrates by meaning into the canonical standing architecture."
+    },
+    {
+      "path": "usm sdk flow.md",
+      "scope": "feature",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/ai-docs/calling-client-spec.md",
+      "notes": "Current supported flow details are migrated into the CallingClient design; the original feature note is retained."
+    },
+    {
+      "path": "src/api.ts",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "canonical_target": "ai-docs/CONTRACTS.md",
+      "notes": "Native TypeScript API export source remains authoritative for exact names and types."
+    },
+    {
+      "path": "src/CallHistory/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/CallHistory/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallHistory/ai-docs/call-history-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/CallHistory/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/CallHistory/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallHistory/ai-docs/call-history-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/CallRecording/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/CallRecording/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallRecording/ai-docs/call-recording-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/CallRecording/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/CallRecording/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallRecording/ai-docs/call-recording-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/CallSettings/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/CallSettings/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallSettings/ai-docs/call-settings-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/CallSettings/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/CallSettings/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallSettings/ai-docs/call-settings-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/CallingClient/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/CallingClient/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/ai-docs/calling-client-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/CallingClient/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/CallingClient/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/ai-docs/calling-client-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/CallingClient/calling/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/CallingClient/calling/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/calling/ai-docs/calling-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/CallingClient/calling/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/CallingClient/calling/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/calling/ai-docs/calling-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/CallingClient/calling/CallerId/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/CallingClient/calling/CallerId/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/calling/CallerId/ai-docs/caller-id-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/CallingClient/line/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/CallingClient/line/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/line/ai-docs/line-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/CallingClient/line/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/CallingClient/line/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/line/ai-docs/line-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/CallingClient/registration/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/CallingClient/registration/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/registration/ai-docs/registration-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/CallingClient/registration/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/CallingClient/registration/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/CallingClient/registration/ai-docs/registration-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/Contacts/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/Contacts/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/Contacts/ai-docs/contacts-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/Contacts/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/Contacts/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/Contacts/ai-docs/contacts-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/Metrics/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/Metrics/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/Metrics/ai-docs/metrics-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/Metrics/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/Metrics/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/Metrics/ai-docs/metrics-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/Voicemail/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/Voicemail/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/Voicemail/ai-docs/voicemail-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/Voicemail/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/Voicemail/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/Voicemail/ai-docs/voicemail-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/mobius-socket/ai-docs/AGENTS.md",
+      "scope": "module",
+      "module": "src/mobius-socket/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/mobius-socket/ai-docs/mobius-socket-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "src/mobius-socket/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/mobius-socket/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "src/mobius-socket/ai-docs/mobius-socket-spec.md",
+      "notes": "Retained legacy AI documentation; current supported content is migrated by meaning into the canonical module specification."
+    },
+    {
+      "path": "ai-docs/patterns/architecture-patterns.md",
+      "scope": "reference",
+      "role": "source-material",
+      "canonical": true,
+      "use_by_agents": "context-only",
+      "canonical_target": "ai-docs/patterns/architecture-patterns.md",
+      "notes": "Retained canonical code-grounded pattern reference; verified during onboarding."
+    },
+    {
+      "path": "ai-docs/patterns/error-handling-patterns.md",
+      "scope": "reference",
+      "role": "source-material",
+      "canonical": true,
+      "use_by_agents": "context-only",
+      "canonical_target": "ai-docs/patterns/error-handling-patterns.md",
+      "notes": "Retained canonical code-grounded pattern reference; verified during onboarding."
+    },
+    {
+      "path": "ai-docs/patterns/event-patterns.md",
+      "scope": "reference",
+      "role": "source-material",
+      "canonical": true,
+      "use_by_agents": "context-only",
+      "canonical_target": "ai-docs/patterns/event-patterns.md",
+      "notes": "Retained canonical code-grounded pattern reference; verified during onboarding."
+    },
+    {
+      "path": "ai-docs/patterns/testing-patterns.md",
+      "scope": "reference",
+      "role": "source-material",
+      "canonical": true,
+      "use_by_agents": "context-only",
+      "canonical_target": "ai-docs/patterns/testing-patterns.md",
+      "notes": "Retained canonical code-grounded pattern reference; verified during onboarding."
+    },
+    {
+      "path": "ai-docs/patterns/typescript-patterns.md",
+      "scope": "reference",
+      "role": "source-material",
+      "canonical": true,
+      "use_by_agents": "context-only",
+      "canonical_target": "ai-docs/patterns/typescript-patterns.md",
+      "notes": "Retained canonical code-grounded pattern reference; verified during onboarding."
+    }
   ],
   "modules": [
-    {"path":"src/CallHistory/","coverage_status":"Partial","coverage_evidence":"Onboarding complete; Claude Code validation PASS with zero Blocking findings. Report: .generated/sdd/validation/2026-07-04.md. Coverage remains Partial until promotion/churn governance is reviewed.","canonical_spec":"src/CallHistory/ai-docs/call-history-spec.md","contracts":{"provides":["createCallHistoryClient and ICallHistory through src/index.ts","call-history session events"],"requires":["Webex request client","Janus call-history and lines services"]},"last_assessed":"2026-07-04","section_profile":{"has_ui":false,"crosses_service_boundaries":true,"enforces_domain_rules":true,"is_concurrent_async":true,"owns_persistence":false,"returns_caller_errors":true,"has_design_tradeoff":false,"stateful_transitions":false,"exposes_wire_protocol":false,"ui_multi_screen":false,"large_data_model":false,"has_tiers":false,"module_specific_conventions":true,"published_package":false,"embedded_in_host":false,"holds_client_state":true,"resolved_by":"Codex bootstrap questionnaire","resolved_at":"2026-07-04T00:00:00+05:30"},"source_policy":{"mode":"reconcile","existing_sources":["src/CallHistory/ai-docs/AGENTS.md","src/CallHistory/ai-docs/ARCHITECTURE.md"],"conflict_status":"resolved","decision_record":".generated/sdd/spec-source-policy/source-content-map.md"}},
-    {"path":"src/CallRecording/","coverage_status":"Partial","coverage_evidence":"Onboarding complete; Claude Code validation PASS with zero Blocking findings. Report: .generated/sdd/validation/2026-07-04.md. Coverage remains Partial until promotion/churn governance is reviewed.","canonical_spec":"src/CallRecording/ai-docs/call-recording-spec.md","contracts":{"provides":["createCallRecordingClient, ICallRecording, recording types, and getRemoteParty through src/index.ts","recording lifecycle events"],"requires":["Webex recording service","Mercury recording events"]},"last_assessed":"2026-07-04","section_profile":{"has_ui":false,"crosses_service_boundaries":true,"enforces_domain_rules":true,"is_concurrent_async":true,"owns_persistence":false,"returns_caller_errors":true,"has_design_tradeoff":false,"stateful_transitions":false,"exposes_wire_protocol":false,"ui_multi_screen":false,"large_data_model":false,"has_tiers":false,"module_specific_conventions":true,"published_package":false,"embedded_in_host":false,"holds_client_state":false,"resolved_by":"Codex bootstrap questionnaire","resolved_at":"2026-07-04T00:00:00+05:30"},"source_policy":{"mode":"reconcile","existing_sources":["src/CallRecording/ai-docs/AGENTS.md","src/CallRecording/ai-docs/ARCHITECTURE.md"],"conflict_status":"resolved","decision_record":".generated/sdd/spec-source-policy/source-content-map.md"}},
-    {"path":"src/CallSettings/","coverage_status":"Partial","coverage_evidence":"Onboarding complete; Claude Code validation PASS with zero Blocking findings. Report: .generated/sdd/validation/2026-07-04.md. Coverage remains Partial until promotion/churn governance is reviewed.","canonical_spec":"src/CallSettings/ai-docs/call-settings-spec.md","contracts":{"provides":["createCallSettingsClient, ICallSettings, and setting types through src/index.ts"],"requires":["Hydra People API","XSI Actions","UCM Webex APIs"]},"last_assessed":"2026-07-04","section_profile":{"has_ui":false,"crosses_service_boundaries":true,"enforces_domain_rules":true,"is_concurrent_async":true,"owns_persistence":false,"returns_caller_errors":true,"has_design_tradeoff":false,"stateful_transitions":false,"exposes_wire_protocol":false,"ui_multi_screen":false,"large_data_model":false,"has_tiers":false,"module_specific_conventions":true,"published_package":false,"embedded_in_host":false,"holds_client_state":true,"resolved_by":"Codex bootstrap questionnaire","resolved_at":"2026-07-04T00:00:00+05:30"},"source_policy":{"mode":"reconcile","existing_sources":["src/CallSettings/ai-docs/AGENTS.md","src/CallSettings/ai-docs/ARCHITECTURE.md"],"conflict_status":"resolved","decision_record":".generated/sdd/spec-source-policy/source-content-map.md"}},
-    {"path":"src/CallingClient/","coverage_status":"Partial","coverage_evidence":"Onboarding complete; Claude Code validation PASS with zero Blocking findings. Report: .generated/sdd/validation/2026-07-04.md. Coverage remains Partial until promotion/churn governance is reviewed.","canonical_spec":"src/CallingClient/ai-docs/calling-client-spec.md","contracts":{"provides":["createClient, ICallingClient, CallingClientConfig, ILine, and public events through src/index.ts"],"requires":["Webex SDK device and feature plugins","Calling, Registration, Metrics, and Mobius modules"]},"last_assessed":"2026-07-04","section_profile":{"has_ui":false,"crosses_service_boundaries":true,"enforces_domain_rules":true,"is_concurrent_async":true,"owns_persistence":false,"returns_caller_errors":true,"has_design_tradeoff":false,"stateful_transitions":true,"exposes_wire_protocol":false,"ui_multi_screen":false,"large_data_model":false,"has_tiers":false,"module_specific_conventions":true,"published_package":false,"embedded_in_host":false,"holds_client_state":true,"resolved_by":"Codex bootstrap questionnaire","resolved_at":"2026-07-04T00:00:00+05:30"},"source_policy":{"mode":"reconcile","existing_sources":["src/CallingClient/ai-docs/AGENTS.md","src/CallingClient/ai-docs/ARCHITECTURE.md"],"conflict_status":"resolved","decision_record":".generated/sdd/spec-source-policy/source-content-map.md"}},
-    {"path":"src/CallingClient/calling/","coverage_status":"Partial","coverage_evidence":"Onboarding complete; Claude Code validation PASS with zero Blocking findings. Report: .generated/sdd/validation/2026-07-04.md. Coverage remains Partial until promotion/churn governance is reviewed.","canonical_spec":"src/CallingClient/calling/ai-docs/calling-spec.md","contracts":{"provides":["ICall and TransferType through src/index.ts","call lifecycle and media events"],"requires":["Media connection","Mobius signaling","CallerId and Metrics"]},"last_assessed":"2026-07-04","section_profile":{"has_ui":false,"crosses_service_boundaries":true,"enforces_domain_rules":true,"is_concurrent_async":true,"owns_persistence":false,"returns_caller_errors":true,"has_design_tradeoff":false,"stateful_transitions":true,"exposes_wire_protocol":true,"ui_multi_screen":false,"large_data_model":false,"has_tiers":false,"module_specific_conventions":true,"published_package":false,"embedded_in_host":false,"holds_client_state":true,"resolved_by":"Codex bootstrap questionnaire","resolved_at":"2026-07-04T00:00:00+05:30"},"source_policy":{"mode":"reconcile","existing_sources":["src/CallingClient/calling/ai-docs/AGENTS.md","src/CallingClient/calling/ai-docs/ARCHITECTURE.md"],"conflict_status":"resolved","decision_record":".generated/sdd/spec-source-policy/source-content-map.md"}},
-    {"path":"src/CallingClient/calling/CallerId/","coverage_status":"Partial","coverage_evidence":"Onboarding complete after canonical code/test backfill; Claude Code validation PASS with zero Blocking findings. Report: .generated/sdd/validation/2026-07-04.md. Coverage remains Partial until promotion/churn governance is reviewed.","canonical_spec":"src/CallingClient/calling/CallerId/ai-docs/caller-id-spec.md","contracts":{"provides":["internal createCallerId and ICallerId","CallerIdDisplay values exposed through calling events"],"requires":["Webex SCIM People lookup","call emitter callback"]},"last_assessed":"2026-07-04","section_profile":{"has_ui":false,"crosses_service_boundaries":true,"enforces_domain_rules":true,"is_concurrent_async":true,"owns_persistence":false,"returns_caller_errors":false,"has_design_tradeoff":false,"stateful_transitions":false,"exposes_wire_protocol":false,"ui_multi_screen":false,"large_data_model":false,"has_tiers":false,"module_specific_conventions":true,"published_package":false,"embedded_in_host":false,"holds_client_state":true,"resolved_by":"Codex bootstrap questionnaire","resolved_at":"2026-07-04T00:00:00+05:30"},"source_policy":{"mode":"reconcile","existing_sources":["src/CallingClient/calling/CallerId/ai-docs/AGENTS.md"],"conflict_status":"resolved","decision_record":".generated/sdd/spec-source-policy/source-content-map.md"}},
-    {"path":"src/CallingClient/line/","coverage_status":"Partial","coverage_evidence":"Onboarding complete; Claude Code validation PASS with zero Blocking findings. Report: .generated/sdd/validation/2026-07-04.md. Coverage remains Partial until promotion/churn governance is reviewed.","canonical_spec":"src/CallingClient/line/ai-docs/line-spec.md","contracts":{"provides":["ILine and LINE_EVENTS through src/index.ts"],"requires":["Registration","CallManager","CallingClient event callbacks"]},"last_assessed":"2026-07-04","section_profile":{"has_ui":false,"crosses_service_boundaries":false,"enforces_domain_rules":true,"is_concurrent_async":true,"owns_persistence":false,"returns_caller_errors":true,"has_design_tradeoff":false,"stateful_transitions":true,"exposes_wire_protocol":false,"ui_multi_screen":false,"large_data_model":false,"has_tiers":false,"module_specific_conventions":true,"published_package":false,"embedded_in_host":false,"holds_client_state":true,"resolved_by":"Codex bootstrap questionnaire","resolved_at":"2026-07-04T00:00:00+05:30"},"source_policy":{"mode":"reconcile","existing_sources":["src/CallingClient/line/ai-docs/AGENTS.md","src/CallingClient/line/ai-docs/ARCHITECTURE.md"],"conflict_status":"resolved","decision_record":".generated/sdd/spec-source-policy/source-content-map.md"}},
-    {"path":"src/CallingClient/registration/","coverage_status":"Partial","coverage_evidence":"Onboarding complete; Claude Code validation PASS with zero Blocking findings. Report: .generated/sdd/validation/2026-07-04.md. Coverage remains Partial until promotion/churn governance is reviewed.","canonical_spec":"src/CallingClient/registration/ai-docs/registration-spec.md","contracts":{"provides":["internal IRegistration lifecycle used by Line"],"requires":["Mobius registration endpoints","Web Worker timers","browser localStorage for transient failover state"]},"last_assessed":"2026-07-04","section_profile":{"has_ui":false,"crosses_service_boundaries":true,"enforces_domain_rules":true,"is_concurrent_async":true,"owns_persistence":false,"returns_caller_errors":true,"has_design_tradeoff":false,"stateful_transitions":true,"exposes_wire_protocol":true,"ui_multi_screen":false,"large_data_model":false,"has_tiers":false,"module_specific_conventions":true,"published_package":false,"embedded_in_host":false,"holds_client_state":true,"resolved_by":"Codex bootstrap questionnaire","resolved_at":"2026-07-04T00:00:00+05:30"},"source_policy":{"mode":"reconcile","existing_sources":["src/CallingClient/registration/ai-docs/AGENTS.md","src/CallingClient/registration/ai-docs/ARCHITECTURE.md"],"conflict_status":"resolved","decision_record":".generated/sdd/spec-source-policy/source-content-map.md"}},
-    {"path":"src/Contacts/","coverage_status":"Partial","coverage_evidence":"Onboarding complete; Claude Code validation PASS with zero Blocking findings. Report: .generated/sdd/validation/2026-07-04.md. Coverage remains Partial until promotion/churn governance is reviewed.","canonical_spec":"src/Contacts/ai-docs/contacts-spec.md","contracts":{"provides":["createContactsClient, IContacts, Contact, ContactResponse, and GroupType through src/index.ts"],"requires":["Webex contacts and groups services","SCIM People service","encryption utilities"]},"last_assessed":"2026-07-04","section_profile":{"has_ui":false,"crosses_service_boundaries":true,"enforces_domain_rules":true,"is_concurrent_async":true,"owns_persistence":false,"returns_caller_errors":true,"has_design_tradeoff":false,"stateful_transitions":false,"exposes_wire_protocol":false,"ui_multi_screen":false,"large_data_model":false,"has_tiers":false,"module_specific_conventions":true,"published_package":false,"embedded_in_host":false,"holds_client_state":true,"resolved_by":"Codex bootstrap questionnaire","resolved_at":"2026-07-04T00:00:00+05:30"},"source_policy":{"mode":"reconcile","existing_sources":["src/Contacts/ai-docs/AGENTS.md","src/Contacts/ai-docs/ARCHITECTURE.md"],"conflict_status":"resolved","decision_record":".generated/sdd/spec-source-policy/source-content-map.md"}},
-    {"path":"src/Metrics/","coverage_status":"Partial","coverage_evidence":"Onboarding complete; Claude Code validation PASS with zero Blocking findings. Report: .generated/sdd/validation/2026-07-04.md. Coverage remains Partial until promotion/churn governance is reviewed.","canonical_spec":"src/Metrics/ai-docs/metrics-spec.md","contracts":{"provides":["internal MetricManager singleton and typed metric submission methods"],"requires":["Webex metrics plugin","device and service-indicator context"]},"last_assessed":"2026-07-04","section_profile":{"has_ui":false,"crosses_service_boundaries":true,"enforces_domain_rules":true,"is_concurrent_async":true,"owns_persistence":false,"returns_caller_errors":false,"has_design_tradeoff":false,"stateful_transitions":false,"exposes_wire_protocol":false,"ui_multi_screen":false,"large_data_model":false,"has_tiers":false,"module_specific_conventions":true,"published_package":false,"embedded_in_host":false,"holds_client_state":true,"resolved_by":"Codex bootstrap questionnaire","resolved_at":"2026-07-04T00:00:00+05:30"},"source_policy":{"mode":"reconcile","existing_sources":["src/Metrics/ai-docs/AGENTS.md","src/Metrics/ai-docs/ARCHITECTURE.md"],"conflict_status":"resolved","decision_record":".generated/sdd/spec-source-policy/source-content-map.md"}},
-    {"path":"src/Voicemail/","coverage_status":"Partial","coverage_evidence":"Onboarding complete; Claude Code validation PASS with zero Blocking findings. Report: .generated/sdd/validation/2026-07-04.md. Coverage remains Partial until promotion/churn governance is reviewed.","canonical_spec":"src/Voicemail/ai-docs/voicemail-spec.md","contracts":{"provides":["createVoicemailClient, IVoicemail, SummaryInfo, and VoicemailResponseEvent through src/index.ts"],"requires":["WXC, UCM, and Broadworks voicemail services","Contacts and Metrics"]},"last_assessed":"2026-07-04","section_profile":{"has_ui":false,"crosses_service_boundaries":true,"enforces_domain_rules":true,"is_concurrent_async":true,"owns_persistence":false,"returns_caller_errors":true,"has_design_tradeoff":false,"stateful_transitions":true,"exposes_wire_protocol":false,"ui_multi_screen":false,"large_data_model":false,"has_tiers":false,"module_specific_conventions":true,"published_package":false,"embedded_in_host":false,"holds_client_state":true,"resolved_by":"Codex bootstrap questionnaire","resolved_at":"2026-07-04T00:00:00+05:30"},"source_policy":{"mode":"reconcile","existing_sources":["src/Voicemail/ai-docs/AGENTS.md","src/Voicemail/ai-docs/ARCHITECTURE.md"],"conflict_status":"resolved","decision_record":".generated/sdd/spec-source-policy/source-content-map.md"}},
-    {"path":"src/mobius-socket/","coverage_status":"Partial","coverage_evidence":"Onboarding complete; Claude Code validation PASS with zero Blocking findings. Report: .generated/sdd/validation/2026-07-04.md. Coverage remains Partial until promotion/churn governance is reviewed.","canonical_spec":"src/mobius-socket/ai-docs/mobius-socket-spec.md","contracts":{"provides":["internal MobiusSocket singleton, request API, and async-event stream"],"requires":["WebSocket transport","Webex access token","backoff and mutex libraries"]},"last_assessed":"2026-07-04","section_profile":{"has_ui":false,"crosses_service_boundaries":true,"enforces_domain_rules":true,"is_concurrent_async":true,"owns_persistence":false,"returns_caller_errors":true,"has_design_tradeoff":false,"stateful_transitions":true,"exposes_wire_protocol":true,"ui_multi_screen":false,"large_data_model":false,"has_tiers":false,"module_specific_conventions":true,"published_package":false,"embedded_in_host":false,"holds_client_state":true,"resolved_by":"Codex bootstrap questionnaire","resolved_at":"2026-07-04T00:00:00+05:30"},"source_policy":{"mode":"reconcile","existing_sources":["src/mobius-socket/ai-docs/AGENTS.md","src/mobius-socket/ai-docs/ARCHITECTURE.md"],"conflict_status":"resolved","decision_record":".generated/sdd/spec-source-policy/source-content-map.md"}}
+    {
+      "path": "src/CallHistory/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "canonical_spec": "src/CallHistory/ai-docs/call-history-spec.md",
+      "contracts": {
+        "provides": [
+          "createCallHistoryClient(webex, logger) -> ICallHistory",
+          "Call-history query/update/delete operations",
+          "Typed real-time call-session events"
+        ],
+        "requires": [
+          "Webex request client and Janus call-history APIs",
+          "Mercury real-time events",
+          "UCM Lines API for line enrichment"
+        ]
+      },
+      "characterization_baseline": "src/CallHistory/CallHistory.test.ts",
+      "last_assessed": "2026-07-06",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex (bootstrap questionnaire)",
+        "resolved_at": "2026-07-06T10:46:38Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/CallHistory/ai-docs/AGENTS.md",
+          "src/CallHistory/ai-docs/ARCHITECTURE.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+      }
+    },
+    {
+      "path": "src/CallRecording/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "canonical_spec": "src/CallRecording/ai-docs/call-recording-spec.md",
+      "contracts": {
+        "provides": [
+          "createCallRecordingClient(webex, logger) -> ICallRecording",
+          "Recording read/delete operations and typed recording events"
+        ],
+        "requires": [
+          "Webex hydraDeveloperApi recording endpoints",
+          "Mercury recording lifecycle events",
+          "Calling-backend resolution"
+        ]
+      },
+      "characterization_baseline": "src/CallRecording/CallRecording.test.ts",
+      "last_assessed": "2026-07-06",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex (bootstrap questionnaire)",
+        "resolved_at": "2026-07-06T10:46:38Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/CallRecording/ai-docs/AGENTS.md",
+          "src/CallRecording/ai-docs/ARCHITECTURE.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+      }
+    },
+    {
+      "path": "src/CallSettings/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "canonical_spec": "src/CallSettings/ai-docs/call-settings-spec.md",
+      "contracts": {
+        "provides": [
+          "createCallSettingsClient(webex, logger) -> ICallSettings",
+          "Call waiting, DND, forwarding, and voicemail-setting operations"
+        ],
+        "requires": [
+          "Webex Calling XSI/Hydra services",
+          "UCM management gateway",
+          "Calling-backend resolution"
+        ]
+      },
+      "characterization_baseline": "src/CallSettings/CallSettings.test.ts",
+      "last_assessed": "2026-07-06",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": false,
+        "resolved_by": "Codex (bootstrap questionnaire)",
+        "resolved_at": "2026-07-06T10:46:38Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/CallSettings/ai-docs/AGENTS.md",
+          "src/CallSettings/ai-docs/ARCHITECTURE.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+      }
+    },
+    {
+      "path": "src/CallingClient/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "canonical_spec": "src/CallingClient/ai-docs/calling-client-spec.md",
+      "contracts": {
+        "provides": [
+          "createClient(config) -> ICallingClient",
+          "Line creation, registration orchestration, and client lifecycle events"
+        ],
+        "requires": [
+          "SDKConnector and Webex device/feature/service plugins",
+          "Calling, Line, Registration, Metrics, and mobius-socket modules",
+          "WebRTC media helpers"
+        ]
+      },
+      "characterization_baseline": "src/CallingClient/CallingClient.test.ts",
+      "last_assessed": "2026-07-06",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex (bootstrap questionnaire)",
+        "resolved_at": "2026-07-06T10:46:38Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/CallingClient/ai-docs/AGENTS.md",
+          "src/CallingClient/ai-docs/ARCHITECTURE.md",
+          "usm sdk flow.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+      }
+    },
+    {
+      "path": "src/CallingClient/calling/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "canonical_spec": "src/CallingClient/calling/ai-docs/calling-spec.md",
+      "contracts": {
+        "provides": [
+          "ICall and CallManager call lifecycle operations",
+          "Typed call, media, supplementary-service, and error events"
+        ],
+        "requires": [
+          "Mobius signaling through APIRequest",
+          "@webex/internal-media-core ROAP/media engine",
+          "CallerId, Metrics, Logger, and SDKConnector"
+        ]
+      },
+      "characterization_baseline": "src/CallingClient/calling/call.test.ts",
+      "last_assessed": "2026-07-06",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex (bootstrap questionnaire)",
+        "resolved_at": "2026-07-06T10:46:38Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/CallingClient/calling/ai-docs/AGENTS.md",
+          "src/CallingClient/calling/ai-docs/ARCHITECTURE.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+      }
+    },
+    {
+      "path": "src/CallingClient/calling/CallerId/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "canonical_spec": "src/CallingClient/calling/CallerId/ai-docs/caller-id-spec.md",
+      "contracts": {
+        "provides": [
+          "Caller identity resolution and incremental display-information callbacks"
+        ],
+        "requires": [
+          "Mobius SIP-style identity headers",
+          "SCIM people lookup through the Webex SDK"
+        ]
+      },
+      "characterization_baseline": "src/CallingClient/calling/CallerId/index.test.ts",
+      "last_assessed": "2026-07-06",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": false,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex (bootstrap questionnaire)",
+        "resolved_at": "2026-07-06T10:46:38Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/CallingClient/calling/CallerId/ai-docs/AGENTS.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+      }
+    },
+    {
+      "path": "src/CallingClient/line/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "canonical_spec": "src/CallingClient/line/ai-docs/line-spec.md",
+      "contracts": {
+        "provides": [
+          "ILine call and registration operations",
+          "Typed line and incoming-call events"
+        ],
+        "requires": [
+          "Registration and Calling submodules",
+          "SDKConnector event bridge"
+        ]
+      },
+      "characterization_baseline": "src/CallingClient/line/line.test.ts",
+      "last_assessed": "2026-07-06",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex (bootstrap questionnaire)",
+        "resolved_at": "2026-07-06T10:46:38Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/CallingClient/line/ai-docs/AGENTS.md",
+          "src/CallingClient/line/ai-docs/ARCHITECTURE.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+      }
+    },
+    {
+      "path": "src/CallingClient/registration/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "canonical_spec": "src/CallingClient/registration/ai-docs/registration-spec.md",
+      "contracts": {
+        "provides": [
+          "Internal registration, deregistration, failover, failback, and keepalive lifecycle"
+        ],
+        "requires": [
+          "Mobius registration APIs through APIRequest",
+          "Web Worker keepalive timer",
+          "Webex bounded storage and metrics"
+        ]
+      },
+      "characterization_baseline": "src/CallingClient/registration/register.test.ts",
+      "last_assessed": "2026-07-06",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex (bootstrap questionnaire)",
+        "resolved_at": "2026-07-06T10:46:38Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/CallingClient/registration/ai-docs/AGENTS.md",
+          "src/CallingClient/registration/ai-docs/ARCHITECTURE.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+      }
+    },
+    {
+      "path": "src/Contacts/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "canonical_spec": "src/Contacts/ai-docs/contacts-spec.md",
+      "contracts": {
+        "provides": [
+          "createContactsClient(webex, logger) -> IContacts",
+          "Contact and group CRUD with typed contact models"
+        ],
+        "requires": [
+          "Webex contacts service",
+          "Webex KMS encryption",
+          "SCIM people lookup"
+        ]
+      },
+      "characterization_baseline": "src/Contacts/ContactsClient.test.ts",
+      "last_assessed": "2026-07-06",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex (bootstrap questionnaire)",
+        "resolved_at": "2026-07-06T10:46:38Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/Contacts/ai-docs/AGENTS.md",
+          "src/Contacts/ai-docs/ARCHITECTURE.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+      }
+    },
+    {
+      "path": "src/Metrics/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "canonical_spec": "src/Metrics/ai-docs/metrics-spec.md",
+      "contracts": {
+        "provides": [
+          "MetricManager singleton and typed calling metric submission methods"
+        ],
+        "requires": [
+          "@webex/internal-plugin-metrics through Webex SDK",
+          "Calling error/event types"
+        ]
+      },
+      "characterization_baseline": "src/Metrics/index.test.ts",
+      "last_assessed": "2026-07-06",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": false,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex (bootstrap questionnaire)",
+        "resolved_at": "2026-07-06T10:46:38Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/Metrics/ai-docs/AGENTS.md",
+          "src/Metrics/ai-docs/ARCHITECTURE.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+      }
+    },
+    {
+      "path": "src/SDKConnector/",
+      "coverage_status": "Untracked",
+      "coverage_evidence": "No substantive prior module specification exists; current code and tests are the source of truth until the generated specification passes review.",
+      "canonical_spec": "src/SDKConnector/ai-docs/sdk-connector-spec.md",
+      "contracts": {
+        "provides": [
+          "Singleton adapter for Webex SDK request, service, credential, device, and Mercury access"
+        ],
+        "requires": [
+          "Initialized and authorized WebexSDK instance with Mercury"
+        ]
+      },
+      "characterization_baseline": "src/SDKConnector/index.test.ts",
+      "last_assessed": "2026-07-06",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": false,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex (bootstrap questionnaire)",
+        "resolved_at": "2026-07-06T10:46:38Z"
+      }
+    },
+    {
+      "path": "src/Voicemail/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "canonical_spec": "src/Voicemail/ai-docs/voicemail-spec.md",
+      "contracts": {
+        "provides": [
+          "createVoicemailClient(webex, logger) -> IVoicemail",
+          "Voicemail list/content/state/summary/transcript operations"
+        ],
+        "requires": [
+          "Webex Calling, BroadWorks, and UCM voicemail services",
+          "Contacts resolution and Metrics"
+        ]
+      },
+      "characterization_baseline": "src/Voicemail/Voicemail.test.ts",
+      "last_assessed": "2026-07-06",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex (bootstrap questionnaire)",
+        "resolved_at": "2026-07-06T10:46:38Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/Voicemail/ai-docs/AGENTS.md",
+          "src/Voicemail/ai-docs/ARCHITECTURE.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+      }
+    },
+    {
+      "path": "src/mobius-socket/",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "canonical_spec": "src/mobius-socket/ai-docs/mobius-socket-spec.md",
+      "contracts": {
+        "provides": [
+          "MobiusSocket singleton request/response API",
+          "Typed connection and asynchronous message events"
+        ],
+        "requires": [
+          "WebSocket implementation",
+          "Webex credentials, device feature settings, and Mobius discovery"
+        ]
+      },
+      "characterization_baseline": "src/mobius-socket/mobius-socket.test.ts",
+      "last_assessed": "2026-07-06",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex (bootstrap questionnaire)",
+        "resolved_at": "2026-07-06T10:46:38Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/mobius-socket/ai-docs/AGENTS.md",
+          "src/mobius-socket/ai-docs/ARCHITECTURE.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": ".generated/sdd/bootstrap-questionnaire.md"
+      }
+    }
   ],
   "spec_policy": {
-    "delta_grammar": {"added":"## ADDED Requirements","modified":"## MODIFIED Requirements","removed":"## REMOVED Requirements"},
+    "delta_grammar": {
+      "added": "## ADDED Requirements",
+      "modified": "## MODIFIED Requirements",
+      "removed": "## REMOVED Requirements"
+    },
     "require_what_and_why": true,
     "require_provenance": true,
-    "protected_specs": [],
-    "required_sections_by_change_class": {"core_always":["Intent (WHAT)","Rationale (WHY)","Scope/Out-of-scope","Acceptance criteria","Contracts delta"],"security_or_contract_or_perf_critical":["Data","Error Matrix","Resilience","Observability","Operations"]}
+    "protected_specs": [
+      "src/CallHistory/ai-docs/call-history-spec.md",
+      "src/CallRecording/ai-docs/call-recording-spec.md",
+      "src/CallSettings/ai-docs/call-settings-spec.md",
+      "src/CallingClient/ai-docs/calling-client-spec.md",
+      "src/CallingClient/calling/ai-docs/calling-spec.md",
+      "src/CallingClient/calling/CallerId/ai-docs/caller-id-spec.md",
+      "src/CallingClient/line/ai-docs/line-spec.md",
+      "src/CallingClient/registration/ai-docs/registration-spec.md",
+      "src/Contacts/ai-docs/contacts-spec.md",
+      "src/Metrics/ai-docs/metrics-spec.md",
+      "src/SDKConnector/ai-docs/sdk-connector-spec.md",
+      "src/Voicemail/ai-docs/voicemail-spec.md",
+      "src/mobius-socket/ai-docs/mobius-socket-spec.md"
+    ],
+    "required_sections_by_change_class": {
+      "core_always": [
+        "Intent (WHAT)",
+        "Rationale (WHY)",
+        "Scope/Out-of-scope",
+        "Acceptance criteria",
+        "Contracts delta"
+      ],
+      "security_or_contract_or_perf_critical": [
+        "Data",
+        "Error Matrix",
+        "Resilience",
+        "Observability",
+        "Operations"
+      ]
+    }
   },
   "validation": {
     "generator_runtime": "codex",
     "validator_runtime": "claude-code",
     "must_differ": true,
-    "blocking_severities": ["Blocking"],
-    "generator_run_id": "calling-bootstrap-2026-07-04",
-    "validator_run_id": "claude-code-validation-2026-07-04:.generated/sdd/validation/2026-07-04.md",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "generator_run_id": "calling-bootstrap-20260706-161638",
     "source_commit": "0cc264e5d31c24abff776a5fa2ec02afa6cb6e0d",
     "base_ref": "main",
     "head_ref": "migrate-aidoc-callingsdk-pacakge"
@@ -98,17 +1060,68 @@
     "spec_index_path": "ai-docs/SPEC_INDEX.md",
     "module_docs_strategy": "source-local",
     "module_docs_folder_name": "ai-docs",
-    "template_roots": {"canonical":"../../.sdd/templates","extensions":["../../.sdd/templates/extensions"]},
+    "template_roots": {
+      "canonical": "../../.sdd/templates",
+      "extensions": [
+        "../../.sdd/templates/extensions"
+      ]
+    },
     "repo_skills_root": "../../.agents/skills",
-    "runtime_skill_entrypoints": {"codex":"../../.agents/skills","cursor":"../../.cursor/skills"},
+    "runtime_skill_entrypoints": {
+      "codex": "../../.agents/skills",
+      "cursor": "../../.cursor/skills"
+    },
     "contracts_strategy": "root-index-module-detail"
   },
-  "tooling": {"sdlc_skills":{"source_repo":"SDLC-Skills","source_ref":"local-installed-copy","source_branch":"main","install_mode":"copy","installed_at":"2026-07-03T00:00:00+05:30","plugins":["brownfield-onboarding","sdlc-lifecycle"]}},
-  "coverage_ratchet": {"enabled":true,"waivers":[]},
-  "substrate": {"source":"webex-js-sdk repository standards","consumed":["package.json workspace scripts","ESLint and Prettier configuration","TypeScript configuration","Jest and Playwright configuration","existing package README and AGENTS.md"],"compliance_tier":"baseline"},
+  "tooling": {
+    "sdlc_skills": {
+      "source_repo": "https://sqbu-github.cisco.com/WebexDevPlatform/SDLC-Skills.git",
+      "source_branch": "main",
+      "install_mode": "copy",
+      "installed_at": "2026-07-06T09:33:07Z",
+      "plugins": [
+        "brownfield-onboarding@0.1.5+codex.20260706150307",
+        "sdlc-lifecycle@0.1.1+codex.20260630150003"
+      ]
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "webex-js-sdk repository standards",
+    "consumed": [
+      "AGENTS.md",
+      "package.json",
+      "packages/calling/package.json",
+      "packages/calling/tsconfig.json",
+      "packages/calling/jest.config.js",
+      "packages/calling/playwright.config.ts",
+      ".eslintrc.js",
+      ".prettierrc",
+      ".github/CODEOWNERS"
+    ],
+    "compliance_tier": "baseline"
+  },
   "section_profiles": {
-    "repo": {"owns_datastore":false,"holds_client_state":true,"components_interact":true,"domain_data_across_components":true,"caches_data":true,"observability_convention":true,"deploys_to_infra":true,"shared_base_libs":true,"is_monorepo":true,"multi_platform":true,"published_package":true,"embedded_in_host":false,"cross_repo_deps_material":true,"security_arch_warranted":true},
-    "resolved_by":"Codex bootstrap questionnaire with repository user",
-    "resolved_at":"2026-07-04T00:00:00+05:30"
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": true,
+      "observability_convention": true,
+      "deploys_to_infra": true,
+      "shared_base_libs": true,
+      "is_monorepo": true,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true
+    },
+    "resolved_by": "Codex (bootstrap questionnaire)",
+    "resolved_at": "2026-07-06T10:46:38Z"
   }
 }

@@ -1,39 +1,54 @@
 # Security Baseline — @webex/calling
 
+> Root [`AGENTS.md`](../AGENTS.md) · router [`SPEC_INDEX.md`](SPEC_INDEX.md) · system [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
 ## Trust Boundaries
 
-Consumer applications, browser state, Webex SDK inputs, network responses, Mercury events, and Mobius frames cross trust boundaries. Validate shapes and route failures through typed errors/results.
+| Boundary | Untrusted side | Trusted side | Enforcement |
+|---|---|---|---|
+| Host application → SDK | caller arguments/config | typed module methods | TypeScript contracts plus runtime validation/guards in owning modules |
+| Webex cloud → SDK | HTTP/WebSocket/Mercury payloads | module state and emitted events | transport parsing, status/error handling, correlation and event routing |
+| Contact data → consumer | remote contact/SCIM payloads | decrypted contact models | KMS encryption/decryption and field mapping in `src/Contacts/` |
+| Credentials → transport | host Webex SDK token | HTTPS/WSS requests | credential access through `src/SDKConnector/` and transport adapters |
 
 ## Authentication & Authorization Model
 
-The initialized Webex SDK owns user identity and tokens. HTTP and WebSocket layers consume those credentials; this package does not mint identities or authorize server-side resources.
+- **Authentication:** the host Webex SDK owns user credentials/token refresh; calling code accesses it through `src/SDKConnector/types.ts` and transport code.
+- **Authorization:** remote Webex services enforce user/org entitlements; modules preserve backend errors rather than inventing local authorization.
+- **Default posture:** SDKConnector rejects a Webex instance that cannot authorize, is not ready, or lacks Mercury (`src/SDKConnector/utils.ts`).
 
 ## Secret & Credential Handling
 
-Never hardcode or log access tokens, refresh tokens, test credentials, WebSocket authorization material, or private endpoints. Use approved environment/CI secret injection.
+- Credentials originate from the host Webex SDK; never hardcode, persist, or log them.
+- KMS keys/resources are accessed through Webex encryption APIs in `src/Contacts/`.
+- Rotation/refresh follows Webex SDK credential behavior; mobius-socket handles token-refresh events through its transport lifecycle.
 
 ## Data Classification & Handling
 
-Call identifiers, phone numbers, contact details, recordings, voicemail, transcripts, and diagnostic payloads may be sensitive. Log only the minimum operational context. Preserve Contacts encryption behavior.
+| Data class | Examples | Storage rule | Logging rule | In transit |
+|---|---|---|---|---|
+| Credentials/secrets | access tokens, KMS key URIs | host SDK/runtime only | never log | TLS/WSS |
+| PII | names, phone numbers, emails, caller identity | remote service or process memory; contact fields encrypted as implemented | never log raw payloads | TLS/WSS |
+| Call/media metadata | call IDs, correlation IDs, SDP/ROAP, recording metadata | process memory/remote services | log only approved identifiers/context | TLS/WSS |
+| Telemetry | operational/behavioral metrics | remote metrics service | no secrets or raw PII | TLS |
 
 ## Input Validation & Output Encoding Posture
 
-Use typed payloads, backend-specific validation, guarded optional fields, and documented parsing for SIP/XML/JSON/WebSocket inputs. Do not render remote strings without host-application encoding.
+- Validate caller options, identifiers, dates, URLs, state transitions, and backend responses at the owning module boundary. Preserve typed output/event shapes.
 
 ## Transport & Headers
 
-Use HTTPS/WSS endpoints and existing request helpers. Preserve required Webex headers and never add credentials to URLs or logs.
-
-## Session & Cookie Posture
-
-The package owns no cookie session. Registration localStorage entries are transient recovery/configuration state; keys and cleanup must remain scoped and must not store tokens.
+- Remote requests use HTTPS/WSS through Webex SDK or Mobius adapters. Preserve authentication/user-agent/content headers owned by current code; never introduce permissive browser security settings in this library.
 
 ## Known Sensitive Areas & Accepted Risks
 
-- Log upload and telemetry can carry diagnostic context; filters and typed metric payloads must remain intact.
-- CallerId/Contacts use remote identity data; lookup failures must degrade safely without exposing raw payloads.
-- Mobius authorization refresh and close-code handling are security-sensitive and require negative tests.
+| Area | Risk | Mitigation | Owner |
+|---|---|---|---|
+| SDKConnector singleton | replacing/mutating authenticated SDK reference | one-time validated initialization and frozen exported connector | Calling SDK maintainers |
+| Contact encryption/SCIM | exposing PII or mishandling keys | KMS-backed encryption plus code-reviewed mappings | Contacts maintainers |
+| Mobius token refresh/reconnect | stale/expired token or event loss | explicit auth-close handling, refresh, retry, and reconnect lifecycle | mobius-socket maintainers |
+| Logging/metrics | leaking sensitive payloads | contextual logging and approved metric fields only | package maintainers |
 
 ## Reporting & Review
 
-Security-sensitive changes require explicit review, tests for failure paths, updates to this baseline and the owning module spec, and no unresolved high-severity findings.
+- Security-sensitive changes require explicit plan approval and independent review. Follow the parent repository vulnerability-reporting policy and `REVIEW_CHECKLIST.md`.

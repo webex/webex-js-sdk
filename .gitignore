@@ -1,6 +1,5 @@
 # Documentation
 packages/**/docs/
-.generated/
 
 ~*
 *.tmp

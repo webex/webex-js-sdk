@@ -1,37 +1,44 @@
 # Getting Started — @webex/calling
 
+> Root [`AGENTS.md`](../AGENTS.md) · router [`SPEC_INDEX.md`](SPEC_INDEX.md) · system [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
 ## Prerequisites
 
-- Node.js 18, Yarn 3.4.1, repository access, and credentials only for tests that call configured environments.
+- Node.js 22.14 for this repository and Yarn workspace tooling.
+- Access required by the parent `webex-js-sdk` repository for workspace dependencies and integration/E2E credentials; never commit credentials.
 
 ## Clone & Install
 
-From the webex-js-sdk root, run `yarn install`. Do not install dependencies separately inside `packages/calling`.
+```bash
+git clone https://github.com/webex/webex-js-sdk.git
+cd webex-js-sdk
+nvm install 22.14
+nvm use 22.14
+yarn install
+```
 
 ## Build / Run / Test
 
-- Build: `yarn workspace @webex/calling build`
-- Unit tests: `yarn workspace @webex/calling test:unit`
-- Style: `yarn workspace @webex/calling test:style`
-- TypeDoc: `yarn workspace @webex/calling build:docs`
-- E2E: `yarn workspace @webex/calling test:e2e`
+| Task | Command |
+|---|---|
+| Build | `yarn workspace @webex/calling build:src` |
+| Unit test | `yarn workspace @webex/calling test:unit` |
+| Lint | `yarn workspace @webex/calling test:style` |
+| E2E | `yarn workspace @webex/calling test:e2e` |
+| TypeDoc | `yarn workspace @webex/calling build:docs` |
 
 ## First-Run Verification
 
-Run build, unit tests, and style checks. For a focused change, run the owning `*.test.ts` first and the package suite before handoff.
+- Run the build, one targeted unit test, and lint. A successful `dist/` build plus green Jest/ESLint output verifies the package loop.
 
 ## Configuration & Secrets
 
-Runtime consumers supply an initialized Webex SDK. Never commit tokens, test credentials, phone data, or environment secrets. Playwright credentials/configuration must use the repository's approved secret mechanism.
-
-## Multi-Repo Workspace Layout
-
-This package lives at `packages/calling` in the webex-js-sdk Yarn workspace and depends on other workspace packages. Use root workspace commands so dependency builds and resolutions remain consistent.
+- Unit tests use mocks/fixtures. Playwright journeys require approved runtime accounts/tokens and environment configuration; obtain them through the team mechanism and never store them in source or logs.
 
 ## Dev Environment
 
-Source and tests are co-located under `src`; Jest config, TypeScript config, ESLint/Prettier configuration, and Playwright configuration live in the package/root repository.
+- The package runs inside the parent Yarn workspace; use workspace commands from the repository root. Browser journeys use `packages/calling/playwright.config.ts`.
 
 ## Where to Go Next
 
-Read `AGENTS.md`, `ai-docs/SPEC_INDEX.md`, the owning module spec, then `ai-docs/RULES.md` and relevant patterns.
+- Agent entry: `../AGENTS.md` · Architecture: `ARCHITECTURE.md` · Routing: `SPEC_INDEX.md` · Rules: `RULES.md`.
