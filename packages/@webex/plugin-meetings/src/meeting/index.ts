@@ -1399,13 +1399,15 @@ export default class Meeting extends StatelessWebexPlugin {
           // submitting the client.locus.sync.complete CA event is owned by the metrics
           // facade. Wire each method to the layer that owns that responsibility.
           saveLatency: (...args) =>
-            (this as any).webex.internal.newMetrics.callDiagnosticLatencies.saveLatency(...args),
+            // @ts-ignore
+            this.webex.internal.newMetrics.callDiagnosticLatencies.saveLatency(...args),
           saveTimestamp: (saveTimestampOptions: {
             key: string;
             value?: number;
             options: {meetingId: string; dataSetName: string; trackingId?: string};
           }) => {
-            (this as any).webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp(
+            // @ts-ignore
+            this.webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp(
               saveTimestampOptions
             );
 
@@ -1423,9 +1425,8 @@ export default class Meeting extends StatelessWebexPlugin {
             }
           },
           clearLocusSyncLatency: (...args) =>
-            (this as any).webex.internal.newMetrics.callDiagnosticLatencies.clearLocusSyncLatency(
-              ...args
-            ),
+            // @ts-ignore
+            this.webex.internal.newMetrics.callDiagnosticLatencies.clearLocusSyncLatency(...args),
         },
       },
       // @ts-ignore
