@@ -426,6 +426,7 @@ const Breakouts = WebexPlugin.extend({
       return;
     }
 
+    const {llmLatency, error} = eventInfo;
     const meeting = eventInfo.meeting || this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
     // @ts-ignore
     const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
@@ -435,9 +436,9 @@ const Breakouts = WebexPlugin.extend({
         currentSession: this.currentBreakoutSession,
         meeting,
         breakoutMoveId: this.breakoutMoveId,
-        llmLatency: eventInfo.llmLatency,
+        llmLatency,
         llmWebsocketUrl,
-        error: eventInfo.error,
+        error,
       },
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)

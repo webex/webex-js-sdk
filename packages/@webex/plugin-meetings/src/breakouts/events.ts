@@ -51,21 +51,19 @@ const breakoutEvent: {
       return;
     }
 
-    const identifiers: any = {
-      breakoutMoveId,
-      breakoutSessionId: currentSession?.sessionId,
-      breakoutGroupId: currentSession?.groupId,
-      llmWebsocketUrl,
-    };
-
     const payload: any = {
-      identifiers,
-      ...(llmLatency && {llmLatency}),
+      llmLatency,
+      identifiers: {
+        breakoutMoveId,
+        breakoutSessionId: currentSession?.sessionId,
+        breakoutGroupId: currentSession?.groupId,
+        llmWebsocketUrl,
+      },
     };
 
     const options: any = {
       meetingId: meeting.id,
-      ...(error && {rawError: error}),
+      rawError: error,
     };
 
     const metricEvent = {

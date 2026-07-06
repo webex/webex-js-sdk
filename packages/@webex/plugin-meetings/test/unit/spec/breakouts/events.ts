@@ -117,6 +117,7 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(submitClientEvent, {
           name: 'client.breakout-session.join.response',
           payload: {
+            llmLatency: undefined,
             identifiers: {
               breakoutMoveId: 'breakoutMoveId',
               breakoutSessionId: 'sessionId',
@@ -124,7 +125,7 @@ describe('plugin-meetings', () => {
               llmWebsocketUrl: undefined,
             },
           },
-          options: {meetingId: 'activeMeetingId'},
+          options: {meetingId: 'activeMeetingId', rawError: undefined},
         });
       });
 
