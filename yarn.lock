@@ -7427,7 +7427,7 @@ __metadata:
     "@web/dev-server": 0.4.5
     "@webex/common": "workspace:*"
     "@webex/common-timers": "workspace:*"
-    "@webex/internal-media-core": 2.26.1
+    "@webex/internal-media-core": 2.26.2
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-feature": "workspace:*"
     "@webex/internal-plugin-metrics": "workspace:*"
@@ -7777,9 +7777,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:2.26.1":
-  version: 2.26.1
-  resolution: "@webex/internal-media-core@npm:2.26.1"
+"@webex/internal-media-core@npm:2.26.2":
+  version: 2.26.2
+  resolution: "@webex/internal-media-core@npm:2.26.2"
   dependencies:
     "@babel/runtime": ^7.18.9
     "@babel/runtime-corejs2": ^7.25.0
@@ -7793,7 +7793,7 @@ __metadata:
     uuid: ^8.3.2
     webrtc-adapter: ^8.1.2
     xstate: ^4.30.6
-  checksum: d553a2e0969a32d23791114407dc52e222eb7d4b396e0746fbe21ada08cad8f5c08590e1eb2c294d36aa52ab59f6007dd404d48cd67ca25c12e5bf86abeaca7e
+  checksum: 62113f3b8e7a89bc76abdb36fbf400153fd84a8635578faf7941c6896ddc51f64924dbc3b9553dba448ea2cf130d270d0e822078de49399a56a09a7b5e3e3ce5
   languageName: node
   linkType: hard
 
@@ -8624,7 +8624,7 @@ __metadata:
     "@babel/preset-typescript": 7.22.11
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-media-core": 2.26.1
+    "@webex/internal-media-core": 2.26.2
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -8892,7 +8892,7 @@ __metadata:
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/event-dictionary-ts": ^1.0.2181
-    "@webex/internal-media-core": 2.26.1
+    "@webex/internal-media-core": 2.26.2
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-llm": "workspace:*"
