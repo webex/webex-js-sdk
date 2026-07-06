@@ -202,7 +202,6 @@ WebExMeetingsErrors[AddMediaFailed.CODE] = AddMediaFailed;
 /**
  * @class MediaConnectionTimedOutError
  * @classdesc Internal error thrown when the media connection times out waiting to connect.
- * Carries the iceConnected state from the underlying ICE agent.
  */
 class MediaConnectionTimedOutError extends Error {
   iceConnected: boolean;

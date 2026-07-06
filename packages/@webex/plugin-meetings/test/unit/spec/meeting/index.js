@@ -264,6 +264,7 @@ describe('plugin-meetings', () => {
     webex.meetings.uploadLogs = sinon.stub().returns(Promise.resolve());
     webex.meetings.reachability = {
       isAnyPublicClusterReachable: sinon.stub().resolves(true),
+      isAnyClusterReachableViaProtocol: sinon.stub().resolves(false),
       getReachabilityResults: sinon.stub().resolves(undefined),
       getReachabilityMetrics: sinon.stub().resolves({}),
       stopReachability: sinon.stub(),
@@ -513,6 +514,7 @@ describe('plugin-meetings', () => {
           localWebex.meetings.uploadLogs = sinon.stub().returns(Promise.resolve());
           localWebex.meetings.reachability = {
             isAnyPublicClusterReachable: sinon.stub().resolves(true),
+            isAnyClusterReachableViaProtocol: sinon.stub().resolves(false),
             getReachabilityResults: sinon.stub().resolves(undefined),
             getReachabilityMetrics: sinon.stub().resolves({}),
             stopReachability: sinon.stub(),
@@ -1875,6 +1877,82 @@ describe('plugin-meetings', () => {
               receiveAudio: true,
             })
           );
+        });
+
+        describe('shouldRetryMediaWithOnlyTurnTLS', () => {
+          it('should pass iceTransportPolicy=relay when previous error is DTLS failure over UDP and TLS is reachable', async () => {
+            const dtlsError = new AddMediaFailed({iceConnected: true, connectionType: 'UDP'});
+
+            webex.meetings.reachability.isAnyClusterReachableViaProtocol = sinon.stub().resolves(true);
+
+            addMediaInternalStub.onFirstCall().rejects(dtlsError);
+            addMediaInternalStub.onSecondCall().resolves(test4);
+
+            await meeting.joinWithMedia({joinOptions, mediaOptions});
+
+            assert.calledWith(
+              meeting.addMediaInternal.secondCall,
+              sinon.match.any,
+              sinon.match.any,
+              sinon.match.any,
+              'relay',
+              mediaOptions
+            );
+          });
+
+          [
+            {
+              title: 'TLS is not reachable',
+              prevError: new AddMediaFailed({iceConnected: true, connectionType: 'UDP'}),
+              tlsReachable: false,
+            },
+            {
+              title: 'error is not AddMediaFailed',
+              prevError: new Error('generic error'),
+              tlsReachable: true,
+            },
+            {
+              title: 'error is AddMediaFailed but not DTLS failure',
+              prevError: new AddMediaFailed({iceConnected: false, connectionType: 'UDP'}),
+              tlsReachable: true,
+            },
+            {
+              title: 'error is DTLS failure but connectionType is not UDP',
+              prevError: new AddMediaFailed({iceConnected: true, connectionType: 'TURN-TLS'}),
+              tlsReachable: true,
+            },
+          ].forEach(({title, prevError, tlsReachable}) => {
+            it(`should pass iceTransportPolicy=undefined when ${title}`, async () => {
+              webex.meetings.reachability.isAnyClusterReachableViaProtocol = sinon.stub().resolves(tlsReachable);
+
+              addMediaInternalStub.onFirstCall().rejects(prevError);
+              addMediaInternalStub.onSecondCall().resolves(test4);
+
+              await meeting.joinWithMedia({joinOptions, mediaOptions});
+
+              assert.calledWith(
+                meeting.addMediaInternal.secondCall,
+                sinon.match.any,
+                sinon.match.any,
+                sinon.match.any,
+                undefined,
+                mediaOptions
+              );
+            });
+          });
+
+          it('should pass iceTransportPolicy=undefined on first attempt (no prevError)', async () => {
+            await meeting.joinWithMedia({joinOptions, mediaOptions});
+
+            assert.calledWith(
+              meeting.addMediaInternal.firstCall,
+              sinon.match.any,
+              sinon.match.any,
+              sinon.match.any,
+              undefined,
+              mediaOptions
+            );
+          });
         });
 
         it('should throw immediately if RTCPeerConnection is not available', async () => {
@@ -4138,6 +4216,95 @@ describe('plugin-meetings', () => {
           assert.isNull(meeting.mediaProperties.webrtcMediaConnection);
 
           assert.isOk(errorThrown);
+        });
+
+        [
+          {iceConnected: true, title: 'iceConnected=true'},
+          {iceConnected: false, title: 'iceConnected=false'},
+        ].forEach(({iceConnected, title}) => {
+          it(`should propagate ${title} from waitForMediaConnectionConnected rejection to AddMediaFailed`, async () => {
+            webex.meetings.reachability = {
+              isWebexMediaBackendUnreachable: sinon.stub().resolves(false),
+              getReachabilityMetrics: sinon.stub().resolves({}),
+              stopReachability: sinon.stub(),
+              isSubnetReachable: sinon.stub().returns(true),
+            };
+            webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
+              sinon.stub().returns({fatal: true});
+            sinon.stub(CallDiagnosticUtils, 'generateClientErrorCodeForIceFailure').returns(2004);
+
+            meeting.meetingState = 'ACTIVE';
+            meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().rejects({iceConnected});
+
+            meeting.roap.doTurnDiscovery = sinon.stub().returns({
+              turnServerInfo: {urls: ['turns:fake:443'], username: 'u', password: 'p'},
+              turnDiscoverySkippedReason: undefined,
+            });
+
+            const forceRtcMetricsSend = sinon.stub().resolves();
+            Media.createMediaConnection = sinon.stub().returns({
+              close: sinon.stub(),
+              forceRtcMetricsSend,
+              getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+              initiateOffer: sinon.stub().resolves({}),
+              on: sinon.stub(),
+            });
+
+            let thrownError;
+            await meeting.addMedia({mediaSettings: {}}).catch((err) => {
+              thrownError = err;
+            });
+
+            assert.instanceOf(thrownError, AddMediaFailed);
+            assert.equal(thrownError.iceConnected, iceConnected);
+          });
+        });
+
+        it('should drop iceTransportPolicy=relay when TURN discovery returns no turn server info', async () => {
+          webex.meetings.reachability = {
+            isWebexMediaBackendUnreachable: sinon.stub().resolves(false),
+            isAnyClusterReachableViaProtocol: sinon.stub().resolves(true),
+            getReachabilityMetrics: sinon.stub().resolves({}),
+            stopReachability: sinon.stub(),
+            isSubnetReachable: sinon.stub().returns(true),
+          };
+          webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
+            sinon.stub().returns({fatal: true});
+          sinon.stub(CallDiagnosticUtils, 'generateClientErrorCodeForIceFailure').returns(2004);
+
+          meeting.meetingState = 'ACTIVE';
+
+          // TURN discovery returns no TURN server on both calls
+          meeting.roap.doTurnDiscovery = sinon.stub().returns({
+            turnServerInfo: undefined,
+            turnDiscoverySkippedReason: 'reachability',
+          });
+
+          meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
+
+          const createMediaConnectionStub = sinon.stub().returns({
+            close: sinon.stub(),
+            forceRtcMetricsSend: sinon.stub().resolves(),
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+          });
+          Media.createMediaConnection = createMediaConnectionStub;
+
+          // Call addMediaInternal directly with iceTransportPolicy='relay' to simulate
+          // what joinWithMedia does when shouldRetryMediaWithOnlyTurnTLS returns true
+          await meeting.addMediaInternal(
+            () => 'JOIN_MEETING_FINAL',
+            false,
+            undefined,
+            'relay',
+            {mediaSettings: {}}
+          );
+
+          // iceTransportPolicy should be dropped because no TURN server is available
+          assert.calledOnce(createMediaConnectionStub);
+          const config = createMediaConnectionStub.firstCall.args[3];
+          assert.isUndefined(config.iceTransportPolicy);
         });
 
         it('should resolve if waitForMediaConnectionConnected() rejects the first time but resolves the second time', async () => {
@@ -7089,8 +7256,9 @@ describe('plugin-meetings', () => {
                 // so that we also verify that audioMute, videoMute info is correctly sent to backend
                 const addMediaPromise = meeting.addMediaInternal(
                   () => '',
-                  turnServerInfo,
                   forceTurnDiscovery,
+                  turnServerInfo,
+                  undefined,
                   {
                     localStreams: {microphone: fakeMicrophoneStream},
                   }
