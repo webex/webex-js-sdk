@@ -51,17 +51,17 @@ describe('internal-plugin-metrics', () => {
 
     it('should overwrite latency when accumulate is false', () => {
       assert.deepEqual(cdl.precomputedLatencies.size, 0);
-      cdl.saveLatency('internal.client.pageJMT', 10, false);
+      cdl.saveLatency('internal.client.pageJMT', 10, {accumulate: false});
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
       assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
-      cdl.saveLatency('internal.client.pageJMT', 20, false);
+      cdl.saveLatency('internal.client.pageJMT', 20, {accumulate: false});
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
       assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 20);
     });
 
     it('should save latency correctly when accumulate is true', () => {
       assert.deepEqual(cdl.precomputedLatencies.size, 0);
-      cdl.saveLatency('internal.client.pageJMT', 10, true);
+      cdl.saveLatency('internal.client.pageJMT', 10, {accumulate: true});
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
       assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
     });
@@ -71,7 +71,7 @@ describe('internal-plugin-metrics', () => {
       cdl.saveLatency('internal.client.pageJMT', 10);
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
       assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
-      cdl.saveLatency('internal.client.pageJMT', 10, true);
+      cdl.saveLatency('internal.client.pageJMT', 10, {accumulate: true});
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
       assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 20);
     });
@@ -1199,7 +1199,7 @@ describe('internal-plugin-metrics', () => {
         const resolvedValue = await promise;
         assert.deepEqual(resolvedValue, 'test');
         assert.calledOnceWithExactly(callbackStub);
-        assert.calledOnceWithExactly(saveLatencySpy, key, 50, accumulate);
+        assert.calledOnceWithExactly(saveLatencySpy, key, 50, {accumulate});
       });
 
       it('checks measureLatency with accumulate true', async () => {
@@ -1215,7 +1215,7 @@ describe('internal-plugin-metrics', () => {
         const resolvedValue = await promise;
         assert.deepEqual(resolvedValue, 'test123');
         assert.calledOnceWithExactly(callbackStub);
-        assert.calledOnceWithExactly(saveLatencySpy, key, 20, accumulate);
+        assert.calledOnceWithExactly(saveLatencySpy, key, 20, {accumulate});
       });
 
       it('checks measureLatency when callBack rejects', async () => {
@@ -1232,7 +1232,7 @@ describe('internal-plugin-metrics', () => {
         const rejectedValue = await assert.isRejected(promise);
         assert.deepEqual(rejectedValue, error);
         assert.calledOnceWithExactly(callbackStub);
-        assert.calledOnceWithExactly(saveLatencySpy, key, 50, accumulate);
+        assert.calledOnceWithExactly(saveLatencySpy, key, 50, {accumulate});
       });
     });
 
