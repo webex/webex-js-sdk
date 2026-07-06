@@ -7895,6 +7895,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private async shouldRetryMediaWithOnlyTurnTLS(prevError: Error | undefined): Promise<boolean> {
     if (
+      this.isMultistream &&
       prevError instanceof AddMediaFailed &&
       prevError.isDtlsHandshakeFailure &&
       prevError.connectionType === 'UDP'
@@ -8421,7 +8422,7 @@ export default class Meeting extends StatelessWebexPlugin {
         ({turnServerInfo} = await this.doTurnDiscovery(isReconnecting, isForced));
       }
 
-      if (!turnServerInfo && iceTransportPolicy === 'relay') {
+      if ((!turnServerInfo || !turnServerInfo.urls?.length) && iceTransportPolicy === 'relay') {
         LoggerProxy.logger.info(
           `${LOG_HEADER} cannot do iceTransportPolicy=relay, because there is no turn server info available`
         );
