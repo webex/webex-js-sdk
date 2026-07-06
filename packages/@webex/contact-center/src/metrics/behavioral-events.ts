@@ -352,6 +352,34 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     verb: 'fail',
   },
 
+  // Conference Exit
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_exit',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_exit',
+    verb: 'fail',
+  },
+
+  // Switch Call
+  [METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_switch_call',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.TASK_SWITCH_CALL_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_switch_call',
+    verb: 'fail',
+  },
+
   // upload logs
   [METRIC_EVENT_NAMES.UPLOAD_LOGS_SUCCESS]: {
     product,

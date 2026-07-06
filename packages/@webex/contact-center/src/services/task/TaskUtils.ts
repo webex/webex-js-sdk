@@ -1,8 +1,135 @@
 /* eslint-disable import/prefer-default-export */
 import {Interaction, ITask, TaskData, MEDIA_CHANNEL} from './types';
-import {CC_EVENTS} from '../config/types';
-import {OUTDIAL_DIRECTION, OUTDIAL_MEDIA_TYPE, OUTBOUND_TYPE} from '../../constants';
 import {LoginOption} from '../../types';
+import {PARTICIPANT_TYPE, MEDIA_TYPE_MAIN_CALL} from './state-machine/constants';
+import {TaskContext} from './state-machine/types';
+import {CC_EVENTS} from '../config/types';
+import {OUTBOUND_TYPE, OUTDIAL_DIRECTION, OUTDIAL_MEDIA_TYPE} from '../../constants';
+
+const CAMPAIGN_PREVIEW_OUTBOUND_TYPES = ['STANDARD_PREVIEW_CAMPAIGN', 'DIRECT_PREVIEW_CAMPAIGN'];
+const CAMPAIGN_PREVIEW_CAMPAIGN_TYPES = ['preview_standard', 'preview_direct'];
+
+/**
+ * Checks if the customer is still in the call (not left)
+ *
+ * @param interaction - The interaction object
+ * @param interactionId - The main interaction ID
+ * @returns true if customer is in the call
+ */
+export const getIsCustomerInCall = (interaction: Interaction, interactionId: string): boolean => {
+  const mainCallMedia = interaction.media?.[interactionId];
+  const participants = interaction.participants;
+  if (!mainCallMedia?.participants || !participants) {
+    return false;
+  }
+
+  return mainCallMedia.participants.some((participantId: string) => {
+    const participant = participants[participantId];
+
+    return participant?.pType === PARTICIPANT_TYPE.CUSTOMER && !participant.hasLeft;
+  });
+};
+
+/**
+ * Gets the count of active agent participants in the conference
+ * Excludes Customer, Supervisor, and VVA participant types
+ *
+ * @param interaction - The interaction object
+ * @param interactionId - The main interaction ID
+ * @returns Number of active agent participants
+ */
+export const getConferenceParticipantsCount = (
+  interaction: Interaction,
+  interactionId: string
+): number => {
+  const mainCallMedia = interaction.media?.[interactionId];
+  const participants = interaction.participants;
+  if (!mainCallMedia?.participants || !participants) {
+    return 0;
+  }
+
+  let count = 0;
+  for (const participantId of mainCallMedia.participants) {
+    const participant = participants[participantId];
+    if (
+      participant &&
+      participant.pType !== PARTICIPANT_TYPE.CUSTOMER &&
+      participant.pType !== PARTICIPANT_TYPE.SUPERVISOR &&
+      participant.pType !== PARTICIPANT_TYPE.VVA &&
+      !participant.hasLeft
+    ) {
+      count += 1;
+    }
+  }
+
+  return count;
+};
+
+/**
+ * Determines if a consult is actively in-progress for conference control gating.
+ * This is used to disable conference controls (End/Consult) only when a consult leg
+ * still exists outside the main call participants.
+ */
+export const getIsConsultInProgressForConferenceControls = (
+  interaction: Interaction | undefined,
+  mainCallId: string | undefined,
+  selfAgentId: string | undefined
+): boolean => {
+  if (!interaction || !mainCallId) return false;
+
+  const mainParticipants = interaction.media?.[mainCallId]?.participants;
+  if (!Array.isArray(mainParticipants) || mainParticipants.length === 0) return false;
+
+  const mainSet = new Set(mainParticipants);
+  const media = interaction.media;
+  if (!media) return false;
+
+  return Object.values(media).some((m: any) => {
+    if (!m || m.mType !== 'consult') return false;
+    if (!Array.isArray(m.participants) || m.participants.length === 0) return false;
+
+    return m.participants.some((participantId: string) => {
+      const p: any = interaction.participants?.[participantId];
+      if (!p || p.hasLeft) return false;
+      if (selfAgentId && participantId === selfAgentId) return false;
+
+      const consultState = p.consultState as string | undefined;
+      const isRonaPendingConsultee = consultState === 'consultReserved' && p.hasJoined === false;
+      const consultLegActive =
+        consultState === 'consulting' ||
+        p.currentState === 'consulting' ||
+        (p.isConsulted === true && consultState !== 'consultCompleted' && !isRonaPendingConsultee);
+
+      return consultLegActive && !mainSet.has(participantId);
+    });
+  });
+};
+
+export const getIsConsultedAgentForControls = (
+  taskData: TaskData | null,
+  context: TaskContext,
+  isConsultingState: boolean
+): boolean => {
+  return Boolean(taskData?.isConsulted) || (isConsultingState && !context.consultInitiator);
+};
+
+export const getServerHoldStateForControls = (
+  context: TaskContext,
+  mainCallId?: string,
+  fallbackTaskData?: TaskData | null
+): boolean | undefined => {
+  const media = context.taskData?.interaction?.media ?? fallbackTaskData?.interaction?.media;
+  if (!media) return undefined;
+
+  if (mainCallId && media[mainCallId]) {
+    return media[mainCallId].isHold ?? false;
+  }
+
+  const mediaId = context.taskData?.mediaResourceId ?? fallbackTaskData?.mediaResourceId;
+  if (!mediaId) return undefined;
+
+  return media[mediaId]?.isHold;
+};
 
 /**
  * Determines if the given agent is the primary agent (owner) of the task
@@ -32,7 +159,9 @@ export const isParticipantInMainInteraction = (task: ITask, agentId: string): bo
 
   return Object.values(task.data.interaction.media).some(
     (mediaObj) =>
-      mediaObj && mediaObj.mType === 'mainCall' && mediaObj.participants?.includes(agentId)
+      mediaObj &&
+      mediaObj.mType === MEDIA_TYPE_MAIN_CALL &&
+      mediaObj.participants?.includes(agentId)
   );
 };
 
@@ -56,29 +185,33 @@ export const checkParticipantNotInInteraction = (task: ITask, agentId: string): 
 
 /**
  * Determines if a conference is currently in progress based on the number of active agent participants
- * @param TaskData - The payLoad data to check for conference status
+ * @param data - The task data to check for conference status
  * @returns true if there are 2 or more active agent participants in the main call, false otherwise
+ *
+ * For Agent B (consulted agent), their task's interactionId may be different from the main call.
+ * We use mainInteractionId from the interaction if available, otherwise fallback to interactionId.
  */
 export const getIsConferenceInProgress = (data: TaskData): boolean => {
-  const mediaMainCall = data.interaction.media?.[data?.interactionId];
+  if (!data.interaction) return false;
+
+  const mainCallId = data.interaction.mainInteractionId || data.interactionId;
+  const mediaMainCall = data.interaction.media?.[mainCallId];
   const participantsInMainCall = new Set(mediaMainCall?.participants);
-  const participants = data.interaction.participants;
+  const {participants} = data.interaction;
 
   const agentParticipants = new Set();
-  if (participantsInMainCall.size > 0) {
-    participantsInMainCall.forEach((participantId: string) => {
-      const participant = participants?.[participantId];
-      if (
-        participant &&
-        participant.pType !== 'Customer' &&
-        participant.pType !== 'Supervisor' &&
-        !participant.hasLeft &&
-        participant.pType !== 'VVA'
-      ) {
-        agentParticipants.add(participantId);
-      }
-    });
-  }
+  participantsInMainCall.forEach((participantId: string) => {
+    const participant = participants[participantId];
+    if (
+      participant &&
+      participant.pType !== PARTICIPANT_TYPE.CUSTOMER &&
+      participant.pType !== PARTICIPANT_TYPE.SUPERVISOR &&
+      participant.pType !== PARTICIPANT_TYPE.VVA &&
+      !participant.hasLeft
+    ) {
+      agentParticipants.add(participantId);
+    }
+  });
 
   return agentParticipants.size >= 2;
 };
@@ -104,15 +237,28 @@ export const isSecondaryAgent = (interaction: Interaction): boolean => {
 /**
  * Checks if the current agent is a secondary EP-DN (Entry Point Dial Number) agent.
  * This is specifically for telephony consultations to external numbers/entry points.
- * @param task - The task object containing interaction details
+ * @param interaction - The interaction object
  * @returns true if this is a secondary EP-DN agent in telephony consultation, false otherwise
  */
 export const isSecondaryEpDnAgent = (interaction: Interaction): boolean => {
-  if (!interaction) {
-    return false;
-  }
-
   return interaction.mediaType === 'telephony' && isSecondaryAgent(interaction);
+};
+
+/**
+ * Checks if the task belongs to a campaign preview interaction.
+ * Campaign preview ContactEnded events are terminal cleanup events and should not trigger wrapup.
+ */
+export const isCampaignPreviewTask = (taskData?: TaskData | null): boolean => {
+  const outboundType = taskData?.interaction?.outboundType ?? '';
+  const cpd = taskData?.interaction?.callProcessingDetails as unknown as
+    | Record<string, string | undefined>
+    | undefined;
+  const campaignType = cpd?.campaignType ?? '';
+
+  return (
+    CAMPAIGN_PREVIEW_OUTBOUND_TYPES.includes(outboundType) ||
+    CAMPAIGN_PREVIEW_CAMPAIGN_TYPES.includes(campaignType)
+  );
 };
 
 /**
@@ -219,6 +365,40 @@ export const shouldAutoAnswerTask = (
   }
 
   return false;
+};
+
+/**
+ * Gets the consult media resource ID for switch-call operations.
+ * Searches for the consult media leg in the interaction.
+ *
+ * @param interaction - The interaction object
+ * @param consultMediaResourceId - The consult media resource ID from task data
+ * @param agentId - Current agent ID
+ * @returns The consult media resource ID or undefined
+ */
+export const getConsultMediaResourceId = (
+  interaction: Interaction | undefined,
+  consultMediaResourceId: string | undefined,
+  agentId: string | undefined
+): string | undefined => {
+  // First priority: use consultMediaResourceId from task data if available
+  if (consultMediaResourceId) {
+    return consultMediaResourceId;
+  }
+
+  // Second priority: search for consult media leg in interaction.media
+  if (!interaction?.media || !agentId) {
+    return undefined;
+  }
+
+  // Find the consult media leg where this agent is a participant
+  for (const [mediaId, media] of Object.entries(interaction.media)) {
+    if (media.mType === 'consult' && media.participants?.includes(agentId)) {
+      return mediaId;
+    }
+  }
+
+  return undefined;
 };
 
 /**

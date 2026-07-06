@@ -13,18 +13,17 @@ import ContactCenter from './cc';
  */
 export {default as ContactCenter} from './cc';
 
-// Service exports
-/**
- * Task class represents a contact center task that can be managed by an agent
- * @category Services
- */
-export {default as Task} from './services/task';
-
 /**
  * Agent routing service for Contact Center operations
  * @category Services
  */
 export {default as routingAgent} from './services/agent';
+
+/**
+ * Task class represents a contact center task that can be managed by an agent
+ * @category Services
+ */
+export {default as Task} from './services/task/Task';
 
 // API exports (AddressBook is public, EntryPoint and Queue are accessed via cc wrappers)
 export {default as AddressBook} from './services/AddressBook';
@@ -126,6 +125,8 @@ export type {
 /** Task related types */
 export type {
   AgentContact,
+  /** Event emitter contract for task consumers (no @types/node needed) */
+  IEventEmitter,
   /** Task interface */
   ITask,
   Interaction,
@@ -140,7 +141,15 @@ export type {
   TransferPayLoad,
   ResumeRecordingPayload,
   WrapupPayLoad,
+  /** UI control types for task buttons */
+  InteractionUIControls,
+  TaskUILeg,
+  TaskUIControls,
+  TaskUIControlState,
 } from './services/task/types';
+
+/** UI controls utilities */
+export {getDefaultUIControls} from './services/task/state-machine/uiControlsComputer';
 
 /** Agent related types */
 export type {
