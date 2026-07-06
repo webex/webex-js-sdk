@@ -1,0 +1,287 @@
+name: Manual Deploy
+run-name: ${{ github.actor }} is manually ${{ inputs.dry-run && 'dry-running' || 'deploying' }} packages${{ inputs.version && format(' (v{0})', inputs.version) || ' (auto version)' }}
+
+# PHASE 1 (this workflow): authorize the actor, parse and validate the inputs
+# (version, dist-tag, dry-run), resolve the publishable package set and the
+# deploy version, and print all of it to the run logs/summary. It performs NO
+# publishing — no NPM publish, no docs force-push, no git tag. Phase 2 adds the
+# build-for-publish, NPM publish, documentation, and tag jobs on top of the
+# `resolve` job's outputs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number to deploy (e.g., 1.2.3). Leave blank to auto-generate a minor bump of the current stable release.'
+        required: false
+        type: string
+      dist-tag:
+        description: 'NPM dist-tag to publish under'
+        required: false
+        type: choice
+        default: latest
+        options:
+          - latest
+      dry-run:
+        description: 'Dry run — validate packaging without publishing to NPM, pushing docs, or creating a git tag.'
+        required: false
+        type: boolean
+        default: false
+
+# Prevent concurrent manual deploys from racing on the documentation
+# force-push and tag creation. Explicit-version runs serialize per version.
+# Blank (auto-version) runs share a single stable key so they cannot run
+# concurrently: each resolves the next version from the current `latest`, so
+# two simultaneous runs would otherwise resolve the same version and the loser
+# would fail after doing release work.
+concurrency:
+  group: manual-deploy-${{ inputs.version || 'auto' }}
+  cancel-in-progress: false
+
+env:
+  rid: ${{ github.run_id }}-${{ github.run_number }}
+  GIT_AUTHOR_NAME: ${{ github.actor }}
+  GIT_AUTHOR_EMAIL: ${{ github.actor }}@users.noreply.github.com
+
+jobs:
+  authorize:
+    name: Authorize Actor
+    runs-on: ubuntu-latest
+
+    steps:
+      # workflow_dispatch already restricts triggers to actors with write access,
+      # but publishing to NPM is sensitive enough to gate behind membership of
+      # the cypher-sdk-release-team. The default GITHUB_TOKEN cannot read org
+      # team membership, so this uses ORG_READ_TOKEN (a token with the org
+      # "Members: read" permission). The team's actual membership is the single
+      # source of truth — no usernames are hardcoded here.
+      - name: Check actor is on the release team
+        env:
+          GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
+          ACTOR: ${{ github.actor }}
+          ORG: webex
+          TEAM_SLUG: cypher-sdk-release-team
+        run: |
+          # The memberships endpoint returns 200 with state "active" for current
+          # members, 200 with state "pending" for invited-but-not-joined users,
+          # and 404 for everyone else. Only an active membership authorizes a run.
+          STATE=$(gh api \
+            "orgs/$ORG/teams/$TEAM_SLUG/memberships/$ACTOR" \
+            --jq '.state' 2>/dev/null) || STATE=""
+          if [ "$STATE" != "active" ]; then
+            echo "::error::Actor '$ACTOR' is not an active member of @$ORG/$TEAM_SLUG and is not authorized to run the manual deploy workflow."
+            exit 1
+          fi
+          echo "Actor '$ACTOR' is an active member of @$ORG/$TEAM_SLUG; authorized."
+
+  initialize:
+    name: Initialize Project
+    needs: authorize
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate Version Format
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          # A blank version auto-generates a minor bump of the current stable
+          # release during the resolve job. This is only ever published under
+          # the `latest` tag (the sole dist-tag option), so no prerelease-tag
+          # guard is needed here.
+          if [ -z "$VERSION" ]; then
+            echo "No version provided; it will be auto-generated during the resolve job."
+            exit 0
+          fi
+          # Only `latest` is exposed as a dist-tag, so accept only plain
+          # `major.minor.patch` releases. A prerelease (e.g. 1.2.3-beta.1)
+          # published under `latest` would become the default install for every
+          # consumer, so reject it here rather than let Phase 2 mis-tag it.
+          # Build metadata (`+...`) and bare prereleases (`-beta`) are also
+          # rejected because the changelog tooling
+          # (Package.parseVersionStringToObject) cannot round-trip them, which
+          # would make the docs/changelog point at a different version than the
+          # one published to NPM and tagged in git.
+          if ! grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' <<< "$VERSION"; then
+            echo "Error: Version '$VERSION' is not a supported release version."
+            echo "Expected a plain release version x.y.z (e.g., 1.2.3)."
+            echo "Prereleases (-beta.1), build metadata (+...), and bare prereleases (-beta) are not supported: only the 'latest' dist-tag is published, and the changelog tooling cannot preserve those shapes."
+            exit 1
+          fi
+
+      - name: Checkout Project
+        uses: actions/checkout@v4
+        with:
+          # fetch-depth: 0 downloads the complete git history, required for
+          # changelog generation and tag operations downstream.
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v4
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Install Dependencies
+        run: yarn
+
+  resolve:
+    name: Resolve Packages and Version
+    needs: initialize
+    runs-on: ubuntu-latest
+
+    outputs:
+      packages: ${{ steps.list.outputs.packages }}
+      packages-glob: ${{ steps.list.outputs.packages-glob }}
+      version: ${{ steps.resolve-version.outputs.version }}
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v4
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Build Tools
+        # The `*-tools` workspaces provide `package-tools`, used below to
+        # auto-resolve the deploy version. Phase 1 resolves and logs only, so
+        # it builds the tooling but not the publishable packages themselves —
+        # the full build-for-publish lives in the Phase 2 publish jobs.
+        run: yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
+
+      - name: Resolve publishable packages
+        id: list
+        # Resolve the set of packages to release once, the single source of
+        # truth for which packages get version-set, published, and changelogged.
+        #
+        # `package-tools list` returns every non-private workspace, but a few
+        # (e.g. @webex/test-webex-node) have no `deploy:npm` script — Yarn's
+        # `foreach run` silently skips those, so the real publish omits them
+        # while version-set/changelog would still touch them. Filter to
+        # workspaces that actually define `deploy:npm` so all three operate on
+        # an identical, genuinely-publishable set.
+        #
+        # Two forms are emitted because consumers need different shapes:
+        #   - `packages` (space-separated): passed unquoted to
+        #     `package-tools changelog --packages` as variadic args.
+        #   - `packages-glob` (`{a,b,c}` brace pattern): the single glob ident
+        #     `yarn workspaces foreach --from` expects. The space-separated list
+        #     does NOT work with `--from`: quoted it is one glob containing
+        #     spaces (matches nothing); unquoted only the first word is read.
+        run: |
+          # `workspaces list --json` emits one {location,name} object per line;
+          # keep names whose package.json has a deploy:npm script.
+          PACKAGES=$(yarn workspaces list --json --no-private \
+            | node -e '
+              const fs = require("fs");
+              const path = require("path");
+              const names = [];
+              for (const line of fs.readFileSync(0, "utf8").split("\n")) {
+                if (!line.trim()) continue;
+                const { location, name } = JSON.parse(line);
+                const pkg = JSON.parse(fs.readFileSync(path.join(location, "package.json"), "utf8"));
+                if (pkg.scripts && pkg.scripts["deploy:npm"]) names.push(name);
+              }
+              process.stdout.write(names.join(" "));
+            ')
+          if [ -z "$PACKAGES" ]; then
+            echo "::error::No publishable packages resolved." >&2
+            exit 1
+          fi
+          # Build the `{a,b,c}` brace glob from the same filtered set.
+          PACKAGES_GLOB="{$(echo "$PACKAGES" | tr ' ' ',')}"
+          echo "packages=$PACKAGES" >> "$GITHUB_OUTPUT"
+          echo "packages-glob=$PACKAGES_GLOB" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve deploy version
+        id: resolve-version
+        # When the operator supplies a version it is used verbatim. When the
+        # input is blank we auto-generate a minor bump of the current stable
+        # (`latest`) release of the `webex` package — e.g. 3.12.0 -> 3.13.0 —
+        # which is then applied uniformly to every publishable package. The
+        # `increment` command prints `webex => x.y.z`; we take the version after
+        # the arrow.
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$VERSION" ]; then
+            echo "Using operator-provided version: $VERSION"
+          else
+            VERSION=$(yarn package-tools increment --packages webex --tag latest --minor 1 | awk -F' => ' '{print $2}' | tr -d '[:space:]')
+            if [ -z "$VERSION" ]; then
+              echo "::error::Failed to auto-generate a version." >&2
+              exit 1
+            fi
+            echo "Auto-generated version (minor bump of current stable): $VERSION"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Summarize resolved deploy plan
+        # Phase 1 ends here: surface everything Phase 2 will act on so an
+        # operator can sanity-check a run before the publishing phases exist.
+        env:
+          VERSION: ${{ steps.resolve-version.outputs.version }}
+          PACKAGES: ${{ steps.list.outputs.packages }}
+          PACKAGES_GLOB: ${{ steps.list.outputs.packages-glob }}
+          INPUT_VERSION: ${{ inputs.version }}
+          DIST_TAG: ${{ inputs.dist-tag }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION_SOURCE="operator-provided"
+          else
+            VERSION_SOURCE="auto-generated (minor bump of current stable)"
+          fi
+          # Count packages without assuming any are present.
+          PACKAGE_COUNT=$(echo "$PACKAGES" | wc -w | tr -d '[:space:]')
+
+          # Emit to both the step log and the run summary so the resolved plan
+          # is easy to find from the Actions UI.
+          {
+            echo "## Manual deploy — Phase 1 resolution"
+            echo ""
+            echo "**No publishing is performed by this workflow.** Phase 2 will"
+            echo "consume the values below to publish to NPM, push docs, and tag."
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Actor | \`$ACTOR\` |"
+            echo "| Resolved version | \`$VERSION\` |"
+            echo "| Version source | $VERSION_SOURCE |"
+            echo "| Dist-tag | \`$DIST_TAG\` |"
+            echo "| Dry run | \`$DRY_RUN\` |"
+            echo "| Publishable package count | $PACKAGE_COUNT |"
+            echo ""
+            echo "### Publishable packages"
+            echo ""
+            echo '```'
+            # One package per line for readability.
+            echo "$PACKAGES" | tr ' ' '\n'
+            echo '```'
+            echo ""
+            echo "### Package glob (for \`yarn workspaces foreach --from\`)"
+            echo ""
+            echo "\`$PACKAGES_GLOB\`"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
