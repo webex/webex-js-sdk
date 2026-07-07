@@ -2689,6 +2689,8 @@ describe('plugin-meetings', () => {
                     regionCode: 'EU',
                   },
                   preferTranscoding: !enableMultistream,
+                  getCurrentSelfUrl: sinon.match.func,
+                  waitForSelfUrlChange: sinon.match.func,
                 },
                 {
                   parent: meeting.webex,

@@ -90,8 +90,16 @@ describe('LocusMediaRequest.send()', () => {
           timeShot: '2023-05-23T08:03:49Z',
         },
         reachability: {
-          version: '1',
-          result: 'some fake reachability result',
+          version: 1,
+          result: {
+            usedDiscoveryOptions: {
+              'early-call-min-clusters': 3,
+            },
+            metrics: {
+              'total-duration-ms': 10,
+            },
+            tests: {},
+          },
         },
       },
     };
@@ -288,7 +296,9 @@ describe('LocusMediaRequest.send()', () => {
       correlation_id: 'correlationId',
       reason: 'selfUrlUpdatedBeforeMediaRequest',
     });
-    assert.calledOnce(sendBehavioralMetricStub);
+    // The updated selfUrl is detected twice: once while deciding to retry and
+    // again when the request is re-resolved for the actual re-send.
+    assert.calledTwice(sendBehavioralMetricStub);
   });
 
   it('does not retry a roap conflict when the resolved selfUrl has not changed', async () => {
@@ -326,7 +336,7 @@ describe('LocusMediaRequest.send()', () => {
     assert.calledWith(sendBehavioralMetricStub, BEHAVIORAL_METRICS.LOCUS_MEDIA_REQUEST_RETRY, {
       correlation_id: 'correlationId',
       reason: 'selfUrlNotChangedAfterWait',
-      retryAttempt: 1,
+      retryAttempt: 0,
       roapMessageType: 'ANSWER',
     });
   });
@@ -371,14 +381,13 @@ describe('LocusMediaRequest.send()', () => {
     assert.calledWith(sendBehavioralMetricStub, BEHAVIORAL_METRICS.LOCUS_MEDIA_REQUEST_RETRY, {
       correlation_id: 'correlationId',
       reason: 'selfUrlChangedAfterWait',
-      retryAttempt: 1,
+      retryAttempt: 0,
       roapMessageType: 'ANSWER',
     });
   });
 
   it('retries a local mute request with the latest resolved selfUrl after a conflict', async () => {
     let currentSelfUrl = 'oldSelfUrl';
-    await ensureConfluenceCreated();
 
     locusMediaRequest = new LocusMediaRequest(
       {
@@ -397,7 +406,13 @@ describe('LocusMediaRequest.send()', () => {
         parent: mockWebex,
       }
     );
-    webexRequestStub = sinon.stub(locusMediaRequest, 'request');
+    webexRequestStub = sinon.stub(locusMediaRequest, 'request').resolves(fakeLocusResponse);
+
+    // Create the confluence on this instance, otherwise the LocalMute request
+    // short-circuits (resolves without sending) while confluence is "not created".
+    await ensureConfluenceCreated();
+
+    webexRequestStub.reset();
     webexRequestStub.onFirstCall().callsFake(() => {
       currentSelfUrl = 'newSelfUrl';
 

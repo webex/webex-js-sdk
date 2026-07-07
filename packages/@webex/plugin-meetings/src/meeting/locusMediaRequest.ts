@@ -200,7 +200,7 @@ export class LocusMediaRequest extends WebexPlugin {
   /**
    * Prepares the uri and body for the media request to be sent to Locus
    */
-  private async sendHttpRequest(request: Request, selfUrlRetryCount: number) {
+  private async sendHttpRequest(request: Request, selfUrlRetryCount = 0) {
     // Resolve selfUrl lazily at send time. Locus rotates it on session
     // transitions (breakout end, move-to, lobby admit) and the value
     // captured upstream in roap/index.ts may be stale by the time we
@@ -284,7 +284,10 @@ export class LocusMediaRequest extends WebexPlugin {
           // before Locus rejected the request. Re-send; getCurrentSelfUrl
           // will pick up the new URL. The returned promise replaces the
           // rejection, so the caller's pendingPromise resolves correctly.
-          return this.sendHttpRequest(request, selfUrlRetryCount);
+          // Advance the retry count here so the guard in
+          // shouldRetryOnSelfUrlChange eventually stops after
+          // MAX_SELF_URL_RETRY_COUNT attempts.
+          return this.sendHttpRequest(request, selfUrlRetryCount + 1);
         }
 
         if (
@@ -383,7 +386,6 @@ export class LocusMediaRequest extends WebexPlugin {
         return false;
       }
 
-      selfUrlRetryCount += 1;
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LOCUS_MEDIA_REQUEST_RETRY, {
         correlation_id: this.config.correlationId,
         reason: 'selfUrlChangedAfterWait',
@@ -391,6 +393,7 @@ export class LocusMediaRequest extends WebexPlugin {
         roapMessageType,
       });
     }
+
     LoggerProxy.logger.info(
       `Meeting:LocusMediaRequest#sendHttpRequest --> 409 conflict, retrying ${request.type} with updated selfUrl`
     );
