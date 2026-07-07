@@ -8,10 +8,10 @@ import '@webex/internal-plugin-metrics';
 
 import {registerInternalPlugin} from '@webex/webex-core';
 
-import Mercury from './mercury';
+import MercuryPlugin from './mercury-plugin';
 import config from './config';
 
-registerInternalPlugin('mercury', Mercury, {
+registerInternalPlugin('mercury', MercuryPlugin, {
   config,
   onBeforeLogout() {
     return this.logout();
@@ -20,6 +20,7 @@ registerInternalPlugin('mercury', Mercury, {
 
 export {default} from './mercury';
 export {default as Mercury} from './mercury';
+export {MercuryPlugin} from './mercury-plugin';
 export {default as Socket} from './socket';
 export {default as config} from './config';
 export {

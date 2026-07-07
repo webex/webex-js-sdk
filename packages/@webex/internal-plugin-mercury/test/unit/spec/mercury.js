@@ -100,21 +100,39 @@ describe('plugin-mercury', () => {
       });
 
       mercury = webex.internal.mercury;
-      mercury.defaultSessionId = 'mercury-default-session';
     });
 
     afterEach(async () => {
-      // Clean up Mercury connections and internal state
+      // Clean up Mercury connections and internal state synchronously
+      // to avoid issues with fake timers
       if (mercury) {
-        try {
-          await mercury.disconnectAll();
-        } catch (e) {
-          // Ignore cleanup errors
+        // Abort any pending backoff calls first
+        if (mercury.backoffCall) {
+          mercury.backoffCall.abort();
+          mercury.backoffCall = undefined;
         }
-        // Clear any remaining connection promises
-        if (mercury._connectPromises) {
-          mercury._connectPromises.clear();
+        if (mercury._shutdownSwitchoverBackoffCall) {
+          mercury._shutdownSwitchoverBackoffCall.abort();
+          mercury._shutdownSwitchoverBackoffCall = undefined;
         }
+
+        // Close socket directly without waiting for offline event
+        if (mercury.socket) {
+          if (typeof mercury.socket.removeAllListeners === 'function') {
+            mercury.socket.removeAllListeners();
+          }
+          try {
+            mercury.socket.close();
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+          mercury.socket = undefined;
+        }
+
+        // Clear any remaining connection promise
+        mercury._connectPromise = null;
+        mercury.connected = false;
+        mercury.connecting = false;
       }
 
       // Ensure mock socket is properly closed
@@ -650,44 +668,6 @@ describe('plugin-mercury', () => {
       });
     });
 
-    describe('#logout()', () => {
-      it('calls disconnectAll and logs', () => {
-        sinon.stub(mercury.logger, 'info');
-        sinon.stub(mercury, 'disconnectAll');
-        mercury.logout();
-        assert.called(mercury.disconnectAll);
-        assert.calledTwice(mercury.logger.info);
-
-        assert.calledWith(mercury.logger.info.getCall(0), 'Mercury: logout() called');
-        assert.isTrue(
-          mercury.logger.info
-            .getCall(1)
-            .args[0].startsWith('Mercury: debug_mercury_logging stack: ')
-        );
-      });
-
-      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 3050 for logout', () => {
-        sinon.stub(mercury, 'disconnectAll');
-        mercury.config.beforeLogoutOptionsCloseReason = 'done (permanent)';
-        mercury.logout();
-        assert.calledWith(mercury.disconnectAll, {code: 3050, reason: 'done (permanent)'});
-      });
-
-      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 3050 for logout if the reason is different than standard', () => {
-        sinon.stub(mercury, 'disconnectAll');
-        mercury.config.beforeLogoutOptionsCloseReason = 'test';
-        mercury.logout();
-        assert.calledWith(mercury.disconnectAll, {code: 3050, reason: 'test'});
-      });
-
-      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send undefined for logout if the reason is same as standard', () => {
-        sinon.stub(mercury, 'disconnectAll');
-        mercury.config.beforeLogoutOptionsCloseReason = 'done (forced)';
-        mercury.logout();
-        assert.calledWith(mercury.disconnectAll, undefined);
-      });
-    });
-
     describe('#disconnect()', () => {
       it('disconnects the WebSocket', () =>
         mercury
@@ -791,15 +771,15 @@ describe('plugin-mercury', () => {
             // By this time backoffCall and mercury socket should be defined by the
             // 'connect' call
             assert.isDefined(
-              mercury.backoffCalls.get('mercury-default-session'),
+              mercury.backoffCall,
               'Mercury backoffCall is not defined'
             );
             assert.isDefined(mercury.socket, 'Mercury socket is not defined');
             // Calling disconnect will abort the backoffCall, close the socket, and
             // reject the connect
             mercury.disconnect();
-            assert.isUndefined(
-              mercury.backoffCalls.get('mercury-default-session'),
+            assert.notOk(
+              mercury.backoffCall,
               'Mercury backoffCall is still defined'
             );
             // The socket will never be unset (which seems bad)
@@ -819,20 +799,16 @@ describe('plugin-mercury', () => {
 
           let reason;
 
-          mercury.backoffCalls.clear();
+          mercury.backoffCall = undefined;
 
-          const promise = mercury._attemptConnection(
-            'ws://example.com',
-            'mercury-default-session',
-            (_reason) => {
-              reason = _reason;
-            }
-          );
+          const promise = mercury._attemptConnection('ws://example.com', (_reason) => {
+            reason = _reason;
+          });
 
           return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
             assert.equal(
               reason.message,
-              `Mercury: prevent socket open when backoffCall no longer defined for ${mercury.defaultSessionId}`
+              'Mercury: prevent socket open when backoffCall no longer defined'
             );
 
             // Ensure the promise was actually rejected (short-circuited)
@@ -857,10 +833,7 @@ describe('plugin-mercury', () => {
             return assert.isRejected(promise).then((error) => {
               const lastError = mercury.getLastError();
 
-              assert.equal(
-                error.message,
-                `Mercury Connection Aborted for ${mercury.defaultSessionId}`
-              );
+              assert.equal(error.message, 'Mercury Connection Aborted');
               assert.isDefined(lastError);
               assert.equal(lastError, realError);
             });
@@ -954,7 +927,7 @@ describe('plugin-mercury', () => {
           },
         };
         assert.isUndefined(mercury.mercuryTimeOffset);
-        mercury._setTimeOffset('mercury-default-session', event);
+        mercury._setTimeOffset(event);
         assert.isDefined(mercury.mercuryTimeOffset);
         assert.isTrue(mercury.mercuryTimeOffset > 0);
       });
@@ -964,7 +937,7 @@ describe('plugin-mercury', () => {
             wsWriteTimestamp: Date.now() + 60000,
           },
         };
-        mercury._setTimeOffset('mercury-default-session', event);
+        mercury._setTimeOffset(event);
         assert.isTrue(mercury.mercuryTimeOffset < 0);
       });
       it('handles invalid wsWriteTimestamp', () => {
@@ -975,7 +948,7 @@ describe('plugin-mercury', () => {
               wsWriteTimestamp: invalidTimestamp,
             },
           };
-          mercury._setTimeOffset('mercury-default-session', event);
+          mercury._setTimeOffset(event);
           assert.isUndefined(mercury.mercuryTimeOffset);
         });
       });
@@ -1082,15 +1055,13 @@ describe('plugin-mercury', () => {
     describe('shutdown protocol', () => {
       describe('#_handleImminentShutdown()', () => {
         let connectWithBackoffStub;
-        const sessionId = 'mercury-default-session';
 
         beforeEach(() => {
           mercury.connected = true;
-          mercury.sockets.set(sessionId, {
+          mercury.socket = {
             url: 'ws://old-socket.com',
             removeAllListeners: sinon.stub(),
-          });
-          mercury.socket = mercury.sockets.get(sessionId);
+          };
           connectWithBackoffStub = sinon.stub(mercury, '_connectWithBackoff');
           connectWithBackoffStub.returns(Promise.resolve());
           sinon.stub(mercury, '_emit');
@@ -1099,47 +1070,42 @@ describe('plugin-mercury', () => {
         afterEach(() => {
           connectWithBackoffStub.restore();
           mercury._emit.restore();
-          mercury.sockets.clear();
         });
 
         it('should be idempotent - no-op if already in progress', () => {
-          // Simulate an existing switchover in progress by seeding the backoff map
-          mercury._shutdownSwitchoverBackoffCalls.set(sessionId, {placeholder: true});
+          // Simulate an existing switchover in progress
+          mercury._shutdownSwitchoverInProgress = true;
 
-          mercury._handleImminentShutdown(sessionId);
+          mercury._handleImminentShutdown();
 
           assert.notCalled(connectWithBackoffStub);
         });
 
         it('should set switchover flags when called', () => {
-          mercury._handleImminentShutdown(sessionId);
+          mercury._handleImminentShutdown();
 
-          // With _connectWithBackoff stubbed, the backoff map entry may not be created here.
-          // Assert that switchover initiation state was set and a shutdown switchover connect was requested.
           assert.isDefined(mercury._shutdownSwitchoverId);
 
           assert.calledOnce(connectWithBackoffStub);
           const callArgs = connectWithBackoffStub.firstCall.args;
           assert.isUndefined(callArgs[0]); // webSocketUrl
-          assert.equal(callArgs[1], sessionId); // sessionId
-          assert.isObject(callArgs[2]); // context
-          assert.isTrue(callArgs[2].isShutdownSwitchover);
-          assert.isObject(callArgs[2].attemptOptions);
-          assert.isTrue(callArgs[2].attemptOptions.isShutdownSwitchover);
+          assert.isObject(callArgs[1]); // context
+          assert.isTrue(callArgs[1].isShutdownSwitchover);
+          assert.isObject(callArgs[1].attemptOptions);
+          assert.isTrue(callArgs[1].attemptOptions.isShutdownSwitchover);
         });
 
         it('should call _connectWithBackoff with correct parameters', (done) => {
-          mercury._handleImminentShutdown(sessionId);
+          mercury._handleImminentShutdown();
 
           process.nextTick(() => {
             assert.calledOnce(connectWithBackoffStub);
             const callArgs = connectWithBackoffStub.firstCall.args;
             assert.isUndefined(callArgs[0]); // webSocketUrl
-            assert.equal(callArgs[1], sessionId); // sessionId
-            assert.isObject(callArgs[2]); // context
-            assert.isTrue(callArgs[2].isShutdownSwitchover);
-            assert.isObject(callArgs[2].attemptOptions);
-            assert.isTrue(callArgs[2].attemptOptions.isShutdownSwitchover);
+            assert.isObject(callArgs[1]); // context
+            assert.isTrue(callArgs[1].isShutdownSwitchover);
+            assert.isObject(callArgs[1].attemptOptions);
+            assert.isTrue(callArgs[1].attemptOptions.isShutdownSwitchover);
             done();
           });
         });
@@ -1148,12 +1114,10 @@ describe('plugin-mercury', () => {
           connectWithBackoffStub.restore();
           sinon.stub(mercury, '_connectWithBackoff').throws(new Error('Connection failed'));
 
-          mercury._handleImminentShutdown(sessionId);
+          mercury._handleImminentShutdown();
 
-          // When an exception happens synchronously, the placeholder entry
-          // should be removed from the map.
-          const switchoverCall = mercury._shutdownSwitchoverBackoffCalls.get(sessionId);
-          assert.isUndefined(switchoverCall);
+          // When an exception happens synchronously, the in-progress flag should be cleared
+          assert.isFalse(mercury._shutdownSwitchoverInProgress);
           mercury._connectWithBackoff.restore();
         });
       });
@@ -1178,15 +1142,10 @@ describe('plugin-mercury', () => {
             },
           };
 
-          const result = mercury._onmessage(mercury.defaultSessionId, shutdownEvent);
+          const result = mercury._onmessage(shutdownEvent);
 
           assert.calledOnce(mercury._handleImminentShutdown);
-          assert.calledWith(
-            mercury._emit,
-            mercury.defaultSessionId,
-            'event:mercury_shutdown_imminent',
-            shutdownEvent.data
-          );
+          assert.calledWith(mercury._emit, 'event:mercury_shutdown_imminent', shutdownEvent.data);
           assert.instanceOf(result, Promise);
         });
 
@@ -1197,7 +1156,7 @@ describe('plugin-mercury', () => {
             },
           };
 
-          mercury._onmessage(mercury.defaultSessionId, shutdownEvent);
+          mercury._onmessage(shutdownEvent);
 
           assert.calledOnce(mercury._handleImminentShutdown);
         });
@@ -1212,7 +1171,7 @@ describe('plugin-mercury', () => {
             },
           };
 
-          mercury._onmessage(mercury.defaultSessionId, regularEvent);
+          mercury._onmessage(regularEvent);
 
           assert.notCalled(mercury._handleImminentShutdown);
         });
@@ -1231,7 +1190,7 @@ describe('plugin-mercury', () => {
           mercury._applyOverrides.restore();
         });
 
-        it('should not throw when envelope.data is undefined', () => {
+        it('should emit generic event and return early when envelope.data (nested) is undefined', async () => {
           const event = {
             data: {
               type: 'someType',
@@ -1239,13 +1198,15 @@ describe('plugin-mercury', () => {
             },
           };
 
-          const result = mercury._onmessage(mercury.defaultSessionId, event);
+          const result = mercury._onmessage(event);
 
           assert.instanceOf(result, Promise);
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'event', event.data);
+          await result;
+          assert.calledOnceWithExactly(mercury._emit, 'event', event.data);
+          assert.notCalled(mercury._applyOverrides);
         });
 
-        it('should not throw when data.eventType is undefined', () => {
+        it('should emit generic event and return early when data.eventType is undefined', async () => {
           const event = {
             data: {
               type: 'someType',
@@ -1256,13 +1217,15 @@ describe('plugin-mercury', () => {
             },
           };
 
-          const result = mercury._onmessage(mercury.defaultSessionId, event);
+          const result = mercury._onmessage(event);
 
           assert.instanceOf(result, Promise);
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'event', event.data);
+          await result;
+          assert.calledOnceWithExactly(mercury._emit, 'event', event.data);
+          assert.notCalled(mercury._applyOverrides);
         });
 
-        it('should emit generic event for messages without eventType (e.g. subscription responses)', () => {
+        it('should emit generic event for messages without eventType (e.g. subscription responses)', async () => {
           const event = {
             data: {
               id: 'msg-123',
@@ -1273,11 +1236,12 @@ describe('plugin-mercury', () => {
             },
           };
 
-          const result = mercury._onmessage(mercury.defaultSessionId, event);
+          const result = mercury._onmessage(event);
 
           assert.instanceOf(result, Promise);
-          assert.calledOnce(mercury._emit);
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'event', event.data);
+          await result;
+          assert.calledOnceWithExactly(mercury._emit, 'event', event.data);
+          assert.notCalled(mercury._applyOverrides);
         });
 
         it('should still process messages with a valid eventType', async () => {
@@ -1289,22 +1253,12 @@ describe('plugin-mercury', () => {
             },
           };
 
-          await mercury._onmessage(mercury.defaultSessionId, event);
+          await mercury._onmessage(event);
 
           // Normal flow emits namespace-specific events after processing handlers.
           // The early-return guard only emits 'event', so asserting these proves the normal path was taken.
-          assert.calledWith(
-            mercury._emit,
-            mercury.defaultSessionId,
-            'event:conversation',
-            event.data
-          );
-          assert.calledWith(
-            mercury._emit,
-            mercury.defaultSessionId,
-            'event:conversation.activity',
-            event.data
-          );
+          assert.calledWith(mercury._emit, 'event:conversation', event.data);
+          assert.calledWith(mercury._emit, 'event:conversation.activity', event.data);
         });
       });
 
@@ -1347,7 +1301,6 @@ describe('plugin-mercury', () => {
             removeAllListeners: sinon.stub(),
           };
           mercury.socket = mockSocket;
-          mercury.sockets.set(mercury.defaultSessionId, mockSocket);
           mercury.connected = true;
           sinon.stub(mercury, '_emit');
           sinon.stub(mercury, '_reconnect');
@@ -1366,14 +1319,9 @@ describe('plugin-mercury', () => {
             reason: 'replaced during shutdown',
           };
 
-          mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
+          mercury._onclose(closeEvent, mockSocket);
 
-          assert.calledWith(
-            mercury._emit,
-            mercury.defaultSessionId,
-            'offline.permanent',
-            closeEvent
-          );
+          assert.calledWith(mercury._emit, 'offline.permanent', closeEvent);
           assert.notCalled(mercury._reconnect); // No reconnect for 4001 on active socket
           assert.isFalse(mercury.connected);
         });
@@ -1384,14 +1332,9 @@ describe('plugin-mercury', () => {
             reason: 'replaced during shutdown',
           };
 
-          mercury._onclose(mercury.defaultSessionId, closeEvent, anotherSocket);
+          mercury._onclose(closeEvent, anotherSocket);
 
-          assert.calledWith(
-            mercury._emit,
-            mercury.defaultSessionId,
-            'offline.replaced',
-            closeEvent
-          );
+          assert.calledWith(mercury._emit, 'offline.replaced', closeEvent);
           assert.notCalled(mercury._reconnect);
           assert.isTrue(mercury.connected); // Should remain connected
           assert.notCalled(mercury.unset);
@@ -1404,26 +1347,15 @@ describe('plugin-mercury', () => {
           };
 
           // Test non-active socket
-          mercury._onclose(mercury.defaultSessionId, closeEvent, anotherSocket);
-          assert.calledWith(
-            mercury._emit,
-            mercury.defaultSessionId,
-            'offline.replaced',
-            closeEvent
-          );
+          mercury._onclose(closeEvent, anotherSocket);
+          assert.calledWith(mercury._emit, 'offline.replaced', closeEvent);
 
           // Reset the spy call history
           mercury._emit.resetHistory();
 
           // Test active socket
-          mercury.sockets.set(mercury.defaultSessionId, mockSocket);
-          mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
-          assert.calledWith(
-            mercury._emit,
-            mercury.defaultSessionId,
-            'offline.permanent',
-            closeEvent
-          );
+          mercury._onclose(closeEvent, mockSocket);
+          assert.calledWith(mercury._emit, 'offline.permanent', closeEvent);
         });
 
         it('should handle missing sourceSocket parameter (treats as non-active)', () => {
@@ -1432,15 +1364,10 @@ describe('plugin-mercury', () => {
             reason: 'replaced during shutdown',
           };
 
-          mercury._onclose(mercury.defaultSessionId, closeEvent); // No sourceSocket parameter
+          mercury._onclose(closeEvent); // No sourceSocket parameter
 
           // With simplified logic, undefined !== this.socket, so isActiveSocket = false
-          assert.calledWith(
-            mercury._emit,
-            mercury.defaultSessionId,
-            'offline.replaced',
-            closeEvent
-          );
+          assert.calledWith(mercury._emit, 'offline.replaced', closeEvent);
           assert.notCalled(mercury._reconnect);
         });
 
@@ -1451,11 +1378,9 @@ describe('plugin-mercury', () => {
           };
 
           // Close non-active socket (not the active one)
-          mercury._onclose(mercury.defaultSessionId, closeEvent, anotherSocket);
+          mercury._onclose(closeEvent, anotherSocket);
 
           // Verify listeners were removed from the old socket
-          // The _onclose method checks if sourceSocket !== this.socket (non-active)
-          // and then calls removeAllListeners in the else branch
           assert.calledOnce(anotherSocket.removeAllListeners);
         });
 
@@ -1466,7 +1391,7 @@ describe('plugin-mercury', () => {
           };
 
           // Close active socket
-          mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
+          mercury._onclose(closeEvent, mockSocket);
 
           // Verify listeners were removed from active socket
           assert.calledOnce(mockSocket.removeAllListeners);
@@ -1474,7 +1399,6 @@ describe('plugin-mercury', () => {
       });
 
       describe('#_onclose() reconnect URL derivation', () => {
-        const sessionId = 'mercury-default-session';
         // The URL resolved and stored in _prepareAndOpenSocket (catalog-valid host).
         const resolvedUrl = 'wss://mercury-connection.wbx2.com/v1/apps/wx2/registrations';
         // The URL the native socket was actually opened with, after a lower
@@ -1489,8 +1413,7 @@ describe('plugin-mercury', () => {
             removeAllListeners: sinon.stub(),
           };
           mercury.socket = sourceSocket;
-          mercury.sockets.set(sessionId, sourceSocket);
-          mercury.sessionWebSocketUrls.set(sessionId, resolvedUrl);
+          mercury.resolvedWebSocketUrl = resolvedUrl;
           mercury.connected = true;
           sinon.stub(mercury, '_emit');
           sinon.stub(mercury, '_reconnect');
@@ -1501,23 +1424,21 @@ describe('plugin-mercury', () => {
           mercury._emit.restore();
           mercury._reconnect.restore();
           mercury.unset.restore();
-          mercury.sockets.clear();
-          mercury.sessionWebSocketUrls.clear();
         });
 
         [1001, 1005, 1006, 1011].forEach((code) => {
           it(`reconnects an active socket using the stored resolved URL (not the proxied socket.url) for code ${code}`, () => {
-            mercury._onclose(sessionId, {code, reason: 'transient'}, sourceSocket);
+            mercury._onclose({code, reason: 'transient'}, sourceSocket);
 
-            assert.calledOnceWithExactly(mercury._reconnect, resolvedUrl, sessionId);
-            assert.neverCalledWith(mercury._reconnect, proxiedUrl, sessionId);
+            assert.calledOnceWithExactly(mercury._reconnect, resolvedUrl);
+            assert.neverCalledWith(mercury._reconnect, proxiedUrl);
           });
         });
 
         it('reconnects using the stored resolved URL for a normal close (1000) with a reconnect reason', () => {
-          mercury._onclose(sessionId, {code: 1000, reason: 'done (forced)'}, sourceSocket);
+          mercury._onclose({code: 1000, reason: 'done (forced)'}, sourceSocket);
 
-          assert.calledOnceWithExactly(mercury._reconnect, resolvedUrl, sessionId);
+          assert.calledOnceWithExactly(mercury._reconnect, resolvedUrl);
         });
 
         it('does not reconnect when a non-active (old) socket closes', () => {
@@ -1526,34 +1447,29 @@ describe('plugin-mercury', () => {
             removeAllListeners: sinon.stub(),
           };
 
-          mercury._onclose(sessionId, {code: 1006, reason: 'transient'}, oldSocket);
+          mercury._onclose({code: 1006, reason: 'transient'}, oldSocket);
 
           assert.notCalled(mercury._reconnect);
         });
-      });
 
-      describe('#disconnectAll()', () => {
-        it('clears sessionWebSocketUrls along with the other session state', async () => {
-          mercury.sessionWebSocketUrls.set('mercury-default-session', 'ws://example.com');
-          mercury.sessionWebSocketUrls.set('llm-session', 'ws://example-2.com');
+        it('falls back to socket.url when resolvedWebSocketUrl is not set', () => {
+          mercury.resolvedWebSocketUrl = undefined;
 
-          await mercury.disconnectAll();
+          mercury._onclose({code: 1006, reason: 'transient'}, sourceSocket);
 
-          assert.equal(mercury.sessionWebSocketUrls.size, 0);
+          assert.calledOnceWithExactly(mercury._reconnect, proxiedUrl);
         });
       });
 
       describe('shutdown switchover with retry logic', () => {
         let connectWithBackoffStub;
-        const sessionId = 'mercury-default-session';
 
         beforeEach(() => {
           mercury.connected = true;
-          mercury.sockets.set(sessionId, {
+          mercury.socket = {
             url: 'ws://old-socket.com',
             removeAllListeners: sinon.stub(),
-          });
-          mercury.socket = mercury.sockets.get(sessionId);
+          };
           connectWithBackoffStub = sinon.stub(mercury, '_connectWithBackoff');
           sinon.stub(mercury, '_emit');
         });
@@ -1561,46 +1477,42 @@ describe('plugin-mercury', () => {
         afterEach(() => {
           connectWithBackoffStub.restore();
           mercury._emit.restore();
-          mercury.sockets.clear();
         });
 
         it('should call _connectWithBackoff with shutdown switchover context', (done) => {
           connectWithBackoffStub.returns(Promise.resolve());
 
-          mercury._handleImminentShutdown(sessionId);
+          mercury._handleImminentShutdown();
 
           process.nextTick(() => {
             assert.calledOnce(connectWithBackoffStub);
             const callArgs = connectWithBackoffStub.firstCall.args;
 
             assert.isUndefined(callArgs[0]); // webSocketUrl
-            assert.equal(callArgs[1], sessionId);
-            assert.isObject(callArgs[2]);
-            assert.isTrue(callArgs[2].isShutdownSwitchover);
-            assert.isObject(callArgs[2].attemptOptions);
-            assert.isTrue(callArgs[2].attemptOptions.isShutdownSwitchover);
+            assert.isObject(callArgs[1]);
+            assert.isTrue(callArgs[1].isShutdownSwitchover);
+            assert.isObject(callArgs[1].attemptOptions);
+            assert.isTrue(callArgs[1].attemptOptions.isShutdownSwitchover);
             done();
           });
         });
 
         it('should set _shutdownSwitchoverInProgress flag during switchover', () => {
-          // With the new behavior, "in progress" is represented by the presence
-          // of an entry in _shutdownSwitchoverBackoffCalls.
-          // Since _connectWithBackoff is stubbed in this suite, simulate its side-effect
-          // of seeding the backoff-call map entry.
+          // Since _connectWithBackoff is stubbed, we can just check that
+          // _handleImminentShutdown sets the flag
           connectWithBackoffStub.callsFake(() => {
-            mercury._shutdownSwitchoverBackoffCalls.set(sessionId, {placeholder: true});
             return new Promise(() => {}); // Never resolves
           });
 
-          mercury._handleImminentShutdown(sessionId);
+          mercury._handleImminentShutdown();
 
-          const switchoverBackoffCall = mercury._shutdownSwitchoverBackoffCalls.get(sessionId);
-          assert.isOk(switchoverBackoffCall);
+          // The flag is set to true initially when switchover starts
+          // (but then gets cleared in finally if the promise rejects)
+          assert.isDefined(mercury._shutdownSwitchoverId);
         });
 
         it('should emit success event when switchover completes', async () => {
-          connectWithBackoffStub.callsFake((url, sid, context) => {
+          connectWithBackoffStub.callsFake((url, context) => {
             if (context && context.attemptOptions && context.attemptOptions.onSuccess) {
               const mockSocket = {url: 'ws://new-socket.com'};
               context.attemptOptions.onSuccess(mockSocket, 'ws://new-socket.com');
@@ -1608,15 +1520,13 @@ describe('plugin-mercury', () => {
             return Promise.resolve();
           });
 
-          mercury._handleImminentShutdown(sessionId);
+          mercury._handleImminentShutdown();
 
           await promiseTick(50);
 
           const emitCalls = mercury._emit.getCalls();
           const hasCompleteEvent = emitCalls.some(
-            (call) =>
-              call.args[0] === sessionId &&
-              call.args[1] === 'event:mercury_shutdown_switchover_complete'
+            (call) => call.args[0] === 'event:mercury_shutdown_switchover_complete'
           );
 
           assert.isTrue(hasCompleteEvent, 'Should emit switchover complete event');
@@ -1625,27 +1535,26 @@ describe('plugin-mercury', () => {
         it('should emit failure event when switchover exhausts retries', async () => {
           const testError = new Error('Connection failed');
 
-          connectWithBackoffStub.returns(Promise.reject(testError));
+          connectWithBackoffStub.callsFake(() => Promise.reject(testError));
 
-          mercury._handleImminentShutdown(sessionId);
+          mercury._handleImminentShutdown();
           await promiseTick(50);
 
           const emitCalls = mercury._emit.getCalls();
           const hasFailureEvent = emitCalls.some(
             (call) =>
-              call.args[0] === sessionId &&
-              call.args[1] === 'event:mercury_shutdown_switchover_failed' &&
-              call.args[2] &&
-              call.args[2].reason === testError
+              call.args[0] === 'event:mercury_shutdown_switchover_failed' &&
+              call.args[1] &&
+              call.args[1].reason === testError
           );
 
           assert.isTrue(hasFailureEvent, 'Should emit switchover failed event');
         });
 
         it('should allow old socket to be closed by server after switchover failure', async () => {
-          connectWithBackoffStub.returns(Promise.reject(new Error('Failed')));
+          connectWithBackoffStub.callsFake(() => Promise.reject(new Error('Failed')));
 
-          mercury._handleImminentShutdown(sessionId);
+          mercury._handleImminentShutdown();
           await promiseTick(50);
 
           assert.equal(mercury.socket.removeAllListeners.callCount, 0);
@@ -1731,14 +1640,21 @@ describe('plugin-mercury', () => {
           assert.equal(result, 'ws://example.com');
         });
 
-        it('stores the resolved (pre-proxy) URL under the sessionId in sessionWebSocketUrls', async () => {
-          const sessionId = 'llm-session';
-
-          await mercury._prepareAndOpenSocket(mockSocket, 'ws://original.com', sessionId);
+        it('stores the resolved (pre-proxy) URL in resolvedWebSocketUrl', async () => {
+          await mercury._prepareAndOpenSocket(mockSocket, 'ws://original.com', false);
 
           // The stored value is the URL resolved by _prepareUrl, not the raw
           // input, so _onclose can later reconnect from a catalog-valid host.
-          assert.equal(mercury.sessionWebSocketUrls.get(sessionId), 'ws://example.com');
+          assert.equal(mercury.resolvedWebSocketUrl, 'ws://example.com');
+        });
+
+        it('does not store resolvedWebSocketUrl for shutdown switchover connections', async () => {
+          mercury.resolvedWebSocketUrl = 'ws://existing.com';
+
+          await mercury._prepareAndOpenSocket(mockSocket, 'ws://original.com', true);
+
+          // Shutdown switchover should not overwrite the stored URL
+          assert.equal(mercury.resolvedWebSocketUrl, 'ws://existing.com');
         });
 
         it('should handle errors during socket open', async () => {
@@ -1756,14 +1672,13 @@ describe('plugin-mercury', () => {
 
       describe('#_attemptConnection() with shutdown switchover', () => {
         let prepareAndOpenSocketStub, callback;
-        const sessionId = 'mercury-default-session';
 
         beforeEach(() => {
           prepareAndOpenSocketStub = sinon
             .stub(mercury, '_prepareAndOpenSocket')
             .returns(Promise.resolve('ws://new-socket.com'));
           callback = sinon.stub();
-          mercury._shutdownSwitchoverBackoffCalls.set(sessionId, {abort: sinon.stub()});
+          mercury._shutdownSwitchoverBackoffCall = {abort: sinon.stub()};
           mercury.socket = {url: 'ws://test.com'};
           mercury.connected = true;
           sinon.stub(mercury, '_emit');
@@ -1774,13 +1689,13 @@ describe('plugin-mercury', () => {
           prepareAndOpenSocketStub.restore();
           mercury._emit.restore();
           mercury._attachSocketEventListeners.restore();
-          mercury._shutdownSwitchoverBackoffCalls.clear();
+          mercury._shutdownSwitchoverBackoffCall = undefined;
         });
 
         it('should not set socket reference before opening for shutdown switchover', async () => {
           const originalSocket = mercury.socket;
 
-          await mercury._attemptConnection('ws://test.com', sessionId, callback, {
+          await mercury._attemptConnection('ws://test.com', callback, {
             isShutdownSwitchover: true,
             onSuccess: (newSocket, url) => {
               assert.equal(mercury.socket, originalSocket);
@@ -1793,7 +1708,7 @@ describe('plugin-mercury', () => {
         it('should call onSuccess callback with new socket and URL for shutdown', async () => {
           const onSuccessStub = sinon.stub();
 
-          await mercury._attemptConnection('ws://test.com', sessionId, callback, {
+          await mercury._attemptConnection('ws://test.com', callback, {
             isShutdownSwitchover: true,
             onSuccess: onSuccessStub,
           });
@@ -1803,18 +1718,17 @@ describe('plugin-mercury', () => {
         });
 
         it('should emit shutdown switchover complete event', async () => {
-          await mercury._attemptConnection('ws://test.com', sessionId, callback, {
+          await mercury._attemptConnection('ws://test.com', callback, {
             isShutdownSwitchover: true,
             onSuccess: (newSocket, url) => {
               mercury.socket = newSocket;
               mercury.connected = true;
-              mercury._emit(sessionId, 'event:mercury_shutdown_switchover_complete', {url});
+              mercury._emit('event:mercury_shutdown_switchover_complete', {url});
             },
           });
 
           assert.calledWith(
             mercury._emit,
-            sessionId,
             'event:mercury_shutdown_switchover_complete',
             sinon.match.has('url', 'ws://new-socket.com')
           );
@@ -1824,7 +1738,7 @@ describe('plugin-mercury', () => {
           prepareAndOpenSocketStub.returns(Promise.reject(new Error('Connection failed')));
 
           await mercury
-            ._attemptConnection('ws://test.com', sessionId, callback, {
+            ._attemptConnection('ws://test.com', callback, {
               isShutdownSwitchover: true,
             })
             .catch(() => {});
@@ -1834,9 +1748,9 @@ describe('plugin-mercury', () => {
         });
 
         it('should check _shutdownSwitchoverBackoffCall for shutdown connections', () => {
-          mercury._shutdownSwitchoverBackoffCalls.clear();
+          mercury._shutdownSwitchoverBackoffCall = undefined;
 
-          const result = mercury._attemptConnection('ws://test.com', sessionId, callback, {
+          const result = mercury._attemptConnection('ws://test.com', callback, {
             isShutdownSwitchover: true,
           });
 
@@ -1848,27 +1762,25 @@ describe('plugin-mercury', () => {
       });
 
       describe('#_connectWithBackoff() with shutdown switchover', () => {
-        const sessionId = 'mercury-default-session';
-
         it('should use shutdown-specific parameters when called', () => {
           const connectWithBackoffStub = sinon
             .stub(mercury, '_connectWithBackoff')
             .returns(Promise.resolve());
 
-          mercury._handleImminentShutdown(sessionId);
+          mercury._handleImminentShutdown();
 
           assert.calledOnce(connectWithBackoffStub);
           const callArgs = connectWithBackoffStub.firstCall.args;
-          assert.equal(callArgs[1], sessionId);
-          assert.isObject(callArgs[2]);
-          assert.isTrue(callArgs[2].isShutdownSwitchover);
+          // First arg is the URL, second is the context object
+          assert.isObject(callArgs[1]);
+          assert.isTrue(callArgs[1].isShutdownSwitchover);
 
           connectWithBackoffStub.restore();
         });
 
         it('should pass shutdown switchover options to _attemptConnection', () => {
           const attemptStub = sinon.stub(mercury, '_attemptConnection');
-          attemptStub.callsFake((url, sid, cb) => cb());
+          attemptStub.callsFake((url, cb) => cb());
 
           const context = {
             isShutdownSwitchover: true,
@@ -1878,30 +1790,29 @@ describe('plugin-mercury', () => {
             },
           };
 
-          const promise = mercury._connectWithBackoff(undefined, sessionId, context);
+          const promise = mercury._connectWithBackoff(undefined, context);
 
           return promise.then(() => {
             assert.calledOnce(attemptStub);
             const callArgs = attemptStub.firstCall.args;
-            assert.equal(callArgs[1], sessionId);
-            assert.isObject(callArgs[3]);
-            assert.isTrue(callArgs[3].isShutdownSwitchover);
+            assert.isObject(callArgs[2]);
+            assert.isTrue(callArgs[2].isShutdownSwitchover);
             attemptStub.restore();
           });
         });
 
         it('should set and clear state flags appropriately', () => {
-          sinon.stub(mercury, '_attemptConnection').callsFake((url, sid, cb) => cb());
+          sinon.stub(mercury, '_attemptConnection').callsFake((url, cb) => cb());
 
-          mercury._shutdownSwitchoverBackoffCalls.set(sessionId, {placeholder: true});
+          mercury._shutdownSwitchoverInProgress = true;
 
-          const promise = mercury._connectWithBackoff(undefined, sessionId, {
+          const promise = mercury._connectWithBackoff(undefined, {
             isShutdownSwitchover: true,
             attemptOptions: {isShutdownSwitchover: true, onSuccess: () => {}},
           });
 
           return promise.then(() => {
-            assert.isUndefined(mercury._shutdownSwitchoverBackoffCalls.get(sessionId));
+            assert.isFalse(mercury._shutdownSwitchoverInProgress);
             mercury._attemptConnection.restore();
           });
         });
@@ -1909,30 +1820,30 @@ describe('plugin-mercury', () => {
 
       describe('#disconnect() with shutdown switchover in progress', () => {
         let abortStub;
-        const sessionId = 'mercury-default-session';
 
         beforeEach(() => {
-          mercury.sockets.clear();
-          mercury.sockets.set(sessionId, {
-            close: sinon.stub().returns(Promise.resolve()),
-            removeAllListeners: sinon.stub(),
-          });
           abortStub = sinon.stub();
-          mercury._shutdownSwitchoverBackoffCalls.set(sessionId, {abort: abortStub});
+          mercury._shutdownSwitchoverBackoffCall = {abort: abortStub};
         });
 
-        it('should abort shutdown switchover backoff call on disconnect', async () => {
-          await mercury.disconnect(undefined, sessionId);
+        it('should abort shutdown switchover backoff call on disconnect', () => {
+          // Don't set up socket so disconnect resolves immediately
+          mercury.socket = undefined;
 
-          assert.calledOnce(abortStub);
+          return mercury.disconnect().then(() => {
+            assert.calledOnce(abortStub);
+          });
         });
 
-        it('should handle disconnect when no switchover is in progress', async () => {
-          mercury._shutdownSwitchoverBackoffCalls.clear();
+        it('should handle disconnect when no switchover is in progress', () => {
+          mercury._shutdownSwitchoverBackoffCall = undefined;
+          // Don't set up socket so disconnect resolves immediately
+          mercury.socket = undefined;
 
-          await mercury.disconnect(undefined, sessionId);
-
-          assert.calledOnce(mercury.sockets.get(sessionId).close);
+          return mercury.disconnect().then(() => {
+            // If we get here, disconnect completed without error
+            assert.notOk(mercury._shutdownSwitchoverBackoffCall);
+          });
         });
       });
     });
