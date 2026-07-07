@@ -240,11 +240,10 @@ describe('plugin-llm', () => {
 
       it('propagates disconnect errors', async () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
-        // Restore the stub and replace with rejecting stub
-        Object.getPrototypeOf(Object.getPrototypeOf(llmChannel)).disconnect.restore?.();
-        sinon
-          .stub(Object.getPrototypeOf(Object.getPrototypeOf(llmChannel)), 'disconnect')
-          .rejects(new Error('disconnect failed'));
+        // Change the existing stub to reject
+        Object.getPrototypeOf(Object.getPrototypeOf(llmChannel)).disconnect.rejects(
+          new Error('disconnect failed')
+        );
 
         try {
           await llmChannel.disconnect({code: 1000, reason: 'test'});
