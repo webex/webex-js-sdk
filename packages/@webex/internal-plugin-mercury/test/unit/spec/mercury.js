@@ -1029,7 +1029,7 @@ describe('plugin-mercury', () => {
 
         it('should be idempotent - no-op if already in progress', () => {
           // Simulate an existing switchover in progress
-          mercury._shutdownSwitchoverInProgress = true;
+          mercury._shutdownSwitchoverBackoffCall = {abort: sinon.stub()};
 
           mercury._handleImminentShutdown();
 
@@ -1071,8 +1071,8 @@ describe('plugin-mercury', () => {
 
           mercury._handleImminentShutdown();
 
-          // When an exception happens synchronously, the in-progress flag should be cleared
-          assert.isFalse(mercury._shutdownSwitchoverInProgress);
+          // When an exception happens synchronously, the backoff call should be cleared
+          assert.notOk(mercury._shutdownSwitchoverBackoffCall);
           mercury._connectWithBackoff.restore();
         });
       });
@@ -1390,7 +1390,7 @@ describe('plugin-mercury', () => {
           });
         });
 
-        it('should set _shutdownSwitchoverInProgress flag during switchover', () => {
+        it('should set _shutdownSwitchoverBackoffCall during switchover', () => {
           // Since _connectWithBackoff is stubbed, we can just check that
           // _handleImminentShutdown sets the flag
           connectWithBackoffStub.callsFake(() => {
@@ -1399,8 +1399,7 @@ describe('plugin-mercury', () => {
 
           mercury._handleImminentShutdown();
 
-          // The flag is set to true initially when switchover starts
-          // (but then gets cleared in finally if the promise rejects)
+          // The switchover id is set when switchover starts
           assert.isDefined(mercury._shutdownSwitchoverId);
         });
 
@@ -1679,15 +1678,13 @@ describe('plugin-mercury', () => {
         it('should set and clear state flags appropriately', () => {
           sinon.stub(mercury, '_attemptConnection').callsFake((url, cb) => cb());
 
-          mercury._shutdownSwitchoverInProgress = true;
-
           const promise = mercury._connectWithBackoff(undefined, {
             isShutdownSwitchover: true,
             attemptOptions: {isShutdownSwitchover: true, onSuccess: () => {}},
           });
 
           return promise.then(() => {
-            assert.isFalse(mercury._shutdownSwitchoverInProgress);
+            assert.notOk(mercury._shutdownSwitchoverBackoffCall);
             mercury._attemptConnection.restore();
           });
         });
