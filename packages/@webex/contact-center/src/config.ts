@@ -26,6 +26,12 @@ export default {
      */
     allowAutomatedRelogin: true,
     /**
+     * Whether to skip Mobius/WebRTC registration for browser login flows.
+     * @type {boolean}
+     * @default false
+     */
+    disableWebRTCRegistration: false,
+    /**
      * The type of client making the connection.
      * @type {string}
      * @default 'WebexCCSDK'

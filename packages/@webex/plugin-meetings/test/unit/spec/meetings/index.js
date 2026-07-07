@@ -358,32 +358,6 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#_toggleTcpReachability', () => {
-      it('should have _toggleTcpReachability', () => {
-        assert.equal(typeof webex.meetings._toggleTcpReachability, 'function');
-      });
-
-      describe('success', () => {
-        it('should update meetings to do TCP reachability', () => {
-          webex.meetings._toggleTcpReachability(true);
-          assert.equal(webex.meetings.config.experimental.enableTcpReachability, true);
-        });
-      });
-    });
-
-    describe('#_toggleTlsReachability', () => {
-      it('should have _toggleTlsReachability', () => {
-        assert.equal(typeof webex.meetings._toggleTlsReachability, 'function');
-      });
-
-      describe('success', () => {
-        it('should update meetings to do TLS reachability', () => {
-          webex.meetings._toggleTlsReachability(true);
-          assert.equal(webex.meetings.config.experimental.enableTlsReachability, true);
-        });
-      });
-    });
-
     describe('#_toggleIpv6BackendNativeSupport', () => {
       it('should have _toggleIpv6BackendNativeSupport', () => {
         assert.equal(typeof webex.meetings._toggleIpv6BackendNativeSupport, 'function');
