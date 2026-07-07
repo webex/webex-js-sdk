@@ -332,19 +332,37 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
-   * Get the Locus sync latency record for a meeting and tracking id.
+   * Finds a Locus sync latency record for a meeting using a predicate run against each stored
+   * locusSync record.
    * @param meetingId meeting id
-   * @param trackingId /sync response tracking id
+   * @param predicate matcher run against each locusSync record
+   * @param options.searchFromLatest when true, iterate from the most recently added record first
    * @returns matching Locus sync latency record
    */
-  private getLocusSyncLatencyRecord(meetingId: string, trackingId: string) {
+  private findLocusSyncRecord(
+    meetingId: string,
+    predicate: (locusSync: LocusSyncLatencyRecord) => boolean,
+    {searchFromLatest = false}: {searchFromLatest?: boolean} = {}
+  ) {
     const records = this.meetingLatencies.get(meetingId);
 
     if (!records) {
       return undefined;
     }
 
-    return [...records].find((record) => record.locusSync.trackingId === trackingId)?.locusSync;
+    const orderedRecords = searchFromLatest ? [...records].reverse() : records;
+
+    return orderedRecords.find((record) => predicate(record.locusSync))?.locusSync;
+  }
+
+  /**
+   * Get the Locus sync latency record for a meeting and tracking id.
+   * @param meetingId meeting id
+   * @param trackingId /sync response tracking id
+   * @returns matching Locus sync latency record
+   */
+  private getLocusSyncLatencyRecord(meetingId: string, trackingId: string) {
+    return this.findLocusSyncRecord(meetingId, (locusSync) => locusSync.trackingId === trackingId);
   }
 
   /**
@@ -408,18 +426,11 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns latest pending Locus sync latency record
    */
   private getLatestPendingLocusSyncLatencyRecord(meetingId: string, dataSetName: string) {
-    const records = this.meetingLatencies.get(meetingId);
-
-    if (!records) {
-      return undefined;
-    }
-
-    return [...records]
-      .reverse()
-      .find(
-        (record) =>
-          record.locusSync.dataSetName === dataSetName && record.locusSync.syncStart === undefined
-      )?.locusSync;
+    return this.findLocusSyncRecord(
+      meetingId,
+      (locusSync) => locusSync.dataSetName === dataSetName && locusSync.syncStart === undefined,
+      {searchFromLatest: true}
+    );
   }
 
   /**
