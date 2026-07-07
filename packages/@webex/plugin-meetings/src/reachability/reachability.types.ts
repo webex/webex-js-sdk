@@ -2,6 +2,17 @@ import {IP_VERSION, Enum} from '../constants';
 
 export type Protocol = 'udp' | 'tcp' | 'xtls';
 
+// Per-protocol reachability flags, fully resolved.
+export type ResolvedReachabilityProtocols = {
+  udp: boolean;
+  tcp: boolean;
+  tls: boolean;
+};
+
+export type ReachabilityProtocolConfig = Partial<Omit<ResolvedReachabilityProtocols, 'udp'>>;
+
+export type EnableReachabilityChecksConfig = boolean | ReachabilityProtocolConfig;
+
 /**
  * Events emitted by ReachabilityPeerConnection
  */
