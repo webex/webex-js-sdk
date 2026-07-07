@@ -87,7 +87,7 @@ export class LLMPlugin extends (WebexPlugin as any) {
       return Promise.resolve(false);
     }
 
-    return channel.disconnectLLM(options).then(() => {
+    return channel.disconnect(options).then(() => {
       this.sessions.delete(sessionId);
 
       return true;
@@ -96,7 +96,7 @@ export class LLMPlugin extends (WebexPlugin as any) {
 
   public disconnectAllLLM(options?: {code: number; reason: string}): Promise<void> {
     const promises = Array.from(this.sessions.entries()).map(([sessionId, channel]) =>
-      channel.disconnectLLM(options).then(() => this.sessions.delete(sessionId))
+      channel.disconnect(options).then(() => this.sessions.delete(sessionId))
     );
 
     return Promise.all(promises).then(() => undefined);
