@@ -150,7 +150,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * Returns the telemetryOptOut value of the current user
    * @returns one of 'manual', 'automatic', undefined
    */
-  getTelemetryOptOut() {
+  public getTelemetryOptOut() {
     return this.telemetryOptOut;
   }
 
@@ -1348,6 +1348,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const finalEvent = {
       eventPayload: event,
       type: ['diagnostic-event'],
+      markTelemetryOptOutOnResponse: true,
     };
 
     return this.callDiagnosticEventsBatcher.request(finalEvent);
@@ -1357,6 +1358,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * Prepare the event and send the request to metrics-a service, pre login.
    * @param event
    * @param preLoginId
+   * @param markTelemetryOptOutOnResponse
    * @returns
    */
   submitToCallDiagnosticsPreLogin = (event: Event, preLoginId?: string): Promise<any> => {
@@ -1364,7 +1366,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const finalEvent = {
       eventPayload: event,
       type: ['diagnostic-event'],
+      markTelemetryOptOutOnResponse: true,
     };
+
     this.preLoginMetricsBatcher.savePreLoginId(preLoginId);
 
     return this.preLoginMetricsBatcher.request(finalEvent);
