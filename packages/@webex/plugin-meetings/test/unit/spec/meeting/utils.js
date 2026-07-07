@@ -319,6 +319,7 @@ describe('plugin-meetings', () => {
         const addSequenceSpy = sinon.spy(MeetingUtil, 'addSequence');
 
         const meeting = {
+          locusUrl: 'https://locus.example.com/loci/abc',
           request: sinon.stub().returns(Promise.resolve('result')),
         };
 
@@ -326,6 +327,7 @@ describe('plugin-meetings', () => {
 
         const options = {
           some: 'option',
+          uri: 'https://locus.example.com/loci/abc',
           body: {},
         };
 
@@ -339,7 +341,7 @@ describe('plugin-meetings', () => {
         addSequenceSpy.resetHistory();
 
         // body missing from options
-        result = await locusDeltaRequest({});
+        result = await locusDeltaRequest({uri: 'https://locus.example.com/loci/abc'});
         assert.equal(result, 'result');
         assert.calledOnceWithExactly(updateLocusFromApiResponseSpy, meeting, 'result');
         assert.calledOnceWithExactly(addSequenceSpy, meeting, options.body);
@@ -351,6 +353,78 @@ describe('plugin-meetings', () => {
         assert.equal(result, undefined);
 
         WeakRef.prototype.deref.restore();
+      });
+
+      it('calls updateLocusFromApiResponse when request uri starts with the meeting locusUrl', async () => {
+        const updateLocusFromApiResponseSpy = sinon.spy(MeetingUtil, 'updateLocusFromApiResponse');
+
+        const meeting = {
+          locusUrl: 'https://locus.example.com/loci/abc',
+          request: sinon.stub().returns(Promise.resolve('result')),
+        };
+
+        const locusDeltaRequest = MeetingUtil.generateLocusDeltaRequest(meeting);
+
+        const result = await locusDeltaRequest({
+          uri: 'https://locus.example.com/loci/abc/participant/123',
+          body: {},
+        });
+
+        assert.equal(result, 'result');
+        assert.calledOnceWithExactly(updateLocusFromApiResponseSpy, meeting, 'result');
+      });
+
+      it('does not call updateLocusFromApiResponse when request uri does not match the meeting locusUrl', async () => {
+        const updateLocusFromApiResponseSpy = sinon.spy(MeetingUtil, 'updateLocusFromApiResponse');
+
+        const meeting = {
+          locusUrl: 'https://locus.example.com/loci/abc',
+          request: sinon.stub().returns(Promise.resolve('result')),
+        };
+
+        const locusDeltaRequest = MeetingUtil.generateLocusDeltaRequest(meeting);
+
+        const result = await locusDeltaRequest({
+          uri: 'https://locus.example.com/loci/different',
+          body: {},
+        });
+
+        assert.equal(result, 'result');
+        assert.notCalled(updateLocusFromApiResponseSpy);
+      });
+
+      it('does not call updateLocusFromApiResponse when request uri is missing', async () => {
+        const updateLocusFromApiResponseSpy = sinon.spy(MeetingUtil, 'updateLocusFromApiResponse');
+
+        const meeting = {
+          locusUrl: 'https://locus.example.com/loci/abc',
+          request: sinon.stub().returns(Promise.resolve('result')),
+        };
+
+        const locusDeltaRequest = MeetingUtil.generateLocusDeltaRequest(meeting);
+
+        const result = await locusDeltaRequest({body: {}});
+
+        assert.equal(result, 'result');
+        assert.notCalled(updateLocusFromApiResponseSpy);
+      });
+
+      it('does not call updateLocusFromApiResponse when meeting locusUrl is missing', async () => {
+        const updateLocusFromApiResponseSpy = sinon.spy(MeetingUtil, 'updateLocusFromApiResponse');
+
+        const meeting = {
+          request: sinon.stub().returns(Promise.resolve('result')),
+        };
+
+        const locusDeltaRequest = MeetingUtil.generateLocusDeltaRequest(meeting);
+
+        const result = await locusDeltaRequest({
+          uri: 'https://locus.example.com/loci/abc',
+          body: {},
+        });
+
+        assert.equal(result, 'result');
+        assert.notCalled(updateLocusFromApiResponseSpy);
       });
 
       it('calls generateBuildLocusDeltaRequestOptions as expected', () => {

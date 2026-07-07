@@ -842,42 +842,6 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * API to toggle TCP reachability, needs to be called before webex.meetings.register()
-   * @param {Boolean} newValue
-   * @private
-   * @memberof Meetings
-   * @returns {undefined}
-   */
-  private _toggleTcpReachability(newValue: boolean) {
-    if (typeof newValue !== 'boolean') {
-      return;
-    }
-    // @ts-ignore
-    if (this.config.experimental.enableTcpReachability !== newValue) {
-      // @ts-ignore
-      this.config.experimental.enableTcpReachability = newValue;
-    }
-  }
-
-  /**
-   * API to toggle TLS reachability, needs to be called before webex.meetings.register()
-   * @param {Boolean} newValue
-   * @private
-   * @memberof Meetings
-   * @returns {undefined}
-   */
-  private _toggleTlsReachability(newValue: boolean) {
-    if (typeof newValue !== 'boolean') {
-      return;
-    }
-    // @ts-ignore
-    if (this.config.experimental.enableTlsReachability !== newValue) {
-      // @ts-ignore
-      this.config.experimental.enableTlsReachability = newValue;
-    }
-  }
-
-  /**
    * API to toggle backend ipv6 native support config, needs to be called before webex.meetings.register()
    *
    * @param {Boolean} newValue
