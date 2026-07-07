@@ -513,6 +513,7 @@ export default class Meetings extends WebexPlugin {
       if (meeting && !MeetingsUtil.isBreakoutLocusDTO(data.locus)) {
         meeting.locusInfo.updateMainSessionLocusCache(data.locus); // here data.locus will never be a complete locus
       }
+
       if (!this.isNeedHandleLocusDTO(meeting, data.locus)) {
         LoggerProxy.logger.log(
           `Meetings:index#handleLocusEvent --> doesn't need to process locus event`
