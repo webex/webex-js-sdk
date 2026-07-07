@@ -94,6 +94,7 @@ import {
   MeetingNotActiveError,
   UserInLobbyError,
   AddMediaFailed,
+  MediaConnectionTimedOutError,
 } from '../../../../src/common/errors/webex-errors';
 import WebExMeetingsErrors from '../../../../src/common/errors/webex-meetings-error';
 import ParameterError from '../../../../src/common/errors/parameter';
@@ -3308,6 +3309,7 @@ describe('plugin-meetings', () => {
               retriedWithTurnServer: false,
               isMultistream: false,
               isJoinWithMediaRetry: false,
+              iceTransportPolicy: 'all',
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
@@ -3436,6 +3438,7 @@ describe('plugin-meetings', () => {
               retriedWithTurnServer: false,
               isMultistream: false,
               isJoinWithMediaRetry: false,
+              iceTransportPolicy: 'all',
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
@@ -4206,6 +4209,7 @@ describe('plugin-meetings', () => {
               retriedWithTurnServer: true,
               isMultistream: false,
               isJoinWithMediaRetry: false,
+              iceTransportPolicy: 'all',
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
@@ -4275,96 +4279,111 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('should drop iceTransportPolicy=relay when TURN discovery returns no turn server info', async () => {
-          webex.meetings.reachability = {
-            isWebexMediaBackendUnreachable: sinon.stub().resolves(false),
-            isAnyClusterReachableViaProtocol: sinon.stub().resolves(true),
-            getReachabilityMetrics: sinon.stub().resolves({}),
-            stopReachability: sinon.stub(),
-            isSubnetReachable: sinon.stub().returns(true),
-          };
-          webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
-            sinon.stub().returns({fatal: true});
-          sinon.stub(CallDiagnosticUtils, 'generateClientErrorCodeForIceFailure').returns(2004);
+        describe('iceTransportPolicy=relay handling', () => {
+          let createMediaConnectionStub;
 
-          meeting.meetingState = 'ACTIVE';
+          beforeEach(() => {
+            webex.meetings.reachability = {
+              isWebexMediaBackendUnreachable: sinon.stub().resolves(false),
+              isAnyClusterReachableViaProtocol: sinon.stub().resolves(true),
+              getReachabilityMetrics: sinon.stub().resolves({}),
+              stopReachability: sinon.stub(),
+              isSubnetReachable: sinon.stub().returns(true),
+            };
+            webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
+              sinon.stub().returns({fatal: true});
+            sinon.stub(CallDiagnosticUtils, 'generateClientErrorCodeForIceFailure').returns(2004);
 
-          // TURN discovery returns no TURN server on both calls
-          meeting.roap.doTurnDiscovery = sinon.stub().returns({
-            turnServerInfo: undefined,
-            turnDiscoverySkippedReason: 'reachability',
+            meeting.meetingState = 'ACTIVE';
+            meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
+
+            createMediaConnectionStub = sinon.stub().returns({
+              close: sinon.stub(),
+              forceRtcMetricsSend: sinon.stub().resolves(),
+              getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+              initiateOffer: sinon.stub().resolves({}),
+              on: sinon.stub(),
+            });
+            Media.createMediaConnection = createMediaConnectionStub;
           });
 
-          meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
+          [
+            {
+              title: 'should drop iceTransportPolicy=relay when TURN discovery returns no turn server info',
+              turnServerInfo: undefined,
+              turnDiscoverySkippedReason: 'reachability',
+            },
+            {
+              title: 'should drop iceTransportPolicy=relay when TURN discovery returns turnServerInfo with empty urls',
+              turnServerInfo: {urls: [], username: 'u', password: 'p'},
+              turnDiscoverySkippedReason: undefined,
+            },
+          ].forEach(({title, turnServerInfo, turnDiscoverySkippedReason}) => {
+            it(title, async () => {
+              meeting.roap.doTurnDiscovery = sinon.stub().returns({
+                turnServerInfo,
+                turnDiscoverySkippedReason,
+              });
 
-          const createMediaConnectionStub = sinon.stub().returns({
-            close: sinon.stub(),
-            forceRtcMetricsSend: sinon.stub().resolves(),
-            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
-            initiateOffer: sinon.stub().resolves({}),
-            on: sinon.stub(),
-          });
-          Media.createMediaConnection = createMediaConnectionStub;
+              await meeting.addMediaInternal(
+                () => 'JOIN_MEETING_FINAL',
+                false,
+                undefined,
+                'relay',
+                {mediaSettings: {}}
+              );
 
-          // Call addMediaInternal directly with iceTransportPolicy='relay' to simulate
-          // what joinWithMedia does when shouldRetryMediaWithOnlyTurnTLS returns true
-          await meeting.addMediaInternal(
-            () => 'JOIN_MEETING_FINAL',
-            false,
-            undefined,
-            'relay',
-            {mediaSettings: {}}
-          );
-
-          // iceTransportPolicy should be dropped because no TURN server is available
-          assert.calledOnce(createMediaConnectionStub);
-          const config = createMediaConnectionStub.firstCall.args[3];
-          assert.isUndefined(config.iceTransportPolicy);
-        });
-
-        it('should drop iceTransportPolicy=relay when TURN discovery returns turnServerInfo with empty urls', async () => {
-          webex.meetings.reachability = {
-            isWebexMediaBackendUnreachable: sinon.stub().resolves(false),
-            isAnyClusterReachableViaProtocol: sinon.stub().resolves(true),
-            getReachabilityMetrics: sinon.stub().resolves({}),
-            stopReachability: sinon.stub(),
-            isSubnetReachable: sinon.stub().returns(true),
-          };
-          webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
-            sinon.stub().returns({fatal: true});
-          sinon.stub(CallDiagnosticUtils, 'generateClientErrorCodeForIceFailure').returns(2004);
-
-          meeting.meetingState = 'ACTIVE';
-
-          // TURN discovery returns turnServerInfo but with empty urls (VMN case)
-          meeting.roap.doTurnDiscovery = sinon.stub().returns({
-            turnServerInfo: {urls: [], username: 'u', password: 'p'},
-            turnDiscoverySkippedReason: undefined,
+              assert.calledOnce(createMediaConnectionStub);
+              const config = createMediaConnectionStub.firstCall.args[3];
+              assert.isUndefined(config.iceTransportPolicy);
+            });
           });
 
-          meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
+          it('should send ADD_MEDIA_SUCCESS metric with iceTransportPolicy=relay when relay is used', async () => {
+            meeting.roap.doTurnDiscovery = sinon.stub().returns({
+              turnServerInfo: {urls: ['turns:turn-server:443?transport=tcp'], username: 'u', password: 'p'},
+              turnDiscoverySkippedReason: undefined,
+            });
 
-          const createMediaConnectionStub = sinon.stub().returns({
-            close: sinon.stub(),
-            forceRtcMetricsSend: sinon.stub().resolves(),
-            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
-            initiateOffer: sinon.stub().resolves({}),
-            on: sinon.stub(),
+            await meeting.addMediaInternal(
+              () => 'JOIN_MEETING_FINAL',
+              false,
+              undefined,
+              'relay',
+              {mediaSettings: {}}
+            );
+
+            const successCall = Metrics.sendBehavioralMetric.getCalls().find(
+              (call) => call.args[0] === BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS
+            );
+            assert.isDefined(successCall);
+            assert.equal(successCall.args[1].iceTransportPolicy, 'relay');
           });
-          Media.createMediaConnection = createMediaConnectionStub;
 
-          await meeting.addMediaInternal(
-            () => 'JOIN_MEETING_FINAL',
-            false,
-            undefined,
-            'relay',
-            {mediaSettings: {}}
-          );
+          it('should send ADD_MEDIA_FAILURE metric with iceTransportPolicy=relay when relay attempt fails', async () => {
+            meeting.roap.doTurnDiscovery = sinon.stub().returns({
+              turnServerInfo: {urls: ['turns:turn-server:443?transport=tcp'], username: 'u', password: 'p'},
+              turnDiscoverySkippedReason: undefined,
+            });
 
-          // iceTransportPolicy should be dropped because TURN URLs are empty
-          assert.calledOnce(createMediaConnectionStub);
-          const config = createMediaConnectionStub.firstCall.args[3];
-          assert.isUndefined(config.iceTransportPolicy);
+            meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().rejects(
+              new MediaConnectionTimedOutError('timed out', true)
+            );
+
+            await assert.isRejected(meeting.addMediaInternal(
+              () => 'JOIN_MEETING_FINAL',
+              false,
+              undefined,
+              'relay',
+              {mediaSettings: {}}
+            ));
+
+            const failureCall = Metrics.sendBehavioralMetric.getCalls().find(
+              (call) => call.args[0] === BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE
+            );
+            assert.isDefined(failureCall);
+            assert.equal(failureCall.args[1].iceTransportPolicy, 'relay');
+          });
         });
 
         it('should resolve if waitForMediaConnectionConnected() rejects the first time but resolves the second time', async () => {
@@ -4556,6 +4575,7 @@ describe('plugin-meetings', () => {
               isMultistream: false,
               retriedWithTurnServer: true,
               isJoinWithMediaRetry: false,
+              iceTransportPolicy: 'all',
               iceCandidatesCount: 0,
               subnet_reachable: null,
               selected_cluster: null,
@@ -4719,6 +4739,7 @@ describe('plugin-meetings', () => {
               isMultistream: false,
               retriedWithTurnServer: false,
               isJoinWithMediaRetry: false,
+              iceTransportPolicy: 'all',
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
               iceCandidatesCount: 3,
@@ -4784,6 +4805,7 @@ describe('plugin-meetings', () => {
               retriedWithTurnServer: false,
               isMultistream: false,
               isJoinWithMediaRetry: false,
+              iceTransportPolicy: 'all',
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
@@ -4847,6 +4869,7 @@ describe('plugin-meetings', () => {
               retriedWithTurnServer: false,
               isMultistream: false,
               isJoinWithMediaRetry: false,
+              iceTransportPolicy: 'all',
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
@@ -4911,6 +4934,7 @@ describe('plugin-meetings', () => {
             isMultistream: false,
             retriedWithTurnServer: false,
             isJoinWithMediaRetry: false,
+            iceTransportPolicy: 'all',
             iceCandidatesCount: 0,
             reachability_public_udp_success: 5,
             subnet_reachable: false,
@@ -4976,6 +5000,7 @@ describe('plugin-meetings', () => {
               retriedWithTurnServer: false,
               isMultistream: false,
               isJoinWithMediaRetry: false,
+              iceTransportPolicy: 'all',
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',

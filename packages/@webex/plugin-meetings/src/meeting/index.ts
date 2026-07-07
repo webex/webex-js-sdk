@@ -8819,6 +8819,7 @@ export default class Meeting extends StatelessWebexPlugin {
         isMultistream: this.isMultistream,
         retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
         isJoinWithMediaRetry: this.joinWithMediaRetryInfo.retryCount > 0,
+        iceTransportPolicy: iceTransportPolicy || 'all',
         ...reachabilityMetrics,
         ...iceCandidateErrors,
         iceCandidatesCount: this.iceCandidatesCount,
@@ -8866,6 +8867,7 @@ export default class Meeting extends StatelessWebexPlugin {
         retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
         isMultistream: this.isMultistream,
         isJoinWithMediaRetry: this.joinWithMediaRetryInfo.retryCount > 0,
+        iceTransportPolicy: iceTransportPolicy || 'all',
         signalingState:
           this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
             ?.signalingState ||
