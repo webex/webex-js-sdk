@@ -226,6 +226,69 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#generateTransferHostMemberOptions', () => {
+      it('returns the correct options', () => {
+        assert.deepEqual(
+          MembersUtil.generateTransferHostMemberOptions('member1', true, 'locusUrl'),
+          {
+            memberId: 'member1',
+            moderator: true,
+            locusUrl: 'locusUrl',
+          }
+        );
+      });
+    });
+
+    describe('#getTransferHostToMemberRequestParams', () => {
+      it('returns the correct request params without authorizingLocusUrl', () => {
+        const options = {
+          locusUrl: 'locusUrl',
+          memberId: 'member1',
+          moderator: true,
+        };
+
+        assert.deepEqual(MembersUtil.getTransferHostToMemberRequestParams(options), {
+          method: HTTP_VERBS.PATCH,
+          uri: 'locusUrl/participant/member1/controls',
+          body: {
+            role: {
+              roles: [
+                {
+                  hasRole: true,
+                  type: 'MODERATOR',
+                },
+              ],
+            },
+          },
+        });
+      });
+
+      it('returns the correct request params with authorizingLocusUrl', () => {
+        const options = {
+          locusUrl: 'mainLocusUrl',
+          memberId: 'member1',
+          moderator: true,
+          authorizingLocusUrl: 'breakoutLocusUrl',
+        };
+
+        assert.deepEqual(MembersUtil.getTransferHostToMemberRequestParams(options), {
+          method: HTTP_VERBS.PATCH,
+          uri: 'mainLocusUrl/participant/member1/controls',
+          body: {
+            role: {
+              roles: [
+                {
+                  hasRole: true,
+                  type: 'MODERATOR',
+                },
+              ],
+            },
+            authorizingLocusUrl: 'breakoutLocusUrl',
+          },
+        });
+      });
+    });
+
     describe('#generateMuteMemberOptions', () => {
       const testOptions = (isAudio) => {
         const memberId = 'bob';
