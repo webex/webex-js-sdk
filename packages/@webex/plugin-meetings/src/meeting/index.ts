@@ -3822,7 +3822,6 @@ export default class Meeting extends StatelessWebexPlugin {
           }`
         );
       }
-
       this.updateLLMConnection();
     });
 
@@ -6046,9 +6045,10 @@ export default class Meeting extends StatelessWebexPlugin {
     }
     switch (e.data.relayType) {
       case REACTION_RELAY_TYPES.REACTION:
+        // @ts-ignore - config coming from registerPlugin
         if (
           // @ts-ignore - config coming from registerPlugin
-          (this.config.receiveReactions || options.receiveReactions) &&
+          this.config.receiveReactions &&
           this.isReactionsSupported()
         ) {
           const member = this.members.membersCollection.get(e.data.sender.participantId);
@@ -6615,15 +6615,15 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (datachannelToken) {
       // @ts-ignore
-      this.webex.internal.llm.setDatachannelToken(datachannelToken, LLM_DEFAULT_SESSION, this.id);
+      this.webex.internal.llm.setDatachannelToken(datachannelToken, this.id, LLM_DEFAULT_SESSION);
     }
 
     if (practiceSessionDatachannelToken) {
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(
         practiceSessionDatachannelToken,
-        LLM_PRACTICE_SESSION,
-        this.id
+        this.id,
+        LLM_PRACTICE_SESSION
       );
     }
   }
@@ -6661,8 +6661,8 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(
         fetchedDatachannelToken,
-        LLM_DEFAULT_SESSION,
-        this.id
+        this.id,
+        LLM_DEFAULT_SESSION
       );
 
       return true;
@@ -6767,8 +6767,8 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore - Fix type
     this.webex.internal.llm.setRefreshHandler(
       () => this.refreshDataChannelToken(),
-      LLM_DEFAULT_SESSION,
-      refreshHandlerOwnerMeetingId
+      refreshHandlerOwnerMeetingId,
+      LLM_DEFAULT_SESSION
     );
 
     // @ts-ignore - Fix type
@@ -6802,8 +6802,8 @@ export default class Meeting extends StatelessWebexPlugin {
             // @ts-ignore - Fix type
             this.webex.internal.llm.setRefreshHandler(
               () => this.refreshDataChannelToken(),
-              LLM_DEFAULT_SESSION,
-              this.id
+              this.id,
+              LLM_DEFAULT_SESSION
             );
           }
         }
@@ -6818,10 +6818,12 @@ export default class Meeting extends StatelessWebexPlugin {
         LoggerProxy.logger.info(
           'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
         );
-
         this.startLLMHealthCheckTimer();
 
         return Promise.resolve(registerAndConnectResult);
+      })
+      .catch((error) => {
+        throw error;
       });
   }
 

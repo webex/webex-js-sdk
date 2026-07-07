@@ -12,10 +12,10 @@ interface ILLMChannel {
     datachannelToken?: string,
     sessionId?: string
   ) => Promise<void>;
-  isConnected: (sessionId?: string) => boolean;
-  getBinding: (sessionId?: string) => string;
-  getLocusUrl: (sessionId?: string) => string;
-  getDatachannelUrl: (sessionId?: string) => string;
+  isConnected: () => boolean;
+  getBinding: () => string | undefined;
+  getLocusUrl: () => string | undefined;
+  getDatachannelUrl: () => string | undefined;
   disconnectLLM: (
     options: {code: number; reason: string},
     sessionId?: string,
