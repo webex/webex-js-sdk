@@ -4069,11 +4069,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
         this[key] = object[key];
 
-        const shouldResolveWaiter =
-          key !== 'selfUrl' ||
-          (this.promisesWaitingForPropUpdate[key] && previousValue !== object[key]);
-
-        if (this.promisesWaitingForPropUpdate[key] && shouldResolveWaiter) {
+        if (this.promisesWaitingForPropUpdate[key] && previousValue !== object[key]) {
           this.promisesWaitingForPropUpdate[key].resolve();
           delete this.promisesWaitingForPropUpdate[key];
         }

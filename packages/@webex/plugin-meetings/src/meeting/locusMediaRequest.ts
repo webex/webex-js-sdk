@@ -359,6 +359,9 @@ export class LocusMediaRequest extends WebexPlugin {
       return false;
     }
 
+    const roapMessageType =
+      request.type === 'RoapMessage' ? request.roapMessage?.messageType : undefined;
+
     const currentSelfUrl = this.getCurrentSelfUrl(request);
 
     if (!currentSelfUrl || currentSelfUrl === request.selfUrl) {
@@ -370,8 +373,8 @@ export class LocusMediaRequest extends WebexPlugin {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LOCUS_MEDIA_REQUEST_RETRY, {
           correlation_id: this.config.correlationId,
           reason: 'selfUrlNotChangedAfterWait',
-          retryAttempt: selfUrlRetryCount + 1,
-          roapMessageType: roapRequest?.roapMessage?.messageType,
+          retryAttempt: selfUrlRetryCount,
+          roapMessageType,
         });
         LoggerProxy.logger.info(
           'Meeting:LocusMediaRequest#sendHttpRequest --> 409 conflict, no new selfUrl even after waiting'
@@ -385,7 +388,7 @@ export class LocusMediaRequest extends WebexPlugin {
         correlation_id: this.config.correlationId,
         reason: 'selfUrlChangedAfterWait',
         retryAttempt: selfUrlRetryCount,
-        roapMessageType: roapRequest?.roapMessage?.messageType,
+        roapMessageType,
       });
     }
     LoggerProxy.logger.info(
