@@ -2954,6 +2954,7 @@ describe('plugin-meetings', () => {
                 }
               });
               meeting.webex.internal.llm.off = sinon.stub();
+              sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves({});
 
               meeting.updateLLMConnection.restore();
 
@@ -14071,8 +14072,8 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(
             webex.internal.llm.setDatachannelToken,
             'default-token',
-            'llm-default-session',
-            meeting.id
+            meeting.id,
+            'llm-default-session'
           );
         });
 
@@ -14086,8 +14087,8 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(
             webex.internal.llm.setDatachannelToken,
             'ps-token',
-            'llm-practice-session',
-            meeting.id
+            meeting.id,
+            'llm-practice-session'
           );
         });
 
@@ -14105,14 +14106,14 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(
             webex.internal.llm.setDatachannelToken,
             'default-token',
-            'llm-default-session',
-            meeting.id
+            meeting.id,
+            'llm-default-session'
           );
           assert.calledWithExactly(
             webex.internal.llm.setDatachannelToken,
             'ps-token',
-            'llm-practice-session',
-            meeting.id
+            meeting.id,
+            'llm-practice-session'
           );
         });
 
@@ -14144,8 +14145,8 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(
             webex.internal.llm.setDatachannelToken,
             'default-token',
-            'llm-default-session',
-            meeting.id
+            meeting.id,
+            'llm-default-session'
           );
         });
       });
@@ -14259,8 +14260,8 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(
             webex.internal.llm.setRefreshHandler,
             sinon.match.func,
-            'llm-default-session',
-            meeting.id
+            meeting.id,
+            'llm-default-session'
           );
           assert.equal(result, 'something');
           assert.calledOnceWithExactly(meeting.locusInfo.syncAllHashTreeDatasets, {onlyLLM: true});
@@ -14655,8 +14656,8 @@ describe('plugin-meetings', () => {
             assert.calledOnceWithExactly(
               webex.internal.llm.setRefreshHandler,
               sinon.match.func,
-              'llm-default-session',
-              meeting.id
+              meeting.id,
+              'llm-default-session'
             );
             assert.calledOnceWithExactly(webex.internal.llm.setOwnerMeetingId, meeting.id);
           });
@@ -14694,15 +14695,15 @@ describe('plugin-meetings', () => {
             assert.calledWithExactly(
               webex.internal.llm.setRefreshHandler.firstCall,
               sinon.match.func,
-              'llm-default-session',
-              undefined
+              undefined,
+              'llm-default-session'
             );
             assert.calledTwice(webex.internal.llm.setRefreshHandler);
             assert.calledWithExactly(
               webex.internal.llm.setRefreshHandler.secondCall,
               sinon.match.func,
-              'llm-default-session',
-              meeting.id
+              meeting.id,
+              'llm-default-session'
             );
             assert.calledOnceWithExactly(webex.internal.llm.setOwnerMeetingId, meeting.id);
           });
