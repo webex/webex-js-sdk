@@ -38,7 +38,6 @@ describe('plugin-mercury', () => {
         },
         timestamp: Date.now(),
         trackingId: `suffix_${uuid.v4()}_${Date.now()}`,
-        sessionId: 'mercury-default-session',
       };
 
       beforeEach(() => {
@@ -93,7 +92,6 @@ describe('plugin-mercury', () => {
         });
 
         mercury = webex.internal.mercury;
-        mercury.defaultSessionId = 'mercury-default-session';
       });
 
       afterEach(() => {
@@ -327,7 +325,7 @@ describe('plugin-mercury', () => {
                 })
                 .then(() => {
                   assert.called(offlineSpy);
-                  assert.calledWith(offlineSpy, {code, reason, sessionId: 'mercury-default-session'});
+                  assert.calledWith(offlineSpy, {code, reason});
                   switch (action) {
                     case 'close':
                       assert.called(permanentSpy);

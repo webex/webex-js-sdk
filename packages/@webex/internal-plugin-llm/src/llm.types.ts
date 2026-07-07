@@ -19,12 +19,11 @@ interface ILLMChannel {
     datachannelUrl: string,
     datachannelToken?: string,
     sessionId?: string
-  ) => Promise<RegisterAndConnectTiming | undefined>;
-  isConnected: (sessionId?: string) => boolean;
-  getBinding: (sessionId?: string) => string;
-  getLocusUrl: (sessionId?: string) => string;
-  getDatachannelUrl: (sessionId?: string) => string;
-  getWebSocketUrl: (sessionId?: string) => string | undefined;
+  ) => Promise<void>;
+  isConnected: () => boolean;
+  getBinding: () => string | undefined;
+  getLocusUrl: () => string | undefined;
+  getDatachannelUrl: () => string | undefined;
   disconnectLLM: (
     options: {code: number; reason: string},
     sessionId?: string,
