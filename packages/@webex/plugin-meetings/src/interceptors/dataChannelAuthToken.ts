@@ -124,7 +124,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
           // @ts-ignore
           meeting?.id || this.internal.llm.getOwnerMeetingId?.(tokenStoreKey);
         // @ts-ignore
-        this.internal.llm.setDatachannelToken(datachannelToken, tokenStoreKey, ownerMeetingId);
+        this.internal.llm.setDatachannelToken(datachannelToken, ownerMeetingId, tokenStoreKey);
 
         return datachannelToken;
       },

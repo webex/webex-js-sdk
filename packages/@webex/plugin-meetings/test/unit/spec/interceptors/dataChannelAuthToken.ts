@@ -293,8 +293,8 @@ describe('plugin-meetings', () => {
           sinon.assert.calledOnceWithExactly(
             llmMock.setDatachannelToken,
             'token-from-ps-session',
-            'llm-practice-session',
-            undefined
+            undefined,
+            'llm-practice-session'
           );
         });
 
@@ -316,8 +316,8 @@ describe('plugin-meetings', () => {
           sinon.assert.calledOnceWithExactly(
             llmMock.setDatachannelToken,
             'token-from-default-session',
-            'llm-default-session',
-            undefined
+            undefined,
+            'llm-default-session'
           );
         });
 
@@ -338,8 +338,8 @@ describe('plugin-meetings', () => {
           sinon.assert.calledOnceWithExactly(
             llmMock.setDatachannelToken,
             'token-from-default-fallback',
-            'llm-default-session',
-            undefined
+            undefined,
+            'llm-default-session'
           );
         });
 
@@ -356,8 +356,8 @@ describe('plugin-meetings', () => {
           sinon.assert.calledOnceWithExactly(
             llmMock.setDatachannelToken,
             'token-from-meeting-a',
-            'llm-practice-session',
-            'meeting-a'
+            'meeting-a',
+            'llm-practice-session'
           );
         });
 
@@ -384,8 +384,8 @@ describe('plugin-meetings', () => {
           sinon.assert.calledOnceWithExactly(
             llmMock.setDatachannelToken,
             'token-from-meeting-a',
-            'llm-practice-session',
-            'meeting-a'
+            'meeting-a',
+            'llm-practice-session'
           );
         });
 

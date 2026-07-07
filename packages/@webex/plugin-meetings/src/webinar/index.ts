@@ -277,8 +277,8 @@ const Webinar = WebexPlugin.extend({
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(
         datachannelToken,
-        dataChannelTokenType || LLM_PRACTICE_SESSION,
-        this.meetingId
+        this.meetingId,
+        dataChannelTokenType || LLM_PRACTICE_SESSION
       );
 
       return datachannelToken;
@@ -427,8 +427,8 @@ const Webinar = WebexPlugin.extend({
     // @ts-ignore - Fix type
     this.webex.internal.llm.setRefreshHandler(
       () => meeting.refreshDataChannelToken(),
-      LLM_PRACTICE_SESSION,
-      this.meetingId
+      this.meetingId,
+      LLM_PRACTICE_SESSION
     );
     // @ts-ignore - Fix type
     this.webex.internal.llm.setOwnerMeetingId?.(this.meetingId, LLM_PRACTICE_SESSION);
