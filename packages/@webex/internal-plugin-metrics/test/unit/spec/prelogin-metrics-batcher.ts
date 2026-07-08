@@ -424,21 +424,25 @@ describe('internal-plugin-metrics', () => {
         );
       });
 
-      [
-        {shouldMark: true, statusCode: 200, expectedArg: true},
-        {shouldMark: true, statusCode: 201, expectedArg: false},
-        {shouldMark: true, statusCode: 400, expectedArg: false},
-        {shouldMark: true, statusCode: 503, expectedArg: false},
-        {shouldMark: true, statusCode: undefined, expectedArg: false},
-      ].forEach(({shouldMark, statusCode, expectedArg}) => {
-        it(`calls setIsTelemetryOptOutAutomatic(${expectedArg}) when shouldMark is ${shouldMark} and statusCode is ${statusCode}`, () => {
+      [201, 400, 503, undefined].forEach((statusCode) => {
+        it(`does not call setIsTelemetryOptOutAutomatic when shouldMark is true and statusCode is ${statusCode}`, () => {
           webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.handleHttpResponseStatus(
             statusCode,
             [{markTelemetryOptOutOnResponse: true}]
           );
 
-          assert.calledOnceWithExactly(setIsTelemetryOptOutAutomaticStub, expectedArg);
+          assert.notCalled(setIsTelemetryOptOutAutomaticStub);
         });
+      });
+
+      it('calls setIsTelemetryOptOutAutomatic(true) when statusCode is 200 and markTelemetryOptOutOnResponse is true', () => {
+        webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.handleHttpResponseStatus(
+          200,
+          [{markTelemetryOptOutOnResponse: true}]
+        );
+
+        assert.calledOnce(setIsTelemetryOptOutAutomaticStub);
+        assert.calledWithExactly(setIsTelemetryOptOutAutomaticStub, true);
       });
 
       [200, 201, 400, 503, undefined].forEach((statusCode) => {

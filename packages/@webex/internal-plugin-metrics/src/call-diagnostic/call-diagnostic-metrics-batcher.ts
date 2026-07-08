@@ -91,8 +91,6 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
 
     if (statusCode === 200) {
       this.webex.internal.newMetrics?.callDiagnosticMetrics?.setIsTelemetryOptOutAutomatic(true);
-    } else {
-      this.webex.internal.newMetrics?.callDiagnosticMetrics?.setIsTelemetryOptOutAutomatic(false);
     }
   },
 });
