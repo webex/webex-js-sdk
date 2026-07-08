@@ -741,6 +741,7 @@ export default class Meeting extends StatelessWebexPlugin {
   registrationIdStatus: string;
   brbState: BrbState;
   private emittedBreakoutJoinResponseMoveIds: Set<string> = new Set();
+  private promisesWaitingForPropUpdate: Record<string, Defer> = {};
 
   voiceaListenerCallbacks: object = {
     [VOICEAEVENTS.VOICEA_ANNOUNCEMENT]: (payload: Transcription['languageOptions']) => {
@@ -4186,7 +4187,14 @@ export default class Meeting extends StatelessWebexPlugin {
     // is not changed by any delta event
     if (object && Object.keys(object).length) {
       Object.keys(object).forEach((key) => {
+        const previousValue = this[key];
+
         this[key] = object[key];
+
+        if (this.promisesWaitingForPropUpdate[key] && previousValue !== object[key]) {
+          this.promisesWaitingForPropUpdate[key].resolve();
+          delete this.promisesWaitingForPropUpdate[key];
+        }
       });
     }
   }
@@ -8819,12 +8827,37 @@ export default class Meeting extends StatelessWebexPlugin {
           regionCode: this.webex.meetings.geoHintInfo?.regionCode,
         },
         preferTranscoding: !this.isMultistream,
+        getCurrentSelfUrl: () => this.selfUrl,
+        waitForSelfUrlChange: () => this.waitForSelfUrlChange(),
       },
       {
         // @ts-ignore
         parent: this.webex,
       }
     );
+  }
+
+  /**
+   * Waits for LocusInfo to update meeting.selfUrl, with a timeout fallback.
+   * @returns {Promise<void>}
+   * @private
+   * @memberof Meeting
+   */
+  private waitForSelfUrlChange(): Promise<void> {
+    if (!this.promisesWaitingForPropUpdate.selfUrl) {
+      const pendingSelfUrlUpdate = new Defer();
+
+      this.promisesWaitingForPropUpdate.selfUrl = pendingSelfUrlUpdate;
+
+      setTimeout(() => {
+        if (this.promisesWaitingForPropUpdate.selfUrl === pendingSelfUrlUpdate) {
+          delete this.promisesWaitingForPropUpdate.selfUrl;
+          pendingSelfUrlUpdate.resolve();
+        }
+      }, 5000);
+    }
+
+    return this.promisesWaitingForPropUpdate.selfUrl.promise;
   }
 
   /**

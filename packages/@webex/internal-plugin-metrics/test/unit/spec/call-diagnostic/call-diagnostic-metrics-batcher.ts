@@ -516,5 +516,122 @@ describe('plugin-metrics', () => {
         assert.deepEqual(prepareDiagnosticMetricItemCalls[0].args[1].type, ['diagnostic-event']);
       });
     });
+
+    describe('#submitHttpRequest', () => {
+      it('calls handleHttpResponseStatus with response status on success', async () => {
+        const payload = [
+          {
+            eventPayload: {event: 'my.event'},
+            type: ['diagnostic-event'],
+          },
+        ];
+
+        webex.request = sinon.stub().resolves({statusCode: 200});
+
+        const handleHttpResponseStatusSpy = sinon.spy(
+          webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher,
+          'handleHttpResponseStatus'
+        );
+
+        const promise =
+          webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.submitHttpRequest(
+            payload
+          );
+
+        assert.deepEqual(handleHttpResponseStatusSpy.getCalls().length, 0);
+
+        await flushPromises();
+        clock.tick(config.metrics.batcherWait);
+
+        await promise;
+
+        assert.calledOnce(webex.request);
+        assert.deepEqual(handleHttpResponseStatusSpy.getCalls().length, 1);
+        assert.deepEqual(handleHttpResponseStatusSpy.args[0][0], 200);
+        assert.deepEqual(handleHttpResponseStatusSpy.args[0][1], payload);
+      });
+
+      it('calls handleHttpResponseStatus with error status on failure', async () => {
+        const payload = [
+          {
+            eventPayload: {event: 'my.event'},
+            type: ['diagnostic-event'],
+          },
+        ];
+
+        webex.request = sinon.stub().rejects({statusCode: 503});
+
+        const handleHttpResponseStatusSpy = sinon.spy(
+          webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher,
+          'handleHttpResponseStatus'
+        );
+
+        const promise =
+          webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.submitHttpRequest(
+            payload
+          );
+
+        assert.deepEqual(handleHttpResponseStatusSpy.getCalls().length, 0);
+
+        await flushPromises();
+        clock.tick(config.metrics.batcherWait);
+
+        let error: any;
+
+        try {
+          await promise;
+        } catch (err) {
+          error = err;
+        }
+
+        assert.deepEqual(error.statusCode, 503);
+        assert.calledOnce(webex.request);
+        assert.deepEqual(handleHttpResponseStatusSpy.getCalls().length, 1);
+        assert.deepEqual(handleHttpResponseStatusSpy.args[0][0], 503);
+        assert.deepEqual(handleHttpResponseStatusSpy.args[0][1], payload);
+      });
+    });
+
+    describe('#handleHttpResponseStatus', () => {
+      [
+        {shouldMark: true, statusCode: 200, currentTelemetryOptOut: 'automatic', shouldCallSetTelemetryOptOut: false, expectedSetTelemetryOptOutArg: 'N/A'},
+        {shouldMark: true, statusCode: 200, currentTelemetryOptOut: 'manual', shouldCallSetTelemetryOptOut: false, expectedSetTelemetryOptOutArg: 'N/A'},
+        {shouldMark: true, statusCode: 200, currentTelemetryOptOut: undefined, shouldCallSetTelemetryOptOut: true, expectedSetTelemetryOptOutArg: 'automatic'},
+
+        {shouldMark: true, statusCode: 201, currentTelemetryOptOut: 'automatic', shouldCallSetTelemetryOptOut: true, expectedSetTelemetryOptOutArg: undefined},
+        {shouldMark: true, statusCode: 202, currentTelemetryOptOut: 'manual', shouldCallSetTelemetryOptOut: false, expectedSetTelemetryOptOutArg: 'N/A'},
+        {shouldMark: true, statusCode: 203, currentTelemetryOptOut: undefined, shouldCallSetTelemetryOptOut: false, expectedSetTelemetryOptOutArg: 'N/A'},
+
+        {shouldMark: false, statusCode: 200, currentTelemetryOptOut: 'automatic', shouldCallSetTelemetryOptOut: false, expectedSetTelemetryOptOutArg: 'N/A'},
+        {shouldMark: false, statusCode: 200, currentTelemetryOptOut: 'manual', shouldCallSetTelemetryOptOut: false, expectedSetTelemetryOptOutArg: 'N/A'},
+        {shouldMark: false, statusCode: 200, currentTelemetryOptOut: undefined, shouldCallSetTelemetryOptOut: false, expectedSetTelemetryOptOutArg: 'N/A'},
+
+        {shouldMark: false, statusCode: 201, currentTelemetryOptOut: 'automatic', shouldCallSetTelemetryOptOut: false, expectedSetTelemetryOptOutArg: 'N/A'},
+        {shouldMark: false, statusCode: 202, currentTelemetryOptOut: 'manual', shouldCallSetTelemetryOptOut: false, expectedSetTelemetryOptOutArg: 'N/A'},
+        {shouldMark: false, statusCode: 203, currentTelemetryOptOut: undefined, shouldCallSetTelemetryOptOut: false, expectedSetTelemetryOptOutArg: 'N/A'},
+      ].forEach(({shouldMark, statusCode, currentTelemetryOptOut, shouldCallSetTelemetryOptOut, expectedSetTelemetryOptOutArg}) => {
+        it(`should call setTelemetryOptOut ${shouldCallSetTelemetryOptOut ? 'with ' + expectedSetTelemetryOptOutArg : 'not at all'} when shouldMark is ${shouldMark}, statusCode is ${statusCode} and currentTelemetryOptOut is ${currentTelemetryOptOut}`, () => {
+          webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut = sinon.stub();
+          webex.internal.newMetrics.callDiagnosticMetrics.getTelemetryOptOut = sinon
+            .stub()
+            .returns(currentTelemetryOptOut);
+
+          webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.handleHttpResponseStatus(
+            statusCode,
+            shouldMark ? [{markTelemetryOptOutOnResponse: true}] : [{markTelemetryOptOutOnResponse: false}]
+          );
+
+          if (shouldCallSetTelemetryOptOut) {
+            assert.calledOnce(webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut);
+            assert.deepEqual(
+              webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut.getCalls()[0].args[0],
+              expectedSetTelemetryOptOutArg
+            );
+          } else {
+            assert.notCalled(webex.internal.newMetrics.callDiagnosticMetrics.setTelemetryOptOut);
+          }
+        });
+      })
+    });
   });
 });
