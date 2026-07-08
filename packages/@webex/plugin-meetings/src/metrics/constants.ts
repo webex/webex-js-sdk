@@ -11,6 +11,7 @@ const BEHAVIORAL_METRICS = {
   ADD_MEDIA_SUCCESS: 'js_sdk_add_media_success',
   ADD_MEDIA_FAILURE: 'js_sdk_add_media_failures',
   ADD_MEDIA_RETRY: 'js_sdk_add_media_retry',
+  LOCUS_MEDIA_REQUEST_RETRY: 'js_sdk_locus_media_request_retry',
   ROAP_MERCURY_EVENT_RECEIVED: 'js_sdk_roap_mercury_received',
   CONNECTION_SUCCESS: 'js_sdk_connection_success',
   CONNECTION_FAILURE: 'js_sdk_connection_failures',

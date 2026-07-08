@@ -740,6 +740,7 @@ export default class Meeting extends StatelessWebexPlugin {
   isMoveToInProgress = false;
   registrationIdStatus: string;
   brbState: BrbState;
+  private promisesWaitingForPropUpdate: Record<string, Defer> = {};
 
   voiceaListenerCallbacks: object = {
     [VOICEAEVENTS.VOICEA_ANNOUNCEMENT]: (payload: Transcription['languageOptions']) => {
@@ -4064,7 +4065,14 @@ export default class Meeting extends StatelessWebexPlugin {
     // is not changed by any delta event
     if (object && Object.keys(object).length) {
       Object.keys(object).forEach((key) => {
+        const previousValue = this[key];
+
         this[key] = object[key];
+
+        if (this.promisesWaitingForPropUpdate[key] && previousValue !== object[key]) {
+          this.promisesWaitingForPropUpdate[key].resolve();
+          delete this.promisesWaitingForPropUpdate[key];
+        }
       });
     }
   }
@@ -4202,7 +4210,12 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Transfer the moderator role to another eligible member
+   * Transfer the moderator role to another eligible member.
+   *
+   * If the target member is currently joined in the current session, the request is
+   * sent against the current locus. Otherwise, we search the breakout sessions and,
+   * when the member is found in one, we send the request against that breakout
+   * session's locus url instead.
    * @param {String} memberId
    * @param {Boolean} moderator
    * @returns {Promise} see #members.transferHostToMember
@@ -4210,7 +4223,21 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   public transfer(memberId: string, moderator = true) {
-    return this.members.transferHostToMember(memberId, moderator);
+    const targetMember = this.members.membersCollection.get(memberId);
+
+    if (targetMember?.isInMeeting) {
+      return this.members.transferHostToMember(memberId, moderator);
+    }
+
+    const breakout = this.breakouts?.breakouts?.models?.find((bo: any) => {
+      const breakoutMember = bo.members?.membersCollection?.get(memberId);
+
+      return breakoutMember?.isInMeeting;
+    });
+
+    const breakoutLocusUrl = breakout?.breakoutRosterLocus?.url;
+
+    return this.members.transferHostToMember(memberId, moderator, breakoutLocusUrl);
   }
 
   /**
@@ -8559,12 +8586,37 @@ export default class Meeting extends StatelessWebexPlugin {
           regionCode: this.webex.meetings.geoHintInfo?.regionCode,
         },
         preferTranscoding: !this.isMultistream,
+        getCurrentSelfUrl: () => this.selfUrl,
+        waitForSelfUrlChange: () => this.waitForSelfUrlChange(),
       },
       {
         // @ts-ignore
         parent: this.webex,
       }
     );
+  }
+
+  /**
+   * Waits for LocusInfo to update meeting.selfUrl, with a timeout fallback.
+   * @returns {Promise<void>}
+   * @private
+   * @memberof Meeting
+   */
+  private waitForSelfUrlChange(): Promise<void> {
+    if (!this.promisesWaitingForPropUpdate.selfUrl) {
+      const pendingSelfUrlUpdate = new Defer();
+
+      this.promisesWaitingForPropUpdate.selfUrl = pendingSelfUrlUpdate;
+
+      setTimeout(() => {
+        if (this.promisesWaitingForPropUpdate.selfUrl === pendingSelfUrlUpdate) {
+          delete this.promisesWaitingForPropUpdate.selfUrl;
+          pendingSelfUrlUpdate.resolve();
+        }
+      }, 5000);
+    }
+
+    return this.promisesWaitingForPropUpdate.selfUrl.promise;
   }
 
   /**
@@ -9168,7 +9220,6 @@ export default class Meeting extends StatelessWebexPlugin {
         options: {meetingId: this.id},
       });
     LoggerProxy.logger.log('Meeting:index#leave --> Leaving a meeting');
-
     this.stopListeningForMeetingEvents();
 
     return MeetingUtil.leaveMeeting(this, options)
