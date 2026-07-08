@@ -3119,7 +3119,11 @@ describe('internal-plugin-metrics', () => {
         cd.callDiagnosticEventsBatcher = {request: requestStub};
         //@ts-ignore
         cd.submitToCallDiagnostics({event: 'test'});
-        assert.calledWith(requestStub, {eventPayload: {event: 'test'}, type: ['diagnostic-event']});
+        assert.calledWith(requestStub, {
+          eventPayload: {event: 'test'},
+          type: ['diagnostic-event'],
+          markTelemetryOptOutOnResponse: true,
+        });
       });
     });
 
@@ -4337,7 +4341,11 @@ describe('internal-plugin-metrics', () => {
         cd.submitToCallDiagnosticsPreLogin({event: 'test'}, preLoginId);
         //@ts-ignore
         assert.calledWith(cd.preLoginMetricsBatcher.savePreLoginId, preLoginId);
-        assert.calledWith(requestStub, {eventPayload: {event: 'test'}, type: ['diagnostic-event']});
+        assert.calledWith(requestStub, {
+          eventPayload: {event: 'test'},
+          type: ['diagnostic-event'],
+          markTelemetryOptOutOnResponse: true,
+        });
       });
     });
 
