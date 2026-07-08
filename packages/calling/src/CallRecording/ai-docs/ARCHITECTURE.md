@@ -164,8 +164,8 @@ sequenceDiagram
     WxApp-->>CR: 200 {owner, session, participants, mediaStreams, extensionData}
     CR-->>App: {statusCode, data: {metadata}, message: 'SUCCESS'}
 
-    App->>CR: deleteRecording(recordingId, {reason?, comment?})
-    CR->>WxApp: DELETE /convergedRecordings/{recordingId} (body {reason, comment} only if provided)
+    App->>CR: deleteRecording(recordingId)
+    CR->>WxApp: POST /convergedRecordings/softDelete { recordingIds: [recordingId] }
     WxApp-->>CR: 200 (recording permanently deleted, cannot be recovered)
     CR-->>App: {statusCode, data: {}, message: 'SUCCESS'}
 ```

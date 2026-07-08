@@ -255,8 +255,8 @@ export type RecordingDeleteResponse = {
 };
 
 /**
- * Optional request body for {@link ICallRecording.deleteRecording}. Both fields are only required
- * when a Compliance Officer deletes another user's recording.
+ * @deprecated Ignored by {@link ICallRecording.deleteRecording}. Retained for backward-compatible
+ * signatures only. Compliance permanent delete is not exposed on the CallRecording client.
  */
 export type DeleteRecordingOptions = {
   /** Reason for deleting the recording (e.g. `audit`). */
@@ -384,27 +384,26 @@ export interface ICallRecording extends Eventing<CallRecordingEventTypes> {
   getCallRecording<T extends GetCallRecordingRequest>(request: T): Promise<RecordingResponseFor<T>>;
 
   /**
-   * Permanently deletes a single recording.
+   * Moves a recording to the recycle bin (soft delete).
    *
-   * Calls `DELETE /convergedRecordings/{recordingId}`. Per the API, the deleted recording
-   * **cannot be recovered**; when a Compliance Officer deletes another user's recording it is
-   * purged from Webex and becomes inaccessible to all parties. Requires the
-   * `spark-compliance:recordings_write` scope on the access token.
+   * Calls `POST /convergedRecordings/softDelete` with `{ recordingIds: [recordingId] }`.
+   * The recording can be restored from the recycle bin via the platform restore API. Requires
+   * `spark:recordings_write` on the access token (recording owner). Control Hub
+   * "Delete recordings and transcripts" enables this for the user; it does **not** grant
+   * compliance-officer permanent delete.
    *
-   * `options.reason` / `options.comment` are only required when a Compliance Officer deletes
-   * another user's recording and are sent as the request body when provided.
+   * Mercury emits `convergedRecordings.updated` + `TRASH`, surfaced as `callRecording:deleted`.
    *
-   * @param recordingId - The recording id (`id`) to delete.
-   * @param options - Optional `reason`/`comment` (Compliance Officer deletions).
+   * @param recordingId - The recording id (`id`) to move to the recycle bin.
+   * @param _options - Deprecated. Ignored.
    *
    * @example
    * ```javascript
    * await callRecording.deleteRecording(recordingId);
-   * await callRecording.deleteRecording(recordingId, {reason: 'audit', comment: 'Maintain data privacy'});
    * ```
    */
   deleteRecording(
     recordingId: string,
-    options?: DeleteRecordingOptions
+    _options?: DeleteRecordingOptions
   ): Promise<RecordingDeleteResponse>;
 }

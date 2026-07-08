@@ -331,24 +331,24 @@ describe('WxcCallRecordingConnector tests', () => {
   describe('deleteRecording', () => {
     const loggerContext = {file: CALL_RECORDING_FILE, method: METHODS.DELETE_RECORDING};
 
-    it('successfully deletes a recording without a body when no options are provided', async () => {
-      webex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{statusCode: 200}));
+    it('successfully soft-deletes a recording via POST /convergedRecordings/softDelete', async () => {
+      webex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{statusCode: 204}));
 
       const response = await connector.deleteRecording(RECORDING_ONE.id);
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(204);
       expect(response.message).toBe('SUCCESS');
 
       const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
-      expect(callArgs.uri).toContain(`/convergedRecordings/${RECORDING_ONE.id}`);
-      expect(callArgs.uri).not.toContain('/metadata');
-      expect(callArgs.method).toBe(HTTP_METHODS.DELETE);
+      expect(callArgs.uri).toContain('/convergedRecordings/softDelete');
+      expect(callArgs.uri).not.toContain(`/convergedRecordings/${RECORDING_ONE.id}`);
+      expect(callArgs.method).toBe(HTTP_METHODS.POST);
       expect(callArgs.service).toBe('hydraDeveloperApi');
-      expect(callArgs.body).toBeUndefined();
+      expect(callArgs.body).toStrictEqual({recordingIds: [RECORDING_ONE.id]});
     });
 
-    it('sends reason and comment in the body when provided (Compliance Officer deletion)', async () => {
-      webex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{statusCode: 200}));
+    it('ignores deprecated reason/comment options (compliance DELETE is not exposed)', async () => {
+      webex.request.mockResolvedValue(<WebexRequestPayload>(<unknown>{statusCode: 204}));
 
       await connector.deleteRecording(RECORDING_ONE.id, {
         reason: 'audit',
@@ -356,8 +356,8 @@ describe('WxcCallRecordingConnector tests', () => {
       });
 
       const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
-      expect(callArgs.method).toBe(HTTP_METHODS.DELETE);
-      expect(callArgs.body).toStrictEqual({reason: 'audit', comment: 'Maintain data privacy'});
+      expect(callArgs.method).toBe(HTTP_METHODS.POST);
+      expect(callArgs.body).toStrictEqual({recordingIds: [RECORDING_ONE.id]});
     });
 
     it('handles a 400 error', async () => {
