@@ -791,6 +791,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private addMediaData: {
     retriedWithTurnServer: boolean;
     icePhaseCallback: () => string;
+    iceTransportPolicy?: RTCIceTransportPolicy;
   };
 
   private sendSlotManager: SendSlotManager = new SendSlotManager(LoggerProxy);
@@ -7887,8 +7888,13 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Determines if the next media attempt should use only TURN-TLS (iceTransportPolicy='relay').
-   * This is true when the previous attempt failed due to a DTLS handshake failure over a direct
-   * UDP connection and TLS reachability is available as a fallback.
+   * We do this in the hope that it will minimize the chance of Homer sending DTLS packets on a wrong
+   * transport (as there will be only 1 transport) and dealing with firewalls that let STUN packets through, but block
+   * other UDP traffic.
+   *
+   * For clients landing on video mesh nodes (VMN), reachability might still have successful TLS (to public nodes)
+   * but TURN discovery will result in empty TURN urls array and iceTransportPolicy='relay' will still be overriden to undefined,
+   * see the code in establishMediaConnection()
    *
    * @param {Error} prevError - The error from the previous addMedia attempt
    * @returns {Promise<boolean>}
@@ -8398,15 +8404,13 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {BundlePolicy} [bundlePolicy]
    * @param {boolean} [isForced] - let isForced be true to do turn discovery regardless of reachability results
    * @param {TurnServerInfo} [turnServerInfo]
-   * @param {RTCIceTransportPolicy} [iceTransportPolicy] - ICE transport policy override
    * @returns {Promise<void>}
    */
   private async establishMediaConnection(
     remoteMediaManagerConfig?: RemoteMediaManagerConfiguration,
     bundlePolicy?: BundlePolicy,
     isForced?: boolean,
-    turnServerInfo?: TurnServerInfo,
-    iceTransportPolicy?: RTCIceTransportPolicy
+    turnServerInfo?: TurnServerInfo
   ): Promise<void> {
     const LOG_HEADER = 'Meeting:index#addMedia():establishMediaConnection -->';
     const isReconnecting =
@@ -8422,14 +8426,21 @@ export default class Meeting extends StatelessWebexPlugin {
         ({turnServerInfo} = await this.doTurnDiscovery(isReconnecting, isForced));
       }
 
-      if ((!turnServerInfo || !turnServerInfo.urls?.length) && iceTransportPolicy === 'relay') {
+      if (
+        (!turnServerInfo || !turnServerInfo.urls?.length) &&
+        this.addMediaData.iceTransportPolicy === 'relay'
+      ) {
         LoggerProxy.logger.info(
           `${LOG_HEADER} cannot do iceTransportPolicy=relay, because there is no turn server info available`
         );
         // drop the forced relay policy and use the default, because we don't have a TURN server
-        iceTransportPolicy = undefined;
+        this.addMediaData.iceTransportPolicy = undefined;
       }
-      const mc = await this.createMediaConnection(turnServerInfo, bundlePolicy, iceTransportPolicy);
+      const mediaConnection = await this.createMediaConnection(
+        turnServerInfo,
+        bundlePolicy,
+        this.addMediaData.iceTransportPolicy
+      );
 
       LoggerProxy.logger.info(
         `${LOG_HEADER} media connection created this.isMultistream=${this.isMultistream}`
@@ -8466,7 +8477,7 @@ export default class Meeting extends StatelessWebexPlugin {
         await this.remoteMediaManager.start();
       }
 
-      await mc.initiateOffer();
+      await mediaConnection.initiateOffer();
 
       await this.waitForRemoteSDPAnswer();
 
@@ -8634,8 +8645,8 @@ export default class Meeting extends StatelessWebexPlugin {
     return this.addMediaInternal(
       () => (this.turnServerUsed ? 'JOIN_MEETING_FINAL' : 'JOIN_MEETING_RETRY'),
       false,
-      undefined,
-      undefined,
+      undefined /* turnServerInfo - it will be fetched via doTurnDiscovery() */,
+      undefined /* iceTransportPolicy - we're relying on the default value */,
       options
     );
   }
@@ -8661,6 +8672,7 @@ export default class Meeting extends StatelessWebexPlugin {
   ): Promise<void> {
     this.addMediaData.retriedWithTurnServer = false;
     this.addMediaData.icePhaseCallback = icePhaseCallback;
+    this.addMediaData.iceTransportPolicy = iceTransportPolicy;
 
     this.hasMediaConnectionConnectedAtLeastOnce = false;
     const LOG_HEADER = 'Meeting:index#addMedia -->';
@@ -8771,8 +8783,7 @@ export default class Meeting extends StatelessWebexPlugin {
           remoteMediaManagerConfig,
           bundlePolicy,
           forceTurnDiscovery,
-          turnServerInfo,
-          iceTransportPolicy
+          turnServerInfo
         );
       } catch (error) {
         if (error instanceof MultistreamNotSupportedError) {
@@ -8784,12 +8795,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
           // Establish new media connection with forced TURN discovery
           // We need to do TURN discovery again, because backend will be creating a new confluence, so it might land on a different node or cluster
-          await this.establishMediaConnection(
-            remoteMediaManagerConfig,
-            bundlePolicy,
-            true,
-            undefined
-          );
+          await this.establishMediaConnection(remoteMediaManagerConfig, bundlePolicy, true);
         } else {
           throw error;
         }
@@ -8819,7 +8825,7 @@ export default class Meeting extends StatelessWebexPlugin {
         isMultistream: this.isMultistream,
         retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
         isJoinWithMediaRetry: this.joinWithMediaRetryInfo.retryCount > 0,
-        iceTransportPolicy: iceTransportPolicy || 'all',
+        iceTransportPolicy: this.addMediaData.iceTransportPolicy || 'all',
         ...reachabilityMetrics,
         ...iceCandidateErrors,
         iceCandidatesCount: this.iceCandidatesCount,
@@ -8847,7 +8853,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       const reachabilityMetrics = await this.getMediaReachabilityMetricFields();
 
-      const {selectedCandidatePairChanges, numTransports} =
+      const {connectionType, selectedCandidatePairChanges, numTransports} =
         error instanceof AddMediaFailed
           ? error
           : await this.mediaProperties.getCurrentConnectionInfo();
@@ -8867,7 +8873,7 @@ export default class Meeting extends StatelessWebexPlugin {
         retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
         isMultistream: this.isMultistream,
         isJoinWithMediaRetry: this.joinWithMediaRetryInfo.retryCount > 0,
-        iceTransportPolicy: iceTransportPolicy || 'all',
+        iceTransportPolicy: this.addMediaData.iceTransportPolicy || 'all',
         signalingState:
           this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
             ?.signalingState ||
@@ -8883,6 +8889,7 @@ export default class Meeting extends StatelessWebexPlugin {
             ?.iceConnectionState ||
           this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.iceConnectionState ||
           'unknown',
+        connectionType,
         ...reachabilityMetrics,
         ...iceCandidateErrors,
         iceCandidatesCount: this.iceCandidatesCount,

@@ -3313,6 +3313,7 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
+              connectionType: 'udp',
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
               selectedCandidatePairChanges: 2,
@@ -3442,6 +3443,7 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
+              connectionType: 'udp',
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
               selectedCandidatePairChanges: 2,
@@ -4213,6 +4215,7 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
+              connectionType: 'udp',
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               iceCandidatesCount: 0,
@@ -4336,6 +4339,12 @@ describe('plugin-meetings', () => {
               assert.calledOnce(createMediaConnectionStub);
               const config = createMediaConnectionStub.firstCall.args[3];
               assert.isUndefined(config.iceTransportPolicy);
+
+              const successCall = Metrics.sendBehavioralMetric.getCalls().find(
+                (call) => call.args[0] === BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS
+              );
+              assert.isDefined(successCall);
+              assert.equal(successCall.args[1].iceTransportPolicy, 'all');
             });
           });
 
@@ -4809,6 +4818,7 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
+              connectionType: 'udp',
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               subnet_reachable: null,
@@ -4873,6 +4883,7 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
+              connectionType: 'udp',
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               '701_error': 2,
@@ -5004,6 +5015,7 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
+              connectionType: 'udp',
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               reachability_public_udp_success: 5,

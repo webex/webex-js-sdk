@@ -152,7 +152,10 @@ export default class MediaConnectionAwaiter {
       `Media:MediaConnectionAwaiter#iceConnectionStateHandler --> ICE connection state change -> ${iceConnectionState}`
     );
 
-    if (iceConnectionState === 'connected' && !this.iceConnected) {
+    if (
+      (iceConnectionState === 'connected' || iceConnectionState === 'completed') &&
+      !this.iceConnected
+    ) {
       this.iceConnected = true;
     }
 
