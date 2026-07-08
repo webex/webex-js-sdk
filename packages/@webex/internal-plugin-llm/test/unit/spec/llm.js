@@ -25,7 +25,8 @@ describe('plugin-llm', () => {
       };
 
       llmChannel = webex.internal.llm;
-      llmChannel.disconnect = sinon.stub().resolves();
+      // Stub Mercury's prototype disconnect so super.disconnect() works in tests
+      sinon.stub(Object.getPrototypeOf(Object.getPrototypeOf(llmChannel)), 'disconnect').resolves();
       llmChannel.request = sinon.stub().resolves({
         headers: {},
         body: {
@@ -207,8 +208,8 @@ describe('plugin-llm', () => {
       });
     });
 
-    describe('#disconnectLLM', () => {
-      it('calls disconnect and clears all connection state', async () => {
+    describe('#disconnect', () => {
+      it('calls super.disconnect and clears all connection state', async () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
         llmChannel.setDatachannelToken('token123');
         llmChannel.ownerMeetingId = 'meeting-1';
@@ -220,9 +221,8 @@ describe('plugin-llm', () => {
         assert.equal(llmChannel.getDatachannelToken(), 'token123');
         assert.equal(llmChannel.ownerMeetingId, 'meeting-1');
 
-        await llmChannel.disconnectLLM({code: 1000, reason: 'test'});
+        await llmChannel.disconnect({code: 1000, reason: 'test'});
 
-        sinon.assert.calledOnceWithExactly(llmChannel.disconnect, {code: 1000, reason: 'test'});
         assert.equal(llmChannel.getLocusUrl(), undefined);
         assert.equal(llmChannel.getDatachannelUrl(), undefined);
         assert.equal(llmChannel.getBinding(), undefined);
@@ -233,17 +233,20 @@ describe('plugin-llm', () => {
       it('works without options', async () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
 
-        await llmChannel.disconnectLLM();
+        await llmChannel.disconnect();
 
-        sinon.assert.calledOnceWithExactly(llmChannel.disconnect, undefined);
+        assert.equal(llmChannel.getLocusUrl(), undefined);
       });
 
       it('propagates disconnect errors', async () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
-        llmChannel.disconnect = sinon.stub().rejects(new Error('disconnect failed'));
+        // Change the existing stub to reject
+        Object.getPrototypeOf(Object.getPrototypeOf(llmChannel)).disconnect.rejects(
+          new Error('disconnect failed')
+        );
 
         try {
-          await llmChannel.disconnectLLM({code: 1000, reason: 'test'});
+          await llmChannel.disconnect({code: 1000, reason: 'test'});
           assert.fail('should have thrown');
         } catch (error) {
           assert.equal(error.message, 'disconnect failed');
@@ -357,12 +360,12 @@ describe('plugin-llm', () => {
         assert.equal(llmChannel.ownerMeetingId, undefined);
       });
 
-      it('is cleared by disconnectLLM', async () => {
+      it('is cleared by disconnect', async () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
         llmChannel.ownerMeetingId = 'meeting-1';
         assert.equal(llmChannel.ownerMeetingId, 'meeting-1');
 
-        await llmChannel.disconnectLLM({code: 1000, reason: 'test'});
+        await llmChannel.disconnect({code: 1000, reason: 'test'});
 
         assert.equal(llmChannel.ownerMeetingId, undefined);
       });

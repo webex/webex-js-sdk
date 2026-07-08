@@ -13,7 +13,7 @@ describe('plugin-llm', () => {
 
     const createMockChannel = () => ({
       registerAndConnect: sinon.stub().resolves(),
-      disconnectLLM: sinon.stub().resolves(),
+      disconnect: sinon.stub().resolves(),
       isConnected: sinon.stub().returns(false),
       getBinding: sinon.stub().returns('binding'),
       getLocusUrl: sinon.stub().returns('locusUrl'),
@@ -58,7 +58,7 @@ describe('plugin-llm', () => {
           'meeting-1'
         );
 
-        sinon.assert.calledOnceWithExactly(mockChannel.disconnectLLM, {code: 3000, reason: 'bye'});
+        sinon.assert.calledOnceWithExactly(mockChannel.disconnect, {code: 3000, reason: 'bye'});
         assert.equal(plugin.sessions.has(LLM_DEFAULT_SESSION), false);
         assert.equal(result, true);
       });
@@ -82,7 +82,7 @@ describe('plugin-llm', () => {
           'meeting-2'
         );
 
-        sinon.assert.notCalled(mockChannel.disconnectLLM);
+        sinon.assert.notCalled(mockChannel.disconnect);
         assert.equal(plugin.sessions.has(LLM_DEFAULT_SESSION), true);
         assert.equal(result, false);
       });
@@ -97,7 +97,7 @@ describe('plugin-llm', () => {
           'meeting-1'
         );
 
-        sinon.assert.calledOnce(mockChannel.disconnectLLM);
+        sinon.assert.calledOnce(mockChannel.disconnect);
         assert.equal(plugin.sessions.has(LLM_DEFAULT_SESSION), false);
         assert.equal(result, true);
       });
@@ -112,7 +112,7 @@ describe('plugin-llm', () => {
           'meeting-1'
         );
 
-        sinon.assert.calledOnce(mockChannel.disconnectLLM);
+        sinon.assert.calledOnce(mockChannel.disconnect);
         assert.equal(result, true);
       });
 
@@ -121,7 +121,7 @@ describe('plugin-llm', () => {
 
         await plugin.disconnectLLM({code: 1000, reason: 'test'});
 
-        sinon.assert.calledOnce(mockChannel.disconnectLLM);
+        sinon.assert.calledOnce(mockChannel.disconnect);
         assert.equal(plugin.sessions.has(LLM_DEFAULT_SESSION), false);
       });
 
@@ -130,7 +130,7 @@ describe('plugin-llm', () => {
 
         await plugin.disconnectLLM({code: 1000, reason: 'test'}, 'custom-session');
 
-        sinon.assert.calledOnceWithExactly(mockChannel.disconnectLLM, {code: 1000, reason: 'test'});
+        sinon.assert.calledOnceWithExactly(mockChannel.disconnect, {code: 1000, reason: 'test'});
         assert.equal(plugin.sessions.has('custom-session'), false);
       });
     });
@@ -145,8 +145,8 @@ describe('plugin-llm', () => {
 
         await plugin.disconnectAllLLM({code: 1000, reason: 'cleanup'});
 
-        sinon.assert.calledOnceWithExactly(channel1.disconnectLLM, {code: 1000, reason: 'cleanup'});
-        sinon.assert.calledOnceWithExactly(channel2.disconnectLLM, {code: 1000, reason: 'cleanup'});
+        sinon.assert.calledOnceWithExactly(channel1.disconnect, {code: 1000, reason: 'cleanup'});
+        sinon.assert.calledOnceWithExactly(channel2.disconnect, {code: 1000, reason: 'cleanup'});
         assert.equal(plugin.sessions.size, 0);
       });
 

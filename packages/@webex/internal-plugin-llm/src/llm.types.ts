@@ -16,11 +16,7 @@ interface ILLMChannel {
   getBinding: () => string | undefined;
   getLocusUrl: () => string | undefined;
   getDatachannelUrl: () => string | undefined;
-  disconnectLLM: (
-    options: {code: number; reason: string},
-    sessionId?: string,
-    ownerMeetingId?: string
-  ) => Promise<boolean>;
+  disconnect: (options?: {code: number; reason: string}) => Promise<void>;
   disconnectAllLLM: (options?: {code: number; reason: string}) => Promise<void>;
   setOwnerMeetingId: (ownerMeetingId: string | undefined, sessionId?: string) => void;
   getOwnerMeetingId: (sessionId?: string) => string | undefined;
