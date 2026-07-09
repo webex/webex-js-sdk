@@ -4,6 +4,7 @@
 import {WebexPlugin, config} from '@webex/webex-core';
 import uuid from 'uuid';
 import {get} from 'lodash';
+import type LLMChannel from '@webex/internal-plugin-llm';
 import {
   _ID_,
   HEADERS,
@@ -12,7 +13,6 @@ import {
   SELF_ROLES,
   SHARE_STATUS,
   DEFAULT_LARGE_SCALE_WEBINAR_ATTENDEE_SEARCH_LIMIT,
-  LLM_PRACTICE_SESSION,
   LOCUS_LLM_EVENT,
 } from '../constants';
 
@@ -20,19 +20,6 @@ import WebinarCollection from './collection';
 import LoggerProxy from '../common/logs/logger-proxy';
 import MeetingUtil from '../meeting/util';
 import {sanitizeParams} from './utils';
-
-const PS_LLM_EVENTS = [
-  {
-    event: `event:relay.event:${LLM_PRACTICE_SESSION}`,
-    listenerKey: 'relay',
-    handlerKey: 'processRelayEvent',
-  },
-  {
-    event: `${LOCUS_LLM_EVENT}:${LLM_PRACTICE_SESSION}`,
-    listenerKey: 'locusLLM',
-    handlerKey: 'processLocusLLMEvent',
-  },
-];
 
 /**
  * @class Webinar
@@ -52,6 +39,12 @@ const Webinar = WebexPlugin.extend({
     practiceSessionEnabled: 'boolean', // practice session enabled
     meetingId: 'string',
   },
+
+  /**
+   * LLM channel for practice session, owned by this webinar instance.
+   * @type {LLMChannel|undefined}
+   */
+  practiceSessionLLMChannel: undefined as LLMChannel | undefined,
 
   /**
    * Calls this to clean up listeners
@@ -177,67 +170,41 @@ const Webinar = WebexPlugin.extend({
   },
 
   /**
-   * Disconnects the practice session data channel and removes its relay listener.
-   * The listener reference removed here is the exact callback captured at subscribe
-   * time (see updatePSDataChannel) so that cleanup is correct even if the underlying
-   * meeting can no longer be resolved (e.g. locusUrl mismatch).
+   * Disconnects the practice session LLM channel and cleans up listeners.
    * @returns {Promise<void>}
    */
   async cleanupPSDataChannel() {
-    const {isOwner} = this.webex.internal.llm.resolveSessionOwnership(
-      this.meetingId,
-      LLM_PRACTICE_SESSION
-    );
-    this.llmListeners = this.llmListeners || {};
-
+    // Remove pending online listener if any
     if (this._pendingOnlineListener) {
-      // @ts-ignore - Fix type
-      this.webex.internal.llm.off('online', this._pendingOnlineListener);
+      const meeting = this.getValidatedWebinarMeeting();
+      meeting?.llmChannel?.off('online', this._pendingOnlineListener);
       this._pendingOnlineListener = null;
     }
 
+    if (!this.practiceSessionLLMChannel) {
+      return;
+    }
+
     try {
-      // @ts-ignore - Fix type
-      const disconnected = await this.webex.internal.llm.disconnectLLM(
-        {
-          code: 3050,
-          reason: 'done (permanent)',
-        },
-        LLM_PRACTICE_SESSION,
-        this.meetingId
-      );
-
-      if (!disconnected) {
-        LoggerProxy.logger.info(
-          `Webinar:index#cleanupPSDataChannel --> skipping disconnect; practice-session LLM is not owned by meeting ${this.meetingId}`
-        );
-      }
+      await this.practiceSessionLLMChannel.disconnect({
+        code: 3050,
+        reason: 'done (permanent)',
+      });
     } catch (error) {
-      // disconnectLLM clears ownership only on success; release a stale owner
-      // tag here so other meeting instances can reclaim practice-session LLM.
-      if (isOwner) {
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.setOwnerMeetingId?.(undefined, LLM_PRACTICE_SESSION);
-      }
-
+      LoggerProxy.logger.error(
+        'Webinar:index#cleanupPSDataChannel --> Failed to disconnect practice session LLM channel',
+        error
+      );
       throw error;
     } finally {
-      if (this._practiceSessionRelayListener) {
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.off(
-          `event:relay.event:${LLM_PRACTICE_SESSION}`,
-          this._practiceSessionRelayListener
-        );
+      // Remove listeners from the channel
+      const meeting = this.getValidatedWebinarMeeting();
+      if (meeting) {
+        this.practiceSessionLLMChannel?.off('event:relay.event', meeting.processRelayEvent);
+        this.practiceSessionLLMChannel?.off(LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
+        this.practiceSessionLLMChannel?.off('online', meeting.handleLLMOnline);
       }
-      this._practiceSessionRelayListener = null;
-
-      for (const {event, listenerKey} of PS_LLM_EVENTS) {
-        if (this.llmListeners[listenerKey]) {
-          // @ts-ignore - Fix type
-          this.webex.internal.llm.off(event, this.llmListeners[listenerKey]);
-          this.llmListeners[listenerKey] = null;
-        }
-      }
+      this.practiceSessionLLMChannel = undefined;
     }
   },
 
@@ -256,11 +223,10 @@ const Webinar = WebexPlugin.extend({
       return undefined;
     }
 
-    // @ts-ignore
-    const cachedToken = this.webex.internal.llm.getDatachannelToken(
-      LLM_PRACTICE_SESSION,
-      this.meetingId
-    );
+    // Check for cached token on the channel or pending token on the meeting
+    const cachedToken =
+      this.practiceSessionLLMChannel?.getDatachannelToken() ??
+      meeting._pendingPracticeSessionDatachannelToken;
 
     if (cachedToken) {
       return cachedToken;
@@ -268,18 +234,18 @@ const Webinar = WebexPlugin.extend({
 
     try {
       const refreshResponse = await meeting.refreshDataChannelToken();
-      const {datachannelToken, dataChannelTokenType} = refreshResponse?.body ?? {};
+      const {datachannelToken} = refreshResponse?.body ?? {};
 
       if (!datachannelToken) {
         return undefined;
       }
 
-      // @ts-ignore
-      this.webex.internal.llm.setDatachannelToken(
-        datachannelToken,
-        this.meetingId,
-        dataChannelTokenType || LLM_PRACTICE_SESSION
-      );
+      // Store token on the channel if it exists, otherwise on meeting for later
+      if (this.practiceSessionLLMChannel) {
+        this.practiceSessionLLMChannel.setDatachannelToken(datachannelToken);
+      } else {
+        meeting._pendingPracticeSessionDatachannelToken = datachannelToken;
+      }
 
       return datachannelToken;
     } catch (error) {
@@ -294,33 +260,20 @@ const Webinar = WebexPlugin.extend({
   },
 
   /**
-   * Connects to low latency mercury and reconnects if the address has changed
-   * It will also disconnect if called when the meeting has ended
+   * Connects practice session LLM channel. Creates a new channel if needed.
+   * Will disconnect if the meeting has ended or is no longer in practice session mode.
+   * Waits for the main LLM channel to be connected before connecting practice session.
    * @returns {Promise}
    */
   async updatePSDataChannel() {
-    this.llmListeners = this.llmListeners || {};
-
     this._updatePSDataChannelSequence = (this._updatePSDataChannelSequence || 0) + 1;
     const invocationSequence = this._updatePSDataChannelSequence;
 
     const meeting = this.getValidatedWebinarMeeting();
     const isPracticeSession = meeting?.isJoined() && this.isJoinPracticeSessionDataChannel();
-    const {currentOwner, isOwner} = this.webex.internal.llm.resolveSessionOwnership(
-      this.meetingId,
-      LLM_PRACTICE_SESSION
-    );
 
     if (!isPracticeSession) {
       await this.cleanupPSDataChannel();
-
-      return undefined;
-    }
-
-    if (!isOwner) {
-      LoggerProxy.logger.info(
-        `Webinar:index#updatePSDataChannel --> skipping; practice-session LLM owned by meeting ${currentOwner}, not ${this.meetingId}`
-      );
 
       return undefined;
     }
@@ -329,49 +282,36 @@ const Webinar = WebexPlugin.extend({
     const {url = undefined, info: {practiceSessionDatachannelUrl = undefined} = {}} =
       meeting?.locusInfo || {};
 
-    // @ts-ignore
-    let practiceSessionDatachannelToken = this.webex.internal.llm.getDatachannelToken(
-      LLM_PRACTICE_SESSION,
-      this.meetingId
-    );
-
-    const keepTranscriptionSubscribed = this.webex.internal.voicea.getKeepTranscriptionSubscribed();
-
     if (!practiceSessionDatachannelUrl) {
       return undefined;
     }
-    // @ts-ignore - Fix type
-    if (this.webex.internal.llm.isConnected(LLM_PRACTICE_SESSION)) {
+
+    // If already connected to same URLs, skip reconnect
+    if (this.practiceSessionLLMChannel?.isConnected()) {
       if (
-        // @ts-ignore - Fix type
-        url === this.webex.internal.llm.getLocusUrl(LLM_PRACTICE_SESSION) &&
-        // @ts-ignore - Fix type
-        practiceSessionDatachannelUrl ===
-          this.webex.internal.llm.getDatachannelUrl(LLM_PRACTICE_SESSION)
+        url === this.practiceSessionLLMChannel.getLocusUrl() &&
+        practiceSessionDatachannelUrl === this.practiceSessionLLMChannel.getDatachannelUrl()
       ) {
         return undefined;
       }
-
+      // URLs changed, disconnect existing channel
       await this.cleanupPSDataChannel();
     }
 
-    // Ensure the default session data channel is connected before connecting the practice session.
+    // Ensure the default session LLM channel is connected before connecting the practice session.
     // Subscribe before checking isConnected() to avoid a race where the 'online' event fires
-    // between the check and the subscription — Mercury does not replay missed events.
-    if (!this._pendingOnlineListener) {
+    // between the check and the subscription — the channel does not replay missed events.
+    if (!this._pendingOnlineListener && meeting?.llmChannel) {
       const onDefaultSessionConnected = () => {
         this._pendingOnlineListener = null;
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.off('online', onDefaultSessionConnected);
+        meeting.llmChannel?.off('online', onDefaultSessionConnected);
         this.updatePSDataChannel();
       };
       this._pendingOnlineListener = onDefaultSessionConnected;
-      // @ts-ignore - Fix type
-      this.webex.internal.llm.on('online', onDefaultSessionConnected);
+      meeting.llmChannel.on('online', onDefaultSessionConnected);
     }
 
-    // @ts-ignore - Fix type
-    if (!this.webex.internal.llm.isConnected()) {
+    if (!meeting?.llmChannel?.isConnected()) {
       LoggerProxy.logger.info(
         'Webinar:index#updatePSDataChannel --> default session not yet connected, deferring practice session connect.'
       );
@@ -381,12 +321,18 @@ const Webinar = WebexPlugin.extend({
 
     // Default session is already connected — cancel the pending listener and proceed
     if (this._pendingOnlineListener) {
-      // @ts-ignore - Fix type
-      this.webex.internal.llm.off('online', this._pendingOnlineListener);
+      meeting.llmChannel.off('online', this._pendingOnlineListener);
       this._pendingOnlineListener = null;
     }
 
-    const refreshedPracticeSessionToken = await this.ensurePracticeSessionDatachannelToken(meeting);
+    const isCaptionBoxOn = this.webex.internal.voicea.getIsCaptionBoxOn();
+
+    // Get token from pending on meeting or refresh if needed
+    let practiceSessionDatachannelToken =
+      meeting._pendingPracticeSessionDatachannelToken ??
+      this.practiceSessionLLMChannel?.getDatachannelToken();
+
+    const refreshedToken = await this.ensurePracticeSessionDatachannelToken(meeting);
 
     const latestPracticeSessionDatachannelUrl = get(
       meeting,
@@ -405,93 +351,50 @@ const Webinar = WebexPlugin.extend({
       return undefined;
     }
 
-    if (refreshedPracticeSessionToken) {
-      practiceSessionDatachannelToken = refreshedPracticeSessionToken;
+    if (refreshedToken) {
+      practiceSessionDatachannelToken = refreshedToken;
     }
 
-    const {currentOwner: currentOwnerBeforeConnect, isOwner: isOwnerBeforeConnect} =
-      this.webex.internal.llm.resolveSessionOwnership(this.meetingId, LLM_PRACTICE_SESSION);
+    // Create a new practice session LLM channel
+    // @ts-ignore - Fix type
+    this.practiceSessionLLMChannel = this.webex.internal.llm.createConnection();
 
-    if (!isOwnerBeforeConnect) {
-      LoggerProxy.logger.info(
-        `Webinar:index#updatePSDataChannel --> skipping pre-connect owner write; practice-session LLM owned by meeting ${currentOwnerBeforeConnect}, not ${this.meetingId}`
+    // Set up refresh handler before registration
+    this.practiceSessionLLMChannel.setRefreshHandler(() => meeting.refreshDataChannelToken());
+
+    // If we have a pending token, store it on the channel
+    if (meeting._pendingPracticeSessionDatachannelToken) {
+      this.practiceSessionLLMChannel.setDatachannelToken(
+        meeting._pendingPracticeSessionDatachannelToken
       );
-
-      return undefined;
+      meeting._pendingPracticeSessionDatachannelToken = undefined;
     }
 
-    // Ensure refresh for practice datachannel requests is routed to this
-    // meeting only when we are actually about to connect the practice session.
-    // This avoids claiming ownership in flows that return early (e.g. missing
-    // practiceSessionDatachannelUrl or waiting for default session online).
-    // @ts-ignore - Fix type
-    this.webex.internal.llm.setRefreshHandler(
-      () => meeting.refreshDataChannelToken(),
-      this.meetingId,
-      LLM_PRACTICE_SESSION
-    );
-    // @ts-ignore - Fix type
-    this.webex.internal.llm.setOwnerMeetingId?.(this.meetingId, LLM_PRACTICE_SESSION);
-
-    // @ts-ignore - Fix type
-    return this.webex.internal.llm
-      .registerAndConnect(
-        url,
-        practiceSessionDatachannelUrl,
-        practiceSessionDatachannelToken,
-        LLM_PRACTICE_SESSION
-      )
+    return this.practiceSessionLLMChannel
+      .registerAndConnect(url, practiceSessionDatachannelUrl, practiceSessionDatachannelToken)
       .then((registerAndConnectResult) => {
-        const {currentOwner: currentOwnerAfterConnect, isOwner: isOwnerAfterConnect} =
-          this.webex.internal.llm.resolveSessionOwnership(this.meetingId, LLM_PRACTICE_SESSION);
+        // Register event listeners on the practice session channel
+        this.practiceSessionLLMChannel.off('event:relay.event', meeting.processRelayEvent);
+        this.practiceSessionLLMChannel.on('event:relay.event', meeting.processRelayEvent);
+        this.practiceSessionLLMChannel.off(LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
+        this.practiceSessionLLMChannel.on(LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
+        this.practiceSessionLLMChannel.off('online', meeting.handleLLMOnline);
+        this.practiceSessionLLMChannel.on('online', meeting.handleLLMOnline);
 
-        if (this.meetingId && isOwnerAfterConnect) {
-          // @ts-ignore - Fix type
-          this.webex.internal.llm.setOwnerMeetingId?.(this.meetingId, LLM_PRACTICE_SESSION);
-        } else {
-          LoggerProxy.logger.info(
-            `Webinar:index#updatePSDataChannel --> skipping post-connect owner write; practice-session LLM owned by meeting ${currentOwnerAfterConnect}, not ${this.meetingId}`
-          );
-        }
-
-        // Track the exact listener references so cleanupPSDataChannel can
-        // unsubscribe deterministically, even if the meeting can no longer
-        // be resolved at cleanup time.
-        for (const {event, listenerKey, handlerKey} of PS_LLM_EVENTS) {
-          if (this.llmListeners[listenerKey]) {
-            // @ts-ignore - Fix type
-            this.webex.internal.llm.off(event, this.llmListeners[listenerKey]);
-          }
-          this.llmListeners[listenerKey] = meeting?.[handlerKey];
-          // @ts-ignore - Fix type
-          this.webex.internal.llm.on(event, this.llmListeners[listenerKey]);
-        }
         // @ts-ignore - Fix type
         this.webex.internal.voicea?.announce?.();
         if (keepTranscriptionSubscribed) {
           this.webex.internal.voicea.updateSubchannelSubscriptions({subscribe: ['transcription']});
         }
         LoggerProxy.logger.info(
-          `Webinar:index#updatePSDataChannel --> enabled to receive relay events for default session for ${LLM_PRACTICE_SESSION}!`
+          'Webinar:index#updatePSDataChannel --> enabled to receive relay events for practice session!'
         );
 
         return Promise.resolve(registerAndConnectResult);
       })
       .catch((error) => {
-        const {
-          currentOwner: currentOwnerAfterRegisterFailure,
-          isOwner: isOwnerAfterRegisterFailure,
-        } = this.webex.internal.llm.resolveSessionOwnership(this.meetingId, LLM_PRACTICE_SESSION);
-
-        if (isOwnerAfterRegisterFailure) {
-          // @ts-ignore - Fix type
-          this.webex.internal.llm.setOwnerMeetingId?.(undefined, LLM_PRACTICE_SESSION);
-        } else {
-          LoggerProxy.logger.info(
-            `Webinar:index#updatePSDataChannel --> skipping failure owner release; practice-session LLM owned by meeting ${currentOwnerAfterRegisterFailure}, not ${this.meetingId}`
-          );
-        }
-
+        // Clean up the channel on failure
+        this.practiceSessionLLMChannel = undefined;
         throw error;
       });
   },
