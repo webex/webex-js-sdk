@@ -2692,6 +2692,7 @@ function register() {
         registerBtn.disabled = true;
         deregisterBtn.disabled = false;
         uploadLogsButton.disabled = false;
+        enableUserPreferenceButtons(true);
         updateUnregisterButtonState();
         console.log('Event subscription successful: ', agentProfile);
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
@@ -2847,6 +2848,7 @@ function doDeRegister() {
         registerBtn.disabled = false;
         deregisterBtn.disabled = true;
         uploadLogsButton.disabled = true;
+        enableUserPreferenceButtons(false);
         
         // Clear all dropdowns that are populated during registration
         teamsDropdown.innerHTML = '';
@@ -3638,3 +3640,166 @@ updateLoginOptionElm.addEventListener('change', updateApplyButtonState);
 updateDialNumberElm.addEventListener('input', updateApplyButtonState);
 
 updateApplyButtonState();
+
+// ==================== User Preferences API ====================
+
+const userPrefResultElm = document.getElementById('userPrefResult');
+const getUserPrefBtn = document.getElementById('getUserPrefBtn');
+const createUserPrefBtn = document.getElementById('createUserPrefBtn');
+const updateUserPrefBtn = document.getElementById('updateUserPrefBtn');
+const deleteUserPrefBtn = document.getElementById('deleteUserPrefBtn');
+const userPrefCreateDialog = document.getElementById('userPrefCreateDialog');
+const userPrefUpdateDialog = document.getElementById('userPrefUpdateDialog');
+
+function enableUserPreferenceButtons(enabled) {
+  getUserPrefBtn.disabled = !enabled;
+  createUserPrefBtn.disabled = !enabled;
+  updateUserPrefBtn.disabled = !enabled;
+  deleteUserPrefBtn.disabled = !enabled;
+}
+
+function showUserPrefResult(result, isError = false) {
+  userPrefResultElm.textContent = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+  userPrefResultElm.style.color = isError ? 'red' : 'inherit';
+}
+
+async function getUserPreference() {
+  const userId = document.getElementById('userPrefUserId').value.trim();
+  const pageInput = document.getElementById('userPrefPage').value;
+  const pageSizeInput = document.getElementById('userPrefPageSize').value;
+  
+  const params = {};
+  if (userId) params.userId = userId;
+  if (pageInput !== '') params.page = parseInt(pageInput, 10);
+  if (pageSizeInput !== '') params.pageSize = parseInt(pageSizeInput, 10);
+  
+  try {
+    showUserPrefResult('Fetching user preferences...');
+    const result = await webex.cc.userPreference.getUserPreference(Object.keys(params).length > 0 ? params : undefined);
+    showUserPrefResult(result);
+    console.log('User Preferences:', result);
+  } catch (error) {
+    showUserPrefResult(`Error: ${error.message}`, true);
+    console.error('getUserPreference error:', error);
+  }
+}
+
+function showCreatePreferenceDialog() {
+  userPrefCreateDialog.classList.remove('hidden');
+  userPrefUpdateDialog.classList.add('hidden');
+  // Pre-fill with current agent ID if available
+  if (agentId) {
+    document.getElementById('createPrefUserId').value = agentId;
+  }
+}
+
+function hideCreatePreferenceDialog() {
+  userPrefCreateDialog.classList.add('hidden');
+}
+
+async function createUserPreference() {
+  const userId = document.getElementById('createPrefUserId').value.trim();
+  const desktopPreferenceJson = document.getElementById('createPrefDesktopPref').value.trim();
+  
+  if (!userId) {
+    showUserPrefResult('Error: User ID is required for creating preferences', true);
+    return;
+  }
+  
+  if (!desktopPreferenceJson) {
+    showUserPrefResult('Error: Desktop Preference JSON is required for creating preferences', true);
+    return;
+  }
+  
+  try {
+    // Validate desktopPreference is valid JSON
+    JSON.parse(desktopPreferenceJson);
+    
+    showUserPrefResult('Creating user preferences...');
+    const result = await webex.cc.userPreference.createUserPreference({
+      userId,
+      desktopPreference: desktopPreferenceJson
+    });
+    showUserPrefResult(result);
+    hideCreatePreferenceDialog();
+    console.log('Created User Preferences:', result);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      showUserPrefResult('Error: Invalid JSON format in Desktop Preference field.', true);
+    } else {
+      showUserPrefResult(`Error: ${error.message}`, true);
+    }
+    console.error('createUserPreference error:', error);
+  }
+}
+
+function showUpdatePreferenceDialog() {
+  userPrefUpdateDialog.classList.remove('hidden');
+  userPrefCreateDialog.classList.add('hidden');
+  // Pre-fill with current agent ID if available
+  if (agentId) {
+    document.getElementById('updatePrefUserId').value = agentId;
+  }
+}
+
+function hideUpdatePreferenceDialog() {
+  userPrefUpdateDialog.classList.add('hidden');
+}
+
+async function updateUserPreference() {
+  const userId = document.getElementById('updatePrefUserId').value.trim();
+  const desktopPreferenceJson = document.getElementById('updatePrefDesktopPref').value.trim();
+  
+  if (!userId) {
+    showUserPrefResult('Error: User ID is required for updating preferences', true);
+    return;
+  }
+  
+  if (!desktopPreferenceJson) {
+    showUserPrefResult('Error: Desktop Preference JSON is required for updating preferences', true);
+    return;
+  }
+  
+  try {
+    // Validate desktopPreference is valid JSON
+    JSON.parse(desktopPreferenceJson);
+    
+    showUserPrefResult('Updating user preferences...');
+    const result = await webex.cc.userPreference.updateUserPreference(userId, {
+      desktopPreference: desktopPreferenceJson
+    });
+    showUserPrefResult(result);
+    hideUpdatePreferenceDialog();
+    console.log('Updated User Preferences:', result);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      showUserPrefResult('Error: Invalid JSON format in Desktop Preference field.', true);
+    } else {
+      showUserPrefResult(`Error: ${error.message}`, true);
+    }
+    console.error('updateUserPreference error:', error);
+  }
+}
+
+async function deleteUserPreference() {
+  const userId = document.getElementById('userPrefUserId').value.trim();
+  
+  if (!userId) {
+    showUserPrefResult('Error: User ID is required for deleting preferences. Enter it in the User ID field above.', true);
+    return;
+  }
+  
+  if (!confirm(`Are you sure you want to delete preferences for user: ${userId}?`)) {
+    return;
+  }
+  
+  try {
+    showUserPrefResult('Deleting user preferences...');
+    await webex.cc.userPreference.deleteUserPreference(userId);
+    showUserPrefResult('User preferences deleted successfully');
+    console.log('Deleted User Preferences for:', userId);
+  } catch (error) {
+    showUserPrefResult(`Error: ${error.message}`, true);
+    console.error('deleteUserPreference error:', error);
+  }
+}

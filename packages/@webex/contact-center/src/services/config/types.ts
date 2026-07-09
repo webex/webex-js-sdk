@@ -1294,3 +1294,55 @@ export type OutdialAniParams = {
   /** Comma-separated list of attributes to include in response (optional) */
   attributes?: string;
 };
+
+/**
+ * User preference data structure
+ * @public
+ */
+export type UserPreference = {
+  /** Unique identifier for the user preference */
+  id: string;
+  /** Organization ID */
+  organizationId: string;
+  /** User ID (CI user ID) */
+  userId: string;
+  /** User preference data as key-value pairs */
+  preferences: Record<string, unknown>;
+  /** Timestamp when this preference was created (Unix timestamp in milliseconds) */
+  createdTime?: number;
+  /** Timestamp when this preference was last updated (Unix timestamp in milliseconds) */
+  lastUpdatedTime?: number;
+};
+
+/**
+ * Request payload for creating user preferences
+ * @public
+ */
+export type CreateUserPreferenceRequest = {
+  /** User ID (CI user ID) */
+  userId: string;
+  /** Desktop preference data as a JSON string (required) */
+  desktopPreference: string;
+};
+
+/**
+ * Request payload for updating user preferences
+ * @public
+ */
+export type UpdateUserPreferenceRequest = {
+  /** Desktop preference data as a JSON string (required) */
+  desktopPreference: string;
+};
+
+/**
+ * Query parameters for fetching user preferences
+ * @public
+ */
+export type GetUserPreferenceParams = {
+  /** User ID to fetch preferences for. Defaults to current user's CI user ID. */
+  userId?: string;
+  /** Page number (0-indexed). Default: 0 */
+  page?: number;
+  /** Number of items per page. Default: 100 */
+  pageSize?: number;
+};
