@@ -194,7 +194,43 @@ describe('plugin-meetings', () => {
         checkRequest({
           method: 'PATCH',
           uri: 'https://example.com/12345/participant/member1/controls',
-          body: {role: {moderator: true}},
+          body: {
+            role: {
+              roles: [
+                {
+                  hasRole: true,
+                  type: 'MODERATOR',
+                },
+              ],
+            },
+          },
+        });
+      });
+
+      it('sends a request with authorizingLocusUrl when provided', async () => {
+        const options = {
+          locusUrl: url1,
+          memberId: 'member1',
+          moderator: true,
+          authorizingLocusUrl: 'https://example.com/breakout-locus',
+        };
+
+        await membersRequest.transferHostToMember(options);
+
+        checkRequest({
+          method: 'PATCH',
+          uri: 'https://example.com/12345/participant/member1/controls',
+          body: {
+            role: {
+              roles: [
+                {
+                  hasRole: true,
+                  type: 'MODERATOR',
+                },
+              ],
+            },
+            authorizingLocusUrl: 'https://example.com/breakout-locus',
+          },
         });
       });
     });

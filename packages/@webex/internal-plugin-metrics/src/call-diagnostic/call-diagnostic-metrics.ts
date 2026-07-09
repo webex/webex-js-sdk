@@ -108,7 +108,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   private isMercuryConnected = false;
   private eventLimitTracker: Map<string, number> = new Map();
   private eventLimitWarningsLogged: Set<string> = new Set();
-  private telemetryOptOut: NonNullable<ClientEventPayload>['telemetryOptOut'] = undefined;
+  private isTelemetryOptOutManual = false;
+  private isTelemetryOptOutAutomatic = false;
 
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
@@ -150,16 +151,31 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * Returns the telemetryOptOut value of the current user
    * @returns one of 'manual', 'automatic', undefined
    */
-  getTelemetryOptOut() {
-    return this.telemetryOptOut;
+  public getTelemetryOptOut() {
+    if (this.isTelemetryOptOutManual) {
+      return 'manual';
+    }
+    if (this.isTelemetryOptOutAutomatic) {
+      return 'automatic';
+    }
+
+    return undefined;
   }
 
   /**
-   * Sets the telemetryOptOut value of the current user
-   * @param value - one of 'manual', 'automatic', undefined
+   * Sets the manual telemetry opt-out status for the current user
+   * @param value - boolean value indicating manual telemetry opt-out status
    */
-  public setTelemetryOptOut(value: NonNullable<ClientEventPayload>['telemetryOptOut']) {
-    this.telemetryOptOut = value;
+  public setIsTelemetryOptOutManual(value: boolean) {
+    this.isTelemetryOptOutManual = value;
+  }
+
+  /**
+   * Sets the automatic telemetry opt-out status for the current user
+   * @param value - boolean value indicating automatic telemetry opt-out status
+   */
+  public setIsTelemetryOptOutAutomatic(value: boolean) {
+    this.isTelemetryOptOutAutomatic = value;
   }
 
   /**
@@ -1348,6 +1364,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const finalEvent = {
       eventPayload: event,
       type: ['diagnostic-event'],
+      markTelemetryOptOutOnResponse: true,
     };
 
     return this.callDiagnosticEventsBatcher.request(finalEvent);
@@ -1357,6 +1374,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * Prepare the event and send the request to metrics-a service, pre login.
    * @param event
    * @param preLoginId
+   * @param markTelemetryOptOutOnResponse
    * @returns
    */
   submitToCallDiagnosticsPreLogin = (event: Event, preLoginId?: string): Promise<any> => {
@@ -1364,7 +1382,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const finalEvent = {
       eventPayload: event,
       type: ['diagnostic-event'],
+      markTelemetryOptOutOnResponse: true,
     };
+
     this.preLoginMetricsBatcher.savePreLoginId(preLoginId);
 
     return this.preLoginMetricsBatcher.request(finalEvent);

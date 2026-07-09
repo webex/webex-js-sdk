@@ -87,8 +87,6 @@ export default {
       enableMediaNegotiatedEvent: false,
       enableUnifiedMeetings: true,
       enableAdhocMeetings: true,
-      enableTcpReachability: false,
-      enableTlsReachability: false,
       storeLocusHashTreeEventsForDebugging: false,
     },
     degradationPreferences: {

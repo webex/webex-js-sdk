@@ -531,7 +531,341 @@ describe('Utils', () => {
       };
 
       const result = Utils.calculateDestAgentId(interaction, currentAgentId);
-      expect(result).toBeUndefined();
+      expect(result).toBe('');
+    });
+
+    it('should handle CBT scenario when phone number is not a direct participant key', () => {
+      const interaction: any = {
+        media: {
+          consult: {
+            mType: 'consult',
+            participants: [currentAgentId, '5551234567'], // Phone number in media
+          },
+        },
+        participants: {
+          // Note: '5551234567' is NOT a key - this is CBT
+          'agent-uuid-cbt': {
+            type: 'Agent',
+            pType: 'dn',
+            dn: '5551234567', // Found by matching DN
+            id: 'agent-uuid-cbt',
+          },
+        },
+      };
+
+      const result = Utils.calculateDestAgentId(interaction, currentAgentId);
+      expect(result).toBe('agent-uuid-cbt'); // Returns the CBT agent
+    });
+  });
+
+  describe('calculateDestType', () => {
+    const currentAgentId = 'current-agent-123';
+
+    it('should return DIALNUMBER when pType is DN', () => {
+      const interaction: any = {
+        media: {
+          consult: {
+            mType: 'consult',
+            participants: [currentAgentId, 'dest-agent-456'],
+          },
+        },
+        participants: {
+          [currentAgentId]: {type: 'Agent', pType: 'Agent'},
+          'dest-agent-456': {type: 'Agent', pType: 'DN', id: 'dest-agent-456'},
+        },
+      };
+
+      const result = Utils.calculateDestType(interaction, currentAgentId);
+      expect(result).toBe('dialNumber');
+    });
+
+    it('should return ENTRYPOINT when pType is EP-DN', () => {
+      const interaction: any = {
+        media: {
+          consult: {
+            mType: 'consult',
+            participants: [currentAgentId, 'dest-agent-456'],
+          },
+        },
+        participants: {
+          [currentAgentId]: {type: 'Agent', pType: 'Agent'},
+          'dest-agent-456': {type: 'Agent', pType: 'EP-DN', id: 'dest-agent-456'},
+        },
+      };
+
+      const result = Utils.calculateDestType(interaction, currentAgentId);
+      expect(result).toBe('entryPoint');
+    });
+
+    it('should return lowercase pType for other types', () => {
+      const interaction: any = {
+        media: {
+          consult: {
+            mType: 'consult',
+            participants: [currentAgentId, 'dest-agent-456'],
+          },
+        },
+        participants: {
+          [currentAgentId]: {type: 'Agent', pType: 'Agent'},
+          'dest-agent-456': {type: 'Agent', pType: 'Agent', id: 'dest-agent-456'},
+        },
+      };
+
+      const result = Utils.calculateDestType(interaction, currentAgentId);
+      expect(result).toBe('agent');
+    });
+
+    it('should return agent when no destination agent found', () => {
+      const interaction: any = {
+        media: {},
+        participants: {
+          [currentAgentId]: {type: 'Agent', pType: 'Agent'},
+        },
+      };
+
+      const result = Utils.calculateDestType(interaction, currentAgentId);
+      expect(result).toBe('agent');
+    });
+  });
+
+  describe('buildConsultConferenceParamData', () => {
+    it('maps entryPoint destinationType correctly', () => {
+      const result = Utils.buildConsultConferenceParamData(
+        {
+          agentId: 'agent1',
+          destinationType: 'entryPoint',
+          destAgentId: 'ep123',
+        },
+        'interaction123'
+      );
+
+      expect(result).toEqual({
+        interactionId: 'interaction123',
+        data: {
+          agentId: 'agent1',
+          to: 'ep123',
+          destinationType: 'entryPoint',
+        },
+      });
+    });
+
+    it('maps EP-DN/EP_DN destinationType variants to entryPoint', () => {
+      const hyphenResult = Utils.buildConsultConferenceParamData(
+        {
+          agentId: 'agent1',
+          destinationType: 'EP-DN',
+          destAgentId: 'ep123',
+        },
+        'interaction123'
+      );
+      const underscoreResult = Utils.buildConsultConferenceParamData(
+        {
+          agentId: 'agent1',
+          destinationType: 'EP_DN',
+          destAgentId: 'ep123',
+        },
+        'interaction123'
+      );
+
+      expect(hyphenResult.data.destinationType).toBe('entryPoint');
+      expect(underscoreResult.data.destinationType).toBe('entryPoint');
+    });
+  });
+
+  describe('getDestAgentIdForCBT', () => {
+    it('should return destination agent ID for CBT scenario', () => {
+      const interaction: any = {
+        participants: {
+          'agent-uuid-123': {
+            type: 'Agent',
+            pType: 'dn',
+            dn: '5551234567',
+            id: 'agent-uuid-123',
+          },
+          'customer-1': {
+            type: 'Customer',
+            pType: 'Customer',
+            id: 'customer-1',
+          },
+        },
+      };
+      const consultingAgent = '5551234567'; // Phone number, not in participants as key
+
+      const result = Utils.getDestAgentIdForCBT(interaction, consultingAgent);
+      expect(result).toBe('agent-uuid-123');
+    });
+
+    it('should return empty string when consultingAgent is in participants (non-CBT)', () => {
+      const interaction: any = {
+        participants: {
+          'agent-123': {
+            type: 'Agent',
+            pType: 'Agent',
+            id: 'agent-123',
+          },
+        },
+      };
+      const consultingAgent = 'agent-123'; // Exists as key in participants
+
+      const result = Utils.getDestAgentIdForCBT(interaction, consultingAgent);
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when no matching dial number found', () => {
+      const interaction: any = {
+        participants: {
+          'agent-uuid-123': {
+            type: 'Agent',
+            pType: 'dn',
+            dn: '5559999999',
+            id: 'agent-uuid-123',
+          },
+        },
+      };
+      const consultingAgent = '5551234567'; // Different number
+
+      const result = Utils.getDestAgentIdForCBT(interaction, consultingAgent);
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when consultingAgent is empty', () => {
+      const interaction: any = {
+        participants: {
+          'agent-uuid-123': {
+            type: 'Agent',
+            pType: 'dn',
+            dn: '5551234567',
+          },
+        },
+      };
+
+      const result = Utils.getDestAgentIdForCBT(interaction, '');
+      expect(result).toBe('');
+    });
+
+    it('should match only when participant type is dial number and type is Agent', () => {
+      const interaction: any = {
+        participants: {
+          'participant-1': {
+            type: 'Customer',
+            pType: 'dn',
+            dn: '5551234567',
+          },
+          'participant-2': {
+            type: 'Agent',
+            pType: 'Agent',
+            dn: '5551234567',
+          },
+          'participant-3': {
+            type: 'Agent',
+            pType: 'dn',
+            dn: '5551234567',
+            id: 'correct-agent',
+          },
+        },
+      };
+
+      const result = Utils.getDestAgentIdForCBT(interaction, '5551234567');
+      expect(result).toBe('participant-3');
+    });
+
+    it('should handle case-insensitive participant type comparison', () => {
+      const interaction: any = {
+        participants: {
+          'agent-uuid': {
+            type: 'Agent',
+            pType: 'DN', // Uppercase (dial number)
+            dn: '5551234567',
+          },
+        },
+      };
+
+      const result = Utils.getDestAgentIdForCBT(interaction, '5551234567');
+      expect(result).toBe('agent-uuid');
+    });
+  });
+
+  describe('calculateDestAgentId', () => {
+    const currentAgentId = 'agent-123';
+
+    it('should return destAgentIdCBT when found', () => {
+      const interaction: any = {
+        media: {
+          consult: {
+            mType: 'consult',
+            participants: [currentAgentId, '5551234567'],
+          },
+        },
+        participants: {
+          'agent-uuid-456': {
+            type: 'Agent',
+            pType: 'dn',
+            dn: '5551234567',
+            id: 'agent-uuid-456',
+          },
+        },
+      };
+
+      const result = Utils.calculateDestAgentId(interaction, currentAgentId);
+      expect(result).toBe('agent-uuid-456');
+    });
+
+    it('should return participant id for regular agent when not CBT', () => {
+      const consultedAgentId = 'agent-456';
+      const interaction: any = {
+        media: {
+          consult: {
+            mType: 'consult',
+            participants: [currentAgentId, consultedAgentId],
+          },
+        },
+        participants: {
+          [consultedAgentId]: {
+            type: 'Agent',
+            id: consultedAgentId,
+          },
+        },
+      };
+
+      const result = Utils.calculateDestAgentId(interaction, currentAgentId);
+      expect(result).toBe(consultedAgentId);
+    });
+
+    it('should return epId for EpDn type participants', () => {
+      const consultedAgentId = 'epdn-456';
+      const interaction: any = {
+        media: {
+          consult: {
+            mType: 'consult',
+            participants: [currentAgentId, consultedAgentId],
+          },
+        },
+        participants: {
+          [consultedAgentId]: {
+            type: 'EpDn',
+            id: consultedAgentId,
+            epId: 'entry-point-id-789',
+          },
+        },
+      };
+
+      const result = Utils.calculateDestAgentId(interaction, currentAgentId);
+      expect(result).toBe('entry-point-id-789');
+    });
+
+    it('should return undefined when no consulting agent found', () => {
+      const interaction: any = {
+        media: {
+          mainCall: {
+            mType: 'mainCall',
+            participants: [currentAgentId],
+          },
+        },
+        participants: {},
+      };
+
+      const result = Utils.calculateDestAgentId(interaction, currentAgentId);
+      expect(result).toBe('');
     });
 
     it('should handle CBT scenario when phone number is not a direct participant key', () => {

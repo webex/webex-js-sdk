@@ -34,6 +34,7 @@ import {
   NatTypeUpdatedEventData,
   ResultEventData,
 } from './clusterReachability';
+import {isReachabilityEnabled, resolveReachabilityProtocols} from './util';
 import EventsScope from '../common/events/events-scope';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import Metrics from '../metrics';
@@ -195,7 +196,7 @@ export default class Reachability extends EventsScope {
    */
   public async gatherReachability(trigger: string): Promise<ReachabilityResults> {
     // @ts-ignore
-    if (!this.webex.config.meetings.enableReachabilityChecks) {
+    if (!isReachabilityEnabled(this.webex.config.meetings.enableReachabilityChecks)) {
       throw new Error('enableReachabilityChecks is disabled in config');
     }
 
@@ -516,7 +517,7 @@ export default class Reachability extends EventsScope {
    * Returns true only if ALL protocols (UDP, TCP and TLS) have been tested and none
    * of the media clusters where reachable with any of the protocols. This is done
    * irrespective of the config, so for example:
-   * if config.meetings.experimental.enableTlsReachability === false,
+   * if config.meetings.enableReachabilityChecks disables TLS,
    * it will return false, because TLS reachability won't be tested,
    * so we can't say for sure that media backend is unreachable over TLS.
    *
@@ -915,14 +916,21 @@ export default class Reachability extends EventsScope {
 
     this.startTime = performance.now();
 
+    const protocols = resolveReachabilityProtocols(
+      // @ts-ignore
+      this.webex.config.meetings.enableReachabilityChecks
+    );
+
+    const enabledProtocols = [
+      protocols.udp && 'UDP',
+      protocols.tcp && 'TCP',
+      protocols.tls && 'TLS',
+    ].filter(Boolean);
+
     LoggerProxy.logger.log(
-      `Reachability:index#performReachabilityChecks --> doing UDP${
-        // @ts-ignore
-        this.webex.config.meetings.experimental.enableTcpReachability ? ',TCP' : ''
-      }${
-        // @ts-ignore
-        this.webex.config.meetings.experimental.enableTlsReachability ? ',TLS' : ''
-      } reachability checks`
+      `Reachability:index#performReachabilityChecks --> doing ${enabledProtocols.join(
+        ','
+      )} reachability checks`
     );
 
     this.resetResultCounters();
@@ -932,18 +940,14 @@ export default class Reachability extends EventsScope {
       const cluster = clusterList[key];
 
       // Linus doesn't support TCP reachability checks on video mesh nodes
-      const includeTcpReachability =
-        // @ts-ignore
-        this.webex.config.meetings.experimental.enableTcpReachability && !cluster.isVideoMesh;
+      const includeTcpReachability = protocols.tcp && !cluster.isVideoMesh;
 
       if (!includeTcpReachability) {
         cluster.tcp = [];
       }
 
       // Linus doesn't support xTLS reachability checks on video mesh nodes
-      const includeTlsReachability =
-        // @ts-ignore
-        this.webex.config.meetings.experimental.enableTlsReachability && !cluster.isVideoMesh;
+      const includeTlsReachability = protocols.tls && !cluster.isVideoMesh;
 
       if (!includeTlsReachability) {
         cluster.xtls = [];

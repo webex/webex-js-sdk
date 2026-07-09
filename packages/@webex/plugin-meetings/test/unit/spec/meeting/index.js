@@ -886,6 +886,67 @@ describe('plugin-meetings', () => {
           assert.deepEqual(args, [[uuid1], locusUrls]);
         });
       });
+      describe('#transfer', () => {
+        it('should have #transfer', () => {
+          assert.exists(meeting.transfer);
+        });
+
+        it('should transfer host using the current locus when the target member is in the current session', async () => {
+          sinon.stub(meeting.members.membersCollection, 'get').withArgs(uuid2).returns({isInMeeting: true});
+          meeting.members.transferHostToMember = sinon.stub().resolves(test1);
+
+          await meeting.transfer(uuid2, false);
+
+          assert.calledOnceWithExactly(meeting.members.transferHostToMember, uuid2, false);
+        });
+
+        it('should transfer host using breakout locus when the target member is joined in a breakout session', async () => {
+          sinon.stub(meeting.members.membersCollection, 'get').withArgs(uuid2).returns({isInMeeting: false});
+          meeting.members.transferHostToMember = sinon.stub().resolves(test1);
+          meeting.breakouts.breakouts = {
+            models: [
+              {
+                members: {
+                  membersCollection: {
+                    get: sinon.stub().withArgs(uuid2).returns({isInMeeting: true}),
+                  },
+                },
+                breakoutRosterLocus: {url: 'https://example.com/breakout-locus'},
+              },
+            ],
+          };
+
+          await meeting.transfer(uuid2, false);
+
+          assert.calledOnceWithExactly(
+            meeting.members.transferHostToMember,
+            uuid2,
+            false,
+            'https://example.com/breakout-locus'
+          );
+        });
+
+        it('should not use breakout locus when the breakout member is not in meeting', async () => {
+          sinon.stub(meeting.members.membersCollection, 'get').withArgs(uuid2).returns({isInMeeting: false});
+          meeting.members.transferHostToMember = sinon.stub().resolves(test1);
+          meeting.breakouts.breakouts = {
+            models: [
+              {
+                members: {
+                  membersCollection: {
+                    get: sinon.stub().withArgs(uuid2).returns({isInMeeting: false}),
+                  },
+                },
+                breakoutRosterLocus: {url: 'https://example.com/breakout-locus'},
+              },
+            ],
+          };
+
+          await meeting.transfer(uuid2, false);
+
+          assert.calledOnceWithExactly(meeting.members.transferHostToMember, uuid2, false, undefined);
+        });
+      });
       describe('#getMembers', () => {
         it('should have #getMembers', () => {
           assert.exists(meeting.getMembers);
@@ -2791,6 +2852,8 @@ describe('plugin-meetings', () => {
                     regionCode: 'EU',
                   },
                   preferTranscoding: !enableMultistream,
+                  getCurrentSelfUrl: sinon.match.func,
+                  waitForSelfUrlChange: sinon.match.func,
                 },
                 {
                   parent: meeting.webex,

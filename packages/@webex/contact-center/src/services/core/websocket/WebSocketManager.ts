@@ -214,3 +214,5 @@ export class WebSocketManager extends EventEmitter {
     }
   }
 }
+
+export default WebSocketManager;
