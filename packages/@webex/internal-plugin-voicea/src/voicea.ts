@@ -1,7 +1,10 @@
+// @ts-ignore - events module types
 import {EventEmitter} from 'events';
 import uuid from 'uuid';
+// @ts-ignore - webex-core types
 import {config} from '@webex/webex-core';
 
+// @ts-ignore - internal-plugin-llm types
 import type LLMChannel from '@webex/internal-plugin-llm';
 import {
   EVENT_TRIGGERS,
@@ -27,7 +30,7 @@ import {millisToMinutesAndSeconds} from './utils';
  * @export
  * @class VoiceaChannel
  */
-export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
+export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChannel {
   private webex: any;
   private llmChannel: LLMChannel;
 
@@ -162,7 +165,7 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
         this.emit(EVENT_TRIGGERS.NEW_CAPTION, {
           isFinal: true,
           transcriptId: voiceaPayload.transcript_id,
-          transcripts: voiceaPayload.transcripts.map((transcript) => {
+          transcripts: voiceaPayload.transcripts?.map((transcript) => {
             transcript.timestamp = millisToMinutesAndSeconds(transcript.end_millis);
 
             return transcript;
@@ -172,12 +175,12 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
 
       case TRANSCRIPTION_TYPE.HIGHLIGHT_CREATED:
         this.emit(EVENT_TRIGGERS.HIGHLIGHT_CREATED, {
-          csis: voiceaPayload.highlight.csis,
-          highlightId: voiceaPayload.highlight.highlight_id,
-          text: voiceaPayload.highlight.transcript,
-          highlightLabel: voiceaPayload.highlight.highlight_label,
-          highlightSource: voiceaPayload.highlight.highlight_source,
-          timestamp: millisToMinutesAndSeconds(voiceaPayload.highlight.end_millis),
+          csis: voiceaPayload.highlight?.csis,
+          highlightId: voiceaPayload.highlight?.highlight_id,
+          text: voiceaPayload.highlight?.transcript,
+          highlightLabel: voiceaPayload.highlight?.highlight_label,
+          highlightSource: voiceaPayload.highlight?.highlight_source,
+          timestamp: millisToMinutesAndSeconds(voiceaPayload.highlight?.end_millis ?? 0),
         });
         break;
 
@@ -403,7 +406,7 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
    * @param {string} [languageCode] - Optional Parameter for spoken language code
    * @returns {Promise}
    */
-  private requestTurnOnCaptions = (languageCode?): undefined | Promise<void> => {
+  private requestTurnOnCaptions = (languageCode?: string): undefined | Promise<void> => {
     this.captionStatus = TURN_ON_CAPTION_STATUS.SENDING;
 
     const body = {
@@ -470,7 +473,7 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
    * @param {string} [spokenLanguage] - Optional Spoken language code
    * @returns {Promise}
    */
-  public turnOnCaptions = async (spokenLanguage?): Promise<void | undefined> => {
+  public turnOnCaptions = async (spokenLanguage?: string): Promise<void | undefined> => {
     if (this.captionStatus === TURN_ON_CAPTION_STATUS.SENDING) return undefined;
 
     if (!this.isLLMConnected()) {
