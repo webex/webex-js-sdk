@@ -2846,6 +2846,10 @@ describe('plugin-meetings', () => {
 
         let expectedMeeting;
 
+        // simulate that updateSelf has been called previously (as happens in production)
+        // so that parsedLocus.self reflects the joined state
+        locusInfo.parsedLocus.self = {state: 'JOINED'};
+
         /*
         When the event is triggered, it is required that the meeting has already
         been updated. This is why the meeting is being checked within the stubbed event emitter

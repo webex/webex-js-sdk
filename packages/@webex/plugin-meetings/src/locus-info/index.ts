@@ -278,7 +278,6 @@ export default class LocusInfo extends EventsScope {
   host: any;
   info: any;
   roles: any;
-  isJoined: boolean;
   mediaShares: any;
   url: any;
   links?: Links;
@@ -305,7 +304,6 @@ export default class LocusInfo extends EventsScope {
     this.compareAndUpdateFlags = {};
     this.meetingId = meetingId;
     this.updateMeeting = updateMeeting;
-    this.isJoined = false;
     this.locusParser = new LocusDeltaParser();
     this.hashTreeParsers = new Map();
     this.hashTreeObjectId2ParticipantId = new Map();
@@ -2502,7 +2500,7 @@ export default class LocusInfo extends EventsScope {
     const infoToParse = info || this.info;
     const infoChanged = info && !isEqual(this.info, info);
     const rolesChanged = !isEqual(this.roles, roles);
-    const isJoinedChanged = this.isJoined !== isJoined;
+    const isJoinedChanged = SelfUtils.isJoined(this.parsedLocus.self) !== isJoined;
 
     if (infoToParse && (infoChanged || rolesChanged || isJoinedChanged)) {
       const parsedInfo = InfoUtils.getInfos(this.parsedLocus.info, infoToParse, roles, isJoined);
@@ -2545,7 +2543,6 @@ export default class LocusInfo extends EventsScope {
       );
     }
     this.roles = roles;
-    this.isJoined = isJoined;
   }
 
   /**
