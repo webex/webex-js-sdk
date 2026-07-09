@@ -447,6 +447,77 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('drops and consumes a completed sync latency record when a segment exceeds the clock skew threshold', () => {
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.start',
+          value: 100,
+          options: {
+            meetingId: 'meeting-1',
+            dataSetName: 'main',
+            trackingId: 'sync-tracking-id',
+          },
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.request',
+          value: 110,
+          options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'sync-tracking-id'},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.response',
+          value: 600111,
+          options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'sync-tracking-id'},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.message.received',
+          value: 600112,
+          options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'sync-tracking-id'},
+        });
+
+        assert.isUndefined(cdl.completeLocusSyncLatency('meeting-1', 'sync-tracking-id'));
+        assert.isFalse(cdl.meetingLatencies.has('meeting-1'));
+      });
+
+      it('allows a completed sync latency record when the largest segment equals the clock skew threshold', () => {
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.start',
+          value: 100,
+          options: {
+            meetingId: 'meeting-1',
+            dataSetName: 'main',
+            trackingId: 'sync-tracking-id',
+          },
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.request',
+          value: 110,
+          options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'sync-tracking-id'},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.response',
+          value: 600100,
+          options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'sync-tracking-id'},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.message.received',
+          value: 600100,
+          options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'sync-tracking-id'},
+        });
+
+        assert.deepEqual(cdl.completeLocusSyncLatency('meeting-1', 'sync-tracking-id'), {
+          dataSet: 'main',
+          syncLatency: {
+            randomBackoffTime: 0,
+            hashtreePrepTime: 0,
+            hashtreeResponseTime: 0,
+            syncPrepTime: 10,
+            syncResponseTime: 599990,
+            syncMessageReceiveTime: 599990,
+            totalTime: 600000,
+          },
+        });
+        assert.isFalse(cdl.meetingLatencies.has('meeting-1'));
+      });
+
       it('matches exact record by tracking id on first pass', () => {
         const clock = sinon.useFakeTimers({now: 300});
 
