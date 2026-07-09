@@ -121,6 +121,80 @@
   </section>
   </div>
 
+  <!-- User Preferences Section -->
+  <div class="box">
+    <section class="section-box">
+      <h2 class="collapsible">
+        User Preferences API
+        <i class="arrow fa fa-angle-down" aria-hidden="true"></i>
+      </h2>
+
+      <div class="section-content">
+        <fieldset>
+          <legend>User Preferences</legend>
+          <p class="note">
+            NOTE: Test the User Preferences API for managing agent preferences (e.g., E911 notifications).
+          </p>
+          
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+            <div>
+              <label for="userPrefUserId">User ID (optional):</label>
+              <input id="userPrefUserId" type="text" placeholder="Leave empty for current user" style="width: 250px;">
+            </div>
+            <div>
+              <label for="userPrefPage">Page (default: 0):</label>
+              <input id="userPrefPage" type="number" placeholder="0" style="width: 80px;" min="0">
+            </div>
+            <div>
+              <label for="userPrefPageSize">Page Size (default: 100):</label>
+              <input id="userPrefPageSize" type="number" placeholder="100" style="width: 80px;" min="1">
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+            <button id="getUserPrefBtn" class="btn-code" onclick="getUserPreference()" disabled>Get Preferences</button>
+            <button id="createUserPrefBtn" class="btn-code" onclick="showCreatePreferenceDialog()" disabled>Create Preferences</button>
+            <button id="updateUserPrefBtn" class="btn-code" onclick="showUpdatePreferenceDialog()" disabled>Update Preferences</button>
+            <button id="deleteUserPrefBtn" class="btn-code" onclick="deleteUserPreference()" disabled>Delete Preferences</button>
+          </div>
+
+          <div id="userPrefCreateDialog" class="hidden" style="margin-bottom: 1rem; padding: 1rem; border: 1px solid #ccc; border-radius: 4px;">
+            <h4>Create User Preferences</h4>
+            <div style="margin-bottom: 0.5rem;">
+              <label for="createPrefUserId">User ID (required):</label>
+              <input id="createPrefUserId" type="text" placeholder="User ID" style="width: 200px;">
+            </div>
+            <div style="margin-bottom: 0.5rem;">
+              <label for="createPrefDesktopPref">Desktop Preference JSON (required):</label>
+              <textarea id="createPrefDesktopPref" rows="3" style="width: 100%;">{}</textarea>
+            </div>
+            <button class="btn-code" onclick="createUserPreference()">Submit</button>
+            <button class="btn-code" onclick="hideCreatePreferenceDialog()">Cancel</button>
+          </div>
+
+          <div id="userPrefUpdateDialog" class="hidden" style="margin-bottom: 1rem; padding: 1rem; border: 1px solid #ccc; border-radius: 4px;">
+            <h4>Update User Preferences</h4>
+            <div style="margin-bottom: 0.5rem;">
+              <label for="updatePrefUserId">User ID (required):</label>
+              <input id="updatePrefUserId" type="text" placeholder="User ID" style="width: 200px;">
+            </div>
+            <div style="margin-bottom: 0.5rem;">
+              <label for="updatePrefDesktopPref">Desktop Preference JSON (required):</label>
+              <textarea id="updatePrefDesktopPref" rows="3" style="width: 100%;">{}</textarea>
+            </div>
+            <button class="btn-code" onclick="updateUserPreference()">Submit</button>
+            <button class="btn-code" onclick="hideUpdatePreferenceDialog()">Cancel</button>
+          </div>
+
+          <div>
+            <label>Result:</label>
+            <pre id="userPrefResult" style="background: #f5f5f5; padding: 1rem; border-radius: 4px; max-height: 200px; overflow: auto;">No results yet</pre>
+          </div>
+        </fieldset>
+      </div>
+    </section>
+  </div>
+
   <div class="box">
     <section class="section-box">
       <h2 class="collapsible">
