@@ -8545,6 +8545,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.isMultistream = false;
 
+    // reset iceTransportPolicy, because it's only applied for multistream media connections
+    this.addMediaData.iceTransportPolicy = undefined;
+
     if (this.mediaProperties.webrtcMediaConnection) {
       // close peer connection, but don't reset mute state information, because we will want to use it on the retry
       this.closePeerConnections(false);

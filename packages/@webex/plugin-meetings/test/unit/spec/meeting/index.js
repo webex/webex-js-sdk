@@ -7348,14 +7348,14 @@ describe('plugin-meetings', () => {
                 sinon.stub(meeting.locusMediaRequest, 'downgradeFromMultistreamToTranscoded');
               });
 
-              const runCheck = async (turnServerInfo, forceTurnDiscovery) => {
+              const runCheck = async (turnServerInfo, forceTurnDiscovery, iceTransportPolicy) => {
                 // we're calling addMediaInternal() with mic stream,
                 // so that we also verify that audioMute, videoMute info is correctly sent to backend
                 const addMediaPromise = meeting.addMediaInternal(
                   () => '',
                   forceTurnDiscovery,
                   turnServerInfo,
-                  undefined,
+                  iceTransportPolicy,
                   {
                     localStreams: {microphone: fakeMicrophoneStream},
                   }
@@ -7408,6 +7408,10 @@ describe('plugin-meetings', () => {
 
                 // at this point the meeting should have been downgraded to transcoded
                 assert.equal(meeting.isMultistream, false);
+
+                // iceTransportPolicy must be reset to undefined on downgrade to transcoded,
+                // otherwise the transcoded retry could gather direct candidates while metrics report relay
+                assert.isUndefined(meeting.addMediaData.iceTransportPolicy);
 
                 // old stats analyzer stopped and new one created
                 assert.calledOnce(initialStatsAnalyzer.stopAnalyzer);
@@ -7498,6 +7502,11 @@ describe('plugin-meetings', () => {
                   },
                   true
                 );
+              });
+
+              it('resets iceTransportPolicy to undefined when falling back from multistream (relay) to transcoded', async () => {
+                // simulate a relay-only retry falling back to transcoded and verify iceTransportPolicy is reset
+                await runCheck(undefined, false, 'relay');
               });
             });
           }
