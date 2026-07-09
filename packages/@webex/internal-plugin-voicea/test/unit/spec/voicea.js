@@ -7,17 +7,50 @@ import Mercury from '@webex/internal-plugin-mercury';
 import LLMChannel from '@webex/internal-plugin-llm';
 
 import VoiceaService from '../../../src/index';
-import {
-  EVENT_TRIGGERS,
-  LLM_PRACTICE_SESSION,
-  TOGGLE_MANUAL_CAPTION_STATUS,
-} from '../../../src/constants';
+import {EVENT_TRIGGERS, TOGGLE_MANUAL_CAPTION_STATUS} from '../../../src/constants';
+
+/**
+ * Creates a mock LLM channel for testing
+ * @param {Object} [options] - Options for the mock channel
+ * @param {boolean} [options.isConnected=true] - Whether the channel is connected
+ * @param {string} [options.locusUrl] - The locus URL
+ * @returns {Object} Mock channel
+ */
+function createMockChannel(options = {}) {
+  const mockWebSocket = new MockWebSocket();
+  const {isConnected = true, locusUrl = 'locusUrl'} = options;
+
+  return {
+    isConnected: sinon.stub().returns(isConnected),
+    getSocket: sinon.stub().returns(mockWebSocket),
+    getBinding: sinon.stub().returns(undefined),
+    getDatachannelUrl: sinon.stub().returns('datachannelUrl'),
+    getLocusUrl: sinon.stub().returns(locusUrl),
+    isDataChannelTokenEnabled: sinon.stub().resolves(true),
+    on: sinon.stub(),
+    off: sinon.stub(),
+    socket: mockWebSocket,
+  };
+}
+
+/**
+ * Emits a relay event to voiceaService by calling the registered handler
+ * @param {Object} voiceaService - The voicea service instance
+ * @param {Object} mockChannel - The mock channel that has the handler registered
+ * @param {Object} eventData - The event data to emit
+ */
+function emitRelayEvent(voiceaService, mockChannel, eventData) {
+  const handler = mockChannel.on.getCalls().find(call => call.args[0] === 'event:relay.event')?.args[1];
+  if (handler) {
+    handler({sequenceNumber: 1, ...eventData});
+  }
+}
 
 describe('plugin-voicea', () => {
   const locusUrl = 'locusUrl';
 
   describe('voicea', () => {
-    let webex, voiceaService;
+    let webex, voiceaService, mockChannel;
 
     beforeEach(() => {
       webex = new MockWebex({
@@ -30,10 +63,10 @@ describe('plugin-voicea', () => {
 
       voiceaService = webex.internal.voicea;
       voiceaService.connect = sinon.stub().resolves(true);
-      voiceaService.webex.internal.llm.isConnected = sinon.stub().returns(true);
-      voiceaService.webex.internal.llm.getBinding = sinon.stub().returns(undefined);
-      voiceaService.webex.internal.llm.getSocket = sinon.stub().returns(undefined);
-      voiceaService.webex.internal.llm.getLocusUrl = sinon.stub().returns(locusUrl);
+
+      // Create and register a mock channel
+      mockChannel = createMockChannel({locusUrl});
+      voiceaService.registerChannel(mockChannel, 'default');
 
       voiceaService.request = sinon.stub().resolves({
         headers: {},
@@ -47,6 +80,10 @@ describe('plugin-voicea', () => {
       });
     });
 
+    afterEach(() => {
+      voiceaService.deregisterEvents();
+    });
+
     describe("#constructor", () => {
       it('should init status', () => {
         assert.equal(voiceaService.announceStatus, 'idle');
@@ -56,10 +93,7 @@ describe('plugin-voicea', () => {
 
     describe('#sendAnnouncement', () => {
       beforeEach(async () => {
-        const mockWebSocket = new MockWebSocket();
-
-        voiceaService.webex.internal.llm.socket = mockWebSocket;
-        voiceaService.announceStatus = "idle";
+        voiceaService.announceStatus = 'idle';
       });
 
       it("sends announcement if voicea hasn't joined", () => {
@@ -69,7 +103,7 @@ describe('plugin-voicea', () => {
         assert.equal(voiceaService.announceStatus, 'joining');
         assert.calledOnce(spy);
 
-        assert.calledOnceWithExactly(voiceaService.webex.internal.llm.socket.send, {
+        assert.calledOnceWithExactly(mockChannel.socket.send, {
           id: '1',
           type: 'publishRequest',
           recipients: [{route: undefined}],
@@ -85,28 +119,27 @@ describe('plugin-voicea', () => {
         });
       });
 
-      it('listens to events once', () => {
-        const spy = sinon.spy(webex.internal.llm, 'on');
+      it('listens to events once via registerChannel', () => {
+        // Channel events are registered when registerChannel is called
+        // The handler should be set up already from beforeEach
+        assert.calledWith(mockChannel.on, 'event:relay.event', sinon.match.func);
 
+        // Calling sendAnnouncement should not register more handlers
+        const callCount = mockChannel.on.callCount;
+        voiceaService.sendAnnouncement();
         voiceaService.sendAnnouncement();
 
-        voiceaService.sendAnnouncement();
-
-        assert.calledTwice(spy);
-        assert.calledWith(spy, 'event:relay.event', sinon.match.func);
-        assert.calledWith(spy, `event:relay.event:${LLM_PRACTICE_SESSION}`, sinon.match.func);
+        // No additional registrations
+        assert.equal(mockChannel.on.callCount, callCount);
       });
 
       it('includes captionServiceId in headers when set', () => {
-        const mockWebSocket = new MockWebSocket();
-
-        voiceaService.webex.internal.llm.socket = mockWebSocket;
         voiceaService.announceStatus = 'idle';
         voiceaService.captionServiceId = 'svc-123';
 
         voiceaService.sendAnnouncement();
 
-        assert.calledOnceWithExactly(voiceaService.webex.internal.llm.socket.send, {
+        assert.calledOnceWithExactly(mockChannel.socket.send, {
           id: '1',
           type: 'publishRequest',
           recipients: [{route: undefined}],
@@ -125,8 +158,6 @@ describe('plugin-voicea', () => {
 
     describe('#sendManualClosedCaption', () => {
       beforeEach(async () => {
-        const mockWebSocket = new MockWebSocket();
-        voiceaService.webex.internal.llm.socket = mockWebSocket;
         voiceaService.seqNum = 1;
       });
 
@@ -138,33 +169,30 @@ describe('plugin-voicea', () => {
 
         voiceaService.sendManualClosedCaption(text, timeStamp, csis, isFinal);
 
-        assert.calledOnceWithExactly(
-          voiceaService.webex.internal.llm.socket.send,
-          {
-            id: '1',
-            type: 'publishRequest',
-            recipients: [{route: undefined}],
-            headers: {},
-            data: {
-              eventType: 'relay.event',
-              relayType: 'client.manual_transcription',
-              transcriptPayload: {
-                type: 'manual_caption_interim_result',
-                id: sinon.match.string,
-                transcripts: [
-                  {
-                    text: 'Test interim caption',
-                    start_millis: 1234567890,
-                    end_millis: 1234567890,
-                    csis: [123456],
-                  },
-                ],
-                transcript_id: sinon.match.string,
-              },
+        assert.calledOnceWithExactly(mockChannel.socket.send, {
+          id: '1',
+          type: 'publishRequest',
+          recipients: [{route: undefined}],
+          headers: {},
+          data: {
+            eventType: 'relay.event',
+            relayType: 'client.manual_transcription',
+            transcriptPayload: {
+              type: 'manual_caption_interim_result',
+              id: sinon.match.string,
+              transcripts: [
+                {
+                  text: 'Test interim caption',
+                  start_millis: 1234567890,
+                  end_millis: 1234567890,
+                  csis: [123456],
+                },
+              ],
+              transcript_id: sinon.match.string,
             },
-            trackingId: sinon.match.string,
-          }
-        );
+          },
+          trackingId: sinon.match.string,
+        });
         // seqNum should increment
         assert.equal(voiceaService.seqNum, 2);
       });
@@ -177,39 +205,39 @@ describe('plugin-voicea', () => {
 
         voiceaService.sendManualClosedCaption(text, timeStamp, csis, isFinal);
 
-        assert.calledOnceWithExactly(
-          voiceaService.webex.internal.llm.socket.send,
-          {
-            id: '1',
-            type: 'publishRequest',
-            recipients: [{route: undefined}],
-            headers: {},
-            data: {
-              eventType: 'relay.event',
-              relayType: 'client.manual_transcription',
-              transcriptPayload: {
-                type: 'manual_caption_final_result',
-                id: sinon.match.string,
-                transcripts: [
-                  {
-                    text: 'Test final caption',
-                    start_millis: 9876543210,
-                    end_millis: 9876543210,
-                    csis: [654321],
-                  },
-                ],
-                transcript_id: sinon.match.string,
-              },
+        assert.calledOnceWithExactly(mockChannel.socket.send, {
+          id: '1',
+          type: 'publishRequest',
+          recipients: [{route: undefined}],
+          headers: {},
+          data: {
+            eventType: 'relay.event',
+            relayType: 'client.manual_transcription',
+            transcriptPayload: {
+              type: 'manual_caption_final_result',
+              id: sinon.match.string,
+              transcripts: [
+                {
+                  text: 'Test final caption',
+                  start_millis: 9876543210,
+                  end_millis: 9876543210,
+                  csis: [654321],
+                },
+              ],
+              transcript_id: sinon.match.string,
             },
-            trackingId: sinon.match.string,
-          }
-        );
+          },
+          trackingId: sinon.match.string,
+        });
         // seqNum should increment
         assert.equal(voiceaService.seqNum, 2);
       });
 
       it('does not send if not connected', () => {
-        voiceaService.webex.internal.llm.isConnected.returns(false);
+        // Replace the channel with a disconnected one
+        const disconnectedChannel = createMockChannel({isConnected: false});
+        voiceaService.unregisterChannel('default');
+        voiceaService.registerChannel(disconnectedChannel, 'default');
 
         const text = 'Should not send';
         const timeStamp = 111;
@@ -218,24 +246,30 @@ describe('plugin-voicea', () => {
 
         voiceaService.sendManualClosedCaption(text, timeStamp, csis, isFinal);
 
-        assert.notCalled(voiceaService.webex.internal.llm.socket.send);
+        assert.notCalled(disconnectedChannel.socket.send);
       });
     });
     describe('#deregisterEvents', () => {
       beforeEach(async () => {
-        const mockWebSocket = new MockWebSocket();
-        voiceaService.webex.internal.llm.socket = mockWebSocket;
         voiceaService.keepTranscriptionSubscribed = true;
       });
 
       it('deregisters voicea service and resets caption state', async () => {
-        voiceaService.listenToEvents();
+        // Simulate receiving an event through the registered handler
+        const handler = mockChannel.on
+          .getCalls()
+          .find((call) => call.args[0] === 'event:relay.event')?.args[1];
+
         await voiceaService.toggleTranscribing(true);
 
-        voiceaService.webex.internal.llm._emit('event:relay.event', {
-          headers: {from: 'ws'},
-          data: {relayType: 'voicea.annc', voiceaPayload: {}},
-        });
+        // Call the handler directly to simulate receiving an event
+        if (handler) {
+          handler({
+            sequenceNumber: 1,
+            headers: {from: 'ws'},
+            data: {relayType: 'voicea.annc', voiceaPayload: {}},
+          });
+        }
 
         assert.equal(voiceaService.areCaptionsEnabled, true);
         assert.equal(voiceaService.captionServiceId, 'ws');
@@ -293,16 +327,10 @@ describe('plugin-voicea', () => {
     });
 
     describe('#requestLanguage', () => {
-      beforeEach(async () => {
-        const mockWebSocket = new MockWebSocket();
-
-        voiceaService.webex.internal.llm.socket = mockWebSocket;
-      });
-
       it('requests caption language', () => {
         voiceaService.requestLanguage('en');
 
-        assert.calledOnceWithExactly(voiceaService.webex.internal.llm.socket.send, {
+        assert.calledOnceWithExactly(mockChannel.socket.send, {
           id: '1',
           type: 'publishRequest',
           recipients: [{route: undefined}],
@@ -324,7 +352,7 @@ describe('plugin-voicea', () => {
 
         voiceaService.requestLanguage('fr');
 
-        assert.calledOnceWithExactly(voiceaService.webex.internal.llm.socket.send, {
+        assert.calledOnceWithExactly(mockChannel.socket.send, {
           id: '1',
           type: 'publishRequest',
           recipients: [{route: undefined}],
@@ -469,24 +497,27 @@ describe('plugin-voicea', () => {
     });
 
     describe('#isLLMConnected', () => {
-      it('returns true when the default llm connection is connected', () => {
-        voiceaService.webex.internal.llm.isConnected.callsFake((channel) =>
-          channel === LLM_PRACTICE_SESSION ? false : true
-        );
+      it('returns true when the default channel is connected', () => {
+        // mockChannel is already registered and connected
+        assert.equal(voiceaService.isLLMConnected(), true);
+      });
+
+      it('returns true when only the practice session channel is connected', () => {
+        // Replace default with disconnected, add connected practice session
+        const disconnectedDefault = createMockChannel({isConnected: false});
+        const connectedPractice = createMockChannel({isConnected: true});
+
+        voiceaService.unregisterChannel('default');
+        voiceaService.registerChannel(disconnectedDefault, 'default');
+        voiceaService.registerChannel(connectedPractice, 'practice-session');
 
         assert.equal(voiceaService.isLLMConnected(), true);
       });
 
-      it('returns true when only the practice session llm connection is connected', () => {
-        voiceaService.webex.internal.llm.isConnected.callsFake((channel) =>
-          channel === LLM_PRACTICE_SESSION
-        );
-
-        assert.equal(voiceaService.isLLMConnected(), true);
-      });
-
-      it('returns false when neither llm connection is connected', () => {
-        voiceaService.webex.internal.llm.isConnected.returns(false);
+      it('returns false when neither channel is connected', () => {
+        const disconnectedChannel = createMockChannel({isConnected: false});
+        voiceaService.unregisterChannel('default');
+        voiceaService.registerChannel(disconnectedChannel, 'default');
 
         assert.equal(voiceaService.isLLMConnected(), false);
       });
@@ -532,15 +563,21 @@ describe('plugin-voicea', () => {
       });
 
       it('announce to llm data channel before llm connected', ()=> {
-        voiceaService.webex.internal.llm.isConnected.returns(false);
+        const disconnectedChannel = createMockChannel({isConnected: false});
+        voiceaService.unregisterChannel('default');
+        voiceaService.registerChannel(disconnectedChannel, 'default');
+
         assert.throws(() =>  voiceaService.announce(), "voicea can not announce before llm connected");
         assert.notCalled(sendAnnouncement);
       });
 
       it('announce to llm data channel when only practice session is connected', ()=> {
-        voiceaService.webex.internal.llm.isConnected.callsFake((channel) =>
-          channel === LLM_PRACTICE_SESSION
-        );
+        const disconnectedDefault = createMockChannel({isConnected: false});
+        const connectedPractice = createMockChannel({isConnected: true});
+
+        voiceaService.unregisterChannel('default');
+        voiceaService.registerChannel(disconnectedDefault, 'default');
+        voiceaService.registerChannel(connectedPractice, 'practice-session');
 
         voiceaService.announce();
 
@@ -592,7 +629,9 @@ describe('plugin-voicea', () => {
 
       it('throws before turning on captions when llm is not connected', async () => {
         voiceaService.captionStatus = 'idle';
-        voiceaService.webex.internal.llm.isConnected.returns(false);
+        const disconnectedChannel = createMockChannel({isConnected: false});
+        voiceaService.unregisterChannel('default');
+        voiceaService.registerChannel(disconnectedChannel, 'default');
 
         await assert.isRejected(
           voiceaService.turnOnCaptions(),
@@ -602,9 +641,12 @@ describe('plugin-voicea', () => {
       });
 
       it('turns on captions when only the practice session llm connection is connected', () => {
-        voiceaService.webex.internal.llm.isConnected.callsFake((channel) =>
-          channel === LLM_PRACTICE_SESSION
-        );
+        const disconnectedDefault = createMockChannel({isConnected: false});
+        const connectedPractice = createMockChannel({isConnected: true});
+
+        voiceaService.unregisterChannel('default');
+        voiceaService.registerChannel(disconnectedDefault, 'default');
+        voiceaService.registerChannel(connectedPractice, 'practice-session');
 
         voiceaService.turnOnCaptions();
 
