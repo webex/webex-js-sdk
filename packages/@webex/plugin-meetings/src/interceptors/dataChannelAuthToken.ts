@@ -3,11 +3,12 @@
  */
 
 import {Interceptor} from '@webex/http-core';
+
+// @ts-ignore - internal-plugin-llm types
 import LLMChannel from '@webex/internal-plugin-llm';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY, RETRY_INTERVAL, RETRY_KEY} from './constant';
 import {isJwtTokenExpired} from './utils';
-import {LLM_DEFAULT_SESSION, LLM_PRACTICE_SESSION, LOCUS_URL} from '../constants';
 
 const retryCountMap = new Map();
 interface HttpLikeError extends Error {
@@ -40,93 +41,64 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
         return this.internal.llm.isDataChannelTokenEnabled();
       },
 
-      // Route refresh by request URL in two steps:
-      // 1) Match active LLM sessions (supports non-default/multiple sessions)
-      // 2) If no session matches, resolve locusUrl and refresh via owning meeting
-      // If neither route matches, fall back to the default-session refresh.
+      // Route refresh by request URL:
+      // 1) Find the LLM channel that matches the request URL
+      // 2) If found, use its refresh handler
+      // 3) If no channel matches, fall back to finding the meeting by locusUrl
       refreshDataChannelToken: async (requestUrl?: string) => {
-        let sessionId;
-        let meeting;
-
-        if (typeof requestUrl === 'string') {
-          // @ts-ignore
-          sessionId = this.internal.llm.getSessionIdByDatachannelUrl?.(requestUrl);
-
-          if (!sessionId) {
-            // @ts-ignore
-            const locusUrl = this.internal.llm.getLocusUrlByDatachannelUrl?.(requestUrl);
-
-            if (locusUrl) {
-              // @ts-ignore
-              meeting = this.meetings?.getMeetingByType?.(LOCUS_URL, locusUrl);
-            }
-          }
-
-          if (!meeting) {
-            // Fallback: registerAndConnect() pre-populates datachannelUrl in
-            // connections before calling register(), so getSessionIdByDatachannelUrl
-            // above should normally resolve. This scan covers any residual gap
-            // where connections are not yet populated (e.g. if setRefreshHandler
-            // is called on a session that has no connection entry at all).
-            // @ts-ignore
-            const allMeetings = this.meetings?.getAllMeetings?.() || {};
-
-            meeting = Object.values(allMeetings).find((activeMeeting: any) => {
-              const info = activeMeeting?.locusInfo?.info || {};
-
-              return (
-                (info.practiceSessionDatachannelUrl &&
-                  LLMChannel.matchesDatachannelRequestUrl(
-                    requestUrl,
-                    info.practiceSessionDatachannelUrl
-                  )) ||
-                (info.datachannelUrl &&
-                  LLMChannel.matchesDatachannelRequestUrl(requestUrl, info.datachannelUrl))
-              );
-            });
-
-            if (!sessionId) {
-              // @ts-ignore
-              const info = meeting?.locusInfo?.info || {};
-
-              if (
-                info.practiceSessionDatachannelUrl &&
-                LLMChannel.matchesDatachannelRequestUrl(
-                  requestUrl,
-                  info.practiceSessionDatachannelUrl
-                )
-              ) {
-                sessionId = LLM_PRACTICE_SESSION;
-              } else if (
-                info.datachannelUrl &&
-                LLMChannel.matchesDatachannelRequestUrl(requestUrl, info.datachannelUrl)
-              ) {
-                sessionId = LLM_DEFAULT_SESSION;
-              }
-            }
-          }
-        }
-
-        let result;
-        if (meeting) {
-          result = await meeting.refreshDataChannelToken();
-        } else {
-          // @ts-ignore
-          result = await this.internal.llm.refreshDataChannelToken(sessionId);
-        }
-
-        if (!result?.body) {
-          throw new Error('DataChannel token refresh returned no payload');
-        }
-        const {datachannelToken, dataChannelTokenType} = result.body;
-        const tokenStoreKey = dataChannelTokenType || sessionId;
-        const ownerMeetingId =
-          // @ts-ignore
-          meeting?.id || this.internal.llm.getOwnerMeetingId?.(tokenStoreKey);
         // @ts-ignore
-        this.internal.llm.setDatachannelToken(datachannelToken, ownerMeetingId, tokenStoreKey);
+        const channel = this.internal.llm.getConnectionByDatachannelUrl?.(requestUrl);
 
-        return datachannelToken;
+        if (channel) {
+          // Channel found - use its refresh handler
+          const result = await channel.refreshDataChannelToken();
+
+          if (!result?.body) {
+            throw new Error('DataChannel token refresh returned no payload');
+          }
+
+          const {datachannelToken} = result.body;
+          channel.setDatachannelToken(datachannelToken);
+
+          return datachannelToken;
+        }
+
+        // No channel found - fallback to finding meeting by matching datachannel URLs
+        // @ts-ignore
+        const allMeetings = this.meetings?.getAllMeetings?.() || {};
+
+        const meeting = Object.values(allMeetings).find((activeMeeting: any) => {
+          const info = activeMeeting?.locusInfo?.info || {};
+
+          return (
+            (info.practiceSessionDatachannelUrl &&
+              LLMChannel.matchesDatachannelRequestUrl(
+                requestUrl,
+                info.practiceSessionDatachannelUrl
+              )) ||
+            (info.datachannelUrl &&
+              LLMChannel.matchesDatachannelRequestUrl(requestUrl, info.datachannelUrl))
+          );
+        });
+
+        if (meeting) {
+          const result = await (meeting as any).refreshDataChannelToken();
+
+          if (!result?.body) {
+            throw new Error('DataChannel token refresh returned no payload');
+          }
+
+          const {datachannelToken} = result.body;
+
+          // Store token on the meeting's LLM channel if available
+          if ((meeting as any).llmChannel) {
+            (meeting as any).llmChannel.setDatachannelToken(datachannelToken);
+          }
+
+          return datachannelToken;
+        }
+
+        throw new Error('No LLM channel or meeting found for request URL');
       },
     });
   }
