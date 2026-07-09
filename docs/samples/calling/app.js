@@ -1249,7 +1249,10 @@ async function fetchRecordingsBySession() {
 /**
  * Function to use Voice Mail API's.
  */
-async function createVoiceMail() {
+async function createVoiceMail(
+  offset = voicemailOffset,
+  offsetLimit = voicemailOffsetLimit
+) {
   await voicemail.init();
   const backendConnector = calling.webex.internal.device.callingBehavior;
 
@@ -1258,8 +1261,8 @@ async function createVoiceMail() {
 
     try {
       const getVoicemailListResponse = await voicemail.getVoicemailList(
-        voicemailOffset,
-        voicemailOffsetLimit,
+        offset,
+        offsetLimit,
         voicemailSort,
         true
       );
@@ -1364,8 +1367,8 @@ async function createVoiceMail() {
 
     try {
       const getVoicemailListResponse = await voicemail.getVoicemailList(
-        voicemailOffset,
-        voicemailOffsetLimit,
+        offset,
+        offsetLimit,
         voicemailSort,
         true
       );
@@ -1373,7 +1376,7 @@ async function createVoiceMail() {
       const voicemailList = getVoicemailListResponse.data.voicemailList;
 
       console.log('Voice mail list response', getVoicemailListResponse.data.voicemailList);
-      const vmLength = voicemailList.voicemailList.length;
+      const vmLength = voicemailList.length;
 
       const voicemailTable = document.getElementById('voicemailTable');
 
@@ -1410,7 +1413,7 @@ async function createVoiceMail() {
         const tbody = document.createElement('tbody');
 
         for (let index = 0; index < vmLength; index += 1) {
-          const vm = voiceMailList[index];
+          const vm = voicemailList[index];
           const tr = document.createElement('tr');
           let td = document.createElement('td');
 
@@ -1446,7 +1449,7 @@ async function createVoiceMail() {
           table.appendChild(tbody);
         }
         for (let index = 0; index < vmLength; index += 1) {
-          const vm = voiceMailList[index];
+          const vm = voicemailList[index];
 
           if (vm.read === 'true') {
             this.markAsRead(index);
@@ -1639,17 +1642,16 @@ async function resolveContactInfo() {
   return null;
 }
 
-function fetchVoicemailList() {
+async function fetchVoicemailList() {
   const offset = document.getElementById('offset').value;
   const offsetLength = document.getElementById('offsetLength').value;
 
   // eslint-disable-next-line prefer-template
   console.log('Fetching voicemails with offset and offsetLength ', offset, offsetLength);
 
-  const response = voicemail.getVoicemailList(
+  const response = await createVoiceMail(
     parseInt(offset, 10),
-    parseInt(offsetLength, 10),
-    voicemailSort
+    parseInt(offsetLength, 10)
   );
 
   console.log(response);
