@@ -1251,7 +1251,8 @@ async function fetchRecordingsBySession() {
  */
 async function createVoiceMail(
   offset = voicemailOffset,
-  offsetLimit = voicemailOffsetLimit
+  offsetLimit = voicemailOffsetLimit,
+  runDemoActions = true
 ) {
   await voicemail.init();
   const backendConnector = calling.webex.internal.device.callingBehavior;
@@ -1463,7 +1464,7 @@ async function createVoiceMail(
 
       voicemailElm.disabled = false;
 
-      if (getVoicemailListResponse?.data.voicemailList.length) {
+      if (runDemoActions && getVoicemailListResponse?.data.voicemailList.length) {
         const messageId = getVoicemailListResponse.data.voicemailList[0].messageId.$;
 
         const getVoicemailContentResponse = await voicemail.getVoicemailContent(messageId);
@@ -1651,7 +1652,8 @@ async function fetchVoicemailList() {
 
   const response = await createVoiceMail(
     parseInt(offset, 10),
-    parseInt(offsetLength, 10)
+    parseInt(offsetLength, 10),
+    false
   );
 
   console.log(response);
