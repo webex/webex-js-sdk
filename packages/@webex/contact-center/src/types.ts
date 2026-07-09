@@ -6,7 +6,12 @@ import {
 } from '@webex/internal-plugin-metrics/src/metrics.types';
 import * as Agent from './services/agent/types';
 import * as Contact from './services/task/types';
-import {AIFeatureFlags, Profile} from './services/config/types';
+import {
+  AIFeatureFlags,
+  Profile,
+  CreateUserPreferenceRequest,
+  UpdateUserPreferenceRequest,
+} from './services/config/types';
 import {PaginatedResponse, BaseSearchParams} from './utils/PageCache';
 
 /**
@@ -544,7 +549,9 @@ export type RequestBody =
   | Contact.cancelCtq
   | Contact.WrapupPayLoad
   | Contact.DialerPayload
-  | Contact.PreviewContactPayload;
+  | Contact.PreviewContactPayload
+  | CreateUserPreferenceRequest
+  | UpdateUserPreferenceRequest;
 
 /**
  * Represents the options to fetch buddy agents for the logged in agent.
