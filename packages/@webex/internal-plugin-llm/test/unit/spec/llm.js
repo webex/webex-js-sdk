@@ -315,14 +315,12 @@ describe('plugin-llm', () => {
       it('calls super.disconnect and clears all connection state', async () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
         llmChannel.setDatachannelToken('token123');
-        llmChannel.ownerMeetingId = 'meeting-1';
 
         assert.equal(llmChannel.isConnected(), true);
         assert.equal(llmChannel.getLocusUrl(), locusUrl);
         assert.equal(llmChannel.getDatachannelUrl(), datachannelUrl);
         assert.equal(llmChannel.getBinding(), 'binding');
         assert.equal(llmChannel.getDatachannelToken(), 'token123');
-        assert.equal(llmChannel.ownerMeetingId, 'meeting-1');
 
         await llmChannel.disconnect({code: 1000, reason: 'test'});
 
@@ -330,7 +328,6 @@ describe('plugin-llm', () => {
         assert.equal(llmChannel.getDatachannelUrl(), undefined);
         assert.equal(llmChannel.getBinding(), undefined);
         assert.equal(llmChannel.getDatachannelToken(), undefined);
-        assert.equal(llmChannel.ownerMeetingId, undefined);
       });
 
       it('works without options', async () => {
@@ -440,37 +437,6 @@ describe('plugin-llm', () => {
 
         llmChannel.clearDatachannelToken();
         assert.equal(llmChannel.getDatachannelToken(), undefined);
-      });
-    });
-
-    describe('#ownerMeetingId', () => {
-      it('stores and returns the owner meeting id', () => {
-        llmChannel.ownerMeetingId = 'meeting-1';
-
-        assert.equal(llmChannel.ownerMeetingId, 'meeting-1');
-      });
-
-      it('returns undefined when no owner has been set', () => {
-        assert.equal(llmChannel.ownerMeetingId, undefined);
-      });
-
-      it('allows clearing ownership by setting undefined', () => {
-        llmChannel.ownerMeetingId = 'meeting-1';
-        assert.equal(llmChannel.ownerMeetingId, 'meeting-1');
-
-        llmChannel.ownerMeetingId = undefined;
-
-        assert.equal(llmChannel.ownerMeetingId, undefined);
-      });
-
-      it('is cleared by disconnect', async () => {
-        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
-        llmChannel.ownerMeetingId = 'meeting-1';
-        assert.equal(llmChannel.ownerMeetingId, 'meeting-1');
-
-        await llmChannel.disconnect({code: 1000, reason: 'test'});
-
-        assert.equal(llmChannel.ownerMeetingId, undefined);
       });
     });
 
