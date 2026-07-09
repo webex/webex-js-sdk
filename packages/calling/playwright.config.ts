@@ -7,6 +7,7 @@ import {USER_SETS} from './playwright/test-data';
 dotenv.config({path: path.resolve(__dirname, '../../.env')});
 
 const BASE_URL = process.env.PW_BASE_URL || 'https://localhost:8000';
+const dummyAudioPath = path.resolve(__dirname, '../../cc_playwright/wav/dummyAudio.wav');
 
 // Browser selection via PW_BROWSER env var: 'chrome' (default), 'firefox', 'edge', 'safari'
 const PW_BROWSER = process.env.PW_BROWSER || 'chrome';
@@ -19,6 +20,7 @@ const chromiumArgs = [
   '--allow-file-access-from-files', // Allow file:// protocol access
   '--use-fake-ui-for-media-stream', // Auto-grant camera/mic permissions without prompt
   '--use-fake-device-for-media-stream', // Use synthetic audio/video instead of real hardware
+  `--use-file-for-fake-audio-capture=${dummyAudioPath}`, // Feed deterministic audio into WebRTC calls
   '--disable-extensions', // Prevent extensions from interfering with tests
   '--disable-plugins', // Prevent plugins from interfering with tests
   '--ignore-certificate-errors', // Accept self-signed certs from local dev server
@@ -142,18 +144,33 @@ export default defineConfig({
       testMatch: USER_SETS.SET_CALL_HISTORY.testSuite,
       use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
     },
+    // Voicemail message tests use USER_1+USER_2, so run after call history.
+    {
+      name: 'SET_VOICEMAIL - PROD',
+      dependencies: ['SET_CALL_HISTORY - PROD'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_VOICEMAIL.testSuite,
+      use: browserOptions[PW_BROWSER],
+    },
+    {
+      name: 'SET_VOICEMAIL - INT',
+      dependencies: ['SET_CALL_HISTORY - INT'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_VOICEMAIL.testSuite,
+      use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
+    },
 
-    // 3-user transfer tests — waits for call history because both suites use USER_1/USER_2.
+    // 3-user transfer tests — waits for call history and voicemail because they use USER_1/USER_2.
     {
       name: 'SET_CALL_TRANSFER_CONSULT - PROD',
-      dependencies: ['SET_CALL - PROD', 'SET_CALL_HISTORY - PROD'],
+      dependencies: ['SET_CALL - PROD', 'SET_CALL_HISTORY - PROD', 'SET_VOICEMAIL - PROD'],
       testDir: './playwright/suites',
       testMatch: USER_SETS.SET_CALL_TRANSFER_CONSULT.testSuite,
       use: browserOptions[PW_BROWSER],
     },
     {
       name: 'SET_CALL_TRANSFER_CONSULT - INT',
-      dependencies: ['SET_CALL - INT', 'SET_CALL_HISTORY - INT'],
+      dependencies: ['SET_CALL - INT', 'SET_CALL_HISTORY - INT', 'SET_VOICEMAIL - INT'],
       testDir: './playwright/suites',
       testMatch: USER_SETS.SET_CALL_TRANSFER_CONSULT.testSuite,
       use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
