@@ -6679,6 +6679,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.llmChannel?.off('event:relay.event', this.processRelayEvent);
     this.llmChannel?.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
     this.llmChannel?.off('online', this.handleLLMOnline);
+    this.breakouts?.unregisterLLMChannel();
     this.clearLLMHealthCheckTimer();
   }
 
@@ -6884,6 +6885,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
         // Register annotation channel
         this.annotation.registerChannel(this.llmChannel, 'default');
+
+        // Register breakouts channel
+        this.breakouts.registerLLMChannel(this.llmChannel);
 
         LoggerProxy.logger.info(
           'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
