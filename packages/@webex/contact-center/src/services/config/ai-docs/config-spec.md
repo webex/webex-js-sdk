@@ -9,10 +9,10 @@
 | Module id | `config` |
 | Source path(s) | `src/services/config` |
 | Doc kind | Module spec |
-| Coverage score | 100% assessed 2026-07-07; 15/15 mandatory fields present; no applicability gaps |
+| Coverage score | 100% assessed 2026-07-09; 15/15 mandatory fields present; test evidence and gaps mapped by requirement |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved residual warning and coverage completion / 2026-07-07 |
-| Validation status | pass; validator claude-code; assessed 2026-07-07; 0 Blocking, 0 warnings; clean independent revalidation complete |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved conformance and fidelity remediation / 2026-07-09 |
+| Validation status | not-run for current revision; independent validator claude-code required after 2026-07-09 remediation; prior 2026-07-07 PASS is superseded by these edits |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -78,7 +78,7 @@ services/config/
 ├── Util.ts           # parseAgentConfigs helper
 └── ai-docs/
     ├── AGENTS.md     # Usage documentation
-    └── ARCHITECTURE.md # This file
+    └── ARCHITECTURE.md # Preserved legacy migration source (non-canonical)
 ```
 
 ## Key Files (source of truth)
@@ -111,11 +111,11 @@ The service has no `TeamList.channelMap` contract. Exact package exports are ind
 ## Requirements
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| CONFIG-R-001 | Fetch user config first, then aggregate ten dependent promises including AI feature flags, auxiliary codes, profile/site/team/dial-plan, organization, tenant, and URL data. | Dependent IDs and all-or-nothing consistency require staged orchestration. | `src/services/config/index.ts` | `test/unit/spec/services/config/index.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| CONFIG-R-002 | Include `getAIFeatureFlags` response in `parseAgentConfigs` so `Profile.aiFeature` reflects `/v2/ai-feature`. | ApiAIAssistant behavior is gated by the remote organization feature contract. | `src/services/config/index.ts` | `test/unit/spec/services/config/index.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| CONFIG-R-003 | Paginate teams and auxiliary codes until completion and include `desktopProfileFilter=true` for auxiliary-code requests. | A partial or unfiltered set yields invalid profile/team/auxiliary choices. | `src/services/config/constants.ts` | `test/unit/spec/services/config/index.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| CONFIG-R-004 | Expose current response/field names: `MultimediaProfileResponse`, `OrgSettings.maskSensitiveData`, and real TeamList fields only. | Type-name drift causes invalid consumer code and incorrect privacy behavior. | `src/services/config/types.ts` | `test/unit/spec/services/config/index.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| CONFIG-R-005 | Reject the entire profile aggregation when any required dependent request fails. | Consumers must never receive an internally inconsistent partial Profile. | `src/services/config/index.ts` | `test/unit/spec/services/config/index.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
+| CONFIG-R-001 | Fetch user config first, then aggregate ten dependent promises including AI feature flags, auxiliary codes, profile/site/team/dial-plan, organization, tenant, and URL data. | Dependent IDs and all-or-nothing consistency require staged orchestration. | `src/services/config/index.ts` | `test/unit/spec/services/config/index.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| CONFIG-R-002 | Include `getAIFeatureFlags` response in `parseAgentConfigs` so `Profile.aiFeature` reflects `/v2/ai-feature`. | ApiAIAssistant behavior is gated by the remote organization feature contract. | `src/services/config/index.ts` | `test/unit/spec/services/config/index.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| CONFIG-R-003 | Paginate teams and auxiliary codes until completion and include `desktopProfileFilter=true` for auxiliary-code requests. | A partial or unfiltered set yields invalid profile/team/auxiliary choices. | `src/services/config/constants.ts` | `test/unit/spec/services/config/index.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| CONFIG-R-004 | Expose current response/field names: `MultimediaProfileResponse`, `OrgSettings.maskSensitiveData`, and real TeamList fields only. | Type-name drift causes invalid consumer code and incorrect privacy behavior. | `src/services/config/types.ts` | `test/unit/spec/services/config/index.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| CONFIG-R-005 | Reject the entire profile aggregation when any required dependent request fails. | Consumers must never receive an internally inconsistent partial Profile. | `src/services/config/index.ts` | `test/unit/spec/services/config/index.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 
 ## Design Overview
 Config separates its stable consumption boundary from collaborators so ownership and failure behavior stay explicit. Profile creation is all-or-nothing across dependent API calls so consumers never receive internally inconsistent partial configuration.
@@ -147,49 +147,16 @@ The AgentProfile is defined as the [`Profile`](../types.ts) type. This is not an
 | Field | Type | Description |
 |---|---|---|
 | `agentId` | string | Unique agent identifier |
-
-| Field | Type | Description |
-|---|---|---|
 | `agentName` | string | Display name |
-
-| Field | Type | Description |
-|---|---|---|
 | `agentMailId` | string | Email address |
-
-| Field | Type | Description |
-|---|---|---|
 | `teams` | [`TeamList[]`](../types.ts) | Assigned teams (runtime data from `getAllTeams()` — `Profile` type declares `Team[]` but actual objects are `TeamList` with `id`, `name`, `teamType`, `siteId`, etc.) |
-
-| Field | Type | Description |
-|---|---|---|
 | `defaultDn` | string | Default dial number |
-
-| Field | Type | Description |
-|---|---|---|
 | `idleCodes` | [`Entity[]`](../types.ts) | Available idle codes |
-
-| Field | Type | Description |
-|---|---|---|
 | `wrapupCodes` | [`Entity[]`](../types.ts) | Available wrapup codes |
-
-| Field | Type | Description |
-|---|---|---|
 | `webRtcEnabled` | boolean | WebRTC calling enabled |
-
-| Field | Type | Description |
-|---|---|---|
 | `loginVoiceOptions` | [`LoginOption[]`](../types.ts) | Available login types |
-
-| Field | Type | Description |
-|---|---|---|
 | `dialPlan` | [`DialPlan`](../types.ts) | Number transformation rules |
-
-| Field | Type | Description |
-|---|---|---|
 | `isOutboundEnabledForAgent` | boolean | Outbound calling allowed |
-
-| Field | Type | Description |
-|---|---|---|
 | `outDialEp` | string | Outbound entry point ID |
 
 The following diagram shows how `getAgentConfig` orchestrates multiple API calls and combines their results into the AgentProfile via `parseAgentConfigs()`:
@@ -223,73 +190,22 @@ Types used by the config service, all defined in [`types.ts`](../types.ts):
 | Type | Description |
 |---|---|
 | `Profile` | Final aggregated agent config returned by `getAgentConfig()` |
-
-| Type | Description |
-|---|---|
 | `AgentResponse` | Raw response from `getUserUsingCI()` — agent metadata, teamIds, siteId, agentProfileId |
-
-| Type | Description |
-|---|---|
 | `DesktopProfileResponse` | Desktop profile settings — layout, dial plan, login options |
-
-| Type | Description |
-|---|---|
 | `TeamList` | Team record from API — `id`, `name`, `teamType`, `siteId`, `multiMediaProfileId` |
-
-| Type | Description |
-|---|---|
 | `ListTeamsResponse` | Paginated wrapper around `TeamList[]` with `meta` for pagination |
-
-| Type | Description |
-|---|---|
 | `OrgInfo` | Organization info — `tenantId`, timezone |
-
-| Type | Description |
-|---|---|
 | `OrgSettings` | Org feature flags — `webRtcEnabled`, `maskSensitiveData` |
-
-| Type | Description |
-|---|---|
 | `TenantData` | Tenant-level config — inactivity timeout, `forceDefaultDn`, `outdialEnabled` |
-
-| Type | Description |
-|---|---|
 | `SiteInfo` | Site config — `id`, `name`, `multimediaProfileId` |
-
-| Type | Description |
-|---|---|
 | `URLMapping` | External URL mapping — `id`, `name`, `url` |
-
-| Type | Description |
-|---|---|
 | `MultimediaProfileResponse` | Multimedia profile — channel capacities and settings |
-
-| Type | Description |
-|---|---|
 | `AuxCode` | Auxiliary code record — `id`, `name`, `description`, `workTypeCode` |
-
-| Type | Description |
-|---|---|
 | `ListAuxCodesResponse` | Paginated wrapper around `AuxCode[]` with `meta` |
-
-| Type | Description |
-|---|---|
 | `DialPlanEntity` | Dial plan rule — regex pattern, prefix, strip digits |
-
-| Type | Description |
-|---|---|
 | `Entity` | Basic entity info — `isSystem`, `name`, `id`, `description` |
-
-| Type | Description |
-|---|---|
 | `WrapupData` | Wrap-up config — auto-wrapup settings, available wrapup codes |
-
-| Type | Description |
-|---|---|
 | `OutdialAniParams` | Parameters for `getOutdialAniEntries()` — ANI ID, pagination, filtering |
-
-| Type | Description |
-|---|---|
 | `Team` | Simplified team shape in `Profile` — `teamId`, `teamName`, `desktopLayoutId` |
 
 ```typescript
@@ -337,41 +253,14 @@ The service fetches data from multiple APIs with these response structures:
 | API Method | Response Type | Key Fields | Usage |
 |---|---|---|---|
 | `getUserUsingCI` | `AgentResponse` | `ciUserId`, `id`, `firstName`, `lastName`, `email`, `teamIds`, `agentProfileId`, `siteId` | Primary agent identity and profile references |
-
-| API Method | Response Type | Key Fields | Usage |
-|---|---|---|---|
 | `getDesktopProfileById` | `DesktopProfileResponse` | `dialPlanEnabled`, `autoAnswer`, `accessWrapUpCode`, `wrapUpCodes`, `accessIdleCode`, `idleCodes`, `loginVoiceOptions` | Agent desktop settings and feature enablement |
-
-| API Method | Response Type | Key Fields | Usage |
-|---|---|---|---|
 | `getAllTeams` | `TeamList[]` | real `TeamList` fields from `src/services/config/types.ts` | Team identity, name, type, and site assignment; channel capacities belong to `MultimediaProfileResponse` |
-
-| API Method | Response Type | Key Fields | Usage |
-|---|---|---|---|
 | `getTenantData` | `TenantData` | `outdialEnabled`, `forceDefaultDn`, `privacyShieldVisible`, `timeoutDesktopInactivityEnabled` | Tenant-level feature flags |
-
-| API Method | Response Type | Key Fields | Usage |
-|---|---|---|---|
 | `getOrgInfo` | `OrgInfo` | `tenantId`, `timezone` | Organization metadata |
-
-| API Method | Response Type | Key Fields | Usage |
-|---|---|---|---|
 | `getAllAuxCodes` | `AuxCode[]` | `id`, `name`, `workTypeCode`, `active`, `isSystemCode`, `defaultCode` | Auxiliary codes for idle/wrap-up states |
-
-| API Method | Response Type | Key Fields | Usage |
-|---|---|---|---|
 | `getOrganizationSetting` | `OrgSettings` | `webRtcEnabled`, `maskSensitiveData`, `campaignManagerEnabled` | Organization-level feature flags |
-
-| API Method | Response Type | Key Fields | Usage |
-|---|---|---|---|
 | `getDialPlanData` | `DialPlanEntity[]` | `id`, `name`, `regularExpression`, `prefix`, `strippedChars` | Dial plan rules for outbound calling |
-
-| API Method | Response Type | Key Fields | Usage |
-|---|---|---|---|
 | `getURLMapping` | `URLMapping[]` | `name`, `url` | External service URL mappings |
-
-| API Method | Response Type | Key Fields | Usage |
-|---|---|---|---|
 | `getSiteInfo` | `SiteInfo` | Site-specific configuration | Site details |
 
 These responses are parsed and aggregated into a single `Profile` object by the `parseAgentConfigs` function.
@@ -445,7 +334,7 @@ flowchart TD
   Profile --> Dial{dialPlanEnabled?}
   Dial -->|yes| DialPlan[getDialPlanData]
   Dial -->|no| Empty[empty dial plan]
-  Profile --> All[Promise.all of ten dependent promises]
+  Profile --> All[Promise.all of ten result promises]
   Site --> All
   Teams --> All
   DialPlan --> All
@@ -463,11 +352,14 @@ flowchart TD
 ## Sequence Diagram(s)
 Sequence coverage:
 
-| Operation group | Failure behavior |
-|---|---|
-| Profile aggregation | Any required request rejection rejects `getAgentConfig`; no partial Profile |
-| Pagination | Continue until page metadata is exhausted; request failure rejects |
-| AI feature flags | Include response in the ten-promise aggregation and map first row or undefined |
+| Operation group | Diagram | Failure / recovery coverage |
+|---|---|---|
+| Profile aggregation and AI feature flags | Profile aggregation | Any required request rejection rejects `getAgentConfig`; no partial Profile is returned. |
+| Team/aux-code pagination | Pagination | Continue until page metadata is exhausted; any page rejection rejects the operation. |
+
+AI-feature retrieval shares the same actors, ordering, Promise aggregation, and all-or-nothing failure outcome as the other profile dependencies, so it is represented in the Profile aggregation diagram rather than duplicated.
+
+### Profile aggregation
 
 ```mermaid
 sequenceDiagram
@@ -476,19 +368,52 @@ sequenceDiagram
   participant API as WCC APIs
   participant Util as parseAgentConfigs
   CC->>Cfg: getAgentConfig(orgId, agentId)
-  Cfg->>API: getUserUsingCI
-  API-->>Cfg: user IDs/profile/site/team IDs
-  par ten dependent promises
-    Cfg->>API: desktop profile + site + teams + conditional dial plan
+  par requests started before user data resolves
+    Cfg->>API: getUserUsingCI
     Cfg->>API: org info + org settings + tenant + URL mapping
     Cfg->>API: ai-feature flags + all aux codes
   end
+  API-->>Cfg: user IDs/profile/site/team IDs
+  par user-dependent requests
+    Cfg->>API: desktop profile + site + teams
+    Cfg->>API: conditional dial plan chained from desktop profile
+  end
+  Note over Cfg,API: Promise.all awaits 10 result promises in total
   alt all succeed
     API-->>Cfg: ten results
     Cfg->>Util: parseAgentConfigs(..., aiFeatureFlags)
     Util-->>CC: Profile including aiFeature
   else any fails
     Cfg-->>CC: throw; no partial Profile
+  end
+```
+
+### Pagination
+
+```mermaid
+sequenceDiagram
+  participant Caller
+  participant Cfg as AgentConfigService
+  participant WR as WebexRequest
+  participant API as WCC API
+  Caller->>Cfg: getAllTeams/getAllAuxCodes(orgId, pageSize, filters)
+  Cfg->>WR: request page 0
+  WR->>API: authenticated GET
+  alt first page succeeds
+    API-->>Cfg: page 0 data + meta.totalPages
+    par remaining pages 1..totalPages-1
+      Cfg->>WR: Promise.all(page requests)
+      WR->>API: authenticated GETs
+      API-->>Cfg: remaining page responses
+    end
+    alt every remaining page succeeds
+      Cfg->>Cfg: concatenate responses in request order
+      Cfg-->>Caller: complete accumulated list
+    else any remaining page rejects
+      Cfg-->>Caller: reject; do not return a partial list
+    end
+  else first page rejects
+    Cfg-->>Caller: reject
   end
 ```
 
@@ -509,17 +434,8 @@ classDiagram
 | Component | File | Responsibility |
 |---|---|---|
 | `AgentConfigService` | `config/index.ts` | Main config service class |
-
-| Component | File | Responsibility |
-|---|---|---|
 | `parseAgentConfigs` | `config/Util.ts` | Profile parsing/aggregation |
-
-| Component | File | Responsibility |
-|---|---|---|
 | `endPointMap` | `config/constants.ts` | API endpoint definitions |
-
-| Component | File | Responsibility |
-|---|---|---|
 | `types` | `config/types.ts` | Types, events, interfaces |
 
 ## Use Cases
@@ -708,11 +624,15 @@ public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentRespon
 5. Note: "Available" state is always appended to idle codes
 
 ## Pitfalls
-- Do not bypass the Config ownership boundary or duplicate its constants/events; doing so breaks correlation, compatibility, or state invariants.
+- `getUserUsingCI` must complete before profile/site/team-dependent requests are constructed, while the ten dependent promises remain all-or-nothing.
+- AI feature flags are part of the ten-result aggregation and must be passed into `parseAgentConfigs`; omitting them silently removes `Profile.aiFeature`.
+- Team responses do not own channel configuration, and auxiliary-code requests require `desktopProfileFilter=true` during profile construction.
 
 ## Module Do's / Don'ts
-- DO use the authoritative files and typed constants listed above.
-- DON'T use raw event strings, swallow errors, or infer backend behavior.
+- DO preserve the user-first dependency boundary and the exact ten-promise result order.
+- DO paginate team and auxiliary-code endpoints until their metadata indicates completion.
+- DON'T return a partially assembled Profile after any required dependency fails.
+- DON'T invent TeamList fields such as `channelMap` or omit `maskSensitiveData`/`aiFeature` mappings.
 
 ## Key Design Trade-off
 - Profile creation is all-or-nothing across dependent API calls so consumers never receive internally inconsistent partial configuration.
@@ -720,13 +640,19 @@ public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentRespon
 ## Test-Case Strategy (module)
 `test/unit/spec/services/config/index.ts` must cover staged user-first orchestration, ten-promise aggregation, AI-feature mapping, conditional dial plan, pagination, auxiliary-code URL filtering, real response field names, and whole-profile rejection on any required failure.
 
+| Behavior / Requirement | Existing test evidence | Gap |
+|---|---|---|
+| `CONFIG-R-001` | `test/unit/spec/services/config/index.ts` | None. |
+| `CONFIG-R-002` | `test/unit/spec/services/config/index.ts` | None. |
+| `CONFIG-R-003` | `test/unit/spec/services/config/index.ts` | None. |
+| `CONFIG-R-004` | `test/unit/spec/services/config/index.ts` | None. |
+| `CONFIG-R-005` | `test/unit/spec/services/config/index.ts` | Keep an explicit rejection assertion for each required dependency category. |
+
 ## Traceability
 - Repo architecture: `../../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../../ai-docs/SPEC_INDEX.md`
 - Coverage state and contracts baseline: `../../../../.sdd/manifest.json`
 
 - [Root AGENTS.md](../../../../AGENTS.md) - Orchestrator and cross-scope rules
-
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Technical deep-dive
 
 - [types.ts](../types.ts) - Type definitions
 

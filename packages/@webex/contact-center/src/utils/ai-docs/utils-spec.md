@@ -9,10 +9,10 @@
 | Module id | `utils` |
 | Source path(s) | `src/utils` |
 | Doc kind | Module spec |
-| Coverage score | 100% assessed 2026-07-07; 15/15 mandatory fields present; no applicability gaps |
+| Coverage score | 100% assessed 2026-07-09; 15/15 mandatory fields present; test evidence and gaps mapped by requirement |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved residual warning and coverage completion / 2026-07-07 |
-| Validation status | pass; validator claude-code; assessed 2026-07-07; 0 Blocking, 0 warnings; clean independent revalidation complete |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved conformance and fidelity remediation / 2026-07-09 |
+| Validation status | not-run for current revision; independent validator claude-code required after 2026-07-09 remediation; prior 2026-07-07 PASS is superseded by these edits |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -38,18 +38,9 @@ The utils scope currently provides shared pagination and cache behavior for cont
 | Component             | File                             | Description                                                                                                                                     |
 |---|---|---|
 | `PageCache`           | [`PageCache.ts`](../PageCache.ts) | Generic in-memory cache utility for paginated API responses with TTL expiry and helper methods for key generation and cache eligibility checks. |
-
-| Component             | File                             | Description                                                                                                                                     |
-|---|---|---|
 | `Pagination Types`    | [`PageCache.ts`](../PageCache.ts) | `PaginationMeta`, `PaginatedResponse<T>`, `BaseSearchParams`, and `PageCacheEntry<T>` shared across data services.                              |
-
-| Component             | File                             | Description                                                                                                                                     |
-|---|---|---|
 | `Pagination Defaults` | [`PageCache.ts`](../PageCache.ts) | `PAGINATION_DEFAULTS` (`PAGE`, `PAGE_SIZE`) used by services for consistent request defaults.                                                   |
-
-| Component             | File                             | Description                                                                                                                                     |
-|---|---|---|
-| `Specs Workflow`      | `AGENTS.md` (inline)             | Mermaid flow for specs-driven utility changes, acceptance criteria, and drift checks.                                                           |
+| `Specs Workflow`      | `ai-docs/utils-spec.md`          | Canonical flow for spec-driven utility changes, acceptance criteria, and drift checks.                                                          |
 
 ## Purpose / Responsibility
 Own shared pagination contracts and the bounded in-memory page cache used by Contact Center data services.
@@ -66,7 +57,7 @@ src/utils/
 
 ```text
 src/utils/
-├── AGENTS.md          # This file: utils scope guide
+├── AGENTS.md          # Preserved legacy, noncanonical utils guide
 └── PageCache.ts       # Generic cache + pagination contracts/defaults
 ```
 
@@ -97,11 +88,11 @@ No claim is made that `src/types.ts`, AddressBook, EntryPoint, or Queue is imple
 ## Requirements
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| UTILS-R-001 | Use cache only for simple pagination requests without search, filter, attributes, or sortBy. | Parameterized queries cannot safely reuse a page keyed only by organization/page/pageSize. | `src/utils/PageCache.ts` | `test/unit/spec/services/AddressBook.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| UTILS-R-002 | Build cache keys from `orgId:page:pageSize`. | Organization and page boundaries prevent cross-tenant or cross-page reuse. | `src/utils/PageCache.ts` | `test/unit/spec/services/EntryPoint.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| UTILS-R-003 | Expire entries after the configured five-minute TTL and delete them on stale lookup. | Bounded staleness prevents indefinite reuse of remote service data. | `src/utils/PageCache.ts` | `test/unit/spec/services/Queue.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| UTILS-R-004 | Cache data with total-page/record metadata and allow owning consumers to clear the cache. | Paginated services need consistent metadata without transferring ownership of remote records to the SDK. | `src/utils/PageCache.ts` | `test/unit/spec/services/AddressBook.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| UTILS-R-005 | Accept already-fetched page values from consuming services and never store or process credentials; use `orgId` only to isolate in-memory cache keys. | Authentication remains in Services/Core and tenant-separated keys prevent cross-organization cache reuse. | `src/utils/PageCache.ts`, `src/services/core/WebexRequest.ts` | `test/unit/spec/services/AddressBook.ts` | None; security/auth ownership is explicit. | PRESENT |
+| UTILS-R-001 | Use cache only for simple pagination requests without search, filter, attributes, or sortBy. | Parameterized queries cannot safely reuse a page keyed only by scope/page/pageSize. | `src/utils/PageCache.ts` | `test/unit/spec/services/AddressBook.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| UTILS-R-002 | Build cache keys from a caller-supplied scope value plus `page:pageSize`: `orgId` for EntryPoint/Queue and `bookId` for AddressBook. | Consumer scope and page boundaries prevent cross-scope or cross-page reuse. | `src/utils/PageCache.ts`, `src/services/AddressBook.ts`, `src/services/EntryPoint.ts`, `src/services/Queue.ts` | `test/unit/spec/services/AddressBook.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/services/Queue.ts` | `PageCache.buildCacheKey` names its first parameter `orgId`, but runtime callers establish the broader scope semantics. | PRESENT |
+| UTILS-R-003 | Expire entries after the configured five-minute TTL and delete them on stale lookup. | Bounded staleness prevents indefinite reuse of remote service data. | `src/utils/PageCache.ts` | None | Direct fake-clock expiration coverage is absent from current consumer tests. | PRESENT |
+| UTILS-R-004 | Cache data with total-page/record metadata and allow owning consumers to clear the cache. | Paginated services need consistent metadata without transferring ownership of remote records to the SDK. | `src/utils/PageCache.ts` | `test/unit/spec/services/AddressBook.ts` | Cache hit/miss and metadata are exercised through consumers; `clearCache()` has no direct assertion. | PRESENT |
+| UTILS-R-005 | Accept already-fetched page values from consuming services and never store or process credentials; use the consumer's scope value only as part of the in-memory key. | Authentication remains in Services/Core and scope-separated keys prevent unrelated pages from colliding. | `src/utils/PageCache.ts`, `src/services/core/WebexRequest.ts`, `src/services/AddressBook.ts`, `src/services/EntryPoint.ts`, `src/services/Queue.ts` | `test/unit/spec/services/AddressBook.ts` | None; security/auth ownership is explicit. | PRESENT |
 | UTILS-R-006 | Keep PageCache free of rollout flags; consuming services decide whether to invoke it and query parameters determine cache eligibility. | Cache correctness must depend on request shape, not hidden deployment state. | `src/utils/PageCache.ts` | `test/unit/spec/services/AddressBook.ts`, `test/unit/spec/services/Queue.ts` | None; rollout applicability is explicitly N/A. | PRESENT |
 
 ## Design Overview
@@ -114,17 +105,8 @@ Current consumers of `PageCache` and defaults:
 | Consumer                | File                                                       | Usage                                                        |
 |---|---|---|
 | `AddressBook`           | [`../../services/AddressBook.ts`](../../services/AddressBook.ts) | Caches paged address-book responses                          |
-
-| Consumer                | File                                                       | Usage                                                        |
-|---|---|---|
 | `EntryPoint`            | [`../../services/EntryPoint.ts`](../../services/EntryPoint.ts)   | Caches paged entry-point responses                           |
-
-| Consumer                | File                                                       | Usage                                                        |
-|---|---|---|
 | `Queue`                 | [`../../services/Queue.ts`](../../services/Queue.ts)             | Caches paged queue responses                                 |
-
-| Consumer                | File                                                       | Usage                                                        |
-|---|---|---|
 | `Public type contracts` | [`../../types.ts`](../../types.ts)                               | Re-exports pagination/search contracts into SDK-facing types |
 
 Cross-scope mention:
@@ -136,12 +118,14 @@ Cross-scope mention:
 flowchart LR
   Service[AddressBook / EntryPoint / Queue] --> Eligible{canUseCache params?}
   Eligible -->|search/filter/attributes/sort present| Backend[Fetch without cache]
-  Eligible -->|simple pagination| Key[buildCacheKey orgId:page:pageSize]
+  Eligible -->|simple pagination| Key[buildCacheKey scopeKey:page:pageSize]
   Key --> Lookup[getCachedPage]
   Lookup -->|fresh| Hit[Return cached page]
   Lookup -->|missing or TTL expired| Backend
-  Backend --> Store[cachePage data + total metadata]
-  Store --> Result[Return fetched page]
+  Backend --> Fetched{cache eligible and response has data?}
+  Fetched -->|yes| Store[cachePage data + total metadata]
+  Fetched -->|no| Result[Return uncached response]
+  Store --> Result
 ```
 
 ## Sequence Diagram(s)
@@ -149,10 +133,10 @@ Sequence coverage:
 
 | Operation group | Diagram | Failure / recovery coverage |
 |---|---|---|
-| Cache eligibility | Service passes search/filter/attributes/sort inputs to `canUseCache`. | Any advanced query bypasses cache rather than risking an incorrect hit. |
-| Cache-key construction | `buildCacheKey(orgId, page, pageSize)` isolates organization and page boundaries. | Callers must not substitute user/scope identifiers for `orgId`. |
-| TTL lookup/expiry | `getCachedPage` returns a fresh entry or deletes and misses an expired entry. | Expiry is a normal miss; it does not return stale data. |
-| Page insertion and clearing | `cachePage` stores data/timestamp/normalized totals; `clearCache` removes all entries. | Backend request failures are owned by the consuming service and are never cached as successes. |
+| Eligible lookup, fetch, and store | Cache lifecycle | Advanced queries bypass cache; misses and expired entries fetch from the backend; failed backend calls never reach `cachePage`. |
+| Explicit cache clearing | Clear all entries | `clearCache` removes all entries from that consumer-owned PageCache instance and logs the prior size. |
+
+### Cache lifecycle
 
 ```mermaid
 sequenceDiagram
@@ -161,18 +145,40 @@ sequenceDiagram
   participant API as Backend API
   Service->>Cache: canUseCache(params)
   alt simple pagination
-    Service->>Cache: buildCacheKey(orgId, page, pageSize)
+    Note over Service,Cache: scopeKey = bookId (AddressBook) or orgId (EntryPoint/Queue)
+    Service->>Cache: buildCacheKey(scopeKey, page, pageSize)
     Service->>Cache: getCachedPage(key)
     alt fresh hit
       Cache-->>Service: PageCacheEntry
     else miss or expired
       Service->>API: fetch page
-      API-->>Service: data + meta
-      Service->>Cache: cachePage(key, data, meta)
+      alt backend success with response data
+        API-->>Service: data + meta
+        Service->>Cache: cachePage(key, data, meta)
+      else backend rejection
+        API--xService: error
+        Note over Service,Cache: no cache write
+      else success without data
+        API-->>Service: response without data
+        Note over Service,Cache: return response without a cache write
+      end
     end
   else advanced query
     Service->>API: fetch without cache
   end
+```
+
+### Clear all entries
+
+```mermaid
+sequenceDiagram
+  participant Owner as Consumer service
+  participant Cache as Its PageCache instance
+  participant Log as LoggerProxy
+  Owner->>Cache: clearCache()
+  Cache->>Cache: capture size, then Map.clear()
+  Cache->>Log: log cleared entry count
+  Cache-->>Owner: void
 ```
 
 ## Class / Component Relationships
@@ -196,9 +202,9 @@ classDiagram
 
 ## Use Cases
 - **UC-1 Cache eligibility:** AddressBook, EntryPoint, or Queue bypasses cache whenever search, filter, attributes, or sort is supplied. Evidence: `src/utils/PageCache.ts`, `test/unit/spec/services/AddressBook.ts`.
-- **UC-2 Cache-key construction:** a simple page lookup uses the exact `orgId:page:pageSize` key so tenant and pagination boundaries cannot collide. Evidence: `src/utils/PageCache.ts`, `test/unit/spec/services/AddressBook.ts`.
-- **UC-3 TTL lookup/expiry:** a fresh cached entry is returned; an expired entry is deleted and treated as a miss. Evidence: `src/utils/PageCache.ts`, `test/unit/spec/services/AddressBook.ts`.
-- **UC-4 Page insertion and clearing:** successful page data and normalized totals are cached, while `clearCache()` removes all entries for that service instance. Evidence: `src/utils/PageCache.ts`, `test/unit/spec/services/AddressBook.ts`.
+- **UC-2 Cache-key construction:** a simple page lookup uses `<scopeKey>:page:pageSize`; AddressBook supplies `bookId`, while EntryPoint and Queue supply `orgId`. Evidence: `src/utils/PageCache.ts`, `src/services/AddressBook.ts`, `src/services/EntryPoint.ts`, `src/services/Queue.ts`.
+- **UC-3 TTL lookup/expiry:** a fresh cached entry is returned; an expired entry is deleted and treated as a miss. Evidence: `src/utils/PageCache.ts`; no direct expiration test currently exists.
+- **UC-4 Page insertion and clearing:** successful page data and normalized totals are cached, while `clearCache()` removes all entries for that service instance. Evidence: `src/utils/PageCache.ts`; consumer tests cover insertion/hit behavior, but not direct clearing.
 
 ## State Model
 Utils retains only in-memory runtime state. Durable domain records remain owned by remote Webex services. State changes are driven by explicit calls, events, timers, or actor transitions documented below.
@@ -212,7 +218,9 @@ const cache = new PageCache<MyItem>('MyService');
 
 const page = PAGINATION_DEFAULTS.PAGE;
 const pageSize = PAGINATION_DEFAULTS.PAGE_SIZE;
-const cacheKey = cache.buildCacheKey(orgId, page, pageSize);
+// AddressBook uses bookId; EntryPoint and Queue use orgId.
+const scopeKey = bookIdOrOrgId;
+const cacheKey = cache.buildCacheKey(scopeKey, page, pageSize);
 
 // Include sortBy only for services that support sorting.
 const canUseCache = cache.canUseCache({search, filter, attributes, sortBy});
@@ -242,16 +250,18 @@ return response;
 
 ```mermaid
 graph TD
-  A[Request arrives with orgId/page/pageSize] --> B{canUseCache?}
+  A[Request arrives with scopeKey/page/pageSize] --> B{canUseCache?}
   B -->|No: search/filter/attributes/sortBy provided| C[Bypass cache and call API]
-  B -->|Yes| D[buildCacheKey orgId:page:pageSize]
+  B -->|Yes| D[buildCacheKey scopeKey:page:pageSize]
   D --> E["getCachedPage(cacheKey)"]
   E -->|Miss| C
   E -->|Hit and not expired| F[Return cached data and totalMeta]
   E -->|Hit but expired >= 5 minutes| G[Delete entry and treat as miss]
   G --> C
   C --> H[Receive API response]
-  H --> I["cachePage(cacheKey, data, meta)"]
+  H --> K{canUseCache and response has data?}
+  K -->|Yes| I["cachePage(cacheKey, data, meta)"]
+  K -->|No| J[Return uncached response]
   I --> J[Return fresh response]
 ```
 
@@ -272,8 +282,10 @@ Returns `true` only when all of these are absent:
 Builds deterministic cache key format:
 
 ```text
-${orgId}:${page}:${pageSize}
+${scopeKey}:${page}:${pageSize}
 ```
+
+The implementation parameter is named `orgId`, but the value is a caller-defined scope key: `bookId` in AddressBook and `orgId` in EntryPoint/Queue.
 
 Behavior:
 
@@ -303,15 +315,21 @@ Note: `clearCache()` and `getCacheSize()` are available for future use and are n
 
 ## Business Rules & Invariants
 - Utils must preserve its typed public/event contracts and must not invent backend states or responses. Enforced in `src/utils/PageCache.ts`.
-- Security/auth applicability is limited to tenant separation: PageCache receives already-fetched values, owns no credentials, and includes `orgId` in cache keys.
+- Security/auth applicability is limited to scope separation: PageCache receives already-fetched values, owns no credentials, and includes its caller-supplied scope value in cache keys.
 - Rollout applicability is N/A: PageCache has no feature flag; consumers choose whether to use it and `canUseCache` decides eligibility from query parameters.
 
 ## Pitfalls
-- Do not bypass the Utils ownership boundary or duplicate its constants/events; doing so breaks correlation, compatibility, or state invariants.
+- Do not describe the first cache-key field as universally `orgId`: AddressBook passes `bookId`, while EntryPoint and Queue pass `orgId`.
+- Do not cache queries containing `search`, `filter`, `attributes`, or `sortBy`; their result set is not represented in the key.
+- Do not treat an expired entry as usable data. `getCachedPage` deletes it and returns `null`.
+- Do not cache a rejected request or a response without data; only the consuming service owns the backend request and decides when to call `cachePage`.
 
 ## Module Do's / Don'ts
-- DO use the authoritative files and typed constants listed above.
-- DON'T use raw event strings, swallow errors, or infer backend behavior.
+- DO create a separate `PageCache` instance per consuming service and pass that consumer's stable scope value into `buildCacheKey`.
+- DO preserve the five-minute `>=` expiry boundary and the `totalRecords || totalItems` compatibility mapping.
+- DO keep credentials, request execution, and backend-error handling in the consuming service/Core layers.
+- DON'T add query dimensions without either extending the cache key or making `canUseCache` bypass them.
+- DON'T claim `clearCache()` or TTL expiry is directly unit-tested until dedicated assertions exist.
 
 When changing `src/utils` behavior or contracts:
 
@@ -329,7 +347,7 @@ flowchart TD
   B -->|Contract change| C[Document expected API/type behavior]
   B -->|Runtime behavior change| D[Document cache behavior and TTL impact]
   B -->|Both| C
-  C --> E[Update utils AGENTS.md contracts and consumer map]
+  C --> E[Update canonical utils-spec contracts and consumer map]
   D --> F[Validate cache key schema and bypass conditions]
   E --> G[Run drift check against PageCache.ts and consumer services]
   F --> G
@@ -343,7 +361,16 @@ flowchart TD
 - Caching is intentionally limited to simple page browsing; search/filter/sort requests bypass cache to prevent incorrect reuse.
 
 ## Test-Case Strategy (module)
-PageCache has no dedicated unit file; characterize it through `test/unit/spec/services/AddressBook.ts`, `EntryPoint.ts`, and `Queue.ts`. Cover query bypass, `orgId:page:pageSize` keys, hit/miss, five-minute expiry/deletion, metadata mapping, and clear behavior. Treat absent direct PageCache tests as a maintenance gap, not as evidence that consumers own the implementation.
+PageCache has no dedicated unit file; current consumer tests in `test/unit/spec/services/AddressBook.ts`, `EntryPoint.ts`, and `Queue.ts` cover request shaping plus cache hit/miss behavior. Add direct PageCache tests for the five-minute expiry boundary, entry deletion, metadata normalization, clearing, and key construction with both `bookId` and `orgId` scope values.
+
+| Behavior / Requirement | Existing test evidence | Gap |
+|---|---|---|
+| `UTILS-R-001` | AddressBook, EntryPoint, and Queue consumer tests exercise advanced query parameters and simple pagination. | Add a direct `canUseCache` table test for each bypass field and `sortOrder` alone. |
+| `UTILS-R-002` | AddressBook repeat/miss tests exercise `bookId`-scoped caching; EntryPoint and Queue miss tests exercise `orgId` consumers. | Add direct key-string assertions for both runtime scope kinds. |
+| `UTILS-R-003` | None. | Add fake-clock tests at just below and exactly five minutes, including deletion. |
+| `UTILS-R-004` | AddressBook verifies a repeat-call hit and response metadata; all three consumers verify misses. | Add direct metadata fallback and `clearCache`/`getCacheSize` assertions. |
+| `UTILS-R-005` | Source inspection confirms PageCache has no credential or request dependency. | No runtime credential test is needed; retain the static ownership check. |
+| `UTILS-R-006` | Source inspection confirms no feature-flag dependency; consumer tests cover invocation choices. | No direct rollout test is applicable. |
 
 ## Traceability
 - Repo architecture: `../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../ai-docs/SPEC_INDEX.md`

@@ -9,10 +9,10 @@
 | Module id | `task` |
 | Source path(s) | `src/services/task` |
 | Doc kind | Module spec |
-| Coverage score | 100% assessed 2026-07-07; 15/15 mandatory fields present; no applicability gaps |
+| Coverage score | 100% assessed 2026-07-09; 15/15 mandatory fields present; test evidence and gaps mapped by requirement |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved residual warning and coverage completion / 2026-07-07 |
-| Validation status | pass; validator claude-code; assessed 2026-07-07; 0 Blocking, 0 warnings; clean independent revalidation complete |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved conformance and fidelity remediation / 2026-07-09 |
+| Validation status | not-run for current revision; independent validator claude-code required after 2026-07-09 remediation; prior 2026-07-07 PASS is superseded by these edits |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -157,105 +157,33 @@ Compatibility notes:
 | Event           | When Emitted                 |
 |---|---|
 | `task:incoming` | New task offered to agent    |
-
-| Event           | When Emitted                 |
-|---|---|
 | `task:hydrate`  | Task data updated            |
-
-| Event           | When Emitted                 |
-|---|---|
 | `task:merged`   | Tasks merged (EPDN transfer) |
 
 | Event                                                                       | When Emitted                                     |
 |---|---|
 | `task:assigned`                                                             | Task assigned to agent                           |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:media`                                                                | Media stream/track updates are available         |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:unassigned`                                                           | Task is unassigned from agent                    |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:offerContact`                                                         | Contact offer received/updated                   |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:offerConsult`                                                         | Consult offer received                           |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:hold`                                                                 | Task placed on hold                              |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:resume`                                                               | Task resumed from hold                           |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:end`                                                                  | Task ended                                       |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:rejected`                                                             | Task rejected / failure path emitted             |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:wrapup`                                                               | Task entering wrapup                             |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:wrappedup`                                                            | Wrapup completed                                 |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:consulting`                                                           | Consult is in progress                           |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:consultAccepted`                                                      | Consult accepted by destination party            |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:consultCreated`                                                       | Consultation started                             |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:consultEnd`                                                           | Consultation ended                               |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:autoAnswered`                                                         | Task was auto-answered                           |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:recordingStarted` / `task:recordingPaused` / `task:recordingResumed`  | Recording lifecycle updates                      |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:conferenceStarted` / `task:conferenceEnded` / `task:conferenceFailed` | Conference lifecycle updates                     |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:participantJoined` / `task:participantLeft`                           | Conference participant updates                   |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:switchCall`                                                           | Switched between consult and main call           |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:outdialFailed`                                                        | Outdial operation failed                         |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:ui-controls-updated`                                                  | UI controls changed due to state transition      |
-
-| Event                                                                       | When Emitted                                     |
-|---|---|
 | `task:cleanup`                                                              | Internal cleanup signal emitted by state machine |
 
 > Full list is defined in `TASK_EVENTS` (`types.ts`).
@@ -263,9 +191,6 @@ Compatibility notes:
 | Event | When Emitted |
 |---|---|
 | `REAL_TIME_TRANSCRIPTION` | A realtime transcript payload is received for the task interaction |
-
-| Event | When Emitted |
-|---|---|
 | `SUGGESTED_RESPONSE` | A final AI Assistant suggestion payload is received for the task interaction |
 
 Initiate outbound call.
@@ -480,11 +405,11 @@ The public `TASK_EVENTS` enum contains 49 members; every member is listed below 
 ## Requirements
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| TASK-R-001 | Create only supported Voice/Digital Task implementations and throw `Unknown media type` for unsupported media. | Returning a generic task for unsupported channels would advertise controls the implementation cannot perform. | `src/services/task/TaskFactory.ts` | `test/unit/spec/services/task/TaskFactory.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| TASK-R-002 | Concrete Task/Voice `hold()` and `resume()` implementations remain parameterless while `ITask` retains its optional compatibility parameter. | Documentation must distinguish the broad public interface from concrete runtime signatures. | `src/services/task/Task.ts` | `test/unit/spec/services/task/Task.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| TASK-R-003 | Task and media subclasses must route contact/calling operations into typed state-machine events and emit the complete TASK_EVENTS contract. | Consumers coordinate UI and interaction lifecycle from those events. | `src/services/task/Task.ts` | `test/unit/spec/services/task/Task.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| TASK-R-004 | TaskManager must consume primary/RTD streams and manage task creation, hydration, cleanup, campaign, and AI-assistant flows. | A single task owner prevents duplicate instances and inconsistent state across realtime sources. | `src/services/task/TaskManager.ts` | `test/unit/spec/services/task/TaskManager.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| TASK-R-005 | The contact dependency belongs to Task/TaskFactory-created tasks; dialer is an AqmReqs request factory without that constructor. | Misattributing constructor dependencies causes invalid instantiation examples. | `src/services/task/TaskFactory.ts` | `test/unit/spec/services/task/dialer.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
+| TASK-R-001 | Create only supported Voice/Digital Task implementations and throw `Unknown media type` for unsupported media. | Returning a generic task for unsupported channels would advertise controls the implementation cannot perform. | `src/services/task/TaskFactory.ts` | `test/unit/spec/services/task/TaskFactory.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| TASK-R-002 | Concrete Task/Voice `hold()` and `resume()` implementations remain parameterless while `ITask` retains its optional compatibility parameter. | Documentation must distinguish the broad public interface from concrete runtime signatures. | `src/services/task/Task.ts` | `test/unit/spec/services/task/Task.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| TASK-R-003 | Task and media subclasses must route contact/calling operations into typed state-machine events and emit the complete TASK_EVENTS contract. | Consumers coordinate UI and interaction lifecycle from those events. | `src/services/task/Task.ts` | `test/unit/spec/services/task/Task.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| TASK-R-004 | TaskManager must consume primary/RTD streams and manage task creation, hydration, cleanup, campaign, and AI-assistant flows. | A single task owner prevents duplicate instances and inconsistent state across realtime sources. | `src/services/task/TaskManager.ts` | `test/unit/spec/services/task/TaskManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| TASK-R-005 | The contact dependency belongs to Task/TaskFactory-created tasks; dialer is an AqmReqs request factory without that constructor. | Misattributing constructor dependencies causes invalid instantiation examples. | `src/services/task/TaskFactory.ts` | `test/unit/spec/services/task/dialer.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | TASK-R-006 | Keep credentials and authentication outside Task; remote operations delegate through contact/dialer routing, AqmReqs, and Core/WebexRequest. | Task lifecycle objects should never duplicate host token handling or leak authentication state into interaction data. | `src/services/task/Task.ts`, `src/services/task/contact.ts`, `src/services/core/WebexRequest.ts` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/contact.ts` | None; authentication ownership is explicit. | PRESENT |
 
 ## Design Overview
@@ -493,29 +418,11 @@ Task separates its stable consumption boundary from collaborators so ownership a
 | Channel     | Description        |
 |---|---|
 | `telephony` | Voice calls        |
-
-| Channel     | Description        |
-|---|---|
 | `chat`      | Web chat           |
-
-| Channel     | Description        |
-|---|---|
 | `email`     | Email interactions |
-
-| Channel     | Description        |
-|---|---|
 | `social`    | Social media       |
-
-| Channel     | Description        |
-|---|---|
 | `sms` | Unsupported by TaskFactory; throws `Unknown media type` |
-
-| Channel     | Description        |
-|---|---|
 | `facebook` | Unsupported by TaskFactory; throws `Unknown media type` |
-
-| Channel     | Description        |
-|---|---|
 | `whatsapp` | Unsupported by TaskFactory; throws `Unknown media type` |
 
 If enabled in agent profile, wrapup completes automatically after timeout:
@@ -661,15 +568,15 @@ this.webSocketManager.on('message', (event) => {
 
 `TaskManager.handleRealtimeWebsocketEvent()` handles payloads arriving on the realtime subscription socket used for AI features. It:
 
-1. Normalizes the websocket envelope (`payload.data` vs direct payload form)
+1. Parses the JSON websocket envelope
 
-2. Resolves the owning task via `conversationId`
+2. Reads `conversationId` from `payload.data.data.conversationId` and resolves the owning task
 
-3. Emits `REAL_TIME_TRANSCRIPTION` on the task for transcript payloads
+3. Emits the payload type and `payload.data` on the task for `REAL_TIME_TRANSCRIPTION`
 
-4. Emits `SUGGESTED_RESPONSE` on the task only when the backend payload is a final suggestion (`data.type === 'SUGGESTION'`)
+4. Does the same for `SUGGESTED_RESPONSE`
 
-5. Ignores `SUGGESTED_RESPONSE_ACKNOWLEDGE` for public SDK emission
+5. Logs and returns when JSON parsing fails or the interaction has no task; other payload types, including `SUGGESTED_RESPONSE_ACKNOWLEDGE`, fall through without task emission
 
 This keeps transcript and suggestion delivery aligned on the same per-task event surface.
 
@@ -677,15 +584,15 @@ For BROWSER login, TaskManager integrates with WebCalling:
 
 ```mermaid
 flowchart TD
-    A[AgentOfferContact event] --> B[Determine media + loginOption]
+    A[AgentContactReserved event] --> B[Determine media + loginOption]
     B --> C[TaskFactory chooses Voice/WebRTC class]
     C --> D[Create Task object]
     D --> E[Store in taskCollection]
-    E --> F{BROWSER login?}
-    F -->|Yes| G[Wait for INCOMING_CALL]
-    G --> H[Map call to task]
-    H --> I[Emit task:incoming]
-    F -->|No| I
+    E --> F[Send TASK_INCOMING to state machine]
+    F --> G[Emit task:incoming]
+    H[Independent LINE_EVENTS.INCOMING_CALL] --> I[Find current non-preview telephony task]
+    I --> J[Map call ID to interaction ID]
+    J --> K[Send TASK_INCOMING association event]
 ```
 
 ```typescript
@@ -769,25 +676,10 @@ isSecondaryEpDnAgent(interaction);
 | Metric                  | Type                 | When Tracked       |
 |---|---|---|
 | `TASK_ACCEPT_SUCCESS`   | behavioral, business | Task accepted      |
-
-| Metric                  | Type                 | When Tracked       |
-|---|---|---|
 | `TASK_HOLD_SUCCESS`     | operational          | Hold succeeded     |
-
-| Metric                  | Type                 | When Tracked       |
-|---|---|---|
 | `TASK_END_SUCCESS`      | behavioral, business | Task ended         |
-
-| Metric                  | Type                 | When Tracked       |
-|---|---|---|
 | `TASK_WRAPUP_SUCCESS`   | operational          | Wrapup completed   |
-
-| Metric                  | Type                 | When Tracked       |
-|---|---|---|
 | `TASK_TRANSFER_SUCCESS` | behavioral, business | Transfer completed |
-
-| Metric                  | Type                 | When Tracked       |
-|---|---|---|
 | `TASK_OUTDIAL_SUCCESS`  | behavioral, business | Outdial completed  |
 
 ## Data Flow
@@ -819,82 +711,162 @@ flowchart TD
   K --> L[TaskUIControls updated for SDK UI]
 ```
 
-```mermaid
-sequenceDiagram
-    participant BE as Backend
-    participant WS as WebSocket
-    participant TM as TaskManager
-    participant T as Task
-    participant CC as ContactCenter
-    participant App as Application
-
-    BE->>WS: AgentOfferContact event
-    WS->>TM: message event
-    TM->>TM: Check if telephony
-    alt BROWSER login
-        TM->>TM: Wait for INCOMING_CALL
-        WS->>TM: LINE_EVENTS.INCOMING_CALL
-        TM->>TM: Map call to task
-    end
-    TM->>T: new Task(data)
-    TM->>TM: Store in taskCollection
-    TM->>CC: emit task:incoming
-    CC->>App: trigger task:incoming
-    App->>T: task.accept()
-```
-
-```mermaid
-sequenceDiagram
-    participant App
-    participant T as Task
-    participant C as contact service
-    participant AQM as AqmReqs
-    participant WS as WebSocket
-    participant BE as Backend
-
-    App->>T: task.hold()
-    T->>T: Update local state
-    T->>C: contact.hold({data})
-    C->>AQM: req(config)
-    AQM->>BE: POST /v1/tasks/{interactionId}/hold (HTTP via WebexRequest)
-    BE-->>AQM: HTTP response (TaskResponse payload)
-    AQM-->>C: resolve Promise<TaskResponse>
-    C-->>T: return TaskResponse
-    T-->>App: Promise resolves
-    Note over WS,TM: WebSocket is notification channel, not request transport
-    BE-->>WS: AgentContactHeld
-    WS-->>TM: message event
-    TM-->>T: emit task:hold
-```
-
 ## Sequence Diagram(s)
 Sequence coverage:
 
 | Operation group | Diagram | Failure / recovery coverage |
 |---|---|---|
-| Incoming task creation | TaskManager maps the backend event, TaskFactory creates the supported media class, and ContactCenter emits `TASK_INCOMING`. | Construction/mapping failure prevents publication of a partial task. |
-| Accept/hold/resume | Task method sends the corresponding state-machine event and delegates the AQM request to contact routing. | Failure events return the actor to the documented stable state and emit the matching `TASK_EVENTS` failure. |
-| Consult/transfer/conference | Voice coordinates contact routing and the task actor through initiating and stable states. | Backend failure notifications drive explicit failure actions/events. |
-| Wrapup/end | Task maps wrapup/end notifications into actor transitions and public events. | `WRAPPING_UP`, `COMPLETED`, and `TERMINATED` remain distinct terminal paths. |
-| WebRTC and digital behavior | TaskFactory selects `WebRTC` or `Digital`; subclasses own channel-specific accept/media work. | Unsupported media values throw `Unknown media type`. |
+| Incoming task creation | Incoming task | Unsupported media or incomplete event context prevents publication of a partial task. |
+| Voice hold/resume | Hold or resume | Invalid state rejects before transport; failure notification/HTTP error/timeout sends the matching failure event and throws. |
+| Consult/transfer/conference | Consult and transfer | Backend failure notifications drive explicit failure actions and preserve stable call context. |
+| Wrapup/end | Wrapup or end | Validation and backend failures throw; backend events retain distinct WRAPPING_UP/COMPLETED/TERMINATED outcomes. |
+| WebRTC and digital accept | Channel-specific accept | WebRTC media/calling failure and Digital AQM failure follow different rejection paths. |
+
+### Incoming task
 
 ```mermaid
 sequenceDiagram
   participant Backend
+  participant WS as Primary WebSocket
   participant TM as TaskManager
   participant TF as TaskFactory
   participant Task
-  participant Actor as Task state-machine actor
   participant CC as ContactCenter
-  Backend-->>TM: mapped Contact Center event
+  participant App as Application
+  Backend-->>WS: AgentContactReserved event
+  WS-->>TM: message event
+  TM->>TM: parse and prepare event context
   alt task is new and media is supported
     TM->>TF: createTask(data, dependencies)
     TF-->>TM: Voice / WebRTC / Digital
     TM->>Task: initialize and store
-    Task->>Actor: start / send mapped TaskEvent
-    TM-->>CC: emit typed TASK_EVENTS notification
+    TM->>Task: send mapped TaskEvent
+    TM-->>CC: emit TASK_INCOMING
+    CC-->>App: task:incoming
+    opt a BROWSER telephony INCOMING_CALL arrives
+      TM->>TM: map call ID to current telephony task
+      TM->>Task: send TASK_INCOMING for call/task association
+    end
   else unsupported media
     TF-->>TM: throw Unknown media type
+  else invalid/unmapped event
+    TM->>TM: ignore without publishing a partial task
+  end
+```
+
+### Hold or resume
+
+```mermaid
+sequenceDiagram
+  participant App
+  participant Voice
+  participant Actor as Task state-machine actor
+  participant Contact as routingContact
+  participant AQM as AqmReqs
+  participant WR as WebexRequest
+  participant WS as Primary WebSocket
+  App->>Voice: hold() or resume()
+  Voice->>Voice: derive media resource and validate CONNECTED/HELD state
+  alt invalid state
+    Voice-->>App: throw before transport
+  else valid state
+    Voice->>Actor: HOLD_INITIATED or UNHOLD_INITIATED
+    Voice->>Contact: hold/unHold({interactionId, data: {mediaResourceId}})
+    Contact->>AQM: generated request with success/failure binds
+    AQM->>WR: authenticated HTTP request
+    WR-->>AQM: acknowledgement only
+    alt matching success notification
+      WS-->>AQM: AGENT_CONTACT_HELD/UNHELD
+      AQM-->>Voice: TaskResponse
+      Voice->>Actor: HOLD_SUCCESS or UNHOLD_SUCCESS
+      Voice-->>App: resolve
+    else matching failure, HTTP rejection, or timeout
+      WS-->>AQM: failure notification or no completion
+      Voice->>Actor: HOLD_FAILED or UNHOLD_FAILED
+      Voice-->>App: throw detailed error
+    end
+  end
+```
+
+### Consult and transfer
+
+```mermaid
+sequenceDiagram
+  participant App
+  participant Voice
+  participant Actor as Task state-machine actor
+  participant Contact as routingContact
+  participant WS as Primary WebSocket
+  App->>Voice: consult/transfer/conference operation
+  Voice->>Actor: initiating event
+  Voice->>Contact: correlated AQM operation
+  alt matching success notification
+    WS-->>Contact: consult/transfer/conference success
+    Contact-->>Voice: TaskResponse
+    Voice->>Actor: success event and updated call context
+    Voice-->>App: resolve
+  else failure/cancel/timeout
+    WS-->>Contact: failure or cancel notification
+    Voice->>Actor: matching failure/end event
+    Voice-->>App: throw while preserving stable main/consult context
+  end
+```
+
+### Wrapup or end
+
+```mermaid
+sequenceDiagram
+  participant App
+  participant Task
+  participant Contact as routingContact
+  participant WS as Primary WebSocket
+  participant Actor as Task state-machine actor
+  App->>Task: wrapup(payload) or end()
+  alt invalid wrapup payload or missing task data
+    Task-->>App: throw validation error
+  else valid request
+    Task->>Contact: wrapup/end({interactionId, data})
+    alt matching success notification
+      WS-->>Contact: wrapup/end success
+      Contact-->>Task: TaskResponse
+      WS-->>Actor: backend event selects WRAPPING_UP/COMPLETED/TERMINATED
+      Task-->>App: resolve
+    else failure, HTTP rejection, or timeout
+      Contact-->>Task: structured rejection
+      Task-->>App: throw detailed error
+    end
+  end
+```
+
+### Channel-specific accept
+
+```mermaid
+sequenceDiagram
+  participant App
+  participant TF as TaskFactory
+  participant WebRTC
+  participant Digital
+  participant Calling as WebCallingService
+  participant Contact as routingContact
+  TF-->>App: WebRTC or Digital task
+  alt WebRTC accept
+    App->>WebRTC: accept()
+    WebRTC->>WebRTC: getUserMedia(audio)
+    WebRTC->>Calling: answerCall(localAudioStream, interactionId)
+    alt media/calling succeeds
+      WebRTC-->>App: resolve
+    else media/calling failure
+      WebRTC-->>App: throw detailed error
+    end
+  else Digital accept
+    App->>Digital: accept()
+    Digital->>Contact: accept({interactionId})
+    alt AQM success notification
+      Contact-->>Digital: TaskResponse
+      Digital-->>App: resolve
+    else failure or timeout
+      Digital-->>App: throw detailed error
+    end
   end
 ```
 
@@ -912,33 +884,12 @@ sequenceDiagram
 | Component            | File                         | Responsibility                                             |
 |---|---|---|
 | `TaskManager`        | `task/TaskManager.ts`        | Task lifecycle coordination                                |
-
-| Component            | File                         | Responsibility                                             |
-|---|---|---|
 | `Task`               | `task/Task.ts`               | Individual task operations                                 |
-
-| Component            | File                         | Responsibility                                             |
-|---|---|---|
 | `contact`            | `task/contact.ts`            | AQM request definitions                                    |
-
-| Component            | File                         | Responsibility                                             |
-|---|---|---|
 | `dialer`             | `task/dialer.ts`             | Outbound call initiation                                   |
-
-| Component            | File                         | Responsibility                                             |
-|---|---|---|
 | `AutoWrapup`         | `task/AutoWrapup.ts`         | Auto wrapup timer                                          |
-
-| Component            | File                         | Responsibility                                             |
-|---|---|---|
 | `taskDataNormalizer` | `task/taskDataNormalizer.ts` | Normalizes backend task payloads                           |
-
-| Component            | File                         | Responsibility                                             |
-|---|---|---|
 | `TaskUtils`          | `task/TaskUtils.ts`          | Utility functions                                          |
-
-| Component            | File                         | Responsibility                                             |
-|---|---|---|
 | `state-machine`      | `task/state-machine/*`       | Task state transitions, guards, and UI control computation |
 
 **File:** `Task.ts`
@@ -1219,8 +1170,6 @@ For state-machine-specific implementation guidance, use:
 
 - `../state-machine/ai-docs/task-state-machine-spec.md`
 
-- `../state-machine/ai-docs/task-state-machine-spec.md`
-
 - **Active lifecycle + intermediate states**:
 
 - `IDLE`, `OFFERED`, `CONNECTED`
@@ -1292,17 +1241,30 @@ await cc.stationLogin({ loginOption: 'BROWSER', ... });
 ```
 
 ## Pitfalls
-- Do not bypass the Task ownership boundary or duplicate its constants/events; doing so breaks correlation, compatibility, or state invariants.
+- Concrete `Task`/`Voice` hold and resume methods are parameterless even though the broader `ITask` declaration retains an optional compatibility argument.
+- AQM HTTP acknowledgement never completes a task operation; success/failure binds or timeout settle the promise and must stay aligned with actor events.
+- Primary and RTD WebSockets have different ownership: TaskManager uses the RTD stream for transcript/suggestion events and must not emit acknowledgement payloads as public suggestions.
 
 ## Module Do's / Don'ts
-- DO use the authoritative files and typed constants listed above.
-- DON'T use raw event strings, swallow errors, or infer backend behavior.
+- DO send initiating and success/failure events to the task actor around remote Voice operations.
+- DO let TaskFactory select Voice/WebRTC/Digital from media type and login option.
+- DON'T create a generic task for unsupported media or treat `startOutdial()` as returning an ITask.
+- DON'T derive hold/resume completion from the HTTP response.
 
 ## Key Design Trade-off
 - A shared Task base preserves a stable API while media-specific subclasses and a separate state engine enforce capability differences.
 
 ## Test-Case Strategy (module)
 Use `test/unit/spec/services/task/Task.ts`, `TaskFactory.ts`, `TaskManager.ts`, media-specific suites, contact/dialer suites, and state-machine suites. Cover concrete-versus-interface method signatures, every TASK_EVENTS group, unsupported media rejection, primary/RTD event ownership, injected state actions, and success/failure/timeout paths.
+
+| Behavior / Requirement | Existing test evidence | Gap |
+|---|---|---|
+| `TASK-R-001` | `test/unit/spec/services/task/TaskFactory.ts` | None. |
+| `TASK-R-002` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/voice/Voice.ts` | None. |
+| `TASK-R-003` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | Keep event-catalog parity checks synchronized with `TASK_EVENTS`. |
+| `TASK-R-004` | `test/unit/spec/services/task/TaskManager.ts` | None. |
+| `TASK-R-005` | `test/unit/spec/services/task/TaskFactory.ts`, `test/unit/spec/services/task/dialer.ts` | None. |
+| `TASK-R-006` | `test/unit/spec/services/task/contact.ts`, `test/unit/spec/services/core/WebexRequest.ts` | Authentication ownership is verified across routing/Core boundaries. |
 
 ## Traceability
 - Repo architecture: `../../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../../ai-docs/SPEC_INDEX.md`
@@ -1319,8 +1281,6 @@ Use `test/unit/spec/services/task/Task.ts`, `TaskFactory.ts`, `TaskManager.ts`, 
 - Task lifecycle state machine: `state-machine/TaskStateMachine.ts`
 
 - State machine types/events: `state-machine/constants.ts`, `state-machine/types.ts`
-
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Technical deep-dive
 
 - [TaskManager.ts](../TaskManager.ts) - Manager implementation
 

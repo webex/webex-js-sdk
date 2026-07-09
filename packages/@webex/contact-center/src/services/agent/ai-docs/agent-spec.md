@@ -9,10 +9,10 @@
 | Module id | `agent` |
 | Source path(s) | `src/services/agent` |
 | Doc kind | Module spec |
-| Coverage score | 100% assessed 2026-07-07; 15/15 mandatory fields present; no applicability gaps |
+| Coverage score | 100% assessed 2026-07-09; 15/15 mandatory fields present; test evidence and gaps mapped by requirement |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved residual warning and coverage completion / 2026-07-07 |
-| Validation status | pass; validator claude-code; assessed 2026-07-07; 0 Blocking, 0 warnings; clean independent revalidation complete |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved conformance and fidelity remediation / 2026-07-09 |
+| Validation status | not-run for current revision; independent validator claude-code required after 2026-07-09 remediation; prior 2026-07-07 PASS is superseded by these edits |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -46,7 +46,7 @@ services/agent/
 ├── types.ts          # Agent types and events
 └── ai-docs/
     ├── AGENTS.md     # Usage documentation
-    └── ARCHITECTURE.md # This file
+    └── ARCHITECTURE.md # Preserved legacy migration source (non-canonical)
 ```
 
 ## Key Files (source of truth)
@@ -82,11 +82,11 @@ Key nested WebSocket binds use the actual outer/data constants, for example `CC_
 ## Requirements
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| AGENT-R-001 | routingAgent station login/logout must use the documented WCC endpoints and settle on their nested `CC_EVENTS` success/failure notifications. | The backend operation is asynchronous and HTTP acknowledgement is not final agent state. | `src/services/agent/index.ts` | `test/unit/spec/services/agent/index.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| AGENT-R-002 | State change must use PUT `/v1/agents/session/state` and preserve typed success/failure binds. | Agent availability drives routing eligibility and must not be inferred from request acknowledgement. | `src/services/agent/index.ts` | `test/unit/spec/services/agent/index.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| AGENT-R-003 | Buddy-agent lookup must preserve its typed request and correlated response contract. | Consult/transfer selection depends on backend-filtered availability. | `src/services/agent/index.ts` | `test/unit/spec/services/agent/index.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| AGENT-R-004 | The agent factory exposes `reload`, while ContactCenter alone decides when automated relogin is permitted. | Transport recovery lacks the profile/policy context required to mutate an agent session safely. | `src/cc.ts` | `test/unit/spec/cc.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| AGENT-R-005 | Device/profile update must be documented as `ContactCenter.updateAgentProfile`, not as an agent-factory method. | Calling a non-existent `routingAgent.deviceUpdate` would fail at runtime. | `src/cc.ts` | `test/unit/spec/cc.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
+| AGENT-R-001 | routingAgent station login/logout must use the documented WCC endpoints and settle on their nested `CC_EVENTS` success/failure notifications. | The backend operation is asynchronous and HTTP acknowledgement is not final agent state. | `src/services/agent/index.ts` | `test/unit/spec/services/agent/index.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| AGENT-R-002 | State change must use PUT `/v1/agents/session/state` and preserve typed success/failure binds. | Agent availability drives routing eligibility and must not be inferred from request acknowledgement. | `src/services/agent/index.ts` | `test/unit/spec/services/agent/index.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| AGENT-R-003 | Buddy-agent lookup must preserve its typed request and correlated response contract. | Consult/transfer selection depends on backend-filtered availability. | `src/services/agent/index.ts` | `test/unit/spec/services/agent/index.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| AGENT-R-004 | The agent factory exposes `reload`, while ContactCenter alone decides when automated relogin is permitted. | Transport recovery lacks the profile/policy context required to mutate an agent session safely. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| AGENT-R-005 | Device/profile update must be documented as `ContactCenter.updateAgentProfile`, not as an agent-factory method. | Calling a non-existent `routingAgent.deviceUpdate` would fail at runtime. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 
 ## Design Overview
 `routingAgent` is a pure AQM factory. It receives an initialized AqmReqs instance and returns five request functions: `reload`, `logout`, `stationLogin`, `stateChange`, and `buddyAgents`. Each request config declares the endpoint/payload plus exact `CC_EVENTS` notification binds.
@@ -110,15 +110,101 @@ flowchart LR
 
 Recovery is separate: ConnectionService emits state → ContactCenter evaluates `allowAutomatedRelogin` → ContactCenter calls private `silentRelogin()` → `services.agent.reload()` uses the agent factory.
 
+### Station-login orchestration detail
+
+```mermaid
+flowchart TD
+    A[cc.stationLogin] --> B[Validate dial number for AGENT_DN]
+    B --> C[services.agent.stationLogin]
+    C --> D[AqmReqs.req]
+    D --> E[HTTP REST request to backend]
+    E --> F[Backend processes]
+    F --> G{Success?}
+    G -->|Yes| H[StationLoginSuccess event]
+    G -->|No| I[StationLoginFailed event]
+    H --> J[Register WebCalling if BROWSER]
+    J --> K[Track metrics]
+    K --> L[Return response]
+    I --> M[getErrorDetails]
+    M --> N[Throw error]
+```
+
+### WebSocket-to-application event mapping
+
+```mermaid
+flowchart LR
+    A[WebSocket Message] --> B[WebSocketManager]
+    B --> C[cc.handleWebsocketMessage]
+    C --> D{Event Type?}
+    D -->|AGENT_STATE_CHANGE| E[emit agent:stateChange]
+    D -->|data.type check| F{Nested Type?}
+    F -->|STATION_LOGIN_SUCCESS| G[Transform channelsMap]
+    G --> H[emit agent:stationLoginSuccess]
+    F -->|LOGOUT_SUCCESS| I[emit agent:logoutSuccess]
+```
+
+### Silent-relogin decision flow
+
+```mermaid
+flowchart TD
+    A[WebSocket Reconnected] --> B[handleConnectionLost]
+    B --> C{allowAutomatedRelogin?}
+    C -->|Yes| D[silentRelogin]
+    C -->|No| M[Retain reported connection state]
+    D --> E[services.agent.reload]
+    E --> F{Success?}
+    F -->|Yes| G[Update agentConfig and device state]
+    G --> H{lastStateChangeReason?}
+    H -->|agent-wss-disconnect| I[setAgentState Available]
+    H -->|Other| J[Keep backend state]
+    F -->|No, AGENT_NOT_FOUND| K[Handle silently]
+    F -->|No, Other| L[Throw detailed error]
+```
+
 ## Sequence Diagram(s)
 Sequence coverage:
 
-| Operation group | Completion/failure |
-|---|---|
-| Station login/logout | Nested `CC_EVENTS` success/failure binds or AQM timeout |
-| State change | PUT initiation plus state-change notification |
-| Buddy agents | Correlated response/failure |
-| Reload | Called by ContactCenter recovery policy; relogin success/failure |
+| Operation group | Diagram | Failure / recovery coverage |
+|---|---|---|
+| Station login | Station login | Validation, nested failure notification, HTTP rejection, and timeout throw. |
+| Station logout | Station logout | Nested failure/timeout rejects and calling deregistration occurs only after success. |
+| State change | State change | PUT failure notification/timeout returns a structured rejection. |
+| Buddy agents | Buddy-agent lookup | Correlated retrieval failure/timeout rejects. |
+| Reload | Recovery reload | ContactCenter gates reload; relogin failure or disabled policy preserves failure state. |
+
+### Station login
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant CC as ContactCenter
+    participant Svc as Services.agent
+    participant AQM as AqmReqs
+    participant WS as WebSocket
+    participant BE as Backend
+    App->>CC: stationLogin(params)
+    CC->>CC: Validate dial number
+    CC->>CC: timeEvent(LOGIN_SUCCESS, LOGIN_FAILED)
+    CC->>Svc: stationLogin({data})
+    Svc->>AQM: req(config)
+    AQM->>BE: HTTP POST /v1/agents/login
+    alt nested success
+      BE-->>WS: AgentStationLoginSuccess
+      WS-->>AQM: matching success notification
+      AQM-->>Svc: StationLoginSuccess
+      Svc-->>CC: login response
+      CC->>CC: Register WebCalling if BROWSER and enabled
+      CC->>CC: trackEvent(LOGIN_SUCCESS)
+      CC-->>App: StationLoginResponse
+    else nested failure, HTTP rejection, or timeout
+      WS-->>AQM: failure notification or no completion
+      AQM-->>CC: structured rejection
+      CC->>CC: trackEvent(LOGIN_FAILED)
+      CC-->>App: throw detailed error
+    end
+```
+
+### Station logout
 
 ```mermaid
 sequenceDiagram
@@ -127,20 +213,66 @@ sequenceDiagram
   participant Agent as routingAgent
   participant AQM as AqmReqs
   participant WS as Primary WebSocket
-  App->>CC: stationLogin(input)
-  CC->>Agent: stationLogin({data})
-  Agent->>AQM: generated request
-  AQM->>AQM: HTTP POST /v1/agents/login
-  alt nested success
-    WS-->>AQM: CC_EVENTS.AGENT_STATION_LOGIN / data.type = CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS
-    AQM-->>CC: StationLoginSuccess
-    CC-->>App: StationLoginResponse
-  else nested failure/timeout
-    WS-->>AQM: failure or no completion
-    AQM-->>CC: structured rejection
-    CC-->>App: throw
+  App->>CC: stationLogout({logoutReason})
+  CC->>Agent: logout({data})
+  Agent->>AQM: POST /v1/agents/logout + nested binds
+  alt AGENT_LOGOUT_SUCCESS
+    WS-->>AQM: matching nested success
+    AQM-->>CC: LogoutSuccess
+    CC->>CC: track success; deregister WebCalling line
+    CC-->>App: StationLogoutResponse
+  else failure, HTTP rejection, or timeout
+    WS-->>AQM: matching failure or no completion
+    CC->>CC: track failure
+    CC-->>App: throw detailed error
   end
 ```
+
+### State change
+
+```mermaid
+sequenceDiagram
+  participant App
+  participant CC as ContactCenter
+  participant Agent as routingAgent
+  participant AQM as AqmReqs
+  participant WS as Primary WebSocket
+  App->>CC: setAgentState(data)
+  CC->>Agent: stateChange({data + agentId})
+  Agent->>AQM: PUT /v1/agents/session/state + binds
+  alt AGENT_STATE_CHANGE_SUCCESS
+    WS-->>AQM: matching nested success
+    AQM-->>CC: StateChangeSuccess
+    CC-->>App: SetStateResponse
+  else failure, HTTP rejection, or timeout
+    WS-->>AQM: matching failure or no completion
+    AQM-->>CC: structured rejection
+    CC-->>App: throw detailed error
+  end
+```
+
+### Buddy-agent lookup
+
+```mermaid
+sequenceDiagram
+  participant App
+  participant CC as ContactCenter
+  participant Agent as routingAgent
+  participant AQM as AqmReqs
+  participant WS as Primary WebSocket
+  App->>CC: getBuddyAgents(query)
+  CC->>Agent: buddyAgents({data})
+  Agent->>AQM: POST /v1/agents/buddyList + binds
+  alt AGENT_BUDDY_AGENTS_SUCCESS
+    WS-->>AQM: matching nested success
+    AQM-->>App: BuddyAgentsResponse
+  else retrieve failure or timeout
+    WS-->>AQM: matching failure or no completion
+    AQM-->>App: structured rejection
+  end
+```
+
+### Recovery reload
 
 ```mermaid
 sequenceDiagram
@@ -216,21 +348,9 @@ The `AgentState` type (`'Available' | 'Idle' | 'RONA' | string`) is extensible -
 | State | SubStatus | Description |
 |---|---|---|
 | LoggedIn | Available | Ready to receive tasks |
-
-| State | SubStatus | Description |
-|---|---|---|
 | LoggedIn | Idle | On break or not ready (uses aux code for sub-reason) |
-
-| State | SubStatus | Description |
-|---|---|---|
 | RONA | - | Rang but no answer; agent failed to accept offered task |
-
-| State | SubStatus | Description |
-|---|---|---|
 | LoggedOut | - | Not logged in |
-
-| State | SubStatus | Description |
-|---|---|---|
 | LoggedIn | *(custom)* | Additional org-specific states defined via aux codes |
 
 > **Note**: `AgentState` is a union with `string`, so consumers should handle unknown state values gracefully rather than exhaustively matching only the known literals.
@@ -288,13 +408,7 @@ try {
 | Reason | Description |
 |---|---|
 | `DUPLICATE_LOCATION` | Extension/DN already in use |
-
-| Reason | Description |
-|---|---|
 | `INVALID_DIAL_NUMBER` | Invalid phone number format |
-
-| Reason | Description |
-|---|---|
 | `AGENT_NOT_FOUND` | Agent doesn't exist (silent relogin) |
 
 For `stationLogin`, special error handling extracts field-specific messages:
@@ -348,11 +462,15 @@ const webex = Webex.init({
 ```
 
 ## Pitfalls
-- Do not bypass the Agent ownership boundary or duplicate its constants/events; doing so breaks correlation, compatibility, or state invariants.
+- Station login/logout and state-change binds match both the outer event type and nested `data.type`; flattening either bind can settle the wrong request.
+- `routingAgent` has exactly five request functions and no `deviceUpdate`; profile/device changes belong to ContactCenter.
+- ConnectionService reports transport state, but ContactCenter alone decides whether `silentRelogin()` is allowed and whether `AGENT_NOT_FOUND` is handled silently.
 
 ## Module Do's / Don'ts
-- DO use the authoritative files and typed constants listed above.
-- DON'T use raw event strings, swallow errors, or infer backend behavior.
+- DO keep HTTP endpoint/method and WebSocket success/failure binds in the same routing factory definition.
+- DO keep browser-calling registration/deregistration in ContactCenter around successful station operations.
+- DON'T resolve an agent operation from HTTP acknowledgement.
+- DON'T move automated relogin policy into the agent factory or ConnectionService.
 
 ## Key Design Trade-off
 - HTTP initiates each operation while the correlated WebSocket notification is the completion signal, matching backend semantics at the cost of timeout/correlation complexity.
@@ -360,11 +478,17 @@ const webex = Webex.init({
 ## Test-Case Strategy (module)
 Use `test/unit/spec/services/agent/index.ts` for factory endpoint/bind/payload contracts and `test/unit/spec/cc.ts` for public validation, metrics, calling, updateAgentProfile, and recovery ownership. Cover success, nested failure, HTTP rejection, and timeout without inventing a `deviceUpdate` factory method.
 
+| Behavior / Requirement | Existing test evidence | Gap |
+|---|---|---|
+| `AGENT-R-001` | `test/unit/spec/services/agent/index.ts`, `test/unit/spec/cc.ts` | None. |
+| `AGENT-R-002` | `test/unit/spec/services/agent/index.ts`, `test/unit/spec/cc.ts` | None. |
+| `AGENT-R-003` | `test/unit/spec/services/agent/index.ts` | None. |
+| `AGENT-R-004` | `test/unit/spec/cc.ts` | None. |
+| `AGENT-R-005` | `test/unit/spec/cc.ts` | Keep a negative assertion that `routingAgent.deviceUpdate` is absent. |
+
 ## Traceability
 - Repo architecture: `../../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../../ai-docs/SPEC_INDEX.md`
 - Coverage state and contracts baseline: `../../../../.sdd/manifest.json`
-
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Technical deep-dive
 
 - [`cc.ts`](../../../cc.ts) - Main plugin implementation
 

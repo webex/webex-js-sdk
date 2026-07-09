@@ -9,10 +9,10 @@
 | Module id | `metrics` |
 | Source path(s) | `src/metrics` |
 | Doc kind | Module spec |
-| Coverage score | 100% assessed 2026-07-07; 15/15 mandatory fields present; no applicability gaps |
+| Coverage score | 100% assessed 2026-07-09; 15/15 mandatory fields present; test evidence and gaps mapped by requirement |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved residual warning and coverage completion / 2026-07-07 |
-| Validation status | pass; validator claude-code; assessed 2026-07-07; 0 Blocking, 0 warnings; clean independent revalidation complete |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved conformance and fidelity remediation / 2026-07-09 |
+| Validation status | not-run for current revision; independent validator claude-code required after 2026-07-09 remediation; prior 2026-07-07 PASS is superseded by these edits |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -60,7 +60,7 @@ src/metrics/
 ├── constants.ts            # METRIC_EVENT_NAMES constants
 └── ai-docs/
     ├── AGENTS.md           # Usage documentation (see PR #4762)
-    └── ARCHITECTURE.md     # This file
+    └── ARCHITECTURE.md     # Preserved legacy, noncanonical architecture guide
 ```
 
 ## Key Files (source of truth)
@@ -208,169 +208,46 @@ All event names are defined in `METRIC_EVENT_NAMES` (`constants.ts`). Events fol
 | Constant | Value | Description |
 |---|---|---|
 | `STATION_LOGIN_SUCCESS` | `'Station Login Success'` | Agent station login succeeded |
-
-| Constant | Value | Description |
-|---|---|---|
 | `STATION_LOGIN_FAILED` | `'Station Login Failed'` | Agent station login failed |
-
-| Constant | Value | Description |
-|---|---|---|
 | `STATION_LOGOUT_SUCCESS` | `'Station Logout Success'` | Agent station logout succeeded |
-
-| Constant | Value | Description |
-|---|---|---|
 | `STATION_LOGOUT_FAILED` | `'Station Logout Failed'` | Agent station logout failed |
-
-| Constant | Value | Description |
-|---|---|---|
 | `STATION_RELOGIN_SUCCESS` | `'Station Relogin Success'` | Silent relogin succeeded |
-
-| Constant | Value | Description |
-|---|---|---|
 | `STATION_RELOGIN_FAILED` | `'Station Relogin Failed'` | Silent relogin failed |
-
-| Constant | Value | Description |
-|---|---|---|
 | `AGENT_STATE_CHANGE_SUCCESS` | `'Agent State Change Success'` | State change succeeded |
-
-| Constant | Value | Description |
-|---|---|---|
 | `AGENT_STATE_CHANGE_FAILED` | `'Agent State Change Failed'` | State change failed |
-
-| Constant | Value | Description |
-|---|---|---|
 | `FETCH_BUDDY_AGENTS_SUCCESS` | `'Fetch Buddy Agents Success'` | Buddy agents fetch succeeded |
-
-| Constant | Value | Description |
-|---|---|---|
 | `FETCH_BUDDY_AGENTS_FAILED` | `'Fetch Buddy Agents Failed'` | Buddy agents fetch failed |
-
-| Constant | Value | Description |
-|---|---|---|
 | `AGENT_RONA` | `'Agent RONA'` | Agent Ring-On-No-Answer triggered |
-
-| Constant | Value | Description |
-|---|---|---|
 | `AGENT_CONTACT_ASSIGN_FAILED` | `'Agent Contact Assign Failed'` | Contact assignment failed |
-
-| Constant | Value | Description |
-|---|---|---|
 | `AGENT_INVITE_FAILED` | `'Agent Invite Failed'` | Agent invite failed |
-
-| Constant | Value | Description |
-|---|---|---|
 | `AGENT_DEVICE_TYPE_UPDATE_SUCCESS` | `'Agent Device Type Update Success'` | Device type update succeeded |
-
-| Constant | Value | Description |
-|---|---|---|
 | `AGENT_DEVICE_TYPE_UPDATE_FAILED` | `'Agent Device Type Update Failed'` | Device type update failed |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_ACCEPT_SUCCESS` / `FAILED` | `'Task Accept ...'` | Task accept result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_DECLINE_SUCCESS` / `FAILED` | `'Task Decline ...'` | Task decline result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_END_SUCCESS` / `FAILED` | `'Task End ...'` | Task end result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_WRAPUP_SUCCESS` / `FAILED` | `'Task Wrapup ...'` | Task wrapup result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_HOLD_SUCCESS` / `FAILED` | `'Task Hold ...'` | Task hold result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_RESUME_SUCCESS` / `FAILED` | `'Task Resume ...'` | Task resume result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_CONSULT_START_SUCCESS` / `FAILED` | `'Task Consult Start ...'` | Consult start result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_CONSULT_END_SUCCESS` / `FAILED` | `'Task Consult End ...'` | Consult end result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_TRANSFER_SUCCESS` / `FAILED` | `'Task Transfer ...'` | Transfer result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_PAUSE_RECORDING_SUCCESS` / `FAILED` | `'Task Pause Recording ...'` | Pause recording result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_RESUME_RECORDING_SUCCESS` / `FAILED` | `'Task Resume Recording ...'` | Resume recording result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_ACCEPT_CONSULT_SUCCESS` / `FAILED` | `'Task Accept Consult ...'` | Accept consult result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_AUTO_ANSWER_SUCCESS` / `FAILED` | `'Task Auto Answer ...'` | Auto-answer result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_OUTDIAL_SUCCESS` / `FAILED` | `'Task Outdial ...'` | Outdial result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_CONFERENCE_START_SUCCESS` / `FAILED` | `'Task Conference Start ...'` | Conference start result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_CONFERENCE_END_SUCCESS` / `FAILED` | `'Task Conference End ...'` | Conference end result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_CONFERENCE_TRANSFER_SUCCESS` / `FAILED` | `'Task Conference Transfer ...'` | Conference transfer result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_CONFERENCE_EXIT_SUCCESS` / `FAILED` | `'Task Conference Exit ...'` | Conference exit result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `TASK_SWITCH_CALL_SUCCESS` / `FAILED` | `'Task Switch Call ...'` | Switch call result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `WEBSOCKET_REGISTER_SUCCESS` / `FAILED` | `'Websocket Register ...'` | WebSocket registration result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `WEBSOCKET_DEREGISTER_SUCCESS` / `FAIL` | `'Websocket Deregister ...'` | WebSocket deregistration result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `WEBSOCKET_EVENT_RECEIVED` | `'Websocket Event Received'` | WebSocket event received |
-
-| Constant | Value | Description |
-|---|---|---|
 | `UPLOAD_LOGS_SUCCESS` / `FAILED` | `'Upload Logs ...'` | Log upload result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `ENTRYPOINT_FETCH_SUCCESS` / `FAILED` | `'Entrypoint Fetch ...'` | Entry point fetch result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `ADDRESSBOOK_FETCH_SUCCESS` / `FAILED` | `'AddressBook Fetch ...'` | Address book fetch result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `QUEUE_FETCH_SUCCESS` / `FAILED` | `'Queue Fetch ...'` | Queue fetch result |
-
-| Constant | Value | Description |
-|---|---|---|
 | `OUTDIAL_ANI_EP_FETCH_SUCCESS` / `FAILED` | `'Outdial ANI Entries Fetch ...'` | Outdial ANI entries fetch result |
 
 All event names are defined in `constants.ts` as `METRIC_EVENT_NAMES`. Events follow a `{Domain} {Action} {Success|Failed}` naming convention:
@@ -378,129 +255,36 @@ All event names are defined in `constants.ts` as `METRIC_EVENT_NAMES`. Events fo
 | Category               | Success Event                          | Failure Event                          |
 |---|---|---|
 | Station Login          | `STATION_LOGIN_SUCCESS`                | `STATION_LOGIN_FAILED`                 |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Station Logout         | `STATION_LOGOUT_SUCCESS`               | `STATION_LOGOUT_FAILED`                |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Station Relogin        | `STATION_RELOGIN_SUCCESS`              | `STATION_RELOGIN_FAILED`               |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | State Change           | `AGENT_STATE_CHANGE_SUCCESS`           | `AGENT_STATE_CHANGE_FAILED`            |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Buddy Agents           | `FETCH_BUDDY_AGENTS_SUCCESS`           | `FETCH_BUDDY_AGENTS_FAILED`            |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | WebSocket Register     | `WEBSOCKET_REGISTER_SUCCESS`           | `WEBSOCKET_REGISTER_FAILED`            |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Task Accept            | `TASK_ACCEPT_SUCCESS`                  | `TASK_ACCEPT_FAILED`                   |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Task Decline           | `TASK_DECLINE_SUCCESS`                 | `TASK_DECLINE_FAILED`                  |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Task End               | `TASK_END_SUCCESS`                     | `TASK_END_FAILED`                      |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Task Wrapup            | `TASK_WRAPUP_SUCCESS`                  | `TASK_WRAPUP_FAILED`                   |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Task Hold              | `TASK_HOLD_SUCCESS`                    | `TASK_HOLD_FAILED`                     |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Task Resume            | `TASK_RESUME_SUCCESS`                  | `TASK_RESUME_FAILED`                   |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Task Consult Start     | `TASK_CONSULT_START_SUCCESS`           | `TASK_CONSULT_START_FAILED`            |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Task Consult End       | `TASK_CONSULT_END_SUCCESS`             | `TASK_CONSULT_END_FAILED`              |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Task Transfer          | `TASK_TRANSFER_SUCCESS`                | `TASK_TRANSFER_FAILED`                 |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Task Resume Recording  | `TASK_RESUME_RECORDING_SUCCESS`        | `TASK_RESUME_RECORDING_FAILED`         |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Task Pause Recording   | `TASK_PAUSE_RECORDING_SUCCESS`         | `TASK_PAUSE_RECORDING_FAILED`          |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Task Accept Consult    | `TASK_ACCEPT_CONSULT_SUCCESS`          | `TASK_ACCEPT_CONSULT_FAILED`           |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Task Auto Answer       | `TASK_AUTO_ANSWER_SUCCESS`             | `TASK_AUTO_ANSWER_FAILED`              |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Conference Start       | `TASK_CONFERENCE_START_SUCCESS`        | `TASK_CONFERENCE_START_FAILED`         |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Conference End         | `TASK_CONFERENCE_END_SUCCESS`          | `TASK_CONFERENCE_END_FAILED`           |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Conference Transfer    | `TASK_CONFERENCE_TRANSFER_SUCCESS`     | `TASK_CONFERENCE_TRANSFER_FAILED`      |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Conference Exit        | `TASK_CONFERENCE_EXIT_SUCCESS`         | `TASK_CONFERENCE_EXIT_FAILED`          |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Switch Call            | `TASK_SWITCH_CALL_SUCCESS`             | `TASK_SWITCH_CALL_FAILED`              |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Outdial                | `TASK_OUTDIAL_SUCCESS`                 | `TASK_OUTDIAL_FAILED`                  |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Upload Logs            | `UPLOAD_LOGS_SUCCESS`                  | `UPLOAD_LOGS_FAILED`                   |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | WebSocket Deregister   | `WEBSOCKET_DEREGISTER_SUCCESS`         | `WEBSOCKET_DEREGISTER_FAIL`            |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Device Type Update     | `AGENT_DEVICE_TYPE_UPDATE_SUCCESS`     | `AGENT_DEVICE_TYPE_UPDATE_FAILED`      |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | EntryPoint             | `ENTRYPOINT_FETCH_SUCCESS`             | `ENTRYPOINT_FETCH_FAILED`              |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | AddressBook            | `ADDRESSBOOK_FETCH_SUCCESS`            | `ADDRESSBOOK_FETCH_FAILED`             |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Queue                  | `QUEUE_FETCH_SUCCESS`                  | `QUEUE_FETCH_FAILED`                   |
-
-| Category               | Success Event                          | Failure Event                          |
-|---|---|---|
 | Outdial ANI Entries    | `OUTDIAL_ANI_EP_FETCH_SUCCESS`         | `OUTDIAL_ANI_EP_FETCH_FAILED`          |
 
 Special events (no success/failure pair):
@@ -620,10 +404,10 @@ Defined names without an `eventTaxonomyMap` entry: `AI_ASSISTANT_FETCH_HISTORIC_
 ## Requirements
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| METRICS-R-001 | Track only names defined by METRIC_EVENT_NAMES and keep the canonical catalog synchronized with the const object. | Telemetry queries and dashboards depend on exact stable event names. | `src/metrics/constants.ts` | `test/unit/spec/metrics/MetricsManager.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| METRICS-R-002 | Map behavioral events through eventTaxonomyMap and explicitly identify defined names without taxonomy. | Undefined taxonomy must not be mistaken for an emitted or classified behavioral event. | `src/metrics/behavioral-events.ts` | `test/unit/spec/metrics/behavioral-events.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| METRICS-R-003 | When metrics are disabled, clear pending events and make `timeEvent` plus all tracking methods return without recording/submitting. | Telemetry must never block or alter product behavior and disablement must be comprehensive. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| METRICS-R-004 | Queue submissions until the host SDK is ready and flush through the correct behavioral/operational/business service. | Early lifecycle telemetry must not be lost solely because the host is not ready. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
+| METRICS-R-001 | Track only names defined by METRIC_EVENT_NAMES and keep the canonical catalog synchronized with the const object. | Telemetry queries and dashboards depend on exact stable event names. | `src/metrics/constants.ts` | `test/unit/spec/metrics/MetricsManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| METRICS-R-002 | Map behavioral events through eventTaxonomyMap and explicitly identify defined names without taxonomy. | Undefined taxonomy must not be mistaken for an emitted or classified behavioral event. | `src/metrics/behavioral-events.ts` | `test/unit/spec/metrics/behavioral-events.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| METRICS-R-003 | When metrics are disabled, clear pending events and make `timeEvent` plus all tracking methods return without recording/submitting. | Telemetry must never block or alter product behavior and disablement must be comprehensive. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| METRICS-R-004 | Queue submissions until the host SDK is ready and flush through the correct behavioral/operational/business service. | Early lifecycle telemetry must not be lost solely because the host is not ready. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | METRICS-R-005 | Submit through the host SDK's `webex.internal.newMetrics` client without storing credentials or implementing authorization policy in MetricsManager. | Host-owned authentication keeps telemetry credential handling outside the Contact Center metrics module. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | None; authentication is inherited and credential ownership is explicitly N/A. | PRESENT |
 
 ## Design Overview
@@ -745,9 +529,12 @@ Sequence coverage:
 
 | Operation group | Diagram | Failure / recovery coverage |
 |---|---|---|
-| Time and track an event | `timeEvent` stores start time and keys; `trackEvent` attaches duration before queuing. | When disabled, both calls return without timing, queuing, or submission. |
-| Queue until SDK readiness | `getInstance` attaches the host-ready callback and preserves pending queues. | A not-ready SDK retains events; READY drains them through the configured metrics service. |
-| Submit behavioral/operational/business events | `trackEvent` queues once per requested metric service and invokes the corresponding `newMetrics` submitter. | Submission errors are logged without inventing a successful delivery. |
+| Time and track an event | Timing and tracking | Success/failure keys share one timer; missing timing data leaves the payload untimed. |
+| Queue until SDK readiness | SDK readiness | A not-ready SDK retains events; READY drains them through the configured metrics service. |
+| Submit behavioral/operational/business events | Category submission | The module does not retry or requeue after handing an event to `newMetrics`. |
+| Disable metrics | Disablement | Pending queues are cleared and future timing/tracking calls return immediately. |
+
+### Timing and tracking
 
 ```mermaid
 sequenceDiagram
@@ -776,6 +563,8 @@ sequenceDiagram
     end
 ```
 
+### SDK readiness
+
 ```mermaid
 sequenceDiagram
     participant CC as ContactCenter
@@ -796,6 +585,44 @@ sequenceDiagram
     MM->>MM: submitPendingEvents()
 ```
 
+### Category submission
+
+```mermaid
+sequenceDiagram
+  participant Caller
+  participant MM as MetricsManager
+  participant NM as webex.internal.newMetrics
+  Caller->>MM: trackEvent(name, payload, metricServices)
+  loop each requested metric service
+    alt behavioral
+      MM->>NM: submitBehavioralEvent(taxonomy + payload)
+    else operational
+      MM->>NM: submitOperationalEvent(WXCC_SDK_* + payload)
+    else business
+      MM->>NM: submitBusinessEvent(WXCC_SDK_* + appType)
+    else invalid metric service
+      MM->>MM: LoggerProxy.error(invalid type)
+    end
+  end
+  Note over MM,NM: No module-level retry or requeue after submission handoff
+```
+
+### Disablement
+
+```mermaid
+sequenceDiagram
+  participant Caller
+  participant MM as MetricsManager
+  Caller->>MM: setMetricsDisabled(true)
+  MM->>MM: clear pending behavioral/operational/business queues
+  Caller->>MM: timeEvent(...) / trackEvent(...)
+  alt metricsDisabled
+    MM-->>Caller: return without timing, queueing, or submission
+  else re-enabled
+    MM->>MM: use normal timing/queue flow
+  end
+```
+
 ## Class / Component Relationships
 ```mermaid
 classDiagram
@@ -813,13 +640,7 @@ classDiagram
 | Component                | File                    | Responsibility                                                                 |
 |---|---|---|
 | `MetricsManager`         | `MetricsManager.ts`     | Singleton that manages event queuing, timing, payload preparation, and submission |
-
-| Component                | File                    | Responsibility                                                                 |
-|---|---|---|
 | `BehavioralEventTaxonomy`| `behavioral-events.ts`  | Maps metric event names to structured taxonomy for behavioral analytics         |
-
-| Component                | File                    | Responsibility                                                                 |
-|---|---|---|
 | `METRIC_EVENT_NAMES`     | `constants.ts`          | Canonical constant object of all tracked metric event names                     |
 
 `MetricsManager` uses a private constructor with a static `getInstance` factory:
@@ -919,13 +740,7 @@ MetricsManager maintains three independent pending event queues:
 | Queue                       | Type         | Submitted Via                                      | Name Transform                                  | Extra Metadata                   |
 |---|---|---|---|---|
 | `pendingBehavioralEvents`   | behavioral   | `webex.internal.newMetrics.submitBehavioralEvent`   | Taxonomy-based (`{product}.{agent}.{target}.{verb}`) | None                             |
-
-| Queue                       | Type         | Submitted Via                                      | Name Transform                                  | Extra Metadata                   |
-|---|---|---|---|---|
 | `pendingOperationalEvents`  | operational  | `webex.internal.newMetrics.submitOperationalEvent`  | `WXCC_SDK_` prefix + uppercase (e.g. `WXCC_SDK_STATION_LOGIN_SUCCESS`) | None                             |
-
-| Queue                       | Type         | Submitted Via                                      | Name Transform                                  | Extra Metadata                   |
-|---|---|---|---|---|
 | `pendingBusinessEvents`     | business     | `webex.internal.newMetrics.submitBusinessEvent`     | `WXCC_SDK_` prefix + uppercase (same as operational) | `metadata: {appType: 'wxcc_sdk'}` |
 
 ## State Machine
@@ -948,7 +763,9 @@ stateDiagram-v2
 - **metricsDisabled**: When `true`, `timeEvent` and all `track*` methods return early, and `clearPendingEvents()` empties all queues.
 
 ## Pitfalls
-- Do not bypass the Metrics ownership boundary or duplicate its constants/events; doing so breaks correlation, compatibility, or state invariants.
+- `METRIC_EVENT_NAMES` and `eventTaxonomyMap` are different inventories: nine defined names intentionally have no behavioral taxonomy.
+- `setMetricsDisabled(true)` clears pending queues but does not create a delivery receipt; callers must not infer that previously submitted events were accepted.
+- Submission helpers hand events to `webex.internal.newMetrics` without a module-level retry/requeue policy, so telemetry must remain non-blocking and non-authoritative.
 
 Static helper that extracts common tracking fields from an AQM failure response.
 
@@ -993,14 +810,24 @@ Extracts: `agentId`, `trackingId`, `notifTrackingId`, `orgId`, `failureType`, `f
 **Solution**: Check if `setMetricsDisabled(true)` was called. This clears all pending queues and causes all `track*` methods to return early.
 
 ## Module Do's / Don'ts
-- DO use the authoritative files and typed constants listed above.
-- DON'T use raw event strings, swallow errors, or infer backend behavior.
+- DO use `METRIC_EVENT_NAMES` and the matching category submitter instead of constructing event names manually.
+- DO keep timing success/failure keys together so either outcome clears the same running timer.
+- DON'T add a behavioral taxonomy entry unless the backend taxonomy contract exists.
+- DON'T make product behavior depend on metrics delivery.
 
 ## Key Design Trade-off
 - Telemetry is deliberately non-blocking and queue-backed so product behavior never waits for metrics; failures are logged rather than propagated.
 
 ## Test-Case Strategy (module)
 Use `test/unit/spec/metrics/MetricsManager.ts` for readiness queues, timing/tracking, disabled behavior, submission categories, and failures. Use `test/unit/spec/metrics/behavioral-events.ts` to reconcile every taxonomy-backed name. Mechanically compare the complete constant catalog with taxonomy keys so newly defined events cannot disappear from the spec.
+
+| Behavior / Requirement | Existing test evidence | Gap |
+|---|---|---|
+| `METRICS-R-001` | `test/unit/spec/metrics/MetricsManager.ts` | Add a catalog parity assertion if constants change. |
+| `METRICS-R-002` | `test/unit/spec/metrics/behavioral-events.ts` | Keep explicit coverage for all nine unmapped names. |
+| `METRICS-R-003` | `test/unit/spec/metrics/MetricsManager.ts` | None. |
+| `METRICS-R-004` | `test/unit/spec/metrics/MetricsManager.ts` | None. |
+| `METRICS-R-005` | `test/unit/spec/metrics/MetricsManager.ts` | Authentication ownership is verified indirectly through the host metrics client. |
 
 ## Traceability
 - Repo architecture: `../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../ai-docs/SPEC_INDEX.md`

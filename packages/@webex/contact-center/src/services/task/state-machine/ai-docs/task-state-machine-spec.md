@@ -9,10 +9,10 @@
 | Module id | `task-state-machine` |
 | Source path(s) | `src/services/task/state-machine` |
 | Doc kind | Module spec |
-| Coverage score | 100% assessed 2026-07-07; 15/15 mandatory fields present; no applicability gaps |
+| Coverage score | 100% assessed 2026-07-09; 15/15 mandatory fields present; test evidence and gaps mapped by requirement |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved residual warning and coverage completion / 2026-07-07 |
-| Validation status | pass; validator claude-code; assessed 2026-07-07; 0 Blocking, 0 warnings; clean independent revalidation complete |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved conformance and fidelity remediation / 2026-07-09 |
+| Validation status | not-run for current revision; independent validator claude-code required after 2026-07-09 remediation; prior 2026-07-07 PASS is superseded by these edits |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -71,10 +71,10 @@ See root `CONTRACTS.md` for the package-level state-control export.
 ## Requirements
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| TASK_STATE_MACHINE-R-001 | Map typed Task events through the XState graph and preserve guards/actions for offer, assignment, consult, conference, transfer, wrapup, termination, and hydration. | A deterministic event vocabulary isolates lifecycle policy from transport payloads. | `src/services/task/state-machine/TaskStateMachine.ts` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| TASK_STATE_MACHINE-R-002 | Keep `handleConferenceFailed`, `handleSwitchToMainCall`, and `handleSwitchToConsult` wired where the graph invokes them; retain `forceConsultInitiator` as defined-but-currently-unwired. | Incorrect absence/wiring claims cause maintainers to duplicate or remove real actions. | `src/services/task/state-machine/actions.ts` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| TASK_STATE_MACHINE-R-003 | Treat `syncTaskDataFromEvent` as a Task-supplied machine implementation, not a default action in `actions.ts`. | The reusable graph declares the action name while Task owns integration-specific data synchronization. | `src/services/task/Task.ts` | `test/unit/spec/services/task/Task.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| TASK_STATE_MACHINE-R-004 | Compute UI controls through the real private voice/digital helper names and preserve the public `getDefaultUIControls` shape. | Applications depend on stable control state while implementation helpers remain private. | `src/services/task/state-machine/uiControlsComputer.ts` | `test/unit/spec/services/task/state-machine/uiControlsComputer.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
+| TASK_STATE_MACHINE-R-001 | Map typed Task events through the XState graph and preserve guards/actions for offer, assignment, consult, conference, transfer, wrapup, termination, and hydration. | A deterministic event vocabulary isolates lifecycle policy from transport payloads. | `src/services/task/state-machine/TaskStateMachine.ts` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| TASK_STATE_MACHINE-R-002 | Keep `handleConferenceFailed`, `handleSwitchToMainCall`, and `handleSwitchToConsult` wired where the graph invokes them; retain `forceConsultInitiator` as defined-but-currently-unwired. | Incorrect absence/wiring claims cause maintainers to duplicate or remove real actions. | `src/services/task/state-machine/actions.ts` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| TASK_STATE_MACHINE-R-003 | Treat `syncTaskDataFromEvent` as a Task-supplied machine implementation, not a default action in `actions.ts`. | The reusable graph declares the action name while Task owns integration-specific data synchronization. | `src/services/task/Task.ts` | `test/unit/spec/services/task/Task.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| TASK_STATE_MACHINE-R-004 | Compute UI controls through the real private voice/digital helper names and preserve the public `getDefaultUIControls` shape. | Applications depend on stable control state while implementation helpers remain private. | `src/services/task/state-machine/uiControlsComputer.ts` | `test/unit/spec/services/task/state-machine/uiControlsComputer.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | TASK_STATE_MACHINE-R-005 | Keep authentication and credentials outside the state-machine layer; it receives typed Task data/events and never invokes authenticated transport. | Pure transition logic remains reusable and cannot leak or mutate host authentication state. | `src/services/task/state-machine/TaskStateMachine.ts`, `src/services/task/state-machine/types.ts` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | None; security/auth applicability is explicitly N/A. | PRESENT |
 | TASK_STATE_MACHINE-R-006 | Treat `UIControlConfig` values as Task-supplied capability configuration, not rollout flags evaluated or owned by the state machine. | Rollout and profile policy must be resolved before actor construction so transitions remain deterministic. | `src/services/task/state-machine/types.ts`, `src/services/task/Task.ts` | `test/unit/spec/services/task/Task.ts` | None; rollout ownership is explicit. | PRESENT |
 | TASK_STATE_MACHINE-R-007 | Keep logging and metrics in Task/TaskManager integration; the state-machine implementation has no LoggerProxy or MetricsManager dependency. | Separating observability side effects from guards/actions preserves deterministic transition tests. | `src/services/task/state-machine/TaskStateMachine.ts`, `src/services/task/Task.ts` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts`, `test/unit/spec/services/task/Task.ts` | None; observability ownership is explicit. | PRESENT |
@@ -100,12 +100,14 @@ Sequence coverage:
 
 | Operation group | Diagram | Failure / recovery coverage |
 |---|---|---|
-| Offer and assignment | `TASK_OFFERED`/`ASSIGN` move IDLE or OFFERED tasks into active lifecycle states. | Guarded offer/assignment paths keep task data and emitted events synchronized. |
-| Hold/resume | Initiation events enter `HOLD_INITIATING`/`RESUME_INITIATING`; success/failure selects HELD or CONNECTED. | Explicit failure actions restore the prior stable state and emit the matching result. |
-| Consult | Consult events use `CONSULT_INITIATING` and `CONSULTING`; Task supplies data synchronization for update events. | Consult failure/end actions update context before returning to HELD/CONNECTED or termination flow. |
-| Conference/transfer | Conference initiation and completion use `CONF_INITIATING`/`CONFERENCING` plus switch actions. | `handleConferenceFailed` and transfer failure paths preserve the correct main/consult call. |
+| Offer and assignment | `TASK_INCOMING` enters OFFERED; `TASK_OFFERED` updates that state and `ASSIGN` selects CONNECTED or CONSULTING. | RONA/invite/assign failures terminate the offered task; outbound failure may wrap up instead. |
+| Hold/resume | `HOLD_INITIATED`/`UNHOLD_INITIATED` enter intermediate states; success/failure selects HELD or CONNECTED. | Failure transitions update task data and restore the stable state; Voice owns the thrown error and failure metric. |
+| Consult | `CONSULT` enters `CONSULT_INITIATING`; local and backend success/failure/end events select CONSULTING, HELD, CONNECTED, CONFERENCING, WRAPPING_UP, or TERMINATED. | Consult failure/end actions update and clear consult context according to guards. |
+| Conference/transfer | `MERGE_TO_CONFERENCE` and `CONFERENCE_START` use `CONF_INITIATING`/`CONFERENCING`; transfer uses the `TRANSFER_*` events. | `handleConferenceFailed` and transfer failure paths preserve or clear the relevant conference context. |
 | Wrapup/termination | End/wrapup events select `WRAPPING_UP`, `COMPLETED`, or `TERMINATED`. | Terminal states are final and cannot accept normal interaction transitions. |
-| Hydrate/recovery | IDLE `HYDRATE` guards restore the state represented by backend task data. | Root-level HYDRATE on an active task updates data without incorrectly re-entering a child state. |
+| Hydrate/recovery | IDLE `HYDRATE` guards restore WRAPPING_UP, CONSULTING, HELD, CONNECTED, or CONFERENCING; otherwise remain IDLE. | Root-level HYDRATE on an active task updates data without incorrectly re-entering a child state. |
+
+### Offer and assignment
 
 ```mermaid
 sequenceDiagram
@@ -114,17 +116,121 @@ sequenceDiagram
   participant Actor as XState actor
   participant Guard as guards.ts
   participant Action as actions.ts / Task override
+  TM->>Task: AgentContactReserved mapping
+  Task->>Actor: send(TASK_INCOMING)
+  Actor->>Action: initializeTask + emit incoming/reservation
+  Actor-->>Task: OFFERED
+  alt offer update then assignment
+    Task->>Actor: TASK_OFFERED then ASSIGN
+    Actor->>Action: update data + emit offer/assignment
+    Actor-->>Task: CONNECTED or guarded CONSULTING
+  else RONA/invite/assign failure
+    Actor->>Action: failure cleanup/event
+    Actor-->>Task: TERMINATED
+  end
+```
+
+### Hold and resume
+
+```mermaid
+sequenceDiagram
+  participant Task
+  participant Actor as XState actor
+  participant Action as actions.ts
   participant UI as uiControlsComputer
-  TM->>Task: mapped TaskEvent payload
-  Task->>Actor: send(event)
-  Actor->>Guard: evaluate transition guards
-  alt guard accepts transition
-    Actor->>Action: run named actions
-    Action-->>Actor: updated TaskContext / emitted task event
-    Actor->>UI: computeUIControls(context, state)
-    UI-->>Task: TaskUIControls
-  else guard rejects transition
-    Actor-->>Task: retain current state/context
+  Task->>Actor: HOLD_INITIATED or UNHOLD_INITIATED
+  Actor-->>Task: HOLD_INITIATING or RESUME_INITIATING
+  alt success event
+    Task->>Actor: HOLD_SUCCESS or UNHOLD_SUCCESS
+    Actor->>Action: update media hold state; emit task event
+    Actor->>UI: compute controls for HELD/CONNECTED
+    Actor-->>Task: HELD or CONNECTED
+  else failure event
+    Task->>Actor: HOLD_FAILED or UNHOLD_FAILED
+    Actor->>Action: update task data
+    Actor-->>Task: CONNECTED or HELD
+  end
+```
+
+### Consult
+
+```mermaid
+sequenceDiagram
+  participant Task
+  participant Actor as XState actor
+  participant Guard as guards.ts
+  participant Action as actions.ts / Task override
+  Task->>Actor: CONSULT
+  Actor->>Guard: validate consult capability/state
+  Actor-->>Task: CONSULT_INITIATING
+  alt local request or backend consult succeeds
+    Task->>Actor: CONSULT_SUCCESS / CONSULT_CREATED / CONSULTING_ACTIVE
+    Actor->>Action: syncTaskDataFromEvent + consult context actions
+    Actor-->>Task: CONSULTING
+  else consult failed/ended/cancelled
+    Task->>Actor: failure/end event
+    Actor->>Action: clear/update consult context
+    Actor-->>Task: HELD, CONNECTED, or termination path
+  end
+```
+
+### Conference and transfer
+
+```mermaid
+sequenceDiagram
+  participant Task
+  participant Actor as XState actor
+  participant Action as actions.ts
+  Task->>Actor: MERGE_TO_CONFERENCE or TRANSFER_CONFERENCE
+  Actor-->>Task: CONF_INITIATING
+  alt conference/transfer succeeds
+    Task->>Actor: CONFERENCE_START / TRANSFER_CONFERENCE_SUCCESS
+    Actor->>Action: handleSwitchToMainCall or handleSwitchToConsult where wired
+    Actor-->>Task: CONFERENCING or final transferred context
+  else conference/transfer fails
+    Task->>Actor: CONFERENCE_FAILED / TRANSFER_CONFERENCE_FAILED
+    Actor->>Action: handleConferenceFailed / matching failure action
+    Actor-->>Task: preserve correct main/consult call and stable state
+  end
+```
+
+### Wrapup and termination
+
+```mermaid
+sequenceDiagram
+  participant TM as TaskManager
+  participant Task
+  participant Actor as XState actor
+  TM->>Task: end/wrapup/backend terminal event
+  Task->>Actor: mapped TaskEvent
+  alt wrapup required
+    Actor-->>Task: WRAPPING_UP
+    Task->>Actor: WRAPUP_COMPLETE
+    Actor-->>Task: COMPLETED
+  else contact terminated/no wrapup
+    Actor-->>Task: TERMINATED or COMPLETED
+  end
+  Note over Actor: terminal states do not accept normal interaction transitions
+```
+
+### Hydrate and recovery
+
+```mermaid
+sequenceDiagram
+  participant TM as TaskManager
+  participant Task
+  participant Actor as XState actor
+  participant Guard as guards.ts
+  participant Action as Task sync override
+  TM->>Task: HYDRATE(taskData)
+  Task->>Actor: send(HYDRATE)
+  alt actor is IDLE
+    Actor->>Guard: choose backend-represented state
+    Guard-->>Actor: WRAPPING_UP/CONSULTING/HELD/CONNECTED/CONFERENCING or default IDLE
+    Actor->>Action: initialize synchronized task data
+  else actor already active
+    Actor->>Action: syncTaskDataFromEvent
+    Actor-->>Task: retain current child state with updated context
   end
 ```
 
@@ -1560,157 +1666,43 @@ Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 | Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
 |---|---|---|---|---|
 | `AGENT_CONTACT_RESERVED`           | `TASK_INCOMING`               | `IDLE`                                               | `OFFERED`                                                                     | Incoming task entry               |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_OFFER_CONTACT`              | `TASK_OFFERED`                | `OFFERED`                                            | `OFFERED`                                                                     | Offer payload refresh             |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONTACT`                    | `HYDRATE`                     | `IDLE`                                               | `WRAPPING_UP` / `CONSULTING` / `HELD` / `CONNECTED` / `CONFERENCING` / `IDLE` | Guard-based restore               |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `CONTACT_UPDATED`                  | `CONTACT_UPDATED`             | any                                                  | same                                                                          | Context sync                      |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `CONTACT_OWNER_CHANGED`            | `CONTACT_OWNER_CHANGED`       | any                                                  | same                                                                          | Context sync                      |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_OFFER_CONSULT`              | `OFFER_CONSULT`               | `OFFERED`                                            | `OFFERED`                                                                     | Receiver-side consult offer       |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONTACT_ASSIGNED`           | `ASSIGN`                      | `OFFERED` / `CONNECTED` / `CONSULTING`               | `CONNECTED`                                                                   | Assign/reassign                   |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONTACT_HELD`               | `HOLD_SUCCESS`                | `HOLD_INITIATING`                                    | `HELD`                                                                        | Includes `mediaResourceId`        |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONTACT_UNHELD`             | `UNHOLD_SUCCESS`              | `RESUME_INITIATING`                                  | `CONNECTED`                                                                   | Includes `mediaResourceId`        |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONSULT_CREATED`            | `CONSULT_CREATED`             | varies                                               | same                                                                          | Context + emitter action          |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONSULTING`                 | `CONSULTING_ACTIVE`           | `OFFERED` / `CONSULTING`                             | `CONSULTING`                                                                  | Sets consult joined flag          |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONSULT_ENDED`              | `CONSULT_END`                 | `CONSULTING`                                         | `CONFERENCING` / `HELD` / `TERMINATED`                                        | Depends on initiator flags        |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONSULT_FAILED`             | `CONSULT_FAILED`              | `CONSULT_INITIATING`                                 | `CONFERENCING` / `HELD` / `CONNECTED`                                         | Guard-based fallback              |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CTQ_FAILED`                 | `CONSULT_FAILED`              | `CONSULT_INITIATING`                                 | `CONFERENCING` / `HELD` / `CONNECTED`                                         | Same as consult failed            |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CTQ_CANCELLED`              | `CTQ_CANCEL`                  | `CONSULT_INITIATING`                                 | `HELD` / `CONNECTED`                                                          | Guarded by hold state             |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CTQ_CANCEL_FAILED`          | `CTQ_CANCEL_FAILED`           | varies                                               | same                                                                          | No transition mapping             |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_BLIND_TRANSFERRED`          | `TRANSFER_SUCCESS`            | `CONNECTED` / `HELD` / `CONSULTING`                  | `WRAPPING_UP` / `CONNECTED`                                                   | `shouldWrapUpOrIsInitiator`       |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONSULT_TRANSFERRED`        | `TRANSFER_SUCCESS`            | `CONNECTED` / `HELD` / `CONSULTING`                  | `WRAPPING_UP` / `CONNECTED`                                                   | Same path                         |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_VTEAM_TRANSFERRED`          | `TRANSFER_SUCCESS`            | `CONNECTED` / `HELD` / `CONSULTING`                  | `WRAPPING_UP` / `CONNECTED`                                                   | Same path                         |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_WRAPUP`                     | `TASK_WRAPUP`                 | `OFFERED` / `CONNECTED` / `HELD` / `CONSULTING`      | `TERMINATED` / `WRAPPING_UP`                                                  | `OFFERED` terminates; others wrap |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_BLIND_TRANSFER_FAILED`      | `TRANSFER_FAILED`             | `CONNECTED` / `HELD` / `CONSULTING`                  | same                                                                          | Context update                    |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_VTEAM_TRANSFER_FAILED`      | `TRANSFER_FAILED`             | `CONNECTED` / `HELD` / `CONSULTING`                  | same                                                                          | Context update                    |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONSULT_TRANSFER_FAILED`    | `TRANSFER_FAILED`             | `CONNECTED` / `HELD` / `CONSULTING`                  | same                                                                          | Context update                    |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONFERENCE_TRANSFER_FAILED` | `TRANSFER_FAILED`             | `CONNECTED` / `HELD` / `CONSULTING`                  | same                                                                          | Context update                    |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `CONTACT_ENDED`                    | `CONTACT_ENDED`               | `CONNECTED` / `HELD` / `CONSULTING` / `CONFERENCING` | `CONFERENCING` / `WRAPPING_UP` / `TERMINATED` / same                          | Guard-driven branch               |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_INVITE_FAILED`              | `INVITE_FAILED`               | `OFFERED`                                            | `TERMINATED`                                                                  | Reject path                       |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONTACT_ASSIGN_FAILED`      | `ASSIGN_FAILED`               | `OFFERED`                                            | `TERMINATED`                                                                  | Reject path                       |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONTACT_OFFER_RONA`         | `RONA`                        | `OFFERED`                                            | `TERMINATED`                                                                  | Timeout path                      |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_OUTBOUND_FAILED`            | `OUTBOUND_FAILED`             | `OFFERED`                                            | `TERMINATED`                                                                  | Outbound failure                  |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `CONTACT_RECORDING_STARTED`        | `RECORDING_STARTED`           | any                                                  | same                                                                          | Recording state update            |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `CONTACT_RECORDING_PAUSED`         | `PAUSE_RECORDING`             | `CONNECTED`                                          | same                                                                          | Recording state update            |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `CONTACT_RECORDING_RESUMED`        | `RESUME_RECORDING`            | `CONNECTED`                                          | same                                                                          | Recording state update            |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_WRAPPEDUP`                  | `WRAPUP_COMPLETE`             | `WRAPPING_UP`                                        | `COMPLETED`                                                                   | Final completion                  |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONSULT_CONFERENCED`        | `CONFERENCE_START`            | `CONSULTING` / `CONF_INITIATING` / `CONFERENCING`    | `CONFERENCING` / same                                                         | Conference established            |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `PARTICIPANT_JOINED_CONFERENCE`    | `CONFERENCE_START`            | `CONSULTING` / `CONF_INITIATING` / `CONFERENCING`    | `CONFERENCING` / same                                                         | Conference participant joined     |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONSULT_CONFERENCE_FAILED`  | `CONFERENCE_FAILED`           | `CONF_INITIATING`                                    | `CONSULTING`                                                                  | Merge fail fallback               |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONSULT_CONFERENCE_ENDED`   | `CONFERENCE_END`              | `CONFERENCING`                                       | `WRAPPING_UP` / `CONNECTED` / `TERMINATED`                                    | Guard-driven                      |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `PARTICIPANT_LEFT_CONFERENCE`      | `PARTICIPANT_LEAVE`           | `CONFERENCING`                                       | `WRAPPING_UP` / `TERMINATED` / `CONNECTED` / same                             | Ownership + downgrade guards      |
-
-| Backend CC Event                   | TaskEvent                     | Typical From State(s)                                | Target State                                                                  | Notes / Guards                    |
-|---|---|---|---|---|
 | `AGENT_CONFERENCE_TRANSFERRED`     | `TRANSFER_CONFERENCE_SUCCESS` | `CONSULTING` / `CONFERENCING`                        | `WRAPPING_UP` / `CONFERENCING` / `TERMINATED` / same                          | Initiator/receiver dependent      |
 
 - `AGENT_CONTACT_UNASSIGNED` -> returns `null` in mapper (`TaskManager.mapEventToTaskStateMachineEvent`)
@@ -1718,157 +1710,61 @@ Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 | Backend Event            | TaskEvent               | State Transition                                              | Notes                                          |
 |---|---|---|---|
 | `AgentContactReserved`   | `TASK_INCOMING`         | IDLE → OFFERED                                                | New task offered                               |
-
-| Backend Event            | TaskEvent               | State Transition                                              | Notes                                          |
-|---|---|---|---|
 | `AgentOfferContact`      | `TASK_OFFERED`          | Stay in OFFERED                                               | Offer confirmation                             |
-
-| Backend Event            | TaskEvent               | State Transition                                              | Notes                                          |
-|---|---|---|---|
 | `AgentContact`           | `HYDRATE`               | Various                                                       | State restoration                              |
-
-| Backend Event            | TaskEvent               | State Transition                                              | Notes                                          |
-|---|---|---|---|
 | `AgentContactAssigned`   | `ASSIGN`                | OFFERED → CONNECTED (also CONNECTED/CONSULTING refresh paths) | Task accepted/reassigned                       |
-
-| Backend Event            | TaskEvent               | State Transition                                              | Notes                                          |
-|---|---|---|---|
 | `ContactUpdated`         | `CONTACT_UPDATED`       | No change                                                     | Data update only                               |
-
-| Backend Event            | TaskEvent               | State Transition                                              | Notes                                          |
-|---|---|---|---|
 | `ContactOwnerChanged`    | `CONTACT_OWNER_CHANGED` | No change                                                     | Owner update only                              |
-
-| Backend Event            | TaskEvent               | State Transition                                              | Notes                                          |
-|---|---|---|---|
 | `ContactEnded`           | `CONTACT_ENDED`         | Guard-based branch                                            | CONFERENCING / WRAPPING_UP / TERMINATED / stay |
-
-| Backend Event            | TaskEvent               | State Transition                                              | Notes                                          |
-|---|---|---|---|
 | `AgentContactUnassigned` | None                    | N/A                                                           | Handled by other events                        |
 
 | Backend Event              | TaskEvent        | State Transition              | Context Update                                                                      |
 |---|---|---|---|
 | `AgentContactHeld`         | `HOLD_SUCCESS`   | HOLD_INITIATING → HELD        | `setHoldState` updates `taskData.interaction.media[mediaResourceId].isHold = true`  |
-
-| Backend Event              | TaskEvent        | State Transition              | Context Update                                                                      |
-|---|---|---|---|
 | `AgentContactUnheld`       | `UNHOLD_SUCCESS` | RESUME_INITIATING → CONNECTED | `setHoldState` updates `taskData.interaction.media[mediaResourceId].isHold = false` |
-
-| Backend Event              | TaskEvent        | State Transition              | Context Update                                                                      |
-|---|---|---|---|
 | `AgentContactHoldFailed`   | `HOLD_FAILED`    | HOLD_INITIATING → CONNECTED   | Context refreshed                                                                   |
-
-| Backend Event              | TaskEvent        | State Transition              | Context Update                                                                      |
-|---|---|---|---|
 | `AgentContactUnholdFailed` | `UNHOLD_FAILED`  | RESUME_INITIATING → HELD      | No transition action                                                                |
 
 | Backend Event / API                     | TaskEvent           | State Transition                                     | Context Update                                                                        |
 |---|---|---|---|
 | API `task.consult(...)`                 | `CONSULT`           | CONNECTED/HELD/CONFERENCING → CONSULT_INITIATING     | Sets consult initiator + destination (and `consultFromConference` in conference flow) |
-
-| Backend Event / API                     | TaskEvent           | State Transition                                     | Context Update                                                                        |
-|---|---|---|---|
 | `AgentOfferConsult`                     | `OFFER_CONSULT`     | OFFERED → OFFERED                                    | Offer-only path                                                                       |
-
-| Backend Event / API                     | TaskEvent           | State Transition                                     | Context Update                                                                        |
-|---|---|---|---|
 | `AgentConsultCreated`                   | `CONSULT_CREATED`   | No state transition wiring                           | Event exists but not consumed by transition table                                     |
-
-| Backend Event / API                     | TaskEvent           | State Transition                                     | Context Update                                                                        |
-|---|---|---|---|
 | `AgentConsulting`                       | `CONSULTING_ACTIVE` | OFFERED → CONSULTING, CONSULTING → CONSULTING        | Sets `consultDestinationAgentJoined`                                                  |
-
-| Backend Event / API                     | TaskEvent           | State Transition                                     | Context Update                                                                        |
-|---|---|---|---|
 | `AgentConsultEnded`                     | `CONSULT_END`       | CONSULTING → CONFERENCING / HELD / TERMINATED        | Depends on initiator and consult-from-conference                                      |
-
-| Backend Event / API                     | TaskEvent           | State Transition                                     | Context Update                                                                        |
-|---|---|---|---|
 | `AgentConsultFailed` / `AgentCtqFailed` | `CONSULT_FAILED`    | CONSULT_INITIATING → CONFERENCING / HELD / CONNECTED | Guard-based fallback                                                                  |
-
-| Backend Event / API                     | TaskEvent           | State Transition                                     | Context Update                                                                        |
-|---|---|---|---|
 | `AgentCtqCancelled`                     | `CTQ_CANCEL`        | CONSULT_INITIATING → HELD / CONNECTED                | Guarded by `isPrimaryMediaOnHold`                                                     |
-
-| Backend Event / API                     | TaskEvent           | State Transition                                     | Context Update                                                                        |
-|---|---|---|---|
 | `AgentCtqCancelFailed`                  | `CTQ_CANCEL_FAILED` | No state transition wiring                           | Event mapped but not consumed                                                         |
 
 | Backend Event                | TaskEvent          | State Transition                   | Wrapup Logic                                                              |
 |---|---|---|---|
 | `AgentBlindTransferred`      | `TRANSFER_SUCCESS` | → WRAPPING_UP/CONNECTED            | Guard `shouldWrapUpOrIsInitiator` decides wrapup vs receiver/default path |
-
-| Backend Event                | TaskEvent          | State Transition                   | Wrapup Logic                                                              |
-|---|---|---|---|
 | `AgentVTeamTransferred`      | `TRANSFER_SUCCESS` | → WRAPPING_UP/CONNECTED            | Same transition logic as blind transfer                                   |
-
-| Backend Event                | TaskEvent          | State Transition                   | Wrapup Logic                                                              |
-|---|---|---|---|
 | `AgentConsultTransferred`    | `TRANSFER_SUCCESS` | CONSULTING → WRAPPING_UP/CONNECTED | Initiator/wrapup path vs receiver/default path                            |
-
-| Backend Event                | TaskEvent          | State Transition                   | Wrapup Logic                                                              |
-|---|---|---|---|
 | `AgentBlindTransferFailed`   | `TRANSFER_FAILED`  | No change                          | Emit failure, stay in current state                                       |
-
-| Backend Event                | TaskEvent          | State Transition                   | Wrapup Logic                                                              |
-|---|---|---|---|
 | `AgentVTeamTransferFailed`   | `TRANSFER_FAILED`  | No change                          | Queue transfer failed                                                     |
-
-| Backend Event                | TaskEvent          | State Transition                   | Wrapup Logic                                                              |
-|---|---|---|---|
 | `AgentConsultTransferFailed` | `TRANSFER_FAILED`  | No change                          | Consult transfer failed                                                   |
 
 | Backend Event / API              | TaskEvent                     | State Transition                                           | Context Update                                                                                |
 |---|---|---|---|
 | API `task.consultConference()`   | `MERGE_TO_CONFERENCE`         | CONSULTING → CONF_INITIATING                               | Starts merge flow                                                                             |
-
-| Backend Event / API              | TaskEvent                     | State Transition                                           | Context Update                                                                                |
-|---|---|---|---|
 | `AgentConsultConferenced`        | `CONFERENCE_START`            | CONSULTING/CONF_INITIATING → CONFERENCING                  | `handleConferenceStarted` path                                                                |
-
-| Backend Event / API              | TaskEvent                     | State Transition                                           | Context Update                                                                                |
-|---|---|---|---|
 | `ParticipantJoinedConference`    | `CONFERENCE_START`            | CONFERENCING → CONFERENCING                                | Refresh + emit conference started                                                             |
-
-| Backend Event / API              | TaskEvent                     | State Transition                                           | Context Update                                                                                |
-|---|---|---|---|
 | `ParticipantLeftConference`      | `PARTICIPANT_LEAVE`           | CONFERENCING → WRAPPING_UP / TERMINATED / CONNECTED / stay | Uses `didCurrentAgentLeaveConference`, `shouldWrapUp`, `shouldDowngradeConferenceToConnected` |
-
-| Backend Event / API              | TaskEvent                     | State Transition                                           | Context Update                                                                                |
-|---|---|---|---|
 | `AgentConsultConferenceEnded`    | `CONFERENCE_END`              | CONFERENCING → WRAPPING_UP / CONNECTED / TERMINATED        | Guard-based branch                                                                            |
-
-| Backend Event / API              | TaskEvent                     | State Transition                                           | Context Update                                                                                |
-|---|---|---|---|
 | `AgentConsultConferenceFailed`   | `CONFERENCE_FAILED`           | CONF_INITIATING → CONSULTING                               | Merge failed fallback                                                                         |
-
-| Backend Event / API              | TaskEvent                     | State Transition                                           | Context Update                                                                                |
-|---|---|---|---|
 | `AgentConferenceTransferred`     | `TRANSFER_CONFERENCE_SUCCESS` | CONSULTING/CONFERENCING branch logic                       | Initiator/receiver dependent                                                                  |
-
-| Backend Event / API              | TaskEvent                     | State Transition                                           | Context Update                                                                                |
-|---|---|---|---|
 | API/SDK conference transfer fail | `TRANSFER_CONFERENCE_FAILED`  | CONSULTING/CONFERENCING stay                               | Clears transfer request flag                                                                  |
 
 | Backend Event             | TaskEvent           | State Transition | Context Update         |
 |---|---|---|---|
 | `ContactRecordingStarted` | `RECORDING_STARTED` | No change        | Update recording state |
-
-| Backend Event             | TaskEvent           | State Transition | Context Update         |
-|---|---|---|---|
 | `ContactRecordingPaused`  | `PAUSE_RECORDING`   | No change        | Mark recording paused  |
-
-| Backend Event             | TaskEvent           | State Transition | Context Update         |
-|---|---|---|---|
 | `ContactRecordingResumed` | `RESUME_RECORDING`  | No change        | Mark recording active  |
 
 | Backend Event    | TaskEvent         | State Transition        | Notes           |
 |---|---|---|---|
 | `AgentWrapup`    | `TASK_WRAPUP`     | → WRAPPING_UP           | Enter ACW       |
-
-| Backend Event    | TaskEvent         | State Transition        | Notes           |
-|---|---|---|---|
 | `AgentWrappedup` | `WRAPUP_COMPLETE` | WRAPPING_UP → COMPLETED | Complete wrapup |
 
 This diagram represents state-to-state lifecycle transitions for the task state machine.
@@ -2147,35 +2043,40 @@ The HYDRATE event restores state machine state after page refresh or reconnectio
 - `getDefaultUIControls` is package-public through `src/index.ts`; the voice/digital computation helpers are private implementation details.
 
 ## Pitfalls
-- Do not bypass the Task State Machine ownership boundary or duplicate its constants/events; doing so breaks correlation, compatibility, or state invariants.
+- `syncTaskDataFromEvent` is declared by the graph but implemented by Task; adding a competing default action loses integration-owned normalization.
+- `handleConferenceFailed`, `handleSwitchToMainCall`, and `handleSwitchToConsult` are wired actions, while `forceConsultInitiator` remains defined but unwired.
+- Guards/actions must remain deterministic and transport-free; logging, metrics, authentication, and request side effects belong to Task/TaskManager.
 
 - `RONA`, `INVITE_FAILED`, `ASSIGN_FAILED`, `OUTBOUND_FAILED`
 
 | Backend Event              | TaskEvent         | State Transition     | Notes                    |
 |---|---|---|---|
 | `AgentContactOfferRona`    | `RONA`            | OFFERED → TERMINATED | Redirection on no answer |
-
-| Backend Event              | TaskEvent         | State Transition     | Notes                    |
-|---|---|---|---|
 | `AgentInviteFailed`        | `INVITE_FAILED`   | OFFERED → TERMINATED | Invite failed            |
-
-| Backend Event              | TaskEvent         | State Transition     | Notes                    |
-|---|---|---|---|
 | `AgentContactAssignFailed` | `ASSIGN_FAILED`   | OFFERED → TERMINATED | Assignment failed        |
-
-| Backend Event              | TaskEvent         | State Transition     | Notes                    |
-|---|---|---|---|
 | `AgentOutboundFailed`      | `OUTBOUND_FAILED` | OFFERED → TERMINATED | Outdial failed           |
 
 ## Module Do's / Don'ts
-- DO use the authoritative files and typed constants listed above.
-- DON'T use raw event strings, swallow errors, or infer backend behavior.
+- DO map backend notifications to typed `TaskEvent` values before sending them to the actor.
+- DO preserve initiating states separately from success/failure stable states.
+- DON'T invoke WebexRequest, LoggerProxy, or MetricsManager from the state-machine layer.
+- DON'T document private UI-control helpers as public APIs or claim an action is absent without checking graph wiring.
 
 ## Key Design Trade-off
 - Backend events are mapped into a typed internal event vocabulary before transition evaluation, isolating the state graph from transport details.
 
 ## Test-Case Strategy (module)
 Use `test/unit/spec/services/task/state-machine/TaskStateMachine.ts`, `guards.ts`, and `uiControlsComputer.ts` to cover every documented transition/action/guard/control claim. Use `test/unit/spec/services/task/Task.ts` for injected `syncTaskDataFromEvent` behavior. Explicitly assert defined-but-unwired status for `forceConsultInitiator` and `didInitiateConsult` until source wiring changes.
+
+| Behavior / Requirement | Existing test evidence | Gap |
+|---|---|---|
+| `TASK_STATE_MACHINE-R-001` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | Keep transition coverage synchronized with all mapped TaskEvent groups. |
+| `TASK_STATE_MACHINE-R-002` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | Retain explicit wired/unwired assertions. |
+| `TASK_STATE_MACHINE-R-003` | `test/unit/spec/services/task/Task.ts` | None. |
+| `TASK_STATE_MACHINE-R-004` | `test/unit/spec/services/task/state-machine/uiControlsComputer.ts` | None. |
+| `TASK_STATE_MACHINE-R-005` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | Transport/auth absence is also verified from imports. |
+| `TASK_STATE_MACHINE-R-006` | `test/unit/spec/services/task/Task.ts` | None. |
+| `TASK_STATE_MACHINE-R-007` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts`, `test/unit/spec/services/task/Task.ts` | Observability absence is also verified from imports. |
 
 ## Traceability
 - Repo architecture: `../../../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../../../ai-docs/SPEC_INDEX.md`
@@ -2192,8 +2093,6 @@ Use `test/unit/spec/services/task/state-machine/TaskStateMachine.ts`, `guards.ts
 - UI control computation: `uiControlsComputer.ts`
 
 `computeUIControls()` in `uiControlsComputer.ts`.
-
-- [ARCHITECTURE.md](ARCHITECTURE.md) - State machine internals and flow diagrams
 
 - [../../ai-docs/task-spec.md](../../ai-docs/task-spec.md) - Task service usage guide
 

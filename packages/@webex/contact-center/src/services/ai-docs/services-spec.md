@@ -9,10 +9,10 @@
 | Module id | `services` |
 | Source path(s) | `src/services` |
 | Doc kind | Module spec |
-| Coverage score | 100% assessed 2026-07-07; 15/15 mandatory fields present; no applicability gaps |
+| Coverage score | 100% assessed 2026-07-09; 15/15 mandatory fields present; test evidence and gaps mapped by requirement |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved residual warning and coverage completion / 2026-07-07 |
-| Validation status | pass; validator claude-code; assessed 2026-07-07; 0 Blocking, 0 warnings; clean independent revalidation complete |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved conformance and fidelity remediation / 2026-07-09 |
+| Validation status | not-run for current revision; independent validator claude-code required after 2026-07-09 remediation; prior 2026-07-07 PASS is superseded by these edits |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -46,33 +46,12 @@ The `src/services/` directory is the service layer of the `@webex/contact-center
 | Capability | Owner | Description |
 |---|---|---|
 | **Service Singleton** | [`index.ts`](../index.ts) | Central `Services` class that instantiates and provides access to all service modules via `Services.getInstance()` |
-
-| Capability | Owner | Description |
-|---|---|---|
 | **Agent Operations** | [`agent/`](../agent/index.ts) | Station login/logout, state changes, buddy agents — uses AqmReqs factory pattern |
-
-| Capability | Owner | Description |
-|---|---|---|
 | **Task Management** | [`task/`](../task/TaskManager.ts) | Task lifecycle (accept, hold, transfer, conference, wrapup), Task state machine, contact operations, outbound dialing |
-
-| Capability | Owner | Description |
-|---|---|---|
 | **Configuration** | [`config/`](../config/index.ts) | Agent profile aggregation from 8+ API endpoints, org settings, teams, aux codes, dial plans |
-
-| Capability | Owner | Description |
-|---|---|---|
 | **Core Infrastructure** | [`core/`](../core/WebexRequest.ts) | HTTP requests (`WebexRequest`), WebSocket management (`WebSocketManager`), connection lifecycle (`ConnectionService`), AQM request/response correlation (`AqmReqs`), error handling (`Utils`, `Err`) |
-
-| Capability | Owner | Description |
-|---|---|---|
 | **Data Services** | [`AddressBook.ts`](../AddressBook.ts), [`Queue.ts`](../Queue.ts), [`EntryPoint.ts`](../EntryPoint.ts) | Standalone REST-based data services with pagination and caching for address books, queues, and entry points |
-
-| Capability | Owner | Description |
-|---|---|---|
 | **Utilities** | [`src/utils/PageCache.ts`](../../utils/PageCache.ts) | Shared `PageCache<T>` generic class for pagination caching, plus `BaseSearchParams`, `PaginatedResponse`, and `PaginationMeta` types used by all data services |
-
-| Capability | Owner | Description |
-|---|---|---|
 | **WebRTC Calling** | [`WebCallingService.ts`](../WebCallingService.ts) | Browser-based voice calling via `@webex/calling`, line registration, call answer/mute/decline |
 
 Each service folder contains its own `ai-docs/` with detailed documentation. **Always load the relevant service docs before making changes.**
@@ -80,17 +59,8 @@ Each service folder contains its own `ai-docs/` with detailed documentation. **A
 | Service | Scope / Keywords | AGENTS.md | ARCHITECTURE.md |
 |---|---|---|---|
 | **Agent** | login, logout, state change, buddy agents, station, RONA | [`agent/ai-docs/agent-spec.md`](../agent/ai-docs/agent-spec.md) | [`agent/ai-docs/agent-spec.md`](../agent/ai-docs/agent-spec.md) |
-
-| Service | Scope / Keywords | AGENTS.md | ARCHITECTURE.md |
-|---|---|---|---|
 | **Task** | task, hold, transfer, conference, wrapup, outdial, consult, accept, decline, state machine, XState, task states, guards, actions | [`task/ai-docs/task-spec.md`](../task/ai-docs/task-spec.md) | [`task/ai-docs/task-spec.md`](../task/ai-docs/task-spec.md) |
-
-| Service | Scope / Keywords | AGENTS.md | ARCHITECTURE.md |
-|---|---|---|---|
 | **Config** | profile, register, teams, aux codes, desktop profile, org settings, dial plan | [`config/ai-docs/config-spec.md`](../config/ai-docs/config-spec.md) | [`config/ai-docs/config-spec.md`](../config/ai-docs/config-spec.md) |
-
-| Service | Scope / Keywords | AGENTS.md | ARCHITECTURE.md |
-|---|---|---|---|
 | **Core** | websocket, HTTP, connection, reconnect, aqm, utils, errors, keepalive | [`core/ai-docs/core-spec.md`](../core/ai-docs/core-spec.md) | [`core/ai-docs/core-spec.md`](../core/ai-docs/core-spec.md) |
 
 > **Note**: The task state machine (`task/state-machine/`) is part of the Task service, not a separate service. Its dedicated docs live at [`task/state-machine/ai-docs/task-state-machine-spec.md`](../task/state-machine/ai-docs/task-state-machine-spec.md) and [`ARCHITECTURE.md`](../task/state-machine/ai-docs/task-state-machine-spec.md). Load these when working on state transitions, guards, or actions.
@@ -152,7 +122,7 @@ src/services/
 ├── index.ts                    # Services singleton — composes all services
 ├── constants.ts                # Shared constants (gateway id, API paths, WebRTC domains/prefixes, timeout, method-name constants)
 ├── ai-docs/
-│   └── AGENTS.md               # THIS FILE — services layer orchestrator
+│   └── AGENTS.md               # Preserved legacy migration source (non-canonical)
 │
 ├── agent/                      # Agent operations service
 │   ├── index.ts                # routingAgent factory — stationLogin, stateChange, logout, buddyAgents
@@ -280,10 +250,10 @@ ContactCenter READY callback
 ## Requirements
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| SERVICES-R-001 | Build the Services singleton with agent/config/contact/dialer, two WebSocket managers, AqmReqs, and ConnectionService after WebexRequest is initialized. | Every AQM and transport collaborator depends on one shared authenticated host and primary message stream. | `src/services/index.ts` | `test/unit/spec/cc.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| SERVICES-R-002 | Keep direct REST services separate from AQM request factories. | Direct data/config calls complete from HTTP while AQM operations require correlated WebSocket completion. | `src/services/index.ts` | `test/unit/spec/services/AddressBook.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| SERVICES-R-003 | Construct TaskManager and non-Services collaborators in ContactCenter's READY callback, not in `register()`. | Registration is a connection boundary; changing construction timing can duplicate listeners or access uninitialized host services. | `src/cc.ts` | `test/unit/spec/cc.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| SERVICES-R-004 | Pass ApiAIAssistant, contact routing, WebCallingService, primary WebSocket, and RTD WebSocket into TaskManager. | Voice, task, transcript, and suggestion behavior depend on the complete collaborator set. | `src/cc.ts` | `test/unit/spec/services/task/TaskManager.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
+| SERVICES-R-001 | Build the Services singleton with agent/config/contact/dialer, two WebSocket managers, AqmReqs, and ConnectionService after WebexRequest is initialized. | Every AQM and transport collaborator depends on one shared authenticated host and primary message stream. | `src/services/index.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| SERVICES-R-002 | Keep direct REST services separate from AQM request factories. | Direct data/config calls complete from HTTP while AQM operations require correlated WebSocket completion. | `src/services/index.ts` | `test/unit/spec/services/AddressBook.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| SERVICES-R-003 | Construct TaskManager and non-Services collaborators in ContactCenter's READY callback, not in `register()`. | Registration is a connection boundary; changing construction timing can duplicate listeners or access uninitialized host services. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| SERVICES-R-004 | Pass ApiAIAssistant, contact routing, WebCallingService, primary WebSocket, and RTD WebSocket into TaskManager. | Voice, task, transcript, and suggestion behavior depend on the complete collaborator set. | `src/cc.ts` | `test/unit/spec/services/task/TaskManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | SERVICES-R-005 | Inherit authenticated request identity from the host Webex SDK through Core/WebexRequest; Services must not store, parse, or refresh credentials. | One host-owned authentication boundary avoids duplicate token handling and credential leakage across composed services. | `src/services/index.ts`, `src/services/core/WebexRequest.ts` | `test/unit/spec/services/core/WebexRequest.ts` | None; authentication ownership is explicit. | PRESENT |
 | SERVICES-R-006 | Treat Services composition as unconditionally created by the ContactCenter READY callback; Services owns no rollout or feature-flag decision. | Capability flags belong to the consuming config/task/calling collaborators, so the composition root must not silently gate construction. | `src/services/index.ts`, `src/cc.ts` | `test/unit/spec/cc.ts` | None; rollout applicability is explicitly N/A for Services. | PRESENT |
 
@@ -326,11 +296,13 @@ Realtime task/AI: primary or RTD WebSocket → TaskManager → Task/state machin
 ## Sequence Diagram(s)
 Sequence coverage:
 
-| Operation group | Coverage |
-|---|---|
-| READY-time composition | Exact construction and dependency wiring below. |
-| Direct REST | HTTP success/rejection returns directly. |
-| AQM | HTTP initiation plus WebSocket success/failure/timeout. |
+| Operation group | Diagram | Failure / recovery coverage |
+|---|---|---|
+| READY-time composition | READY composition | Invalid initialization prevents use of the incomplete graph. |
+| Direct REST | Direct REST request | HTTP/service rejection is returned directly to the caller. |
+| AQM | Correlated AQM operation | HTTP rejection, matching failure notification, and timeout reject the operation. |
+
+### READY composition
 
 ```mermaid
 sequenceDiagram
@@ -345,6 +317,30 @@ sequenceDiagram
   CC->>CC: create calling + AI assistant + metrics + data services
   CC->>TM: getTaskManager(AI, contact, calling, primary WS, RTD WS)
 ```
+
+### Direct REST request
+
+```mermaid
+sequenceDiagram
+  participant Caller
+  participant Service as Config/data service
+  participant WR as WebexRequest
+  participant Host as Authenticated Webex request
+  Caller->>Service: typed REST operation
+  Service->>WR: request(service + resource + method)
+  WR->>Host: resolve service and send request
+  alt HTTP success
+    Host-->>WR: response
+    WR-->>Service: typed response
+    Service-->>Caller: result
+  else service/HTTP rejection
+    Host-->>WR: error
+    WR-->>Service: same rejection
+    Service-->>Caller: reject
+  end
+```
+
+### Correlated AQM operation
 
 ```mermaid
 sequenceDiagram
@@ -412,37 +408,13 @@ These three services share an identical pattern. Use any one as a reference when
 | Aspect | Pattern |
 |---|---|
 | **Class structure** | Standalone class with `WebexRequest`, `WebexSDK`, `MetricsManager`, `PageCache` |
-
-| Aspect | Pattern |
-|---|---|
 | **Constructor** | `constructor(webex: WebexSDK)` — gets singletons via `.getInstance()` |
-
-| Aspect | Pattern |
-|---|---|
 | **HTTP calls** | `this.webexRequest.request({service: WCC_API_GATEWAY, resource, method: HTTP_METHODS.GET})` |
-
-| Aspect | Pattern |
-|---|---|
 | **Endpoints** | Uses `endPointMap` functions from `config/constants.ts` to build URL paths |
-
-| Aspect | Pattern |
-|---|---|
 | **Pagination** | Query params with `page`, `pageSize`; uses `PageCache` for caching |
-
-| Aspect | Pattern |
-|---|---|
 | **Caching** | `PageCache<T>` — caches pages for simple pagination, bypasses cache for search/filter |
-
-| Aspect | Pattern |
-|---|---|
 | **Metrics** | `timeEvent` on API call start, `trackEvent` on success/failure |
-
-| Aspect | Pattern |
-|---|---|
 | **Logging** | `LoggerProxy` with `{module: 'ClassName', method: 'methodName'}` context |
-
-| Aspect | Pattern |
-|---|---|
 | **Error handling** | try/catch with `LoggerProxy.error` + `metricsManager.trackEvent` for failures, then re-throw so callers receive the error |
 
 Reference files:
@@ -471,11 +443,15 @@ stateDiagram-v2
 | Timeout or missing async completion | Timeout/recovery state | Follow the module-specific recovery path; never synthesize success. |
 
 ## Pitfalls
-- Do not bypass the Services ownership boundary or duplicate its constants/events; doing so breaks correlation, compatibility, or state invariants.
+- Direct REST services complete from HTTP, while agent/contact/dialer AQM factories complete from correlated WebSocket notifications; treating them as the same transport model returns too early.
+- The singleton must share one primary WebSocket with AqmReqs and a distinct RTD WebSocket with TaskManager; swapping or omitting either stream loses task or AI events.
+- TaskManager and calling/AI/data collaborators are created by ContactCenter after READY, not by the Services constructor or `register()`.
 
 ## Module Do's / Don'ts
-- DO use the authoritative files and typed constants listed above.
-- DON'T use raw event strings, swallow errors, or infer backend behavior.
+- DO initialize `WebexRequest` before obtaining the Services singleton.
+- DO preserve separate primary and RTD WebSocket ownership when changing composition.
+- DON'T wrap direct REST services in AqmReqs or treat HTTP acknowledgement as AQM completion.
+- DON'T add feature-flag decisions to the Services composition root.
 
 ## Key Design Trade-off
 - Two backend interaction patterns coexist: direct REST for immediate responses and AQM HTTP-plus-WebSocket correlation for asynchronous completion.
@@ -485,7 +461,12 @@ Unit tests mirror module paths under `test/unit/spec/services`. Preserve positiv
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
-| `SERVICES-R-001` | `test/unit/spec/services` | Independent SDD validation pending. |
+| `SERVICES-R-001` | `test/unit/spec/cc.ts` | Add a focused Services singleton composition test if constructor wiring changes. |
+| `SERVICES-R-002` | `test/unit/spec/services/config/index.ts`, `test/unit/spec/services/core/aqm-reqs.ts` | Coverage is split across direct and AQM owners. |
+| `SERVICES-R-003` | `test/unit/spec/cc.ts` | None. |
+| `SERVICES-R-004` | `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/cc.ts` | None. |
+| `SERVICES-R-005` | `test/unit/spec/services/core/WebexRequest.ts` | None. |
+| `SERVICES-R-006` | `test/unit/spec/cc.ts` | None. |
 
 ## Traceability
 - Repo architecture: `../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../ai-docs/SPEC_INDEX.md`

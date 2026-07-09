@@ -9,10 +9,10 @@
 | Module id | `contact-center` |
 | Source path(s) | `src` |
 | Doc kind | Module spec |
-| Coverage score | 100% assessed 2026-07-07; 15/15 mandatory fields present; no applicability gaps |
+| Coverage score | 100% assessed 2026-07-09; 15/15 mandatory fields present; test evidence and gaps mapped by requirement |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved residual warning and coverage completion / 2026-07-07 |
-| Validation status | pass; validator claude-code; assessed 2026-07-07; 0 Blocking, 0 warnings; clean independent revalidation complete |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved conformance and fidelity remediation / 2026-07-09 |
+| Validation status | not-run for current revision; independent validator claude-code required after 2026-07-09 remediation; prior 2026-07-07 PASS is superseded by these edits |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -80,11 +80,11 @@ Compatibility notes:
 ## Requirements
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| CONTACT_CENTER-R-001 | Construct the service graph once after the host Webex SDK emits READY, before `register()` is invoked. | Collaborators require initialized host request, logger, and plugin configuration state. | `src/cc.ts` | `test/unit/spec/cc.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| CONTACT_CENTER-R-002 | `register()` must attach connection/message listeners, connect the primary WebSocket, and return the fetched Profile or rethrow a logged failure. | Applications need an explicit readiness boundary and must never observe a synthetic successful registration. | `src/cc.ts` | `test/unit/spec/cc.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| CONTACT_CENTER-R-003 | Delegate agent, task, data, AI-assistant, calling, and telemetry behavior to their owning collaborators while preserving typed package methods and events. | A stable façade keeps consumer compatibility while specialized modules retain transport and lifecycle ownership. | `src/cc.ts` | `test/unit/spec/cc.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| CONTACT_CENTER-R-004 | `deregister()` must remove registered listeners, stop applicable host/calling resources, close primary and RTD WebSockets, clear agent configuration, and surface cleanup failures. | Listener or connection leaks create duplicate events and stale authenticated sessions in long-lived hosts. | `src/cc.ts` | `test/unit/spec/cc.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
-| CONTACT_CENTER-R-005 | On `connectionLost`, ContactCenter must own recovery policy and invoke private `silentRelogin()` only when automated relogin is allowed. | ConnectionService reports transport state; only ContactCenter has agent profile and policy context for authentication recovery. | `src/cc.ts` | `test/unit/spec/cc.ts` | Independent clean revalidation pending after residual cleanup. | PRESENT |
+| CONTACT_CENTER-R-001 | Construct the service graph once after the host Webex SDK emits READY, before `register()` is invoked. | Collaborators require initialized host request, logger, and plugin configuration state. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| CONTACT_CENTER-R-002 | `register()` must attach connection/message listeners, connect the primary WebSocket, and return the fetched Profile or rethrow a logged failure. | Applications need an explicit readiness boundary and must never observe a synthetic successful registration. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| CONTACT_CENTER-R-003 | Delegate agent, task, data, AI-assistant, calling, and telemetry behavior to their owning collaborators while preserving typed package methods and events. | A stable façade keeps consumer compatibility while specialized modules retain transport and lifecycle ownership. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| CONTACT_CENTER-R-004 | `deregister()` must remove registered listeners, stop applicable host/calling resources, close primary and RTD WebSockets, clear agent configuration, and surface cleanup failures. | Listener or connection leaks create duplicate events and stale authenticated sessions in long-lived hosts. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| CONTACT_CENTER-R-005 | On `connectionLost`, ContactCenter must own recovery policy and invoke private `silentRelogin()` only when automated relogin is allowed. | ConnectionService reports transport state; only ContactCenter has agent profile and policy context for authentication recovery. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 
 ## Design Overview
 `ContactCenter` is the package façade and lifecycle owner. Its constructor waits for the host Webex SDK `READY` event, validates plugin configuration, initializes `WebexRequest`, obtains the singleton `Services` graph, and constructs calling, AI-assistant, metrics, task-management, and data-service collaborators. `register()` is deliberately narrower: it attaches runtime listeners and establishes the primary Contact Center WebSocket subscription.
@@ -122,6 +122,8 @@ Sequence coverage:
 | Deregistration | Deregister | Cleanup failure is measured, logged, and rethrown; no synthetic success. |
 | Connection recovery | Recovery | ConnectionService emits state; ContactCenter chooses silent relogin or preserves failure state. |
 
+### Bootstrap
+
 ```mermaid
 sequenceDiagram
   participant Host as Host Webex SDK
@@ -130,34 +132,56 @@ sequenceDiagram
   participant TM as TaskManager
   Host-->>CC: READY
   CC->>CC: validatePluginConfig()
-  CC->>CC: WebexRequest.getInstance(webex)
-  CC->>S: Services.getInstance(webex, connectionConfig)
-  CC->>CC: create WebCallingService + ApiAIAssistant + MetricsManager
-  CC->>TM: getTaskManager(aiAssistant, contact, calling, primaryWS, rtdWS)
-  CC->>CC: create EntryPoint + AddressBook + Queue; initialize LoggerProxy
+  alt configuration valid
+    CC->>CC: WebexRequest.getInstance(webex)
+    CC->>S: Services.getInstance(webex, connectionConfig)
+    CC->>CC: create WebCallingService + ApiAIAssistant + MetricsManager
+    CC->>TM: getTaskManager(aiAssistant, contact, calling, primaryWS, rtdWS)
+    CC->>CC: create EntryPoint + AddressBook + Queue; initialize LoggerProxy
+  else invalid configuration or initialization failure
+    CC-->>Host: readiness-dependent use rejects
+  end
 ```
+
+### Register
 
 ```mermaid
 sequenceDiagram
   participant App
   participant CC as ContactCenter
   participant WS as Primary WebSocketManager
+  participant Cfg as AgentConfigService
+  participant Agent as Services.agent
   participant Metrics
   App->>CC: register()
   CC->>CC: setupEventListeners(); listen for WS messages
   CC->>Metrics: time register success/failure
-  CC->>WS: connectWebsocket()
-  alt connected and profile fetched
-    WS-->>CC: Profile / Welcome result
+  CC->>WS: initWebSocket({body, resource: SUBSCRIBE_API})
+  WS-->>CC: Welcome data containing agentId
+  CC->>Cfg: getAgentConfig(orgId, agentId)
+  alt profile fetched
+    Cfg-->>CC: Profile
+    CC->>CC: set TaskManager/config/AI flags
+    opt applicable AI feature enabled
+      CC->>CC: start RTD WebSocket; log but contain RTD failure
+    end
+    opt browser calling applicable
+      CC->>CC: mercury.connect(); log but contain failure
+    end
+    opt allowAutomatedRelogin
+      CC->>Agent: reload()
+      Agent-->>CC: relogin result, AGENT_NOT_FOUND, or error
+    end
     CC->>Metrics: track registration success
     CC-->>App: Profile
-  else failure
-    WS-->>CC: error
+  else primary subscription/profile/relogin failure
     CC->>Metrics: track registration failure
     CC->>CC: uploadLogs(correlationId)
     CC-->>App: throw error
   end
 ```
+
+### Deregister
 
 ```mermaid
 sequenceDiagram
@@ -179,6 +203,8 @@ sequenceDiagram
   end
 ```
 
+### Recovery
+
 ```mermaid
 sequenceDiagram
   participant CS as ConnectionService
@@ -189,9 +215,15 @@ sequenceDiagram
   alt allowAutomatedRelogin
     CC->>CC: silentRelogin()
     CC->>Agent: reload()
-    Agent-->>CC: relogin result or failure
+    alt relogin succeeds
+      Agent-->>CC: relogin result; update agent config/device state
+    else AGENT_NOT_FOUND
+      Agent-->>CC: handled silently
+    else other failure
+      Agent--xCC: throw detailed error
+    end
   else disabled
-    CC->>CC: retain reported connection state
+    CC->>CC: make no relogin call; retain reported transport state
   end
 ```
 
@@ -267,11 +299,15 @@ Authenticated REST initiates direct data/config operations and AQM agent/task op
 | Timeout or missing async completion | Timeout/recovery state | Follow the module-specific recovery path; never synthesize success. |
 
 ## Pitfalls
-- Do not bypass the Contact Center ownership boundary or duplicate its constants/events; doing so breaks correlation, compatibility, or state invariants.
+- READY-time construction and `register()` are different lifecycle boundaries; moving collaborator creation into `register()` can duplicate listeners and use uninitialized host services.
+- AQM HTTP responses are acknowledgements, not operation completion; only a correlated WebSocket notification or timeout settles the operation.
+- Listener cleanup must use the same bound function identities registered during setup or repeated register/deregister cycles will leak handlers.
 
 ## Module Do's / Don'ts
-- DO use the authoritative files and typed constants listed above.
-- DON'T use raw event strings, swallow errors, or infer backend behavior.
+- DO construct the collaborator graph only after host READY and keep registration focused on listeners, subscription, and profile retrieval.
+- DO route agent recovery decisions through ContactCenter because it owns profile/config policy.
+- DON'T synthesize successful register/deregister results after a dependency or cleanup failure.
+- DON'T let transport services call `silentRelogin()` directly.
 
 ## Export Stability
 The npm export/type-declaration surface is semver-sensitive. Additive optional types are compatible; removals, renames, or semantic changes require a major-version migration and changelog entry.
