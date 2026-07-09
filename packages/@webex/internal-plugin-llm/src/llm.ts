@@ -163,6 +163,12 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   public isConnected = (): boolean => this.connected;
 
   /**
+   * Get the underlying WebSocket
+   * @returns {any} socket
+   */
+  public getSocket = (): any => this.socket;
+
+  /**
    * Tells if LLM socket is binding
    * @returns {string | undefined} binding
    */

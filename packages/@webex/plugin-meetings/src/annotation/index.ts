@@ -1,6 +1,7 @@
 import uuid from 'uuid';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import {WebexPlugin, config} from '@webex/webex-core';
+import type LLMChannel from '@webex/internal-plugin-llm';
 import TriggerProxy from '../common/events/trigger-proxy';
 
 import {
@@ -13,7 +14,9 @@ import {
 } from './constants';
 
 import {StrokeData, RequestData, IAnnotationChannel, CommandRequestBody} from './annotation.types';
-import {HTTP_VERBS, LOCUSEVENT, LLM_PRACTICE_SESSION} from '../constants';
+import {HTTP_VERBS, LOCUSEVENT} from '../constants';
+
+type ChannelType = 'default' | 'practice-session';
 
 /**
  * @description Annotation to handle LLM and Mercury message and locus API
@@ -24,11 +27,17 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
 
   private seqNum: number;
 
-  hasSubscribedToEvents: boolean;
+  hasSubscribedToEvents!: boolean;
 
-  approvalUrl: string;
-  locusUrl: string;
-  deviceUrl: string;
+  approvalUrl!: string;
+  locusUrl!: string;
+  deviceUrl!: string;
+
+  /** Registered LLM channels by type */
+  private channels: Map<ChannelType, LLMChannel> = new Map();
+
+  /** Event handlers bound to each channel, for cleanup */
+  private channelHandlers: Map<ChannelType, (e: any) => void> = new Map();
 
   /**
    * Initializes annotation module
@@ -36,6 +45,67 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   constructor(...args) {
     super(...args);
     this.seqNum = 1;
+  }
+
+  /**
+   * Register an LLMChannel with annotation
+   * @param {LLMChannel} channel - The LLM channel to register
+   * @param {ChannelType} type - 'default' or 'practice-session'
+   * @returns {void}
+   */
+  public registerChannel(channel: LLMChannel, type: ChannelType): void {
+    // Unregister existing channel of this type first
+    if (this.channels.has(type)) {
+      this.unregisterChannel(type);
+    }
+
+    this.channels.set(type, channel);
+
+    // Subscribe to relay events from this channel
+    const handler = this.eventDataProcessor.bind(this);
+    this.channelHandlers.set(type, handler);
+    channel.on('event:relay.event', handler);
+  }
+
+  /**
+   * Unregister an LLMChannel from annotation
+   * @param {ChannelType} type - 'default' or 'practice-session'
+   * @returns {void}
+   */
+  public unregisterChannel(type: ChannelType): void {
+    const channel = this.channels.get(type);
+    const handler = this.channelHandlers.get(type);
+
+    if (channel && handler) {
+      channel.off('event:relay.event', handler);
+    }
+
+    this.channels.delete(type);
+    this.channelHandlers.delete(type);
+  }
+
+  /**
+   * Get the active LLM channel (prefers practice session if connected)
+   * @returns {LLMChannel | undefined}
+   */
+  private getActiveChannel(): LLMChannel | undefined {
+    const practiceChannel = this.channels.get('practice-session');
+    if (practiceChannel?.isConnected()) {
+      return practiceChannel;
+    }
+
+    return this.channels.get('default');
+  }
+
+  /**
+   * Indicates whether any registered LLM channel is connected.
+   * @returns {boolean}
+   */
+  private isLLMConnected(): boolean {
+    const defaultChannel = this.channels.get('default');
+    const practiceChannel = this.channels.get('practice-session');
+
+    return defaultChannel?.isConnected() || practiceChannel?.isConnected() || false;
   }
 
   /**
@@ -104,6 +174,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
 
   /**
    * Listen to websocket messages
+   * @deprecated LLM event subscription is now handled by registerChannel()
    * @returns {undefined}
    */
   private listenToEvents() {
@@ -114,14 +185,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
         this.eventCommandProcessor,
         this
       );
-      // @ts-ignore
-      this.webex.internal.llm.on('event:relay.event', this.eventDataProcessor, this);
-      // @ts-ignore
-      this.webex.internal.llm.on(
-        `event:relay.event:${LLM_PRACTICE_SESSION}`,
-        this.eventDataProcessor,
-        this
-      );
+      // LLM event subscription is now handled by registerChannel()
       this.hasSubscribedToEvents = true;
     }
   }
@@ -138,13 +202,11 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
         this.eventCommandProcessor
       );
 
-      // @ts-ignore
-      this.webex.internal.llm.off('event:relay.event', this.eventDataProcessor);
-      // @ts-ignore
-      this.webex.internal.llm.off(
-        `event:relay.event:${LLM_PRACTICE_SESSION}`,
-        this.eventDataProcessor
-      );
+      // Unregister all LLM channels
+      for (const type of this.channels.keys()) {
+        this.unregisterChannel(type);
+      }
+
       this.hasSubscribedToEvents = false;
     }
   }
@@ -300,8 +362,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @returns {void}
    */
   public sendStrokeData = (strokeData: StrokeData): void => {
-    // @ts-ignore
-    if (!this.webex.internal.llm.isConnected()) return;
+    if (!this.isLLMConnected()) return;
     this.encryptContent(strokeData.encryptionKeyUrl, strokeData.content).then(
       (encryptedContent) => {
         this.publishEncrypted(encryptedContent, strokeData);
@@ -316,13 +377,13 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @returns {void}
    */
   private publishEncrypted(encryptedContent: string, strokeData: StrokeData) {
-    // @ts-ignore
-    const {llm} = this.webex.internal;
-    const isPracticeSessionConnected = llm.isConnected(LLM_PRACTICE_SESSION);
-    const socket =
-      (isPracticeSessionConnected && llm.getSocket(LLM_PRACTICE_SESSION)) || llm.socket;
-    const binding =
-      (isPracticeSessionConnected && llm.getBinding(LLM_PRACTICE_SESSION)) || llm.getBinding();
+    const channel = this.getActiveChannel();
+    if (!channel) return;
+
+    const socket = channel.getSocket();
+    const binding = channel.getBinding();
+    if (!socket || !binding) return;
+
     const data = {
       id: `${this.seqNum}`,
       type: 'publishRequest',

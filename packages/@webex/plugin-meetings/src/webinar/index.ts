@@ -203,6 +203,9 @@ const Webinar = WebexPlugin.extend({
         this.practiceSessionLLMChannel?.off('event:relay.event', meeting.processRelayEvent);
         this.practiceSessionLLMChannel?.off(LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
         this.practiceSessionLLMChannel?.off('online', meeting.handleLLMOnline);
+
+        // Unregister annotation from practice session
+        meeting.annotation.unregisterChannel('practice-session');
       }
       this.practiceSessionLLMChannel = undefined;
     }
@@ -380,6 +383,9 @@ const Webinar = WebexPlugin.extend({
         this.practiceSessionLLMChannel.on(LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
         this.practiceSessionLLMChannel.off('online', meeting.handleLLMOnline);
         this.practiceSessionLLMChannel.on('online', meeting.handleLLMOnline);
+
+        // Register annotation channel for practice session
+        meeting.annotation.registerChannel(this.practiceSessionLLMChannel, 'practice-session');
 
         // @ts-ignore - Fix type
         this.webex.internal.voicea?.announce?.();

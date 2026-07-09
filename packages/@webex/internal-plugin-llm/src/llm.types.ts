@@ -28,6 +28,9 @@ interface ILLMChannel {
   /** Returns true if the WebSocket is connected. */
   isConnected: () => boolean;
 
+  /** Get the underlying WebSocket. */
+  getSocket: () => any;
+
   /** Get the binding ID for this connection. */
   getBinding: () => string | undefined;
 
