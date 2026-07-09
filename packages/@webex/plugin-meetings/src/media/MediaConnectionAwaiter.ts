@@ -63,6 +63,17 @@ export default class MediaConnectionAwaiter {
   }
 
   /**
+   * Returns true if ICE connection state indicates connectivity.
+   *
+   * @returns {boolean}
+   */
+  private isIceConnected(): boolean {
+    const state = this.webrtcMediaConnection.getIceConnectionState();
+
+    return state === 'connected' || state === 'completed';
+  }
+
+  /**
    * Returns true if the ICE Gathering is completed, false otherwise.
    *
    * @returns {boolean}
@@ -152,10 +163,7 @@ export default class MediaConnectionAwaiter {
       `Media:MediaConnectionAwaiter#iceConnectionStateHandler --> ICE connection state change -> ${iceConnectionState}`
     );
 
-    if (
-      (iceConnectionState === 'connected' || iceConnectionState === 'completed') &&
-      !this.iceConnected
-    ) {
+    if (this.isIceConnected() && !this.iceConnected) {
       this.iceConnected = true;
     }
 
@@ -275,6 +283,8 @@ export default class MediaConnectionAwaiter {
     LoggerProxy.logger.log(
       'Media:MediaConnectionAwaiter#waitForMediaConnectionConnected --> Waiting for media connection to be connected'
     );
+
+    this.iceConnected = this.isIceConnected();
 
     this.webrtcMediaConnection.on(
       MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
