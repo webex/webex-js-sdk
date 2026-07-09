@@ -229,9 +229,15 @@ export default class TurnDiscovery {
    * @returns {TurnDiscoveryResult}
    */
   private handleTurnDiscoveryFailure(meeting: Meeting, error: Error): TurnDiscoveryResult {
+    // if we got a 409/403 from Locus, it means we've been dropped from the meeting,
+    // so there's no point continuing with the media connection attempt
+    if ((error as any).statusCode === 409 || (error as any).statusCode === 403) {
+      throw error;
+    }
+
     // we catch any errors and resolve with no turn information so that the normal call join flow can continue without TURN
     LoggerProxy.logger.info(
-      `Roap:turnDiscovery#doTurnDiscovery --> TURN discovery failed, continuing without TURN: ${error}`
+      `Roap:turnDiscovery#doTurnDiscovery --> TURN discovery failed, continuing without TURN:`, error
     );
 
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.TURN_DISCOVERY_FAILURE, {

@@ -3270,7 +3270,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
 
       LoggerProxy.logger.info(
-        `Meeting:index#setUpLocusInfoMediaInactiveListener --> this.shareStatus=${this.shareStatus} newShareStatus=${newShareStatus}`
+        `Meeting:index#setUpLocusMediaSharesListener --> this.shareStatus=${this.shareStatus} newShareStatus=${newShareStatus}`
       );
 
       if (newShareStatus !== this.shareStatus) {
@@ -5326,6 +5326,7 @@ export default class Meeting extends StatelessWebexPlugin {
       );
 
       this.receiveSlotManager.reset();
+
       this.mediaProperties.webrtcMediaConnection.close();
       this.mediaProperties.unsetPeerConnection();
       this.sendSlotManager.reset();
@@ -5624,6 +5625,13 @@ export default class Meeting extends StatelessWebexPlugin {
 
     LoggerProxy.logger.info('Meeting:index#joinWithMedia called');
 
+    /* While we're trying to join, we may fail and be doing a retry. In that case,
+       we sometimes get dropped by Locus as a result of the 1st failed attempt.
+       That notification from Locus needs to be ignored, otherwise it causes the meeting to be 
+       cleaned up and prevents the retry from running correctly.
+    */
+    this.locusInfo.suspendDestroyMeeting(true);
+
     let joined = false;
     let joinResponse = prevJoinResponse;
 
@@ -5642,6 +5650,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const shouldJoin =
       !joinResponse || // first try, when the join response is empty
       (prevError && prevError instanceof UserNotJoinedError) || // last try failed with UserNotJoinedError
+      this.isErrorMeaningLocusDroppedUs(prevError) ||
       MeetingUtil.isUserInLeftState(this.locusInfo); // locus dropped the connection before we can re-try addMedia
 
     try {
@@ -5705,6 +5714,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.joinWithMediaRetryInfo = {retryCount: 0, prevJoinResponse: undefined};
 
+      this.locusInfo.suspendDestroyMeeting(false);
+
       return {
         join: joinResponse,
         media: mediaResponse,
@@ -5720,7 +5731,9 @@ export default class Meeting extends StatelessWebexPlugin {
       // let's do a retry
       let shouldRetry =
         retryCount < 1 ||
-        (error instanceof UserNotJoinedError && retryCount < JOIN_WITH_MEDIA_RETRY_MAX_COUNT);
+        ((error instanceof UserNotJoinedError ||
+          this.isErrorMeaningLocusDroppedUs(error)) &&
+          retryCount < JOIN_WITH_MEDIA_RETRY_MAX_COUNT);
 
       if (
         CallDiagnosticUtils.isSdpOfferCreationError(error) ||
@@ -5790,6 +5803,8 @@ export default class Meeting extends StatelessWebexPlugin {
         firstError: undefined,
         prevError: undefined,
       };
+
+      this.locusInfo.suspendDestroyMeeting(false);
 
       throw firstError ?? error;
     }
@@ -7911,6 +7926,26 @@ export default class Meeting extends StatelessWebexPlugin {
 
   getMediaConnectionDebugId() {
     return `MC-${this.id.substring(0, 4)}`;
+  }
+
+  /**
+   * Checks if the error indicates that Locus dropped us from the meeting,
+   * either directly on the error or wrapped inside an AddMediaFailed cause.
+   * This method is meant to be called only with errors thrown by Meeting.addMediaInternal()
+   *
+   * @param {Error} error
+   * @returns {boolean}
+   */
+  private isErrorMeaningLocusDroppedUs(error: Error | undefined): boolean {
+    const statusCode = (error as any)?.statusCode;
+    const causeStatusCode = (error as any)?.cause?.statusCode;
+
+    return (
+      statusCode === 409 ||
+      statusCode === 403 ||
+      causeStatusCode === 409 ||
+      causeStatusCode === 403
+    );
   }
 
   /**
