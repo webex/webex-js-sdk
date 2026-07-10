@@ -204,6 +204,61 @@ describe('MediaConnectionAwaiter', () => {
       assert.calledThrice(mockMC.off);
     });
 
+    it('sets iceConnected=true when ice connection state reaches "completed"', async () => {
+      mockMC.getConnectionState.returns(ConnectionState.Connecting);
+      mockMC.getIceGatheringState.returns('complete');
+
+      let promiseRejected = false;
+      let rejectedIceConnected;
+
+      mediaConnectionAwaiter
+        .waitForMediaConnectionConnected()
+        .then(() => {})
+        .catch((error) => {
+          promiseRejected = true;
+          rejectedIceConnected = error.iceConnected;
+        });
+
+      await testUtils.flushPromises();
+
+      const iceConnectionListener = mockMC.on.getCall(1).args[1];
+
+      mockMC.getIceConnectionState.returns('completed');
+      iceConnectionListener();
+
+      await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT);
+      await testUtils.flushPromises();
+
+      assert.equal(promiseRejected, true);
+      assert.equal(rejectedIceConnected, true);
+    });
+
+    ['connected', 'completed'].forEach((iceState) => {
+      it(`initializes iceConnected=true from current ICE state "${iceState}" when starting the await`, async () => {
+        mockMC.getConnectionState.returns(ConnectionState.Connecting);
+        mockMC.getIceGatheringState.returns('complete');
+        mockMC.getIceConnectionState.returns(iceState);
+
+        let promiseRejected = false;
+        let rejectedIceConnected;
+
+        mediaConnectionAwaiter
+          .waitForMediaConnectionConnected()
+          .then(() => {})
+          .catch((error) => {
+            promiseRejected = true;
+            rejectedIceConnected = error.iceConnected;
+          });
+
+        // no ICE connection state events fired - the flag should be set from the initial state
+        await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT);
+        await testUtils.flushPromises();
+
+        assert.equal(promiseRejected, true);
+        assert.equal(rejectedIceConnected, true);
+      });
+    });
+
     it('resolves after timeout if connection state reach connected/completed', async () => {
       mockMC.getConnectionState.returns(ConnectionState.Connecting);
       mockMC.getIceGatheringState.returns('gathering');

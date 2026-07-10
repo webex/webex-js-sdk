@@ -2846,6 +2846,10 @@ describe('plugin-meetings', () => {
 
         let expectedMeeting;
 
+        // simulate that updateSelf has been called previously (as happens in production)
+        // so that parsedLocus.self reflects the joined state
+        locusInfo.parsedLocus.self = {state: 'JOINED'};
+
         /*
         When the event is triggered, it is required that the meeting has already
         been updated. This is why the meeting is being checked within the stubbed event emitter
@@ -2996,6 +3000,46 @@ describe('plugin-meetings', () => {
 
         // since self is not passed to updateMeetingInfo, MEETING_INFO_UPDATED should be triggered with isIntializing: true
         checkMeetingInfoUpdatedCalledForRoles(true, {isInitializing: true});
+      });
+
+      // joined-section hints (like ROSTER_IN_MEETING) are filtered out while not joined, so they
+      // are a good proxy for verifying that userDisplayHints get recomputed on a join transition
+      [
+        {
+          name: 'the JOINED delta carries the info section',
+          getSecondInfo: (info) => info,
+        },
+        {
+          name: 'the JOINED delta omits the info section (falls back to stored info)',
+          getSecondInfo: () => undefined,
+        },
+      ].forEach(({name, getSecondInfo}) => {
+        it(`recomputes userDisplayHints when self transitions to JOINED with unchanged roles and ${name}`, () => {
+          const info = cloneDeep(meetingInfo); // joined: ['ROSTER_IN_MEETING', 'LOCK_STATUS_UNLOCKED']
+
+          const notJoinedSelf = cloneDeep(self);
+          notJoinedSelf.state = 'IDLE';
+          notJoinedSelf.controls.role.roles = [];
+
+          const joinedSelf = cloneDeep(self);
+          joinedSelf.state = 'JOINED';
+          joinedSelf.controls.role.roles = [];
+
+          sinon.stub(locusInfo, 'emitScoped');
+
+          // first update while not joined: joined-section hints are filtered out
+          locusInfo.updateMeetingInfo(info, notJoinedSelf);
+          assert.notInclude(locusInfo.parsedLocus.info.userDisplayHints, 'ROSTER_IN_MEETING');
+          assert.notInclude(locusInfo.parsedLocus.info.userDisplayHints, 'LOCK_STATUS_UNLOCKED');
+
+          // self transitions to JOINED - info and roles are unchanged
+          locusInfo.updateMeetingInfo(getSecondInfo(info), joinedSelf);
+
+          // the hints must be recomputed with the new joined state
+          assert.include(locusInfo.parsedLocus.info.userDisplayHints, 'ROSTER_IN_MEETING');
+          assert.include(locusInfo.parsedLocus.info.userDisplayHints, 'LOCK_STATUS_UNLOCKED');
+          checkMeetingInfoUpdatedCalled(true, {isInitializing: false});
+        });
       });
     });
 
