@@ -51,6 +51,7 @@ import {
   EVENT_TRIGGERS as VOICEAEVENTS,
   TURN_ON_CAPTION_STATUS,
   type MeetingTranscriptPayload,
+  type VoiceaChannel,
 } from '@webex/internal-plugin-voicea';
 
 import {
@@ -820,6 +821,11 @@ export default class Meeting extends StatelessWebexPlugin {
    * Created in updateLLMConnection, cleaned up in cleanupLLMConneciton.
    */
   private llmChannel?: LLMChannel;
+
+  /**
+   * The Voicea channel for transcription/captions, bound to this meeting's LLM channel.
+   */
+  voiceaChannel?: VoiceaChannel;
 
   /**
    * Pending datachannel token saved from join response, used when creating the LLM channel.
@@ -2679,29 +2685,28 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   private setUpVoiceaListeners() {
-    // @ts-ignore
-    this.webex.internal.voicea.listenToEvents();
+    if (!this.voiceaChannel) {
+      LoggerProxy.logger.warn('Meeting:index#setUpVoiceaListeners --> voiceaChannel not available');
 
-    // @ts-ignore
-    this.webex.internal.voicea.on(
+      return;
+    }
+
+    this.voiceaChannel.on(
       VOICEAEVENTS.VOICEA_ANNOUNCEMENT,
       this.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT]
     );
 
-    // @ts-ignore
-    this.webex.internal.voicea.on(
+    this.voiceaChannel.on(
       VOICEAEVENTS.CAPTIONS_TURNED_ON,
       this.voiceaListenerCallbacks[VOICEAEVENTS.CAPTIONS_TURNED_ON]
     );
 
-    // @ts-ignore
-    this.webex.internal.voicea.on(
+    this.voiceaChannel.on(
       VOICEAEVENTS.EVA_COMMAND,
       this.voiceaListenerCallbacks[VOICEAEVENTS.EVA_COMMAND]
     );
 
-    // @ts-ignore
-    this.webex.internal.voicea.on(
+    this.voiceaChannel.on(
       VOICEAEVENTS.NEW_CAPTION,
       this.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]
     );
@@ -3070,8 +3075,7 @@ export default class Meeting extends StatelessWebexPlugin {
           if (this.transcription?.languageOptions) {
             this.transcription.languageOptions.currentSpokenLanguage = spokenLanguage;
           }
-          // @ts-ignore
-          this.webex.internal.voicea.onSpokenLanguageUpdate(spokenLanguage, this.id);
+          this.voiceaChannel?.onSpokenLanguageUpdate(spokenLanguage, this.id);
 
           Trigger.trigger(
             this,
@@ -3100,8 +3104,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED, ({hesiodLlmId}) => {
       if (hesiodLlmId) {
-        // @ts-ignore
-        this.webex.internal.voicea.onCaptionServiceIdUpdate(hesiodLlmId);
+        this.voiceaChannel?.onCaptionServiceIdUpdate(hesiodLlmId);
       }
     });
 
@@ -6050,8 +6053,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       try {
         const voiceaListenerCaptionUpdate = (payload) => {
-          // @ts-ignore
-          this.webex.internal.voicea.off(
+          this.voiceaChannel?.off(
             VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE,
             voiceaListenerCaptionUpdate
           );
@@ -6067,13 +6069,8 @@ export default class Meeting extends StatelessWebexPlugin {
             reject(payload);
           }
         };
-        // @ts-ignore
-        this.webex.internal.voicea.on(
-          VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE,
-          voiceaListenerCaptionUpdate
-        );
-        // @ts-ignore
-        this.webex.internal.voicea.requestLanguage(language);
+        this.voiceaChannel?.on(VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE, voiceaListenerCaptionUpdate);
+        this.voiceaChannel?.requestLanguage(language);
       } catch (error) {
         LoggerProxy.logger.error(`Meeting:index#setCaptionLanguage --> ${error}`);
 
@@ -6107,8 +6104,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       try {
         const voiceaListenerLanguageUpdate = (payload) => {
-          // @ts-ignore
-          this.webex.internal.voicea.off(
+          this.voiceaChannel?.off(
             VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE,
             voiceaListenerLanguageUpdate
           );
@@ -6125,14 +6121,9 @@ export default class Meeting extends StatelessWebexPlugin {
           }
         };
 
-        // @ts-ignore
-        this.webex.internal.voicea.on(
-          VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE,
-          voiceaListenerLanguageUpdate
-        );
+        this.voiceaChannel?.on(VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE, voiceaListenerLanguageUpdate);
 
-        // @ts-ignore
-        this.webex.internal.voicea.setSpokenLanguage(language);
+        this.voiceaChannel?.setSpokenLanguage(language);
       } catch (error) {
         LoggerProxy.logger.error(`Meeting:index#setSpokenLanguage --> ${error}`);
 
@@ -6154,12 +6145,18 @@ export default class Meeting extends StatelessWebexPlugin {
       );
 
       try {
+        if (!this.voiceaChannel) {
+          LoggerProxy.logger.warn(
+            'Meeting:index#startTranscription --> voiceaChannel not available'
+          );
+
+          return;
+        }
+
         if (!this.areVoiceaEventsSetup) {
           this.setUpVoiceaListeners();
         }
-
-        // @ts-ignore
-        await this.webex.internal.voicea.turnOnCaptions(options?.spokenLanguage);
+        await this.voiceaChannel.turnOnCaptions(options?.spokenLanguage);
       } catch (error) {
         LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_FAILURE, {
@@ -6286,32 +6283,27 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {void}
    */
   stopTranscription() {
-    // @ts-ignore
-    this.webex.internal.voicea.off(
+    this.voiceaChannel?.off(
       VOICEAEVENTS.VOICEA_ANNOUNCEMENT,
       this.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT]
     );
 
-    // @ts-ignore
-    this.webex.internal.voicea.off(
+    this.voiceaChannel?.off(
       VOICEAEVENTS.CAPTIONS_TURNED_ON,
       this.voiceaListenerCallbacks[VOICEAEVENTS.CAPTIONS_TURNED_ON]
     );
 
-    // @ts-ignore
-    this.webex.internal.voicea.off(
+    this.voiceaChannel?.off(
       VOICEAEVENTS.EVA_COMMAND,
       this.voiceaListenerCallbacks[VOICEAEVENTS.EVA_COMMAND]
     );
 
-    // @ts-ignore
-    this.webex.internal.voicea.off(
+    this.voiceaChannel?.off(
       VOICEAEVENTS.NEW_CAPTION,
       this.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]
     );
 
-    // @ts-ignore
-    this.webex.internal.voicea.deregisterEvents();
+    this.voiceaChannel?.deregisterEvents();
 
     this.areVoiceaEventsSetup = false;
     this.triggerStopReceivingTranscriptionEvent();
@@ -6344,16 +6336,13 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private restoreLLMSubscriptionsIfNeeded(): void {
     try {
-      const keepTranscriptionSubscribed =
-        // @ts-ignore
-        this.webex.internal.voicea?.getKeepTranscriptionSubscribed?.();
+      const keepTranscriptionSubscribed = this.voiceaChannel?.getKeepTranscriptionSubscribed();
 
       if (!keepTranscriptionSubscribed) {
         return;
       }
 
-      // @ts-ignore
-      this.webex.internal.voicea.updateSubchannelSubscriptions({subscribe: ['transcription']});
+      this.voiceaChannel?.updateSubchannelSubscriptions({subscribe: ['transcription']});
     } catch (error) {
       const msg = error?.message || String(error);
 
@@ -6680,6 +6669,8 @@ export default class Meeting extends StatelessWebexPlugin {
     this.llmChannel?.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
     this.llmChannel?.off('online', this.handleLLMOnline);
     this.breakouts?.unregisterLLMChannel();
+    this.voiceaChannel?.deregisterEvents();
+    this.voiceaChannel = undefined;
     this.clearLLMHealthCheckTimer();
   }
 
@@ -6836,16 +6827,23 @@ export default class Meeting extends StatelessWebexPlugin {
     const isJoined = this.isJoined();
     const dataChannelUrl = datachannelUrl;
 
-    // If already connected to same URLs, skip reconnect
-    if (this.llmChannel?.isConnected()) {
-      if (
+    // If we have an existing channel, check if we should reuse it or clean it up
+    if (this.llmChannel) {
+      const isSameUrls =
         url === this.llmChannel.getLocusUrl() &&
-        dataChannelUrl === this.llmChannel.getDatachannelUrl() &&
-        isJoined
-      ) {
+        dataChannelUrl === this.llmChannel.getDatachannelUrl();
+
+      // If already connected to same URLs, skip reconnect
+      if (this.llmChannel.isConnected() && isSameUrls && isJoined) {
         return undefined;
       }
-      // URLs changed, disconnect existing channel
+
+      // If currently connecting to same URLs, wait for that to complete
+      if (this.llmChannel.isConnecting() && isSameUrls && isJoined) {
+        return undefined;
+      }
+
+      // URLs changed or not joined, disconnect existing channel
       await this.cleanupLLMConneciton();
     }
 
@@ -6889,6 +6887,9 @@ export default class Meeting extends StatelessWebexPlugin {
         // Register breakouts channel
         this.breakouts.registerLLMChannel(this.llmChannel);
 
+        // Create VoiceaChannel for this meeting
+        // @ts-ignore - Fix type
+        this.voiceaChannel = this.webex.internal.voicea.createChannel(this.llmChannel);
         LoggerProxy.logger.info(
           'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
         );

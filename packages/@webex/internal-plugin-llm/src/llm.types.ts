@@ -28,6 +28,9 @@ interface ILLMChannel {
   /** Returns true if the WebSocket is connected. */
   isConnected: () => boolean;
 
+  /** Returns true if a connection is currently in progress. */
+  isConnecting: () => boolean;
+
   /** Get the underlying WebSocket. */
   getSocket: () => any;
 

@@ -63,6 +63,14 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   private connectingPromise?: Promise<RegisterAndConnectTiming | void>;
 
   /**
+   * Check if a connection is currently in progress.
+   * @returns {boolean} True if connecting
+   */
+  public isConnecting(): boolean {
+    return !!this.connectingPromise;
+  }
+
+  /**
    * Register to the websocket
    * @param {string} llmSocketUrl
    * @param {string} datachannelToken

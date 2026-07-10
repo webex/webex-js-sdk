@@ -262,7 +262,7 @@ export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChann
     const socket = this.llmChannel.getSocket();
     const binding = this.llmChannel.getBinding();
 
-    socket.send({
+    const payload = {
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: [
@@ -280,7 +280,8 @@ export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChann
         relayType: AIBRIDGE_RELAY_TYPES.VOICEA.CLIENT_ANNOUNCEMENT,
       },
       trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
-    });
+    };
+    socket.send(payload);
     this.seqNum += 1;
   };
 
@@ -409,6 +410,8 @@ export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChann
   private requestTurnOnCaptions = (languageCode?: string): undefined | Promise<void> => {
     this.captionStatus = TURN_ON_CAPTION_STATUS.SENDING;
 
+    const locusUrl = this.llmChannel.getLocusUrl();
+
     const body = {
       transcribe: {caption: true},
       languageCode,
@@ -417,7 +420,7 @@ export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChann
     return this.webex
       .request({
         method: 'PUT',
-        url: `${this.llmChannel.getLocusUrl()}/controls/`,
+        url: `${locusUrl}/controls/`,
         body,
       })
       .then(() => {
@@ -428,7 +431,7 @@ export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChann
         this.announce();
         this.updateSubchannelSubscriptionsAndSyncCaptionState({subscribe: ['transcription']}, true);
       })
-      .catch(() => {
+      .catch((error) => {
         this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
         throw new Error('turn on captions fail');
       });

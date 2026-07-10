@@ -19,7 +19,9 @@ export class VoiceaPlugin extends WebexPlugin {
    */
   public createChannel(llmChannel: LLMChannel): VoiceaChannel {
     // @ts-ignore - webex is available on WebexPlugin
-    return new VoiceaChannel(llmChannel, this.webex);
+    const channel = new VoiceaChannel(llmChannel, this.webex);
+
+    return channel;
   }
 }
 

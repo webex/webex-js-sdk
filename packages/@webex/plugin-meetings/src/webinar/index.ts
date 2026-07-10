@@ -328,7 +328,7 @@ const Webinar = WebexPlugin.extend({
       this._pendingOnlineListener = null;
     }
 
-    const isCaptionBoxOn = this.webex.internal.voicea.getIsCaptionBoxOn();
+    const keepTranscriptionSubscribed = meeting.voiceaChannel?.getKeepTranscriptionSubscribed();
 
     // Get token from pending on meeting or refresh if needed
     let practiceSessionDatachannelToken =
@@ -387,10 +387,10 @@ const Webinar = WebexPlugin.extend({
         // Register annotation channel for practice session
         meeting.annotation.registerChannel(this.practiceSessionLLMChannel, 'practice-session');
 
-        // @ts-ignore - Fix type
-        this.webex.internal.voicea?.announce?.();
+        // Announce voicea on practice session channel
+        meeting.voiceaChannel?.announce?.();
         if (keepTranscriptionSubscribed) {
-          this.webex.internal.voicea.updateSubchannelSubscriptions({subscribe: ['transcription']});
+          meeting.voiceaChannel?.updateSubchannelSubscriptions({subscribe: ['transcription']});
         }
         LoggerProxy.logger.info(
           'Webinar:index#updatePSDataChannel --> enabled to receive relay events for practice session!'
