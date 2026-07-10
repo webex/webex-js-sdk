@@ -82,7 +82,7 @@ flowchart TB
     CR -->|getCallingBackEnd == WXC: new| WC
     CR -->|delegates getCallRecording/deleteRecording| WC
     WC -->|services.get hydraDeveloperApi| Catalog
-    WC -->|GET/DELETE /convergedRecordings| WxApp
+    WC -->|GET reads / POST /convergedRecordings/softDelete| WxApp
 
     WC -->|registerListener convergedRecordings.*| SDK
     SDK -->|mercury.on| Mercury
@@ -164,9 +164,9 @@ sequenceDiagram
     WxApp-->>CR: 200 {owner, session, participants, mediaStreams, extensionData}
     CR-->>App: {statusCode, data: {metadata}, message: 'SUCCESS'}
 
-    App->>CR: deleteRecording(recordingId, {reason?, comment?})
-    CR->>WxApp: DELETE /convergedRecordings/{recordingId} (body {reason, comment} only if provided)
-    WxApp-->>CR: 200 (recording permanently deleted, cannot be recovered)
+    App->>CR: deleteRecording(recordingId)
+    CR->>WxApp: POST /convergedRecordings/softDelete { recordingIds: [recordingId] }
+    WxApp-->>CR: 204 (recording moved to recycle bin)
     CR-->>App: {statusCode, data: {}, message: 'SUCCESS'}
 ```
 
