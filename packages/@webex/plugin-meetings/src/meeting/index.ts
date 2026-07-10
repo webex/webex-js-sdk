@@ -6157,6 +6157,14 @@ export default class Meeting extends StatelessWebexPlugin {
           this.setUpVoiceaListeners();
         }
         await this.voiceaChannel.turnOnCaptions(options?.spokenLanguage);
+
+        // Also enable captions on practice session channel if in practice session
+        if (this.webinar?.practiceSessionVoiceaChannel) {
+          LoggerProxy.logger.info(
+            'Meeting:index#startTranscription --> Also enabling captions on practice session channel'
+          );
+          await this.webinar.practiceSessionVoiceaChannel.turnOnCaptions(options?.spokenLanguage);
+        }
       } catch (error) {
         LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_FAILURE, {
@@ -6207,7 +6215,7 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Verifies the relay event was delivered for the active LLM session binding.
    * With the factory pattern, each meeting owns its channel, so we just verify
-   * the route matches our channel's binding.
+   * the route matches our channel's binding or the practice session binding.
    * @param {RelayEvent} event Event object coming from LLM Connection
    * @returns {boolean}
    */
@@ -6221,6 +6229,13 @@ export default class Meeting extends StatelessWebexPlugin {
     const expectedBinding = this.llmChannel?.getBinding();
 
     if (!expectedBinding || route === expectedBinding) {
+      return true;
+    }
+
+    // Also check practice session binding for webinars
+    const practiceSessionBinding = this.webinar?.practiceSessionLLMChannel?.getBinding();
+
+    if (practiceSessionBinding && route === practiceSessionBinding) {
       return true;
     }
 

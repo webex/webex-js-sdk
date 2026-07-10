@@ -5,6 +5,7 @@ import {WebexPlugin, config} from '@webex/webex-core';
 import uuid from 'uuid';
 import {get} from 'lodash';
 import type LLMChannel from '@webex/internal-plugin-llm';
+import type {VoiceaChannel} from '@webex/internal-plugin-voicea';
 import {
   _ID_,
   HEADERS,
@@ -45,6 +46,12 @@ const Webinar = WebexPlugin.extend({
    * @type {LLMChannel|undefined}
    */
   practiceSessionLLMChannel: undefined as LLMChannel | undefined,
+
+  /**
+   * Voicea channel for practice session, bound to practiceSessionLLMChannel.
+   * @type {VoiceaChannel|undefined}
+   */
+  practiceSessionVoiceaChannel: undefined as VoiceaChannel | undefined,
 
   /**
    * Calls this to clean up listeners
@@ -179,6 +186,12 @@ const Webinar = WebexPlugin.extend({
       const meeting = this.getValidatedWebinarMeeting();
       meeting?.llmChannel?.off('online', this._pendingOnlineListener);
       this._pendingOnlineListener = null;
+    }
+
+    // Clean up practice session voicea channel
+    if (this.practiceSessionVoiceaChannel) {
+      this.practiceSessionVoiceaChannel.deregisterEvents();
+      this.practiceSessionVoiceaChannel = undefined;
     }
 
     if (!this.practiceSessionLLMChannel) {
@@ -387,10 +400,21 @@ const Webinar = WebexPlugin.extend({
         // Register annotation channel for practice session
         meeting.annotation.registerChannel(this.practiceSessionLLMChannel, 'practice-session');
 
-        // Announce voicea on practice session channel
-        meeting.voiceaChannel?.announce?.();
+        // Create VoiceaChannel for practice session bound to practiceSessionLLMChannel
+        // @ts-ignore - Fix type
+        this.practiceSessionVoiceaChannel = this.webex.internal.voicea.createChannel(
+          this.practiceSessionLLMChannel
+        );
+
+        // Set up voicea listeners for practice session channel
+        this.setupPracticeSessionVoiceaListeners(meeting);
+
+        // Announce and enable captions on practice session channel
+        this.practiceSessionVoiceaChannel?.announce?.();
         if (keepTranscriptionSubscribed) {
-          meeting.voiceaChannel?.updateSubchannelSubscriptions({subscribe: ['transcription']});
+          this.practiceSessionVoiceaChannel?.updateSubchannelSubscriptions({
+            subscribe: ['transcription'],
+          });
         }
         LoggerProxy.logger.info(
           'Webinar:index#updatePSDataChannel --> enabled to receive relay events for practice session!'
@@ -403,6 +427,23 @@ const Webinar = WebexPlugin.extend({
         this.practiceSessionLLMChannel = undefined;
         throw error;
       });
+  },
+
+  /**
+   * Sets up voicea listeners for practice session channel to forward events to the meeting.
+   * This allows captions to work during practice session.
+   * @param {object} meeting - The meeting instance
+   * @returns {void}
+   */
+  setupPracticeSessionVoiceaListeners(meeting) {
+    if (!this.practiceSessionVoiceaChannel || !meeting) {
+      return;
+    }
+
+    // Forward voicea events from practice session channel to meeting's voicea callbacks
+    Object.keys(meeting.voiceaListenerCallbacks).forEach((eventName) => {
+      this.practiceSessionVoiceaChannel.on(eventName, meeting.voiceaListenerCallbacks[eventName]);
+    });
   },
 
   /**
