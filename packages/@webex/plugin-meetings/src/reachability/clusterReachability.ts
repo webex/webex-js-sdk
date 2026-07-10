@@ -6,13 +6,14 @@ import {Enum} from '../constants';
 import {
   ClusterReachabilityResult,
   NatType,
+  Protocol,
   ReachabilityPeerConnectionEvents,
 } from './reachability.types';
 import {ReachabilityPeerConnection} from './reachabilityPeerConnection';
 
 // data for the Events.resultReady event
 export type ResultEventData = {
-  protocol: 'udp' | 'tcp' | 'xtls';
+  protocol: Protocol;
   result: 'reachable' | 'unreachable' | 'untested';
   latencyInMilliseconds: number; // amount of time it took to get the ICE candidate
   clientMediaIPs?: string[];
@@ -20,7 +21,7 @@ export type ResultEventData = {
 
 // data for the Events.clientMediaIpsUpdated event
 export type ClientMediaIpsUpdatedEventData = {
-  protocol: 'udp' | 'tcp' | 'xtls';
+  protocol: Protocol;
   clientMediaIPs: string[];
 };
 

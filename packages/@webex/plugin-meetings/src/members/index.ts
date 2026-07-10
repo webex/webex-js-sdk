@@ -1136,12 +1136,16 @@ export default class Members extends StatelessWebexPlugin {
    * Transfers the host to another member
    * @param {String} memberId
    * @param {boolean} [moderator] default true
+   * @param {String} [breakoutLocusUrl] when provided, the request is sent against this locus url
+   * (i.e. the breakout session's locus) instead of the main session's locus url
    * @returns {Promise}
    * @public
    * @memberof Members
    */
-  public transferHostToMember(memberId: string, moderator = true) {
-    if (!this.locusUrl) {
+  public transferHostToMember(memberId: string, moderator = true, breakoutLocusUrl = '') {
+    const locusUrl = breakoutLocusUrl || this.locusUrl;
+
+    if (!locusUrl) {
       return Promise.reject(
         new ParameterError(
           'The associated locus url for this meetings members object must be defined.'
@@ -1153,11 +1157,14 @@ export default class Members extends StatelessWebexPlugin {
         new ParameterError('The member id must be defined to transfer host to the member.')
       );
     }
-    const options = MembersUtil.generateTransferHostMemberOptions(
+    const options: Record<string, any> = MembersUtil.generateTransferHostMemberOptions(
       memberId,
       moderator,
-      this.locusUrl
+      locusUrl
     );
+    if (breakoutLocusUrl && breakoutLocusUrl !== this.locusUrl) {
+      options.authorizingLocusUrl = this.locusUrl;
+    }
 
     return this.membersRequest.transferHostToMember(options);
   }
