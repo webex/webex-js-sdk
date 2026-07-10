@@ -188,14 +188,18 @@ MeetingsUtil.getSiteName = (site: string, multipartSitePrefixList: string[] = []
  * @returns {Promise<boolean>}
  */
 MeetingsUtil.hasH264Codec = async () => {
-  const codecCapability = WebCapabilities.isCapableOfReceivingVideoCodec('video/H264');
+  try {
+    const codecCapability = WebCapabilities.isCapableOfReceivingVideoCodec('video/H264');
 
-  if (codecCapability === CapabilityState.CAPABLE) {
-    return true;
-  }
+    if (codecCapability === CapabilityState.CAPABLE) {
+      return true;
+    }
 
-  if (codecCapability === CapabilityState.NOT_CAPABLE) {
-    return false;
+    if (codecCapability === CapabilityState.NOT_CAPABLE) {
+      return false;
+    }
+  } catch (_) {
+    // NO-OP
   }
 
   let hasCodec = false;

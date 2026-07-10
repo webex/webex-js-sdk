@@ -108,6 +108,18 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(isCapableOfReceivingVideoCodecStub, 'video/H264');
       });
 
+      it('falls back to RTCPeerConnection when isCapableOfReceivingVideoCodec throws', async () => {
+        isCapableOfReceivingVideoCodecStub.throws(new Error('WebCapabilities unavailable'));
+        const mockPc = {createOffer: sinon.stub(), close: sinon.stub()};
+        global.window.RTCPeerConnection = sinon.stub().returns(mockPc);
+        mockPc.createOffer.resolves({sdp: 'v=0\r\na=rtpmap:96 H264/90000\r\n'});
+
+        assert.equal(await MeetingsUtil.hasH264Codec(), true);
+        assert.calledOnce(mockPc.close);
+
+        delete global.window.RTCPeerConnection;
+      });
+
       describe('when video/H264 reports UNKNOWN (falls back to RTCPeerConnection)', () => {
         let mockPc;
 
