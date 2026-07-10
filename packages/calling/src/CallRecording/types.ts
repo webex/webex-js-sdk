@@ -347,7 +347,8 @@ export type RecordingResponseFor<T extends GetCallRecordingRequest> =
  *
  * Provides read access to Post Call Recordings through a single {@link getCallRecording} method
  * (listing, single fetch, lookup by call session, and metadata — selected by the request `type`),
- * permanent deletion of a recording, and emits recording lifecycle events received over Mercury.
+ * moves a recording to the recycle bin (soft delete), and emits recording lifecycle events received
+ * over Mercury.
  */
 export interface ICallRecording extends Eventing<CallRecordingEventTypes> {
   /**
