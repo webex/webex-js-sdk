@@ -612,6 +612,19 @@ describe('TurnDiscovery', () => {
       checkFailureMetricsSent();
     });
 
+    [409, 403].forEach((statusCode) => {
+      it(`re-throws ${statusCode} error instead of swallowing it`, async () => {
+        const td = new TurnDiscovery(mockRoapRequest);
+        const error = Object.assign(new Error(`locus ${statusCode}`), {statusCode});
+
+        mockRoapRequest.sendRoap = sinon.fake.rejects(error);
+
+        const thrownError = await assert.isRejected(td.doTurnDiscovery(testMeeting, false));
+
+        assert.equal(thrownError, error);
+      });
+    });
+
     it('resolves with undefined turnServerInfo when cluster is reachable', async () => {
       const prev = testMeeting.webex.meetings.reachability.isAnyPublicClusterReachable;
       testMeeting.webex.meetings.reachability.isAnyPublicClusterReachable = () =>
