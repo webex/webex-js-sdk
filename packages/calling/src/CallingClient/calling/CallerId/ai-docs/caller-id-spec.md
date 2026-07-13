@@ -131,11 +131,11 @@ Responsibilities:
 
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| CALLERID-R-001 | - Parses p-asserted-identity first (highest preference). | P-Asserted-Identity is the signaling service's asserted identity and must win over fallback headers when both are present. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
-| CALLERID-R-002 | - Extracts display name from quoted/header prefix. | Separating the display name and SIP user produces the name/number fields consumed by call notifications without exposing raw header syntax. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
-| CALLERID-R-003 | 1. Reset callerInfo (id, avatarSrc, name, num) before processing a new event. | Resetting before each event prevents identity fields from a previous call leaking into a new caller result. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
+| CALLERID-R-001 | Parses p-asserted-identity first (highest preference). | P-Asserted-Identity is the signaling service's asserted identity and must win over fallback headers when both are present. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
+| CALLERID-R-002 | Extracts display name from quoted/header prefix. | Separating the display name and SIP user produces the name/number fields consumed by call notifications without exposing raw header syntax. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
+| CALLERID-R-003 | Resets callerInfo (id, avatarSrc, name, num) before processing a new event. | Resetting before each event prevents identity fields from a previous call leaking into a new caller result. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
 | CALLERID-R-004 | Resolution preserves header priority, non-blocking SCIM enrichment, typed callbacks, shared display types, and contextual logging. | Preserving priority, non-blocking enrichment, shared types, and contextual logging keeps immediate and enriched callback ordering stable for Call consumers. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
-| CALLERID-R-005 | - Do not replace the callback-based update mechanism with direct Call mutations. | The callback boundary decouples identity resolution from Call mutation and the diff check prevents duplicate caller-id notifications. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
+| CALLERID-R-005 | Uses the callback-based update mechanism rather than direct Call mutations. | The callback boundary decouples identity resolution from Call mutation and the diff check prevents duplicate caller-id notifications. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
 
 ### 1. Deterministic Header Priority Resolution
 
@@ -266,14 +266,38 @@ Header parsing is synchronous; SCIM enrichment is deliberately non-blocking. Evi
 
 ```mermaid
 classDiagram
-  class Consumer
-  class CallerId
-  class RequiredDependency
-  Consumer --> CallerId
-  CallerId --> RequiredDependency
+  class Call {
+    +startCallerIdResolution(callerInfo)
+  }
+  class CallerId {
+    -callerInfo: DisplayInformation
+    +fetchCallerDetails(callerId)
+    -parseSipUri(paid)
+    -parseRemotePartyInfo(data)
+    -resolveCallerId(filter)
+  }
+  class SDKConnector {
+    <<singleton>>
+    +getWebex()
+    +setWebex(webex)
+  }
+  class CommonUtils {
+    <<module>>
+    +resolveCallerIdDisplay(filter)
+    +scimQuery(filter)
+  }
+  class CallEmitterCallBack {
+    <<type>>
+  }
+
+  Call --> CallerId : createCallerId / fetchCallerDetails
+  CallerId --> SDKConnector : initialize Webex SDK access
+  CallerId --> CommonUtils : resolveCallerIdDisplay
+  CommonUtils --> SDKConnector : scimQuery uses Webex request
+  CallerId --> CallEmitterCallBack : emit immediate or enriched info
 ```
 
-The module owns orchestration at `src/CallingClient/calling/CallerId/` and calls dependencies through typed adapters.
+`Call` creates one `CallerId` and supplies the typed callback that updates and emits caller information. `CallerId` parses SIP identity headers synchronously, then delegates BroadWorks `externalId` enrichment to `resolveCallerIdDisplay()` / `scimQuery()`, which obtains the initialized Webex SDK through `SDKConnector`. Evidence: `src/CallingClient/calling/call.ts`, `src/CallingClient/calling/CallerId/index.ts`, `src/CallingClient/calling/types.ts`, `src/common/Utils.ts`.
 
 ## Use Cases
 
@@ -344,7 +368,7 @@ Tests for this module should cover:
 | CALLERID-R-001 | `src/CallingClient/calling/CallerId/index.test.ts` | Re-check negative/error edge coverage during independent validation |
 | CALLERID-R-002 | `src/CallingClient/calling/CallerId/index.test.ts` | Re-check negative/error edge coverage during independent validation |
 | CALLERID-R-003 | `src/CallingClient/calling/CallerId/index.test.ts` | Re-check negative/error edge coverage during independent validation |
-| CALLERID-R-004 | Resolution preserves header priority, non-blocking SCIM enrichment, typed callbacks, shared display types, and contextual logging. | Preserving priority, non-blocking enrichment, shared types, and contextual logging keeps immediate and enriched callback ordering stable for Call consumers. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
+| CALLERID-R-004 | `src/CallingClient/calling/CallerId/index.test.ts` | Re-check negative/error edge coverage during independent validation |
 | CALLERID-R-005 | `src/CallingClient/calling/CallerId/index.test.ts` | Re-check negative/error edge coverage during independent validation |
 
 ## Traceability

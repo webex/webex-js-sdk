@@ -186,11 +186,6 @@ Not all methods include the same base fields:
 - **Region Info / Mobius Servers metrics**: Always hardcode `ServiceIndicator.CALLING` regardless of constructor `indicator` param.
 - **Registration metrics**: Uses `trackingId` (camelCase) as field key. Upload logs uses `tracking_id` (snake_case).
 
-### Conditional Submission
-
-- `submitCallMetric(CALL_ERROR)`: Only submits if `callError` param is provided
-- `submitMediaMetric(MEDIA_ERROR)`: Only submits if `callError` param is provided
-- `submitUploadLogsMetric`: Silently skips if name doesn't match (no warning log)
 
 ---
 
@@ -330,11 +325,7 @@ Most `MetricManager` methods validate the `name` parameter against expected `MET
 - `submitUploadLogsMetric` does not log a warning for invalid names; it silently skips submission because `data` remains `undefined`.
 - `submitConnectionMetrics` has no runtime name validation and always builds/submits metric data with the provided `name`.
 
-### Key Constants / Conditional Submission
 
-Some methods only submit error metrics when an error object is provided:
-- `submitCallMetric` with `CALL_ERROR`: only submits if `callError` is non-null
-- `submitMediaMetric` with `MEDIA_ERROR`: only submits if `callError` is non-null
 
 ## Data Flow
 
@@ -370,18 +361,7 @@ flowchart TB
     Metrics --> WebexCloud
 ```
 
-### Metric Data Structure
-
-Every metric submitted follows this pattern:
-
-```mermaid
-flowchart LR
-    subgraph MetricPayload
-        Tags[tags:\naction, device_id,\nservice_indicator]
-        Fields[fields:\ndevice_url, mobius_url,\ncalling_sdk_version,\n+ metric-specific fields]
-        Type[type:\noperational | behavioral]
-    end
-```
+### Metric payload structure and per-method exceptions are documented in **Design Overview → Common Metric Fields** above.
 
 ## Sequence Diagram(s)
 

@@ -225,7 +225,6 @@ The `CallHistory` constructor accepts:
 | CALLHISTORY-R-006 | Standardized error handling via `serviceErrorCodeHandler` with automatic log upload on failures. | A common error response and diagnostic-upload path gives callers stable failure handling and preserves evidence needed to diagnose remote-service failures. | `src/CallHistory/CallHistory.ts` | `src/CallHistory/CallHistory.test.ts` | none identified | PRESENT |
 | CALLHISTORY-R-007 | Adds `includeSharedSessions=true` so shared session types (`WEBEXCALLING_SHARED`) are included in call history queries. | Shared-line sessions must be requested explicitly so users see calls placed or received on shared Webex Calling lines. | `src/CallHistory/CallHistory.ts` | `src/CallHistory/CallHistory.test.ts` | none identified | PRESENT |
 | CALLHISTORY-R-008 | Enriches call history records with `ucmLineNumber` by matching `self.cucmDN` against UCM Lines API (`dnorpattern`). | UCM records need line-pattern enrichment so multi-line clients can associate a history entry with the correct provisioned line. | `src/CallHistory/CallHistory.ts` | `src/CallHistory/CallHistory.test.ts` | none identified | PRESENT |
-| CALLHISTORY-R-009 | Backend behavior remains explicit: WXC includes shared sessions; UCM enriches records with matching line numbers. | Keeping backend differences explicit prevents WXC shared-session behavior from being confused with UCM line-enrichment behavior. | `src/CallHistory/CallHistory.ts` | `src/CallHistory/CallHistory.test.ts` | none identified | PRESENT |
 
 ### Key Capabilities
 
@@ -699,9 +698,8 @@ Unit tests are co-located under `src/CallHistory/` and exercise positive, negati
 | CALLHISTORY-R-004 | `src/CallHistory/CallHistory.test.ts` | Re-check negative/error edge coverage during independent validation |
 | CALLHISTORY-R-005 | `src/CallHistory/CallHistory.test.ts` | Re-check negative/error edge coverage during independent validation |
 | CALLHISTORY-R-006 | `src/CallHistory/CallHistory.test.ts` | Re-check negative/error edge coverage during independent validation |
-| CALLHISTORY-R-007 | `src/CallHistory/CallHistory.test.ts` | Re-check negative/error edge coverage during independent validation |
-| CALLHISTORY-R-008 | `src/CallHistory/CallHistory.test.ts` | Re-check negative/error edge coverage during independent validation |
-| CALLHISTORY-R-009 | Backend behavior remains explicit: WXC includes shared sessions; UCM enriches records with matching line numbers. | Keeping backend differences explicit prevents WXC shared-session behavior from being confused with UCM line-enrichment behavior. | `src/CallHistory/CallHistory.ts` | `src/CallHistory/CallHistory.test.ts` | none identified | PRESENT |
+| CALLHISTORY-R-007 | `src/CallHistory/CallHistory.test.ts` | none identified — covers WXC inclusion and UCM/BWRKS/unknown exclusion |
+| CALLHISTORY-R-008 | `src/CallHistory/CallHistory.test.ts` | none identified — covers matched enrichment, missing line data, missing `cucmDN`, and non-UCM behavior |
 
 ## Traceability
 

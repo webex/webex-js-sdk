@@ -685,13 +685,13 @@ The `Logger` module uses a numeric level hierarchy defined in `LOGGING_LEVEL` (`
 |---|---|---|
 | `error` | 1 | Errors only |
 | `warn` | 2 | Errors + warnings |
-| `info` | 3 | + general messages |
-| `log` | 4 | + informational |
+| `log` | 3 | + general messages |
+| `info` | 4 | + informational |
 | `trace` | 5 | + full stack traces |
 
 The `LOGGER` enum defines the string values: `'error'`, `'warn'`, `'info'`, `'log'`, `'trace'`.
 
-Log format: `Calling SDK: <UTC timestamp>: [LEVEL]: file:<filename> - method:<methodName> - message:<content>`
+Log format: `webex-calling: <UTC timestamp>: [LEVEL]: file:<filename> - method:<methodName> - message:<content>`
 
 ### Metrics
 

@@ -293,14 +293,14 @@ flowchart LR
 
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| MOBIUSSOCKET-R-001 | One `MobiusSocket` instance per process via `getMobiusSocketInstance()`. `resetMobiusSocketInstance()` clears the cache. | A process-wide socket avoids competing Mobius sessions, while the explicit reset supports controlled reinitialization and isolated tests. | `src/mobius-socket/config.ts` | `src/mobius-socket/errors.test.ts` | none identified | PRESENT |
-| MOBIUSSOCKET-R-002 | `connect(webSocketUrl?)` opens (or reuses) a socket to the supplied URL, falling back to `webex.internal.device.webSocketUrl`. `disconnect(options?)` aborts retries, removes listeners, and closes the underlying socket. | Idempotent connect and complete disconnect cleanup prevent duplicate sockets, retry loops, listeners, or token timers from surviving a lifecycle transition. | `src/mobius-socket/config.ts` | `src/mobius-socket/errors.test.ts` | none identified | PRESENT |
-| MOBIUSSOCKET-R-003 | `sendWssRequest(payload, options?)` sends a JSON envelope keyed by `trackingId` and resolves with the matching `SocketResponse`. | Tracking-id correlation lets concurrent WebSocket requests resolve the correct promise and gives each request a bounded timeout. | `src/mobius-socket/config.ts` | `src/mobius-socket/errors.test.ts` | none identified | PRESENT |
-| MOBIUSSOCKET-R-004 | Mobius async events (`async_event` envelopes) are deduped by `eventId` (LRU cache, see `dedupCacheMaxSize`) and re-emitted to listeners as `event:async_event`, `event:<type>`, and `event:<namespace>`. | Event-id deduplication prevents redelivered async envelopes from driving duplicate registration or call state transitions. | `src/mobius-socket/config.ts` | `src/mobius-socket/errors.test.ts` | none identified | PRESENT |
-| MOBIUSSOCKET-R-005 | `backoff.ExponentialStrategy` with `initialDelay = backoffTimeReset`, `maxDelay = backoffTimeMax`, capped retries based on `initialConnectionMaxRetries` (first attempt) and `maxRetries` (subsequent reconnects). | Separate initial and reconnect retry budgets bound startup delay while allowing established clients to recover from transient closure. | `src/mobius-socket/config.ts` | `src/mobius-socket/errors.test.ts` | none identified | PRESENT |
-| MOBIUSSOCKET-R-006 | Hourly `setInterval` while connected (`TOKEN_REFRESH_INTERVAL_MS = 60 * 60 * 1000`). Also triggered inline when the underlying socket surfaces a `statusCode 440` on a non-AUTH response. Calls `webex.credentials.refresh({force: true})` (when `canRefresh`) and re-authenticates the live socket via `Socket#refresh`. | Refreshing credentials before expiry and on a 440 response keeps a live socket authorized without forcing consumers to rebuild the client. | `src/mobius-socket/config.ts` | `src/mobius-socket/errors.test.ts` | none identified | PRESENT |
-| MOBIUSSOCKET-R-007 | On receipt of a server-initiated `{type: 'shutdown'}` envelope, a second socket is opened in parallel. When the new socket authenticates, it is promoted and the old socket is left in place to be closed by Mobius with code `4001`. | Make-before-break switchover preserves service during planned server shutdown and avoids dropping the active socket before its replacement authenticates. | `src/mobius-socket/config.ts` | `src/mobius-socket/errors.test.ts` | none identified | PRESENT |
-| MOBIUSSOCKET-R-008 | Standard WebSocket close codes plus Mobius-specific codes (1003 / 4000 / 4001 / 1005-1012 / 3050 / 4401 / 4403 / 4404 / 4429) drive `offline`, `offline.permanent`, `offline.replaced`, `offline.transient`, and re-auth flows. | Close-code-specific outcomes distinguish permanent, replaced, transient, authentication, and throttling cases so retry behavior is safe and predictable. | `src/mobius-socket/config.ts` | `src/mobius-socket/errors.test.ts` | none identified | PRESENT |
+| MOBIUSSOCKET-R-001 | One `MobiusSocket` instance per process via `getMobiusSocketInstance()`. `resetMobiusSocketInstance()` clears the cache. | A process-wide socket avoids competing Mobius sessions, while the explicit reset supports controlled reinitialization and isolated tests. | `src/mobius-socket/index.ts` | `src/mobius-socket/mobius-socket.test.ts` | none identified | PRESENT |
+| MOBIUSSOCKET-R-002 | `connect(webSocketUrl?)` opens (or reuses) a socket to the supplied URL, falling back to `webex.internal.device.webSocketUrl`. `disconnect(options?)` aborts retries, removes listeners, and closes the underlying socket. | Idempotent connect and complete disconnect cleanup prevent duplicate sockets, retry loops, listeners, or token timers from surviving a lifecycle transition. | `src/mobius-socket/mobius-socket.ts` | `src/mobius-socket/mobius-socket.test.ts` | none identified | PRESENT |
+| MOBIUSSOCKET-R-003 | `sendWssRequest(payload, options?)` sends a JSON envelope keyed by `trackingId` and resolves with the matching `SocketResponse`. | Tracking-id correlation lets concurrent WebSocket requests resolve the correct promise and gives each request a bounded timeout. | `src/mobius-socket/mobius-socket.ts`; `src/mobius-socket/socket/socket-base.ts` | `src/mobius-socket/mobius-socket.test.ts`; `src/mobius-socket/socket.test.ts` | none identified | PRESENT |
+| MOBIUSSOCKET-R-004 | Mobius async events (`async_event` envelopes) are deduped by `eventId` (LRU cache, see `dedupCacheMaxSize`) and re-emitted to listeners as `event:async_event`, `event:<type>`, and `event:<namespace>`. | Event-id deduplication prevents redelivered async envelopes from driving duplicate registration or call state transitions. | `src/mobius-socket/mobius-socket.ts`; `src/mobius-socket/config.ts` | `src/mobius-socket/mobius-socket.test.ts`; `src/mobius-socket/mobius-socket-events.test.ts` | none identified | PRESENT |
+| MOBIUSSOCKET-R-005 | `backoff.ExponentialStrategy` with `initialDelay = backoffTimeReset`, `maxDelay = backoffTimeMax`, capped retries based on `initialConnectionMaxRetries` (first attempt) and `maxRetries` (subsequent reconnects). | Separate initial and reconnect retry budgets bound startup delay while allowing established clients to recover from transient closure. | `src/mobius-socket/mobius-socket.ts`; `src/mobius-socket/config.ts` | `src/mobius-socket/mobius-socket.test.ts` | none identified | PRESENT |
+| MOBIUSSOCKET-R-006 | Hourly `setInterval` while connected (`TOKEN_REFRESH_INTERVAL_MS = 60 * 60 * 1000`). Also triggered inline when the underlying socket surfaces a `statusCode 440` on a non-AUTH response. Calls `webex.credentials.refresh({force: true})` (when `canRefresh`) and re-authenticates the live socket via `Socket#refresh`. | Refreshing credentials before expiry and on a 440 response keeps a live socket authorized without forcing consumers to rebuild the client. | `src/mobius-socket/mobius-socket.ts`; `src/mobius-socket/socket/socket-base.ts` | `src/mobius-socket/mobius-socket.test.ts`; `src/mobius-socket/socket.test.ts` | none identified | PRESENT |
+| MOBIUSSOCKET-R-007 | On receipt of a server-initiated `{type: 'shutdown'}` envelope, a second socket is opened in parallel. When the new socket authenticates, it is promoted and the old socket is left in place to be closed by Mobius with code `4001`. | Make-before-break switchover preserves service during planned server shutdown and avoids dropping the active socket before its replacement authenticates. | `src/mobius-socket/mobius-socket.ts` | `src/mobius-socket/mobius-socket.test.ts` | none identified | PRESENT |
+| MOBIUSSOCKET-R-008 | Standard WebSocket close codes plus Mobius-specific codes (1003 / 4000 / 4001 / 1005-1012 / 3050 / 4401 / 4403 / 4404 / 4429) drive `offline`, `offline.permanent`, `offline.replaced`, `offline.transient`, and re-auth flows. | Close-code-specific outcomes distinguish permanent, replaced, transient, authentication, and throttling cases so retry behavior is safe and predictable. | `src/mobius-socket/mobius-socket.ts`; `src/mobius-socket/socket/socket-base.ts`; `src/mobius-socket/socket/constants.ts` | `src/mobius-socket/mobius-socket.test.ts`; `src/mobius-socket/socket.test.ts`; `src/mobius-socket/mobius-socket-events.test.ts` | none identified | PRESENT |
 
 ### Key Capabilities
 
@@ -877,21 +877,33 @@ Connect/reconnect and shutdown-switchover have separate backoff controllers. Onl
 
 ## State Machine
 
-```mermaid
-stateDiagram-v2
-  [*] --> Idle
-  Idle --> Active: initialize / start
-  Active --> Recovering: transient failure
-  Recovering --> Active: retry succeeds
-  Active --> Closed: cleanup / terminal event
-  Closed --> [*]
-```
+`MobiusSocket` does not define a formal state enum or XState machine. Its lifecycle is implicit in the active `Socket`, the `connected` / `connecting` flags, the shared `connectPromise`, and the normal and shutdown-switchover backoff controllers. The [Lifecycle State Diagram](#lifecycle-state-diagram) models those source-level transitions in detail.
 
-Concrete state names and guards are defined under `src/mobius-socket/` and in the migrated source detail below.
+| Conceptual state | Source indicator | Entry / exit behavior |
+|---|---|---|
+| Idle | No connected active socket; `connected` is false. | Initial state and the result of `disconnect()`, a permanent/replaced/throttled close, or exhausted initial retries. |
+| Connecting | `connectPromise` and the normal backoff flow coordinate connection attempts; the candidate `Socket` is marked `connecting`. | `connect()` reuses an in-flight promise and does not start another attempt when the socket is already connected or connecting. |
+| Authenticating | The transport is open and `Socket#authorize()` has sent an `auth` request. | The candidate is not promoted to Online until the correlated auth response has a 2xx `statusCode`; connection errors follow the configured retry or abort path. |
+| Online | The active `Socket` and `MobiusSocket` are marked connected; the token-refresh timer is active. | Requests and events use the active socket. Transient closes enter Reconnecting; terminal closes enter Idle. |
+| SwitchingOver | `shutdownSwitchoverBackoffCall` is active while the old socket remains the active socket. | A replacement is promoted only after it opens and authenticates. Exhausted switchover retries retain the old socket for normal server-close handling. |
+| Reconnecting | An active socket received a transient close and invoked `reconnect()` / the normal backoff flow. | A successful open and auth return to Online; exhausted or terminal handling returns to Idle. |
+
+Guards and invariants: only the active socket (`sourceSocket === this.socket`) may clear global connection state; an old switchover socket closing only removes its own listeners. A new explicit websocket URL resets the initial-connection retry history. `disconnect()` aborts both backoff controllers, clears the shared connect promise and event-dedup cache, and stops token refresh. Evidence: `src/mobius-socket/mobius-socket.ts`, `src/mobius-socket/socket/socket-base.ts`.
 
 ## Protocol / Wire Format
 
-Protocol ownership, message shape, request routing, and compatibility are defined by the implementation under `src/mobius-socket/`. Do not invent fields or bypass the existing parser/adapter boundary.
+Messages are JSON objects serialized and parsed by `Socket`. The TypeScript envelope is intentionally extensible, but correlation and control-message fields have concrete behavior:
+
+| Message | Implemented shape | Routing / handling |
+|---|---|---|
+| Application request | `MobiusSocketRequestPayload`: `type: string`, `trackingId: string`, plus optional envelope fields. | `sendWssRequest()` requires an object and a connected active socket, then delegates to `Socket#sendRequest()`. At the socket layer a missing `trackingId` is generated, and duplicate in-flight IDs are rejected. |
+| Response | `SocketResponse` fields include `trackingId`, `subtype`, `statusCode`, `statusMessage`, `reason`, and extensible data. | A pending request is handled only when `trackingId` matches and `response.subtype === request.type`. A 2xx status resolves it; a missing or non-2xx status rejects it. |
+| Authentication | `{type: 'auth', data: {token}, trackingId: <generated>}` | `Socket#authorize()` sends the token in `data.token` through the normal correlated-request path. Authentication values must never be logged or emitted. |
+| Async event | `{type: 'async_event', trackingId?, eventId?, data?: {...}}` | When `eventId` is present, `Socket` sends `{type: 'event_ack', trackingId: <incoming-or-generated>, eventId}` and `MobiusSocket` suppresses repeated IDs before public event fan-out. A missing `eventId` prevents acknowledgement and deduplication. |
+| Shutdown notice | `{type: 'shutdown', ...}` | Emits `event:mobius_shutdown_imminent` and starts make-before-break switchover; it is not processed as a normal application event. |
+| Close control event | `{code?: number, reason?: string}` from the WebSocket close callback. | Drives reconnect, replacement, permanent-close, auth-refresh, and throttle behavior according to the [Close-Code → Behaviour Matrix](#close-code--behaviour-matrix). Code `4001` also emits the synthetic `MOBIUS_SOCKET_4001_EVENT`. |
+
+The default response timeout is 10 seconds unless `wssResponseTimeout` or a per-request timeout overrides it; timeout rejection uses status `408`. A non-auth response with status `440` initiates token refresh and still rejects the original request. Full failure behavior is specified in [Error Handling & Failure Modes](#error-handling--failure-modes). Evidence: `src/mobius-socket/types.ts`, `src/mobius-socket/socket/types.ts`, `src/mobius-socket/socket/constants.ts`, `src/mobius-socket/socket/socket-base.ts`, `src/mobius-socket/mobius-socket.ts`.
 
 ## Error Handling & Failure Modes
 
@@ -984,14 +996,14 @@ resetMobiusSocketInstance();
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
-| MOBIUSSOCKET-R-001 | `src/mobius-socket/errors.test.ts` | Re-check negative/error edge coverage during independent validation |
-| MOBIUSSOCKET-R-002 | `src/mobius-socket/errors.test.ts` | Re-check negative/error edge coverage during independent validation |
-| MOBIUSSOCKET-R-003 | `src/mobius-socket/errors.test.ts` | Re-check negative/error edge coverage during independent validation |
-| MOBIUSSOCKET-R-004 | `src/mobius-socket/errors.test.ts` | Re-check negative/error edge coverage during independent validation |
-| MOBIUSSOCKET-R-005 | `src/mobius-socket/errors.test.ts` | Re-check negative/error edge coverage during independent validation |
-| MOBIUSSOCKET-R-006 | `src/mobius-socket/errors.test.ts` | Re-check negative/error edge coverage during independent validation |
-| MOBIUSSOCKET-R-007 | `src/mobius-socket/errors.test.ts` | Re-check negative/error edge coverage during independent validation |
-| MOBIUSSOCKET-R-008 | `src/mobius-socket/errors.test.ts` | Re-check negative/error edge coverage during independent validation |
+| MOBIUSSOCKET-R-001 | `src/mobius-socket/mobius-socket.test.ts` | Re-check negative/error edge coverage during independent validation |
+| MOBIUSSOCKET-R-002 | `src/mobius-socket/mobius-socket.test.ts` | Re-check negative/error edge coverage during independent validation |
+| MOBIUSSOCKET-R-003 | `src/mobius-socket/mobius-socket.test.ts`; `src/mobius-socket/socket.test.ts` | Re-check negative/error edge coverage during independent validation |
+| MOBIUSSOCKET-R-004 | `src/mobius-socket/mobius-socket.test.ts`; `src/mobius-socket/mobius-socket-events.test.ts` | Re-check negative/error edge coverage during independent validation |
+| MOBIUSSOCKET-R-005 | `src/mobius-socket/mobius-socket.test.ts` | Re-check negative/error edge coverage during independent validation |
+| MOBIUSSOCKET-R-006 | `src/mobius-socket/mobius-socket.test.ts`; `src/mobius-socket/socket.test.ts` | Re-check negative/error edge coverage during independent validation |
+| MOBIUSSOCKET-R-007 | `src/mobius-socket/mobius-socket.test.ts` | Re-check negative/error edge coverage during independent validation |
+| MOBIUSSOCKET-R-008 | `src/mobius-socket/mobius-socket.test.ts`; `src/mobius-socket/socket.test.ts`; `src/mobius-socket/mobius-socket-events.test.ts` | Re-check negative/error edge coverage during independent validation |
 
 ## Traceability
 

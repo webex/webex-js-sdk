@@ -208,7 +208,15 @@ sequenceDiagram
 
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| REGISTRATION-R-001 | Internal registration, deregistration, failover, failback, and keepalive lifecycle | The combined lifecycle keeps a device reachable across server failures and network changes while ensuring keepalive, retry, and cleanup state has one owner. | `src/CallingClient/registration/index.ts` | `src/CallingClient/registration/register.test.ts` | none identified | PRESENT |
+| REGISTRATION-R-001 | `triggerRegistration()` attempts the configured primary Mobius servers, posts the device descriptor, stores the successful response, sets status to `ACTIVE`, starts keepalive, and emits `LINE_EVENTS.REGISTERED`. | Keeping registration state, device data, timers, and the consumer event in one success path prevents a partially initialized line from appearing registered. | `src/CallingClient/registration/register.ts` | `src/CallingClient/registration/register.test.ts` | none identified | PRESENT |
+| REGISTRATION-R-002 | A dedicated Web Worker schedules keepalives, prevents overlapping requests, reports success after recovery, and reports each failure with its retry count. The main thread performs the Mobius request and handles recovery or terminal failure. | Moving scheduling off the main thread protects heartbeat timing while retaining authenticated network access and lifecycle decisions on the SDK thread. | `src/CallingClient/registration/register.ts`; `src/CallingClient/registration/webWorkerStr.ts`; `src/CallingClient/registration/webWorker.ts` | `src/CallingClient/registration/register.test.ts`; `src/CallingClient/registration/webWorker.test.ts` | none identified | PRESENT |
+| REGISTRATION-R-003 | Failed primary registration attempts are retried with persisted timing state and then failed over to backup Mobius servers when the retry threshold is reached. | Bounded primary retries and persisted failover progress preserve availability without restarting the retry window after a reload or transient interruption. | `src/CallingClient/registration/register.ts` | `src/CallingClient/registration/register.test.ts` | none identified | PRESENT |
+| REGISTRATION-R-004 | While registered on backup, failback periodically checks primary health and moves registration back only when primary is reachable and no calls are active. | Deferring rehoming during an active call avoids disrupting media while still returning healthy clients to their preferred primary cluster. | `src/CallingClient/registration/register.ts` | `src/CallingClient/registration/register.test.ts` | none identified | PRESENT |
+| REGISTRATION-R-005 | Connection restoration and `reconnectOnFailure()` first try the previous active Mobius server, restart registration when necessary, and defer reconnection while calls remain active. | Reusing the last working server minimizes recovery time, while active-call deferral prevents registration repair from interrupting a call. | `src/CallingClient/registration/register.ts` | `src/CallingClient/registration/register.test.ts` | none identified | PRESENT |
+| REGISTRATION-R-006 | HTTP `429` responses honor `Retry-After` according to context: registration/restoration may delay or switch servers, failback uses a capped retry count, and keepalive resumes after the adjusted delay. | Context-specific throttling prevents request storms without applying a failback or keepalive retry policy to an incompatible registration path. | `src/CallingClient/registration/register.ts` | `src/CallingClient/registration/register.test.ts` | none identified | PRESENT |
+| REGISTRATION-R-007 | `deregister(closeMobiusWss?)` deletes the active device, emits the unregistered lifecycle signal, stops keepalive, clears failover state, sets status to `INACTIVE`, and optionally closes Mobius WSS. | Complete cleanup prevents stale device registrations, timers, retry state, or transport sessions from surviving deregistration. | `src/CallingClient/registration/register.ts` | `src/CallingClient/registration/register.test.ts` | Direct tests do not isolate both values of `closeMobiusWss`; delete behavior is exercised through restoration/failback flows | PRESENT |
+| REGISTRATION-R-008 | Each server group selects HTTP or Mobius WSS from its URI scheme; WSS connects before registration and is disconnected with code `3050` / reason `done (permanent)` during lifecycle transitions that require a new session. | Aligning transport selection with the active server group prevents HTTP endpoints from being routed over WSS and avoids carrying an obsolete socket across failover, failback, or cleanup. | `src/CallingClient/registration/register.ts`; `src/CallingClient/utils/request.ts` | `src/CallingClient/registration/register.test.ts`; `src/CallingClient/utils/request.test.ts` | none identified | PRESENT |
+| REGISTRATION-R-009 | A `registration.down` event ends the first active call, clears registration timers and transient retry state under the shared mutex, sets status to `INACTIVE`, optionally closes WSS, and emits `LINE_EVENTS.UNREGISTERED` without deleting a device already removed by Mobius. | Immediate, serialized cleanup prevents the SDK from retaining a registration or call that the server has declared invalid. | `src/CallingClient/registration/register.ts` | `src/CallingClient/registration/register.test.ts` | none identified | PRESENT |
 
 ### Key Capabilities
 
@@ -219,8 +227,9 @@ The Registration module handles:
 - **Registration Failover** — Automatic switch from primary to backup Mobius servers on failure
 - **Registration Failback** — Automatic return to primary servers when they become available
 - **Reconnection** — Re-register after network disruption or Mercury disconnection
-- **429 Retry** — Respect `Retry-After` headers with exponential backoff
+- **429 Retry** — Respect `Retry-After` with context-specific registration, failback, and keepalive scheduling
 - **Deregistration** — `DELETE /devices/{deviceId}` to clean up the device on Mobius, with optional Mobius WebSocket teardown
+- **Registration-Down Cleanup** — End the first active call, clear registration-side timers/retry state, optionally close WSS, and emit `UNREGISTERED` without sending a redundant device DELETE
 - **Mobius WSS Lifecycle (when `apiRequest.isSocketEnabled()`)** — Connect to the per-server WSS URL before `POST /device`, and disconnect with `{code: 3050, reason: 'done (permanent)'}` on failover, failback, registration-down cleanup, restore-previous-registration, and `deregister(closeMobiusWss = true)`. See [`mobius-socket/ai-docs/AGENTS.md`](../../../mobius-socket/ai-docs/AGENTS.md) for the close-code policy.
 
 ## Design Overview
@@ -695,21 +704,38 @@ URL.revokeObjectURL(url);
 
 ## State Machine
 
+Registration uses the `RegistrationStatus` enum rather than a separate XState machine. Retry, failover, failback, and reconnect are guarded operations around these three stored states; they are not additional status values.
+
 ```mermaid
 stateDiagram-v2
-  [*] --> Idle
-  Idle --> Active: initialize / start
-  Active --> Recovering: transient failure
-  Recovering --> Active: retry succeeds
-  Active --> Closed: cleanup / terminal event
-  Closed --> [*]
+  [*] --> IDLE: Registration constructor
+  IDLE --> INACTIVE: registration attempt begins
+  INACTIVE --> ACTIVE: device POST succeeds
+  INACTIVE --> INACTIVE: retry / failover attempt fails
+  INACTIVE --> ACTIVE: retry / failover / reconnect succeeds
+  ACTIVE --> INACTIVE: deregister()
+  ACTIVE --> INACTIVE: terminal keepalive failure
+  ACTIVE --> INACTIVE: registration.down cleanup
+  ACTIVE --> INACTIVE: failback begins via deregister()
+  INACTIVE --> ACTIVE: primary failback succeeds
+  INACTIVE --> IDLE: Line.deregister() completes
 ```
 
-Concrete state names and guards are defined under `src/CallingClient/registration/` and in the migrated source detail below.
+Guards: `isDeviceRegistered()` is true only in `ACTIVE`; an active call defers reconnect and failback; the shared mutex serializes registration, failback, keepalive recovery, and registration-down cleanup. Evidence: `src/common/types.ts`, `src/CallingClient/registration/register.ts`, `src/CallingClient/line/index.ts`.
 
 ## Protocol / Wire Format
 
-Protocol ownership, message shape, request routing, and compatibility are defined by the implementation under `src/CallingClient/registration/`. Do not invent fields or bypass the existing parser/adapter boundary.
+Registration expresses Mobius operations as HTTP-shaped requests. `APIRequest` sends them with `webex.request` or maps them onto Mobius WSS according to the active server group's URI scheme.
+
+| Operation | Request shape | Routing / response behavior |
+|---|---|---|
+| Register device | `POST {mobiusUrl}device`; headers `cisco-device-url` and `spark-user-agent`; body `{userId, clientDeviceUri, serviceData}` where guest calling adds `serviceData.jwe`. | Sent through `APIRequest.makeRequest()`. A successful body supplies device identity and intervals, changes status to `ACTIVE`, starts keepalive, and emits `REGISTERED`. |
+| Deregister device | `DELETE {activeMobiusUrl}devices/{deviceId}` with the same identity headers. The WSS form additionally carries `{deviceId}` in the body. | Sent through `APIRequest.makeRequest()`. Cleanup proceeds to `INACTIVE` and emits `UNREGISTERED`; `deregister(true)` also closes WSS. |
+| Device keepalive | `POST {deviceUri}/status`; body `{deviceId}` with identity headers. | The worker emits `SEND_KEEPALIVE`; the main thread sends the request and returns `KEEPALIVE_RESULT {statusCode}` or `{err}` to the worker. |
+| Primary health check | `GET {primaryMobiusBaseUrl}ping` with identity headers. | Uses `webex.request()` to decide whether failback may proceed; status `200` means primary is available. |
+| WSS lifecycle control | Connect to the normalized `wss://` server before registration; disconnect with `{code: 3050, reason: 'done (permanent)'}` when the lifecycle requires a new session. | `Registration` calls the transport only through `APIRequest`; it does not import `MobiusSocket` directly. |
+
+The worker message contract is `START_KEEPALIVE {interval, retryCountThreshold}`, `SEND_KEEPALIVE`, `KEEPALIVE_RESULT {statusCode}` or `{err}`, `KEEPALIVE_SUCCESS {statusCode}`, `KEEPALIVE_FAILURE {err, keepAliveRetryCount}`, and `CLEAR_KEEPALIVE`. Only the main thread performs network I/O. Evidence: `src/CallingClient/registration/register.ts`, `src/CallingClient/registration/webWorkerStr.ts`, `src/CallingClient/registration/webWorker.ts`, `src/CallingClient/utils/request.ts`.
 
 ## Error Handling & Failure Modes
 
@@ -908,6 +934,14 @@ Unit tests are co-located under `src/CallingClient/registration/` and exercise p
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
 | REGISTRATION-R-001 | `src/CallingClient/registration/register.test.ts` | Re-check negative/error edge coverage during independent validation |
+| REGISTRATION-R-002 | `src/CallingClient/registration/register.test.ts`; `src/CallingClient/registration/webWorker.test.ts` | Re-check negative/error edge coverage during independent validation |
+| REGISTRATION-R-003 | `src/CallingClient/registration/register.test.ts` | Re-check negative/error edge coverage during independent validation |
+| REGISTRATION-R-004 | `src/CallingClient/registration/register.test.ts` | Re-check negative/error edge coverage during independent validation |
+| REGISTRATION-R-005 | `src/CallingClient/registration/register.test.ts` | Re-check negative/error edge coverage during independent validation |
+| REGISTRATION-R-006 | `src/CallingClient/registration/register.test.ts` | Re-check negative/error edge coverage during independent validation |
+| REGISTRATION-R-007 | `src/CallingClient/registration/register.test.ts` | Add isolated coverage for `deregister(false)` and `deregister(true)`, including WSS teardown failure |
+| REGISTRATION-R-008 | `src/CallingClient/registration/register.test.ts`; `src/CallingClient/utils/request.test.ts` | Re-check negative/error edge coverage during independent validation |
+| REGISTRATION-R-009 | `src/CallingClient/registration/register.test.ts` | Re-check negative/error edge coverage during independent validation |
 
 ## Traceability
 

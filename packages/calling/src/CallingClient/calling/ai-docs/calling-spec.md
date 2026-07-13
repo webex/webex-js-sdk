@@ -142,7 +142,7 @@ Compatibility notes:
 
 ### ICallManager Interface
 
-`ICallManager` is the contract for the `CallManager` class. It defines the core methods `CallManager` must expose for call creation, lookup, lifecycle tracking, and line/Mobius context updates.  
+`ICallManager` is the contract for the `CallManager` class. It defines the core methods `CallManager` must expose for call creation, lookup, lifecycle tracking, and line/Mobius context updates.
 In practice, this interface ensures a consistent API surface between the singleton accessor (`getCallManager`) and the concrete `CallManager` implementation.
 
 ```typescript
@@ -632,9 +632,9 @@ enum MOBIUS_MIDCALL_STATE {
 
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| CALLING-R-001 | - Supports hold/resume, transfer, mute, DTMF, and media updates during active calls. | Routing mid-call actions through the Call lifecycle prevents hold, transfer, DTMF, mute, or media updates from bypassing signaling and media state guards. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
-| CALLING-R-002 | - Resolves caller display details from SIP headers (p-asserted-identity, from) and Broadworks metadata. | Early caller detail makes incoming-call UI usable while asynchronous enrichment can improve the display without delaying call handling. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
-| CALLING-R-003 | 1. P-Asserted-Identity (p-asserted-identity) -- Highest priority, parsed as SIP URI | Network-asserted P-Asserted-Identity takes precedence so a weaker From fallback cannot overwrite the identity selected by the signaling service. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | none identified | PRESENT |
+| CALLING-R-001 | Supports hold/resume, transfer, mute, DTMF, and media updates during active calls. | Routing mid-call actions through the Call lifecycle prevents hold, transfer, DTMF, mute, or media updates from bypassing signaling and media state guards. | `src/CallingClient/calling/call.ts` | `src/CallingClient/calling/call.test.ts`; `src/CallingClient/calling/callManager.test.ts` | Partial coverage; re-check negative/error edge coverage during independent validation | PRESENT |
+| CALLING-R-002 | Resolves caller display details from SIP headers (`p-asserted-identity`, `from`) and BroadWorks metadata. | Early caller detail makes incoming-call UI usable while asynchronous enrichment can improve the display without delaying call handling. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | Partial coverage; re-check negative/error edge coverage during independent validation | PRESENT |
+| CALLING-R-003 | Gives `P-Asserted-Identity` precedence over the `From` fallback when resolving a SIP identity. | Network-asserted identity must take precedence so a weaker fallback cannot overwrite the identity selected by the signaling service. | `src/CallingClient/calling/CallerId/index.ts` | `src/CallingClient/calling/CallerId/index.test.ts` | Partial coverage; re-check malformed-header and fallback edge coverage during independent validation | PRESENT |
 
 ### 4. Mid-Call Operations and Supplementary Services
 
@@ -1293,8 +1293,8 @@ ROAP publish payload shape:
 
 ### Component Overview
 
-The Calling sub-module is organized around one manager (`CallManager`) and per-call executors (`Call`).  
-`CallManager` handles event intake/routing and active call tracking, while each `Call` owns signaling/media state, backend signaling API operations, and event emission.  
+The Calling sub-module is organized around one manager (`CallManager`) and per-call executors (`Call`).
+`CallManager` handles event intake/routing and active call tracking, while each `Call` owns signaling/media state, backend signaling API operations, and event emission.
 `CallerId` is a focused helper used by `Call` for caller identity resolution and incremental updates.
 In this document, **Mobius** refers to the backend signaling/control service used by the calling stack.
 
@@ -1956,7 +1956,7 @@ handleCallErrors(
 
 ## Key Design Trade-off
 
-Separate signaling and media state machines prevent transport events from directly mutating WebRTC state, but require explicit coordination of ROAP and call-control events. Evidence: `src/CallingClient/calling/call.ts`, `src/CallingClient/calling/callStateMachine.ts`, `src/CallingClient/calling/mediaStateMachine.ts`.
+Separate signaling and media state machines prevent transport events from directly mutating WebRTC state, but require explicit coordination of ROAP and call-control events. Evidence: `src/CallingClient/calling/call.ts`, `src/CallingClient/calling/callManager.ts`.
 
 ## Test-Case Strategy (module)
 
@@ -1964,9 +1964,9 @@ Unit tests are co-located under `src/CallingClient/calling/` and exercise positi
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
-| CALLING-R-001 | `src/CallingClient/calling/CallerId/index.test.ts` | Re-check negative/error edge coverage during independent validation |
+| CALLING-R-001 | `src/CallingClient/calling/call.test.ts`; `src/CallingClient/calling/callManager.test.ts` | Re-check negative/error edge coverage during independent validation |
 | CALLING-R-002 | `src/CallingClient/calling/CallerId/index.test.ts` | Re-check negative/error edge coverage during independent validation |
-| CALLING-R-003 | `src/CallingClient/calling/CallerId/index.test.ts` | Re-check negative/error edge coverage during independent validation |
+| CALLING-R-003 | `src/CallingClient/calling/CallerId/index.test.ts` | Re-check malformed-header and fallback edge coverage during independent validation |
 
 ## Traceability
 
