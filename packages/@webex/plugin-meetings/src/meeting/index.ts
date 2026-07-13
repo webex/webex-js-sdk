@@ -5728,12 +5728,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.roap.abortTurnDiscovery();
 
-      // let's do a retry
+      // let's do a retry (but not on 1-1 calls, because the flow would get too complicated)
       let shouldRetry =
-        retryCount < 1 ||
-        ((error instanceof UserNotJoinedError ||
-          this.isErrorMeaningLocusDroppedUs(error)) &&
-          retryCount < JOIN_WITH_MEDIA_RETRY_MAX_COUNT);
+        !MeetingsUtil.isOneOnOneCall(this.locusInfo.parsedLocus) &&
+        (retryCount < 1 ||
+          ((error instanceof UserNotJoinedError || this.isErrorMeaningLocusDroppedUs(error)) &&
+            retryCount < JOIN_WITH_MEDIA_RETRY_MAX_COUNT));
 
       if (
         CallDiagnosticUtils.isSdpOfferCreationError(error) ||
@@ -7941,10 +7941,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const causeStatusCode = (error as any)?.cause?.statusCode;
 
     return (
-      statusCode === 409 ||
-      statusCode === 403 ||
-      causeStatusCode === 409 ||
-      causeStatusCode === 403
+      statusCode === 409 || statusCode === 403 || causeStatusCode === 409 || causeStatusCode === 403
     );
   }
 

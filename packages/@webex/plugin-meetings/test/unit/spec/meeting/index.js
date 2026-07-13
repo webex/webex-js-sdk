@@ -2105,6 +2105,39 @@ describe('plugin-meetings', () => {
           assert.callCount(meeting.join, 3);
           assert.callCount(meeting.addMediaInternal, 3);
         });
+
+        it('should not retry on 1-1 calls', async () => {
+          const addMediaError = new Error('addMedia error');
+
+          sinon.stub(MeetingsUtil, 'isOneOnOneCall').returns(true);
+
+          meeting.addMediaInternal = sinon.stub().rejects(addMediaError);
+          sinon.stub(meeting, 'leave').resolves();
+
+          await assert.isRejected(
+            meeting.joinWithMedia({joinOptions, mediaOptions}),
+            addMediaError
+          );
+
+          // should not retry - only 1 attempt
+          assert.calledOnce(meeting.join);
+          assert.calledOnce(meeting.addMediaInternal);
+          assert.calledOnceWithExactly(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: addMediaError.message,
+              stack: addMediaError.stack,
+              leaveErrorReason: undefined,
+              isRetry: false,
+            },
+            {
+              type: addMediaError.name,
+            }
+          );
+        });
       });
       describe('#isTranscriptionSupported', () => {
         it('should return false if the feature is not supported for the meeting', () => {
