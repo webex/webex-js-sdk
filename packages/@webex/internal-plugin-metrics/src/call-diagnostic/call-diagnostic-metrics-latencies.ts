@@ -73,6 +73,14 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   // clock jump (sleep/wake) and is discarded instead of being reported.
   private LOCUS_SYNC_SKEW_THRESHOLD_MS = 10 * 60 * 1000;
 
+  // Incomplete Locus sync records (missing the /sync response and/or the LLM message) are kept for
+  // this long so a late milestone can still complete them, then pruned as stale.
+  private LOCUS_SYNC_PENDING_RECORD_TTL_MS = 5 * 60 * 1000;
+
+  // Safety cap on the number of records kept per meeting + dataset, to bound memory if syncs churn
+  // faster than the TTL can clean them up.
+  private LOCUS_SYNC_MAX_RECORDS_PER_DATASET = 20;
+
   /**
    * @constructor
    */
@@ -108,11 +116,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       (record) => record.locusSync.dataSetName !== dataSetName
     );
 
-    if (remainingRecords.length > 0) {
-      this.meetingLatencies.set(meetingId, remainingRecords);
-    } else {
-      this.meetingLatencies.delete(meetingId);
-    }
+    this.setMeetingLatencyRecords(meetingId, remainingRecords);
   }
 
   /**
@@ -238,6 +242,13 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
 
     if (record && typeof record.messageReceived !== 'number') {
       record.messageReceived = new Date().getTime();
+      const records = this.meetingLatencies.get(meetingId);
+
+      if (records) {
+        this.setMeetingLatencyRecords(meetingId, records, {
+          changedRecord: record,
+        });
+      }
     }
   }
 
@@ -367,8 +378,6 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
 
   /**
    * Remove the Locus sync latency record for a meeting and tracking id.
-   * Also removes older never-completed records for the same dataset, because once a newer sync
-   * for that dataset completes, earlier incomplete attempts are stale.
    * @param meetingId meeting id
    * @param trackingId sync tracking id used to match the record
    * @returns void
@@ -380,40 +389,121 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       return;
     }
 
-    const completedRecord = records.find(
-      (record) => record.locusSync.trackingId === trackingId
-    )?.locusSync;
+    const remainingRecords = records.filter(({locusSync}) => locusSync.trackingId !== trackingId);
 
-    if (!completedRecord) {
-      return;
+    this.setMeetingLatencyRecords(meetingId, remainingRecords);
+  }
+
+  /**
+   * Prune stale never-completed Locus sync latency records for the same dataset as the record that
+   * just changed. Records are dropped when they have been pending longer than the TTL, or to keep
+   * the number of records per dataset under the safety cap (oldest pending candidates first).
+   * @param records current records for the meeting
+   * @param changedRecord the record that was just updated, used as the reference point
+   * @returns the records to keep
+   */
+  private pruneStaleLocusSyncLatencyRecords(
+    records: MeetingLatencyRecord[],
+    changedRecord: LocusSyncLatencyRecord
+  ) {
+    const currentTimestamp = this.getLatestLocusSyncTimestamp(changedRecord);
+
+    if (typeof currentTimestamp !== 'number') {
+      return records;
     }
 
-    const remainingRecords = records.filter((record) => {
-      const {locusSync} = record;
-
-      // Always remove the record that just completed.
-      if (locusSync.trackingId === trackingId) {
+    // A record is only a cleanup candidate when it belongs to the same dataset as the record that
+    // just changed, is not that record itself, and has never completed. Everything else is kept.
+    const isPrunableCandidate = (locusSync: LocusSyncLatencyRecord) => {
+      if (locusSync.dataSetName !== changedRecord.dataSetName) {
         return false;
       }
 
-      // Only stale cleanup records from the same dataset.
-      if (locusSync.dataSetName !== completedRecord.dataSetName) {
+      if (changedRecord.trackingId && locusSync.trackingId === changedRecord.trackingId) {
+        return false;
+      }
+
+      const hasCompleted =
+        typeof locusSync.syncResponse === 'number' && typeof locusSync.messageReceived === 'number';
+
+      return !hasCompleted;
+    };
+
+    // 1) Drop candidates that have been pending longer than the TTL.
+    const recordsAfterTtl = records.filter(({locusSync}) => {
+      if (!isPrunableCandidate(locusSync)) {
         return true;
       }
 
-      const isOlderRecord =
-        typeof locusSync.syncStart === 'number' &&
-        typeof completedRecord.syncStart === 'number' &&
-        locusSync.syncStart < completedRecord.syncStart;
-      const isNeverCompleted =
-        typeof locusSync.syncResponse !== 'number' || typeof locusSync.messageReceived !== 'number';
+      const lastTimestamp = this.getLatestLocusSyncTimestamp(locusSync);
 
-      // Remove only older never-completed records for the same dataset.
-      return !(isOlderRecord && isNeverCompleted);
+      if (typeof lastTimestamp !== 'number') {
+        return true;
+      }
+
+      return currentTimestamp - lastTimestamp < this.LOCUS_SYNC_PENDING_RECORD_TTL_MS;
     });
 
-    if (remainingRecords.length > 0) {
-      this.meetingLatencies.set(meetingId, remainingRecords);
+    // 2) Cap the number of records kept per dataset, dropping the oldest pending candidates first.
+    let overflowCount = Math.max(
+      0,
+      recordsAfterTtl.filter(({locusSync}) => locusSync.dataSetName === changedRecord.dataSetName)
+        .length - this.LOCUS_SYNC_MAX_RECORDS_PER_DATASET
+    );
+
+    if (overflowCount === 0) {
+      return recordsAfterTtl;
+    }
+
+    return recordsAfterTtl.filter(({locusSync}) => {
+      if (overflowCount <= 0 || !isPrunableCandidate(locusSync)) {
+        return true;
+      }
+
+      overflowCount -= 1;
+
+      return false;
+    });
+  }
+
+  /**
+   * Get the most recent milestone timestamp stored on a Locus sync latency record, checking
+   * milestones from latest to earliest so the newest available one is returned.
+   * @param record tracked milestone timestamps
+   * @returns latest milestone timestamp, or undefined when none are set
+   */
+  private getLatestLocusSyncTimestamp(record: LocusSyncLatencyRecord) {
+    return (
+      record.messageReceived ??
+      record.syncResponse ??
+      record.syncRequest ??
+      record.hashTreeResponse ??
+      record.hashTreeRequest ??
+      record.syncStart
+    );
+  }
+
+  /**
+   * Persist the Locus sync latency records for a meeting, deleting the meeting entry when no
+   * records remain. When pruneOptions is provided, stale records are pruned before saving.
+   * @param meetingId meeting id
+   * @param records records to save
+   * @param pruneOptions when provided, triggers stale record pruning relative to changedRecord
+   * @returns void
+   */
+  private setMeetingLatencyRecords(
+    meetingId: string,
+    records: MeetingLatencyRecord[],
+    pruneOptions?: {
+      changedRecord: LocusSyncLatencyRecord;
+    }
+  ) {
+    const recordsToSave = pruneOptions
+      ? this.pruneStaleLocusSyncLatencyRecords(records, pruneOptions.changedRecord)
+      : records;
+
+    if (recordsToSave.length > 0) {
+      this.meetingLatencies.set(meetingId, recordsToSave);
     } else {
       this.meetingLatencies.delete(meetingId);
     }
@@ -504,6 +594,9 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       if (pendingRecord) {
         pendingRecord.trackingId = trackingId;
         pendingRecord.syncStart = value;
+        this.setMeetingLatencyRecords(meetingId, this.meetingLatencies.get(meetingId) ?? [], {
+          changedRecord: pendingRecord,
+        });
 
         return;
       }
@@ -519,7 +612,9 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
           syncStart: value,
         },
       });
-      this.meetingLatencies.set(meetingId, records);
+      this.setMeetingLatencyRecords(meetingId, records, {
+        changedRecord: records[records.length - 1].locusSync,
+      });
 
       return;
     }
@@ -552,6 +647,10 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       default:
         break;
     }
+
+    this.setMeetingLatencyRecords(meetingId, this.meetingLatencies.get(meetingId) ?? [], {
+      changedRecord: record,
+    });
   }
 
   /**

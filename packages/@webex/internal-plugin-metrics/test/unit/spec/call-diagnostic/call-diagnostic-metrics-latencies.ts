@@ -753,7 +753,7 @@ describe('internal-plugin-metrics', () => {
         }
       });
 
-      it('cleans up older never-completed record for the same dataset when newer sync completes', () => {
+      it('does not clean up older never-completed record for the same dataset when newer sync completes', () => {
         // first sync: all sync milestones recorded, but its completing LLM event never arrives
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.start',
@@ -808,14 +808,133 @@ describe('internal-plugin-metrics', () => {
         // both records exist before completion
         assert.lengthOf(cdl.meetingLatencies.get('meeting-1')!, 2);
 
-        // completing the second sync removes its own record and also clears the stale first
-        // record for the same dataset
+        // completing the second sync removes only its own record; the older pending record is left
+        // in place because a late LLM message could still complete it (stale cleanup is handled by
+        // the TTL / capacity pruning, not by completion).
         const completed = cdl.completeLocusSyncLatency('meeting-1', 'sync-tracking-2');
 
         assert.isDefined(completed);
         assert.equal(completed!.dataSet, 'main');
 
-        assert.isFalse(cdl.meetingLatencies.has('meeting-1'));
+        const remaining = cdl.meetingLatencies.get('meeting-1');
+
+        assert.isDefined(remaining);
+        assert.lengthOf(remaining!, 1);
+        assert.equal(remaining![0].locusSync.trackingId, 'sync-tracking-1');
+      });
+
+      it('prunes an incomplete record once it is older than the pending TTL', () => {
+        // an incomplete sync record that never received its LLM message
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.start',
+          value: 100,
+          options: {
+            meetingId: 'meeting-1',
+            dataSetName: 'main',
+            trackingId: 'stale-tracking-id',
+          },
+        });
+
+        // a brand new sync for the same dataset starts more than the TTL later
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.start',
+          value: 100 + 5 * 60 * 1000 + 1,
+          options: {
+            meetingId: 'meeting-1',
+            dataSetName: 'main',
+            trackingId: 'fresh-tracking-id',
+          },
+        });
+
+        const records = cdl.meetingLatencies.get('meeting-1');
+
+        assert.isDefined(records);
+        assert.lengthOf(records!, 1);
+        assert.equal(records![0].locusSync.trackingId, 'fresh-tracking-id');
+      });
+
+      it('keeps an incomplete record that is still within the pending TTL', () => {
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.start',
+          value: 100,
+          options: {
+            meetingId: 'meeting-1',
+            dataSetName: 'main',
+            trackingId: 'pending-tracking-id',
+          },
+        });
+
+        // a new sync for the same dataset starts well within the TTL window
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.start',
+          value: 100 + 1000,
+          options: {
+            meetingId: 'meeting-1',
+            dataSetName: 'main',
+            trackingId: 'fresh-tracking-id',
+          },
+        });
+
+        const records = cdl.meetingLatencies.get('meeting-1');
+
+        assert.isDefined(records);
+        assert.lengthOf(records!, 2);
+        assert.equal(records![0].locusSync.trackingId, 'pending-tracking-id');
+        assert.equal(records![1].locusSync.trackingId, 'fresh-tracking-id');
+      });
+
+      it('does not prune incomplete records from a different dataset', () => {
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.start',
+          value: 100,
+          options: {
+            meetingId: 'meeting-1',
+            dataSetName: 'other',
+            trackingId: 'other-tracking-id',
+          },
+        });
+
+        // a much later sync for a different dataset must not touch the "other" record
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.start',
+          value: 100 + 5 * 60 * 1000 + 1,
+          options: {
+            meetingId: 'meeting-1',
+            dataSetName: 'main',
+            trackingId: 'main-tracking-id',
+          },
+        });
+
+        const records = cdl.meetingLatencies.get('meeting-1');
+
+        assert.isDefined(records);
+        assert.lengthOf(records!, 2);
+        assert.equal(records![0].locusSync.trackingId, 'other-tracking-id');
+        assert.equal(records![1].locusSync.trackingId, 'main-tracking-id');
+      });
+
+      it('caps the number of incomplete records kept per dataset', () => {
+        // create more incomplete records than the per-dataset cap, all within the TTL window
+        for (let i = 0; i <= 20; i += 1) {
+          cdl.saveTimestamp({
+            key: 'internal.client.locus.sync.start',
+            value: 100 + i,
+            options: {
+              meetingId: 'meeting-1',
+              dataSetName: 'main',
+              trackingId: `sync-tracking-${i}`,
+            },
+          });
+        }
+
+        const records = cdl.meetingLatencies.get('meeting-1');
+        const trackingIds = records!.map(({locusSync}) => locusSync.trackingId);
+
+        assert.isDefined(records);
+        assert.lengthOf(records!, 20);
+        // the oldest record is dropped, the newest is kept
+        assert.notInclude(trackingIds, 'sync-tracking-0');
+        assert.include(trackingIds, 'sync-tracking-20');
       });
 
       it('does not clean up never-completed records for a different dataset', () => {
