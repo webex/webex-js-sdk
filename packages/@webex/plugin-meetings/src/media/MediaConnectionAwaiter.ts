@@ -10,6 +10,10 @@ export interface MediaConnectionAwaiterProps {
   correlationId: string;
 }
 
+export interface FailureResult {
+  iceConnected: boolean;
+}
+
 /**
  * @class MediaConnectionAwaiter
  */
@@ -59,6 +63,17 @@ export default class MediaConnectionAwaiter {
   }
 
   /**
+   * Returns true if ICE connection state indicates connectivity.
+   *
+   * @returns {boolean}
+   */
+  private isIceConnected(): boolean {
+    const state = this.webrtcMediaConnection.getIceConnectionState();
+
+    return state === 'connected' || state === 'completed';
+  }
+
+  /**
    * Returns true if the ICE Gathering is completed, false otherwise.
    *
    * @returns {boolean}
@@ -105,7 +120,7 @@ export default class MediaConnectionAwaiter {
 
       this.defer.reject({
         iceConnected: this.iceConnected,
-      });
+      } satisfies FailureResult);
     }
 
     if (!this.isConnected()) {
@@ -148,7 +163,7 @@ export default class MediaConnectionAwaiter {
       `Media:MediaConnectionAwaiter#iceConnectionStateHandler --> ICE connection state change -> ${iceConnectionState}`
     );
 
-    if (iceConnectionState === 'connected' && !this.iceConnected) {
+    if (this.isIceConnected() && !this.iceConnected) {
       this.iceConnected = true;
     }
 
@@ -249,13 +264,13 @@ export default class MediaConnectionAwaiter {
 
     this.defer.reject({
       iceConnected: this.iceConnected,
-    });
+    } satisfies FailureResult);
   }
 
   /**
    * Waits for the webrtc media connection to be connected.
    *
-   * @returns {Promise}
+   * @returns {Promise<void>} In case of failure, the promise is rejected with FailureResult
    */
   waitForMediaConnectionConnected(): Promise<void> {
     if (this.isConnected()) {
@@ -268,6 +283,8 @@ export default class MediaConnectionAwaiter {
     LoggerProxy.logger.log(
       'Media:MediaConnectionAwaiter#waitForMediaConnectionConnected --> Waiting for media connection to be connected'
     );
+
+    this.iceConnected = this.isIceConnected();
 
     this.webrtcMediaConnection.on(
       MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
