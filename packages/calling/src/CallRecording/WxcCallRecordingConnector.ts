@@ -45,6 +45,7 @@ import {
   OWNER_TYPE,
   RECORDING_NOT_FOUND_MESSAGE,
   SERVICE_TYPE,
+  SOFT_DELETE,
   STATUS,
   STORAGE_REGION,
   TO,
@@ -386,13 +387,20 @@ export class WxcCallRecordingConnector
   }
 
   /**
-   * Permanently deletes a single recording. Per the API the recording cannot be recovered.
-   * @param recordingId - The recording id (`id`) to delete.
-   * @param options - Optional `reason`/`comment`, only required for Compliance Officer deletions.
+   * Moves a recording to the recycle bin (soft delete). Matches native Webex user delete:
+   * `POST /convergedRecordings/softDelete` with `recordingIds: [recordingId]`.
+   * Requires `spark:recordings_write` on the access token.
+   *
+   * Mercury emits `convergedRecordings.updated` + `eventSubType: TRASH`, which this connector
+   * surfaces as `callRecording:deleted`.
+   *
+   * @param recordingId - The recording id (`id`) to move to the recycle bin.
+   * @param _options - Deprecated. Ignored. Compliance permanent delete uses a separate API.
    */
   public async deleteRecording(
     recordingId: string,
-    options?: DeleteRecordingOptions
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for ICallRecording signature parity; soft delete ignores options
+    _options?: DeleteRecordingOptions
   ): Promise<RecordingDeleteResponse> {
     const loggerContext = {
       file: CALL_RECORDING_FILE,
@@ -402,21 +410,13 @@ export class WxcCallRecordingConnector
     log.info(`${METHOD_START_MESSAGE} with recordingId=${recordingId}`, loggerContext);
 
     try {
-      const url = `${this.recordingServiceUrl}/${CONVERGED_RECORDINGS}/${recordingId}`;
-
-      const body: DeleteRecordingOptions = {};
-      if (options?.reason) {
-        body.reason = options.reason;
-      }
-      if (options?.comment) {
-        body.comment = options.comment;
-      }
+      const url = `${this.recordingServiceUrl}/${CONVERGED_RECORDINGS}/${SOFT_DELETE}`;
 
       const response = <WebexRequestPayload>await this.webex.request({
         uri: url,
-        method: HTTP_METHODS.DELETE,
+        method: HTTP_METHODS.POST,
         service: ALLOWED_SERVICES.HYDRA_DEVELOPER_API,
-        ...(Object.keys(body).length > 0 ? {body} : {}),
+        body: {recordingIds: [recordingId]},
       });
 
       log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
@@ -427,7 +427,7 @@ export class WxcCallRecordingConnector
         message: SUCCESS_MESSAGE,
       };
 
-      log.log(`Successfully deleted recording ${recordingId}`, loggerContext);
+      log.log(`Successfully moved recording ${recordingId} to recycle bin`, loggerContext);
 
       return responseDetails;
     } catch (err: unknown) {

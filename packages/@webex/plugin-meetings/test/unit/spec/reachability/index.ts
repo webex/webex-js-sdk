@@ -160,6 +160,75 @@ describe('isAnyPublicClusterReachable', () => {
   });
 });
 
+describe('isAnyClusterReachableViaProtocol', () => {
+  let webex;
+
+  beforeEach(() => {
+    webex = new MockWebex();
+    sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  const checkReachableViaProtocol = async (
+    mockStorage: any,
+    protocol: 'udp' | 'tcp' | 'xtls',
+    expectedValue: boolean
+  ) => {
+    if (mockStorage) {
+      await webex.boundedStorage.put(
+        'Reachability',
+        'reachability.result',
+        JSON.stringify(mockStorage)
+      );
+    }
+    const reachability = new Reachability(webex);
+
+    const result = await reachability.isAnyClusterReachableViaProtocol(protocol);
+
+    assert.equal(result, expectedValue);
+  };
+
+  ['udp', 'tcp', 'xtls'].forEach((protocol: 'udp' | 'tcp' | 'xtls') => {
+    it(`returns true when at least one cluster is reachable via ${protocol}`, async () => {
+      await checkReachableViaProtocol(
+        {
+          clusterA: {[protocol]: {result: 'reachable'}},
+          clusterB: {[protocol]: {result: 'unreachable'}},
+        },
+        protocol,
+        true
+      );
+    });
+
+    it(`returns false when no cluster is reachable via ${protocol}`, async () => {
+      await checkReachableViaProtocol(
+        {
+          clusterA: {[protocol]: {result: 'unreachable'}},
+          clusterB: {[protocol]: {result: 'unreachable'}},
+        },
+        protocol,
+        false
+      );
+    });
+  });
+
+  it('returns false when storage read throws an error', async () => {
+    // don't put anything in storage so .get() rejects
+    const reachability = new Reachability(webex);
+
+    const result = await reachability.isAnyClusterReachableViaProtocol('xtls');
+
+    assert.equal(result, false);
+  });
+
+  it('returns false when stored data is empty', async () => {
+    await checkReachableViaProtocol({}, 'xtls', false);
+  });
+});
+
 describe('isWebexMediaBackendUnreachable', () => {
   let webex;
 

@@ -509,6 +509,67 @@ describe('createMediaConnection', () => {
     );
   });
 
+  it('passes iceTransportPolicy to MultistreamRoapMediaConnection when provided', () => {
+    const multistreamRoapMediaConnectionConstructorStub = sinon
+      .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
+      .returns(fakeRoapMediaConnection);
+
+    Media.createMediaConnection(true, 'debug string', 'meeting id', {
+      mediaProperties: {
+        mediaDirection: {
+          sendAudio: true,
+          sendVideo: true,
+          sendShare: false,
+          receiveAudio: true,
+          receiveVideo: true,
+          receiveShare: true,
+        },
+      },
+      iceTransportPolicy: 'relay',
+    });
+    assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
+    assert.calledWith(
+      multistreamRoapMediaConnectionConstructorStub,
+      {
+        iceServers: [],
+        iceTransportPolicy: 'relay',
+        disableAudioTwcc: true,
+        enableAV1SlidesSupport: false,
+      },
+      'meeting id'
+    );
+  });
+
+  it('does not pass iceTransportPolicy to MultistreamRoapMediaConnection when undefined', () => {
+    const multistreamRoapMediaConnectionConstructorStub = sinon
+      .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
+      .returns(fakeRoapMediaConnection);
+
+    Media.createMediaConnection(true, 'debug string', 'meeting id', {
+      mediaProperties: {
+        mediaDirection: {
+          sendAudio: true,
+          sendVideo: true,
+          sendShare: false,
+          receiveAudio: true,
+          receiveVideo: true,
+          receiveShare: true,
+        },
+      },
+      iceTransportPolicy: undefined,
+    });
+    assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
+    assert.calledWith(
+      multistreamRoapMediaConnectionConstructorStub,
+      {
+        iceServers: [],
+        disableAudioTwcc: true,
+        enableAV1SlidesSupport: false,
+      },
+      'meeting id'
+    );
+  });
+
   it('MultistreamRoapMediaConnection disable audio twcc by default', () => {
     const multistreamRoapMediaConnectionConstructorStub = sinon
       .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
