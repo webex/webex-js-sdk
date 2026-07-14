@@ -2058,6 +2058,7 @@ describe('plugin-meetings', () => {
             Errors.WebrtcApiNotAvailableError
           );
 
+          assert.notCalled(suspendDestroyMeetingStub);
           assert.notCalled(meeting.join);
           assert.notCalled(meeting.addMediaInternal);
         });

@@ -5625,16 +5625,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
     LoggerProxy.logger.info('Meeting:index#joinWithMedia called');
 
-    /* While we're trying to join, we may fail and be doing a retry. In that case,
-       we sometimes get dropped by Locus as a result of the 1st failed attempt.
-       That notification from Locus needs to be ignored, otherwise it causes the meeting to be 
-       cleaned up and prevents the retry from running correctly.
-    */
-    this.locusInfo.suspendDestroyMeeting(true);
-
-    let joined = false;
-    let joinResponse = prevJoinResponse;
-
     /* Before we do anything, check if RTCPeerConnection is available. Normally this is checked
        by addMediaInternal() itself when creating the media connection, but since joinWithMedia()
        is a convenience method that does both join() and addMedia(), we want to fail fast here
@@ -5646,6 +5636,16 @@ export default class Meeting extends StatelessWebexPlugin {
         'RTCPeerConnection API is not available in this environment'
       );
     }
+
+    /* While we're trying to join, we may fail and be doing a retry. In that case,
+       we sometimes get dropped by Locus as a result of the 1st failed attempt.
+       That notification from Locus needs to be ignored, otherwise it causes the meeting to be
+       cleaned up and prevents the retry from running correctly.
+    */
+    this.locusInfo.suspendDestroyMeeting(true);
+
+    let joined = false;
+    let joinResponse = prevJoinResponse;
 
     const shouldJoin =
       !joinResponse || // first try, when the join response is empty
