@@ -237,7 +237,8 @@ export default class TurnDiscovery {
 
     // we catch any errors and resolve with no turn information so that the normal call join flow can continue without TURN
     LoggerProxy.logger.info(
-      `Roap:turnDiscovery#doTurnDiscovery --> TURN discovery failed, continuing without TURN:`, error
+      `Roap:turnDiscovery#doTurnDiscovery --> TURN discovery failed, continuing without TURN:`,
+      error
     );
 
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.TURN_DISCOVERY_FAILURE, {
