@@ -736,7 +736,7 @@ describe('plugin-mercury', () => {
             // Calling disconnect will abort the backoffCall, close the socket, and
             // reject the connect
             mercury.disconnect();
-            assert.notOk(mercury.backoffCall, 'Mercury backoffCall is still defined');
+            assert.notExists(mercury.backoffCall, 'Mercury backoffCall is still defined');
             // The socket will never be unset (which seems bad)
             assert.isDefined(mercury.socket, 'Mercury socket is not defined');
 
@@ -1072,7 +1072,7 @@ describe('plugin-mercury', () => {
           mercury._handleImminentShutdown();
 
           // When an exception happens synchronously, the backoff call should be cleared
-          assert.notOk(mercury._shutdownSwitchoverBackoffCall);
+          assert.notExists(mercury._shutdownSwitchoverBackoffCall);
           mercury._connectWithBackoff.restore();
         });
       });
@@ -1676,7 +1676,13 @@ describe('plugin-mercury', () => {
         });
 
         it('should set and clear state flags appropriately', () => {
-          sinon.stub(mercury, '_attemptConnection').callsFake((url, cb) => cb());
+          let backoffCallDuringAttempt;
+
+          sinon.stub(mercury, '_attemptConnection').callsFake((url, cb) => {
+            // Capture the backoff call state during the connection attempt
+            backoffCallDuringAttempt = mercury._shutdownSwitchoverBackoffCall;
+            cb();
+          });
 
           const promise = mercury._connectWithBackoff(undefined, {
             isShutdownSwitchover: true,
@@ -1684,7 +1690,13 @@ describe('plugin-mercury', () => {
           });
 
           return promise.then(() => {
-            assert.notOk(mercury._shutdownSwitchoverBackoffCall);
+            // Verify flag was set during the operation
+            assert.isDefined(backoffCallDuringAttempt, 'backoffCall should be set during attempt');
+            // Verify flag is cleared after completion
+            assert.notExists(
+              mercury._shutdownSwitchoverBackoffCall,
+              'backoffCall should be cleared after completion'
+            );
             mercury._attemptConnection.restore();
           });
         });
@@ -1714,7 +1726,7 @@ describe('plugin-mercury', () => {
 
           return mercury.disconnect().then(() => {
             // If we get here, disconnect completed without error
-            assert.notOk(mercury._shutdownSwitchoverBackoffCall);
+            assert.notExists(mercury._shutdownSwitchoverBackoffCall);
           });
         });
       });
