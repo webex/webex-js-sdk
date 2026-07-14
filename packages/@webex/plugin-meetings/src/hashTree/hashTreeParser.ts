@@ -103,7 +103,7 @@ export type SyncLatencyTracker = {
       trackingId?: string;
     };
   }) => void;
-  clearLocusSyncLatency: (dataSetName: string, meetingId: string) => void;
+  clearLocusSyncLatency: (dataSetName: string, meetingId: string, trackingId?: string) => void;
 };
 
 export type HashTreeParserCallbacks = {
@@ -117,6 +117,14 @@ const SYNC_METRICS_DATA_SETS = [
   DataSetNames.ATD_ACTIVE,
   DataSetNames.ATD_UNMUTED,
 ];
+
+// HTTP statuses that the native client treats as an expected sync "reset" rather than a genuine
+// failure (MerkleFlowDelegate: error.httpStatus == 404 || 403 || 409). We don't report these as
+// HASH_TREE_SYNC_FAILURE: 404 and 409/LOCUS_INACTIVE already surface as sentinel LOCUS_NOT_FOUND /
+// MEETING_ENDED signals via checkForSentinelHttpResponse (which throws before the metric), a
+// non-sentinel 409 is a benign leaf-count / root-hash mismatch that performSync simply retries on
+// the next heartbeat, and 403 is a transient authorization reset.
+const SYNC_RESET_STATUS_CODES = [403, 404, 409];
 
 interface LeafInfo {
   type: ObjectType;
@@ -1489,9 +1497,13 @@ class HashTreeParser {
       }
     } finally {
       if (shouldCollectMetrics && !syncRequestSent) {
+        // Drop only this sync's in-progress record (matched by its tracking id) rather than the
+        // whole dataset, so a still-pending record from an earlier successful sync isn't wiped.
+        // This mirrors the native client's onSyncError(syncId) which discards a single record.
         this.callbacks.syncLatencyTracker?.clearLocusSyncLatency(
           dataSet.name,
-          this.syncLatencyMeetingId
+          this.syncLatencyMeetingId,
+          syncTrackingId
         );
       }
       dataSet.syncAbortController = undefined;
@@ -2091,13 +2103,16 @@ class HashTreeParser {
           error
         );
         this.checkForSentinelHttpResponse(error, dataSet.name);
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_SYNC_FAILURE, {
-          debugId: this.debugId,
-          dataSetName,
-          request: 'GET /hashtree',
-          statusCode: error.statusCode,
-          reason: error.message,
-        });
+        // Aligned with the native client: an expected reset (403/404/409) is not a sync failure.
+        if (!SYNC_RESET_STATUS_CODES.includes(error.statusCode)) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_SYNC_FAILURE, {
+            debugId: this.debugId,
+            dataSetName,
+            request: 'GET /hashtree',
+            statusCode: error.statusCode,
+            reason: error.message,
+          });
+        }
 
         throw error;
       });
@@ -2200,13 +2215,16 @@ class HashTreeParser {
           error
         );
         this.checkForSentinelHttpResponse(error, dataSet.name);
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_SYNC_FAILURE, {
-          debugId: this.debugId,
-          dataSetName: dataSet.name,
-          request: 'POST /sync',
-          statusCode: error.statusCode,
-          reason: error.message,
-        });
+        // Aligned with the native client: an expected reset (403/404/409) is not a sync failure.
+        if (!SYNC_RESET_STATUS_CODES.includes(error.statusCode)) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_SYNC_FAILURE, {
+            debugId: this.debugId,
+            dataSetName: dataSet.name,
+            request: 'POST /sync',
+            statusCode: error.statusCode,
+            reason: error.message,
+          });
+        }
 
         throw error;
       });

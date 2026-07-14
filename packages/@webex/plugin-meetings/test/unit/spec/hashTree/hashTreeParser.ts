@@ -2393,6 +2393,77 @@ describe('HashTreeParser', () => {
           reason: 'sync failed',
         });
       });
+
+      [403, 409].forEach((statusCode) => {
+        it(`does not send HASH_TREE_SYNC_FAILURE metric when GET /hashtree fails with an expected reset ${statusCode}`, async () => {
+          const parser = createHashTreeParser();
+
+          parser.handleMessage(
+            {
+              dataSets: [
+                {
+                  ...createDataSet('main', 16, 1100),
+                  root: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1',
+                },
+              ],
+              visibleDataSetsUrl,
+              locusUrl,
+            },
+            'heartbeat with mismatch'
+          );
+
+          const mainDataSetUrl = parser.dataSets.main.url;
+          // A non-sentinel reset status (no LOCUS_INACTIVE errorCode) - handled gracefully, not a failure.
+          const hashTreeError = new Error(`reset ${statusCode}`) as any;
+          hashTreeError.statusCode = statusCode;
+
+          webexRequest
+            .withArgs(sinon.match({method: 'GET', uri: `${mainDataSetUrl}/hashtree`}))
+            .rejects(hashTreeError);
+
+          await clock.tickAsync(1000);
+
+          assert.notCalled(metricsStub);
+        });
+
+        it(`does not send HASH_TREE_SYNC_FAILURE metric when POST /sync fails with an expected reset ${statusCode}`, async () => {
+          const parser = createHashTreeParser();
+
+          parser.handleMessage(
+            {
+              dataSets: [
+                {
+                  ...createDataSet('main', 16, 1100),
+                  root: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1',
+                },
+              ],
+              visibleDataSetsUrl,
+              locusUrl,
+            },
+            'heartbeat with mismatch'
+          );
+
+          const mainDataSetUrl = parser.dataSets.main.url;
+
+          mockGetHashesFromLocusResponse(
+            mainDataSetUrl,
+            new Array(16).fill('00000000000000000000000000000000'),
+            createDataSet('main', 16, 1101)
+          );
+
+          // A non-sentinel reset status (no LOCUS_INACTIVE errorCode) - handled gracefully, not a failure.
+          const syncError = new Error(`reset ${statusCode}`) as any;
+          syncError.statusCode = statusCode;
+
+          webexRequest
+            .withArgs(sinon.match({method: 'POST', uri: `${mainDataSetUrl}/sync`}))
+            .rejects(syncError);
+
+          await clock.tickAsync(1000);
+
+          assert.notCalled(metricsStub);
+        });
+      });
     });
 
     describe('handles visible data sets changes correctly', () => {
@@ -5528,6 +5599,52 @@ describe('HashTreeParser', () => {
         options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: undefined},
       });
       assert.notCalled(syncLatencyTracker.getLocusSyncLatency);
+    });
+
+    it('clears only the failed sync record (by tracking id) when the /sync request errors', async () => {
+      const syncLatencyTracker = {
+        saveLatency: sinon.stub(),
+        saveTimestamp: sinon.stub(),
+        getLocusSyncLatency: sinon.stub(),
+        clearLocusSyncLatency: sinon.stub(),
+        completeLocusSyncLatency: sinon.stub(),
+      };
+      const generateTrackingId = sinon.stub().returns('our-sync-tracking-id');
+      const parser = createHashTreeParser(
+        undefined,
+        undefined,
+        undefined,
+        syncLatencyTracker,
+        undefined,
+        generateTrackingId
+      );
+      const mainDataSetUrl = parser.dataSets.main.url;
+
+      // Mismatched hashes so the flow proceeds to POST /sync, which then fails.
+      mockGetHashesFromLocusResponse(
+        mainDataSetUrl,
+        new Array(16).fill('00000000000000000000000000000000'),
+        createDataSet('main', 16, 1101)
+      );
+      webexRequest
+        .withArgs(sinon.match({method: 'POST', uri: `${mainDataSetUrl}/sync`}))
+        .rejects(new Error('sync failed'));
+
+      parser.handleMessage(
+        createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
+        'trigger sync metrics'
+      );
+
+      await clock.tickAsync(1000);
+
+      // Because /sync failed, syncRequestSent stays false and the finally block drops the record,
+      // passing the tracking id so only this in-progress record is removed (native onSyncError parity).
+      assert.calledWithExactly(
+        syncLatencyTracker.clearLocusSyncLatency,
+        'main',
+        'meeting-1',
+        'our-sync-tracking-id'
+      );
     });
 
     it('forces a pre-generated tracking id onto the sync request and records it', async () => {

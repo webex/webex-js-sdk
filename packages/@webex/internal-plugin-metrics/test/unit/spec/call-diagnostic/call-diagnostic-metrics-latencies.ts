@@ -1101,6 +1101,44 @@ describe('internal-plugin-metrics', () => {
         assert.isFalse(cdl.meetingLatencies.has('meeting-1'));
       });
 
+      it('clears only the record matching the tracking id when one is supplied', () => {
+        const stampFullRecord = (trackingId: string, base: number) => {
+          cdl.saveTimestamp({
+            key: 'internal.client.locus.sync.start',
+            value: base,
+            options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId},
+          });
+          cdl.saveTimestamp({
+            key: 'internal.client.locus.sync.request',
+            value: base + 10,
+            options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId},
+          });
+          cdl.saveTimestamp({
+            key: 'internal.client.locus.sync.response',
+            value: base + 25,
+            options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId},
+          });
+          cdl.saveTimestamp({
+            key: 'internal.client.locus.sync.message.received',
+            value: base + 50,
+            options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId},
+          });
+        };
+
+        // Two records for the same dataset/meeting but different tracking ids.
+        stampFullRecord('sync-tracking-1', 100);
+        stampFullRecord('sync-tracking-2', 200);
+
+        assert.isDefined(cdl.getLocusSyncLatency('meeting-1', 'sync-tracking-1'));
+        assert.isDefined(cdl.getLocusSyncLatency('meeting-1', 'sync-tracking-2'));
+
+        // Clearing with a tracking id drops only that record, leaving the other intact.
+        cdl.clearLocusSyncLatency('main', 'meeting-1', 'sync-tracking-1');
+
+        assert.isUndefined(cdl.getLocusSyncLatency('meeting-1', 'sync-tracking-1'));
+        assert.isDefined(cdl.getLocusSyncLatency('meeting-1', 'sync-tracking-2'));
+      });
+
       describe('recordLocusSyncMessageReceived', () => {
         const startPendingSync = (trackingId: string) => {
           cdl.saveTimestamp({

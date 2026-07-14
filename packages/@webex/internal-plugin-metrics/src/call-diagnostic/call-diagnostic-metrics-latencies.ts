@@ -102,19 +102,25 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
 
   /**
    * Clear tracked Locus sync latency state for a dataset.
+   *
+   * When a `trackingId` is supplied only the single record matching it is dropped, mirroring the
+   * native client which discards the individual in-progress record on a sync error (by syncId).
+   * When no `trackingId` is supplied every record for the dataset is dropped (legacy behavior).
+   *
    * @param dataSetName dataset name
    * @param meetingId meeting id
+   * @param trackingId optional sync tracking id to drop a single record instead of the whole dataset
    */
-  public clearLocusSyncLatency(dataSetName: string, meetingId: string) {
+  public clearLocusSyncLatency(dataSetName: string, meetingId: string, trackingId?: string) {
     const records = this.meetingLatencies.get(meetingId);
 
     if (!records) {
       return;
     }
 
-    const remainingRecords = records.filter(
-      (record) => record.locusSync.dataSetName !== dataSetName
-    );
+    const remainingRecords = trackingId
+      ? records.filter((record) => record.locusSync.trackingId !== trackingId)
+      : records.filter((record) => record.locusSync.dataSetName !== dataSetName);
 
     this.setMeetingLatencyRecords(meetingId, remainingRecords);
   }
