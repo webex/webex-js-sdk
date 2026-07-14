@@ -206,10 +206,13 @@ WebExMeetingsErrors[AddMediaFailed.CODE] = AddMediaFailed;
 class MediaConnectionTimedOutError extends Error {
   iceConnected: boolean;
 
-  constructor(message: string, iceConnected: boolean) {
+  cause?: any;
+
+  constructor(message: string, iceConnected: boolean, cause?: any) {
     super(message);
     this.name = 'MediaConnectionTimedOutError';
     this.iceConnected = iceConnected;
+    this.cause = cause;
   }
 }
 export {MediaConnectionTimedOutError};
