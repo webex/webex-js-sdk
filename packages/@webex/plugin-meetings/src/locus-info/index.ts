@@ -1774,6 +1774,11 @@ export default class LocusInfo extends EventsScope {
           options: {
             meetingId: this.meetingId,
           },
+          payload: {
+            eventData: {
+              joinInProgress: this.destroyMeetingSuspended,
+            },
+          },
         });
 
         if (this.destroyMeetingSuspended) {
@@ -1805,6 +1810,11 @@ export default class LocusInfo extends EventsScope {
           name: 'client.call.remote-ended',
           options: {
             meetingId: this.meetingId,
+          },
+          payload: {
+            eventData: {
+              joinInProgress: this.destroyMeetingSuspended,
+            },
           },
         });
         if (this.destroyMeetingSuspended) {
@@ -1838,6 +1848,11 @@ export default class LocusInfo extends EventsScope {
           name: 'client.call.remote-ended',
           options: {
             meetingId: this.meetingId,
+          },
+          payload: {
+            eventData: {
+              joinInProgress: this.destroyMeetingSuspended,
+            },
           },
         });
 

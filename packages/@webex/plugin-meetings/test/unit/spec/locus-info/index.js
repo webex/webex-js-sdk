@@ -4888,6 +4888,11 @@ describe('plugin-meetings', () => {
               options: {
                 meetingId: locusInfo.meetingId,
               },
+              payload: {
+                eventData: {
+                  joinInProgress: false,
+                },
+              },
             });
           });
 
@@ -4907,6 +4912,11 @@ describe('plugin-meetings', () => {
               name: 'client.call.remote-ended',
               options: {
                 meetingId: locusInfo.meetingId,
+              },
+              payload: {
+                eventData: {
+                  joinInProgress: false,
+                },
               },
             });
           });
@@ -4928,6 +4938,11 @@ describe('plugin-meetings', () => {
               name: 'client.call.remote-ended',
               options: {
                 meetingId: locusInfo.meetingId,
+              },
+              payload: {
+                eventData: {
+                  joinInProgress: false,
+                },
               },
             });
           });
@@ -5052,6 +5067,40 @@ describe('plugin-meetings', () => {
               reason: 'MEETING_INACTIVE_TERMINATING',
             }
           );
+        });
+
+        [
+          {reason: 'CALL_INACTIVE', setup: () => {
+            locusInfo.parsedLocus = {fullState: {type: _CALL_}};
+            locusInfo.fullState = {state: LOCUS.STATE.INACTIVE};
+          }},
+          {reason: 'PARTNER_LEFT', setup: () => {
+            locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
+            locusInfo.parsedLocus = {fullState: {type: _CALL_}, self: {state: MEETING_STATE.STATES.JOINED}};
+          }},
+          {reason: 'SELF_LEFT', setup: () => {
+            locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
+            locusInfo.parsedLocus = {fullState: {type: _CALL_}, self: {state: MEETING_STATE.STATES.LEFT}};
+          }},
+        ].forEach(({reason, setup}) => {
+          it(`sends joinInProgress=true in client event for ${reason} when suspended`, () => {
+            locusInfo.suspendDestroyMeeting(true);
+            setup();
+
+            locusInfo.isMeetingActive();
+
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.call.remote-ended',
+              options: {
+                meetingId: locusInfo.meetingId,
+              },
+              payload: {
+                eventData: {
+                  joinInProgress: true,
+                },
+              },
+            });
+          });
         });
       });
     });
