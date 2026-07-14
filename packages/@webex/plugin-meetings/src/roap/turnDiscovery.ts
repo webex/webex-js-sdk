@@ -232,6 +232,7 @@ export default class TurnDiscovery {
     // if we got a 409/403 from Locus, it means we've been dropped from the meeting,
     // so there's no point continuing with the media connection attempt
     if ((error as any).statusCode === 409 || (error as any).statusCode === 403) {
+      this.defer = undefined;
       throw error;
     }
 

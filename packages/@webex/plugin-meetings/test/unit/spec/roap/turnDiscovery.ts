@@ -613,7 +613,7 @@ describe('TurnDiscovery', () => {
     });
 
     [409, 403].forEach((statusCode) => {
-      it(`re-throws ${statusCode} error instead of swallowing it`, async () => {
+      it(`re-throws ${statusCode} error instead of swallowing it and cleans up defer`, async () => {
         const td = new TurnDiscovery(mockRoapRequest);
         const error = Object.assign(new Error(`locus ${statusCode}`), {statusCode});
 
@@ -622,6 +622,13 @@ describe('TurnDiscovery', () => {
         const thrownError = await assert.isRejected(td.doTurnDiscovery(testMeeting, false));
 
         assert.equal(thrownError, error);
+
+        // verify defer is cleaned up so subsequent TURN discovery is not blocked
+        const {roapMessage, turnDiscoverySkippedReason} =
+          await td.generateTurnDiscoveryRequestMessage(testMeeting, true);
+
+        assert.isDefined(roapMessage);
+        assert.isUndefined(turnDiscoverySkippedReason);
       });
     });
 
