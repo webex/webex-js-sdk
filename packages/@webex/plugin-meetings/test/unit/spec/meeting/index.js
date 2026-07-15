@@ -4469,7 +4469,10 @@ describe('plugin-meetings', () => {
             sinon.stub(CallDiagnosticUtils, 'generateClientErrorCodeForIceFailure').returns(2004);
 
             meeting.meetingState = 'ACTIVE';
-            meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().rejects({iceConnected});
+            const rejectedResult = {iceConnected};
+            meeting.mediaProperties.waitForMediaConnectionConnected = sinon
+              .stub()
+              .rejects(rejectedResult);
 
             meeting.roap.doTurnDiscovery = sinon.stub().returns({
               turnServerInfo: {urls: ['turns:fake:443'], username: 'u', password: 'p'},
@@ -4492,6 +4495,11 @@ describe('plugin-meetings', () => {
 
             assert.instanceOf(thrownError, AddMediaFailed);
             assert.equal(thrownError.iceConnected, iceConnected);
+            // the AddMediaFailed cause should be the MediaConnectionTimedOutError, which in turn should
+            // preserve the original rejected result as its cause, so that the web client
+            // can find the CA-reported error in the eventErrorCache via the cause chain
+            assert.instanceOf(thrownError.cause, MediaConnectionTimedOutError);
+            assert.equal(thrownError.cause.cause, rejectedResult);
           });
         });
 
