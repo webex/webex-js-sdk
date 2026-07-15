@@ -277,7 +277,7 @@ export class LocusMediaRequest extends WebexPlugin {
       })
       .catch(async (e) => {
         if (
-          e?.statusCode === 409 &&
+          (e?.statusCode === 409 || e?.statusCode === 403) &&
           (await this.shouldRetryOnSelfUrlChange(request, selfUrlRetryCount))
         ) {
           // In-flight race: selfUrl rotated after we left the queue but
