@@ -1,5 +1,6 @@
 /* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
-import {cloneDeep, clone, set} from 'lodash';
+import {cloneDeep, clone, set, once} from 'lodash';
+import {WasmRuntimeProbe} from '@webex/web-capabilities';
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-metrics';
@@ -209,6 +210,31 @@ export default class Meetings extends WebexPlugin {
   breakoutLocusForHandleLater: any;
   namespace = MEETINGS;
   registrationStatus: MeetingRegistrationStatus;
+
+  /**
+   * Emits a metric describing how well this browser runs WebAssembly, used to spot browsers
+   * where real-time WASM effects (e.g. background noise removal) run poorly.
+   *
+   * @param {string} [correlationId] - correlation id to report the result against
+   * @returns {void}
+   */
+  private emitWasmRuntimePerformance = once((correlationId?: string): void => {
+    WasmRuntimeProbe.check()
+      .then((result) =>
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.WASM_RUNTIME_PERFORMANCE, {
+          status: result.status,
+          ratio: result.ratio,
+          wasmMs: result.wasmMs,
+          jsMs: result.jsMs,
+          correlation_id: correlationId,
+        })
+      )
+      .catch((error) => {
+        LoggerProxy.logger.error(
+          `Meetings:index#emitWasmRuntimePerformance --> ERROR, unable to send WASM runtime performance metric: ${error.message}`
+        );
+      });
+  });
 
   /**
    * Initializes the Meetings Plugin
@@ -1635,6 +1661,8 @@ export default class Meetings extends WebexPlugin {
                     });
                   }
                 });
+
+                this.emitWasmRuntimePerformance(createdMeeting.correlationId);
               } else {
                 LoggerProxy.logger.error(
                   `Meetings:index#create --> ERROR, meeting does not have on method, will not be destroyed, meeting cleanup impossible for meeting: ${meeting}`

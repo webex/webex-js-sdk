@@ -100,6 +100,7 @@ const BEHAVIORAL_METRICS = {
   HASH_TREE_SYNC_FAILURE: 'js_sdk_hash_tree_sync_failure',
   HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED: 'js_sdk_hash_tree_heartbeat_watchdog_expired',
   HASH_TREE_EMPTY_LOCUS_STATE_ELEMENTS: 'js_sdk_hash_tree_empty_locus_state_elements',
+  WASM_RUNTIME_PERFORMANCE: 'js_sdk_wasm_runtime_performance',
 };
 
 export {BEHAVIORAL_METRICS as default};
