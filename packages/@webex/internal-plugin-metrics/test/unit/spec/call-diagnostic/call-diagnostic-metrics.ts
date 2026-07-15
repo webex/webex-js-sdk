@@ -4035,15 +4035,93 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('#getTelemetryOptOut', () => {
-      ['manual', 'automatic', undefined].forEach((telemetryOptOut) => {
-        it(`returns ${telemetryOptOut} if telemetryOptOut is ${telemetryOptOut}`, () => {
-          cd.setTelemetryOptOut(telemetryOptOut);
-          assert.deepEqual(cd.getTelemetryOptOut(), telemetryOptOut);
-        });
+      it('returns "manual" when manual telemetry opt-out is enabled', () => {
+        cd.setIsTelemetryOptOutManual(true);
+        assert.equal(cd.getTelemetryOptOut(), 'manual');
+      });
 
-        it('returns undefined if telemetryOptOut is not set', () => {
-          assert.deepEqual(cd.getTelemetryOptOut(), undefined);
-        });
+      it('returns "automatic" when automatic telemetry opt-out is enabled', () => {
+        cd.setIsTelemetryOptOutAutomatic(true);
+        assert.equal(cd.getTelemetryOptOut(), 'automatic');
+      });
+
+      it('returns "manual" when manual opt-out takes precedence over automatic', () => {
+        cd.setIsTelemetryOptOutManual(true);
+        cd.setIsTelemetryOptOutAutomatic(true);
+        assert.equal(cd.getTelemetryOptOut(), 'manual');
+      });
+
+      it('returns undefined when neither manual nor automatic opt-out is set', () => {
+        assert.isUndefined(cd.getTelemetryOptOut());
+      });
+
+      it('returns undefined after disabling manual opt-out', () => {
+        cd.setIsTelemetryOptOutManual(true);
+        cd.setIsTelemetryOptOutManual(false);
+        assert.isUndefined(cd.getTelemetryOptOut());
+      });
+    });
+
+    describe('#setIsTelemetryOptOutManual', () => {
+      it('sets manual telemetry opt-out to true', () => {
+        cd.setIsTelemetryOptOutManual(true);
+        assert.equal(cd.getTelemetryOptOut(), 'manual');
+      });
+
+      it('sets manual telemetry opt-out to false', () => {
+        cd.setIsTelemetryOptOutManual(true);
+        cd.setIsTelemetryOptOutManual(false);
+        assert.isUndefined(cd.getTelemetryOptOut());
+      });
+
+      it('can toggle manual telemetry opt-out multiple times', () => {
+        cd.setIsTelemetryOptOutManual(true);
+        assert.equal(cd.getTelemetryOptOut(), 'manual');
+
+        cd.setIsTelemetryOptOutManual(false);
+        assert.isUndefined(cd.getTelemetryOptOut());
+
+        cd.setIsTelemetryOptOutManual(true);
+        assert.equal(cd.getTelemetryOptOut(), 'manual');
+      });
+
+      it('manual opt-out takes precedence when automatic is also set', () => {
+        cd.setIsTelemetryOptOutAutomatic(true);
+        cd.setIsTelemetryOptOutManual(true);
+        assert.equal(cd.getTelemetryOptOut(), 'manual');
+      });
+    });
+
+    describe('#setIsTelemetryOptOutAutomatic', () => {
+      it('sets automatic telemetry opt-out to true', () => {
+        cd.setIsTelemetryOptOutAutomatic(true);
+        assert.equal(cd.getTelemetryOptOut(), 'automatic');
+      });
+
+      it('sets automatic telemetry opt-out to false', () => {
+        cd.setIsTelemetryOptOutAutomatic(true);
+        cd.setIsTelemetryOptOutAutomatic(false);
+        assert.isUndefined(cd.getTelemetryOptOut());
+      });
+
+      it('can toggle automatic telemetry opt-out multiple times', () => {
+        cd.setIsTelemetryOptOutAutomatic(true);
+        assert.equal(cd.getTelemetryOptOut(), 'automatic');
+
+        cd.setIsTelemetryOptOutAutomatic(false);
+        assert.isUndefined(cd.getTelemetryOptOut());
+
+        cd.setIsTelemetryOptOutAutomatic(true);
+        assert.equal(cd.getTelemetryOptOut(), 'automatic');
+      });
+
+      it('does not override manual opt-out', () => {
+        cd.setIsTelemetryOptOutManual(true);
+        cd.setIsTelemetryOptOutAutomatic(true);
+        assert.equal(cd.getTelemetryOptOut(), 'manual');
+
+        cd.setIsTelemetryOptOutAutomatic(false);
+        assert.equal(cd.getTelemetryOptOut(), 'manual');
       });
     });
 

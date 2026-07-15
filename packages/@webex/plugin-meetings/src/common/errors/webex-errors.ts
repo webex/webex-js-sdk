@@ -157,18 +157,65 @@ WebExMeetingsErrors[IceGatheringFailed.CODE] = IceGatheringFailed;
 class AddMediaFailed extends WebexMeetingsError {
   static CODE = 30203;
   cause?: Error;
+  connectionType?: string;
+  selectedCandidatePairChanges?: number;
+  numTransports?: number;
+  iceConnected?: boolean;
 
   /**
    * Creates a new AddMediaFailed error
-   * @param {Error} [cause] - The underlying error that caused the media addition to fail
+   * @param {Object} options
+   * @param {Error} [options.cause] - The underlying error that caused the media addition to fail
+   * @param {string} [options.connectionType] - The ICE connection type at the time of failure (e.g. 'UDP', 'TURN-TLS')
+   * @param {number} [options.selectedCandidatePairChanges] - Number of times the selected candidate pair changed
+   * @param {number} [options.numTransports] - Number of ICE transports
+   * @param {boolean} [options.iceConnected] - Whether ICE connection was established before the failure
    */
-  constructor(cause?: Error) {
+  constructor(
+    options: {
+      cause?: Error;
+      connectionType?: string;
+      selectedCandidatePairChanges?: number;
+      numTransports?: number;
+      iceConnected?: boolean;
+    } = {}
+  ) {
     super(AddMediaFailed.CODE, 'Failed to add media');
-    this.cause = cause;
+    this.cause = options.cause;
+    this.connectionType = options.connectionType;
+    this.selectedCandidatePairChanges = options.selectedCandidatePairChanges;
+    this.numTransports = options.numTransports;
+    this.iceConnected = options.iceConnected;
+  }
+
+  /**
+   * Returns true if the failure was due to a DTLS handshake failure
+   * (ICE connected successfully but the overall media connection failed).
+   */
+  get isDtlsHandshakeFailure(): boolean {
+    return this.iceConnected === true;
   }
 }
 export {AddMediaFailed};
 WebExMeetingsErrors[AddMediaFailed.CODE] = AddMediaFailed;
+
+/**
+ * @class MediaConnectionTimedOutError
+ * @classdesc Internal error thrown when the media connection times out waiting to connect.
+ */
+class MediaConnectionTimedOutError extends Error {
+  iceConnected: boolean;
+
+  cause?: any;
+
+  constructor(message: string, iceConnected: boolean, cause?: any) {
+    super(message);
+    this.name = 'MediaConnectionTimedOutError';
+    this.iceConnected = iceConnected;
+    this.cause = cause;
+  }
+}
+export {MediaConnectionTimedOutError};
 
 /**
  * @class SdpResponseTimeoutError

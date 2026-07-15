@@ -28,6 +28,7 @@ export {default as Task} from './services/task/Task';
 // API exports (AddressBook is public, EntryPoint and Queue are accessed via cc wrappers)
 export {default as AddressBook} from './services/AddressBook';
 export {default as ApiAIAssistant} from './services/ApiAiAssistant';
+export {default as UserPreference} from './services/UserPreference';
 
 /** EntryPoint API types */
 export type {
@@ -222,6 +223,14 @@ export type {
   DialPlan,
   /** Auxiliary code type (IDLE_CODE or WRAP_UP_CODE) */
   AuxCodeType,
+  /** User preference data structure */
+  UserPreference as UserPreferenceData,
+  /** Request payload for creating user preferences */
+  CreateUserPreferenceRequest,
+  /** Request payload for updating user preferences */
+  UpdateUserPreferenceRequest,
+  /** Query parameters for fetching user preferences */
+  GetUserPreferenceParams,
 } from './services/config/types';
 
 // Constants
