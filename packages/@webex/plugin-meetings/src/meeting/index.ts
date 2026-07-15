@@ -8153,7 +8153,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
       throw new MediaConnectionTimedOutError(
         `Timed out waiting for media connection to be connected, correlationId=${this.correlationId}`,
-        iceConnected
+        iceConnected,
+        // keep reference to the original rejected result (which is the object the SDK reports to CA as rawError above)
+        error
       );
     }
   }
