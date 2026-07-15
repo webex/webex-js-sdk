@@ -44,7 +44,7 @@ The `@webex/contact-center` package is a Webex SDK plugin that provides a TypeSc
 
 ### Starting a Task
 
-Start with the root [`AGENTS.md`](../AGENTS.md) — it contains the full Quick Start Workflow, task classification decision tree, and critical rules.
+Start with the root [`AGENTS.md`](../AGENTS.md) for critical repository rules and the developer workflow, then use [`SPEC_INDEX.md`](SPEC_INDEX.md) to classify the task by owning module and open its canonical `*-spec.md`.
 
 ---
 
@@ -83,7 +83,7 @@ yarn workspace @webex/contact-center test:unit
 yarn workspace @webex/contact-center test:unit -- <path_of_test_file>
 
 # Lint
-yarn workspace @webex/contact-center test:styles
+yarn workspace @webex/contact-center test:style
 ```
 
 ---

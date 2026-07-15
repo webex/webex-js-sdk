@@ -9,10 +9,10 @@
 | Module id | `task` |
 | Source path(s) | `src/services/task` |
 | Doc kind | Module spec |
-| Coverage score | 100% assessed 2026-07-09; 15/15 mandatory fields present; test evidence and gaps mapped by requirement |
+| Coverage score | Partial (manifest-authoritative); 15/15 required document fields present |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved conformance and fidelity remediation / 2026-07-09 |
-| Validation status | not-run for current revision; independent validator claude-code required after 2026-07-09 remediation; prior 2026-07-07 PASS is superseded by these edits |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved review remediation / 2026-07-15 |
+| Validation status | Pass with warnings for PR #5088 remediation scope (claude-code, 2026-07-15): 0 blocking; 1 important test-coverage gap; module coverage remains Partial |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -35,7 +35,7 @@ Manage task lifecycle including inbound/outbound calls, hold/resume, consult, tr
 
 - **AQM Contact Operations**: `contact.ts` builds the AQM request surface for call control (accept, hold, consult, transfer, wrapup, end) and is the primary bridge from `Task`/`Voice`/`WebRTC`/`Digital` methods to WCC task APIs.
 
-- **Outbound Dialing**: `dialer.ts` exposes the AQM dialer request (`startOutdial`) used by `cc.startOutdial()` to create outbound voice tasks with success/failure event mapping.
+- **Outbound and Preview-Campaign Dialing**: `dialer.ts` exposes `startOutdial` plus `acceptPreviewContact`, `skipPreviewContact`, and `removePreviewContact`; ContactCenter publishes these operations through typed `cc` methods.
 
 - **State Machine Driven UI Controls**: The `state-machine/` folder provides the XState engine (`TaskStateMachine.ts`) plus `actions.ts`, `guards.ts`, `uiControlsComputer.ts`, `constants.ts`, and `types.ts` to compute valid transitions and UI control state. Capability-level details live in `state-machine/ai-docs/task-state-machine-spec.md`.
 
@@ -60,7 +60,7 @@ if (payload) {
 
 - **`contact.ts`**: Builds the AQM request surface for call control (hold, consult, transfer, wrapup, end). Task methods delegate to these calls, then drive state transitions based on success/failure events.
 
-- **`dialer.ts`**: Exposes the `startOutdial` AQM request used by `cc.startOutdial()` to create outbound tasks.
+- **`dialer.ts`**: Exposes `startOutdial` and the three preview-campaign AQM requests used by `cc.startOutdial()`, `cc.acceptPreviewContact()`, `cc.skipPreviewContact()`, and `cc.removePreviewContact()`.
 
 Example (task method delegating to AQM):
 
@@ -140,6 +140,7 @@ services/task/
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
 | `task.surface` | SDK / event / internal API | Exported Task/types/events plus application-facing task instances and call-control methods. | Stable module consumption boundary. | Additive changes by default; breaking package exports require a major-version transition. | `src/services/task/Task.ts` | `../../../../ai-docs/CONTRACTS.md` |
+| `task.preview-campaign` | SDK/AQM API | `acceptPreviewContact`, `skipPreviewContact`, `removePreviewContact`, and `PreviewContactPayload`. | Accept, skip, or remove a reserved campaign preview contact; each method returns `Promise<TaskResponse>`. | Additive semver-public methods; removals or signature changes are breaking. | `src/cc.ts`, `src/services/task/dialer.ts`, `src/services/task/types.ts` | `../../../../ai-docs/CONTRACTS.md` |
 
 Compatibility notes:
 - Do not remove or reinterpret exported symbols/events without a documented consumer migration.
@@ -147,6 +148,8 @@ Compatibility notes:
 - `TASK_EVENTS` enum (`types.ts`)
 
 - `TaskData`, `TaskId`, `TaskResponse`, `TaskUIControls` (`types.ts`)
+
+- `PreviewContactPayload` (`types.ts`) with `interactionId` and campaign-name `campaignId`
 
 - `ITask`, `IVoice`, `IWebRTC`, `IDigital` (`types.ts`)
 
@@ -411,6 +414,7 @@ The public `TASK_EVENTS` enum contains 49 members; every member is listed below 
 | TASK-R-004 | TaskManager must consume primary/RTD streams and manage task creation, hydration, cleanup, campaign, and AI-assistant flows. | A single task owner prevents duplicate instances and inconsistent state across realtime sources. | `src/services/task/TaskManager.ts` | `test/unit/spec/services/task/TaskManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | TASK-R-005 | The contact dependency belongs to Task/TaskFactory-created tasks; dialer is an AqmReqs request factory without that constructor. | Misattributing constructor dependencies causes invalid instantiation examples. | `src/services/task/TaskFactory.ts` | `test/unit/spec/services/task/dialer.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | TASK-R-006 | Keep credentials and authentication outside Task; remote operations delegate through contact/dialer routing, AqmReqs, and Core/WebexRequest. | Task lifecycle objects should never duplicate host token handling or leak authentication state into interaction data. | `src/services/task/Task.ts`, `src/services/task/contact.ts`, `src/services/core/WebexRequest.ts` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/contact.ts` | None; authentication ownership is explicit. | PRESENT |
+| TASK-R-007 | Route enabled preview-campaign accept, skip, and remove operations through the dialer AQM factory using `PreviewContactPayload`, returning `Promise<TaskResponse>` from the public ContactCenter methods. Before routing skip/remove, reject the operation when the matching task's disable flag is `'true'`. | Preview reservations require typed payloads and correlated backend completion, while campaign controls must block prohibited skip/remove requests before transport begins. | `src/cc.ts`, `src/services/task/dialer.ts`, `src/services/task/types.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/dialer.ts` | Public delegation and dialer requests are covered; the `campaignPreviewSkipDisabled` and `campaignPreviewRemoveDisabled` early-exit guards lack direct unit coverage. Independent review identified this gap on 2026-07-15. | PRESENT |
 
 ## Design Overview
 Task separates its stable consumption boundary from collaborators so ownership and failure behavior stay explicit. A shared Task base preserves a stable API while media-specific subclasses and a separate state engine enforce capability differences.
@@ -1115,6 +1119,7 @@ Each Task owns an XState actor and current task data. TaskManager maps backend n
 - Concrete Task/Voice `hold()` and `resume()` methods are parameterless even though the broader `ITask` declaration retains an optional media-resource parameter.
 - Task event names come from `TASK_EVENTS`; actor transition names come from `TaskEvent`, and callers must not substitute raw strings.
 - Task owns no credentials or authentication policy; contact/dialer factories delegate authenticated requests through AqmReqs and Core/WebexRequest.
+- Preview skip/remove delegation is conditional: `campaignPreviewSkipDisabled === 'true'` or `campaignPreviewRemoveDisabled === 'true'` causes ContactCenter to throw before the dialer starts an HTTP or WebSocket-correlated AQM operation. Accept has no equivalent pre-guard.
 
 ## Concurrency & Reactive Flow
 - Remote contact/dialer operations complete asynchronously through AQM correlation. Backend WebSocket notifications are separately mapped by TaskManager and delivered to the owning actor in arrival order.
@@ -1226,8 +1231,13 @@ try {
 **Solution**: Check task state before operation:
 
 ```typescript
-if (task.uiControls.hold.isEnabled) {
+if (task.uiControls.main.hold.isEnabled) {
   await task.hold();
+}
+
+// During a consult, use the consult-leg controls instead.
+if (task.uiControls.consult.hold.isEnabled) {
+  // Render or enable the consult-leg hold action.
 }
 ```
 
@@ -1255,7 +1265,7 @@ await cc.stationLogin({ loginOption: 'BROWSER', ... });
 - A shared Task base preserves a stable API while media-specific subclasses and a separate state engine enforce capability differences.
 
 ## Test-Case Strategy (module)
-Use `test/unit/spec/services/task/Task.ts`, `TaskFactory.ts`, `TaskManager.ts`, media-specific suites, contact/dialer suites, and state-machine suites. Cover concrete-versus-interface method signatures, every TASK_EVENTS group, unsupported media rejection, primary/RTD event ownership, injected state actions, and success/failure/timeout paths.
+Use `test/unit/spec/services/task/Task.ts`, `TaskFactory.ts`, `TaskManager.ts`, media-specific suites, contact/dialer suites, and state-machine suites. Cover concrete-versus-interface method signatures, every TASK_EVENTS group, unsupported media rejection, primary/RTD event ownership, injected state actions, preview-campaign accept/skip/remove payloads and failure paths, the disabled skip/remove pre-guards, and success/failure/timeout paths.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
@@ -1265,6 +1275,7 @@ Use `test/unit/spec/services/task/Task.ts`, `TaskFactory.ts`, `TaskManager.ts`, 
 | `TASK-R-004` | `test/unit/spec/services/task/TaskManager.ts` | None. |
 | `TASK-R-005` | `test/unit/spec/services/task/TaskFactory.ts`, `test/unit/spec/services/task/dialer.ts` | None. |
 | `TASK-R-006` | `test/unit/spec/services/task/contact.ts`, `test/unit/spec/services/core/WebexRequest.ts` | Authentication ownership is verified across routing/Core boundaries. |
+| `TASK-R-007` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/dialer.ts` | Add direct tests proving disabled skip/remove flags throw before dialer invocation; keep public signatures, metrics/error handling, and AQM request contracts synchronized. |
 
 ## Traceability
 - Repo architecture: `../../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../../ai-docs/SPEC_INDEX.md`

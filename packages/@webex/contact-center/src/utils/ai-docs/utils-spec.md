@@ -9,10 +9,10 @@
 | Module id | `utils` |
 | Source path(s) | `src/utils` |
 | Doc kind | Module spec |
-| Coverage score | 100% assessed 2026-07-09; 15/15 mandatory fields present; test evidence and gaps mapped by requirement |
+| Coverage score | Partial (manifest-authoritative); 15/15 required document fields present |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved conformance and fidelity remediation / 2026-07-09 |
-| Validation status | not-run for current revision; independent validator claude-code required after 2026-07-09 remediation; prior 2026-07-07 PASS is superseded by these edits |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved review remediation / 2026-07-15 |
+| Validation status | Pass with warnings for PR #5088 remediation scope (claude-code, 2026-07-15): 0 blocking; 1 important test-coverage gap; module coverage remains Partial |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -89,7 +89,7 @@ No claim is made that `src/types.ts`, AddressBook, EntryPoint, or Queue is imple
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
 | UTILS-R-001 | Use cache only for simple pagination requests without search, filter, attributes, or sortBy. | Parameterized queries cannot safely reuse a page keyed only by scope/page/pageSize. | `src/utils/PageCache.ts` | `test/unit/spec/services/AddressBook.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
-| UTILS-R-002 | Build cache keys from a caller-supplied scope value plus `page:pageSize`: `orgId` for EntryPoint/Queue and `bookId` for AddressBook. | Consumer scope and page boundaries prevent cross-scope or cross-page reuse. | `src/utils/PageCache.ts`, `src/services/AddressBook.ts`, `src/services/EntryPoint.ts`, `src/services/Queue.ts` | `test/unit/spec/services/AddressBook.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/services/Queue.ts` | `PageCache.buildCacheKey` names its first parameter `orgId`, but runtime callers establish the broader scope semantics. | PRESENT |
+| UTILS-R-002 | Build cache keys from a caller-defined `scopeId` plus `page:pageSize`: `orgId` for EntryPoint/Queue and `bookId` for AddressBook. | Consumer scope and page boundaries prevent cross-scope or cross-page reuse. | `src/utils/PageCache.ts`, `src/services/AddressBook.ts`, `src/services/EntryPoint.ts`, `src/services/Queue.ts` | `test/unit/spec/services/AddressBook.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/services/Queue.ts` | `PageCache.buildCacheKey` names its first implementation parameter `orgId`, but runtime callers establish the broader `scopeId` semantics. | PRESENT |
 | UTILS-R-003 | Expire entries after the configured five-minute TTL and delete them on stale lookup. | Bounded staleness prevents indefinite reuse of remote service data. | `src/utils/PageCache.ts` | None | Direct fake-clock expiration coverage is absent from current consumer tests. | PRESENT |
 | UTILS-R-004 | Cache data with total-page/record metadata and allow owning consumers to clear the cache. | Paginated services need consistent metadata without transferring ownership of remote records to the SDK. | `src/utils/PageCache.ts` | `test/unit/spec/services/AddressBook.ts` | Cache hit/miss and metadata are exercised through consumers; `clearCache()` has no direct assertion. | PRESENT |
 | UTILS-R-005 | Accept already-fetched page values from consuming services and never store or process credentials; use the consumer's scope value only as part of the in-memory key. | Authentication remains in Services/Core and scope-separated keys prevent unrelated pages from colliding. | `src/utils/PageCache.ts`, `src/services/core/WebexRequest.ts`, `src/services/AddressBook.ts`, `src/services/EntryPoint.ts`, `src/services/Queue.ts` | `test/unit/spec/services/AddressBook.ts` | None; security/auth ownership is explicit. | PRESENT |
@@ -118,7 +118,7 @@ Cross-scope mention:
 flowchart LR
   Service[AddressBook / EntryPoint / Queue] --> Eligible{canUseCache params?}
   Eligible -->|search/filter/attributes/sort present| Backend[Fetch without cache]
-  Eligible -->|simple pagination| Key[buildCacheKey scopeKey:page:pageSize]
+  Eligible -->|simple pagination| Key[buildCacheKey scopeId:page:pageSize]
   Key --> Lookup[getCachedPage]
   Lookup -->|fresh| Hit[Return cached page]
   Lookup -->|missing or TTL expired| Backend
@@ -145,8 +145,8 @@ sequenceDiagram
   participant API as Backend API
   Service->>Cache: canUseCache(params)
   alt simple pagination
-    Note over Service,Cache: scopeKey = bookId (AddressBook) or orgId (EntryPoint/Queue)
-    Service->>Cache: buildCacheKey(scopeKey, page, pageSize)
+    Note over Service,Cache: scopeId = bookId (AddressBook) or orgId (EntryPoint/Queue)
+    Service->>Cache: buildCacheKey(scopeId, page, pageSize)
     Service->>Cache: getCachedPage(key)
     alt fresh hit
       Cache-->>Service: PageCacheEntry
@@ -186,7 +186,7 @@ sequenceDiagram
 classDiagram
   class PageCache~T~ {
     +canUseCache(params) boolean
-    +buildCacheKey(orgId, page, pageSize) string
+    +buildCacheKey(scopeId, page, pageSize) string
     +getCachedPage(key) PageCacheEntry
     +cachePage(key, data, meta)
     +clearCache()
@@ -202,7 +202,7 @@ classDiagram
 
 ## Use Cases
 - **UC-1 Cache eligibility:** AddressBook, EntryPoint, or Queue bypasses cache whenever search, filter, attributes, or sort is supplied. Evidence: `src/utils/PageCache.ts`, `test/unit/spec/services/AddressBook.ts`.
-- **UC-2 Cache-key construction:** a simple page lookup uses `<scopeKey>:page:pageSize`; AddressBook supplies `bookId`, while EntryPoint and Queue supply `orgId`. Evidence: `src/utils/PageCache.ts`, `src/services/AddressBook.ts`, `src/services/EntryPoint.ts`, `src/services/Queue.ts`.
+- **UC-2 Cache-key construction:** a simple page lookup uses `<scopeId>:page:pageSize`; AddressBook supplies `bookId`, while EntryPoint and Queue supply `orgId`. Evidence: `src/utils/PageCache.ts`, `src/services/AddressBook.ts`, `src/services/EntryPoint.ts`, `src/services/Queue.ts`.
 - **UC-3 TTL lookup/expiry:** a fresh cached entry is returned; an expired entry is deleted and treated as a miss. Evidence: `src/utils/PageCache.ts`; no direct expiration test currently exists.
 - **UC-4 Page insertion and clearing:** successful page data and normalized totals are cached, while `clearCache()` removes all entries for that service instance. Evidence: `src/utils/PageCache.ts`; consumer tests cover insertion/hit behavior, but not direct clearing.
 
@@ -219,8 +219,8 @@ const cache = new PageCache<MyItem>('MyService');
 const page = PAGINATION_DEFAULTS.PAGE;
 const pageSize = PAGINATION_DEFAULTS.PAGE_SIZE;
 // AddressBook uses bookId; EntryPoint and Queue use orgId.
-const scopeKey = bookIdOrOrgId;
-const cacheKey = cache.buildCacheKey(scopeKey, page, pageSize);
+const scopeId = bookIdOrOrgId;
+const cacheKey = cache.buildCacheKey(scopeId, page, pageSize);
 
 // Include sortBy only for services that support sorting.
 const canUseCache = cache.canUseCache({search, filter, attributes, sortBy});
@@ -250,9 +250,9 @@ return response;
 
 ```mermaid
 graph TD
-  A[Request arrives with scopeKey/page/pageSize] --> B{canUseCache?}
+  A[Request arrives with scopeId/page/pageSize] --> B{canUseCache?}
   B -->|No: search/filter/attributes/sortBy provided| C[Bypass cache and call API]
-  B -->|Yes| D[buildCacheKey scopeKey:page:pageSize]
+  B -->|Yes| D[buildCacheKey scopeId:page:pageSize]
   D --> E["getCachedPage(cacheKey)"]
   E -->|Miss| C
   E -->|Hit and not expired| F[Return cached data and totalMeta]
@@ -282,10 +282,10 @@ Returns `true` only when all of these are absent:
 Builds deterministic cache key format:
 
 ```text
-${scopeKey}:${page}:${pageSize}
+${scopeId}:${page}:${pageSize}
 ```
 
-The implementation parameter is named `orgId`, but the value is a caller-defined scope key: `bookId` in AddressBook and `orgId` in EntryPoint/Queue.
+The implementation parameter is named `orgId`, but its value is the caller-defined `scopeId`: `bookId` in AddressBook and `orgId` in EntryPoint/Queue.
 
 Behavior:
 

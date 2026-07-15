@@ -9,10 +9,10 @@
 | Module id | `contact-center` |
 | Source path(s) | `src` |
 | Doc kind | Module spec |
-| Coverage score | 100% assessed 2026-07-09; 15/15 mandatory fields present; test evidence and gaps mapped by requirement |
+| Coverage score | Partial (manifest-authoritative); 15/15 required document fields present |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved conformance and fidelity remediation / 2026-07-09 |
-| Validation status | not-run for current revision; independent validator claude-code required after 2026-07-09 remediation; prior 2026-07-07 PASS is superseded by these edits |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved review remediation / 2026-07-15 |
+| Validation status | Pass with warnings for PR #5088 remediation scope (claude-code, 2026-07-15): 0 blocking; 1 important test-coverage gap; module coverage remains Partial |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -51,6 +51,7 @@ src/
 ├── types.ts                         package-level public contracts
 ├── metrics/                         telemetry manager and taxonomy
 ├── services/                        transport, agent, config, data, and calling collaborators
+│   ├── UserPreference.ts            user-preference CRUD REST client
 │   └── task/                        task objects, manager, media implementations, state machine
 └── utils/PageCache.ts               shared pagination cache
 ```
@@ -63,11 +64,16 @@ src/
 | `src/types.ts` | Authoritative Contact Center implementation or contract source. |
 | `src/constants.ts` | Authoritative Contact Center implementation or contract source. |
 | `src/config.ts` | Authoritative Contact Center implementation or contract source. |
+| `src/services/UserPreference.ts` | User-preference CRUD implementation exposed through `cc.userPreference`. |
+| `src/services/task/dialer.ts` | Preview-campaign AQM request implementations. |
+| `src/services/task/types.ts` | `PreviewContactPayload`, `TaskResponse`, and task contract types. |
 
 ## Public Surface
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
 | `contact-center.surface` | SDK / event / internal API | Published `@webex/contact-center` exports and the `ContactCenter` (`cc`) WebexPlugin API. | Stable module consumption boundary. | Additive changes by default; breaking package exports require a major-version transition. | `src/index.ts` | `CONTRACTS.md` |
+| `contact-center.user-preference` | SDK data API | Exported `UserPreference`, `cc.userPreference`, and user-preference request/response types. | Read and mutate user preferences through authenticated REST operations. | Additive public API; removals or signature changes are breaking. | `src/services/UserPreference.ts`, `src/services/config/types.ts` | `CONTRACTS.md` |
+| `contact-center.preview-campaign` | SDK task API | `acceptPreviewContact`, `skipPreviewContact`, `removePreviewContact`. | Resolve campaign preview reservations through typed AQM operations. | Additive public API; removals or signature changes are breaking. | `src/cc.ts`, `src/services/task/dialer.ts`, `src/services/task/types.ts` | `CONTRACTS.md` |
 
 Compatibility notes:
 - Do not remove or reinterpret exported symbols/events without a documented consumer migration.
@@ -75,21 +81,21 @@ Compatibility notes:
 ## Requires (dependencies)
 - Webex SDK host/plugin lifecycle
 - Contact Center REST and WebSocket backends
-- Services, TaskManager, MetricsManager, WebCallingService, and data-service modules
+- Services, TaskManager, MetricsManager, WebCallingService, UserPreference, and data-service modules
 
 ## Requirements
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
 | CONTACT_CENTER-R-001 | Construct the service graph once after the host Webex SDK emits READY, before `register()` is invoked. | Collaborators require initialized host request, logger, and plugin configuration state. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CONTACT_CENTER-R-002 | `register()` must attach connection/message listeners, connect the primary WebSocket, and return the fetched Profile or rethrow a logged failure. | Applications need an explicit readiness boundary and must never observe a synthetic successful registration. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
-| CONTACT_CENTER-R-003 | Delegate agent, task, data, AI-assistant, calling, and telemetry behavior to their owning collaborators while preserving typed package methods and events. | A stable façade keeps consumer compatibility while specialized modules retain transport and lifecycle ownership. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| CONTACT_CENTER-R-003 | Delegate agent, task, data, user-preference, preview-campaign, AI-assistant, calling, and telemetry behavior to their owning collaborators while preserving typed package methods and events. Before preview delegation, reject disabled skip/remove actions from task campaign flags. | A stable façade keeps consumer compatibility while specialized modules retain transport and lifecycle ownership; campaign controls must prevent prohibited backend operations. | `src/cc.ts`, `src/services/UserPreference.ts`, `src/services/task/dialer.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/UserPreference.ts`, `test/unit/spec/services/task/dialer.ts` | Public preview delegation is covered; the `campaignPreviewSkipDisabled` and `campaignPreviewRemoveDisabled` early-exit guards lack direct unit coverage. Independent review identified this gap on 2026-07-15. | PRESENT |
 | CONTACT_CENTER-R-004 | `deregister()` must remove registered listeners, stop applicable host/calling resources, close primary and RTD WebSockets, clear agent configuration, and surface cleanup failures. | Listener or connection leaks create duplicate events and stale authenticated sessions in long-lived hosts. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CONTACT_CENTER-R-005 | On `connectionLost`, ContactCenter must own recovery policy and invoke private `silentRelogin()` only when automated relogin is allowed. | ConnectionService reports transport state; only ContactCenter has agent profile and policy context for authentication recovery. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 
 ## Design Overview
-`ContactCenter` is the package façade and lifecycle owner. Its constructor waits for the host Webex SDK `READY` event, validates plugin configuration, initializes `WebexRequest`, obtains the singleton `Services` graph, and constructs calling, AI-assistant, metrics, task-management, and data-service collaborators. `register()` is deliberately narrower: it attaches runtime listeners and establishes the primary Contact Center WebSocket subscription.
+`ContactCenter` is the package façade and lifecycle owner. Its constructor waits for the host Webex SDK `READY` event, validates plugin configuration, initializes `WebexRequest`, obtains the singleton `Services` graph, and constructs calling, AI-assistant, metrics, task-management, `UserPreference`, and data-service collaborators. `register()` is deliberately narrower: it attaches runtime listeners and establishes the primary Contact Center WebSocket subscription.
 
-Direct data/configuration operations return authenticated REST responses. Agent/task AQM operations send authenticated HTTP requests but resolve or reject only after a matching WebSocket notification. TaskManager converts backend task events into Task instances and typed state-machine events. ContactCenter maps package-facing events through WebexPlugin `trigger` or its internal EventEmitter according to the published contract.
+Direct data/configuration and user-preference operations return authenticated REST responses. Enabled agent/task AQM operations, including preview-campaign accept/skip/remove, send authenticated HTTP requests but resolve or reject only after a matching WebSocket notification. Before delegating preview skip/remove, ContactCenter checks the task's campaign-disable flags and throws locally when the corresponding flag is `'true'`. TaskManager converts backend task events into Task instances and typed state-machine events. ContactCenter maps package-facing events through WebexPlugin `trigger` or its internal EventEmitter according to the published contract.
 
 Durable agent, task, and configuration records remain remote-system owned. The package owns only in-memory profile/task/listener/cache/connection state.
 
@@ -99,7 +105,7 @@ flowchart TD
   Host[Host Webex SDK READY] --> Validate[Validate plugin config]
   Validate --> WR[Initialize WebexRequest]
   WR --> Services[Services singleton: agent/config/contact/dialer + primary/RTD WebSockets]
-  Services --> Collaborators[Create WebCalling, ApiAIAssistant, Metrics, TaskManager, data services]
+  Services --> Collaborators[Create WebCalling, ApiAIAssistant, Metrics, TaskManager, UserPreference, data services]
   Collaborators --> Register[Application calls register]
   Register --> Listeners[Attach connection and message listeners]
   Listeners --> Connect[Subscribe/connect primary WebSocket]
@@ -266,6 +272,7 @@ ContactCenter retains in-memory `agentConfig`, collaborator references, event li
 ## Business Rules & Invariants
 - Collaborators are initialized after host READY and before their use; `register()` must not be documented as their constructor boundary. Evidence: `src/cc.ts`.
 - AQM promises complete only from correlated WebSocket success/failure or timeout, not from HTTP acknowledgement. Evidence: `src/services/core/aqm-reqs.ts`.
+- `skipPreviewContact` checks `campaignPreviewSkipDisabled` and `removePreviewContact` checks `campaignPreviewRemoveDisabled` on the matching task. When the applicable value is `'true'`, ContactCenter throws before initiating an HTTP or WebSocket-correlated AQM operation; `acceptPreviewContact` has no equivalent pre-guard. Evidence: `src/cc.ts`.
 - ContactCenter owns automated relogin policy; ConnectionService owns transport-state detection/emission. Evidence: `src/cc.ts`, `src/services/core/websocket/connection-service.ts`.
 - Deregistration does not station-logout the agent. Evidence: `src/cc.ts`.
 - Published methods/types/events remain semver-sensitive through `src/index.ts`.
@@ -319,13 +326,13 @@ The module registers as `cc` through the Webex SDK plugin system and depends on 
 - A single plugin surface centralizes compatibility and event routing, while specialized modules retain implementation ownership; this costs careful bootstrap and cleanup ordering.
 
 ## Test-Case Strategy (module)
-`test/unit/spec/cc.ts` is the characterization baseline. Cover READY-time construction, registration success/failure, listener identity, public method delegation, WebSocket event mapping, automated-relogin enabled/disabled branches, browser-calling conditions, and deregistration cleanup/error paths. Preserve the package-wide 85% branch/function/line/statement threshold.
+`test/unit/spec/cc.ts` is the characterization baseline. Cover READY-time construction, registration success/failure, listener identity, public method delegation, WebSocket event mapping, preview-campaign operations (including disabled skip/remove pre-guards), automated-relogin enabled/disabled branches, browser-calling conditions, and deregistration cleanup/error paths. Use `test/unit/spec/services/UserPreference.ts` for user-preference CRUD and `test/unit/spec/services/task/dialer.ts` for preview AQM request contracts. Preserve the package-wide 85% branch/function/line/statement threshold.
 
 | Requirement | Existing evidence | Required revalidation |
 |---|---|---|
 | CONTACT_CENTER-R-001 | `test/unit/spec/cc.ts` | READY-time ownership and initialization order |
 | CONTACT_CENTER-R-002 | `test/unit/spec/cc.ts` | register success/failure and log-upload path |
-| CONTACT_CENTER-R-003 | `test/unit/spec/cc.ts` | typed delegation and event routing |
+| CONTACT_CENTER-R-003 | `test/unit/spec/cc.ts`, `test/unit/spec/services/UserPreference.ts`, `test/unit/spec/services/task/dialer.ts` | Add direct tests proving disabled skip/remove flags throw before dialer invocation; revalidate typed delegation, user-preference CRUD, preview-campaign AQM operations, and event routing. |
 | CONTACT_CENTER-R-004 | `test/unit/spec/cc.ts` | listener/resource cleanup and error propagation |
 | CONTACT_CENTER-R-005 | `test/unit/spec/cc.ts` | relogin policy ownership |
 

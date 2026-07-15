@@ -16,7 +16,7 @@
 
 ## Tech Stack
 
-- TypeScript 5.4, Node.js 20+, Yarn 3.4.1, WebexPlugin, EventEmitter, XState 5, WebSocket/WebRTC.
+- TypeScript 5.4, Node.js 22.14 for workspace development (published package engine floor: Node >=20.x), Yarn 3.4.1, WebexPlugin, EventEmitter, XState 5, WebSocket/WebRTC.
 - Jest 27 with 85% global branch/function/line/statement thresholds.
 
 ## Architecture
@@ -60,6 +60,15 @@ src/utils/                            pagination/page cache contracts
 | Build | `yarn workspace @webex/contact-center build:src` |
 | Test | `yarn workspace @webex/contact-center test:unit` |
 | Lint/format | `yarn workspace @webex/contact-center test:style` |
+
+## Developer Workflow
+
+1. Read this file for package rules, then use `ai-docs/SPEC_INDEX.md` to select the owning canonical module `*-spec.md`.
+2. Check the module spec's requirements, public surface, source paths, test evidence, and documented gaps against the relevant code/tests.
+3. Before coding, present the affected files and contracts and wait for confirmation.
+4. Implement the smallest approved change; update the owning module spec, `ai-docs/CONTRACTS.md`, and `.sdd/manifest.json` when public behavior or routing changes.
+5. Run the package commands above plus manifest/conformance checks; materially changed generated specs require validation on the configured independent runtime.
+6. Review the final diff for source/test fidelity, compatibility, secrets, and unrelated files before staging.
 
 ## Common Gotchas
 

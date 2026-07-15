@@ -1,5 +1,7 @@
 # Task State Machine - AI Agent Guide
 
+> **Legacy/reference-only.** Canonical SDD: [`task-state-machine-spec.md`](task-state-machine-spec.md). Use the package [manifest](../../../../../.sdd/manifest.json) and [`SPEC_INDEX.md`](../../../../../ai-docs/SPEC_INDEX.md) for routing; code and tests remain the behavioral referee.
+
 ## Purpose
 
 Guide AI agents working on task lifecycle transitions, guard logic, executable actions and UI control computation in the XState-based task state machine.
@@ -454,4 +456,3 @@ requestAutoAnswer(context, event) {
 ```
 
 ---
-

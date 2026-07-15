@@ -41,11 +41,11 @@
     {
       "path": "src",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed routed source docs and unit-test evidence exist, but canonical migration, source-fidelity review, template conformance, measured coverage, and independent validation are not yet complete.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
       "canonical_spec": "ai-docs/contact-center-spec.md",
       "contracts": {
         "provides": [
-          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task, AddressBook, and ApiAIAssistant exports"
+          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, exported user-preference request/response types, and preview-campaign methods acceptPreviewContact/skipPreviewContact/removePreviewContact"
         ],
         "requires": [
           "Webex SDK host/plugin runtime; Contact Center REST and WebSocket services; internal Webex calling, metrics, support, authorization, logger, and mercury packages"
@@ -78,13 +78,13 @@
           "ai-docs/README.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
       }
     },
     {
       "path": "src/metrics",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed routed source docs and unit-test evidence exist, but canonical migration, source-fidelity review, template conformance, measured coverage, and independent validation are not yet complete.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
       "canonical_spec": "src/metrics/ai-docs/metrics-spec.md",
       "contracts": {
         "provides": [
@@ -121,17 +121,17 @@
           "src/metrics/ai-docs/ARCHITECTURE.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
       }
     },
     {
       "path": "src/services",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed routed source docs and unit-test evidence exist, but canonical migration, source-fidelity review, template conformance, measured coverage, and independent validation are not yet complete.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
       "canonical_spec": "src/services/ai-docs/services-spec.md",
       "contracts": {
         "provides": [
-          "Services composition root; agent/config/contact/dialer factories; AddressBook, EntryPoint, Queue, ApiAiAssistant, and WebCalling integration"
+          "Services composition root; agent/config/contact/dialer factories; AddressBook, EntryPoint, Queue, UserPreference, ApiAiAssistant, and WebCalling integration; cc.userPreference exposes user-preference CRUD"
         ],
         "requires": [
           "Core HTTP/WebSocket/AQM infrastructure; WCC APIs; @webex/calling; MetricsManager; PageCache"
@@ -163,13 +163,13 @@
           "src/services/ai-docs/AGENTS.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
       }
     },
     {
       "path": "src/services/agent",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed routed source docs and unit-test evidence exist, but canonical migration, source-fidelity review, template conformance, measured coverage, and independent validation are not yet complete.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
       "canonical_spec": "src/services/agent/ai-docs/agent-spec.md",
       "contracts": {
         "provides": [
@@ -206,13 +206,13 @@
           "src/services/agent/ai-docs/ARCHITECTURE.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
       }
     },
     {
       "path": "src/services/config",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed routed source docs and unit-test evidence exist, but canonical migration, source-fidelity review, template conformance, measured coverage, and independent validation are not yet complete.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
       "canonical_spec": "src/services/config/ai-docs/config-spec.md",
       "contracts": {
         "provides": [
@@ -249,13 +249,13 @@
           "src/services/config/ai-docs/ARCHITECTURE.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
       }
     },
     {
       "path": "src/services/core",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed routed source docs and unit-test evidence exist, but canonical migration, source-fidelity review, template conformance, measured coverage, and independent validation are not yet complete.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
       "canonical_spec": "src/services/core/ai-docs/core-spec.md",
       "contracts": {
         "provides": [
@@ -292,17 +292,17 @@
           "src/services/core/ai-docs/ARCHITECTURE.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
       }
     },
     {
       "path": "src/services/task",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed routed source docs and unit-test evidence exist, but canonical migration, source-fidelity review, template conformance, measured coverage, and independent validation are not yet complete.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
       "canonical_spec": "src/services/task/ai-docs/task-spec.md",
       "contracts": {
         "provides": [
-          "Task/Voice/WebRTC/Digital lifecycle APIs; TaskManager; task events/types; call-control and dialer operations"
+          "Task/Voice/WebRTC/Digital lifecycle APIs; TaskManager; task events/types; call-control and dialer operations including acceptPreviewContact, skipPreviewContact, and removePreviewContact"
         ],
         "requires": [
           "Contact/dialer AqmReqs; WebSocket managers; @webex/calling; MetricsManager; XState task-state module"
@@ -335,13 +335,13 @@
           "src/services/task/ai-docs/ARCHITECTURE.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
       }
     },
     {
       "path": "src/services/task/state-machine",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed routed source docs and unit-test evidence exist, but canonical migration, source-fidelity review, template conformance, measured coverage, and independent validation are not yet complete.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
       "canonical_spec": "src/services/task/state-machine/ai-docs/task-state-machine-spec.md",
       "contracts": {
         "provides": [
@@ -378,13 +378,13 @@
           "src/services/task/state-machine/ai-docs/ARCHITECTURE.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
       }
     },
     {
       "path": "src/utils",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed routed source docs and unit-test evidence exist, but canonical migration, source-fidelity review, template conformance, measured coverage, and independent validation are not yet complete.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
       "canonical_spec": "src/utils/ai-docs/utils-spec.md",
       "contracts": {
         "provides": [
@@ -420,7 +420,7 @@
           "src/utils/AGENTS.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
       }
     }
   ],
@@ -428,7 +428,7 @@
     "mode": "migrate-existing",
     "decided_by": "user",
     "decided_at": "2026-07-07T13:27:09Z",
-    "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+    "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
   },
   "spec_sources": [
     {
@@ -803,7 +803,7 @@
       "Blocking"
     ],
     "generator_run_id": "contact-center-bootstrap-20260707",
-    "source_commit": "0bcaa8ceca1edefdeb8606cae085164474e55535",
+    "source_commit": "382831a838c34fb1520320654beaf12d4afdfacb",
     "runtime_family": "openai-codex"
   },
   "layout": {

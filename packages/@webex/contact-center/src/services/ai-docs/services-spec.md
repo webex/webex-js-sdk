@@ -9,10 +9,10 @@
 | Module id | `services` |
 | Source path(s) | `src/services` |
 | Doc kind | Module spec |
-| Coverage score | 100% assessed 2026-07-09; 15/15 mandatory fields present; test evidence and gaps mapped by requirement |
+| Coverage score | Partial (manifest-authoritative); 15/15 required document fields present |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved conformance and fidelity remediation / 2026-07-09 |
-| Validation status | not-run for current revision; independent validator claude-code required after 2026-07-09 remediation; prior 2026-07-07 PASS is superseded by these edits |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved review remediation / 2026-07-15 |
+| Validation status | Pass with warnings for PR #5088 remediation scope (claude-code, 2026-07-15): 0 blocking; 1 important test-coverage gap; module coverage remains Partial |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -35,7 +35,7 @@ The `src/services/` directory is the service layer of the `@webex/contact-center
 
 - Choosing between AqmReqs and direct REST patterns for a new method
 
-- Adding a new data service (AddressBook/Queue/EntryPoint pattern)
+- Adding a new paginated data service (AddressBook/Queue/EntryPoint pattern) or a direct REST service such as UserPreference
 
 - Adding a new AqmReqs method to agent, task, or dialer factories
 
@@ -51,6 +51,7 @@ The `src/services/` directory is the service layer of the `@webex/contact-center
 | **Configuration** | [`config/`](../config/index.ts) | Agent profile aggregation from 8+ API endpoints, org settings, teams, aux codes, dial plans |
 | **Core Infrastructure** | [`core/`](../core/WebexRequest.ts) | HTTP requests (`WebexRequest`), WebSocket management (`WebSocketManager`), connection lifecycle (`ConnectionService`), AQM request/response correlation (`AqmReqs`), error handling (`Utils`, `Err`) |
 | **Data Services** | [`AddressBook.ts`](../AddressBook.ts), [`Queue.ts`](../Queue.ts), [`EntryPoint.ts`](../EntryPoint.ts) | Standalone REST-based data services with pagination and caching for address books, queues, and entry points |
+| **User Preferences** | [`UserPreference.ts`](../UserPreference.ts) | Direct REST CRUD service exposed as `cc.userPreference`; it resolves the default user from agent configuration and does not use PageCache |
 | **Utilities** | [`src/utils/PageCache.ts`](../../utils/PageCache.ts) | Shared `PageCache<T>` generic class for pagination caching, plus `BaseSearchParams`, `PaginatedResponse`, and `PaginationMeta` types used by all data services |
 | **WebRTC Calling** | [`WebCallingService.ts`](../WebCallingService.ts) | Browser-based voice calling via `@webex/calling`, line registration, call answer/mute/decline |
 
@@ -65,7 +66,7 @@ Each service folder contains its own `ai-docs/` with detailed documentation. **A
 
 > **Note**: The task state machine (`task/state-machine/`) is part of the Task service, not a separate service. Its dedicated docs live at [`task/state-machine/ai-docs/task-state-machine-spec.md`](../task/state-machine/ai-docs/task-state-machine-spec.md) and [`ARCHITECTURE.md`](../task/state-machine/ai-docs/task-state-machine-spec.md). Load these when working on state transitions, guards, or actions.
 
-**Data services** (AddressBook, Queue, EntryPoint) do not have dedicated ai-docs. Read their source files directly — they follow shared REST/pagination/caching patterns documented in [`ai-docs/patterns/typescript-patterns.md`](../../../ai-docs/patterns/typescript-patterns.md).
+**Paginated data services** (AddressBook, Queue, EntryPoint) do not have dedicated ai-docs. Read their source files directly — they follow shared REST/pagination/caching patterns documented in [`ai-docs/patterns/typescript-patterns.md`](../../../ai-docs/patterns/typescript-patterns.md). `UserPreference` is also a direct REST service, but it has CRUD semantics and does not use their PageCache pattern.
 
 **WebCallingService** also has no dedicated ai-docs, but it follows a different pattern: EventEmitter-based call lifecycle orchestration around `@webex/calling` (`createClient`, line registration/deregistration, `ICall` events), `callTaskMap` tracking, and async registration flows with timeout handling. Read [`WebCallingService.ts`](../WebCallingService.ts) directly when changing browser calling behavior.
 
@@ -92,6 +93,7 @@ ContactCenter (cc.ts) — public API surface
 ├── AddressBook                           ← REST data service, created in READY
 ├── EntryPoint                            ← REST data service, created in READY
 ├── Queue                                 ← REST data service, created in READY
+├── UserPreference                        ← REST user-preference CRUD service, created in READY
 └── MetricsManager.getInstance({webex})   ← telemetry singleton
 ```
 
@@ -108,6 +110,7 @@ src/services/
 ├── ApiAiAssistant.ts
 ├── EntryPoint.ts
 ├── Queue.ts
+├── UserPreference.ts
 ├── WebCallingService.ts
 ├── agent/
 ├── config/
@@ -217,12 +220,14 @@ Use [`constants.ts`](../constants.ts) as the canonical source for service-level 
 | `src/services/AddressBook.ts` | Authoritative Services implementation or contract source. |
 | `src/services/EntryPoint.ts` | Authoritative Services implementation or contract source. |
 | `src/services/Queue.ts` | Authoritative Services implementation or contract source. |
+| `src/services/UserPreference.ts` | Direct REST user-preference CRUD exposed through `cc.userPreference`. |
 | `src/services/WebCallingService.ts` | Authoritative Services implementation or contract source. |
 
 ## Public Surface
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
 | `services.surface` | SDK / event / internal API | Internal `Services.getInstance()` composition root plus data-service and calling collaborators consumed by `ContactCenter`. | Stable module consumption boundary. | Additive changes by default; breaking package exports require a major-version transition. | `src/services/index.ts` | `../../../ai-docs/CONTRACTS.md` |
+| `services.user-preference` | SDK data API | `UserPreference` and `cc.userPreference`. | Direct REST CRUD for user preferences; separate from PageCache-based pagination services. | Additive semver-public API; removals or signature changes are breaking. | `src/services/UserPreference.ts`, `src/services/config/types.ts` | `../../../ai-docs/CONTRACTS.md` |
 
 Compatibility notes:
 - Do not remove or reinterpret exported symbols/events without a documented consumer migration.
@@ -244,15 +249,15 @@ ContactCenter READY callback
 │   └── ConnectionService(primary WebSocket)
 ├── WebCallingService + ApiAIAssistant + MetricsManager
 ├── TaskManager(ApiAIAssistant, contact, calling, primary WS, RTD WS)
-└── AddressBook + EntryPoint + Queue
+└── AddressBook + EntryPoint + Queue + UserPreference
 ```
 
 ## Requirements
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
 | SERVICES-R-001 | Build the Services singleton with agent/config/contact/dialer, two WebSocket managers, AqmReqs, and ConnectionService after WebexRequest is initialized. | Every AQM and transport collaborator depends on one shared authenticated host and primary message stream. | `src/services/index.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
-| SERVICES-R-002 | Keep direct REST services separate from AQM request factories. | Direct data/config calls complete from HTTP while AQM operations require correlated WebSocket completion. | `src/services/index.ts` | `test/unit/spec/services/AddressBook.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
-| SERVICES-R-003 | Construct TaskManager and non-Services collaborators in ContactCenter's READY callback, not in `register()`. | Registration is a connection boundary; changing construction timing can duplicate listeners or access uninitialized host services. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| SERVICES-R-002 | Keep direct REST services, including UserPreference, separate from AQM request factories. | Direct data/config/user-preference calls complete from HTTP while AQM operations require correlated WebSocket completion. | `src/services/index.ts`, `src/services/UserPreference.ts` | `test/unit/spec/services/AddressBook.ts`, `test/unit/spec/services/UserPreference.ts` | None; UserPreference's direct-REST/no-PageCache behavior was independently validated by claude-code on 2026-07-15. | PRESENT |
+| SERVICES-R-003 | Construct TaskManager, UserPreference, and other non-Services collaborators in ContactCenter's READY callback, not in `register()`. | Registration is a connection boundary; changing construction timing can duplicate listeners or access uninitialized host services. | `src/cc.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/UserPreference.ts` | None; READY-time UserPreference ownership was independently validated by claude-code on 2026-07-15. | PRESENT |
 | SERVICES-R-004 | Pass ApiAIAssistant, contact routing, WebCallingService, primary WebSocket, and RTD WebSocket into TaskManager. | Voice, task, transcript, and suggestion behavior depend on the complete collaborator set. | `src/cc.ts` | `test/unit/spec/services/task/TaskManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | SERVICES-R-005 | Inherit authenticated request identity from the host Webex SDK through Core/WebexRequest; Services must not store, parse, or refresh credentials. | One host-owned authentication boundary avoids duplicate token handling and credential leakage across composed services. | `src/services/index.ts`, `src/services/core/WebexRequest.ts` | `test/unit/spec/services/core/WebexRequest.ts` | None; authentication ownership is explicit. | PRESENT |
 | SERVICES-R-006 | Treat Services composition as unconditionally created by the ContactCenter READY callback; Services owns no rollout or feature-flag decision. | Capability flags belong to the consuming config/task/calling collaborators, so the composition root must not silently gate construction. | `src/services/index.ts`, `src/cc.ts` | `test/unit/spec/cc.ts` | None; rollout applicability is explicitly N/A for Services. | PRESENT |
@@ -260,7 +265,7 @@ ContactCenter READY callback
 ## Design Overview
 `Services` is a singleton composition root for transport-facing capabilities only. It constructs two `WebSocketManager` instances (primary Contact Center and RTD), creates `AqmReqs` on the primary manager, then creates config, agent, contact, dialer, and ConnectionService collaborators.
 
-ContactCenter owns the broader READY-time graph: WebCallingService, ApiAIAssistant, MetricsManager, TaskManager, EntryPoint, AddressBook, and Queue. TaskManager receives ApiAIAssistant, contact routing, calling, and both WebSocket managers. None of these collaborators is created by `register()`; registration attaches runtime listeners and connects the primary socket after READY initialization.
+ContactCenter owns the broader READY-time graph: WebCallingService, ApiAIAssistant, MetricsManager, TaskManager, EntryPoint, AddressBook, Queue, and UserPreference. TaskManager receives ApiAIAssistant, contact routing, calling, and both WebSocket managers. None of these collaborators is created by `register()`; registration attaches runtime listeners and connects the primary socket after READY initialization.
 
 AQM factories return functions whose HTTP request is initiation and whose promise settles on correlated primary-WebSocket notifications. Direct config/data services return authenticated REST responses.
 
@@ -280,6 +285,7 @@ flowchart TD
   Ready --> AI[ApiAIAssistant]
   Ready --> Calling[WebCallingService]
   Ready --> TM[TaskManager]
+  Ready --> UP[UserPreference]
   AI --> TM
   Contact --> TM
   Calling --> TM
@@ -287,7 +293,7 @@ flowchart TD
   RTD --> TM
 ```
 
-Direct REST: caller → AgentConfigService/AddressBook/EntryPoint/Queue → WebexRequest → response.
+Direct REST: caller → AgentConfigService/AddressBook/EntryPoint/Queue/UserPreference → WebexRequest → response.
 
 AQM: caller → routing factory → AqmReqs → WebexRequest HTTP acknowledgement → matching primary-WebSocket success/failure → promise settlement.
 
@@ -314,7 +320,7 @@ sequenceDiagram
   CC->>CC: initialize WebexRequest
   CC->>S: getInstance(webex, connectionConfig)
   S->>S: primary WS + RTD WS + AqmReqs + config/agent/contact/dialer + ConnectionService
-  CC->>CC: create calling + AI assistant + metrics + data services
+  CC->>CC: create calling + AI assistant + metrics + data services + UserPreference
   CC->>TM: getTaskManager(AI, contact, calling, primary WS, RTD WS)
 ```
 
@@ -380,13 +386,14 @@ classDiagram
   Services --> AgentConfigService
   ContactCenter --> ApiAIAssistant
   ContactCenter --> TaskManager
+  ContactCenter --> UserPreference
   TaskManager --> ApiAIAssistant
   TaskManager --> WebSocketManager : primary + RTD
 ```
 
 ## Use Cases
 - **UC-1 Compose services:** create the transport/factory singleton once per SDK host. Evidence: `src/services/index.ts`, `test/unit/spec/cc.ts`.
-- **UC-2 Direct REST:** configuration and data services return authenticated HTTP results directly. Evidence: `src/services/config/index.ts`, `test/unit/spec/services/config/index.ts`.
+- **UC-2 Direct REST:** configuration, data, and user-preference services return authenticated HTTP results directly. Evidence: `src/services/config/index.ts`, `src/services/UserPreference.ts`, `test/unit/spec/services/config/index.ts`, `test/unit/spec/services/UserPreference.ts`.
 - **UC-3 AQM operation:** initiate HTTP and settle only on matching WebSocket notification or timeout. Evidence: `src/services/core/aqm-reqs.ts`, `test/unit/spec/services/core/aqm-reqs.ts`.
 - **UC-4 Task/AI realtime:** TaskManager consumes primary and RTD streams with ApiAIAssistant/calling collaborators. Evidence: `src/services/task/TaskManager.ts`, `test/unit/spec/services/task/TaskManager.ts`.
 
@@ -396,7 +403,7 @@ classDiagram
 ## Business Rules & Invariants
 - The first singleton construction fixes the host SDK and connection configuration for that Services instance.
 - The primary WebSocket manager is used for AQM correlation and Contact Center events; the RTD manager remains a distinct TaskManager dependency.
-- ApiAIAssistant and TaskManager are READY-time ContactCenter collaborators, not fields constructed by Services.
+- ApiAIAssistant, TaskManager, and UserPreference are READY-time ContactCenter collaborators, not fields constructed by Services.
 - Authentication is inherited from the host SDK through Core/WebexRequest; Services owns no credential lifecycle.
 - Rollout applicability is N/A for the Services composition root: it is created at READY and does not evaluate a feature flag.
 
@@ -425,6 +432,8 @@ Reference files:
 
 - [`EntryPoint.ts`](../EntryPoint.ts) — simplest example
 
+`UserPreference.ts` is a separate direct REST CRUD pattern. It resolves a default user id from `agentConfig`, supports explicit user ids where applicable, and intentionally does not share PageCache behavior with the three paginated services.
+
 ## State Machine
 ```mermaid
 stateDiagram-v2
@@ -445,7 +454,7 @@ stateDiagram-v2
 ## Pitfalls
 - Direct REST services complete from HTTP, while agent/contact/dialer AQM factories complete from correlated WebSocket notifications; treating them as the same transport model returns too early.
 - The singleton must share one primary WebSocket with AqmReqs and a distinct RTD WebSocket with TaskManager; swapping or omitting either stream loses task or AI events.
-- TaskManager and calling/AI/data collaborators are created by ContactCenter after READY, not by the Services constructor or `register()`.
+- TaskManager and calling/AI/data/UserPreference collaborators are created by ContactCenter after READY, not by the Services constructor or `register()`.
 
 ## Module Do's / Don'ts
 - DO initialize `WebexRequest` before obtaining the Services singleton.
@@ -462,8 +471,8 @@ Unit tests mirror module paths under `test/unit/spec/services`. Preserve positiv
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
 | `SERVICES-R-001` | `test/unit/spec/cc.ts` | Add a focused Services singleton composition test if constructor wiring changes. |
-| `SERVICES-R-002` | `test/unit/spec/services/config/index.ts`, `test/unit/spec/services/core/aqm-reqs.ts` | Coverage is split across direct and AQM owners. |
-| `SERVICES-R-003` | `test/unit/spec/cc.ts` | None. |
+| `SERVICES-R-002` | `test/unit/spec/services/config/index.ts`, `test/unit/spec/services/UserPreference.ts`, `test/unit/spec/services/core/aqm-reqs.ts` | Coverage is split across direct and AQM owners. |
+| `SERVICES-R-003` | `test/unit/spec/cc.ts`, `test/unit/spec/services/UserPreference.ts` | None. |
 | `SERVICES-R-004` | `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/cc.ts` | None. |
 | `SERVICES-R-005` | `test/unit/spec/services/core/WebexRequest.ts` | None. |
 | `SERVICES-R-006` | `test/unit/spec/cc.ts` | None. |
@@ -472,7 +481,7 @@ Unit tests mirror module paths under `test/unit/spec/services`. Preserve positiv
 - Repo architecture: `../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../ai-docs/SPEC_INDEX.md`
 - Coverage state and contracts baseline: `../../../.sdd/manifest.json`
 
-- [Root orchestrator AGENTS.md](../../../AGENTS.md) — task classification, critical rules, templates
+- [Root orchestrator AGENTS.md](../../../AGENTS.md) — repository rules; use [`SPEC_INDEX.md`](../../../ai-docs/SPEC_INDEX.md) for canonical module routing
 
 - [ai-docs/RULES.md](../../../ai-docs/RULES.md) — coding standards
 

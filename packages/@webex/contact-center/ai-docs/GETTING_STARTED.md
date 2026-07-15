@@ -3,7 +3,7 @@
 > Start here → root [`AGENTS.md`](../AGENTS.md) · router [`SPEC_INDEX.md`](SPEC_INDEX.md) · system [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## Prerequisites
-- Node.js 20.x or newer for this package; Yarn 3.4.1 from the workspace.
+- Node.js 22.14 for workspace development; the published package engine floor remains Node >=20.x. Use Yarn 3.4.1 from the workspace.
 - Access to the workspace's npm registries and Webex backend environments is required for integration use.
 
 The `@webex/contact-center` package is a Webex SDK plugin that provides a TypeScript/JavaScript API for building Contact Center agent applications. It enables:
@@ -64,7 +64,7 @@ yarn workspace @webex/contact-center test:unit
 
 yarn workspace @webex/contact-center test:unit -- test/unit/spec/cc.ts
 
-yarn workspace @webex/contact-center test:styles
+yarn workspace @webex/contact-center test:style
 ```
 
 ## First-Run Verification
@@ -151,7 +151,7 @@ ContactCenter (cc.ts)
 |---|---|
 | [templates/](templates/) | Code generation templates |
 
-Start with the root [`AGENTS.md`](../AGENTS.md) — it contains the full Quick Start Workflow, task classification decision tree, and critical rules.
+Start with the root [`AGENTS.md`](../AGENTS.md) for critical repository rules and the developer workflow, then use [`SPEC_INDEX.md`](SPEC_INDEX.md) to classify the task by owning module and open its canonical `*-spec.md`.
 
 When adding new features:
 

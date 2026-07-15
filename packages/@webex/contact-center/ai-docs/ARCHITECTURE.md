@@ -55,7 +55,7 @@ Registration initializes WebexRequest, Services, MetricsManager, WebCallingServi
 | `@webex/calling` | external / peer | Runtime package dependency | Workspace/declared version; errors propagate through owning module |
 | `@webex/internal-plugin-metrics` | external / peer | Runtime package dependency | Workspace/declared version; errors propagate through owning module |
 | `@webex/internal-plugin-mercury` | external / peer | Runtime package dependency | Workspace/declared version; errors propagate through owning module |
-| `wcc-api-gateway` | external / peer | Runtime package dependency | Workspace/declared version; errors propagate through owning module |
+| `wcc-api-gateway` | external Webex service | Service-catalog identifier resolved through the host Webex SDK; not an npm package dependency | Host service-catalog availability; routing errors propagate through the owning module |
 
 ### State Model
 
