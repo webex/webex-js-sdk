@@ -738,7 +738,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * Store precomputed latency value
    * @param key - key
    * @param value - value
-   * @param options - store options
+   * @param options - store options (a legacy boolean `accumulate` flag is also accepted)
    * @param options.accumulate - when it is true, it overwrites existing value with sum of the current value and the new measurement otherwise just store the new measurement
    * @param options.meetingId - meeting id, only used for Locus sync latency records
    * @param options.dataSetName - dataset name, only used for Locus sync latency records
@@ -746,7 +746,12 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns
    */
   public saveLatency(key: PreComputedLatencies, value: number, options: SaveLatencyOptions = {}) {
-    const {accumulate = false, meetingId, dataSetName} = options;
+    // Older (untyped) callers may still pass a boolean `accumulate` as the third argument
+    // (saveLatency(key, value, true)). Normalize it to the options object before destructuring,
+    // otherwise accumulation is silently lost and legacy SDK/plugin consumers underreport latencies.
+    const normalizedOptions: SaveLatencyOptions =
+      typeof options === 'boolean' ? {accumulate: options} : options;
+    const {accumulate = false, meetingId, dataSetName} = normalizedOptions;
 
     if (key === 'internal.client.locus.sync.random.backoff' && meetingId && dataSetName) {
       this.saveLocusSyncBackoffLatency({

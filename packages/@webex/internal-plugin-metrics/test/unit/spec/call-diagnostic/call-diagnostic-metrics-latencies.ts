@@ -5,11 +5,12 @@ import sinon from 'sinon';
 describe('internal-plugin-metrics', () => {
   describe('CallDiagnosticLatencies', () => {
     let cdl: CallDiagnosticLatencies;
+    let clock: ReturnType<typeof sinon.useFakeTimers>;
     var now = new Date();
 
     beforeEach(() => {
       sinon.createSandbox();
-      sinon.useFakeTimers(now.getTime());
+      clock = sinon.useFakeTimers(now.getTime());
       const webex = {
         meetings: {
           getBasicMeetingInformation: (id: string) => {
@@ -74,6 +75,26 @@ describe('internal-plugin-metrics', () => {
       cdl.saveLatency('internal.client.pageJMT', 10, {accumulate: true});
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
       assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 20);
+    });
+
+    it('accumulates when accumulate is passed as the legacy boolean argument', () => {
+      assert.deepEqual(cdl.precomputedLatencies.size, 0);
+      // @ts-ignore - legacy boolean third argument from older (untyped) SDK/plugin consumers
+      cdl.saveLatency('internal.client.pageJMT', 10, true);
+      // @ts-ignore - legacy boolean third argument from older (untyped) SDK/plugin consumers
+      cdl.saveLatency('internal.client.pageJMT', 15, true);
+      assert.deepEqual(cdl.precomputedLatencies.size, 1);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 25);
+    });
+
+    it('overwrites when the legacy boolean argument is false', () => {
+      assert.deepEqual(cdl.precomputedLatencies.size, 0);
+      // @ts-ignore - legacy boolean third argument from older (untyped) SDK/plugin consumers
+      cdl.saveLatency('internal.client.pageJMT', 10, false);
+      // @ts-ignore - legacy boolean third argument from older (untyped) SDK/plugin consumers
+      cdl.saveLatency('internal.client.pageJMT', 15, false);
+      assert.deepEqual(cdl.precomputedLatencies.size, 1);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 15);
     });
 
     it('should save only first timestamp correctly', () => {
@@ -259,7 +280,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('associates sync response tracking id and completes the matching meeting record', () => {
-        const clock = sinon.useFakeTimers({now: 150});
+        clock.setSystemTime(150);
 
         try {
           cdl.saveTimestamp({
@@ -341,12 +362,12 @@ describe('internal-plugin-metrics', () => {
             },
           });
         } finally {
-          clock.restore();
+          clock.setSystemTime(now.getTime());
         }
       });
 
       it('does not bind message.received when tracking id does not match any record', () => {
-        const clock = sinon.useFakeTimers({now: 500});
+        clock.setSystemTime(500);
 
         try {
           cdl.saveTimestamp({
@@ -390,7 +411,7 @@ describe('internal-plugin-metrics', () => {
           assert.isUndefined(cdl.completeLocusSyncLatency('meeting-1', 'llm-envelope-id'));
           assert.isUndefined(cdl.meetingLatencies.get('meeting-1')?.[0].locusSync.messageReceived);
         } finally {
-          clock.restore();
+          clock.setSystemTime(now.getTime());
         }
       });
 
@@ -519,7 +540,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('matches exact record by tracking id on first pass', () => {
-        const clock = sinon.useFakeTimers({now: 300});
+        clock.setSystemTime(300);
 
         try {
           cdl.saveTimestamp({
@@ -602,7 +623,7 @@ describe('internal-plugin-metrics', () => {
             },
           });
         } finally {
-          clock.restore();
+          clock.setSystemTime(now.getTime());
         }
       });
 
@@ -715,7 +736,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('returns undefined when the tracking id does not match', () => {
-        const clock = sinon.useFakeTimers({now: 150});
+        clock.setSystemTime(150);
 
         try {
           cdl.saveTimestamp({
@@ -749,7 +770,7 @@ describe('internal-plugin-metrics', () => {
 
           assert.isUndefined(cdl.completeLocusSyncLatency('meeting-1', 'llm-envelope-tracking-id'));
         } finally {
-          clock.restore();
+          clock.setSystemTime(now.getTime());
         }
       });
 
@@ -1149,7 +1170,7 @@ describe('internal-plugin-metrics', () => {
         };
 
         it('stamps messageReceived on the matching pending record using the current time', () => {
-          const clock = sinon.useFakeTimers({now: 500});
+          clock.setSystemTime(500);
 
           try {
             startPendingSync('sync-tracking-id');
@@ -1157,12 +1178,12 @@ describe('internal-plugin-metrics', () => {
 
             assert.equal(cdl.meetingLatencies.get('meeting-1')![0].locusSync.messageReceived, 500);
           } finally {
-            clock.restore();
+            clock.setSystemTime(now.getTime());
           }
         });
 
         it('does not overwrite an already recorded messageReceived', () => {
-          const clock = sinon.useFakeTimers({now: 999});
+          clock.setSystemTime(999);
 
           try {
             startPendingSync('sync-tracking-id');
@@ -1175,7 +1196,7 @@ describe('internal-plugin-metrics', () => {
 
             assert.equal(cdl.meetingLatencies.get('meeting-1')![0].locusSync.messageReceived, 140);
           } finally {
-            clock.restore();
+            clock.setSystemTime(now.getTime());
           }
         });
 
@@ -1398,18 +1419,10 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('measureLatency', () => {
-      let clock;
       let saveLatencySpy;
 
       beforeEach(() => {
-        clock = sinon.useFakeTimers();
-
         saveLatencySpy = sinon.stub(cdl, 'saveLatency');
-      });
-
-      afterEach(() => {
-        clock.restore();
-        sinon.restore();
       });
 
       it('checks measureLatency with accumulate false', async () => {
