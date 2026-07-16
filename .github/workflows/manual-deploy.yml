@@ -146,6 +146,7 @@ jobs:
     outputs:
       packages: ${{ steps.list.outputs.packages }}
       packages-glob: ${{ steps.list.outputs.packages-glob }}
+      excluded: ${{ steps.list.outputs.excluded }}
       version: ${{ steps.resolve-version.outputs.version }}
 
     steps:
@@ -217,9 +218,12 @@ jobs:
         #     does NOT work with `--from`: quoted it is one glob containing
         #     spaces (matches nothing); unquoted only the first word is read.
         run: |
-          # `workspaces list --json` emits one {location,name} object per line;
-          # keep names whose package.json has a deploy:npm script.
-          PACKAGES=$(yarn workspaces list --json --no-private \
+          # `workspaces list --json` emits one {location,name} object per line.
+          # The node script partitions those workspaces into the packages that
+          # will be published and the ones that are dropped, and prints two
+          # tab-separated lines: line 1 = included, line 2 = excluded (each as
+          # `name` or `name (reason)`), so both can be surfaced in the plan.
+          RESOLVED=$(yarn workspaces list --json --no-private \
             | node -e '
               const fs = require("fs");
               const path = require("path");
@@ -231,16 +235,27 @@ jobs:
                 "@webex/byods",
                 "@webex/plugin-presence",
               ]);
-              const names = [];
+              const included = [];
+              const excluded = [];
               for (const line of fs.readFileSync(0, "utf8").split("\n")) {
                 if (!line.trim()) continue;
                 const { location, name } = JSON.parse(line);
-                if (EXCLUDED.has(name)) continue;
                 const pkg = JSON.parse(fs.readFileSync(path.join(location, "package.json"), "utf8"));
-                if (pkg.scripts && pkg.scripts["deploy:npm"]) names.push(name);
+                const hasDeploy = !!(pkg.scripts && pkg.scripts["deploy:npm"]);
+                if (EXCLUDED.has(name)) {
+                  excluded.push(name + " (intentionally excluded)");
+                } else if (!hasDeploy) {
+                  excluded.push(name + " (no deploy:npm script)");
+                } else {
+                  included.push(name);
+                }
               }
-              process.stdout.write(names.join(" "));
+              // Line 1: publishable names (space-separated). Line 2: excluded
+              // entries (tab-separated, since each carries a parenthetical).
+              process.stdout.write(included.join(" ") + "\n" + excluded.join("\t"));
             ')
+          PACKAGES=$(printf "%s" "$RESOLVED" | sed -n "1p")
+          EXCLUDED=$(printf "%s" "$RESOLVED" | sed -n "2p")
           if [ -z "$PACKAGES" ]; then
             echo "::error::No publishable packages resolved." >&2
             exit 1
@@ -249,6 +264,12 @@ jobs:
           PACKAGES_GLOB="{$(echo "$PACKAGES" | tr ' ' ',')}"
           echo "packages=$PACKAGES" >> "$GITHUB_OUTPUT"
           echo "packages-glob=$PACKAGES_GLOB" >> "$GITHUB_OUTPUT"
+          # Excluded entries are tab-separated so each `name (reason)` stays
+          # intact; consumers split on tabs to list them one per line.
+          echo "excluded<<EOF" >> "$GITHUB_OUTPUT"
+          printf "%s" "$EXCLUDED" | tr "\t" "\n" >> "$GITHUB_OUTPUT"
+          echo "" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Resolve deploy version
         id: resolve-version
@@ -280,6 +301,7 @@ jobs:
           VERSION: ${{ steps.resolve-version.outputs.version }}
           PACKAGES: ${{ steps.list.outputs.packages }}
           PACKAGES_GLOB: ${{ steps.list.outputs.packages-glob }}
+          EXCLUDED: ${{ steps.list.outputs.excluded }}
           INPUT_VERSION: ${{ inputs.version }}
           DIST_TAG: ${{ inputs.dist-tag }}
           DRY_RUN: ${{ inputs.dry-run }}
@@ -292,6 +314,8 @@ jobs:
           fi
           # Count packages without assuming any are present.
           PACKAGE_COUNT=$(echo "$PACKAGES" | wc -w | tr -d '[:space:]')
+          # Excluded entries are newline-separated; count the non-empty lines.
+          EXCLUDED_COUNT=$(printf "%s" "$EXCLUDED" | grep -c . || true)
 
           # Emit to both the step log and the run summary so the resolved plan
           # is easy to find from the Actions UI.
@@ -314,12 +338,23 @@ jobs:
             echo "| Dist-tag | \`$DIST_TAG\` |"
             echo "| Dry run | \`$DRY_RUN\` |"
             echo "| Publishable package count | $PACKAGE_COUNT |"
+            echo "| Excluded package count | $EXCLUDED_COUNT |"
             echo ""
             echo "### Publishable packages"
             echo ""
             echo '```'
             # One package per line for readability.
             echo "$PACKAGES" | tr ' ' '\n'
+            echo '```'
+            echo ""
+            echo "### Excluded packages"
+            echo ""
+            echo "These workspaces are NOT published by this deploy — either"
+            echo "intentionally excluded or missing a \`deploy:npm\` script."
+            echo ""
+            echo '```'
+            # Already newline-separated (name, plus a parenthetical reason).
+            printf "%s\n" "$EXCLUDED"
             echo '```'
             echo ""
             echo "### Package glob (for \`yarn workspaces foreach --from\`)"
