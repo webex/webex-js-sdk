@@ -2,7 +2,7 @@ import ApiAIAssistant from '../../../../src/services/ApiAiAssistant';
 import MetricsManager from '../../../../src/metrics/MetricsManager';
 import LoggerProxy from '../../../../src/logger-proxy';
 import WebexRequest from '../../../../src/services/core/WebexRequest';
-import {HTTP_METHODS, SuggestedResponseUserActionId, WebexSDK} from '../../../../src/types';
+import {HTTP_METHODS, RealTimeAssistanceUserActionId, WebexSDK} from '../../../../src/types';
 
 jest.mock('../../../../src/metrics/MetricsManager');
 jest.mock('../../../../src/logger-proxy');
@@ -96,7 +96,7 @@ describe('ApiAIAssistant', () => {
     const sendEventSpy = jest.spyOn(apiAIAssistant, 'sendEvent').mockResolvedValue({ok: true});
     apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
 
-    const result = await apiAIAssistant.getSuggestedResponse({
+    const result = await apiAIAssistant.getRealTimeAssistance({
       agentId: 'test-agent-id',
       interactionId: 'interaction-1',
     });
@@ -120,7 +120,7 @@ describe('ApiAIAssistant', () => {
     const sendEventSpy = jest.spyOn(apiAIAssistant, 'sendEvent').mockResolvedValue({ok: true});
     apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
 
-    const result = await apiAIAssistant.getSuggestedResponse({
+    const result = await apiAIAssistant.getRealTimeAssistance({
       agentId: 'test-agent-id',
       interactionId: 'interaction-1',
       context: 'Need assistance with credit card payment due date',
@@ -145,7 +145,7 @@ describe('ApiAIAssistant', () => {
     const sendEventSpy = jest.spyOn(apiAIAssistant, 'sendEvent').mockResolvedValue({ok: true});
     apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
 
-    const result = await apiAIAssistant.getSuggestedResponse({
+    const result = await apiAIAssistant.getRealTimeAssistance({
       agentId: 'test-agent-id',
       interactionId: 'interaction-1',
       context: '   ',
@@ -167,15 +167,15 @@ describe('ApiAIAssistant', () => {
   });
 
   [
-    SuggestedResponseUserActionId.LIKE,
-    SuggestedResponseUserActionId.DISLIKE,
-    SuggestedResponseUserActionId.COPY,
+    RealTimeAssistanceUserActionId.LIKE,
+    RealTimeAssistanceUserActionId.DISLIKE,
+    RealTimeAssistanceUserActionId.COPY,
   ].forEach((actionId) => {
     it(`should send suggested response user action for ${actionId}`, async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue({body: {ok: true}});
       apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
 
-      const result = await apiAIAssistant.sendSuggestedResponseUserAction({
+      const result = await apiAIAssistant.sendRealTimeAssistanceUserAction({
         agentId: 'test-agent-id',
         interactionId: 'interaction-1',
         adaptiveCardId: 'adaptive-card-1',
@@ -242,7 +242,7 @@ describe('ApiAIAssistant', () => {
     let errorMessage = '';
 
     try {
-      await apiAIAssistant.getSuggestedResponse({
+      await apiAIAssistant.getRealTimeAssistance({
         agentId: 'test-agent-id',
         interactionId: 'interaction-1',
       });
@@ -250,7 +250,7 @@ describe('ApiAIAssistant', () => {
       errorMessage = (error as Error)?.message || '';
     }
 
-    expect(errorMessage).toBe('Error while performing getSuggestedResponse');
+    expect(errorMessage).toBe('Error while performing getRealTimeAssistance');
   });
 
   it('should fail to send suggested response user action when feature is disabled', async () => {
@@ -258,16 +258,16 @@ describe('ApiAIAssistant', () => {
     let errorMessage = '';
 
     try {
-      await apiAIAssistant.sendSuggestedResponseUserAction({
+      await apiAIAssistant.sendRealTimeAssistanceUserAction({
         agentId: 'test-agent-id',
         interactionId: 'interaction-1',
         adaptiveCardId: 'adaptive-card-1',
-        actionId: SuggestedResponseUserActionId.LIKE,
+        actionId: RealTimeAssistanceUserActionId.LIKE,
       });
     } catch (error) {
       errorMessage = (error as Error)?.message || '';
     }
 
-    expect(errorMessage).toBe('Error while performing sendSuggestedResponseUserAction');
+    expect(errorMessage).toBe('Error while performing sendRealTimeAssistanceUserAction');
   });
 });

@@ -290,13 +290,13 @@ function removeListeningIndicator() {
   if (existing) existing.remove();
 }
 
-function getSuggestedResponseAdaptiveCardId(data) {
+function getRealTimeAssistanceAdaptiveCardId(data) {
   return data?.adaptiveCardId || data?.adaptiveCard?.id || data?.cardId || data?.id;
 }
 
-async function sendSuggestedResponseUserAction(actionId, data, options = {}) {
+async function sendRealTimeAssistanceUserAction(actionId, data, options = {}) {
   const interactionId = options.interactionId || currentTask?.data?.interactionId;
-  const adaptiveCardId = getSuggestedResponseAdaptiveCardId(data);
+  const adaptiveCardId = getRealTimeAssistanceAdaptiveCardId(data);
 
   if (!interactionId || !adaptiveCardId || !webex?.cc?.apiAIAssistant) {
     console.warn('Unable to send suggested response user action', {
@@ -309,7 +309,7 @@ async function sendSuggestedResponseUserAction(actionId, data, options = {}) {
   }
 
   try {
-    await webex.cc.apiAIAssistant.sendSuggestedResponseUserAction({
+    await webex.cc.apiAIAssistant.sendRealTimeAssistanceUserAction({
       agentId,
       interactionId,
       adaptiveCardId,
@@ -346,7 +346,7 @@ function appendSuggestionCard(data, options = {}) {
   card.querySelector('.assistant-suggestion-card__meta').textContent = data.suggestionSource || '';
   card.querySelectorAll('.assistant-suggestion-card__actions button').forEach((button) => {
     button.addEventListener('click', () => {
-      sendSuggestedResponseUserAction(button.dataset.actionId, data, options);
+      sendRealTimeAssistanceUserAction(button.dataset.actionId, data, options);
     });
   });
   aiAssistantContentElm.appendChild(card);
@@ -361,7 +361,7 @@ function appendSuggestionCard(data, options = {}) {
   aiAssistantContentElm.scrollTop = aiAssistantContentElm.scrollHeight;
 }
 
-async function requestSuggestedResponse() {
+async function requestRealTimeAssistance() {
   if (!currentTask || !webex?.cc?.apiAIAssistant) return;
 
   const interactionId = currentTask.data.interactionId;
@@ -384,7 +384,7 @@ async function requestSuggestedResponse() {
   showListeningIndicator();
 
   try {
-    await webex.cc.apiAIAssistant.getSuggestedResponse({
+    await webex.cc.apiAIAssistant.getRealTimeAssistance({
       agentId,
       interactionId,
       actionTimeStamp: Date.now(),
@@ -419,18 +419,18 @@ if (clearTranscriptsButton) {
 }
 
 if (aiAssistantActionBtn) {
-  aiAssistantActionBtn.addEventListener('click', requestSuggestedResponse);
+  aiAssistantActionBtn.addEventListener('click', requestRealTimeAssistance);
 }
 
 if (aiAssistantContextBtn) {
-  aiAssistantContextBtn.addEventListener('click', requestSuggestedResponse);
+  aiAssistantContextBtn.addEventListener('click', requestRealTimeAssistance);
 }
 
 if (aiAssistantContextInputElm) {
   aiAssistantContextInputElm.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
-      requestSuggestedResponse();
+      requestRealTimeAssistance();
     }
   });
 }

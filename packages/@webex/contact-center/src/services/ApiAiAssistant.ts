@@ -10,8 +10,8 @@ import {
   AIAssistantEventType,
   AIAssistantEventName,
   HistoricTranscriptsResponse,
-  SuggestedResponseParams,
-  SuggestedResponseUserActionParams,
+  RealTimeAssistanceParams,
+  RealTimeAssistanceUserActionParams,
 } from '../types';
 import {getErrorDetails} from './core/Utils';
 import {
@@ -151,13 +151,13 @@ export class ApiAIAssistant {
   }
 
   /**
-   * Requests a suggested response for an interaction.
+   * Requests real-time assistance for an interaction.
    *
-   * @param params - Suggestion request parameters
+   * @param params - Real-time assistance request parameters
    * @returns HTTP response body from the AI Assistant event API
    * @public
    */
-  public async getSuggestedResponse(params: SuggestedResponseParams): Promise<any> {
+  public async getRealTimeAssistance(params: RealTimeAssistanceParams) {
     const {agentId, interactionId, context} = params;
     const trimmedContext = context?.trim();
     const languageCode = params.languageCode ?? 'en';
@@ -168,24 +168,24 @@ export class ApiAIAssistant {
 
     const loggerContext = {
       module: CC_FILE,
-      method: METHODS.GET_SUGGESTED_RESPONSE,
+      method: METHODS.GET_REAL_TIME_ASSISTANCE,
       interactionId,
       trackingId,
       data: {eventName},
     };
 
-    LoggerProxy.info('Requesting suggested response', loggerContext);
+    LoggerProxy.info('Requesting real-time assistance', loggerContext);
 
     this.metricsManager.timeEvent([
-      METRIC_EVENT_NAMES.AI_ASSISTANT_GET_SUGGESTED_RESPONSE_SUCCESS,
-      METRIC_EVENT_NAMES.AI_ASSISTANT_GET_SUGGESTED_RESPONSE_FAILED,
+      METRIC_EVENT_NAMES.AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_SUCCESS,
+      METRIC_EVENT_NAMES.AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_FAILED,
     ]);
 
     try {
       if (!this.aiFeature?.suggestedResponses?.enable) {
         const {error: detailedError} = getErrorDetails(
           new Error('SUGGESTED_RESPONSES_NOT_ENABLED'),
-          METHODS.GET_SUGGESTED_RESPONSE,
+          METHODS.GET_REAL_TIME_ASSISTANCE,
           CC_FILE
         );
         throw detailedError;
@@ -198,15 +198,13 @@ export class ApiAIAssistant {
         interactionId,
         AIAssistantEventType.CUSTOM_EVENT,
         eventName,
-        {
-          context: trimmedContext,
-        },
+        trimmedContext !== undefined ? {context: trimmedContext} : undefined,
         languageCode,
         trackingId
       );
 
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.AI_ASSISTANT_GET_SUGGESTED_RESPONSE_SUCCESS,
+        METRIC_EVENT_NAMES.AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_SUCCESS,
         {
           agentId,
           orgId,
@@ -217,13 +215,13 @@ export class ApiAIAssistant {
         },
         ['operational']
       );
-      LoggerProxy.log('Suggested response request succeeded', loggerContext);
+      LoggerProxy.log('Real-time assistance request succeeded', loggerContext);
 
       return response;
     } catch (error) {
-      LoggerProxy.error('Suggested response request failed', {...loggerContext, error});
+      LoggerProxy.error('Real-time assistance request failed', {...loggerContext, error});
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.AI_ASSISTANT_GET_SUGGESTED_RESPONSE_FAILED,
+        METRIC_EVENT_NAMES.AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_FAILED,
         {
           agentId,
           interactionId,
@@ -236,7 +234,7 @@ export class ApiAIAssistant {
 
       const {error: detailedError} = getErrorDetails(
         error,
-        METHODS.GET_SUGGESTED_RESPONSE,
+        METHODS.GET_REAL_TIME_ASSISTANCE,
         CC_FILE
       );
       throw detailedError;
@@ -244,14 +242,14 @@ export class ApiAIAssistant {
   }
 
   /**
-   * Sends user action feedback for a suggested response adaptive card.
+   * Sends user action feedback for a real-time assistance adaptive card.
    *
-   * @param params - Suggested response user action parameters
+   * @param params - Real-time assistance user action parameters
    * @returns HTTP response body from the AI Assistant event API
    * @public
    */
-  public async sendSuggestedResponseUserAction(
-    params: SuggestedResponseUserActionParams
+  public async sendRealTimeAssistanceUserAction(
+    params: RealTimeAssistanceUserActionParams
   ): Promise<Record<string, unknown>> {
     const {agentId, interactionId, adaptiveCardId, actionId} = params;
     const actionType = 'Action.Submit';
@@ -260,24 +258,24 @@ export class ApiAIAssistant {
 
     const loggerContext = {
       module: CC_FILE,
-      method: METHODS.SEND_SUGGESTED_RESPONSE_USER_ACTION,
+      method: METHODS.SEND_REAL_TIME_ASSISTANCE_USER_ACTION,
       interactionId,
       trackingId,
       data: {actionId, adaptiveCardId},
     };
 
-    LoggerProxy.info('Sending suggested response user action', loggerContext);
+    LoggerProxy.info('Sending real-time assistance user action', loggerContext);
 
     this.metricsManager.timeEvent([
-      METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_SUGGESTED_RESPONSE_USER_ACTION_SUCCESS,
-      METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_SUGGESTED_RESPONSE_USER_ACTION_FAILED,
+      METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_SUCCESS,
+      METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_FAILED,
     ]);
 
     try {
       if (!this.aiFeature?.suggestedResponses?.enable) {
         const {error: detailedError} = getErrorDetails(
           new Error('SUGGESTED_RESPONSES_NOT_ENABLED'),
-          METHODS.SEND_SUGGESTED_RESPONSE_USER_ACTION,
+          METHODS.SEND_REAL_TIME_ASSISTANCE_USER_ACTION,
           CC_FILE
         );
         throw detailedError;
@@ -301,7 +299,7 @@ export class ApiAIAssistant {
       );
 
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_SUGGESTED_RESPONSE_USER_ACTION_SUCCESS,
+        METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_SUCCESS,
         {
           agentId,
           orgId,
@@ -312,13 +310,13 @@ export class ApiAIAssistant {
         },
         ['operational']
       );
-      LoggerProxy.log('Suggested response user action sent', loggerContext);
+      LoggerProxy.log('Real-time assistance user action sent', loggerContext);
 
       return response;
     } catch (error) {
-      LoggerProxy.error('Suggested response user action failed', {...loggerContext, error});
+      LoggerProxy.error('Real-time assistance user action failed', {...loggerContext, error});
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_SUGGESTED_RESPONSE_USER_ACTION_FAILED,
+        METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_FAILED,
         {
           agentId,
           interactionId,
@@ -332,7 +330,7 @@ export class ApiAIAssistant {
 
       const {error: detailedError} = getErrorDetails(
         error,
-        METHODS.SEND_SUGGESTED_RESPONSE_USER_ACTION,
+        METHODS.SEND_REAL_TIME_ASSISTANCE_USER_ACTION,
         CC_FILE
       );
       throw detailedError;

@@ -859,65 +859,65 @@ export type UpdateDeviceTypeResponse = Agent.DeviceTypeUpdateSuccess | Error;
 export type TranscriptAction = 'START' | 'STOP';
 
 /**
- * Parameters used to request an AI Assistant suggested response.
+ * Parameters used to request AI Assistant real-time assistance.
  * @public
  * @example
- * const params: SuggestedResponseParams = {
+ * const params: RealTimeAssistanceParams = {
  *   interactionId: 'interaction-123',
  *   actionTimeStamp: Date.now(),
  *   context: 'Need help with credit card payment due date',
  * };
  */
-export type SuggestedResponseParams = {
+export type RealTimeAssistanceParams = {
   /** Agent identifier */
   agentId: string;
-  /** Interaction identifier for which suggestion should be generated */
+  /** Interaction identifier for which assistance should be generated */
   interactionId: string;
-  /** Optional additional context that should refine the suggestion */
+  /** Optional additional context that should refine the assistance */
   context?: string;
-  /** Optional language code for suggestions (for example, 'en'). Defaults to 'en'. */
+  /** Optional language code for assistance (for example, 'en'). Defaults to 'en'. */
   languageCode?: string;
 };
 
 /**
- * Supported user actions on an AI Assistant suggested response adaptive card.
+ * Supported user actions on an AI Assistant real-time assistance adaptive card.
  * @public
  */
-export const SuggestedResponseUserActionId = {
-  /** User liked the suggested response */
+export const RealTimeAssistanceUserActionId = {
+  /** User liked the real-time assistance response */
   LIKE: 'likeButton',
-  /** User disliked the suggested response */
+  /** User disliked the real-time assistance response */
   DISLIKE: 'dislikeButton',
-  /** User copied the suggested response */
+  /** User copied the real-time assistance response */
   COPY: 'copyButton',
 } as const;
 
 /**
- * Union type of supported suggested response user actions.
+ * Union type of supported real-time assistance user actions.
  * @public
  */
-export type SuggestedResponseUserActionId = Enum<typeof SuggestedResponseUserActionId>;
+export type RealTimeAssistanceUserActionId = Enum<typeof RealTimeAssistanceUserActionId>;
 
 /**
- * Parameters used to send user action feedback for a suggested response adaptive card.
+ * Parameters used to send user action feedback for a real-time assistance adaptive card.
  * @public
  * @example
- * const params: SuggestedResponseUserActionParams = {
+ * const params: RealTimeAssistanceUserActionParams = {
  *   agentId: 'agent-123',
  *   interactionId: 'interaction-123',
  *   adaptiveCardId: 'adaptive-card-123',
- *   actionId: SuggestedResponseUserActionId.LIKE,
+ *   actionId: RealTimeAssistanceUserActionId.LIKE,
  * };
  */
-export type SuggestedResponseUserActionParams = {
+export type RealTimeAssistanceUserActionParams = {
   /** Agent identifier */
   agentId: string;
-  /** Interaction identifier associated with the suggested response */
+  /** Interaction identifier associated with the real-time assistance response */
   interactionId: string;
-  /** Adaptive card identifier from the suggested response payload */
+  /** Adaptive card identifier from the real-time assistance payload */
   adaptiveCardId: string;
   /** User action performed on the adaptive card */
-  actionId: SuggestedResponseUserActionId;
+  actionId: RealTimeAssistanceUserActionId;
   /** Adaptive card action type. Defaults to 'Action.Submit'. */
   actionType?: 'Action.Submit';
   /** Optional language code. Defaults to 'en'. */
