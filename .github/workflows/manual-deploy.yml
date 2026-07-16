@@ -197,6 +197,18 @@ jobs:
         # workspaces that actually define `deploy:npm` so all three operate on
         # an identical, genuinely-publishable set.
         #
+        # A few workspaces DO define `deploy:npm` but are still intentionally
+        # excluded from a manual deploy (this mirrors the explicit allow-list
+        # from the original publish-script PR #4411):
+        #   - @webex/cli-tools, @webex/package-tools — internal build tooling
+        #     that is never released on the `latest` line.
+        #   - @webex/byods — independently versioned (its own 1.x line), so the
+        #     uniform release version this workflow sets must not be applied.
+        #   - @webex/plugin-presence — not yet released on `latest`.
+        # This workflow sets ONE uniform version across the whole set and
+        # publishes under `latest`; including these would push tooling/unreleased
+        # packages to `latest` and knock @webex/byods off its own version line.
+        #
         # Two forms are emitted because consumers need different shapes:
         #   - `packages` (space-separated): passed unquoted to
         #     `package-tools changelog --packages` as variadic args.
@@ -211,10 +223,19 @@ jobs:
             | node -e '
               const fs = require("fs");
               const path = require("path");
+              // Workspaces that define deploy:npm but are intentionally left
+              // out of a manual deploy (see the note above).
+              const EXCLUDED = new Set([
+                "@webex/cli-tools",
+                "@webex/package-tools",
+                "@webex/byods",
+                "@webex/plugin-presence",
+              ]);
               const names = [];
               for (const line of fs.readFileSync(0, "utf8").split("\n")) {
                 if (!line.trim()) continue;
                 const { location, name } = JSON.parse(line);
+                if (EXCLUDED.has(name)) continue;
                 const pkg = JSON.parse(fs.readFileSync(path.join(location, "package.json"), "utf8"));
                 if (pkg.scripts && pkg.scripts["deploy:npm"]) names.push(name);
               }
