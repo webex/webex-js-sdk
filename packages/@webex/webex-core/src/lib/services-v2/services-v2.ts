@@ -1398,6 +1398,77 @@ const Services = WebexPlugin.extend({
       this.initConfig();
     });
 
+    // Feature flag: when enabled, `webex.ready` is blocked until the initial
+    // catalog collection has settled AND any in-flight credentials refresh has
+    // completed. When disabled (the default), preserves the pre-existing
+    // behavior where `webex.ready` fires as soon as `webex.loaded` does and
+    // the catalog is collected out-of-band.
+    const waitForCatalogInit = this.webex.config?.services?.waitForCatalogInit === true;
+
+    if (waitForCatalogInit) {
+      this._initializeCatalogsGated(catalog);
+    } else {
+      // Not gating - immediately mark ready so we do not block webex.ready.
+      this.ready = true;
+      this._initializeCatalogsUngated(catalog);
+    }
+  },
+
+  /**
+   * Original (pre-verified-ready) initialization path. Runs on `webex.ready`
+   * and collects catalogs opportunistically without blocking anything.
+   *
+   * @private
+   * @param {ServiceCatalog} catalog
+   * @returns {void}
+   */
+  _initializeCatalogsUngated(catalog: ServiceCatalog): void {
+    // wait for webex instance to be ready before attempting
+    // to update the service catalogs
+    this.listenToOnce(this.webex, 'ready', async () => {
+      const warmed = await this._loadCatalogFromCache();
+      if (warmed) {
+        catalog.isReady = true;
+
+        return;
+      }
+      const {supertoken} = this.webex.credentials;
+      // Validate if the supertoken exists.
+      if (supertoken && supertoken.access_token) {
+        this.initServiceCatalogs()
+          .then(() => {
+            catalog.isReady = true;
+          })
+          .catch((error) => {
+            this.initFailed = true;
+            this.logger.error(
+              `services: failed to init initial services when credentials available, ${error?.message}`
+            );
+          });
+      } else {
+        const {email} = this.webex.config;
+
+        this.collectPreauthCatalog(email ? {email} : undefined).catch((error) => {
+          this.initFailed = true;
+          this.logger.error(
+            `services: failed to init initial services when no credentials available, ${error?.message}`
+          );
+        });
+      }
+    });
+  },
+
+  /**
+   * Verified-ready initialization path. Blocks `webex.ready` until the initial
+   * catalog fetch has settled (or timed out) AND any in-flight credentials
+   * refresh has completed. Also handles the fresh-login case where OAuth
+   * completes after `loaded` fires.
+   *
+   * @private
+   * @param {ServiceCatalog} catalog
+   * @returns {void}
+   */
+  _initializeCatalogsGated(catalog: ServiceCatalog): void {
     // Wait for storage to be loaded before attempting to update the service
     // catalogs. We listen for 'loaded' instead of 'ready' because `services.ready`
     // now blocks `webex.ready` - listening to 'ready' would deadlock.
