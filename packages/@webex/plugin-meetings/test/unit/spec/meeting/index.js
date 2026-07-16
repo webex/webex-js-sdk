@@ -5463,6 +5463,144 @@ describe('plugin-meetings', () => {
             });
           });
 
+          describe('first audio frame timestamp metric', () => {
+            const firstAudioFrameTimestamp = 1717171717;
+            let inboundAudioStats;
+            let members;
+
+            const emitStatsUpdate = (stats = new Map([['inbound-rtp-1', inboundAudioStats]])) => {
+              statsAnalyzerStub.emit(
+                {file: 'test', function: 'test'},
+                StatsAnalyzerEventNames.STATS_UPDATE,
+                {stats}
+              );
+            };
+
+            const assertMetricSentOnce = () => {
+              assert.calledOnceWithExactly(
+                Metrics.sendBehavioralMetric,
+                BEHAVIORAL_METRICS.REMOTE_AUDIO_FIRST_FRAME_TIMESTAMP,
+                {
+                  firstAudioFrameTimestamp,
+                  meetingId: meeting.id,
+                  correlation_id: meeting.correlationId,
+                }
+              );
+            };
+
+            beforeEach(() => {
+              Metrics.sendBehavioralMetric.resetHistory();
+              inboundAudioStats = {type: 'inbound-rtp'};
+              members = {
+                remoteUser: {
+                  isInMeeting: true,
+                  isUser: true,
+                  isSelf: false,
+                  isDevice: false,
+                },
+              };
+              sinon.stub(meeting, 'getMembers').callsFake(() => ({membersCollection: {members}}));
+            });
+
+            it('sends once when a remote human and timestamp are available', () => {
+              inboundAudioStats.firstAudioFrameTimestamp = firstAudioFrameTimestamp;
+
+              emitStatsUpdate();
+              emitStatsUpdate();
+
+              assertMetricSentOnce();
+            });
+
+            it('waits until the first audio frame timestamp is available', () => {
+              emitStatsUpdate();
+              assert.notCalled(Metrics.sendBehavioralMetric);
+
+              inboundAudioStats.firstAudioFrameTimestamp = firstAudioFrameTimestamp;
+              emitStatsUpdate();
+
+              assertMetricSentOnce();
+            });
+
+            it('waits until a remote human is in the meeting', () => {
+              members = {
+                self: {isInMeeting: true, isUser: true, isSelf: true, isDevice: false},
+                device: {isInMeeting: true, isUser: false, isSelf: false, isDevice: true},
+                remoteUser: {
+                  isInMeeting: false,
+                  isUser: true,
+                  isSelf: false,
+                  isDevice: false,
+                },
+              };
+
+              inboundAudioStats.firstAudioFrameTimestamp = firstAudioFrameTimestamp;
+
+              emitStatsUpdate();
+              assert.notCalled(Metrics.sendBehavioralMetric);
+
+              members.remoteUser.isInMeeting = true;
+              emitStatsUpdate();
+
+              assertMetricSentOnce();
+            });
+
+            [
+              {
+                description: 'the local user',
+                member: {isInMeeting: true, isUser: true, isSelf: true, isDevice: false},
+              },
+              {
+                description: 'a user outside the meeting',
+                member: {isInMeeting: false, isUser: true, isSelf: false, isDevice: false},
+              },
+              {
+                description: 'a resource participant',
+                member: {isInMeeting: true, isUser: false, isSelf: false, isDevice: false},
+              },
+              {
+                description: 'a device participant',
+                member: {isInMeeting: true, isUser: true, isSelf: false, isDevice: true},
+              },
+            ].forEach(({description, member}) => {
+              it(`does not send when the only participant is ${description}`, () => {
+                members = {participant: member};
+                inboundAudioStats.firstAudioFrameTimestamp = firstAudioFrameTimestamp;
+
+                emitStatsUpdate();
+
+                assert.notCalled(Metrics.sendBehavioralMetric);
+              });
+            });
+
+            [
+              {
+                description: 'outbound RTP stats',
+                stats: {type: 'outbound-rtp', firstAudioFrameTimestamp},
+              },
+              {
+                description: 'a string timestamp',
+                stats: {
+                  type: 'inbound-rtp',
+                  firstAudioFrameTimestamp: `${firstAudioFrameTimestamp}`,
+                },
+              },
+              {
+                description: 'a NaN timestamp',
+                stats: {type: 'inbound-rtp', firstAudioFrameTimestamp: Number.NaN},
+              },
+              {
+                description: 'an infinite timestamp',
+                stats: {type: 'inbound-rtp', firstAudioFrameTimestamp: Number.POSITIVE_INFINITY},
+              },
+            ].forEach(({description, stats}) => {
+              it(`does not send for ${description}`, () => {
+                emitStatsUpdate(new Map([['stats-1', stats]]));
+
+                assert.notCalled(Metrics.sendBehavioralMetric);
+              });
+            });
+          });
+
           describe('handles STATS_UPDATE event for SRTP cipher detection', () => {
             it('emits MEETING_SRTP_CIPHER_UPDATED event when srtpCipher is found in transport stats', async () => {
               const fakeStats = new Map([

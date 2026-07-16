@@ -31,6 +31,7 @@ import {
   StatsMonitor,
   StatsMonitorEventNames,
   MediaCodecMimeType,
+  type StatsUpdateEvent,
 } from '@webex/internal-media-core';
 
 import {DataChannelTokenType} from '@webex/internal-plugin-llm';
@@ -735,6 +736,8 @@ export default class Meeting extends StatelessWebexPlugin {
     receiveStart: boolean;
     receiveStop: boolean;
   };
+
+  private remoteAudioFirstFrameTimestampMetricSent = false;
 
   turnDiscoverySkippedReason: TurnDiscoverySkipReason;
   turnServerUsed: boolean;
@@ -6248,6 +6251,8 @@ export default class Meeting extends StatelessWebexPlugin {
       return this.deferJoin;
     }
 
+    this.remoteAudioFirstFrameTimestampMetricSent = false;
+
     // Scope-up the resolve/reject methods for handling within join().
     let joinFailed;
     let joinSuccess;
@@ -7726,6 +7731,51 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   /**
+   * Sends the first remote audio frame timestamp metric once it is eligible.
+   * @param {StatsUpdateEvent} event - Current media stats event.
+   * @returns {void}
+   */
+  private sendRemoteAudioFirstFrameTimestampMetricIfReady(event: StatsUpdateEvent): void {
+    if (this.remoteAudioFirstFrameTimestampMetricSent) {
+      return;
+    }
+
+    const {stats} = event;
+    let firstAudioFrameTimestamp: number | undefined;
+
+    for (const statsEntry of stats.values()) {
+      if (
+        statsEntry.type === 'inbound-rtp' &&
+        typeof statsEntry.firstAudioFrameTimestamp === 'number' &&
+        Number.isFinite(statsEntry.firstAudioFrameTimestamp)
+      ) {
+        firstAudioFrameTimestamp = statsEntry.firstAudioFrameTimestamp;
+        break;
+      }
+    }
+
+    if (firstAudioFrameTimestamp === undefined) {
+      return;
+    }
+
+    const members = this.getMembers()?.membersCollection?.members ?? {};
+    const hasRemoteHumanParticipant = Object.values(members).some(
+      (member) => member.isInMeeting && member.isUser && !member.isSelf && !member.isDevice
+    );
+
+    if (!hasRemoteHumanParticipant) {
+      return;
+    }
+
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.REMOTE_AUDIO_FIRST_FRAME_TIMESTAMP, {
+      firstAudioFrameTimestamp,
+      meetingId: this.id,
+      correlation_id: this.correlationId,
+    });
+    this.remoteAudioFirstFrameTimestampMetricSent = true;
+  }
+
+  /**
    * Registers for all required StatsAnalyzer events
    * @private
    * @returns {void}
@@ -7881,6 +7931,8 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
     this.statsAnalyzer.on(StatsAnalyzerEventNames.STATS_UPDATE, (data) => {
+      this.sendRemoteAudioFirstFrameTimestampMetricIfReady(data);
+
       // Extract srtpCipher from transport stats
       let srtpCipher: string | undefined;
       for (const stats of data.stats.values()) {
