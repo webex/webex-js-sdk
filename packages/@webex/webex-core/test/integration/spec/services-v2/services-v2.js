@@ -341,6 +341,39 @@ describe('webex-core', () => {
           done();
         }, 2000);
       });
+
+      it('blocks webex.ready until services.ready flips when waitForCatalogInit is enabled', async () => {
+        const gatedWebex = new WebexCore({
+          credentials: {supertoken: webexUser.token},
+          config: {services: {waitForCatalogInit: true}},
+        });
+
+        // Before init settles, webex.ready must be false because services.ready
+        // is a dependency and starts false in the gated path.
+        assert.isFalse(gatedWebex.internal.services.ready, 'services.ready should start false');
+        assert.isFalse(gatedWebex.ready, 'webex.ready should not fire while services.ready is false');
+
+        // Wait up to 30s for services init to complete and flip ready.
+        await new Promise((resolve, reject) => {
+          if (gatedWebex.internal.services.ready) {
+            resolve();
+
+            return;
+          }
+          const timer = setTimeout(
+            () => reject(new Error('timed out waiting for services.ready')),
+            30_000
+          );
+
+          gatedWebex.internal.services.once('change:ready', () => {
+            clearTimeout(timer);
+            resolve();
+          });
+        });
+
+        assert.isTrue(gatedWebex.internal.services.ready, 'services.ready should flip true after init settles');
+        assert.isTrue(gatedWebex.ready, 'webex.ready should fire once services.ready flips');
+      });
     });
 
     describe('#initServiceCatalogs()', () => {
