@@ -6,9 +6,8 @@ run-name: ${{ github.actor }} is manually ${{ inputs.dry-run && 'dry-running' ||
 # package set and deploy version, then (unless dry-run) publishes to NPM, pushes
 # the documentation/changelog, and creates the git tag.
 #
-# Job flow:
-#   authorize → initialize → resolve ──▶ publish-npm ──┬─▶ publish-documentation ─▶ publish-tag
-#                                                       └──────────────────────────┘
+# Job flow (linear — publish-tag needs both publish-npm and publish-documentation):
+#   authorize → initialize → resolve → publish-npm → publish-documentation → publish-tag
 # The `resolve` job is the single source of truth for the package set and
 # version; every publish job consumes its outputs.
 
@@ -116,27 +115,35 @@ jobs:
           fi
 
       - name: Checkout Project
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # fetch-depth: 0 downloads the complete git history, required for
           # changelog generation and tag operations downstream.
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
-      - name: Uncache Dependencies
-        uses: actions/cache@v4
+      - id: restore-dependencies
+        name: Restore Dependencies
+        uses: actions/cache/restore@v5
         with:
           path: '**/node_modules'
           key: node-modules-${{ hashFiles('./yarn.lock') }}
 
       - name: Install Dependencies
         run: yarn
+
+      - name: Cache Dependencies
+        uses: actions/cache/save@v5
+        if: steps.restore-dependencies.outputs.cache-hit != 'true'
+        with:
+          path: '**/node_modules'
+          key: ${{ steps.restore-dependencies.outputs.cache-primary-key }}
 
   resolve:
     name: Resolve Packages and Version
@@ -151,19 +158,19 @@ jobs:
 
     steps:
       - name: Checkout Project
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
       - name: Uncache Dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: '**/node_modules'
           key: node-modules-${{ hashFiles('./yarn.lock') }}
@@ -365,7 +372,7 @@ jobs:
       - name: Cache Distributables
         # Persist the built `dist` outputs so the publish jobs can restore them
         # instead of rebuilding from scratch on each runner.
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: '**/dist'
           key: dist-${{ env.rid }}
@@ -377,25 +384,25 @@ jobs:
 
     steps:
       - name: Checkout Project
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
       - name: Uncache Dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: '**/node_modules'
           key: node-modules-${{ hashFiles('./yarn.lock') }}
 
       - name: Uncache Distributables
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: '**/dist'
           key: dist-${{ env.rid }}
@@ -470,25 +477,25 @@ jobs:
 
     steps:
       - name: Checkout Project
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
       - name: Uncache Dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: '**/node_modules'
           key: node-modules-${{ hashFiles('./yarn.lock') }}
 
       - name: Uncache Distributables
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: '**/dist'
           key: dist-${{ env.rid }}
@@ -560,12 +567,20 @@ jobs:
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
         run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            git add docs/
+          # Scope the change check to `docs/`: the `Build tools and set versions`
+          # step dirties every package.json before this runs, so a whole-tree
+          # `git status` is always non-empty even when the changelog/docs build
+          # produced no docs changes. On such a no-op docs run or recovery rerun
+          # `git add docs/` would stage nothing and `git commit` would fail with
+          # exit 1 — after publish-npm already uploaded — blocking tag creation.
+          git add docs/
+          if ! git diff --cached --quiet; then
             git commit -m "chore(docs): update docs for manual deployment v$VERSION"
             # --force-with-lease prevents overwriting concurrent commits to the
             # documentation branch from other workflows.
             git push origin HEAD:documentation --force-with-lease
+          else
+            echo "No docs changes to publish; skipping documentation commit."
           fi
 
   publish-tag:
@@ -583,19 +598,19 @@ jobs:
 
     steps:
       - name: Checkout Project
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
       - name: Uncache Dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: '**/node_modules'
           key: node-modules-${{ hashFiles('./yarn.lock') }}
