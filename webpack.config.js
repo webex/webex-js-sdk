@@ -35,7 +35,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
     ...(env && env.umd
       ? {
           'webex-first-party': {
-            import: `${path.resolve(__dirname)}/packages/webex/src/index-first-party.js`,
+            import: `${path.resolve(__dirname)}/packages/webex/src/webex-first-party.js`,
             library: {
               name: 'Webex',
               type: 'umd',
