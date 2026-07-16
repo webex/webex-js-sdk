@@ -67,5 +67,6 @@ export const METHODS = {
   GET_BASE_URL: 'getBaseUrl',
   SEND_EVENT: 'sendEvent',
   GET_SUGGESTED_RESPONSE: 'getSuggestedResponse',
+  SEND_SUGGESTED_RESPONSE_USER_ACTION: 'sendSuggestedResponseUserAction',
   FETCH_HISTORIC_TRANSCRIPTS: 'fetchHistoricTranscripts',
 };

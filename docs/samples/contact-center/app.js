@@ -290,6 +290,37 @@ function removeListeningIndicator() {
   if (existing) existing.remove();
 }
 
+function getSuggestedResponseAdaptiveCardId(data) {
+  return data?.adaptiveCardId || data?.adaptiveCard?.id || data?.cardId || data?.id;
+}
+
+async function sendSuggestedResponseUserAction(actionId, data, options = {}) {
+  const interactionId = options.interactionId || currentTask?.data?.interactionId;
+  const adaptiveCardId = getSuggestedResponseAdaptiveCardId(data);
+
+  if (!interactionId || !adaptiveCardId || !webex?.cc?.apiAIAssistant) {
+    console.warn('Unable to send suggested response user action', {
+      actionId,
+      interactionId,
+      adaptiveCardId,
+    });
+
+    return;
+  }
+
+  try {
+    await webex.cc.apiAIAssistant.sendSuggestedResponseUserAction({
+      agentId,
+      interactionId,
+      adaptiveCardId,
+      actionId,
+    });
+    console.info('Suggested response user action sent:', actionId);
+  } catch (error) {
+    console.error('Suggested response user action failed:', error);
+  }
+}
+
 function appendSuggestionCard(data, options = {}) {
   if (!aiAssistantContentElm) return;
 
@@ -301,11 +332,23 @@ function appendSuggestionCard(data, options = {}) {
   card.innerHTML = `
     <div class="assistant-suggestion-card__title"></div>
     <div class="assistant-suggestion-card__body"></div>
-    <div class="assistant-suggestion-card__meta"></div>
+    <div class="assistant-suggestion-card__footer">
+      <div class="assistant-suggestion-card__meta"></div>
+      <div class="assistant-suggestion-card__actions">
+        <button type="button" data-action-id="likeButton">Like</button>
+        <button type="button" data-action-id="dislikeButton">Dislike</button>
+        <button type="button" data-action-id="copyButton">Copy</button>
+      </div>
+    </div>
   `;
   card.querySelector('.assistant-suggestion-card__title').textContent = data.title || 'Suggested response';
   card.querySelector('.assistant-suggestion-card__body').textContent = data.suggestion || '';
   card.querySelector('.assistant-suggestion-card__meta').textContent = data.suggestionSource || '';
+  card.querySelectorAll('.assistant-suggestion-card__actions button').forEach((button) => {
+    button.addEventListener('click', () => {
+      sendSuggestedResponseUserAction(button.dataset.actionId, data, options);
+    });
+  });
   aiAssistantContentElm.appendChild(card);
 
   if (keepListening) {

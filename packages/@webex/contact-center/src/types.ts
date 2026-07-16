@@ -880,6 +880,51 @@ export type SuggestedResponseParams = {
 };
 
 /**
+ * Supported user actions on an AI Assistant suggested response adaptive card.
+ * @public
+ */
+export const SuggestedResponseUserActionId = {
+  /** User liked the suggested response */
+  LIKE: 'likeButton',
+  /** User disliked the suggested response */
+  DISLIKE: 'dislikeButton',
+  /** User copied the suggested response */
+  COPY: 'copyButton',
+} as const;
+
+/**
+ * Union type of supported suggested response user actions.
+ * @public
+ */
+export type SuggestedResponseUserActionId = Enum<typeof SuggestedResponseUserActionId>;
+
+/**
+ * Parameters used to send user action feedback for a suggested response adaptive card.
+ * @public
+ * @example
+ * const params: SuggestedResponseUserActionParams = {
+ *   agentId: 'agent-123',
+ *   interactionId: 'interaction-123',
+ *   adaptiveCardId: 'adaptive-card-123',
+ *   actionId: SuggestedResponseUserActionId.LIKE,
+ * };
+ */
+export type SuggestedResponseUserActionParams = {
+  /** Agent identifier */
+  agentId: string;
+  /** Interaction identifier associated with the suggested response */
+  interactionId: string;
+  /** Adaptive card identifier from the suggested response payload */
+  adaptiveCardId: string;
+  /** User action performed on the adaptive card */
+  actionId: SuggestedResponseUserActionId;
+  /** Adaptive card action type. Defaults to 'Action.Submit'. */
+  actionType?: 'Action.Submit';
+  /** Optional language code. Defaults to 'en'. */
+  languageCode?: string;
+};
+
+/**
  * Supported AI Assistant event categories.
  * @public
  * @example
@@ -926,6 +971,8 @@ export const AIAssistantEventName = {
   POST_CALL_SUMMARY_RESPONSE: 'POST_CALL_SUMMARY_RESPONSE',
   /** Suggested digital response event */
   SUGGESTED_RESPONSES_DIGITAL: 'SUGGESTED_RESPONSES_DIGITAL',
+  /** User action on a suggested response adaptive card */
+  SUGGESTED_RESPONSES_USER_ACTION: 'SUGGESTED_RESPONSES_USER_ACTION',
 } as const;
 
 /**
