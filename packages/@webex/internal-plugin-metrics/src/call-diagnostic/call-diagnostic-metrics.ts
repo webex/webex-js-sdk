@@ -108,7 +108,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   private isMercuryConnected = false;
   private eventLimitTracker: Map<string, number> = new Map();
   private eventLimitWarningsLogged: Set<string> = new Set();
-  private telemetryOptOut: NonNullable<ClientEventPayload>['telemetryOptOut'] = undefined;
+  private isTelemetryOptOutManual = false;
+  private isTelemetryOptOutAutomatic = false;
 
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
@@ -151,15 +152,30 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @returns one of 'manual', 'automatic', undefined
    */
   public getTelemetryOptOut() {
-    return this.telemetryOptOut;
+    if (this.isTelemetryOptOutManual) {
+      return 'manual';
+    }
+    if (this.isTelemetryOptOutAutomatic) {
+      return 'automatic';
+    }
+
+    return undefined;
   }
 
   /**
-   * Sets the telemetryOptOut value of the current user
-   * @param value - one of 'manual', 'automatic', undefined
+   * Sets the manual telemetry opt-out status for the current user
+   * @param value - boolean value indicating manual telemetry opt-out status
    */
-  public setTelemetryOptOut(value: NonNullable<ClientEventPayload>['telemetryOptOut']) {
-    this.telemetryOptOut = value;
+  public setIsTelemetryOptOutManual(value: boolean) {
+    this.isTelemetryOptOutManual = value;
+  }
+
+  /**
+   * Sets the automatic telemetry opt-out status for the current user
+   * @param value - boolean value indicating automatic telemetry opt-out status
+   */
+  public setIsTelemetryOptOutAutomatic(value: boolean) {
+    this.isTelemetryOptOutAutomatic = value;
   }
 
   /**
