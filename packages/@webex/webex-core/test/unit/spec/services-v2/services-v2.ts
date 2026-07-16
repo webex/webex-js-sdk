@@ -125,6 +125,273 @@ describe('webex-core', () => {
           );
         }
       );
+
+      it('sets services.ready to true immediately when waitForCatalogInit is disabled (default)', () => {
+        services.listenToOnce = sinon.stub();
+        services.initialize();
+
+        assert.isTrue(services.ready, 'services.ready should be true so it does not block webex.ready');
+      });
+
+      it('listens on the "ready" event when waitForCatalogInit is disabled (default)', () => {
+        services.listenToOnce = sinon.stub();
+        services.initialize();
+
+        const [, event] = services.listenToOnce.getCall(1).args;
+        assert.equal(event, 'ready', 'default path listens on webex ready');
+      });
+    });
+
+    describe('#initialize (waitForCatalogInit=true)', () => {
+      beforeEach(() => {
+        services.webex.config = {
+          ...(services.webex.config || {}),
+          services: {waitForCatalogInit: true},
+        };
+        // Reset ready flag: the outer beforeEach constructs services which
+        // runs initialize() once with no config (ungated path, flips ready to
+        // true). We reset here so tests that call initialize() a second time
+        // with the flag enabled observe the gated behavior from a clean state.
+        services.ready = false;
+      });
+
+      it('leaves services.ready=false after initialize (does not flip until finalize)', () => {
+        services.listenToOnce = sinon.stub();
+        services.initialize();
+
+        assert.isFalse(services.ready, 'services.ready should block webex.ready until finalize');
+      });
+
+      it('listens on the "loaded" event (not "ready") to avoid deadlock', () => {
+        services.listenToOnce = sinon.stub();
+        services.initialize();
+
+        const [, event] = services.listenToOnce.getCall(1).args;
+        assert.equal(event, 'loaded', 'gated path must listen on loaded to avoid deadlock');
+      });
+
+      it('flips services.ready=true after init succeeds with credentials', async () => {
+        services.listenToOnce = sinon.stub();
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+        services.webex.credentials = {
+          supertoken: {access_token: 'token'},
+        };
+
+        services.initialize();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isTrue(services.ready);
+      });
+
+      it('flips services.ready=true after init succeeds without credentials (preauth path)', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isTrue(services.ready);
+      });
+
+      it('flips services.ready=true even when initServiceCatalogs errors, so webex.ready can fire', async () => {
+        services.listenToOnce = sinon.stub();
+        services.initServiceCatalogs = sinon.stub().returns(Promise.reject(new Error('boom')));
+        services.webex.credentials = {
+          supertoken: {access_token: 'token'},
+        };
+        services.logger.error = sinon.stub();
+
+        services.initialize();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isTrue(services.initFailed);
+        assert.isTrue(services.ready);
+      });
+
+      it('flips services.ready=true even when collectPreauthCatalog errors', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.reject(new Error('boom')));
+        services.logger.error = sinon.stub();
+
+        services.initialize();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isTrue(services.initFailed);
+        assert.isTrue(services.ready);
+      });
+
+      it('flips services.ready=true when init times out', async () => {
+        const clock = sinon.useFakeTimers();
+        services.listenToOnce = sinon.stub();
+        services.initServiceCatalogs = sinon.stub().returns(new Promise(() => {}));
+        services.webex.credentials = {
+          supertoken: {access_token: 'token'},
+        };
+        services.logger.error = sinon.stub();
+
+        services.initialize();
+        services.listenToOnce.getCall(1).args[2]();
+
+        await clock.tickAsync(15_001);
+        clock.restore();
+
+        assert.isTrue(services.initFailed);
+        assert.isTrue(services.ready);
+        sinon.assert.calledWithMatch(
+          services.logger.error,
+          /services: init timed out after 15000ms/
+        );
+      });
+
+      it('awaits an in-flight credentials refresh before flipping services.ready=true', async () => {
+        services.listenToOnce = sinon.stub();
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+
+        let onChangeIsRefreshing: (() => void) | undefined;
+        services.webex.credentials = {
+          supertoken: {access_token: 'token'},
+          isRefreshing: true,
+          once: sinon.stub().callsFake((event: string, cb: () => void) => {
+            if (event === 'change:isRefreshing') onChangeIsRefreshing = cb;
+          }),
+        };
+
+        services.initialize();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isFalse(services.ready, 'must not flip ready while refresh is in flight');
+        assert.isFunction(onChangeIsRefreshing, 'must subscribe to change:isRefreshing');
+        sinon.assert.calledWith(services.webex.credentials.once, 'change:isRefreshing');
+
+        onChangeIsRefreshing!();
+        await waitForAsync();
+
+        assert.isTrue(services.ready);
+      });
+
+      it('registers a change:canAuthorize listener when there is no supertoken (fresh-login path)', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+        // initialize() creates a new catalog and replaces the WeakMap entry.
+        const currentCatalog = services._getCatalog();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        const freshLoginCall = services.listenToOnce
+          .getCalls()
+          .find((call: any) => call.args[1] === 'change:canAuthorize');
+        assert.isDefined(freshLoginCall, 'expected change:canAuthorize listener to be registered');
+
+        services.webex.canAuthorize = true;
+        currentCatalog.status.postauth.ready = false;
+        freshLoginCall!.args[2]();
+
+        assert.isTrue(
+          services.initServiceCatalogs.called,
+          'expected postauth catalog init after canAuthorize flips'
+        );
+      });
+
+      it('does not re-init postauth catalog when canAuthorize fires but catalog is already ready', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+        // initialize() creates a new catalog; grab the current one.
+        const currentCatalog = services._getCatalog();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        const freshLoginCall = services.listenToOnce
+          .getCalls()
+          .find((call: any) => call.args[1] === 'change:canAuthorize');
+
+        services.webex.canAuthorize = true;
+        currentCatalog.status.postauth.ready = true;
+        freshLoginCall!.args[2]();
+
+        assert.isFalse(
+          services.initServiceCatalogs.called,
+          'must not re-fetch postauth catalog if it is already ready'
+        );
+      });
+
+      it('finalizes ready when cache is warm (skips network fetch)', async () => {
+        services.listenToOnce = sinon.stub();
+        services._loadCatalogFromCache = sinon.stub().returns(Promise.resolve(true));
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+        await waitForAsync();
+
+        assert.isTrue(services.ready);
+        assert.isFalse(
+          services.initServiceCatalogs.called,
+          'must skip network fetch when cache is warm'
+        );
+        assert.isFalse(
+          services.collectPreauthCatalog.called,
+          'must skip preauth fetch when cache is warm'
+        );
+      });
+    });
+
+    describe('#_finalizeReady', () => {
+      beforeEach(() => {
+        // Outer beforeEach construction already ran initialize() (ungated,
+        // sets ready=true). Reset so _finalizeReady's flip is observable.
+        services.ready = false;
+      });
+
+      it('sets ready=true immediately when credentials are not refreshing', async () => {
+        services.webex.credentials = {isRefreshing: false};
+        assert.isFalse(services.ready);
+
+        await services._finalizeReady();
+
+        assert.isTrue(services.ready);
+      });
+
+      it('sets ready=true when credentials are missing', async () => {
+        services.webex.credentials = undefined;
+
+        await services._finalizeReady();
+
+        assert.isTrue(services.ready);
+      });
+
+      it('awaits change:isRefreshing before setting ready=true', async () => {
+        let onChangeIsRefreshing: (() => void) | undefined;
+        services.webex.credentials = {
+          isRefreshing: true,
+          once: sinon.stub().callsFake((event: string, cb: () => void) => {
+            if (event === 'change:isRefreshing') onChangeIsRefreshing = cb;
+          }),
+        };
+
+        const settled = services._finalizeReady();
+        await waitForAsync();
+
+        assert.isFalse(services.ready, 'ready must not flip while refresh is in flight');
+        assert.isFunction(onChangeIsRefreshing);
+
+        onChangeIsRefreshing!();
+        await settled;
+
+        assert.isTrue(services.ready);
+      });
     });
 
     describe('#initServiceCatalogs', () => {
