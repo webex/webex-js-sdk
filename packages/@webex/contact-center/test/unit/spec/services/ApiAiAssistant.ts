@@ -92,7 +92,7 @@ describe('ApiAIAssistant', () => {
     expect(result).toEqual(responseBody as any);
   });
 
-  it('should request suggested response without extra context using sendEvent', async () => {
+  it('should request real-time assistance without extra context using sendEvent', async () => {
     const sendEventSpy = jest.spyOn(apiAIAssistant, 'sendEvent').mockResolvedValue({ok: true});
     apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
 
@@ -116,7 +116,7 @@ describe('ApiAIAssistant', () => {
     expect(result).toEqual({ok: true});
   });
 
-  it('should request suggested response with extra context using sendEvent', async () => {
+  it('should request real-time assistance with extra context using sendEvent', async () => {
     const sendEventSpy = jest.spyOn(apiAIAssistant, 'sendEvent').mockResolvedValue({ok: true});
     apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
 
@@ -171,7 +171,7 @@ describe('ApiAIAssistant', () => {
     RealTimeAssistanceUserActionId.DISLIKE,
     RealTimeAssistanceUserActionId.COPY,
   ].forEach((actionId) => {
-    it(`should send suggested response user action for ${actionId}`, async () => {
+    it(`should send real-time assistance user action for ${actionId}`, async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue({body: {ok: true}});
       apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
 
@@ -237,7 +237,7 @@ describe('ApiAIAssistant', () => {
     expect(errorMessage).toBe('Error while performing fetchHistoricTranscripts');
   });
 
-  it('should fail when suggested responses feature is disabled', async () => {
+  it('should fail when real-time assistance feature is disabled', async () => {
     apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: false}} as any);
     let errorMessage = '';
 
@@ -253,7 +253,7 @@ describe('ApiAIAssistant', () => {
     expect(errorMessage).toBe('Error while performing getRealTimeAssistance');
   });
 
-  it('should fail to send suggested response user action when feature is disabled', async () => {
+  it('should fail to send real-time assistance user action when feature is disabled', async () => {
     apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: false}} as any);
     let errorMessage = '';
 

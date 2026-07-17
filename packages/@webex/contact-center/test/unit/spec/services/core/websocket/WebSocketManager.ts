@@ -404,21 +404,15 @@ it('should register and connect to WebSocket without X-ORGANIZATION-ID header fo
     await webSocketManager.initWebSocket({body: fakeSubscribeRequest, resource: SUBSCRIBE_API});
 
     webSocketManager['forceCloseWebSocketOnTimeout'] = true;
-
-    // Simulate the WebSocket close event
-    setTimeout(() => {
-      MockWebSocket.inst.onclose({
-        wasClean: false,
-        code: 1006,
-        reason: 'timeout',
-        target: MockWebSocket.inst,
-      });
-    }, 1);
-
     webSocketManager.shouldReconnect = true;
+    mockWorker.postMessage.mockClear();
 
-    // Wait for the close event to be handled
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    MockWebSocket.inst.onclose({
+      wasClean: false,
+      code: 1006,
+      reason: 'timeout',
+      target: MockWebSocket.inst,
+    });
 
     expect(mockWorker.postMessage).toHaveBeenCalledWith({type: 'terminate'});
     expect(LoggerProxy.error).toHaveBeenCalledWith(
