@@ -7288,6 +7288,11 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.media-engine.remote-sdp-received',
+          payload: {
+            eventData: {
+              localSDPGenRemoteSDPRecv: cdl.getLocalSDPGenRemoteSDPRecv(),
+            },
+          },
           options: {meetingId: this.id},
         });
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_OFFER_TO_ANSWER_LATENCY, {
