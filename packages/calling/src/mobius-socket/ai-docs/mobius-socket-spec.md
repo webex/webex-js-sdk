@@ -9,10 +9,11 @@
 | Module id | `mobius-socket` |
 | Source path(s) | `src/mobius-socket/` |
 | Doc kind | Module spec |
-| Coverage score | 100% assessed 2026-07-06; 21/21 mandatory fields PRESENT after validator-directed rationale, sequence inventory, profile, security, and visibility backfill |
+| Coverage score | 100% structural completeness (21/21 mandatory documentation fields present); this is not a public-surface coverage or drift measurement |
+| Manifest coverage state | `Partial` — the manifest is authoritative; cross-check specification claims against source code |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex / repository user / 2026-07-06 |
-| Validation status | pass on 2026-07-06 by `claude-code`; gate OPEN; Pass-with-warnings accepted as successful and advisory warnings waived |
+| generated_by / approved_by / updated_at | Codex / repository user / 2026-07-17 |
+| Validation status | PASS WITH WARNINGS on 2026-07-17 by `claude-code` via Cursor; zero Blocking findings and three accepted Minor/advisory findings; validation did not promote the manifest coverage state |
 
 ## Evidence Rules
 

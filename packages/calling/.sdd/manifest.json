@@ -397,7 +397,7 @@
     {
       "path": "src/CallHistory/",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
       "canonical_spec": "src/CallHistory/ai-docs/call-history-spec.md",
       "contracts": {
         "provides": [
@@ -412,7 +412,7 @@
         ]
       },
       "characterization_baseline": "src/CallHistory/CallHistory.test.ts",
-      "last_assessed": "2026-07-06",
+      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -446,7 +446,7 @@
     {
       "path": "src/CallRecording/",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
       "canonical_spec": "src/CallRecording/ai-docs/call-recording-spec.md",
       "contracts": {
         "provides": [
@@ -460,7 +460,7 @@
         ]
       },
       "characterization_baseline": "src/CallRecording/CallRecording.test.ts",
-      "last_assessed": "2026-07-06",
+      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -494,7 +494,7 @@
     {
       "path": "src/CallSettings/",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
       "canonical_spec": "src/CallSettings/ai-docs/call-settings-spec.md",
       "contracts": {
         "provides": [
@@ -508,7 +508,7 @@
         ]
       },
       "characterization_baseline": "src/CallSettings/CallSettings.test.ts",
-      "last_assessed": "2026-07-06",
+      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -542,7 +542,7 @@
     {
       "path": "src/CallingClient/",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
       "canonical_spec": "src/CallingClient/ai-docs/calling-client-spec.md",
       "contracts": {
         "provides": [
@@ -556,7 +556,7 @@
         ]
       },
       "characterization_baseline": "src/CallingClient/CallingClient.test.ts",
-      "last_assessed": "2026-07-06",
+      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -591,7 +591,7 @@
     {
       "path": "src/CallingClient/calling/",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
       "canonical_spec": "src/CallingClient/calling/ai-docs/calling-spec.md",
       "contracts": {
         "provides": [
@@ -605,7 +605,7 @@
         ]
       },
       "characterization_baseline": "src/CallingClient/calling/call.test.ts",
-      "last_assessed": "2026-07-06",
+      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -639,7 +639,7 @@
     {
       "path": "src/CallingClient/calling/CallerId/",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
       "canonical_spec": "src/CallingClient/calling/CallerId/ai-docs/caller-id-spec.md",
       "contracts": {
         "provides": [
@@ -651,7 +651,7 @@
         ]
       },
       "characterization_baseline": "src/CallingClient/calling/CallerId/index.test.ts",
-      "last_assessed": "2026-07-06",
+      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -684,7 +684,7 @@
     {
       "path": "src/CallingClient/line/",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
       "canonical_spec": "src/CallingClient/line/ai-docs/line-spec.md",
       "contracts": {
         "provides": [
@@ -697,7 +697,7 @@
         ]
       },
       "characterization_baseline": "src/CallingClient/line/line.test.ts",
-      "last_assessed": "2026-07-06",
+      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": false,
@@ -731,7 +731,7 @@
     {
       "path": "src/CallingClient/registration/",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
       "canonical_spec": "src/CallingClient/registration/ai-docs/registration-spec.md",
       "contracts": {
         "provides": [
@@ -744,7 +744,7 @@
         ]
       },
       "characterization_baseline": "src/CallingClient/registration/register.test.ts",
-      "last_assessed": "2026-07-06",
+      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -778,7 +778,7 @@
     {
       "path": "src/Contacts/",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
       "canonical_spec": "src/Contacts/ai-docs/contacts-spec.md",
       "contracts": {
         "provides": [
@@ -792,7 +792,7 @@
         ]
       },
       "characterization_baseline": "src/Contacts/ContactsClient.test.ts",
-      "last_assessed": "2026-07-06",
+      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -826,7 +826,7 @@
     {
       "path": "src/Metrics/",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
       "canonical_spec": "src/Metrics/ai-docs/metrics-spec.md",
       "contracts": {
         "provides": [
@@ -838,7 +838,7 @@
         ]
       },
       "characterization_baseline": "src/Metrics/index.test.ts",
-      "last_assessed": "2026-07-06",
+      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -908,7 +908,7 @@
     {
       "path": "src/Voicemail/",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
       "canonical_spec": "src/Voicemail/ai-docs/voicemail-spec.md",
       "contracts": {
         "provides": [
@@ -921,7 +921,7 @@
         ]
       },
       "characterization_baseline": "src/Voicemail/Voicemail.test.ts",
-      "last_assessed": "2026-07-06",
+      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -955,7 +955,7 @@
     {
       "path": "src/mobius-socket/",
       "coverage_status": "Partial",
-      "coverage_evidence": "Detailed legacy AI/architecture documentation exists and is useful, but it must be cross-checked with code until migration, conformance, coverage review, and independent validation pass.",
+      "coverage_evidence": "Migration, template conformance, and independent document validation completed. The module remains Partial because public-surface coverage, drift below 5%, and the required promotion history have not been established; cross-check specification claims against source code.",
       "canonical_spec": "src/mobius-socket/ai-docs/mobius-socket-spec.md",
       "contracts": {
         "provides": [
@@ -968,7 +968,7 @@
         ]
       },
       "characterization_baseline": "src/mobius-socket/mobius-socket.test.ts",
-      "last_assessed": "2026-07-06",
+      "last_assessed": "2026-07-17",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -1048,7 +1048,8 @@
       "Blocking"
     ],
     "generator_run_id": "calling-bootstrap-20260706-161638",
-    "source_commit": "0cc264e5d31c24abff776a5fa2ec02afa6cb6e0d",
+    "validator_run_id": "calling-validation-20260717-124220",
+    "source_commit": "a5571787e28ac3c8ef3c448e8088c291d2ff545d",
     "base_ref": "main",
     "head_ref": "migrate-aidoc-callingsdk-pacakge"
   },
