@@ -11383,11 +11383,27 @@ describe('plugin-meetings', () => {
             };
             meeting.sdpResponseTimer = '1234';
 
+            webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
             webex.internal.newMetrics.callDiagnosticLatencies.getLocalSDPGenRemoteSDPRecv = sinon
               .stub()
               .returns(100);
 
             eventListeners[MediaConnectionEventNames.REMOTE_SDP_ANSWER_PROCESSED]();
+
+            // the remote-sdp-received timestamp must be saved before the latency is computed
+            // so that getLocalSDPGenRemoteSDPRecv() has an end timestamp to use
+            assert.calledOnceWithExactly(
+              webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp,
+              {
+                key: 'client.media-engine.remote-sdp-received',
+                options: {meetingId: meeting.id},
+              }
+            );
+            assert(
+              webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp.calledBefore(
+                webex.internal.newMetrics.callDiagnosticLatencies.getLocalSDPGenRemoteSDPRecv
+              )
+            );
 
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
