@@ -7685,16 +7685,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/event-dictionary-ts@npm:^1.0.2191":
-  version: 1.0.2193
-  resolution: "@webex/event-dictionary-ts@npm:1.0.2193"
+"@webex/event-dictionary-ts@npm:^1.0.2215":
+  version: 1.0.2215
+  resolution: "@webex/event-dictionary-ts@npm:1.0.2215"
   dependencies:
     amf-client-js: ^5.2.6
     json-schema-to-typescript: ^15.0.4
     minimist: ^1.2.8
     shelljs: ^0.8.5
     webapi-parser: ^0.5.0
-  checksum: 46d2c5e56c333edcb708a83dc3988335021c036605925f9890e57d8cf7d505ff3e39e652ef9409f2afb6c8eb68dd8b837ccc6c0adbfd25e10d568303a318997b
+  checksum: 941869702638d760977e3e38530bbaca9cb72b7ee6d95895a5c434554cb65bf7ac2991fa5a1686a0eb7e939597307f3345ad6000b49e2d540ea06a1a6e9cc393
   languageName: node
   linkType: hard
 
@@ -8234,7 +8234,7 @@ __metadata:
     "@webex/common": "workspace:*"
     "@webex/common-timers": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/event-dictionary-ts": ^1.0.2191
+    "@webex/event-dictionary-ts": ^1.0.2215
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -8888,7 +8888,7 @@ __metadata:
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/event-dictionary-ts": ^1.0.2191
+    "@webex/event-dictionary-ts": ^1.0.2215
     "@webex/internal-media-core": 2.26.2
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
