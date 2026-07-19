@@ -21,7 +21,7 @@ import {
   deleteVoicemail,
   expectVoicemailVisibleInCurrentUi,
   expectVoicemailVisibleInUi,
-  fetchVoicemailPageFromUi,
+  fetchVoicemailPage,
   getVoicemailMessageId,
   getVoicemailRecords,
   markVoicemailUnread,
@@ -154,20 +154,14 @@ export function voicemailTests() {
         }
         await attachVoicemailSummary(testInfo, 'read-after-play', readRecord);
 
-        const firstPageRecords = await getVoicemailRecords(calleePage, {
-          offset: 0,
-          limit: 1,
-          refresh: true,
-        });
+        const paginatedRecords = await fetchVoicemailPage(calleePage, 0, 1);
 
-        expect(firstPageRecords.length).toBe(1);
-        const paginationRows = await fetchVoicemailPageFromUi(calleePage, 0, 1);
-
-        expect(paginationRows.length).toBe(1);
-        await expectVoicemailVisibleInCurrentUi(calleePage, firstPageRecords[0]);
+        expect(paginatedRecords.length).toBe(1);
+        await openVoicemailList(calleePage);
+        await expectVoicemailVisibleInCurrentUi(calleePage, paginatedRecords[0]);
         await playVoicemailFromUi(
           calleePage,
-          getVoicemailMessageId(firstPageRecords[0]),
+          getVoicemailMessageId(paginatedRecords[0]),
           VOICEMAIL_PLAYBACK_TIMEOUT_MS
         );
       } finally {

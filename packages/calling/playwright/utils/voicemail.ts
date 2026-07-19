@@ -19,6 +19,7 @@ export type VoicemailRecord = {
   time?: {$?: string | number};
   messageId?: {$?: string};
   read?: {$?: string} | Record<string, never> | string | boolean;
+  Read?: string | boolean;
 };
 
 export type VoicemailRow = {
@@ -78,6 +79,14 @@ export const getVoicemailTimestamp = (record: VoicemailRecord): number => {
 };
 
 export const isVoicemailRead = (record: VoicemailRecord): boolean => {
+  if (typeof record.Read === 'boolean') {
+    return record.Read;
+  }
+
+  if (typeof record.Read === 'string') {
+    return record.Read === 'true';
+  }
+
   const {read} = record;
 
   if (typeof read === 'boolean') {
@@ -92,7 +101,8 @@ export const isVoicemailRead = (record: VoicemailRecord): boolean => {
     return read.$ === 'true';
   }
 
-  return Boolean(read && Object.keys(read).length === 0);
+  // UCM payloads may use Read: 'true'|'false'; an empty read object means unread.
+  return false;
 };
 
 export const voicemailMatchesCaller = (
@@ -292,33 +302,6 @@ export const markVoicemailUnread = async (page: Page, messageId: string): Promis
   expect([200, 204]).toContain(statusCode);
 };
 
-export const waitForVoicemailReadState = async (
-  page: Page,
-  messageId: string,
-  expectedRead: boolean
-): Promise<VoicemailRecord> => {
-  let matchingRecord: VoicemailRecord | undefined;
-
-  await expect
-    .poll(
-      async () => {
-        const records = await getVoicemailRecords(page, {refresh: true});
-
-        matchingRecord = records.find((record) => getVoicemailMessageId(record) === messageId);
-
-        return matchingRecord ? isVoicemailRead(matchingRecord) : undefined;
-      },
-      {
-        timeout: VOICEMAIL_EVENTUAL_CONSISTENCY_TIMEOUT,
-        intervals: VOICEMAIL_POLL_INTERVALS,
-        message: `Expected voicemail ${messageId} read=${expectedRead}`,
-      }
-    )
-    .toBe(expectedRead);
-
-  return matchingRecord as VoicemailRecord;
-};
-
 export const waitForVoicemailPlaybackToEnd = async (
   page: Page,
   messageId: string,
@@ -368,20 +351,25 @@ export const playVoicemailFromUi = async (
   await expectVoicemailReadInUi(page, rowIndex);
 };
 
-export const fetchVoicemailPageFromUi = async (
+/**
+ * Validates voicemail pagination via the SDK and fills offset/limit in the sample app.
+ * Does not use #fetchVoicemailListButton — that handler only logs and does not render rows
+ * (sample-app fix tracked separately from this Playwright PR).
+ */
+export const fetchVoicemailPage = async (
   page: Page,
   offset: number,
   limit: number
-): Promise<VoicemailRow[]> => {
-  await clearVoicemailTable(page);
+): Promise<VoicemailRecord[]> => {
   await page.locator(CALLING_SELECTORS.VOICEMAIL_OFFSET_INPUT).fill(String(offset));
   await page.locator(CALLING_SELECTORS.VOICEMAIL_OFFSET_LIMIT_INPUT).fill(String(limit));
-  await page.locator(CALLING_SELECTORS.VOICEMAIL_FETCH_LIST_BTN).click({timeout: AWAIT_TIMEOUT});
-  await expect(page.locator(CALLING_SELECTORS.VOICEMAIL_TABLE_ROWS)).toHaveCount(limit, {
-    timeout: AWAIT_TIMEOUT,
-  });
 
-  return readVoicemailRowsFromUi(page);
+  const records = await getVoicemailRecords(page, {offset, limit, refresh: true});
+
+  expect(records.length).toBeGreaterThan(0);
+  expect(records.length).toBeLessThanOrEqual(limit);
+
+  return records;
 };
 
 export const deleteVoicemail = async (page: Page, messageId: string): Promise<void> => {
