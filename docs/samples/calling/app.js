@@ -17,6 +17,7 @@ let callingClient;
 let correlationId;
 let callHistory;
 let voicemail;
+let voicemailInitPromise;
 let callRecording;
 let contacts;
 let callSettings;
@@ -127,6 +128,17 @@ const getOptionValue = (select) => {
 
   return selected ? selected.value : undefined;
 };
+
+async function ensureVoicemailInitialized() {
+  if (!voicemailInitPromise) {
+    voicemailInitPromise = Promise.resolve(voicemail.init()).catch((err) => {
+      voicemailInitPromise = undefined;
+      throw err;
+    });
+  }
+
+  return voicemailInitPromise;
+}
 
 async function uploadLogs() {
     try {
@@ -1254,7 +1266,7 @@ async function createVoiceMail(
   offsetLimit = voicemailOffsetLimit,
   runDemoActions = true
 ) {
-  await voicemail.init();
+  await ensureVoicemailInitialized();
   const backendConnector = calling.webex.internal.device.callingBehavior;
 
   if (backendConnector === 'NATIVE_SIP_CALL_TO_UCM') {
@@ -1364,7 +1376,6 @@ async function createVoiceMail(
     }
   } else {
     voicemailElm.disabled = true;
-    const logger = {level: 'info'};
 
     try {
       const getVoicemailListResponse = await voicemail.getVoicemailList(
@@ -1650,13 +1661,11 @@ async function fetchVoicemailList() {
   // eslint-disable-next-line prefer-template
   console.log('Fetching voicemails with offset and offsetLength ', offset, offsetLength);
 
-  const response = await createVoiceMail(
+  await createVoiceMail(
     parseInt(offset, 10),
     parseInt(offsetLength, 10),
     false
   );
-
-  console.log(response);
 }
 
 /**
@@ -1679,8 +1688,9 @@ async function fetchVoicemailSummary() {
   // eslint-disable-next-line prefer-template
   if (window.voicemail === undefined) {
     voicemail = window.voicemail = CreateVoicemailClient(webex, logger);
-    voicemail.init();
   }
+
+  await ensureVoicemailInitialized();
 
   const summary = await voicemail.getVoicemailSummary();
   const summaryStr =JSON.stringify(summary.data.voicemailSummary, undefined, 2);
