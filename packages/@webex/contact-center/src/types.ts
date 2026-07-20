@@ -864,7 +864,6 @@ export type TranscriptAction = 'START' | 'STOP';
  * @example
  * const params: RealTimeAssistanceParams = {
  *   interactionId: 'interaction-123',
- *   actionTimeStamp: Date.now(),
  *   context: 'Need help with credit card payment due date',
  * };
  */
@@ -918,8 +917,6 @@ export type RealTimeAssistanceUserActionParams = {
   adaptiveCardId: string;
   /** User action performed on the adaptive card */
   actionId: RealTimeAssistanceUserActionId;
-  /** Adaptive card action type. Defaults to 'Action.Submit'. */
-  actionType?: 'Action.Submit';
   /** Optional language code. Defaults to 'en'. */
   languageCode?: string;
 };
