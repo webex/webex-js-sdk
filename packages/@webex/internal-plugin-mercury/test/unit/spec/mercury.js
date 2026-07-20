@@ -1675,7 +1675,7 @@ describe('plugin-mercury', () => {
           });
         });
 
-        it('should set and clear state flags appropriately', () => {
+        it('should set _shutdownSwitchoverBackoffCall during attempt and clear it after completion', () => {
           let backoffCallDuringAttempt;
 
           sinon.stub(mercury, '_attemptConnection').callsFake((url, cb) => {
@@ -1690,9 +1690,9 @@ describe('plugin-mercury', () => {
           });
 
           return promise.then(() => {
-            // Verify flag was set during the operation
+            // Verify backoff call was set during the operation
             assert.isDefined(backoffCallDuringAttempt, 'backoffCall should be set during attempt');
-            // Verify flag is cleared after completion
+            // Verify backoff call is cleared after completion
             assert.notExists(
               mercury._shutdownSwitchoverBackoffCall,
               'backoffCall should be cleared after completion'
