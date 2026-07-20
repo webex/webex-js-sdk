@@ -70,6 +70,7 @@ import {EntryPoint} from './services/EntryPoint';
 import {AddressBook} from './services/AddressBook';
 import {Queue} from './services/Queue';
 import {ApiAIAssistant} from './services/ApiAiAssistant';
+import {UserPreference} from './services/UserPreference';
 import type {
   EntryPointListResponse,
   EntryPointSearchParams,
@@ -329,6 +330,37 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   public queue: Queue;
 
   /**
+   * API instance for managing Webex Contact Center user preferences
+   * Provides functionality to get, create, update, and delete user preferences
+   * @type {UserPreference}
+   * @public
+   * @example
+   * ```typescript
+   * const cc = webex.cc;
+   * await cc.register();
+   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
+   *
+   * // Get user preferences for current user
+   * const preferences = await cc.userPreference.getUserPreference();
+   *
+   * // Create new user preferences
+   * const newPrefs = await cc.userPreference.createUserPreference({
+   *   userId: 'user123',
+   *   preferences: { e911Reminder: true }
+   * });
+   *
+   * // Update user preferences
+   * const updatedPrefs = await cc.userPreference.updateUserPreference('user123', {
+   *   preferences: { e911Reminder: false }
+   * });
+   *
+   * // Delete user preferences
+   * await cc.userPreference.deleteUserPreference('user123');
+   * ```
+   */
+  public userPreference: UserPreference;
+
+  /**
    * API instance for AI Assistant operations such as transcript controls.
    * @type {ApiAIAssistant}
    * @public
@@ -389,6 +421,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.entryPoint = new EntryPoint(this.$webex);
       this.addressBook = new AddressBook(this.$webex, () => this.agentConfig?.addressBookId);
       this.queue = new Queue(this.$webex);
+      this.userPreference = new UserPreference(this.$webex, () => this.agentConfig?.agentId);
       LoggerProxy.initialize(this.$webex.logger);
     });
   }

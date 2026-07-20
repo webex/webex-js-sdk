@@ -513,6 +513,7 @@ export default class Meetings extends WebexPlugin {
       if (meeting && !MeetingsUtil.isBreakoutLocusDTO(data.locus)) {
         meeting.locusInfo.updateMainSessionLocusCache(data.locus); // here data.locus will never be a complete locus
       }
+
       if (!this.isNeedHandleLocusDTO(meeting, data.locus)) {
         LoggerProxy.logger.log(
           `Meetings:index#handleLocusEvent --> doesn't need to process locus event`
@@ -837,42 +838,6 @@ export default class Meetings extends WebexPlugin {
     if (this.config?.experimental?.enableAdhocMeetings !== changeState) {
       // @ts-ignore
       this.config.experimental.enableAdhocMeetings = changeState;
-    }
-  }
-
-  /**
-   * API to toggle TCP reachability, needs to be called before webex.meetings.register()
-   * @param {Boolean} newValue
-   * @private
-   * @memberof Meetings
-   * @returns {undefined}
-   */
-  private _toggleTcpReachability(newValue: boolean) {
-    if (typeof newValue !== 'boolean') {
-      return;
-    }
-    // @ts-ignore
-    if (this.config.experimental.enableTcpReachability !== newValue) {
-      // @ts-ignore
-      this.config.experimental.enableTcpReachability = newValue;
-    }
-  }
-
-  /**
-   * API to toggle TLS reachability, needs to be called before webex.meetings.register()
-   * @param {Boolean} newValue
-   * @private
-   * @memberof Meetings
-   * @returns {undefined}
-   */
-  private _toggleTlsReachability(newValue: boolean) {
-    if (typeof newValue !== 'boolean') {
-      return;
-    }
-    // @ts-ignore
-    if (this.config.experimental.enableTlsReachability !== newValue) {
-      // @ts-ignore
-      this.config.experimental.enableTlsReachability = newValue;
     }
   }
 

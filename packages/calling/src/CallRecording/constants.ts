@@ -2,6 +2,7 @@ export const CALL_RECORDING_FILE = 'CallRecording';
 
 // Recording API (hydra developer API) endpoint segments.
 export const CONVERGED_RECORDINGS = 'convergedRecordings';
+export const SOFT_DELETE = 'softDelete';
 export const METADATA = 'metadata';
 
 // Query parameter keys for the list request.

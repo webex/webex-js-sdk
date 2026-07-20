@@ -55,6 +55,8 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
           `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Request successful.`
         );
 
+        this.handleHttpResponseStatus(res?.statusCode, payload);
+
         return res;
       })
       .catch((err) => {
@@ -64,8 +66,32 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
           `error: ${generateCommonErrorMetadata(err)}`
         );
 
+        this.handleHttpResponseStatus(err?.statusCode, payload);
+
         return Promise.reject(err);
       });
+  },
+
+  /**
+   * React to the HTTP status code returned by the metrics endpoint.
+   * Only items submitted with `markTelemetryOptOutOnResponse: true` opt into
+   * this behavior.
+   * @param {number | undefined} statusCode
+   * @param {any[]} payload Items flushed in this HTTP batch.
+   * @returns {void}
+   */
+  handleHttpResponseStatus(statusCode: number | undefined, payload: any[]) {
+    const shouldMark =
+      Array.isArray(payload) &&
+      payload.some((item) => item?.markTelemetryOptOutOnResponse === true);
+
+    if (!shouldMark) {
+      return;
+    }
+
+    if (statusCode === 200) {
+      this.webex.internal.newMetrics?.callDiagnosticMetrics?.setIsTelemetryOptOutAutomatic(true);
+    }
   },
 });
 
