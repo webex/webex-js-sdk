@@ -48,10 +48,6 @@ const Mercury = WebexPlugin.extend({
     backoffCall: 'object',
     _connectPromise: 'object',
     _shutdownSwitchoverBackoffCall: 'object',
-    _shutdownSwitchoverInProgress: {
-      default: false,
-      type: 'boolean',
-    },
     _shutdownSwitchoverId: 'string',
     // Store the resolved (pre-proxy) URL so reconnection uses a catalog-valid host
     // instead of the potentially rewritten socket.url from an interceptor.
@@ -130,12 +126,11 @@ const Mercury = WebexPlugin.extend({
     const oldSocket = this.socket;
 
     try {
-      if (this._shutdownSwitchoverInProgress) {
+      if (this._shutdownSwitchoverBackoffCall) {
         this.logger.info(`${this.namespace}: [shutdown] switchover already in progress`);
 
         return;
       }
-      this._shutdownSwitchoverInProgress = true;
       this._shutdownSwitchoverId = `${Date.now()}`;
       this.logger.info(
         `${this.namespace}: [shutdown] switchover start, id=${this._shutdownSwitchoverId}`
@@ -177,7 +172,7 @@ const Mercury = WebexPlugin.extend({
         });
     } catch (e) {
       this.logger.error(`${this.namespace}: [shutdown] error during switchover`, e);
-      this._shutdownSwitchoverInProgress = false;
+      this._shutdownSwitchoverBackoffCall = undefined;
       this._emit('event:mercury_shutdown_switchover_failed', {reason: e});
     }
   },
@@ -563,7 +558,6 @@ const Mercury = WebexPlugin.extend({
       const onComplete = (err) => {
         // Clear state flags based on connection type
         if (isShutdownSwitchover) {
-          this._shutdownSwitchoverInProgress = false;
           this._shutdownSwitchoverBackoffCall = undefined;
         } else {
           this.connecting = false;
