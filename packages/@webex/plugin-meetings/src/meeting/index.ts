@@ -6251,8 +6251,6 @@ export default class Meeting extends StatelessWebexPlugin {
       return this.deferJoin;
     }
 
-    this.remoteAudioFirstFrameTimestampMetricSent = false;
-
     // Scope-up the resolve/reject methods for handling within join().
     let joinFailed;
     let joinSuccess;
@@ -6394,6 +6392,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return MeetingUtil.joinMeetingOptions(this, options)
       .then((join) => {
+        this.remoteAudioFirstFrameTimestampMetricSent = false;
         this.meetingFiniteStateMachine.join();
         this.setupLocusMediaRequest();
 
