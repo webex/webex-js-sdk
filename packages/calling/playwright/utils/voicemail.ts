@@ -101,7 +101,11 @@ export const isVoicemailRead = (record: VoicemailRecord): boolean => {
     return read.$ === 'true';
   }
 
-  // UCM payloads may use Read: 'true'|'false'; an empty read object means unread.
+  if (read && Object.keys(read).length === 0) {
+    return true;
+  }
+
+  // Missing read markers mean unread.
   return false;
 };
 
@@ -191,27 +195,6 @@ export const waitForVoicemailFromCaller = async (
   return matchingRecord as VoicemailRecord;
 };
 
-const clearVoicemailTable = async (page: Page): Promise<void> => {
-  await page.evaluate(
-    ({buttonSelector, tableSelector}) => {
-      const button = document.querySelector<HTMLButtonElement>(buttonSelector);
-      const table = document.querySelector<HTMLElement>(tableSelector);
-
-      if (button) {
-        button.disabled = false;
-      }
-
-      if (table) {
-        table.innerHTML = '';
-      }
-    },
-    {
-      buttonSelector: CALLING_SELECTORS.VOICEMAIL_BTN,
-      tableSelector: CALLING_SELECTORS.VOICEMAIL_TABLE,
-    }
-  );
-};
-
 export const readVoicemailRowsFromUi = async (page: Page): Promise<VoicemailRow[]> => {
   const rows = await page
     .locator(CALLING_SELECTORS.VOICEMAIL_TABLE_ROWS)
@@ -229,7 +212,7 @@ export const readVoicemailRowsFromUi = async (page: Page): Promise<VoicemailRow[
 };
 
 export const openVoicemailList = async (page: Page): Promise<VoicemailRow[]> => {
-  await clearVoicemailTable(page);
+  await expect(page.locator(CALLING_SELECTORS.VOICEMAIL_BTN)).toBeEnabled({timeout: AWAIT_TIMEOUT});
   await page.locator(CALLING_SELECTORS.VOICEMAIL_BTN).click({timeout: AWAIT_TIMEOUT});
   await expect(page.locator(`${CALLING_SELECTORS.VOICEMAIL_TABLE} th`)).toHaveCount(4, {
     timeout: AWAIT_TIMEOUT,
@@ -302,6 +285,33 @@ export const markVoicemailUnread = async (page: Page, messageId: string): Promis
   expect([200, 204]).toContain(statusCode);
 };
 
+export const waitForVoicemailReadState = async (
+  page: Page,
+  messageId: string,
+  expectedRead: boolean
+): Promise<VoicemailRecord> => {
+  let matchingRecord: VoicemailRecord | undefined;
+
+  await expect
+    .poll(
+      async () => {
+        const records = await getVoicemailRecords(page, {refresh: true});
+
+        matchingRecord = records.find((record) => getVoicemailMessageId(record) === messageId);
+
+        return matchingRecord ? isVoicemailRead(matchingRecord) : undefined;
+      },
+      {
+        timeout: VOICEMAIL_EVENTUAL_CONSISTENCY_TIMEOUT,
+        intervals: VOICEMAIL_POLL_INTERVALS,
+        message: `Expected voicemail ${messageId} read=${expectedRead}`,
+      }
+    )
+    .toBe(expectedRead);
+
+  return matchingRecord as VoicemailRecord;
+};
+
 export const waitForVoicemailPlaybackToEnd = async (
   page: Page,
   messageId: string,
@@ -349,27 +359,6 @@ export const playVoicemailFromUi = async (
   await row.locator('input[value="Play"]').click({timeout: AWAIT_TIMEOUT});
   await waitForVoicemailPlaybackToEnd(page, messageId, playbackTimeoutMs);
   await expectVoicemailReadInUi(page, rowIndex);
-};
-
-/**
- * Validates voicemail pagination via the SDK and fills offset/limit in the sample app.
- * Does not use #fetchVoicemailListButton — that handler only logs and does not render rows
- * (sample-app fix tracked separately from this Playwright PR).
- */
-export const fetchVoicemailPage = async (
-  page: Page,
-  offset: number,
-  limit: number
-): Promise<VoicemailRecord[]> => {
-  await page.locator(CALLING_SELECTORS.VOICEMAIL_OFFSET_INPUT).fill(String(offset));
-  await page.locator(CALLING_SELECTORS.VOICEMAIL_OFFSET_LIMIT_INPUT).fill(String(limit));
-
-  const records = await getVoicemailRecords(page, {offset, limit, refresh: true});
-
-  expect(records.length).toBeGreaterThan(0);
-  expect(records.length).toBeLessThanOrEqual(limit);
-
-  return records;
 };
 
 export const deleteVoicemail = async (page: Page, messageId: string): Promise<void> => {

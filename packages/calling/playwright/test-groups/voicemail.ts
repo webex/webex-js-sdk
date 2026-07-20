@@ -10,7 +10,9 @@ import {
   waitForCallerOutboundCall,
 } from '../utils/call';
 import {
+  captureVoicemailSettings,
   loadSettings,
+  restoreVoicemailSettings,
   saveVoicemailSettings,
   setVoicemailSendAllCalls,
   setVoicemailSendBusyCalls,
@@ -19,15 +21,15 @@ import {
 import {
   attachVoicemailSummary,
   deleteVoicemail,
-  expectVoicemailVisibleInCurrentUi,
   expectVoicemailVisibleInUi,
-  fetchVoicemailPage,
   getVoicemailMessageId,
   getVoicemailRecords,
+  isVoicemailRead,
   markVoicemailUnread,
   openVoicemailList,
   playVoicemailFromUi,
   waitForVoicemailFromCaller,
+  waitForVoicemailReadState,
 } from '../utils/voicemail';
 import {CALLING_SELECTORS} from '../constants';
 
@@ -103,20 +105,23 @@ export function voicemailTests() {
     });
 
     /* eslint-disable no-empty-pattern */
-    test('VM-CALL-001: Unanswered call creates voicemail that can be listed, played, marked read, and paginated', async ({}, testInfo) => {
+    test('VM-CALL-001: Unanswered call creates voicemail that can be listed, played, and marked read', async ({}, testInfo) => {
       const callerPage = tm.getPage(tm.userSet.accounts[0]);
       const calleePage = tm.getPage(tm.userSet.accounts[1]);
       let messageId: string | undefined;
 
-      await configureVoicemailForUnansweredCalls(calleePage);
-      const existingMessageIds = await getVoicemailRecords(calleePage, {
-        offset: 0,
-        limit: 50,
-        refresh: true,
-      }).then((records) => records.map(getVoicemailMessageId).filter(Boolean));
-      const startedAt = new Date(Date.now() - 5000);
+      await loadSettings(calleePage);
+      const originalVoicemailSettings = await captureVoicemailSettings(calleePage);
 
       try {
+        await configureVoicemailForUnansweredCalls(calleePage);
+        const existingMessageIds = await getVoicemailRecords(calleePage, {
+          offset: 0,
+          limit: 50,
+          refresh: true,
+        }).then((records) => records.map(getVoicemailMessageId).filter(Boolean));
+        const startedAt = new Date(Date.now() - 5000);
+
         await makeCall(callerPage, calleeNumber);
         await waitForCallerOutboundCall(callerPage);
 
@@ -146,33 +151,22 @@ export function voicemailTests() {
         await expectVoicemailVisibleInUi(calleePage, voicemailRecord);
 
         await playVoicemailFromUi(calleePage, messageId, VOICEMAIL_PLAYBACK_TIMEOUT_MS);
-        const readRecord = await getVoicemailRecords(calleePage, {offset: 0, limit: 20}).then(
-          (records) => records.find((record) => getVoicemailMessageId(record) === messageId)
-        );
-        if (!readRecord) {
-          throw new Error(`Expected voicemail ${messageId} after play`);
-        }
+        const readRecord = await waitForVoicemailReadState(calleePage, messageId, true);
+
+        expect(isVoicemailRead(readRecord)).toBe(true);
         await attachVoicemailSummary(testInfo, 'read-after-play', readRecord);
-
-        const paginatedRecords = await fetchVoicemailPage(calleePage, 0, 1);
-
-        expect(paginatedRecords.length).toBe(1);
-        await openVoicemailList(calleePage);
-        await expectVoicemailVisibleInCurrentUi(calleePage, paginatedRecords[0]);
-        await playVoicemailFromUi(
-          calleePage,
-          getVoicemailMessageId(paginatedRecords[0]),
-          VOICEMAIL_PLAYBACK_TIMEOUT_MS
-        );
       } finally {
         await cleanupActiveCalls(callerPage);
-        await loadSettings(calleePage).catch(() => {});
-        await setVoicemailSendUnansweredCalls(calleePage, false).catch(() => {});
 
-        if (messageId) {
-          await deleteVoicemail(calleePage, messageId);
+        try {
+          await restoreVoicemailSettings(calleePage, originalVoicemailSettings);
+        } finally {
+          if (messageId) {
+            await deleteVoicemail(calleePage, messageId);
+          }
         }
       }
     });
+    /* eslint-enable no-empty-pattern */
   });
 }

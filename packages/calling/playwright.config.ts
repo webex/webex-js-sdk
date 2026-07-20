@@ -8,8 +8,8 @@ import {USER_SETS} from './playwright/test-data';
 dotenv.config({path: path.resolve(__dirname, '../../.env')});
 
 const BASE_URL = process.env.PW_BASE_URL || 'https://localhost:8000';
-// Shared with cc_playwright voicemail/call flows; required for deterministic mic input in VM-CALL-001.
-const dummyAudioPath = path.resolve(__dirname, '../../cc_playwright/wav/dummyAudio.wav');
+// Deterministic mic input for VM-CALL-001; owned by packages/calling/playwright.
+const dummyAudioPath = path.resolve(__dirname, './playwright/fixtures/dummyAudio.wav');
 
 // Browser selection via PW_BROWSER env var: 'chrome' (default), 'firefox', 'edge', 'safari'
 const PW_BROWSER = process.env.PW_BROWSER || 'chrome';
