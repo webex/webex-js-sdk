@@ -2483,13 +2483,16 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore
     const llmWebsocketUrl = this.webex.internal.llm?.getWebSocketUrl?.() || undefined;
 
-    // Aligned with UCF desktop (HashTreeSyncComplete): the event carries only the LLM websocket url
-    // identifier and the syncLatency block - no llmInfo/dataSet field.
+    // Per the LLM sync-latency spec, the event carries the LLM websocket url identifier,
+    // the llmInfo.dataSet (main, atd-active or atd-unmuted) and the syncLatency block.
     const clientEvent = {
       name: 'client.locus.sync.complete',
       payload: {
         identifiers: {
           llmWebsocketUrl,
+        },
+        llmInfo: {
+          dataSet: completed.dataSet,
         },
         syncLatency: completed.syncLatency,
       },

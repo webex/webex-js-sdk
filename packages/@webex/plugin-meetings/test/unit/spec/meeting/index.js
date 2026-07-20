@@ -15400,6 +15400,9 @@ describe('plugin-meetings', () => {
               identifiers: {
                 llmWebsocketUrl: 'wss://llm-websocket-url',
               },
+              llmInfo: {
+                dataSet: 'main',
+              },
               syncLatency: {totalTime: 50},
             },
             options: {
@@ -15425,6 +15428,9 @@ describe('plugin-meetings', () => {
             payload: {
               identifiers: {
                 llmWebsocketUrl: undefined,
+              },
+              llmInfo: {
+                dataSet: 'main',
               },
               syncLatency: {totalTime: 50},
             },
