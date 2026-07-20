@@ -7748,8 +7748,12 @@ export default class Meeting extends StatelessWebexPlugin {
         typeof statsEntry.firstAudioFrameTimestamp === 'number' &&
         Number.isFinite(statsEntry.firstAudioFrameTimestamp)
       ) {
-        firstAudioFrameTimestamp = statsEntry.firstAudioFrameTimestamp;
-        break;
+        if (
+          firstAudioFrameTimestamp === undefined ||
+          statsEntry.firstAudioFrameTimestamp < firstAudioFrameTimestamp
+        ) {
+          firstAudioFrameTimestamp = statsEntry.firstAudioFrameTimestamp;
+        }
       }
     }
 
