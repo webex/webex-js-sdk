@@ -482,7 +482,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.localRoapMessage = {} as RoapMessage;
 
     // Hardcoded url
-    this.mobiusUrl = "wss://mobius.wamswxc-p-2.prod.infra.webex.com/v1/calling/web";
+    // this.mobiusUrl = "wss://mobius.wamswxc-p-2.prod.infra.webex.com/v1/calling/web";
     this.receivedRoapOKSeq = 0;
     this.mediaNegotiationCompleted = false;
     this.connectPending = false;
