@@ -778,10 +778,14 @@ describe('plugin-mercury', () => {
             // Calling disconnect will abort the backoffCall, close the socket, and
             // reject the connect
             mercury.disconnect();
+<<<<<<< HEAD
             assert.notOk(
               mercury.backoffCall,
               'Mercury backoffCall is still defined'
             );
+=======
+            assert.notExists(mercury.backoffCall, 'Mercury backoffCall is still defined');
+>>>>>>> 9cbdb1698e (feat(internal-plugin-mercury): removed redundant _shutdownSwitchoverInProgress (#5084))
             // The socket will never be unset (which seems bad)
             assert.isDefined(mercury.socket, 'Mercury socket is not defined');
 
@@ -1074,7 +1078,7 @@ describe('plugin-mercury', () => {
 
         it('should be idempotent - no-op if already in progress', () => {
           // Simulate an existing switchover in progress
-          mercury._shutdownSwitchoverInProgress = true;
+          mercury._shutdownSwitchoverBackoffCall = {abort: sinon.stub()};
 
           mercury._handleImminentShutdown();
 
@@ -1116,8 +1120,8 @@ describe('plugin-mercury', () => {
 
           mercury._handleImminentShutdown();
 
-          // When an exception happens synchronously, the in-progress flag should be cleared
-          assert.isFalse(mercury._shutdownSwitchoverInProgress);
+          // When an exception happens synchronously, the backoff call should be cleared
+          assert.notExists(mercury._shutdownSwitchoverBackoffCall);
           mercury._connectWithBackoff.restore();
         });
       });
@@ -1497,7 +1501,7 @@ describe('plugin-mercury', () => {
           });
         });
 
-        it('should set _shutdownSwitchoverInProgress flag during switchover', () => {
+        it('should set _shutdownSwitchoverBackoffCall during switchover', () => {
           // Since _connectWithBackoff is stubbed, we can just check that
           // _handleImminentShutdown sets the flag
           connectWithBackoffStub.callsFake(() => {
@@ -1506,8 +1510,7 @@ describe('plugin-mercury', () => {
 
           mercury._handleImminentShutdown();
 
-          // The flag is set to true initially when switchover starts
-          // (but then gets cleared in finally if the promise rejects)
+          // The switchover id is set when switchover starts
           assert.isDefined(mercury._shutdownSwitchoverId);
         });
 
@@ -1801,10 +1804,14 @@ describe('plugin-mercury', () => {
           });
         });
 
-        it('should set and clear state flags appropriately', () => {
-          sinon.stub(mercury, '_attemptConnection').callsFake((url, cb) => cb());
+        it('should set _shutdownSwitchoverBackoffCall during attempt and clear it after completion', () => {
+          let backoffCallDuringAttempt;
 
-          mercury._shutdownSwitchoverInProgress = true;
+          sinon.stub(mercury, '_attemptConnection').callsFake((url, cb) => {
+            // Capture the backoff call state during the connection attempt
+            backoffCallDuringAttempt = mercury._shutdownSwitchoverBackoffCall;
+            cb();
+          });
 
           const promise = mercury._connectWithBackoff(undefined, {
             isShutdownSwitchover: true,
@@ -1812,7 +1819,13 @@ describe('plugin-mercury', () => {
           });
 
           return promise.then(() => {
-            assert.isFalse(mercury._shutdownSwitchoverInProgress);
+            // Verify backoff call was set during the operation
+            assert.isDefined(backoffCallDuringAttempt, 'backoffCall should be set during attempt');
+            // Verify backoff call is cleared after completion
+            assert.notExists(
+              mercury._shutdownSwitchoverBackoffCall,
+              'backoffCall should be cleared after completion'
+            );
             mercury._attemptConnection.restore();
           });
         });
@@ -1842,7 +1855,7 @@ describe('plugin-mercury', () => {
 
           return mercury.disconnect().then(() => {
             // If we get here, disconnect completed without error
-            assert.notOk(mercury._shutdownSwitchoverBackoffCall);
+            assert.notExists(mercury._shutdownSwitchoverBackoffCall);
           });
         });
       });
