@@ -346,6 +346,12 @@ function appendSuggestionCard(data, options = {}) {
   card.querySelector('.assistant-suggestion-card__meta').textContent = data.suggestionSource || '';
   card.querySelectorAll('.assistant-suggestion-card__actions button').forEach((button) => {
     button.addEventListener('click', () => {
+      card.querySelectorAll('.assistant-suggestion-card__actions button').forEach((actionButton) => {
+        actionButton.classList.remove('assistant-suggestion-card__action--selected');
+        actionButton.setAttribute('aria-pressed', 'false');
+      });
+      button.classList.add('assistant-suggestion-card__action--selected');
+      button.setAttribute('aria-pressed', 'true');
       sendRealTimeAssistanceUserAction(button.dataset.actionId, data, options);
     });
   });
