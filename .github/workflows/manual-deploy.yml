@@ -1,12 +1,15 @@
 name: Manual Deploy
 run-name: ${{ github.actor }} is manually ${{ inputs.dry-run && 'dry-running' || 'deploying' }} packages${{ inputs.version && format(' (v{0})', inputs.version) || ' (auto version)' }}
 
-# PHASE 1 (this workflow): authorize the actor, parse and validate the inputs
-# (version, dist-tag, dry-run), resolve the publishable package set and the
-# deploy version, and print all of it to the run logs/summary. It performs NO
-# publishing — no NPM publish, no docs force-push, no git tag. Phase 2 adds the
-# build-for-publish, NPM publish, documentation, and tag jobs on top of the
-# `resolve` job's outputs.
+# A manually-triggered deploy for hotfixes, re-releases, and recovering from a
+# failed automated publish. It authorizes the actor, resolves the publishable
+# package set and deploy version, then (unless dry-run) publishes to NPM, pushes
+# the documentation/changelog, and creates the git tag.
+#
+# Job flow (linear — publish-tag needs both publish-npm and publish-documentation):
+#   authorize → initialize → resolve → publish-npm → publish-documentation → publish-tag
+# The `resolve` job is the single source of truth for the package set and
+# version; every publish job consumes its outputs.
 
 on:
   workflow_dispatch:
@@ -28,14 +31,17 @@ on:
         type: boolean
         default: false
 
-# Prevent concurrent manual deploys from racing on the documentation
-# force-push and tag creation. Explicit-version runs serialize per version.
-# Blank (auto-version) runs share a single stable key so they cannot run
-# concurrently: each resolves the next version from the current `latest`, so
-# two simultaneous runs would otherwise resolve the same version and the loser
-# would fail after doing release work.
+# Serialize ALL manual deploys behind a single lock, regardless of the
+# requested version. Every non-dry run force-pushes the `documentation` branch
+# and pushes a git tag; two runs (even for different versions) that reach
+# `publish-documentation` together race the `--force-with-lease` push, and the
+# loser fails only after `publish-npm` has already uploaded packages — leaving
+# that release without docs or a tag. A blank (auto-version) run additionally
+# resolves the next version from the current `latest`, so two of them would
+# otherwise resolve the same version. A single stable key avoids both hazards;
+# `cancel-in-progress: false` lets the first run finish before the next starts.
 concurrency:
-  group: manual-deploy-${{ inputs.version || 'auto' }}
+  group: manual-deploy
   cancel-in-progress: false
 
 env:
@@ -109,27 +115,35 @@ jobs:
           fi
 
       - name: Checkout Project
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # fetch-depth: 0 downloads the complete git history, required for
           # changelog generation and tag operations downstream.
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
-      - name: Uncache Dependencies
-        uses: actions/cache@v4
+      - id: restore-dependencies
+        name: Restore Dependencies
+        uses: actions/cache/restore@v5
         with:
           path: '**/node_modules'
           key: node-modules-${{ hashFiles('./yarn.lock') }}
 
       - name: Install Dependencies
         run: yarn
+
+      - name: Cache Dependencies
+        uses: actions/cache/save@v5
+        if: steps.restore-dependencies.outputs.cache-hit != 'true'
+        with:
+          path: '**/node_modules'
+          key: ${{ steps.restore-dependencies.outputs.cache-primary-key }}
 
   resolve:
     name: Resolve Packages and Version
@@ -139,23 +153,24 @@ jobs:
     outputs:
       packages: ${{ steps.list.outputs.packages }}
       packages-glob: ${{ steps.list.outputs.packages-glob }}
+      excluded: ${{ steps.list.outputs.excluded }}
       version: ${{ steps.resolve-version.outputs.version }}
 
     steps:
       - name: Checkout Project
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
           cache: 'yarn'
 
       - name: Uncache Dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: '**/node_modules'
           key: node-modules-${{ hashFiles('./yarn.lock') }}
@@ -165,10 +180,18 @@ jobs:
 
       - name: Build Tools
         # The `*-tools` workspaces provide `package-tools`, used below to
-        # auto-resolve the deploy version. Phase 1 resolves and logs only, so
-        # it builds the tooling but not the publishable packages themselves —
-        # the full build-for-publish lives in the Phase 2 publish jobs.
+        # auto-resolve the deploy version and to resolve the publishable set.
         run: yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
+
+      - name: Build Webex Core
+        run: yarn workspace @webex/webex-core run build:src
+
+      - name: Build Other Packages
+        # `--topological` waits for each workspace's local dependencies to build
+        # first (many packages depend on other local workspaces, e.g.
+        # @webex/http-core on @webex/common); without it a clean runner can start
+        # a dependent build before its dependency's `dist` exists.
+        run: yarn workspaces foreach --parallel --topological --verbose run build:src
 
       - name: Resolve publishable packages
         id: list
@@ -182,6 +205,18 @@ jobs:
         # workspaces that actually define `deploy:npm` so all three operate on
         # an identical, genuinely-publishable set.
         #
+        # A few workspaces DO define `deploy:npm` but are still intentionally
+        # excluded from a manual deploy (this mirrors the explicit allow-list
+        # from the original publish-script PR #4411):
+        #   - @webex/cli-tools, @webex/package-tools — internal build tooling
+        #     that is never released on the `latest` line.
+        #   - @webex/byods — independently versioned (its own 1.x line), so the
+        #     uniform release version this workflow sets must not be applied.
+        #   - @webex/plugin-presence — not yet released on `latest`.
+        # This workflow sets ONE uniform version across the whole set and
+        # publishes under `latest`; including these would push tooling/unreleased
+        # packages to `latest` and knock @webex/byods off its own version line.
+        #
         # Two forms are emitted because consumers need different shapes:
         #   - `packages` (space-separated): passed unquoted to
         #     `package-tools changelog --packages` as variadic args.
@@ -190,21 +225,44 @@ jobs:
         #     does NOT work with `--from`: quoted it is one glob containing
         #     spaces (matches nothing); unquoted only the first word is read.
         run: |
-          # `workspaces list --json` emits one {location,name} object per line;
-          # keep names whose package.json has a deploy:npm script.
-          PACKAGES=$(yarn workspaces list --json --no-private \
+          # `workspaces list --json` emits one {location,name} object per line.
+          # The node script partitions those workspaces into the packages that
+          # will be published and the ones that are dropped, and prints two
+          # tab-separated lines: line 1 = included, line 2 = excluded (each as
+          # `name` or `name (reason)`), so both can be surfaced in the plan.
+          RESOLVED=$(yarn workspaces list --json --no-private \
             | node -e '
               const fs = require("fs");
               const path = require("path");
-              const names = [];
+              // Workspaces that define deploy:npm but are intentionally left
+              // out of a manual deploy (see the note above).
+              const EXCLUDED = new Set([
+                "@webex/cli-tools",
+                "@webex/package-tools",
+                "@webex/byods",
+                "@webex/plugin-presence",
+              ]);
+              const included = [];
+              const excluded = [];
               for (const line of fs.readFileSync(0, "utf8").split("\n")) {
                 if (!line.trim()) continue;
                 const { location, name } = JSON.parse(line);
                 const pkg = JSON.parse(fs.readFileSync(path.join(location, "package.json"), "utf8"));
-                if (pkg.scripts && pkg.scripts["deploy:npm"]) names.push(name);
+                const hasDeploy = !!(pkg.scripts && pkg.scripts["deploy:npm"]);
+                if (EXCLUDED.has(name)) {
+                  excluded.push(name + " (intentionally excluded)");
+                } else if (!hasDeploy) {
+                  excluded.push(name + " (no deploy:npm script)");
+                } else {
+                  included.push(name);
+                }
               }
-              process.stdout.write(names.join(" "));
+              // Line 1: publishable names (space-separated). Line 2: excluded
+              // entries (tab-separated, since each carries a parenthetical).
+              process.stdout.write(included.join(" ") + "\n" + excluded.join("\t"));
             ')
+          PACKAGES=$(printf "%s" "$RESOLVED" | sed -n "1p")
+          EXCLUDED=$(printf "%s" "$RESOLVED" | sed -n "2p")
           if [ -z "$PACKAGES" ]; then
             echo "::error::No publishable packages resolved." >&2
             exit 1
@@ -213,6 +271,12 @@ jobs:
           PACKAGES_GLOB="{$(echo "$PACKAGES" | tr ' ' ',')}"
           echo "packages=$PACKAGES" >> "$GITHUB_OUTPUT"
           echo "packages-glob=$PACKAGES_GLOB" >> "$GITHUB_OUTPUT"
+          # Excluded entries are tab-separated so each `name (reason)` stays
+          # intact; consumers split on tabs to list them one per line.
+          echo "excluded<<EOF" >> "$GITHUB_OUTPUT"
+          printf "%s" "$EXCLUDED" | tr "\t" "\n" >> "$GITHUB_OUTPUT"
+          echo "" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Resolve deploy version
         id: resolve-version
@@ -238,12 +302,13 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Summarize resolved deploy plan
-        # Phase 1 ends here: surface everything Phase 2 will act on so an
-        # operator can sanity-check a run before the publishing phases exist.
+        # Surface everything the publish jobs will act on so an operator can
+        # sanity-check the run from the Actions UI before anything is published.
         env:
           VERSION: ${{ steps.resolve-version.outputs.version }}
           PACKAGES: ${{ steps.list.outputs.packages }}
           PACKAGES_GLOB: ${{ steps.list.outputs.packages-glob }}
+          EXCLUDED: ${{ steps.list.outputs.excluded }}
           INPUT_VERSION: ${{ inputs.version }}
           DIST_TAG: ${{ inputs.dist-tag }}
           DRY_RUN: ${{ inputs.dry-run }}
@@ -256,14 +321,21 @@ jobs:
           fi
           # Count packages without assuming any are present.
           PACKAGE_COUNT=$(echo "$PACKAGES" | wc -w | tr -d '[:space:]')
+          # Excluded entries are newline-separated; count the non-empty lines.
+          EXCLUDED_COUNT=$(printf "%s" "$EXCLUDED" | grep -c . || true)
 
           # Emit to both the step log and the run summary so the resolved plan
           # is easy to find from the Actions UI.
           {
-            echo "## Manual deploy — Phase 1 resolution"
+            echo "## Manual deploy — resolved plan"
             echo ""
-            echo "**No publishing is performed by this workflow.** Phase 2 will"
-            echo "consume the values below to publish to NPM, push docs, and tag."
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "**Dry run:** packaging is validated but nothing is published,"
+              echo "no docs are pushed, and no git tag is created."
+            else
+              echo "The publish jobs will publish the packages below to NPM,"
+              echo "push the documentation/changelog, and create the git tag."
+            fi
             echo ""
             echo "| Field | Value |"
             echo "| --- | --- |"
@@ -273,6 +345,7 @@ jobs:
             echo "| Dist-tag | \`$DIST_TAG\` |"
             echo "| Dry run | \`$DRY_RUN\` |"
             echo "| Publishable package count | $PACKAGE_COUNT |"
+            echo "| Excluded package count | $EXCLUDED_COUNT |"
             echo ""
             echo "### Publishable packages"
             echo ""
@@ -281,7 +354,316 @@ jobs:
             echo "$PACKAGES" | tr ' ' '\n'
             echo '```'
             echo ""
+            echo "### Excluded packages"
+            echo ""
+            echo "These workspaces are NOT published by this deploy — either"
+            echo "intentionally excluded or missing a \`deploy:npm\` script."
+            echo ""
+            echo '```'
+            # Already newline-separated (name, plus a parenthetical reason).
+            printf "%s\n" "$EXCLUDED"
+            echo '```'
+            echo ""
             echo "### Package glob (for \`yarn workspaces foreach --from\`)"
             echo ""
             echo "\`$PACKAGES_GLOB\`"
           } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Cache Distributables
+        # Persist the built `dist` outputs so the publish jobs can restore them
+        # instead of rebuilding from scratch on each runner.
+        uses: actions/cache@v5
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+  publish-npm:
+    name: Publish - NPM
+    needs: resolve
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v5
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v5
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Set Package Versions
+        # `package-tools` exposes no `version set` command, so write the resolved
+        # version into every publishable package.json with `npm pkg set`.
+        # Internal deps use `workspace:*` and don't need rewriting.
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          PACKAGES_GLOB: ${{ needs.resolve.outputs.packages-glob }}
+        run: yarn workspaces foreach --from "$PACKAGES_GLOB" exec npm pkg set version="$VERSION"
+
+      - name: Display Package Information
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          DIST_TAG: ${{ inputs.dist-tag }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          echo "Setting all packages to version: $VERSION"
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "DRY RUN: packaging will be validated but NOT published to NPM."
+          else
+            echo "Packages will be published with the '$DIST_TAG' tag."
+          fi
+
+      - name: Build all packages for publish
+        run: yarn run build:publish
+
+      - name: Build a webex UMD
+        run: yarn run build:script
+
+      - name: Add NPM token to .yarnrc.yml file
+        if: ${{ inputs.dry-run != true }}
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "npmAuthToken: $NPM_TOKEN" >> ~/.yarnrc.yml
+
+      - name: Deploy Packages
+        if: ${{ inputs.dry-run != true }}
+        # `--tolerate-republish` makes reruns idempotent: npm versions are
+        # immutable, so without it a rerun (the recovery scenario this workflow
+        # exists for) would stop on the first already-published package and never
+        # reach the ones still missing. With it, Yarn skips already-published
+        # packages and publishes only the remaining ones. Args after
+        # `run deploy:npm` forward to each workspace's `yarn npm publish`.
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          DIST_TAG: ${{ inputs.dist-tag }}
+          PACKAGES_GLOB: ${{ needs.resolve.outputs.packages-glob }}
+        run: yarn workspaces foreach --from "$PACKAGES_GLOB" --verbose run deploy:npm --access public --tag "$DIST_TAG" --tolerate-republish
+
+      - name: Deploy Packages (Dry Run)
+        if: ${{ inputs.dry-run == true }}
+        # `yarn npm publish` has no `--dry-run`, so use `yarn pack --dry-run`,
+        # which resolves `workspace:*` deps and exercises the full packaging path
+        # (file selection, prepack scripts) without uploading anything.
+        env:
+          PACKAGES_GLOB: ${{ needs.resolve.outputs.packages-glob }}
+        run: yarn workspaces foreach --from "$PACKAGES_GLOB" --verbose pack --dry-run
+
+  publish-documentation:
+    name: Publish - Documentation
+    needs: [resolve, publish-npm]
+    runs-on: ubuntu-latest
+    # A dry run validates packaging only; it must not force-push docs.
+    if: ${{ inputs.dry-run != true }}
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v5
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v5
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Build tools and set versions
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          PACKAGES_GLOB: ${{ needs.resolve.outputs.packages-glob }}
+        run: |
+          yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
+          yarn workspaces foreach --from "$PACKAGES_GLOB" exec npm pkg set version="$VERSION"
+
+      - name: Build packages locally
+        run: yarn build:local
+
+      - name: Build Docs
+        run: yarn run build:docs
+
+      - name: Set Git Identity
+        run: |
+          git config user.email "${GIT_AUTHOR_EMAIL}"
+          git config user.name "${GIT_AUTHOR_NAME}"
+
+      - name: Get existing changelog from documentation Branch
+        run: |
+          git fetch origin documentation
+          git checkout origin/documentation -- docs/changelog/logs
+
+      - name: Update changelog
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          DIST_TAG: ${{ inputs.dist-tag }}
+          PACKAGES: ${{ needs.resolve.outputs.packages }}
+        run: |
+          # Anchor the changelog to the previous release tag so a manual deploy
+          # captures every commit since the last release, not just HEAD~1.
+          #
+          # Exclude the tag for the version being deployed: on a recovery rerun
+          # its `v$VERSION` tag may already exist on the checked-out commit, and
+          # `package-tools changelog` reads `git log <base>..HEAD`, which is empty
+          # when the base is the current commit — the recovered commits would be
+          # dropped from the changelog. `--exclude` skips it so we anchor to the
+          # genuinely-previous release. Fall back to HEAD~1 when no prior tag
+          # exists (fresh repos).
+          if PREVIOUS_TAG=$(git describe --tags --abbrev=0 --exclude="v$VERSION" 2>/dev/null); then
+            PREVIOUS_COMMIT=$(git rev-list -n 1 "$PREVIOUS_TAG")
+            echo "Using previous tag '$PREVIOUS_TAG' ($PREVIOUS_COMMIT) as changelog base."
+          else
+            PREVIOUS_COMMIT=$(git rev-parse HEAD~1)
+            echo "No prior tag found; falling back to HEAD~1 ($PREVIOUS_COMMIT) as changelog base."
+          fi
+          # `--packages` is intentionally unquoted so commander receives the
+          # workspace names as variadic args (matching deploy.yml's invocation).
+          #
+          # NOTE: `package-tools changelog` derives each package's version from
+          # the registry `dist-tags[$DIST_TAG]` (via Package.inspect), NOT from
+          # $VERSION. This is correct in the normal flow because publish-npm runs
+          # first and moves the dist-tag to $VERSION before this job. On a
+          # recovery rerun for an already-published version whose dist-tag has
+          # since moved elsewhere, the changelog entry would track the current
+          # tag rather than $VERSION; verify/re-point the dist-tag before
+          # re-running docs in that case.
+          yarn package-tools changelog --packages $PACKAGES --tag "$DIST_TAG" --commit "$PREVIOUS_COMMIT"
+
+      - name: Update Changelog and Publish Docs Folder
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          # Scope the change check to `docs/`: the `Build tools and set versions`
+          # step dirties every package.json before this runs, so a whole-tree
+          # `git status` is always non-empty even when the changelog/docs build
+          # produced no docs changes. On such a no-op docs run or recovery rerun
+          # `git add docs/` would stage nothing and `git commit` would fail with
+          # exit 1 — after publish-npm already uploaded — blocking tag creation.
+          git add docs/
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(docs): update docs for manual deployment v$VERSION"
+            # --force-with-lease prevents overwriting concurrent commits to the
+            # documentation branch from other workflows.
+            git push origin HEAD:documentation --force-with-lease
+          else
+            echo "No docs changes to publish; skipping documentation commit."
+          fi
+
+  publish-tag:
+    name: Publish - Tags
+    runs-on: ubuntu-latest
+    needs: [resolve, publish-npm, publish-documentation]
+    # A dry run validates packaging only; it must not create or push a git tag.
+    if: ${{ inputs.dry-run != true }}
+
+    outputs:
+      message: ${{ steps.versionextractor.outputs.message }}
+      version: ${{ steps.versionextractor.outputs.version }}
+      commit: ${{ steps.lastcommit.outputs.commit }}
+      proceed: ${{ steps.skipcondition.outputs.proceed }}
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v5
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Extract latest version and commit message
+        id: versionextractor
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          {
+            echo 'message<<EOF'
+            git log -1 --oneline --no-decorate
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          echo "version=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Conditions to skip tag publish
+        id: skipcondition
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "Tag v$VERSION already exists. Skipping tag creation."
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Creating the tag v$VERSION."
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Get the last commit hash
+        id: lastcommit
+        if: steps.skipcondition.outputs.proceed == 'true'
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set Git Identity
+        if: steps.skipcondition.outputs.proceed == 'true'
+        run: |
+          git config user.email "${GIT_AUTHOR_EMAIL}"
+          git config user.name "${GIT_AUTHOR_NAME}"
+
+      - name: Create a tag for the last commit
+        if: steps.skipcondition.outputs.proceed == 'true'
+        env:
+          TAG_VERSION: ${{ steps.versionextractor.outputs.version }}
+          TAG_MESSAGE: ${{ steps.versionextractor.outputs.message }}
+          TAG_COMMIT: ${{ steps.lastcommit.outputs.commit }}
+        run: git tag -a "$TAG_VERSION" "$TAG_COMMIT" -m "$TAG_MESSAGE"
+
+      - name: Publish the tag to GitHub
+        if: steps.skipcondition.outputs.proceed == 'true'
+        env:
+          TAG_VERSION: ${{ steps.versionextractor.outputs.version }}
+        run: git push origin "$TAG_VERSION"
