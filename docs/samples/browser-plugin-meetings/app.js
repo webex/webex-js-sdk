@@ -121,8 +121,10 @@ function generateWebexConfig({credentials}) {
         enableMediaNegotiatedEvent: false,
         enableUnifiedMeetings: true,
         enableAdhocMeetings: true,
-        enableTcpReachability: tcpReachabilityConfigElm.checked,
-        enableTlsReachability: tlsReachabilityConfigElm.checked,
+      },
+      enableReachabilityChecks: {
+        tcp: tcpReachabilityConfigElm.checked,
+        tls: tlsReachabilityConfigElm.checked,
       },
       enableAutomaticLLM: enableLLM.checked,
     },

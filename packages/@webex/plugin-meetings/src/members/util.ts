@@ -13,7 +13,7 @@ import {
   ALIAS,
 } from '../constants';
 
-import {RoleAssignmentOptions, RoleAssignmentRequest, ServerRoleShape} from './types';
+import {RoleAssignmentOptions, RoleAssignmentRequest, ServerRoleShape, ServerRoles} from './types';
 import {Invitee} from '../meeting/type';
 
 const MembersUtil = {
@@ -330,12 +330,20 @@ const MembersUtil = {
     };
   },
 
-  getTransferHostToMemberRequestParams: (options) => {
-    const body = {
+  getTransferHostToMemberRequestParams: (options: any) => {
+    const body: Record<string, any> = {
       role: {
-        moderator: options.moderator,
+        roles: [
+          {
+            hasRole: true,
+            type: ServerRoles.Moderator,
+          },
+        ],
       },
     };
+    if (options.authorizingLocusUrl) {
+      body.authorizingLocusUrl = options.authorizingLocusUrl;
+    }
     const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${CONTROLS}`;
 
     return {

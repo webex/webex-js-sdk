@@ -75,6 +75,10 @@ const MetricsBatcher = Batcher.extend({
    */
   handleHttpError(reason) {
     if (reason instanceof WebexHttpError.NetworkOrCORSError) {
+      if (!this.config.batcherRetryOnNetworkError) {
+        return Reflect.apply(Batcher.prototype.handleHttpError, this, [reason]);
+      }
+
       this.logger.warn(
         'metrics-batcher: received network error submitting metrics, reenqueuing payload'
       );

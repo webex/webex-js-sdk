@@ -83,7 +83,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('only includes interstitial display hints when user has not joined the meeting', () => {
+      it('only includes interstitial display (VOIP_IS_ENABLED) hints when user has not joined the meeting', () => {
         assert.deepEqual(InfoUtils.parse(info, ['MODERATOR'], false), {
           policy: {HINT_3: true, VOIP_IS_ENABLED: true},
           moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
@@ -104,6 +104,102 @@ describe('plugin-meetings', () => {
           userDisplayHints: [
             'HINT_3',
             'VOIP_IS_ENABLED',
+            'HINT_1',
+            'HINT_2',
+            'LOWER_SOMEONE_ELSES_HAND',
+          ],
+        });
+      });
+
+      it('only includes interstitial display (ANONYMOUS_DISPLAY_NAMES_ENABLED) hints when user has not joined the meeting', () => {
+        const interstitialInfo = {
+          displayHints: {
+            moderator: ['HINT_1', 'HINT_2'],
+            joined: [
+              'HINT_3',
+              'ANONYMOUS_DISPLAY_NAMES_ENABLED',
+            ],
+            coHost: ['HINT_4'],
+            presenter: ['HINT_5'],
+            panelist: ['HINT_6'],
+            attendee: ['HINT_7'],
+          },
+        };
+
+        assert.deepEqual(InfoUtils.parse(interstitialInfo, ['MODERATOR'], false), {
+          policy: {HINT_3: true, ANONYMOUS_DISPLAY_NAMES_ENABLED: true},
+          moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
+          coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
+          presenter: {HINT_5: true},
+          panelist: {HINT_6: true},
+          attendee: {HINT_7: true},
+          userDisplayHints: ['ANONYMOUS_DISPLAY_NAMES_ENABLED', 'HINT_1', 'HINT_2', 'LOWER_SOMEONE_ELSES_HAND'],
+        });
+
+        assert.deepEqual(InfoUtils.parse(interstitialInfo, ['MODERATOR'], true), {
+          policy: {HINT_3: true, ANONYMOUS_DISPLAY_NAMES_ENABLED: true},
+          moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
+          coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
+          presenter: {HINT_5: true},
+          panelist: {HINT_6: true},
+          attendee: {HINT_7: true},
+          userDisplayHints: [
+            'HINT_3',
+            'ANONYMOUS_DISPLAY_NAMES_ENABLED',
+            'HINT_1',
+            'HINT_2',
+            'LOWER_SOMEONE_ELSES_HAND',
+          ],
+        });
+      });
+
+      it('includes all interstitial display hints (VOIP_IS_ENABLED and ANONYMOUS_DISPLAY_NAMES_ENABLED) when user has not joined the meeting', () => {
+        const interstitialInfo = {
+          displayHints: {
+            moderator: ['HINT_1', 'HINT_2'],
+            joined: [
+              'HINT_3',
+              'VOIP_IS_ENABLED',
+              'ANONYMOUS_DISPLAY_NAMES_ENABLED',
+              'HINT_NON_INTERSTITIAL',
+            ],
+            coHost: ['HINT_4'],
+            presenter: ['HINT_5'],
+            panelist: ['HINT_6'],
+            attendee: ['HINT_7'],
+          },
+        };
+
+        assert.deepEqual(InfoUtils.parse(interstitialInfo, [], false), {
+          policy: {
+            HINT_3: true,
+            VOIP_IS_ENABLED: true,
+            ANONYMOUS_DISPLAY_NAMES_ENABLED: true,
+            HINT_NON_INTERSTITIAL: true,
+          },
+          moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
+          coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
+          presenter: {HINT_5: true},
+          panelist: {HINT_6: true},
+          attendee: {HINT_7: true},
+          userDisplayHints: ['VOIP_IS_ENABLED', 'ANONYMOUS_DISPLAY_NAMES_ENABLED'],
+        });
+
+        assert.deepEqual(InfoUtils.parse(interstitialInfo, ['MODERATOR'], false), {
+          policy: {
+            HINT_3: true,
+            VOIP_IS_ENABLED: true,
+            ANONYMOUS_DISPLAY_NAMES_ENABLED: true,
+            HINT_NON_INTERSTITIAL: true,
+          },
+          moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
+          coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
+          presenter: {HINT_5: true},
+          panelist: {HINT_6: true},
+          attendee: {HINT_7: true},
+          userDisplayHints: [
+            'VOIP_IS_ENABLED',
+            'ANONYMOUS_DISPLAY_NAMES_ENABLED',
             'HINT_1',
             'HINT_2',
             'LOWER_SOMEONE_ELSES_HAND',
