@@ -46,6 +46,7 @@ describe('webex-core', () => {
         services.initialize();
 
         // call the onReady callback
+        services.listenToOnce.getCall(0).args[2]();
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
 
@@ -59,6 +60,7 @@ describe('webex-core', () => {
         services.initialize();
 
         // call the onReady callback
+        services.listenToOnce.getCall(0).args[2]();
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
 
@@ -81,6 +83,7 @@ describe('webex-core', () => {
           services.initialize();
 
           // call the onReady callback
+          services.listenToOnce.getCall(0).args[2]();
           services.listenToOnce.getCall(1).args[2]();
 
           await waitForAsync();
@@ -114,6 +117,7 @@ describe('webex-core', () => {
           services.initialize();
 
           // call the onReady callback
+          services.listenToOnce.getCall(0).args[2]();
           services.listenToOnce.getCall(1).args[2]();
 
           await waitForAsync();
@@ -126,9 +130,13 @@ describe('webex-core', () => {
         }
       );
 
-      it('sets services.ready to true immediately when waitForCatalogInit is disabled (default)', () => {
+      it('sets services.ready to true when waitForCatalogInit is disabled (default)', () => {
         services.listenToOnce = sinon.stub();
         services.initialize();
+
+        // Fire the change:config handler which decides gated-vs-ungated and, in
+        // ungated mode, flips services.ready to true.
+        services.listenToOnce.getCall(0).args[2]();
 
         assert.isTrue(services.ready, 'services.ready should be true so it does not block webex.ready');
       });
@@ -136,6 +144,9 @@ describe('webex-core', () => {
       it('listens on the "ready" event when waitForCatalogInit is disabled (default)', () => {
         services.listenToOnce = sinon.stub();
         services.initialize();
+
+        // Fire change:config to trigger the mode-specific listener registration.
+        services.listenToOnce.getCall(0).args[2]();
 
         const [, event] = services.listenToOnce.getCall(1).args;
         assert.equal(event, 'ready', 'default path listens on webex ready');
@@ -166,6 +177,9 @@ describe('webex-core', () => {
         services.listenToOnce = sinon.stub();
         services.initialize();
 
+        // Fire change:config to trigger the mode-specific listener registration.
+        services.listenToOnce.getCall(0).args[2]();
+
         const [, event] = services.listenToOnce.getCall(1).args;
         assert.equal(event, 'loaded', 'gated path must listen on loaded to avoid deadlock');
       });
@@ -178,6 +192,7 @@ describe('webex-core', () => {
         };
 
         services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
 
@@ -189,6 +204,7 @@ describe('webex-core', () => {
         services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
 
         services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
 
@@ -204,6 +220,7 @@ describe('webex-core', () => {
         services.logger.error = sinon.stub();
 
         services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
 
@@ -217,6 +234,7 @@ describe('webex-core', () => {
         services.logger.error = sinon.stub();
 
         services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
 
@@ -234,6 +252,7 @@ describe('webex-core', () => {
         services.logger.error = sinon.stub();
 
         services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
         services.listenToOnce.getCall(1).args[2]();
 
         await clock.tickAsync(15_001);
@@ -261,6 +280,7 @@ describe('webex-core', () => {
         };
 
         services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
 
@@ -282,6 +302,7 @@ describe('webex-core', () => {
         services.initialize();
         // initialize() creates a new catalog and replaces the WeakMap entry.
         const currentCatalog = services._getCatalog();
+        services.listenToOnce.getCall(0).args[2]();
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
 
@@ -308,6 +329,7 @@ describe('webex-core', () => {
         services.initialize();
         // initialize() creates a new catalog; grab the current one.
         const currentCatalog = services._getCatalog();
+        services.listenToOnce.getCall(0).args[2]();
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
 
@@ -332,6 +354,7 @@ describe('webex-core', () => {
         services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
 
         services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
         await waitForAsync();
