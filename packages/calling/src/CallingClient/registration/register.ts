@@ -61,6 +61,13 @@ import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
 import {APIRequest} from '../utils/request';
 
+const HARDCODED_MOBIUS_REGISTRATION_URL =
+  'wss://mobius.wamswxc-p-2.prod.infra.webex.com/v1/calling/web';
+
+function getMobiusRegistrationBaseUrl(url: string) {
+  return url.endsWith('/') ? url : `${url}/`;
+}
+
 /**
  *
  */
@@ -219,10 +226,28 @@ export class Registration implements IRegistration {
     };
   }
 
+  /**
   public setMobiusServers(primaryMobiusUris: string[], backupMobiusUris: string[]) {
     log.log(METHOD_START_MESSAGE, {method: METHODS.SET_MOBIUS_SERVERS, file: REGISTRATION_FILE});
     this.primaryMobiusUris = primaryMobiusUris;
     this.backupMobiusUris = backupMobiusUris;
+  }
+  */
+  public setMobiusServers(primaryMobiusUris: string[], backupMobiusUris: string[]) {
+    log.log(METHOD_START_MESSAGE, {method: METHODS.SET_MOBIUS_SERVERS, file: REGISTRATION_FILE});
+    const mobiusRegistrationUrl = getMobiusRegistrationBaseUrl(HARDCODED_MOBIUS_REGISTRATION_URL);
+
+    log.info(
+      `Ignoring discovered Mobius servers, primary: ${primaryMobiusUris.length}, ` +
+        `backup: ${backupMobiusUris.length}.`,
+      {method: METHODS.SET_MOBIUS_SERVERS, file: REGISTRATION_FILE}
+    );
+    log.info(`Using hardcoded Mobius url: ${HARDCODED_MOBIUS_REGISTRATION_URL}`, {
+      method: METHODS.SET_MOBIUS_SERVERS,
+      file: REGISTRATION_FILE,
+    });
+    this.primaryMobiusUris = [mobiusRegistrationUrl];
+    this.backupMobiusUris = [];
   }
 
   /**
