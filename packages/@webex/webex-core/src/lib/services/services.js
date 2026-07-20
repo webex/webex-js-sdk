@@ -1433,25 +1433,28 @@ const Services = WebexPlugin.extend({
     this.registries.set(this.webex, registry);
     this.states.set(this.webex, state);
 
-    // Listen for configuration changes once.
+    // Listen for configuration changes once. The config is not populated on the
+    // webex instance until the `change:config` event fires, so any decision that
+    // depends on config values (such as the gated-vs-ungated init below) must be
+    // made from within this handler rather than synchronously in `initialize()`.
     this.listenToOnce(this.webex, 'change:config', () => {
       this.initConfig();
+
+      // Feature flag: when enabled, `webex.ready` is blocked until the initial
+      // catalog collection has settled AND any in-flight credentials refresh has
+      // completed. When disabled (the default), preserves the pre-existing
+      // behavior where `webex.ready` fires as soon as `webex.loaded` does and
+      // the catalog is collected out-of-band.
+      const waitForCatalogInit = this.webex.config?.services?.waitForCatalogInit === true;
+
+      if (waitForCatalogInit) {
+        this._initializeCatalogsGated(catalog);
+      } else {
+        // Not gating - immediately mark ready so we do not block webex.ready.
+        this.ready = true;
+        this._initializeCatalogsUngated(catalog);
+      }
     });
-
-    // Feature flag: when enabled, `webex.ready` is blocked until the initial
-    // catalog collection has settled AND any in-flight credentials refresh has
-    // completed. When disabled (the default), preserves the pre-existing
-    // behavior where `webex.ready` fires as soon as `webex.loaded` does and
-    // the catalog is collected out-of-band.
-    const waitForCatalogInit = this.webex.config?.services?.waitForCatalogInit === true;
-
-    if (waitForCatalogInit) {
-      this._initializeCatalogsGated(catalog);
-    } else {
-      // Not gating - immediately mark ready so we do not block webex.ready.
-      this.ready = true;
-      this._initializeCatalogsUngated(catalog);
-    }
   },
 
   /**
