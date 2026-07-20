@@ -536,6 +536,13 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       file: CALLING_CLIENT_FILE,
       method: METHODS.GET_MOBIUS_SERVERS,
     });
+
+    if (this.sdkConfig?.mobiusUrl) {
+      this.applyMobiusUrlOverride(this.sdkConfig.mobiusUrl);
+
+      return;
+    }
+
     /* Following operations are performed in a synchronous way ->
 
         1. Get RegionInfo
@@ -686,6 +693,28 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       this.mobiusHost = `https://${this.mobiusClusters[0].host}${API_V1}`;
       this.primaryMobiusUris = [`${this.mobiusHost}${URL_ENDPOINT}`];
     }
+  }
+
+  private applyMobiusUrlOverride(mobiusUrl: string): void {
+    const endpointPath = URL_ENDPOINT.replace(/\/$/, '');
+    const urlWithoutTrailingSlash = mobiusUrl.trim().replace(/\/+$/, '');
+    const urlWithEndpoint = urlWithoutTrailingSlash.endsWith(endpointPath)
+      ? urlWithoutTrailingSlash
+      : `${urlWithoutTrailingSlash}${endpointPath}`;
+    const httpUrl = urlWithEndpoint.replace(/^wss:\/\//, 'https://').replace(/^ws:\/\//, 'http://');
+    const wssUrl = urlWithEndpoint.replace(/^https:\/\//, 'wss://').replace(/^http:\/\//, 'ws://');
+
+    this.mobiusHost = httpUrl;
+    this.primaryMobiusUris = normalizeMobiusUris([httpUrl]);
+    this.backupMobiusUris = [];
+    this.primaryWssMobiusUris = normalizeMobiusUris([wssUrl]);
+    this.backupWssMobiusUris = [];
+    this.apiRequest.setSocketEnabled(wssUrl.startsWith('wss://') || wssUrl.startsWith('ws://'));
+
+    log.warn(`Using configured Mobius URL override: ${wssUrl}`, {
+      file: CALLING_CLIENT_FILE,
+      method: GET_MOBIUS_SERVERS_UTIL,
+    });
   }
 
   /**
