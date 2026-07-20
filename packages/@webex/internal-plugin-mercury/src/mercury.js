@@ -901,9 +901,18 @@ const Mercury = WebexPlugin.extend({
           break;
         case 4000:
           // metric: disconnect
-          this.logger.info(`${this.namespace}: socket ${sessionId} replaced; will not reconnect`);
-          if (isActiveSocket) this._emit(sessionId, 'offline.replaced', event);
-          // If not active, nothing to do
+          if (reason === 'replaced') {
+            this.logger.info(`${this.namespace}: socket ${sessionId} replaced; will not reconnect`);
+            if (isActiveSocket) this._emit(sessionId, 'offline.replaced', event);
+          } else {
+            this.logger.info(
+              `${this.namespace}: socket ${sessionId} disconnected with 4000: ${event.reason}; reconnecting`
+            );
+            if (isActiveSocket) {
+              this._emit(sessionId, 'offline.transient', event);
+              this._reconnect(socketUrl, sessionId);
+            }
+          }
           break;
         case 4001:
           // replaced during shutdown

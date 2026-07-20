@@ -1280,6 +1280,74 @@ describe('plugin-mercury', () => {
         });
       });
 
+      describe('#_onclose() with code 4000', () => {
+        let mockSocket, anotherSocket;
+
+        beforeEach(() => {
+          mockSocket = {
+            url: 'ws://active-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          anotherSocket = {
+            url: 'ws://old-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          mercury.socket = mockSocket;
+          mercury.sockets.set(mercury.defaultSessionId, mockSocket);
+          mercury.connected = true;
+          sinon.stub(mercury, '_emit');
+          sinon.stub(mercury, '_reconnect');
+          sinon.stub(mercury, 'unset');
+        });
+
+        afterEach(() => {
+          mercury._emit.restore();
+          mercury._reconnect.restore();
+          mercury.unset.restore();
+        });
+
+        it('should not reconnect when active socket is replaced', () => {
+          const closeEvent = {
+            code: 4000,
+            reason: 'Replaced',
+          };
+
+          mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
+
+          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.replaced', closeEvent);
+          assert.notCalled(mercury._reconnect);
+        });
+
+        it('should reconnect active socket when 4000 has an unknown reason', () => {
+          const closeEvent = {
+            code: 4000,
+            reason: 'Unexpected close',
+          };
+
+          mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
+
+          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.transient', closeEvent);
+          assert.calledWith(
+            mercury._reconnect,
+            mockSocket.url,
+            mercury.defaultSessionId
+          );
+        });
+
+        it('should not reconnect a non-active socket with an unknown 4000 reason', () => {
+          const closeEvent = {
+            code: 4000,
+            reason: 'Unexpected close',
+          };
+
+          mercury._onclose(mercury.defaultSessionId, closeEvent, anotherSocket);
+
+          assert.notCalled(mercury._emit);
+          assert.notCalled(mercury._reconnect);
+          assert.isTrue(mercury.connected);
+        });
+      });
+
       describe('#_onclose() with code 4001 (shutdown replacement)', () => {
         let mockSocket, anotherSocket;
 
