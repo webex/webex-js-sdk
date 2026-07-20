@@ -94,7 +94,6 @@ describe('internal-plugin-metrics', () => {
           },
         });
         assert.deepEqual(webexRequestArgs.body.metrics[0].type, ['diagnostic-event']);
-        assert.equal(webexRequestArgs.body.metrics[0].markTelemetryOptOutOnResponse, true);
         assert.lengthOf(
           webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.queue,
           0
@@ -314,7 +313,7 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('#submitHttpRequest', () => {
-      it('calls webex.request with the correct parameters and then it calls handleHttpResponseStatus on success', async () => {
+      it('calls webex.request with the correct parameters', async () => {
         const payload = [
           {
             eventPayload: {event: 'my.event'},
@@ -327,17 +326,10 @@ describe('internal-plugin-metrics', () => {
         );
         webex.request = sinon.stub().resolves({statusCode: 200});
 
-        const handleHttpResponseStatusSpy = sinon.spy(
-          webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher,
-          'handleHttpResponseStatus'
-        );
-
         const promise =
           webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.submitHttpRequest(
             payload
           );
-
-        assert.deepEqual(handleHttpResponseStatusSpy.getCalls().length, 0);
 
         await flushPromises();
 
@@ -361,117 +353,6 @@ describe('internal-plugin-metrics', () => {
           service: 'metrics',
           waitForServiceTimeout: 30,
         });
-
-        assert.deepEqual(handleHttpResponseStatusSpy.getCalls().length, 1);
-
-        assert.deepEqual(handleHttpResponseStatusSpy.args[0][0], 200);
-        assert.deepEqual(handleHttpResponseStatusSpy.args[0][1], payload);
-      });
-
-      it('it calls handleHttpResponseStatus on failure', async () => {
-        const payload = [
-          {
-            eventPayload: {event: 'my.event'},
-            type: ['diagnostic-event'],
-          },
-        ];
-
-        webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.savePreLoginId(
-          preLoginId
-        );
-        webex.request = sinon.stub().rejects({statusCode: 503});
-
-        const handleHttpResponseStatusSpy = sinon.spy(
-          webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher,
-          'handleHttpResponseStatus'
-        );
-
-        const promise =
-          webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.submitHttpRequest(
-            payload
-          );
-
-        assert.deepEqual(handleHttpResponseStatusSpy.getCalls().length, 0);
-
-        await flushPromises();
-
-        clock.tick(config.metrics.batcherWait);
-
-        let error;
-
-        try {
-          await promise;
-        } catch (err) {
-          error = err;
-        }
-
-        assert.deepEqual(error.statusCode, 503);
-
-        assert.deepEqual(handleHttpResponseStatusSpy.getCalls().length, 1);
-
-        assert.deepEqual(handleHttpResponseStatusSpy.args[0][0], 503);
-        assert.deepEqual(handleHttpResponseStatusSpy.args[0][1], payload);
-      });
-    })
-
-    describe('#handleHttpResponseStatus', () => {
-      let setIsTelemetryOptOutAutomaticStub;
-
-      beforeEach(() => {
-        setIsTelemetryOptOutAutomaticStub = sinon.stub(
-          webex.internal.newMetrics.callDiagnosticMetrics,
-          'setIsTelemetryOptOutAutomatic'
-        );
-      });
-
-      [201, 400, 503, undefined].forEach((statusCode) => {
-        it(`does not call setIsTelemetryOptOutAutomatic when shouldMark is true and statusCode is ${statusCode}`, () => {
-          webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.handleHttpResponseStatus(
-            statusCode,
-            [{markTelemetryOptOutOnResponse: true}]
-          );
-
-          assert.notCalled(setIsTelemetryOptOutAutomaticStub);
-        });
-      });
-
-      it('calls setIsTelemetryOptOutAutomatic(true) when statusCode is 200 and markTelemetryOptOutOnResponse is true', () => {
-        webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.handleHttpResponseStatus(
-          200,
-          [{markTelemetryOptOutOnResponse: true}]
-        );
-
-        assert.calledOnce(setIsTelemetryOptOutAutomaticStub);
-        assert.calledWithExactly(setIsTelemetryOptOutAutomaticStub, true);
-      });
-
-      [200, 201, 400, 503, undefined].forEach((statusCode) => {
-        it(`does not call setIsTelemetryOptOutAutomatic when shouldMark is false (statusCode: ${statusCode})`, () => {
-          webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.handleHttpResponseStatus(
-            statusCode,
-            [{markTelemetryOptOutOnResponse: false}]
-          );
-
-          assert.notCalled(setIsTelemetryOptOutAutomaticStub);
-        });
-      });
-
-      it('does not call setIsTelemetryOptOutAutomatic when payload is empty', () => {
-        webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.handleHttpResponseStatus(
-          200,
-          []
-        );
-
-        assert.notCalled(setIsTelemetryOptOutAutomaticStub);
-      });
-
-      it('does not call setIsTelemetryOptOutAutomatic when payload is not an array', () => {
-        webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.handleHttpResponseStatus(
-          200,
-          null
-        );
-
-        assert.notCalled(setIsTelemetryOptOutAutomaticStub);
       });
     });
   });
