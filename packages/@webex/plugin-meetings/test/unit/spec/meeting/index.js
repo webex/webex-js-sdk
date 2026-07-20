@@ -15245,6 +15245,71 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#waitForSelfUrlChange', () => {
+        let waitForSelfUrlChange;
+        let locusMediaRequestStub;
+
+        beforeEach(async () => {
+          locusMediaRequestStub = sinon
+            .stub(LocusMediaRequestModule, 'LocusMediaRequest')
+            .returns({id: 'fake LocusMediaRequest instance'});
+
+          meeting.setLocus = sinon.stub().returns(true);
+          webex.meetings.registered = true;
+          sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve('JOIN_RESULT'));
+          sinon.stub(meeting, 'updateLLMConnection').returns(Promise.resolve());
+
+          await meeting.join();
+
+          waitForSelfUrlChange = locusMediaRequestStub.firstCall.args[0].waitForSelfUrlChange;
+        });
+
+        it('should resolve immediately when joinWithMediaRetryInfo.retryCount > 0', async () => {
+          meeting.joinWithMediaRetryInfo = {retryCount: 1, prevJoinResponse: undefined};
+
+          const result = waitForSelfUrlChange();
+
+          assert.instanceOf(result, Promise);
+          await result;
+        });
+
+        it('should not resolve before the timeout when retryCount is 0', async () => {
+          meeting.joinWithMediaRetryInfo = {retryCount: 0, prevJoinResponse: undefined};
+
+          let resolved = false;
+          waitForSelfUrlChange().then(() => {
+            resolved = true;
+          });
+
+          await testUtils.flushPromises();
+          assert.isFalse(resolved);
+        });
+
+        it('should resolve after the 5s timeout when retryCount is 0', async () => {
+          meeting.joinWithMediaRetryInfo = {retryCount: 0, prevJoinResponse: undefined};
+
+          let resolved = false;
+          const promise = waitForSelfUrlChange();
+          promise.then(() => {
+            resolved = true;
+          });
+
+          fakeClock.tick(5000);
+          await promise;
+
+          assert.isTrue(resolved);
+        });
+
+        it('should return the same promise when called multiple times', () => {
+          meeting.joinWithMediaRetryInfo = {retryCount: 0, prevJoinResponse: undefined};
+
+          const firstPromise = waitForSelfUrlChange();
+          const secondPromise = waitForSelfUrlChange();
+
+          assert.equal(firstPromise, secondPromise);
+        });
+      });
+
       describe('preferred video device', () => {
         describe('#getVideoDeviceId', () => {
           it('returns the preferred video device', () => {

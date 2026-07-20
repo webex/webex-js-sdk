@@ -8706,6 +8706,18 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   private waitForSelfUrlChange(): Promise<void> {
+    if (this.joinWithMediaRetryInfo.retryCount > 0) {
+      /* During joinWithMedia() retries we can get 403/409 from Locus and it doesn't mean
+       * that the selfUrl will change, it is usually caused by Locus dropping us as a result of
+       * media connection failure during joinWithMedia's earlier media connection attempt,
+       * so we don't want to wait for selfUrl change as this would only slow down the join process. */
+      LoggerProxy.logger.info(
+        'Meeting:index#waitForSelfUrlChange --> joinWithMedia retry in progress, will not wait for selfUrl change'
+      );
+
+      return Promise.resolve();
+    }
+
     if (!this.promisesWaitingForPropUpdate.selfUrl) {
       const pendingSelfUrlUpdate = new Defer();
 
