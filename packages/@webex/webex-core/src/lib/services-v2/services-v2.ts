@@ -1524,11 +1524,15 @@ const Services = WebexPlugin.extend({
         // for `canAuthorize` flipping true and then collect the postauth catalog.
         this.listenToOnce(this.webex, 'change:canAuthorize', () => {
           if (this.webex.canAuthorize && !catalog.status.postauth.ready) {
-            this.initServiceCatalogs().catch((error) => {
-              this.logger.error(
-                `services: failed to init service catalogs after auth, ${error?.message}`
-              );
-            });
+            this.initServiceCatalogs()
+              .then(() => {
+                catalog.isReady = true;
+              })
+              .catch((error) => {
+                this.logger.error(
+                  `services: failed to init service catalogs after auth, ${error?.message}`
+                );
+              });
           }
         });
       }
