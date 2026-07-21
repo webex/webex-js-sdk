@@ -150,9 +150,10 @@ const Breakouts = WebexPlugin.extend({
     this.listenTo(this.breakouts, 'change:requestedLastModifiedTime', (breakout) => {
       this.triggerReturnToMainEvent(breakout);
     });
-    this.on(
+    this.listenTo(
+      this,
       BREAKOUTS.EVENTS.LLM_CONNECT_RESPONSE,
-      this.handleLLMBreakoutJoinResponseMetric.bind(this)
+      this.handleLLMBreakoutJoinResponseMetric
     );
     this.listenToCurrentSessionTypeChange();
     this.listenToBreakoutRosters();

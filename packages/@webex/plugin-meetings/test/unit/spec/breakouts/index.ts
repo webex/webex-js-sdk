@@ -7,8 +7,7 @@ import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 import BreakoutEditLockedError from '@webex/plugin-meetings/src/breakouts/edit-lock-error';
-import breakoutEvent from '../../../../src/breakouts/events';
-
+import breakoutEvent from '../../../../src/breakouts/events'
 const getBOResponse = (status: string) => {
   return {
     url: 'url',
@@ -216,6 +215,23 @@ describe('plugin-meetings', () => {
           hasBreakoutPreAssignments: true,
         });
         assert.calledThrice(breakouts.queryPreAssignments);
+      });
+
+      it('handles LLM_CONNECT_RESPONSE by storing the connect response info', () => {
+        breakouts.breakoutMoveId = 'moveId';
+        breakouts.submitLLMBreakoutJoinResponseMetric = sinon.stub();
+
+        const eventInfo = {
+          meeting: {id: 'meeting-id'},
+          llmLatency: {clientLLMWebSocketConnectTime: 1},
+        };
+        breakouts.trigger(BREAKOUTS.EVENTS.LLM_CONNECT_RESPONSE, eventInfo);
+
+        assert.deepEqual(breakouts.llmBreakoutJoinResponseInfo, {
+          ...eventInfo,
+          breakoutMoveId: 'moveId',
+        });
+        assert.calledOnce(breakouts.submitLLMBreakoutJoinResponseMetric);
       });
     });
 
@@ -518,6 +534,26 @@ describe('plugin-meetings', () => {
         breakouts.submitLLMBreakoutJoinResponseMetric();
 
         assert.notCalled(onBreakoutJoinResponseSpy);
+      });
+    });
+
+    describe('#handleLLMBreakoutJoinResponseMetric', () => {
+      it('stores the LLM connect response with the current breakoutMoveId and tries to emit', () => {
+        breakouts.breakoutMoveId = 'moveId';
+        breakouts.submitLLMBreakoutJoinResponseMetric = sinon.stub();
+
+        const eventInfo = {
+          meeting: {id: 'meeting-id'},
+          llmLatency: {clientLLMWebSocketConnectTime: 1},
+        };
+
+        breakouts.handleLLMBreakoutJoinResponseMetric(eventInfo);
+
+        assert.deepEqual(breakouts.llmBreakoutJoinResponseInfo, {
+          ...eventInfo,
+          breakoutMoveId: 'moveId',
+        });
+        assert.calledOnce(breakouts.submitLLMBreakoutJoinResponseMetric);
       });
     });
 
