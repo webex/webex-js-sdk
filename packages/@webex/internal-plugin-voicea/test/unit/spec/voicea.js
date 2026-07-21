@@ -72,7 +72,7 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(voiceaService.webex.internal.llm.socket.send, {
           id: '1',
           type: 'publishRequest',
-          recipients: {route: undefined},
+          recipients: [{route: undefined}],
           headers: {},
           data: {
             clientPayload: {
@@ -109,7 +109,7 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(voiceaService.webex.internal.llm.socket.send, {
           id: '1',
           type: 'publishRequest',
-          recipients: {route: undefined},
+          recipients: [{route: undefined}],
           headers: {to: 'svc-123'},
           data: {
             clientPayload: {
@@ -143,7 +143,7 @@ describe('plugin-voicea', () => {
           {
             id: '1',
             type: 'publishRequest',
-            recipients: {route: undefined},
+            recipients: [{route: undefined}],
             headers: {},
             data: {
               eventType: 'relay.event',
@@ -182,7 +182,7 @@ describe('plugin-voicea', () => {
           {
             id: '1',
             type: 'publishRequest',
-            recipients: {route: undefined},
+            recipients: [{route: undefined}],
             headers: {},
             data: {
               eventType: 'relay.event',
@@ -305,7 +305,7 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(voiceaService.webex.internal.llm.socket.send, {
           id: '1',
           type: 'publishRequest',
-          recipients: {route: undefined},
+          recipients: [{route: undefined}],
           headers: {to: undefined},
           data: {
             clientPayload: {
@@ -327,7 +327,7 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(voiceaService.webex.internal.llm.socket.send, {
           id: '1',
           type: 'publishRequest',
-          recipients: {route: undefined},
+          recipients: [{route: undefined}],
           headers: {to: 'svc-456'},
           data: {
             clientPayload: {
