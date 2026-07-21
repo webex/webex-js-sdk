@@ -195,7 +195,7 @@ export class MobiusWsInterceptor {
 
 export const normalizeWsUrl = (url: string): string => (url.endsWith('/') ? url : `${url}/`);
 
-export const isKnownWsUrl = (url: string | undefined, urls: string[]): boolean => {
+export const isKnownMobiusUrl = (url: string | undefined, urls: string[]): boolean => {
   if (!url) {
     return false;
   }
@@ -204,6 +204,8 @@ export const isKnownWsUrl = (url: string | undefined, urls: string[]): boolean =
 
   return urls.map(normalizeWsUrl).some((knownUrl) => normalized.startsWith(knownUrl));
 };
+
+export const isKnownWsUrl = isKnownMobiusUrl;
 
 export const getDiscoveredMobiusWsUrls = (
   page: Page

@@ -34,9 +34,7 @@ export function registrationErrorTests() {
       await navigateToCallingApp(page);
       await setServiceIndicator(page, 'calling');
 
-      if (mobiusWsMode) {
-        await setMobiusWebSocket(page, true);
-      }
+      await setMobiusWebSocket(page, mobiusWsMode);
 
       await page.locator(CALLING_SELECTORS.ACCESS_TOKEN_INPUT).fill('invalid-token-12345', {
         timeout: AWAIT_TIMEOUT,

@@ -42,7 +42,7 @@ const ENV_SEPARATOR = ' - ';
  * Mobius transport mode for Playwright suites.
  *
  * MOBIUS=ws forces the sample app WebSocket override before SDK initialization.
- * MOBIUS=http keeps the default HTTP transport.
+ * MOBIUS=http force-disables WebSocket so tests use the HTTP transport.
  */
 export const getMobiusMode = (): MobiusMode => {
   const mode = process.env.MOBIUS?.toLowerCase();

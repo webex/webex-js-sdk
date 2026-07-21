@@ -52,6 +52,18 @@ export const getActiveMobiusUrl = (page: Page): Promise<string> =>
     ).registration.getActiveMobiusUrl()
   );
 
+export const getDiscoveredMobiusHttpUrls = (
+  page: Page
+): Promise<{primary: string[]; backup: string[]}> =>
+  page.evaluate(() => {
+    const client = (window as any).callingClient;
+
+    return {
+      primary: client?.primaryMobiusUris ?? [],
+      backup: client?.backupMobiusUris ?? [],
+    };
+  });
+
 export const getDeviceInfo = (page: Page) =>
   page.evaluate(() => {
     const ln = Object.values((window as any).callingClient.getLines())[0] as any;

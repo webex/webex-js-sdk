@@ -13,7 +13,6 @@ import {
   verifySDKInitialized,
   setServiceIndicator,
   setEnvironmentToInt,
-  setMobiusWebSocket,
   verifyMobiusWebSocketEnabled,
 } from './utils/setup';
 import {registerLine, verifyLineRegistered, unregisterLine} from './utils/registration';
@@ -151,10 +150,7 @@ export class TestManager {
         await setServiceIndicator(page, config.service);
       }
       const mobiusWss = config.mobiusWss ?? isMobiusWsMode();
-      if (mobiusWss) {
-        await setMobiusWebSocket(page, true);
-      }
-      await initializeCallingSDK(page, getToken(role, this.isInt));
+      await initializeCallingSDK(page, getToken(role, this.isInt), {mobiusWss});
       await verifySDKInitialized(page);
       if (mobiusWss) {
         await verifyMobiusWebSocketEnabled(page);

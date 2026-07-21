@@ -12,17 +12,12 @@ import {
   verifyLineRegistered,
   isLineRegistered,
   getActiveMobiusUrl,
+  getDiscoveredMobiusHttpUrls,
 } from '../utils/registration';
-import {
-  CALLING_SELECTORS,
-  REGISTRATION_TIMEOUT,
-  AWAIT_TIMEOUT,
-  PRIMARY_MOBIUS_URL,
-  BACKUP_MOBIUS_URL,
-} from '../constants';
+import {CALLING_SELECTORS, REGISTRATION_TIMEOUT, AWAIT_TIMEOUT} from '../constants';
 import {
   getDiscoveredMobiusWsUrls,
-  isKnownWsUrl,
+  isKnownMobiusUrl,
   MOBIUS_WS_MESSAGE,
   MobiusWsInterceptor,
 } from '../utils/mobius-ws';
@@ -367,10 +362,8 @@ export function registrationKeepaliveTests() {
       const mobiusWsMode = isMobiusWsMode();
       test.setTimeout(300000);
 
-      const expectedPrimaryUrl = isInt ? PRIMARY_MOBIUS_URL.INT : PRIMARY_MOBIUS_URL.PROD;
-      const expectedBackupUrl = isInt ? BACKUP_MOBIUS_URL.INT : BACKUP_MOBIUS_URL.PROD;
-      let primaryWsUrls: string[] = [];
-      let backupWsUrls: string[] = [];
+      let primaryMobiusUrls: string[] = [];
+      let backupMobiusUrls: string[] = [];
       const HIGH_RETRY_AFTER = 120; // Above RETRY_TIMER_UPPER_LIMIT (60s)
       let primaryAttempts = 0;
       let backupAttempts = 0;
@@ -383,7 +376,7 @@ export function registrationKeepaliveTests() {
               return undefined;
             }
 
-            if (isKnownWsUrl(routeContext.url, primaryWsUrls)) {
+            if (isKnownMobiusUrl(routeContext.url, primaryMobiusUrls)) {
               primaryAttempts += 1;
 
               return {
@@ -405,7 +398,7 @@ export function registrationKeepaliveTests() {
           if (route.request().method() === 'POST') {
             const url = route.request().url();
 
-            if (url.startsWith(expectedPrimaryUrl)) {
+            if (isKnownMobiusUrl(url, primaryMobiusUrls)) {
               primaryAttempts += 1;
               await route.fulfill({
                 status: 429,
@@ -430,11 +423,13 @@ export function registrationKeepaliveTests() {
       await setServiceIndicator(page, 'calling');
       await initializeCallingSDK(page, getToken(role, isInt));
       await verifySDKInitialized(page);
-      if (mobiusWsMode) {
-        const discovered = await getDiscoveredMobiusWsUrls(page);
-        primaryWsUrls = discovered.primary;
-        backupWsUrls = discovered.backup;
-      }
+      const discoveredMobiusUrls = mobiusWsMode
+        ? await getDiscoveredMobiusWsUrls(page)
+        : await getDiscoveredMobiusHttpUrls(page);
+      primaryMobiusUrls = discoveredMobiusUrls.primary;
+      backupMobiusUrls = discoveredMobiusUrls.backup;
+      expect(primaryMobiusUrls.length).toBeGreaterThan(0);
+      expect(backupMobiusUrls.length).toBeGreaterThan(0);
 
       await page.locator(CALLING_SELECTORS.REGISTER_BTN).click({timeout: AWAIT_TIMEOUT});
 
@@ -449,11 +444,7 @@ export function registrationKeepaliveTests() {
 
       // Verify registered on backup, not primary
       const activeMobius = await getActiveMobiusUrl(page);
-      if (mobiusWsMode) {
-        expect(isKnownWsUrl(activeMobius, backupWsUrls)).toBe(true);
-      } else {
-        expect(activeMobius).toBe(expectedBackupUrl);
-      }
+      expect(isKnownMobiusUrl(activeMobius, backupMobiusUrls)).toBe(true);
 
       // Verify failover happened well before the 120s Retry-After would have elapsed
       const elapsed = Date.now() - testStartTime;

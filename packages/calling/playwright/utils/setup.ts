@@ -19,12 +19,42 @@ export type MobiusDiscoveryResponse = {
   backup: {region: string; uris: string[]};
 };
 
+type InitializeCallingOptions = {
+  /** Force the Mobius transport used by the initialized Calling client. */
+  mobiusWss?: boolean;
+};
+
 /**
  * Navigate to the calling sample app
  */
 export const navigateToCallingApp = async (page: Page): Promise<void> => {
   await page.goto(SAMPLE_APP_PATH);
   await page.waitForLoadState('domcontentloaded');
+};
+
+/**
+ * Force the calling sample app to enable or disable Mobius WebSocket transport.
+ * Must be called before SDK initialization.
+ */
+export const setMobiusWebSocket = async (page: Page, enabled: boolean): Promise<void> => {
+  const value = enabled ? 'true' : 'false';
+
+  await page.locator(CALLING_SELECTORS.MOBIUS_WSS).selectOption(value, {timeout: AWAIT_TIMEOUT});
+
+  await page.evaluate((selectedValue) => {
+    localStorage.setItem('mobius-wss-enabled', selectedValue);
+  }, value);
+
+  await expect(page.locator(CALLING_SELECTORS.MOBIUS_WSS)).toHaveValue(value, {
+    timeout: AWAIT_TIMEOUT,
+  });
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('mobius-wss-enabled')), {
+      message: 'Expected Mobius WebSocket sample override to be persisted',
+      timeout: AWAIT_TIMEOUT,
+      intervals: [500],
+    })
+    .toBe(value);
 };
 
 /**
@@ -37,14 +67,19 @@ export const navigateToCallingApp = async (page: Page): Promise<void> => {
  *    - calling.register() is called automatically
  *    - After register, registerElm is enabled and callingClient + line are set up
  */
-export const initializeCallingSDK = async (page: Page, accessToken: string): Promise<void> => {
+export const initializeCallingSDK = async (
+  page: Page,
+  accessToken: string,
+  options: InitializeCallingOptions = {}
+): Promise<void> => {
   if (!accessToken) {
     throw new Error('Access token is required to initialize Calling SDK');
   }
 
-  if (isMobiusWsMode()) {
-    await setMobiusWebSocket(page, true);
-  }
+  // The sample defaults to the account's backend feature flag. Playwright tests
+  // must select a deterministic transport so their HTTP/WS interceptors match
+  // the transport the SDK actually uses.
+  await setMobiusWebSocket(page, options.mobiusWss ?? isMobiusWsMode());
 
   // Fill in the access token
   await page
@@ -116,31 +151,6 @@ export const setServiceIndicator = async (page: Page, service: ServiceIndicator)
   await page
     .locator(CALLING_SELECTORS.SERVICE_INDICATOR)
     .selectOption(service, {timeout: AWAIT_TIMEOUT});
-};
-
-/**
- * Force the calling sample app to enable or disable Mobius WebSocket transport.
- * Must be called before SDK initialization.
- */
-export const setMobiusWebSocket = async (page: Page, enabled: boolean): Promise<void> => {
-  const value = enabled ? 'true' : 'false';
-
-  await page.locator(CALLING_SELECTORS.MOBIUS_WSS).selectOption(value, {timeout: AWAIT_TIMEOUT});
-
-  await page.evaluate((selectedValue) => {
-    localStorage.setItem('mobius-wss-enabled', selectedValue);
-  }, value);
-
-  await expect(page.locator(CALLING_SELECTORS.MOBIUS_WSS)).toHaveValue(value, {
-    timeout: AWAIT_TIMEOUT,
-  });
-  await expect
-    .poll(() => page.evaluate(() => localStorage.getItem('mobius-wss-enabled')), {
-      message: 'Expected Mobius WebSocket sample override to be persisted',
-      timeout: AWAIT_TIMEOUT,
-      intervals: [500],
-    })
-    .toBe(value);
 };
 
 /**
@@ -250,13 +260,17 @@ export const verifyMobiusServersDiscovered = async (page: Page): Promise<void> =
 export const initAndRegister = async (
   page: Page,
   accessToken: string,
-  options: {registerLine?: boolean; service?: ServiceIndicator} = {}
+  options: {
+    registerLine?: boolean;
+    service?: ServiceIndicator;
+    mobiusWss?: boolean;
+  } = {}
 ): Promise<void> => {
   await navigateToCallingApp(page);
   if (options.service) {
     await setServiceIndicator(page, options.service);
   }
-  await initializeCallingSDK(page, accessToken);
+  await initializeCallingSDK(page, accessToken, {mobiusWss: options.mobiusWss});
   await verifySDKInitialized(page);
   if (options.registerLine) {
     await registerLine(page);
