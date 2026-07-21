@@ -3248,6 +3248,71 @@ describe('plugin-meetings', () => {
               });
             });
 
+            it('uses the partial datachannel timing from the error when the websocket connect fails', async () => {
+              sinon.stub(meeting, 'isJoined').returns(true);
+              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
+              const connectError = new Error('failed to connect LLM');
+              connectError.timing = {clientLLMDatachannelResponseTime: 42};
+              sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').rejects(connectError);
+
+              meeting.meetingInfo.enableConvergedArchitecture = true;
+              meeting.breakouts.set('breakoutMoveId', 'move-id-1');
+              meeting.breakouts.set('sessionType', 'BREAKOUT');
+              meeting.breakouts.set('status', 'OPEN');
+              meeting.breakouts.set('currentBreakoutSession', {
+                sessionId: 'session-id-1',
+                groupId: 'group-id-1',
+              });
+
+              webex.internal.newMetrics.submitClientEvent.resetHistory();
+              meeting.updateLLMConnection.restore();
+
+              try {
+                await meeting.updateLLMConnection();
+                assert.fail('Expected updateLLMConnection to reject');
+              } catch (error) {
+                assert.equal(error, connectError);
+              }
+
+              const joinResponseCalls = webex.internal.newMetrics.submitClientEvent
+                .getCalls()
+                .filter((call) => call.args[0]?.name === 'client.breakout-session.join.response');
+
+              assert.lengthOf(joinResponseCalls, 1);
+              assert.deepEqual(joinResponseCalls[0].args[0].payload.llmLatency, {
+                clientLLMDatachannelResponseTime: 42,
+                clientLLMWebSocketConnectTime: 0,
+              });
+            });
+
+            it('reports the partial datachannel timing on client.llm.connect.response when the websocket connect fails during initial join', async () => {
+              sinon.stub(meeting, 'isJoined').returns(true);
+              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
+              const connectError = new Error('failed to connect LLM');
+              connectError.timing = {clientLLMDatachannelResponseTime: 42};
+              sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').rejects(connectError);
+
+              webex.internal.newMetrics.submitClientEvent.resetHistory();
+              meeting.updateLLMConnection.restore();
+
+              try {
+                await meeting.updateLLMConnection({isInitialJoinPhase: true});
+                assert.fail('Expected updateLLMConnection to reject');
+              } catch (error) {
+                assert.equal(error, connectError);
+              }
+
+              const connectResponseCalls = webex.internal.newMetrics.submitClientEvent
+                .getCalls()
+                .filter((call) => call.args[0]?.name === 'client.llm.connect.response');
+
+              assert.lengthOf(connectResponseCalls, 1);
+              assert.deepEqual(connectResponseCalls[0].args[0].payload.llmLatency, {
+                clientLLMDatachannelResponseTime: 42,
+                clientLLMWebSocketConnectTime: 0,
+              });
+            });
+
             it('clears the LLM health check timer when disconnecting LLM', async () => {
               const isJoinedStub = sinon.stub(meeting, 'isJoined');
               sinon.stub(meeting.webex.internal.llm, 'isConnected');

@@ -186,6 +186,33 @@ describe('plugin-llm', () => {
         sinon.assert.notCalled(llmService.connect);
         assert.equal(llmService.isConnected(), false);
       });
+
+      it('attaches the measured datachannel timing to the error when the websocket connect fails', async () => {
+        llmService.register = sinon.stub().callsFake(async () => {
+          llmService.binding = 'binding';
+          llmService.webSocketUrl = 'wss://example.com/socket';
+          return {
+            body: {
+              binding: 'binding',
+              webSocketUrl: 'wss://example.com/socket',
+            },
+          };
+        });
+
+        const connectError = new Error('websocket connect failed');
+        llmService.connect = sinon.stub().rejects(connectError);
+
+        let caughtError;
+        try {
+          await llmService.registerAndConnect(locusUrl, datachannelUrl);
+        } catch (error) {
+          caughtError = error;
+        }
+
+        assert.equal(caughtError, connectError);
+        assert.isDefined(caughtError.timing);
+        assert.isNumber(caughtError.timing.clientLLMDatachannelResponseTime);
+      });
     });
 
     describe('#register', () => {

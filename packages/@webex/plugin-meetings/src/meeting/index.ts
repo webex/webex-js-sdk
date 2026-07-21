@@ -7006,22 +7006,20 @@ export default class Meeting extends StatelessWebexPlugin {
         return Promise.resolve(registerAndConnectResult);
       })
       .catch((error) => {
+        // Prefer the partial timing registerAndConnect attaches when register succeeded but the
+        // websocket connect() failed, so a ws failure isn't misreported as register never completing.
+        const llmLatency = {
+          clientLLMDatachannelResponseTime: error?.timing?.clientLLMDatachannelResponseTime ?? 0,
+          clientLLMWebSocketConnectTime: 0,
+        };
+
         if (isInitialJoinPhase) {
-          this.sendLLMConnectMetric(
-            {
-              clientLLMDatachannelResponseTime: 0,
-              clientLLMWebSocketConnectTime: 0,
-            },
-            error
-          );
+          this.sendLLMConnectMetric(llmLatency, error);
         }
 
         this.breakouts?.trigger(BREAKOUTS.EVENTS.LLM_CONNECT_RESPONSE, {
           meeting: this,
-          llmLatency: {
-            clientLLMDatachannelResponseTime: 0,
-            clientLLMWebSocketConnectTime: 0,
-          },
+          llmLatency,
           error,
         });
 
