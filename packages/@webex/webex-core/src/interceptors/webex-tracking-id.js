@@ -24,14 +24,6 @@ export default class WebexTrackingIdInterceptor extends Interceptor {
   }
 
   /**
-   * Generates the next tracking id without mutating request options.
-   * @returns {string}
-   */
-  generateNextTrackingId() {
-    return `${this.webex.sessionId}_${this.sequence}`;
-  }
-
-  /**
    * @returns {WebexTrackingIdInterceptor}
    */
   static create() {
@@ -57,7 +49,7 @@ export default class WebexTrackingIdInterceptor extends Interceptor {
     }
 
     if (this.requiresTrackingId(options)) {
-      options.headers.trackingid = this.generateNextTrackingId();
+      options.headers.trackingid = `${this.webex.sessionId}_${this.sequence}`;
     }
 
     if (options.headers.trackingid && options.replayCount) {

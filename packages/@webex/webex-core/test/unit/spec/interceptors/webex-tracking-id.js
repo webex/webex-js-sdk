@@ -34,13 +34,6 @@ describe('webex-core', () => {
         });
       });
 
-      describe('#generateNextTrackingId()', () => {
-        it('returns the next tracking id without mutating request options', () => {
-          assert.equal(interceptor.generateNextTrackingId(), 'mock-webex_uuid_1');
-          assert.equal(interceptor.generateNextTrackingId(), 'mock-webex_uuid_2');
-        });
-      });
-
       describe('#requiresTrackingId()', () => {
         it('defaults to true', () => {
           assert.isTrue(interceptor.requiresTrackingId({headers: {}}));
