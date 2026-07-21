@@ -148,6 +148,27 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
+   * Returns the user activation state reported from the browser's navigator.userActivation API
+   * @returns object with hasBeenActive and isActive booleans, or undefined if unavailable
+   */
+  getUserActivation(): {hasBeenActive: boolean; isActive: boolean} | undefined {
+    const userActivation =
+      typeof navigator !== 'undefined'
+        ? (navigator as {userActivation?: {hasBeenActive: boolean; isActive: boolean}})
+            .userActivation
+        : undefined;
+
+    if (userActivation) {
+      return {
+        hasBeenActive: userActivation.hasBeenActive,
+        isActive: userActivation.isActive,
+      };
+    }
+
+    return undefined;
+  }
+
+  /**
    * Returns the telemetryOptOut value of the current user
    * @returns one of 'manual', 'automatic', undefined
    */
@@ -1048,6 +1069,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       isVipMeeting: meeting?.meetingInfo?.vipmeeting || false,
       isAutomatedUser:
         typeof window !== 'undefined' && typeof navigator !== 'undefined' && !!navigator?.webdriver, // if webdriver is true, it's most likely in a test environment
+      userActivation: this.getUserActivation(),
     };
 
     const joinFlowVersion = options.joinFlowVersion ?? meeting.callStateForMetrics?.joinFlowVersion;
@@ -1172,6 +1194,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
       isAutomatedUser:
         typeof window !== 'undefined' && typeof navigator !== 'undefined' && !!navigator?.webdriver, // if webdriver is true, it's most likely in a test environment
+      userActivation: this.getUserActivation(),
     };
 
     if (options.joinFlowVersion) {
@@ -1364,7 +1387,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const finalEvent = {
       eventPayload: event,
       type: ['diagnostic-event'],
-      markTelemetryOptOutOnResponse: true,
     };
 
     return this.callDiagnosticEventsBatcher.request(finalEvent);
@@ -1374,7 +1396,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * Prepare the event and send the request to metrics-a service, pre login.
    * @param event
    * @param preLoginId
-   * @param markTelemetryOptOutOnResponse
    * @returns
    */
   submitToCallDiagnosticsPreLogin = (event: Event, preLoginId?: string): Promise<any> => {
@@ -1382,7 +1403,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const finalEvent = {
       eventPayload: event,
       type: ['diagnostic-event'],
-      markTelemetryOptOutOnResponse: true,
     };
 
     this.preLoginMetricsBatcher.savePreLoginId(preLoginId);
