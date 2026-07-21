@@ -101,11 +101,12 @@ export const isVoicemailRead = (record: VoicemailRecord): boolean => {
     return read.$ === 'true';
   }
 
+  // WxC/XSI returns a self-closing <read/> element as an empty object for read messages.
+  // Unread messages omit the read marker entirely.
   if (read && Object.keys(read).length === 0) {
     return true;
   }
 
-  // Missing read markers mean unread.
   return false;
 };
 
