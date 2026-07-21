@@ -149,7 +149,11 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       const sessionData = this.connections.get(sessionId) || {};
 
       if (!sessionData.webSocketUrl) {
-        throw new Error(`LLM registration for ${sessionId} returned no websocket URL`);
+        // register() succeeded but the response carried no websocket URL. Attach the measured
+        // datachannel time so callers don't misreport a registration that completed as time 0.
+        const error: any = new Error(`LLM registration for ${sessionId} returned no websocket URL`);
+        error.timing = {clientLLMDatachannelResponseTime};
+        throw error;
       }
 
       const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();

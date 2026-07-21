@@ -213,6 +213,31 @@ describe('plugin-llm', () => {
         assert.isDefined(caughtError.timing);
         assert.isNumber(caughtError.timing.clientLLMDatachannelResponseTime);
       });
+
+      it('attaches the measured datachannel timing to the error when the response has no websocket URL', async () => {
+        llmService.register = sinon.stub().callsFake(async () => {
+          // register() resolves but the response leaves the session without a websocket URL.
+          llmService.connections.set('llm-default-session', {
+            locusUrl,
+            datachannelUrl,
+          });
+        });
+
+        llmService.connect = sinon.stub();
+
+        let caughtError;
+        try {
+          await llmService.registerAndConnect(locusUrl, datachannelUrl);
+        } catch (error) {
+          caughtError = error;
+        }
+
+        sinon.assert.notCalled(llmService.connect);
+        assert.instanceOf(caughtError, Error);
+        assert.match(caughtError.message, /returned no websocket URL/);
+        assert.isDefined(caughtError.timing);
+        assert.isNumber(caughtError.timing.clientLLMDatachannelResponseTime);
+      });
     });
 
     describe('#register', () => {
