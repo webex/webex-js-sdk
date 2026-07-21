@@ -11,8 +11,8 @@
 | Doc kind | Module spec |
 | Coverage score | Partial (manifest-authoritative); 15/15 required document fields present |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved review remediation / 2026-07-15 |
-| Validation status | Pass with warnings for PR #5088 remediation scope (claude-code, 2026-07-15): 0 blocking; 1 important test-coverage gap; module coverage remains Partial |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved follow-up review remediation / 2026-07-21 |
+| Validation status | Follow-up validation passed (independent Claude fallback, 2026-07-21); 1 existing test-coverage gap; coverage remains Partial |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -208,6 +208,8 @@ Initiate outbound call.
 
 **Example**:
 
+> **Host-application example:** `updateCallStatus` represents consumer-owned UI handling. SDK package implementation must use `LoggerProxy` and must not log raw runtime values.
+
 ```typescript
 const response = await cc.startOutdial('+14155551234', '+18005551000');
 
@@ -215,11 +217,11 @@ const response = await cc.startOutdial('+14155551234', '+18005551000');
 // Listen on cc/task events instead of treating startOutdial response as an ITask.
 cc.on('task:incoming', (task) => {
   task.on('task:assigned', () => {
-    console.log('Call connected');
+    updateCallStatus('connected');
   });
 
   task.on('task:end', () => {
-    console.log('Call ended');
+    updateCallStatus('ended');
   });
 });
 ```
@@ -431,9 +433,11 @@ Task separates its stable consumption boundary from collaborators so ownership a
 
 If enabled in agent profile, wrapup completes automatically after timeout:
 
+> **Host-application example:** `updateWrapupStatus` is a consumer-owned UI callback, not SDK package logging.
+
 ```typescript
 task.on('task:wrappedup', () => {
-  console.log('Task wrapup completed');
+  updateWrapupStatus('completed');
 });
 ```
 
@@ -1092,11 +1096,11 @@ classDiagram
 - **UC-4 Wrapup/end:** backend end/wrapup notifications drive WRAPPING_UP and final COMPLETED/TERMINATED outcomes without collapsing them into one result. Evidence: `src/services/task/Task.ts`, `src/services/task/state-machine/TaskStateMachine.ts`, `test/unit/spec/services/task`.
 - **UC-5 WebRTC and digital behavior:** TaskFactory selects channel-specific subclasses; unsupported SMS/Facebook/WhatsApp values throw `Unknown media type`. Evidence: `src/services/task/TaskFactory.ts`, `test/unit/spec/services/task/TaskFactory.ts`.
 
+> **Host-application example:** This consumer callback performs task operations without logging raw interaction data.
+
 ```typescript
 // Listen for incoming tasks
 cc.on('task:incoming', async (task) => {
-  console.log('Incoming task:', task.data.interactionId);
-
   // Accept the task
   await task.accept();
 
@@ -1204,6 +1208,8 @@ For state-machine-specific implementation guidance, use:
 | Dependency rejection | Typed/rethrown error or failure event | Inspect structured details, preserve tracking id, and retry only when the operation is safe. |
 | Timeout or missing async completion | Timeout/recovery state | Follow the module-specific recovery path; never synthesize success. |
 
+> **Host-application example:** `showTransferFailure` represents consumer-owned error presentation. SDK package implementation must use `LoggerProxy` and avoid logging raw runtime values.
+
 ```typescript
 try {
   await task.transfer({
@@ -1211,8 +1217,7 @@ try {
     destinationType: 'queue',
   });
 } catch (error) {
-  console.error('Transfer failed:', error.message);
-  // error.data contains structured error info
+  showTransferFailure(error);
 }
 ```
 

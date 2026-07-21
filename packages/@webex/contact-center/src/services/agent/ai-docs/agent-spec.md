@@ -11,8 +11,8 @@
 | Doc kind | Module spec |
 | Coverage score | Partial (manifest-authoritative); 15/15 required document fields present |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved review remediation / 2026-07-15 |
-| Validation status | Pass with warnings for PR #5088 remediation scope (claude-code, 2026-07-15): 0 blocking; 1 important test-coverage gap; module coverage remains Partial |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved follow-up review remediation / 2026-07-21 |
+| Validation status | Follow-up validation passed (independent Claude fallback, 2026-07-21); coverage remains Partial |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -392,16 +392,17 @@ For example, station login defines the real outer and nested event binds:
 | Dependency rejection | Typed/rethrown error or failure event | Inspect structured details, preserve tracking id, and retry only when the operation is safe. |
 | Timeout or missing async completion | Timeout/recovery state | Follow the module-specific recovery path; never synthesize success. |
 
+> **Host-application example:** `showStationLoginError` represents consumer-owned UI handling. SDK package implementation must use `LoggerProxy` and must not log raw runtime values.
+
 ```typescript
 try {
   await cc.stationLogin(params);
 } catch (error) {
-  console.error('Login failed:', error.message);
-  // Access error details
-  if (error.data) {
-    console.error('Field:', error.data.fieldName);
-    console.error('Message:', error.data.message);
-  }
+  showStationLoginError({
+    message: error.message,
+    fieldName: error.data?.fieldName,
+    fieldMessage: error.data?.message,
+  });
 }
 ```
 

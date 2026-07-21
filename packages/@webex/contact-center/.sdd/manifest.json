@@ -17,19 +17,19 @@
     },
     "test": {
       "command": "yarn workspace @webex/contact-center test",
-      "source_file": "packages/@webex/contact-center/package.json"
+      "source_file": "package.json"
     },
     "test:unit": {
       "command": "yarn workspace @webex/contact-center test:unit",
-      "source_file": "packages/@webex/contact-center/package.json"
+      "source_file": "package.json"
     },
     "lint": {
       "command": "yarn workspace @webex/contact-center test:style",
-      "source_file": "packages/@webex/contact-center/package.json"
+      "source_file": "package.json"
     },
     "docs": {
       "command": "yarn workspace @webex/contact-center build:docs",
-      "source_file": "packages/@webex/contact-center/package.json"
+      "source_file": "package.json"
     }
   },
   "coverage_status_definitions": {
