@@ -535,40 +535,6 @@ describe('plugin-meetings', () => {
 
         assert.notCalled(onBreakoutJoinResponseSpy);
       });
-
-      it('emits when the LLM connect response wins the ordering race with the breakout update', () => {
-        breakouts.webex.meetings = {
-          getMeetingByType: sinon.stub().returns({id: 'meeting-id'}),
-        };
-        breakouts.webex.internal.newMetrics = {submitClientEvent: sinon.stub()};
-        breakouts.webex.internal.llm.getWebSocketUrl = sinon.stub().returns('wss://llm');
-        // Pre-set the session so the breakout update below does not change it (avoids the
-        // separate session-changed onBreakoutJoinResponse emit).
-        breakouts.currentBreakoutSession.set({sessionId: 'sessionId', groupId: 'groupId'});
-
-        // LLM connect response arrives BEFORE the move id is known.
-        breakouts.handleLLMBreakoutJoinResponseMetric({
-          meeting: {id: 'meeting-id'},
-          llmLatency: {clientLLMWebSocketConnectTime: 1},
-        });
-        assert.notCalled(onBreakoutJoinResponseSpy);
-        assert.isDefined(breakouts.llmBreakoutJoinResponseInfo);
-
-        // Breakout update arrives carrying the new move id -> re-associates + emits.
-        breakouts.updateBreakout({
-          sessionId: 'sessionId',
-          groupId: 'groupId',
-          sessionType: BREAKOUTS.SESSION_TYPES.MAIN,
-          status: 'active',
-          breakoutMoveId: 'moveId',
-        });
-
-        assert.calledOnce(onBreakoutJoinResponseSpy);
-        const emitted = onBreakoutJoinResponseSpy.getCall(0).args[0];
-        assert.equal(emitted.breakoutMoveId, 'moveId');
-        assert.deepEqual(emitted.llmLatency, {clientLLMWebSocketConnectTime: 1});
-        assert.isUndefined(breakouts.llmBreakoutJoinResponseInfo);
-      });
     });
 
     describe('#handleLLMBreakoutJoinResponseMetric', () => {

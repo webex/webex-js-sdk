@@ -337,9 +337,6 @@ const Breakouts = WebexPlugin.extend({
 
     this.set(params);
     this.set('breakoutMoveId', breakoutMoveId);
-    if (this.llmBreakoutJoinResponseInfo) {
-      this.llmBreakoutJoinResponseInfo.breakoutMoveId = breakoutMoveId;
-    }
     // These values are set manually so they are unset when they are not included in params
     this.set('groups', params.groups);
     this.set('startTime', params.startTime);
