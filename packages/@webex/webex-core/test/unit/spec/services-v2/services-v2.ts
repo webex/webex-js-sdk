@@ -91,7 +91,7 @@ describe('webex-core', () => {
           assert.isTrue(services.initFailed);
           sinon.assert.calledWith(
             services.logger.error,
-            `services: failed to init initial services when no credentials available, ${expectedMessage}`
+            `services: failed to init services when no credentials available, ${expectedMessage}`
           );
         }
       );
@@ -125,7 +125,7 @@ describe('webex-core', () => {
           assert.isTrue(services.initFailed);
           sinon.assert.calledWith(
             services.logger.error,
-            `services: failed to init initial services when credentials available, ${expectedMessage}`
+            `services: failed to init services when credentials available, ${expectedMessage}`
           );
         }
       );
@@ -138,7 +138,10 @@ describe('webex-core', () => {
         // ungated mode, flips services.ready to true.
         services.listenToOnce.getCall(0).args[2]();
 
-        assert.isTrue(services.ready, 'services.ready should be true so it does not block webex.ready');
+        assert.isTrue(
+          services.ready,
+          'services.ready should be true so it does not block webex.ready'
+        );
       });
 
       it('listens on the "ready" event when waitForCatalogInit is disabled (default)', () => {
@@ -573,7 +576,7 @@ describe('webex-core', () => {
 
         services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
         services.webex.credentials = {
-          getOrgId: sinon.stub().returns('')
+          getOrgId: sinon.stub().returns(''),
         };
         catalog.status = {};
       });
@@ -614,7 +617,7 @@ describe('webex-core', () => {
         const serviceGroup = 'postauth';
         const hostmap = {services: [{hostmap: 'hostmap'}]};
 
-        services._formatReceivedHostmap = sinon.stub().returns({services : [{some: 'hostmap'}]});
+        services._formatReceivedHostmap = sinon.stub().returns({services: [{some: 'hostmap'}]});
 
         catalog.updateServiceGroups = sinon.stub().returns(Promise.resolve([{some: 'value'}]));
 
@@ -630,7 +633,7 @@ describe('webex-core', () => {
         const serviceGroup = 'postauth';
         const hostmap = {};
 
-        services._formatReceivedHostmap = sinon.stub().returns({services : undefined});
+        services._formatReceivedHostmap = sinon.stub().returns({services: undefined});
 
         catalog.updateServiceGroups = sinon.stub().returns(Promise.resolve([{some: 'value'}]));
 
@@ -869,13 +872,13 @@ describe('webex-core', () => {
     });
 
     describe('#invalidateCache', () => {
-      beforeEach( () => {
+      beforeEach(() => {
         services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
         services.webex.credentials = {
-          getOrgId: sinon.stub().returns('')
+          getOrgId: sinon.stub().returns(''),
         };
         catalog.status = {};
-      })
+      });
       it('should log the timestamp parameter', async () => {
         const timestamp = '1234567890';
         services.logger.info = sinon.stub();
@@ -883,7 +886,11 @@ describe('webex-core', () => {
 
         await services.invalidateCache(timestamp);
 
-        assert.calledWith(services.logger.info, 'services: invalidate cache, timestamp:', timestamp);
+        assert.calledWith(
+          services.logger.info,
+          'services: invalidate cache, timestamp:',
+          timestamp
+        );
       });
 
       it('should call initServiceCatalogs when invalidate timestamp is newer than catalog timestamp', async () => {
@@ -1010,30 +1017,30 @@ describe('webex-core', () => {
         // Arrange: seed internal _services with mobius (including duplicate baseUrl)
         services._services = [
           {
-            "id": "urn:TEAM:us-east-2_a:mobius",
-            "serviceName": 'mobius',
-            "serviceUrls": [
-              {"baseUrl": 'https://mobius-us-east-2.prod.infra.webex.com/api/v1', "priority": 5},
-              {"baseUrl": 'https://mobius-eu-central-1.prod.infra.webex.com/api/v1', "priority": 10},
-              {"baseUrl": 'https://mobius-ap-southeast-2.prod.infra.webex.com/api/v1', "priority": 15}, // duplicate
+            id: 'urn:TEAM:us-east-2_a:mobius',
+            serviceName: 'mobius',
+            serviceUrls: [
+              {baseUrl: 'https://mobius-us-east-2.prod.infra.webex.com/api/v1', priority: 5},
+              {baseUrl: 'https://mobius-eu-central-1.prod.infra.webex.com/api/v1', priority: 10},
+              {baseUrl: 'https://mobius-ap-southeast-2.prod.infra.webex.com/api/v1', priority: 15}, // duplicate
             ],
           },
           {
-            "id": "urn:TEAM:ap-southeast-2_m:mobius",
-            "serviceName": "mobius",
-            "serviceUrls": [
-                {
-                    "baseUrl": "https://mobius-me-central-1.prod.infra.webex.com/api/v1",
-                    "priority": 5
-                },
-                {
-                    "baseUrl": "https://mobius-eu-central-1.prod.infra.webex.com/api/v1",
-                    "priority": 10
-                },
-                {
-                    "baseUrl": "https://mobius-ap-southeast-2.prod.infra.webex.com/api/v1",
-                    "priority": 15
-                },
+            id: 'urn:TEAM:ap-southeast-2_m:mobius',
+            serviceName: 'mobius',
+            serviceUrls: [
+              {
+                baseUrl: 'https://mobius-me-central-1.prod.infra.webex.com/api/v1',
+                priority: 5,
+              },
+              {
+                baseUrl: 'https://mobius-eu-central-1.prod.infra.webex.com/api/v1',
+                priority: 10,
+              },
+              {
+                baseUrl: 'https://mobius-ap-southeast-2.prod.infra.webex.com/api/v1',
+                priority: 15,
+              },
             ],
           },
           // Non-mobius service should be ignored by getMobiusClusters
@@ -1051,42 +1058,64 @@ describe('webex-core', () => {
         assert.deepEqual(
           clusters.map(({host, id, ttl, priority}) => ({host, id, ttl, priority})),
           [
-            {host: 'mobius-us-east-2.prod.infra.webex.com', id: 'urn:TEAM:us-east-2_a:mobius', ttl: 0, priority: 5},
-            {host: 'mobius-eu-central-1.prod.infra.webex.com', id: 'urn:TEAM:us-east-2_a:mobius', ttl: 0, priority: 10},
-            {host: 'mobius-ap-southeast-2.prod.infra.webex.com', id: 'urn:TEAM:us-east-2_a:mobius', ttl: 0, priority: 15},
-            {host: 'mobius-me-central-1.prod.infra.webex.com', id: 'urn:TEAM:ap-southeast-2_m:mobius', ttl: 0, priority: 5},
+            {
+              host: 'mobius-us-east-2.prod.infra.webex.com',
+              id: 'urn:TEAM:us-east-2_a:mobius',
+              ttl: 0,
+              priority: 5,
+            },
+            {
+              host: 'mobius-eu-central-1.prod.infra.webex.com',
+              id: 'urn:TEAM:us-east-2_a:mobius',
+              ttl: 0,
+              priority: 10,
+            },
+            {
+              host: 'mobius-ap-southeast-2.prod.infra.webex.com',
+              id: 'urn:TEAM:us-east-2_a:mobius',
+              ttl: 0,
+              priority: 15,
+            },
+            {
+              host: 'mobius-me-central-1.prod.infra.webex.com',
+              id: 'urn:TEAM:ap-southeast-2_m:mobius',
+              ttl: 0,
+              priority: 5,
+            },
           ]
         );
       });
     });
-    
+
     describe('#isValidHost', () => {
       beforeEach(() => {
         // Setting up a mock services list
-         services._services = [{
-            "id": "urn:IDENTITY:PC75:adminAudit",
-            "serviceName": "adminAudit",
-            "serviceUrls": [
-                {
-                    "baseUrl": "https://audit-ci-r.wbx2.com/audit-ci/api/v2",
-                    "priority": 5
-                },
-                 {
-                    "baseUrl": "https://audit-ci-t.wbx2.com/audit-ci/api/v2",
-                    "priority": 10
-                }
-            ]
-        },
-         {
-            "id": "urn:IDENTITY:PC75:cdf",
-            "serviceName": "cdf",
-            "serviceUrls": [
-                {
-                    "baseUrl": "https://wapdavis.webex.com/davis/api/v1",
-                    "priority": 5
-                }
-            ]
-        }];
+        services._services = [
+          {
+            id: 'urn:IDENTITY:PC75:adminAudit',
+            serviceName: 'adminAudit',
+            serviceUrls: [
+              {
+                baseUrl: 'https://audit-ci-r.wbx2.com/audit-ci/api/v2',
+                priority: 5,
+              },
+              {
+                baseUrl: 'https://audit-ci-t.wbx2.com/audit-ci/api/v2',
+                priority: 10,
+              },
+            ],
+          },
+          {
+            id: 'urn:IDENTITY:PC75:cdf',
+            serviceName: 'cdf',
+            serviceUrls: [
+              {
+                baseUrl: 'https://wapdavis.webex.com/davis/api/v1',
+                priority: 5,
+              },
+            ],
+          },
+        ];
       });
       afterAll(() => {
         // Clean up the mock services list
