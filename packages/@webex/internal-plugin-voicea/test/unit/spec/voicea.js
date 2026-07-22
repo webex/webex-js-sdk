@@ -1487,7 +1487,7 @@ describe('plugin-voicea', () => {
         assert.notCalled(defaultSocket.send);
 
         const sent = practiceSocket.send.getCall(0).args[0];
-        expect(sent).to.have.nested.property('recipients.route', 'practice-binding');
+        expect(sent).to.have.nested.property('recipients[0].route', 'practice-binding');
       });
 
       it('sendAnnouncement falls back to the default socket and binding when the practice session is not connected', () => {
@@ -1500,7 +1500,7 @@ describe('plugin-voicea', () => {
         assert.notCalled(practiceSocket.send);
 
         const sent = defaultSocket.send.getCall(0).args[0];
-        expect(sent).to.have.nested.property('recipients.route', 'default-binding');
+        expect(sent).to.have.nested.property('recipients[0].route', 'default-binding');
       });
 
       it('requestLanguage uses the practice session socket and binding when available', () => {
@@ -1510,7 +1510,7 @@ describe('plugin-voicea', () => {
         assert.notCalled(defaultSocket.send);
 
         const sent = practiceSocket.send.getCall(0).args[0];
-        expect(sent).to.have.nested.property('recipients.route', 'practice-binding');
+        expect(sent).to.have.nested.property('recipients[0].route', 'practice-binding');
         expect(sent).to.have.nested.property('data.clientPayload.translationLanguage', 'fr');
       });
 
@@ -1523,7 +1523,7 @@ describe('plugin-voicea', () => {
         assert.notCalled(practiceSocket.send);
 
         const sent = defaultSocket.send.getCall(0).args[0];
-        expect(sent).to.have.nested.property('recipients.route', 'default-binding');
+        expect(sent).to.have.nested.property('recipients[0].route', 'default-binding');
         expect(sent).to.have.nested.property('data.clientPayload.translationLanguage', 'fr');
       });
 
@@ -1534,7 +1534,7 @@ describe('plugin-voicea', () => {
         assert.notCalled(defaultSocket.send);
 
         const sent = practiceSocket.send.getCall(0).args[0];
-        expect(sent).to.have.nested.property('recipients.route', 'practice-binding');
+        expect(sent).to.have.nested.property('recipients[0].route', 'practice-binding');
         expect(sent).to.have.nested.property(
           'data.transcriptPayload.type',
           'manual_caption_final_result'
@@ -1550,7 +1550,7 @@ describe('plugin-voicea', () => {
         assert.notCalled(practiceSocket.send);
 
         const sent = defaultSocket.send.getCall(0).args[0];
-        expect(sent).to.have.nested.property('recipients.route', 'default-binding');
+        expect(sent).to.have.nested.property('recipients[0].route', 'default-binding');
         expect(sent).to.have.nested.property(
           'data.transcriptPayload.type',
           'manual_caption_interim_result'
