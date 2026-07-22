@@ -675,6 +675,22 @@ describe('webex-core', () => {
         );
       });
 
+      it('includes the catalog override query when configured', async () => {
+        services.webex.config.services = {useCatalogOverride: true};
+        sinon.stub(services, '_formatReceivedHostmap').resolves('map response');
+        sinon.stub(services, 'request').resolves({});
+
+        await services._fetchNewServiceHostmap({from: 'limited'});
+
+        assert.calledOnceWithExactly(services.request, {
+          method: 'GET',
+          service: 'u2c',
+          resource: '/limited/catalog',
+          qs: {format: 'U2CV2', useCatalogOverride: true},
+          headers: {},
+        });
+      });
+
       it('checks service request rejects', async () => {
         const error = new Error('some error');
 
@@ -1192,6 +1208,7 @@ describe('webex-core', () => {
         services.webex.config.services = services.webex.config.services || {discovery: {}};
         services.webex.config.services.discovery.u2c =
           services.webex.config.services.discovery.u2c || 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.services.useCatalogOverride = false;
         services.webex.config.fedramp =
           typeof services.webex.config.fedramp === 'boolean'
             ? services.webex.config.fedramp
@@ -1230,6 +1247,7 @@ describe('webex-core', () => {
         assert.deepEqual(parsed.env, {
           fedramp: false,
           u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1',
+          useCatalogOverride: false,
         });
         assert.isObject(parsed.preauth);
         assert.deepEqual(parsed.preauth.meta, {
@@ -1354,6 +1372,32 @@ describe('webex-core', () => {
 
         assert.isFalse(warmed, 'env mismatch should skip warm and return false');
         assert.isFalse(spy.called, 'no group should be warmed on env mismatch');
+        spy.restore && spy.restore();
+      });
+
+      it('skips warm when the catalog override configuration changes', async () => {
+        services.webex.config.services.useCatalogOverride = true;
+        window.localStorage.setItem(
+          CATALOG_CACHE_KEY_V2,
+          JSON.stringify({
+            cachedAt: Date.now(),
+            env: {
+              fedramp: false,
+              u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1',
+              useCatalogOverride: false,
+            },
+            preauth: {
+              hostMap: {services: [], timestamp: '1'},
+              meta: {selectionType: 'orgId', selectionValue: 'urn:EXAMPLE:org'},
+            },
+          })
+        );
+        const spy = sinon.spy(services._getCatalog(), 'updateServiceGroups');
+
+        const warmed = await services._loadCatalogFromCache();
+
+        assert.isFalse(warmed, 'catalog override mismatch should skip warm and return false');
+        assert.isFalse(spy.called, 'no group should be warmed on catalog override mismatch');
         spy.restore && spy.restore();
       });
     });
