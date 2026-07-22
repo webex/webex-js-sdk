@@ -217,21 +217,19 @@ describe('plugin-meetings', () => {
         assert.calledThrice(breakouts.queryPreAssignments);
       });
 
-      it('handles LLM_CONNECT_RESPONSE by storing the connect response info', () => {
-        breakouts.breakoutMoveId = 'moveId';
-        breakouts.submitLLMBreakoutJoinResponseMetric = sinon.stub();
+      it('wires LLM_CONNECT_RESPONSE to handleLLMBreakoutJoinResponseMetric', () => {
+        const handleStub = sinon.stub(Breakouts.prototype, 'handleLLMBreakoutJoinResponseMetric');
+        const bo = new Breakouts({}, {parent: webex});
 
         const eventInfo = {
           meeting: {id: 'meeting-id'},
           llmLatency: {clientLLMWebSocketConnectTime: 1},
         };
-        breakouts.trigger(BREAKOUTS.EVENTS.LLM_CONNECT_RESPONSE, eventInfo);
+        bo.trigger(BREAKOUTS.EVENTS.LLM_CONNECT_RESPONSE, eventInfo);
 
-        assert.deepEqual(breakouts.llmBreakoutJoinResponseInfo, {
-          ...eventInfo,
-          breakoutMoveId: 'moveId',
-        });
-        assert.calledOnce(breakouts.submitLLMBreakoutJoinResponseMetric);
+        assert.calledOnceWithExactly(handleStub, eventInfo);
+
+        handleStub.restore();
       });
     });
 
