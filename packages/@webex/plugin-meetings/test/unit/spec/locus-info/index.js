@@ -31,6 +31,7 @@ import {
 
 import {self, selfWithInactivity} from './selfConstant';
 import {MEETING_REMOVED_REASON} from '@webex/plugin-meetings/src/constants';
+import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 
 describe('plugin-meetings', () => {
@@ -4887,6 +4888,11 @@ describe('plugin-meetings', () => {
               options: {
                 meetingId: locusInfo.meetingId,
               },
+              payload: {
+                eventData: {
+                  joinInProgress: false,
+                },
+              },
             });
           });
 
@@ -4906,6 +4912,11 @@ describe('plugin-meetings', () => {
               name: 'client.call.remote-ended',
               options: {
                 meetingId: locusInfo.meetingId,
+              },
+              payload: {
+                eventData: {
+                  joinInProgress: false,
+                },
               },
             });
           });
@@ -4927,6 +4938,11 @@ describe('plugin-meetings', () => {
               name: 'client.call.remote-ended',
               options: {
                 meetingId: locusInfo.meetingId,
+              },
+              payload: {
+                eventData: {
+                  joinInProgress: false,
+                },
               },
             });
           });
@@ -4999,6 +5015,93 @@ describe('plugin-meetings', () => {
             shouldLeave: false,
           }
         );
+      });
+
+      describe('destroyMeetingSuspended', () => {
+        it('suppresses DESTROY_MEETING for SELF_REMOVED when suspended', () => {
+          locusInfo.emitScoped = sinon.stub();
+          locusInfo.suspendDestroyMeeting(true);
+          locusInfo.parsedLocus = {
+            fullState: {
+              type: _MEETING_,
+            },
+            self: {
+              removed: true,
+            }
+          };
+
+          locusInfo.isMeetingActive();
+
+          assert.notCalled(locusInfo.emitScoped);
+          assert.calledOnceWithExactly(
+            sendBehavioralMetricStub,
+            BEHAVIORAL_METRICS.DESTROY_MEETING_WHILE_SUSPENDED,
+            {
+              meetingId: locusInfo.meetingId,
+              reason: 'SELF_REMOVED',
+            }
+          );
+        });
+
+        it('suppresses DESTROY_MEETING for MEETING_INACTIVE_TERMINATING when suspended', () => {
+          locusInfo.emitScoped = sinon.stub();
+          locusInfo.suspendDestroyMeeting(true);
+          locusInfo.parsedLocus = {
+            fullState: {
+              type: _MEETING_,
+            },
+          };
+          locusInfo.fullState = {
+            state: LOCUS.STATE.INACTIVE,
+          };
+
+          locusInfo.isMeetingActive();
+
+          assert.notCalled(locusInfo.emitScoped);
+          assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+          assert.calledOnceWithExactly(
+            sendBehavioralMetricStub,
+            BEHAVIORAL_METRICS.DESTROY_MEETING_WHILE_SUSPENDED,
+            {
+              meetingId: locusInfo.meetingId,
+              reason: 'MEETING_INACTIVE_TERMINATING',
+            }
+          );
+        });
+
+        [
+          {reason: 'CALL_INACTIVE', setup: () => {
+            locusInfo.parsedLocus = {fullState: {type: _CALL_}};
+            locusInfo.fullState = {state: LOCUS.STATE.INACTIVE};
+          }},
+          {reason: 'PARTNER_LEFT', setup: () => {
+            locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
+            locusInfo.parsedLocus = {fullState: {type: _CALL_}, self: {state: MEETING_STATE.STATES.JOINED}};
+          }},
+          {reason: 'SELF_LEFT', setup: () => {
+            locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
+            locusInfo.parsedLocus = {fullState: {type: _CALL_}, self: {state: MEETING_STATE.STATES.LEFT}};
+          }},
+        ].forEach(({reason, setup}) => {
+          it(`sends joinInProgress=true in client event for ${reason} when suspended`, () => {
+            locusInfo.suspendDestroyMeeting(true);
+            setup();
+
+            locusInfo.isMeetingActive();
+
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.call.remote-ended',
+              options: {
+                meetingId: locusInfo.meetingId,
+              },
+              payload: {
+                eventData: {
+                  joinInProgress: true,
+                },
+              },
+            });
+          });
+        });
       });
     });
 
