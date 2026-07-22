@@ -32,12 +32,6 @@ const DEFAULT_CLUSTER_IDENTIFIER =
 const CATALOG_CACHE_KEY_V2 = 'services.v2.u2cHostMap';
 const CATALOG_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-// Maximum time we will wait for the initial catalog collection before letting
-// `services.ready` (and therefore `webex.ready`) fire anyway. A hung request
-// must never leave the app on a permanent spinner - past this point downstream
-// consumers must fall through to their normal error/login paths.
-const SERVICES_INIT_TIMEOUT_MS = 15_000;
-
 /* eslint-disable no-underscore-dangle */
 /**
  * @class
@@ -1493,11 +1487,13 @@ const Services = WebexPlugin.extend({
 
       // Race init against a hard timeout so a hung request never leaves
       // `services.ready` false forever - that would stall `webex.ready` and
-      // leave the app on a permanent spinner.
+      // leave the app on a permanent spinner. Timeout is configurable via
+      // `config.services.catalogInitTimeout` (defaults to 15s in config).
+      const initTimeoutMs = this.webex.config?.services?.catalogInitTimeout;
       const timeout = new Promise<never>((_, reject) => {
         setTimeout(
-          () => reject(new Error(`services: init timed out after ${SERVICES_INIT_TIMEOUT_MS}ms`)),
-          SERVICES_INIT_TIMEOUT_MS
+          () => reject(new Error(`services: init timed out after ${initTimeoutMs}ms`)),
+          initTimeoutMs
         );
       });
 
