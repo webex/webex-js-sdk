@@ -976,6 +976,8 @@ describe('plugin-meetings', () => {
         let addMediaInternalStub;
         let supportsRTCPeerConnectionStub;
 
+        let suspendDestroyMeetingStub;
+
         beforeEach(() => {
           supportsRTCPeerConnectionStub = sinon
             .stub(WebCapabilities, 'supportsRTCPeerConnection')
@@ -996,6 +998,7 @@ describe('plugin-meetings', () => {
             .stub(meeting.roap, 'handleTurnDiscoveryHttpResponse')
             .resolves({turnServerInfo: fakeTurnServerInfo, turnDiscoverySkippedReason: undefined});
           abortTurnDiscoveryStub = sinon.stub(meeting.roap, 'abortTurnDiscovery');
+          suspendDestroyMeetingStub = sinon.stub(meeting.locusInfo, 'suspendDestroyMeeting');
         });
 
         it('should work as expected', async () => {
@@ -1031,6 +1034,11 @@ describe('plugin-meetings', () => {
             retryCount: 0,
             prevJoinResponse: undefined,
           });
+
+          // suspendDestroyMeeting should be called with true at start and false on success
+          assert.calledTwice(suspendDestroyMeetingStub);
+          assert.calledWith(suspendDestroyMeetingStub.firstCall, true);
+          assert.calledWith(suspendDestroyMeetingStub.secondCall, false);
         });
 
         it("should not call handleTurnDiscoveryHttpResponse if we don't send a TURN discovery request with join", async () => {
@@ -1150,6 +1158,13 @@ describe('plugin-meetings', () => {
             firstError: undefined,
             prevError: undefined,
           });
+
+          // suspendDestroyMeeting(true) called at start of each attempt, (false) only on final failure
+          // 1st attempt: suspendDestroyMeeting(true), 2nd attempt (retry): suspendDestroyMeeting(true), final failure: suspendDestroyMeeting(false)
+          assert.calledThrice(suspendDestroyMeetingStub);
+          assert.calledWith(suspendDestroyMeetingStub.firstCall, true);
+          assert.calledWith(suspendDestroyMeetingStub.secondCall, true);
+          assert.calledWith(suspendDestroyMeetingStub.thirdCall, false);
         });
 
         it('should re-join on retry when join() fails on first attempt, and throw the first error if join fails again', async () => {
@@ -2043,8 +2058,86 @@ describe('plugin-meetings', () => {
             Errors.WebrtcApiNotAvailableError
           );
 
+          assert.notCalled(suspendDestroyMeetingStub);
           assert.notCalled(meeting.join);
           assert.notCalled(meeting.addMediaInternal);
+        });
+
+        [
+          {description: '409 error from join()', statusCode: 409, useCause: false},
+          {description: '403 error from join()', statusCode: 403, useCause: false},
+          {description: '409 error in cause (e.g. AddMediaFailed)', statusCode: 409, useCause: true},
+          {description: '403 error in cause (e.g. AddMediaFailed)', statusCode: 403, useCause: true},
+        ].forEach(({description, statusCode, useCause}) => {
+          it(`should re-join on retry when ${description}`, async () => {
+            const error = useCause
+              ? Object.assign(new Error('wrapped error'), {cause: {statusCode}})
+              : Object.assign(new Error('locus error'), {statusCode});
+
+            meeting.addMediaInternal = sinon
+              .stub()
+              .onFirstCall()
+              .rejects(error)
+              .onSecondCall()
+              .resolves(test4);
+
+            const result = await meeting.joinWithMedia({joinOptions, mediaOptions});
+
+            assert.deepEqual(result, {join: fakeJoinResult, media: test4, multistreamEnabled: true});
+
+            // join() should be called twice — once for the first attempt, once for the re-join
+            assert.calledTwice(meeting.join);
+            assert.calledTwice(generateTurnDiscoveryRequestMessageStub);
+          });
+        });
+
+        it('should allow up to JOIN_WITH_MEDIA_RETRY_MAX_COUNT retries for 409 errors', async () => {
+          const error409 = Object.assign(new Error('locus dropped us'), {statusCode: 409});
+
+          meeting.addMediaInternal = sinon.stub().rejects(error409);
+          meeting.join = sinon.stub().callsFake(() => Promise.resolve(fakeJoinResult));
+          sinon.stub(meeting, 'leave').resolves();
+
+          await assert.isRejected(
+            meeting.joinWithMedia({joinOptions, mediaOptions})
+          );
+
+          // JOIN_WITH_MEDIA_RETRY_MAX_COUNT is 2, so we expect 3 attempts total (initial + 2 retries)
+          assert.callCount(meeting.join, 3);
+          assert.callCount(meeting.addMediaInternal, 3);
+        });
+
+        it('should not retry on 1-1 calls', async () => {
+          const addMediaError = new Error('addMedia error');
+
+          sinon.stub(MeetingsUtil, 'isOneOnOneCall').returns(true);
+
+          meeting.addMediaInternal = sinon.stub().rejects(addMediaError);
+          sinon.stub(meeting, 'leave').resolves();
+
+          await assert.isRejected(
+            meeting.joinWithMedia({joinOptions, mediaOptions}),
+            addMediaError
+          );
+
+          // should not retry - only 1 attempt
+          assert.calledOnce(meeting.join);
+          assert.calledOnce(meeting.addMediaInternal);
+          assert.calledOnceWithExactly(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: addMediaError.message,
+              stack: addMediaError.stack,
+              leaveErrorReason: undefined,
+              isRetry: false,
+            },
+            {
+              type: addMediaError.name,
+            }
+          );
         });
       });
       describe('#isTranscriptionSupported', () => {
@@ -15538,6 +15631,71 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.selfId, uuid2);
           assert.equal(meeting.mediaId, uuid3);
           assert.equal(meeting.hostId, uuid4);
+        });
+      });
+
+      describe('#waitForSelfUrlChange', () => {
+        let waitForSelfUrlChange;
+        let locusMediaRequestStub;
+
+        beforeEach(async () => {
+          locusMediaRequestStub = sinon
+            .stub(LocusMediaRequestModule, 'LocusMediaRequest')
+            .returns({id: 'fake LocusMediaRequest instance'});
+
+          meeting.setLocus = sinon.stub().returns(true);
+          webex.meetings.registered = true;
+          sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve('JOIN_RESULT'));
+          sinon.stub(meeting, 'updateLLMConnection').returns(Promise.resolve());
+
+          await meeting.join();
+
+          waitForSelfUrlChange = locusMediaRequestStub.firstCall.args[0].waitForSelfUrlChange;
+        });
+
+        it('should resolve immediately when joinWithMediaRetryInfo.retryCount > 0', async () => {
+          meeting.joinWithMediaRetryInfo = {retryCount: 1, prevJoinResponse: undefined};
+
+          const result = waitForSelfUrlChange();
+
+          assert.instanceOf(result, Promise);
+          await result;
+        });
+
+        it('should not resolve before the timeout when retryCount is 0', async () => {
+          meeting.joinWithMediaRetryInfo = {retryCount: 0, prevJoinResponse: undefined};
+
+          let resolved = false;
+          waitForSelfUrlChange().then(() => {
+            resolved = true;
+          });
+
+          await testUtils.flushPromises();
+          assert.isFalse(resolved);
+        });
+
+        it('should resolve after the 5s timeout when retryCount is 0', async () => {
+          meeting.joinWithMediaRetryInfo = {retryCount: 0, prevJoinResponse: undefined};
+
+          let resolved = false;
+          const promise = waitForSelfUrlChange();
+          promise.then(() => {
+            resolved = true;
+          });
+
+          fakeClock.tick(5000);
+          await promise;
+
+          assert.isTrue(resolved);
+        });
+
+        it('should return the same promise when called multiple times', () => {
+          meeting.joinWithMediaRetryInfo = {retryCount: 0, prevJoinResponse: undefined};
+
+          const firstPromise = waitForSelfUrlChange();
+          const secondPromise = waitForSelfUrlChange();
+
+          assert.equal(firstPromise, secondPromise);
         });
       });
 
