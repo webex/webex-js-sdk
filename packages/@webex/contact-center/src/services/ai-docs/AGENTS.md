@@ -1,6 +1,8 @@
 # Services Layer - AI Agent Guide
 
-> **Scope Authority**: This is the authoritative documentation for the **Services** orchestration layer. It describes how all service modules are composed, instantiated, and how they interact. For task routing, critical rules, and code generation workflows, see the [root orchestrator AGENTS.md](../../../AGENTS.md).
+> **Legacy/reference-only.** Canonical SDD: [`services-spec.md`](services-spec.md). Use the package [manifest](../../../.sdd/manifest.json) and [`SPEC_INDEX.md`](../../../ai-docs/SPEC_INDEX.md) for routing; code and tests remain the behavioral referee.
+>
+> **Legacy scope:** This guide describes how service modules were documented before canonical SDD routing. For repository rules, see the [root orchestrator AGENTS.md](../../../AGENTS.md).
 
 ---
 
@@ -377,7 +379,7 @@ CC Backend
 
 ## Related
 
-- [Root orchestrator AGENTS.md](../../../AGENTS.md) — task classification, critical rules, templates
+- [Root orchestrator AGENTS.md](../../../AGENTS.md) — repository rules; use [`SPEC_INDEX.md`](../../../ai-docs/SPEC_INDEX.md) for canonical module routing
 - [ai-docs/RULES.md](../../../ai-docs/RULES.md) — coding standards
 - [ai-docs/patterns/](../../../ai-docs/patterns/) — TypeScript, testing, and event patterns
 - [types.ts](../../types.ts) — public type definitions

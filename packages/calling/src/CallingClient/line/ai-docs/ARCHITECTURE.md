@@ -1,5 +1,7 @@
 # Line Module — Architecture
 
+> Canonical SDD target: [`src/CallingClient/line/ai-docs/line-spec.md`](line-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## File Structure
 
 ```
