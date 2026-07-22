@@ -1,5 +1,7 @@
 # CallHistory Module
 
+> Canonical SDD target: [`src/CallHistory/ai-docs/call-history-spec.md`](call-history-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Overview
 
 The `CallHistory` module provides APIs for retrieving, managing, and receiving real-time updates for call history records from backend services. It supports fetching paginated and sorted call history, marking missed calls as read, deleting call history records, and listening for real-time session events via Mercury WebSocket.
