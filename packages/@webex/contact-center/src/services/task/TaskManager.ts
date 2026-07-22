@@ -936,7 +936,7 @@ export default class TaskManager extends EventEmitter {
         interactionId,
         AIAssistantEventType.CUSTOM_EVENT,
         AIAssistantEventName.GET_TRANSCRIPTS,
-        action
+        {action}
       )
       .catch((error) => {
         LoggerProxy.error(`Failed to send transcript ${action} event`, {

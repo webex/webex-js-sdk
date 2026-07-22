@@ -1,5 +1,7 @@
 # CallingClient Module
 
+> Canonical SDD target: [`src/CallingClient/ai-docs/calling-client-spec.md`](calling-client-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## AI Agent Routing Instructions
 
 **If you are an AI assistant or automated tool:**

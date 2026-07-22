@@ -41,7 +41,6 @@
     "@types/jsdom": "^21",
     "@webex/babel-config-legacy": "workspace:*",
     "@webex/eslint-config-legacy": "workspace:*",
-    "@webex/event-dictionary-ts": "^1.0.2181",
     "@webex/jest-config-legacy": "workspace:*",
     "@webex/legacy-tools": "workspace:*",
     "@webex/plugin-rooms": "workspace:*",
@@ -62,6 +61,7 @@
   },
   "dependencies": {
     "@webex/common": "workspace:*",
+    "@webex/event-dictionary-ts": "^1.0.2215",
     "@webex/internal-media-core": "2.26.2",
     "@webex/internal-plugin-conversation": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",

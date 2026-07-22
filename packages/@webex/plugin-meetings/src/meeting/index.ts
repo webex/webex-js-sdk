@@ -3270,7 +3270,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
 
       LoggerProxy.logger.info(
-        `Meeting:index#setUpLocusInfoMediaInactiveListener --> this.shareStatus=${this.shareStatus} newShareStatus=${newShareStatus}`
+        `Meeting:index#setUpLocusMediaSharesListener --> this.shareStatus=${this.shareStatus} newShareStatus=${newShareStatus}`
       );
 
       if (newShareStatus !== this.shareStatus) {
@@ -5326,6 +5326,7 @@ export default class Meeting extends StatelessWebexPlugin {
       );
 
       this.receiveSlotManager.reset();
+
       this.mediaProperties.webrtcMediaConnection.close();
       this.mediaProperties.unsetPeerConnection();
       this.sendSlotManager.reset();
@@ -5624,9 +5625,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
     LoggerProxy.logger.info('Meeting:index#joinWithMedia called');
 
-    let joined = false;
-    let joinResponse = prevJoinResponse;
-
     /* Before we do anything, check if RTCPeerConnection is available. Normally this is checked
        by addMediaInternal() itself when creating the media connection, but since joinWithMedia()
        is a convenience method that does both join() and addMedia(), we want to fail fast here
@@ -5639,9 +5637,20 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     }
 
+    /* While we're trying to join, we may fail and be doing a retry. In that case,
+       we sometimes get dropped by Locus as a result of the 1st failed attempt.
+       That notification from Locus needs to be ignored, otherwise it causes the meeting to be
+       cleaned up and prevents the retry from running correctly.
+    */
+    this.locusInfo.suspendDestroyMeeting(true);
+
+    let joined = false;
+    let joinResponse = prevJoinResponse;
+
     const shouldJoin =
       !joinResponse || // first try, when the join response is empty
       (prevError && prevError instanceof UserNotJoinedError) || // last try failed with UserNotJoinedError
+      this.isErrorMeaningLocusDroppedUs(prevError) ||
       MeetingUtil.isUserInLeftState(this.locusInfo); // locus dropped the connection before we can re-try addMedia
 
     try {
@@ -5705,6 +5714,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.joinWithMediaRetryInfo = {retryCount: 0, prevJoinResponse: undefined};
 
+      this.locusInfo.suspendDestroyMeeting(false);
+
       return {
         join: joinResponse,
         media: mediaResponse,
@@ -5717,10 +5728,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.roap.abortTurnDiscovery();
 
-      // let's do a retry
+      // let's do a retry (but not on 1-1 calls, because the flow would get too complicated)
       let shouldRetry =
-        retryCount < 1 ||
-        (error instanceof UserNotJoinedError && retryCount < JOIN_WITH_MEDIA_RETRY_MAX_COUNT);
+        !MeetingsUtil.isOneOnOneCall(this.locusInfo.parsedLocus) &&
+        (retryCount < 1 ||
+          ((error instanceof UserNotJoinedError || this.isErrorMeaningLocusDroppedUs(error)) &&
+            retryCount < JOIN_WITH_MEDIA_RETRY_MAX_COUNT));
 
       if (
         CallDiagnosticUtils.isSdpOfferCreationError(error) ||
@@ -5790,6 +5803,8 @@ export default class Meeting extends StatelessWebexPlugin {
         firstError: undefined,
         prevError: undefined,
       };
+
+      this.locusInfo.suspendDestroyMeeting(false);
 
       throw firstError ?? error;
     }
@@ -7914,6 +7929,23 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Checks if the error indicates that Locus dropped us from the meeting,
+   * either directly on the error or wrapped inside an AddMediaFailed cause.
+   * This method is meant to be called only with errors thrown by Meeting.addMediaInternal()
+   *
+   * @param {Error} error
+   * @returns {boolean}
+   */
+  private isErrorMeaningLocusDroppedUs(error: Error | undefined): boolean {
+    const statusCode = (error as any)?.statusCode;
+    const causeStatusCode = (error as any)?.cause?.statusCode;
+
+    return (
+      statusCode === 409 || statusCode === 403 || causeStatusCode === 409 || causeStatusCode === 403
+    );
+  }
+
+  /**
    * Determines if the next media attempt should use only TURN-TLS (iceTransportPolicy='relay').
    * We do this in the hope that it will minimize the chance of Homer sending DTLS packets on a wrong
    * transport (as there will be only 1 transport) and dealing with firewalls that let STUN packets through, but block
@@ -8674,6 +8706,18 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   private waitForSelfUrlChange(): Promise<void> {
+    if (this.joinWithMediaRetryInfo.retryCount > 0) {
+      /* During joinWithMedia() retries we can get 403/409 from Locus and it doesn't mean
+       * that the selfUrl will change, it is usually caused by Locus dropping us as a result of
+       * media connection failure during joinWithMedia's earlier media connection attempt,
+       * so we don't want to wait for selfUrl change as this would only slow down the join process. */
+      LoggerProxy.logger.info(
+        'Meeting:index#waitForSelfUrlChange --> joinWithMedia retry in progress, will not wait for selfUrl change'
+      );
+
+      return Promise.resolve();
+    }
+
     if (!this.promisesWaitingForPropUpdate.selfUrl) {
       const pendingSelfUrlUpdate = new Defer();
 
