@@ -1914,6 +1914,19 @@ describe('plugin-meetings', () => {
             });
           });
 
+          it('logs the WASM runtime status after a meeting is created', async () => {
+            const loggerLogStub = sinon.stub(LoggerProxy.logger, 'log');
+
+            await webex.meetings.create(test1, test2);
+            await testUtils.flushPromises();
+
+            assert.calledWith(
+              loggerLogStub,
+              sinon.match(/Meetings:index#emitWasmRuntimePerformance --> WASM runtime status/)
+            );
+            loggerLogStub.restore();
+          });
+
           it('emits only once even when create() is called multiple times', async () => {
             await webex.meetings.create(test1, test2);
             await webex.meetings.create(test1, test2);

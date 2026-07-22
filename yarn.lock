@@ -8922,7 +8922,7 @@ __metadata:
     "@webex/test-helper-retry": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
     "@webex/ts-sdp": ^1.8.1
-    "@webex/web-capabilities": "link:../../../../web-capabilities"
+    "@webex/web-capabilities": ^1.12.0
     "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
     bowser: ^2.11.0
@@ -9609,18 +9609,21 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/web-capabilities@link:../../../../web-capabilities::locator=%40webex%2Fplugin-meetings%40workspace%3Apackages%2F%40webex%2Fplugin-meetings":
-  version: 0.0.0-use.local
-  resolution: "@webex/web-capabilities@link:../../../../web-capabilities::locator=%40webex%2Fplugin-meetings%40workspace%3Apackages%2F%40webex%2Fplugin-meetings"
-  languageName: node
-  linkType: soft
-
 "@webex/web-capabilities@npm:^1.10.0":
   version: 1.10.0
   resolution: "@webex/web-capabilities@npm:1.10.0"
   dependencies:
     bowser: ^2.11.0
   checksum: c6adda2b3cf4594e9977b710f6bc0244e26a21013bdd764a26317dee650d63d29369919f53ececd0b875e2bbb5e1c3d46c5326feea97cfada557bda6cd6664ac
+  languageName: node
+  linkType: hard
+
+"@webex/web-capabilities@npm:^1.12.0":
+  version: 1.12.0
+  resolution: "@webex/web-capabilities@npm:1.12.0"
+  dependencies:
+    bowser: ^2.11.0
+  checksum: 70e6d564b0082b5f83030561b94cb9711faa49ea6a01a639cc9fc116f8b7c7bdad7e6beeb816fd9d6bfcc9bce9b80ff31873db6c388ed41641116474d4d1c2f5
   languageName: node
   linkType: hard
 

@@ -220,15 +220,19 @@ export default class Meetings extends WebexPlugin {
    */
   private emitWasmRuntimePerformance = once((correlationId?: string): void => {
     WasmRuntimeProbe.check()
-      .then((result) =>
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.WASM_RUNTIME_PERFORMANCE, {
+      .then((result) => {
+        LoggerProxy.logger.log(
+          `Meetings:index#emitWasmRuntimePerformance --> WASM runtime status: ${result.status}, ratio: ${result.ratio}, wasmMs: ${result.wasmMs}, jsMs: ${result.jsMs}`
+        );
+
+        return Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.WASM_RUNTIME_PERFORMANCE, {
           status: result.status,
           ratio: result.ratio,
           wasmMs: result.wasmMs,
           jsMs: result.jsMs,
           correlation_id: correlationId,
-        })
-      )
+        });
+      })
       .catch((error) => {
         LoggerProxy.logger.error(
           `Meetings:index#emitWasmRuntimePerformance --> ERROR, unable to send WASM runtime performance metric: ${error.message}`
