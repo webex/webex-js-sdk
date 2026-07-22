@@ -102,7 +102,7 @@ export type {
 
 ```bash
 # Lint
-yarn workspace @webex/contact-center test:styles
+yarn workspace @webex/contact-center test:style
 
 # Test unit tests
 yarn workspace @webex/contact-center test:unit
