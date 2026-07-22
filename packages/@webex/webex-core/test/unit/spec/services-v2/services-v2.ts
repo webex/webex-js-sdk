@@ -157,7 +157,7 @@ describe('webex-core', () => {
       beforeEach(() => {
         services.webex.config = {
           ...(services.webex.config || {}),
-          services: {waitForCatalogInit: true},
+          services: {waitForCatalogInit: true, catalogInitTimeout: 15000},
         };
         // Reset ready flag: the outer beforeEach constructs services which
         // runs initialize() once with no config (ungated path, flips ready to
