@@ -188,15 +188,15 @@ describe('plugin-llm', () => {
       });
 
       it('attaches the measured datachannel timing to the error when the websocket connect fails', async () => {
+        const clock = sinon.useFakeTimers();
+
+        llmService.isDataChannelTokenEnabled = sinon.stub().resolves(false);
         llmService.register = sinon.stub().callsFake(async () => {
-          llmService.binding = 'binding';
-          llmService.webSocketUrl = 'wss://example.com/socket';
-          return {
-            body: {
-              binding: 'binding',
-              webSocketUrl: 'wss://example.com/socket',
-            },
-          };
+          clock.tick(37);
+          const sessionData = llmService.connections.get('llm-default-session') || {};
+          sessionData.webSocketUrl = 'wss://example.com/socket';
+          sessionData.binding = 'binding';
+          llmService.connections.set('llm-default-session', sessionData);
         });
 
         const connectError = new Error('websocket connect failed');
@@ -210,12 +210,14 @@ describe('plugin-llm', () => {
         }
 
         assert.equal(caughtError, connectError);
-        assert.isDefined(caughtError.timing);
-        assert.isNumber(caughtError.timing.clientLLMDatachannelResponseTime);
+        assert.deepEqual(caughtError.timing, {clientLLMDatachannelResponseTime: 37});
       });
 
       it('attaches the measured datachannel timing to the error when the response has no websocket URL', async () => {
+        const clock = sinon.useFakeTimers();
+
         llmService.register = sinon.stub().callsFake(async () => {
+          clock.tick(29);
           // register() resolves but the response leaves the session without a websocket URL.
           llmService.connections.set('llm-default-session', {
             locusUrl,
@@ -235,8 +237,7 @@ describe('plugin-llm', () => {
         sinon.assert.notCalled(llmService.connect);
         assert.instanceOf(caughtError, Error);
         assert.match(caughtError.message, /returned no websocket URL/);
-        assert.isDefined(caughtError.timing);
-        assert.isNumber(caughtError.timing.clientLLMDatachannelResponseTime);
+        assert.deepEqual(caughtError.timing, {clientLLMDatachannelResponseTime: 29});
       });
     });
 

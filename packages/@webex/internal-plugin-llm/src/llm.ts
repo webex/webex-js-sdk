@@ -169,10 +169,8 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       } catch (error) {
         // register() succeeded; only connect() failed. Attach the measured datachannel time so
         // callers don't misreport a websocket failure as a registration that never completed.
-        if (error && typeof error === 'object') {
-          // @ts-ignore
-          error.timing = {clientLLMDatachannelResponseTime};
-        }
+        // @ts-ignore
+        error.timing = {clientLLMDatachannelResponseTime};
         throw error;
       }
 

@@ -502,6 +502,14 @@ describe('plugin-meetings', () => {
         breakouts.submitLLMBreakoutJoinResponseMetric();
 
         assert.calledOnce(onBreakoutJoinResponseSpy);
+        const eventInfoArg = onBreakoutJoinResponseSpy.getCall(0).args[0];
+        assert.equal(eventInfoArg.breakoutMoveId, 'moveId');
+        assert.deepEqual(eventInfoArg.llmLatency, {clientLLMWebSocketConnectTime: 1});
+        assert.equal(eventInfoArg.llmWebsocketUrl, 'wss://llm');
+        assert.equal(eventInfoArg.meeting.id, 'meeting-id');
+        assert.equal(eventInfoArg.currentSession.sessionId, 'sessionId');
+        assert.equal(eventInfoArg.currentSession.groupId, 'groupId');
+        assert.isUndefined(eventInfoArg.error);
         assert.isUndefined(breakouts.llmBreakoutJoinResponseInfo);
       });
 
@@ -513,6 +521,14 @@ describe('plugin-meetings', () => {
         breakouts.submitLLMBreakoutJoinResponseMetric();
 
         assert.calledOnce(onBreakoutJoinResponseSpy);
+        const eventInfoArg = onBreakoutJoinResponseSpy.getCall(0).args[0];
+        assert.equal(eventInfoArg.breakoutMoveId, 'moveId');
+        assert.deepEqual(eventInfoArg.llmLatency, {clientLLMWebSocketConnectTime: 1});
+        assert.equal(eventInfoArg.llmWebsocketUrl, 'wss://llm');
+        assert.equal(eventInfoArg.meeting.id, 'meeting-id');
+        assert.equal(eventInfoArg.currentSession.sessionId, 'sessionId');
+        assert.equal(eventInfoArg.currentSession.groupId, 'groupId');
+        assert.isUndefined(eventInfoArg.error);
         assert.isUndefined(breakouts.llmBreakoutJoinResponseInfo);
       });
 
