@@ -1,5 +1,7 @@
 # Voicemail Module
 
+> Canonical SDD target: [`src/Voicemail/ai-docs/voicemail-spec.md`](voicemail-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## AI Agent Routing Instructions
 
 **If you are an AI assistant or automated tool:**

@@ -1,73 +1,101 @@
-# Contact Center SDK - Coding Standards & Rules
+# Rules — @webex/contact-center
+
+> Start here → root [`AGENTS.md`](../AGENTS.md) · router [`SPEC_INDEX.md`](SPEC_INDEX.md) · system [`ARCHITECTURE.md`](ARCHITECTURE.md). These rules are extracted from current package code and reviewed package documentation.
+
+## Coverage Map (which docs/specs to trust)
+| Module | Manifest coverage state | What it means here |
+|---|---|---|
+| `src` | Partial | Existing docs help, but code must be cross-checked until migration, coverage, and validation pass. |
+| `src/metrics` | Partial | Existing docs help, but code must be cross-checked until migration, coverage, and validation pass. |
+| `src/services` | Partial | Existing docs help, but code must be cross-checked until migration, coverage, and validation pass. |
+| `src/services/agent` | Partial | Existing docs help, but code must be cross-checked until migration, coverage, and validation pass. |
+| `src/services/config` | Partial | Existing docs help, but code must be cross-checked until migration, coverage, and validation pass. |
+| `src/services/core` | Partial | Existing docs help, but code must be cross-checked until migration, coverage, and validation pass. |
+| `src/services/task` | Partial | Existing docs help, but code must be cross-checked until migration, coverage, and validation pass. |
+| `src/services/task/state-machine` | Partial | Existing docs help, but code must be cross-checked until migration, coverage, and validation pass. |
+| `src/utils` | Partial | Existing docs help, but code must be cross-checked until migration, coverage, and validation pass. |
+
+## Autonomy & Ask-First
+- **May proceed:** read-only inspection and approved low-risk documentation maintenance.
+- **Ask first / plan + confirm:** code changes, public contract changes, state-machine changes, security-sensitive work, or new dependencies.
+- **Never without explicit human approval:** push, publish, deploy, delete, or post externally.
+
+Before submitting code:
+
+- [ ] All public APIs have JSDoc with `@public`, `@param`, `@returns`, `@example`
+
+- [ ] LoggerProxy used for all logging with module/method context
+
+- [ ] MetricsManager tracks success/failure for all operations
+
+- [ ] Error handling follows `getErrorDetails` pattern
+
+- [ ] No `console.log` or `console.error`
+
+- [ ] No hardcoded credentials or sensitive data
+
+- [ ] Event constants used (not string literals)
+
+- [ ] Types exported appropriately
+
+- [ ] Unit tests added/updated
+
+- [ ] No `any` types without justification
+
+## Naming
+- Use PascalCase classes/files, camelCase methods, SCREAMING_SNAKE_CASE constants, and typed event constants from their owning module.
 
 > **Purpose**: Defines the coding standards, conventions, and architectural rules that all code in `@webex/contact-center` must follow.
 
----
-
-## TypeScript Standards
-
-### Strict Mode
 - TypeScript strict mode is enabled
+
 - Avoid `any` type unless absolutely necessary (document justification with `// eslint-disable-line`)
+
 - Prefer `unknown` over `any` for unknown types
+
 - All public APIs must have explicit return types
 
-### Naming Conventions
+| Element | Convention | Example |
+|---|---|---|
+| Classes | PascalCase | `ContactCenter`, `TaskManager` |
 
 | Element | Convention | Example |
-|---------|------------|---------|
-| Classes | PascalCase | `ContactCenter`, `TaskManager` |
+|---|---|---|
 | Interfaces | PascalCase with `I` prefix for contracts | `IContactCenter`, `ITask`, `IVoice` |
+
+| Element | Convention | Example |
+|---|---|---|
 | Types | PascalCase | `SetStateResponse`, `BuddyAgentsResponse` |
+
+| Element | Convention | Example |
+|---|---|---|
 | Enums/Constants | SCREAMING_SNAKE_CASE | `CC_EVENTS`, `METRIC_EVENT_NAMES` |
+
+| Element | Convention | Example |
+|---|---|---|
 | Methods | camelCase | `stationLogin`, `setAgentState` |
+
+| Element | Convention | Example |
+|---|---|---|
 | Private properties | camelCase with `$` prefix for SDK references | `$webex`, `$config` |
+
+| Element | Convention | Example |
+|---|---|---|
 | Regular private | camelCase | `agentConfig`, `eventEmitter` |
+
+| Element | Convention | Example |
+|---|---|---|
 | Module constants | SCREAMING_SNAKE_CASE | `CC_FILE`, `READY` |
 
-### File Naming
 - Component files: `PascalCase.ts` (e.g., `TaskManager.ts`, `WebSocketManager.ts`)
+
 - Type files: `types.ts` in service folders
+
 - Constant files: `constants.ts` in service folders
+
 - Index files: `index.ts` for exports
 
----
-
-## JSDoc Standards
-
-### Public APIs (MANDATORY)
-
 All public methods and types must have comprehensive JSDoc:
-
-```typescript
-/**
- * Brief description of what this does.
- *
- * @description
- * Longer description if needed with:
- * - Bullet points for features
- * - Multiple lines for clarity
- *
- * @param {ParamType} paramName - Description of the parameter
- * @returns {Promise<ReturnType>} Description of return value
- * @throws {Error} Description of when errors are thrown
- *
- * @public
- *
- * @example
- * ```typescript
- * const result = await cc.methodName({
- *   param: 'value',
- * });
- * console.log(result);
- * ```
- */
-public async methodName(data: ParamType): Promise<ReturnType> {
-  // implementation
-}
-```
-
-### Private/Internal APIs
 
 Use `@private` or `@ignore` tag:
 
@@ -82,8 +110,6 @@ private helperMethod(): void {
 }
 ```
 
-### Type Definitions
-
 ```typescript
 /**
  * Description of what this type represents.
@@ -97,11 +123,24 @@ export type MyType = {
 };
 ```
 
----
+Add new events to `src/metrics/constants.ts`:
 
-## Logging Standards
+```typescript
+export const METRIC_EVENT_NAMES = {
+  // Existing events...
+  NEW_OPERATION_SUCCESS: 'new operation success',
+  NEW_OPERATION_FAILED: 'new operation failed',
+} as const;
+```
 
-### Always Use LoggerProxy
+- **TypeScript patterns**: [`patterns/typescript-patterns.md`](patterns/typescript-patterns.md)
+
+- **Testing patterns**: [`patterns/testing-patterns.md`](patterns/testing-patterns.md)
+
+- **Event patterns**: [`patterns/event-driven-patterns.md`](patterns/event-driven-patterns.md)
+
+## Logging
+- Use LoggerProxy with module/method context and tracking identifiers; never use console logging in implementation or log credentials/sensitive data.
 
 ```typescript
 // ✅ REQUIRED pattern
@@ -113,17 +152,25 @@ LoggerProxy.info('Starting operation', {
 });
 ```
 
-### Log Levels
+| Level | Use Case | Example |
+|---|---|---|
+| `trace` | Detailed debugging | Entry/exit of complex functions |
 
 | Level | Use Case | Example |
-|-------|----------|---------|
-| `trace` | Detailed debugging | Entry/exit of complex functions |
+|---|---|---|
 | `log` | General information | Operation completed successfully |
-| `info` | Important milestones | Starting registration, login |
-| `warn` | Potential issues | Deprecated usage, fallback behavior |
-| `error` | Failures | API errors, exceptions |
 
-### Logging Context (Required)
+| Level | Use Case | Example |
+|---|---|---|
+| `info` | Important milestones | Starting registration, login |
+
+| Level | Use Case | Example |
+|---|---|---|
+| `warn` | Potential issues | Deprecated usage, fallback behavior |
+
+| Level | Use Case | Example |
+|---|---|---|
+| `error` | Failures | API errors, exceptions |
 
 ```typescript
 // All log calls MUST include module and method
@@ -137,11 +184,22 @@ LoggerProxy.info('Starting operation', {
 }
 ```
 
----
+Never log sensitive data:
 
-## Error Handling Standards
+```typescript
+// ❌ WRONG
+LoggerProxy.log(`User token: ${token}`);
 
-### Standard Error Pattern
+// ✅ CORRECT
+LoggerProxy.log('Token received', {
+  module: 'Auth',
+  method: 'login',
+  // No sensitive data in logs
+});
+```
+
+## Error Handling
+- Preserve structured backend details and tracking ids through shared Core helpers; never swallow failures or synthesize success.
 
 ```typescript
 import {getErrorDetails} from './services/core/Utils';
@@ -172,8 +230,6 @@ try {
 }
 ```
 
-### Never Swallow Errors
-
 ```typescript
 // ❌ WRONG - silently swallowing errors
 try {
@@ -194,56 +250,8 @@ try {
 }
 ```
 
----
-
-## Metrics Standards
-
-### All Operations Must Track Metrics
-
-```typescript
-// Start timing at method entry
-this.metricsManager.timeEvent([
-  METRIC_EVENT_NAMES.SUCCESS_EVENT,
-  METRIC_EVENT_NAMES.FAILED_EVENT,
-]);
-
-// Track on success
-this.metricsManager.trackEvent(
-  METRIC_EVENT_NAMES.SUCCESS_EVENT,
-  {
-    ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-    // Add operation-specific fields
-  },
-  ['behavioral', 'operational']
-);
-
-// Track on failure (in catch block)
-this.metricsManager.trackEvent(
-  METRIC_EVENT_NAMES.FAILED_EVENT,
-  {
-    ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
-  },
-  ['behavioral', 'operational']
-);
-```
-
-### Metric Event Naming
-
-Add new events to `src/metrics/constants.ts`:
-
-```typescript
-export const METRIC_EVENT_NAMES = {
-  // Existing events...
-  NEW_OPERATION_SUCCESS: 'new operation success',
-  NEW_OPERATION_FAILED: 'new operation failed',
-} as const;
-```
-
----
-
-## Service Architecture Standards
-
-### Singleton Pattern
+## Imports / Dependencies
+- External packages first, then package types/constants, service imports, local utilities, and type-only imports. New runtime dependencies require approval.
 
 Services use singleton pattern via `Services` class:
 
@@ -258,8 +266,6 @@ this.services = Services.getInstance({
 await this.services.agent.stationLogin({data});
 await this.services.config.getAgentConfig(orgId, agentId);
 ```
-
-### Service Factory Pattern
 
 Agent/contact services use factory pattern:
 
@@ -292,53 +298,10 @@ export default function routingAgent(routing: AqmReqs) {
 }
 ```
 
----
-
-## Event Standards
-
-### Event Constant Objects
-
-Define events as const objects with `as const`:
-
-```typescript
-export const MY_EVENTS = {
-  SUCCESS: 'MySuccess',
-  FAILED: 'MyFailed',
-} as const;
-
-// Extract union type
-type Enum<T extends Record<string, unknown>> = T[keyof T];
-export type MY_EVENTS = Enum<typeof MY_EVENTS>;
-```
-
-### Event Emission
-
-Always use event constants:
-
-```typescript
-import {AGENT_EVENTS} from './services/agent/types';
-
-// ✅ CORRECT
-this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, eventData);
-
-// ❌ WRONG
-this.emit('stateChange', eventData);
-```
-
----
-
-## Testing Standards
-
-For full testing patterns including test file location, MockWebex setup, singleton mocking, LoggerProxy mocking, and test structure, see [`patterns/testing-patterns.md`](patterns/testing-patterns.md).
-
----
-
-## Import Standards
-
-### Import Order
-
 1. External packages (`@webex/*`, `events`, `uuid`)
+
 2. Internal absolute imports (types, constants)
+
 3. Relative imports (local files)
 
 ```typescript
@@ -357,44 +320,89 @@ import LoggerProxy from './logger-proxy';
 import {getErrorDetails} from './services/core/Utils';
 ```
 
-### Export Standards
-
 - Public types: Export from `src/types.ts`
+
 - Internal types: Export from service-level `types.ts`
+
 - Services: Use default export for main class, named exports for types
 
----
+## Testing
+- Mirror source paths under `test/unit/spec/`; cover positive and negative behavior and retain the 85% global coverage threshold.
 
-## Accessibility & Security
+For full testing patterns including test file location, MockWebex setup, singleton mocking, LoggerProxy mocking, and test structure, see [`patterns/testing-patterns.md`](patterns/testing-patterns.md).
 
-### No Hardcoded Credentials
+## Security
+- Credentials come from the host Webex SDK; validate inputs, use authenticated service routing, and follow `SECURITY.md`.
 
 Never commit:
+
 - API keys, tokens, secrets
+
 - Passwords or authentication data
+
 - Private keys or certificates
 
-### Sensitive Data Logging
+## Spec-Currency & Drift Thresholds
+- Update specs/docs in the same change as behavior, contracts, state, events, or public types.
+- Partial modules require code cross-checking and characterization before risky changes.
 
-Never log sensitive data:
+## Secrets Policy
+- No hardcoded secrets, tokens, keys, or connection strings; never log them.
+
+## Concurrency & Async
+- Preserve listener identity for cleanup, avoid blocking the event loop, maintain AQM correlation/timeouts, and keep metrics non-blocking.
 
 ```typescript
-// ❌ WRONG
-LoggerProxy.log(`User token: ${token}`);
+// Start timing at method entry
+this.metricsManager.timeEvent([
+  METRIC_EVENT_NAMES.SUCCESS_EVENT,
+  METRIC_EVENT_NAMES.FAILED_EVENT,
+]);
 
-// ✅ CORRECT
-LoggerProxy.log('Token received', {
-  module: 'Auth',
-  method: 'login',
-  // No sensitive data in logs
-});
+// Track on success
+this.metricsManager.trackEvent(
+  METRIC_EVENT_NAMES.SUCCESS_EVENT,
+  {
+    ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+    // Add operation-specific fields
+  },
+  ['behavioral', 'operational']
+);
+
+// Track on failure (in catch block)
+this.metricsManager.trackEvent(
+  METRIC_EVENT_NAMES.FAILED_EVENT,
+  {
+    ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+  },
+  ['behavioral', 'operational']
+);
 ```
 
----
+Define events as const objects with `as const`:
 
-## Performance Standards
+```typescript
+export const MY_EVENTS = {
+  SUCCESS: 'MySuccess',
+  FAILED: 'MyFailed',
+} as const;
 
-### Async/Await
+// Extract union type
+type Enum<T extends Record<string, unknown>> = T[keyof T];
+export type MY_EVENTS = Enum<typeof MY_EVENTS>;
+```
+
+Always use event constants:
+
+```typescript
+import {AGENT_EVENTS} from './services/agent/types';
+
+// ✅ CORRECT
+this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, eventData);
+
+// ❌ WRONG
+this.emit('stateChange', eventData);
+```
 
 Always use async/await over raw Promises:
 
@@ -410,8 +418,6 @@ public fetchData(): Promise<Data> {
   return this.service.getData().then(result => result);
 }
 ```
-
-### Cleanup on Deregistration
 
 Always clean up resources:
 
@@ -431,25 +437,8 @@ public async deregister(): Promise<void> {
 }
 ```
 
----
+## Strict-Compliance Mode
+- In rigorous SDD runs, stop on unresolved questionnaire facts, source-fidelity failures, template-conformance blockers, or validator findings. Generated specs require review by the manifest-configured independent runtime.
 
-## Code Review Checklist
-
-Before submitting code:
-
-- [ ] All public APIs have JSDoc with `@public`, `@param`, `@returns`, `@example`
-- [ ] LoggerProxy used for all logging with module/method context
-- [ ] MetricsManager tracks success/failure for all operations
-- [ ] Error handling follows `getErrorDetails` pattern
-- [ ] No `console.log` or `console.error`
-- [ ] No hardcoded credentials or sensitive data
-- [ ] Event constants used (not string literals)
-- [ ] Types exported appropriately
-- [ ] Unit tests added/updated
-- [ ] No `any` types without justification
-
-## Need More Context?
-
-- **TypeScript patterns**: [`patterns/typescript-patterns.md`](patterns/typescript-patterns.md)
-- **Testing patterns**: [`patterns/testing-patterns.md`](patterns/testing-patterns.md)
-- **Event patterns**: [`patterns/event-driven-patterns.md`](patterns/event-driven-patterns.md)
+## Maintenance
+- Add a rule when a review correction recurs; remove duplication when tooling enforces it. Patterns remain in `patterns/`.
