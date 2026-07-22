@@ -174,8 +174,12 @@ export const METRIC_EVENT_NAMES = {
   // AI Assistant Transcript events
   AI_ASSISTANT_SEND_EVENT_SUCCESS: 'AI Assistant Send Event Success',
   AI_ASSISTANT_SEND_EVENT_FAILED: 'AI Assistant Send Event Failed',
-  AI_ASSISTANT_GET_SUGGESTED_RESPONSE_SUCCESS: 'AI Assistant Get Suggested Response Success',
-  AI_ASSISTANT_GET_SUGGESTED_RESPONSE_FAILED: 'AI Assistant Get Suggested Response Failed',
+  AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_SUCCESS: 'AI Assistant Get Real Time Assistance Success',
+  AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_FAILED: 'AI Assistant Get Real Time Assistance Failed',
+  AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_SUCCESS:
+    'AI Assistant Send Real Time Assistance User Action Success',
+  AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_FAILED:
+    'AI Assistant Send Real Time Assistance User Action Failed',
   AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS:
     'AI Assistant Fetch Historic Transcripts Success',
   AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED: 'AI Assistant Fetch Historic Transcripts Failed',

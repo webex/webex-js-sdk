@@ -1,5 +1,7 @@
 # Task State Machine - Architecture
 
+> **Legacy/reference-only.** Canonical SDD: [`task-state-machine-spec.md`](task-state-machine-spec.md). Use the package [manifest](../../../../../.sdd/manifest.json) and [`SPEC_INDEX.md`](../../../../../ai-docs/SPEC_INDEX.md) for routing; code and tests remain the behavioral referee.
+
 ## Purpose
 
 Technical reference for the complete state machine using XState to drive state transitions and UI control behavior. It orchestrates state transitions, guards, and actions for task lifecycle management.
@@ -1129,7 +1131,7 @@ The HYDRATE event restores state machine state after page refresh or reconnectio
 - `../TaskManager.ts` - maps backend events to state-machine events
 - `../types.ts` - shared task data structures
 - `../../ai-docs/ARCHITECTURE.md` - broader task service architecture
-- [TaskStateMachine.ts](../state-machine/TaskStateMachine.ts) - Implementation
-- [guards.ts](../state-machine/guards.ts) - Guard functions
-- [actions.ts](../state-machine/actions.ts) - Action functions
-- [constants.ts](../state-machine/constants.ts) - State and event enums
+- [TaskStateMachine.ts](../TaskStateMachine.ts) - Implementation
+- [guards.ts](../guards.ts) - Guard functions
+- [actions.ts](../actions.ts) - Action functions
+- [constants.ts](../constants.ts) - State and event enums
