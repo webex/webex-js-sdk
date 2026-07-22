@@ -1041,10 +1041,7 @@ const Services = WebexPlugin.extend({
     hostMap: ServiceHostmap,
     meta?: SelectionMeta
   ): Promise<void> {
-    let current: {
-      orgId?: string;
-      env?: {fedramp?: boolean; u2cDiscoveryUrl?: string; useCatalogOverride?: boolean};
-    } = {};
+    let current: {orgId?: string; env?: {fedramp?: boolean; u2cDiscoveryUrl?: string}} = {};
     let orgId: string | undefined;
     try {
       // Respect calling.cacheU2C toggle; if disabled, skip writing cache
@@ -1073,8 +1070,7 @@ const Services = WebexPlugin.extend({
       let {env} = current;
       const fedramp = !!this.webex?.config?.fedramp;
       const u2cDiscoveryUrl = this.webex?.config?.services?.discovery?.u2c;
-      const useCatalogOverride = !!this.webex?.config?.services?.useCatalogOverride;
-      env = {fedramp, u2cDiscoveryUrl, useCatalogOverride};
+      env = {fedramp, u2cDiscoveryUrl};
 
       const updated = {
         ...current,
@@ -1146,13 +1142,11 @@ const Services = WebexPlugin.extend({
 
       const fedramp = !!this.webex.config?.fedramp;
       const u2cDiscoveryUrl = this.webex.config?.services?.discovery?.u2c;
-      const useCatalogOverride = !!this.webex.config?.services?.useCatalogOverride;
-      const currentEnv = {fedramp, u2cDiscoveryUrl, useCatalogOverride};
+      const currentEnv = {fedramp, u2cDiscoveryUrl};
       if (cached.env) {
         const sameEnv =
           cached.env.fedramp === currentEnv.fedramp &&
-          cached.env.u2cDiscoveryUrl === currentEnv.u2cDiscoveryUrl &&
-          !!cached.env.useCatalogOverride === currentEnv.useCatalogOverride;
+          cached.env.u2cDiscoveryUrl === currentEnv.u2cDiscoveryUrl;
         if (!sameEnv) {
           return false;
         }
