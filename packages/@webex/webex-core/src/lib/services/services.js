@@ -1368,6 +1368,7 @@ const Services = WebexPlugin.extend({
 
     // Destructure the credentials plugin.
     const {credentials} = this.webex;
+    const catalog = this._getCatalog();
 
     // Init a promise chain. Must be done as a Promise.resolve() to allow
     // credentials#getOrgId() to properly throw.
@@ -1380,12 +1381,18 @@ const Services = WebexPlugin.extend({
         .then(() => {
           // Validate if the token is authorized.
           if (credentials.canAuthorize) {
-            // Attempt to collect the postauth catalog.
-
-            return this.updateServices().catch(() => {
-              this.initFailed = true;
-              this.logger.warn('services: cannot retrieve postauth catalog');
-            });
+            // Attempt to collect the postauth catalog, then mark the catalog
+            // ready. Setting `isReady` here - rather than only in the init
+            // callers - means a slow postauth fetch that loses the gated-init
+            // timeout race still marks the catalog ready once it completes.
+            return this.updateServices()
+              .then(() => {
+                catalog.isReady = true;
+              })
+              .catch(() => {
+                this.initFailed = true;
+                this.logger.warn('services: cannot retrieve postauth catalog');
+              });
           }
 
           // Return a resolved promise for consistent return value.
@@ -1480,16 +1487,14 @@ const Services = WebexPlugin.extend({
       const {supertoken} = this.webex.credentials;
       // Validate if the supertoken exists.
       if (supertoken && supertoken.access_token) {
-        this.initServiceCatalogs()
-          .then(() => {
-            catalog.isReady = true;
-          })
-          .catch((error) => {
-            this.initFailed = true;
-            this.logger.error(
-              `services: failed to init initial services when credentials available, ${error?.message}`
-            );
-          });
+        // `initServiceCatalogs` marks the catalog ready internally once the
+        // postauth catalog is collected.
+        this.initServiceCatalogs().catch((error) => {
+          this.initFailed = true;
+          this.logger.error(
+            `services: failed to init initial services when credentials available, ${error?.message}`
+          );
+        });
       } else {
         const {email} = this.webex.config;
 
@@ -1539,10 +1544,10 @@ const Services = WebexPlugin.extend({
 
       // Validate if the supertoken exists.
       if (supertoken && supertoken.access_token) {
+        // `initServiceCatalogs` marks the catalog ready internally once the
+        // postauth catalog is collected - even if it loses the timeout race
+        // above, so a slow fetch still eventually flips `catalog.isReady`.
         Promise.race([this.initServiceCatalogs(), timeout])
-          .then(() => {
-            catalog.isReady = true;
-          })
           .catch((error) => {
             this.initFailed = true;
             this.logger.error(
@@ -1566,15 +1571,12 @@ const Services = WebexPlugin.extend({
         // for `canAuthorize` flipping true and then collect the postauth catalog.
         this.listenToOnce(this.webex, 'change:canAuthorize', () => {
           if (this.webex.canAuthorize && !catalog.status.postauth.ready) {
-            this.initServiceCatalogs()
-              .then(() => {
-                catalog.isReady = true;
-              })
-              .catch((error) => {
-                this.logger.error(
-                  `services: failed to init service catalogs after auth, ${error?.message}`
-                );
-              });
+            // `initServiceCatalogs` marks the catalog ready internally.
+            this.initServiceCatalogs().catch((error) => {
+              this.logger.error(
+                `services: failed to init service catalogs after auth, ${error?.message}`
+              );
+            });
           }
         });
       }

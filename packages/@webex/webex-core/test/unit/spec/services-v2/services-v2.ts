@@ -320,14 +320,10 @@ describe('webex-core', () => {
           'expected postauth catalog init after canAuthorize flips'
         );
 
-        // After the postauth catalog init resolves, catalog.isReady must flip
-        // to true so downstream consumers see the catalog as usable.
+        // `catalog.isReady` is now set inside initServiceCatalogs (after the
+        // postauth updateServices) rather than by this listener, so it is not
+        // asserted here where initServiceCatalogs is stubbed.
         await waitForAsync();
-
-        assert.isTrue(
-          currentCatalog.isReady,
-          'expected catalog.isReady=true after postauth catalog init succeeds'
-        );
       });
 
       it('does not re-init postauth catalog when canAuthorize fires but catalog is already ready', async () => {
