@@ -1528,10 +1528,11 @@ const Services = WebexPlugin.extend({
 
       // Race init against a hard timeout so a hung request never leaves
       // `services.ready` false forever - that would stall `webex.ready` and
-      // leave the app on a permanent spinner. Timeout is configurable via
+      // leave consumers waiting on it indefinitely. Timeout is configurable via
       // `config.services.catalogInitTimeout` (defaults to 15s in config).
       const initTimeoutMs = this.webex.config?.services?.catalogInitTimeout;
-      const timeout = new Promise((_, reject) => {
+
+      const initServiceCatalogsTimeout = new Promise((_, reject) => {
         setTimeout(
           () => reject(new Error(`services: init timed out after ${initTimeoutMs}ms`)),
           initTimeoutMs
@@ -1543,7 +1544,7 @@ const Services = WebexPlugin.extend({
         // `initServiceCatalogs` marks the catalog ready internally once the
         // postauth catalog is collected - even if it loses the timeout race
         // above, so a slow fetch still eventually flips `catalog.isReady`.
-        Promise.race([this.initServiceCatalogs(), timeout])
+        Promise.race([this.initServiceCatalogs(), initServiceCatalogsTimeout])
           .catch((error) => {
             this.initFailed = true;
             this.logger.error(
@@ -1554,7 +1555,10 @@ const Services = WebexPlugin.extend({
       } else {
         const {email} = this.webex.config;
 
-        Promise.race([this.collectPreauthCatalog(email ? {email} : undefined), timeout])
+        Promise.race([
+          this.collectPreauthCatalog(email ? {email} : undefined),
+          initServiceCatalogsTimeout,
+        ])
           .catch((error) => {
             this.initFailed = true;
             this.logger.error(
