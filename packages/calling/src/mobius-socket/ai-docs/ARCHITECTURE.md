@@ -1,5 +1,7 @@
 # mobius-socket Module — Architecture
 
+> Canonical SDD target: [`src/mobius-socket/ai-docs/mobius-socket-spec.md`](mobius-socket-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Component Overview
 
 `mobius-socket` is a thin transport package layered on top of a generalised WebSocket abstraction. The class diagram below summarises the layering:
