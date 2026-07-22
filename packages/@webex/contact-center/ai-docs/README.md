@@ -34,6 +34,7 @@ The `@webex/contact-center` package is a Webex SDK plugin that provides a TypeSc
 | Document | Purpose |
 |----------|---------|
 | [AGENTS.md](../AGENTS.md) | **Start here** - Main AI agent orchestrator (at package root) |
+| [SPEC_INDEX.md](SPEC_INDEX.md) | Route work to the owning canonical module specification |
 | [RULES.md](RULES.md) | Coding standards and conventions |
 | [patterns/](patterns/) | Pattern documentation |
 | [templates/](templates/) | Code generation templates |
@@ -44,7 +45,7 @@ The `@webex/contact-center` package is a Webex SDK plugin that provides a TypeSc
 
 ### Starting a Task
 
-Start with the root [`AGENTS.md`](../AGENTS.md) — it contains the full Quick Start Workflow, task classification decision tree, and critical rules.
+Start with the root [`AGENTS.md`](../AGENTS.md) for critical repository rules and the developer workflow, then use [`SPEC_INDEX.md`](SPEC_INDEX.md) to classify the task by owning module and open its canonical `*-spec.md`.
 
 ---
 
@@ -55,6 +56,10 @@ packages/@webex/contact-center/
 ├── AGENTS.md                  # Main orchestrator (start here — at package root)
 └── ai-docs/
     ├── README.md              # This file
+    ├── SPEC_INDEX.md          # Canonical module router
+    ├── contact-center-spec.md # Canonical public plugin specification
+    ├── CONTRACTS.md           # Public contract catalog
+    ├── adr/                   # Durable architecture decisions
     ├── RULES.md               # Coding standards
     ├── patterns/              # Pattern documentation
     │   ├── typescript-patterns.md
@@ -83,7 +88,7 @@ yarn workspace @webex/contact-center test:unit
 yarn workspace @webex/contact-center test:unit -- <path_of_test_file>
 
 # Lint
-yarn workspace @webex/contact-center test:styles
+yarn workspace @webex/contact-center test:style
 ```
 
 ---
@@ -105,27 +110,29 @@ ContactCenter (cc.ts)
 
 ---
 
-## Service-Level AI Docs
+## Canonical Module Specifications
 
-Each service folder contains its own `ai-docs/` with:
-- `AGENTS.md` - Usage examples, API reference, quick start
-- `ARCHITECTURE.md` - Technical details, sequence diagrams, data flow
+Use [`SPEC_INDEX.md`](SPEC_INDEX.md) to select the owning module. Each manifest-routed module has one canonical `*-spec.md`; retained module-level `AGENTS.md` and `ARCHITECTURE.md` files are legacy/reference-only migration sources, as recorded in [`ADR-0001`](adr/0001-spec-source-policy.md).
 
-| Service | AGENTS.md | ARCHITECTURE.md |
-|---------|-----------|-----------------|
-| Agent | [`src/services/agent/ai-docs/AGENTS.md`](../src/services/agent/ai-docs/AGENTS.md) | [`src/services/agent/ai-docs/ARCHITECTURE.md`](../src/services/agent/ai-docs/ARCHITECTURE.md) |
-| Task | [`src/services/task/ai-docs/AGENTS.md`](../src/services/task/ai-docs/AGENTS.md) | [`src/services/task/ai-docs/ARCHITECTURE.md`](../src/services/task/ai-docs/ARCHITECTURE.md) |
-| Config | [`src/services/config/ai-docs/AGENTS.md`](../src/services/config/ai-docs/AGENTS.md) | [`src/services/config/ai-docs/ARCHITECTURE.md`](../src/services/config/ai-docs/ARCHITECTURE.md) |
-| Core | [`src/services/core/ai-docs/AGENTS.md`](../src/services/core/ai-docs/AGENTS.md) | [`src/services/core/ai-docs/ARCHITECTURE.md`](../src/services/core/ai-docs/ARCHITECTURE.md) |
+| Module | Canonical specification |
+|---|---|
+| Contact Center public plugin | [`contact-center-spec.md`](contact-center-spec.md) |
+| Metrics | [`metrics-spec.md`](../src/metrics/ai-docs/metrics-spec.md) |
+| Services composition | [`services-spec.md`](../src/services/ai-docs/services-spec.md) |
+| Agent | [`agent-spec.md`](../src/services/agent/ai-docs/agent-spec.md) |
+| Config | [`config-spec.md`](../src/services/config/ai-docs/config-spec.md) |
+| Core | [`core-spec.md`](../src/services/core/ai-docs/core-spec.md) |
+| Task | [`task-spec.md`](../src/services/task/ai-docs/task-spec.md) |
+| Task state machine | [`task-state-machine-spec.md`](../src/services/task/state-machine/ai-docs/task-state-machine-spec.md) |
+| Utils | [`utils-spec.md`](../src/utils/ai-docs/utils-spec.md) |
 
 ---
 
 ## Contributing to AI Docs
 
 When adding new features:
-1. Update the relevant service's docs (use the table above to find the right file):
-   - Service `AGENTS.md` — if usage/API surface changed
-   - Service `ARCHITECTURE.md` — if data flow or architecture changed
-2. Add new patterns to [`patterns/`](patterns/) if introducing new patterns
-3. Update [`templates/`](templates/) if the workflow changes
-4. Update the root [`AGENTS.md`](../AGENTS.md) if task routing or critical rules changed
+1. Use [`SPEC_INDEX.md`](SPEC_INDEX.md) to select the owning canonical module specification.
+2. Update that `*-spec.md` with the behavior, source evidence, test evidence, and known gaps.
+3. For exported API, event, or type changes, also update [`CONTRACTS.md`](CONTRACTS.md), the Contact Center specification, and `.sdd/manifest.json` when its routing, coverage, or validation evidence changes.
+4. Add or update [`patterns/`](patterns/) and [`templates/`](templates/) only when their reusable guidance changes.
+5. Update the root [`AGENTS.md`](../AGENTS.md) when task routing or critical rules change. Do not update retained service `AGENTS.md` or `ARCHITECTURE.md` as an independent source of truth.
