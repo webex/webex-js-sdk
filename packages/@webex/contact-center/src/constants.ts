@@ -66,6 +66,7 @@ export const METHODS = {
   REMOVE_PREVIEW_CONTACT: 'removePreviewContact',
   GET_BASE_URL: 'getBaseUrl',
   SEND_EVENT: 'sendEvent',
-  GET_SUGGESTED_RESPONSE: 'getSuggestedResponse',
+  GET_REAL_TIME_ASSISTANCE: 'getRealTimeAssistance',
+  SEND_REAL_TIME_ASSISTANCE_USER_ACTION: 'sendRealTimeAssistanceUserAction',
   FETCH_HISTORIC_TRANSCRIPTS: 'fetchHistoricTranscripts',
 };

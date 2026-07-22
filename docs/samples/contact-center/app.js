@@ -290,6 +290,37 @@ function removeListeningIndicator() {
   if (existing) existing.remove();
 }
 
+function getRealTimeAssistanceAdaptiveCardId(data) {
+  return data?.adaptiveCardId || data?.adaptiveCard?.id || data?.cardId || data?.id;
+}
+
+async function sendRealTimeAssistanceUserAction(actionId, data, options = {}) {
+  const interactionId = options.interactionId || currentTask?.data?.interactionId;
+  const adaptiveCardId = getRealTimeAssistanceAdaptiveCardId(data);
+
+  if (!interactionId || !adaptiveCardId || !webex?.cc?.apiAIAssistant) {
+    console.warn('Unable to send suggested response user action', {
+      actionId,
+      interactionId,
+      adaptiveCardId,
+    });
+
+    return;
+  }
+
+  try {
+    await webex.cc.apiAIAssistant.sendRealTimeAssistanceUserAction({
+      agentId,
+      interactionId,
+      adaptiveCardId,
+      actionId,
+    });
+    console.info('Suggested response user action sent:', actionId);
+  } catch (error) {
+    console.error('Suggested response user action failed:', error);
+  }
+}
+
 function appendSuggestionCard(data, options = {}) {
   if (!aiAssistantContentElm) return;
 
@@ -301,11 +332,29 @@ function appendSuggestionCard(data, options = {}) {
   card.innerHTML = `
     <div class="assistant-suggestion-card__title"></div>
     <div class="assistant-suggestion-card__body"></div>
-    <div class="assistant-suggestion-card__meta"></div>
+    <div class="assistant-suggestion-card__footer">
+      <div class="assistant-suggestion-card__meta"></div>
+      <div class="assistant-suggestion-card__actions">
+        <button type="button" data-action-id="likeButton">Like</button>
+        <button type="button" data-action-id="dislikeButton">Dislike</button>
+        <button type="button" data-action-id="copyButton">Copy</button>
+      </div>
+    </div>
   `;
   card.querySelector('.assistant-suggestion-card__title').textContent = data.title || 'Suggested response';
   card.querySelector('.assistant-suggestion-card__body').textContent = data.suggestion || '';
   card.querySelector('.assistant-suggestion-card__meta').textContent = data.suggestionSource || '';
+  card.querySelectorAll('.assistant-suggestion-card__actions button').forEach((button) => {
+    button.addEventListener('click', () => {
+      card.querySelectorAll('.assistant-suggestion-card__actions button').forEach((actionButton) => {
+        actionButton.classList.remove('assistant-suggestion-card__action--selected');
+        actionButton.setAttribute('aria-pressed', 'false');
+      });
+      button.classList.add('assistant-suggestion-card__action--selected');
+      button.setAttribute('aria-pressed', 'true');
+      sendRealTimeAssistanceUserAction(button.dataset.actionId, data, options);
+    });
+  });
   aiAssistantContentElm.appendChild(card);
 
   if (keepListening) {
@@ -318,7 +367,7 @@ function appendSuggestionCard(data, options = {}) {
   aiAssistantContentElm.scrollTop = aiAssistantContentElm.scrollHeight;
 }
 
-async function requestSuggestedResponse() {
+async function requestRealTimeAssistance() {
   if (!currentTask || !webex?.cc?.apiAIAssistant) return;
 
   const interactionId = currentTask.data.interactionId;
@@ -341,7 +390,7 @@ async function requestSuggestedResponse() {
   showListeningIndicator();
 
   try {
-    await webex.cc.apiAIAssistant.getSuggestedResponse({
+    await webex.cc.apiAIAssistant.getRealTimeAssistance({
       agentId,
       interactionId,
       actionTimeStamp: Date.now(),
@@ -376,18 +425,18 @@ if (clearTranscriptsButton) {
 }
 
 if (aiAssistantActionBtn) {
-  aiAssistantActionBtn.addEventListener('click', requestSuggestedResponse);
+  aiAssistantActionBtn.addEventListener('click', requestRealTimeAssistance);
 }
 
 if (aiAssistantContextBtn) {
-  aiAssistantContextBtn.addEventListener('click', requestSuggestedResponse);
+  aiAssistantContextBtn.addEventListener('click', requestRealTimeAssistance);
 }
 
 if (aiAssistantContextInputElm) {
   aiAssistantContextInputElm.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
-      requestSuggestedResponse();
+      requestRealTimeAssistance();
     }
   });
 }
