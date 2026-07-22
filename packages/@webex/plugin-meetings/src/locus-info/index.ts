@@ -293,6 +293,7 @@ export default class LocusInfo extends EventsScope {
   hashTreeObjectId2ParticipantId: Map<number, string>; // mapping of hash tree object ids to participant ids
   classicVsHashTreeMismatchMetricCounter = 0;
   private callbacks: LocusInfoCallbacks;
+  private destroyMeetingSuspended = false;
 
   /**
    * Constructor
@@ -1786,8 +1787,19 @@ export default class LocusInfo extends EventsScope {
           options: {
             meetingId: this.meetingId,
           },
+          payload: {
+            eventData: {
+              joinInProgress: this.destroyMeetingSuspended,
+            },
+          },
         });
 
+        if (this.destroyMeetingSuspended) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DESTROY_MEETING_WHILE_SUSPENDED, {
+            meetingId: this.meetingId,
+            reason: 'CALL_INACTIVE',
+          });
+        }
         this.emitScoped(
           {
             file: 'locus-info',
@@ -1812,7 +1824,18 @@ export default class LocusInfo extends EventsScope {
           options: {
             meetingId: this.meetingId,
           },
+          payload: {
+            eventData: {
+              joinInProgress: this.destroyMeetingSuspended,
+            },
+          },
         });
+        if (this.destroyMeetingSuspended) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DESTROY_MEETING_WHILE_SUSPENDED, {
+            meetingId: this.meetingId,
+            reason: 'PARTNER_LEFT',
+          });
+        }
         this.emitScoped(
           {
             file: 'locus-info',
@@ -1839,8 +1862,19 @@ export default class LocusInfo extends EventsScope {
           options: {
             meetingId: this.meetingId,
           },
+          payload: {
+            eventData: {
+              joinInProgress: this.destroyMeetingSuspended,
+            },
+          },
         });
 
+        if (this.destroyMeetingSuspended) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DESTROY_MEETING_WHILE_SUSPENDED, {
+            meetingId: this.meetingId,
+            reason: 'SELF_LEFT',
+          });
+        }
         this.emitScoped(
           {
             file: 'locus-info',
@@ -1855,48 +1889,79 @@ export default class LocusInfo extends EventsScope {
       }
     } else if (this.parsedLocus.fullState?.type === _MEETING_) {
       if (this.fullState && MeetingsUtil.isWholeMeetingEnded(this.fullState)) {
-        LoggerProxy.logger.warn(
-          'Locus-info:index#isMeetingActive --> Meeting is ending due to inactive'
-        );
-
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.call.remote-ended',
-          options: {
+        if (this.destroyMeetingSuspended) {
+          LoggerProxy.logger.info(
+            'Locus-info:index#isMeetingActive --> suppressing DESTROY_MEETING (MEETING_INACTIVE_TERMINATING) because destroyMeeting is suspended'
+          );
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DESTROY_MEETING_WHILE_SUSPENDED, {
             meetingId: this.meetingId,
-          },
-        });
-        this.emitScoped(
-          {
-            file: 'locus-info',
-            function: 'isMeetingActive',
-          },
-          EVENTS.DESTROY_MEETING,
-          {
-            reason: MEETING_REMOVED_REASON.MEETING_INACTIVE_TERMINATING,
-            shouldLeave: false,
-          }
-        );
+            reason: 'MEETING_INACTIVE_TERMINATING',
+          });
+        } else {
+          LoggerProxy.logger.warn(
+            'Locus-info:index#isMeetingActive --> Meeting is ending due to inactive'
+          );
+
+          // @ts-ignore
+          this.webex.internal.newMetrics.submitClientEvent({
+            name: 'client.call.remote-ended',
+            options: {
+              meetingId: this.meetingId,
+            },
+          });
+
+          this.emitScoped(
+            {
+              file: 'locus-info',
+              function: 'isMeetingActive',
+            },
+            EVENTS.DESTROY_MEETING,
+            {
+              reason: MEETING_REMOVED_REASON.MEETING_INACTIVE_TERMINATING,
+              shouldLeave: false,
+            }
+          );
+        }
       }
       // If you are  guest and you are removed from the meeting
       // You wont get any further events
       else if (this.parsedLocus.self && this.parsedLocus.self.removed) {
-        // Check if we need to send an event
-        this.emitScoped(
-          {
-            file: 'locus-info',
-            function: 'isMeetingActive',
-          },
-          EVENTS.DESTROY_MEETING,
-          {
-            reason: MEETING_REMOVED_REASON.SELF_REMOVED,
-            shouldLeave: false,
-          }
-        );
+        if (this.destroyMeetingSuspended) {
+          LoggerProxy.logger.info(
+            'Locus-info:index#isMeetingActive --> suppressing DESTROY_MEETING (SELF_REMOVED) because destroyMeeting is suspended'
+          );
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DESTROY_MEETING_WHILE_SUSPENDED, {
+            meetingId: this.meetingId,
+            reason: 'SELF_REMOVED',
+          });
+        } else {
+          this.emitScoped(
+            {
+              file: 'locus-info',
+              function: 'isMeetingActive',
+            },
+            EVENTS.DESTROY_MEETING,
+            {
+              reason: MEETING_REMOVED_REASON.SELF_REMOVED,
+              shouldLeave: false,
+            }
+          );
+        }
       }
     } else {
       LoggerProxy.logger.warn('Locus-info:index#isMeetingActive --> Meeting Type is unknown.');
     }
+  }
+
+  /**
+   * Suspends or resumes the emission of DESTROY_MEETING events in certain situations.
+   * Used by joinWithMedia to prevent meeting destruction during retry flows.
+   * @param {boolean} suspend - true to suppress, false to resume
+   * @returns {undefined}
+   * @memberof LocusInfo
+   */
+  suspendDestroyMeeting(suspend: boolean) {
+    this.destroyMeetingSuspended = suspend;
   }
 
   /**
