@@ -32,6 +32,7 @@ import {
   StatsMonitorEventNames,
   MediaCodecMimeType,
   type StatsUpdateEvent,
+  InboundAudioIssueSubTypes,
 } from '@webex/internal-media-core';
 
 import {DataChannelTokenType} from '@webex/internal-plugin-llm';
@@ -8247,17 +8248,23 @@ export default class Meeting extends StatelessWebexPlugin {
       );
 
       this.statsMonitor.on(StatsMonitorEventNames.INBOUND_AUDIO_ISSUE, (data) => {
-        // Before forwarding any inbound audio issues to the app, make sure that we have at least one other
-        // participant in the meeting with unmuted audio.
-        // We don't check this.mediaProperties.mediaDirection here, because that's already handled in statsAnalyzer,
-        // so we won't get this event if we are not setup to receive any audio
-        const atLeastOneUnmutedOtherMember = Object.values(
-          this.members.membersCollection.getAll()
-        ).find((member) => {
-          return !member.isSelf && !member.isPairedWithSelf && !member.isAudioMuted;
+        const members = Object.values(this.members.membersCollection.getAll());
+        const shouldSendMetric = members.some((member) => {
+          if (member.isSelf || member.isPairedWithSelf) {
+            return false;
+          }
+
+          switch (data.issueSubType) {
+            case InboundAudioIssueSubTypes.REMOTE_AUDIO_FIRST_FRAME_DELAY:
+              // This issue is not tied to mute state; any remote participant is enough.
+              return true;
+            default:
+              // Other inbound audio issues only matter when at least one remote participant is unmuted.
+              return !member.isAudioMuted;
+          }
         });
 
-        if (atLeastOneUnmutedOtherMember) {
+        if (shouldSendMetric) {
           this.mediaProperties.sendMediaIssueMetric(
             'inbound_audio',
             data.issueSubType,

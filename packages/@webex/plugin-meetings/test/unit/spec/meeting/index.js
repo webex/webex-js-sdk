@@ -6024,6 +6024,47 @@ describe('plugin-meetings', () => {
                 meeting.correlationId
               );
             });
+
+            it('should trigger event for remote first frame delay when any remote participant exists', () => {
+              const fakeEventData = {
+                issueSubType: 'REMOTE_AUDIO_FIRST_FRAME_DELAY',
+              };
+
+              const mutedMember = {
+                isSelf: false,
+                isPairedWithSelf: false,
+                isAudioMuted: true,
+              };
+              const selfMember = {
+                isSelf: true,
+                isPairedWithSelf: false,
+                isAudioMuted: false,
+              };
+
+              meeting.members.membersCollection.getAll = sinon.stub().returns({
+                member1: mutedMember,
+                member2: selfMember,
+              });
+
+              TriggerProxy.trigger.resetHistory();
+
+              listeners[StatsMonitorEventNames.INBOUND_AUDIO_ISSUE](fakeEventData);
+
+              assert.calledWith(
+                TriggerProxy.trigger,
+                meeting,
+                sinon.match.object,
+                EVENT_TRIGGERS.MEDIA_INBOUND_AUDIO_ISSUE_DETECTED,
+                fakeEventData
+              );
+
+              assert.calledOnceWithExactly(
+                meeting.mediaProperties.sendMediaIssueMetric,
+                'inbound_audio',
+                fakeEventData.issueSubType,
+                meeting.correlationId
+              );
+            });
           });
         });
 
