@@ -102,10 +102,14 @@ export type {
   AgentLogin,
   /** Agent device update information */
   AgentProfileUpdate,
+  /** Contextual information for log entries */
+  LogContext,
   /** Station login response */
   StationLoginResponse,
   /** Station logout response */
   StationLogoutResponse,
+  /** Team information returned for agent login */
+  Team,
   /** Buddy agents response */
   BuddyAgentsResponse,
   /** Buddy agents information */
@@ -120,6 +124,8 @@ export type {
   GenericError,
   /** Set state response */
   SetStateResponse,
+  /** Parameters for requesting an AI suggested response */
+  SuggestedResponseParams,
 } from './types';
 
 /** Task related types */
@@ -138,6 +144,10 @@ export type {
   ConsultTransferPayLoad,
   /** Dialer payload */
   DialerPayload,
+  /** Destination type for task routing */
+  DestinationType,
+  /** Payload for campaign preview contact operations */
+  PreviewContactPayload,
   TransferPayLoad,
   ResumeRecordingPayload,
   WrapupPayLoad,
@@ -211,6 +221,10 @@ export type {
   AuxCode,
   /** Team information */
   TeamList,
+  /** Response containing outdial ANI entries */
+  OutdialAniEntriesResponse,
+  /** Parameters for fetching outdial ANI entries */
+  OutdialAniParams,
   /** Wrap-up reason information */
   WrapUpReason,
   /** WebSocket event data */
