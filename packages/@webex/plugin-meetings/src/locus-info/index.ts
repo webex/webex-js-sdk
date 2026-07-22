@@ -1,4 +1,6 @@
 import {isEqual, assignWith, cloneDeep, isEmpty} from 'lodash';
+import uuid from 'uuid';
+import {webexTrackingIdSequenceNumbers} from '@webex/webex-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
@@ -566,7 +568,19 @@ export default class LocusInfo extends EventsScope {
       callbacks: {
         locusInfoUpdateCallback: this.updateFromHashTree.bind(this, locusUrl),
         syncLatencyTracker: this.callbacks.syncLatencyTracker,
-        generateTrackingId: this.webex.generateTrackingId,
+        // Reuse webex-core's tracking-id interceptor sequence (exposed publicly via
+        // webexTrackingIdSequenceNumbers) so Locus requests share the client's unified
+        // ${sessionId}_${sequence} tracking id space instead of minting an unrelated id. Fall
+        // back to a uuid on the rare chance the interceptor hasn't issued any request yet (and so
+        // isn't in the map). The value is opaque to the metrics layer and is forced onto the
+        // /hashtree and /sync request headers.
+        generateTrackingId: () => {
+          const interceptor = [...webexTrackingIdSequenceNumbers.keys()].find(
+            (candidate) => candidate?.webex === this.webex
+          );
+
+          return `${this.webex.sessionId}_${interceptor ? interceptor.sequence : uuid.v4()}`;
+        },
       },
       debugId: `HT-${locusUrl.split('/')?.pop()?.substring(0, 4)}`,
       excludedDataSets: this.webex.config.meetings.locus?.excludedDataSets,
