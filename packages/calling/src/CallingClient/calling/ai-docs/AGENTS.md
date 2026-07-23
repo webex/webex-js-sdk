@@ -1,5 +1,7 @@
 # Calling Sub-Module - Agent Specification
 
+> Canonical SDD target: [`src/CallingClient/calling/ai-docs/calling-spec.md`](calling-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Overview
 
 The `calling/` sub-module within `CallingClient` contains the core call management logic for the Webex Calling SDK. It consists of two primary classes -- `Call` and `CallManager` -- along with the `CallerId` sub-module for caller identity resolution. Together, these classes handle the full lifecycle of voice calls: creation, signaling via Mobius, WebRTC media negotiation via ROAP, mid-call operations, and termination.

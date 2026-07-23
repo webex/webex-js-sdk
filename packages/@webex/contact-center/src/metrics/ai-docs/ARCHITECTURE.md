@@ -1,5 +1,7 @@
 # Metrics Module - Architecture
 
+> **Legacy/reference-only.** Canonical SDD: [`metrics-spec.md`](metrics-spec.md). Use the package [manifest](../../../.sdd/manifest.json) and [`SPEC_INDEX.md`](../../../ai-docs/SPEC_INDEX.md) for routing; code and tests remain the behavioral referee.
+
 > **Purpose**: Technical documentation for the metrics collection, batching, and submission system within the Contact Center SDK.
 
 ---

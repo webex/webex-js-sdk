@@ -1,5 +1,7 @@
 # Registration Module — Architecture
 
+> Canonical SDD target: [`src/CallingClient/registration/ai-docs/registration-spec.md`](registration-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Component Overview
 
 The `Registration` class is the most complex subsystem in the CallingClient module. It manages the full lifecycle of device registration with Mobius, including initial registration, keepalive heartbeats, server failover, failback, 429 retry handling, and reconnection after network disruption.

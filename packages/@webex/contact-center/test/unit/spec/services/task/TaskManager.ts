@@ -293,14 +293,14 @@ describe('TaskManager', () => {
       interactionId,
       'CUSTOM_EVENT',
       'GET_TRANSCRIPTS',
-      'START'
+      {action: 'START'}
     );
     expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledWith(
       'test-agent-id',
       interactionId,
       'CUSTOM_EVENT',
       'GET_TRANSCRIPTS',
-      'STOP'
+      {action: 'STOP'}
     );
   });
 

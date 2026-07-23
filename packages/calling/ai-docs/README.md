@@ -1,5 +1,8 @@
 # @webex/calling - AI Documentation Hub
 
+> Canonical SDD navigation: [`SPEC_INDEX.md`](SPEC_INDEX.md) · [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`CONTRACTS.md`](CONTRACTS.md) · [`RULES.md`](RULES.md). The legacy navigation and technical content below are retained as migration source context.
+
+
 > AI-focused documentation for the `@webex/calling` package to enable LLM agents to effectively understand, modify, and generate calling SDK code.
 
 ---

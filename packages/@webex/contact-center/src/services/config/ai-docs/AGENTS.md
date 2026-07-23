@@ -1,8 +1,10 @@
 # Config Service - AI Agent Guide
 
+> **Legacy/reference-only.** Canonical SDD: [`config-spec.md`](config-spec.md). Use the package [manifest](../../../../.sdd/manifest.json) and [`SPEC_INDEX.md`](../../../../ai-docs/SPEC_INDEX.md) for routing; code and tests remain the behavioral referee.
+>
 > **Purpose**: Fetch and aggregate agent configuration data from multiple API endpoints to build the AgentProfile.
 >
-> **Scope Authority**: This is the authoritative documentation for the **Config** service scope. See [Root AGENTS.md](../../../../AGENTS.md) for the orchestrator and cross-scope rules.
+> **Legacy scope:** See [Root AGENTS.md](../../../../AGENTS.md) for the orchestrator and cross-scope rules.
 
 ---
 

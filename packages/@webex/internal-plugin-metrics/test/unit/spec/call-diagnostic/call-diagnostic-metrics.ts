@@ -3194,7 +3194,6 @@ describe('internal-plugin-metrics', () => {
         assert.calledWith(requestStub, {
           eventPayload: {event: 'test'},
           type: ['diagnostic-event'],
-          markTelemetryOptOutOnResponse: true,
         });
       });
     });
@@ -4495,7 +4494,6 @@ describe('internal-plugin-metrics', () => {
         assert.calledWith(requestStub, {
           eventPayload: {event: 'test'},
           type: ['diagnostic-event'],
-          markTelemetryOptOutOnResponse: true,
         });
       });
     });
