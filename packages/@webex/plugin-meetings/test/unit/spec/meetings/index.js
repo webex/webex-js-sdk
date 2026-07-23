@@ -1922,7 +1922,9 @@ describe('plugin-meetings', () => {
 
             assert.calledWith(
               loggerLogStub,
-              sinon.match(/Meetings:index#emitWasmRuntimePerformance --> WASM runtime status/)
+              sinon.match(
+                /Meetings:index#emitWasmRuntimePerformance --> WASM runtime performance status/
+              )
             );
             loggerLogStub.restore();
           });
