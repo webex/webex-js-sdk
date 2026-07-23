@@ -252,6 +252,70 @@ export async function saveVoicemailSettings(page: Page): Promise<void> {
   ]);
 }
 
+export type VoicemailSettingsSnapshot = {
+  enabled: boolean;
+  sendAllCalls: boolean;
+  sendBusyCalls: boolean;
+  sendUnansweredCalls: boolean;
+  unansweredRings: string;
+};
+
+/** Read voicemail toggles from the sample app after loadSettings(). */
+export async function captureVoicemailSettings(page: Page): Promise<VoicemailSettingsSnapshot> {
+  return {
+    enabled: await page.locator(CALLING_SELECTORS.VM_ENABLED_CB).isChecked(),
+    sendAllCalls: await page.locator(CALLING_SELECTORS.VM_SEND_ALL_CB).isChecked(),
+    sendBusyCalls: await page.locator(CALLING_SELECTORS.VM_SEND_BUSY_CB).isChecked(),
+    sendUnansweredCalls: await page.locator(CALLING_SELECTORS.VM_UNANSWERED_CB).isChecked(),
+    unansweredRings: await page.locator(CALLING_SELECTORS.VM_UNANSWERED_RINGS).inputValue(),
+  };
+}
+
+const setCheckboxState = async (
+  page: Page,
+  selector: string,
+  shouldCheck: boolean
+): Promise<void> => {
+  const checkbox = page.locator(selector);
+  const isChecked = await checkbox.isChecked();
+
+  if (shouldCheck && !isChecked) {
+    await checkbox.check({timeout: AWAIT_TIMEOUT});
+  } else if (!shouldCheck && isChecked) {
+    await checkbox.uncheck({timeout: AWAIT_TIMEOUT});
+  }
+};
+
+/** Restore voicemail settings captured before the test mutates shared accounts. */
+export async function restoreVoicemailSettings(
+  page: Page,
+  snapshot: VoicemailSettingsSnapshot
+): Promise<void> {
+  await loadSettings(page);
+
+  // Keep the nested controls visible while restoring their values, then put
+  // the top-level voicemail enabled flag back last.
+  await setCheckboxState(page, CALLING_SELECTORS.VM_ENABLED_CB, true);
+  await setCheckboxState(page, CALLING_SELECTORS.VM_SEND_ALL_CB, snapshot.sendAllCalls);
+  await setCheckboxState(page, CALLING_SELECTORS.VM_SEND_BUSY_CB, snapshot.sendBusyCalls);
+
+  const rings = page.locator(CALLING_SELECTORS.VM_UNANSWERED_RINGS);
+
+  if (snapshot.unansweredRings) {
+    await setCheckboxState(page, CALLING_SELECTORS.VM_UNANSWERED_CB, true);
+    await rings.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
+    await rings.fill(snapshot.unansweredRings);
+
+    if (!snapshot.sendUnansweredCalls) {
+      await saveVoicemailSettings(page);
+    }
+  }
+
+  await setCheckboxState(page, CALLING_SELECTORS.VM_UNANSWERED_CB, snapshot.sendUnansweredCalls);
+  await setCheckboxState(page, CALLING_SELECTORS.VM_ENABLED_CB, snapshot.enabled);
+  await saveVoicemailSettings(page);
+}
+
 /**
  * Ensure the Call Forward "When Busy" checkbox is in the requested state and
  * save.  Does nothing if already in the desired state.
