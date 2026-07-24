@@ -1905,6 +1905,7 @@ describe('plugin-meetings', () => {
             await webex.meetings.create(test1, test2);
             await testUtils.flushPromises();
 
+            assert.calledOnce(probeCheckStub);
             assert.calledOnceWithExactly(metricsSpy, 'js_sdk_wasm_runtime_performance', {
               status: 'slow',
               ratio: 0.25,
@@ -1920,6 +1921,7 @@ describe('plugin-meetings', () => {
             await webex.meetings.create(test1, test2);
             await testUtils.flushPromises();
 
+            assert.calledOnce(probeCheckStub);
             assert.calledWith(
               loggerLogStub,
               sinon.match(
@@ -1934,8 +1936,14 @@ describe('plugin-meetings', () => {
             await webex.meetings.create(test1, test2);
             await testUtils.flushPromises();
 
-            assert.calledOnce(metricsSpy);
-            assert.calledWith(metricsSpy, 'js_sdk_wasm_runtime_performance');
+            assert.calledOnce(probeCheckStub);
+            assert.calledOnceWithExactly(metricsSpy, 'js_sdk_wasm_runtime_performance', {
+              status: 'slow',
+              ratio: 0.25,
+              wasmMs: 25,
+              jsMs: 100,
+              correlation_id: 'wasm-corr-id',
+            });
           });
 
           it('still resolves the meeting when the probe fails', async () => {
