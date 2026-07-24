@@ -74,8 +74,13 @@ export const verifySDKInitialized = async (page: Page): Promise<void> => {
     timeout: SDK_INIT_TIMEOUT,
   });
 
-  const hasCallingClient = await page.evaluate(() => !!(window as any).callingClient);
-  expect(hasCallingClient).toBe(true);
+  await expect
+    .poll(() => page.evaluate(() => !!(window as any).callingClient), {
+      timeout: SDK_INIT_TIMEOUT,
+      intervals: [500],
+      message: 'Expected window.callingClient to be available after SDK initialization',
+    })
+    .toBe(true);
 
   // TODO: Based on the config passed during initialization, verify which clients are active.
   // Different configs can instantiate CallingClient, CallHistoryClient, Voicemail, etc.

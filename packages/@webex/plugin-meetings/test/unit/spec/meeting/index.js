@@ -3191,6 +3191,221 @@ describe('plugin-meetings', () => {
               );
             });
 
+            it('emits breakout join response metric only once per breakoutMoveId', async () => {
+              sinon.stub(meeting, 'isJoined').returns(true);
+              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
+              sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves({
+                clientLLMDatachannelResponseTime: 10,
+                clientLLMWebSocketConnectTime: 20,
+              });
+
+              meeting.meetingInfo.enableConvergedArchitecture = true;
+              meeting.breakouts.set('breakoutMoveId', 'move-id-1');
+              meeting.breakouts.set('sessionType', 'BREAKOUT');
+              meeting.breakouts.set('status', 'OPEN');
+              meeting.breakouts.set('currentBreakoutSession', {
+                sessionId: 'session-id-1',
+                groupId: 'group-id-1',
+              });
+
+              webex.internal.newMetrics.submitClientEvent.resetHistory();
+              meeting.updateLLMConnection.restore();
+
+              await meeting.updateLLMConnection();
+              await meeting.updateLLMConnection();
+
+              const joinResponseCalls = webex.internal.newMetrics.submitClientEvent
+                .getCalls()
+                .filter((call) => call.args[0]?.name === 'client.breakout-session.join.response');
+
+              assert.lengthOf(joinResponseCalls, 1);
+              assert.equal(joinResponseCalls[0].args[0].options.meetingId, meeting.id);
+            });
+
+            it('does not emit breakout join response metric when breakout session is missing', async () => {
+              sinon.stub(meeting, 'isJoined').returns(true);
+              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
+              sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves({
+                clientLLMDatachannelResponseTime: 10,
+                clientLLMWebSocketConnectTime: 20,
+              });
+
+              meeting.meetingInfo.enableConvergedArchitecture = true;
+              meeting.breakouts.set('breakoutMoveId', 'move-id-1');
+
+              webex.internal.newMetrics.submitClientEvent.resetHistory();
+              meeting.updateLLMConnection.restore();
+
+              await meeting.updateLLMConnection();
+
+              const joinResponseCalls = webex.internal.newMetrics.submitClientEvent
+                .getCalls()
+                .filter((call) => call.args[0]?.name === 'client.breakout-session.join.response');
+
+              assert.lengthOf(joinResponseCalls, 0);
+            });
+
+            it('does not emit failed breakout join response metric when breakout session is missing', async () => {
+              sinon.stub(meeting, 'isJoined').returns(true);
+              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
+              sinon
+                .stub(meeting.webex.internal.llm, 'registerAndConnect')
+                .rejects(new Error('failed to connect LLM'));
+
+              meeting.meetingInfo.enableConvergedArchitecture = true;
+              meeting.breakouts.set('breakoutMoveId', 'move-id-1');
+
+              webex.internal.newMetrics.submitClientEvent.resetHistory();
+              meeting.updateLLMConnection.restore();
+
+              try {
+                await meeting.updateLLMConnection();
+                assert.fail('Expected updateLLMConnection to reject');
+              } catch (error) {
+                assert.equal(error.message, 'failed to connect LLM');
+              }
+
+              const joinResponseCalls = webex.internal.newMetrics.submitClientEvent
+                .getCalls()
+                .filter((call) => call.args[0]?.name === 'client.breakout-session.join.response');
+
+              assert.lengthOf(joinResponseCalls, 0);
+            });
+
+            it('emits llm breakout join response metric after suppressing join response without llmLatency', async () => {
+              sinon.stub(meeting, 'isJoined').returns(true);
+              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
+              sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves({
+                clientLLMDatachannelResponseTime: 10,
+                clientLLMWebSocketConnectTime: 20,
+              });
+
+              meeting.config.enableAutomaticLLM = true;
+              meeting.meetingInfo.enableConvergedArchitecture = true;
+              meeting.breakouts.set('breakoutMoveId', 'move-id-1');
+              meeting.breakouts.set('sessionType', 'BREAKOUT');
+              meeting.breakouts.set('status', 'OPEN');
+              meeting.breakouts.set('currentBreakoutSession', {
+                sessionId: 'session-id-1',
+                groupId: 'group-id-1',
+              });
+
+              assert.isFalse(meeting.shouldEmitBreakoutJoinResponseMetric('move-id-1'));
+
+              webex.internal.newMetrics.submitClientEvent.resetHistory();
+              meeting.updateLLMConnection.restore();
+
+              await meeting.updateLLMConnection();
+
+              const joinResponseCalls = webex.internal.newMetrics.submitClientEvent
+                .getCalls()
+                .filter((call) => call.args[0]?.name === 'client.breakout-session.join.response');
+
+              assert.lengthOf(joinResponseCalls, 1);
+              assert.deepEqual(joinResponseCalls[0].args[0].payload.llmLatency, {
+                clientLLMDatachannelResponseTime: 10,
+                clientLLMWebSocketConnectTime: 20,
+              });
+            });
+
+            it('emits breakout join response metric with llmLatency when returning to main session', async () => {
+              sinon.stub(meeting, 'isJoined').returns(true);
+              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
+              sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves({
+                clientLLMDatachannelResponseTime: 10,
+                clientLLMWebSocketConnectTime: 20,
+              });
+
+              meeting.meetingInfo.enableConvergedArchitecture = true;
+              meeting.breakouts.set('breakoutMoveId', 'move-id-1');
+              meeting.breakouts.set('sessionType', 'MAIN');
+              meeting.breakouts.set('status', 'OPEN');
+              meeting.breakouts.set('currentBreakoutSession', {
+                sessionId: 'session-id-1',
+                groupId: 'group-id-1',
+              });
+
+              webex.internal.newMetrics.submitClientEvent.resetHistory();
+              meeting.updateLLMConnection.restore();
+
+              await meeting.updateLLMConnection();
+
+              const joinResponseCalls = webex.internal.newMetrics.submitClientEvent
+                .getCalls()
+                .filter((call) => call.args[0]?.name === 'client.breakout-session.join.response');
+
+              assert.lengthOf(joinResponseCalls, 1);
+              assert.deepEqual(joinResponseCalls[0].args[0].payload.llmLatency, {
+                clientLLMDatachannelResponseTime: 10,
+                clientLLMWebSocketConnectTime: 20,
+              });
+            });
+
+            it('uses the partial datachannel timing from the error when the websocket connect fails', async () => {
+              sinon.stub(meeting, 'isJoined').returns(true);
+              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
+              const connectError = new Error('failed to connect LLM');
+              connectError.timing = {clientLLMDatachannelResponseTime: 42};
+              sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').rejects(connectError);
+
+              meeting.meetingInfo.enableConvergedArchitecture = true;
+              meeting.breakouts.set('breakoutMoveId', 'move-id-1');
+              meeting.breakouts.set('sessionType', 'BREAKOUT');
+              meeting.breakouts.set('status', 'OPEN');
+              meeting.breakouts.set('currentBreakoutSession', {
+                sessionId: 'session-id-1',
+                groupId: 'group-id-1',
+              });
+
+              webex.internal.newMetrics.submitClientEvent.resetHistory();
+              meeting.updateLLMConnection.restore();
+
+              try {
+                await meeting.updateLLMConnection();
+                assert.fail('Expected updateLLMConnection to reject');
+              } catch (error) {
+                assert.equal(error, connectError);
+              }
+
+              const joinResponseCalls = webex.internal.newMetrics.submitClientEvent
+                .getCalls()
+                .filter((call) => call.args[0]?.name === 'client.breakout-session.join.response');
+
+              assert.lengthOf(joinResponseCalls, 1);
+              assert.deepEqual(joinResponseCalls[0].args[0].payload.llmLatency, {
+                clientLLMDatachannelResponseTime: 42,
+                clientLLMWebSocketConnectTime: 0,
+              });
+            });
+
+            it('reports the partial datachannel timing on client.llm.connect.response when the websocket connect fails during initial join', async () => {
+              sinon.stub(meeting, 'isJoined').returns(true);
+              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
+              const connectError = new Error('failed to connect LLM');
+              connectError.timing = {clientLLMDatachannelResponseTime: 42};
+              sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').rejects(connectError);
+
+              webex.internal.newMetrics.submitClientEvent.resetHistory();
+              meeting.updateLLMConnection.restore();
+
+              try {
+                await meeting.updateLLMConnection({isInitialJoinPhase: true});
+                assert.fail('Expected updateLLMConnection to reject');
+              } catch (error) {
+                assert.equal(error, connectError);
+              }
+
+              const connectResponseCalls = webex.internal.newMetrics.submitClientEvent
+                .getCalls()
+                .filter((call) => call.args[0]?.name === 'client.llm.connect.response');
+
+              assert.lengthOf(connectResponseCalls, 1);
+              assert.deepEqual(connectResponseCalls[0].args[0].payload.llmLatency, {
+                clientLLMDatachannelResponseTime: 42,
+                clientLLMWebSocketConnectTime: 0,
+              });
+            });
+
             it('clears the LLM health check timer when disconnecting LLM', async () => {
               const isJoinedStub = sinon.stub(meeting, 'isJoined');
               sinon.stub(meeting.webex.internal.llm, 'isConnected');
@@ -15206,6 +15421,180 @@ describe('plugin-meetings', () => {
               }, 'llm-default-session', meeting.id);
               assert.calledOnce(meeting.clearDataChannelToken);
             });
+          });
+        });
+      });
+
+      describe('#processLocusLLMEvent', () => {
+        it('routes the LLM event through locusInfo.parse and records the LLM message with the top-level tracking id', () => {
+          const event = {
+            data: {
+              eventType: 'locus.state_message',
+              dataSets: [],
+            },
+            trackingId: 'envelope-tracking-id',
+          };
+
+          meeting.locusInfo.parse = sinon.stub();
+          meeting.onLocusSyncLlmMessage = sinon.stub();
+
+          meeting.processLocusLLMEvent(event);
+
+          // The LLM message is parsed without the tracking id - completion is driven from the
+          // meeting's LLM handler, not threaded through locusInfo.
+          assert.calledOnceWithExactly(meeting.locusInfo.parse, meeting, event.data);
+          // Only the client whose /sync request tracking id matches the tracking id echoed back on
+          // the top-level LLM event envelope records the LLM arrival; onLocusSyncLlmMessage is a
+          // no-op otherwise.
+          assert.calledOnceWithExactly(
+            meeting.onLocusSyncLlmMessage,
+            meeting.id,
+            event.trackingId
+          );
+        });
+
+        it('does not attempt sync completion when the tracking id is missing', () => {
+          const event = {
+            data: {
+              eventType: 'locus.state_message',
+              dataSets: [],
+            },
+          };
+
+          meeting.locusInfo.parse = sinon.stub();
+          meeting.onLocusSyncLlmMessage = sinon.stub();
+
+          meeting.processLocusLLMEvent(event);
+
+          assert.calledOnceWithExactly(meeting.locusInfo.parse, meeting, event.data);
+          assert.notCalled(meeting.onLocusSyncLlmMessage);
+        });
+
+      });
+
+      describe('#onLocusSyncLlmMessage', () => {
+        it('records the LLM arrival time and then tries to complete the metric', () => {
+          webex.internal.newMetrics.callDiagnosticLatencies.recordLocusSyncMessageReceived =
+            sinon.stub();
+          meeting.tryCompleteLocusSyncLatency = sinon.stub();
+
+          meeting.onLocusSyncLlmMessage('meeting-1', 'sync-tracking-id');
+
+          assert.calledOnceWithExactly(
+            webex.internal.newMetrics.callDiagnosticLatencies.recordLocusSyncMessageReceived,
+            'meeting-1',
+            'sync-tracking-id'
+          );
+          assert.calledOnceWithExactly(
+            meeting.tryCompleteLocusSyncLatency,
+            'meeting-1',
+            'sync-tracking-id'
+          );
+          // the arrival time must be recorded before completion is attempted
+          assert.callOrder(
+            webex.internal.newMetrics.callDiagnosticLatencies.recordLocusSyncMessageReceived,
+            meeting.tryCompleteLocusSyncLatency
+          );
+        });
+      });
+
+      describe('#tryCompleteLocusSyncLatency', () => {
+        beforeEach(() => {
+          meeting.emitLocusSyncCompleteMetric = sinon.stub();
+        });
+
+        it('emits the metric when both milestones are in (completion succeeds)', () => {
+          const completed = {dataSet: 'main', syncLatency: {totalTime: 50}};
+          webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency = sinon
+            .stub()
+            .returns(completed);
+
+          meeting.tryCompleteLocusSyncLatency('meeting-1', 'sync-tracking-id');
+
+          assert.calledOnceWithExactly(
+            webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency,
+            'meeting-1',
+            'sync-tracking-id'
+          );
+          assert.calledOnceWithExactly(
+            meeting.emitLocusSyncCompleteMetric,
+            'meeting-1',
+            completed
+          );
+        });
+
+        it('does not emit when completion returns undefined (only one milestone is in)', () => {
+          webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency = sinon
+            .stub()
+            .returns(undefined);
+
+          meeting.tryCompleteLocusSyncLatency('meeting-1', 'sync-tracking-id');
+
+          assert.calledOnceWithExactly(
+            webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency,
+            'meeting-1',
+            'sync-tracking-id'
+          );
+          assert.notCalled(meeting.emitLocusSyncCompleteMetric);
+        });
+      });
+
+      describe('#emitLocusSyncCompleteMetric', () => {
+        it('submits client.locus.sync.complete with the llm websocket url and sync latency', () => {
+          webex.internal.newMetrics.submitClientEvent.resetHistory();
+          webex.internal.llm.getWebSocketUrl = sinon.stub().returns('wss://llm-websocket-url');
+
+          meeting.emitLocusSyncCompleteMetric(
+            'meeting-1',
+            {
+              dataSet: 'main',
+              syncLatency: {totalTime: 50},
+            }
+          );
+
+          assert.calledOnceWithExactly(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.locus.sync.complete',
+            payload: {
+              identifiers: {
+                llmWebsocketUrl: 'wss://llm-websocket-url',
+              },
+              llmInfo: {
+                dataSet: 'main',
+              },
+              syncLatency: {totalTime: 50},
+            },
+            options: {
+              meetingId: 'meeting-1',
+            },
+          });
+        });
+
+        it('submits with an undefined llm websocket url when it is unavailable', () => {
+          webex.internal.newMetrics.submitClientEvent.resetHistory();
+          webex.internal.llm.getWebSocketUrl = sinon.stub().returns(undefined);
+
+          meeting.emitLocusSyncCompleteMetric(
+            'meeting-1',
+            {
+              dataSet: 'main',
+              syncLatency: {totalTime: 50},
+            }
+          );
+
+          assert.calledOnceWithExactly(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.locus.sync.complete',
+            payload: {
+              identifiers: {
+                llmWebsocketUrl: undefined,
+              },
+              llmInfo: {
+                dataSet: 'main',
+              },
+              syncLatency: {totalTime: 50},
+            },
+            options: {
+              meetingId: 'meeting-1',
+            },
           });
         });
       });
