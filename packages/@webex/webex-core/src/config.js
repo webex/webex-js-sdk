@@ -28,6 +28,13 @@ export default {
     useUserOnboardingServiceForActivations: false,
 
     /**
+     * When true, requests the U2C catalog override.
+     *
+     * @type {boolean}
+     */
+    useCatalogOverride: false,
+
+    /**
      * Maximum time (in milliseconds) to wait for the initial service catalog
      * collection when `waitForCatalogInit` is enabled, before letting
      * `services.ready` (and therefore `webex.ready`) fire anyway. Prevents a
