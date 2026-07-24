@@ -20,7 +20,7 @@ import {
 } from './constants';
 import {DestinationType, TaskData} from '../types';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
-import {getIsConferenceInProgress} from '../TaskUtils';
+import {getConferenceParticipantsCount, getIsConferenceInProgress} from '../TaskUtils';
 import {hasActiveConsultInPostCall} from './guards';
 
 const determineConsultInitiator = (
@@ -98,7 +98,8 @@ const isActiveConsultState = (taskData: TaskData | undefined, selfAgentId?: stri
       return false;
     }
     if (
-      selfParticipant?.consultState === CONSULT_STATE.CONSULTING &&
+      (selfParticipant?.consultState === CONSULT_STATE.CONSULTING ||
+        selfParticipant?.consultState === 'conferencing') &&
       hasConsultMedia &&
       taskData?.isConsulted === false
     ) {
@@ -125,6 +126,70 @@ const isSelfConsultingOrPending = (
 
   return (
     selfParticipant?.consultState === CONSULT_STATE.CONSULTING ||
+    selfParticipant?.consultState === 'conferencing' ||
+    selfParticipant?.consultState === 'consultInitiated'
+  );
+};
+
+const isEpDnParticipantType = (pType: string | undefined): boolean => {
+  const normalized = String(pType ?? '').toUpperCase();
+
+  return normalized === 'EP-DN' || normalized === 'EP_DN' || normalized === 'DN';
+};
+
+/** EP-DN consult merged to conference before a second agent joins the main leg (CAI-8329). */
+const isEpDnConsultPendingConferenceMerge = (
+  taskData: TaskData | undefined,
+  selfAgentId: string | undefined
+): boolean => {
+  if (!taskData?.interaction || !selfAgentId) return false;
+
+  if (
+    taskData.type === 'AgentConsultEnded' ||
+    taskData.type === 'AgentConsultFailed' ||
+    taskData.type === 'AgentConsultConferenceEnded'
+  ) {
+    return false;
+  }
+
+  const interaction = taskData.interaction;
+  const mainCallId = interaction.mainInteractionId || taskData.interactionId;
+  if (!mainCallId) return false;
+
+  const conferenceFromPayload =
+    interaction.state === INTERACTION_STATE.CONFERENCE || getIsConferenceInProgress(taskData);
+  if (!conferenceFromPayload) return false;
+
+  if (getConferenceParticipantsCount(interaction, mainCallId) > 1) return false;
+
+  const selfParticipant = interaction.participants?.[selfAgentId] as
+    | {consultState?: string}
+    | undefined;
+  if (taskData.isConsulted === true || selfParticipant?.consultState === 'consultCompleted') {
+    return false;
+  }
+
+  const mainParticipantIds = new Set(interaction.media?.[mainCallId]?.participants ?? []);
+  const hasEpDnOnConsultLegNotMain = Object.values(interaction.media ?? {}).some((media: any) => {
+    if (media?.mType !== MEDIA_TYPE_CONSULT) return false;
+
+    return (media.participants ?? []).some((participantId: string) => {
+      if (participantId === selfAgentId || mainParticipantIds.has(participantId)) return false;
+      const participant = interaction.participants?.[participantId] as
+        | {hasLeft?: boolean; pType?: string}
+        | undefined;
+      if (!participant || participant.hasLeft) return false;
+
+      return isEpDnParticipantType(participant.pType);
+    });
+  });
+  if (!hasEpDnOnConsultLegNotMain) return false;
+
+  return (
+    taskData.consultingAgentId === selfAgentId ||
+    interaction.owner === selfAgentId ||
+    selfParticipant?.consultState === CONSULT_STATE.CONSULTING ||
+    selfParticipant?.consultState === 'conferencing' ||
     selfParticipant?.consultState === 'consultInitiated'
   );
 };
@@ -225,6 +290,11 @@ export const getTaskStateForUiControls = (
     return TaskState.WRAPPING_UP;
   }
 
+  // EP-DN consult merged to conference before Agent 2 joins main — UI is conferencing (CAI-8329).
+  if (isEpDnConsultPendingConferenceMerge(taskData, selfAgentId)) {
+    return TaskState.CONFERENCING;
+  }
+
   if (isActiveConsultState(taskData, selfAgentId)) {
     return TaskState.CONSULTING;
   }
@@ -285,7 +355,13 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
           updates.consultDestinationType = null;
           updates.consultDestinationAgentId = null;
           updates.transferConferenceRequested = false;
+          updates.hideBlindTransferForEpDnPendingMerge = false;
         }
+
+        updates.hideBlindTransferForEpDnPendingMerge = isEpDnConsultPendingConferenceMerge(
+          taskData,
+          selfAgentId
+        );
 
         if (consultingActive && taskData.destinationType) {
           updates.consultDestinationType = mapConsultDestinationType(taskData.destinationType);
@@ -385,6 +461,7 @@ export function createInitialContext(
     consultDestinationAgentId: null,
     consultDestinationAgentJoined: false,
     consultCallHeld: false,
+    hideBlindTransferForEpDnPendingMerge: false,
     recordingControlsAvailable: false,
     recordingInProgress: false,
     uiControlConfig,
@@ -455,6 +532,7 @@ export const actions: TaskActionsMap = {
       consultCallHeld: false,
       consultFromConference: false,
       transferConferenceRequested: false,
+      hideBlindTransferForEpDnPendingMerge: false,
     };
     const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
     const nextContext = {...context, ...cleared, taskData} as TaskContext;
@@ -539,6 +617,12 @@ export const actions: TaskActionsMap = {
   }),
 
   clearConsultState: assign(({context, event}: TaskActionArgs) => {
+    const taskData = context.taskData ?? getTaskDataFromEvent(event);
+    const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
+    const hideBlindTransferForEpDnPendingMerge = isEpDnConsultPendingConferenceMerge(
+      taskData,
+      selfAgentId
+    );
     const cleared = {
       consultDestinationType: null,
       consultDestinationAgentId: null,
@@ -548,9 +632,8 @@ export const actions: TaskActionsMap = {
       consultCallHeld: false,
       consultFromConference: false,
       transferConferenceRequested: false,
+      hideBlindTransferForEpDnPendingMerge,
     };
-    const taskData = context.taskData ?? getTaskDataFromEvent(event);
-    const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
     const nextContext = {...context, ...cleared, taskData} as TaskContext;
     const inferredState = getTaskStateForUiControls(taskData, selfAgentId);
 

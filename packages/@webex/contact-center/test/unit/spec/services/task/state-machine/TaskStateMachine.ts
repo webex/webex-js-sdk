@@ -1406,6 +1406,130 @@ describe('Task state machine', () => {
       expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
     });
 
+    it('sets hideBlindTransfer flag and clears consult context on EP-DN AgentConsultConferencing (CAI-8329)', () => {
+      const service = startMachine();
+      const agentId = 'agent-1';
+      const consultMediaId = 'consult-media-1';
+      const consultTaskData = createTaskData({
+        agentId,
+        consultingAgentId: agentId,
+        consultMediaResourceId: consultMediaId,
+        isConsulted: false,
+        interaction: {
+          state: 'consulting',
+          interactionId: 'interaction-1',
+          mainInteractionId: 'interaction-1',
+          owner: agentId,
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasJoined: true,
+              hasLeft: false,
+              consultState: 'consulting',
+              isConsulted: false,
+            },
+            '+13159998087': {
+              id: '+13159998087',
+              pType: 'EP-DN',
+              hasLeft: false,
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasJoined: true, hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['customer-1', 'agent-1'],
+              isHold: false,
+            },
+            [consultMediaId]: {
+              mediaResourceId: consultMediaId,
+              mType: 'consult',
+              participants: ['+13159998087', 'agent-1'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: consultTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: consultTaskData});
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: '+13159998087',
+        destinationType: 'entryPoint',
+      });
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData: consultTaskData});
+      service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      expect(service.getSnapshot().value).toBe(TaskState.CONF_INITIATING);
+      expect(service.getSnapshot().context.consultInitiator).toBe(true);
+
+      const conferencingTaskData = createTaskData({
+        agentId,
+        consultMediaResourceId: consultMediaId,
+        isConsulted: false,
+        type: 'AgentConsultConferencing' as any,
+        interaction: {
+          state: 'conference',
+          interactionId: 'interaction-1',
+          mainInteractionId: 'interaction-1',
+          owner: agentId,
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasJoined: true,
+              hasLeft: false,
+              consultState: 'conferencing',
+              isConsulted: false,
+            },
+            '+13159998087': {
+              id: '+13159998087',
+              pType: 'EP-DN',
+              hasLeft: false,
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasJoined: true, hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['customer-1', 'agent-1'],
+              isHold: false,
+            },
+            [consultMediaId]: {
+              mediaResourceId: consultMediaId,
+              mType: 'consult',
+              participants: ['+13159998087', 'agent-1'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: conferencingTaskData});
+
+      const snapshot = service.getSnapshot();
+      expect(snapshot.value).toBe(TaskState.CONFERENCING);
+      expect(snapshot.context.consultInitiator).toBe(false);
+      expect(snapshot.context.consultDestinationType).toBe(null);
+      expect(snapshot.context.hideBlindTransferForEpDnPendingMerge).toBe(true);
+      expect(snapshot.context.uiControls.activeLeg).toBe('main');
+      expect(snapshot.context.uiControls.main.transfer).toEqual({
+        isVisible: false,
+        isEnabled: false,
+      });
+      expect(snapshot.context.uiControls.main.exitConference).toEqual({
+        isVisible: true,
+        isEnabled: true,
+      });
+      expect(snapshot.context.uiControls.consult.endConsult).toEqual({
+        isVisible: false,
+        isEnabled: false,
+      });
+    });
+
     it('terminates via wrapup when EXIT_CONFERENCE_SUCCESS is received in conferencing', () => {
       const service = startMachine();
       const taskData = createTaskData({

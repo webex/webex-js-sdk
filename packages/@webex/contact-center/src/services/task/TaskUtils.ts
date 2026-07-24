@@ -92,6 +92,14 @@ export const getIsConsultInProgressForConferenceControls = (
       const p: any = interaction.participants?.[participantId];
       if (!p || p.hasLeft) return false;
       if (selfAgentId && participantId === selfAgentId) return false;
+      if (mainSet.has(participantId)) return false;
+
+      const participantType = String(p.pType ?? '').toUpperCase();
+      const isEpDnParticipant =
+        participantType === 'EP-DN' || participantType === 'EP_DN' || participantType === 'DN';
+      if (isEpDnParticipant) {
+        return true;
+      }
 
       const consultState = p.consultState as string | undefined;
       const isRonaPendingConsultee = consultState === 'consultReserved' && p.hasJoined === false;
@@ -100,7 +108,7 @@ export const getIsConsultInProgressForConferenceControls = (
         p.currentState === 'consulting' ||
         (p.isConsulted === true && consultState !== 'consultCompleted' && !isRonaPendingConsultee);
 
-      return consultLegActive && !mainSet.has(participantId);
+      return consultLegActive;
     });
   });
 };

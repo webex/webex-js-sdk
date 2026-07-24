@@ -65,6 +65,7 @@ describe('State Machine Guards', () => {
       consultCallHeld: false,
       consultInitiator: false,
       exitingConference: false,
+      hideBlindTransferForEpDnPendingMerge: false,
       consultDestinationType: null,
       taskData: createTaskData(),
       uiControlConfig: {agentId: 'agent-123'},
