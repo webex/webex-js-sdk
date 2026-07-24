@@ -1,5 +1,6 @@
 import {defineConfig, devices} from '@playwright/test';
 import dotenv from 'dotenv';
+import fs from 'fs';
 import path from 'path';
 import {USER_SETS} from './playwright/test-data';
 
@@ -7,11 +8,13 @@ import {USER_SETS} from './playwright/test-data';
 dotenv.config({path: path.resolve(__dirname, '../../.env')});
 
 const BASE_URL = process.env.PW_BASE_URL || 'https://localhost:8000';
+// Deterministic mic input for VM-CALL-001; owned by packages/calling/playwright.
+const dummyAudioPath = path.resolve(__dirname, './playwright/fixtures/dummyAudio.wav');
 
 // Browser selection via PW_BROWSER env var: 'chrome' (default), 'firefox', 'edge', 'safari'
 const PW_BROWSER = process.env.PW_BROWSER || 'chrome';
 
-const chromiumArgs = [
+const baseChromiumArgs = [
   '--disable-site-isolation-trials', // Allow cross-origin iframes in the same process
   '--disable-web-security', // Bypass CORS for local dev server
   '--no-sandbox', // Required for CI containers without root
@@ -25,30 +28,46 @@ const chromiumArgs = [
   ...(process.env.CI ? [] : ['--auto-open-devtools-for-tabs']), // Open DevTools only in local runs
 ];
 
-const browserOptions: Record<string, object> = {
-  chrome: {
-    ...devices['Desktop Chrome'],
-    channel: 'chrome' as const,
-    launchOptions: {args: chromiumArgs},
-  },
-  edge: {
-    ...devices['Desktop Edge'],
-    channel: 'msedge' as const,
-    launchOptions: {args: chromiumArgs},
-  },
-  firefox: {
-    ...devices['Desktop Firefox'],
-    launchOptions: {
-      firefoxUserPrefs: {
-        'media.navigator.streams.fake': true, // Use fake media devices
-        'media.navigator.permission.disabled': true, // Auto-grant media permissions
+const voicemailChromiumArgs = [
+  ...baseChromiumArgs,
+  '--autoplay-policy=no-user-gesture-required',
+  ...(fs.existsSync(dummyAudioPath) ? [`--use-file-for-fake-audio-capture=${dummyAudioPath}`] : []),
+];
+
+const chromiumLaunchArgs = (forVoicemail = false): string[] =>
+  forVoicemail ? voicemailChromiumArgs : baseChromiumArgs;
+
+const buildBrowserOptions = (forVoicemail = false): Record<string, object> => {
+  const chromiumArgs = chromiumLaunchArgs(forVoicemail);
+
+  return {
+    chrome: {
+      ...devices['Desktop Chrome'],
+      channel: 'chrome' as const,
+      launchOptions: {args: chromiumArgs},
+    },
+    edge: {
+      ...devices['Desktop Edge'],
+      channel: 'msedge' as const,
+      launchOptions: {args: chromiumArgs},
+    },
+    firefox: {
+      ...devices['Desktop Firefox'],
+      launchOptions: {
+        firefoxUserPrefs: {
+          'media.navigator.streams.fake': true, // Use fake media devices
+          'media.navigator.permission.disabled': true, // Auto-grant media permissions
+        },
       },
     },
-  },
-  safari: {
-    ...devices['Desktop Safari'],
-  },
+    safari: {
+      ...devices['Desktop Safari'],
+    },
+  };
 };
+
+const browserOptions = buildBrowserOptions();
+const voicemailBrowserOptions = buildBrowserOptions(true);
 
 export default defineConfig({
   testDir: './playwright',
@@ -142,18 +161,33 @@ export default defineConfig({
       testMatch: USER_SETS.SET_CALL_HISTORY.testSuite,
       use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
     },
+    // Voicemail message tests use USER_1+USER_2, so run after call history.
+    {
+      name: 'SET_VOICEMAIL - PROD',
+      dependencies: ['SET_CALL_HISTORY - PROD'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_VOICEMAIL.testSuite,
+      use: voicemailBrowserOptions[PW_BROWSER],
+    },
+    {
+      name: 'SET_VOICEMAIL - INT',
+      dependencies: ['SET_CALL_HISTORY - INT'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_VOICEMAIL.testSuite,
+      use: {...voicemailBrowserOptions[PW_BROWSER], testEnv: 'int'} as any,
+    },
 
-    // 3-user transfer tests — waits for call history because both suites use USER_1/USER_2.
+    // 3-user transfer tests — waits for call history and voicemail because they use USER_1/USER_2.
     {
       name: 'SET_CALL_TRANSFER_CONSULT - PROD',
-      dependencies: ['SET_CALL - PROD', 'SET_CALL_HISTORY - PROD'],
+      dependencies: ['SET_CALL - PROD', 'SET_CALL_HISTORY - PROD', 'SET_VOICEMAIL - PROD'],
       testDir: './playwright/suites',
       testMatch: USER_SETS.SET_CALL_TRANSFER_CONSULT.testSuite,
       use: browserOptions[PW_BROWSER],
     },
     {
       name: 'SET_CALL_TRANSFER_CONSULT - INT',
-      dependencies: ['SET_CALL - INT', 'SET_CALL_HISTORY - INT'],
+      dependencies: ['SET_CALL - INT', 'SET_CALL_HISTORY - INT', 'SET_VOICEMAIL - INT'],
       testDir: './playwright/suites',
       testMatch: USER_SETS.SET_CALL_TRANSFER_CONSULT.testSuite,
       use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,

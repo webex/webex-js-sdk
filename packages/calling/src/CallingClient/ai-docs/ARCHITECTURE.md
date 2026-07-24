@@ -1,5 +1,7 @@
 # CallingClient Module — Architecture
 
+> Canonical SDD target: [`src/CallingClient/ai-docs/calling-client-spec.md`](calling-client-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Component Overview
 
 The CallingClient module follows a layered architecture: **Application → CallingClient → Line → Registration / CallManager → APIRequest → (HTTP via Webex SDK *or* WSS via `mobius-socket`) → Mobius API**. Each layer has a distinct responsibility — orchestration (CallingClient), line management (Line), device registration (Registration), call lifecycle (CallManager/Call), transport selection (APIRequest), and SDK bridging (SDKConnector for Mercury / non-Mobius traffic).
