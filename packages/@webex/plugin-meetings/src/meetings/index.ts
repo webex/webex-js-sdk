@@ -215,10 +215,10 @@ export default class Meetings extends WebexPlugin {
    * Emits a metric describing how well this browser runs WebAssembly, used to spot browsers
    * where real-time WASM effects (e.g. background noise removal) run poorly.
    *
-   * @param {string} [correlationId] - correlation id to report the result against
+   * @param {string} correlationId - correlation id to report the result against
    * @returns {void}
    */
-  private emitWasmRuntimePerformance = once((correlationId?: string): void => {
+  private emitWasmRuntimePerformance = once((correlationId: string): void => {
     // This check is designed to swallow any probe/metrics failure so it can never break meeting
     // creation, while still reporting the status so we can track browsers with WASM issues.
     WasmRuntimeProbe.check()

@@ -1905,7 +1905,7 @@ describe('plugin-meetings', () => {
             await webex.meetings.create(test1, test2);
             await testUtils.flushPromises();
 
-            assert.calledOnce(probeCheckStub);
+            assert.calledOnceWithExactly(probeCheckStub);
             assert.calledOnceWithExactly(metricsSpy, 'js_sdk_wasm_runtime_performance', {
               status: 'slow',
               ratio: 0.25,
@@ -1921,8 +1921,8 @@ describe('plugin-meetings', () => {
             await webex.meetings.create(test1, test2);
             await testUtils.flushPromises();
 
-            assert.calledOnce(probeCheckStub);
-            assert.calledWith(
+            assert.calledOnceWithExactly(probeCheckStub);
+            assert.calledOnceWithExactly(
               loggerLogStub,
               sinon.match(
                 /Meetings:index#emitWasmRuntimePerformance --> WASM runtime performance status/
@@ -1936,7 +1936,7 @@ describe('plugin-meetings', () => {
             await webex.meetings.create(test1, test2);
             await testUtils.flushPromises();
 
-            assert.calledOnce(probeCheckStub);
+            assert.calledOnceWithExactly(probeCheckStub);
             assert.calledOnceWithExactly(metricsSpy, 'js_sdk_wasm_runtime_performance', {
               status: 'slow',
               ratio: 0.25,
@@ -1956,7 +1956,7 @@ describe('plugin-meetings', () => {
             // create() resolved normally with the meeting, i.e. the failed probe did not break it.
             assert.equal(created.correlationId, 'wasm-corr-id');
             assert.notCalled(metricsSpy);
-            assert.calledWith(
+            assert.calledOnceWithExactly(
               loggerErrorStub,
               sinon.match(/Meetings:index#emitWasmRuntimePerformance --> ERROR/)
             );
