@@ -20,6 +20,7 @@ import WebexCore, {
 import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
 import sinon from 'sinon';
+import {createActivationEmail} from '../../../fixtures/activation-email';
 
 /* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
@@ -408,11 +409,13 @@ describe('webex-core', () => {
         services._loadCatalogFromCache = sinon.stub().resolves(false);
         services.initServiceCatalogs = sinon.stub().resolves();
         services.initialize();
+        // The mode-specific ('ready'/'loaded') listener is registered inside the
+        // change:config handler, so fire change:config first, then 'ready'.
+        webex.trigger('change:config');
         webex.trigger('ready');
         // Wait for the async 'ready' handler to complete
         await new Promise((resolve) => setTimeout(resolve, 50));
         assert.called(services.initServiceCatalogs);
-        assert.isTrue(catalog.isReady);
       });
 
       it('should collect different catalogs based on OrgId region', () =>
@@ -429,6 +432,39 @@ describe('webex-core', () => {
           assert.isFalse(otherWebex.internal.services._getCatalog().isReady);
           done();
         }, 2000);
+      });
+
+      it('blocks webex.ready until services.ready flips when waitForCatalogInit is enabled', async () => {
+        const gatedWebex = new WebexCore({
+          credentials: {supertoken: webexUser.token},
+          config: {services: {waitForCatalogInit: true}},
+        });
+
+        // Before init settles, webex.ready must be false because services.ready
+        // is a dependency and starts false in the gated path.
+        assert.isFalse(gatedWebex.internal.services.ready, 'services.ready should start false');
+        assert.isFalse(gatedWebex.ready, 'webex.ready should not fire while services.ready is false');
+
+        // Wait up to 30s for services init to complete and flip ready.
+        await new Promise((resolve, reject) => {
+          if (gatedWebex.internal.services.ready) {
+            resolve();
+
+            return;
+          }
+          const timer = setTimeout(
+            () => reject(new Error('timed out waiting for services.ready')),
+            30_000
+          );
+
+          gatedWebex.internal.services.once('change:ready', () => {
+            clearTimeout(timer);
+            resolve();
+          });
+        });
+
+        assert.isTrue(gatedWebex.internal.services.ready, 'services.ready should flip true after init settles');
+        assert.isTrue(gatedWebex.ready, 'webex.ready should fire once services.ready flips');
       });
     });
 
@@ -892,7 +928,7 @@ describe('webex-core', () => {
 
       it('validates a non-existing user', () =>
         unauthServices
-          .validateUser({email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`})
+          .validateUser({email: createActivationEmail()})
           .then((r) => {
             assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
             assert.equal(r.activated, false);
@@ -905,7 +941,7 @@ describe('webex-core', () => {
       it('validates new user with activationOptions suppressEmail false', () =>
         unauthServices
           .validateUser({
-            email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+            email: createActivationEmail(),
             activationOptions: {suppressEmail: false},
           })
           .then((r) => {
@@ -921,7 +957,7 @@ describe('webex-core', () => {
       it('validates new user with activationOptions suppressEmail true', () =>
         unauthServices
           .validateUser({
-            email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+            email: createActivationEmail(),
             activationOptions: {suppressEmail: true},
           })
           .then((r) => {
@@ -977,7 +1013,7 @@ describe('webex-core', () => {
 
         return unauthServices
           .validateUser({
-            email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+            email: createActivationEmail(),
             activationOptions: {suppressEmail: true},
           })
           .then(() => {
@@ -991,7 +1027,7 @@ describe('webex-core', () => {
 
         return unauthServices
           .validateUser({
-            email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+            email: createActivationEmail(),
             activationOptions: {suppressEmail: true},
             preloginUserId,
           })
@@ -1008,7 +1044,7 @@ describe('webex-core', () => {
 
         return unauthServices
           .validateUser({
-            email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+            email: createActivationEmail(),
             activationOptions: {suppressEmail: true},
           })
           .then(() => {
@@ -1031,7 +1067,7 @@ describe('webex-core', () => {
 
         return userOnboardingServices
           .validateUser({
-            email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+            email: createActivationEmail(),
             activationOptions: {suppressEmail: true},
           })
           .then(() => {

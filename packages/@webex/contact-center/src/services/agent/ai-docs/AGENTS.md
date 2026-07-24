@@ -1,5 +1,7 @@
 # Agent Service - AI Agent Guide
 
+> **Legacy/reference-only.** Canonical SDD: [`agent-spec.md`](agent-spec.md). Use the package [manifest](../../../../.sdd/manifest.json) and [`SPEC_INDEX.md`](../../../../ai-docs/SPEC_INDEX.md) for routing; code and tests remain the behavioral referee.
+
 > **Purpose**: Manage agent lifecycle including login, logout, state changes, and buddy agent queries.
 
 ---

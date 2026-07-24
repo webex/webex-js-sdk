@@ -447,7 +447,7 @@ public unregisterListener(event: string): void {
 The actual code in `callManager.ts` uses the raw string `'event:mobius'` rather than the enum constant:
 
 ```typescript
-// src/CallingClient/calling/callManager.ts:130
+// src/CallingClient/calling/callManager.ts
 private listenForWsEvents() {
   this.sdkConnector.registerListener('event:mobius', async (event) => {
     this.dequeueWsEvents(event);
@@ -457,7 +457,7 @@ private listenForWsEvents() {
 
 ### Session Listener Pattern in CallingClient
 
-The actual `registerSessionsListener` (`src/CallingClient/CallingClient.ts:665-691`) contains important filtering logic — it filters out non-`WEBEX_CALLING` sessions before emitting:
+The actual `registerSessionsListener` (`src/CallingClient/CallingClient.ts`) contains important filtering logic — it filters out non-`WEBEX_CALLING` sessions before emitting:
 
 ```typescript
 private registerSessionsListener() {
@@ -541,3 +541,34 @@ Write tests that register a spy via `.on()`, trigger the action, and assert the 
 - [Error Handling Patterns](./error-handling-patterns.md)
 - [TypeScript Patterns](./typescript-patterns.md)
 - [Testing Patterns](./testing-patterns.md)
+## Pattern-Extract Verification
+
+### When to use
+
+Extend `Eventing<T>` and emit through a typed enum key whenever a module exposes lifecycle notifications. This preserves payload/key coupling that ordinary lint rules cannot prove.
+
+### Correct
+
+```typescript
+this.emit(COMMON_EVENT_KEYS.CALL_RECORDING_CREATED, event);
+```
+
+### Incorrect
+
+```typescript
+this.emit('recording-created', event);
+```
+
+A raw string can drift from the exported event contract and loses the type-map relationship.
+
+### Where it appears
+
+- `src/CallHistory/CallHistory.ts`
+- `src/CallRecording/CallRecording.ts`
+- `src/CallRecording/WxcCallRecordingConnector.ts`
+- `src/CallingClient/CallingClient.ts`
+- `src/CallingClient/calling/callManager.ts`
+
+### Edge cases
+
+Mobius transport envelopes are first normalized by transport and calling adapters; application-facing emitters still use the typed event maps. `LINE_EVENT_KEYS` and `LINE_EVENTS` intentionally have different scopes and must not be interchanged.

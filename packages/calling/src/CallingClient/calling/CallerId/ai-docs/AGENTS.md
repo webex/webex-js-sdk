@@ -1,5 +1,7 @@
 # CallerId Sub-Module - Agent Specification
 
+> Canonical SDD target: [`src/CallingClient/calling/CallerId/ai-docs/caller-id-spec.md`](caller-id-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Overview
 
 The `CallerId` sub-module resolves caller identity for a `Call` using SIP-style headers delivered by Mobius signaling events. It provides immediate, best-effort display information from headers and then performs asynchronous enrichment through SCIM lookup when BroadWorks metadata includes an `externalId`.

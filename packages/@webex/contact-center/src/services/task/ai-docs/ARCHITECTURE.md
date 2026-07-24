@@ -1,5 +1,7 @@
 # Task Service - Architecture
 
+> **Legacy/reference-only.** Canonical SDD: [`task-spec.md`](task-spec.md). Use the package [manifest](../../../../.sdd/manifest.json) and [`SPEC_INDEX.md`](../../../../ai-docs/SPEC_INDEX.md) for routing; code and tests remain the behavioral referee.
+
 > **Purpose**: Technical documentation for task lifecycle management.
 
 ---
@@ -307,6 +309,7 @@ sequenceDiagram
     participant BE as Backend
     participant WS as WebSocket
     participant TM as TaskManager
+    participant TF as TaskFactory
     participant T as Task
     participant CC as ContactCenter
     participant App as Application
@@ -319,7 +322,8 @@ sequenceDiagram
         WS->>TM: LINE_EVENTS.INCOMING_CALL
         TM->>TM: Map call to task
     end
-    TM->>T: new Task(data)
+    TM->>TF: TaskFactory.createTask(...)
+    TF-->>TM: Voice/WebRTC/Digital Task instance
     TM->>TM: Store in taskCollection
     TM->>CC: emit task:incoming
     CC->>App: trigger task:incoming
@@ -557,8 +561,13 @@ isSecondaryEpDnAgent(interaction);
 **Solution**: Check task state before operation:
 
 ```typescript
-if (task.uiControls.hold.isEnabled) {
+if (task.uiControls.main.hold.isEnabled) {
   await task.hold();
+}
+
+// Consult-leg controls are exposed separately.
+if (task.uiControls.consult.hold.isEnabled) {
+  // Render or enable the consult-leg hold action.
 }
 ```
 

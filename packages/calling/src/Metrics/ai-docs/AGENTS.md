@@ -1,5 +1,7 @@
 # Metrics Module
 
+> Canonical SDD target: [`src/Metrics/ai-docs/metrics-spec.md`](metrics-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## AI Agent Routing Instructions
 
 **If you are an AI assistant or automated tool:**
