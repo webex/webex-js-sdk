@@ -9,6 +9,7 @@ import {
   CallDiagnosticMetrics,
   getOSNameInternal,
   CallDiagnosticUtils,
+  AutomatedUserUtils,
   config,
 } from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
@@ -34,6 +35,7 @@ describe('internal-plugin-metrics', () => {
     var now = new Date();
 
     let cd: CallDiagnosticMetrics;
+    let isAutomatedUserStub: sinon.SinonStub;
 
     const fakeMeeting = {
       id: '1',
@@ -155,6 +157,7 @@ describe('internal-plugin-metrics', () => {
       sinon.useFakeTimers(now.getTime());
       cd = new CallDiagnosticMetrics({}, {parent: webex});
       sinon.stub(uuid, 'v4').returns('my-fake-id');
+      isAutomatedUserStub = sinon.stub(AutomatedUserUtils, 'isAutomatedUser').returns(false);
       cd.setDeviceInfo(webex.internal.device);
     });
 
@@ -900,14 +903,8 @@ describe('internal-plugin-metrics', () => {
         assert.isBoolean(res.event.isAutomatedUser, 'isAutomatedUser should be a boolean');
       });
 
-      it('should set isAutomatedUser to true when navigator.webdriver is true', () => {
-        const originalDescriptor = Object.getOwnPropertyDescriptor(global, 'navigator');
-        Object.defineProperty(global, 'navigator', {
-          value: {webdriver: true},
-          configurable: true,
-          writable: true,
-        });
-
+      it('should set isAutomatedUser to true when the user is automated', () => {
+        isAutomatedUserStub.returns(true);
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
         cd.setMercuryConnectedStatus(true);
@@ -919,14 +916,8 @@ describe('internal-plugin-metrics', () => {
 
         assert.isTrue(
           prepareDiagnosticEventSpy.firstCall.args[0].isAutomatedUser,
-          'isAutomatedUser should be true when navigator.webdriver is set'
+          'isAutomatedUser should be true for an automated user'
         );
-
-        if (originalDescriptor) {
-          Object.defineProperty(global, 'navigator', originalDescriptor);
-        } else {
-          delete (global as any).navigator;
-        }
       });
     });
 
