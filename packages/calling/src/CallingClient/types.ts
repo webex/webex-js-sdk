@@ -22,6 +22,8 @@ export interface CallingClientConfig {
   discovery?: DiscoveryConfig;
   serviceData?: ServiceData;
   jwe?: string;
+  /** Overrides Mobius discovery with a specific Mobius HTTP or WSS endpoint. */
+  mobiusUrl?: string;
 }
 
 export type CallingClientErrorEmitterCallback = (

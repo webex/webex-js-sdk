@@ -346,6 +346,7 @@ async function initCalling(e) {
     },
     serviceData,
     jwe: jwtTokenForDestElm.value,
+    mobiusUrl: 'wss://mobius.wamswxc-p-2.prod.infra.webex.com/v1/calling/web',
   };
 
   if (callingClientConfig.discovery.country === 'Country') {

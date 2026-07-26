@@ -323,6 +323,26 @@ describe('CallingClient Tests', () => {
       });
     });
 
+    it('uses configured Mobius URL override instead of catalog discovery', async () => {
+      const mobiusUrl = 'wss://mobius.wamswxc-p-2.prod.infra.webex.com/v1/calling/web';
+
+      webex.request.mockClear();
+
+      callingClient = await createClient(webex, {
+        logger: {level: LOGGER.INFO},
+        mobiusUrl,
+      });
+
+      expect(webex.request).not.toHaveBeenCalled();
+      expect(callingClient.primaryWssMobiusUris).toEqual([`${mobiusUrl}/`]);
+      expect(callingClient.primaryMobiusUris).toEqual([
+        'https://mobius.wamswxc-p-2.prod.infra.webex.com/v1/calling/web/',
+      ]);
+      expect(callingClient.backupWssMobiusUris).toEqual([]);
+      expect(callingClient.backupMobiusUris).toEqual([]);
+      expect(callingClient['apiRequest'].isSocketEnabled()).toBe(true);
+    });
+
     it('when region discovery succeeds but region based mobius url discovery fails with final error', async () => {
       const failurePayload = {
         statusCode: 401,
