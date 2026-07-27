@@ -631,6 +631,116 @@ describe('plugin-logger', () => {
     });
   });
 
+  describe('configured transport', () => {
+    let clock;
+    let write;
+
+    beforeEach(() => {
+      clock = sinon.useFakeTimers();
+      write = sinon.spy();
+      webex.logger.config.transport = {write};
+    });
+
+    afterEach(() => {
+      clock.restore();
+    });
+
+    it('receives SDK and client records admitted to the existing buffer', () => {
+      webex.logger.info('sdk message', {attempt: 1});
+      clock.tick(1000);
+      webex.logger.client_warn('client message');
+
+      assert.calledTwice(write);
+      assert.deepEqual(write.firstCall.args[0], {
+        schemaVersion: 1,
+        timestamp: 0,
+        level: 'info',
+        type: 'sdk',
+        name: 'wx-js-sdk',
+        message: 'sdk message {"attempt":1}',
+      });
+      assert.deepEqual(write.secondCall.args[0], {
+        schemaVersion: 1,
+        timestamp: 1000,
+        level: 'warn',
+        type: 'client',
+        name: 'client',
+        message: 'client message',
+      });
+    });
+
+    it('does not receive records rejected by the existing buffer level', () => {
+      webex.logger.config.level = 'trace';
+      webex.logger.config.bufferLogLevel = 'info';
+
+      webex.logger.debug('print only');
+
+      assert.calledOnce(console.debug);
+      assert.notCalled(write);
+      assert.lengthOf(webex.logger.buffer.buffer, 0);
+    });
+
+    it('does not affect the existing buffer when the transport throws', () => {
+      webex.logger.config.transport.write = sinon.stub().throws(new Error('transport failed'));
+
+      assert.doesNotThrow(() => webex.logger.info('still buffered'));
+      assert.lengthOf(webex.logger.buffer.buffer, 1);
+      assert.equal(webex.logger.buffer.buffer[0][3], 'still buffered');
+      assert.equal(webex.logger.buffer.nextIndex, 0);
+    });
+
+    it('ignores missing or invalid transports', () => {
+      webex.logger.config.transport = {};
+
+      assert.doesNotThrow(() => webex.logger.info('still buffered'));
+      assert.lengthOf(webex.logger.buffer.buffer, 1);
+    });
+
+    it('preserves structured client metadata without changing the legacy buffer message', () => {
+      webex.logger.config.clientName = 'web-client';
+
+      webex.logger.client_logRecord({
+        level: 'info',
+        message: 'meeting joined',
+        eventName: 'meeting.join',
+        attributes: {
+          'webex.module': 'meeting',
+          'code.line.number': 42,
+          successful: true,
+          email: 'person@example.com',
+          Authorization: 'Basic secret',
+          nested: {ignored: true},
+        },
+      });
+
+      assert.calledOnceWithExactly(write, {
+        schemaVersion: 1,
+        timestamp: 0,
+        level: 'info',
+        type: 'client',
+        name: 'web-client',
+        message: 'meeting joined',
+        eventName: 'meeting.join',
+        attributes: {
+          'webex.module': 'meeting',
+          'code.line.number': 42,
+          successful: true,
+          email: '[REDACTED]',
+        },
+      });
+      assert.equal(webex.logger.buffer.buffer[0][3], 'meeting joined');
+    });
+
+    it('validates structured client records', () => {
+      assert.throws(
+        () => webex.logger.client_logRecord({level: 'verbose', message: 'invalid'}),
+        TypeError
+      );
+      assert.throws(() => webex.logger.client_logRecord({level: 'info', message: {}}), TypeError);
+      assert.notCalled(write);
+    });
+  });
+
   describe('#filter', () => {
     it('redacts email addresses', () => {
       const message = {

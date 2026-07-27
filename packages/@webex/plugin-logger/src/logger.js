@@ -34,6 +34,7 @@ const LOG_TYPES = {
 };
 
 const SDK_LOG_TYPE_NAME = 'wx-js-sdk';
+const LOG_RECORD_SCHEMA_VERSION = 1;
 
 const authTokenKeyPattern = /[Aa]uthorization/;
 
@@ -77,6 +78,100 @@ function walkAndFilter(object, visited = []) {
   }
 
   return object;
+}
+
+/**
+ * Resolves the available console implementation for a log level.
+ * @param {string} level log level
+ * @returns {string} console method name
+ */
+function getConsoleImpl(level) {
+  let impls = fallbacks[level];
+  let impl = level;
+
+  if (impls) {
+    impls = impls.slice();
+    // eslint-disable-next-line no-console
+    while (!console[impl]) {
+      impl = impls.pop();
+    }
+  }
+
+  return impl;
+}
+
+/**
+ * Filters structured attributes down to supported scalar values.
+ * @param {Logger} logger logger instance
+ * @param {Object} attributes candidate attributes
+ * @returns {Object|undefined} sanitized attributes
+ */
+function sanitizeAttributes(logger, attributes) {
+  if (!isObject(attributes) || isArray(attributes)) {
+    return undefined;
+  }
+
+  const [filteredAttributes] = logger.filter(attributes);
+  const sanitizedAttributes = Object.entries(filteredAttributes).reduce((result, [key, value]) => {
+    if (['boolean', 'number', 'string'].includes(typeof value)) {
+      result[key] = value;
+    }
+
+    return result;
+  }, {});
+
+  return Object.keys(sanitizedAttributes).length ? sanitizedAttributes : undefined;
+}
+
+/**
+ * Builds the SDK-owned transport record.
+ * @param {Logger} logger logger instance
+ * @param {Object} options record inputs
+ * @returns {Object} structured transport record
+ */
+function createLogRecord(logger, {level, type, name, timestamp, stringified, structuredRecord}) {
+  const record = {
+    schemaVersion: LOG_RECORD_SCHEMA_VERSION,
+    timestamp: timestamp.getTime(),
+    level,
+    type,
+    name,
+    message: stringified.slice(1).join(' '),
+  };
+
+  if (structuredRecord) {
+    const attributes = sanitizeAttributes(logger, structuredRecord.attributes);
+
+    if (attributes) {
+      record.attributes = attributes;
+    }
+
+    if (isString(structuredRecord.eventName)) {
+      [record.eventName] = logger.filter(structuredRecord.eventName);
+    }
+  }
+
+  return record;
+}
+
+/**
+ * Delivers a record to the optional configured transport.
+ * @param {Logger} logger logger instance
+ * @param {Object} record structured transport record
+ * @returns {void}
+ */
+function writeToTransport(logger, record) {
+  const {transport} = logger.config;
+
+  if (!transport || typeof transport.write !== 'function') {
+    return;
+  }
+
+  try {
+    transport.write(record);
+  } catch {
+    // Transport failures must not affect console logging or the existing buffer.
+  }
 }
 
 /**
@@ -364,16 +459,26 @@ const Logger = WebexPlugin.extend({
  * @param {string} type type of log, SDK or client
  * @param {bool} neverPrint function never prints to console
  * @param {bool} alwaysBuffer function always logs to log buffer
- * @instance
- * @memberof Logger
- * @private
- * @memberof Logger
+ * @param {bool} structured whether the method accepts a structured record
  * @returns {function} logger method with specified params
  */
-function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = false) {
+function makeLoggerMethod(
+  level,
+  impl,
+  type,
+  neverPrint = false,
+  alwaysBuffer = false,
+  structured = false
+) {
   // Much of the complexity in the following function is due to a test-mode-only
   // helper
   return function wrappedConsoleMethod(...args) {
+    const structuredRecord = structured ? args[0] : undefined;
+
+    if (structured) {
+      args = [structuredRecord.message];
+    }
+
     // it would be easier to just pass in the name and buffer here, but the config isn't completely initialized
     // in Ampersand, even if the initialize method is used to set this up.  so we keep the type to achieve
     // a sort of late binding to allow retrieving a name from config.
@@ -451,6 +556,14 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
 
       if (shouldBuffer) {
         const logDate = new Date();
+        const transportRecord = createLogRecord(this, {
+          level,
+          type: logType,
+          name: clientName,
+          timestamp: logDate,
+          stringified,
+          structuredRecord,
+        });
 
         stringified.unshift(logDate.toISOString());
         stringified.unshift('|  '.repeat(this.groupLevel));
@@ -474,6 +587,8 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
         }
         if (level === 'group') this.groupLevel += 1;
         if (level === 'groupEnd' && this.groupLevel > 0) this.groupLevel -= 1;
+
+        writeToTransport(this, transportRecord);
       }
     } catch (reason) {
       if (!neverPrint) {
@@ -485,36 +600,58 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
   };
 }
 
-levels.forEach((level) => {
-  let impls = fallbacks[level];
-  let impl = level;
+const structuredClientMethods = {};
 
-  if (impls) {
-    impls = impls.slice();
-    // eslint-disable-next-line no-console
-    while (!console[impl]) {
-      impl = impls.pop();
-    }
-  }
+levels.forEach((level) => {
+  const impl = getConsoleImpl(level);
 
   // eslint-disable-next-line complexity
   Logger.prototype[`client_${level}`] = makeLoggerMethod(level, impl, LOG_TYPES.CLIENT);
   Logger.prototype[level] = makeLoggerMethod(level, impl, LOG_TYPES.SDK);
+  structuredClientMethods[level] = makeLoggerMethod(
+    level,
+    impl,
+    LOG_TYPES.CLIENT,
+    false,
+    false,
+    true
+  );
 });
 
+/**
+ * Writes a structured client record through the normal console, buffer, and optional transport path.
+ *
+ * @param {Object} record structured client record
+ * @param {string} record.level log level
+ * @param {string} record.message log message
+ * @param {string} [record.eventName] event name
+ * @param {Object} [record.attributes] scalar attributes
+ * @private
+ * @returns {void}
+ */
+Logger.prototype.client_logRecord = function clientLogRecord({
+  level,
+  message,
+  eventName,
+  attributes,
+}) {
+  if (!levels.includes(level)) {
+    throw new TypeError(`Unsupported log level: ${level}`);
+  }
+  if (!isString(message)) {
+    throw new TypeError('Structured log message must be a string');
+  }
+
+  structuredClientMethods[level].call(this, {message, eventName, attributes});
+};
+
 Logger.prototype.client_logToBuffer = makeLoggerMethod(
-  levels.info,
-  levels.info,
+  'info',
+  'info',
   LOG_TYPES.CLIENT,
   true,
   true
 );
-Logger.prototype.logToBuffer = makeLoggerMethod(
-  levels.info,
-  levels.info,
-  LOG_TYPES.SDK,
-  true,
-  true
-);
+Logger.prototype.logToBuffer = makeLoggerMethod('info', 'info', LOG_TYPES.SDK, true, true);
 
 export default Logger;
