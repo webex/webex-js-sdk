@@ -13,3 +13,4 @@ registerPlugin('logger', Logger, {
 });
 
 export {default, levels} from './logger';
+export {openTelemetryLogFormatter} from './formatters';

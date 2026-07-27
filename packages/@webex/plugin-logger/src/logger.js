@@ -124,10 +124,10 @@ function sanitizeAttributes(logger, attributes) {
 }
 
 /**
- * Builds the SDK-owned transport record.
+ * Builds the SDK-owned structured log record.
  * @param {Logger} logger logger instance
  * @param {Object} options record inputs
- * @returns {Object} structured transport record
+ * @returns {Object} structured log record
  */
 function createLogRecord(logger, {level, type, name, timestamp, stringified, structuredRecord}) {
   const record = {
@@ -155,23 +155,73 @@ function createLogRecord(logger, {level, type, name, timestamp, stringified, str
 }
 
 /**
- * Delivers a record to the optional configured transport.
+ * Returns whether the configured transport array replaces the SDK defaults.
+ * @param {Logger} logger logger instance
+ * @returns {boolean} whether custom transports were explicitly configured
+ */
+function hasConfiguredTransports(logger) {
+  return isArray(logger.config.transports);
+}
+
+/**
+ * Delivers a formatted record to each configured transport.
  * @param {Logger} logger logger instance
  * @param {Object} record structured transport record
  * @returns {void}
  */
-function writeToTransport(logger, record) {
-  const {transport} = logger.config;
+function writeToTransports(logger, record) {
+  let formattedRecord = record;
 
-  if (!transport || typeof transport.write !== 'function') {
+  if (typeof logger.config.formatter === 'function') {
+    try {
+      formattedRecord = logger.config.formatter(record);
+    } catch {
+      return;
+    }
+  }
+
+  if (!formattedRecord) {
     return;
   }
 
-  try {
-    transport.write(record);
-  } catch {
-    // Transport failures must not affect console logging or the existing buffer.
-  }
+  logger.config.transports.forEach((transport) => {
+    if (!transport || typeof transport.write !== 'function') {
+      return;
+    }
+
+    try {
+      transport.write(formattedRecord);
+    } catch {
+      // One transport must not prevent delivery to the remaining transports.
+    }
+  });
+}
+
+/**
+ * Builds the structured buffer entry used by legacy log uploads.
+ * @param {Object} record structured log record
+ * @param {Array<string>} stringified filtered and stringified log values
+ * @param {number} groupLevel current console group depth
+ * @returns {Object} structured buffer entry
+ */
+function createBufferEntry(record, stringified, groupLevel) {
+  return {
+    record,
+    legacyLine: [
+      '|  '.repeat(groupLevel),
+      new Date(record.timestamp).toISOString(),
+      ...stringified,
+    ],
+  };
+}
+
+/**
+ * Serializes one structured buffer entry to the existing upload format.
+ * @param {Object} entry structured buffer entry
+ * @returns {string} legacy upload line
+ */
+function formatBufferEntry(entry) {
+  return entry.legacyLine.join(',');
 }
 
 /**
@@ -374,7 +424,7 @@ const Logger = WebexPlugin.extend({
    */
   formatLogs(options = {}) {
     function getDate(log) {
-      return log[1];
+      return log.record.timestamp;
     }
     const {diff = false} = options;
     let buffer = [];
@@ -418,7 +468,7 @@ const Logger = WebexPlugin.extend({
       buffer = this.buffer.buffer;
     }
 
-    return buffer.join('\n');
+    return buffer.map(formatBufferEntry).join('\n');
   },
 
   /**
@@ -500,10 +550,17 @@ function makeLoggerMethod(
     }
 
     try {
-      const shouldPrint = !neverPrint && this.shouldPrint(level, logType);
-      const shouldBuffer = alwaysBuffer || this.shouldBuffer(level);
+      const customTransportsConfigured = hasConfiguredTransports(this);
+      const shouldPrint =
+        !customTransportsConfigured && !neverPrint && this.shouldPrint(level, logType);
+      const shouldBuffer =
+        !customTransportsConfigured && (alwaysBuffer || this.shouldBuffer(level));
+      const shouldTransport =
+        customTransportsConfigured &&
+        this.config.transports.length > 0 &&
+        (alwaysBuffer || this.shouldBuffer(level));
 
-      if (!shouldBuffer && !shouldPrint) {
+      if (!shouldBuffer && !shouldPrint && !shouldTransport) {
         return;
       }
 
@@ -554,7 +611,7 @@ function makeLoggerMethod(
         console[impl](...toPrint);
       }
 
-      if (shouldBuffer) {
+      if (shouldBuffer || shouldTransport) {
         const logDate = new Date();
         const transportRecord = createLogRecord(this, {
           level,
@@ -565,30 +622,32 @@ function makeLoggerMethod(
           structuredRecord,
         });
 
-        stringified.unshift(logDate.toISOString());
-        stringified.unshift('|  '.repeat(this.groupLevel));
-        bufferRef.buffer.push(stringified);
-        if (bufferRef.buffer.length > historyLength) {
-          // we've gone over the buffer limit, trim it down
-          const deleteCount = bufferRef.buffer.length - historyLength;
+        if (shouldBuffer) {
+          bufferRef.buffer.push(createBufferEntry(transportRecord, stringified, this.groupLevel));
+          if (bufferRef.buffer.length > historyLength) {
+            // we've gone over the buffer limit, trim it down
+            const deleteCount = bufferRef.buffer.length - historyLength;
 
-          bufferRef.buffer.splice(0, deleteCount);
+            bufferRef.buffer.splice(0, deleteCount);
 
-          // and adjust the corresponding buffer index used for log diff uploads
-          bufferRef.nextIndex -= deleteCount;
-          if (bufferRef.nextIndex < 0) {
-            bufferRef.nextIndex = 0;
-          }
+            // and adjust the corresponding buffer index used for log diff uploads
+            bufferRef.nextIndex -= deleteCount;
+            if (bufferRef.nextIndex < 0) {
+              bufferRef.nextIndex = 0;
+            }
 
-          bufferRef.lastSubmitted -= deleteCount;
-          if (bufferRef.lastSubmitted < 0) {
-            bufferRef.lastSubmitted = 0;
+            bufferRef.lastSubmitted -= deleteCount;
+            if (bufferRef.lastSubmitted < 0) {
+              bufferRef.lastSubmitted = 0;
+            }
           }
         }
         if (level === 'group') this.groupLevel += 1;
         if (level === 'groupEnd' && this.groupLevel > 0) this.groupLevel -= 1;
 
-        writeToTransport(this, transportRecord);
+        if (shouldTransport) {
+          writeToTransports(this, transportRecord);
+        }
       }
     } catch (reason) {
       if (!neverPrint) {
