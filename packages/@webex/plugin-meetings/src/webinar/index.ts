@@ -8,6 +8,7 @@ import type LLMChannel from '@webex/internal-plugin-llm';
 import type {VoiceaChannel} from '@webex/internal-plugin-voicea';
 import {
   _ID_,
+  EVENT_TRIGGERS,
   HEADERS,
   HTTP_VERBS,
   MEETINGS,
@@ -16,6 +17,7 @@ import {
   DEFAULT_LARGE_SCALE_WEBINAR_ATTENDEE_SEARCH_LIMIT,
   LOCUS_LLM_EVENT,
 } from '../constants';
+import Trigger from '../common/events/trigger-proxy';
 
 import WebinarCollection from './collection';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -52,6 +54,13 @@ const Webinar = WebexPlugin.extend({
    * @type {VoiceaChannel|undefined}
    */
   practiceSessionVoiceaChannel: undefined as VoiceaChannel | undefined,
+
+  /**
+   * Pending practice session datachannel token, saved from join response.
+   * Used when creating the practice session LLM channel.
+   * @type {string|undefined}
+   */
+  _pendingPracticeSessionDatachannelToken: undefined as string | undefined,
 
   /**
    * Calls this to clean up listeners
@@ -189,9 +198,23 @@ const Webinar = WebexPlugin.extend({
     }
 
     // Clean up practice session voicea channel
+    const hadVoiceaChannel = !!this.practiceSessionVoiceaChannel;
     if (this.practiceSessionVoiceaChannel) {
       this.practiceSessionVoiceaChannel.deregisterEvents();
       this.practiceSessionVoiceaChannel = undefined;
+    }
+
+    // Emit cleanup event so clients can update their state
+    if (hadVoiceaChannel) {
+      const meeting = this.getValidatedWebinarMeeting();
+      if (meeting) {
+        Trigger.trigger(
+          meeting,
+          {file: 'webinar/index', function: 'cleanupPSDataChannel'},
+          EVENT_TRIGGERS.MEETING_PRACTICE_SESSION_VOICEA_CHANNEL_CLEANED_UP,
+          {}
+        );
+      }
     }
 
     if (!this.practiceSessionLLMChannel) {
@@ -217,8 +240,10 @@ const Webinar = WebexPlugin.extend({
         this.practiceSessionLLMChannel?.off(LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
         this.practiceSessionLLMChannel?.off('online', meeting.handleLLMOnline);
 
-        // Unregister annotation from practice session
-        meeting.annotation.unregisterChannel('practice-session');
+        // Switch annotation back to the meeting's default channel
+        if (meeting.llmChannel) {
+          meeting.annotation.registerChannel(meeting.llmChannel);
+        }
       }
       this.practiceSessionLLMChannel = undefined;
     }
@@ -239,10 +264,10 @@ const Webinar = WebexPlugin.extend({
       return undefined;
     }
 
-    // Check for cached token on the channel or pending token on the meeting
+    // Check for cached token on the channel or pending token
     const cachedToken =
       this.practiceSessionLLMChannel?.getDatachannelToken() ??
-      meeting._pendingPracticeSessionDatachannelToken;
+      this._pendingPracticeSessionDatachannelToken;
 
     if (cachedToken) {
       return cachedToken;
@@ -256,11 +281,11 @@ const Webinar = WebexPlugin.extend({
         return undefined;
       }
 
-      // Store token on the channel if it exists, otherwise on meeting for later
+      // Store token on the channel if it exists, otherwise save for later
       if (this.practiceSessionLLMChannel) {
         this.practiceSessionLLMChannel.setDatachannelToken(datachannelToken);
       } else {
-        meeting._pendingPracticeSessionDatachannelToken = datachannelToken;
+        this._pendingPracticeSessionDatachannelToken = datachannelToken;
       }
 
       return datachannelToken;
@@ -343,9 +368,9 @@ const Webinar = WebexPlugin.extend({
 
     const keepTranscriptionSubscribed = meeting.voiceaChannel?.getKeepTranscriptionSubscribed();
 
-    // Get token from pending on meeting or refresh if needed
+    // Get token from pending or refresh if needed
     let practiceSessionDatachannelToken =
-      meeting._pendingPracticeSessionDatachannelToken ??
+      this._pendingPracticeSessionDatachannelToken ??
       this.practiceSessionLLMChannel?.getDatachannelToken();
 
     const refreshedToken = await this.ensurePracticeSessionDatachannelToken(meeting);
@@ -373,48 +398,58 @@ const Webinar = WebexPlugin.extend({
 
     // Create a new practice session LLM channel
     // @ts-ignore - Fix type
-    this.practiceSessionLLMChannel = this.webex.internal.llm.createConnection();
+    const psChannel = this.webex.internal.llm.createConnection();
+    this.practiceSessionLLMChannel = psChannel;
 
     // Set up refresh handler before registration
-    this.practiceSessionLLMChannel.setRefreshHandler(() => meeting.refreshDataChannelToken());
+    psChannel.setRefreshHandler(() => meeting.refreshDataChannelToken());
 
     // If we have a pending token, store it on the channel
-    if (meeting._pendingPracticeSessionDatachannelToken) {
-      this.practiceSessionLLMChannel.setDatachannelToken(
-        meeting._pendingPracticeSessionDatachannelToken
-      );
-      meeting._pendingPracticeSessionDatachannelToken = undefined;
+    if (this._pendingPracticeSessionDatachannelToken) {
+      psChannel.setDatachannelToken(this._pendingPracticeSessionDatachannelToken);
+      this._pendingPracticeSessionDatachannelToken = undefined;
     }
 
-    return this.practiceSessionLLMChannel
+    return psChannel
       .registerAndConnect(url, practiceSessionDatachannelUrl, practiceSessionDatachannelToken)
-      .then((registerAndConnectResult) => {
-        // Register event listeners on the practice session channel
-        this.practiceSessionLLMChannel.off('event:relay.event', meeting.processRelayEvent);
-        this.practiceSessionLLMChannel.on('event:relay.event', meeting.processRelayEvent);
-        this.practiceSessionLLMChannel.off(LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
-        this.practiceSessionLLMChannel.on(LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
-        this.practiceSessionLLMChannel.off('online', meeting.handleLLMOnline);
-        this.practiceSessionLLMChannel.on('online', meeting.handleLLMOnline);
+      .then(async (registerAndConnectResult) => {
+        // Check if this channel is still the current one (race condition guard)
+        if (this.practiceSessionLLMChannel !== psChannel) {
+          psChannel.disconnect({code: 3050, reason: 'replaced'}).catch(() => {});
 
-        // Register annotation channel for practice session
-        meeting.annotation.registerChannel(this.practiceSessionLLMChannel, 'practice-session');
+          return undefined;
+        }
+        // Register event listeners on the practice session channel
+        psChannel.off('event:relay.event', meeting.processRelayEvent);
+        psChannel.on('event:relay.event', meeting.processRelayEvent);
+        psChannel.off(LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
+        psChannel.on(LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
+        psChannel.off('online', meeting.handleLLMOnline);
+        psChannel.on('online', meeting.handleLLMOnline);
+
+        // Switch annotation to practice session channel
+        meeting.annotation.registerChannel(psChannel);
 
         // Create VoiceaChannel for practice session bound to practiceSessionLLMChannel
         // @ts-ignore - Fix type
-        this.practiceSessionVoiceaChannel = this.webex.internal.voicea.createChannel(
-          this.practiceSessionLLMChannel
-        );
+        this.practiceSessionVoiceaChannel = this.webex.internal.voicea.createChannel(psChannel);
 
         // Set up voicea listeners for practice session channel
         this.setupPracticeSessionVoiceaListeners(meeting);
 
+        // Emit event so clients can register listeners on the new channel
+        Trigger.trigger(
+          meeting,
+          {file: 'webinar/index', function: 'updatePSDataChannel'},
+          EVENT_TRIGGERS.MEETING_PRACTICE_SESSION_VOICEA_CHANNEL_READY,
+          {practiceSessionVoiceaChannel: this.practiceSessionVoiceaChannel}
+        );
+
         // Announce and enable captions on practice session channel
         this.practiceSessionVoiceaChannel?.announce?.();
         if (keepTranscriptionSubscribed) {
-          this.practiceSessionVoiceaChannel?.updateSubchannelSubscriptions({
-            subscribe: ['transcription'],
-          });
+          // Turn on captions for the practice session channel (not just subscribe to events)
+          await this.practiceSessionVoiceaChannel?.turnOnCaptions?.();
         }
         LoggerProxy.logger.info(
           'Webinar:index#updatePSDataChannel --> enabled to receive relay events for practice session!'
@@ -423,8 +458,10 @@ const Webinar = WebexPlugin.extend({
         return Promise.resolve(registerAndConnectResult);
       })
       .catch((error) => {
-        // Clean up the channel on failure
-        this.practiceSessionLLMChannel = undefined;
+        // Clean up the channel on failure, but only if it's still the current one
+        if (this.practiceSessionLLMChannel === psChannel) {
+          this.practiceSessionLLMChannel = undefined;
+        }
         throw error;
       });
   },
@@ -444,6 +481,18 @@ const Webinar = WebexPlugin.extend({
     Object.keys(meeting.voiceaListenerCallbacks).forEach((eventName) => {
       this.practiceSessionVoiceaChannel.on(eventName, meeting.voiceaListenerCallbacks[eventName]);
     });
+  },
+
+  /**
+   * Turns on captions for the practice session voicea channel if it exists.
+   * Encapsulates access to practiceSessionVoiceaChannel.
+   * @param {string} [spokenLanguage] - Optional spoken language to use
+   * @returns {Promise<void>}
+   */
+  async turnOnCaptions(spokenLanguage?: string): Promise<void> {
+    if (this.practiceSessionVoiceaChannel) {
+      await this.practiceSessionVoiceaChannel.turnOnCaptions(spokenLanguage);
+    }
   },
 
   /**

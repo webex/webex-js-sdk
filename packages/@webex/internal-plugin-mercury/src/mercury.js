@@ -185,6 +185,14 @@ const Mercury = WebexPlugin.extend({
     return this.lastError;
   },
 
+  /**
+   * Get the underlying WebSocket.
+   * @returns {any} The socket instance, or undefined if not connected.
+   */
+  getSocket() {
+    return this.socket;
+  },
+
   connect(webSocketUrl) {
     if (this.connected) {
       this.logger.info(`${this.namespace}: already connected, will not connect again`);

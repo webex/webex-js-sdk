@@ -85,9 +85,6 @@ interface ILLMPlugin {
   /** Find a connection by matching a request URL to its datachannel URL. */
   getConnectionByDatachannelUrl: (url: string) => ILLMChannel | undefined;
 
-  /** Find a locus URL by matching a request URL to an active connection. */
-  getLocusUrlByDatachannelUrl: (requestUrl: string) => string | undefined;
-
   /** Get all active connections. */
   getAllConnections: () => Set<ILLMChannel>;
 

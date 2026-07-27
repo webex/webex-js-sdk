@@ -833,11 +833,6 @@ export default class Meeting extends StatelessWebexPlugin {
   private _pendingDatachannelToken?: string;
 
   /**
-   * Pending practice session datachannel token, passed to webinar for its LLM channel.
-   */
-  private _pendingPracticeSessionDatachannelToken?: string;
-
-  /**
    * @param {Object} attrs
    * @param {Object} options
    * @param {Function} callback - if provided, it will be called with the newly created meeting object as soon as the meeting.id is set
@@ -6159,12 +6154,7 @@ export default class Meeting extends StatelessWebexPlugin {
         await this.voiceaChannel.turnOnCaptions(options?.spokenLanguage);
 
         // Also enable captions on practice session channel if in practice session
-        if (this.webinar?.practiceSessionVoiceaChannel) {
-          LoggerProxy.logger.info(
-            'Meeting:index#startTranscription --> Also enabling captions on practice session channel'
-          );
-          await this.webinar.practiceSessionVoiceaChannel.turnOnCaptions(options?.spokenLanguage);
-        }
+        await this.webinar?.turnOnCaptions(options?.spokenLanguage);
       } catch (error) {
         LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_FAILURE, {
@@ -6775,9 +6765,9 @@ export default class Meeting extends StatelessWebexPlugin {
       this._pendingDatachannelToken = datachannelToken;
     }
 
-    // Practice session token is handled by webinar's practice LLM channel
-    if (practiceSessionDatachannelToken) {
-      this._pendingPracticeSessionDatachannelToken = practiceSessionDatachannelToken;
+    // Practice session token is handled by webinar
+    if (practiceSessionDatachannelToken && this.webinar) {
+      this.webinar._pendingPracticeSessionDatachannelToken = practiceSessionDatachannelToken;
     }
   }
 
@@ -6897,7 +6887,7 @@ export default class Meeting extends StatelessWebexPlugin {
         this.llmChannel.on('online', this.handleLLMOnline);
 
         // Register annotation channel
-        this.annotation.registerChannel(this.llmChannel, 'default');
+        this.annotation.registerChannel(this.llmChannel);
 
         // Register breakouts channel
         this.breakouts.registerLLMChannel(this.llmChannel);

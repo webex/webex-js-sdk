@@ -14833,7 +14833,7 @@ describe('plugin-meetings', () => {
       describe('#saveDataChannelToken', () => {
         beforeEach(() => {
           meeting._pendingDatachannelToken = undefined;
-          meeting._pendingPracticeSessionDatachannelToken = undefined;
+          meeting.webinar._pendingPracticeSessionDatachannelToken = undefined;
         });
 
         it('saves datachannelToken to _pendingDatachannelToken', () => {
@@ -14846,14 +14846,14 @@ describe('plugin-meetings', () => {
           assert.equal(meeting._pendingDatachannelToken, 'default-token');
         });
 
-        it('saves practiceSessionDatachannelToken to _pendingPracticeSessionDatachannelToken', () => {
+        it('saves practiceSessionDatachannelToken to webinar._pendingPracticeSessionDatachannelToken', () => {
           meeting.saveDataChannelToken({
             locus: {
               self: {practiceSessionDatachannelToken: 'ps-token'},
             },
           });
 
-          assert.equal(meeting._pendingPracticeSessionDatachannelToken, 'ps-token');
+          assert.equal(meeting.webinar._pendingPracticeSessionDatachannelToken, 'ps-token');
         });
 
         it('saves both tokens when both are present', () => {
@@ -14867,28 +14867,28 @@ describe('plugin-meetings', () => {
           });
 
           assert.equal(meeting._pendingDatachannelToken, 'default-token');
-          assert.equal(meeting._pendingPracticeSessionDatachannelToken, 'ps-token');
+          assert.equal(meeting.webinar._pendingPracticeSessionDatachannelToken, 'ps-token');
         });
 
         it('does not set pending tokens when no tokens are present', () => {
           meeting.saveDataChannelToken({locus: {self: {}}});
 
           assert.isUndefined(meeting._pendingDatachannelToken);
-          assert.isUndefined(meeting._pendingPracticeSessionDatachannelToken);
+          assert.isUndefined(meeting.webinar._pendingPracticeSessionDatachannelToken);
         });
 
         it('handles undefined join gracefully', () => {
           meeting.saveDataChannelToken(undefined);
 
           assert.isUndefined(meeting._pendingDatachannelToken);
-          assert.isUndefined(meeting._pendingPracticeSessionDatachannelToken);
+          assert.isUndefined(meeting.webinar._pendingPracticeSessionDatachannelToken);
         });
 
         it('handles missing locus.self gracefully', () => {
           meeting.saveDataChannelToken({locus: {}});
 
           assert.isUndefined(meeting._pendingDatachannelToken);
-          assert.isUndefined(meeting._pendingPracticeSessionDatachannelToken);
+          assert.isUndefined(meeting.webinar._pendingPracticeSessionDatachannelToken);
         });
 
         it('sets token on llmChannel if it exists', () => {

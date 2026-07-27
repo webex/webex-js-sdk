@@ -57,11 +57,6 @@ export class LLMPlugin extends (WebexPlugin as any) {
 
     this.channels.add(channel);
 
-    // Auto-unregister when disconnected
-    channel.on('offline', () => {
-      this.channels.delete(channel);
-    });
-
     return channel;
   }
 
@@ -91,18 +86,6 @@ export class LLMPlugin extends (WebexPlugin as any) {
     }
 
     return undefined;
-  }
-
-  /**
-   * Find a locus URL by matching a request URL to an active connection's
-   * datachannel URL. Used by the interceptor.
-   * @param {string} requestUrl - The request URL to match
-   * @returns {string | undefined}
-   */
-  public getLocusUrlByDatachannelUrl(requestUrl: string): string | undefined {
-    const channel = this.getConnectionByDatachannelUrl(requestUrl);
-
-    return channel?.getLocusUrl();
   }
 
   /**

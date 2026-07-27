@@ -374,6 +374,9 @@ export const EVENT_TRIGGERS = {
   MEETING_CONTROLS_MEETING_FULL_UPDATED: 'meeting:controls:meeting-full:updated',
   MEETING_CONTROLS_PRACTICE_SESSION_STATUS_UPDATED:
     'meeting:controls:practice-session-status:updated',
+  MEETING_PRACTICE_SESSION_VOICEA_CHANNEL_READY: 'meeting:practiceSessionVoiceaChannelReady',
+  MEETING_PRACTICE_SESSION_VOICEA_CHANNEL_CLEANED_UP:
+    'meeting:practiceSessionVoiceaChannelCleanedUp',
   MEETING_CONTROLS_ANNOTATION_UPDATED: 'meeting:controls:annotation:updated',
   MEETING_CONTROLS_REMOTE_DESKTOP_CONTROL_UPDATED:
     'meeting:controls:remote-desktop-control:updated',

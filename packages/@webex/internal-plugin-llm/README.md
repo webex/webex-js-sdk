@@ -24,92 +24,72 @@ npm install --save @webex/internal-plugin-llm
 ```js
 import '@webex/internal-plugin-llm';
 import WebexCore from '@webex/webex-core';
-// Optional: import enum from package internals if needed in your app setup
-// import {DataChannelTokenType} from '@webex/internal-plugin-llm/src/llm.types';
 
 const webex = new WebexCore();
+
+// Create a new LLM connection (each meeting owns its own channel)
+const llmChannel = webex.internal.llm.createConnection();
 
 // locusUrl and datachannelUrl are from meeting.locusInfo
 const locusUrl = meeting.locusInfo.url;
 const datachannelUrl = meeting.locusInfo.info.datachannelUrl;
 
-// Optional JWT token for data channel auth
-const datachannelToken = '<jwt-token>';
-
-// Default session (no token)
-await webex.internal.llm.registerAndConnect(locusUrl, datachannelUrl);
-
-// Default session (with JWT token)
-await webex.internal.llm.registerAndConnect(locusUrl, datachannelUrl, datachannelToken);
-
-// Multiple named sessions
-await webex.internal.llm.registerAndConnect(locusUrlA, datachannelUrlA, undefined, 'session-a');
-await webex.internal.llm.registerAndConnect(
-  locusUrlB,
-  datachannelUrlB,
-  datachannelToken,
-  'session-b'
-);
-
-// Listen across multiple connections
-const llm = webex.internal.llm;
-const sessionA = 'session-a';
-const sessionB = 'session-b';
-
-// Default session events use the base event name.
-llm.on('online', () => {
-  console.log('[default] connected');
-});
-
-llm.on('event', (envelope) => {
-  console.log('[default] event', envelope.data?.eventType, envelope.sessionId);
-});
-
-// Non-default sessions emit events with :<sessionId> suffix.
-llm.on(`online:${sessionA}`, () => {
-  console.log(`[${sessionA}] connected`);
-});
-
-llm.on(`event:${sessionA}`, (envelope) => {
-  console.log(`[${sessionA}] event`, envelope.data?.eventType, envelope.sessionId);
-});
-
-llm.on(`event:${sessionB}`, (envelope) => {
-  console.log(`[${sessionB}] event`, envelope.data?.eventType, envelope.sessionId);
-});
-
-// Optional: store/retrieve token by token type
-webex.internal.llm.setDatachannelToken(datachannelToken, 'llm-default-session');
-webex.internal.llm.getDatachannelToken('llm-default-session');
-
-// Optional: inject token refresh handler
-webex.internal.llm.setRefreshHandler(async () => {
+// Optional: set up token refresh handler before connecting
+llmChannel.setRefreshHandler(async () => {
   // Return shape must match plugin expectation
   return {
     body: {
       datachannelToken: '<refreshed-jwt-token>',
-      datachannelTokenType: 'llm-default-session',
+      datachannelTokenType: 'llm-default-session', // or 'llm-practice-session'
     },
   };
-}, 'llm-default-session');
+});
 
-// Optional: manually trigger refresh (if needed by your flow)
-await webex.internal.llm.refreshDataChannelToken();
+// Connect (with optional JWT token for data channel auth)
+const datachannelToken = '<jwt-token>';
+await llmChannel.registerAndConnect(locusUrl, datachannelUrl, datachannelToken);
 
-// Per-session status and metadata
-webex.internal.llm.isConnected('session-a');
-webex.internal.llm.getBinding('session-a');
-webex.internal.llm.getLocusUrl('session-a');
-webex.internal.llm.getDatachannelUrl('session-a');
+// Subscribe to events directly on the channel
+llmChannel.on('online', () => {
+  console.log('LLM connected');
+});
 
-// All active sessions
+llmChannel.on('event:relay.event', (envelope) => {
+  console.log('LLM event', envelope.data?.eventType);
+});
+
+// Channel status and metadata
+llmChannel.isConnected();
+llmChannel.isConnecting();
+llmChannel.getBinding();
+llmChannel.getLocusUrl();
+llmChannel.getDatachannelUrl();
+llmChannel.getSocket();
+
+// Token management
+llmChannel.setDatachannelToken(datachannelToken);
+llmChannel.getDatachannelToken();
+llmChannel.clearDatachannelToken();
+
+// Manually trigger token refresh (if needed by your flow)
+await llmChannel.refreshDataChannelToken();
+
+// Disconnect when done (owner is responsible for cleanup)
+await llmChannel.disconnect({code: 1000, reason: 'done'});
+
+// --- Plugin-level methods ---
+
+// Check if data channel token feature flag is enabled
+await webex.internal.llm.isDataChannelTokenEnabled();
+
+// Get all active connections (useful for diagnostics)
 webex.internal.llm.getAllConnections();
 
-// Disconnect one session
-await webex.internal.llm.disconnectLLM({code: 1000, reason: 'done'}, 'session-a', 'meeting-id');
+// Find a channel by datachannel URL (used by interceptors)
+webex.internal.llm.getConnectionByDatachannelUrl(datachannelUrl);
 
-// Disconnect all sessions
-await webex.internal.llm.disconnectAllLLM({code: 1000, reason: 'shutdown'});
+// Disconnect all connections (useful for cleanup on logout)
+await webex.internal.llm.disconnectAll({code: 1000, reason: 'shutdown'});
 ```
 
 ## Maintainers

@@ -16,8 +16,6 @@ import {
 import {StrokeData, RequestData, IAnnotationChannel, CommandRequestBody} from './annotation.types';
 import {HTTP_VERBS, LOCUSEVENT} from '../constants';
 
-type ChannelType = 'default' | 'practice-session';
-
 /**
  * @description Annotation to handle LLM and Mercury message and locus API
  * @class
@@ -33,11 +31,11 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   locusUrl!: string;
   deviceUrl!: string;
 
-  /** Registered LLM channels by type */
-  private channels: Map<ChannelType, LLMChannel> = new Map();
+  /** Currently registered LLM channel */
+  private channel?: LLMChannel;
 
-  /** Event handlers bound to each channel, for cleanup */
-  private channelHandlers: Map<ChannelType, (e: any) => void> = new Map();
+  /** Event handler bound to the channel, for cleanup */
+  private channelHandler?: (e: any) => void;
 
   /**
    * Initializes annotation module
@@ -48,64 +46,34 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   }
 
   /**
-   * Register an LLMChannel with annotation
+   * Register an LLMChannel with annotation. Only one channel can be registered
+   * at a time - the owner is responsible for switching channels when context
+   * changes (e.g., entering/leaving practice session).
    * @param {LLMChannel} channel - The LLM channel to register
-   * @param {ChannelType} type - 'default' or 'practice-session'
    * @returns {void}
    */
-  public registerChannel(channel: LLMChannel, type: ChannelType): void {
-    // Unregister existing channel of this type first
-    if (this.channels.has(type)) {
-      this.unregisterChannel(type);
-    }
+  public registerChannel(channel: LLMChannel): void {
+    // Unregister existing channel first
+    this.unregisterChannel();
 
-    this.channels.set(type, channel);
+    this.channel = channel;
 
     // Subscribe to relay events from this channel
-    const handler = this.eventDataProcessor.bind(this);
-    this.channelHandlers.set(type, handler);
-    channel.on('event:relay.event', handler);
+    this.channelHandler = this.eventDataProcessor.bind(this);
+    channel.on('event:relay.event', this.channelHandler);
   }
 
   /**
-   * Unregister an LLMChannel from annotation
-   * @param {ChannelType} type - 'default' or 'practice-session'
+   * Unregister the current LLMChannel from annotation
    * @returns {void}
    */
-  public unregisterChannel(type: ChannelType): void {
-    const channel = this.channels.get(type);
-    const handler = this.channelHandlers.get(type);
-
-    if (channel && handler) {
-      channel.off('event:relay.event', handler);
+  public unregisterChannel(): void {
+    if (this.channel && this.channelHandler) {
+      this.channel.off('event:relay.event', this.channelHandler);
     }
 
-    this.channels.delete(type);
-    this.channelHandlers.delete(type);
-  }
-
-  /**
-   * Get the active LLM channel (prefers practice session if connected)
-   * @returns {LLMChannel | undefined}
-   */
-  private getActiveChannel(): LLMChannel | undefined {
-    const practiceChannel = this.channels.get('practice-session');
-    if (practiceChannel?.isConnected()) {
-      return practiceChannel;
-    }
-
-    return this.channels.get('default');
-  }
-
-  /**
-   * Indicates whether any registered LLM channel is connected.
-   * @returns {boolean}
-   */
-  private isLLMConnected(): boolean {
-    const defaultChannel = this.channels.get('default');
-    const practiceChannel = this.channels.get('practice-session');
-
-    return defaultChannel?.isConnected() || practiceChannel?.isConnected() || false;
+    this.channel = undefined;
+    this.channelHandler = undefined;
   }
 
   /**
@@ -202,10 +170,8 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
         this.eventCommandProcessor
       );
 
-      // Unregister all LLM channels
-      for (const type of this.channels.keys()) {
-        this.unregisterChannel(type);
-      }
+      // Unregister LLM channel
+      this.unregisterChannel();
 
       this.hasSubscribedToEvents = false;
     }
@@ -362,7 +328,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @returns {void}
    */
   public sendStrokeData = (strokeData: StrokeData): void => {
-    if (!this.isLLMConnected()) return;
+    if (!this.channel?.isConnected()) return;
     this.encryptContent(strokeData.encryptionKeyUrl, strokeData.content).then(
       (encryptedContent) => {
         this.publishEncrypted(encryptedContent, strokeData);
@@ -377,12 +343,15 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @returns {void}
    */
   private publishEncrypted(encryptedContent: string, strokeData: StrokeData) {
-    const channel = this.getActiveChannel();
-    if (!channel) return;
+    if (!this.channel) {
+      return;
+    }
 
-    const socket = channel.getSocket();
-    const binding = channel.getBinding();
-    if (!socket || !binding) return;
+    const socket = this.channel.getSocket();
+    const binding = this.channel.getBinding();
+    if (!socket || !binding) {
+      return;
+    }
 
     const data = {
       id: `${this.seqNum}`,

@@ -132,29 +132,6 @@ describe('plugin-llm', () => {
       });
     });
 
-    describe('#getLocusUrlByDatachannelUrl', () => {
-      it('returns locus URL for matching datachannel URL', () => {
-        const channel = plugin.createConnection();
-
-        sinon
-          .stub(channel, 'getDatachannelUrl')
-          .returns('https://board.wbx2.com/datachannel/api/v1/locus/123/registrations');
-        sinon.stub(channel, 'getLocusUrl').returns('https://locus.example.com/123');
-
-        const result = plugin.getLocusUrlByDatachannelUrl(
-          'https://board.wbx2.com/datachannel/api/v1/locus/123/registrations/events'
-        );
-
-        assert.equal(result, 'https://locus.example.com/123');
-      });
-
-      it('returns undefined when no match', () => {
-        const result = plugin.getLocusUrlByDatachannelUrl('https://unknown.example.com');
-
-        assert.equal(result, undefined);
-      });
-    });
-
     describe('#isDataChannelTokenEnabled', () => {
       it('returns true when feature flag is enabled', async () => {
         webex.internal.feature.getFeature.resolves(true);

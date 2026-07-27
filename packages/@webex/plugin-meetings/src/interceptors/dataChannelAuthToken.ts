@@ -7,6 +7,7 @@ import {Interceptor} from '@webex/http-core';
 // @ts-ignore - internal-plugin-llm types
 import LLMChannel from '@webex/internal-plugin-llm';
 import LoggerProxy from '../common/logs/logger-proxy';
+import Meeting from '../meeting';
 import {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY, RETRY_INTERVAL, RETRY_KEY} from './constant';
 import {isJwtTokenExpired} from './utils';
 
@@ -47,7 +48,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
       // 3) If no channel matches, fall back to finding the meeting by locusUrl
       refreshDataChannelToken: async (requestUrl?: string) => {
         // @ts-ignore
-        const channel = this.internal.llm.getConnectionByDatachannelUrl?.(requestUrl);
+        const channel = this.internal.llm.getConnectionByDatachannelUrl(requestUrl);
 
         if (channel) {
           // Channel found - use its refresh handler
@@ -65,9 +66,9 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
 
         // No channel found - fallback to finding meeting by matching datachannel URLs
         // @ts-ignore
-        const allMeetings = this.meetings?.getAllMeetings?.() || {};
+        const allMeetings: Record<string, Meeting> = this.meetings?.getAllMeetings?.() || {};
 
-        const meeting = Object.values(allMeetings).find((activeMeeting: any) => {
+        const meeting = Object.values(allMeetings).find((activeMeeting) => {
           const info = activeMeeting?.locusInfo?.info || {};
 
           return (
@@ -82,7 +83,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
         });
 
         if (meeting) {
-          const result = await (meeting as any).refreshDataChannelToken();
+          const result = await meeting.refreshDataChannelToken();
 
           if (!result?.body) {
             throw new Error('DataChannel token refresh returned no payload');
@@ -91,8 +92,10 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
           const {datachannelToken} = result.body;
 
           // Store token on the meeting's LLM channel if available
-          if ((meeting as any).llmChannel) {
-            (meeting as any).llmChannel.setDatachannelToken(datachannelToken);
+          // llmChannel is private, cast required for cross-module access
+          const {llmChannel} = meeting as any;
+          if (llmChannel) {
+            llmChannel.setDatachannelToken(datachannelToken);
           }
 
           return datachannelToken;
