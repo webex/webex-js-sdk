@@ -1,5 +1,7 @@
 # Core Service - Architecture
 
+> **Legacy/reference-only.** Canonical SDD: [`core-spec.md`](core-spec.md). Use the package [manifest](../../../../.sdd/manifest.json) and [`SPEC_INDEX.md`](../../../../ai-docs/SPEC_INDEX.md) for routing; code and tests remain the behavioral referee.
+
 > **Purpose**: Technical documentation for core infrastructure components.
 
 ---

@@ -1,5 +1,7 @@
 # Voicemail Module — Architecture
 
+> Canonical SDD target: [`src/Voicemail/ai-docs/voicemail-spec.md`](voicemail-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Component Overview
 
 The Voicemail module uses a **strategy pattern** with three backend connectors. Architecture: **Application -> Voicemail (orchestration layer) -> BackendConnector (WXC/BWRKS/UCM) -> Backend API**. The orchestration layer also integrates with MetricManager for telemetry.

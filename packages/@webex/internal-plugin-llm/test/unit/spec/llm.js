@@ -173,6 +173,72 @@ describe('plugin-llm', () => {
 
         buildSpy.restore();
       });
+
+      it('rejects when the registration response has no websocket URL', async () => {
+        llmService.connections.set('llm-default-session', {});
+        llmService.register = sinon.stub().resolves();
+
+        await assert.isRejected(
+          llmService.registerAndConnect(locusUrl, datachannelUrl),
+          /returned no websocket URL/
+        );
+
+        sinon.assert.notCalled(llmService.connect);
+        assert.equal(llmService.isConnected(), false);
+      });
+
+      it('attaches the measured datachannel timing to the error when the websocket connect fails', async () => {
+        const clock = sinon.useFakeTimers();
+
+        llmService.isDataChannelTokenEnabled = sinon.stub().resolves(false);
+        llmService.register = sinon.stub().callsFake(async () => {
+          clock.tick(37);
+          const sessionData = llmService.connections.get('llm-default-session') || {};
+          sessionData.webSocketUrl = 'wss://example.com/socket';
+          sessionData.binding = 'binding';
+          llmService.connections.set('llm-default-session', sessionData);
+        });
+
+        const connectError = new Error('websocket connect failed');
+        llmService.connect = sinon.stub().rejects(connectError);
+
+        let caughtError;
+        try {
+          await llmService.registerAndConnect(locusUrl, datachannelUrl);
+        } catch (error) {
+          caughtError = error;
+        }
+
+        assert.equal(caughtError, connectError);
+        assert.deepEqual(caughtError.timing, {clientLLMDatachannelResponseTime: 37});
+      });
+
+      it('attaches the measured datachannel timing to the error when the response has no websocket URL', async () => {
+        const clock = sinon.useFakeTimers();
+
+        llmService.register = sinon.stub().callsFake(async () => {
+          clock.tick(29);
+          // register() resolves but the response leaves the session without a websocket URL.
+          llmService.connections.set('llm-default-session', {
+            locusUrl,
+            datachannelUrl,
+          });
+        });
+
+        llmService.connect = sinon.stub();
+
+        let caughtError;
+        try {
+          await llmService.registerAndConnect(locusUrl, datachannelUrl);
+        } catch (error) {
+          caughtError = error;
+        }
+
+        sinon.assert.notCalled(llmService.connect);
+        assert.instanceOf(caughtError, Error);
+        assert.match(caughtError.message, /returned no websocket URL/);
+        assert.deepEqual(caughtError.timing, {clientLLMDatachannelResponseTime: 29});
+      });
     });
 
     describe('#register', () => {
@@ -706,6 +772,65 @@ describe('plugin-llm', () => {
         const result = llmService.getSessionIdByDatachannelUrl(rewrittenHostRequestUrl);
 
         assert.equal(result, 's2');
+      });
+    });
+
+    describe('#registerAndConnect timing', () => {
+      it('returns timing data on successful connection', async () => {
+        const clock = sinon.useFakeTimers();
+
+        llmService.isDataChannelTokenEnabled = sinon.stub().resolves(false);
+        llmService.register = sinon.stub().callsFake(async () => {
+          clock.tick(37);
+
+          const sessionData = llmService.connections.get('llm-default-session') || {};
+
+          sessionData.webSocketUrl = 'wss://example.com/socket';
+          sessionData.binding = 'binding';
+          llmService.connections.set('llm-default-session', sessionData);
+        });
+        llmService.connect = sinon.stub().callsFake(async () => {
+          clock.tick(23);
+        });
+
+        const result = await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined);
+
+        assert.deepEqual(result, {
+          clientLLMDatachannelResponseTime: 37,
+          clientLLMWebSocketConnectTime: 23,
+        });
+      });
+
+      it('returns undefined when locusUrl is empty', async () => {
+        llmService.register = sinon.stub().resolves();
+
+        const result = await llmService.registerAndConnect('', datachannelUrl, undefined);
+
+        assert.isUndefined(result);
+      });
+    });
+
+    describe('#getWebSocketUrl', () => {
+      it('returns the websocket URL for default session', () => {
+        llmService.connections.set('llm-default-session', {
+          webSocketUrl: 'wss://test.example.com/ws',
+        });
+
+        assert.equal(llmService.getWebSocketUrl(), 'wss://test.example.com/ws');
+      });
+
+      it('returns undefined when no connection exists', () => {
+        llmService.connections.clear();
+
+        assert.isUndefined(llmService.getWebSocketUrl());
+      });
+
+      it('returns the websocket URL for custom session', () => {
+        llmService.connections.set('custom-session', {
+          webSocketUrl: 'wss://custom.example.com/ws',
+        });
+
+        assert.equal(llmService.getWebSocketUrl('custom-session'), 'wss://custom.example.com/ws');
       });
     });
 
