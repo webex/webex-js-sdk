@@ -44,6 +44,10 @@ const Mercury = WebexPlugin.extend({
       default: () => new Map(),
       type: 'object',
     },
+    sessionWebSocketUrls: {
+      default: () => new Map(),
+      type: 'object',
+    },
     backoffCalls: {
       default: () => new Map(),
       type: 'object',
@@ -276,6 +280,12 @@ const Mercury = WebexPlugin.extend({
 
     this.connecting = true;
 
+    // Remember the original URL this session was asked to connect with so that
+    // reconnection (in _onclose) re-derives from it rather than from the URL the
+    // native WebSocket was actually opened with, which a lower layer may have
+    // rewritten (e.g. the same-site websocket proxy) into a non-catalog host.
+    this.sessionWebSocketUrls.set(sessionId, webSocketUrl);
+
     this.logger.info(`${this.namespace}: starting connection attempt for ${sessionId}`);
     this.logger.info(
       `${this.namespace}: debug_mercury_logging stack: `,
@@ -344,6 +354,8 @@ const Mercury = WebexPlugin.extend({
       if (this._connectPromises) {
         this._connectPromises.delete(sessionId);
       }
+      // Drop the remembered connect URL so a future connect starts fresh
+      this.sessionWebSocketUrls.delete(sessionId);
 
       const sessionSocket = this.sockets.get(sessionId);
       const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
@@ -377,6 +389,7 @@ const Mercury = WebexPlugin.extend({
     return Promise.all(disconnectPromises).then(() => {
       this.connected = false;
       this.sockets.clear();
+      this.sessionWebSocketUrls.clear();
       this.backoffCalls.clear();
       // Clear connection promises to prevent stale promises
       if (this._connectPromises) {
@@ -857,13 +870,18 @@ const Mercury = WebexPlugin.extend({
     try {
       const reason = event.reason && event.reason.toLowerCase();
       const sessionSocket = this.sockets.get(sessionId);
-      let socketUrl;
       event.sessionId = sessionId;
 
       const isActiveSocket = sourceSocket === sessionSocket;
-      if (sourceSocket) {
-        socketUrl = sourceSocket.url;
-      }
+      // Reconnect using the original URL this session was connected with (or
+      // undefined for the default session, which re-derives from the device
+      // websocket URL via _prepareUrl). Do NOT reuse sourceSocket.url: that
+      // reflects the URL the native WebSocket was actually opened with, which
+      // a lower layer may have rewritten (e.g. the same-site websocket proxy)
+      // into a host that is not in the SDK host catalog. Feeding such a URL
+      // back into _prepareUrl fails host-catalog validation and permanently
+      // blocks reconnection.
+      const socketUrl = this.sessionWebSocketUrls.get(sessionId);
       this.sockets.delete(sessionId);
 
       if (isActiveSocket) {
