@@ -6145,7 +6145,13 @@ describe('plugin-meetings', () => {
                 EVENT_TRIGGERS.MEDIA_INBOUND_AUDIO_ISSUE_DETECTED,
                 fakeEventData
               );
-              assert.notCalled(meeting.mediaProperties.sendMediaIssueMetric);
+              // metric is always sent regardless of unmuted member presence
+              assert.calledOnceWithExactly(
+                meeting.mediaProperties.sendMediaIssueMetric,
+                'inbound_audio',
+                fakeEventData.issueSubType,
+                meeting.correlationId
+              );
             });
 
             it('should trigger event and metric when there are multiple members and at least one is unmuted', () => {

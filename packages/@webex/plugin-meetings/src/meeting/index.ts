@@ -8476,13 +8476,13 @@ export default class Meeting extends StatelessWebexPlugin {
           return !member.isSelf && !member.isPairedWithSelf && !member.isAudioMuted;
         });
 
-        if (atLeastOneUnmutedOtherMember) {
-          this.mediaProperties.sendMediaIssueMetric(
-            'inbound_audio',
-            data.issueSubType,
-            this.correlationId
-          );
+        this.mediaProperties.sendMediaIssueMetric(
+          'inbound_audio',
+          data.issueSubType,
+          this.correlationId
+        );
 
+        if (atLeastOneUnmutedOtherMember) {
           Trigger.trigger(
             this,
             {file: 'meeting/index', function: 'createStatsAnalyzer'},
