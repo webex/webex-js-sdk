@@ -186,6 +186,14 @@ const Webinar = WebexPlugin.extend({
   },
 
   /**
+   * Returns the practice session LLM channel binding, if connected.
+   * @returns {string|undefined}
+   */
+  getPracticeSessionBinding() {
+    return this.practiceSessionLLMChannel?.getBinding();
+  },
+
+  /**
    * Disconnects the practice session LLM channel and cleans up listeners.
    * @returns {Promise<void>}
    */

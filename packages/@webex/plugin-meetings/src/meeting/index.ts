@@ -6153,7 +6153,6 @@ export default class Meeting extends StatelessWebexPlugin {
         }
         await this.voiceaChannel.turnOnCaptions(options?.spokenLanguage);
 
-        // Also enable captions on practice session channel if in practice session
         await this.webinar?.turnOnCaptions(options?.spokenLanguage);
       } catch (error) {
         LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
@@ -6223,7 +6222,7 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     // Also check practice session binding for webinars
-    const practiceSessionBinding = this.webinar?.practiceSessionLLMChannel?.getBinding();
+    const practiceSessionBinding = this.webinar?.getPracticeSessionBinding();
 
     if (practiceSessionBinding && route === practiceSessionBinding) {
       return true;
