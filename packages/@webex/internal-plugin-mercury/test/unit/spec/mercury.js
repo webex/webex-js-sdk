@@ -1314,6 +1314,24 @@ describe('plugin-mercury', () => {
 
           mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
 
+          assert.calledOnceWithExactly(
+            webex.internal.metrics.submitClientMetrics,
+            'JS_SDK_MERCURY_CLOSE_4000',
+            {
+              fields: {
+                action: 'no_action',
+                close_code: 4000,
+                close_reason: 'Replaced',
+                is_active_socket: true,
+                message_type: 'replaced',
+                session_id: mercury.defaultSessionId,
+              },
+              tags: {
+                action: 'no_action',
+                message_type: 'replaced',
+              },
+            }
+          );
           assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.replaced', closeEvent);
           assert.notCalled(mercury._reconnect);
         });
@@ -1326,6 +1344,24 @@ describe('plugin-mercury', () => {
 
           mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
 
+          assert.calledOnceWithExactly(
+            webex.internal.metrics.submitClientMetrics,
+            'JS_SDK_MERCURY_CLOSE_4000',
+            {
+              fields: {
+                action: 'reconnect',
+                close_code: 4000,
+                close_reason: 'Unexpected close',
+                is_active_socket: true,
+                message_type: 'other',
+                session_id: mercury.defaultSessionId,
+              },
+              tags: {
+                action: 'reconnect',
+                message_type: 'other',
+              },
+            }
+          );
           assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.transient', closeEvent);
           assert.calledWith(
             mercury._reconnect,
@@ -1342,6 +1378,24 @@ describe('plugin-mercury', () => {
 
           mercury._onclose(mercury.defaultSessionId, closeEvent, anotherSocket);
 
+          assert.calledOnceWithExactly(
+            webex.internal.metrics.submitClientMetrics,
+            'JS_SDK_MERCURY_CLOSE_4000',
+            {
+              fields: {
+                action: 'ignore_non_active',
+                close_code: 4000,
+                close_reason: 'Unexpected close',
+                is_active_socket: false,
+                message_type: 'other',
+                session_id: mercury.defaultSessionId,
+              },
+              tags: {
+                action: 'ignore_non_active',
+                message_type: 'other',
+              },
+            }
+          );
           assert.notCalled(mercury._emit);
           assert.notCalled(mercury._reconnect);
           assert.isTrue(mercury.connected);
