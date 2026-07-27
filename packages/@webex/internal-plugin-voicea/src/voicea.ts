@@ -308,10 +308,11 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     socket.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
-      recipients: {
-        // @ts-ignore
-        route: binding,
-      },
+      recipients: [
+        {
+          route: binding,
+        },
+      ],
       // If captionServiceId exists, send it as the 'to' header; otherwise keep headers empty.
       headers: this.captionServiceId ? {to: this.captionServiceId} : {},
       data: {
@@ -366,10 +367,11 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     socket.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
-      recipients: {
-        // @ts-ignore
-        route: binding,
-      },
+      recipients: [
+        {
+          route: binding,
+        },
+      ],
       headers: {
         to: this.captionServiceId,
       },
@@ -411,10 +413,11 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     socket?.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
-      recipients: {
-        // @ts-ignore
-        route: binding,
-      },
+      recipients: [
+        {
+          route: binding,
+        },
+      ],
       headers: {},
       data: {
         eventType: 'relay.event',
