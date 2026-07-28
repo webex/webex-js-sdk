@@ -1235,7 +1235,11 @@ const Services = WebexPlugin.extend({
   ): Promise<object> {
     const service = 'u2c';
     const resource = from ? `/${from}/catalog` : '/catalog';
-    const qs = {...(query || {}), format: 'U2CV2'};
+    const qs = {
+      ...(query || {}),
+      format: 'U2CV2',
+      ...(this.webex.config?.services?.useCatalogOverride && {useCatalogOverride: true}),
+    };
 
     if (forceRefresh) {
       qs.timestamp = new Date().getTime();
