@@ -8482,6 +8482,7 @@ export default class Meeting extends StatelessWebexPlugin {
             data.issueSubType,
             this.correlationId
           );
+
           Trigger.trigger(
             this,
             {file: 'meeting/index', function: 'createStatsAnalyzer'},
