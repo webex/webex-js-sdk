@@ -615,7 +615,17 @@ const Mercury = WebexPlugin.extend({
                   `${this.namespace}: received a generic connection error for ${sessionId}, will try to connect to another datacenter. failed, action: 'failed', url: ${newWSUrl} error: ${reason.message}`
                 );
 
-                return this.webex.internal.services.markFailedUrl(newWSUrl);
+                if (newWSUrl) {
+                  this.logger.info(
+                    `${this.namespace}: marking ${newWSUrl} as failed for ${sessionId} due to connection error`
+                  );
+
+                  return this.webex.internal.services.markFailedUrl(newWSUrl);
+                }
+
+                this.logger.info(
+                  `${this.namespace}: no newWSUrl available to mark as failed for ${sessionId} due to connection error`
+                );
               }
 
               return null;

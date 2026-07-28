@@ -493,7 +493,9 @@ describe('plugin-mercury', () => {
         // });
 
         describe('when web-high-availability feature is enabled', () => {
-          it('marks current socket url as failed and get new one on Connection Error', () => {
+          it('does not mark a URL as failed when no URL was obtained on Connection Error', () => {
+            // When socket.open() fails immediately before providing a URL,
+            // newWSUrl is undefined, so markFailedUrl should not be called
             webex.internal.feature.getFeature.returns(Promise.resolve(true));
             socketOpenStub.restore();
             socketOpenStub = sinon.stub(Socket.prototype, 'open').returns(Promise.resolve());
@@ -501,7 +503,8 @@ describe('plugin-mercury', () => {
             const promise = mercury.connect();
 
             return promiseTick(7).then(() => {
-              assert.calledOnce(webex.internal.services.markFailedUrl);
+              // markFailedUrl should not be called since newWSUrl is undefined
+              assert.notCalled(webex.internal.services.markFailedUrl);
               clock.tick(1000);
 
               return promise;
