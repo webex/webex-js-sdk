@@ -1,10 +1,6 @@
-import {createIsBotFromList, list} from 'isbot';
+import {isBot} from 'isbot';
 
-const AUTOMATED_USER_AGENT_PATTERNS = [...list, 'SkypeUriPreview'];
-const isBotUserAgent = createIsBotFromList(AUTOMATED_USER_AGENT_PATTERNS);
-
-export const isAutomatedUserAgent = (userAgent?: string | null): boolean =>
-  isBotUserAgent(userAgent);
+export const isAutomatedUserAgent = (userAgent?: string | null): boolean => isBot(userAgent);
 
 let automatedUser: boolean | undefined;
 
