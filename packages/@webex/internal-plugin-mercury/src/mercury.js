@@ -610,21 +610,23 @@ const Mercury = WebexPlugin.extend({
           return this.webex.internal.feature
             .getFeature('developer', 'web-high-availability')
             .then((haMessagingEnabled) => {
+              const wsUrl = newWSUrl || reason.webSocketUrl;
+
               if (haMessagingEnabled) {
                 this.logger.info(
-                  `${this.namespace}: received a generic connection error for ${sessionId}, will try to connect to another datacenter. failed, action: 'failed', url: ${newWSUrl} error: ${reason.message}`
+                  `${this.namespace}: received a generic connection error for ${sessionId}, will try to connect to another datacenter. failed, action: 'failed', url: ${wsUrl} error: ${reason.message}`
                 );
 
-                if (newWSUrl) {
+                if (wsUrl) {
                   this.logger.info(
-                    `${this.namespace}: marking ${newWSUrl} as failed for ${sessionId} due to connection error`
+                    `${this.namespace}: marking ${wsUrl} as failed for ${sessionId} due to connection error`
                   );
 
-                  return this.webex.internal.services.markFailedUrl(newWSUrl);
+                  return this.webex.internal.services.markFailedUrl(wsUrl);
                 }
 
                 this.logger.info(
-                  `${this.namespace}: no newWSUrl available to mark as failed for ${sessionId} due to connection error`
+                  `${this.namespace}: no socket url available to mark as failed for ${sessionId} due to connection error`
                 );
               }
 
@@ -674,7 +676,14 @@ const Mercury = WebexPlugin.extend({
 
         this.logger.info(`${this.namespace} ${logPrefix} url for ${sessionId}: ${webSocketUrl}`);
 
-        return socket.open(webSocketUrl, options).then(() => webSocketUrl);
+        return socket
+          .open(webSocketUrl, options)
+          .then(() => webSocketUrl)
+          .catch((err) => {
+            err.webSocketUrl = webSocketUrl;
+
+            return Promise.reject(err);
+          });
       }
     );
   },
