@@ -6332,9 +6332,10 @@ export default class Meeting extends StatelessWebexPlugin {
   private restoreLLMSubscriptionsIfNeeded(): void {
     try {
       // @ts-ignore
-      const isCaptionBoxOn = this.webex.internal.voicea?.getIsCaptionBoxOn?.();
+      const keepTranscriptionSubscribed =
+        this.webex.internal.voicea?.getKeepTranscriptionSubscribed?.();
 
-      if (!isCaptionBoxOn) {
+      if (!keepTranscriptionSubscribed) {
         return;
       }
 

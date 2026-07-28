@@ -225,7 +225,7 @@ describe('plugin-voicea', () => {
       beforeEach(async () => {
         const mockWebSocket = new MockWebSocket();
         voiceaService.webex.internal.llm.socket = mockWebSocket;
-        voiceaService.isCaptionBoxOn = true;
+        voiceaService.keepTranscriptionSubscribed = true;
       });
 
       it('deregisters voicea service and resets caption state', async () => {
@@ -239,14 +239,14 @@ describe('plugin-voicea', () => {
 
         assert.equal(voiceaService.areCaptionsEnabled, true);
         assert.equal(voiceaService.captionServiceId, 'ws');
-        assert.equal(voiceaService.isCaptionBoxOn, true);
+        assert.equal(voiceaService.keepTranscriptionSubscribed, true);
 
         voiceaService.deregisterEvents();
         assert.equal(voiceaService.areCaptionsEnabled, false);
         assert.equal(voiceaService.captionServiceId, undefined);
         assert.equal(voiceaService.announceStatus, 'idle');
         assert.equal(voiceaService.captionStatus, 'idle');
-        assert.equal(voiceaService.isCaptionBoxOn, false);
+        assert.equal(voiceaService.keepTranscriptionSubscribed, false);
       });
     });
     describe('#processAnnouncementMessage', () => {
@@ -492,23 +492,23 @@ describe('plugin-voicea', () => {
       });
     });
 
-    describe('#getIsCaptionBoxOn', () => {
+    describe('#getKeepTranscriptionSubscribed', () => {
       beforeEach(() => {
-        voiceaService.isCaptionBoxOn = false;
+        voiceaService.keepTranscriptionSubscribed = false;
       });
 
       it('returns false when captions are disabled', () => {
-        voiceaService.isCaptionBoxOn = false;
+        voiceaService.keepTranscriptionSubscribed = false;
 
-        const result = voiceaService.getIsCaptionBoxOn();
+        const result = voiceaService.getKeepTranscriptionSubscribed();
 
         assert.equal(result, false);
       });
 
       it('returns true when captions are enabled', () => {
-        voiceaService.isCaptionBoxOn = true;
+        voiceaService.keepTranscriptionSubscribed = true;
 
-        const result = voiceaService.getIsCaptionBoxOn();
+        const result = voiceaService.getKeepTranscriptionSubscribed();
 
         assert.equal(result, true);
       });
@@ -1402,7 +1402,7 @@ describe('plugin-voicea', () => {
           true
         );
 
-        assert.equal(voiceaService.isCaptionBoxOn, true);
+        assert.equal(voiceaService.keepTranscriptionSubscribed, true);
 
         assert.calledOnceWithExactly(
           voiceaService.updateSubchannelSubscriptions,
@@ -1419,7 +1419,7 @@ describe('plugin-voicea', () => {
           false
         );
 
-        assert.equal(voiceaService.isCaptionBoxOn, false);
+        assert.equal(voiceaService.keepTranscriptionSubscribed, false);
 
         assert.calledOnceWithExactly(
           voiceaService.updateSubchannelSubscriptions,
@@ -1430,7 +1430,7 @@ describe('plugin-voicea', () => {
       it('defaults subscribe/unsubscribe to empty arrays when options is empty', async () => {
         await voiceaService.updateSubchannelSubscriptionsAndSyncCaptionState({}, true);
 
-        assert.equal(voiceaService.isCaptionBoxOn, true);
+        assert.equal(voiceaService.keepTranscriptionSubscribed, true);
 
         assert.calledOnceWithExactly(
           voiceaService.updateSubchannelSubscriptions,
@@ -1446,7 +1446,7 @@ describe('plugin-voicea', () => {
           true
         );
 
-        assert.equal(voiceaService.isCaptionBoxOn, true);
+        assert.equal(voiceaService.keepTranscriptionSubscribed, true);
 
         assert.calledOnceWithExactly(
           voiceaService.updateSubchannelSubscriptions,
