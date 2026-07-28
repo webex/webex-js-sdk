@@ -6,6 +6,21 @@ import {inBrowser, patterns} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, has, isArray, isObject, isString} from 'lodash';
 
+import {
+  createEventId,
+  EVENT_INITIATOR_TYPES,
+  EVENT_TRIGGER_TYPES,
+  getEventIdPrefix,
+  isValidEventId,
+  isValidEventIdPrefix,
+  isValidEventName,
+  LOG_ATTRIBUTE_KEYS,
+  LOG_RECORD_ATTRIBUTE_COUNT_LIMIT,
+  LOG_RECORD_SCHEMA_VERSION,
+  LOG_TYPES,
+  RESERVED_LOG_ATTRIBUTE_KEYS,
+} from './log-record-schema';
+
 const precedence = {
   silent: 0,
   group: 1,
@@ -28,15 +43,13 @@ const fallbacks = {
   trace: ['debug', 'info', 'log'],
 };
 
-const LOG_TYPES = {
-  SDK: 'sdk',
-  CLIENT: 'client',
-};
-
 const SDK_LOG_TYPE_NAME = 'wx-js-sdk';
-const LOG_RECORD_SCHEMA_VERSION = 1;
 
 const authTokenKeyPattern = /[Aa]uthorization/;
+const authTokenValuePattern = /\b(Basic|Bearer)\s+[A-Za-z0-9._~+/-]+=*/gi;
+const reservedAttributeKeys = new Set(RESERVED_LOG_ATTRIBUTE_KEYS);
+const eventInitiatorTypes = new Set(Object.values(EVENT_INITIATOR_TYPES));
+const eventTriggerTypes = new Set(Object.values(EVENT_TRIGGER_TYPES));
 
 /**
  * Recursively strips "authorization" fields from the specified object
@@ -58,11 +71,12 @@ function walkAndFilter(object, visited = []) {
   }
   if (!isObject(object)) {
     if (isString(object)) {
+      object = object.replace(authTokenValuePattern, '$1 [REDACTED]');
       if (patterns.containsEmails.test(object)) {
-        return object.replace(patterns.containsEmails, '[REDACTED]');
+        object = object.replace(patterns.containsEmails, '[REDACTED]');
       }
       if (patterns.containsMTID.test(object)) {
-        return object.replace(patterns.containsMTID, '$1[REDACTED]');
+        object = object.replace(patterns.containsMTID, '$1[REDACTED]');
       }
     }
 
@@ -113,7 +127,24 @@ function sanitizeAttributes(logger, attributes) {
 
   const [filteredAttributes] = logger.filter(attributes);
   const sanitizedAttributes = Object.entries(filteredAttributes).reduce((result, [key, value]) => {
-    if (['boolean', 'number', 'string'].includes(typeof value)) {
+    if (Object.keys(result).length >= LOG_RECORD_ATTRIBUTE_COUNT_LIMIT) {
+      return result;
+    }
+
+    const isInvalidTaxonomy =
+      (key === LOG_ATTRIBUTE_KEYS.EVENT_INITIATOR_TYPE && !eventInitiatorTypes.has(value)) ||
+      (key === LOG_ATTRIBUTE_KEYS.EVENT_TRIGGER_TYPE && !eventTriggerTypes.has(value));
+    const isInvalidOperationId = key === LOG_ATTRIBUTE_KEYS.OPERATION_ID && !isValidEventId(value);
+
+    if (
+      key &&
+      !reservedAttributeKeys.has(key) &&
+      !isInvalidTaxonomy &&
+      !isInvalidOperationId &&
+      (typeof value === 'boolean' ||
+        typeof value === 'string' ||
+        (typeof value === 'number' && Number.isFinite(value)))
+    ) {
       result[key] = value;
     }
 
@@ -147,7 +178,24 @@ function createLogRecord(logger, {level, type, name, timestamp, stringified, str
     }
 
     if (isString(structuredRecord.eventName)) {
-      [record.eventName] = logger.filter(structuredRecord.eventName);
+      const [eventName] = logger.filter(structuredRecord.eventName);
+
+      if (!isValidEventName(eventName)) {
+        throw new TypeError(`Invalid event name: ${eventName}`);
+      }
+
+      const eventIdPrefix = structuredRecord.eventIdPrefix || getEventIdPrefix(eventName);
+
+      if (!isValidEventIdPrefix(eventIdPrefix)) {
+        throw new TypeError(`Invalid event ID prefix: ${eventIdPrefix}`);
+      }
+
+      if (structuredRecord.eventId && !isValidEventId(structuredRecord.eventId)) {
+        throw new TypeError(`Invalid event ID: ${structuredRecord.eventId}`);
+      }
+
+      record.eventName = eventName;
+      record.eventId = structuredRecord.eventId || createEventId(eventIdPrefix);
     }
   }
 
@@ -567,7 +615,7 @@ function makeLoggerMethod(
       const filtered = [clientName, ...this.filter(...args)];
       const stringified = filtered.map((item) => {
         if (item instanceof Error) {
-          return item.toString();
+          return walkAndFilter(item.toString());
         }
         if (typeof item === 'object') {
           let cache = [];
@@ -684,6 +732,8 @@ levels.forEach((level) => {
  * @param {string} record.level log level
  * @param {string} record.message log message
  * @param {string} [record.eventName] event name
+ * @param {string} [record.eventId] event instance identifier
+ * @param {string} [record.eventIdPrefix] event identifier prefix
  * @param {Object} [record.attributes] scalar attributes
  * @private
  * @returns {void}
@@ -692,6 +742,8 @@ Logger.prototype.client_logRecord = function clientLogRecord({
   level,
   message,
   eventName,
+  eventId,
+  eventIdPrefix,
   attributes,
 }) {
   if (!levels.includes(level)) {
@@ -701,7 +753,26 @@ Logger.prototype.client_logRecord = function clientLogRecord({
     throw new TypeError('Structured log message must be a string');
   }
 
-  structuredClientMethods[level].call(this, {message, eventName, attributes});
+  if (eventName !== undefined && !isValidEventName(eventName)) {
+    throw new TypeError(`Invalid event name: ${eventName}`);
+  }
+  if (eventId !== undefined && !isValidEventId(eventId)) {
+    throw new TypeError(`Invalid event ID: ${eventId}`);
+  }
+  if (eventIdPrefix !== undefined && !isValidEventIdPrefix(eventIdPrefix)) {
+    throw new TypeError(`Invalid event ID prefix: ${eventIdPrefix}`);
+  }
+  if ((eventId || eventIdPrefix) && !eventName) {
+    throw new TypeError('Structured event identifier requires an event name');
+  }
+
+  structuredClientMethods[level].call(this, {
+    message,
+    eventName,
+    eventId,
+    eventIdPrefix,
+    attributes,
+  });
 };
 
 Logger.prototype.client_logToBuffer = makeLoggerMethod(

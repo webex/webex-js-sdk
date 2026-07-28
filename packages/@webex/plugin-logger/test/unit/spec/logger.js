@@ -7,7 +7,19 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {browserOnly, nodeOnly, inBrowser} from '@webex/test-helper-mocha';
-import Logger, {levels, openTelemetryLogFormatter} from '@webex/plugin-logger';
+import Logger, {
+  createEventId,
+  EVENT_INITIATOR_TYPES,
+  EVENT_TRIGGER_TYPES,
+  getEventIdPrefix,
+  isValidEventId,
+  isValidOpenTelemetrySpanId,
+  isValidOpenTelemetryTraceId,
+  levels,
+  LOG_ATTRIBUTE_KEYS,
+  logRecordSchema,
+  openTelemetryLogFormatter,
+} from '@webex/plugin-logger';
 import {WebexHttpError} from '@webex/webex-core';
 
 describe('plugin-logger', () => {
@@ -756,17 +768,27 @@ describe('plugin-logger', () => {
         level: 'info',
         message: 'meeting joined',
         eventName: 'meeting.join',
+        eventIdPrefix: 'joinMeeting',
         attributes: {
           'webex.module': 'meeting',
           'code.line.number': 42,
           successful: true,
+          [LOG_ATTRIBUTE_KEYS.EVENT_INITIATOR_TYPE]: EVENT_INITIATOR_TYPES.USER,
+          [LOG_ATTRIBUTE_KEYS.EVENT_TRIGGER_TYPE]: EVENT_TRIGGER_TYPES.UI,
+          [LOG_ATTRIBUTE_KEYS.OPERATION_ID]: 'joinMeeting_00000000-0000-4000-8000-000000000001',
           email: 'person@example.com',
           Authorization: 'Basic secret',
           nested: {ignored: true},
+          invalidNumber: Number.NaN,
+          'webex.logger.type': 'overridden',
+          'webex.event.id': 'overridden',
         },
       });
 
-      assert.calledOnceWithExactly(write, {
+      assert.calledOnce(write);
+      const record = write.firstCall.args[0];
+
+      assert.deepInclude(record, {
         schemaVersion: 1,
         timestamp: 0,
         level: 'info',
@@ -778,10 +800,33 @@ describe('plugin-logger', () => {
           'webex.module': 'meeting',
           'code.line.number': 42,
           successful: true,
+          [LOG_ATTRIBUTE_KEYS.EVENT_INITIATOR_TYPE]: 'user',
+          [LOG_ATTRIBUTE_KEYS.EVENT_TRIGGER_TYPE]: 'ui',
+          [LOG_ATTRIBUTE_KEYS.OPERATION_ID]: 'joinMeeting_00000000-0000-4000-8000-000000000001',
           email: '[REDACTED]',
         },
       });
+      assert.match(record.eventId, /^joinMeeting_/);
+      assert.isTrue(isValidEventId(record.eventId));
+      assert.notProperty(record.attributes, 'invalidNumber');
+      assert.notProperty(record.attributes, 'webex.logger.type');
+      assert.notProperty(record.attributes, 'webex.event.id');
       assert.lengthOf(webex.logger.buffer.buffer, 0);
+    });
+
+    it('drops invalid taxonomy and readable operation identifiers', () => {
+      webex.logger.client_logRecord({
+        level: 'info',
+        message: 'invalid metadata',
+        attributes: {
+          [LOG_ATTRIBUTE_KEYS.EVENT_INITIATOR_TYPE]: 'browser',
+          [LOG_ATTRIBUTE_KEYS.EVENT_TRIGGER_TYPE]: 'fetch',
+          [LOG_ATTRIBUTE_KEYS.OPERATION_ID]: 'joinMeeting_trace',
+          retained: true,
+        },
+      });
+
+      assert.deepEqual(write.firstCall.args[0].attributes, {retained: true});
     });
 
     it('validates structured client records', () => {
@@ -790,7 +835,37 @@ describe('plugin-logger', () => {
         TypeError
       );
       assert.throws(() => webex.logger.client_logRecord({level: 'info', message: {}}), TypeError);
+      assert.throws(
+        () =>
+          webex.logger.client_logRecord({
+            level: 'info',
+            message: 'invalid event',
+            eventName: 'joinMeeting_123',
+          }),
+        TypeError
+      );
+      assert.throws(
+        () =>
+          webex.logger.client_logRecord({
+            level: 'info',
+            message: 'invalid identifier',
+            eventIdPrefix: 'joinMeeting',
+          }),
+        TypeError
+      );
       assert.notCalled(write);
+    });
+
+    it('redacts sensitive values embedded in Error messages before transport', () => {
+      webex.logger.error(
+        new Error('request failed for person@example.com with Bearer secret-token')
+      );
+
+      assert.calledOnce(write);
+      assert.equal(
+        write.firstCall.args[0].message,
+        'Error: request failed for [REDACTED] with Bearer [REDACTED]'
+      );
     });
   });
 
@@ -814,9 +889,11 @@ describe('plugin-logger', () => {
         name: 'web-client',
         message: 'meeting joined',
         eventName: 'meeting.join',
+        eventId: 'joinMeeting_00000000-0000-4000-8000-000000000001',
         attributes: {
           'webex.module': 'meeting',
           'code.line.number': 42,
+          'webex.logger.type': 'overridden',
         },
       });
 
@@ -831,6 +908,7 @@ describe('plugin-logger', () => {
           'webex.logger.schema_version': 1,
           'webex.logger.type': 'client',
           'webex.logger.name': 'web-client',
+          'webex.event.id': 'joinMeeting_00000000-0000-4000-8000-000000000001',
           'webex.module': 'meeting',
           'code.line.number': 42,
         },
@@ -849,6 +927,49 @@ describe('plugin-logger', () => {
 
       assert.equal(record.severityNumber, 9);
       assert.equal(record.severityText, 'UNKNOWN');
+    });
+  });
+
+  describe('structured log schema', () => {
+    it('publishes a closed versioned canonical record schema', () => {
+      assert.equal(logRecordSchema.$id, 'https://webex.com/schemas/logger/log-record-v1.json');
+      assert.isFalse(logRecordSchema.additionalProperties);
+      assert.includeMembers(logRecordSchema.required, [
+        'schemaVersion',
+        'timestamp',
+        'level',
+        'type',
+        'name',
+        'message',
+      ]);
+      assert.equal(logRecordSchema.properties.attributes.maxProperties, 128);
+      assert.deepEqual(
+        logRecordSchema.properties.attributes.properties[LOG_ATTRIBUTE_KEYS.EVENT_INITIATOR_TYPE]
+          .enum,
+        Object.values(EVENT_INITIATOR_TYPES)
+      );
+      assert.deepEqual(
+        logRecordSchema.properties.attributes.properties[LOG_ATTRIBUTE_KEYS.EVENT_TRIGGER_TYPE]
+          .enum,
+        Object.values(EVENT_TRIGGER_TYPES)
+      );
+    });
+
+    it('creates readable event instance IDs from stable event names or explicit prefixes', () => {
+      assert.equal(getEventIdPrefix('webex.meeting.join'), 'meetingJoin');
+      assert.equal(getEventIdPrefix('webex.meeting.media_connected'), 'meetingMediaConnected');
+
+      const eventId = createEventId('joinMeeting');
+
+      assert.match(eventId, /^joinMeeting_/);
+      assert.isTrue(isValidEventId(eventId));
+    });
+
+    it('validates OpenTelemetry trace and span identifiers without changing their format', () => {
+      assert.isTrue(isValidOpenTelemetryTraceId('4bf92f3577b34da6a3ce929d0e0e4736'));
+      assert.isTrue(isValidOpenTelemetrySpanId('00f067aa0ba902b7'));
+      assert.isFalse(isValidOpenTelemetryTraceId('joinMeeting_trace'));
+      assert.isFalse(isValidOpenTelemetrySpanId('0000000000000000'));
     });
   });
 
