@@ -33,7 +33,7 @@ import {
   MediaCodecMimeType,
 } from '@webex/internal-media-core';
 
-import {DataChannelTokenType} from '@webex/internal-plugin-llm';
+import {DataChannelTokenType, type RegisterAndConnectTiming} from '@webex/internal-plugin-llm';
 
 import {
   LocalStream,
@@ -742,6 +742,7 @@ export default class Meeting extends StatelessWebexPlugin {
   isMoveToInProgress = false;
   registrationIdStatus: string;
   brbState: BrbState;
+  private emittedBreakoutJoinResponseMoveIds: Set<string> = new Set();
   private promisesWaitingForPropUpdate: Record<string, Defer> = {};
 
   voiceaListenerCallbacks: object = {
@@ -1394,7 +1395,48 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     // @ts-ignore - Fix type
-    this.locusInfo = new LocusInfo(this.updateMeetingObject.bind(this), this.webex, this.id);
+    this.locusInfo = new LocusInfo(
+      {
+        updateMeeting: this.updateMeetingObject.bind(this),
+        syncLatencyTracker: {
+          // Compute/store latency timestamps live on CallDiagnosticLatencies, while
+          // submitting the client.locus.sync.complete CA event is owned by the metrics
+          // facade. Wire each method to the layer that owns that responsibility.
+          saveLatency: (...args) =>
+            // @ts-ignore
+            this.webex.internal.newMetrics.callDiagnosticLatencies.saveLatency(...args),
+          saveTimestamp: (saveTimestampOptions: {
+            key: string;
+            value?: number;
+            options: {meetingId: string; dataSetName: string; trackingId?: string};
+          }) => {
+            // @ts-ignore
+            this.webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp(
+              saveTimestampOptions
+            );
+
+            // The /sync response is one of the two milestones (the other is the LLM message) that
+            // complete client.locus.sync.complete. Try to complete now: the metric is emitted only
+            // once both the LLM message and the /sync response have arrived (either can come first).
+            if (
+              saveTimestampOptions.key === 'internal.client.locus.sync.response' &&
+              saveTimestampOptions.options?.trackingId
+            ) {
+              this.tryCompleteLocusSyncLatency(
+                saveTimestampOptions.options.meetingId,
+                saveTimestampOptions.options.trackingId
+              );
+            }
+          },
+          clearLocusSyncLatency: (...args) =>
+            // @ts-ignore
+            this.webex.internal.newMetrics.callDiagnosticLatencies.clearLocusSyncLatency(...args),
+        },
+      },
+      // @ts-ignore
+      this.webex,
+      this.id
+    );
 
     // We had to add listeners first before setting up the locus instance
     /**
@@ -2378,6 +2420,89 @@ export default class Meeting extends StatelessWebexPlugin {
         meetingId: this.id,
       },
     });
+  }
+
+  /**
+   * Handles the LLM state-update message that resulted from a Locus /sync. Records the LLM arrival
+   * time (the milestone that gates client.locus.sync.complete - the metric is emitted only for LLM
+   * flows) and then tries to complete the metric.
+   * @param {string} meetingId meeting id
+   * @param {string} trackingId sync tracking id echoed back on the LLM message
+   * @returns {void}
+   * @private
+   * @memberof Meeting
+   */
+  private onLocusSyncLlmMessage(meetingId: string, trackingId: string) {
+    // @ts-ignore
+    this.webex.internal.newMetrics.callDiagnosticLatencies.recordLocusSyncMessageReceived(
+      meetingId,
+      trackingId
+    );
+
+    this.tryCompleteLocusSyncLatency(meetingId, trackingId);
+  }
+
+  /**
+   * Attempts to complete the Locus sync latency metric and emit client.locus.sync.complete. The
+   * metric is emitted only once BOTH the /sync response and the resulting LLM message have arrived
+   * (in either order); until then the record is kept so the missing milestone can still land. Both
+   * trigger points (the LLM message handler and the /sync response timestamp) call this, so the
+   * metric fires as soon as the second milestone is in.
+   * @param {string} meetingId meeting id
+   * @param {string} trackingId sync tracking id used to match the pending record
+   * @returns {void}
+   * @private
+   * @memberof Meeting
+   */
+  private tryCompleteLocusSyncLatency(meetingId: string, trackingId: string) {
+    const completed =
+      // @ts-ignore
+      this.webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency(
+        meetingId,
+        trackingId
+      );
+
+    if (completed) {
+      this.emitLocusSyncCompleteMetric(meetingId, completed);
+    }
+  }
+
+  /**
+   * Submits the client.locus.sync.complete Call Analyzer event for a completed Locus sync latency
+   * measurement.
+   * @param {string} meetingId meeting id
+   * @param {object} completed completed sync latency payload from the metrics plugin
+   * @returns {void}
+   * @private
+   * @memberof Meeting
+   */
+  private emitLocusSyncCompleteMetric(
+    meetingId: string,
+    completed: {dataSet: string; syncLatency: object}
+  ) {
+    // @ts-ignore
+    const llmWebsocketUrl = this.webex.internal.llm?.getWebSocketUrl?.() || undefined;
+
+    // Per the LLM sync-latency spec, the event carries the LLM websocket url identifier,
+    // the llmInfo.dataSet (main, atd-active or atd-unmuted) and the syncLatency block.
+    const clientEvent = {
+      name: 'client.locus.sync.complete',
+      payload: {
+        identifiers: {
+          llmWebsocketUrl,
+        },
+        llmInfo: {
+          dataSet: completed.dataSet,
+        },
+        syncLatency: completed.syncLatency,
+      },
+      options: {
+        meetingId,
+      },
+    };
+
+    // @ts-ignore
+    this.webex.internal.newMetrics.submitClientEvent(clientEvent);
   }
 
   /**
@@ -6049,7 +6174,18 @@ export default class Meeting extends StatelessWebexPlugin {
         storeEventForDebugging('llm', event.data);
       }
 
+      const {trackingId} = event;
+
       this.locusInfo.parse(this, event.data);
+
+      // Only the client whose /sync request tracking id matches the tracking id echoed back on this
+      // LLM message should emit client.locus.sync.complete. The tracking id lives at the top level
+      // of the received LLM event envelope. When it is absent there is nothing to correlate, so
+      // skip. onLocusSyncLlmMessage records the LLM arrival time and is a no-op unless a stored
+      // record for this meeting matches the tracking id.
+      if (trackingId) {
+        this.onLocusSyncLlmMessage(this.id, trackingId);
+      }
     } else {
       LoggerProxy.logger.warn(
         `Meeting:index#processLocusLLMEvent --> Unknown event type: ${event.data.eventType}`
@@ -6458,7 +6594,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.webex.internal.llm.off('online', this.handleLLMOnline);
           // @ts-ignore
           this.webex.internal.llm.on('online', this.handleLLMOnline);
-          this.updateLLMConnection()
+          this.updateLLMConnection({isInitialJoinPhase: true})
             .catch((error) => {
               LoggerProxy.logger.error(
                 'Meeting:index#join --> Transcription Socket Connection Failed',
@@ -6729,9 +6865,11 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Connects to low latency mercury and reconnects if the address has changed
    * It will also disconnect if called when the meeting has ended
+   * @param {Object} [options]
+   * @param {boolean} [options.isInitialJoinPhase] true when called from initial join flow
    * @returns {Promise}
    */
-  async updateLLMConnection() {
+  async updateLLMConnection({isInitialJoinPhase = false}: {isInitialJoinPhase?: boolean} = {}) {
     // @ts-ignore - Fix type
     const {url = undefined, info: {datachannelUrl = undefined} = {}} = this.locusInfo || {};
 
@@ -6869,8 +7007,112 @@ export default class Meeting extends StatelessWebexPlugin {
 
         this.startLLMHealthCheckTimer();
 
+        if (registerAndConnectResult) {
+          if (isInitialJoinPhase) {
+            this.sendLLMConnectMetric(registerAndConnectResult);
+          }
+
+          this.breakouts?.trigger(BREAKOUTS.EVENTS.LLM_CONNECT_RESPONSE, {
+            meeting: this,
+            llmLatency: registerAndConnectResult,
+          });
+        }
+
         return Promise.resolve(registerAndConnectResult);
+      })
+      .catch((error) => {
+        // Prefer the partial timing registerAndConnect attaches when register succeeded but the
+        // websocket connect() failed, so a ws failure isn't misreported as register never completing.
+        const llmLatency = {
+          clientLLMDatachannelResponseTime: error?.timing?.clientLLMDatachannelResponseTime ?? 0,
+          clientLLMWebSocketConnectTime: 0,
+        };
+
+        if (isInitialJoinPhase) {
+          this.sendLLMConnectMetric(llmLatency, error);
+        }
+
+        this.breakouts?.trigger(BREAKOUTS.EVENTS.LLM_CONNECT_RESPONSE, {
+          meeting: this,
+          llmLatency,
+          error,
+        });
+
+        return Promise.reject(error);
       });
+  }
+
+  /**
+   * Ensures breakout join response metric with LLM latency is emitted only once per breakout move id.
+   * @param {string | undefined} breakoutMoveId
+   * @param {boolean} [hasLLMLatency=false]
+   * @returns {boolean}
+   */
+  private shouldEmitBreakoutJoinResponseMetric(
+    breakoutMoveId?: string,
+    hasLLMLatency = false
+  ): boolean {
+    if (!breakoutMoveId) {
+      return false;
+    }
+
+    if (!hasLLMLatency) {
+      // When automatic LLM is enabled, updateLLMConnection will emit this same breakout join
+      // response after the LLM connection finishes, including llmLatency and llmWebsocketUrl.
+      // Suppress the earlier non-LLM event to avoid sending two events for the same move id,
+      // where the first one would be missing the LLM-specific fields we want to validate.
+      // @ts-ignore - config coming from registerPlugin
+      return !this.config.enableAutomaticLLM;
+    }
+
+    if (this.emittedBreakoutJoinResponseMoveIds.has(breakoutMoveId)) {
+      return false;
+    }
+
+    this.emittedBreakoutJoinResponseMoveIds.add(breakoutMoveId);
+
+    return true;
+  }
+
+  /**
+   * Sends LLM connect latencies for initial join flow.
+   * @param {RegisterAndConnectTiming} timings
+   * @param {any} [error]
+   * @returns {void}
+   */
+  private sendLLMConnectMetric(timings: RegisterAndConnectTiming, error?: any) {
+    // @ts-ignore
+    const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
+    const {clientLLMDatachannelResponseTime = 0, clientLLMWebSocketConnectTime} = timings || {};
+
+    const llmLatency: any = {
+      clientLLMDatachannelResponseTime,
+    };
+
+    if (clientLLMWebSocketConnectTime !== undefined) {
+      llmLatency.clientLLMWebSocketConnectTime = clientLLMWebSocketConnectTime;
+    }
+
+    const payload: any = {
+      identifiers: {
+        llmWebsocketUrl,
+      },
+      llmLatency,
+    };
+
+    const options: any = {
+      meetingId: this.id,
+      ...(error && {rawError: error}),
+    };
+
+    const metricEvent = {
+      name: 'client.llm.connect.response',
+      payload,
+      options,
+    };
+
+    // @ts-ignore
+    this.webex.internal.newMetrics.submitClientEvent(metricEvent);
   }
 
   /**
@@ -7300,14 +7542,28 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore
         const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
 
+        // Save the remote-sdp-received timestamp before submitting the client event so we can
+        // calculate and include localSDPGenRemoteSDPRecv in the client event payload
+        cdl.saveTimestamp({
+          key: 'client.media-engine.remote-sdp-received',
+          options: {meetingId: this.id},
+        });
+
+        const localSDPGenRemoteSDPRecv = cdl.getLocalSDPGenRemoteSDPRecv();
+
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.media-engine.remote-sdp-received',
+          payload: {
+            eventData: {
+              localSDPGenRemoteSDPRecv,
+            },
+          },
           options: {meetingId: this.id},
         });
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_OFFER_TO_ANSWER_LATENCY, {
           correlation_id: this.correlationId,
-          latency: cdl.getLocalSDPGenRemoteSDPRecv(),
+          latency: localSDPGenRemoteSDPRecv,
           meetingId: this.id,
         });
 

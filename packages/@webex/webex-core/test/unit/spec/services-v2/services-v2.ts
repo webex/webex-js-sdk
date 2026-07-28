@@ -675,6 +675,22 @@ describe('webex-core', () => {
         );
       });
 
+      it('includes the catalog override query when configured', async () => {
+        services.webex.config.services = {useCatalogOverride: true};
+        sinon.stub(services, '_formatReceivedHostmap').resolves('map response');
+        sinon.stub(services, 'request').resolves({});
+
+        await services._fetchNewServiceHostmap({from: 'limited'});
+
+        assert.calledOnceWithExactly(services.request, {
+          method: 'GET',
+          service: 'u2c',
+          resource: '/limited/catalog',
+          qs: {format: 'U2CV2', useCatalogOverride: true},
+          headers: {},
+        });
+      });
+
       it('checks service request rejects', async () => {
         const error = new Error('some error');
 
