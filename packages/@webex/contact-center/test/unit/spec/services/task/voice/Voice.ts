@@ -299,6 +299,147 @@ describe('Voice Task', () => {
       });
     });
 
+    describe('consult transfer after conference downgrade', () => {
+      const CUSTOMER = 'customer1';
+      const SELF = 'agent1';
+      const EXITED_AGENT = 'agent2';
+      const CONSULT_DEST = 'agent3';
+      const CONSULT_MEDIA = 'consult-media';
+
+      const createTransferContact = () => ({
+        ...dummyContact,
+        consultTransfer: jest.fn().mockResolvedValue('consultTransferred'),
+        blindTransfer: jest.fn().mockResolvedValue('blindTransferred'),
+        vteamTransfer: jest.fn().mockResolvedValue('vteamTransferred'),
+      });
+
+      /**
+       * Customer + self + a second agent were conferenced and self is consulting CONSULT_DEST.
+       * The second agent then exits, so the backend downgrades the main leg back to a 1:1
+       * `connected` customer call while self's consult leg stays live.
+       */
+      const createDowngradedConferenceConsultData = (
+        mainInteractionId: string,
+        owner: string
+      ): TaskData =>
+        createTaskData({
+          interactionId: 'int1',
+          agentId: SELF,
+          mediaResourceId: mainInteractionId,
+          consultMediaResourceId: CONSULT_MEDIA,
+          isConsulted: false,
+          consultingAgentId: SELF,
+          interaction: {
+            state: 'connected',
+            mainInteractionId,
+            owner,
+            participants: {
+              [CUSTOMER]: {id: CUSTOMER, pType: 'Customer', hasLeft: false},
+              [SELF]: {id: SELF, pType: 'Agent', hasLeft: false, consultState: 'consulting'},
+              [EXITED_AGENT]: {id: EXITED_AGENT, pType: 'Agent', hasLeft: true},
+              [CONSULT_DEST]: {
+                id: CONSULT_DEST,
+                pType: 'Agent',
+                hasLeft: false,
+                isConsulted: true,
+                hasJoined: true,
+                consultState: 'consulting',
+              },
+            },
+            media: {
+              [mainInteractionId]: {
+                mediaResourceId: mainInteractionId,
+                isHold: false,
+                mType: 'mainCall',
+                participants: [CUSTOMER, SELF],
+              },
+              [CONSULT_MEDIA]: {
+                mediaResourceId: CONSULT_MEDIA,
+                isHold: false,
+                mType: 'consult',
+                participants: [SELF, CONSULT_DEST],
+              },
+            },
+            callProcessingDetails: {consultDestinationAgentJoined: 'true'},
+          } as any,
+        });
+
+      it.each([
+        {
+          scenario: 'TC-15: self is the conference owner',
+          mainInteractionId: 'int1',
+          owner: SELF,
+        },
+        {
+          scenario: 'TC-16: the exiting agent was the owner',
+          mainInteractionId: 'main-int',
+          owner: EXITED_AGENT,
+        },
+      ])(
+        'routes to consult transfer and targets the main interaction ($scenario)',
+        async ({mainInteractionId, owner}) => {
+          const contact = createTransferContact();
+          const taskData = createDowngradedConferenceConsultData(mainInteractionId, owner);
+          const voice = new Voice(contact as any, taskData as any, {});
+
+          await voice.transfer({to: CONSULT_DEST, destinationType: 'agent'} as any);
+
+          expect(contact.consultTransfer).toHaveBeenCalledWith({
+            interactionId: mainInteractionId,
+            data: {to: CONSULT_DEST, destinationType: 'agent'},
+          });
+          expect(contact.blindTransfer).not.toHaveBeenCalled();
+        }
+      );
+
+      it('routes to consult transfer when only the state machine reports consulting', async () => {
+        const contact = createTransferContact();
+        // Backend reports a plain connected main leg and sends no consult media, so the
+        // consult can only be detected from the task's own lifecycle state.
+        const taskData = createBaseData({
+          agentId: SELF,
+          interaction: {state: 'connected'} as any,
+        });
+        const voice = new Voice(contact as any, taskData as any, {});
+
+        primeConnectedState(voice, taskData);
+        voice.stateMachineService?.send({
+          type: TaskEvent.CONSULT,
+          destination: CONSULT_DEST,
+          destinationType: 'agent',
+        });
+        voice.stateMachineService?.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+        expect(voice.stateMachineService?.getSnapshot().value).toBe(TaskState.CONSULTING);
+
+        await voice.transfer({to: CONSULT_DEST, destinationType: 'agent'} as any);
+
+        expect(contact.consultTransfer).toHaveBeenCalledWith({
+          interactionId: 'int1',
+          data: {to: CONSULT_DEST, destinationType: 'agent'},
+        });
+        expect(contact.blindTransfer).not.toHaveBeenCalled();
+      });
+
+      it('still blind transfers a connected task with no consult leg', async () => {
+        const contact = createTransferContact();
+        const taskData = createBaseData({
+          agentId: SELF,
+          interaction: {state: 'connected'} as any,
+        });
+        const voice = new Voice(contact as any, taskData as any, {});
+
+        primeConnectedState(voice, taskData);
+
+        await voice.transfer({to: CONSULT_DEST, destinationType: 'agent'} as any);
+
+        expect(contact.blindTransfer).toHaveBeenCalledWith({
+          interactionId: 'int1',
+          data: {to: CONSULT_DEST, destinationType: 'agent'},
+        });
+        expect(contact.consultTransfer).not.toHaveBeenCalled();
+      });
+    });
+
     it('uses preserved consult destination from task data for queue consult transfer', async () => {
       const consultTransferMock = jest.fn().mockResolvedValue('consultedQ');
       const dataWithState = createBaseData({

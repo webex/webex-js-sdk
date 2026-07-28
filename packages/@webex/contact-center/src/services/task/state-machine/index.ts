@@ -25,4 +25,4 @@ export {guards} from './guards';
 export type {GuardParams, GuardFunction} from './guards';
 
 // Actions
-export {actions, createInitialContext} from './actions';
+export {actions, createInitialContext, getTaskStateForUiControls} from './actions';
