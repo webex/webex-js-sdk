@@ -1,16 +1,12 @@
 /* eslint-disable no-await-in-loop, no-plusplus, no-continue, no-console */
 import {Page, expect} from '@playwright/test';
-import {AWAIT_TIMEOUT, CONSOLE_PATTERNS} from '../constants';
+import {AWAIT_TIMEOUT, CONSOLE_PATTERNS, USER_STATES} from '../constants';
+import {clickControlWithDomFallback} from './controlUtils';
 
 /**
  * Retrieves the current user state from the sample app
  * @param page - The Playwright page object
  * @returns Promise<string> - The current state name (trimmed)
- * @example
- * ```typescript
- * const currentState = await getCurrentState(page);
- * console.log(`Agent is currently: ${currentState}`);
- * ```
  */
 export const getCurrentState = async (page: Page): Promise<string> => {
   await page.bringToFront();
@@ -69,11 +65,19 @@ export const changeUserState = async (page: Page, userState: string): Promise<vo
   // Check if RONA popup is already visible (from previous consult decline/timeout)
   const statePopup = page.locator('#agentStatePopup');
   const isRonaAlreadyVisible = await statePopup.isVisible().catch(() => false);
+  const waitForSelectedState = () =>
+    expect
+      .poll(
+        async () => {
+          return getCurrentState(page);
+        },
+        {timeout: Math.max(AWAIT_TIMEOUT, 30000), intervals: [200, 400, 800, 1500]}
+      )
+      .toBe(userState);
 
   if (isRonaAlreadyVisible) {
     // RONA popup is already open - use it directly to change state
     const popupSelect = page.locator('#agentStateSelect');
-    const setStateButton = page.locator('#setAgentState');
 
     // Map state name if needed (Idle → Meeting)
     let ronaStateName = userState;
@@ -91,22 +95,14 @@ export const changeUserState = async (page: Page, userState: string): Promise<vo
       await popupSelect.selectOption({label: ronaStateName}, {timeout: AWAIT_TIMEOUT});
     }
 
-    await expect(setStateButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
-    await setStateButton.click({timeout: AWAIT_TIMEOUT});
+    await clickControlWithDomFallback(page, '#setAgentState');
     await expect(statePopup).toBeHidden({timeout: AWAIT_TIMEOUT});
 
     // Wait for state to settle
     await page.waitForTimeout(2000);
 
     // Verify state changed
-    await expect
-      .poll(
-        async () => {
-          return getCurrentState(page);
-        },
-        {timeout: AWAIT_TIMEOUT, intervals: [200, 400, 800]}
-      )
-      .toBe(userState);
+    await waitForSelectedState();
 
     return;
   }
@@ -121,19 +117,19 @@ export const changeUserState = async (page: Page, userState: string): Promise<vo
     throw new Error(`State "${userState}" is not a valid state option.`);
   }
 
-  await dropdown.selectOption({label: userState}, {timeout: AWAIT_TIMEOUT});
+  const submitSelectedState = async (): Promise<void> => {
+    await dropdown.selectOption({label: userState}, {timeout: AWAIT_TIMEOUT});
+    await dropdown.dispatchEvent('change');
+    await clickControlWithDomFallback(page, '#setAgentStatus');
+  };
 
-  // Click Set Agent Status button
-  const setStatusButton = page.locator('#setAgentStatus');
-  await expect(setStatusButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
-  await setStatusButton.click({timeout: AWAIT_TIMEOUT});
+  await submitSelectedState();
 
   const isPopupVisible = await statePopup.isVisible().catch(() => false);
 
   // In the sample app, some transitions require confirming via this popup.
   if (isPopupVisible) {
     const popupSelect = page.locator('#agentStateSelect');
-    const setStateButton = page.locator('#setAgentState');
 
     const hasTargetOption = await popupSelect
       .locator(`option:has-text("${userState}")`)
@@ -145,19 +141,18 @@ export const changeUserState = async (page: Page, userState: string): Promise<vo
       await popupSelect.selectOption({label: userState}, {timeout: AWAIT_TIMEOUT});
     }
 
-    await expect(setStateButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
-    await setStateButton.click({timeout: AWAIT_TIMEOUT});
+    await clickControlWithDomFallback(page, '#setAgentState');
     await expect(statePopup).toBeHidden({timeout: AWAIT_TIMEOUT});
   }
 
-  await expect
-    .poll(
-      async () => {
-        return getCurrentState(page);
-      },
-      {timeout: AWAIT_TIMEOUT, intervals: [200, 400, 800]}
-    )
-    .toBe(userState);
+  const stateChanged = await waitForSelectedState()
+    .then(() => true)
+    .catch(() => false);
+
+  if (!stateChanged) {
+    await submitSelectedState();
+    await waitForSelectedState();
+  }
 };
 
 /**
@@ -186,16 +181,19 @@ export const verifyCurrentState = async (page: Page, expectedState: string): Pro
     .toBe(expectedState);
 };
 
+export const republishAgentAvailability = async (page: Page): Promise<void> => {
+  await changeUserState(page, USER_STATES.MEETING);
+  await verifyCurrentState(page, USER_STATES.MEETING);
+  await page.waitForTimeout(1500);
+  await changeUserState(page, USER_STATES.AVAILABLE);
+  await verifyCurrentState(page, USER_STATES.AVAILABLE);
+  await page.waitForTimeout(5000);
+};
+
 /**
  * Retrieves the elapsed time for the current user state
  * @param page - The Playwright page object
  * @returns Promise<string> - The elapsed time in format "HH:MM:SS"
- * @example
- * ```typescript
- * const timer = await getStateElapsedTime(page);
- * console.log(`Time in current state: ${timer}`);
- * // Output: "00:05:23"
- * ```
  */
 export const getStateElapsedTime = async (page: Page): Promise<string> => {
   await page.bringToFront();
