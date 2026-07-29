@@ -8,6 +8,7 @@ import Metrics from './metrics';
 import config from './config';
 import NewMetrics from './new-metrics';
 import * as Utils from './utils';
+import * as AutomatedUserUtils from './automated-user';
 import {
   ClientEvent,
   ClientEventLeaveReason,
@@ -44,6 +45,7 @@ export {default, getOSNameInternal} from './metrics';
 export {
   config,
   CALL_DIAGNOSTIC_CONFIG,
+  AutomatedUserUtils,
   NewMetrics,
   Utils,
   CallDiagnosticUtils,
@@ -55,6 +57,7 @@ export {
   RtcMetrics,
   PreLoginMetrics,
 };
+export {isAutomatedUser, isAutomatedUserAgent} from './automated-user';
 export type {
   ClientEvent,
   ClientEventLeaveReason,

@@ -8253,6 +8253,7 @@ __metadata:
     "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     ip-anonymize: ^0.1.0
+    isbot: 5.2.1
     lodash: ^4.17.21
     prettier: ^2.7.1
     sinon: ^9.2.4
@@ -21007,6 +21008,13 @@ __metadata:
   version: 5.0.7
   resolution: "isbinaryfile@npm:5.0.7"
   checksum: a5842bbac01aaf57daaaba221bed5bad5c1a10f27e8a30630c16b15743b3df14915e7845d091cecf9d82534c390207e9d5a3ec32a4f330fa7abe07174b53d0fd
+  languageName: node
+  linkType: hard
+
+"isbot@npm:5.2.1":
+  version: 5.2.1
+  resolution: "isbot@npm:5.2.1"
+  checksum: 121fde7d26c4692f865603c936cfadc7ff055c4cde326265195ba5d5c0319cca8eadda0b561ec6ee89d9987f27140e57a29297f769b23699e609d55a9fa0035b
   languageName: node
   linkType: hard
 
