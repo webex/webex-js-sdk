@@ -2840,7 +2840,7 @@ describe('plugin-meetings', () => {
       describe('#handleLLMOnline', () => {
         beforeEach(() => {
           webex.internal.llm.off = sinon.stub();
-          webex.internal.voicea.getIsCaptionBoxOn = sinon.stub().returns(false);
+          webex.internal.voicea.getKeepTranscriptionSubscribed = sinon.stub().returns(false);
           webex.internal.voicea.updateSubchannelSubscriptions = sinon.stub();
         });
 
@@ -2858,7 +2858,7 @@ describe('plugin-meetings', () => {
         });
 
         it('restores transcription subscription when caption intent is enabled', () => {
-          webex.internal.voicea.getIsCaptionBoxOn.returns(true);
+          webex.internal.voicea.getKeepTranscriptionSubscribed.returns(true);
 
           meeting.handleLLMOnline();
 
@@ -2868,7 +2868,7 @@ describe('plugin-meetings', () => {
         });
 
         it('does not restore transcription subscription when caption intent is disabled', () => {
-          webex.internal.voicea.getIsCaptionBoxOn.returns(false);
+          webex.internal.voicea.getKeepTranscriptionSubscribed.returns(false);
 
           meeting.handleLLMOnline();
 
