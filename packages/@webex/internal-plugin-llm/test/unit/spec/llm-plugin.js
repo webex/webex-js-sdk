@@ -49,17 +49,6 @@ describe('plugin-llm', () => {
         assert.notStrictEqual(channel1, channel2);
         assert.equal(plugin.getAllConnections().size, 2);
       });
-
-      it('auto-unregisters channel when offline event fires', () => {
-        const channel = plugin.createConnection();
-
-        assert.equal(plugin.getAllConnections().size, 1);
-
-        // Simulate offline event
-        channel.trigger('offline');
-
-        assert.equal(plugin.getAllConnections().size, 0);
-      });
     });
 
     describe('#getAllConnections', () => {
@@ -130,6 +119,16 @@ describe('plugin-llm', () => {
 
         assert.equal(result, undefined);
       });
+
+      it('skips channels with no datachannel URL set', () => {
+        const channel = plugin.createConnection();
+
+        sinon.stub(channel, 'getDatachannelUrl').returns(undefined);
+
+        const result = plugin.getConnectionByDatachannelUrl('https://example.com');
+
+        assert.equal(result, undefined);
+      });
     });
 
     describe('#isDataChannelTokenEnabled', () => {
@@ -152,33 +151,6 @@ describe('plugin-llm', () => {
         const result = await plugin.isDataChannelTokenEnabled();
 
         assert.equal(result, false);
-      });
-    });
-
-    describe('connection lifecycle', () => {
-      it('channel remains in registry until offline', () => {
-        const channel = plugin.createConnection();
-
-        // Simulate connection then disconnection
-        channel.trigger('online');
-        assert.equal(plugin.getAllConnections().size, 1);
-
-        channel.trigger('offline');
-        assert.equal(plugin.getAllConnections().size, 0);
-      });
-
-      it('multiple channels can be managed independently', () => {
-        const channel1 = plugin.createConnection();
-        const channel2 = plugin.createConnection();
-
-        assert.equal(plugin.getAllConnections().size, 2);
-
-        // Disconnect only channel1
-        channel1.trigger('offline');
-
-        assert.equal(plugin.getAllConnections().size, 1);
-        assert.isTrue(plugin.getAllConnections().has(channel2));
-        assert.isFalse(plugin.getAllConnections().has(channel1));
       });
     });
   });

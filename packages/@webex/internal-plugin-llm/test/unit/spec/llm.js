@@ -311,6 +311,37 @@ describe('plugin-llm', () => {
       });
     });
 
+    describe('#isConnecting', () => {
+      it('returns true while connection is in progress', () => {
+        // Start connection but don't await
+        llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+
+        assert.equal(llmChannel.isConnecting(), true);
+      });
+
+      it('returns false after connection completes', async () => {
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+
+        assert.equal(llmChannel.isConnecting(), false);
+      });
+
+      it('returns false before any connection attempt', () => {
+        assert.equal(llmChannel.isConnecting(), false);
+      });
+    });
+
+    describe('#getSocket', () => {
+      it('returns the underlying socket', async () => {
+        llmChannel.socket = {readyState: 1};
+
+        assert.deepEqual(llmChannel.getSocket(), {readyState: 1});
+      });
+
+      it('returns undefined when not connected', () => {
+        assert.equal(llmChannel.getSocket(), undefined);
+      });
+    });
+
     describe('#disconnect', () => {
       it('calls super.disconnect and clears all connection state', async () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl);

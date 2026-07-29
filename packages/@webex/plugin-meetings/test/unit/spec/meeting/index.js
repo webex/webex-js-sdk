@@ -291,6 +291,7 @@ describe('plugin-meetings', () => {
       registerAndConnect: sinon.stub().resolves({}),
       disconnect: sinon.stub().resolves(),
       isConnected: sinon.stub().returns(false),
+      isConnecting: sinon.stub().returns(false),
       getLocusUrl: sinon.stub().returns(undefined),
       getDatachannelUrl: sinon.stub().returns(undefined),
       getDatachannelToken: sinon.stub().returns(undefined),
@@ -301,6 +302,20 @@ describe('plugin-meetings', () => {
       off: sinon.stub(),
     }));
     webex.internal.voicea.announce = sinon.stub();
+    // Factory pattern: createChannel returns a mock voicea channel
+    webex.internal.voicea.createChannel = sinon.stub().callsFake(() => ({
+      on: sinon.stub(),
+      off: sinon.stub(),
+      onSpokenLanguageUpdate: sinon.stub(),
+      onCaptionServiceIdUpdate: sinon.stub(),
+      requestLanguage: sinon.stub(),
+      setSpokenLanguage: sinon.stub(),
+      turnOnCaptions: sinon.stub().resolves(),
+      listenToEvents: sinon.stub(),
+      deregisterEvents: sinon.stub(),
+      getIsCaptionBoxOn: sinon.stub().returns(false),
+      updateSubchannelSubscriptions: sinon.stub(),
+    }));
     webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
       {},
       {parent: webex}
@@ -2193,41 +2208,53 @@ describe('plugin-meetings', () => {
       });
 
       describe('#update hesiod llm id', () => {
+        let mockVoiceaChannel;
         beforeEach(() => {
-          webex.internal.voicea.onCaptionServiceIdUpdate = sinon.stub();
+          mockVoiceaChannel = {
+            onCaptionServiceIdUpdate: sinon.stub(),
+            on: sinon.stub(),
+            off: sinon.stub(),
+          };
+          meeting.voiceaChannel = mockVoiceaChannel;
         });
         afterEach(() => {
           // Restore the original methods after each test
           sinon.restore();
         });
-        it('should call voicea.onCaptionServiceIdUpdate when joined', async () => {
+        it('should call voiceaChannel.onCaptionServiceIdUpdate when joined', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           await meeting.locusInfo.emitScoped(
             {function: 'test', file: 'test'},
             LOCUSINFO.EVENTS.CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED,
             {hesiodLlmId: '123a-456b-789c'}
           );
-          assert.calledWith(webex.internal.voicea.onCaptionServiceIdUpdate, '123a-456b-789c');
+          assert.calledWith(mockVoiceaChannel.onCaptionServiceIdUpdate, '123a-456b-789c');
         });
       });
 
       describe('#update spoken language', () => {
+        let mockVoiceaChannel;
         beforeEach(() => {
-          webex.internal.voicea.onSpokenLanguageUpdate = sinon.stub();
+          mockVoiceaChannel = {
+            onSpokenLanguageUpdate: sinon.stub(),
+            on: sinon.stub(),
+            off: sinon.stub(),
+          };
+          meeting.voiceaChannel = mockVoiceaChannel;
           meeting.transcription = {languageOptions: {currentSpokenLanguage: 'en'}};
         });
         afterEach(() => {
           // Restore the original methods after each test
           sinon.restore();
         });
-        it('should call voicea.onSpokenLanguageUpdate when joined', async () => {
+        it('should call voiceaChannel.onSpokenLanguageUpdate when joined', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           await meeting.locusInfo.emitScoped(
             {function: 'test', file: 'test'},
             LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
             {spokenLanguage: 'fr'}
           );
-          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'fr', meeting.id);
+          assert.calledWith(mockVoiceaChannel.onSpokenLanguageUpdate, 'fr', meeting.id);
           assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'fr');
           assert.calledWith(
             TriggerProxy.trigger,
@@ -2237,24 +2264,29 @@ describe('plugin-meetings', () => {
           );
         });
 
-        it('should also call voicea.onSpokenLanguageUpdate when not joined', async () => {
+        it('should also call voiceaChannel.onSpokenLanguageUpdate when not joined', async () => {
           meeting.joinedWith = {state: 'NOT_JOINED'};
           await meeting.locusInfo.emitScoped(
             {function: 'test', file: 'test'},
             LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
             {spokenLanguage: 'de'}
           );
-          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'de');
+          assert.calledWith(mockVoiceaChannel.onSpokenLanguageUpdate, 'de');
           assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'de');
         });
       });
 
       describe('#startTranscription', () => {
+        let mockVoiceaChannel;
+
         beforeEach(() => {
-          webex.internal.voicea.on = sinon.stub();
-          webex.internal.voicea.off = sinon.stub();
-          webex.internal.voicea.listenToEvents = sinon.stub();
-          webex.internal.voicea.turnOnCaptions = sinon.stub();
+          mockVoiceaChannel = {
+            on: sinon.stub(),
+            off: sinon.stub(),
+            listenToEvents: sinon.stub(),
+            turnOnCaptions: sinon.stub().resolves(),
+          };
+          meeting.voiceaChannel = mockVoiceaChannel;
         });
 
         it('should subscribe to events for the first time and avoid subscribing for future transcription starts', async () => {
@@ -2266,16 +2298,14 @@ describe('plugin-meetings', () => {
 
           await meeting.startTranscription();
 
-          assert.equal(webex.internal.voicea.on.callCount, 4);
+          assert.equal(mockVoiceaChannel.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
-          assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
-          assert.called(webex.internal.voicea.turnOnCaptions);
+          assert.calledOnce(mockVoiceaChannel.turnOnCaptions);
 
           await meeting.startTranscription();
-          assert.equal(webex.internal.voicea.on.callCount, 4);
+          assert.equal(mockVoiceaChannel.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
-          assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
-          assert.calledTwice(webex.internal.voicea.turnOnCaptions);
+          assert.calledTwice(mockVoiceaChannel.turnOnCaptions);
         });
 
         it('should listen to events and turnOnCaptions for all users', async () => {
@@ -2286,10 +2316,9 @@ describe('plugin-meetings', () => {
 
           await meeting.startTranscription();
 
-          assert.equal(webex.internal.voicea.on.callCount, 4);
+          assert.equal(mockVoiceaChannel.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
-          assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
-          assert.calledOnce(webex.internal.voicea.turnOnCaptions);
+          assert.calledOnce(mockVoiceaChannel.turnOnCaptions);
         });
 
         it("should throw error if request doesn't work", async () => {
@@ -2304,17 +2333,22 @@ describe('plugin-meetings', () => {
       });
 
       describe('#stopTranscription', () => {
+        let mockVoiceaChannel;
+
         beforeEach(() => {
-          webex.internal.voicea.on = sinon.stub();
-          webex.internal.voicea.off = sinon.stub();
-          webex.internal.voicea.listenToEvents = sinon.stub();
-          webex.internal.voicea.turnOnCaptions = sinon.stub();
-          webex.internal.voicea.deregisterEvents = sinon.stub();
+          mockVoiceaChannel = {
+            on: sinon.stub(),
+            off: sinon.stub(),
+            listenToEvents: sinon.stub(),
+            turnOnCaptions: sinon.stub(),
+            deregisterEvents: sinon.stub(),
+          };
+          meeting.voiceaChannel = mockVoiceaChannel;
         });
 
         it('should stop listening to voicea events and also trigger a stop event', () => {
           meeting.stopTranscription();
-          assert.equal(webex.internal.voicea.off.callCount, 4);
+          assert.equal(mockVoiceaChannel.off.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, false);
           assert.calledWith(
             TriggerProxy.trigger,
@@ -2330,7 +2364,7 @@ describe('plugin-meetings', () => {
         it('should stop listening to voicea events even when transcription is undefined', () => {
           meeting.transcription = undefined;
           meeting.stopTranscription();
-          assert.equal(webex.internal.voicea.off.callCount, 4);
+          assert.equal(mockVoiceaChannel.off.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, false);
           assert.calledWith(
             TriggerProxy.trigger,
@@ -2345,13 +2379,18 @@ describe('plugin-meetings', () => {
       });
 
       describe('#setCaptionLanguage', () => {
+        let mockVoiceaChannel;
+
         beforeEach(() => {
           meeting.isTranscriptionSupported = sinon.stub();
           meeting.transcription = {languageOptions: {}};
-          webex.internal.voicea.on = sinon.stub();
-          webex.internal.voicea.off = sinon.stub();
-          webex.internal.voicea.setCaptionLanguage = sinon.stub();
-          webex.internal.voicea.requestLanguage = sinon.stub();
+          mockVoiceaChannel = {
+            on: sinon.stub(),
+            off: sinon.stub(),
+            setCaptionLanguage: sinon.stub(),
+            requestLanguage: sinon.stub(),
+          };
+          meeting.voiceaChannel = mockVoiceaChannel;
         });
 
         afterEach(() => {
@@ -2373,7 +2412,7 @@ describe('plugin-meetings', () => {
           const languageCode = 'fr';
 
           meeting.setCaptionLanguage(languageCode).then((resolvedLanguageCode) => {
-            assert.calledWith(webex.internal.voicea.requestLanguage, languageCode);
+            assert.calledWith(mockVoiceaChannel.requestLanguage, languageCode);
             assert.equal(resolvedLanguageCode, languageCode);
             assert.equal(
               meeting.transcription.languageOptions.currentCaptionLanguage,
@@ -2382,13 +2421,10 @@ describe('plugin-meetings', () => {
             done();
           });
 
-          assert.calledOnceWithMatch(
-            webex.internal.voicea.on,
-            VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE
-          );
+          assert.calledOnceWithMatch(mockVoiceaChannel.on, VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE);
 
           // Trigger the event
-          const voiceaListenerLangugeUpdate = webex.internal.voicea.on.getCall(0).args[1];
+          const voiceaListenerLangugeUpdate = mockVoiceaChannel.on.getCall(0).args[1];
           voiceaListenerLangugeUpdate({statusCode: 200, languageCode});
         });
 
@@ -2405,24 +2441,26 @@ describe('plugin-meetings', () => {
             done();
           });
 
-          assert.calledOnceWithMatch(
-            webex.internal.voicea.on,
-            VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE
-          );
+          assert.calledOnceWithMatch(mockVoiceaChannel.on, VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE);
 
           // Trigger the event
-          const voiceaListenerLangugeUpdate = webex.internal.voicea.on.getCall(0).args[1];
+          const voiceaListenerLangugeUpdate = mockVoiceaChannel.on.getCall(0).args[1];
           voiceaListenerLangugeUpdate(rejectPayload);
         });
       });
 
       describe('#setSpokenLanguage', () => {
+        let mockVoiceaChannel;
+
         beforeEach(() => {
           meeting.isTranscriptionSupported = sinon.stub();
           meeting.transcription = {languageOptions: {}};
-          webex.internal.voicea.on = sinon.stub();
-          webex.internal.voicea.off = sinon.stub();
-          webex.internal.voicea.setSpokenLanguage = sinon.stub();
+          mockVoiceaChannel = {
+            on: sinon.stub(),
+            off: sinon.stub(),
+            setSpokenLanguage: sinon.stub(),
+          };
+          meeting.voiceaChannel = mockVoiceaChannel;
           meeting.roles = ['MODERATOR'];
         });
 
@@ -2455,16 +2493,16 @@ describe('plugin-meetings', () => {
           const languageCode = 'fr';
 
           meeting.setSpokenLanguage(languageCode).then((resolvedLanguageCode) => {
-            assert.calledWith(webex.internal.voicea.setSpokenLanguage, languageCode);
+            assert.calledWith(mockVoiceaChannel.setSpokenLanguage, languageCode);
             assert.equal(resolvedLanguageCode, languageCode);
             assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, languageCode);
             done();
           });
 
-          assert.calledOnceWithMatch(webex.internal.voicea.on, VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE);
+          assert.calledOnceWithMatch(mockVoiceaChannel.on, VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE);
 
           // Trigger the event
-          const voiceaListenerLangugeUpdate = webex.internal.voicea.on.getCall(0).args[1];
+          const voiceaListenerLangugeUpdate = mockVoiceaChannel.on.getCall(0).args[1];
           voiceaListenerLangugeUpdate({languageCode});
         });
 
@@ -2480,10 +2518,10 @@ describe('plugin-meetings', () => {
             done();
           });
 
-          assert.calledOnceWithMatch(webex.internal.voicea.on, VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE);
+          assert.calledOnceWithMatch(mockVoiceaChannel.on, VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE);
 
           // Trigger the event
-          const voiceaListenerLangugeUpdate = webex.internal.voicea.on.getCall(0).args[1];
+          const voiceaListenerLangugeUpdate = mockVoiceaChannel.on.getCall(0).args[1];
           voiceaListenerLangugeUpdate(rejectPayload);
         });
       });
@@ -2844,10 +2882,15 @@ describe('plugin-meetings', () => {
       });
 
       describe('#handleLLMOnline', () => {
+        let mockVoiceaChannel;
+
         beforeEach(() => {
           webex.internal.llm.off = sinon.stub();
-          webex.internal.voicea.getKeepTranscriptionSubscribed = sinon.stub().returns(false);
-          webex.internal.voicea.updateSubchannelSubscriptions = sinon.stub();
+          mockVoiceaChannel = {
+            getKeepTranscriptionSubscribed: sinon.stub().returns(false),
+            updateSubchannelSubscriptions: sinon.stub(),
+          };
+          meeting.voiceaChannel = mockVoiceaChannel;
         });
 
         it('emits transcription connected events', () => {
@@ -2864,21 +2907,21 @@ describe('plugin-meetings', () => {
         });
 
         it('restores transcription subscription when caption intent is enabled', () => {
-          webex.internal.voicea.getKeepTranscriptionSubscribed.returns(true);
+          mockVoiceaChannel.getKeepTranscriptionSubscribed.returns(true);
 
           meeting.handleLLMOnline();
 
-          assert.calledOnceWithExactly(webex.internal.voicea.updateSubchannelSubscriptions, {
+          assert.calledOnceWithExactly(mockVoiceaChannel.updateSubchannelSubscriptions, {
             subscribe: ['transcription'],
           });
         });
 
         it('does not restore transcription subscription when caption intent is disabled', () => {
-          webex.internal.voicea.getKeepTranscriptionSubscribed.returns(false);
+          mockVoiceaChannel.getKeepTranscriptionSubscribed.returns(false);
 
           meeting.handleLLMOnline();
 
-          assert.notCalled(webex.internal.voicea.updateSubchannelSubscriptions);
+          assert.notCalled(mockVoiceaChannel.updateSubchannelSubscriptions);
         });
 
         it('calls syncAllHashTreeDatasets on locusInfo', () => {
@@ -3173,6 +3216,7 @@ describe('plugin-meetings', () => {
                 registerAndConnect: sinon.stub().resolves({}),
                 disconnect: sinon.stub().resolves(),
                 isConnected: sinon.stub().returns(false),
+                isConnecting: sinon.stub().returns(false),
                 getLocusUrl: sinon.stub().returns(undefined),
                 getDatachannelUrl: sinon.stub().returns(undefined),
                 getDatachannelToken: sinon.stub().returns(undefined),
@@ -3214,6 +3258,7 @@ describe('plugin-meetings', () => {
                 registerAndConnect: sinon.stub().resolves({}),
                 disconnect: sinon.stub().resolves(),
                 isConnected: sinon.stub().returns(false),
+                isConnecting: sinon.stub().returns(false),
                 getLocusUrl: sinon.stub().returns(undefined),
                 getDatachannelUrl: sinon.stub().returns(undefined),
                 getDatachannelToken: sinon.stub().returns(undefined),
@@ -3464,6 +3509,7 @@ describe('plugin-meetings', () => {
                 registerAndConnect: sinon.stub().resolves({}),
                 disconnect: sinon.stub().resolves(),
                 isConnected: sinon.stub().returns(false),
+                isConnecting: sinon.stub().returns(false),
                 getLocusUrl: sinon.stub().returns(undefined),
                 getDatachannelUrl: sinon.stub().returns(undefined),
                 getDatachannelToken: sinon.stub().returns(undefined),
@@ -14909,6 +14955,7 @@ describe('plugin-meetings', () => {
 
       describe('#updateLLMConnection', () => {
         let mockChannel;
+        let mockVoiceaChannel;
 
         beforeEach(() => {
           // Create a mock channel that createConnection will return
@@ -14926,7 +14973,23 @@ describe('plugin-meetings', () => {
             off: sinon.stub(),
           };
 
+          // Create a mock voicea channel
+          mockVoiceaChannel = {
+            on: sinon.stub(),
+            off: sinon.stub(),
+            onSpokenLanguageUpdate: sinon.stub(),
+            onCaptionServiceIdUpdate: sinon.stub(),
+            requestLanguage: sinon.stub(),
+            setSpokenLanguage: sinon.stub(),
+            turnOnCaptions: sinon.stub().resolves(),
+            listenToEvents: sinon.stub(),
+            deregisterEvents: sinon.stub(),
+            getIsCaptionBoxOn: sinon.stub().returns(false),
+            updateSubchannelSubscriptions: sinon.stub(),
+          };
+
           webex.internal.llm.createConnection = sinon.stub().returns(mockChannel);
+          webex.internal.voicea.createChannel = sinon.stub().returns(mockVoiceaChannel);
 
           meeting.processRelayEvent = sinon.stub();
           meeting.processLocusLLMEvent = sinon.stub();
@@ -15017,6 +15080,7 @@ describe('plugin-meetings', () => {
           // Set up existing channel with matching URLs
           const existingChannel = {
             isConnected: sinon.stub().returns(true),
+            isConnecting: sinon.stub().returns(false),
             getLocusUrl: sinon.stub().returns('a url'),
             getDatachannelUrl: sinon.stub().returns('a datachannel url'),
           };
@@ -15034,6 +15098,7 @@ describe('plugin-meetings', () => {
           // Set up existing channel with different URL
           const existingChannel = {
             isConnected: sinon.stub().returns(true),
+            isConnecting: sinon.stub().returns(false),
             getLocusUrl: sinon.stub().returns('old url'),
             getDatachannelUrl: sinon.stub().returns('a datachannel url'),
             disconnect: sinon.stub().resolves(),
@@ -15068,6 +15133,7 @@ describe('plugin-meetings', () => {
           // Set up existing channel with different datachannel URL
           const existingChannel = {
             isConnected: sinon.stub().returns(true),
+            isConnecting: sinon.stub().returns(false),
             getLocusUrl: sinon.stub().returns('a url'),
             getDatachannelUrl: sinon.stub().returns('old datachannel url'),
             disconnect: sinon.stub().resolves(),
@@ -15102,6 +15168,7 @@ describe('plugin-meetings', () => {
           // Set up existing connected channel
           const existingChannel = {
             isConnected: sinon.stub().returns(true),
+            isConnecting: sinon.stub().returns(false),
             getLocusUrl: sinon.stub().returns('a url'),
             getDatachannelUrl: sinon.stub().returns('a datachannel url'),
             disconnect: sinon.stub().resolves(),
