@@ -6331,10 +6331,11 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private restoreLLMSubscriptionsIfNeeded(): void {
     try {
-      // @ts-ignore
-      const isCaptionBoxOn = this.webex.internal.voicea?.getIsCaptionBoxOn?.();
+      const keepTranscriptionSubscribed =
+        // @ts-ignore
+        this.webex.internal.voicea?.getKeepTranscriptionSubscribed?.();
 
-      if (!isCaptionBoxOn) {
+      if (!keepTranscriptionSubscribed) {
         return;
       }
 
@@ -7542,14 +7543,28 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore
         const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
 
+        // Save the remote-sdp-received timestamp before submitting the client event so we can
+        // calculate and include localSDPGenRemoteSDPRecv in the client event payload
+        cdl.saveTimestamp({
+          key: 'client.media-engine.remote-sdp-received',
+          options: {meetingId: this.id},
+        });
+
+        const localSDPGenRemoteSDPRecv = cdl.getLocalSDPGenRemoteSDPRecv();
+
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.media-engine.remote-sdp-received',
+          payload: {
+            eventData: {
+              localSDPGenRemoteSDPRecv,
+            },
+          },
           options: {meetingId: this.id},
         });
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_OFFER_TO_ANSWER_LATENCY, {
           correlation_id: this.correlationId,
-          latency: cdl.getLocalSDPGenRemoteSDPRecv(),
+          latency: localSDPGenRemoteSDPRecv,
           meetingId: this.id,
         });
 

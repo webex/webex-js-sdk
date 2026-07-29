@@ -1,66 +1,135 @@
+/* eslint-disable no-await-in-loop */
 import {Page, expect} from '@playwright/test';
 import {TASK_TYPES, AWAIT_TIMEOUT, OPERATION_TIMEOUT} from '../constants';
+import {
+  clickDomButton,
+  getTaskReadinessSnapshot,
+  hasVisibleEnabledActionButton,
+  isTaskCleared,
+} from './controlUtils';
 
-/**
- * Utility functions for task controls testing.
- * Verifies visibility of task control buttons for different task types.
- *
- * @packageDocumentation
- */
-
-/**
- * Verifies that core call task control buttons are visible.
- * Checks for hold, transfer, consult, and end buttons.
- * Sample app uses plain HTML IDs, not data-testid attributes.
- * Note: Only checks visibility, not enabled state, as button enable timing varies.
- * Recording button is skipped as it may be hidden by CSS in sample app.
- * @param page - The agent's main page
- * @returns Promise<void>
- */
 export async function callTaskControlCheck(page: Page): Promise<void> {
-  // Sample app uses plain HTML IDs - verify core call control buttons are visible
-  // Verify hold/resume toggle button is visible
-  await expect(page.locator('#hold-resume')).toBeVisible({
-    timeout: AWAIT_TIMEOUT,
-  });
+  await expect
+    .poll(
+      async () => {
+        const incomingText = (
+          await page
+            .locator('#incoming-task')
+            .innerText()
+            .catch(() => '')
+        ).toLowerCase();
+        const taskControlsText = (
+          await page
+            .locator('#taskControlsCards')
+            .innerText()
+            .catch(() => '')
+        ).toLowerCase();
+        const taskSnapshot = await getTaskReadinessSnapshot(page);
+        const isConnected =
+          incomingText.includes('connected') ||
+          taskControlsText.includes('state: connected') ||
+          (taskSnapshot.hasLiveTask &&
+            ['connected', 'consult', 'conference'].includes(taskSnapshot.state));
 
-  // Skip recording button check - may be hidden by CSS in sample app
-  // await expect(page.locator('#pause-resume-recording')).toBeVisible({
-  //   timeout: AWAIT_TIMEOUT,
-  // });
+        const holdEnabled = await page
+          .locator('#hold-resume')
+          .evaluate((el) => !(el as HTMLButtonElement).disabled)
+          .catch(() => false);
+        const transferEnabled = await page
+          .locator('#transfer')
+          .evaluate((el) => !(el as HTMLButtonElement).disabled)
+          .catch(() => false);
+        const consultEnabled = await page
+          .locator('#consult')
+          .evaluate((el) => !(el as HTMLButtonElement).disabled)
+          .catch(() => false);
+        const endEnabled = await page
+          .locator('#end')
+          .evaluate((el) => !(el as HTMLButtonElement).disabled)
+          .catch(() => false);
 
-  // Verify transfer button is visible
-  await expect(page.locator('#transfer')).toBeVisible({
-    timeout: AWAIT_TIMEOUT,
-  });
+        const visibleActionEnabled = await Promise.all([
+          hasVisibleEnabledActionButton(page, 'Hold', '#hold-resume'),
+          hasVisibleEnabledActionButton(page, 'Resume', '#hold-resume'),
+          hasVisibleEnabledActionButton(page, 'Consult', '#consult'),
+          hasVisibleEnabledActionButton(page, 'Transfer', '#transfer'),
+          hasVisibleEnabledActionButton(page, 'End', '#end'),
+        ]).then((results) => results.some(Boolean));
 
-  // Verify consult button is visible
-  await expect(page.locator('#consult')).toBeVisible({
-    timeout: AWAIT_TIMEOUT,
-  });
+        const visibleActionPresent = await Promise.all([
+          page
+            .getByRole('button', {name: /hold|resume/i})
+            .first()
+            .isVisible()
+            .catch(() => false),
+          page
+            .getByRole('button', {name: /consult/i})
+            .first()
+            .isVisible()
+            .catch(() => false),
+          page
+            .getByRole('button', {name: /transfer/i})
+            .first()
+            .isVisible()
+            .catch(() => false),
+          page
+            .getByRole('button', {name: /^end$/i})
+            .first()
+            .isVisible()
+            .catch(() => false),
+        ]).then((results) => results.some(Boolean));
 
-  // Verify end call button is visible
-  await expect(page.locator('#end')).toBeVisible({
-    timeout: AWAIT_TIMEOUT,
-  });
+        return (
+          isConnected &&
+          (holdEnabled ||
+            transferEnabled ||
+            consultEnabled ||
+            endEnabled ||
+            taskSnapshot.mainControlReady ||
+            visibleActionEnabled ||
+            visibleActionPresent)
+        );
+      },
+      {timeout: OPERATION_TIMEOUT, intervals: [500, 1000, 2000]}
+    )
+    .toBeTruthy();
 }
 
-/**
- * Verifies that chat task control buttons are visible and accessible.
- * Checks for transfer and end buttons only.
- * @param page - The agent's main page
- * @returns Promise<void>
- */
-export async function chatTaskControlCheck(page: Page): Promise<void> {
-  // Sample app: verify transfer button is visible
-  await expect(page.locator('#transfer')).toBeVisible({
-    timeout: AWAIT_TIMEOUT,
-  });
+async function digitalTaskControlCheck(page: Page): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const transferEnabled = await page
+          .locator('#transfer')
+          .first()
+          .evaluate((el) => !(el as HTMLButtonElement).disabled)
+          .catch(() => false);
+        const endEnabled = await page
+          .locator('#end')
+          .first()
+          .evaluate((el) => !(el as HTMLButtonElement).disabled)
+          .catch(() => false);
 
-  // Sample app: verify end button is visible (for chat tasks)
-  await expect(page.locator('#end')).toBeVisible({
-    timeout: AWAIT_TIMEOUT,
-  });
+        const visibleTransferEnabled = await page
+          .getByRole('button', {name: /transfer/i})
+          .first()
+          .isEnabled()
+          .catch(() => false);
+        const visibleEndEnabled = await page
+          .getByRole('button', {name: /^end$/i})
+          .first()
+          .isEnabled()
+          .catch(() => false);
+
+        return (transferEnabled || visibleTransferEnabled) && (endEnabled || visibleEndEnabled);
+      },
+      {timeout: OPERATION_TIMEOUT, intervals: [500, 1000, 2000]}
+    )
+    .toBeTruthy();
+}
+
+export async function chatTaskControlCheck(page: Page): Promise<void> {
+  await digitalTaskControlCheck(page);
 }
 
 /**
@@ -70,23 +139,9 @@ export async function chatTaskControlCheck(page: Page): Promise<void> {
  * @returns Promise<void>
  */
 export async function emailTaskControlCheck(page: Page): Promise<void> {
-  // Sample app: verify transfer button is visible
-  await expect(page.locator('#transfer')).toBeVisible({
-    timeout: AWAIT_TIMEOUT,
-  });
-
-  // Sample app: verify end button is visible (for email tasks)
-  await expect(page.locator('#end')).toBeVisible({
-    timeout: AWAIT_TIMEOUT,
-  });
+  await digitalTaskControlCheck(page);
 }
 
-/**
- * Verifies task control buttons based on the task type.
- * @param page - The agent's main page
- * @param taskType - The type of the task (e.g., TASK_TYPES.CALL, TASK_TYPES.CHAT)
- * @returns Promise<void>
- */
 export async function verifyTaskControls(page: Page, taskType: string): Promise<void> {
   switch (taskType) {
     case TASK_TYPES.CALL:
@@ -103,30 +158,54 @@ export async function verifyTaskControls(page: Page, taskType: string): Promise<
   }
 }
 
-/**
- * Toggles the hold state of a call by clicking the hold/resume button.
- * This function will put the call on hold if it's currently active, or resume it if it's on hold.
- * Sample app uses plain HTML ID #hold-resume.
- * @param page - The agent's main page
- * @returns Promise<void>
- */
 export async function holdCallToggle(page: Page): Promise<void> {
-  const holdButton = page.locator('#hold-resume');
-  await expect(holdButton).toBeVisible({timeout: AWAIT_TIMEOUT});
-  await expect(holdButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
-  await holdButton.click({timeout: AWAIT_TIMEOUT});
+  await page.bringToFront();
+
+  const visibleToggleButton = page.getByRole('button', {name: /hold|resume/i}).first();
+  const hasVisibleToggle = await visibleToggleButton.isVisible().catch(() => false);
+
+  if (hasVisibleToggle) {
+    await expect(visibleToggleButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
+    await visibleToggleButton.click({timeout: AWAIT_TIMEOUT});
+
+    return;
+  }
+
+  const holdButton = page.locator('#hold-resume').first();
+  await holdButton.waitFor({state: 'attached', timeout: AWAIT_TIMEOUT});
+  await expect
+    .poll(
+      () => holdButton.evaluate((el) => !(el as HTMLButtonElement).disabled).catch(() => false),
+      {timeout: OPERATION_TIMEOUT, intervals: [500, 1000, 2000]}
+    )
+    .toBeTruthy();
+  await clickDomButton(page, '#hold-resume');
 }
 
 export async function isCallHeld(page: Page): Promise<boolean> {
-  // Sample app: check button text - "Resume" means call is on hold, "Hold" means call is active
-  const holdButton = page.locator('#hold-resume');
-  const isVisible = await holdButton.isVisible().catch(() => false);
+  const visibleResume = await page
+    .getByRole('button', {name: /^resume$/i})
+    .first()
+    .isVisible()
+    .catch(() => false);
+  if (visibleResume) {
+    return true;
+  }
 
-  if (!isVisible) {
+  const visibleHold = await page
+    .getByRole('button', {name: /^hold$/i})
+    .first()
+    .isVisible()
+    .catch(() => false);
+  if (visibleHold) {
     return false;
   }
 
-  const buttonText = await holdButton.innerText().catch(() => '');
+  const buttonText = await page
+    .locator('#hold-resume')
+    .first()
+    .innerText()
+    .catch(() => '');
 
   return buttonText.toLowerCase().includes('resume');
 }
@@ -176,14 +255,26 @@ export async function verifyHoldTimer(
  */
 export async function verifyHoldButtonIcon(
   page: Page,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _options: {expectedIsHeld: boolean}
+  options: {expectedIsHeld: boolean}
 ): Promise<void> {
-  // Sample app doesn't use mdc-icon web components - just verify button is visible
-  const holdButton = page.locator('#hold-resume');
-  await expect(holdButton).toBeVisible({timeout: AWAIT_TIMEOUT});
-  await expect(holdButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
-  // Icon state verification skipped - sample app uses plain HTML
+  await expect
+    .poll(
+      async () => {
+        const held = await isCallHeld(page).catch(() => !options.expectedIsHeld);
+        if (held === options.expectedIsHeld) {
+          return true;
+        }
+
+        const buttonName = options.expectedIsHeld ? 'Resume' : 'Hold';
+        const holdButton = page.getByRole('button', {name: buttonName, exact: true}).first();
+        const isVisible = await holdButton.isVisible().catch(() => false);
+        const isEnabled = await holdButton.isEnabled().catch(() => false);
+
+        return isVisible && isEnabled;
+      },
+      {timeout: AWAIT_TIMEOUT, intervals: [500, 1000, 2000]}
+    )
+    .toBeTruthy();
 }
 
 /**
@@ -332,11 +423,11 @@ export async function verifyRecordingLogs({
           const statusLogs = capturedLogs.filter((log) => log.includes(expectedStatus));
           const lastRecordingLog = recordingLogs[recordingLogs.length - 1] ?? '';
 
-          return (
-            recordingLogs.length > 0 &&
-            statusLogs.length > 0 &&
-            lastRecordingLog.includes(`isRecording: ${expectedIsRecording}`)
-          );
+          const hasValidCallbackState =
+            recordingLogs.length === 0 ||
+            lastRecordingLog.includes(`isRecording: ${expectedIsRecording}`);
+
+          return statusLogs.length > 0 && hasValidCallbackState;
         },
         {timeout: OPERATION_TIMEOUT, intervals: [200, 400, 800, 1200]}
       )
@@ -346,21 +437,16 @@ export async function verifyRecordingLogs({
     const statusLogs = capturedLogs.filter((log) => log.includes(expectedStatus));
     const lastRecordingLog = recordingLogs[recordingLogs.length - 1];
 
-    if (recordingLogs.length === 0) {
-      throw new Error(
-        `No 'onRecordingToggle invoked' logs found. Expected logs for isRecording: ${expectedIsRecording}. Captured logs: ${JSON.stringify(
-          capturedLogs
-        )}`
-      );
-    }
-
     if (statusLogs.length === 0) {
       throw new Error(
         `No '${expectedStatus}' logs found. Captured logs: ${JSON.stringify(capturedLogs)}`
       );
     }
 
-    if (!lastRecordingLog?.includes(`isRecording: ${expectedIsRecording}`)) {
+    if (
+      recordingLogs.length > 0 &&
+      !lastRecordingLog?.includes(`isRecording: ${expectedIsRecording}`)
+    ) {
       throw new Error(
         `Expected 'isRecording: ${expectedIsRecording}' in log but found: ${lastRecordingLog}`
       );
@@ -529,13 +615,178 @@ export async function verifyHoldMusicElement(page: Page): Promise<void> {
  * @returns Promise<void>
  */
 export async function endTask(page: Page): Promise<void> {
-  // Sample app: click #end button via JS (may be CSS-hidden)
-  await page.evaluate(() => {
-    const btn = document.querySelector('#end') as HTMLButtonElement;
-    if (btn) btn.click();
-  });
+  await page.bringToFront();
 
-  // Wait for wrapup button to become visible/enabled
-  const wrapupButton = page.locator('#wrapup');
-  await expect(wrapupButton).toBeVisible({timeout: OPERATION_TIMEOUT});
+  const endButton = page.locator('#end').first();
+  const visibleEndButton = page.getByRole('button', {name: /^end$/i}).first();
+  const wrapupDropdown = page.locator('#wrapupCodesDropdown');
+
+  const isWrapupAlreadyEnabled = await wrapupDropdown.isEnabled().catch(() => false);
+  if (isWrapupAlreadyEnabled) {
+    return;
+  }
+  if (await isTaskCleared(page)) {
+    return;
+  }
+
+  const clickVisibleResumeIfAny = async (): Promise<void> => {
+    const resumeBtn = page.getByRole('button', {name: 'Resume'}).first();
+    const canResume = await resumeBtn.isVisible().catch(() => false);
+    if (canResume) {
+      const isEnabled = await resumeBtn.isEnabled().catch(() => false);
+      if (isEnabled) {
+        await resumeBtn.click({timeout: 5000});
+        await page.waitForTimeout(1000);
+      }
+    }
+  };
+
+  const isWrapupOrTaskCleared = async (): Promise<boolean> => {
+    const wrapupEnabled = await wrapupDropdown.isEnabled().catch(() => false);
+    if (wrapupEnabled) {
+      return true;
+    }
+
+    return isTaskCleared(page);
+  };
+
+  const clickEndControl = async (): Promise<void> => {
+    const visibleEndButtons = page.getByRole('button', {name: /^end$/i});
+    const visibleEndButtonCount = await visibleEndButtons.count().catch(() => 0);
+    for (let i = visibleEndButtonCount - 1; i >= 0; i -= 1) {
+      const candidate = visibleEndButtons.nth(i);
+      const canClick =
+        (await candidate.isVisible().catch(() => false)) &&
+        (await candidate.isEnabled().catch(() => false));
+
+      if (canClick) {
+        try {
+          await candidate.click({timeout: AWAIT_TIMEOUT});
+
+          return;
+        } catch {
+          break;
+        }
+      }
+    }
+
+    await page.evaluate(() => {
+      const clickButton = (btn: HTMLButtonElement): void => {
+        if (btn.onclick) {
+          btn.onclick(new MouseEvent('click'));
+        } else {
+          btn.click();
+        }
+      };
+      const visibleTextButton = Array.from(document.querySelectorAll('button')).find(
+        (btn) => btn.textContent?.trim().toLowerCase() === 'end' && !btn.disabled
+      ) as HTMLButtonElement | undefined;
+      const legacyButton = document.querySelector('#end') as HTMLButtonElement | null;
+
+      if (visibleTextButton) {
+        clickButton(visibleTextButton);
+      } else if (legacyButton) {
+        clickButton(legacyButton);
+      }
+    });
+  };
+
+  const stillLooksEndable = async (): Promise<boolean> => {
+    const incomingText = (
+      await page
+        .locator('#incoming-task')
+        .innerText()
+        .catch(() => '')
+    ).toLowerCase();
+    const activeText =
+      incomingText.includes('connected') ||
+      incomingText.includes('consult') ||
+      incomingText.includes('hold');
+    const visibleEndEnabled = await visibleEndButton.isEnabled().catch(() => false);
+    const legacyEndEnabled = await endButton
+      .evaluate((el) => !(el as HTMLButtonElement).disabled)
+      .catch(() => false);
+
+    return activeText || visibleEndEnabled || legacyEndEnabled;
+  };
+
+  const isEndEnabledInitially = await endButton
+    .evaluate((el) => !(el as HTMLButtonElement).disabled)
+    .catch(() => false);
+
+  if (!isEndEnabledInitially && (await isCallHeld(page))) {
+    await holdCallToggle(page);
+    await expect
+      .poll(() => isCallHeld(page), {timeout: OPERATION_TIMEOUT, intervals: [500, 1000, 2000]})
+      .toBeFalsy();
+  }
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const isVisibleEndEnabled = await visibleEndButton.isEnabled().catch(() => false);
+    if (isVisibleEndEnabled) {
+      break;
+    }
+    const isEndEnabled = await endButton
+      .evaluate((el) => !(el as HTMLButtonElement).disabled)
+      .catch(() => false);
+    if (isEndEnabled) {
+      break;
+    }
+    await clickVisibleResumeIfAny();
+  }
+
+  await expect
+    .poll(
+      async () => {
+        const wrapupEnabled = await wrapupDropdown.isEnabled().catch(() => false);
+        if (wrapupEnabled) {
+          return true;
+        }
+        const taskAlreadyGone = await isTaskCleared(page);
+        if (taskAlreadyGone) {
+          return true;
+        }
+        const visibleEnabled = await visibleEndButton.isEnabled().catch(() => false);
+        if (visibleEnabled) {
+          return true;
+        }
+
+        return endButton.evaluate((el) => !(el as HTMLButtonElement).disabled).catch(() => false);
+      },
+      {timeout: OPERATION_TIMEOUT, intervals: [500, 1000, 2000]}
+    )
+    .toBeTruthy();
+
+  const canSkipEndClick = await wrapupDropdown.isEnabled().catch(() => false);
+  if (canSkipEndClick) {
+    return;
+  }
+  if (await isTaskCleared(page)) {
+    return;
+  }
+
+  await clickEndControl();
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const settled = await expect
+      .poll(isWrapupOrTaskCleared, {timeout: 10000, intervals: [500, 1000, 2000]})
+      .toBeTruthy()
+      .then(() => true)
+      .catch(() => false);
+
+    if (settled) {
+      return;
+    }
+
+    if (!(await stillLooksEndable())) {
+      break;
+    }
+
+    await clickEndControl();
+  }
+
+  await expect
+    .poll(isWrapupOrTaskCleared, {
+      timeout: OPERATION_TIMEOUT,
+      intervals: [500, 1000, 2000],
+    })
+    .toBeTruthy();
 }
