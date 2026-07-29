@@ -17,7 +17,6 @@ export default function createUserStateTests() {
     const projectName = testInfo.project.name;
     testManager = new TestManager(projectName);
     await testManager.basicSetup(browser);
-    // Handle the station login manually like in the original
     const loginButtonExists = await testManager.agent1Page
       .locator('#loginAgent')
       .isVisible()
@@ -29,7 +28,7 @@ export default function createUserStateTests() {
         process.env[`${testManager.projectName}_AGENT1_EXTENSION_NUMBER`]
       );
     } else {
-      await stationLogout(testManager.agent1Page, false); // Don't throw during setup
+      await stationLogout(testManager.agent1Page, false);
       await telephonyLogin(
         testManager.agent1Page,
         LOGIN_MODE.EXTENSION,
@@ -81,28 +80,11 @@ export default function createUserStateTests() {
 
     // Timer resets on state change, so after should be less than or equal to before
     expect(secondsAfter).toBeLessThanOrEqual(secondsBefore);
-    // Theme color assertion removed - sample app doesn't implement widget theme system
   });
 
-  // Skip: SDK event callback ordering is an internal SDK contract better validated in SDK unit tests.
-  // E2E testing faces multiple challenges: (1) Sample app console.log messages aren't captured reliably
-  // in test suite context, (2) Direct SDK method calls in page.evaluate() throw errors due to context
-  // isolation, (3) Event wrapping approaches don't capture timing accurately in UI-driven flows.
-  // The SDK team validates this contract in their unit test suite. E2E tests focus on user-facing
-  // behavior which is verified via UI state changes in other tests.
-  test.skip('should verify SDK event callback fires before promise resolves', async () => {
-    // This test would verify that webex.cc.on('agent:state_changed') callback fires before
-    // the setAgentState() promise resolves - a critical SDK contract for event-driven applications.
-    // Covered by SDK unit tests instead of E2E due to testing environment limitations.
-  });
+  test.skip('should verify SDK event callback fires before promise resolves', async () =>
+    undefined);
 
-  // Skip: Sample app SDK initialization after page reload is unreliable in automated testing.
-  // After reload, the SDK doesn't auto-restore WebSocket connection state, and manual re-initialization
-  // via ensureRegisteredAfterReload() fails intermittently (3 retry attempts timeout waiting for
-  // WebSocket subscription). This is an architectural limitation - the sample app is designed for
-  // manual testing where users would manually re-initialize if needed, not automated reload scenarios.
-  // State persistence is a backend feature that works correctly; the test failure is due to sample app's
-  // inability to reliably re-establish SDK connection after reload in automated tests.
   test.skip('should verify state persistence after page reload', async () => {
     // Set state to Available
     await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
@@ -135,14 +117,40 @@ export default function createUserStateTests() {
     await verifyCurrentState(testManager.agent1Page, USER_STATES.AVAILABLE);
   });
 
-  test.skip('should test multi-session synchronization', async () => {
-    // Multi-session support removed - sample app doesn't support widget-based multi-session
-    // Additionally, test creates context without ignoreHTTPSErrors: true, causing SSL failures
+  test('should test multi-session synchronization', async ({browser}, testInfo) => {
+    await testManager.cleanup();
+
+    const multiSessionManager = new TestManager(testInfo.project.name);
+
+    try {
+      await multiSessionManager.setupForUserStateMultiSession(browser);
+
+      const initialState = await getCurrentState(multiSessionManager.agent1Page);
+      await expect(getCurrentState(multiSessionManager.multiSessionAgent1Page)).resolves.toBe(
+        initialState
+      );
+
+      await changeUserState(multiSessionManager.agent1Page, USER_STATES.AVAILABLE);
+      await Promise.all([
+        verifyCurrentState(multiSessionManager.agent1Page, USER_STATES.AVAILABLE),
+        verifyCurrentState(multiSessionManager.multiSessionAgent1Page, USER_STATES.AVAILABLE),
+      ]);
+
+      await changeUserState(multiSessionManager.agent1Page, USER_STATES.MEETING);
+      await Promise.all([
+        verifyCurrentState(multiSessionManager.agent1Page, USER_STATES.MEETING),
+        verifyCurrentState(multiSessionManager.multiSessionAgent1Page, USER_STATES.MEETING),
+      ]);
+
+      await changeUserState(multiSessionManager.multiSessionAgent1Page, USER_STATES.AVAILABLE);
+      await Promise.all([
+        verifyCurrentState(multiSessionManager.agent1Page, USER_STATES.AVAILABLE),
+        verifyCurrentState(multiSessionManager.multiSessionAgent1Page, USER_STATES.AVAILABLE),
+      ]);
+    } finally {
+      await multiSessionManager.cleanup();
+    }
   });
 
-  test.skip('should test idle state transition and dual timer', async () => {
-    // Sample app doesn't emit widget-specific console log patterns
-    // (onStateChange invoked with state name:)
-    // Dual timer functionality can be validated without console logs if needed
-  });
+  test.skip('should test idle state transition and dual timer', async () => {});
 }
