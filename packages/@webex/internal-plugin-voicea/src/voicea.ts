@@ -126,6 +126,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     super(...args);
     this.seqNum = 1;
     this.areCaptionsEnabled = false;
+    this.keepTranscriptionSubscribed = false;
     this.captionServiceId = undefined;
     this.announceStatus = ANNOUNCE_STATUS.IDLE;
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;

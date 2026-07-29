@@ -6331,8 +6331,8 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private restoreLLMSubscriptionsIfNeeded(): void {
     try {
-      // @ts-ignore
       const keepTranscriptionSubscribed =
+        // @ts-ignore
         this.webex.internal.voicea?.getKeepTranscriptionSubscribed?.();
 
       if (!keepTranscriptionSubscribed) {
