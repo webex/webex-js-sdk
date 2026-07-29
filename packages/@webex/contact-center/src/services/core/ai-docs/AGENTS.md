@@ -1,6 +1,8 @@
 # Core Service - AI Agent Guide
 
-> **This is the authoritative documentation for the Core service scope.** Core infrastructure components including WebSocket management, HTTP requests, error handling, and utilities. For task routing, critical rules, and cross-service patterns, see the [root orchestrator AGENTS.md](../../../AGENTS.md).
+> **Legacy/reference-only.** Canonical SDD: [`core-spec.md`](core-spec.md). Use the package [manifest](../../../../.sdd/manifest.json) and [`SPEC_INDEX.md`](../../../../ai-docs/SPEC_INDEX.md) for routing; code and tests remain the behavioral referee.
+>
+> **Legacy scope:** Core infrastructure components include WebSocket management, HTTP requests, error handling, and utilities. For repository rules and cross-service patterns, see the [root orchestrator AGENTS.md](../../../../AGENTS.md).
 
 ---
 
@@ -372,7 +374,7 @@ const trackingId = response.headers?.trackingid ||
 
 ## Related
 
-- [Root Orchestrator AGENTS.md](../../../AGENTS.md) - Task routing, critical rules, cross-service patterns
+- [Root Orchestrator AGENTS.md](../../../../AGENTS.md) - Task routing, critical rules, cross-service patterns
 - [WebSocketManager.ts](../websocket/WebSocketManager.ts)
 - [WebexRequest.ts](../WebexRequest.ts)
 - [Utils.ts](../Utils.ts)

@@ -5738,6 +5738,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/nodemailer@npm:^7":
+  version: 7.0.12
+  resolution: "@types/nodemailer@npm:7.0.12"
+  dependencies:
+    "@types/node": "*"
+  checksum: 51f05b54b561d147cc611ceaf5c1a2defdeed428d059778ff2f0fae241074b39c19f040f943c26a934b219add7708c1df6322fd504513f32d3ddc332edd39d16
+  languageName: node
+  linkType: hard
+
 "@types/normalize-package-data@npm:^2.4.0, @types/normalize-package-data@npm:^2.4.1":
   version: 2.4.4
   resolution: "@types/normalize-package-data@npm:2.4.4"
@@ -7685,29 +7694,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/event-dictionary-ts@npm:^1.0.2181":
-  version: 1.0.2181
-  resolution: "@webex/event-dictionary-ts@npm:1.0.2181"
+"@webex/event-dictionary-ts@npm:^1.0.2215":
+  version: 1.0.2215
+  resolution: "@webex/event-dictionary-ts@npm:1.0.2215"
   dependencies:
     amf-client-js: ^5.2.6
     json-schema-to-typescript: ^15.0.4
     minimist: ^1.2.8
     shelljs: ^0.8.5
     webapi-parser: ^0.5.0
-  checksum: e0e76c093d37395295558a48378cdfb4cff496197968690ba0b0e62e7b12b2206da7386c02aad4229251c4858836af05fb580e9c34ab3432f8300b5da8875a9b
-  languageName: node
-  linkType: hard
-
-"@webex/event-dictionary-ts@npm:^1.0.2191":
-  version: 1.0.2193
-  resolution: "@webex/event-dictionary-ts@npm:1.0.2193"
-  dependencies:
-    amf-client-js: ^5.2.6
-    json-schema-to-typescript: ^15.0.4
-    minimist: ^1.2.8
-    shelljs: ^0.8.5
-    webapi-parser: ^0.5.0
-  checksum: 46d2c5e56c333edcb708a83dc3988335021c036605925f9890e57d8cf7d505ff3e39e652ef9409f2afb6c8eb68dd8b837ccc6c0adbfd25e10d568303a318997b
+  checksum: 941869702638d760977e3e38530bbaca9cb72b7ee6d95895a5c434554cb65bf7ac2991fa5a1686a0eb7e939597307f3345ad6000b49e2d540ea06a1a6e9cc393
   languageName: node
   linkType: hard
 
@@ -8247,7 +8243,7 @@ __metadata:
     "@webex/common": "workspace:*"
     "@webex/common-timers": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/event-dictionary-ts": ^1.0.2191
+    "@webex/event-dictionary-ts": ^1.0.2215
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -8901,7 +8897,7 @@ __metadata:
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/event-dictionary-ts": ^1.0.2181
+    "@webex/event-dictionary-ts": ^1.0.2215
     "@webex/internal-media-core": 2.26.2
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
@@ -8922,7 +8918,7 @@ __metadata:
     "@webex/test-helper-retry": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
     "@webex/ts-sdp": ^1.8.1
-    "@webex/web-capabilities": ^1.10.0
+    "@webex/web-capabilities": ^1.12.0
     "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
     bowser: ^2.11.0
@@ -9615,6 +9611,15 @@ __metadata:
   dependencies:
     bowser: ^2.11.0
   checksum: c6adda2b3cf4594e9977b710f6bc0244e26a21013bdd764a26317dee650d63d29369919f53ececd0b875e2bbb5e1c3d46c5326feea97cfada557bda6cd6664ac
+  languageName: node
+  linkType: hard
+
+"@webex/web-capabilities@npm:^1.12.0":
+  version: 1.12.0
+  resolution: "@webex/web-capabilities@npm:1.12.0"
+  dependencies:
+    bowser: ^2.11.0
+  checksum: 70e6d564b0082b5f83030561b94cb9711faa49ea6a01a639cc9fc116f8b7c7bdad7e6beeb816fd9d6bfcc9bce9b80ff31873db6c388ed41641116474d4d1c2f5
   languageName: node
   linkType: hard
 
@@ -26099,6 +26104,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"nodemailer@npm:^7.0.3":
+  version: 7.0.13
+  resolution: "nodemailer@npm:7.0.13"
+  checksum: 3faf2549a1e7cef03e8a20ee7816fd9012f2de4faa98f185998ecb10a8d97d048f12dc20b4efc1fa82c342ec27407329c74ac9143e8d6135c6f5da05a04f54d6
+  languageName: node
+  linkType: hard
+
 "nodemon@npm:^3.1.7":
   version: 3.1.14
   resolution: "nodemon@npm:3.1.14"
@@ -33863,6 +33875,7 @@ __metadata:
     "@types/circular-dependency-plugin": ^5
     "@types/format-util": ^1
     "@types/jasmine": ^4
+    "@types/nodemailer": ^7
     "@types/shelljs": ^0
     "@typescript-eslint/eslint-plugin": ^5.38.1
     "@typescript-eslint/parser": ^5.38.1
@@ -33952,6 +33965,7 @@ __metadata:
     mocha: 10.0
     mocha-junit-reporter: ^2.1.0
     mocha-steps: ^1.3.0
+    nodemailer: ^7.0.3
     patch-package: ^6.4.7
     path-parse: ^1.0.7
     prettier: ^2.7.1
@@ -34046,6 +34060,7 @@ __metadata:
     "@webex/legacy-tools": "workspace:*"
     "@webex/plugin-attachment-actions": "workspace:*"
     "@webex/plugin-authorization": "workspace:*"
+    "@webex/plugin-authorization-browser-first-party": "workspace:*"
     "@webex/plugin-device-manager": "workspace:*"
     "@webex/plugin-encryption": "workspace:*"
     "@webex/plugin-logger": "workspace:*"
