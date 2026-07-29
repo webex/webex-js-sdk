@@ -419,13 +419,13 @@ describe('MediaProperties', () => {
     it('should send a behavioral metric with correct parameters', () => {
       const issueType = 'audio';
       const issueSubType = 'packet-loss';
-      const correlationId = 'test-correlation-id-123';
+      const metadata = {correlationId: 'test-correlation-id-123', isMultistream: false};
 
-      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, correlationId);
+      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, metadata);
 
       assert.calledOnce(sendBehavioralMetricStub);
       assert.calledWith(sendBehavioralMetricStub, BEHAVIORAL_METRICS.MEDIA_ISSUE_DETECTED, {
-        correlationId,
+        ...metadata,
         'audio_packet-loss': 1,
       });
     });
@@ -433,17 +433,17 @@ describe('MediaProperties', () => {
     it('should increment count while being throttled and reset it once metric goes out', () => {
       const issueType = 'video';
       const issueSubType = 'freeze';
-      const correlationId = 'test-correlation-id';
+      const metadata = {correlationId: 'test-correlation-id', isMultistream: true};
 
       // Call multiple times with same issue type/subtype
-      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, correlationId);
-      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, correlationId);
-      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, correlationId);
+      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, metadata);
+      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, metadata);
+      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, metadata);
 
       // First call should go through immediately, subsequent calls are throttled
       assert.calledOnce(sendBehavioralMetricStub);
       assert.calledWith(sendBehavioralMetricStub, BEHAVIORAL_METRICS.MEDIA_ISSUE_DETECTED, {
-        correlationId,
+        ...metadata,
         video_freeze: 1, // Only the first call goes through due to throttling
       });
       sendBehavioralMetricStub.resetHistory();
@@ -456,29 +456,29 @@ describe('MediaProperties', () => {
         sendBehavioralMetricStub,
         BEHAVIORAL_METRICS.MEDIA_ISSUE_DETECTED,
         {
-          correlationId,
+          ...metadata,
           video_freeze: 2,
         }
       );
     });
 
     it('should track different issue types separately in counters', () => {
-      const correlationId = 'test-correlation-id';
+      const metadata = {correlationId: 'test-correlation-id', isMultistream: false};
 
       // Send different issue types
-      mediaProperties.sendMediaIssueMetric('audio', 'packet-loss', correlationId);
-      mediaProperties.sendMediaIssueMetric('video', 'freeze', correlationId);
-      mediaProperties.sendMediaIssueMetric('audio', 'packet-loss', correlationId);
-      mediaProperties.sendMediaIssueMetric('audio', 'packet-loss', correlationId);
-      mediaProperties.sendMediaIssueMetric('audio', 'packet-loss', correlationId);
-      mediaProperties.sendMediaIssueMetric('video', 'freeze', correlationId);
+      mediaProperties.sendMediaIssueMetric('audio', 'packet-loss', metadata);
+      mediaProperties.sendMediaIssueMetric('video', 'freeze', metadata);
+      mediaProperties.sendMediaIssueMetric('audio', 'packet-loss', metadata);
+      mediaProperties.sendMediaIssueMetric('audio', 'packet-loss', metadata);
+      mediaProperties.sendMediaIssueMetric('audio', 'packet-loss', metadata);
+      mediaProperties.sendMediaIssueMetric('video', 'freeze', metadata);
 
       // First call should go through immediately, subsequent calls are throttled
       assert.calledOnceWithExactly(
         sendBehavioralMetricStub,
         BEHAVIORAL_METRICS.MEDIA_ISSUE_DETECTED,
         {
-          correlationId,
+          ...metadata,
           'audio_packet-loss': 1,
         }
       );
@@ -495,7 +495,7 @@ describe('MediaProperties', () => {
         sendBehavioralMetricStub,
         BEHAVIORAL_METRICS.MEDIA_ISSUE_DETECTED,
         {
-          correlationId,
+          ...metadata,
           video_freeze: 2,
           'audio_packet-loss': 3,
         }
@@ -505,18 +505,18 @@ describe('MediaProperties', () => {
     it('should flush throttled metrics when unsetPeerConnection is called', () => {
       const issueType = 'share';
       const issueSubType = 'connection-lost';
-      const correlationId = 'test-correlation-id';
+      const metadata = {correlationId: 'test-correlation-id', isMultistream: true};
 
       // Send metrics multiple times
-      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, correlationId);
-      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, correlationId);
+      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, metadata);
+      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, metadata);
 
       // First call should go through immediately
       assert.calledOnceWithExactly(
         sendBehavioralMetricStub,
         BEHAVIORAL_METRICS.MEDIA_ISSUE_DETECTED,
         {
-          correlationId,
+          ...metadata,
           'share_connection-lost': 1,
         }
       );
@@ -529,7 +529,7 @@ describe('MediaProperties', () => {
         sendBehavioralMetricStub,
         BEHAVIORAL_METRICS.MEDIA_ISSUE_DETECTED,
         {
-          correlationId,
+          ...metadata,
           'share_connection-lost': 1,
         }
       );
