@@ -1,8 +1,12 @@
 import {assert} from '@webex/test-helper-chai';
-import {NewMetrics, CallDiagnosticLatencies} from '@webex/internal-plugin-metrics';
+import {
+  NewMetrics,
+  CallDiagnosticLatencies,
+  AutomatedUserUtils,
+  Utils,
+} from '@webex/internal-plugin-metrics';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import {Utils} from '@webex/internal-plugin-metrics';
 
 describe('internal-plugin-metrics', () => {
 
@@ -109,6 +113,13 @@ describe('internal-plugin-metrics', () => {
       webex.internal.newMetrics.isReadyToSubmitBusinessEvents();
       assert.isDefined(webex.internal.newMetrics.businessMetrics);
     })
+
+    it('returns the automated user classification', () => {
+      assert.strictEqual(
+        webex.internal.newMetrics.isAutomatedUser(),
+        AutomatedUserUtils.isAutomatedUser()
+      );
+    });
 
     it('passes the table through to the business metrics', () => {
       assert.isUndefined(webex.internal.newMetrics.businessMetrics)
