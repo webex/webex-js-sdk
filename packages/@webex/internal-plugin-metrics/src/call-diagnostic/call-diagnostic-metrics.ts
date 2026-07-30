@@ -6,6 +6,7 @@ import uuid from 'uuid';
 import {merge} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
 import {getOSNameInternal} from '../metrics';
+import * as AutomatedUserUtils from '../automated-user';
 
 import {
   anonymizeIPAddress,
@@ -1067,8 +1068,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       // @ts-ignore
       webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
       isVipMeeting: meeting?.meetingInfo?.vipmeeting || false,
-      isAutomatedUser:
-        typeof window !== 'undefined' && typeof navigator !== 'undefined' && !!navigator?.webdriver, // if webdriver is true, it's most likely in a test environment
+      isAutomatedUser: AutomatedUserUtils.isAutomatedUser(),
       userActivation: this.getUserActivation(),
     };
 
@@ -1192,8 +1192,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       telemetryOptOut: this.getTelemetryOptOut(),
       // @ts-ignore
       webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
-      isAutomatedUser:
-        typeof window !== 'undefined' && typeof navigator !== 'undefined' && !!navigator?.webdriver, // if webdriver is true, it's most likely in a test environment
+      isAutomatedUser: AutomatedUserUtils.isAutomatedUser(),
       userActivation: this.getUserActivation(),
     };
 
