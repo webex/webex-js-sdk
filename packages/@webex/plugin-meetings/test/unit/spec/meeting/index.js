@@ -6221,7 +6221,10 @@ describe('plugin-meetings', () => {
                 meeting.mediaProperties.sendMediaIssueMetric,
                 'inbound_audio',
                 fakeEventData.issueSubType,
-                meeting.correlationId
+                {
+                  correlationId: meeting.correlationId,
+                  isMultistream: meeting.isMultistream,
+                }
               );
             });
           });

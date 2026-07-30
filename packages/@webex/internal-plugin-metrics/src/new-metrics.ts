@@ -30,6 +30,7 @@ import {
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 import {setMetricTimings} from './call-diagnostic/call-diagnostic-metrics.util';
 import {generateCommonErrorMetadata} from './utils';
+import {isAutomatedUser as detectAutomatedUser} from './automated-user';
 
 /**
  * Metrics plugin to centralize all types of metrics.
@@ -180,6 +181,13 @@ class Metrics extends WebexPlugin {
     this.lazyBuildBusinessMetrics();
 
     return this.businessMetrics?.isReadyToSubmitEvents() ?? false;
+  }
+
+  /**
+   * @returns whether the current user agent belongs to an automated user
+   */
+  isAutomatedUser() {
+    return detectAutomatedUser();
   }
 
   /**
