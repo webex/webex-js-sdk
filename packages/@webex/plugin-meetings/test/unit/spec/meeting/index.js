@@ -4274,6 +4274,7 @@ describe('plugin-meetings', () => {
             unpublishStream: sinon.stub(),
             setNamedMediaGroups: sinon.stub(),
           });
+          sinon.spy(meeting.sendSlotManager, 'reset');
 
           await meeting.addMedia({
             allowMediaInLobby: true,
@@ -4286,6 +4287,7 @@ describe('plugin-meetings', () => {
             },
           });
 
+          assert.calledOnce(meeting.sendSlotManager.reset);
           assert.notCalled(publishStreamStub);
         });
 
@@ -4309,6 +4311,7 @@ describe('plugin-meetings', () => {
             }
             return videoSlot;
           });
+          sinon.spy(meeting.sendSlotManager, 'reset');
 
           await meeting.addMedia({
             allowMediaInLobby: true,
@@ -4321,6 +4324,7 @@ describe('plugin-meetings', () => {
             },
           });
 
+          assert.calledOnce(meeting.sendSlotManager.reset);
           assert.calledOnceWithExactly(audioSlot.publishStream, fakeMicrophoneStream);
           assert.calledOnceWithExactly(videoSlot.publishStream, fakeCameraStream);
         });
@@ -4343,11 +4347,13 @@ describe('plugin-meetings', () => {
 
           meeting.meetingState = 'ACTIVE';
           meeting.isMultistream = true;
+          sinon.spy(meeting.sendSlotManager, 'reset');
 
           await meeting.addMedia({
             mediaSettings: {},
           });
 
+          assert.calledOnce(meeting.sendSlotManager.reset);
           // check that rtcMetrics was passed to Media.createMediaConnection
           assert.calledOnce(Media.createMediaConnection);
           assert.calledWith(
