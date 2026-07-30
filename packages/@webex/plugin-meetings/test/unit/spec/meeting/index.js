@@ -12755,6 +12755,7 @@ describe('plugin-meetings', () => {
                   state,
                   modifiedBy,
                   lastModified,
+                  readOnly: undefined,
                   modifiedByServiceAppName: undefined,
                   modifiedByServiceAppId: undefined,
                 }
@@ -12764,6 +12765,7 @@ describe('plugin-meetings', () => {
                 state: expectedRecordingState,
                 modifiedBy,
                 lastModified,
+                readOnly: undefined,
                 modifiedByServiceAppName: undefined,
                 modifiedByServiceAppId: undefined,
               });
@@ -12779,9 +12781,10 @@ describe('plugin-meetings', () => {
           }
         );
 
-        it('listens to CONTROLS_RECORDING_UPDATED and includes modifiedByServiceAppName and modifiedByServiceAppId when present', async () => {
+        it('listens to CONTROLS_RECORDING_UPDATED and includes readOnly and service app fields when present', async () => {
           const modifiedBy = 'user-id-123';
           const lastModified = '2026-01-01T00:00:00Z';
+          const readOnly = true;
           const modifiedByServiceAppName = 'My Bot';
           const modifiedByServiceAppId = 'app-id-123';
 
@@ -12792,6 +12795,7 @@ describe('plugin-meetings', () => {
               state: RECORDING_STATE.RECORDING,
               modifiedBy,
               lastModified,
+              readOnly,
               modifiedByServiceAppName,
               modifiedByServiceAppId,
             }
@@ -12801,6 +12805,7 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.RECORDING,
             modifiedBy,
             lastModified,
+            readOnly,
             modifiedByServiceAppName,
             modifiedByServiceAppId,
           });

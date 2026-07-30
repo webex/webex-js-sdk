@@ -6,7 +6,10 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import {webexTrackingIdSequenceNumbers} from '@webex/webex-core';
 import testUtils from '../../../utils/testUtils';
 import Meetings from '@webex/plugin-meetings';
-import LocusInfo, {createLocusFromHashTreeMessage, findMeetingForHashTreeMessage} from '@webex/plugin-meetings/src/locus-info';
+import LocusInfo, {
+  createLocusFromHashTreeMessage,
+  findMeetingForHashTreeMessage,
+} from '@webex/plugin-meetings/src/locus-info';
 import SelfUtils from '@webex/plugin-meetings/src/locus-info/selfUtils';
 import InfoUtils from '@webex/plugin-meetings/src/locus-info/infoUtils';
 import EmbeddedAppsUtils from '@webex/plugin-meetings/src/locus-info/embeddedAppsUtils';
@@ -396,7 +399,8 @@ describe('plugin-meetings', () => {
             },
           });
 
-          locusInfoUpdateCallback = HashTreeParserStub.firstCall.args[0].callbacks.locusInfoUpdateCallback;
+          locusInfoUpdateCallback =
+            HashTreeParserStub.firstCall.args[0].callbacks.locusInfoUpdateCallback;
 
           assert.isDefined(locusInfoUpdateCallback);
 
@@ -497,7 +501,8 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [{htMeta: {elementId: {type: 'self'}}, data: newSelf}],
           });
 
@@ -524,7 +529,8 @@ describe('plugin-meetings', () => {
           locusInfo.info.isWebinar = true;
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [{htMeta: {elementId: {type: 'self'}}, data: newSelf}],
           });
 
@@ -557,7 +563,8 @@ describe('plugin-meetings', () => {
           locusInfo.info.isWebinar = true;
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [{htMeta: {elementId: {type: 'self'}}, data: newSelf}],
           });
 
@@ -585,7 +592,8 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [{htMeta: {elementId: {type: 'fullState'}}, data: newFullState}],
           });
 
@@ -603,7 +611,8 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [{htMeta: {elementId: {type: 'info'}}, data: newInfo}],
           });
 
@@ -621,7 +630,8 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [{htMeta: {elementId: {type: 'links'}}, data: newLinks}],
           });
 
@@ -641,7 +651,8 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [{htMeta: newLocusHtMeta, data: newLocus}],
           });
 
@@ -674,7 +685,8 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {
                 htMeta: newLocusHtMeta,
@@ -721,7 +733,8 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [
               // first, a removal of LOCUS object
               {htMeta: {elementId: {type: 'locus'}}, data: null},
@@ -755,7 +768,8 @@ describe('plugin-meetings', () => {
           const newLocusHtMeta = {elementId: {type: 'locus', version: 99}};
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [
               // first, an update
               {htMeta: newLocusHtMeta, data: newLocus},
@@ -784,7 +798,8 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [
               // first, an update
               {htMeta: {elementId: {type: 'locus'}}, data: newLocus1},
@@ -814,7 +829,8 @@ describe('plugin-meetings', () => {
           };
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
           // with 1 participant added, 1 updated, and 1 removed
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {htMeta: {elementId: {type: 'participant', id: 'fake-ht-participant-1'}}, data: null},
               {
@@ -858,7 +874,8 @@ describe('plugin-meetings', () => {
           };
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
           // with 1 participant added, 1 updated, and 1 removed
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {htMeta: {elementId: {type: 'mediashare', id: 'fake-ht-mediaShare-1'}}, data: null},
               {
@@ -891,7 +908,8 @@ describe('plugin-meetings', () => {
           };
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
           // with 1 embedded app added, 1 updated, and 1 removed
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {htMeta: {elementId: {type: 'embeddedapp', id: 'fake-ht-embeddedApp-1'}}, data: null},
               {
@@ -928,7 +946,8 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {
                 htMeta: {elementId: {type: 'mediashare', id: 'fake-ht-mediaShare-2'}},
@@ -967,7 +986,8 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {
                 htMeta: {elementId: {type: 'controlentry', id: 'control-1'}},
@@ -995,7 +1015,8 @@ describe('plugin-meetings', () => {
 
         it('should process locus update correctly when CONTROL object is received with no data', () => {
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {
                 htMeta: {elementId: {type: 'controlentry', id: 'some-control-id'}},
@@ -1048,12 +1069,17 @@ describe('plugin-meetings', () => {
 
           locusInfoUpdateCallback({updateType: LOCUS_NOT_FOUND});
 
-          assert.calledOnceWithExactly(syncMeetingsStub, {keepOnlyLocusMeetings: false, skipHashTreeSync: true});
+          assert.calledOnceWithExactly(syncMeetingsStub, {
+            keepOnlyLocusMeetings: false,
+            skipHashTreeSync: true,
+          });
         });
 
         it('should handle LOCUS_NOT_FOUND and log error if syncMeetings fails', async () => {
           const syncError = new Error('sync failed');
-          const syncMeetingsStub = sinon.stub(locusInfo.webex.meetings, 'syncMeetings').rejects(syncError);
+          const syncMeetingsStub = sinon
+            .stub(locusInfo.webex.meetings, 'syncMeetings')
+            .rejects(syncError);
           const logErrorStub = LoggerProxy.logger.error?.isSinonProxy
             ? LoggerProxy.logger.error
             : sinon.stub(LoggerProxy.logger, 'error');
@@ -1062,23 +1088,24 @@ describe('plugin-meetings', () => {
 
           locusInfoUpdateCallback({updateType: LOCUS_NOT_FOUND});
 
-          assert.calledOnceWithExactly(syncMeetingsStub, {keepOnlyLocusMeetings: false, skipHashTreeSync: true});
+          assert.calledOnceWithExactly(syncMeetingsStub, {
+            keepOnlyLocusMeetings: false,
+            skipHashTreeSync: true,
+          });
 
           // wait for the promise rejection to be handled
           await testUtils.flushPromises();
 
           assert.calledOnce(logErrorStub);
-          assert.match(
-            logErrorStub.firstCall.args[0],
-            /syncMeetings failed after LOCUS_NOT_FOUND/
-          );
+          assert.match(logErrorStub.firstCall.args[0], /syncMeetings failed after LOCUS_NOT_FOUND/);
         });
 
         it('should set forceReplaceMembers to true on the first update for a locusUrl (initializedFromHashTree is false)', () => {
           const createdHashTreeParser = locusInfo.hashTreeParsers.get('fake-locus-url');
           createdHashTreeParser.initializedFromHashTree = false;
 
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {
                 htMeta: {elementId: {type: 'self'}},
@@ -1093,7 +1120,8 @@ describe('plugin-meetings', () => {
         });
 
         it('should set forceReplaceMembers to false on subsequent updates (initializedFromHashTree is true)', () => {
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {
                 htMeta: {elementId: {type: 'self'}},
@@ -1109,7 +1137,8 @@ describe('plugin-meetings', () => {
         it('should copy participant data to self when participant matches self identity and state is LEFT with reason MOVED', () => {
           locusInfo.self = {id: 'fake-self', identity: 'user-123'};
 
-          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
+          locusInfoUpdateCallback({
+            updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {
                 htMeta: {elementId: {type: 'participant', id: 99}},
@@ -1404,6 +1433,7 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.IDLE,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            readOnly: undefined,
             modifiedByServiceAppName: undefined,
             modifiedByServiceAppId: undefined,
           }
@@ -1440,6 +1470,7 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.RECORDING,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            readOnly: undefined,
             modifiedByServiceAppName: undefined,
             modifiedByServiceAppId: undefined,
           }
@@ -1477,6 +1508,7 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.PAUSED,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            readOnly: undefined,
             modifiedByServiceAppName: undefined,
             modifiedByServiceAppId: undefined,
           }
@@ -1515,6 +1547,7 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.RESUMED,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            readOnly: undefined,
             modifiedByServiceAppName: undefined,
             modifiedByServiceAppId: undefined,
           }
@@ -1552,13 +1585,14 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.IDLE,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            readOnly: undefined,
             modifiedByServiceAppName: undefined,
             modifiedByServiceAppId: undefined,
           }
         );
       });
 
-      it('should include service app fields in the recording event when present', () => {
+      it('should include readOnly and service app fields in the recording event when present', () => {
         locusInfo.controls = {
           record: {
             recording: false,
@@ -1572,6 +1606,7 @@ describe('plugin-meetings', () => {
           transcribe: {},
         };
         newControls.record.recording = true;
+        newControls.record.meta.readOnly = true;
         newControls.record.meta.modifiedByServiceAppName = 'My Bot';
         newControls.record.meta.modifiedByServiceAppId = 'app-id-123';
         locusInfo.emitScoped = sinon.stub();
@@ -1588,6 +1623,7 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.RECORDING,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            readOnly: true,
             modifiedByServiceAppName: 'My Bot',
             modifiedByServiceAppId: 'app-id-123',
           }
@@ -3279,15 +3315,13 @@ describe('plugin-meetings', () => {
       let HashTreeParserStub;
 
       beforeEach(() => {
-        HashTreeParserStub = sinon
-          .stub(HashTreeParserModule, 'default')
-          .returns({
-            initializeFromMessage: sinon.stub().resolves(),
-            initializeFromGetLociResponse: sinon.stub().resolves(),
-            state: 'active',
-            stop: sinon.stub(),
-            handleMessage: sinon.stub(),
-          });
+        HashTreeParserStub = sinon.stub(HashTreeParserModule, 'default').returns({
+          initializeFromMessage: sinon.stub().resolves(),
+          initializeFromGetLociResponse: sinon.stub().resolves(),
+          state: 'active',
+          stop: sinon.stub(),
+          handleMessage: sinon.stub(),
+        });
       });
 
       const setupParserViaInitialSetup = async (locusUrl = 'http://locus-url-A.com') => {
@@ -3332,7 +3366,14 @@ describe('plugin-meetings', () => {
             {
               htMeta: {elementId: {type: 'Self'}},
               data: {
-                devices: [{url: 'http://device-url.com', replaces: [{locusUrl: 'http://locus-url-A.com', replacedAt: '2026-01-01T00:00:00Z'}]}],
+                devices: [
+                  {
+                    url: 'http://device-url.com',
+                    replaces: [
+                      {locusUrl: 'http://locus-url-A.com', replacedAt: '2026-01-01T00:00:00Z'},
+                    ],
+                  },
+                ],
               },
             },
           ],
@@ -3344,7 +3385,10 @@ describe('plugin-meetings', () => {
           stateElementsMessage: message,
         });
 
-        assert.equal(locusInfo.hashTreeParsers.get('http://locus-url-A.com').replacedAt, '2026-01-01T00:00:00Z');
+        assert.equal(
+          locusInfo.hashTreeParsers.get('http://locus-url-A.com').replacedAt,
+          '2026-01-01T00:00:00Z'
+        );
       });
 
       it('should not set replacedAt on existing entries when replacedAt is not provided', async () => {
@@ -3418,7 +3462,10 @@ describe('plugin-meetings', () => {
 
       it('should create a new parser when no entry exists for locusUrl and metadata has visibleDataSets', () => {
         // set up an existing parser for a different url
-        locusInfo.hashTreeParsers.set(locusUrlA, {parser: createMockParser(), initializedFromHashTree: true});
+        locusInfo.hashTreeParsers.set(locusUrlA, {
+          parser: createMockParser(),
+          initializedFromHashTree: true,
+        });
 
         const message = {
           locusUrl: locusUrlB,
@@ -3435,7 +3482,10 @@ describe('plugin-meetings', () => {
       });
 
       it('should return true when no entry exists even if no metadata is available', () => {
-        locusInfo.hashTreeParsers.set(locusUrlA, {parser: createMockParser(), initializedFromHashTree: true});
+        locusInfo.hashTreeParsers.set(locusUrlA, {
+          parser: createMockParser(),
+          initializedFromHashTree: true,
+        });
         const parserA = locusInfo.hashTreeParsers.get(locusUrlA).parser;
 
         const message = {
@@ -3458,7 +3508,11 @@ describe('plugin-meetings', () => {
       it('should resume a stopped parser when replaces info is newer', () => {
         const parserA = createMockParser('stopped');
         const parserB = createMockParser('active');
-        locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, replacedAt: '2026-01-01T00:00:00Z', initializedFromHashTree: true});
+        locusInfo.hashTreeParsers.set(locusUrlA, {
+          parser: parserA,
+          replacedAt: '2026-01-01T00:00:00Z',
+          initializedFromHashTree: true,
+        });
         locusInfo.hashTreeParsers.set(locusUrlB, {parser: parserB, initializedFromHashTree: true});
 
         const message = {
@@ -3482,14 +3536,16 @@ describe('plugin-meetings', () => {
       it('should not resume a stopped parser when replaces info is not newer', () => {
         const parserA = createMockParser('stopped');
         const parserB = createMockParser('active');
-        locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, replacedAt: '2026-03-01T00:00:00Z', initializedFromHashTree: true});
+        locusInfo.hashTreeParsers.set(locusUrlA, {
+          parser: parserA,
+          replacedAt: '2026-03-01T00:00:00Z',
+          initializedFromHashTree: true,
+        });
         locusInfo.hashTreeParsers.set(locusUrlB, {parser: parserB, initializedFromHashTree: true});
 
         const message = {
           locusUrl: locusUrlA,
-          locusStateElements: [
-            createSelfElementWithReplaces(locusUrlB, '2026-01-01T00:00:00Z'),
-          ],
+          locusStateElements: [createSelfElementWithReplaces(locusUrlB, '2026-01-01T00:00:00Z')],
           dataSets: [{name: 'dataset1', url: 'test-url'}],
         };
 
@@ -3540,7 +3596,10 @@ describe('plugin-meetings', () => {
       });
 
       it('should pass replacedAt from replaces to createHashTreeParser when creating a new parser', () => {
-        locusInfo.hashTreeParsers.set(locusUrlA, {parser: createMockParser(), initializedFromHashTree: true});
+        locusInfo.hashTreeParsers.set(locusUrlA, {
+          parser: createMockParser(),
+          initializedFromHashTree: true,
+        });
 
         const message = {
           locusUrl: locusUrlB,
@@ -3565,7 +3624,12 @@ describe('plugin-meetings', () => {
       it('should call handleHashTreeParserSwitch and not call handleMessage if parser was switched', () => {
         const locusUrlA = 'http://locus-url-A.com';
         const locusUrlB = 'http://locus-url-B.com';
-        const parserA = {state: 'stopped', handleMessage: sinon.stub(), resume: sinon.stub(), stop: sinon.stub()};
+        const parserA = {
+          state: 'stopped',
+          handleMessage: sinon.stub(),
+          resume: sinon.stub(),
+          stop: sinon.stub(),
+        };
         locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, initializedFromHashTree: true});
 
         // message for a stopped parser without replaces -> handleHashTreeParserSwitch returns true
@@ -3757,7 +3821,10 @@ describe('plugin-meetings', () => {
 
         it('should create a new parser and initialize it when no entry exists for the locusUrl', () => {
           // existing parser for a different url so hashTreeParsers.size > 0
-          locusInfo.hashTreeParsers.set(locusUrlA, {parser: createMockApiParser(), initializedFromHashTree: true});
+          locusInfo.hashTreeParsers.set(locusUrlA, {
+            parser: createMockApiParser(),
+            initializedFromHashTree: true,
+          });
 
           const locus = createLocusWithReplaces(locusUrlB, locusUrlA, '2026-01-01T00:00:00Z');
           sinon.stub(locusInfo, 'handleLocusDelta');
@@ -3777,8 +3844,15 @@ describe('plugin-meetings', () => {
         it('should reactivate a stopped parser when replaces info is newer', () => {
           const parserA = createMockApiParser('stopped');
           const parserB = createMockApiParser('active');
-          locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, replacedAt: '2026-01-01T00:00:00Z', initializedFromHashTree: true});
-          locusInfo.hashTreeParsers.set(locusUrlB, {parser: parserB, initializedFromHashTree: true});
+          locusInfo.hashTreeParsers.set(locusUrlA, {
+            parser: parserA,
+            replacedAt: '2026-01-01T00:00:00Z',
+            initializedFromHashTree: true,
+          });
+          locusInfo.hashTreeParsers.set(locusUrlB, {
+            parser: parserB,
+            initializedFromHashTree: true,
+          });
 
           const locus = createLocusWithReplaces(locusUrlA, locusUrlB, '2026-02-01T00:00:00Z');
 
@@ -3794,8 +3868,15 @@ describe('plugin-meetings', () => {
         it('should not reactivate a stopped parser when replaces info is not newer', () => {
           const parserA = createMockApiParser('stopped');
           const parserB = createMockApiParser('active');
-          locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, replacedAt: '2026-03-01T00:00:00Z', initializedFromHashTree: true});
-          locusInfo.hashTreeParsers.set(locusUrlB, {parser: parserB, initializedFromHashTree: true});
+          locusInfo.hashTreeParsers.set(locusUrlA, {
+            parser: parserA,
+            replacedAt: '2026-03-01T00:00:00Z',
+            initializedFromHashTree: true,
+          });
+          locusInfo.hashTreeParsers.set(locusUrlB, {
+            parser: parserB,
+            initializedFromHashTree: true,
+          });
 
           const locus = createLocusWithReplaces(locusUrlA, locusUrlB, '2026-01-01T00:00:00Z');
 
@@ -3807,7 +3888,10 @@ describe('plugin-meetings', () => {
 
         it('should not reactivate a stopped parser when no replaces info is available', () => {
           const parserA = createMockApiParser('stopped');
-          locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, initializedFromHashTree: true});
+          locusInfo.hashTreeParsers.set(locusUrlA, {
+            parser: parserA,
+            initializedFromHashTree: true,
+          });
 
           const locus = createLocusWithoutReplaces(locusUrlA);
 
@@ -3855,19 +3939,23 @@ describe('plugin-meetings', () => {
 
       it('should await each parsers syncAllDatasets sequentially', async () => {
         const callOrder = [];
-        const parser1 = {syncAllDatasets: sinon.stub().callsFake(() => {
-          callOrder.push('start1');
-          return new Promise((resolve) => {
-            setTimeout(() => {
-              callOrder.push('end1');
-              resolve();
-            }, 100);
-          });
-        })};
-        const parser2 = {syncAllDatasets: sinon.stub().callsFake(() => {
-          callOrder.push('start2');
-          return Promise.resolve();
-        })};
+        const parser1 = {
+          syncAllDatasets: sinon.stub().callsFake(() => {
+            callOrder.push('start1');
+            return new Promise((resolve) => {
+              setTimeout(() => {
+                callOrder.push('end1');
+                resolve();
+              }, 100);
+            });
+          }),
+        };
+        const parser2 = {
+          syncAllDatasets: sinon.stub().callsFake(() => {
+            callOrder.push('start2');
+            return Promise.resolve();
+          }),
+        };
         locusInfo.hashTreeParsers.set('url1', {parser: parser1});
         locusInfo.hashTreeParsers.set('url2', {parser: parser2});
 
@@ -4592,7 +4680,11 @@ describe('plugin-meetings', () => {
         {forceReplaceMembers: false, selfInParticipants: false, expectedSelfCopied: false},
         {forceReplaceMembers: false, selfInParticipants: true, expectedSelfCopied: false},
       ].forEach(({forceReplaceMembers, selfInParticipants, expectedSelfCopied}) => {
-        it(`should ${expectedSelfCopied ? '' : 'not '}copy self into participants when forceReplaceMembers=${forceReplaceMembers} and self ${selfInParticipants ? 'is' : 'is not'} in participants`, () => {
+        it(`should ${
+          expectedSelfCopied ? '' : 'not '
+        }copy self into participants when forceReplaceMembers=${forceReplaceMembers} and self ${
+          selfInParticipants ? 'is' : 'is not'
+        } in participants`, () => {
           const self = {identity: 'selfId', state: 'JOINED', devices: [], status: {}};
           const participant = {identity: selfInParticipants ? 'selfId' : 'other'};
           const locus = {
@@ -5037,7 +5129,7 @@ describe('plugin-meetings', () => {
           },
           self: {
             removed: true,
-          }
+          },
         };
 
         locusInfo.isMeetingActive();
@@ -5067,7 +5159,7 @@ describe('plugin-meetings', () => {
             },
             self: {
               removed: true,
-            }
+            },
           };
 
           locusInfo.isMeetingActive();
@@ -5110,18 +5202,33 @@ describe('plugin-meetings', () => {
         });
 
         [
-          {reason: 'CALL_INACTIVE', setup: () => {
-            locusInfo.parsedLocus = {fullState: {type: _CALL_}};
-            locusInfo.fullState = {state: LOCUS.STATE.INACTIVE};
-          }},
-          {reason: 'PARTNER_LEFT', setup: () => {
-            locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
-            locusInfo.parsedLocus = {fullState: {type: _CALL_}, self: {state: MEETING_STATE.STATES.JOINED}};
-          }},
-          {reason: 'SELF_LEFT', setup: () => {
-            locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
-            locusInfo.parsedLocus = {fullState: {type: _CALL_}, self: {state: MEETING_STATE.STATES.LEFT}};
-          }},
+          {
+            reason: 'CALL_INACTIVE',
+            setup: () => {
+              locusInfo.parsedLocus = {fullState: {type: _CALL_}};
+              locusInfo.fullState = {state: LOCUS.STATE.INACTIVE};
+            },
+          },
+          {
+            reason: 'PARTNER_LEFT',
+            setup: () => {
+              locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
+              locusInfo.parsedLocus = {
+                fullState: {type: _CALL_},
+                self: {state: MEETING_STATE.STATES.JOINED},
+              };
+            },
+          },
+          {
+            reason: 'SELF_LEFT',
+            setup: () => {
+              locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
+              locusInfo.parsedLocus = {
+                fullState: {type: _CALL_},
+                self: {state: MEETING_STATE.STATES.LEFT},
+              };
+            },
+          },
         ].forEach(({reason, setup}) => {
           it(`sends joinInProgress=true in client event for ${reason} when suspended`, () => {
             locusInfo.suspendDestroyMeeting(true);

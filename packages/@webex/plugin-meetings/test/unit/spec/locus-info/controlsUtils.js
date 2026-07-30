@@ -217,41 +217,35 @@ describe('plugin-meetings', () => {
         assert.equal(parsedControls.transcribe.hesiodLlmId, newControls.transcribe.hesiodLlmId);
       });
 
-      it('should parse modifiedByServiceAppName from record meta when present', () => {
+      it('should parse readOnly and service app fields from record meta when present', () => {
         const newControls = {
           record: {
             recording: true,
             paused: false,
-            meta: {lastModified: '2026-01-01', modifiedByServiceAppName: 'My Bot'},
+            meta: {
+              lastModified: '2026-01-01',
+              readOnly: true,
+              modifiedByServiceAppName: 'My Bot',
+              modifiedByServiceAppId: 'app-id-123',
+            },
           },
         };
 
         const parsedControls = ControlsUtils.parse(newControls);
 
+        assert.equal(parsedControls.record.readOnly, true);
         assert.equal(parsedControls.record.modifiedByServiceAppName, 'My Bot');
-      });
-
-      it('should parse modifiedByServiceAppId from record meta when present', () => {
-        const newControls = {
-          record: {
-            recording: true,
-            paused: false,
-            meta: {lastModified: '2026-01-01', modifiedByServiceAppId: 'app-id-123'},
-          },
-        };
-
-        const parsedControls = ControlsUtils.parse(newControls);
-
         assert.equal(parsedControls.record.modifiedByServiceAppId, 'app-id-123');
       });
 
-      it('should return undefined for modifiedByServiceAppName and modifiedByServiceAppId when absent from record meta', () => {
+      it('should return undefined for readOnly and service app fields when absent from record meta', () => {
         const newControls = {
           record: {recording: true, paused: false, meta: {lastModified: '2026-01-01'}},
         };
 
         const parsedControls = ControlsUtils.parse(newControls);
 
+        assert.isUndefined(parsedControls.record.readOnly);
         assert.isUndefined(parsedControls.record.modifiedByServiceAppName);
         assert.isUndefined(parsedControls.record.modifiedByServiceAppId);
         // existing fields still parsed correctly
