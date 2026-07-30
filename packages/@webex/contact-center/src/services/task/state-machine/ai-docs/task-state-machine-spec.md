@@ -516,6 +516,32 @@ didCurrentAgentLeaveConference(context, event) {
   const participantId = participantIdFromEvent ?? event.taskData?.participantId;
   return Boolean(participantId) && participantId === selfAgentId;
 }
+
+// True when this agent initiated the conference transfer (widgets or desktop).
+// Mirrors determineConsultInitiator — consultingAgentId === self only (not consultState).
+isSelfConferenceTransferInitiator(context, event) {
+  if (context.transferConferenceRequested === true) return true;
+  if (context.consultInitiator === true) return true;
+
+  const taskData = event.taskData;
+  const selfAgentId = getSelfAgentId(context, taskData);
+  if (!selfAgentId || !taskData) return false;
+
+  return taskData.consultingAgentId === selfAgentId;
+}
+
+// Passive observer: another agent transferred; refresh data only.
+isPassiveConferenceTransferObserver(context, event) {
+  if (isSelfConferenceTransferInitiator(context, event)) return false;
+
+  const taskData = event.taskData;
+  const selfAgentId = getSelfAgentId(context, taskData);
+  if (selfAgentId && taskData?.interaction?.participants) {
+    if (!(selfAgentId in taskData.interaction.participants)) return false;
+    if (taskData.interaction.participants[selfAgentId]?.hasLeft === true) return false;
+  }
+  return true;
+}
 ```
 
 ```typescript
@@ -1259,12 +1285,6 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Actions: `setTransferConferenceRequested`, `emitTaskTransferConference`
 
-- `TRANSFER_CONFERENCE_SUCCESS` -> stay `CONSULTING`
-
-- Guard: inline `context.transferConferenceRequested !== true`
-
-- Actions: `updateTaskData`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`
-
 - `TRANSFER_CONFERENCE_SUCCESS` -> `WRAPPING_UP`
 
 - Guard: `guards.shouldWrapUp`
@@ -1273,7 +1293,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - `TRANSFER_CONFERENCE_SUCCESS` -> `CONFERENCING`
 
-- Guard: inline `!context.consultInitiator`
+- Guard: `!guards.isSelfConferenceTransferInitiator`
 
 - Actions: `updateTaskData`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`
 
@@ -1288,6 +1308,30 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 - Guard: none
 
 - Actions: `clearTransferConferenceRequested`
+
+- `PARTICIPANT_LEAVE` -> `WRAPPING_UP`
+
+- Guard: `guards.didCurrentAgentLeaveConference && guards.shouldWrapUp`
+
+- Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft`, `emitTaskWrapup`
+
+- `PARTICIPANT_LEAVE` -> `TERMINATED`
+
+- Guard: `guards.didCurrentAgentLeaveConference`
+
+- Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft`, `emitTaskEnd`
+
+- `PARTICIPANT_LEAVE` -> `CONNECTED`
+
+- Guard: `!guards.didCurrentAgentLeaveConference && guards.shouldDowngradeConferenceToConnected`
+
+- Actions: `updateTaskData`, `handleParticipantLeft`, `clearConsultState`, `emitTaskParticipantLeft`, `emitTaskConferenceEnded`
+
+- `PARTICIPANT_LEAVE` -> stay `CONSULTING` (default)
+
+- Guard: default
+
+- Actions: `updateTaskData`, `handleParticipantLeft`, `emitTaskParticipantLeft`
 
 - `ASSIGN` -> `CONNECTED`
 
@@ -1379,7 +1423,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - `CONSULTING --TRANSFER_CONFERENCE_SUCCESS--> CONFERENCING`
 
-- Guard: inline `!context.consultInitiator`
+- Guard: `!guards.isSelfConferenceTransferInitiator`
 
 - Actions: `updateTaskData`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`
 
@@ -1417,9 +1461,27 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - `TRANSFER_CONFERENCE_SUCCESS` -> stay `CONFERENCING`
 
-- Guard: inline `context.transferConferenceRequested !== true`
+- Guard: `guards.isPassiveConferenceTransferObserver`
 
 - Actions: `updateTaskData`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`
+
+- `TRANSFER_CONFERENCE_SUCCESS` -> `WRAPPING_UP`
+
+- Guard: `guards.shouldWrapUp`
+
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`, `emitTaskWrapup`
+
+- `TRANSFER_CONFERENCE_SUCCESS` -> `CONFERENCING`
+
+- Guard: `!guards.isSelfConferenceTransferInitiator`
+
+- Actions: `updateTaskData`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`
+
+- `TRANSFER_CONFERENCE_SUCCESS` -> `TERMINATED` (default branch)
+
+- Guard: default
+
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`, `emitTaskEnd`
 
 - `TRANSFER_CONFERENCE_FAILED` -> stay `CONFERENCING`
 
@@ -1702,7 +1764,7 @@ Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 | `PARTICIPANT_JOINED_CONFERENCE`    | `CONFERENCE_START`            | `CONSULTING` / `CONF_INITIATING` / `CONFERENCING`    | `CONFERENCING` / same                                                         | Conference participant joined     |
 | `AGENT_CONSULT_CONFERENCE_FAILED`  | `CONFERENCE_FAILED`           | `CONF_INITIATING`                                    | `CONSULTING`                                                                  | Merge fail fallback               |
 | `AGENT_CONSULT_CONFERENCE_ENDED`   | `CONFERENCE_END`              | `CONFERENCING`                                       | `WRAPPING_UP` / `CONNECTED` / `TERMINATED`                                    | Guard-driven                      |
-| `PARTICIPANT_LEFT_CONFERENCE`      | `PARTICIPANT_LEAVE`           | `CONFERENCING`                                       | `WRAPPING_UP` / `TERMINATED` / `CONNECTED` / same                             | Ownership + downgrade guards      |
+| `PARTICIPANT_LEFT_CONFERENCE`      | `PARTICIPANT_LEAVE`           | `CONSULTING` / `CONFERENCING`                        | `WRAPPING_UP` / `TERMINATED` / `CONNECTED` / same                             | Ownership + downgrade guards      |
 | `AGENT_CONFERENCE_TRANSFERRED`     | `TRANSFER_CONFERENCE_SUCCESS` | `CONSULTING` / `CONFERENCING`                        | `WRAPPING_UP` / `CONFERENCING` / `TERMINATED` / same                          | Initiator/receiver dependent      |
 
 - `AGENT_CONTACT_UNASSIGNED` -> returns `null` in mapper (`TaskManager.mapEventToTaskStateMachineEvent`)
@@ -1750,7 +1812,7 @@ Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 | API `task.consultConference()`   | `MERGE_TO_CONFERENCE`         | CONSULTING → CONF_INITIATING                               | Starts merge flow                                                                             |
 | `AgentConsultConferenced`        | `CONFERENCE_START`            | CONSULTING/CONF_INITIATING → CONFERENCING                  | `handleConferenceStarted` path                                                                |
 | `ParticipantJoinedConference`    | `CONFERENCE_START`            | CONFERENCING → CONFERENCING                                | Refresh + emit conference started                                                             |
-| `ParticipantLeftConference`      | `PARTICIPANT_LEAVE`           | CONFERENCING → WRAPPING_UP / TERMINATED / CONNECTED / stay | Uses `didCurrentAgentLeaveConference`, `shouldWrapUp`, `shouldDowngradeConferenceToConnected` |
+| `ParticipantLeftConference`      | `PARTICIPANT_LEAVE`           | CONSULTING / CONFERENCING → WRAPPING_UP / TERMINATED / CONNECTED / stay | Uses `didCurrentAgentLeaveConference`, `shouldWrapUp`, `shouldDowngradeConferenceToConnected` |
 | `AgentConsultConferenceEnded`    | `CONFERENCE_END`              | CONFERENCING → WRAPPING_UP / CONNECTED / TERMINATED        | Guard-based branch                                                                            |
 | `AgentConsultConferenceFailed`   | `CONFERENCE_FAILED`           | CONF_INITIATING → CONSULTING                               | Merge failed fallback                                                                         |
 | `AgentConferenceTransferred`     | `TRANSFER_CONFERENCE_SUCCESS` | CONSULTING/CONFERENCING branch logic                       | Initiator/receiver dependent                                                                  |
