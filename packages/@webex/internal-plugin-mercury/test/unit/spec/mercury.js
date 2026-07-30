@@ -1473,6 +1473,76 @@ describe('plugin-mercury', () => {
         });
       });
 
+      describe('#_onclose() reconnect URL derivation', () => {
+        const sessionId = 'mercury-default-session';
+        // The URL resolved and stored in _prepareAndOpenSocket (catalog-valid host).
+        const resolvedUrl = 'wss://mercury-connection.wbx2.com/v1/apps/wx2/registrations';
+        // The URL the native socket was actually opened with, after a lower
+        // layer (e.g. the same-site websocket proxy) rewrote it into a
+        // non-catalog host. Reusing this would fail host-catalog validation.
+        const proxiedUrl = 'wss://web.webex.com/webproxy/mercury-connection.wbx2.com/v1/apps/wx2';
+        let sourceSocket;
+
+        beforeEach(() => {
+          sourceSocket = {
+            url: proxiedUrl,
+            removeAllListeners: sinon.stub(),
+          };
+          mercury.socket = sourceSocket;
+          mercury.sockets.set(sessionId, sourceSocket);
+          mercury.sessionWebSocketUrls.set(sessionId, resolvedUrl);
+          mercury.connected = true;
+          sinon.stub(mercury, '_emit');
+          sinon.stub(mercury, '_reconnect');
+          sinon.stub(mercury, 'unset');
+        });
+
+        afterEach(() => {
+          mercury._emit.restore();
+          mercury._reconnect.restore();
+          mercury.unset.restore();
+          mercury.sockets.clear();
+          mercury.sessionWebSocketUrls.clear();
+        });
+
+        [1001, 1005, 1006, 1011].forEach((code) => {
+          it(`reconnects an active socket using the stored resolved URL (not the proxied socket.url) for code ${code}`, () => {
+            mercury._onclose(sessionId, {code, reason: 'transient'}, sourceSocket);
+
+            assert.calledOnceWithExactly(mercury._reconnect, resolvedUrl, sessionId);
+            assert.neverCalledWith(mercury._reconnect, proxiedUrl, sessionId);
+          });
+        });
+
+        it('reconnects using the stored resolved URL for a normal close (1000) with a reconnect reason', () => {
+          mercury._onclose(sessionId, {code: 1000, reason: 'done (forced)'}, sourceSocket);
+
+          assert.calledOnceWithExactly(mercury._reconnect, resolvedUrl, sessionId);
+        });
+
+        it('does not reconnect when a non-active (old) socket closes', () => {
+          const oldSocket = {
+            url: proxiedUrl,
+            removeAllListeners: sinon.stub(),
+          };
+
+          mercury._onclose(sessionId, {code: 1006, reason: 'transient'}, oldSocket);
+
+          assert.notCalled(mercury._reconnect);
+        });
+      });
+
+      describe('#disconnectAll()', () => {
+        it('clears sessionWebSocketUrls along with the other session state', async () => {
+          mercury.sessionWebSocketUrls.set('mercury-default-session', 'ws://example.com');
+          mercury.sessionWebSocketUrls.set('llm-session', 'ws://example-2.com');
+
+          await mercury.disconnectAll();
+
+          assert.equal(mercury.sessionWebSocketUrls.size, 0);
+        });
+      });
+
       describe('shutdown switchover with retry logic', () => {
         let connectWithBackoffStub;
         const sessionId = 'mercury-default-session';
@@ -1659,6 +1729,16 @@ describe('plugin-mercury', () => {
           const result = await mercury._prepareAndOpenSocket(mockSocket, undefined, false);
 
           assert.equal(result, 'ws://example.com');
+        });
+
+        it('stores the resolved (pre-proxy) URL under the sessionId in sessionWebSocketUrls', async () => {
+          const sessionId = 'llm-session';
+
+          await mercury._prepareAndOpenSocket(mockSocket, 'ws://original.com', sessionId);
+
+          // The stored value is the URL resolved by _prepareUrl, not the raw
+          // input, so _onclose can later reconnect from a catalog-valid host.
+          assert.equal(mercury.sessionWebSocketUrls.get(sessionId), 'ws://example.com');
         });
 
         it('should handle errors during socket open', async () => {
