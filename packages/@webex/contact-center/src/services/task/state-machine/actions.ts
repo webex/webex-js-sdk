@@ -19,13 +19,16 @@ import {
   MEDIA_TYPE_CONSULT,
 } from './constants';
 import {DestinationType, TaskData} from '../types';
+import {CC_EVENTS} from '../../config/types';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
-import {
-  getConferenceParticipantsCount,
-  getIsConferenceInProgress,
-  getIsCustomerInCall,
-} from '../TaskUtils';
+import {getIsConferenceInProgress, isEpDnConsultPendingConferenceMerge} from '../TaskUtils';
 import {hasActiveConsultInPostCall} from './guards';
+
+/** Terminal consult events that clear consult context in deriveTaskDataUpdates. */
+const CONSULT_CONTEXT_CLEAR_EVENTS = new Set<string>([
+  CC_EVENTS.AGENT_CONSULT_ENDED,
+  CC_EVENTS.AGENT_CONSULT_FAILED,
+]);
 
 const determineConsultInitiator = (
   taskData: TaskData | undefined,
@@ -103,7 +106,7 @@ const isActiveConsultState = (taskData: TaskData | undefined, selfAgentId?: stri
     }
     if (
       (selfParticipant?.consultState === CONSULT_STATE.CONSULTING ||
-        selfParticipant?.consultState === 'conferencing') &&
+        selfParticipant?.consultState === CONSULT_STATE.CONFERENCING) &&
       hasConsultMedia &&
       taskData?.isConsulted === false
     ) {
@@ -130,75 +133,7 @@ const isSelfConsultingOrPending = (
 
   return (
     selfParticipant?.consultState === CONSULT_STATE.CONSULTING ||
-    selfParticipant?.consultState === 'conferencing' ||
-    selfParticipant?.consultState === 'consultInitiated'
-  );
-};
-
-const isEpDnParticipantType = (pType: string | undefined): boolean => {
-  const normalized = String(pType ?? '').toUpperCase();
-
-  return normalized === 'EP-DN' || normalized === 'EP_DN' || normalized === 'DN';
-};
-
-/** EP-DN consult merged to conference before a second agent joins the main leg (CAI-8329). */
-const isEpDnConsultPendingConferenceMerge = (
-  taskData: TaskData | undefined,
-  selfAgentId: string | undefined
-): boolean => {
-  if (!taskData?.interaction || !selfAgentId) return false;
-
-  if (taskData.type === 'AgentConsultEnded' || taskData.type === 'AgentConsultConferenceEnded') {
-    return false;
-  }
-
-  const interaction = taskData.interaction;
-  const mainCallId = interaction.mainInteractionId || taskData.interactionId;
-  if (!mainCallId) return false;
-
-  if (getConferenceParticipantsCount(interaction, mainCallId) > 1) return false;
-
-  const selfParticipant = interaction.participants?.[selfAgentId] as
-    | {consultState?: string}
-    | undefined;
-  if (taskData.isConsulted === true || selfParticipant?.consultState === 'consultCompleted') {
-    return false;
-  }
-
-  const mainParticipantIds = new Set(interaction.media?.[mainCallId]?.participants ?? []);
-  const hasEpDnOnConsultLegNotMain = Object.values(interaction.media ?? {}).some((media: any) => {
-    if (media?.mType !== MEDIA_TYPE_CONSULT) return false;
-
-    return (media.participants ?? []).some((participantId: string) => {
-      if (participantId === selfAgentId || mainParticipantIds.has(participantId)) return false;
-      const participant = interaction.participants?.[participantId] as
-        | {hasLeft?: boolean; pType?: string}
-        | undefined;
-      if (!participant || participant.hasLeft) return false;
-
-      return isEpDnParticipantType(participant.pType);
-    });
-  });
-  if (!hasEpDnOnConsultLegNotMain) return false;
-
-  const callProcessingDetails = interaction.callProcessingDetails as
-    | {hasCustomerLeft?: string}
-    | undefined;
-  const customerLeft =
-    callProcessingDetails?.hasCustomerLeft === 'true' ||
-    !getIsCustomerInCall(interaction, mainCallId);
-
-  const conferenceFromPayload =
-    interaction.state === INTERACTION_STATE.CONFERENCE ||
-    getIsConferenceInProgress(taskData) ||
-    (interaction.state === INTERACTION_STATE.POST_CALL && customerLeft);
-  if (!conferenceFromPayload) return false;
-
-  return (
-    taskData.consultingAgentId === selfAgentId ||
-    interaction.owner === selfAgentId ||
-    selfParticipant?.consultState === CONSULT_STATE.CONSULTING ||
-    selfParticipant?.consultState === 'conferencing' ||
+    selfParticipant?.consultState === CONSULT_STATE.CONFERENCING ||
     selfParticipant?.consultState === 'consultInitiated'
   );
 };
@@ -359,8 +294,7 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
         }
 
         const isConsultTerminalEvent =
-          enrichedTaskData.type === 'AgentConsultEnded' ||
-          enrichedTaskData.type === 'AgentConsultFailed';
+          enrichedTaskData.type != null && CONSULT_CONTEXT_CLEAR_EVENTS.has(enrichedTaskData.type);
         const epDnPendingMergeActive = isEpDnConsultPendingConferenceMerge(
           enrichedTaskData,
           selfAgentId

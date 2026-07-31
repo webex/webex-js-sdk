@@ -102,6 +102,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'markEnded', 'emitTaskHydrate'],
             },
             {
+              guard: guards.isEpDnPendingConferenceMergeHydrate,
+              target: TaskState.CONFERENCING,
+              actions: ['updateTaskData', 'emitTaskHydrate'],
+            },
+            {
               guard: guards.isInteractionConsulting,
               target: TaskState.CONSULTING,
               actions: ['updateTaskData', 'emitTaskHydrate'],
@@ -298,6 +303,9 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.HOLD_SUCCESS]: {
             target: TaskState.HELD,
             actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
+          },
+          [TaskEvent.UNHOLD_INITIATED]: {
+            target: TaskState.RESUME_INITIATING,
           },
           // Resume while machine is CONNECTED but main media is still on hold (stale state after consult RONA/decline).
           [TaskEvent.UNHOLD_SUCCESS]: {

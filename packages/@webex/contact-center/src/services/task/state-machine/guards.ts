@@ -27,6 +27,7 @@ import {
   getConferenceParticipantsCount,
   getIsConferenceInProgress,
   isCampaignPreviewTask,
+  isEpDnConsultPendingConferenceMerge,
 } from '../TaskUtils';
 import {TaskEvent, INTERACTION_STATE, CONSULT_STATE, MEDIA_TYPE_CONSULT} from './constants';
 
@@ -169,6 +170,12 @@ export const guards = {
     }
 
     return false;
+  },
+
+  isEpDnPendingConferenceMergeHydrate: ({event, context}: GuardParams): boolean => {
+    const taskData = getTaskDataFromEvent(event);
+
+    return isEpDnConsultPendingConferenceMerge(taskData, getSelfAgentId(context, taskData));
   },
 
   isInteractionHeld: ({event}: GuardParams): boolean => {
@@ -394,7 +401,6 @@ export const guards = {
    */
   isSelfConferenceTransferInitiator: ({context, event}: GuardParams): boolean => {
     if (context.transferConferenceRequested === true) return true;
-    if (context.consultInitiator === true) return true;
 
     const taskData = getTaskDataFromEvent(event);
     const selfAgentId = getSelfAgentId(context, taskData);

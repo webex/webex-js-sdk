@@ -386,7 +386,7 @@ function computeVoiceInteractionUIControls(
     };
   }
 
-  if (isConsultRequestedPhase) {
+  if (isConsultRequestedPhase && !isEpDnPendingConferenceMergeUi) {
     if (currentLeg === 'main') {
       return {
         ...getDefaultInteractionUIControls(),
@@ -869,7 +869,12 @@ function getVoiceLegState(
   if (currentState === TaskState.CONFERENCING) {
     mainState = TaskState.CONFERENCING;
   } else if (context.consultCallHeld) {
-    mainState = TaskState.CONNECTED;
+    const mainMediaId = taskData?.interaction?.mainInteractionId || taskData?.interactionId;
+    const isMainHeld = Boolean(
+      mainMediaId && taskData?.interaction?.media?.[mainMediaId]?.isHold === true
+    );
+    mainState =
+      isMainHeld || taskData?.interaction?.state === 'hold' ? TaskState.HELD : TaskState.CONNECTED;
   } else if (currentState === TaskState.CONNECTED || currentState === TaskState.HELD) {
     mainState = currentState;
   }
