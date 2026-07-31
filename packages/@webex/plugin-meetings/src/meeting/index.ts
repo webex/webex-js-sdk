@@ -7543,14 +7543,21 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore
         const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
 
-        // Save the remote-sdp-received timestamp before submitting the client event so we can
-        // calculate and include localSDPGenRemoteSDPRecv in the client event payload
-        cdl.saveTimestamp({
-          key: 'client.media-engine.remote-sdp-received',
-          options: {meetingId: this.id},
-        });
-
-        const localSDPGenRemoteSDPRecv = cdl.getLocalSDPGenRemoteSDPRecv();
+        // Compute the offer->answer latency from when the local SDP offer was generated up to now,
+        // rather than from the stored remote-sdp-received timestamp. That stored timestamp uses
+        // saveFirstTimestampOnly, so if waitForRemoteSDPAnswer() already timed out and submitted a
+        // remote-sdp-received event, the stored value would be pinned to the timeout time and would
+        // under-report an answer that arrives late. This handler fires exactly when the answer is
+        // processed, so Date.now() is the accurate "received" time.
+        // (submitClientEvent below still records the remote-sdp-received timestamp used by the CA
+        // join-time metric, so we don't need to save it here.)
+        const localSdpGeneratedTimestamp = cdl.latencyTimestamps.get(
+          'client.media-engine.local-sdp-generated'
+        );
+        const localSDPGenRemoteSDPRecv =
+          localSdpGeneratedTimestamp !== undefined
+            ? Date.now() - localSdpGeneratedTimestamp
+            : undefined;
 
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
@@ -7561,11 +7568,6 @@ export default class Meeting extends StatelessWebexPlugin {
             },
           },
           options: {meetingId: this.id},
-        });
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_OFFER_TO_ANSWER_LATENCY, {
-          correlation_id: this.correlationId,
-          latency: localSDPGenRemoteSDPRecv,
-          meetingId: this.id,
         });
 
         if (this.deferSDPAnswer) {
