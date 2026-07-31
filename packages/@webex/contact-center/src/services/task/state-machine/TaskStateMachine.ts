@@ -102,6 +102,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'markEnded', 'emitTaskHydrate'],
             },
             {
+              guard: guards.isEpDnPendingConferenceMergeHydrate,
+              target: TaskState.CONFERENCING,
+              actions: ['updateTaskData', 'emitTaskHydrate'],
+            },
+            {
               guard: guards.isInteractionConsulting,
               target: TaskState.CONSULTING,
               actions: ['updateTaskData', 'emitTaskHydrate'],
@@ -298,6 +303,14 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.HOLD_SUCCESS]: {
             target: TaskState.HELD,
             actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
+          },
+          [TaskEvent.UNHOLD_INITIATED]: {
+            target: TaskState.RESUME_INITIATING,
+          },
+          // Resume while machine is CONNECTED but main media is still on hold (stale state after consult RONA/decline).
+          [TaskEvent.UNHOLD_SUCCESS]: {
+            target: TaskState.CONNECTED,
+            actions: ['updateTaskData', 'setHoldState', 'emitTaskResume'],
           },
           // Click of the consult button
           [TaskEvent.CONSULT]: {
@@ -691,6 +704,48 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: ['updateTaskData', 'setHoldState', 'emitTaskResume'],
           },
 
+          [TaskEvent.PARTICIPANT_LEAVE]: [
+            {
+              guard: (params) =>
+                guards.didCurrentAgentLeaveConference(params) && guards.shouldWrapUp(params),
+              target: TaskState.WRAPPING_UP,
+              actions: [
+                'updateTaskData',
+                'handleParticipantLeft',
+                'markEnded',
+                'clearConsultState',
+                'emitTaskParticipantLeft',
+                'emitTaskWrapup',
+              ],
+            },
+            {
+              guard: guards.didCurrentAgentLeaveConference,
+              target: TaskState.TERMINATED,
+              actions: [
+                'updateTaskData',
+                'handleParticipantLeft',
+                'markEnded',
+                'clearConsultState',
+                'emitTaskParticipantLeft',
+                'emitTaskEnd',
+              ],
+            },
+            {
+              guard: (params) =>
+                !guards.didCurrentAgentLeaveConference(params) &&
+                guards.shouldDowngradeConferenceToConnected(params),
+              target: TaskState.CONNECTED,
+              actions: [
+                'updateTaskData',
+                'handleParticipantLeft',
+                'clearConsultState',
+                'emitTaskParticipantLeft',
+                'emitTaskConferenceEnded',
+              ],
+            },
+            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
+          ],
+
           [TaskEvent.TRANSFER_SUCCESS]: [
             {
               guard: guards.shouldWrapUpOrIsInitiator,
@@ -712,14 +767,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           [TaskEvent.TRANSFER_CONFERENCE_SUCCESS]: [
             {
-              guard: ({context}) => context.transferConferenceRequested !== true,
-              actions: [
-                'updateTaskData',
-                'handleTransferConferenceSuccess',
-                'clearTransferConferenceRequested',
-              ],
-            },
-            {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
               actions: [
@@ -732,8 +779,8 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               ],
             },
             {
-              // Non-initiator (consulted agent) stays in CONFERENCING
-              guard: ({context}) => !context.consultInitiator,
+              // Non-initiator (e.g. consultee receiving transfer) moves to CONFERENCING
+              guard: (params) => !guards.isSelfConferenceTransferInitiator(params),
               target: TaskState.CONFERENCING,
               actions: [
                 'updateTaskData',
@@ -977,12 +1024,44 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           [TaskEvent.TRANSFER_CONFERENCE_SUCCESS]: [
             {
-              // Not initiated by this agent → just refresh backend state.
-              guard: ({context}) => context.transferConferenceRequested !== true,
+              guard: guards.isPassiveConferenceTransferObserver,
               actions: [
                 'updateTaskData',
                 'handleTransferConferenceSuccess',
                 'clearTransferConferenceRequested',
+              ],
+            },
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: [
+                'updateTaskData',
+                'markEnded',
+                'clearConsultState',
+                'handleTransferConferenceSuccess',
+                'clearTransferConferenceRequested',
+                'emitTaskWrapup',
+              ],
+            },
+            {
+              guard: (params) => !guards.isSelfConferenceTransferInitiator(params),
+              target: TaskState.CONFERENCING,
+              actions: [
+                'updateTaskData',
+                'clearConsultState',
+                'handleTransferConferenceSuccess',
+                'clearTransferConferenceRequested',
+              ],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: [
+                'updateTaskData',
+                'markEnded',
+                'clearConsultState',
+                'handleTransferConferenceSuccess',
+                'clearTransferConferenceRequested',
+                'emitTaskEnd',
               ],
             },
           ],
@@ -1026,6 +1105,16 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'requestCleanup'],
             },
           ],
+
+          [TaskEvent.CONSULT_FAILED]: {
+            actions: ['updateTaskData', 'handleConsultFailed'],
+          },
+
+          [TaskEvent.TASK_WRAPUP]: {
+            guard: guards.shouldWrapUp,
+            target: TaskState.WRAPPING_UP,
+            actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+          },
         },
       },
 
