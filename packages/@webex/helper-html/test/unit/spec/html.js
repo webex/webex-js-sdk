@@ -175,6 +175,26 @@ skipInNode(describe)('html', () => {
         '<p>Click here<img src="http://example.com/img">bar for something with <a href="http://www.cisco.com/">MOREof myMOJO</a></p>',
     },
     {
+      it: 'filters javascript: from a href obfuscated with a tab character',
+      input: '<p><a href="java\tscript:alert(1)">click here</a></p>',
+      output: '<p>click here</p>',
+    },
+    {
+      it: 'filters javascript: from a href obfuscated with a newline character',
+      input: '<p><a href="java\nscript:alert(1)">click here</a></p>',
+      output: '<p>click here</p>',
+    },
+    {
+      it: 'filters data: from a href',
+      input: '<p><a href="data:text/html,<script>alert(1)</script>">click here</a></p>',
+      output: '<p>click here</p>',
+    },
+    {
+      it: 'filters data: from img src',
+      input: '<p><img src="data:text/html,<script>alert(1)</script>">foo</img></p>',
+      output: '<p>foo</p>',
+    },
+    {
       it: 'handles weirder nesting',
       input:
         '<p>text</p><div><p>text0</p><div style="font-size: large;"><span>text1</span><span>text2</span><script></script></div></div>',
@@ -267,6 +287,21 @@ skipInNode(describe)('html', () => {
       it: 'esapes special characters',
       input: '<b>&<</b>',
       output: '<b>&amp;&lt;</b>',
+    },
+    {
+      it: 'filters javascript: from a href obfuscated with a tab character',
+      input: '<p><a href="java\tscript:alert(1)">click here</a></p>',
+      output: '<p>click here</p>',
+    },
+    {
+      it: 'filters javascript: from a href with leading whitespace',
+      input: '<p><a href=" javascript:alert(1)">click here</a></p>',
+      output: '<p>click here</p>',
+    },
+    {
+      it: 'filters data: from a href',
+      input: '<p><a href="data:text/html,<script>alert(1)</script>">click here</a></p>',
+      output: '<p>click here</p>',
     },
   ].forEach((def) => {
     describe('#filterEscape()', () => {

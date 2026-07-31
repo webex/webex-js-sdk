@@ -113,12 +113,9 @@ function _filterSync(processCallback, allowedTags, allowedStyles, html) {
         if (!includes(allowedAttributes, attrName)) {
           node.removeAttribute(attrName);
         } else if (attrName === 'href' || attrName === 'src') {
-          const attrValue = node.attributes.getNamedItem(attrName).value.trim().toLowerCase();
+          const attrValue = node.attributes.getNamedItem(attrName).value;
 
-          // We're doing at runtime what the no-script-url rule does at compile
-          // time
-          // eslint-disable-next-line no-script-url
-          if (attrValue.indexOf('javascript:') === 0 || attrValue.indexOf('vbscript:') === 0) {
+          if (!isAllowedUrlAttribute(attrValue)) {
             reparent(node);
           }
         } else if (attrName === 'style') {
@@ -210,12 +207,9 @@ function _filterEscapeSync(processCallback, allowedTags, allowedStyles, html) {
         if (!includes(allowedAttributes, attrName)) {
           node.removeAttribute(attrName);
         } else if (attrName === 'href' || attrName === 'src') {
-          const attrValue = node.attributes.getNamedItem(attrName).value.toLowerCase();
+          const attrValue = node.attributes.getNamedItem(attrName).value;
 
-          // We're doing at runtime what the no-script-url rule does at compile
-          // time
-          // eslint-disable-next-line no-script-url
-          if (attrValue.indexOf('javascript:') === 0 || attrValue.indexOf('vbscript:') === 0) {
+          if (!isAllowedUrlAttribute(attrValue)) {
             reparent(node);
           }
         } else if (attrName === 'style') {
@@ -262,6 +256,53 @@ function escapeNode(node) {
 }
 
 const trimPattern = /^\s|\s$/g;
+
+const ALLOWED_URL_SCHEMES = new Set(['http', 'https', 'mailto', 'tel', 'sip', 'webexteams']);
+
+/**
+ * Removes ASCII control characters and whitespace (U+0000 through U+0020).
+ * @param {string} value
+ * @returns {string}
+ */
+function stripControlCharsAndWhitespace(value) {
+  let result = '';
+
+  for (let i = 0; i < value.length; i += 1) {
+    if (value.charCodeAt(i) > 0x20) {
+      result += value[i];
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Returns true when href/src is safe to keep after stripping control characters
+ * and validating the URL scheme against an allow-list.
+ * @param {string} value
+ * @returns {boolean}
+ */
+function isAllowedUrlAttribute(value) {
+  if (!value) {
+    return false;
+  }
+
+  const normalized = stripControlCharsAndWhitespace(value).toLowerCase();
+
+  if (/^[/?#]/.test(normalized)) {
+    return true;
+  }
+
+  const colonIndex = normalized.indexOf(':');
+
+  if (colonIndex === -1) {
+    return true;
+  }
+
+  const scheme = normalized.slice(0, colonIndex);
+
+  return ALLOWED_URL_SCHEMES.has(scheme);
+}
 
 /**
  * @param {string} str
