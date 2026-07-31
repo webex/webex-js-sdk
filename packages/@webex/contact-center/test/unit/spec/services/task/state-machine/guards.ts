@@ -336,10 +336,18 @@ describe('State Machine Guards', () => {
     });
 
     it('returns false when this agent initiated the consult transfer', () => {
+      const ctx = createContext({transferConferenceRequested: false, consultInitiator: false});
+      const taskData = createTaskData({consultingAgentId: 'agent-123'});
+      expect(
+        guards.isPassiveConferenceTransferObserver(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
+    });
+
+    it('returns true when only stale consultInitiator is set without consultingAgentId evidence', () => {
       const ctx = createContext({transferConferenceRequested: false, consultInitiator: true});
       expect(
         guards.isPassiveConferenceTransferObserver(createParams(ctx, createEventWithTaskData()))
-      ).toBe(false);
+      ).toBe(true);
     });
 
     it('returns false when self is absent from participants snapshot', () => {
