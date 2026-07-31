@@ -1272,14 +1272,16 @@ describe('plugin-meetings', () => {
         });
 
         it('creates noise reduction effect with BNR model', async () => {
-          const result = await webex.meetings.createNoiseReductionEffect({audioContext: {}});
+          const result = await webex.meetings.createNoiseReductionEffect({
+            audioContext: {addEventListener: sinon.stub()},
+          });
 
           assert.exists(result);
           assert.instanceOf(result, NoiseReductionEffect);
           assert.containsAllKeys(result, ['audioContext', 'isEnabled', 'isReady', 'options']);
           assert.equal(result.options.authToken, 'fake_token');
           assert.deepEqual(result.options, {
-            audioContext: {},
+            audioContext: {addEventListener: result.options.audioContext.addEventListener},
             authToken: 'fake_token',
             mode: 'WORKLET',
             avoidSimd: false,
@@ -1292,7 +1294,7 @@ describe('plugin-meetings', () => {
 
         it('creates noise reduction effect with OFMV model', async () => {
           const result = await webex.meetings.createNoiseReductionEffect({
-            audioContext: {},
+            audioContext: {addEventListener: sinon.stub()},
             model: 'ofmv',
           });
 
@@ -1301,7 +1303,7 @@ describe('plugin-meetings', () => {
           assert.containsAllKeys(result, ['audioContext', 'isEnabled', 'isReady', 'options']);
           assert.equal(result.options.authToken, 'fake_token');
           assert.deepEqual(result.options, {
-            audioContext: {},
+            audioContext: {addEventListener: result.options.audioContext.addEventListener},
             authToken: 'fake_token',
             mode: 'WORKLET',
             avoidSimd: false,
@@ -1314,7 +1316,7 @@ describe('plugin-meetings', () => {
 
         it('passes custom options to noise reduction effect', async () => {
           const result = await webex.meetings.createNoiseReductionEffect({
-            audioContext: {},
+            audioContext: {addEventListener: sinon.stub()},
             mode: 'LEGACY',
             env: 'int',
             avoidSimd: true,
