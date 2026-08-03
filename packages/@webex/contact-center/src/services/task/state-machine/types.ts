@@ -61,6 +61,8 @@ export interface TaskContext {
   consultDestinationAgentId: string | null;
   consultDestinationAgentJoined: boolean;
   consultCallHeld: boolean;
+  /** Set by deriveTaskDataUpdates / clearConsultState when EP-DN consult is merged to conference before Agent 2 joins (CAI-8329). */
+  hideBlindTransferForEpDnPendingMerge: boolean;
 
   // Recording
   recordingControlsAvailable: boolean;
