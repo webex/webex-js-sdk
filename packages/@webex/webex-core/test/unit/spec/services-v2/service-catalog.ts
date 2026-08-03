@@ -101,7 +101,7 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach(() => {
-        domains.push('example-a', 'example-b', 'example-c');
+        domains.push('webex.com', 'webexgov.us', 'webex.umi.ai');
 
         catalog.setAllowedDomains(domains);
       });
@@ -110,10 +110,32 @@ describe('webex-core', () => {
         domains.length = 0;
       });
 
-      it('finds an allowed domain that matches a specific url', () => {
-        const domain = catalog.findAllowedDomain('http://example-a.com/resource/id');
-
-        assert.include(domains, domain);
+      [
+        // matches on label boundaries
+        ['https://webex.com/resource/id', 'webex.com'],
+        ['https://api.webex.com/resource/id', 'webex.com'],
+        ['https://a.b.webexgov.us/resource/id', 'webexgov.us'],
+        // an explicit port must not defeat the match
+        ['https://localhost.webex.umi.ai:8000/resource/id', 'webex.umi.ai'],
+        ['https://webex.com:8443/resource/id', 'webex.com'],
+        // hostnames are case insensitive
+        ['https://API.Webex.COM/resource/id', 'webex.com'],
+        // partial labels must not match
+        ['https://notwebex.com/resource/id', undefined],
+        ['https://mywebexgov.us/resource/id', undefined],
+        // the allowed domain must not appear as a prefix or middle label
+        ['https://webex.com.attacker.net/resource/id', undefined],
+        ['https://attacker.net/webex.com/resource/id', undefined],
+        ['https://attacker.net/?next=https://webex.com', undefined],
+        // userinfo must not be treated as the host
+        ['https://webex.com@attacker.net/resource/id', undefined],
+        // unparseable urls
+        ['', undefined],
+        ['not a url', undefined],
+      ].forEach(([url, expected]) => {
+        it(`returns ${expected} for ${url || '<empty>'}`, () => {
+          assert.equal(catalog.findAllowedDomain(url), expected);
+        });
       });
     });
 
