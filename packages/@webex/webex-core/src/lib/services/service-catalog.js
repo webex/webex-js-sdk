@@ -4,6 +4,7 @@ import AmpState from 'ampersand-state';
 
 import {union} from 'lodash';
 import ServiceUrl from './service-url';
+import {matchAllowedDomain} from '../domains';
 
 /* eslint-disable no-underscore-dangle */
 /**
@@ -268,19 +269,14 @@ const ServiceCatalog = AmpState.extend({
   },
 
   /**
-   * Finds an allowed domain that matches a specific url.
+   * Finds an allowed domain that matches a specific url. The url's hostname
+   * must be the allowed domain itself or a subdomain of it.
    *
    * @param {string} url - The url to match the allowed domains against.
    * @returns {string} - The matching allowed domain.
    */
   findAllowedDomain(url) {
-    const urlObj = Url.parse(url);
-
-    if (!urlObj.host) {
-      return undefined;
-    }
-
-    return this.allowedDomains.find((allowedDomain) => urlObj.host.includes(allowedDomain));
+    return matchAllowedDomain(url, this.allowedDomains);
   },
 
   /**

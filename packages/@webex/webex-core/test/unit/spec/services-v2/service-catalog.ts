@@ -101,7 +101,8 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach(() => {
-        domains.push('example-a', 'example-b', 'example-c');
+        // callers may add an unset entry, which must match nothing
+        domains.push('webex.com', 'webexgov.us', 'webex.umi.ai', '');
 
         catalog.setAllowedDomains(domains);
       });
@@ -110,10 +111,42 @@ describe('webex-core', () => {
         domains.length = 0;
       });
 
-      it('finds an allowed domain that matches a specific url', () => {
-        const domain = catalog.findAllowedDomain('http://example-a.com/resource/id');
-
-        assert.include(domains, domain);
+      [
+        // the domain itself and its subdomains match
+        ['https://webex.com/resource/id', 'webex.com'],
+        ['https://api.webex.com/resource/id', 'webex.com'],
+        ['https://a.b.webexgov.us/resource/id', 'webexgov.us'],
+        // an explicit port must not defeat the match
+        ['https://localhost.webex.umi.ai:8000/resource/id', 'webex.umi.ai'],
+        ['https://webex.com:8443/resource/id', 'webex.com'],
+        // hostname comparison is case insensitive
+        ['https://API.Webex.COM/resource/id', 'webex.com'],
+        // a partial label must not match
+        ['https://notwebex.com/resource/id', undefined],
+        ['https://mywebexgov.us/resource/id', undefined],
+        // the domain matches only as a suffix, on a label boundary
+        ['https://webex.com.unrelated.example/resource/id', undefined],
+        ['https://unrelated.example/webex.com/resource/id', undefined],
+        ['https://unrelated.example/?next=https://webex.com', undefined],
+        // userinfo is not the host
+        ['https://webex.com@unrelated.example/resource/id', undefined],
+        // an encoded or unusual separator is not a label boundary, and the url
+        // parsers used by the transports do not agree on where these end the
+        // host, so they must not resolve to an allowed domain
+        ['https://webex.com%2eunrelated.example/resource/id', undefined],
+        ['https://webex.com%2Eunrelated.example/resource/id', undefined],
+        ['https://unrelated.example%2ewebex.com/resource/id', undefined],
+        ['https://unrelated.example%2Ewebex.com/resource/id', undefined],
+        ['https://unrelated.example;.webex.com/resource/id', undefined],
+        // an empty allowed domain entry matches nothing
+        ['https://unrelated.example/resource/id', undefined],
+        // unparseable urls
+        ['', undefined],
+        ['not a url', undefined],
+      ].forEach(([url, expected]) => {
+        it(`returns ${expected} for ${url || '<empty>'}`, () => {
+          assert.equal(catalog.findAllowedDomain(url), expected);
+        });
       });
     });
 
