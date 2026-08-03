@@ -6,6 +6,7 @@ import {
   SDK_INIT_TIMEOUT,
   ServiceIndicator,
 } from '../constants';
+import {isMobiusWsMode} from '../test-data';
 import {registerLine, verifyLineRegistered} from './registration';
 
 type DiscoveryLocation = {
@@ -41,6 +42,10 @@ export const initializeCallingSDK = async (page: Page, accessToken: string): Pro
     throw new Error('Access token is required to initialize Calling SDK');
   }
 
+  if (isMobiusWsMode()) {
+    await setMobiusWebSocket(page, true);
+  }
+
   // Fill in the access token
   await page
     .locator(CALLING_SELECTORS.ACCESS_TOKEN_INPUT)
@@ -69,8 +74,13 @@ export const verifySDKInitialized = async (page: Page): Promise<void> => {
     timeout: SDK_INIT_TIMEOUT,
   });
 
-  const hasCallingClient = await page.evaluate(() => !!(window as any).callingClient);
-  expect(hasCallingClient).toBe(true);
+  await expect
+    .poll(() => page.evaluate(() => !!(window as any).callingClient), {
+      timeout: SDK_INIT_TIMEOUT,
+      intervals: [500],
+      message: 'Expected window.callingClient to be available after SDK initialization',
+    })
+    .toBe(true);
 
   // TODO: Based on the config passed during initialization, verify which clients are active.
   // Different configs can instantiate CallingClient, CallHistoryClient, Voicemail, etc.
@@ -111,6 +121,50 @@ export const setServiceIndicator = async (page: Page, service: ServiceIndicator)
   await page
     .locator(CALLING_SELECTORS.SERVICE_INDICATOR)
     .selectOption(service, {timeout: AWAIT_TIMEOUT});
+};
+
+/**
+ * Force the calling sample app to enable or disable Mobius WebSocket transport.
+ * Must be called before SDK initialization.
+ */
+export const setMobiusWebSocket = async (page: Page, enabled: boolean): Promise<void> => {
+  const value = enabled ? 'true' : 'false';
+
+  await page.locator(CALLING_SELECTORS.MOBIUS_WSS).selectOption(value, {timeout: AWAIT_TIMEOUT});
+
+  await page.evaluate((selectedValue) => {
+    localStorage.setItem('mobius-wss-enabled', selectedValue);
+  }, value);
+
+  await expect(page.locator(CALLING_SELECTORS.MOBIUS_WSS)).toHaveValue(value, {
+    timeout: AWAIT_TIMEOUT,
+  });
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('mobius-wss-enabled')), {
+      message: 'Expected Mobius WebSocket sample override to be persisted',
+      timeout: AWAIT_TIMEOUT,
+      intervals: [500],
+    })
+    .toBe(value);
+};
+
+/**
+ * Verify that the initialized CallingClient is using Mobius WebSocket transport.
+ */
+export const verifyMobiusWebSocketEnabled = async (page: Page): Promise<void> => {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () => (window as any).callingClient?.apiRequest?.isSocketEnabled?.() === true
+        ),
+      {
+        message: 'Expected Mobius WebSocket transport to be enabled',
+        timeout: SDK_INIT_TIMEOUT,
+        intervals: [1000],
+      }
+    )
+    .toBe(true);
 };
 
 /**
@@ -178,17 +232,19 @@ export const captureMobiusDiscoveryResponse = (page: Page): Promise<MobiusDiscov
 export const verifyMobiusServersDiscovered = async (page: Page): Promise<void> => {
   const mobiusServers = await page.evaluate(() => {
     const client = (window as any).callingClient;
+    const useWss = client?.apiRequest?.isSocketEnabled?.() === true;
 
     return {
-      primary: client?.primaryMobiusUris ?? [],
-      backup: client?.backupMobiusUris ?? [],
+      primary: useWss ? client?.primaryWssMobiusUris ?? [] : client?.primaryMobiusUris ?? [],
+      backup: useWss ? client?.backupWssMobiusUris ?? [] : client?.backupMobiusUris ?? [],
+      protocol: useWss ? 'wss://' : '/calling/web/',
     };
   });
 
   expect(mobiusServers.primary.length + mobiusServers.backup.length).toBeGreaterThan(0);
   expect(
     [...mobiusServers.primary, ...mobiusServers.backup].every((uri: string) =>
-      uri.includes('/calling/web/')
+      uri.includes(mobiusServers.protocol)
     )
   ).toBe(true);
 };

@@ -6,7 +6,12 @@ import {
 } from '@webex/internal-plugin-metrics/src/metrics.types';
 import * as Agent from './services/agent/types';
 import * as Contact from './services/task/types';
-import {Profile} from './services/config/types';
+import {
+  AIFeatureFlags,
+  Profile,
+  CreateUserPreferenceRequest,
+  UpdateUserPreferenceRequest,
+} from './services/config/types';
 import {PaginatedResponse, BaseSearchParams} from './utils/PageCache';
 
 /**
@@ -156,6 +161,8 @@ export interface CCPluginConfig {
   };
   /** Configuration for the calling client */
   callingClientConfig: CallingClientConfig;
+  /** Whether to skip Mobius/WebRTC registration for browser login flows */
+  disableWebRTCRegistration?: boolean;
 }
 
 /**
@@ -542,7 +549,9 @@ export type RequestBody =
   | Contact.cancelCtq
   | Contact.WrapupPayLoad
   | Contact.DialerPayload
-  | Contact.PreviewContactPayload;
+  | Contact.PreviewContactPayload
+  | CreateUserPreferenceRequest
+  | UpdateUserPreferenceRequest;
 
 /**
  * Represents the options to fetch buddy agents for the logged in agent.
@@ -568,6 +577,25 @@ export type BuddyAgents = {
 };
 
 /**
+ * Holds the configuration flags for the Agent.
+ * These flags determine the availability of certain features in the Agent UI.
+ * @internal
+ */
+export type ConfigFlags = {
+  isEndTaskEnabled: boolean;
+  isEndConsultEnabled: boolean;
+  webRtcEnabled: boolean;
+  autoWrapup: boolean;
+  aiFeature?: AIFeatureFlags;
+  /**
+   * Optional toggle to globally enable/disable recording controls.
+   * Falls back to backend hints when omitted.
+   */
+  isRecordingEnabled?: boolean;
+};
+
+/**
+
  * Generic error structure for Contact Center SDK errors.
  * Contains detailed information about the error context.
  * @public
@@ -821,38 +849,174 @@ export type BuddyAgentsResponse = Agent.BuddyAgentsSuccess | Error;
  */
 export type UpdateDeviceTypeResponse = Agent.DeviceTypeUpdateSuccess | Error;
 
+/**
+ * Supported transcript control actions for AI Assistant events.
+ * @public
+ * @example
+ * const action: TranscriptAction = 'START';
+ * @ignore
+ */
 export type TranscriptAction = 'START' | 'STOP';
 
+/**
+ * Parameters used to request AI Assistant real-time assistance.
+ * @public
+ * @example
+ * const params: RealTimeAssistanceParams = {
+ *   interactionId: 'interaction-123',
+ *   context: 'Need help with credit card payment due date',
+ * };
+ */
+export type RealTimeAssistanceParams = {
+  /** Agent identifier */
+  agentId: string;
+  /** Interaction identifier for which assistance should be generated */
+  interactionId: string;
+  /** Optional additional context that should refine the assistance */
+  context?: string;
+  /** Optional language code for assistance (for example, 'en'). Defaults to 'en'. */
+  languageCode?: string;
+};
+
+/**
+ * Supported user actions on an AI Assistant real-time assistance adaptive card.
+ * @public
+ */
+export const RealTimeAssistanceUserActionId = {
+  /** User liked the real-time assistance response */
+  LIKE: 'likeButton',
+  /** User disliked the real-time assistance response */
+  DISLIKE: 'dislikeButton',
+  /** User copied the real-time assistance response */
+  COPY: 'copyButton',
+} as const;
+
+/**
+ * Union type of supported real-time assistance user actions.
+ * @public
+ */
+export type RealTimeAssistanceUserActionId = Enum<typeof RealTimeAssistanceUserActionId>;
+
+/**
+ * Parameters used to send user action feedback for a real-time assistance adaptive card.
+ * @public
+ * @example
+ * const params: RealTimeAssistanceUserActionParams = {
+ *   agentId: 'agent-123',
+ *   interactionId: 'interaction-123',
+ *   adaptiveCardId: 'adaptive-card-123',
+ *   actionId: RealTimeAssistanceUserActionId.LIKE,
+ * };
+ */
+export type RealTimeAssistanceUserActionParams = {
+  /** Agent identifier */
+  agentId: string;
+  /** Interaction identifier associated with the real-time assistance response */
+  interactionId: string;
+  /** Adaptive card identifier from the real-time assistance payload */
+  adaptiveCardId: string;
+  /** User action performed on the adaptive card */
+  actionId: RealTimeAssistanceUserActionId;
+  /** Optional language code. Defaults to 'en'. */
+  languageCode?: string;
+};
+
+/**
+ * Supported AI Assistant event categories.
+ * @public
+ * @example
+ * const eventType: AIAssistantEventType = AIAssistantEventType.CUSTOM_EVENT;
+ * @ignore
+ */
 export const AIAssistantEventType = {
+  /** Custom AI Assistant event */
   CUSTOM_EVENT: 'CUSTOM_EVENT',
+  /** CTI-backed AI Assistant event */
   CTI_EVENT: 'CTI_EVENT',
 } as const;
 
+/**
+ * Union type of AI Assistant event categories.
+ * @public
+ * @example
+ * function send(type: AIAssistantEventType) { ... }
+ * @ignore
+ */
 export type AIAssistantEventType = Enum<typeof AIAssistantEventType>;
 
+/**
+ * Supported AI Assistant event names.
+ * @public
+ * @example
+ * const name: AIAssistantEventName = AIAssistantEventName.GET_TRANSCRIPTS;
+ * @ignore
+ */
 export const AIAssistantEventName = {
+  /** Request transcript streaming for an interaction */
   GET_TRANSCRIPTS: 'GET_TRANSCRIPTS',
+  /** Request a suggested response for an interaction */
+  GET_SUGGESTIONS: 'GET_SUGGESTIONS',
+  /** Add extra context to refine a suggested response */
+  ADD_SUGGESTIONS_EXTRA_CONTEXT: 'ADD_SUGGESTIONS_EXTRA_CONTEXT',
+  /** Request mid-call summary generation */
   GET_MID_CALL_SUMMARY: 'GET_MID_CALL_SUMMARY',
+  /** Request post-call summary generation */
   GET_POST_CALL_SUMMARY: 'GET_POST_CALL_SUMMARY',
+  /** Mid-call summary response event */
   MID_CALL_SUMMARY_RESPONSE: 'MID_CALL_SUMMARY_RESPONSE',
+  /** Post-call summary response event */
   POST_CALL_SUMMARY_RESPONSE: 'POST_CALL_SUMMARY_RESPONSE',
+  /** Suggested digital response event */
   SUGGESTED_RESPONSES_DIGITAL: 'SUGGESTED_RESPONSES_DIGITAL',
+  /** User action on a suggested response adaptive card */
+  SUGGESTED_RESPONSES_USER_ACTION: 'SUGGESTED_RESPONSES_USER_ACTION',
 } as const;
 
+/**
+ * Union type of AI Assistant event names.
+ * @public
+ * @example
+ * function handle(name: AIAssistantEventName) { ... }
+ * @ignore
+ */
 export type AIAssistantEventName = Enum<typeof AIAssistantEventName>;
 
+/**
+ * A single transcript message entry returned by AI Assistant APIs.
+ * @public
+ * @example
+ * const message: TranscriptMessage = { role: 'AGENT', content: 'Hello', messageId: '1', publishTimestamp: Date.now() };
+ *
+ */
 export type TranscriptMessage = {
+  /** Speaker role for this message */
   role: string;
+  /** Transcript chunk content */
   content: string;
+  /** Unique message identifier */
   messageId: string;
+  /** Message publish timestamp (epoch milliseconds) */
   publishTimestamp: number;
 };
 
+/**
+ * Response payload for historic transcripts API.
+ * @public
+ * @example
+ * const resp: HistoricTranscriptsResponse = { orgId: 'org', agentId: 'agent', conversationId: null, interactionId: 'int', source: 'AI', data: [] };
+ *
+ */
 export type HistoricTranscriptsResponse = {
+  /** Organization identifier */
   orgId: string;
+  /** Agent identifier */
   agentId: string;
+  /** Conversation identifier when available */
   conversationId: string | null;
+  /** Interaction identifier */
   interactionId: string;
+  /** Data source identifier */
   source: string;
+  /** Transcript messages */
   data: TranscriptMessage[];
 };

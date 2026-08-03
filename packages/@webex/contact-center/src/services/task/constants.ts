@@ -52,6 +52,10 @@ export const PRESERVED_TASK_DATA_FIELDS = {
  */
 export const KEYS_TO_NOT_DELETE: string[] = Object.values(PRESERVED_TASK_DATA_FIELDS);
 
+/**
+ * Consultation status constants derived from state machine
+ * These values are computed and available in task.data.consultStatus
+ */
 // METHOD NAMES
 export const METHODS = {
   // Task class methods
@@ -85,6 +89,7 @@ export const METHODS = {
   GET_TASK_MANAGER: 'getTaskManager',
   SETUP_AUTO_WRAPUP_TIMER: 'setupAutoWrapupTimer',
   CANCEL_AUTO_WRAPUP_TIMER: 'cancelAutoWrapupTimer',
+  REQUEST_REAL_TIME_TRANSCRIPTS: 'requestRealTimeTranscripts',
 };
 
 export const TRANSCRIPT_EVENT_MAP = {

@@ -1,5 +1,7 @@
 # Contacts Module
 
+> Canonical SDD target: [`src/Contacts/ai-docs/contacts-spec.md`](contacts-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## AI Agent Routing Instructions
 
 **If you are an AI assistant or automated tool:**

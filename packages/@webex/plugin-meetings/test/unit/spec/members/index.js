@@ -303,6 +303,67 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#transferHostToMember', () => {
+      it('should reject if no locus url is set and no breakoutLocusUrl is provided', async () => {
+        const members = createMembers({url: false});
+
+        await assert.isRejected(members.transferHostToMember('bob'));
+      });
+
+      it('should reject if no memberId is provided', async () => {
+        const members = createMembers({url: url1});
+
+        await assert.isRejected(members.transferHostToMember());
+      });
+
+      it('uses the main locus url when no breakoutLocusUrl is provided', async () => {
+        sandbox.spy(MembersUtil, 'generateTransferHostMemberOptions');
+
+        const members = createMembers({url: url1});
+        const {membersRequest} = members;
+        sandbox.spy(membersRequest, 'transferHostToMember');
+
+        await members.transferHostToMember('bob', true);
+
+        assert.calledOnceWithExactly(
+          MembersUtil.generateTransferHostMemberOptions,
+          'bob',
+          true,
+          url1
+        );
+        assert.calledOnceWithExactly(membersRequest.transferHostToMember, {
+          memberId: 'bob',
+          moderator: true,
+          locusUrl: url1,
+        });
+      });
+
+      it('uses the breakoutLocusUrl when provided', async () => {
+        sandbox.spy(MembersUtil, 'generateTransferHostMemberOptions');
+
+        const members = createMembers({url: url1});
+        const {membersRequest} = members;
+        sandbox.spy(membersRequest, 'transferHostToMember');
+
+        const breakoutLocusUrl = 'https://example.com/breakout-locus';
+
+        await members.transferHostToMember('bob', true, breakoutLocusUrl);
+
+        assert.calledOnceWithExactly(
+          MembersUtil.generateTransferHostMemberOptions,
+          'bob',
+          true,
+          breakoutLocusUrl
+        );
+        assert.calledOnceWithExactly(membersRequest.transferHostToMember, {
+          memberId: 'bob',
+          moderator: true,
+          locusUrl: breakoutLocusUrl,
+          authorizingLocusUrl: url1,
+        });
+      });
+    });
+
     describe('#clearMembers', () => {
       it('should send clear event if clear members', () => {
         const members = createMembers({url: url1});
@@ -320,6 +381,28 @@ describe('plugin-meetings', () => {
           EVENT_TRIGGERS.MEMBERS_CLEAR,
           {}
         );
+        sinon.restore();
+      });
+
+      it('should not clear memberIdByHistoryCsi so it survives member removal (e.g. BO entry/exit)', () => {
+        const members = createMembers({url: url1});
+        members.memberIdByHistoryCsi.set(1000, 'test1');
+        members.clearMembers();
+        assert.strictEqual(members.memberIdByHistoryCsi.size, 1);
+        assert.strictEqual(members.memberIdByHistoryCsi.get(1000), 'test1');
+      });
+
+      it("captures the current members' CSIs into memberIdByHistoryCsi before resetting", () => {
+        const members = createMembers({url: url1});
+        members.membersCollection.setAll({
+          m1: {id: 'm1', participant: {devices: [{csis: [1000, 1001]}]}},
+          m2: {id: 'm2', participant: {devices: [{csis: [2000]}]}},
+        });
+        sinon.stub(Trigger, 'trigger');
+        members.clearMembers();
+        assert.strictEqual(members.memberIdByHistoryCsi.get(1000), 'm1');
+        assert.strictEqual(members.memberIdByHistoryCsi.get(1001), 'm1');
+        assert.strictEqual(members.memberIdByHistoryCsi.get(2000), 'm2');
         sinon.restore();
       });
     });
@@ -1164,6 +1247,139 @@ describe('plugin-meetings', () => {
 
       it('returns correct member when CSI matches the second device', () => {
         assert.strictEqual(members.findMemberByCsi(2001), fakeCollection.oneWithSomeCsis);
+      });
+
+      it('falls back to memberIdByHistoryCsi when CSI is no longer on the current devices', () => {
+        members.memberIdByHistoryCsi.set(9999, 'oneWithDevicesWithoutCsis');
+        assert.strictEqual(
+          members.findMemberByCsi(9999),
+          fakeCollection.oneWithDevicesWithoutCsis
+        );
+      });
+
+      it('returns undefined when the memberIdByHistoryCsi entry points to a removed member', () => {
+        members.memberIdByHistoryCsi.set(8888, 'not-in-collection');
+        assert.strictEqual(members.findMemberByCsi(8888), undefined);
+      });
+
+      it('prefers a current device match over a memberIdByHistoryCsi match', () => {
+        members.memberIdByHistoryCsi.set(1001, 'oneWithDevicesWithoutCsis');
+        assert.strictEqual(members.findMemberByCsi(1001), fakeCollection.oneWithSomeCsis);
+      });
+    });
+
+    describe('memberIdByHistoryCsi tracking', () => {
+      let members;
+
+      const participantWithCsis = (id, csis) => ({
+        id,
+        type: 'USER',
+        person: {},
+        devices: [{csis}],
+      });
+
+      beforeEach(() => {
+        sinon.stub(Trigger, 'trigger');
+        members = createMembers({url: url1});
+      });
+
+      afterEach(() => {
+        sinon.restore();
+      });
+
+      it('does not populate the map when adding a brand new member', () => {
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [1000])],
+        });
+        assert.strictEqual(members.memberIdByHistoryCsi.size, 0);
+      });
+
+      it('does not populate the map when devices have not changed between updates', () => {
+        const devices = [{csis: [1000]}];
+
+        members.locusParticipantsUpdate({
+          participants: [{id: 'm1', type: 'USER', person: {}, devices}],
+        });
+        members.locusParticipantsUpdate({
+          participants: [{id: 'm1', type: 'USER', person: {}, devices}],
+        });
+
+        assert.strictEqual(members.memberIdByHistoryCsi.size, 0);
+      });
+
+      it('captures previous CSIs into the map when devices change on update', () => {
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [1000, 1001])],
+        });
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [2000])],
+        });
+
+        assert.strictEqual(members.memberIdByHistoryCsi.get(1000), 'm1');
+        assert.strictEqual(members.memberIdByHistoryCsi.get(1001), 'm1');
+      });
+
+      it('preserves history when a member is removed and re-added (breakout scenario)', () => {
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [1000])],
+        });
+        // change devices so previous CSIs are captured into history
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [2000])],
+        });
+        // remove the member
+        members.locusParticipantsUpdate({
+          participants: [],
+          removedParticipantIds: ['m1'],
+        });
+
+        assert.strictEqual(members.memberIdByHistoryCsi.get(1000), 'm1');
+
+        // re-add the member with brand new CSIs
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [3000])],
+        });
+
+        const member = members.findMemberByCsi(1000);
+        assert.isDefined(member);
+        assert.strictEqual(member.id, 'm1');
+      });
+
+      it("captures the removed member's current CSIs even without a prior device-change update", () => {
+        // member is added, then removed in the very next delta without any
+        // intermediate device-change update - their current CSIs must still be
+        // captured into the history map on removal
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [1000, 1001])],
+        });
+
+        assert.strictEqual(members.memberIdByHistoryCsi.size, 0);
+
+        members.locusParticipantsUpdate({
+          participants: [],
+          removedParticipantIds: ['m1'],
+        });
+
+        assert.strictEqual(members.memberIdByHistoryCsi.get(1000), 'm1');
+        assert.strictEqual(members.memberIdByHistoryCsi.get(1001), 'm1');
+      });
+
+      it('merges existing history with CSIs captured at removal time', () => {
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [1000])],
+        });
+        // device change captures 1000 into history; member now reports 2000
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [2000])],
+        });
+        // removal should additionally capture the member's current CSIs (2000)
+        members.locusParticipantsUpdate({
+          participants: [],
+          removedParticipantIds: ['m1'],
+        });
+
+        assert.strictEqual(members.memberIdByHistoryCsi.get(1000), 'm1');
+        assert.strictEqual(members.memberIdByHistoryCsi.get(2000), 'm1');
       });
     });
 

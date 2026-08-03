@@ -1,5 +1,6 @@
-import {CallId} from '@webex/calling/dist/types/common/types';
-import EventEmitter from 'events';
+/* eslint-disable import/no-cycle */
+import type {AnyActorRef} from 'xstate';
+import {TaskEventPayload} from './state-machine';
 import {Msg} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
 
@@ -8,6 +9,11 @@ import AutoWrapup from './AutoWrapup';
  * @public
  */
 export type TaskId = string;
+
+/**
+ * Unique identifier for a call in the Webex calling system
+ */
+export type CallId = string;
 
 /**
  * Helper type for creating enum-like objects with type safety
@@ -89,6 +95,26 @@ export const MEDIA_CHANNEL = {
  * @public
  */
 export type MEDIA_CHANNEL = Enum<typeof MEDIA_CHANNEL>;
+
+/**
+ * Supported task channel types for UI control configuration
+ */
+export const TASK_CHANNEL_TYPE = {
+  VOICE: 'voice',
+  DIGITAL: 'digital',
+} as const;
+
+export type TaskChannelType = Enum<typeof TASK_CHANNEL_TYPE>;
+
+/**
+ * Voice channel variants that toggle PSTN/WebRTC specific behaviors
+ */
+export const VOICE_VARIANT = {
+  PSTN: 'pstn',
+  WEBRTC: 'webrtc',
+} as const;
+
+export type VoiceVariant = Enum<typeof VOICE_VARIANT>;
 
 /**
  * Enumeration of all task-related events that can occur in the contact center system
@@ -204,6 +230,11 @@ export enum TASK_EVENTS {
   TASK_CONSULT_QUEUE_FAILED = 'task:consultQueueFailed',
 
   /**
+   * Triggered whenever task UI controls are recalculated
+   */
+  TASK_UI_CONTROLS_UPDATED = 'task:ui-controls-updated',
+
+  /**
    * Triggered when a consultation request is accepted
    * @example
    * ```typescript
@@ -286,6 +317,24 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_WRAPPEDUP = 'task:wrappedup',
+
+  /**
+   * Triggered when the task state machine reaches a final state and resources should be cleaned up.
+   * Used internally by TaskManager to perform collection/call cleanup.
+   * @internal
+   */
+  TASK_CLEANUP = 'task:cleanup',
+
+  /**
+   * Triggered when recording is started
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_RECORDING_STARTED, (task: ITask) => {
+   *   console.log('Recording started:', task.data.interactionId);
+   * });
+   * ```
+   */
+  TASK_RECORDING_STARTED = 'task:recordingStarted',
 
   /**
    * Triggered when recording is paused
@@ -520,6 +569,43 @@ export enum TASK_EVENTS {
   TASK_PARTICIPANT_LEFT_FAILED = 'task:participantLeftFailed',
 
   /**
+   * Triggered when agent initiates exit from conference
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_EXIT_CONFERENCE, (task: ITask) => {
+   *   console.log('Exiting conference:', task.data.interactionId);
+   *   // Handle conference exit initiation
+   * });
+   * ```
+   */
+  TASK_EXIT_CONFERENCE = 'task:exitConference',
+
+  /**
+   * Triggered when agent initiates conference transfer
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_TRANSFER_CONFERENCE, (task: ITask) => {
+   *   console.log('Transferring conference:', task.data.interactionId);
+   *   // Handle conference transfer initiation
+   * });
+   * ```
+   */
+  TASK_TRANSFER_CONFERENCE = 'task:transferConference',
+
+  /**
+   * Triggered when agent switches between consult call and main call.
+   * Use task.uiControls to determine current state and button visibility.
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_SWITCH_CALL, (task: ITask) => {
+   *   console.log('Call switched:', task.data.interactionId);
+   *   // Update UI based on task.uiControls.main.switch / task.uiControls.consult.switch
+   * });
+   * ```
+   */
+  TASK_SWITCH_CALL = 'task:switchCall',
+
+  /**
    * Triggered when a contact is merged
    * @example
    * ```typescript
@@ -542,6 +628,17 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_POST_CALL_ACTIVITY = 'task:postCallActivity',
+
+  /**
+   * Triggered when a multi-login task update should hydrate SDK instances without Mobius registration.
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, (task: ITask) => {
+   *   console.log('Multi-login hydrate:', task.data.interactionId);
+   * });
+   * ```
+   */
+  TASK_MULTI_LOGIN_HYDRATE = 'task:multiLoginHydrate',
 
   /**
    * Triggered when a campaign preview contact is offered to the agent
@@ -609,6 +706,146 @@ export enum TASK_EVENTS {
  * Contains comprehensive details about an ongoing customer interaction
  * @public
  */
+export interface CallAssociatedDatum {
+  /** Whether the field can be edited by the agent */
+  agentEditable: boolean;
+  /** Whether the field is visible to the agent */
+  agentViewable: boolean;
+  /** Display name for the field */
+  displayName: string;
+  /** Whether the field is global */
+  global: boolean;
+  /** Whether the field is secure */
+  isSecure: boolean;
+  /** Internal field name */
+  name: string;
+  /** Whether the field is reportable */
+  reportable: boolean;
+  /** Secure key identifier */
+  secureKeyId: string;
+  /** Secure key version */
+  secureKeyVersion: number;
+  /** Data type of the field */
+  type: string;
+  /** Field value */
+  value: string;
+}
+
+export type CallAssociatedData = Record<string, CallAssociatedDatum>;
+
+export type CallAssociatedDetails = Record<string, string>;
+
+export interface FlowParameter {
+  /** Parameter name */
+  name?: string;
+  /** Additional qualifier */
+  qualifier?: string;
+  /** Description of the parameter */
+  description?: string;
+  /** Data type of the value */
+  valueDataType?: string;
+  /** Value associated with the parameter */
+  value?: string;
+}
+
+export interface InteractionParticipant {
+  /** Unique participant identifier */
+  id: string;
+  /** Participant type label used by backend */
+  pType: string;
+  /** Friendly participant type */
+  type: string;
+  /** Whether the participant has joined */
+  hasJoined: boolean;
+  /** Whether the participant has left */
+  hasLeft: boolean;
+  /** Whether the participant is still in pre-dial */
+  isInPredial: boolean;
+  /** Optional caller identifier */
+  callerId?: string | null;
+  /** Whether auto-answer is enabled */
+  autoAnswerEnabled?: boolean;
+  /** Backchannel/bnr details */
+  bnrDetails?: unknown;
+  /** Channel identifier for the participant */
+  channelId?: string;
+  /** Current consult state */
+  consultState?: string | null;
+  /** Timestamp when consult started */
+  consultTimestamp?: number | null;
+  /** Current participant state */
+  currentState?: string | null;
+  /** Timestamp of the current state */
+  currentStateTimestamp?: number | null;
+  /** Device call identifier */
+  deviceCallId?: string | null;
+  /** Device identifier */
+  deviceId?: string | null;
+  /** Device type (AGENT_DN, BROWSER, etc.) */
+  deviceType?: string | null;
+  /** Dial number associated with participant */
+  dn?: string | null;
+  /** Whether participant is currently consulted */
+  isConsulted?: boolean;
+  /** Whether participant offer is active */
+  isOffered?: boolean;
+  /** Whether participant is in wrap-up */
+  isWrapUp?: boolean;
+  /** Whether participant completed wrap-up */
+  isWrappedUp?: boolean;
+  /** Timestamp of when participant joined */
+  joinTimestamp?: number | null;
+  /** Last updated timestamp */
+  lastUpdated?: number | null;
+  /** Friendly name of participant */
+  name?: string | null;
+  /** Queue identifier associated with participant */
+  queueId?: string;
+  /** Queue manager identifier */
+  queueMgrId?: string;
+  /** Session identifier */
+  sessionId?: string;
+  /** Site identifier */
+  siteId?: string;
+  /** Skill identifier */
+  skillId?: string | null;
+  /** Skill name */
+  skillName?: string | null;
+  /** Skill list for participant */
+  skills?: string[];
+  /** Team identifier */
+  teamId?: string;
+  /** Team name */
+  teamName?: string;
+  /** Timestamp for wrap-up */
+  wrapUpTimestamp?: number | null;
+  /** Additional metadata */
+  [key: string]: unknown;
+}
+
+export type InteractionParticipants = Record<string, InteractionParticipant>;
+
+/**
+ * Media entry type from interaction.media
+ * Used for media state tracking in consult and conference scenarios
+ */
+export type MediaEntry = {
+  /** Unique identifier for the media resource */
+  mediaResourceId: string;
+  /** Type of media channel */
+  mediaType: MEDIA_CHANNEL;
+  /** Media manager handling this media */
+  mediaMgr: string;
+  /** List of participant identifiers */
+  participants: string[];
+  /** Type of media (e.g., 'mainCall', 'consult') */
+  mType: string;
+  /** Indicates if media is on hold */
+  isHold: boolean;
+  /** Timestamp when media was put on hold */
+  holdTimestamp: number | null;
+};
+
 export type Interaction = {
   /** Indicates if the interaction is managed by Flow Control */
   isFcManaged: boolean;
@@ -623,7 +860,11 @@ export type Interaction = {
   /** Current virtual team handling the interaction */
   currentVTeam: string;
   /** List of participants in the interaction */
-  participants: any; // TODO: Define specific participant type
+  participants: InteractionParticipants;
+  /** Detailed call associated data */
+  callAssociatedData?: CallAssociatedData;
+  /** Simplified call associated key/value pairs */
+  callAssociatedDetails?: CallAssociatedDetails;
   /** Unique identifier for the interaction */
   interactionId: string;
   /** Organization identifier */
@@ -632,7 +873,18 @@ export type Interaction = {
   createdTimestamp?: number;
   /** Indicates if wrap-up assistance is enabled */
   isWrapUpAssist?: boolean;
-  /** Detailed call processing information and metadata */
+  /** Identifier of parent interaction if applicable */
+  parentInteractionId?: string;
+  /** Indicates if media is forked for this interaction */
+  isMediaForked?: boolean;
+  /** Retroactive flow properties returned by backend */
+  flowProperties?: Record<string, unknown> | null;
+  /** Media specific properties returned by backend */
+  mediaProperties?: Record<string, unknown> | null;
+  /**
+   * Detailed call processing information and metadata.
+   * Mirrors the callProcessingDetails section described in Webex Contact Center Agent Contact payloads.
+   */
   callProcessingDetails: {
     /** Name of the Queue Manager handling this interaction */
     QMgrName: string;
@@ -650,20 +902,24 @@ export type Interaction = {
     QueueId: string;
     /** Virtual team identifier */
     vteamId: string;
-    /** Indicates if pause/resume functionality is enabled */
-    pauseResumeEnabled?: string;
+    /** Agent capability for pause/resume on this interaction */
+    pauseResumeEnabled?: boolean;
     /** Duration of pause in seconds */
     pauseDuration?: string;
-    /** Indicates if the interaction is currently paused */
-    isPaused?: string;
-    /** Indicates if recording is in progress */
-    recordInProgress?: string;
-    /** Indicates if recording has started */
-    recordingStarted?: string;
+    /** Legacy pause indicator (recordInProgress=false is the active pause signal) */
+    isPaused?: boolean;
+    /** Recording is actively capturing audio right now */
+    recordInProgress?: boolean;
+    /** Recording was started for this interaction (may be paused) */
+    recordingStarted?: boolean;
+    /** Customer geographic region */
+    customerRegion?: string;
+    /** Flow tag identifier */
+    flowTagId?: string;
     /** Indicates if Consult to Queue is in progress */
-    ctqInProgress?: string;
+    ctqInProgress?: boolean;
     /** Indicates if outdial transfer to queue is enabled */
-    outdialTransferToQueueEnabled?: string;
+    outdialTransferToQueueEnabled?: boolean;
     /** IVR conversation transcript */
     convIvrTranscript?: string;
     /** Customer's name */
@@ -750,6 +1006,8 @@ export type Interaction = {
     fcDesktopView?: string;
     /** Agent ID who initiated the outdial call */
     outdialAgentId?: string;
+    /** Indicates if the customer has left the call during an active consult */
+    hasCustomerLeft?: string;
     /** Indicates if the skip action is disabled for campaign preview contacts */
     campaignPreviewSkipDisabled?: string;
     /** Indicates if the remove action is disabled for campaign preview contacts */
@@ -761,61 +1019,54 @@ export type Interaction = {
   };
   /** Main interaction identifier for related interactions */
   mainInteractionId?: string;
+  /** Timestamp when interaction entered queue */
+  queuedTimestamp?: number | null;
   /** Media-specific information for the interaction */
-  media: Record<
-    string,
-    {
-      /** Unique identifier for the media resource */
-      mediaResourceId: string;
-      /** Type of media channel */
-      mediaType: MEDIA_CHANNEL;
-      /** Media manager handling this media */
-      mediaMgr: string;
-      /** List of participant identifiers */
-      participants: string[];
-      /** Type of media */
-      mType: string;
-      /** Indicates if media is on hold */
-      isHold: boolean;
-      /** Timestamp when media was put on hold */
-      holdTimestamp: number | null;
-    }
-  >;
+  media: Record<string, MediaEntry>;
   /** Owner of the interaction */
   owner: string;
   /** Primary media channel for the interaction */
-  mediaChannel: MEDIA_CHANNEL;
+  mediaChannel: string;
   /** Direction information for the contact */
   contactDirection: {type: string};
   /** Type of outbound interaction */
   outboundType?: string;
+  /** Optional workflow manager identifier */
+  workflowManager?: string | null;
   /** Parameters passed through the call flow */
-  callFlowParams: Record<
-    string,
-    {
-      /** Name of the parameter */
-      name: string;
-      /** Qualifier for the parameter */
-      qualifier: string;
-      /** Description of the parameter */
-      description: string;
-      /** Data type of the parameter value */
-      valueDataType: string;
-      /** Value of the parameter */
-      value: string;
-    }
-  >;
+  callFlowParams?: Record<string, FlowParameter>;
 };
 
 /**
- * Task payload containing detailed information about a contact center task
- * This structure encapsulates all relevant data for task management
+ * Task payload mirroring the Agent Contact event payload from Webex Contact Center
+ * (developer.webex.com). Arrives on AGENT_* websocket events and is the source of truth
+ * for UI/state machine updates.
  * @public
  */
+export type RealtimeTranscription = {
+  agentId: string;
+  orgId: string;
+  notifType: string;
+  notifDetails: {
+    actionEvent: string;
+  };
+  data: {
+    role: 'AGENT' | 'CALLER';
+    utteranceId: string;
+    conversationId: string;
+    publishTimestamp: number;
+    messageId: string;
+    isFinal: boolean;
+    languageCode: string;
+    orgId: string;
+    content: string;
+  };
+};
+
 export type TaskData = {
-  /** Unique identifier for the media resource handling this task */
+  /** Primary media resource identifier for the active leg (matches interaction.media[].mediaResourceId) */
   mediaResourceId: string;
-  /** Type of event that triggered this task data */
+  /** Agent event name from the websocket stream (e.g., AGENT_CONTACT_ASSIGNED) */
   eventType: string;
   /** Timestamp when the event occurred */
   eventTime?: number;
@@ -825,7 +1076,7 @@ export type TaskData = {
   destAgentId: string;
   /** Unique tracking identifier for the task */
   trackingId: string;
-  /** Media resource identifier for consultation operations */
+  /** Media resource identifier for consultation leg when present */
   consultMediaResourceId: string;
   /** Detailed interaction information */
   interaction: Interaction;
@@ -837,7 +1088,7 @@ export type TaskData = {
   toOwner?: boolean;
   /** Identifier for child interaction in consult/transfer scenarios */
   childInteractionId?: string;
-  /** Unique identifier for the interaction */
+  /** Interaction/contact identifier from backend (same as interaction.interactionId) */
   interactionId: string;
   /** Organization identifier */
   orgId: string;
@@ -847,7 +1098,7 @@ export type TaskData = {
   queueMgr: string;
   /** Name of the queue where task is queued */
   queueName?: string;
-  /** Type of the task */
+  /** Task/interaction type returned by the platform (routing/monitoring/etc.) */
   type: string;
   /** Timeout value for RONA (Redirection on No Answer) in seconds */
   ronaTimeout?: number;
@@ -883,12 +1134,107 @@ export type TaskData = {
   reservedAgentChannelId?: string;
   /** Indicates if wrap-up is required for this task */
   wrapUpRequired?: boolean;
+
+  /**
+   * Current consultation status derived from state machine
+   * Values: CONSULT_INITIATED, CONSULT_ACCEPTED, BEING_CONSULTED,
+   *         BEING_CONSULTED_ACCEPTED, CONNECTED, CONFERENCE, CONSULT_COMPLETED
+   */
+  consultStatus?: string;
+
+  /**
+   * Indicates if consultation is in progress (state machine: CONSULTING)
+   */
+  isConsultInProgress?: boolean;
+
+  /**
+   * Indicates if the task is incoming for the active agent
+   */
+  isIncomingTask?: boolean;
+
+  /**
+   * Indicates if the task is on hold (state machine: HELD)
+   */
+  isOnHold?: boolean;
+
+  /**
+   * Indicates if customer is currently in the call
+   * Derived from participants in main media
+   */
+  isCustomerInCall?: boolean;
+
+  /**
+   * Count of conference participants (agents only)
+   * Used for determining if max participants reached
+   */
+  conferenceParticipantsCount?: number;
+
+  /**
+   * Indicates if this is a secondary agent (consulted party)
+   */
+  isSecondaryAgent?: boolean;
+
+  /**
+   * Indicates if this is a secondary EP-DN agent (telephony consult to external)
+   */
+  isSecondaryEpDnAgent?: boolean;
+
+  /**
+   * Task state for MPC (Multi-Party Conference) scenarios
+   * Maps participant consultState to task state
+   */
+  mpcState?: string;
   /** Indicates if auto-answer is in progress for this task */
   isAutoAnswering?: boolean;
   /** Indicates if wrap-up is required for this task */
   agentsPendingWrapUp?: string[];
 };
 
+export type TaskUIControlState = {
+  isVisible: boolean;
+  isEnabled: boolean;
+};
+
+/**
+ * UI control representation for a single interaction leg.
+ */
+export type InteractionUIControls = {
+  accept: TaskUIControlState;
+  decline: TaskUIControlState;
+  hold: TaskUIControlState;
+  transfer: TaskUIControlState;
+  consult: TaskUIControlState;
+  end: TaskUIControlState;
+  recording: TaskUIControlState;
+  mute: TaskUIControlState;
+  consultTransfer: TaskUIControlState;
+  endConsult: TaskUIControlState;
+  conference: TaskUIControlState;
+  exitConference: TaskUIControlState;
+  transferConference: TaskUIControlState;
+  mergeToConference: TaskUIControlState;
+  wrapup: TaskUIControlState;
+  switch: TaskUIControlState;
+};
+
+export type TaskUILeg = 'main' | 'consult';
+
+/**
+ * UI controls surfaced to task consumers.
+ * Consumers should read controls from the per-leg surfaces and use `activeLeg`
+ * to determine which one is currently interactive.
+ */
+export type TaskUIControls = {
+  main: InteractionUIControls;
+  consult: InteractionUIControls;
+  activeLeg: TaskUILeg;
+};
+
+/**
+ * Helper class for managing task action control state
+ * Tracks visibility and enabled state for task actions that can be executed
+ * @public
+ */
 /**
  * Type representing an agent contact message within the contact center system
  * Contains comprehensive interaction and task related details for agent operations
@@ -1111,6 +1457,15 @@ export type TransferPayload = {
 };
 
 /**
+ * Options for configuring transfer behavior
+ * @public
+ */
+export type TransferOptions = {
+  /** Additional transfer configuration options */
+  [key: string]: unknown;
+};
+
+/**
  * API payload for ending a consultation
  * This is the actual payload that is sent to the developer API
  * @public
@@ -1232,6 +1587,41 @@ export type ContactCleanupData = {
 };
 
 /**
+ * Boolean-like fields in callProcessingDetails that may arrive as strings.
+ * Used by taskDataNormalizer to coerce payloads to actual booleans.
+ */
+export type CallProcessingBooleanKey =
+  | 'recordingStarted'
+  | 'recordInProgress'
+  | 'isPaused'
+  | 'pauseResumeEnabled'
+  | 'ctqInProgress'
+  | 'outdialTransferToQueueEnabled'
+  | 'taskToBeSelfServiced'
+  | 'CONTINUE_RECORDING_ON_TRANSFER'
+  | 'isParked'
+  | 'participantInviteTimeout'
+  | 'checkAgentAvailability';
+
+/**
+ * Interaction-level boolean fields that may arrive as strings from backend payloads.
+ */
+export type InteractionBooleanKey = 'isFcManaged' | 'isMediaForked' | 'isTerminated';
+
+/**
+ * Participant boolean fields that may arrive as strings and need normalization.
+ */
+export type ParticipantBooleanKey =
+  | 'autoAnswerEnabled'
+  | 'hasJoined'
+  | 'hasLeft'
+  | 'isConsulted'
+  | 'isInPredial'
+  | 'isOffered'
+  | 'isWrapUp'
+  | 'isWrappedUp';
+
+/**
  * Response type for task public methods
  * Can be an {@link AgentContact} object containing updated task state,
  * an Error in case of failure, or void for operations that don't return data
@@ -1240,10 +1630,37 @@ export type ContactCleanupData = {
 export type TaskResponse = AgentContact | Error | void;
 
 /**
- * Interface for managing task-related operations in the contact center
- * Extends EventEmitter to support event-driven task updates
+ * Payload shape used by consult conference helper utilities.
  */
-export interface ITask extends EventEmitter {
+export type consultConferencePayloadData = {
+  agentId?: string;
+  destinationType?: string;
+  destAgentId?: string;
+};
+
+/**
+ * Minimal event-emitter contract exposed to SDK consumers.
+ * Defined here so that consumers do NOT need `@types/node` in their tsconfig.
+ * The runtime Task class still extends Node's EventEmitter (via ampersand-events),
+ * which satisfies this interface at runtime.
+ * @public
+ */
+export interface IEventEmitter {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  on(event: string, listener: (...args: any[]) => void): this;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  off(event: string, listener: (...args: any[]) => void): this;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  once(event: string, listener: (...args: any[]) => void): this;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  emit(event: string, ...args: any[]): boolean;
+}
+
+/**
+ * Interface for managing task-related operations in the contact center
+ * Extends IEventEmitter to support event-driven task updates
+ */
+export interface ITask extends IEventEmitter {
   /**
    * Event data received in the Contact Center events.
    * Contains detailed task information including interaction details, media resources,
@@ -1262,6 +1679,36 @@ export interface ITask extends EventEmitter {
    * as defined in {@link AutoWrapup}
    */
   autoWrapup?: AutoWrapup;
+
+  /**
+   * Latest UI controls derived from the state machine.
+   * Each control has `isVisible` and `isEnabled` flags computed from current task state.
+   * Subscribe to {@link TASK_EVENTS.TASK_UI_CONTROLS_UPDATED} for change notifications.
+   */
+  readonly uiControls: TaskUIControls;
+
+  /**
+   * State machine instance for managing task state transitions and derived properties.
+   * The state machine handles:
+   * - State transitions (IDLE → OFFERED → CONNECTED → HELD, etc.)
+   * - Derived properties (canHold, canResume, isConsulted, etc.)
+   * - Action availability based on current state
+   *
+   * This is part of the migration from manual state management to centralized state machine.
+   * During the transition period, both the old setUIControls() and state machine coexist.
+   *
+   * @see createTaskStateMachine
+   * @internal
+   */
+  stateMachineService?: AnyActorRef;
+  state?: any;
+
+  /**
+   * Helper method to send events to the state machine.
+   * This is part of the migration to XState.
+   * @internal
+   */
+  sendStateMachineEvent: (event: TaskEventPayload) => void;
 
   /**
    * Cancels the auto-wrapup timer for the task.
@@ -1284,7 +1731,7 @@ export interface ITask extends EventEmitter {
    * @returns Updated task instance
    * @ignore
    */
-  updateTaskData(newData: TaskData): ITask;
+  updateTaskData(newData: TaskData): void;
 
   /**
    * Answers or accepts an incoming task.
@@ -1416,18 +1863,7 @@ export interface ITask extends EventEmitter {
    * await task.transfer({ to: "queueId", destinationType: "queue" });
    * ```
    */
-  transfer(transferPayload: TransferPayLoad): Promise<TaskResponse>;
-
-  /**
-   * Transfers the task after consultation.
-   * @param consultTransferPayload - Details for consult transfer (optional)
-   * @returns Promise<TaskResponse>
-   * @example
-   * ```typescript
-   * await task.consultTransfer({ to: "agentId", destinationType: "agent" });
-   * ```
-   */
-  consultTransfer(consultTransferPayload?: ConsultTransferPayLoad): Promise<TaskResponse>;
+  transfer(transferPayload: TransferPayLoad, options?: TransferOptions): Promise<TaskResponse>;
 
   /**
    * Initiates a consult conference (merge consult call with main call).
@@ -1460,6 +1896,19 @@ export interface ITask extends EventEmitter {
   transferConference(): Promise<TaskResponse>;
 
   /**
+   * Toggles between consult call and main call during consulting.
+   * If on consult leg, switches to main call (holds consult).
+   * If on main call, switches to consult (resumes consult).
+   * Only available when in CONSULTING state.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.switchCall();
+   * ```
+   */
+  switchCall(): Promise<TaskResponse>;
+
+  /**
    * Toggles mute/unmute for the local audio stream during a WebRTC task.
    * @returns Promise<void>
    * @example
@@ -1468,4 +1917,138 @@ export interface ITask extends EventEmitter {
    * ```
    */
   toggleMute(): Promise<void>;
+}
+
+/**
+ * Interface for managing digital channel task operations in the contact center
+ * Digital channels (chat, email, social, SMS) have a simpler interface than voice
+ * Extends ITask but overrides updateTaskData to return IDigital
+ * @public
+ */
+export interface IDigital extends Omit<ITask, 'updateTaskData'> {
+  /**
+   * Updates the task data
+   * @param newData - Updated task data
+   * @param shouldOverwrite - Whether to completely replace existing data
+   * @returns Updated Digital task instance
+   */
+  updateTaskData(newData: TaskData, shouldOverwrite?: boolean): IDigital;
+}
+
+/**
+ * Interface for managing voice/telephony task operations in the contact center
+ * Extends ITask with voice-specific functionality for hold/resume operations
+ * @public
+ */
+export interface IVoice extends ITask {
+  /**
+   * Toggles hold/resume state for a voice task.
+   * If the task is currently on hold, it will be resumed.
+   * If the task is active, it will be placed on hold.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await voiceTask.holdResume();
+   * ```
+   */
+  holdResume(): Promise<TaskResponse>;
+}
+
+/**
+ * Configuration options for voice task UI controls
+ */
+export type VoiceUIControlOptions = {
+  isEndTaskEnabled?: boolean;
+  isEndConsultEnabled?: boolean;
+  voiceVariant?: VoiceVariant;
+  isRecordingEnabled?: boolean;
+};
+
+/**
+ * Participant information for UI display
+ */
+export type Participant = {
+  id: string;
+  name?: string;
+  pType?: string;
+};
+
+/**
+ * @deprecated Use Participant instead
+ */
+export type TaskAccessorParticipant = Participant;
+
+export interface IWebRTC extends IVoice {
+  /**
+   * This method is used to mute/unmute the call.
+   * @returns Promise<void>
+   * @example
+   * ```typescript
+   * task.toggleMute();
+   * ```
+   */
+  toggleMute(): Promise<void>;
+  /**
+   * Decline the incoming task for Browser Login
+   *
+   * @example
+   * ```
+   * task.decline();
+   * ```
+   */
+  decline(): Promise<TaskResponse>;
+  /**
+   * This method is used to unregister the web call listeners.
+   * @returns void
+   * @example
+   * ```typescript
+   * task.unregisterWebCallListeners();
+   * ```
+   */
+  unregisterWebCallListeners(): void;
+}
+
+export type WebSocketPayload = TaskData & {
+  type: string;
+  mediaResourceId?: string;
+  reason?: string;
+  /**
+   * Optional real-time transcript chunk payload.
+   * Present on REAL_TIME_TRANSCRIPTION notifications.
+   */
+  data?: RealtimeTranscription['data'];
+};
+
+export type WebSocketMessage = {
+  keepalive?: 'true' | 'false' | boolean;
+  type?: string;
+  data: WebSocketPayload;
+};
+
+/**
+ * Actions to be performed after handling an event
+ *
+ * These actions represent TaskManager-level concerns (task collection lifecycle,
+ * resource cleanup) rather than task-level state machine concerns. The separation
+ * ensures proper responsibility:
+ * - TaskManager: Collection management, metrics, cleanup
+ * - State Machine: Task state transitions, event emissions, UI controls
+ */
+export interface TaskEventActions {
+  task?: ITask;
+}
+
+/**
+ * Context for processing an event
+ *
+ * Contains all information needed to process a WebSocket event:
+ * - Event type and payload from the backend
+ * - Task instance (if exists)
+ * - Pre-mapped state machine event (if applicable)
+ */
+export interface EventContext {
+  eventType: string;
+  payload: WebSocketPayload;
+  task?: ITask;
+  stateMachineEvent?: TaskEventPayload | null;
 }

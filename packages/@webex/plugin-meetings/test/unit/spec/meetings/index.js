@@ -25,6 +25,7 @@ import {SitePreferenceSelectOption} from '@webex/plugin-meetings/src/meetings/me
 import PersonalMeetingRoom from '@webex/plugin-meetings/src/personal-meeting-room';
 import Reachability from '@webex/plugin-meetings/src/reachability';
 import Metrics from '@webex/plugin-meetings/src/metrics';
+import {WasmRuntimeProbe} from '@webex/web-capabilities';
 
 import testUtils from '../../../utils/testUtils';
 import {
@@ -354,32 +355,6 @@ describe('plugin-meetings', () => {
             webex.meetings.config.experimental.enableAdhocMeetings,
             currentEnableAdhocMeetings
           );
-        });
-      });
-    });
-
-    describe('#_toggleTcpReachability', () => {
-      it('should have _toggleTcpReachability', () => {
-        assert.equal(typeof webex.meetings._toggleTcpReachability, 'function');
-      });
-
-      describe('success', () => {
-        it('should update meetings to do TCP reachability', () => {
-          webex.meetings._toggleTcpReachability(true);
-          assert.equal(webex.meetings.config.experimental.enableTcpReachability, true);
-        });
-      });
-    });
-
-    describe('#_toggleTlsReachability', () => {
-      it('should have _toggleTlsReachability', () => {
-        assert.equal(typeof webex.meetings._toggleTlsReachability, 'function');
-      });
-
-      describe('success', () => {
-        it('should update meetings to do TLS reachability', () => {
-          webex.meetings._toggleTlsReachability(true);
-          assert.equal(webex.meetings.config.experimental.enableTlsReachability, true);
         });
       });
     });
@@ -1899,6 +1874,106 @@ describe('plugin-meetings', () => {
               on: () => true,
             })
           );
+        });
+
+        describe('wasm runtime performance telemetry', () => {
+          const probeResult = {
+            status: 'slow',
+            capability: 'not capable',
+            ratio: 0.25,
+            wasmMs: 25,
+            jsMs: 100,
+          };
+          let metricsSpy;
+          let probeCheckStub;
+
+          beforeEach(() => {
+            webex.meetings.meetingInfo.fetchInfoOptions = sinon.stub().resolves({});
+            webex.meetings.createMeeting = sinon
+              .stub()
+              .returns(Promise.resolve({on: () => true, correlationId: 'wasm-corr-id'}));
+            probeCheckStub = sinon.stub(WasmRuntimeProbe, 'check').resolves(probeResult);
+            metricsSpy = sinon.stub(Metrics, 'sendBehavioralMetric');
+          });
+
+          afterEach(() => {
+            probeCheckStub.restore();
+            metricsSpy.restore();
+          });
+
+          it('emits js_sdk_wasm_runtime_performance once after a meeting is created', async () => {
+            await webex.meetings.create(test1, test2);
+            await testUtils.flushPromises();
+
+            assert.calledOnceWithExactly(probeCheckStub);
+            assert.calledOnceWithExactly(metricsSpy, 'js_sdk_wasm_runtime_performance', {
+              status: 'slow',
+              ratio: 0.25,
+              wasmMs: 25,
+              jsMs: 100,
+              correlation_id: 'wasm-corr-id',
+            });
+          });
+
+          it('logs the WASM runtime status after a meeting is created', async () => {
+            const loggerLogStub = sinon.stub(LoggerProxy.logger, 'log');
+
+            await webex.meetings.create(test1, test2);
+            await testUtils.flushPromises();
+
+            assert.calledOnceWithExactly(probeCheckStub);
+            assert.calledOnceWithExactly(
+              loggerLogStub,
+              sinon.match(
+                /Meetings:index#emitWasmRuntimePerformance --> WASM runtime performance status/
+              )
+            );
+            loggerLogStub.restore();
+          });
+
+          it('emits only once even when create() is called multiple times', async () => {
+            await webex.meetings.create(test1, test2);
+            await webex.meetings.create(test1, test2);
+            await testUtils.flushPromises();
+
+            assert.calledOnceWithExactly(probeCheckStub);
+            assert.calledOnceWithExactly(metricsSpy, 'js_sdk_wasm_runtime_performance', {
+              status: 'slow',
+              ratio: 0.25,
+              wasmMs: 25,
+              jsMs: 100,
+              correlation_id: 'wasm-corr-id',
+            });
+          });
+
+          it('still resolves the meeting when the probe fails', async () => {
+            const loggerErrorStub = sinon.stub(LoggerProxy.logger, 'error');
+            probeCheckStub.rejects(new Error('probe failed'));
+
+            const created = await webex.meetings.create(test1, test2);
+            await testUtils.flushPromises();
+
+            // create() resolved normally with the meeting, i.e. the failed probe did not break it.
+            assert.equal(created.correlationId, 'wasm-corr-id');
+            assert.notCalled(metricsSpy);
+            assert.calledOnceWithExactly(
+              loggerErrorStub,
+              sinon.match(/Meetings:index#emitWasmRuntimePerformance --> ERROR/)
+            );
+            loggerErrorStub.restore();
+          });
+
+          it('does not re-run the probe when create() returns an already-created meeting', async () => {
+            webex.meetings.meetingCollection.getByKey = sinon
+              .stub()
+              .returns({updateCallStateForMetrics: sinon.stub()});
+
+            await webex.meetings.create(test1, test2);
+            await testUtils.flushPromises();
+
+            assert.notCalled(probeCheckStub);
+            assert.notCalled(metricsSpy);
+          });
         });
 
         it('should call MeetingInfo#fetchInfoOptions() with proper params', () => {
@@ -4315,6 +4390,9 @@ describe('plugin-meetings', () => {
         sinon.stub(webex.meetings.meetingInfo, 'fetchMeetingInfo').resolves({});
 
         triggerProxyStub.restore();
+
+        // Never resolve, so the create()-triggered WASM emit can't reach the metrics spy below.
+        sinon.stub(WasmRuntimeProbe, 'check').returns(new Promise(() => {}));
 
         metricsSpy = sinon.stub(Metrics, 'sendBehavioralMetric');
 
