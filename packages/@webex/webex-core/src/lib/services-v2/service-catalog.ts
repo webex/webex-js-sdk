@@ -210,16 +210,19 @@ const ServiceCatalog = AmpState.extend({
   },
 
   /**
-   * Finds an allowed domain that matches a specific url.
+   * Finds an allowed domain that matches a specific url. A url matches only
+   * when its hostname is the allowed domain itself or a subdomain of it.
    *
    * @param {string} url - The url to match the allowed domains against.
    * @returns {string} - The matching allowed domain.
    */
   findAllowedDomain(url: string): string {
     try {
-      const urlObj = new URL(url);
+      const {hostname} = new URL(url);
 
-      return this.allowedDomains.find((allowedDomain) => urlObj.host.includes(allowedDomain));
+      return this.allowedDomains.find(
+        (allowedDomain) => hostname === allowedDomain || hostname.endsWith(`.${allowedDomain}`)
+      );
     } catch {
       // If the URL is invalid or can't be found, return undefined
       return undefined;

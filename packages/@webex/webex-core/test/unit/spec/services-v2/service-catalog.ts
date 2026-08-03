@@ -101,7 +101,7 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach(() => {
-        domains.push('example-a', 'example-b', 'example-c');
+        domains.push('example-a.com', 'example-b.com', 'example-c.com');
 
         catalog.setAllowedDomains(domains);
       });
@@ -110,10 +110,31 @@ describe('webex-core', () => {
         domains.length = 0;
       });
 
-      it('finds an allowed domain that matches a specific url', () => {
-        const domain = catalog.findAllowedDomain('http://example-a.com/resource/id');
+      const matchingUrls = [
+        'http://example-a.com/resource/id',
+        'http://sub.example-a.com/resource/id',
+        'http://example-a.com:8080/resource/id',
+      ];
 
-        assert.include(domains, domain);
+      const nonMatchingUrls = [
+        'http://example-a.com.attacker.example/resource/id',
+        'http://notexample-a.com/resource/id',
+        'http://example-a.company/resource/id',
+        'http://example-a.com-attacker.example/resource/id',
+      ];
+
+      matchingUrls.forEach((url) => {
+        it(`finds an allowed domain for ${url}`, () => {
+          const domain = catalog.findAllowedDomain(url);
+
+          assert.include(domains, domain);
+        });
+      });
+
+      nonMatchingUrls.forEach((url) => {
+        it(`does not match ${url}, which only contains an allowed domain`, () => {
+          assert.isUndefined(catalog.findAllowedDomain(url));
+        });
       });
     });
 
