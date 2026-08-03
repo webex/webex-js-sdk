@@ -359,7 +359,10 @@ async function initCalling(e) {
   const callingConfig = {
     clientConfig : clientConfig,
     callingClientConfig: callingClientConfig,
-    logger:loggerConfig
+    logger:loggerConfig,
+    iceGathering: {
+      reduceTimeoutForIceLite: true
+    }
   }
 
   calling = await Calling.init({webexConfig, callingConfig});
