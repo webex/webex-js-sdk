@@ -3,7 +3,7 @@ import AmpState from 'ampersand-state';
 import {union} from 'lodash';
 import ServiceDetail from './service-detail';
 import {IServiceDetail, ServiceGroup} from './types';
-import {hostnameMatchesDomain} from '../domains';
+import {matchAllowedDomain} from '../domains';
 
 /**
  * @class
@@ -218,17 +218,7 @@ const ServiceCatalog = AmpState.extend({
    * @returns {string} - The matching allowed domain.
    */
   findAllowedDomain(url: string): string {
-    try {
-      // `hostname` rather than `host` so an explicit port doesn't defeat the match.
-      const {hostname} = new URL(url);
-
-      return this.allowedDomains.find((allowedDomain) =>
-        hostnameMatchesDomain(hostname, allowedDomain)
-      );
-    } catch {
-      // If the URL is invalid or can't be found, return undefined
-      return undefined;
-    }
+    return matchAllowedDomain(url, this.allowedDomains);
   },
 
   /**

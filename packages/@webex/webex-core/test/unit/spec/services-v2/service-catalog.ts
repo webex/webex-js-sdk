@@ -101,7 +101,9 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach(() => {
-        domains.push('webex.com', 'webexgov.us', 'webex.umi.ai');
+        // the empty entry mirrors plugin-meetings calling
+        // `addAllowedDomains([preferredWebexSite])` with an unset site
+        domains.push('webex.com', 'webexgov.us', 'webex.umi.ai', '');
 
         catalog.setAllowedDomains(domains);
       });
@@ -129,6 +131,12 @@ describe('webex-core', () => {
         ['https://attacker.net/?next=https://webex.com', undefined],
         // userinfo must not be treated as the host
         ['https://webex.com@attacker.net/resource/id', undefined],
+        // percent-encoding must not hide the real host: `new URL` decodes
+        // `%2e` to `.`, so the request would go to webex.com.attacker.net
+        ['https://webex.com%2eattacker.net/resource/id', undefined],
+        ['https://webex.com%2Eattacker.net/resource/id', undefined],
+        // an empty allowed domain entry must not match everything
+        ['https://attacker.net/resource/id', undefined],
         // unparseable urls
         ['', undefined],
         ['not a url', undefined],
