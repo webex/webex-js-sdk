@@ -1,7 +1,16 @@
+import Url from 'url';
+
 // Lowercase and drop any leading/trailing dots so `.Webex.com` and `webex.com.`
-// compare equal to `webex.com`. DNS treats all three as the same name.
+// compare equal to `webex.com`. DNS treats all three as the same name. Brackets
+// are stripped so the two parsers' IPv6 spellings (`[::1]` vs `::1`) compare equal.
 const normalizeHostname = (value: string): string =>
-  typeof value === 'string' ? value.toLowerCase().replace(/^\.+/, '').replace(/\.+$/, '') : '';
+  typeof value === 'string'
+    ? value
+        .toLowerCase()
+        .replace(/^\[|\]$/g, '')
+        .replace(/^\.+/, '')
+        .replace(/\.+$/, '')
+    : '';
 
 /**
  * Determine if a hostname is covered by an allowed domain, matching only on DNS
@@ -22,12 +31,20 @@ const hostnameMatchesDomain = (hostname: string, allowedDomain: string): boolean
 /**
  * Find the allowed domain covering a url, or `undefined` if there is none.
  *
- * Parsing lives here rather than in the callers so every caller resolves the
- * host the same way the transport does. Node's legacy `Url.parse` ends the
- * authority at the first `%`, so it reads `https://webex.com%2eattacker.net` as
- * the host `webex.com`, while the browser (and `new URL`) percent-decode it to
- * `webex.com.attacker.net` and connect there. Authorizing on one parser while
- * the transport uses another is how a token reaches an attacker's host.
+ * Parsing lives here, and deliberately uses both url parsers, because this
+ * check authorizes an `Authorization` header and the two transports behind
+ * `@webex/http-core` disagree about what the host of a url is:
+ *
+ * - the browser transport (`request.shim.js` -> `xhr`) parses per WHATWG, which
+ *   percent-decodes the authority, so it reads `https://a%2eb.com` as `a.b.com`
+ * - the node transport (`request.js` -> the `request` package) uses Node's
+ *   legacy `Url.parse`, which ends the authority at the first `%`, so it reads
+ *   the same url as `a`
+ *
+ * Authorizing on one parser while a transport connects using the other is how a
+ * token reaches an attacker's host, in whichever direction the mismatch runs.
+ * So rather than picking a parser, require both to agree and fail closed when
+ * they do not: a url whose host is ambiguous is never an allowed domain.
  *
  * @param {string} url - The url to match the allowed domains against.
  * @param {Array<string>} allowedDomains - The configured allowed domains.
@@ -38,11 +55,17 @@ export const matchAllowedDomain = (
   allowedDomains: Array<string>
 ): string | undefined => {
   let hostname: string;
+  let legacyHostname: string;
 
   try {
     ({hostname} = new URL(url));
+    ({hostname: legacyHostname} = Url.parse(url));
   } catch {
     // Not a parsable absolute url, so it cannot belong to an allowed domain.
+    return undefined;
+  }
+
+  if (normalizeHostname(hostname) !== normalizeHostname(legacyHostname)) {
     return undefined;
   }
 

@@ -131,10 +131,14 @@ describe('webex-core', () => {
         ['https://attacker.net/?next=https://webex.com', undefined],
         // userinfo must not be treated as the host
         ['https://webex.com@attacker.net/resource/id', undefined],
-        // percent-encoding must not hide the real host: `new URL` decodes
-        // `%2e` to `.`, so the request would go to webex.com.attacker.net
+        // percent-encoding must not hide the real host. The two url parsers
+        // behind http-core disagree on these, and each transport would connect
+        // somewhere the other parser did not authorize, so both must reject.
         ['https://webex.com%2eattacker.net/resource/id', undefined],
         ['https://webex.com%2Eattacker.net/resource/id', undefined],
+        ['https://attacker.net%2ewebex.com/resource/id', undefined],
+        ['https://attacker.net%2Ewebex.com/resource/id', undefined],
+        ['https://attacker.net;.webex.com/resource/id', undefined],
         // an empty allowed domain entry must not match everything
         ['https://attacker.net/resource/id', undefined],
         // unparseable urls
