@@ -180,7 +180,8 @@ describe('HashTreeParser', () => {
     excludedDataSets?: string[],
     syncLatencyTracker?: any,
     syncLatencyMeetingId = 'meeting-1',
-    generateTrackingId?: any
+    generateTrackingId?: any,
+    isLlmConnected?: () => boolean
   ) {
     return new HashTreeParser({
       initialLocus,
@@ -190,6 +191,7 @@ describe('HashTreeParser', () => {
         locusInfoUpdateCallback: callback,
         syncLatencyTracker,
         generateTrackingId,
+        isLlmConnected,
       },
       debugId: 'test',
       excludedDataSets,
@@ -3401,6 +3403,39 @@ describe('HashTreeParser', () => {
         parser.handleMessage(heartbeatMessage, 'heartbeat without interval');
 
         expect(parser.dataSets.main.heartbeatWatchdogTimer).to.be.undefined;
+      });
+
+      it('skips watchdog timer for main only when current meeting LLM is disconnected', async () => {
+        const parser = createHashTreeParser(
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          'meeting-1',
+          undefined,
+          () => false
+        );
+
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+            {
+              ...createDataSet('self', 1, 2100),
+              url: parser.dataSets.self.url,
+              root: parser.dataSets.self.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'heartbeat with meeting-scoped llm disconnected');
+
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.be.undefined;
+        expect(parser.dataSets.self.heartbeatWatchdogTimer).to.not.be.undefined;
       });
 
       it('stops all watchdog timers when meeting ends via sentinel message', async () => {

@@ -110,6 +110,7 @@ export type HashTreeParserCallbacks = {
   locusInfoUpdateCallback: LocusInfoUpdateCallback;
   syncLatencyTracker?: SyncLatencyTracker;
   generateTrackingId?: GenerateTrackingId;
+  isLlmConnected?: () => boolean;
 };
 
 const SYNC_METRICS_DATA_SETS = [
@@ -1833,6 +1834,19 @@ class HashTreeParser {
       const heartbeatIntervalMs = dataSet?.heartbeatIntervalMs ?? this.topLevelHeartbeatIntervalMs;
 
       if (!dataSet?.hashTree || !heartbeatIntervalMs) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      if (
+        dataSet.name === DataSetNames.MAIN &&
+        this.callbacks.isLlmConnected &&
+        !this.callbacks.isLlmConnected()
+      ) {
+        LoggerProxy.logger.info(
+          `HashTreeParser#resetHeartbeatWatchdogs --> ${this.debugId} skipping heartbeat watchdog timer for data set "${dataSet.name}" because LLM is disconnected`
+        );
+
         // eslint-disable-next-line no-continue
         continue;
       }

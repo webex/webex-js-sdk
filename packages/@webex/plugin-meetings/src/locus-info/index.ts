@@ -15,6 +15,7 @@ import {
   _SPACE_SHARE_,
   LOCUSINFO,
   LOCUS,
+  LLM_DEFAULT_SESSION,
   _LEFT_,
   MEETING_REMOVED_REASON,
   CALL_REMOVED_REASON,
@@ -568,6 +569,31 @@ export default class LocusInfo extends EventsScope {
       callbacks: {
         locusInfoUpdateCallback: this.updateFromHashTree.bind(this, locusUrl),
         syncLatencyTracker: this.callbacks.syncLatencyTracker,
+        isLlmConnected: () => {
+          const llm = this.webex?.internal?.llm;
+
+          if (!llm?.isConnected?.()) {
+            return false;
+          }
+
+          const ownership = llm.resolveSessionOwnership?.(this.meetingId, LLM_DEFAULT_SESSION);
+
+          if (
+            ownership?.currentOwner &&
+            ownership.currentOwner !== this.meetingId &&
+            !ownership.isOwner
+          ) {
+            return false;
+          }
+
+          const connectedLocusUrl = llm.getLocusUrl?.();
+
+          if (connectedLocusUrl && connectedLocusUrl !== locusUrl) {
+            return false;
+          }
+
+          return true;
+        },
         // Reuse webex-core's tracking-id interceptor sequence (exposed publicly via
         // webexTrackingIdSequenceNumbers) so Locus requests share the client's unified
         // ${sessionId}_${sequence} tracking id space instead of minting an unrelated id. Fall
