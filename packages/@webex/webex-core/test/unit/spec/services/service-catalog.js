@@ -124,6 +124,8 @@ describe('webex-core', () => {
         // a partial label must not match
         ['https://notwebex.com/resource/id', undefined],
         ['https://mywebexgov.us/resource/id', undefined],
+        ['https://webex.company/resource/id', undefined],
+        ['https://webex.com-unrelated.example/resource/id', undefined],
         // the domain matches only as a suffix, on a label boundary
         ['https://webex.com.unrelated.example/resource/id', undefined],
         ['https://unrelated.example/webex.com/resource/id', undefined],
