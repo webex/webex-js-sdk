@@ -18,6 +18,9 @@ export default {
     unhandledExceptionTelemetry: {
       enabled: false,
     },
+    networkTelemetry: {
+      enabled: false,
+    },
     batcherWait: 500,
     batcherMaxCalls: 50,
     batcherMaxWait: 1500,
