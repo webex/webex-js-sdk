@@ -1,4 +1,5 @@
 /* eslint-disable default-param-last */
+/* eslint-disable valid-jsdoc */
 
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
@@ -11,6 +12,7 @@ import {OS_NAME, OSMap, CLIENT_NAME} from './config';
 import Batcher from './batcher';
 import ClientMetricsBatcher from './client-metrics-batcher';
 import ClientMetricsPreloginBatcher from './client-metrics-prelogin-batcher';
+import {createNetworkTelemetryCollector} from './network-telemetry';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
@@ -43,6 +45,94 @@ const Metrics = WebexPlugin.extend({
 
   namespace: 'Metrics',
 
+  /**
+   * Registers SDK request outcome monitoring.
+   * @param args
+   * @returns
+   */
+  initialize(...args) {
+    WebexPlugin.prototype.initialize.call(this, ...args);
+
+    // Metrics may also be constructed as a standalone plugin. Request events are
+    // available only when it is attached to a Webex instance.
+    if (!this.parent && !this.collection) {
+      return;
+    }
+
+    if (this.webex?.config?.metrics?.networkTelemetry?.enabled !== true) {
+      return;
+    }
+
+    this.networkTelemetry = createNetworkTelemetryCollector({
+      submitMetric: this.submitNetworkTelemetryMetric.bind(this),
+      onSubmissionFailure: this.handleNetworkTelemetrySubmissionFailure.bind(this),
+    });
+    this.listenTo(this.webex, 'request:start', this.recordNetworkRequestStart);
+    this.listenTo(this.webex, 'request:success', this.recordNetworkRequestSuccess);
+    this.listenTo(this.webex, 'request:failure', this.recordNetworkRequestFailure);
+  },
+
+  /**
+   * Records an SDK request being sent in the current reporting window.
+   * @param options
+   * @returns
+   */
+  recordNetworkRequestStart(options) {
+    this.networkTelemetry.recordRequest(options);
+  },
+
+  /**
+   * Records a successful SDK request for the current reporting window.
+   * @param options
+   * @returns
+   */
+  recordNetworkRequestSuccess(options) {
+    this.networkTelemetry.recordResponse(options);
+  },
+
+  /**
+   * Records a failed SDK request for the current reporting window.
+   * @param options
+   * @param reason
+   * @returns
+   */
+  recordNetworkRequestFailure(options, reason) {
+    this.networkTelemetry.recordFailure(options, reason);
+  },
+
+  /**
+   * Submits a completed network telemetry window through client metrics.
+   * @param name
+   * @param properties
+   * @returns
+   */
+  submitNetworkTelemetryMetric(name, properties) {
+    return this.submitClientMetrics(name, properties);
+  },
+
+  /**
+   * Logs a network telemetry submission failure without affecting SDK requests.
+   * @returns
+   */
+  handleNetworkTelemetrySubmissionFailure() {
+    this.webex.logger?.warn('metrics: failed to submit network request summary telemetry');
+  },
+
+  /**
+   * Stops network telemetry collection and submission.
+   * @returns
+   */
+  stopNetworkTelemetry() {
+    if (!this.networkTelemetry) {
+      return;
+    }
+
+    this.stopListening(this.webex, 'request:start', this.recordNetworkRequestStart);
+    this.stopListening(this.webex, 'request:success', this.recordNetworkRequestSuccess);
+    this.stopListening(this.webex, 'request:failure', this.recordNetworkRequestFailure);
+    this.networkTelemetry.stop();
+  },
+
   submit(key, value) {
     return this.batcher.request({key, ...value});
   },
@@ -60,17 +150,20 @@ const Metrics = WebexPlugin.extend({
     const payload = {metricName: eventName};
     // @ts-ignore
     const providedClientVersion = this.webex.meetings?.config?.metrics?.clientVersion;
+    const {appName, appVersion} = this.webex.config;
+    // Browser location is unavailable when the SDK runs in Node.js.
+    // eslint-disable-next-line no-undef
+    const browserLocation = typeof window !== 'undefined' ? window.location : undefined;
 
     payload.tags = {
       ...props.tags,
+      app_name: appName ?? 'unknown',
+      app_url: browserLocation?.origin || browserLocation?.hostname || 'non-browser',
+      app_version: appVersion ?? 'unknown',
       browser: getBrowserName(),
       os: getOSNameInternal(),
       appVersion: providedClientVersion,
-
-      // Node does not like this so we need to check if it exists or not
-      // eslint-disable-next-line no-undef
-      domain:
-        typeof window !== 'undefined' ? window.location.hostname || 'non-browser' : 'non-browser', // Check what else we could measure
+      domain: browserLocation?.hostname || 'non-browser',
     };
 
     payload.fields = {
