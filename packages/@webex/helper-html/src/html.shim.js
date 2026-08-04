@@ -260,16 +260,18 @@ const trimPattern = /^\s|\s$/g;
 const ALLOWED_URL_SCHEMES = new Set(['http', 'https', 'mailto', 'tel', 'sip', 'webexteams']);
 
 /**
- * Removes ASCII control characters (U+0000 through U+001F).
- * Regular spaces (U+0020) are preserved so relative URLs like "release notes:latest" remain valid.
+ * Removes TAB, LF, and CR — the C0 characters browsers discard when parsing URL schemes.
+ * Other control characters (e.g. U+001F) are preserved in relative URLs.
  * @param {string} value
  * @returns {string}
  */
-function stripControlChars(value) {
+function stripIgnorableUrlChars(value) {
   let result = '';
 
   for (let i = 0; i < value.length; i += 1) {
-    if (value.charCodeAt(i) > 0x1f) {
+    const code = value.charCodeAt(i);
+
+    if (code !== 0x09 && code !== 0x0a && code !== 0x0d) {
       result += value[i];
     }
   }
@@ -292,7 +294,7 @@ function isAllowedUrlAttribute(value) {
     return false;
   }
 
-  const normalized = stripControlChars(value).trim().toLowerCase();
+  const normalized = stripIgnorableUrlChars(value).trim().toLowerCase();
 
   if (normalized === '') {
     return true;

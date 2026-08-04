@@ -215,6 +215,11 @@ skipInNode(describe)('html', () => {
       output: '<p><a href="release notes:latest">click here</a></p>',
     },
     {
+      it: 'preserves relative href with embedded non-discarded control character',
+      input: '<p><a href="release\u001fnotes:latest">click here</a></p>',
+      output: '<p><a href="release\u001fnotes:latest">click here</a></p>',
+    },
+    {
       it: 'handles weirder nesting',
       input:
         '<p>text</p><div><p>text0</p><div style="font-size: large;"><span>text1</span><span>text2</span><script></script></div></div>',
