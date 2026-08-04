@@ -41,6 +41,9 @@ describe('plugin-authorization-browser-first-party', () => {
           removeItem: sinon.spy(),
           setItem: sinon.spy(),
         },
+        crypto: {
+          getRandomValues: sinon.stub().callsFake((arr) => arr),
+        },
       };
 
       sinon.spy(mockWindow.history, 'replaceState');
@@ -1221,32 +1224,97 @@ describe('plugin-authorization-browser-first-party', () => {
     });
 
     describe('#_generateCodeChallenge', () => {
-      const expectedCodeChallenge = 'code challenge';
       // eslint-disable-next-line no-underscore-dangle
       const safeCharacterMap = CryptoJS.enc.Base64url._safe_map;
 
-      const expectedVerifier = times(128, () => safeCharacterMap[0]).join('');
-
-      it('generates a challenge code and stores it in session storage', () => {
+      // AC-1 / AC-6: CSPRNG used; insecure PRNGs not used
+      it('uses window.crypto.getRandomValues and does not call Math.random or lodash.random', () => {
         const webex = makeWebex('http://example.com');
 
-        const toStringStub = sinon.stub().returns(expectedCodeChallenge);
-        const randomStub = sinon.stub(lodash, 'random').returns(0);
-        const sha256Stub = sinon.stub(CryptoJS, 'SHA256').returns({
-          toString: toStringStub,
-        });
+        // Override the default identity stub with a deterministic all-zeros fill
+        webex.getWindow().crypto.getRandomValues = sinon
+          .stub()
+          .callsFake((arr) => { arr.fill(0); return arr; });
+
+        const mathRandomSpy = sinon.spy(Math, 'random');
+        const lodashRandomStub = sinon.stub(lodash, 'random');
+
+        // eslint-disable-next-line no-underscore-dangle
+        webex.authorization._generateCodeChallenge();
+
+        assert.calledOnce(webex.getWindow().crypto.getRandomValues);
+        const callArg = webex.getWindow().crypto.getRandomValues.firstCall.args[0];
+
+        assert.instanceOf(callArg, Uint8Array);
+        assert.equal(callArg.length, 128);
+        assert.callCount(mathRandomSpy, 0);
+        assert.callCount(lodashRandomStub, 0);
+      });
+
+      // AC-2: output is exactly 128 base64url-safe characters, no modulo bias
+      it('generates a 128-character verifier drawn from the base64url-safe alphabet', () => {
+        const webex = makeWebex('http://example.com');
+
+        // Use a fixed byte array cycling through 0-255 to cover the full range
+        webex.getWindow().crypto.getRandomValues = sinon
+          .stub()
+          .callsFake((arr) => { arr.forEach((_, i, a) => { a[i] = i % 256; }); return arr; });
+
+        // eslint-disable-next-line no-underscore-dangle
+        webex.authorization._generateCodeChallenge();
+
+        const storedVerifier = webex
+          .getWindow()
+          .sessionStorage.setItem.lastCall.args[1];
+
+        assert.match(storedVerifier, /^[A-Za-z0-9_-]{128}$/);
+      });
+
+      // AC-3: S256 challenge equals SHA-256/base64url of the stored verifier
+      it('returns a SHA-256 base64url challenge that matches the stored verifier', () => {
+        const webex = makeWebex('http://example.com');
+
+        // Fill with a fixed pattern so verifier is deterministic
+        webex.getWindow().crypto.getRandomValues = sinon
+          .stub()
+          .callsFake((arr) => { arr.fill(42); return arr; });
 
         // eslint-disable-next-line no-underscore-dangle
         const codeChallenge = webex.authorization._generateCodeChallenge();
 
-        assert.equal(codeChallenge, expectedCodeChallenge);
-        assert.calledWith(sha256Stub, expectedVerifier);
-        assert.calledWith(toStringStub, CryptoJS.enc.Base64url);
-        assert.callCount(randomStub, 128);
-        assert.calledWith(randomStub, 0, safeCharacterMap.length - 1);
-        assert.calledWith(
-          webex.getWindow().sessionStorage.setItem,
-          'oauth2-code-verifier',
+        const storedVerifier = webex
+          .getWindow()
+          .sessionStorage.setItem.lastCall.args[1];
+
+        const expectedChallenge = CryptoJS.SHA256(storedVerifier).toString(
+          CryptoJS.enc.Base64url
+        );
+
+        assert.equal(codeChallenge, expectedChallenge);
+      });
+
+      // AC-4: verifier stored under the correct sessionStorage key
+      it('stores the code verifier in sessionStorage under oauth2-code-verifier', () => {
+        const webex = makeWebex('http://example.com');
+
+        webex.getWindow().crypto.getRandomValues = sinon
+          .stub()
+          .callsFake((arr) => { arr.fill(7); return arr; });
+
+        // eslint-disable-next-line no-underscore-dangle
+        webex.authorization._generateCodeChallenge();
+
+        assert.calledOnce(webex.getWindow().sessionStorage.setItem);
+        assert.equal(
+          webex.getWindow().sessionStorage.setItem.firstCall.args[0],
+          'oauth2-code-verifier'
+        );
+        // Value must be the 128-char verifier (same fill=7 → safeCharacterMap[7 & 63])
+        const expectedChar = safeCharacterMap[7 & 63]; // eslint-disable-line no-bitwise
+        const expectedVerifier = expectedChar.repeat(128);
+
+        assert.equal(
+          webex.getWindow().sessionStorage.setItem.firstCall.args[1],
           expectedVerifier
         );
       });
