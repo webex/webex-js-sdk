@@ -195,6 +195,21 @@ skipInNode(describe)('html', () => {
       output: '<p>foo</p>',
     },
     {
+      it: 'preserves empty href',
+      input: '<p><a href="">click here</a></p>',
+      output: '<p><a href="">click here</a></p>',
+    },
+    {
+      it: 'preserves relative href with colon in path',
+      input: '<p><a href="./asset:name">click here</a></p>',
+      output: '<p><a href="./asset:name">click here</a></p>',
+    },
+    {
+      it: 'preserves href with colon in query string',
+      input: '<p><a href="page?next=http://example.com">click here</a></p>',
+      output: '<p><a href="page?next=http://example.com">click here</a></p>',
+    },
+    {
       it: 'handles weirder nesting',
       input:
         '<p>text</p><div><p>text0</p><div style="font-size: large;"><span>text1</span><span>text2</span><script></script></div></div>',

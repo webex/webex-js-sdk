@@ -283,25 +283,31 @@ function stripControlCharsAndWhitespace(value) {
  * @returns {boolean}
  */
 function isAllowedUrlAttribute(value) {
+  if (value === '') {
+    return true;
+  }
+
   if (!value) {
     return false;
   }
 
   const normalized = stripControlCharsAndWhitespace(value).toLowerCase();
 
+  if (normalized === '') {
+    return true;
+  }
+
   if (/^[/?#]/.test(normalized)) {
     return true;
   }
 
-  const colonIndex = normalized.indexOf(':');
+  const schemeMatch = normalized.match(/^([a-z][a-z0-9+.-]*):/);
 
-  if (colonIndex === -1) {
+  if (!schemeMatch) {
     return true;
   }
 
-  const scheme = normalized.slice(0, colonIndex);
-
-  return ALLOWED_URL_SCHEMES.has(scheme);
+  return ALLOWED_URL_SCHEMES.has(schemeMatch[1]);
 }
 
 /**
