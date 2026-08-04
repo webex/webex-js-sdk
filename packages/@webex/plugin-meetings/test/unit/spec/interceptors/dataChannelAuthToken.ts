@@ -249,9 +249,7 @@ describe('plugin-meetings', () => {
                 dataChannelTokenType: 'llm-practice-session',
               },
             }),
-            llmChannel: {
-              setDatachannelToken: sinon.stub(),
-            },
+            setLLMChannelDataToken: sinon.stub(),
           };
 
           llmMock = {
@@ -322,7 +320,7 @@ describe('plugin-meetings', () => {
           expect(token).to.equal('token-from-meeting-a');
           sinon.assert.calledOnceWithExactly(meetingA.refreshDataChannelToken);
           sinon.assert.calledOnceWithExactly(
-            meetingA.llmChannel.setDatachannelToken,
+            meetingA.setLLMChannelDataToken,
             'token-from-meeting-a'
           );
 
@@ -363,7 +361,7 @@ describe('plugin-meetings', () => {
           const meetingWithNoPayload = {
             id: 'meeting-b',
             refreshDataChannelToken: sinon.stub().resolves(null),
-            llmChannel: {setDatachannelToken: sinon.stub()},
+            setLLMChannelDataToken: sinon.stub(),
           };
 
           meetingsMock.getAllMeetings.returns({

@@ -383,6 +383,27 @@ describe('plugin-llm', () => {
           assert.equal(error.message, 'disconnect failed');
         }
       });
+
+      it('calls onDisconnect callback and clears it', async () => {
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+        const onDisconnectSpy = sinon.spy();
+
+        llmChannel.onDisconnect = onDisconnectSpy;
+
+        await llmChannel.disconnect({code: 1000, reason: 'test'});
+
+        sinon.assert.calledOnce(onDisconnectSpy);
+        assert.isUndefined(llmChannel.onDisconnect);
+      });
+
+      it('does not throw if onDisconnect is not set', async () => {
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+        llmChannel.onDisconnect = undefined;
+
+        await llmChannel.disconnect({code: 1000, reason: 'test'});
+
+        assert.isUndefined(llmChannel.onDisconnect);
+      });
     });
 
     describe('#setRefreshHandler', () => {

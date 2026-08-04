@@ -49,6 +49,8 @@ const Breakouts = WebexPlugin.extend({
     canManageBreakouts: 'boolean', // appear the ability to manage breakouts
     mainGroupId: 'string', // appears from the moment you enable breakouts
     mainSessionId: 'string', // appears from the moment you enable breakouts
+    hasSubscribedToMessage: 'boolean', // tracks if listening to LLM broadcast messages
+    _llmChannel: 'object', // registered LLM channel for broadcast messages
   },
   children: {
     currentBreakoutSession: Breakout,

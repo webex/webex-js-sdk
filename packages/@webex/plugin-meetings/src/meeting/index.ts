@@ -825,7 +825,7 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * The Voicea channel for transcription/captions, bound to this meeting's LLM channel.
    */
-  voiceaChannel?: VoiceaChannel;
+  private voiceaChannel?: VoiceaChannel;
 
   /**
    * Pending datachannel token saved from join response, used when creating the LLM channel.
@@ -6152,8 +6152,6 @@ export default class Meeting extends StatelessWebexPlugin {
           this.setUpVoiceaListeners();
         }
         await this.voiceaChannel.turnOnCaptions(options?.spokenLanguage);
-
-        await this.webinar?.turnOnCaptions(options?.spokenLanguage);
       } catch (error) {
         LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_FAILURE, {
@@ -6215,16 +6213,15 @@ export default class Meeting extends StatelessWebexPlugin {
       return true;
     }
 
-    const expectedBinding = this.llmChannel?.getBinding();
+    // With the factory pattern, both channels may be connected simultaneously.
+    // Determine which session is "active" based on whether PS channel is connected.
+    const isPracticeSession = this.webinar?.isPracticeSessionLLMChannelConnected() ?? false;
+
+    const expectedBinding = isPracticeSession
+      ? this.webinar?.getPracticeSessionBinding()
+      : this.llmChannel?.getBinding();
 
     if (!expectedBinding || route === expectedBinding) {
-      return true;
-    }
-
-    // Also check practice session binding for webinars
-    const practiceSessionBinding = this.webinar?.getPracticeSessionBinding();
-
-    if (practiceSessionBinding && route === practiceSessionBinding) {
       return true;
     }
 
@@ -6744,6 +6741,16 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   /**
+   * Sets the datachannel token on the meeting's LLM channel.
+   * Used by the DataChannelAuthTokenInterceptor after refreshing tokens.
+   * @param {string} token - The new datachannel token
+   * @returns {void}
+   */
+  setLLMChannelDataToken(token: string): void {
+    this.llmChannel?.setDatachannelToken(token);
+  }
+
+  /**
    * Saves the data channel tokens from the join response.
    * Default session token is stored on this.llmChannel when available.
    * Practice session token is stored on the webinar's practice LLM channel.
@@ -6765,8 +6772,8 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     // Practice session token is handled by webinar
-    if (practiceSessionDatachannelToken && this.webinar) {
-      this.webinar._pendingPracticeSessionDatachannelToken = practiceSessionDatachannelToken;
+    if (practiceSessionDatachannelToken) {
+      this.webinar.setPracticeSessionDatachannelToken(practiceSessionDatachannelToken);
     }
   }
 
@@ -6885,8 +6892,11 @@ export default class Meeting extends StatelessWebexPlugin {
         this.llmChannel.off('online', this.handleLLMOnline);
         this.llmChannel.on('online', this.handleLLMOnline);
 
-        // Register annotation channel
-        this.annotation.registerChannel(this.llmChannel);
+        // Register annotation channel only if not in practice session
+        // (practice session manages its own annotation channel via updatePSDataChannel)
+        if (!this.webinar?.isPracticeSessionLLMChannelConnected()) {
+          this.annotation.registerChannel(this.llmChannel);
+        }
 
         // Register breakouts channel
         this.breakouts.registerLLMChannel(this.llmChannel);

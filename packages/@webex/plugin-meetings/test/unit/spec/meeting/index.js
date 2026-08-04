@@ -2790,28 +2790,74 @@ describe('plugin-meetings', () => {
         });
 
         [
+          // Main session scenarios (no practice session active)
           {
-            title: 'should skip a reaction when the relay route does not match the LLM binding',
+            title:
+              'should skip a reaction when the relay route does not match the LLM binding (main session)',
             route: 'wrong-route',
-            channelBinding: 'correct-route',
+            channelBinding: 'main-binding',
+            practiceSessionConnected: false,
+            practiceSessionBinding: undefined,
             shouldProcess: false,
           },
           {
-            title: 'should process a reaction when the relay route matches the LLM binding',
-            route: 'correct-route',
-            channelBinding: 'correct-route',
+            title:
+              'should process a reaction when the relay route matches the LLM binding (main session)',
+            route: 'main-binding',
+            channelBinding: 'main-binding',
+            practiceSessionConnected: false,
+            practiceSessionBinding: undefined,
             shouldProcess: true,
           },
           {
             title: 'should process a reaction when no LLM channel exists',
             route: 'some-route',
             channelBinding: null, // No channel
+            practiceSessionConnected: false,
+            practiceSessionBinding: undefined,
             shouldProcess: true,
           },
           {
             title: 'should process a reaction when LLM channel has no binding',
             route: 'some-route',
             channelBinding: undefined, // Channel exists but no binding
+            practiceSessionConnected: false,
+            practiceSessionBinding: undefined,
+            shouldProcess: true,
+          },
+          // Practice session active scenarios
+          {
+            title: 'should skip a reaction routed to main binding when practice session is active',
+            route: 'main-binding',
+            channelBinding: 'main-binding',
+            practiceSessionConnected: true,
+            practiceSessionBinding: 'ps-binding',
+            shouldProcess: false,
+          },
+          {
+            title: 'should process a reaction routed to PS binding when practice session is active',
+            route: 'ps-binding',
+            channelBinding: 'main-binding',
+            practiceSessionConnected: true,
+            practiceSessionBinding: 'ps-binding',
+            shouldProcess: true,
+          },
+          {
+            title:
+              'should skip a reaction routed to PS binding when practice session is NOT active',
+            route: 'ps-binding',
+            channelBinding: 'main-binding',
+            practiceSessionConnected: false,
+            practiceSessionBinding: 'ps-binding',
+            shouldProcess: false,
+          },
+          {
+            title:
+              'should process a reaction routed to main binding when practice session is NOT active',
+            route: 'main-binding',
+            channelBinding: 'main-binding',
+            practiceSessionConnected: false,
+            practiceSessionBinding: 'ps-binding',
             shouldProcess: true,
           },
         ].forEach(
@@ -2819,6 +2865,8 @@ describe('plugin-meetings', () => {
             title,
             route,
             channelBinding,
+            practiceSessionConnected,
+            practiceSessionBinding,
             shouldProcess,
           }) => {
             it(title, () => {
@@ -2826,7 +2874,7 @@ describe('plugin-meetings', () => {
               meeting.config.receiveReactions = true;
               const fakeSendersName = 'Fake reactors name';
               meeting.members.membersCollection.get = sinon.stub().returns({name: fakeSendersName});
-              
+
               // Mock the llmChannel on the meeting
               if (channelBinding === null) {
                 meeting.llmChannel = undefined;
@@ -2835,6 +2883,18 @@ describe('plugin-meetings', () => {
                   getBinding: sinon.stub().returns(channelBinding),
                 };
               }
+
+              // Mock the webinar with practice session state
+              meeting.webinar = {
+                _practiceSessionLLMChannel: practiceSessionConnected
+                  ? {isConnected: sinon.stub().returns(true)}
+                  : undefined,
+                isPracticeSessionLLMChannelConnected: sinon
+                  .stub()
+                  .returns(practiceSessionConnected),
+                getPracticeSessionBinding: sinon.stub().returns(practiceSessionBinding),
+              };
+
               const fakeReactionPayload = {
                 type: 'fake_type',
                 codepoints: 'fake_codepoints',

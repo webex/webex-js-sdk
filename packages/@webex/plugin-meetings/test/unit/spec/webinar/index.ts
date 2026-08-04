@@ -286,7 +286,7 @@ describe('plugin-meetings', () => {
           const mockChannel = createMockLLMChannel({
             getBinding: sinon.stub().returns('test-binding-123'),
           });
-          webinar.practiceSessionLLMChannel = mockChannel;
+          webinar._practiceSessionLLMChannel = mockChannel;
 
           const binding = webinar.getPracticeSessionBinding();
 
@@ -295,7 +295,7 @@ describe('plugin-meetings', () => {
         });
 
         it('returns undefined when no practice session channel exists', () => {
-          webinar.practiceSessionLLMChannel = undefined;
+          webinar._practiceSessionLLMChannel = undefined;
 
           const binding = webinar.getPracticeSessionBinding();
 
@@ -328,7 +328,7 @@ describe('plugin-meetings', () => {
           const mockChannel = createMockLLMChannel({
             getDatachannelToken: sinon.stub().returns('cached-channel-token'),
           });
-          webinar.practiceSessionLLMChannel = mockChannel;
+          webinar._practiceSessionLLMChannel = mockChannel;
 
           const token = await webinar.ensurePracticeSessionDatachannelToken(meeting);
 
@@ -348,7 +348,7 @@ describe('plugin-meetings', () => {
 
         it('refreshes token when no cached token exists', async () => {
           webex.internal.llm.isDataChannelTokenEnabled.resolves(true);
-          webinar.practiceSessionLLMChannel = undefined;
+          webinar._practiceSessionLLMChannel = undefined;
           webinar._pendingPracticeSessionDatachannelToken = undefined;
 
           const token = await webinar.ensurePracticeSessionDatachannelToken(meeting);
@@ -363,7 +363,7 @@ describe('plugin-meetings', () => {
             getDatachannelToken: sinon.stub().returns(undefined),
             setDatachannelToken: sinon.stub(),
           });
-          webinar.practiceSessionLLMChannel = mockChannel;
+          webinar._practiceSessionLLMChannel = mockChannel;
 
           await webinar.ensurePracticeSessionDatachannelToken(meeting);
 
@@ -372,7 +372,7 @@ describe('plugin-meetings', () => {
 
         it('stores refreshed token as pending when no channel exists', async () => {
           webex.internal.llm.isDataChannelTokenEnabled.resolves(true);
-          webinar.practiceSessionLLMChannel = undefined;
+          webinar._practiceSessionLLMChannel = undefined;
           webinar._pendingPracticeSessionDatachannelToken = undefined;
 
           await webinar.ensurePracticeSessionDatachannelToken(meeting);
@@ -382,7 +382,7 @@ describe('plugin-meetings', () => {
 
         it('returns undefined and logs warning when refresh fails', async () => {
           webex.internal.llm.isDataChannelTokenEnabled.resolves(true);
-          webinar.practiceSessionLLMChannel = undefined;
+          webinar._practiceSessionLLMChannel = undefined;
           webinar._pendingPracticeSessionDatachannelToken = undefined;
           meeting.refreshDataChannelToken.rejects(new Error('refresh failed'));
           const warnStub = sinon.stub(LoggerProxy.logger, 'warn');
@@ -395,7 +395,7 @@ describe('plugin-meetings', () => {
 
         it('returns undefined when refresh returns no token', async () => {
           webex.internal.llm.isDataChannelTokenEnabled.resolves(true);
-          webinar.practiceSessionLLMChannel = undefined;
+          webinar._practiceSessionLLMChannel = undefined;
           webinar._pendingPracticeSessionDatachannelToken = undefined;
           meeting.refreshDataChannelToken.resolves({body: {}});
 
@@ -413,7 +413,7 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           webinar.meetingId = 'meeting-id';
           mockPSChannel = createMockLLMChannel();
-          webinar.practiceSessionLLMChannel = mockPSChannel;
+          webinar._practiceSessionLLMChannel = mockPSChannel;
           mockVoiceaChannel = {
             switchLLMChannel: sinon.stub().resolves(),
           };
@@ -449,7 +449,7 @@ describe('plugin-meetings', () => {
             meeting.processLocusLLMEvent
           );
           assert.calledWithExactly(mockPSChannel.off, 'online', meeting.handleLLMOnline);
-          assert.isUndefined(webinar.practiceSessionLLMChannel);
+          assert.isUndefined(webinar._practiceSessionLLMChannel);
         });
 
         it('switches annotation back to meeting default channel after cleanup', async () => {
@@ -480,7 +480,7 @@ describe('plugin-meetings', () => {
             LOCUS_LLM_EVENT,
             meeting.processLocusLLMEvent
           );
-          assert.isUndefined(webinar.practiceSessionLLMChannel);
+          assert.isUndefined(webinar._practiceSessionLLMChannel);
         });
 
         it('removes a pending online listener if one exists', async () => {
@@ -494,7 +494,7 @@ describe('plugin-meetings', () => {
         });
 
         it('no-ops when no practice session channel exists', async () => {
-          webinar.practiceSessionLLMChannel = undefined;
+          webinar._practiceSessionLLMChannel = undefined;
 
           await webinar.cleanupPSDataChannel();
 
@@ -659,7 +659,7 @@ describe('plugin-meetings', () => {
             getLocusUrl: sinon.stub().returns('locus-url'),
             getDatachannelUrl: sinon.stub().returns('dc-url'),
           });
-          webinar.practiceSessionLLMChannel = existingChannel;
+          webinar._practiceSessionLLMChannel = existingChannel;
           const cleanupPSDataChannelStub = sinon.stub(webinar, 'cleanupPSDataChannel').resolves();
 
           const result = await webinar.updatePSDataChannel();
@@ -708,7 +708,7 @@ describe('plugin-meetings', () => {
             getLocusUrl: sinon.stub().returns('old-locus-url'),
             getDatachannelUrl: sinon.stub().returns('old-dc-url'),
           });
-          webinar.practiceSessionLLMChannel = existingChannel;
+          webinar._practiceSessionLLMChannel = existingChannel;
           const cleanupPSDataChannelStub = sinon.stub(webinar, 'cleanupPSDataChannel').resolves();
 
           await webinar.updatePSDataChannel();
@@ -825,7 +825,7 @@ describe('plugin-meetings', () => {
             assert.equal(error, registerError);
           }
 
-          assert.isUndefined(webinar.practiceSessionLLMChannel);
+          assert.isUndefined(webinar._practiceSessionLLMChannel);
         });
 
         it('stores pending token on channel when one exists', async () => {
@@ -843,7 +843,7 @@ describe('plugin-meetings', () => {
           const replacementChannel = createMockLLMChannel();
           mockPSChannel.registerAndConnect = sinon.stub().callsFake(async () => {
             // Mid-connect, another call replaces the channel
-            webinar.practiceSessionLLMChannel = replacementChannel;
+            webinar._practiceSessionLLMChannel = replacementChannel;
             return 'CONNECT_RESULT';
           });
 

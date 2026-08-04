@@ -44,9 +44,10 @@ const Webinar = WebexPlugin.extend({
 
   /**
    * LLM channel for practice session, owned by this webinar instance.
+   * @private
    * @type {LLMChannel|undefined}
    */
-  practiceSessionLLMChannel: undefined as LLMChannel | undefined,
+  _practiceSessionLLMChannel: undefined as LLMChannel | undefined,
 
   /**
    * Pending practice session datachannel token, saved from join response.
@@ -183,7 +184,25 @@ const Webinar = WebexPlugin.extend({
    * @returns {string|undefined}
    */
   getPracticeSessionBinding() {
-    return this.practiceSessionLLMChannel?.getBinding();
+    return this._practiceSessionLLMChannel?.getBinding();
+  },
+
+  /**
+   * Returns whether the practice session LLM channel is connected.
+   * @returns {boolean}
+   */
+  isPracticeSessionLLMChannelConnected() {
+    return this._practiceSessionLLMChannel?.isConnected() ?? false;
+  },
+
+  /**
+   * Stores the practice session datachannel token for later use when
+   * creating the practice session LLM channel.
+   * @param {string} token - The datachannel token to store
+   * @returns {void}
+   */
+  setPracticeSessionDatachannelToken(token: string) {
+    this._pendingPracticeSessionDatachannelToken = token;
   },
 
   /**
@@ -204,12 +223,12 @@ const Webinar = WebexPlugin.extend({
       await meeting.voiceaChannel.switchLLMChannel(meeting.llmChannel);
     }
 
-    if (!this.practiceSessionLLMChannel) {
+    if (!this._practiceSessionLLMChannel) {
       return;
     }
 
     try {
-      await this.practiceSessionLLMChannel.disconnect({
+      await this._practiceSessionLLMChannel.disconnect({
         code: 3050,
         reason: 'done (permanent)',
       });
@@ -222,16 +241,16 @@ const Webinar = WebexPlugin.extend({
     } finally {
       // Remove listeners from the channel
       if (meeting) {
-        this.practiceSessionLLMChannel?.off('event:relay.event', meeting.processRelayEvent);
-        this.practiceSessionLLMChannel?.off(LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
-        this.practiceSessionLLMChannel?.off('online', meeting.handleLLMOnline);
+        this._practiceSessionLLMChannel?.off('event:relay.event', meeting.processRelayEvent);
+        this._practiceSessionLLMChannel?.off(LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
+        this._practiceSessionLLMChannel?.off('online', meeting.handleLLMOnline);
 
         // Switch annotation back to the meeting's default channel
         if (meeting.llmChannel) {
           meeting.annotation.registerChannel(meeting.llmChannel);
         }
       }
-      this.practiceSessionLLMChannel = undefined;
+      this._practiceSessionLLMChannel = undefined;
     }
   },
 
@@ -252,7 +271,7 @@ const Webinar = WebexPlugin.extend({
 
     // Check for cached token on the channel or pending token
     const cachedToken =
-      this.practiceSessionLLMChannel?.getDatachannelToken() ??
+      this._practiceSessionLLMChannel?.getDatachannelToken() ??
       this._pendingPracticeSessionDatachannelToken;
 
     if (cachedToken) {
@@ -268,8 +287,8 @@ const Webinar = WebexPlugin.extend({
       }
 
       // Store token on the channel if it exists, otherwise save for later
-      if (this.practiceSessionLLMChannel) {
-        this.practiceSessionLLMChannel.setDatachannelToken(datachannelToken);
+      if (this._practiceSessionLLMChannel) {
+        this._practiceSessionLLMChannel.setDatachannelToken(datachannelToken);
       } else {
         this._pendingPracticeSessionDatachannelToken = datachannelToken;
       }
@@ -314,10 +333,10 @@ const Webinar = WebexPlugin.extend({
     }
 
     // If already connected to same URLs, skip reconnect
-    if (this.practiceSessionLLMChannel?.isConnected()) {
+    if (this._practiceSessionLLMChannel?.isConnected()) {
       if (
-        url === this.practiceSessionLLMChannel.getLocusUrl() &&
-        practiceSessionDatachannelUrl === this.practiceSessionLLMChannel.getDatachannelUrl()
+        url === this._practiceSessionLLMChannel.getLocusUrl() &&
+        practiceSessionDatachannelUrl === this._practiceSessionLLMChannel.getDatachannelUrl()
       ) {
         return undefined;
       }
@@ -355,7 +374,7 @@ const Webinar = WebexPlugin.extend({
     // Get token from pending or refresh if needed
     let practiceSessionDatachannelToken =
       this._pendingPracticeSessionDatachannelToken ??
-      this.practiceSessionLLMChannel?.getDatachannelToken();
+      this._practiceSessionLLMChannel?.getDatachannelToken();
 
     const refreshedToken = await this.ensurePracticeSessionDatachannelToken(meeting);
 
@@ -383,7 +402,7 @@ const Webinar = WebexPlugin.extend({
     // Create a new practice session LLM channel
     // @ts-ignore - Fix type
     const psChannel = this.webex.internal.llm.createConnection();
-    this.practiceSessionLLMChannel = psChannel;
+    this._practiceSessionLLMChannel = psChannel;
 
     // Set up refresh handler before registration
     psChannel.setRefreshHandler(() => meeting.refreshDataChannelToken());
@@ -398,7 +417,7 @@ const Webinar = WebexPlugin.extend({
       .registerAndConnect(url, practiceSessionDatachannelUrl, practiceSessionDatachannelToken)
       .then(async (registerAndConnectResult) => {
         // Check if this channel is still the current one (race condition guard)
-        if (this.practiceSessionLLMChannel !== psChannel) {
+        if (this._practiceSessionLLMChannel !== psChannel) {
           psChannel.disconnect({code: 3050, reason: 'replaced'}).catch(() => {});
 
           return undefined;
@@ -428,8 +447,8 @@ const Webinar = WebexPlugin.extend({
       })
       .catch((error) => {
         // Clean up the channel on failure, but only if it's still the current one
-        if (this.practiceSessionLLMChannel === psChannel) {
-          this.practiceSessionLLMChannel = undefined;
+        if (this._practiceSessionLLMChannel === psChannel) {
+          this._practiceSessionLLMChannel = undefined;
         }
         throw error;
       });

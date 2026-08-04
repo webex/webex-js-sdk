@@ -36,7 +36,7 @@ describe('plugin-voicea', () => {
   const locusUrl = 'locusUrl';
 
   describe('VoiceaChannel', () => {
-    let webex, voiceaChannel, mockLLMChannel;
+    let webex, voiceaChannel, mockLLMChannel, requestStub;
 
     beforeEach(() => {
       webex = new MockWebex({
@@ -45,13 +45,13 @@ describe('plugin-voicea', () => {
         },
       });
 
-      mockLLMChannel = createMockLLMChannel({locusUrl});
-      voiceaChannel = new VoiceaChannel(mockLLMChannel, webex);
-
-      webex.request = sinon.stub().resolves({
+      requestStub = sinon.stub().resolves({
         headers: {},
         body: '',
       });
+
+      mockLLMChannel = createMockLLMChannel({locusUrl});
+      voiceaChannel = new VoiceaChannel(mockLLMChannel, requestStub);
     });
 
     afterEach(() => {
@@ -184,7 +184,7 @@ describe('plugin-voicea', () => {
 
       it('does not send if not connected', () => {
         const disconnectedChannel = createMockLLMChannel({isConnected: false});
-        const channel = new VoiceaChannel(disconnectedChannel, webex);
+        const channel = new VoiceaChannel(disconnectedChannel, requestStub);
 
         channel.sendManualClosedCaption('Should not send', 111, [1], true);
 
@@ -259,7 +259,7 @@ describe('plugin-voicea', () => {
 
       it('does not send when not connected', () => {
         const disconnectedChannel = createMockLLMChannel({isConnected: false});
-        const channel = new VoiceaChannel(disconnectedChannel, webex);
+        const channel = new VoiceaChannel(disconnectedChannel, requestStub);
 
         channel.requestLanguage('en');
 
@@ -278,7 +278,7 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(triggerSpy, {languageCode});
 
         sinon.assert.calledWith(
-          webex.request,
+          requestStub,
           sinon.match({
             method: 'PUT',
             url: `${locusUrl}/controls/`,
@@ -298,7 +298,7 @@ describe('plugin-voicea', () => {
         await voiceaChannel.setSpokenLanguage(languageCode, languageAssignment);
 
         sinon.assert.calledWith(
-          webex.request,
+          requestStub,
           sinon.match({
             method: 'PUT',
             url: `${locusUrl}/controls/`,
@@ -348,20 +348,6 @@ describe('plugin-voicea', () => {
       });
     });
 
-    describe('#isAnnounceProcessing', () => {
-      ['joining', 'joined'].forEach((status) => {
-        it(`should return true when status is ${status}`, () => {
-          voiceaChannel.announceStatus = status;
-          assert.equal(voiceaChannel.isAnnounceProcessing(), true);
-        });
-      });
-
-      it('should return false when status is idle', () => {
-        voiceaChannel.announceStatus = 'idle';
-        assert.equal(voiceaChannel.isAnnounceProcessing(), false);
-      });
-    });
-
     describe('#announce', () => {
       it('announce to llm data channel', () => {
         const sendAnnouncementSpy = sinon.spy(voiceaChannel, 'sendAnnouncement');
@@ -382,20 +368,6 @@ describe('plugin-voicea', () => {
         const sendAnnouncementSpy = sinon.spy(voiceaChannel, 'sendAnnouncement');
         voiceaChannel.announce();
         assert.notCalled(sendAnnouncementSpy);
-      });
-    });
-
-    describe('#isCaptionProcessing', () => {
-      ['sending', 'enabled'].forEach((status) => {
-        it(`should return true when status is ${status}`, () => {
-          voiceaChannel.captionStatus = status;
-          assert.equal(voiceaChannel.isCaptionProcessing(), true);
-        });
-      });
-
-      it('should return false when status is idle', () => {
-        voiceaChannel.captionStatus = 'idle';
-        assert.equal(voiceaChannel.isCaptionProcessing(), false);
       });
     });
 
@@ -429,13 +401,13 @@ describe('plugin-voicea', () => {
       });
 
       it('throws error on request failure', async () => {
-        webex.request.rejects(new Error('Request failed'));
+        requestStub.rejects(new Error('Request failed'));
 
         await assert.isRejected(voiceaChannel.turnOnCaptions(), 'turn on captions fail');
       });
 
       it('resets caption status to idle on error', async () => {
-        webex.request.rejects(new Error('Request failed'));
+        requestStub.rejects(new Error('Request failed'));
 
         try {
           await voiceaChannel.turnOnCaptions();
@@ -452,7 +424,7 @@ describe('plugin-voicea', () => {
         await voiceaChannel.toggleTranscribing(true);
 
         sinon.assert.calledWith(
-          webex.request,
+          requestStub,
           sinon.match({
             method: 'PUT',
             url: `${locusUrl}/controls/`,
@@ -465,7 +437,7 @@ describe('plugin-voicea', () => {
         await voiceaChannel.toggleTranscribing(false);
 
         sinon.assert.calledWith(
-          webex.request,
+          requestStub,
           sinon.match({
             method: 'PUT',
             url: `${locusUrl}/controls/`,
@@ -498,7 +470,7 @@ describe('plugin-voicea', () => {
         await voiceaChannel.toggleManualCaption(true);
 
         sinon.assert.calledWith(
-          webex.request,
+          requestStub,
           sinon.match({
             method: 'PUT',
             url: `${locusUrl}/controls/`,
@@ -511,7 +483,7 @@ describe('plugin-voicea', () => {
         await voiceaChannel.toggleManualCaption(false);
 
         sinon.assert.calledWith(
-          webex.request,
+          requestStub,
           sinon.match({
             method: 'PUT',
             url: `${locusUrl}/controls/`,
@@ -523,11 +495,11 @@ describe('plugin-voicea', () => {
       it('ignores when already sending', async () => {
         voiceaChannel.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.SENDING;
         await voiceaChannel.toggleManualCaption(true);
-        sinon.assert.notCalled(webex.request);
+        sinon.assert.notCalled(requestStub);
       });
 
       it('throws error on request failure', async () => {
-        webex.request.rejects(new Error('Request failed'));
+        requestStub.rejects(new Error('Request failed'));
 
         await assert.isRejected(
           voiceaChannel.toggleManualCaption(true),
@@ -536,7 +508,7 @@ describe('plugin-voicea', () => {
       });
 
       it('resets status to idle on error', async () => {
-        webex.request.rejects(new Error('Request failed'));
+        requestStub.rejects(new Error('Request failed'));
 
         try {
           await voiceaChannel.toggleManualCaption(true);
@@ -681,23 +653,6 @@ describe('plugin-voicea', () => {
 
         assert.equal(voiceaChannel.getKeepTranscriptionSubscribed(), true);
         assert.calledOnceWithExactly(updateSpy, {subscribe: ['transcription']});
-      });
-    });
-
-    describe('#isAnnounceProcessed', () => {
-      it('returns true when status is joined', () => {
-        voiceaChannel.announceStatus = 'joined';
-        assert.equal(voiceaChannel.isAnnounceProcessed(), true);
-      });
-
-      it('returns false when status is idle', () => {
-        voiceaChannel.announceStatus = 'idle';
-        assert.equal(voiceaChannel.isAnnounceProcessed(), false);
-      });
-
-      it('returns false when status is joining', () => {
-        voiceaChannel.announceStatus = 'joining';
-        assert.equal(voiceaChannel.isAnnounceProcessed(), false);
       });
     });
 
@@ -1055,7 +1010,7 @@ describe('plugin-voicea', () => {
 
       it('handles case when not previously subscribed to events', async () => {
         // Create a new channel that hasn't subscribed to events
-        const freshVoiceaChannel = new VoiceaChannel(mockLLMChannel, webex);
+        const freshVoiceaChannel = new VoiceaChannel(mockLLMChannel, requestStub);
         freshVoiceaChannel.hasSubscribedToEvents = false;
 
         const newMockLLMChannel = createMockLLMChannel({locusUrl: 'newLocusUrl'});

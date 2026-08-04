@@ -25,11 +25,11 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
 
   private seqNum: number;
 
-  hasSubscribedToEvents!: boolean;
+  hasSubscribedToEvents: boolean;
 
-  approvalUrl!: string;
-  locusUrl!: string;
-  deviceUrl!: string;
+  approvalUrl: string;
+  locusUrl: string;
+  deviceUrl: string;
 
   /** Currently registered LLM channel */
   private channel?: LLMChannel;

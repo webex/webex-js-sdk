@@ -244,26 +244,22 @@ describe('plugin-llm', () => {
         sinon.assert.calledOnceWithExactly(channelB.registerAndConnect, sameLocus, sameDc);
       });
 
-      it('individual channel disconnect does not clear other channels from registry', async () => {
+      it('individual channel disconnect removes only that channel from registry', async () => {
         const channel1 = plugin.createConnection();
         const channel2 = plugin.createConnection();
         const channel3 = plugin.createConnection();
 
-        // Stub disconnect on channel2
-        sinon.stub(channel2, 'disconnect').resolves();
-
         assert.equal(plugin.getAllConnections().size, 3);
 
-        // Disconnect only channel2
+        // Disconnect channel2 - real disconnect triggers onDisconnect callback
         await channel2.disconnect({code: 3050, reason: 'meeting ended'});
 
-        // All channels still exist in registry (disconnect doesn't auto-remove)
-        // The Meeting class is responsible for cleanup after disconnect
+        // Only channel2 should be removed from registry
         const connections = plugin.getAllConnections();
 
-        assert.equal(connections.size, 3);
+        assert.equal(connections.size, 2);
         assert.isTrue(connections.has(channel1));
-        assert.isTrue(connections.has(channel2));
+        assert.isFalse(connections.has(channel2));
         assert.isTrue(connections.has(channel3));
       });
 

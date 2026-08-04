@@ -1,5 +1,4 @@
-// @ts-ignore - events module types
-import {EventEmitter} from 'events';
+import EventEmitter from 'events';
 import uuid from 'uuid';
 // @ts-ignore - webex-core types
 import {config} from '@webex/webex-core';
@@ -30,8 +29,8 @@ import {millisToMinutesAndSeconds} from './utils';
  * @export
  * @class VoiceaChannel
  */
-export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChannel {
-  private webex: any;
+export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
+  private request: (options: {method: string; url: string; body?: object}) => Promise<any>;
   private llmChannel: LLMChannel;
 
   private seqNum: number;
@@ -51,12 +50,15 @@ export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChann
   /**
    * Creates a VoiceaChannel bound to the given LLMChannel
    * @param {LLMChannel} llmChannel - The LLM channel to use
-   * @param {Object} webex - The webex instance for making requests
+   * @param {Function} request - The request function for making API calls (typically webex.request bound to webex)
    */
-  constructor(llmChannel: LLMChannel, webex: any) {
+  constructor(
+    llmChannel: LLMChannel,
+    request: (options: {method: string; url: string; body?: object}) => Promise<any>
+  ) {
     super();
     this.llmChannel = llmChannel;
-    this.webex = webex;
+    this.request = request;
 
     this.seqNum = 1;
     this.areCaptionsEnabled = false;
@@ -129,7 +131,7 @@ export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChann
   /**
    * Switch to a different LLM channel while preserving caption state.
    * Used when transitioning between main meeting and practice session.
-   * - Preserves isCaptionBoxOn and spokenLanguage state
+   * - Preserves keepTranscriptionSubscribed and spokenLanguage state
    * - Unsubscribes from old channel, subscribes to new channel
    * - Re-announces and re-enables captions if they were on
    * @param {LLMChannel} newLLMChannel - The new LLM channel to switch to
@@ -137,7 +139,7 @@ export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChann
    */
   public async switchLLMChannel(newLLMChannel: LLMChannel): Promise<void> {
     // Save current state
-    const captionsWereOn = this.isCaptionBoxOn;
+    const captionsWereOn = this.keepTranscriptionSubscribed;
     const spokenLanguage = this.currentSpokenLanguage;
 
     // Unsubscribe from old channel
@@ -334,20 +336,18 @@ export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChann
     languageCode: string,
     languageAssignment?: 'DEFAULT' | 'AUTO' | 'MANUAL'
   ): Promise<void> =>
-    this.webex
-      .request({
-        method: 'PUT',
-        url: `${this.llmChannel.getLocusUrl()}/controls/`,
-        body: {
-          transcribe: {
-            spokenLanguage: languageCode,
-            ...(languageAssignment && {languageAssignment}),
-          },
+    this.request({
+      method: 'PUT',
+      url: `${this.llmChannel.getLocusUrl()}/controls/`,
+      body: {
+        transcribe: {
+          spokenLanguage: languageCode,
+          ...(languageAssignment && {languageAssignment}),
         },
-      })
-      .then(() => {
-        this.emit(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode});
-      });
+      },
+    }).then(() => {
+      this.emit(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode});
+    });
 
   /**
    * Request Language translation
@@ -456,12 +456,11 @@ export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChann
       languageCode,
     };
 
-    return this.webex
-      .request({
-        method: 'PUT',
-        url: `${locusUrl}/controls/`,
-        body,
-      })
+    return this.request({
+      method: 'PUT',
+      url: `${locusUrl}/controls/`,
+      body,
+    })
       .then(() => {
         this.emit(EVENT_TRIGGERS.CAPTIONS_TURNED_ON);
 
@@ -480,14 +479,14 @@ export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChann
    * is announce processing
    * @returns {boolean}
    */
-  public isAnnounceProcessing = (): boolean =>
+  private isAnnounceProcessing = (): boolean =>
     [ANNOUNCE_STATUS.JOINING, ANNOUNCE_STATUS.JOINED].includes(this.announceStatus);
 
   /**
    * is announce processed
    * @returns {boolean}
    */
-  public isAnnounceProcessed = (): boolean => this.announceStatus === ANNOUNCE_STATUS.JOINED;
+  private isAnnounceProcessed = (): boolean => this.announceStatus === ANNOUNCE_STATUS.JOINED;
 
   /**
    * announce to voicea data channel
@@ -507,7 +506,7 @@ export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChann
    * is turn on caption processing
    * @returns {boolean}
    */
-  public isCaptionProcessing = (): boolean =>
+  private isCaptionProcessing = (): boolean =>
     [TURN_ON_CAPTION_STATUS.SENDING, TURN_ON_CAPTION_STATUS.ENABLED].includes(this.captionStatus);
 
   /**
@@ -535,24 +534,22 @@ export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChann
     activate: boolean,
     spokenLanguage?: string
   ): undefined | Promise<void> => {
-    return this.webex
-      .request({
-        method: 'PUT',
-        url: `${this.llmChannel.getLocusUrl()}/controls/`,
-        body: {
-          transcribe: {
-            transcribing: activate,
-          },
-          spokenLanguage,
+    return this.request({
+      method: 'PUT',
+      url: `${this.llmChannel.getLocusUrl()}/controls/`,
+      body: {
+        transcribe: {
+          transcribing: activate,
         },
-      })
-      .then((): undefined | Promise<void> => {
-        if (activate && !this.areCaptionsEnabled) {
-          return this.turnOnCaptions(spokenLanguage);
-        }
+        spokenLanguage,
+      },
+    }).then((): undefined | Promise<void> => {
+      if (activate && !this.areCaptionsEnabled) {
+        return this.turnOnCaptions(spokenLanguage);
+      }
 
-        return undefined;
-      });
+      return undefined;
+    });
   };
 
   /**
@@ -565,16 +562,15 @@ export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChann
 
     this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.SENDING;
 
-    return this.webex
-      .request({
-        method: 'PUT',
-        url: `${this.llmChannel.getLocusUrl()}/controls/`,
-        body: {
-          manualCaption: {
-            enable,
-          },
+    return this.request({
+      method: 'PUT',
+      url: `${this.llmChannel.getLocusUrl()}/controls/`,
+      body: {
+        manualCaption: {
+          enable,
         },
-      })
+      },
+    })
       .then((): undefined | Promise<void> => {
         this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
 

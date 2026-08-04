@@ -66,7 +66,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
 
         // No channel found - fallback to finding meeting by matching datachannel URLs
         // @ts-ignore
-        const allMeetings: Record<string, Meeting> = this.meetings?.getAllMeetings?.() || {};
+        const allMeetings: Record<string, Meeting> = this.meetings?.getAllMeetings() || {};
 
         const meeting = Object.values(allMeetings).find((activeMeeting) => {
           const info = activeMeeting?.locusInfo?.info || {};
@@ -92,11 +92,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
           const {datachannelToken} = result.body;
 
           // Store token on the meeting's LLM channel if available
-          // llmChannel is private, cast required for cross-module access
-          const {llmChannel} = meeting as any;
-          if (llmChannel) {
-            llmChannel.setDatachannelToken(datachannelToken);
-          }
+          meeting.setLLMChannelDataToken(datachannelToken);
 
           return datachannelToken;
         }
