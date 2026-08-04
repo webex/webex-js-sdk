@@ -185,6 +185,11 @@ skipInNode(describe)('html', () => {
       output: '<p>click here</p>',
     },
     {
+      it: 'filters javascript: from a href with leading C0 control character',
+      input: '<p><a href="\u001fjavascript:alert(1)">click here</a></p>',
+      output: '<p>click here</p>',
+    },
+    {
       it: 'filters data: from a href',
       input: '<p><a href="data:text/html,<script>alert(1)</script>">click here</a></p>',
       output: '<p>click here</p>',

@@ -260,23 +260,45 @@ const trimPattern = /^\s|\s$/g;
 const ALLOWED_URL_SCHEMES = new Set(['http', 'https', 'mailto', 'tel', 'sip', 'webexteams']);
 
 /**
- * Removes TAB, LF, and CR — the C0 characters browsers discard when parsing URL schemes.
- * Other control characters (e.g. U+001F) are preserved in relative URLs.
+ * Strips ASCII control characters and whitespace (U+0000 through U+0020) from the
+ * start and end of a URL attribute value. Browsers discard this range at the ends
+ * before resolving a scheme, but trim() alone does not remove characters like U+001F.
  * @param {string} value
  * @returns {string}
  */
-function stripIgnorableUrlChars(value) {
-  let result = '';
+function stripLeadingTrailingUrlPadding(value) {
+  let start = 0;
+  let end = value.length;
 
-  for (let i = 0; i < value.length; i += 1) {
-    const code = value.charCodeAt(i);
-
-    if (code !== 0x09 && code !== 0x0a && code !== 0x0d) {
-      result += value[i];
-    }
+  while (start < end && value.charCodeAt(start) <= 0x20) {
+    start += 1;
   }
 
-  return result;
+  while (end > start && value.charCodeAt(end - 1) <= 0x20) {
+    end -= 1;
+  }
+
+  return value.slice(start, end);
+}
+
+/**
+ * Normalizes a URL attribute for scheme validation. Leading/trailing C0 controls and
+ * whitespace are removed; TAB/LF/CR are removed only within the scheme portion.
+ * Embedded controls elsewhere in relative URLs are preserved.
+ * @param {string} value
+ * @returns {string}
+ */
+function normalizeForSchemeCheck(value) {
+  const trimmed = stripLeadingTrailingUrlPadding(value).toLowerCase();
+  const colonIndex = trimmed.indexOf(':');
+
+  if (colonIndex === -1) {
+    return trimmed;
+  }
+
+  const schemePart = trimmed.slice(0, colonIndex).replace(/\t|\n|\r/g, '');
+
+  return schemePart + trimmed.slice(colonIndex);
 }
 
 /**
@@ -294,7 +316,7 @@ function isAllowedUrlAttribute(value) {
     return false;
   }
 
-  const normalized = stripIgnorableUrlChars(value).trim().toLowerCase();
+  const normalized = normalizeForSchemeCheck(value);
 
   if (normalized === '') {
     return true;
