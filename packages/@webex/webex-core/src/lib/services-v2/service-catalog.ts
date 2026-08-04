@@ -3,7 +3,7 @@ import AmpState from 'ampersand-state';
 import {union} from 'lodash';
 import ServiceDetail from './service-detail';
 import {IServiceDetail, ServiceGroup} from './types';
-import {matchAllowedDomain} from '../domains';
+import {matchAllowedDomain, normalizeAllowedDomains} from '../domains';
 
 /**
  * @class
@@ -277,7 +277,7 @@ const ServiceCatalog = AmpState.extend({
    * @returns {void}
    */
   setAllowedDomains(allowedDomains: Array<string>): void {
-    this.allowedDomains = [...allowedDomains];
+    this.allowedDomains = normalizeAllowedDomains(allowedDomains);
   },
 
   /**
@@ -286,7 +286,7 @@ const ServiceCatalog = AmpState.extend({
    * @returns {void}
    */
   addAllowedDomains(newAllowedDomains: Array<string>): void {
-    this.allowedDomains = union(this.allowedDomains, newAllowedDomains);
+    this.allowedDomains = union(this.allowedDomains, normalizeAllowedDomains(newAllowedDomains));
   },
 
   /**

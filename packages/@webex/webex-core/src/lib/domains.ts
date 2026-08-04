@@ -1,8 +1,14 @@
 import Url from 'url';
 
-// Lowercase and drop any leading/trailing dots so `.Example.com` and `example.com.`
-// compare equal to `example.com`. DNS treats all three as the same name. Brackets are
-// stripped so the two parsers' IPv6 spellings (`[::1]` vs `::1`) compare equal.
+import {uniq} from 'lodash';
+
+// Canonicalise a hostname for comparison: lowercase, drop the brackets around
+// an IPv6 literal, and drop leading/trailing dots. DNS treats `Example.com`,
+// `example.com.` and `example.com` as the same name.
+//
+// Node's `url.domainToASCII` looks like the standard way to do this, but the
+// `url` polyfill this package bundles for the browser does not implement it,
+// so it cannot be used here. It also leaves trailing dots in place.
 const normalizeHostname = (value: string): string =>
   typeof value === 'string'
     ? value
@@ -11,6 +17,19 @@ const normalizeHostname = (value: string): string =>
         .replace(/^\.+/, '')
         .replace(/\.+$/, '')
     : '';
+
+/**
+ * Canonicalise a list of configured allowed domains, discarding any entry that
+ * is not a usable hostname. Callers normalise on the way in so the stored list
+ * is already canonical, rather than re-deriving it on every request.
+ *
+ * @param {Array<string>} allowedDomains - The configured allowed domains.
+ * @returns {Array<string>} - Normalized, de-duplicated, non-empty entries.
+ */
+export const normalizeAllowedDomains = (allowedDomains: Array<string>): Array<string> =>
+  uniq(
+    (Array.isArray(allowedDomains) ? allowedDomains : []).map(normalizeHostname).filter(Boolean)
+  );
 
 /**
  * Determine if a hostname is covered by an allowed domain, matching only on DNS
@@ -23,6 +42,8 @@ const normalizeHostname = (value: string): string =>
  * @returns {boolean} - True when the hostname is the domain or a subdomain of it.
  */
 const hostnameMatchesDomain = (hostname: string, allowedDomain: string): boolean => {
+  // The stored list is normalized on write, but `allowedDomains` is a public
+  // property, so normalize again here rather than trust it.
   const host = normalizeHostname(hostname);
   const domain = normalizeHostname(allowedDomain);
 

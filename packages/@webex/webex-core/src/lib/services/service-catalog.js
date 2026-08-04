@@ -4,7 +4,7 @@ import AmpState from 'ampersand-state';
 
 import {union} from 'lodash';
 import ServiceUrl from './service-url';
-import {matchAllowedDomain} from '../domains';
+import {matchAllowedDomain, normalizeAllowedDomains} from '../domains';
 
 /* eslint-disable no-underscore-dangle */
 /**
@@ -363,7 +363,7 @@ const ServiceCatalog = AmpState.extend({
    * @returns {void}
    */
   setAllowedDomains(allowedDomains) {
-    this.allowedDomains = [...allowedDomains];
+    this.allowedDomains = normalizeAllowedDomains(allowedDomains);
   },
 
   /**
@@ -372,7 +372,7 @@ const ServiceCatalog = AmpState.extend({
    * @returns {void}
    */
   addAllowedDomains(newAllowedDomains) {
-    this.allowedDomains = union(this.allowedDomains, newAllowedDomains);
+    this.allowedDomains = union(this.allowedDomains, normalizeAllowedDomains(newAllowedDomains));
   },
 
   /**
