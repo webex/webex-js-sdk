@@ -992,5 +992,82 @@ describe('plugin-voicea', () => {
         assert.notCalled(spy);
       });
     });
+
+    describe('#switchLLMChannel', () => {
+      it('switches to a new LLM channel and preserves caption state', async () => {
+        // First enable captions
+        voiceaChannel.isCaptionBoxOn = true;
+        voiceaChannel.currentSpokenLanguage = 'es';
+
+        const newMockLLMChannel = createMockLLMChannel({locusUrl: 'newLocusUrl'});
+
+        await voiceaChannel.switchLLMChannel(newMockLLMChannel);
+
+        // Should have unsubscribed from old channel
+        assert.calledWith(mockLLMChannel.off, 'event:relay.event', sinon.match.func);
+
+        // Should have subscribed to new channel
+        assert.calledWith(newMockLLMChannel.on, 'event:relay.event', sinon.match.func);
+
+        // Should have reset announcement state to joining (since captions were on and it re-announced)
+        assert.equal(voiceaChannel.getAnnounceStatus(), 'joining');
+
+        // turnOnCaptions sends both an announcement and a subchannel subscription
+        assert.calledTwice(newMockLLMChannel.socket.send);
+
+        // First call should be the announcement
+        assert.calledWithExactly(newMockLLMChannel.socket.send.getCall(0), {
+          id: '1',
+          type: 'publishRequest',
+          recipients: {route: 'binding'},
+          headers: {},
+          data: {
+            clientPayload: {
+              version: 'v2',
+            },
+            eventType: 'relay.event',
+            relayType: 'client.annc',
+          },
+          trackingId: sinon.match.string,
+        });
+      });
+
+      it('does not turn on captions if they were not on before switching', async () => {
+        // Captions are off
+        voiceaChannel.isCaptionBoxOn = false;
+
+        const newMockLLMChannel = createMockLLMChannel({locusUrl: 'newLocusUrl'});
+
+        await voiceaChannel.switchLLMChannel(newMockLLMChannel);
+
+        // Should have unsubscribed from old channel
+        assert.calledWith(mockLLMChannel.off, 'event:relay.event', sinon.match.func);
+
+        // Should have subscribed to new channel
+        assert.calledWith(newMockLLMChannel.on, 'event:relay.event', sinon.match.func);
+
+        // Should NOT have sent any messages (no announcement for captions)
+        assert.notCalled(newMockLLMChannel.socket.send);
+
+        // State should be idle since captions weren't re-enabled
+        assert.equal(voiceaChannel.getAnnounceStatus(), 'idle');
+      });
+
+      it('handles case when not previously subscribed to events', async () => {
+        // Create a new channel that hasn't subscribed to events
+        const freshVoiceaChannel = new VoiceaChannel(mockLLMChannel, webex);
+        freshVoiceaChannel.hasSubscribedToEvents = false;
+
+        const newMockLLMChannel = createMockLLMChannel({locusUrl: 'newLocusUrl'});
+
+        await freshVoiceaChannel.switchLLMChannel(newMockLLMChannel);
+
+        // Should NOT have tried to unsubscribe from old channel (wasn't subscribed)
+        assert.neverCalledWith(mockLLMChannel.off, 'event:relay.event', sinon.match.func);
+
+        // Should have subscribed to new channel
+        assert.calledWith(newMockLLMChannel.on, 'event:relay.event', sinon.match.func);
+      });
+    });
   });
 });

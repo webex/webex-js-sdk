@@ -5,7 +5,6 @@ import {WebexPlugin, config} from '@webex/webex-core';
 import uuid from 'uuid';
 import {get} from 'lodash';
 import type LLMChannel from '@webex/internal-plugin-llm';
-import type {VoiceaChannel} from '@webex/internal-plugin-voicea';
 import {
   _ID_,
   EVENT_TRIGGERS,
@@ -48,12 +47,6 @@ const Webinar = WebexPlugin.extend({
    * @type {LLMChannel|undefined}
    */
   practiceSessionLLMChannel: undefined as LLMChannel | undefined,
-
-  /**
-   * Voicea channel for practice session, bound to practiceSessionLLMChannel.
-   * @type {VoiceaChannel|undefined}
-   */
-  practiceSessionVoiceaChannel: undefined as VoiceaChannel | undefined,
 
   /**
    * Pending practice session datachannel token, saved from join response.
@@ -205,24 +198,10 @@ const Webinar = WebexPlugin.extend({
       this._pendingOnlineListener = null;
     }
 
-    // Clean up practice session voicea channel
-    const hadVoiceaChannel = !!this.practiceSessionVoiceaChannel;
-    if (this.practiceSessionVoiceaChannel) {
-      this.practiceSessionVoiceaChannel.deregisterEvents();
-      this.practiceSessionVoiceaChannel = undefined;
-    }
-
-    // Emit cleanup event so clients can update their state
-    if (hadVoiceaChannel) {
-      const meeting = this.getValidatedWebinarMeeting();
-      if (meeting) {
-        Trigger.trigger(
-          meeting,
-          {file: 'webinar/index', function: 'cleanupPSDataChannel'},
-          EVENT_TRIGGERS.MEETING_PRACTICE_SESSION_VOICEA_CHANNEL_CLEANED_UP,
-          {}
-        );
-      }
+    // Switch voicea back to main meeting LLM channel before disconnecting PS channel
+    const meeting = this.getValidatedWebinarMeeting();
+    if (meeting?.voiceaChannel && meeting?.llmChannel) {
+      await meeting.voiceaChannel.switchLLMChannel(meeting.llmChannel);
     }
 
     if (!this.practiceSessionLLMChannel) {
@@ -242,7 +221,6 @@ const Webinar = WebexPlugin.extend({
       throw error;
     } finally {
       // Remove listeners from the channel
-      const meeting = this.getValidatedWebinarMeeting();
       if (meeting) {
         this.practiceSessionLLMChannel?.off('event:relay.event', meeting.processRelayEvent);
         this.practiceSessionLLMChannel?.off(LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
@@ -374,8 +352,6 @@ const Webinar = WebexPlugin.extend({
       this._pendingOnlineListener = null;
     }
 
-    const keepTranscriptionSubscribed = meeting.voiceaChannel?.getKeepTranscriptionSubscribed();
-
     // Get token from pending or refresh if needed
     let practiceSessionDatachannelToken =
       this._pendingPracticeSessionDatachannelToken ??
@@ -438,27 +414,12 @@ const Webinar = WebexPlugin.extend({
         // Switch annotation to practice session channel
         meeting.annotation.registerChannel(psChannel);
 
-        // Create VoiceaChannel for practice session bound to practiceSessionLLMChannel
-        // @ts-ignore - Fix type
-        this.practiceSessionVoiceaChannel = this.webex.internal.voicea.createChannel(psChannel);
-
-        // Set up voicea listeners for practice session channel
-        this.setupPracticeSessionVoiceaListeners(meeting);
-
-        // Emit event so clients can register listeners on the new channel
-        Trigger.trigger(
-          meeting,
-          {file: 'webinar/index', function: 'updatePSDataChannel'},
-          EVENT_TRIGGERS.MEETING_PRACTICE_SESSION_VOICEA_CHANNEL_READY,
-          {practiceSessionVoiceaChannel: this.practiceSessionVoiceaChannel}
-        );
-
-        // Announce and enable captions on practice session channel
-        this.practiceSessionVoiceaChannel?.announce?.();
-        if (keepTranscriptionSubscribed) {
-          // Turn on captions for the practice session channel (not just subscribe to events)
-          await this.practiceSessionVoiceaChannel?.turnOnCaptions?.();
+        // Switch meeting's voicea channel to use the PS LLM connection
+        // This preserves caption state and re-announces automatically
+        if (meeting.voiceaChannel) {
+          await meeting.voiceaChannel.switchLLMChannel(psChannel);
         }
+
         LoggerProxy.logger.info(
           'Webinar:index#updatePSDataChannel --> enabled to receive relay events for practice session!'
         );
@@ -472,35 +433,6 @@ const Webinar = WebexPlugin.extend({
         }
         throw error;
       });
-  },
-
-  /**
-   * Sets up voicea listeners for practice session channel to forward events to the meeting.
-   * This allows captions to work during practice session.
-   * @param {object} meeting - The meeting instance
-   * @returns {void}
-   */
-  setupPracticeSessionVoiceaListeners(meeting) {
-    if (!this.practiceSessionVoiceaChannel || !meeting) {
-      return;
-    }
-
-    // Forward voicea events from practice session channel to meeting's voicea callbacks
-    Object.keys(meeting.voiceaListenerCallbacks).forEach((eventName) => {
-      this.practiceSessionVoiceaChannel.on(eventName, meeting.voiceaListenerCallbacks[eventName]);
-    });
-  },
-
-  /**
-   * Turns on captions for the practice session voicea channel if it exists.
-   * Encapsulates access to practiceSessionVoiceaChannel.
-   * @param {string} [spokenLanguage] - Optional spoken language to use
-   * @returns {Promise<void>}
-   */
-  async turnOnCaptions(spokenLanguage?: string): Promise<void> {
-    if (this.practiceSessionVoiceaChannel) {
-      await this.practiceSessionVoiceaChannel.turnOnCaptions(spokenLanguage);
-    }
   },
 
   /**

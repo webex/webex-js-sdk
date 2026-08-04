@@ -303,76 +303,6 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe('#turnOnCaptions', () => {
-        it('turns on captions with spoken language when practice session voicea channel exists', async () => {
-          const mockVoiceaChannel = {
-            turnOnCaptions: sinon.stub().resolves(),
-          };
-          webinar.practiceSessionVoiceaChannel = mockVoiceaChannel;
-
-          await webinar.turnOnCaptions('en-US');
-
-          assert.calledOnceWithExactly(mockVoiceaChannel.turnOnCaptions, 'en-US');
-        });
-
-        it('turns on captions without spoken language', async () => {
-          const mockVoiceaChannel = {
-            turnOnCaptions: sinon.stub().resolves(),
-          };
-          webinar.practiceSessionVoiceaChannel = mockVoiceaChannel;
-
-          await webinar.turnOnCaptions();
-
-          assert.calledOnceWithExactly(mockVoiceaChannel.turnOnCaptions, undefined);
-        });
-
-        it('does nothing when no practice session voicea channel exists', async () => {
-          webinar.practiceSessionVoiceaChannel = undefined;
-
-          // Should not throw
-          await webinar.turnOnCaptions('en-US');
-        });
-      });
-
-      describe('#setupPracticeSessionVoiceaListeners', () => {
-        it('forwards voicea events from practice session channel to meeting callbacks', () => {
-          const callback1 = sinon.stub();
-          const callback2 = sinon.stub();
-          const mockVoiceaChannel = {on: sinon.stub()};
-          webinar.practiceSessionVoiceaChannel = mockVoiceaChannel;
-
-          const meeting = {
-            voiceaListenerCallbacks: {
-              'caption:ready': callback1,
-              'transcript:interim': callback2,
-            },
-          };
-
-          webinar.setupPracticeSessionVoiceaListeners(meeting);
-
-          assert.calledWith(mockVoiceaChannel.on, 'caption:ready', callback1);
-          assert.calledWith(mockVoiceaChannel.on, 'transcript:interim', callback2);
-        });
-
-        it('does nothing when practice session voicea channel is undefined', () => {
-          webinar.practiceSessionVoiceaChannel = undefined;
-
-          const meeting = {
-            voiceaListenerCallbacks: {'caption:ready': sinon.stub()},
-          };
-
-          // Should not throw
-          webinar.setupPracticeSessionVoiceaListeners(meeting);
-        });
-
-        it('does nothing when meeting is undefined', () => {
-          webinar.practiceSessionVoiceaChannel = {on: sinon.stub()};
-
-          // Should not throw
-          webinar.setupPracticeSessionVoiceaListeners(undefined);
-        });
-      });
-
       describe('#ensurePracticeSessionDatachannelToken', () => {
         let meeting;
 
@@ -478,11 +408,15 @@ describe('plugin-meetings', () => {
       describe('#cleanupPSDataChannel', () => {
         let mockPSChannel;
         let meeting;
+        let mockVoiceaChannel;
 
         beforeEach(() => {
           webinar.meetingId = 'meeting-id';
           mockPSChannel = createMockLLMChannel();
           webinar.practiceSessionLLMChannel = mockPSChannel;
+          mockVoiceaChannel = {
+            switchLLMChannel: sinon.stub().resolves(),
+          };
           meeting = {
             id: 'meeting-id',
             locusUrl: 'locusUrl',
@@ -490,6 +424,7 @@ describe('plugin-meetings', () => {
             processLocusLLMEvent: sinon.stub(),
             handleLLMOnline: sinon.stub(),
             llmChannel: createMockLLMChannel(),
+            voiceaChannel: mockVoiceaChannel,
             annotation: {registerChannel: sinon.stub()},
             trigger: sinon.stub(),
           };
@@ -567,31 +502,19 @@ describe('plugin-meetings', () => {
           assert.notCalled(mockPSChannel.disconnect);
         });
 
-        it('cleans up voicea channel when it exists', async () => {
-          const mockVoiceaChannel = {deregisterEvents: sinon.stub()};
-          webinar.practiceSessionVoiceaChannel = mockVoiceaChannel;
-
+        it('switches voicea channel back to main meeting LLM channel', async () => {
           await webinar.cleanupPSDataChannel();
 
-          assert.calledOnceWithExactly(mockVoiceaChannel.deregisterEvents);
-          assert.isUndefined(webinar.practiceSessionVoiceaChannel);
+          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, meeting.llmChannel);
         });
 
-        it('triggers voicea channel cleanup event when voicea channel existed', async () => {
-          const mockVoiceaChannel = {deregisterEvents: sinon.stub()};
-          webinar.practiceSessionVoiceaChannel = mockVoiceaChannel;
+        it('does not switch voicea channel when meeting has no voiceaChannel', async () => {
+          meeting.voiceaChannel = undefined;
 
           await webinar.cleanupPSDataChannel();
 
-          assert.calledOnce(meeting.trigger);
-        });
-
-        it('does not trigger voicea channel cleanup event when no voicea channel existed', async () => {
-          webinar.practiceSessionVoiceaChannel = undefined;
-
-          await webinar.cleanupPSDataChannel();
-
-          assert.notCalled(meeting.trigger);
+          // Should not throw - cleanup should continue without voicea switch
+          assert.calledOnce(mockPSChannel.disconnect);
         });
       });
 
@@ -612,13 +535,7 @@ describe('plugin-meetings', () => {
             }),
           });
           mockVoiceaChannel = {
-            on: sinon.stub(),
-            off: sinon.stub(),
-            announce: sinon.stub(),
-            turnOnCaptions: sinon.stub().resolves(),
-            deregisterEvents: sinon.stub(),
-            getIsCaptionBoxOn: sinon.stub().returns(false),
-            updateSubchannelSubscriptions: sinon.stub(),
+            switchLLMChannel: sinon.stub().resolves(),
           };
 
           // Default session channel on the meeting
@@ -634,6 +551,7 @@ describe('plugin-meetings', () => {
             processLocusLLMEvent: sinon.stub(),
             handleLLMOnline: sinon.stub(),
             llmChannel: mockDefaultChannel,
+            voiceaChannel: mockVoiceaChannel,
             annotation: {registerChannel: sinon.stub()},
             locusInfo: {
               url: 'locus-url',
@@ -651,7 +569,6 @@ describe('plugin-meetings', () => {
 
           webex.meetings.getMeetingByType = sinon.stub().returns(meeting);
           webex.internal.llm.createConnection = sinon.stub().returns(mockPSChannel);
-          webex.internal.voicea.createChannel = sinon.stub().returns(mockVoiceaChannel);
 
           // Ensure connect path is eligible
           webinar.selfIsPanelist = true;
@@ -800,34 +717,19 @@ describe('plugin-meetings', () => {
           assert.calledOnce(mockPSChannel.registerAndConnect);
         });
 
-        it('creates voicea channel for practice session', async () => {
+        it('switches voicea channel to practice session LLM channel after connect', async () => {
           await webinar.updatePSDataChannel();
 
-          assert.calledOnceWithExactly(webex.internal.voicea.createChannel, mockPSChannel);
-          assert.strictEqual(webinar.practiceSessionVoiceaChannel, mockVoiceaChannel);
+          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockPSChannel);
         });
 
-        it('announces voicea on practice session channel after connect', async () => {
-          await webinar.updatePSDataChannel();
-
-          assert.calledOnce(mockVoiceaChannel.announce);
-        });
-
-        it('turns on captions when caption box was on', async () => {
-          // Set up existing voicea on default channel with captions on
-          meeting.voiceaChannel = {getIsCaptionBoxOn: sinon.stub().returns(true)};
+        it('does not call switchLLMChannel when meeting has no voiceaChannel', async () => {
+          meeting.voiceaChannel = undefined;
 
           await webinar.updatePSDataChannel();
 
-          assert.calledOnce(mockVoiceaChannel.turnOnCaptions);
-        });
-
-        it('does not turn on captions when caption box was off', async () => {
-          meeting.voiceaChannel = {getIsCaptionBoxOn: sinon.stub().returns(false)};
-
-          await webinar.updatePSDataChannel();
-
-          assert.notCalled(mockVoiceaChannel.turnOnCaptions);
+          // Should complete without error
+          assert.calledOnce(mockPSChannel.registerAndConnect);
         });
 
         it('defers connect when default session is not yet connected', async () => {
@@ -951,27 +853,6 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(mockPSChannel.disconnect, {code: 3050, reason: 'replaced'});
           // Should return undefined since the channel was replaced
           assert.isUndefined(result);
-        });
-
-        it('sets up voicea listeners for meeting callbacks', async () => {
-          meeting.voiceaListenerCallbacks = {
-            'caption:ready': sinon.stub(),
-            'transcript:final': sinon.stub(),
-          };
-
-          await webinar.updatePSDataChannel();
-
-          // Voicea channel should have listeners registered for each callback
-          assert.calledWith(
-            mockVoiceaChannel.on,
-            'caption:ready',
-            meeting.voiceaListenerCallbacks['caption:ready']
-          );
-          assert.calledWith(
-            mockVoiceaChannel.on,
-            'transcript:final',
-            meeting.voiceaListenerCallbacks['transcript:final']
-          );
         });
       });
 

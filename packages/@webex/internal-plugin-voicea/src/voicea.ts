@@ -127,6 +127,45 @@ export class VoiceaChannel extends (EventEmitter as any) implements IVoiceaChann
   }
 
   /**
+   * Switch to a different LLM channel while preserving caption state.
+   * Used when transitioning between main meeting and practice session.
+   * - Preserves isCaptionBoxOn and spokenLanguage state
+   * - Unsubscribes from old channel, subscribes to new channel
+   * - Re-announces and re-enables captions if they were on
+   * @param {LLMChannel} newLLMChannel - The new LLM channel to switch to
+   * @returns {Promise<void>}
+   */
+  public async switchLLMChannel(newLLMChannel: LLMChannel): Promise<void> {
+    // Save current state
+    const captionsWereOn = this.isCaptionBoxOn;
+    const spokenLanguage = this.currentSpokenLanguage;
+
+    // Unsubscribe from old channel
+    if (this.hasSubscribedToEvents && this.llmChannel) {
+      this.llmChannel.off('event:relay.event', this.eventProcessor);
+      this.hasSubscribedToEvents = false;
+    }
+
+    // Switch to new channel
+    this.llmChannel = newLLMChannel;
+
+    // Subscribe to new channel
+    this.llmChannel.on('event:relay.event', this.eventProcessor);
+    this.hasSubscribedToEvents = true;
+
+    // Reset announcement state for new connection
+    this.announceStatus = ANNOUNCE_STATUS.IDLE;
+    this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
+    this.captionServiceId = undefined;
+    this.areCaptionsEnabled = false;
+
+    // Re-announce and re-enable captions if they were on
+    if (captionsWereOn) {
+      await this.turnOnCaptions(spokenLanguage);
+    }
+  }
+
+  /**
    * Process manual Transcript and send alert
    * @param {TranscriptionResponse} transcriptPayload
    * @returns {void}
