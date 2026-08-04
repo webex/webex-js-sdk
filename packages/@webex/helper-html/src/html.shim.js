@@ -260,15 +260,16 @@ const trimPattern = /^\s|\s$/g;
 const ALLOWED_URL_SCHEMES = new Set(['http', 'https', 'mailto', 'tel', 'sip', 'webexteams']);
 
 /**
- * Removes ASCII control characters and whitespace (U+0000 through U+0020).
+ * Removes ASCII control characters (U+0000 through U+001F).
+ * Regular spaces (U+0020) are preserved so relative URLs like "release notes:latest" remain valid.
  * @param {string} value
  * @returns {string}
  */
-function stripControlCharsAndWhitespace(value) {
+function stripControlChars(value) {
   let result = '';
 
   for (let i = 0; i < value.length; i += 1) {
-    if (value.charCodeAt(i) > 0x20) {
+    if (value.charCodeAt(i) > 0x1f) {
       result += value[i];
     }
   }
@@ -291,7 +292,7 @@ function isAllowedUrlAttribute(value) {
     return false;
   }
 
-  const normalized = stripControlCharsAndWhitespace(value).toLowerCase();
+  const normalized = stripControlChars(value).trim().toLowerCase();
 
   if (normalized === '') {
     return true;
