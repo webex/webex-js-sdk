@@ -578,11 +578,7 @@ export default class LocusInfo extends EventsScope {
 
           const ownership = llm.resolveSessionOwnership?.(this.meetingId, LLM_DEFAULT_SESSION);
 
-          if (
-            ownership?.currentOwner &&
-            ownership.currentOwner !== this.meetingId &&
-            !ownership.isOwner
-          ) {
+          if (!ownership.isOwner) {
             return false;
           }
 
