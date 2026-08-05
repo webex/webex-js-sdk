@@ -130,12 +130,7 @@ export const MOBIUS_EU_INT = 'mobius-eu-central-1.int.infra.webex.com';
 export const FAILOVER_CACHE_PREFIX = 'wxc-failover-state';
 export const ACTIVE_MOBIUS_STORAGE_KEY = 'wxc-active-mobius';
 export const ICE_CANDIDATES_TIMEOUT = 3000;
-/*
- * When the remote peer advertises itself as an ICE-lite agent (a=ice-lite), it only offers
- * host candidates and does not perform connectivity checks. In that case there is no benefit
- * in waiting the full ICE_CANDIDATES_TIMEOUT for local candidate gathering, so a much shorter
- * timeout is used to avoid stalling media negotiation.
- */
+// Reduced ICE candidates timeout used for ice-lite offers.
 export const ICE_LITE_CANDIDATES_TIMEOUT = 500;
 export const WCC_CALLING_RTMS_DOMAIN = 'wcc-calling-rtms-domain';
 
