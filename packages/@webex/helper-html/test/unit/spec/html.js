@@ -357,28 +357,28 @@ skipInNode(describe)('html', () => {
     });
 
     it('filterSync with five arguments applies additionalAllowedUrlSchemes', () => {
-      assert.match(
+      assert.strictEqual(
         filterSync(noop, allowedTags, allowedStyles, '<p><a href="teams:foo">x</a></p>', ['teams']),
         '<p><a href="teams:foo">x</a></p>'
       );
     });
 
     it('allows a custom URL scheme from config', () => {
-      assert.match(
+      assert.strictEqual(
         cfilterSync('<p><a href="teams:channel?id=123">click</a></p>', ['teams']),
         '<p><a href="teams:channel?id=123">click</a></p>'
       );
     });
 
     it('blocks javascript: even when listed in additionalAllowedUrlSchemes', () => {
-      assert.match(
+      assert.strictEqual(
         cfilterSync('<p><a href="javascript:alert(1)">click</a></p>', ['javascript']),
         '<p>click</p>'
       );
     });
 
     it('blocks unknown schemes when not in additionalAllowedUrlSchemes', () => {
-      assert.match(
+      assert.strictEqual(
         cfilterSync('<p><a href="teams:foo">click</a></p>'),
         '<p>click</p>'
       );
