@@ -25,6 +25,7 @@ function noop(...args) {
  * @param {Object} allowedTags
  * @param {Array<string>} allowedStyles
  * @param {string} html
+ * @param {Array<string>} [additionalAllowedUrlSchemes]
  * @private
  * @returns {string}
  */
@@ -32,7 +33,9 @@ function noopSync(processCallback, allowedTags, allowedStyles, html) {
   return html;
 }
 
-export const filter = curry(noop, 4);
-export const filterSync = curry(noopSync, 4);
-export const filterEscape = curry(noop, 4);
-export const filterEscapeSync = curry(noopSync, 4);
+export const DEFAULT_ALLOWED_URL_SCHEMES = ['http', 'https', 'mailto', 'tel', 'sip', 'webexteams'];
+
+export const filter = curry(noop, 5);
+export const filterSync = curry(noopSync, 5);
+export const filterEscape = curry(noop, 5);
+export const filterEscapeSync = curry(noopSync, 5);

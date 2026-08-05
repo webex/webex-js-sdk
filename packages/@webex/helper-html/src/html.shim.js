@@ -60,7 +60,7 @@ function _filter(...args) {
  * @param {string} html html to filter
  * @returns {string}
  */
-export const filter = curry(_filter, 4);
+export const filter = curry(_filter, 5);
 
 /**
  * @param {function} processCallback callback function to do additional
@@ -68,10 +68,17 @@ export const filter = curry(_filter, 4);
  * @param {Object} allowedTags
  * @param {Array<string>} allowedStyles
  * @param {string} html
+ * @param {Array<string>} [additionalAllowedUrlSchemes]
  * @private
  * @returns {string}
  */
-function _filterSync(processCallback, allowedTags, allowedStyles, html) {
+function _filterSync(
+  processCallback,
+  allowedTags,
+  allowedStyles,
+  html,
+  additionalAllowedUrlSchemes
+) {
   if (!html || !allowedStyles || !allowedTags) {
     if (html.length === 0) {
       return html;
@@ -80,6 +87,7 @@ function _filterSync(processCallback, allowedTags, allowedStyles, html) {
     throw new Error('`allowedTags`, `allowedStyles`, and `html` must be provided');
   }
 
+  const allowedUrlSchemes = buildAllowedUrlSchemes(additionalAllowedUrlSchemes);
   const doc = new DOMParser().parseFromString(html, 'text/html');
 
   depthFirstForEach(doc.body.childNodes, filterNode);
@@ -115,7 +123,7 @@ function _filterSync(processCallback, allowedTags, allowedStyles, html) {
         } else if (attrName === 'href' || attrName === 'src') {
           const attrValue = node.attributes.getNamedItem(attrName).value;
 
-          if (!isAllowedUrlAttribute(attrValue)) {
+          if (!isAllowedUrlAttribute(attrValue, allowedUrlSchemes)) {
             reparent(node);
           }
         } else if (attrName === 'style') {
@@ -163,9 +171,16 @@ function _filterEscape(...args) {
  * @param {Object} allowedTags
  * @param {Array<string>} allowedStyles
  * @param {string} html
+ * @param {Array<string>} [additionalAllowedUrlSchemes]
  * @returns {string}
  */
-function _filterEscapeSync(processCallback, allowedTags, allowedStyles, html) {
+function _filterEscapeSync(
+  processCallback,
+  allowedTags,
+  allowedStyles,
+  html,
+  additionalAllowedUrlSchemes
+) {
   if (!html || !allowedStyles || !allowedTags) {
     if (html.length === 0) {
       return html;
@@ -174,6 +189,7 @@ function _filterEscapeSync(processCallback, allowedTags, allowedStyles, html) {
     throw new Error('`allowedTags`, `allowedStyles`, and `html` must be provided');
   }
 
+  const allowedUrlSchemes = buildAllowedUrlSchemes(additionalAllowedUrlSchemes);
   const doc = new DOMParser().parseFromString(html, 'text/html');
 
   depthFirstForEach(doc.body.childNodes, filterNode);
@@ -209,7 +225,7 @@ function _filterEscapeSync(processCallback, allowedTags, allowedStyles, html) {
         } else if (attrName === 'href' || attrName === 'src') {
           const attrValue = node.attributes.getNamedItem(attrName).value;
 
-          if (!isAllowedUrlAttribute(attrValue)) {
+          if (!isAllowedUrlAttribute(attrValue, allowedUrlSchemes)) {
             reparent(node);
           }
         } else if (attrName === 'style') {
@@ -257,7 +273,43 @@ function escapeNode(node) {
 
 const trimPattern = /^\s|\s$/g;
 
-const ALLOWED_URL_SCHEMES = new Set(['http', 'https', 'mailto', 'tel', 'sip', 'webexteams']);
+export const DEFAULT_ALLOWED_URL_SCHEMES = ['http', 'https', 'mailto', 'tel', 'sip', 'webexteams'];
+
+const BLOCKED_URL_SCHEMES = new Set(['javascript', 'vbscript', 'data']);
+
+const SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*$/;
+
+/**
+ * Builds the effective URL scheme allow-list by merging defaults with optional
+ * additional schemes from SDK config. Dangerous schemes are always excluded.
+ * @param {Array<string>} [additionalAllowedUrlSchemes]
+ * @returns {Set<string>}
+ */
+function buildAllowedUrlSchemes(additionalAllowedUrlSchemes) {
+  const schemes = new Set(DEFAULT_ALLOWED_URL_SCHEMES);
+
+  if (!additionalAllowedUrlSchemes) {
+    return schemes;
+  }
+
+  forEach(additionalAllowedUrlSchemes, (scheme) => {
+    if (typeof scheme !== 'string') {
+      return;
+    }
+
+    const normalized = scheme.toLowerCase();
+
+    if (BLOCKED_URL_SCHEMES.has(normalized)) {
+      return;
+    }
+
+    if (SCHEME_PATTERN.test(normalized)) {
+      schemes.add(normalized);
+    }
+  });
+
+  return schemes;
+}
 
 /**
  * Strips ASCII control characters and whitespace (U+0000 through U+0020) from the
@@ -305,9 +357,10 @@ function normalizeForSchemeCheck(value) {
  * Returns true when href/src is safe to keep after stripping control characters
  * and validating the URL scheme against an allow-list.
  * @param {string} value
+ * @param {Set<string>} allowedSchemes
  * @returns {boolean}
  */
-function isAllowedUrlAttribute(value) {
+function isAllowedUrlAttribute(value, allowedSchemes) {
   if (value === '') {
     return true;
   }
@@ -332,7 +385,7 @@ function isAllowedUrlAttribute(value) {
     return true;
   }
 
-  return ALLOWED_URL_SCHEMES.has(schemeMatch[1]);
+  return allowedSchemes.has(schemeMatch[1]);
 }
 
 /**
@@ -416,22 +469,24 @@ function isElement(o) {
  * @param {string} html html to filter
  * @returns {string}
  */
-export const filterSync = curry(_filterSync, 4);
+export const filterSync = curry(_filterSync, 5);
 
 /**
  * Curried HTML filter that escapes rather than removes disallowed tags
  * @param {Object} allowedTags Map of tagName -> array of allowed attributes
  * @param {Array<string>} allowedStyles Array of allowed styles
  * @param {string} html html to filter
+ * @param {Array<string>} [additionalAllowedUrlSchemes] extra URL schemes to allow
  * @returns {Promise<string>}
  */
-export const filterEscape = curry(_filterEscape, 4);
+export const filterEscape = curry(_filterEscape, 5);
 
 /**
  * Curried HTML filter that escapes rather than removes disallowed tags
  * @param {Object} allowedTags Map of tagName -> array of allowed attributes
  * @param {Array<string>} allowedStyles Array of allowed styles
  * @param {string} html html to filter
+ * @param {Array<string>} [additionalAllowedUrlSchemes] extra URL schemes to allow
  * @returns {string}
  */
-export const filterEscapeSync = curry(_filterEscapeSync, 4);
+export const filterEscapeSync = curry(_filterEscapeSync, 5);

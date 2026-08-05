@@ -17,6 +17,13 @@ export default {
     allowedInboundStyles: [],
     allowedOutboundStyles: [],
     /**
+     * Additional URL schemes allowed in href/src beyond the built-in safe defaults
+     * (http, https, mailto, tel, sip, webexteams). Schemes are normalized to lowercase.
+     * Dangerous schemes (javascript, vbscript, data) are always blocked.
+     * @type {string[]}
+     */
+    additionalAllowedUrlSchemes: [],
+    /**
      * Max height for thumbnails generated when sharing an image
      * @type {number}
      */

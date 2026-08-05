@@ -52,10 +52,14 @@ skipInNode(describe)('html', () => {
   function noop() {
     /* ignore */
   }
-  const cfilter = filter(noop, allowedTags, allowedStyles);
-  const cfilterSync = filterSync(noop, allowedTags, allowedStyles);
-  const cfilterEscape = filterEscape(noop, allowedTags, allowedStyles);
-  const cfilterEscapeSync = filterEscapeSync(noop, allowedTags, allowedStyles);
+  const cfilter = (html, additionalAllowedUrlSchemes) =>
+    filter(noop, allowedTags, allowedStyles, html, additionalAllowedUrlSchemes);
+  const cfilterSync = (html, additionalAllowedUrlSchemes) =>
+    filterSync(noop, allowedTags, allowedStyles, html, additionalAllowedUrlSchemes);
+  const cfilterEscape = (html, additionalAllowedUrlSchemes) =>
+    filterEscape(noop, allowedTags, allowedStyles, html, additionalAllowedUrlSchemes);
+  const cfilterEscapeSync = (html, additionalAllowedUrlSchemes) =>
+    filterEscapeSync(noop, allowedTags, allowedStyles, html, additionalAllowedUrlSchemes);
 
   describe('#filter()', () => {
     it('sanitizes trivial html', () =>
@@ -346,6 +350,29 @@ skipInNode(describe)('html', () => {
       it(def.it, () => {
         assert.match(cfilterEscapeSync(def.input), def.output);
       });
+    });
+  });
+
+  describe('additionalAllowedUrlSchemes', () => {
+    it('allows a custom URL scheme from config', () => {
+      assert.match(
+        cfilterSync('<p><a href="teams:channel?id=123">click</a></p>', ['teams']),
+        '<p><a href="teams:channel?id=123">click</a></p>'
+      );
+    });
+
+    it('blocks javascript: even when listed in additionalAllowedUrlSchemes', () => {
+      assert.match(
+        cfilterSync('<p><a href="javascript:alert(1)">click</a></p>', ['javascript']),
+        '<p>click</p>'
+      );
+    });
+
+    it('blocks unknown schemes when not in additionalAllowedUrlSchemes', () => {
+      assert.match(
+        cfilterSync('<p><a href="teams:foo">click</a></p>'),
+        '<p>click</p>'
+      );
     });
   });
 });
