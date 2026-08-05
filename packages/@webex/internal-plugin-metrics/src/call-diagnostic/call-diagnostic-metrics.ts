@@ -289,6 +289,13 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       versionMetadata = extractVersionMetadata(providedClientVersion);
     }
 
+    // The host client owns the browser support policy, since it is the same decision that drives
+    // its blocked-browser page and outdated-browser banner. The SDK reports the booleans as given.
+    // @ts-ignore
+    const {isSupportedBrowserFamily, isOutdatedBrowserVersion} =
+      // @ts-ignore
+      this.webex.meetings.config?.metrics ?? {};
+
     if (!this.hasLoggedBrowserSerial) {
       this.logger.log(
         CALL_DIAGNOSTIC_LOG_IDENTIFIER,
@@ -331,6 +338,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           os: getOSNameInternal(),
           browser: getBrowserName(),
           browserVersion: getBrowserVersion(),
+          ...(isSupportedBrowserFamily !== undefined && {isSupportedBrowserFamily}),
+          ...(isOutdatedBrowserVersion !== undefined && {isOutdatedBrowserVersion}),
         },
       };
 
@@ -360,19 +369,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
       if (options?.vendorId) {
         origin.clientInfo.vendorId = options.vendorId;
-      }
-
-      // Set once by the host client rather than per event: the browser cannot change mid-session,
-      // so these stay constant for a correlationId. Call analyzer derives clientVersionStatus.
-      // @ts-ignore
-      const metricsConfig = this.webex.meetings.config?.metrics;
-
-      if (metricsConfig?.isSupportedBrowserFamily !== undefined) {
-        origin.clientInfo.isSupportedBrowserFamily = metricsConfig.isSupportedBrowserFamily;
-      }
-
-      if (metricsConfig?.isOutdatedBrowserVersion !== undefined) {
-        origin.clientInfo.isOutdatedBrowserVersion = metricsConfig.isOutdatedBrowserVersion;
       }
 
       return origin;
