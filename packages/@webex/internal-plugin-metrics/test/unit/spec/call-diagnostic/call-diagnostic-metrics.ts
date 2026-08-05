@@ -394,6 +394,38 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('builds origin correctly with the browser support flags from config', () => {
+        // `false` is the meaningful "unsupported family" signal, so it must survive a truthy check
+        webex.meetings.config.metrics.isSupportedBrowserFamily = false;
+        webex.meetings.config.metrics.isOutdatedBrowserVersion = true;
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.3.4.0',
+            localNetworkPrefix: '192.168.1.80',
+            os: getOSNameInternal(),
+            osVersion: getOSVersion() || 'unknown',
+            subClientType: 'WEB_APP',
+            isSupportedBrowserFamily: false,
+            isOutdatedBrowserVersion: true,
+          },
+          environment: 'meeting_evn',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      });
+
       it('should build origin correctly with no meeting or stats analyzer', () => {
         //@ts-ignore
         const res = cd.getOrigin();

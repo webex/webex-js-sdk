@@ -362,6 +362,19 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         origin.clientInfo.vendorId = options.vendorId;
       }
 
+      // Set once by the host client rather than per event: the browser cannot change mid-session,
+      // so these stay constant for a correlationId. Call analyzer derives clientVersionStatus.
+      // @ts-ignore
+      const metricsConfig = this.webex.meetings.config?.metrics;
+
+      if (metricsConfig?.isSupportedBrowserFamily !== undefined) {
+        origin.clientInfo.isSupportedBrowserFamily = metricsConfig.isSupportedBrowserFamily;
+      }
+
+      if (metricsConfig?.isOutdatedBrowserVersion !== undefined) {
+        origin.clientInfo.isOutdatedBrowserVersion = metricsConfig.isOutdatedBrowserVersion;
+      }
+
       return origin;
     }
 
