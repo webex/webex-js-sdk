@@ -919,6 +919,35 @@ describe('Call Tests', () => {
     expect(offEffectSpy).toBeCalledWith(EffectEvent.Disabled, expect.any(Function));
   });
 
+  it('does not register effect listeners when the added effect cannot be resolved', () => {
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+      on: jest.fn(),
+      getEffectByKind: jest.fn().mockReturnValue(undefined),
+    };
+
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+    const onStreamSpy = jest.spyOn(localAudioStream, 'on');
+    const onEffectSpy = jest.spyOn(mockEffect, 'on');
+    const call = createCall(
+      activeUrl,
+      webex,
+      CallDirection.OUTBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator,
+      dest
+    );
+
+    call.dial(localAudioStream);
+
+    expect(() => onStreamSpy.mock.calls[1][1](undefined as any)).not.toThrow();
+    expect(onEffectSpy).not.toHaveBeenCalled();
+  });
+
   it('answer fails if localAudioTrack is empty', async () => {
     const mockStream = {
       outputStream: {
