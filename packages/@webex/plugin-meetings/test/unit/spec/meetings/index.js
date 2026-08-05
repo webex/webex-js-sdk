@@ -3432,8 +3432,38 @@ describe('plugin-meetings', () => {
           ]);
         });
 
-        it('should handle failure to get user information if scopes are insufficient', async () => {
-          loggerProxySpy = sinon.spy(LoggerProxy.logger, 'error');
+        it('should replace a previously set site when a later fetch does not name one', async () => {
+          await webex.meetings.fetchUserPreferredWebexSite();
+
+          assert.equal(webex.meetings.preferredWebexSite, 'go.webex.com');
+
+          // as happens when register() runs again on the same instance: the
+          // preferences no longer name a site, and the user has a different one
+          Object.assign(webex.internal.services, {
+            getMeetingPreferences: sinon.stub().returns(Promise.resolve({})),
+          });
+          Object.assign(webex.internal, {
+            user: {
+              get: sinon.stub().returns(
+                Promise.resolve({
+                  userPreferences: {
+                    userPreferencesItems: {preferredWebExSite: 'user-site.webex.com'},
+                  },
+                })
+              ),
+            },
+          });
+
+          await webex.meetings.fetchUserPreferredWebexSite();
+
+          assert.equal(webex.meetings.preferredWebexSite, 'user-site.webex.com');
+          assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), [
+            'go.webex.com',
+            'user-site.webex.com',
+          ]);
+        });
+
+        it('should handle failure to get user information if scopes are insufficient', async () => {          loggerProxySpy = sinon.spy(LoggerProxy.logger, 'error');
           Object.assign(webex.people, {
             _getMe: sinon.stub().returns(Promise.reject()),
           });

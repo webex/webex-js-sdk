@@ -1373,10 +1373,14 @@ export default class Meetings extends WebexPlugin {
             if (res) {
               const preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
 
-              // preferences may not name a site, in which case there is nothing
-              // to prefer and nothing to allow
+              // always take the value from this response, so that a re-register
+              // that no longer names a site clears the previous one instead of
+              // leaving a stale site in place and skipping the fallback below
+              this.preferredWebexSite = preferredWebexSite;
+
+              // preferences may not name a site, and an empty value identifies
+              // no host to allow
               if (preferredWebexSite) {
-                this.preferredWebexSite = preferredWebexSite;
                 // @ts-ignore
                 this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
               }
