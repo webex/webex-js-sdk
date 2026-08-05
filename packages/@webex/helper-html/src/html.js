@@ -35,7 +35,7 @@ function noopSync(processCallback, allowedTags, allowedStyles, html) {
 
 export const DEFAULT_ALLOWED_URL_SCHEMES = ['http', 'https', 'mailto', 'tel', 'sip', 'webexteams'];
 
-export const filter = curry(noop, 5);
-export const filterSync = curry(noopSync, 5);
-export const filterEscape = curry(noop, 5);
-export const filterEscapeSync = curry(noopSync, 5);
+export const filter = curry(noop, 4);
+export const filterSync = curry(noopSync, 4);
+export const filterEscape = curry(noop, 4);
+export const filterEscapeSync = curry(noopSync, 4);

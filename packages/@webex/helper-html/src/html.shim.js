@@ -60,7 +60,7 @@ function _filter(...args) {
  * @param {string} html html to filter
  * @returns {string}
  */
-export const filter = curry(_filter, 5);
+export const filter = curry(_filter, 4);
 
 /**
  * @param {function} processCallback callback function to do additional
@@ -469,7 +469,7 @@ function isElement(o) {
  * @param {string} html html to filter
  * @returns {string}
  */
-export const filterSync = curry(_filterSync, 5);
+export const filterSync = curry(_filterSync, 4);
 
 /**
  * Curried HTML filter that escapes rather than removes disallowed tags
@@ -479,7 +479,7 @@ export const filterSync = curry(_filterSync, 5);
  * @param {Array<string>} [additionalAllowedUrlSchemes] extra URL schemes to allow
  * @returns {Promise<string>}
  */
-export const filterEscape = curry(_filterEscape, 5);
+export const filterEscape = curry(_filterEscape, 4);
 
 /**
  * Curried HTML filter that escapes rather than removes disallowed tags
@@ -489,4 +489,4 @@ export const filterEscape = curry(_filterEscape, 5);
  * @param {Array<string>} [additionalAllowedUrlSchemes] extra URL schemes to allow
  * @returns {string}
  */
-export const filterEscapeSync = curry(_filterEscapeSync, 5);
+export const filterEscapeSync = curry(_filterEscapeSync, 4);

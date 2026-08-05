@@ -52,14 +52,10 @@ skipInNode(describe)('html', () => {
   function noop() {
     /* ignore */
   }
-  const cfilter = (html, additionalAllowedUrlSchemes) =>
-    filter(noop, allowedTags, allowedStyles, html, additionalAllowedUrlSchemes);
-  const cfilterSync = (html, additionalAllowedUrlSchemes) =>
-    filterSync(noop, allowedTags, allowedStyles, html, additionalAllowedUrlSchemes);
-  const cfilterEscape = (html, additionalAllowedUrlSchemes) =>
-    filterEscape(noop, allowedTags, allowedStyles, html, additionalAllowedUrlSchemes);
-  const cfilterEscapeSync = (html, additionalAllowedUrlSchemes) =>
-    filterEscapeSync(noop, allowedTags, allowedStyles, html, additionalAllowedUrlSchemes);
+  const cfilter = filter(noop, allowedTags, allowedStyles);
+  const cfilterSync = filterSync(noop, allowedTags, allowedStyles);
+  const cfilterEscape = filterEscape(noop, allowedTags, allowedStyles);
+  const cfilterEscapeSync = filterEscapeSync(noop, allowedTags, allowedStyles);
 
   describe('#filter()', () => {
     it('sanitizes trivial html', () =>
@@ -354,6 +350,19 @@ skipInNode(describe)('html', () => {
   });
 
   describe('additionalAllowedUrlSchemes', () => {
+    it('filter with four arguments returns a Promise', () => {
+      const result = filter(noop, allowedTags, allowedStyles, '<p><em>foo</em></p>');
+
+      assert.isFunction(result.then);
+    });
+
+    it('filterSync with five arguments applies additionalAllowedUrlSchemes', () => {
+      assert.match(
+        filterSync(noop, allowedTags, allowedStyles, '<p><a href="teams:foo">x</a></p>', ['teams']),
+        '<p><a href="teams:foo">x</a></p>'
+      );
+    });
+
     it('allows a custom URL scheme from config', () => {
       assert.match(
         cfilterSync('<p><a href="teams:channel?id=123">click</a></p>', ['teams']),
