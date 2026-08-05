@@ -1349,6 +1349,26 @@ class HashTreeParser {
    * @returns {HashTreeMessage} a new message containing only the requested dataset
    */
   private filterMessageToDataSet(message: HashTreeMessage, dataSetName: string): HashTreeMessage {
+    const filteredOutDataSets = message.dataSets?.filter((ds) => ds.name !== dataSetName) ?? [];
+    const filteredOutElements =
+      message.locusStateElements?.filter((el) => !el.htMeta.dataSetNames?.includes(dataSetName)) ??
+      [];
+
+    if (filteredOutDataSets.length > 0 || filteredOutElements.length > 0) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#filterMessageToDataSet --> ${
+          this.debugId
+        } keeping only dataset "${dataSetName}", filtering out datasets: [${filteredOutDataSets
+          .map((ds) => `${ds.name}:${ds.version}`)
+          .join(',')}], elements: [${filteredOutElements
+          .map(
+            (el) =>
+              `${el.htMeta?.elementId?.type}:${el.htMeta?.elementId?.id}:${el.htMeta?.elementId?.version}`
+          )
+          .join(',')}]`
+      );
+    }
+
     return {
       ...message,
       dataSets: message.dataSets?.filter((ds) => ds.name === dataSetName),

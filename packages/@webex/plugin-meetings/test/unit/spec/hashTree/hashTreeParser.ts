@@ -13,6 +13,7 @@ import testUtils from '@webex/plugin-meetings/test/utils/testUtils';
 import { some } from 'lodash';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
+import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 
 const visibleDataSetsUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/visibleDataSets';
 
@@ -159,6 +160,7 @@ describe('HashTreeParser', () => {
   let callback: sinon.SinonStub;
   let mathRandomStub: sinon.SinonStub;
   let metricsStub: sinon.SinonStub;
+  let loggerInfoStub: sinon.SinonStub;
 
   beforeEach(() => {
     clock = sinon.useFakeTimers();
@@ -166,11 +168,13 @@ describe('HashTreeParser', () => {
     callback = sinon.stub();
     mathRandomStub = sinon.stub(Math, 'random').returns(0);
     metricsStub = sinon.stub(Metrics, 'sendBehavioralMetric');
+    loggerInfoStub = sinon.stub(LoggerProxy.logger, 'info');
   });
   afterEach(() => {
     clock.restore();
     mathRandomStub.restore();
     metricsStub.restore();
+    loggerInfoStub.restore();
   });
 
   // Helper to create a HashTreeParser instance with common defaults
@@ -1883,6 +1887,14 @@ describe('HashTreeParser', () => {
             },
           ],
         });
+
+        // the filtered-out dataset and element are logged
+        assert.calledWith(
+          loggerInfoStub,
+          sinon.match(
+            'keeping only dataset "main", filtering out datasets: [unjoined:1101], elements: [participant:99:500]'
+          )
+        );
       });
 
       describe('emits MEETING_ENDED when 409/2403004 is returned', () => {
