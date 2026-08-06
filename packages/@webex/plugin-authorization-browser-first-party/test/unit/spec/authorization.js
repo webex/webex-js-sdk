@@ -16,6 +16,9 @@ import CryptoJS from 'crypto-js';
 import Authorization from '@webex/plugin-authorization-browser-first-party';
 import {Events} from '../../../src';
 
+// Necessary to require lodash this way in order to stub the method
+const lodash = require('lodash');
+
 describe('plugin-authorization-browser-first-party', () => {
   describe('Authorization', () => {
     function makeWebex(
@@ -1222,22 +1225,12 @@ describe('plugin-authorization-browser-first-party', () => {
     });
 
     describe('#_generateCodeChallenge', () => {
-      const expectedCodeChallenge = 'code challenge';
       // eslint-disable-next-line no-underscore-dangle
       const safeCharacterMap = CryptoJS.enc.Base64url._safe_map;
 
-      const expectedVerifier = times(
-        128,
-        (index) => safeCharacterMap[index & (safeCharacterMap.length - 1)]
-      ).join('');
-
-      it('generates a challenge code and stores it in session storage', () => {
-        let generatedRandomValues;
-        let getRandomValuesCallCount = 0;
+      function makeWebexWithRandomValues(fillRandomValues) {
         const getRandomValuesStub = sinon.stub().callsFake((randomValues) => {
-          getRandomValuesCallCount += 1;
-          generatedRandomValues = randomValues;
-          randomValues.set(times(128, (index) => index));
+          fillRandomValues(randomValues);
 
           return randomValues;
         });
@@ -1249,29 +1242,67 @@ describe('plugin-authorization-browser-first-party', () => {
           getRandomValuesStub
         );
 
-        const toStringStub = sinon.stub().returns(expectedCodeChallenge);
-        const mathRandomStub = sinon.stub(Math, 'random');
-        const sha256Stub = sinon.stub(CryptoJS, 'SHA256').returns({
-          toString: toStringStub,
-        });
-
         getRandomValuesStub.resetHistory();
-        getRandomValuesCallCount = 0;
+        webex.getWindow().sessionStorage.setItem.resetHistory();
+
+        return {getRandomValuesStub, webex};
+      }
+
+      it('uses a 128-byte CSPRNG and does not use insecure random generators', () => {
+        const {getRandomValuesStub, webex} = makeWebexWithRandomValues((randomValues) => {
+          randomValues.fill(0);
+        });
+        const mathRandomStub = sinon.stub(Math, 'random');
+        const lodashRandomStub = sinon.stub(lodash, 'random');
+
+        // eslint-disable-next-line no-underscore-dangle
+        webex.authorization._generateCodeChallenge();
+
+        const generatedRandomValues = getRandomValuesStub.firstCall.args[0];
+
+        assert.calledOnceWithExactly(getRandomValuesStub, generatedRandomValues);
+        assert.instanceOf(generatedRandomValues, Uint8Array);
+        assert.lengthOf(generatedRandomValues, 128);
+        assert.notCalled(mathRandomStub);
+        assert.notCalled(lodashRandomStub);
+      });
+
+      it('generates a 128-character verifier from the base64url-safe alphabet', () => {
+        const {webex} = makeWebexWithRandomValues((randomValues) => {
+          randomValues.set(times(128, (index) => index));
+        });
+        const expectedVerifier = times(
+          128,
+          (index) => safeCharacterMap[index & (safeCharacterMap.length - 1)]
+        ).join('');
+
+        // eslint-disable-next-line no-underscore-dangle
+        webex.authorization._generateCodeChallenge();
+
+        const storedVerifier = webex.getWindow().sessionStorage.setItem.firstCall.args[1];
+
+        assert.match(storedVerifier, /^[A-Za-z0-9_-]{128}$/);
+        assert.equal(storedVerifier, expectedVerifier);
+      });
+
+      it('stores the verifier and returns its SHA-256 base64url challenge', () => {
+        const {webex} = makeWebexWithRandomValues((randomValues) => {
+          randomValues.fill(42);
+        });
+        const expectedVerifier = safeCharacterMap[42 & (safeCharacterMap.length - 1)].repeat(128);
+        const expectedChallenge = CryptoJS.SHA256(expectedVerifier).toString(
+          CryptoJS.enc.Base64url
+        );
 
         // eslint-disable-next-line no-underscore-dangle
         const codeChallenge = webex.authorization._generateCodeChallenge();
 
-        assert.equal(codeChallenge, expectedCodeChallenge);
-        assert.equal(getRandomValuesCallCount, 1);
-        assert.instanceOf(generatedRandomValues, Uint8Array);
-        assert.notCalled(mathRandomStub);
-        assert.calledWith(sha256Stub, expectedVerifier);
-        assert.calledWith(toStringStub, CryptoJS.enc.Base64url);
-        assert.calledWith(
+        assert.calledOnceWithExactly(
           webex.getWindow().sessionStorage.setItem,
           'oauth2-code-verifier',
           expectedVerifier
         );
+        assert.equal(codeChallenge, expectedChallenge);
       });
     });
 
