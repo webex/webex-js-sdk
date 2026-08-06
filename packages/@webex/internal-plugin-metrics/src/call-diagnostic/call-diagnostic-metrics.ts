@@ -289,8 +289,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       versionMetadata = extractVersionMetadata(providedClientVersion);
     }
 
-    // The host client owns the browser support policy, since it is the same decision that drives
-    // its blocked-browser page and outdated-browser banner. The SDK reports the booleans as given.
+    // Derived by the host client from the browser it observed, since the support policy that turns
+    // a browser and version into these booleans belongs to the client, not the SDK.
     // @ts-ignore
     const {isSupportedBrowserFamily, isOutdatedBrowserVersion} =
       // @ts-ignore
@@ -338,8 +338,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           os: getOSNameInternal(),
           browser: getBrowserName(),
           browserVersion: getBrowserVersion(),
-          ...(isSupportedBrowserFamily !== undefined && {isSupportedBrowserFamily}),
-          ...(isOutdatedBrowserVersion !== undefined && {isOutdatedBrowserVersion}),
+          ...(isSupportedBrowserFamily === undefined ? {} : {isSupportedBrowserFamily}),
+          ...(isOutdatedBrowserVersion === undefined ? {} : {isOutdatedBrowserVersion}),
         },
       };
 
