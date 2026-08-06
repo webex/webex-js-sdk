@@ -6208,6 +6208,7 @@ describe('plugin-meetings', () => {
                 member2: unmutedMember,
                 member3: selfMember,
               });
+              meeting.isUserUnadmitted = false;
 
               // Reset the stub to clear any previous calls
               TriggerProxy.trigger.resetHistory();
@@ -6232,6 +6233,41 @@ describe('plugin-meetings', () => {
                   isMultistream: meeting.isMultistream,
                 }
               );
+            });
+
+            it('should not trigger event or metric when the user is in the lobby', () => {
+              const fakeEventData = {issueSubType: 'DECODE_RESULTS_IN_ZERO_AUDIO_LEVEL'};
+
+              const unmutedMember = {
+                isSelf: false,
+                isPairedWithSelf: false,
+                isAudioMuted: false,
+              };
+              const selfMember = {
+                isSelf: true,
+                isPairedWithSelf: false,
+                isAudioMuted: false,
+              };
+              meeting.members.membersCollection.getAll = sinon.stub().returns({
+                member1: unmutedMember,
+                member2: selfMember,
+              });
+              meeting.isUserUnadmitted = true;
+
+              // Reset the stub to clear any previous calls
+              TriggerProxy.trigger.resetHistory();
+
+              // Emit the event from statsMonitor
+              listeners[StatsMonitorEventNames.INBOUND_AUDIO_ISSUE](fakeEventData);
+
+              assert.neverCalledWith(
+                TriggerProxy.trigger,
+                meeting,
+                sinon.match.object,
+                EVENT_TRIGGERS.MEDIA_INBOUND_AUDIO_ISSUE_DETECTED,
+                fakeEventData
+              );
+              assert.notCalled(meeting.mediaProperties.sendMediaIssueMetric);
             });
           });
         });
