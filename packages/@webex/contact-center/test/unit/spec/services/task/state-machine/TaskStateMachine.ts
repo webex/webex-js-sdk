@@ -1406,6 +1406,130 @@ describe('Task state machine', () => {
       expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
     });
 
+    it('sets hideBlindTransfer flag and clears consult context on EP-DN AgentConsultConferencing (CAI-8329)', () => {
+      const service = startMachine();
+      const agentId = 'agent-1';
+      const consultMediaId = 'consult-media-1';
+      const consultTaskData = createTaskData({
+        agentId,
+        consultingAgentId: agentId,
+        consultMediaResourceId: consultMediaId,
+        isConsulted: false,
+        interaction: {
+          state: 'consulting',
+          interactionId: 'interaction-1',
+          mainInteractionId: 'interaction-1',
+          owner: agentId,
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasJoined: true,
+              hasLeft: false,
+              consultState: 'consulting',
+              isConsulted: false,
+            },
+            '+13159998087': {
+              id: '+13159998087',
+              pType: 'EP-DN',
+              hasLeft: false,
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasJoined: true, hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['customer-1', 'agent-1'],
+              isHold: false,
+            },
+            [consultMediaId]: {
+              mediaResourceId: consultMediaId,
+              mType: 'consult',
+              participants: ['+13159998087', 'agent-1'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: consultTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: consultTaskData});
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: '+13159998087',
+        destinationType: 'entryPoint',
+      });
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData: consultTaskData});
+      service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      expect(service.getSnapshot().value).toBe(TaskState.CONF_INITIATING);
+      expect(service.getSnapshot().context.consultInitiator).toBe(true);
+
+      const conferencingTaskData = createTaskData({
+        agentId,
+        consultMediaResourceId: consultMediaId,
+        isConsulted: false,
+        type: 'AgentConsultConferencing' as any,
+        interaction: {
+          state: 'conference',
+          interactionId: 'interaction-1',
+          mainInteractionId: 'interaction-1',
+          owner: agentId,
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasJoined: true,
+              hasLeft: false,
+              consultState: 'conferencing',
+              isConsulted: false,
+            },
+            '+13159998087': {
+              id: '+13159998087',
+              pType: 'EP-DN',
+              hasLeft: false,
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasJoined: true, hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['customer-1', 'agent-1'],
+              isHold: false,
+            },
+            [consultMediaId]: {
+              mediaResourceId: consultMediaId,
+              mType: 'consult',
+              participants: ['+13159998087', 'agent-1'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: conferencingTaskData});
+
+      const snapshot = service.getSnapshot();
+      expect(snapshot.value).toBe(TaskState.CONFERENCING);
+      expect(snapshot.context.consultInitiator).toBe(false);
+      expect(snapshot.context.consultDestinationType).toBe(null);
+      expect(snapshot.context.hideBlindTransferForEpDnPendingMerge).toBe(true);
+      expect(snapshot.context.uiControls.activeLeg).toBe('main');
+      expect(snapshot.context.uiControls.main.transfer).toEqual({
+        isVisible: false,
+        isEnabled: false,
+      });
+      expect(snapshot.context.uiControls.main.exitConference).toEqual({
+        isVisible: true,
+        isEnabled: true,
+      });
+      expect(snapshot.context.uiControls.consult.endConsult).toEqual({
+        isVisible: false,
+        isEnabled: false,
+      });
+    });
+
     it('terminates via wrapup when EXIT_CONFERENCE_SUCCESS is received in conferencing', () => {
       const service = startMachine();
       const taskData = createTaskData({
@@ -1699,6 +1823,248 @@ describe('Task state machine', () => {
 
   });
 
+
+  describe('CONFERENCING state CONSULT_FAILED ANOTHER_CONSULT_IN_PROGRESS (CAI-8329)', () => {
+    it('keeps hideBlindTransfer flag and hides transfer after secondary consult rejected from Agent Desktop', () => {
+      const service = startMachine();
+      const agentId = 'agent-1';
+      const consultMediaId = 'consult-media-1';
+      const baseTaskData = createTaskData({
+        agentId,
+        consultingAgentId: agentId,
+        consultMediaResourceId: consultMediaId,
+        isConsulted: false,
+        interaction: {
+          state: 'conference',
+          interactionId: 'interaction-1',
+          mainInteractionId: 'interaction-1',
+          owner: agentId,
+          participants: {
+            [agentId]: {
+              id: agentId,
+              pType: 'Agent',
+              hasJoined: true,
+              hasLeft: false,
+              consultState: 'conferencing',
+            },
+            '+13159998059': {id: '+13159998059', pType: 'EP-DN', hasLeft: false},
+            '+14696762938': {id: '+14696762938', pType: 'Customer', hasJoined: true, hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['+14696762938', agentId],
+              isHold: false,
+            },
+            [consultMediaId]: {
+              mediaResourceId: consultMediaId,
+              mType: 'consult',
+              participants: ['+13159998059', agentId],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: baseTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: baseTaskData});
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: '+13159998059',
+        destinationType: 'entryPoint',
+      });
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData: baseTaskData});
+      service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: baseTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+      expect(service.getSnapshot().context.hideBlindTransferForEpDnPendingMerge).toBe(true);
+
+      const consultFailedTaskData = createTaskData({
+        agentId,
+        consultingAgentId: agentId,
+        consultMediaResourceId: consultMediaId,
+        isConsulted: false,
+        destinationType: 'Agent',
+        reason: 'ANOTHER_CONSULT_IN_PROGRESS',
+        type: 'AgentConsultFailed' as any,
+        interaction: {
+          state: 'conference',
+          interactionId: 'interaction-1',
+          mainInteractionId: 'interaction-1',
+          owner: agentId,
+          participants: {
+            [agentId]: {
+              id: agentId,
+              pType: 'Agent',
+              hasJoined: true,
+              hasLeft: false,
+              consultState: 'conferencing',
+            },
+            '+13159998059': {id: '+13159998059', pType: 'EP-DN', hasLeft: false},
+            '+14696762938': {id: '+14696762938', pType: 'Customer', hasJoined: true, hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['+14696762938', agentId],
+              isHold: false,
+            },
+            [consultMediaId]: {
+              mediaResourceId: consultMediaId,
+              mType: 'consult',
+              participants: ['+13159998059', agentId],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+      service.send({type: TaskEvent.CONSULT_FAILED, taskData: consultFailedTaskData, reason: 'ANOTHER_CONSULT_IN_PROGRESS'});
+
+      const snapshot = service.getSnapshot();
+      expect(snapshot.value).toBe(TaskState.CONFERENCING);
+      expect(snapshot.context.hideBlindTransferForEpDnPendingMerge).toBe(true);
+      expect(snapshot.context.uiControls.main.transfer).toEqual({isVisible: false, isEnabled: false});
+      expect(snapshot.context.uiControls.main.consult).toEqual({isVisible: true, isEnabled: false});
+    });
+  });
+
+  describe('CONFERENCING state TASK_WRAPUP after EP-DN post-call (CAI-8329)', () => {
+    it('transitions to WRAPPING_UP on AgentWrapup while in CONFERENCING post_call', () => {
+      const service = startMachine();
+      const agentId = 'agent-1';
+      const consultMediaId = 'consult-media-1';
+      const baseTaskData = createTaskData({
+        agentId,
+        consultingAgentId: agentId,
+        consultMediaResourceId: consultMediaId,
+        isConsulted: false,
+        interaction: {
+          state: 'conference',
+          interactionId: 'interaction-1',
+          mainInteractionId: 'interaction-1',
+          owner: agentId,
+          participants: {
+            [agentId]: {
+              id: agentId,
+              pType: 'Agent',
+              hasJoined: true,
+              hasLeft: false,
+              consultState: 'conferencing',
+            },
+            '+13159998059': {id: '+13159998059', pType: 'EP-DN', hasLeft: false},
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasJoined: true, hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['customer-1', agentId],
+              isHold: false,
+            },
+            [consultMediaId]: {
+              mediaResourceId: consultMediaId,
+              mType: 'consult',
+              participants: ['+13159998059', agentId],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: baseTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: baseTaskData});
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: '+13159998059',
+        destinationType: 'entryPoint',
+      });
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData: baseTaskData});
+      service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: baseTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      const postCallTaskData = createTaskData({
+        agentId,
+        consultMediaResourceId: consultMediaId,
+        isConsulted: false,
+        type: 'ParticipantPostCallActivity' as any,
+        interaction: {
+          state: 'post_call',
+          interactionId: 'interaction-1',
+          mainInteractionId: 'interaction-1',
+          owner: agentId,
+          isTerminated: false,
+          callProcessingDetails: {hasCustomerLeft: 'true'},
+          participants: {
+            [agentId]: {
+              id: agentId,
+              pType: 'Agent',
+              hasJoined: true,
+              hasLeft: false,
+              consultState: 'conferencing',
+              currentState: 'post_call',
+            },
+            '+13159998059': {id: '+13159998059', pType: 'EP-DN', hasLeft: false},
+            '+14696762938': {id: '+14696762938', pType: 'Customer', hasJoined: true, hasLeft: true},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: [agentId],
+              isHold: false,
+            },
+            [consultMediaId]: {
+              mediaResourceId: consultMediaId,
+              mType: 'consult',
+              participants: ['+13159998059', agentId],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+      service.send({type: TaskEvent.PARTICIPANT_LEAVE, taskData: postCallTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+      expect(service.getSnapshot().context.hideBlindTransferForEpDnPendingMerge).toBe(true);
+
+      const wrapupTaskData = createTaskData({
+        agentId,
+        wrapUpRequired: true,
+        type: 'AgentWrapup' as any,
+        interaction: {
+          state: 'post_call',
+          interactionId: 'interaction-1',
+          mainInteractionId: 'interaction-1',
+          owner: agentId,
+          isTerminated: true,
+          participants: {
+            [agentId]: {
+              id: agentId,
+              pType: 'Agent',
+              hasJoined: true,
+              hasLeft: false,
+              consultState: 'consultCompleted',
+              isWrapUp: true,
+            },
+            '+14696762938': {id: '+14696762938', pType: 'Customer', hasJoined: true, hasLeft: true},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: [],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+      service.send({type: TaskEvent.TASK_WRAPUP, taskData: wrapupTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+  });
+
   describe('CONFERENCING state CONSULT_END with terminated interaction', () => {
     it('transitions to WRAPPING_UP when CONSULT_END arrives with isTerminated in CONFERENCING', () => {
       const service = startMachine();
@@ -1820,6 +2186,466 @@ describe('Task state machine', () => {
       });
       service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'CUSTOMER_BUSY'});
       expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+  });
+
+  describe('CONSULTING state TRANSFER_CONFERENCE_SUCCESS desktop-initiated (CAI-8329)', () => {
+    const startAgent2Machine = () => {
+      const actor = createActor(
+        createTaskStateMachine({...createConfig(), agentId: 'agent-2'})
+      );
+      actor.start();
+
+      return actor;
+    };
+
+    const createSecondaryAgentConferenceBaseTaskData = () =>
+      createTaskData({
+        agentId: 'agent-2',
+        isConsulted: true,
+        interactionId: 'interaction-1',
+        mediaResourceId: 'interaction-1',
+        consultMediaResourceId: 'consult-media-1',
+        interaction: {
+          state: 'conference',
+          owner: 'agent-1',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasLeft: false,
+              consultState: 'conferencing',
+            },
+            'agent-2': {
+              id: 'agent-2',
+              pType: 'Agent',
+              hasLeft: false,
+              isConsulted: true,
+              consultState: 'conferencing',
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['agent-1', 'agent-2', 'customer-1'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+    const createSecondaryAgentConsultingTaskData = () =>
+      createTaskData({
+        agentId: 'agent-2',
+        isConsulted: true,
+        consultingAgentId: 'agent-2',
+        type: 'AgentConferenceTransferred' as any,
+        interactionId: 'interaction-1',
+        mediaResourceId: 'interaction-1',
+        consultMediaResourceId: 'consult-media-1',
+        interaction: {
+          state: 'conference',
+          owner: 'agent-1',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasLeft: false,
+              consultState: 'conferencing',
+            },
+            'agent-2': {
+              id: 'agent-2',
+              pType: 'Agent',
+              hasLeft: false,
+              isConsulted: true,
+              consultState: 'consulting',
+            },
+            'agent-3': {
+              id: 'agent-3',
+              pType: 'Agent',
+              hasLeft: false,
+              isConsulted: true,
+              consultState: 'consulting',
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['agent-1', 'agent-2', 'customer-1'],
+              isHold: false,
+            },
+            'consult-media-1': {
+              mediaResourceId: 'consult-media-1',
+              mType: 'consult',
+              participants: ['agent-2', 'agent-3'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+    const setupSecondaryAgentConsultingFromConference = (service: ReturnType<typeof startAgent2Machine>) => {
+      const conferenceTaskData = createSecondaryAgentConferenceBaseTaskData();
+      const consultingTaskData = createSecondaryAgentConsultingTaskData();
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: conferenceTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      service.send({type: TaskEvent.CONSULT, destination: 'agent-3', destinationType: 'agent'});
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULT_INITIATING);
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData: consultingTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
+      expect(service.getSnapshot().context.consultInitiator).toBe(true);
+      expect(service.getSnapshot().context.consultFromConference).toBe(true);
+    };
+
+    const setupSecondaryAgentDesktopConsultingFromConference = (
+      service: ReturnType<typeof startAgent2Machine>
+    ) => {
+      const conferenceTaskData = createSecondaryAgentConferenceBaseTaskData();
+      const consultingTaskData = createSecondaryAgentConsultingTaskData();
+      const consultingActivePayload = {
+        ...consultingTaskData,
+        type: 'AgentConsulting' as any,
+      };
+      delete (consultingActivePayload as {consultingAgentId?: string}).consultingAgentId;
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: conferenceTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      service.send({
+        type: TaskEvent.CONSULTING_ACTIVE,
+        consultDestinationAgentJoined: true,
+        taskData: consultingActivePayload,
+      });
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
+      expect(service.getSnapshot().context.consultFromConference).toBe(true);
+    };
+
+    it('terminates secondary agent on true desktop path without widgets CONSULT event', () => {
+      const service = startAgent2Machine();
+      setupSecondaryAgentDesktopConsultingFromConference(service);
+
+      const transferSuccessTaskData = createSecondaryAgentConsultingTaskData();
+      service.send({type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS, taskData: transferSuccessTaskData});
+
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+    });
+
+    it('terminates secondary agent on widgets-initiated consult conference transfer from CONSULTING', () => {
+      const service = startAgent2Machine();
+      setupSecondaryAgentConsultingFromConference(service);
+
+      const transferSuccessTaskData = createSecondaryAgentConsultingTaskData();
+      service.send({type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS, taskData: transferSuccessTaskData});
+
+      const snapshot = service.getSnapshot();
+      expect(snapshot.value).toBe(TaskState.TERMINATED);
+      expect(snapshot.context.consultInitiator).toBe(false);
+      expect(snapshot.context.consultFromConference).toBe(false);
+    });
+
+    it('moves consultee to CONFERENCING when primary agent conference-transfers', () => {
+      const startAgent3Machine = () => {
+        const actor = createActor(
+          createTaskStateMachine({...createConfig(), agentId: 'agent-3'})
+        );
+        actor.start();
+
+        return actor;
+      };
+
+      const conferenceTaskData = createTaskData({
+        agentId: 'agent-3',
+        isConsulted: true,
+        interactionId: 'interaction-1',
+        mediaResourceId: 'interaction-1',
+        interaction: {
+          state: 'conference',
+          owner: 'agent-1',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasLeft: false,
+              consultState: 'conferencing',
+            },
+            'agent-2': {
+              id: 'agent-2',
+              pType: 'Agent',
+              hasLeft: false,
+              isConsulted: true,
+              consultState: 'conferencing',
+            },
+            'agent-3': {
+              id: 'agent-3',
+              pType: 'Agent',
+              hasLeft: false,
+              isConsulted: true,
+              consultState: 'conferencing',
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['agent-1', 'agent-2', 'agent-3', 'customer-1'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+      const consultingTaskData = createTaskData({
+        agentId: 'agent-3',
+        isConsulted: true,
+        consultingAgentId: 'agent-1',
+        interactionId: 'interaction-1',
+        mediaResourceId: 'interaction-1',
+        consultMediaResourceId: 'consult-media-1',
+        interaction: {
+          state: 'conference',
+          owner: 'agent-1',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasLeft: false,
+              consultState: 'consulting',
+            },
+            'agent-2': {
+              id: 'agent-2',
+              pType: 'Agent',
+              hasLeft: false,
+              isConsulted: true,
+              consultState: 'conferencing',
+            },
+            'agent-3': {
+              id: 'agent-3',
+              pType: 'Agent',
+              hasLeft: false,
+              isConsulted: true,
+              consultState: 'consulting',
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['agent-1', 'agent-2', 'customer-1'],
+              isHold: false,
+            },
+            'consult-media-1': {
+              mediaResourceId: 'consult-media-1',
+              mType: 'consult',
+              participants: ['agent-1', 'agent-3'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+      const transferSuccessTaskData = createTaskData({
+        agentId: 'agent-3',
+        isConsulted: true,
+        consultingAgentId: 'agent-1',
+        wrapUpRequired: false,
+        type: 'AgentConferenceTransferred' as any,
+        interactionId: 'interaction-1',
+        mediaResourceId: 'interaction-1',
+        interaction: {
+          state: 'conference',
+          owner: 'agent-1',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasLeft: true,
+              consultState: 'conferencing',
+            },
+            'agent-2': {
+              id: 'agent-2',
+              pType: 'Agent',
+              hasLeft: false,
+              isConsulted: true,
+              consultState: 'conferencing',
+            },
+            'agent-3': {
+              id: 'agent-3',
+              pType: 'Agent',
+              hasLeft: false,
+              isConsulted: true,
+              consultState: 'consulting',
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['agent-2', 'agent-3', 'customer-1'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+      const service = startAgent3Machine();
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: conferenceTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      service.send({
+        type: TaskEvent.CONSULTING_ACTIVE,
+        consultDestinationAgentJoined: true,
+        taskData: consultingTaskData,
+      });
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
+      expect(service.getSnapshot().context.consultInitiator).toBe(false);
+
+      service.send({type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS, taskData: transferSuccessTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+    });
+
+    it('passive observer stays in CONFERENCING when another agent conference-transfers', () => {
+      const service = startAgent2Machine();
+      const conferenceTaskData = createSecondaryAgentConferenceBaseTaskData();
+      const transferSuccessTaskData = createTaskData({
+        agentId: 'agent-2',
+        isConsulted: true,
+        type: 'AgentConferenceTransferred' as any,
+        interactionId: 'interaction-1',
+        mediaResourceId: 'interaction-1',
+        interaction: {
+          state: 'conference',
+          owner: 'agent-1',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasLeft: false,
+              consultState: 'conferencing',
+            },
+            'agent-2': {
+              id: 'agent-2',
+              pType: 'Agent',
+              hasLeft: false,
+              isConsulted: true,
+              consultState: 'conferencing',
+            },
+            'agent-3': {
+              id: 'agent-3',
+              pType: 'Agent',
+              hasLeft: false,
+              isConsulted: true,
+              consultState: 'conferencing',
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['agent-1', 'agent-2', 'agent-3', 'customer-1'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: conferenceTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+      expect(service.getSnapshot().context.consultInitiator).toBe(false);
+
+      service.send({type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS, taskData: transferSuccessTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+    });
+
+    it('terminates secondary agent on widgets-initiated conference transfer regression', () => {
+      const service = startAgent2Machine();
+      setupSecondaryAgentConsultingFromConference(service);
+
+      const transferSuccessTaskData = createSecondaryAgentConsultingTaskData();
+      service.send({type: TaskEvent.TRANSFER_CONFERENCE});
+      service.send({type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS, taskData: transferSuccessTaskData});
+
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+    });
+
+    it('terminates secondary agent on PARTICIPANT_LEAVE while in CONSULTING during conference', () => {
+      const service = startAgent2Machine();
+      setupSecondaryAgentDesktopConsultingFromConference(service);
+
+      const selfLeftTaskData = createTaskData({
+        agentId: 'agent-2',
+        isConsulted: true,
+        participantId: 'agent-2',
+        interactionId: 'interaction-1',
+        mediaResourceId: 'interaction-1',
+        interaction: {
+          state: 'conference',
+          owner: 'agent-1',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasLeft: false,
+              consultState: 'conferencing',
+            },
+            'agent-3': {
+              id: 'agent-3',
+              pType: 'Agent',
+              hasLeft: false,
+              isConsulted: true,
+              consultState: 'consulting',
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['agent-1', 'agent-3', 'customer-1'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+      service.send({
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        taskData: selfLeftTaskData,
+        participantId: 'agent-2',
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
     });
   });
 });

@@ -65,6 +65,7 @@ describe('State Machine Guards', () => {
       consultCallHeld: false,
       consultInitiator: false,
       exitingConference: false,
+      hideBlindTransferForEpDnPendingMerge: false,
       consultDestinationType: null,
       taskData: createTaskData(),
       uiControlConfig: {agentId: 'agent-123'},
@@ -323,6 +324,163 @@ describe('State Machine Guards', () => {
       });
       const ctx = createContext({taskData});
       expect(guards.shouldWrapUp(createParams(ctx, createEventWithTaskData(taskData)))).toBe(true);
+    });
+  });
+
+  describe('isPassiveConferenceTransferObserver', () => {
+    it('returns false when transfer was initiated via widgets', () => {
+      const ctx = createContext({transferConferenceRequested: true, consultInitiator: false});
+      expect(
+        guards.isPassiveConferenceTransferObserver(createParams(ctx, createEventWithTaskData()))
+      ).toBe(false);
+    });
+
+    it('returns false when this agent initiated the consult transfer', () => {
+      const ctx = createContext({transferConferenceRequested: false, consultInitiator: false});
+      const taskData = createTaskData({consultingAgentId: 'agent-123'});
+      expect(
+        guards.isPassiveConferenceTransferObserver(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
+    });
+
+    it('returns true when only stale consultInitiator is set without consultingAgentId evidence', () => {
+      const ctx = createContext({transferConferenceRequested: false, consultInitiator: true});
+      expect(
+        guards.isPassiveConferenceTransferObserver(createParams(ctx, createEventWithTaskData()))
+      ).toBe(true);
+    });
+
+    it('returns false when self is absent from participants snapshot', () => {
+      const ctx = createContext({consultInitiator: false});
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          participants: {
+            'other-agent': createParticipant('other-agent', 'Agent'),
+          },
+        },
+      });
+      expect(
+        guards.isPassiveConferenceTransferObserver(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
+    });
+
+    it('returns false when self hasLeft in participants snapshot', () => {
+      const ctx = createContext({consultInitiator: false});
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          participants: {
+            'agent-123': createParticipant('agent-123', 'Agent', true),
+          },
+        },
+      });
+      expect(
+        guards.isPassiveConferenceTransferObserver(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
+    });
+
+    it('returns true for passive observer still in the conference', () => {
+      const ctx = createContext({transferConferenceRequested: false, consultInitiator: false});
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          participants: {
+            'agent-123': createParticipant('agent-123', 'Agent'),
+            'other-agent': createParticipant('other-agent', 'Agent'),
+          },
+        },
+      });
+      expect(
+        guards.isPassiveConferenceTransferObserver(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(true);
+    });
+
+    it('returns false when secondary agent initiated transfer via payload consultingAgentId', () => {
+      const ctx = createContext({transferConferenceRequested: false, consultInitiator: false});
+      const taskData = createTaskData({
+        isConsulted: true,
+        consultingAgentId: 'agent-123',
+        interaction: {
+          ...createTaskData().interaction,
+          participants: {
+            'agent-123': {...createParticipant('agent-123', 'Agent'), consultState: 'consulting'},
+          },
+          media: {
+            ...createTaskData().interaction!.media,
+            'consult-media': {
+              mediaResourceId: 'consult-media',
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123', 'agent-456'],
+              mType: 'consult',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        },
+      });
+      expect(
+        guards.isPassiveConferenceTransferObserver(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
+    });
+  });
+
+  describe('isSelfConferenceTransferInitiator', () => {
+    it('returns true when consultingAgentId matches self even if isConsulted is true', () => {
+      const ctx = createContext({consultInitiator: false, transferConferenceRequested: false});
+      const taskData = createTaskData({
+        isConsulted: true,
+        consultingAgentId: 'agent-123',
+      });
+      expect(
+        guards.isSelfConferenceTransferInitiator(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(true);
+    });
+
+    it('returns false when consultee has consultState consulting but consultingAgentId is another agent', () => {
+      const ctx = createContext({consultInitiator: false, transferConferenceRequested: false});
+      const taskData = createTaskData({
+        isConsulted: true,
+        consultingAgentId: 'agent-456',
+        interaction: {
+          ...createTaskData().interaction,
+          participants: {
+            'agent-123': {...createParticipant('agent-123', 'Agent'), consultState: 'consulting'},
+          },
+          media: {
+            [INTERACTION_ID]: createTaskData().interaction!.media![INTERACTION_ID],
+            'consult-media': {
+              mediaResourceId: 'consult-media',
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123', 'agent-456'],
+              mType: 'consult',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        },
+      });
+      expect(
+        guards.isSelfConferenceTransferInitiator(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
+    });
+
+    it('returns false for passive observer without consult signals', () => {
+      const ctx = createContext({consultInitiator: false, transferConferenceRequested: false});
+      const taskData = createTaskData({
+        isConsulted: true,
+        interaction: {
+          ...createTaskData().interaction,
+          participants: {
+            'agent-123': createParticipant('agent-123', 'Agent'),
+          },
+        },
+      });
+      expect(
+        guards.isSelfConferenceTransferInitiator(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
     });
   });
 

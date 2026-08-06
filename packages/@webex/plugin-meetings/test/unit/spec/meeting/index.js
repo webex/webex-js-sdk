@@ -2082,8 +2082,16 @@ describe('plugin-meetings', () => {
         [
           {description: '409 error from join()', statusCode: 409, useCause: false},
           {description: '403 error from join()', statusCode: 403, useCause: false},
-          {description: '409 error in cause (e.g. AddMediaFailed)', statusCode: 409, useCause: true},
-          {description: '403 error in cause (e.g. AddMediaFailed)', statusCode: 403, useCause: true},
+          {
+            description: '409 error in cause (e.g. AddMediaFailed)',
+            statusCode: 409,
+            useCause: true,
+          },
+          {
+            description: '403 error in cause (e.g. AddMediaFailed)',
+            statusCode: 403,
+            useCause: true,
+          },
         ].forEach(({description, statusCode, useCause}) => {
           it(`should re-join on retry when ${description}`, async () => {
             const error = useCause
@@ -2099,7 +2107,11 @@ describe('plugin-meetings', () => {
 
             const result = await meeting.joinWithMedia({joinOptions, mediaOptions});
 
-            assert.deepEqual(result, {join: fakeJoinResult, media: test4, multistreamEnabled: true});
+            assert.deepEqual(result, {
+              join: fakeJoinResult,
+              media: test4,
+              multistreamEnabled: true,
+            });
 
             // join() should be called twice — once for the first attempt, once for the re-join
             assert.calledTwice(meeting.join);
@@ -2114,9 +2126,7 @@ describe('plugin-meetings', () => {
           meeting.join = sinon.stub().callsFake(() => Promise.resolve(fakeJoinResult));
           sinon.stub(meeting, 'leave').resolves();
 
-          await assert.isRejected(
-            meeting.joinWithMedia({joinOptions, mediaOptions})
-          );
+          await assert.isRejected(meeting.joinWithMedia({joinOptions, mediaOptions}));
 
           // JOIN_WITH_MEDIA_RETRY_MAX_COUNT is 2, so we expect 3 attempts total (initial + 2 retries)
           assert.callCount(meeting.join, 3);
@@ -2840,7 +2850,7 @@ describe('plugin-meetings', () => {
       describe('#handleLLMOnline', () => {
         beforeEach(() => {
           webex.internal.llm.off = sinon.stub();
-          webex.internal.voicea.getIsCaptionBoxOn = sinon.stub().returns(false);
+          webex.internal.voicea.getKeepTranscriptionSubscribed = sinon.stub().returns(false);
           webex.internal.voicea.updateSubchannelSubscriptions = sinon.stub();
         });
 
@@ -2858,7 +2868,7 @@ describe('plugin-meetings', () => {
         });
 
         it('restores transcription subscription when caption intent is enabled', () => {
-          webex.internal.voicea.getIsCaptionBoxOn.returns(true);
+          webex.internal.voicea.getKeepTranscriptionSubscribed.returns(true);
 
           meeting.handleLLMOnline();
 
@@ -2868,7 +2878,7 @@ describe('plugin-meetings', () => {
         });
 
         it('does not restore transcription subscription when caption intent is disabled', () => {
-          webex.internal.voicea.getIsCaptionBoxOn.returns(false);
+          webex.internal.voicea.getKeepTranscriptionSubscribed.returns(false);
 
           meeting.handleLLMOnline();
 
@@ -4264,6 +4274,7 @@ describe('plugin-meetings', () => {
             unpublishStream: sinon.stub(),
             setNamedMediaGroups: sinon.stub(),
           });
+          sinon.spy(meeting.sendSlotManager, 'reset');
 
           await meeting.addMedia({
             allowMediaInLobby: true,
@@ -4276,6 +4287,7 @@ describe('plugin-meetings', () => {
             },
           });
 
+          assert.calledOnce(meeting.sendSlotManager.reset);
           assert.notCalled(publishStreamStub);
         });
 
@@ -4299,6 +4311,7 @@ describe('plugin-meetings', () => {
             }
             return videoSlot;
           });
+          sinon.spy(meeting.sendSlotManager, 'reset');
 
           await meeting.addMedia({
             allowMediaInLobby: true,
@@ -4311,6 +4324,7 @@ describe('plugin-meetings', () => {
             },
           });
 
+          assert.calledOnce(meeting.sendSlotManager.reset);
           assert.calledOnceWithExactly(audioSlot.publishStream, fakeMicrophoneStream);
           assert.calledOnceWithExactly(videoSlot.publishStream, fakeCameraStream);
         });
@@ -4333,11 +4347,13 @@ describe('plugin-meetings', () => {
 
           meeting.meetingState = 'ACTIVE';
           meeting.isMultistream = true;
+          sinon.spy(meeting.sendSlotManager, 'reset');
 
           await meeting.addMedia({
             mediaSettings: {},
           });
 
+          assert.calledOnce(meeting.sendSlotManager.reset);
           // check that rtcMetrics was passed to Media.createMediaConnection
           assert.calledOnce(Media.createMediaConnection);
           assert.calledWith(
@@ -6211,7 +6227,10 @@ describe('plugin-meetings', () => {
                 meeting.mediaProperties.sendMediaIssueMetric,
                 'inbound_audio',
                 fakeEventData.issueSubType,
-                meeting.correlationId
+                {
+                  correlationId: meeting.correlationId,
+                  isMultistream: meeting.isMultistream,
+                }
               );
             });
           });
@@ -11684,6 +11703,8 @@ describe('plugin-meetings', () => {
           });
 
           it('handles REMOTE_SDP_ANSWER_PROCESSED correctly', () => {
+            // capture the start timestamp before any fake timers are installed
+            const localSdpGeneratedTimestamp = Date.now() - 100;
             const clock = sinon.useFakeTimers();
             sinon.spy(clock, 'clearTimeout');
             meeting.deferSDPAnswer = {
@@ -11691,54 +11712,56 @@ describe('plugin-meetings', () => {
             };
             meeting.sdpResponseTimer = '1234';
 
-            webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
-            webex.internal.newMetrics.callDiagnosticLatencies.getLocalSDPGenRemoteSDPRecv = sinon
-              .stub()
-              .returns(100);
+            // latency is computed as Date.now() - the stored local-sdp-generated timestamp,
+            // so it is unaffected by any earlier remote-sdp-received timestamp saved on timeout
+            webex.internal.newMetrics.callDiagnosticLatencies.latencyTimestamps = new Map([
+              ['client.media-engine.local-sdp-generated', localSdpGeneratedTimestamp],
+            ]);
 
             eventListeners[MediaConnectionEventNames.REMOTE_SDP_ANSWER_PROCESSED]();
-
-            // the remote-sdp-received timestamp must be saved before the latency is computed
-            // so that getLocalSDPGenRemoteSDPRecv() has an end timestamp to use
-            assert.calledOnceWithExactly(
-              webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp,
-              {
-                key: 'client.media-engine.remote-sdp-received',
-                options: {meetingId: meeting.id},
-              }
-            );
-            assert(
-              webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp.calledBefore(
-                webex.internal.newMetrics.callDiagnosticLatencies.getLocalSDPGenRemoteSDPRecv
-              )
-            );
 
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media-engine.remote-sdp-received',
               payload: {
                 eventData: {
-                  localSDPGenRemoteSDPRecv: 100,
+                  localSDPGenRemoteSDPRecv: sinon.match(
+                    (value) => typeof value === 'number' && value >= 100 && value < 5000
+                  ),
                 },
               },
               options: {meetingId: meeting.id},
             });
 
-            assert.calledOnce(Metrics.sendBehavioralMetric);
-            assert.calledWith(
-              Metrics.sendBehavioralMetric,
-              BEHAVIORAL_METRICS.ROAP_OFFER_TO_ANSWER_LATENCY,
-              {
-                correlation_id: meeting.correlationId,
-                meetingId: meeting.id,
-                latency: 100,
-              }
-            );
+            // the high-volume ROAP_OFFER_TO_ANSWER_LATENCY behavioral metric is no longer sent
+            assert.notCalled(Metrics.sendBehavioralMetric);
 
             assert.calledOnce(meeting.deferSDPAnswer.resolve);
             assert.calledOnce(clock.clearTimeout);
             assert.calledWith(clock.clearTimeout, '1234');
             assert.equal(meeting.sdpResponseTimer, undefined);
+          });
+
+          it('sends undefined localSDPGenRemoteSDPRecv when the local-sdp-generated timestamp is missing', () => {
+            meeting.deferSDPAnswer = {
+              resolve: sinon.stub(),
+            };
+
+            // no local-sdp-generated timestamp stored -> latency cannot be computed
+            webex.internal.newMetrics.callDiagnosticLatencies.latencyTimestamps = new Map();
+
+            eventListeners[MediaConnectionEventNames.REMOTE_SDP_ANSWER_PROCESSED]();
+
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media-engine.remote-sdp-received',
+              payload: {
+                eventData: {
+                  localSDPGenRemoteSDPRecv: undefined,
+                },
+              },
+              options: {meetingId: meeting.id},
+            });
           });
 
           it('handles LOCAL_SDP_OFFER_GENERATED correctly', () => {
@@ -15561,11 +15584,7 @@ describe('plugin-meetings', () => {
           // Only the client whose /sync request tracking id matches the tracking id echoed back on
           // the top-level LLM event envelope records the LLM arrival; onLocusSyncLlmMessage is a
           // no-op otherwise.
-          assert.calledOnceWithExactly(
-            meeting.onLocusSyncLlmMessage,
-            meeting.id,
-            event.trackingId
-          );
+          assert.calledOnceWithExactly(meeting.onLocusSyncLlmMessage, meeting.id, event.trackingId);
         });
 
         it('does not attempt sync completion when the tracking id is missing', () => {
@@ -15584,7 +15603,6 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(meeting.locusInfo.parse, meeting, event.data);
           assert.notCalled(meeting.onLocusSyncLlmMessage);
         });
-
       });
 
       describe('#onLocusSyncLlmMessage', () => {
@@ -15631,11 +15649,7 @@ describe('plugin-meetings', () => {
             'meeting-1',
             'sync-tracking-id'
           );
-          assert.calledOnceWithExactly(
-            meeting.emitLocusSyncCompleteMetric,
-            'meeting-1',
-            completed
-          );
+          assert.calledOnceWithExactly(meeting.emitLocusSyncCompleteMetric, 'meeting-1', completed);
         });
 
         it('does not emit when completion returns undefined (only one milestone is in)', () => {
@@ -15659,13 +15673,10 @@ describe('plugin-meetings', () => {
           webex.internal.newMetrics.submitClientEvent.resetHistory();
           webex.internal.llm.getWebSocketUrl = sinon.stub().returns('wss://llm-websocket-url');
 
-          meeting.emitLocusSyncCompleteMetric(
-            'meeting-1',
-            {
-              dataSet: 'main',
-              syncLatency: {totalTime: 50},
-            }
-          );
+          meeting.emitLocusSyncCompleteMetric('meeting-1', {
+            dataSet: 'main',
+            syncLatency: {totalTime: 50},
+          });
 
           assert.calledOnceWithExactly(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.locus.sync.complete',
@@ -15688,13 +15699,10 @@ describe('plugin-meetings', () => {
           webex.internal.newMetrics.submitClientEvent.resetHistory();
           webex.internal.llm.getWebSocketUrl = sinon.stub().returns(undefined);
 
-          meeting.emitLocusSyncCompleteMetric(
-            'meeting-1',
-            {
-              dataSet: 'main',
-              syncLatency: {totalTime: 50},
-            }
-          );
+          meeting.emitLocusSyncCompleteMetric('meeting-1', {
+            dataSet: 'main',
+            syncLatency: {totalTime: 50},
+          });
 
           assert.calledOnceWithExactly(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.locus.sync.complete',
