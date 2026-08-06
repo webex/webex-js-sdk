@@ -101,7 +101,24 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach(() => {
-        domains.push('example-a', 'example-b', 'example-c');
+        // Shaped like a real catalog rather than a tidy list: the commercial
+        // domains the sdk ships with, a multi-part suffix, sites added at
+        // runtime from meeting preferences, an entry that overlaps another,
+        // and an unset entry, which callers can add and which must match
+        // nothing.
+        domains.push(
+          'wbx2.com',
+          'ciscospark.com',
+          'webex.com',
+          'webexapis.com',
+          'broadcloud.com.au',
+          'webexgov.us',
+          'example-a.com',
+          'example-b.com',
+          'example-c.com',
+          'go.example-a.com',
+          ''
+        );
 
         catalog.setAllowedDomains(domains);
       });
@@ -110,10 +127,60 @@ describe('webex-core', () => {
         domains.length = 0;
       });
 
-      it('finds an allowed domain that matches a specific url', () => {
-        const domain = catalog.findAllowedDomain('http://example-a.com/resource/id');
-
-        assert.include(domains, domain);
+      [
+        // real service hosts resolve to the entry that covers them
+        ['https://u2c-a.wbx2.com/u2c/api/v1/limited/catalog', 'wbx2.com'],
+        ['https://conv-a.wbx2.com/conversation/api/v1/conversations', 'wbx2.com'],
+        ['https://foobar.ciscospark.com/resource/id', 'ciscospark.com'],
+        ['https://idbroker.webex.com/idb/token', 'webex.com'],
+        ['https://webexapis.com/v1/people/me', 'webexapis.com'],
+        // an entry is not required to be a bare registrable domain
+        ['https://foo.broadcloud.com.au/resource/id', 'broadcloud.com.au'],
+        ['https://a.b.webexgov.us/resource/id', 'webexgov.us'],
+        // the domain itself and its subdomains match
+        ['https://example-a.com/resource/id', 'example-a.com'],
+        ['https://sub.example-b.com/resource/id', 'example-b.com'],
+        ['https://deep.sub.example-c.com/resource/id', 'example-c.com'],
+        // overlapping entries resolve to the first covering entry in the list
+        ['https://go.example-a.com/resource/id', 'example-a.com'],
+        // an explicit port must not defeat the match
+        ['https://example-a.com:8443/resource/id', 'example-a.com'],
+        ['https://u2c-a.wbx2.com:8000/resource/id', 'wbx2.com'],
+        // hostname comparison is case insensitive
+        ['https://U2C-A.WBX2.COM/resource/id', 'wbx2.com'],
+        // a trailing dot is the same name
+        ['https://u2c-a.wbx2.com./resource/id', 'wbx2.com'],
+        // a sibling registrable domain must not match
+        ['https://notwebex.com/resource/id', undefined],
+        ['https://mywebexgov.us/resource/id', undefined],
+        ['https://webex.company/resource/id', undefined],
+        ['https://webex.com-unrelated.example/resource/id', undefined],
+        ['https://example-a.community/resource/id', undefined],
+        // a partial label must not match, even against a multi-part entry
+        ['https://broadcloud.com/resource/id', undefined],
+        // the domain matches only as a suffix, on a label boundary
+        ['https://webex.com.unrelated.example/resource/id', undefined],
+        ['https://unrelated.example/webex.com/resource/id', undefined],
+        ['https://unrelated.example/?next=https://webex.com', undefined],
+        // userinfo is not the host
+        ['https://webex.com@unrelated.example/resource/id', undefined],
+        // an encoded or unusual separator is not a label boundary, and the url
+        // parsers used by the transports do not agree on where these end the
+        // host, so they must not resolve to an allowed domain
+        ['https://webex.com%2eunrelated.example/resource/id', undefined],
+        ['https://webex.com%2Eunrelated.example/resource/id', undefined],
+        ['https://unrelated.example%2ewebex.com/resource/id', undefined],
+        ['https://unrelated.example%2Ewebex.com/resource/id', undefined],
+        ['https://unrelated.example;.webex.com/resource/id', undefined],
+        // an empty allowed domain entry matches nothing
+        ['https://unrelated.example/resource/id', undefined],
+        // unparseable urls
+        ['', undefined],
+        ['not a url', undefined],
+      ].forEach(([url, expected]) => {
+        it(`returns ${expected} for ${url || '<empty>'}`, () => {
+          assert.equal(catalog.findAllowedDomain(url), expected);
+        });
       });
     });
 
@@ -121,7 +188,7 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach(() => {
-        domains.push('example-a', 'example-b', 'example-c');
+        domains.push('example-a.com', 'example-b.com', 'example-c.com');
 
         catalog.setAllowedDomains(domains);
       });
@@ -160,7 +227,7 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach(() => {
-        domains.push('example-a', 'example-b', 'example-c');
+        domains.push('example-a.com', 'example-b.com', 'example-c.com');
 
         catalog.setAllowedDomains(domains);
       });
@@ -170,11 +237,23 @@ describe('webex-core', () => {
       });
 
       it('sets the allowed domain entries to new values', () => {
-        const newValues = ['example-d', 'example-e', 'example-f'];
+        const newValues = ['example-d.com', 'example-e.com', 'example-f.com'];
 
         catalog.setAllowedDomains(newValues);
 
         assert.notDeepInclude(domains, newValues);
+      });
+
+      it('canonicalizes entries and discards those that are not usable', () => {
+        catalog.setAllowedDomains([
+          'Example-D.COM',
+          'example-d.com',
+          'example-e.com.',
+          '',
+          undefined,
+        ]);
+
+        assert.deepEqual(catalog.getAllowedDomains(), ['example-d.com', 'example-e.com']);
       });
     });
 
@@ -182,7 +261,7 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach(() => {
-        domains.push('example-a', 'example-b', 'example-c');
+        domains.push('example-a.com', 'example-b.com', 'example-c.com');
 
         catalog.setAllowedDomains(domains);
       });
@@ -192,13 +271,16 @@ describe('webex-core', () => {
       });
 
       it('merge the allowed domain entries with new values', () => {
-        const newValues = ['example-c', 'example-e', 'example-f'];
+        const newValues = ['example-c.com', 'example-e.com', 'example-f.com'];
 
         catalog.addAllowedDomains(newValues);
 
         const list = catalog.getAllowedDomains();
 
-        assert.match(['example-a', 'example-b', 'example-c', 'example-e', 'example-f'], list);
+        assert.match(
+          ['example-a.com', 'example-b.com', 'example-c.com', 'example-e.com', 'example-f.com'],
+          list
+        );
       });
     });
 
