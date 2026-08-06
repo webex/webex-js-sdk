@@ -21,10 +21,6 @@ import uuid from 'uuid';
 import base64url from 'crypto-js/enc-base64url';
 import CryptoJS from 'crypto-js';
 
-// Necessary to require lodash this way in order to stub
-// methods in the unit test
-const lodash = require('lodash');
-
 const OAUTH2_CSRF_TOKEN = 'oauth2-csrf-token';
 const OAUTH2_CODE_VERIFIER = 'oauth2-code-verifier';
 
@@ -825,7 +821,8 @@ const Authorization = WebexPlugin.extend({
    * during authorization code exchange; removes it once consumed.
    *
    * Implementation details:
-   * - Creates a 128 character string using base64url safe alphabet.
+   * - Creates a 128 character string using a cryptographically secure random
+   *   source and the base64url safe alphabet.
    * - Computes SHA256 hash, encodes to base64url (no padding).
    *
    * @instance
@@ -838,10 +835,14 @@ const Authorization = WebexPlugin.extend({
 
     // eslint-disable-next-line no-underscore-dangle
     const safeCharacterMap = base64url._safe_map;
+    const randomValues = new Uint8Array(128);
 
-    const codeVerifier = lodash
-      .times(128, () => safeCharacterMap[lodash.random(0, safeCharacterMap.length - 1)])
-      .join('');
+    this.webex.getWindow().crypto.getRandomValues(randomValues);
+
+    const codeVerifier = Array.from(
+      randomValues,
+      (randomValue) => safeCharacterMap[randomValue & (safeCharacterMap.length - 1)]
+    ).join('');
 
     const codeChallenge = CryptoJS.SHA256(codeVerifier).toString(base64url);
 

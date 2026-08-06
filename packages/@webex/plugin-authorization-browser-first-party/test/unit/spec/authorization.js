@@ -16,18 +16,19 @@ import CryptoJS from 'crypto-js';
 import Authorization from '@webex/plugin-authorization-browser-first-party';
 import {Events} from '../../../src';
 
-// Necessary to require lodash this way in order to stub the method
-const lodash = require('lodash');
-
 describe('plugin-authorization-browser-first-party', () => {
   describe('Authorization', () => {
     function makeWebex(
       href = 'https://example.com',
       csrfToken = undefined,
       pkceVerifier = undefined,
-      config = {}
+      config = {},
+      getRandomValues = sinon.stub().callsFake((randomValues) => randomValues.fill(0))
     ) {
       const mockWindow = {
+        crypto: {
+          getRandomValues,
+        },
         history: {
           replaceState(a, b, location) {
             mockWindow.location.href = location;
@@ -1225,25 +1226,47 @@ describe('plugin-authorization-browser-first-party', () => {
       // eslint-disable-next-line no-underscore-dangle
       const safeCharacterMap = CryptoJS.enc.Base64url._safe_map;
 
-      const expectedVerifier = times(128, () => safeCharacterMap[0]).join('');
+      const expectedVerifier = times(
+        128,
+        (index) => safeCharacterMap[index & (safeCharacterMap.length - 1)]
+      ).join('');
 
       it('generates a challenge code and stores it in session storage', () => {
-        const webex = makeWebex('http://example.com');
+        let generatedRandomValues;
+        let getRandomValuesCallCount = 0;
+        const getRandomValuesStub = sinon.stub().callsFake((randomValues) => {
+          getRandomValuesCallCount += 1;
+          generatedRandomValues = randomValues;
+          randomValues.set(times(128, (index) => index));
+
+          return randomValues;
+        });
+        const webex = makeWebex(
+          'http://example.com',
+          undefined,
+          undefined,
+          {},
+          getRandomValuesStub
+        );
 
         const toStringStub = sinon.stub().returns(expectedCodeChallenge);
-        const randomStub = sinon.stub(lodash, 'random').returns(0);
+        const mathRandomStub = sinon.stub(Math, 'random');
         const sha256Stub = sinon.stub(CryptoJS, 'SHA256').returns({
           toString: toStringStub,
         });
+
+        getRandomValuesStub.resetHistory();
+        getRandomValuesCallCount = 0;
 
         // eslint-disable-next-line no-underscore-dangle
         const codeChallenge = webex.authorization._generateCodeChallenge();
 
         assert.equal(codeChallenge, expectedCodeChallenge);
+        assert.equal(getRandomValuesCallCount, 1);
+        assert.instanceOf(generatedRandomValues, Uint8Array);
+        assert.notCalled(mathRandomStub);
         assert.calledWith(sha256Stub, expectedVerifier);
         assert.calledWith(toStringStub, CryptoJS.enc.Base64url);
-        assert.callCount(randomStub, 128);
-        assert.calledWith(randomStub, 0, safeCharacterMap.length - 1);
         assert.calledWith(
           webex.getWindow().sessionStorage.setItem,
           'oauth2-code-verifier',
