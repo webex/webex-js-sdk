@@ -20,11 +20,12 @@ Constraints and assumptions:
 - Node.js 22.14, Yarn 3.4.1, the existing TypeScript/Jest build, and current workspace boundaries remain unchanged.
 - `TaskData.interaction.mainInteractionId ?? TaskData.interactionId` is the existing codebase pattern for the stable conversation key. The current task's top-level `interactionId` remains the outbound interaction identifier.
 - A successful AI Assistant HTTP response is an acknowledgement only. A valid matching RTD event is required to fulfill a request Promise.
-- The SDK does not receive a unique backend request ID, so at most one request of each inbound summary type may be pending per conversation.
+- The SDK does not receive a unique backend request ID, and FR-9 correlates an initiator result by the stable `conversationId` plus its inbound summary type. The pending-registry key is therefore the tuple `(conversationId, AISummaryInboundType)`, not a task or outbound request-event name. Tasks whose `mainInteractionId ?? interactionId` values produce the same conversation key share the slot. This conversation scope is an intentional, documented divergence from FR-12/AC-8's per-task wording. Each entry still records its owning task ID, and request failure or task cleanup removes the entry only when that owner matches, so a sibling task cannot clear a live resolver.
+- `CONSULT` and `TRANSFER` both resolve from inbound `MID_CALL_SUMMARY`, so they share one pending slot for a conversation despite using distinct outbound `GET_MID_CALL_CONSULT_SUMMARY` and `GET_MID_CALL_TRANSFER_SUMMARY` names. While either action is pending, the other rejects with `AI_SUMMARY_REQUEST_ALREADY_PENDING`; `POST_CALL_SUMMARY` uses a separate slot.
 - No dependency, package, lockfile, schema, persistence, worker, stream, or new SDK configuration key is introduced. The receiver buffer is bounded, process-local memory rather than persistence and is cleared on delivery, replacement, expiry, task cleanup, or SDK deregistration.
 - No `AbortSignal` parameter is added because the required public signatures contain none. Cancellation is internal and occurs on HTTP failure, timeout, task cleanup, or SDK deregistration.
 
-Non-goals are a widget, visual treatment, Adaptive Card interpretation, summary generation, backend changes, transcript changes, automatic retry/deduplication, or changes to existing handoff and wrap-up APIs. Application sequencing is documented but cannot be enforced across separate SDK calls: the application owns “wrap up, then response” and “response attempt, then consult/transfer.”
+Non-goals are a widget, visual treatment, Adaptive Card interpretation, summary generation, backend changes, transcript changes, automatic retry/deduplication, or changes to existing handoff and wrap-up APIs. Application sequencing is documented but cannot be enforced across separate SDK calls: the application owns “wrap up, then response” and “response attempt, then consult/transfer.” If a mid-call summary response fails, the application must catch and record that advisory failure and still proceed with the consult or transfer; the response rejection must not block the core handoff.
 
 ## Feature Disposition Matrix
 
@@ -44,7 +45,7 @@ Non-goals are a widget, visual treatment, Adaptive Card interpretation, summary 
 | REQ-007 | Addressed | requirement.md:L79-L79 -> Component: Feature enablement and SDK lifecycle |
 | REQ-008 | Addressed | requirement.md:L80-L80 -> Component: Feature enablement and SDK lifecycle |
 | REQ-009 | Addressed | requirement.md:L81-L81 -> Component: Realtime coordination, correlation, and receiver delivery |
-| REQ-010 | Addressed | requirement.md:L82-L82 -> Change: Cross-cutting safeguards and verification |
+| REQ-010 | Addressed | requirement.md:L82-L82 -> Component: Realtime coordination, correlation, and receiver delivery |
 | REQ-011 | Addressed | requirement.md:L83-L83 -> Component: Public contracts and task API |
 | REQ-012 | Addressed | requirement.md:L84-L84 -> Change: Cross-cutting safeguards and verification |
 | REQ-013 | Addressed | requirement.md:L85-L85 -> Component: Public contracts and task API |
@@ -85,7 +86,7 @@ Non-goals are a widget, visual treatment, Adaptive Card interpretation, summary 
 | FR-9 | Addressed | requirement.md:L250-L256 -> Component: Realtime coordination, correlation, and receiver delivery |
 | FR-10 | Addressed | requirement.md:L258-L264 -> Component: Realtime coordination, correlation, and receiver delivery |
 | FR-11 | Addressed | requirement.md:L266-L275 -> Component: Realtime coordination, correlation, and receiver delivery |
-| FR-12 | Addressed | requirement.md:L277-L281 -> Component: Realtime coordination, correlation, and receiver delivery |
+| FR-12 | Addressed | requirement.md:L277-L281 -> Component: Realtime coordination, correlation, and receiver delivery; documented divergence: because FR-9 supplies no task/request identifier for inbound correlation, the pending key is `(conversationId, inbound summary type)` rather than per task, with task ID retained only as a cleanup ownership guard. |
 | DR-1 | Addressed | requirement.md:L285-L291 -> Component: AI Assistant transport and outbound serialization |
 | DR-2 | Addressed | requirement.md:L293-L300 -> Component: Public contracts and task API |
 | DR-3 | Addressed | requirement.md:L302-L308 -> Component: AI Assistant transport and outbound serialization |
@@ -119,7 +120,7 @@ Non-goals are a widget, visual treatment, Adaptive Card interpretation, summary 
 | AC-5 | Addressed | requirement.md:L422-L424 -> Change: Cross-cutting safeguards and verification |
 | AC-6 | Addressed | requirement.md:L426-L428 -> Change: Cross-cutting safeguards and verification |
 | AC-7 | Addressed | requirement.md:L430-L432 -> Change: Cross-cutting safeguards and verification |
-| AC-8 | Addressed | requirement.md:L434-L436 -> Change: Cross-cutting safeguards and verification |
+| AC-8 | Addressed | requirement.md:L434-L436 -> Component: Realtime coordination, correlation, and receiver delivery; documented divergence: overlap is conversation-scoped rather than per task, and `CONSULT`/`TRANSFER` cross-action requests reject while their shared inbound `MID_CALL_SUMMARY` slot is occupied. |
 | AC-9 | Addressed | requirement.md:L438-L440 -> Change: Cross-cutting safeguards and verification |
 | AC-10 | Addressed | requirement.md:L442-L444 -> Change: Cross-cutting safeguards and verification |
 | AC-11 | Addressed | requirement.md:L446-L448 -> Change: Cross-cutting safeguards and verification |
@@ -380,6 +381,7 @@ export interface AISummaryRequestCoordinator {
     timeoutCode: 'POST_CALL_SUMMARY_TIMEOUT' | 'MID_CALL_SUMMARY_TIMEOUT'
   ): Promise<T>;
   cancelPendingAISummaryRequest(
+    taskId: string,
     conversationId: string,
     eventType: AISummaryInboundType
   ): void;
@@ -408,9 +410,9 @@ For `requestPostCallSummary()`:
 
 1. Read organization `generatedSummaries.wrapUpSummariesEnabled` captured at task configuration and the latest `coordinator.getFeatureEnablement(task.data.interactionId)?.postCallEnabled`. Both must be exactly `true`; otherwise reject with augmented `POST_CALL_SUMMARY_DISABLED` and do no backend work.
 2. Derive `{interactionId, conversationId}` with `getAISummaryCorrelation(task.data)` and require the configured `agentId`.
-3. Call `registerPendingAISummaryRequest(..., 'POST_CALL_SUMMARY', 'POST_CALL_SUMMARY_TIMEOUT')` before HTTP. A same-key pending entry throws/rejects `AI_SUMMARY_REQUEST_ALREADY_PENDING`; therefore the HTTP method is never called for overlap.
+3. Call `registerPendingAISummaryRequest(taskId, conversationId, 'POST_CALL_SUMMARY', 'POST_CALL_SUMMARY_TIMEOUT')` before HTTP. The key is `(conversationId, 'POST_CALL_SUMMARY')`; `taskId` is stored as the entry owner but is not part of the key. A same-key pending entry throws/rejects `AI_SUMMARY_REQUEST_ALREADY_PENDING`; therefore the HTTP method is never called for overlap.
 4. Start `sendSummaryGetEvent(..., GET_POST_CALL_SUMMARY)` and await it together with the already-registered pending Promise using `Promise.all([acknowledgementPromise, summaryPromise])`. This attaches rejection handlers to both immediately, returns only after HTTP acknowledgement and inbound resolution, permits a push to win the race without being lost, and lets the 30-second timer reject even if HTTP is still outstanding.
-5. On either rejection, synchronously cancel the matching pending entry/timer (a timeout entry is already absent) and rethrow the first detailed error. The still-running HTTP Promise has the handler installed by `Promise.all`, so it cannot create an unhandled rejection. On success, return only the summary element. Only TaskManager can resolve it from a matching inbound event.
+5. On either rejection, synchronously call `cancelPendingAISummaryRequest(taskId, conversationId, eventType)` and rethrow the first detailed error. TaskManager deletes the entry/timer only if its stored owner equals `taskId`; a timeout entry is already absent, and a task whose overlap registration was rejected cannot cancel the sibling owner's live entry. The still-running HTTP Promise has the handler installed by `Promise.all`, so it cannot create an unhandled rejection. On success, return only the summary element. Only TaskManager can resolve it from a matching inbound event.
 
 `requestMidCallSummary(actionType)` uses the same steps with the two mid-call flags, the single pending type `MID_CALL_SUMMARY`, timeout `MID_CALL_SUMMARY_TIMEOUT`, and exact action mapping `CONSULT -> GET_MID_CALL_CONSULT_SUMMARY`, `TRANSFER -> GET_MID_CALL_TRANSFER_SUMMARY`. Any other runtime value rejects `AI_SUMMARY_INVALID_ACTION_TYPE` before registration or HTTP. Consult and transfer requests therefore overlap with each other because both await the same inbound type, while a simultaneous post-call request uses an independent key.
 
@@ -435,7 +437,7 @@ After validation, Task derives identifiers and selects the response event (`POST
 
 ### Named tests
 
-`Task.ts` unit scenarios: post-call/mid-call enabled happy paths; missing organization flag; false/missing interaction flag; invalid action; exact consult/transfer event selection; registration before HTTP; HTTP cleanup; transport rejection propagation; structured/text/empty response preservation; numeric counter pass-through including values greater than one; invalid numeric strings/NaN/negative values; feedback/state allowlists; required wrap-up code/agent name; mid-call `wrapUpCode` rejection; cancellation with and without a received summary; no public initiator event; and sequential request after settlement. These cover AC-1 through AC-4, AC-6, and the task side of AC-7/AC-8.
+`Task.ts` unit scenarios: post-call/mid-call enabled happy paths; missing organization flag; false/missing interaction flag; invalid action; exact consult/transfer event selection; registration before HTTP; owner ID passed on HTTP cleanup; transport rejection propagation; structured/text/empty response preservation; numeric counter pass-through including values greater than one; invalid numeric strings/NaN/negative values; feedback/state allowlists; required wrap-up code/agent name; mid-call `wrapUpCode` rejection; cancellation with and without a received summary; pending `CONSULT` followed by `TRANSFER` rejecting before a second HTTP call; no public initiator event; and sequential request after settlement. These cover AC-1 through AC-4, AC-6, and the task side of AC-7/AC-8.
 
 ## Component: AI Assistant transport and outbound serialization
 
@@ -550,7 +552,7 @@ private receivingSummaryBuffer: Map<string, BufferedReceivingSummary>;
 private interactionFeatureEnablement: Map<string, FeatureEnablementEventPayload>;
 ```
 
-Pending keys are `${conversationId}:${eventType}`. This deliberately makes consult and transfer overlap because both expect `MID_CALL_SUMMARY`, while post-call remains independent. `registerPendingAISummaryRequest` is implemented as a non-`async` method: it checks the map and throws the augmented overlap error synchronously before constructing/inserting a Promise, guaranteeing the caller cannot start HTTP for a rejected overlap. Receiver-buffer keys are `conversationId`; replacing an existing entry clears its old timer and retains only the latest payload. Feature keys are the event's `interactionId`.
+Pending keys are `${conversationId}:${eventType}` because the inbound FR-9 correlation envelope contains no task ID or unique request ID. The key intentionally excludes `taskId`: consult and transfer overlap because both expect `MID_CALL_SUMMARY`, post-call remains independent, and distinct task objects derived to the same conversation also contend for the relevant slot. This is the explicit implementation divergence from FR-12/AC-8's per-task wording recorded in the Feature Disposition Matrix. The stored `taskId` is an ownership guard: `cancelPendingAISummaryRequest(taskId, conversationId, eventType)` is a no-op unless the current entry's owner matches. `registerPendingAISummaryRequest` is implemented as a non-`async` method: it checks the map and throws the augmented overlap error synchronously before constructing/inserting a Promise, guaranteeing the caller cannot start HTTP for a rejected overlap. Receiver-buffer keys are `conversationId`; replacing an existing entry clears its old timer and retains only the latest payload. Feature keys are the event's `interactionId`.
 
 Public/package-internal coordinator methods are the interface methods defined above plus:
 
@@ -558,7 +560,7 @@ Public/package-internal coordinator methods are the interface methods defined ab
 public clearAISummaryState(reason = 'AI_SUMMARY_REQUEST_CANCELLED'): void;
 ```
 
-`clearAISummaryState` clears every timer and map and rejects still-pending Promises with an augmented cancellation error. `removeTaskFromCollection(task)` performs the same scoped cleanup for that task's pending keys, feature entry, and receiving buffer. No Promise remains pending after a task/SDK terminal cleanup.
+`clearAISummaryState` clears every timer and map and rejects still-pending Promises with an augmented cancellation error. `removeTaskFromCollection(task)` rejects/deletes a pending entry only when `entry.taskId === task.data.interactionId`; it must not delete solely because the task derives the same `conversationId` as the map key. It then performs the existing scoped feature/buffer cleanup. Thus cleanup of a sibling task sharing the conversation cannot strand the requesting task's Promise, while cleanup of the owning task leaves no Promise pending. Full SDK cleanup remains intentionally unscoped.
 
 TaskManager makes its constructor-required `apiAIAssistant` field non-optional and adds `private createManagedTask(taskData: TaskData): Task`, a wrapper around the existing `TaskFactory.createTask(...)`; it then calls `task.configureAISummary(this.apiAIAssistant, this, generatedSummaryFlags)`. All existing TaskFactory call sites in TaskManager use this wrapper. `TaskFactory` and concrete subclass constructors remain unchanged.
 
@@ -618,12 +620,12 @@ sequenceDiagram
 ### Failure, concurrency, cleanup, and compatibility
 
 - A pending timer removes its own key before rejecting with the exact flow timeout code. A late frame sees no key and is ignored.
-- A second same-key registration rejects `AI_SUMMARY_REQUEST_ALREADY_PENDING` without overwriting the resolver/timer; the first request remains live.
+- A second same-key registration rejects `AI_SUMMARY_REQUEST_ALREADY_PENDING` without overwriting the resolver/timer; this includes `CONSULT` versus `TRANSFER` and a different task sharing the conversation, and the first request remains live.
 - A new request after resolve, reject, timeout, HTTP cancellation, or cleanup creates a fresh entry.
 - JavaScript's run-to-completion semantics make each map check/update atomic relative to other socket/timer callbacks. Delete-before-settle prevents reentrant overlap failures.
 - An ambiguous duplicate task conversation key is privacy-sensitive: emit to none, warn metadata-only, and buffer until ambiguity disappears or timeout rather than choosing the first task.
 - Malformed, unknown, expired, or uncorrelated frames never throw out of the WebSocket callback and never enter the task state machine.
-- Receiver payloads are cleared after delivery, expiry, task cleanup, or deregistration. Pending timers receive equivalent cleanup.
+- Receiver payloads are cleared after delivery, expiry, task cleanup, or deregistration. Pending timers receive owner-checked task/request cleanup and unscoped full-SDK cleanup.
 - Existing transcript/suggestion event names, direct task dispatch, and socket behavior are regression-tested and unchanged.
 - Security/observability: all warnings use bounded event/correlation metadata; raw frames and summary/card/agent-name content are never logged or tagged.
 - Persistence/storage/schema: Not applicable - all maps are process-local and bounded by explicit timers/lifecycle.
@@ -633,7 +635,7 @@ sequenceDiagram
 
 `TaskUtils.ts`: main-interaction conversation key, top-level fallback, distinct interaction/conversation fields, and empty identifier rejection.
 
-`TaskManager.ts`: post-call and mid-call exact Promise resolution; wrong event type/conversation isolation; no public initiator emit; independent post/mid pending keys; same-type overlap preserving first resolver; timeout errors under fake timers; late event ignored; sequential retry; malformed JSON/envelope/payload; unknown event; uncorrelated event; valid/repeated/payload-invalid feature receive metrics; no metric for unparseable/unclassifiable frames; no state change or forwarding for invalid feature payloads; receiver direct delivery; no inbound-interaction fallback; buffer-latest replacement; delivery after task listener availability; buffer expiry; duplicate-task ambiguity; per-task cleanup; full deregistration cleanup; and transcript/suggestion regression. These cover PR-2, AC-5, AC-7, AC-8, AC-9, and the correlation half of AC-1 through AC-3.
+`TaskManager.ts`: post-call and mid-call exact Promise resolution; wrong event type/conversation isolation; no public initiator emit; independent post/mid pending keys; `CONSULT`/`TRANSFER` cross-action overlap; same-conversation overlap across distinct task IDs preserving the first resolver; non-owner cancellation/task cleanup leaving that resolver and timer live; owner cleanup rejecting it; timeout errors under fake timers; late event ignored; sequential retry; malformed JSON/envelope/payload; unknown event; uncorrelated event; valid/repeated/payload-invalid feature receive metrics; no metric for unparseable/unclassifiable frames; no state change or forwarding for invalid feature payloads; receiver direct delivery; no inbound-interaction fallback; buffer-latest replacement; delivery after task listener availability; buffer expiry; duplicate-task ambiguity; full deregistration cleanup; and transcript/suggestion regression. These cover PR-2, AC-5, AC-7, AC-8, AC-9, and the correlation half of AC-1 through AC-3.
 
 ## Component: Feature enablement and SDK lifecycle
 
@@ -749,7 +751,7 @@ REQ-057 requires the complete contact-center unit suite. Each acceptance criteri
 | AC-5 | `services/task/TaskManager.ts` and `services/task/TaskUtils.ts`: conversation-only receiving-task match, latest-only 30-second buffering, delivery, expiry, ambiguity, and cleanup. |
 | AC-6 | `services/task/Task.ts` and `cc.ts`: false/missing organization or interaction flags reject without an outbound request; independent RTD flag behavior. |
 | AC-7 | `services/task/TaskManager.ts`: exact timeout codes, map/timer cleanup, and late-event drop under fake timers. |
-| AC-8 | `services/task/TaskManager.ts` and `services/task/Task.ts`: same-type overlap rejection, no second HTTP call, first resolver retained, and later sequential request allowed. |
+| AC-8 | `services/task/TaskManager.ts` and `services/task/Task.ts`: conversation-plus-inbound-type overlap rejection, including pending `CONSULT` followed by `TRANSFER` and distinct tasks sharing a conversation; no second HTTP call; non-owner cleanup cannot remove the first resolver; and a later sequential request is allowed. |
 | AC-9 | `services/task/TaskManager.ts`: malformed, unknown, uncorrelated, and ambiguous events settle/emit nothing and do not interrupt later valid events. |
 | AC-10 | all five focused targets: sentinel summary/card/section/agent-name values are absent from every logger and metric spy argument on success and failure. |
 | AC-11 | full `test:unit`, `test:style`, and `build:src`: existing task lifecycle, wrap-up, consult, transfer, event, transcript, type, and build behavior remains green. |
@@ -789,7 +791,7 @@ Rollout is additive for the supported model in which applications consume SDK-cr
 | Missing/unknown AI base URL | rejects `AI_ASSISTANT_BASE_URL_NOT_AVAILABLE` | pending request/timer cancelled |
 | HTTP failure | request/response API rejects the augmented adapter error | request pending state cancelled; no retry |
 | 30-second request timeout | rejects `POST_CALL_SUMMARY_TIMEOUT` or `MID_CALL_SUMMARY_TIMEOUT` | pending entry/timer deleted before reject |
-| Same-type overlap | second request rejects `AI_SUMMARY_REQUEST_ALREADY_PENDING` | first resolver/timer remains unchanged; no second HTTP call |
+| Same inbound-type overlap, including `CONSULT` versus `TRANSFER` or sibling tasks on one conversation | second request rejects `AI_SUMMARY_REQUEST_ALREADY_PENDING` | first resolver/timer remains unchanged; owner-checked cleanup; no second HTTP call |
 | Task/SDK cleanup while pending | rejects `AI_SUMMARY_REQUEST_CANCELLED` | all matching timers/maps cleared |
 | Malformed/unknown/uncorrelated/late initiator event | no Promise or public event settles | metadata-only diagnostic and drop |
 | Missing receiver task | no immediate event | keep latest payload for that conversation for at most 30 seconds |
@@ -804,9 +806,9 @@ The SDK remains single-process and event-loop driven. Pending and buffer map tra
 Resources are owned and cleared as follows:
 
 - TaskManager owns every resolver and timer.
-- HTTP rejection asks TaskManager to cancel only the matching request.
+- HTTP rejection asks TaskManager to cancel only the matching request, supplying the requesting task ID; a key match with a different owner is a no-op.
 - inbound resolution, timeout, and overlap logic never replace a live resolver;
-- `removeTaskFromCollection` clears state derived from that task's interaction/conversation;
+- `removeTaskFromCollection` clears a pending entry only when its stored task owner matches the removed task, never merely because a sibling derives the same conversation key;
 - `cc.deregister` invokes full cleanup before removing/closing RTD listeners;
 - WebRTC/media listeners and all existing task cleanup continue independently.
 
@@ -862,8 +864,8 @@ Requirement coverage: REQ-057 and AC-1 through AC-11, plus the named scenarios i
 
 ### Unit tests
 
-- `test/unit/spec/services/task/Task.ts`: all four signatures; exact gating combinations; exact action mapping; register-before-send; Promise-only behavior; validation; numeric counter pass-through; response-state unions; HTTP/error propagation; cancellation and no-summary rules; metrics/redaction.
-- `test/unit/spec/services/task/TaskManager.ts`: double-envelope parsing; exact type/conversation matching; no initiator event; overlap/sequential requests; timer and late-event behavior; receiver direct/buffered/latest-only delivery; authoritative conversation matching; ambiguity; cleanup; feature snapshots/repeats; one receive metric for each valid/repeated/payload-invalid feature frame; no feature metric for unparseable/unclassifiable frames; invalid feature no-forward/no-gating behavior; malformed/unknown isolation; transcript/suggestion regression.
+- `test/unit/spec/services/task/Task.ts`: all four signatures; exact gating combinations; exact action mapping; register-before-send; Promise-only behavior; pending `CONSULT` then `TRANSFER` cross-action rejection with no second HTTP call; validation; numeric counter pass-through; response-state unions; HTTP/error propagation with owner ID supplied for cancellation; cancellation and no-summary rules; metrics/redaction.
+- `test/unit/spec/services/task/TaskManager.ts`: double-envelope parsing; exact type/conversation matching; no initiator event; independent post/mid slots; `CONSULT`/`TRANSFER` shared-slot and same-conversation cross-task overlap; first resolver retention; non-owner cancellation/task cleanup no-op; owner cleanup; sequential requests; timer and late-event behavior; receiver direct/buffered/latest-only delivery; authoritative conversation matching; ambiguity; full cleanup; feature snapshots/repeats; one receive metric for each valid/repeated/payload-invalid feature frame; no feature metric for unparseable/unclassifiable frames; invalid feature no-forward/no-gating behavior; malformed/unknown isolation; transcript/suggestion regression.
 - `test/unit/spec/services/task/TaskUtils.ts`: stable identifier derivation and invalid zero values.
 - `test/unit/spec/services/ApiAiAssistant.ts`: exact wire bodies for all six outbound names, numeric fields, field omission, one request attempt, base URL/HTTP errors, and privacy spies.
 - `test/unit/spec/cc.ts`: summary-controlled RTD connection, feature-event forwarding, named-listener cleanup, deregistration cleanup, and existing event/register behavior.
@@ -880,7 +882,7 @@ The adapter unit suite is the HTTP serialization contract test: it asserts the c
 
 ### Concurrency and boundary tests
 
-Named cases cover a push before HTTP acknowledgement, timeout and inbound event scheduled at the boundary, two same-type calls in one tick, simultaneous post/mid calls, late delivery after cleanup, two receiver pushes before task registration, task registration before buffer expiry, expiry before registration, and duplicate matching tasks. Assertions verify exactly one terminal settlement/delivery and all timers/maps are cleared.
+Named cases cover a push before HTTP acknowledgement, timeout and inbound event scheduled at the boundary, `CONSULT` and `TRANSFER` calls in one tick, same-conversation calls from distinct tasks, simultaneous post/mid calls, non-owner versus owner cleanup, late delivery after cleanup, two receiver pushes before task registration, task registration before buffer expiry, expiry before registration, and duplicate matching tasks. Assertions verify exactly one terminal settlement/delivery, that non-owner cleanup preserves the live entry, and that owner/full cleanup clears all applicable timers/maps.
 
 ### Browser, component, accessibility, responsive, and visual tests
 
