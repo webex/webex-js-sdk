@@ -1839,7 +1839,7 @@ class HashTreeParser {
       }
 
       if (
-        dataSet.name === DataSetNames.MAIN &&
+        LLM_DATASET_NAMES.includes(dataSet.name) &&
         this.callbacks.isLlmExpected &&
         !this.callbacks.isLlmExpected()
       ) {
