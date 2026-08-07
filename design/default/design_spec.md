@@ -81,7 +81,7 @@ Non-goals are a widget, visual treatment, Adaptive Card interpretation, summary 
 | FR-4 | Addressed | requirement.md:L182-L191 -> Component: Public contracts and task API |
 | FR-5 | Addressed | requirement.md:L193-L209 -> Component: AI Assistant transport and outbound serialization |
 | FR-6 | Addressed | requirement.md:L211-L215 -> Change: Consumer sequencing and response semantics |
-| FR-7 | Addressed | requirement.md:L217-L236 -> Change: Consumer sequencing and response semantics |
+| FR-7 | Addressed | requirement.md:L217-L236 -> Component: Public contracts and task API plus Change: Consumer sequencing and response semantics; the component owns the closed cancel/exclude response-state validation, while the change owns the rule that `MID_CALL_CANCELLED` must not invoke consult/transfer and that exclusion preserves the summary representation. |
 | FR-8 | Addressed | requirement.md:L238-L248 -> Component: Realtime coordination, correlation, and receiver delivery; the coordinator arms the receiver-buffer expiry timer only when `routeReceivingSummary(...)` retains/replaces the latest payload without exactly one matching task. After normal task registration/update, TaskManager calls `flushReceivingSummary(...)` with the recomputed candidate set; delivery, replacement, expiry, scoped task cleanup, and the `ContactCenter.deregister()` -> `TaskManager.clearAISummaryState()` handoff all clear the entry through common timed-entry cleanup. |
 | FR-9 | Addressed | requirement.md:L250-L256 -> Component: Realtime coordination, correlation, and receiver delivery; `getAISummaryCorrelation()` returns distinct `{conversationId, interactionId}` values derived from `mainInteractionId ?? interactionId` and top-level `interactionId`, respectively. |
 | FR-10 | Addressed | requirement.md:L258-L264 -> Component: Realtime coordination, correlation, and receiver delivery plus Component: Feature enablement and SDK lifecycle; legacy root-exported `CC_TASK_EVENTS` initiator names remain deprecated inbound aliases for compatibility but are never emitted, while only the two Requirement Section 6.2 events are subscribable additions. |
@@ -102,7 +102,7 @@ Non-goals are a widget, visual treatment, Adaptive Card interpretation, summary 
 | REQ-047 | Addressed | requirement.md:L337-L337 -> Component: Realtime coordination, correlation, and receiver delivery |
 | REQ-048 | Addressed | requirement.md:L338-L338 -> Component: Realtime coordination, correlation, and receiver delivery |
 | REQ-049 | Addressed | requirement.md:L340-L340 -> Component: Public contracts and task API; `define-ai-summary-contracts` owns additive declarations/exports, including public error codes and deprecated `CC_TASK_EVENTS` aliases, and `expose-task-summary-apis` owns additive Task methods and public-surface compatibility tests, while the cross-cutting verification task confirms that existing symbols and behavior remain unchanged. |
-| PR-1 | Addressed | requirement.md:L344-L354 -> Change: Cross-cutting safeguards and verification; privacy is implemented by `add-ai-summary-transport`, `coordinate-summary-realtime-state`, and `expose-task-summary-apis` at the adapter, inbound coordinator, and initiating-agent Task boundaries, then audited by `synchronize-summary-documentation-and-verify`. |
+| PR-1 | Addressed | requirement.md:L344-L354 -> Component: Public contracts and task API plus Change: Cross-cutting safeguards and verification; the component makes `expose-task-summary-apis` enforce privacy-safe Task logs/metrics, while `add-ai-summary-transport` and `coordinate-summary-realtime-state` enforce the adapter and inbound boundaries and `synchronize-summary-documentation-and-verify` audits all three. |
 | PR-2 | Addressed | requirement.md:L356-L368 -> Change: Cross-cutting safeguards and verification; `coordinate-summary-realtime-state` makes TaskManager the owner of the classified feature-receive and bounded inbound-drop metrics, `expose-task-summary-apis` makes Task the sole owner of one final metric per public operation (including timeout failures after coordinator rejection), `add-ai-summary-transport` proves the adapter does not duplicate them, and `synchronize-summary-documentation-and-verify` runs the integrated metric regression gate. |
 | PR-3 | Addressed | requirement.md:L370-L374 -> Change: Cross-cutting safeguards and verification; scoped task cleanup and full SDK deregistration both reach the coordinator's one timer/map removal mechanism. |
 | REQ-050 | Addressed | requirement.md:L376-L378 -> Change: Cross-cutting safeguards and verification |
@@ -141,7 +141,7 @@ The implementation stays inside `packages/@webex/contact-center`. The following 
 | `src/services/config/index.ts`, `src/services/config/types.ts`, `src/services/agent/types.ts`, and `src/cc.ts` | `AgentConfigService.getAgentConfig()` obtains the organization AI resource through `getAIFeatureFlags(orgId)`, stores it as `Profile.aiFeature`, and `ContactCenter` already copies that profile value into `TaskManager.setConfigFlags(...)`. `AIFeatureFlags.generatedSummaries` exposes optional `wrapUpSummariesEnabled` and `consultTransferSummariesEnabled`. Raw `POST_CALL_SUMMARY` and `MID_CALL_SUMMARY` names already exist in `CC_TASK_EVENTS`, which is root-exported and spread into the public `CC_EVENTS` object despite its internal JSDoc. | Preserve and extend | Keep the existing profile/config propagation as the source of both independent organization kill switches. Add only the package-internal `TaskManager.getGeneratedSummaryFlags` accessor over its current `configFlags?.aiFeature?.generatedSummaries` view and inject that accessor into each Task; do not add a config key or make Task fetch profile data. Retain `CC_TASK_EVENTS.POST_CALL_SUMMARY` and `.MID_CALL_SUMMARY` as deprecated inbound aliases, make `CC_AI_SUMMARY_EVENTS` the single source of their strings, and expose only `cc:featureEnablement` and `task:midCallSummaryForReceivingAgent` as new public emissions. |
 | `src/types.ts`, `src/services/agent/types.ts`, `src/services/task/types.ts`, `src/index.ts` | Runtime const-object/enums plus explicit public-barrel exports are the package convention. Existing generic mid-call constants are already published internally. | Extend | Add exact consult/transfer constants without removing generic values, add the two public events, and explicitly export all public summary contracts from `src/index.ts`. |
 | `src/metrics/MetricsManager.ts` and `src/metrics/constants.ts` | Singleton metrics manager supports timed named events and filters unsupported metadata values. | Preserve and extend | Reuse the manager unchanged. Task owns exactly one final success/failure metric for each public operation, including timeout failure after its coordinator Promise rejects. TaskManager owns `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED` and `AI_SUMMARY_INBOUND_EVENT_DROPPED` for classified receive and malformed/unknown/late-or-uncorrelated routing outcomes, respectively; neither owner emits the other's metric. |
-| `ai-summary.md` and the three `ai-summary-*-flow.md` files | They contain useful transport shapes and flow evidence, but portions still propose public initiator events, organization-only gating, fallback receiver correlation, overlapping requests, and structured-only assumptions. | Synchronize during implementation | Until synchronized, this design is authoritative and those five conflicting subjects are non-normative. The DAG task `synchronize-summary-documentation-and-verify` must update all four files in the implementation change: preserve valid wire shapes, response sequencing, double-envelope handling, and privacy rules while replacing the conflicting guidance before the final regression gate. |
+| `./ai-summary.md`<br>`./ai-summary-postcall-flow.md`<br>`./ai-summary-initiator-flow.md`<br>`./ai-summary-receiver-flow.md`<br>`packages/@webex/contact-center/src/services/task/ai-docs/AGENTS.md`<br>`packages/@webex/contact-center/src/services/task/ai-docs/ARCHITECTURE.md`<br>`packages/@webex/contact-center/src/services/agent/ai-docs/AGENTS.md`<br>`packages/@webex/contact-center/src/services/agent/ai-docs/ARCHITECTURE.md`<br>`packages/@webex/contact-center/src/metrics/ai-docs/AGENTS.md`<br>`packages/@webex/contact-center/src/metrics/ai-docs/ARCHITECTURE.md` | They contain useful transport shapes, flow evidence, and service guidance, but portions still propose public initiator events, organization-only gating, fallback receiver correlation, overlapping requests, and structured-only assumptions. | Synchronize during implementation | Until synchronized, this design is authoritative and those five conflicting subjects are non-normative. The DAG task `synchronize-summary-documentation-and-verify` must update all ten exact repo-relative paths in the implementation change: preserve valid wire shapes, response sequencing, double-envelope handling, privacy rules, and service guidance while replacing the conflicting guidance before the final regression gate. |
 | Existing task lifecycle, state machine, transcript, suggested response, WebRTC, and contact APIs | These paths are operational and separately tested. | Preserve | No source or public behavior is removed. Summary failures never enter the task state machine or alter core call-control outcomes. |
 
 Provenance: this is the first canonical design artifact for this requirement; no earlier design spec or `.sdd/manifest.json` existed at authoring time. The requirement-linked `ai-summary*.md` files remain unchanged source context during this design-phase task, but their five conflicting subjects are non-normative until the explicitly scheduled implementation task synchronizes them.
@@ -218,7 +218,7 @@ File actions:
 | Modify | `packages/@webex/contact-center/src/services/ApiAiAssistant.ts`, `src/cc.ts`, `src/metrics/constants.ts` | wire adapter, lifecycle/public forwarding, metrics names |
 | Add test | `packages/@webex/contact-center/test/unit/spec/services/task/AISummaryCoordinator.ts` | direct fake-timer, overlap, resolution, buffering, feature-state, privacy, and cleanup coverage without RTD envelopes |
 | Modify tests | `packages/@webex/contact-center/test/unit/spec/services/ApiAiAssistant.ts`, `services/task/Task.ts`, `services/task/TaskManager.ts`, `services/task/TaskUtils.ts`, `cc.ts` | focused contract, raw-frame routing, correlation, privacy, composition, and regression coverage |
-| Synchronize during implementation | `ai-summary.md`, `ai-summary-postcall-flow.md`, `ai-summary-initiator-flow.md`, `ai-summary-receiver-flow.md`, task/agent/metrics `ai-docs` listed in the DAG | eliminate conflicting guidance and preserve valid implementation references |
+| Synchronize during implementation | `./ai-summary.md`<br>`./ai-summary-postcall-flow.md`<br>`./ai-summary-initiator-flow.md`<br>`./ai-summary-receiver-flow.md`<br>`packages/@webex/contact-center/src/services/task/ai-docs/AGENTS.md`<br>`packages/@webex/contact-center/src/services/task/ai-docs/ARCHITECTURE.md`<br>`packages/@webex/contact-center/src/services/agent/ai-docs/AGENTS.md`<br>`packages/@webex/contact-center/src/services/agent/ai-docs/ARCHITECTURE.md`<br>`packages/@webex/contact-center/src/metrics/ai-docs/AGENTS.md`<br>`packages/@webex/contact-center/src/metrics/ai-docs/ARCHITECTURE.md` | eliminate conflicting guidance and preserve valid implementation references in every enumerated document |
 | Remove | None | The feature is additive; stale statements are revised in place rather than files or public symbols being deleted. |
 
 `package.json`, `yarn.lock`, TypeScript/Jest/Babel configuration, state-machine files, task subclasses, sample applications, browser assets, and backend schemas remain unchanged.
@@ -227,14 +227,14 @@ The published type output does change: the existing `package.json` `types` expor
 
 ## Component: Public contracts and task API
 
-Requirements covered: G-1, G-2, G-4, G-5, REQ-005, REQ-011, REQ-013, REQ-021, REQ-022, REQ-023, REQ-024, REQ-025, FR-1, FR-2, FR-3, FR-4, FR-5, FR-10, FR-11, FR-12, DR-1, DR-2, DR-3, DR-4, REQ-040, REQ-041, REQ-042, REQ-043, REQ-044, REQ-045, REQ-049, REQ-056, PR-1, PR-2, AC-1, AC-2, AC-3, AC-4, AC-6, AC-7, AC-8, AC-10, and AC-11. Corresponding DAG tasks: `define-ai-summary-contracts` and `expose-task-summary-apis`.
+Requirements covered: G-1, G-2, G-4, G-5, REQ-005, REQ-011, REQ-013, REQ-021, REQ-022, REQ-023, REQ-024, REQ-025, FR-1, FR-2, FR-3, FR-4, FR-7, DR-1, DR-2, DR-4, REQ-040, REQ-041, REQ-049, REQ-056, PR-1, PR-2, AC-1, AC-2, AC-3, AC-4, AC-6, AC-7, AC-8, AC-10, and AC-11. Corresponding DAG tasks: `define-ai-summary-contracts` and `expose-task-summary-apis`.
 
 ### Files and symbols
 
 - Extend `packages/@webex/contact-center/src/services/task/types.ts` with all domain payloads below, `AISummaryRequestCoordinator`, the four `ITask` methods, and `TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT = 'task:midCallSummaryForReceivingAgent'`.
 - Extend `packages/@webex/contact-center/src/types.ts` with the six exact summary request/response names while retaining the existing generic names for additive compatibility.
 - Extend `packages/@webex/contact-center/src/services/task/constants.ts` with `METHODS.REQUEST_POST_CALL_SUMMARY`, `SEND_POST_CALL_SUMMARY_RESPONSE`, `REQUEST_MID_CALL_SUMMARY`, `SEND_MID_CALL_SUMMARY_RESPONSE`, `HANDLE_AI_SUMMARY_EVENT`, and `CLEAR_AI_SUMMARY_STATE`. Define the single literal `AI_SUMMARY_DURATION_MS = 30_000`, then define semantic aliases `AI_SUMMARY_REQUEST_TIMEOUT_MS = AI_SUMMARY_DURATION_MS` and `AI_SUMMARY_RECEIVER_BUFFER_RETENTION_MS = AI_SUMMARY_DURATION_MS`; request and receiver code use the aliases, never another `30_000` literal. Extend root `packages/@webex/contact-center/src/constants.ts` with the adapter method names `METHODS.SEND_SUMMARY_GET_EVENT` and `METHODS.SEND_SUMMARY_RESPONSE_EVENT` plus the six-entry `AI_SUMMARY_ERROR_CODES` object, matching the existing Task/API constant split while providing one cross-layer error contract.
-- Extend `packages/@webex/contact-center/src/index.ts` to export the public payload/state/action/feedback types, `AIAssistantEventName`, `TASK_EVENTS`, `AGENT_EVENTS`, `CC_AI_SUMMARY_EVENTS`, and `AI_SUMMARY_ERROR_CODES`. No root-client method or public error class is added.
+- Extend `packages/@webex/contact-center/src/index.ts` to re-export exactly these new or extended public summary symbols: `AISummaryActionType`, `AISummaryFeedback`, `PostCallSummaryState`, `MidCallSummaryState`, `PostCallSummarySections`, `MidCallSummarySections`, `SummaryCounters`, `PostCallSummaryEventPayload`, `MidCallSummaryEventPayload`, `MidCallSummaryReceivingAgentPayload`, `FeatureEnablementEventPayload`, `PostCallSummaryResponsePayload`, `MidCallSummaryResponsePayload`, `AIAssistantEventName`, `TASK_EVENTS`, `AGENT_EVENTS`, `CC_AI_SUMMARY_EVENTS`, and `AI_SUMMARY_ERROR_CODES`. Keep `AISummaryInboundType`, `AISummaryRequestCoordinator`, `GeneratedSummaryFlagsAccessor`, `PostCallReceivedResponse`, `PostCallNotReceivedResponse`, `MidCallReceivedResponse`, and `MidCallUnavailableResponse` package-internal and do not re-export them from `src/index.ts`. No root-client method or public error class is added.
 - Modify `packages/@webex/contact-center/src/services/task/Task.ts` once; `Voice`, `WebRTC`, and `Digital` inherit the methods unchanged.
 - Add focused cases to `packages/@webex/contact-center/test/unit/spec/services/task/Task.ts`; no new test file is needed because the configured Jest target already discovers it.
 
@@ -333,7 +333,7 @@ Consumer response types intentionally exclude `agentId`, `orgId`, `interactionId
 type PostCallReceivedResponse = SummaryCounters & {
   summary: PostCallSummarySections | string;
   feedback: AISummaryFeedback;
-  state: 'DEFAULT' | 'IGNORED';
+  state: Exclude<PostCallSummaryState, 'NOT_RECEIVED'>;
   wrapUpCode: string;
 };
 
@@ -343,7 +343,7 @@ type PostCallNotReceivedResponse = {
   numberOfTimesEdited: 0;
   numberOfTimesCopied: 0;
   feedback: AISummaryFeedback;
-  state: 'NOT_RECEIVED';
+  state: Extract<PostCallSummaryState, 'NOT_RECEIVED'>;
   wrapUpCode: string;
 };
 
@@ -354,7 +354,7 @@ export type PostCallSummaryResponsePayload =
 type MidCallReceivedResponse = SummaryCounters & {
   summary: MidCallSummarySections | string;
   feedback: AISummaryFeedback;
-  state: 'DEFAULT' | 'EXCLUDED' | 'IGNORED' | 'MID_CALL_CANCELLED';
+  state: Exclude<MidCallSummaryState, 'NOT_RECEIVED'>;
   agentName: string;
 };
 
@@ -364,7 +364,7 @@ type MidCallUnavailableResponse = {
   numberOfTimesEdited: 0;
   numberOfTimesCopied: 0;
   feedback: AISummaryFeedback;
-  state: 'NOT_RECEIVED' | 'MID_CALL_CANCELLED';
+  state: Extract<MidCallSummaryState, 'NOT_RECEIVED' | 'MID_CALL_CANCELLED'>;
   agentName: string;
 };
 
