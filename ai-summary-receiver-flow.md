@@ -19,8 +19,8 @@ flowchart LR
     App["app.js<br/>wireSummaryListeners(task)<br/>task.on(midCallSummaryForReceivingAgent)"]
     subgraph SDK["@webex/contact-center SDK"]
       Task["Task (services/task/Task.ts)<br/>receiver is event-driven<br/>no SDK method call"]
-      TM["TaskManager<br/>handleAISummaryEvent<br/>MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT<br/>findTaskByCorrelation"]
-      CC["cc.ts<br/>handleWebsocketMessage<br/>switch on eventData.type<br/>double-unwrap data.data"]
+      TM["TaskManager<br/>handleRealtimeWebsocketEvent<br/>correlate or buffer by conversationId"]
+      CC["cc.ts<br/>handleRTDWebsocketMessage<br/>forward AI realtime frame"]
     end
     App -->|render| UI
     CC -->|routes| TM
@@ -48,14 +48,14 @@ sequenceDiagram
   Initiator->>Backend: MID_CALL_CONSULT/TRANSFER_SUMMARY_RESPONSE<br/>state DEFAULT; edited summary
   Backend->>Receiver: Existing consult/transfer workflow routes call
   Receiver->>Task: Accept task
-  Note over Task: Task appears in taskCollection by<br/>interactionId / conversationId
+  Note over Task: Receiving Task carries the same<br/>conversationId as the originating Task
   Backend->>CC: WS MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT
-  Note over CC: switch on eventData.type<br/>double-unwrap eventData.data.data
-  CC->>TM: handleAISummaryEvent(type, payload)
-  Note over TM: findTaskByCorrelation<br/>(conversationId, interactionId)
+  CC->>TM: handleRealtimeWebsocketEvent(frame)
+  Note over TM: double-unwrap eventData.data.data
+  Note over TM: correlate exclusively by<br/>conversationId
   TM->>Task: emit TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT(payload)
   Task->>Widget: task:midCallSummaryForReceivingAgent
-  Note over Widget: Log delivery metadata and render<br/>payload.adaptiveCard verbatim
+  Note over Widget: Log safe delivery metadata and render<br/>adaptiveCard or summaryText
 ```
 
 ## 3. WS payload (inbound only — no outbound counterpart)
@@ -75,16 +75,11 @@ shape (spec §3.2 `MidCallSummaryReceivingAgentPayload`, §6.2):
     "notifDetails": { "actionEvent": "MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT" },
     "data": {
       "conversationId": "<originator's conversationId>",
-      "adaptiveCard": { "type": "AdaptiveCard", "version": "1.6", "body": [ ] },
+      "adaptiveCard": { "type": "AdaptiveCard", "body": [ ] },
       "adaptiveCardId": "<uuid>",
       "languageCode": "en",
       "resolution": "RESOLVED",
       "summaryText": "View to get more context on the conversation.",
-      "sections": {
-        "reasonForTransferOrConsult": "…",
-        "additionalContext": "…",
-        "keyActionsTaken": "…"
-      },
       "timestamp": 1779840300000
     }
   }
@@ -93,14 +88,11 @@ shape (spec §3.2 `MidCallSummaryReceivingAgentPayload`, §6.2):
 
 Field notes:
 
-- **`adaptiveCard`** — full ready-to-render Adaptive Card v1.6 reflecting
-  the originator's edited summary. Widget renders verbatim.
-- **`summaryText`** — short fallback line (~45 chars, e.g. *"View to get
-  more context on the conversation."*) — NOT the full body. NEVER log.
-- **`sections`** — structured backup of the card body (mid-call keys
-  `reasonForTransferOrConsult`, `additionalContext`, `keyActionsTaken`).
-  Spec adds this on top of agent-desktop sdk-types (sdk-types are stale on
-  this field). NEVER log values.
+- **`adaptiveCard`** — ready-to-render Adaptive Card content reflecting the
+  originator's submitted summary. The SDK forwards it without interpreting
+  its schema version.
+- **`summaryText`** — backend-provided fallback text. Its length and whether
+  it contains a full or abbreviated summary are not SDK guarantees. NEVER log it.
 - **No `editAdaptiveCard*`** — receiver cannot edit.
 - **No `areTranscriptsAvailable` / `suggestedWrapUpCodes`** — these are
   initiator/post-call fields.
@@ -129,37 +121,34 @@ This is STEP 10A from
 - WxCC's existing consult/transfer routing places the call on the
   receiving agent's queue / direct routing.
 - Once the receiving agent accepts the task, the receiver's
-  `taskCollection` includes a `Task` keyed by the **same**
-  `conversationId` as the originator.
+  `taskCollection` includes a `Task` carrying the **same** `conversationId`
+  as the originating task. This shared value is the authoritative identifier
+  for subsequent-agent correlation.
 - In parallel, the backend pushes a
   `MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT` WS frame onto the
   receiving agent's realtime channel.
 
-### STEP 3 — `cc.ts` routes the WS frame
+### STEP 3 — `cc.ts` routes the RTD WS frame
 
-- **Where:** `cc.handleWebsocketMessage(eventData)` in `src/cc.ts`
-- **Top-level switch (spec §15.5):**
-  ```ts
-  case CC_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT:
-    this.taskManager.handleAISummaryEvent({
-      type: 'MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT',
-      data: eventData.data?.data,   // ← double-unwrap
-    });
-    break;
-  ```
-- This is the same switch arm used for `POST_CALL_SUMMARY` and
-  `MID_CALL_SUMMARY` — only the `eventData.type` differs.
+- **Where:** `cc.handleRTDWebsocketMessage(event)` in `src/cc.ts`.
+- The handler forwards the raw frame to `TaskManager.handleRealtimeWebsocketEvent(event)`.
+- `TaskManager` parses the double envelope and extracts the inner `data.data` payload.
 
 ### STEP 4 — `TaskManager` finds the right Task and emits
 
-- **Where:** `TaskManager.handleAISummaryEvent({type, data})` in
+- **Where:** `TaskManager.handleRealtimeWebsocketEvent(event)` in
   `src/services/task/TaskManager.ts`
-- **Lookup:** `findTaskByCorrelation(data.conversationId, data.interactionId)`
-  - On the receiver, `interactionId` may differ from the originator's;
-    `conversationId` is the stable handle.
-  - The linear-scan branch in `findTaskByCorrelation` survives until
-    backend Q3 is answered (spec §15.4).
-- **If no task found:** `LoggerProxy.warn(...)` and silently drop.
+- **Lookup:** correlate using `data.conversationId` exclusively.
+  - The receiving task carries the same `conversationId` as the originating
+    task.
+  - `conversationId` is therefore authoritative for this event.
+  - The inbound subsequent-agent payload provides no `interactionId`
+    fallback for correlation.
+- **If no task is registered yet:** buffer at most the latest payload for
+  that `conversationId` for up to 30 seconds. Deliver it as soon as the
+  matching task is registered. Clear it after delivery, timeout, task
+  cleanup, or SDK deregistration.
+- **If the buffer expires:** `LoggerProxy.warn(...)` with metadata only and drop.
 - **If found:**
   ```ts
   task.emit(
@@ -175,16 +164,15 @@ This is STEP 10A from
 task.on('task:midCallSummaryForReceivingAgent', (payload) => {
   console.info('[Receiving agent] mid-call summary delivered',
     { conversationId: payload.conversationId });
-  // Production widget renders payload.adaptiveCard verbatim.
-  // Sample app does NOT render adaptive cards (per spec §17.5):
-  //   ─ optionally show payload.summaryText fallback line
-  //   ─ optionally show payload.sections in a textarea
+  // Production widget may render payload.adaptiveCard.
+  // A consumer that does not render Adaptive Cards may show
+  // payload.summaryText as fallback text.
 });
 ```
 
 The sample app intentionally does no UI rendering for receiver-side
-summaries beyond the console log — production widgets render the
-`adaptiveCard` natively. (See spec §17.5 "Out of scope for sample app".)
+summaries beyond the metadata-only console log. Production widgets choose
+between `adaptiveCard` and `summaryText`. (See spec §17.5 "Out of scope for sample app".)
 
 ### STEP 6 — No outbound action
 
@@ -199,8 +187,8 @@ summaries beyond the console log — production widgets render the
 
 1. **Originator's MID_CALL_*_SUMMARY_RESPONSE** carries the edited summary back to the backend.
 2. **Backend** routes the call AND pushes `MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT` to the receiver.
-3. **`cc.ts`** unwraps two layers, hands inner payload to `TaskManager`.
-4. **`TaskManager`** correlates by `conversationId`, emits `task:midCallSummaryForReceivingAgent`.
+3. **`cc.ts`** forwards the RTD frame to `TaskManager`, which unwraps the payload.
+4. **`TaskManager`** correlates exclusively by the shared `conversationId`, buffering briefly if the receiving task is not registered, then emits `task:midCallSummaryForReceivingAgent`.
 5. **Widget / sample app** subscribes via `task.on(...)`, renders `adaptiveCard`.
 6. **No outbound response** — receiver is read-only on this event.
 
@@ -211,15 +199,15 @@ summaries beyond the console log — production widgets render the
 | Trigger | Agent clicks Consult / Transfer | Backend pushes after originator's response |
 | SDK method called | `requestMidCallSummary(actionType)` | none — purely event-driven |
 | Inbound WS event | `MID_CALL_SUMMARY` | `MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT` |
-| SDK event emitted | `task:midCallSummary` | `task:midCallSummaryForReceivingAgent` |
+| Consumer completion | `requestMidCallSummary` Promise | `task:midCallSummaryForReceivingAgent` event |
 | Payload type | `MidCallSummaryEventPayload` | `MidCallSummaryReceivingAgentPayload` |
 | `editAdaptiveCard*` | YES (initiator can edit) | NO (read-only) |
-| `summaryText` | full plain-text body | short fallback line (~45 chars) |
+| `summaryText` | backend-provided text | backend-provided fallback text |
 | `areTranscriptsAvailable` | YES | NO |
 | Outbound `*_RESPONSE` | YES (`MID_CALL_*_SUMMARY_RESPONSE`) | NONE |
 | Counters / feedback / state | tracked & sent | not tracked |
 | Promise pattern | `requestMidCallSummary` resolves with payload | n/a — `task.on(...)` only |
-| Timeout | 30 s race in `requestMidCallSummary` | n/a — purely passive |
+| Timeout | 30 s pending-request timeout | 30 s buffer only when task registration lags |
 | Disabled-flag gate | `consultTransferSummariesEnabled` | n/a — receiver does not gate |
 
 ## 7. Cross-references
@@ -228,12 +216,11 @@ summaries beyond the console log — production widgets render the
   - §3.2 `MidCallSummaryReceivingAgentPayload`, `TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT`
   - §6.2 `MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT` schema
   - §6.3.1 cross-reference to `AIAssistantTypes.MidCallSummaryResponseSubsequentAgent.data`
-  - §15.3 `TaskManager.handleAISummaryEvent` switch
-  - §15.4 `findTaskByCorrelation` (linear-scan fallback for cross-agent correlation)
-  - §15.5 `cc.handleWebsocketMessage` switch
+  - §15.3 `TaskManager.handleRealtimeWebsocketEvent` routing
+  - §15.4 subsequent-agent correlation by the shared `conversationId`
+  - §15.5 `cc.handleRTDWebsocketMessage` forwarding
   - §17.2 sample-app listener wiring
   - §17.5 sample-app receiver-side rendering is out of scope
 - Companion docs:
   - [`ai-summary-initiator-flow.md`](./ai-summary-initiator-flow.md) — mid-call initiator
   - [`ai-summary-postcall-flow.md`](./ai-summary-postcall-flow.md) — post-call summary
-

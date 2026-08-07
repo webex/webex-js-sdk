@@ -15,18 +15,19 @@ flowchart LR
     UI["UI (index.html)<br/>consult/transfer summary blocks<br/>textarea, feedback, copy, exclude"]
     App["app.js<br/>showInitiateConsultDialog()<br/>toggleTransferOptions()<br/>initiateConsult / initiateTransfer<br/>closeConsultDialog()<br/>midCallSummary state"]
     subgraph SDK["@webex/contact-center SDK"]
-      Task["Task (services/task/Task.ts)<br/>requestMidCallSummary<br/>sendMidCallSummaryResponse<br/>waitForSummaryEvent (once + 30s timer)"]
+      Task["Task (services/task/Task.ts)<br/>requestMidCallSummary<br/>sendMidCallSummaryResponse<br/>Promise returned to caller"]
       API["ApiAIAssistant<br/>sendSummaryGetEvent<br/>sendSummaryResponseEvent"]
-      CC["cc.ts<br/>handleWebsocketMessage<br/>switch on eventData.type<br/>double-unwrap data.data"]
-      TM["TaskManager<br/>handleAISummaryEvent<br/>findTaskByCorrelation"]
+      CC["cc.ts<br/>handleRTDWebsocketMessage<br/>forward AI realtime frame"]
+      TM["TaskManager<br/>handleRealtimeWebsocketEvent<br/>pending summary resolver"]
     end
     UI -->|click| App
     App -->|task methods| Task
     Task --> API
+    Task -->|register pending request| TM
     CC -->|routes| TM
-    TM -->|task.emit| Task
+    TM -->|resolve internal Promise| Task
   end
-  Backend["Backend: api-ai-assistant<br/>POST /event (HTTP 202)<br/>Realtime push on WSS"]
+  Backend["Backend: api-ai-assistant<br/>POST /event (successful 2xx ack)<br/>Realtime push on RTD WSS"]
   WS["Realtime subscription WSS<br/>double envelope: type, data.data"]
   API -->|HTTPS POST /event| Backend
   Backend -->|realtime push| WS
@@ -46,32 +47,31 @@ sequenceDiagram
   participant TM as TaskManager
 
   Widget->>Task: requestMidCallSummary(CONSULT or TRANSFER)
-  alt consultTransferSummariesEnabled is false
+  alt organization or interaction mid-call flag is not true
     Task-->>Widget: throw MID_CALL_SUMMARY_DISABLED
   else enabled
-    Note over Task: timeEvent(GET_MID_CALL S/F)<br/>attach once listener + 30s timeout<br/>external listeners remain active
+    Task->>TM: register pending MID_CALL_SUMMARY<br/>by conversationId; start 30s timeout
+    Note over Task,TM: Reject overlapping same-type request<br/>with AI_SUMMARY_REQUEST_ALREADY_PENDING
     Task->>API: sendSummaryGetEvent(eventName, actionTimeStamp:number)
     API->>Backend: POST /event
-    Backend-->>API: HTTP 202
+    Backend-->>API: successful 2xx acknowledgement
     API-->>Task: trackEvent(GET success); Promise remains pending
     Backend->>WS: MID_CALL_SUMMARY double envelope
     WS->>CC: WS frame
-    Note over CC: switch(eventData.type)<br/>double-unwrap data.data
-    CC->>TM: handleAISummaryEvent(MID_CALL_SUMMARY, payload)
-    Note over TM: findTaskByCorrelation<br/>(conversationId, interactionId)
-    TM->>Task: emit TASK_MID_CALL_SUMMARY(payload)
-    Note over Task: internal once resolves Promise<br/>external task.on listeners also fire
+    CC->>TM: handleRealtimeWebsocketEvent(frame)
+    Note over TM: double-unwrap data.data<br/>match pending request by conversationId and type
+    TM-->>Task: resolve pending request with payload
     Task-->>Widget: summary payload
     Note over Widget: render summary; increment viewed<br/>agent edits, copies, gives feedback,<br/>and may exclude from handoff
     Widget->>Task: sendMidCallSummaryResponse(payload, actionType)
     Note over Task: counters are numbers; agentName required<br/>state DEFAULT or EXCLUDED<br/>wrapUpCode omitted
     Task->>API: sendSummaryResponseEvent(MID_CALL_*_SUMMARY_RESPONSE)
     API->>Backend: POST /event
-    Backend-->>API: HTTP 200/202
+    Backend-->>API: successful 2xx acknowledgement
     API-->>Task: trackEvent(MID_CALL_RESPONSE_SUCCESS or FAILED)
-    Task-->>Widget: response completed
+    Task-->>Widget: response attempt completed or rejected
     Widget->>Task: consult(...) or transfer(...)
-    Note over Widget,Task: Response is sent before the existing consult/transfer API
+    Note over Widget,Task: Response is attempted first;<br/>failure is recorded but does not block handoff
   end
 ```
 
@@ -84,9 +84,9 @@ sequenceDiagram
   participant API as ApiAIAssistant
   Note over Widget,Task: WS payload was received and midCallSummary.payload is set
   Widget->>Task: Cancel / close dialog / hide transfer options
-  Note over Task: Build response with summary {}, viewed 1,<br/>edited/copied 0, feedback none,<br/>state MID_CALL_CANCELLED, agentName,<br/>and no wrapUpCode key
+  Note over Task: Preserve received object/string summary and viewed 1;<br/>use empty string and zero counters if not received;<br/>state MID_CALL_CANCELLED; no wrapUpCode key
   Task->>API: sendMidCallSummaryResponse(payload, actionType)
-  API-->>Task: POST /event returns 200/202
+  API-->>Task: POST /event returns successful 2xx
   Task-->>Widget: done
   Note over Widget,Task: Skip currentTask.consult() / transfer()
 ```
@@ -94,8 +94,8 @@ sequenceDiagram
 Cancel-branch invariants (spec §5.2, §6.2 notes, §17.4 row 4):
 - The response IS still sent — backend telemetry stays consistent.
 - `state: 'MID_CALL_CANCELLED'`.
-- `summary: {}` when no edits were made.
-- `numberOfTimesViewed: 1` even on immediate cancel (dialog-open already counted).
+- If a summary was received, its structured-object or plain-text representation is preserved and `numberOfTimesViewed` is `1` after the dialog opens.
+- If no summary was received, `summary` is `''` and all interaction counters are `0`.
 - `wrapUpCode` field is **omitted entirely** (mid-call rule, NOT sent as `null`).
 - Existing `consult()` / `transfer()` is **not** called.
 
@@ -103,10 +103,10 @@ Cancel-branch invariants (spec §5.2, §6.2 notes, §17.4 row 4):
 
 | Branch  | Trigger                                                | `state` on wire       | `summary`                                  | Downstream consult/transfer |
 |---------|--------------------------------------------------------|-----------------------|--------------------------------------------|------------------------------|
-| Confirm | Click Initiate Consult/Transfer, no Exclude            | `DEFAULT`             | `Partial<MidCallSummarySections>` (or `{}`) | invoked AFTER response       |
+| Confirm | Click Initiate Consult/Transfer, no Exclude            | `DEFAULT`             | structured sections or plain text           | invoked after response attempt |
 | Exclude | Tick "Exclude from handoff", then Initiate             | `EXCLUDED`            | as above                                    | invoked AFTER response       |
-| Cancel  | Close dialog / hide transfer fieldset                  | `MID_CALL_CANCELLED`  | `{}`                                        | **skipped**                  |
-| Ignored | Agent dismisses summary block but proceeds (reserved)  | `IGNORED`             | `{}`                                        | invoked AFTER response       |
+| Cancel  | Close dialog / hide transfer fieldset                  | `MID_CALL_CANCELLED`  | received representation; `''` if unavailable | **skipped**                 |
+| Ignored | Agent dismisses summary block but proceeds (reserved)  | `IGNORED`             | received representation; `''` if unavailable | invoked after response attempt |
 
 ## 5. Wire-shape & redaction reminders (initiator outbound)
 
@@ -120,7 +120,8 @@ POST /event  (MID_CALL_CONSULT_SUMMARY_RESPONSE shown)
     conversationId, interactionId, clientType: 'WxCC',
     action: 'MID_CALL_CONSULT_SUMMARY_RESPONSE',
     actionTimeStamp: <number>,                        ← NUMBER (not string)
-    summary: { reasonForTransferOrConsult?, additionalContext?, keyActionsTaken? },
+    summary: { reasonForTransferOrConsult?, additionalContext?, keyActionsTaken? }
+             | '<plain-text summary>' | '',
     numberOfTimesViewed: 1,                           ← NUMBERS (not strings)
     numberOfTimesEdited: 0,
     numberOfTimesCopied: 0,
@@ -132,29 +133,29 @@ POST /event  (MID_CALL_CONSULT_SUMMARY_RESPONSE shown)
 }
 ```
 
+Both identifiers are required on every outbound response, including `NOT_RECEIVED`; `conversationId` must never be replaced with `''`. The SDK derives both fields consistently from the requesting task's correlation data. The receiving-agent correlation rule remains separate and uses the shared inbound `conversationId`.
+
+The application records views, edits, and copies. The SDK forwards those supplied numeric values unchanged; it must not hardcode the viewed count or convert an edit count into a boolean-derived `0`/`1`. Only a no-summary response forces all three counters to `0`.
+
 NEVER log: `summary` body, `summaryText`, `agentName`, `adaptiveCard` body,
 `editAdaptiveCard` body, `sections` *values*. Loggable: counters, `state`,
 `feedback`, IDs, `languageCode`, `resolution`, `areTranscriptsAvailable`,
 `adaptiveCardId`, `editAdaptiveCardId`, `sectionsKeys`, `hasSummaryText`
 (spec §8.1).
 
-## 6. Promise + event coexistence (§3.1.3, §15.7)
+## 6. Promise-only completion
 
 ```mermaid
 flowchart LR
-  Emit["task.emit(TASK_MID_CALL_SUMMARY, payload)"]
-  External["External task.on listener"]
-  Widget["Widget receives public event"]
-  Internal["Internal once listener<br/>inside waitForSummaryEvent"]
+  Request["requestMidCallSummary(actionType)"]
+  Pending["Private pending resolver<br/>conversationId + MID_CALL_SUMMARY"]
+  Inbound["Inbound MID_CALL_SUMMARY<br/>via RTD WebSocket"]
   Promise["requestMidCallSummary<br/>Promise resolves"]
-  Emit --> External --> Widget
-  Emit --> Internal --> Promise
+  Request --> Pending
+  Inbound --> Pending --> Promise
 ```
 
-On 30s timeout (`AI_SUMMARY_REQUEST_TIMEOUT_MS`): the internal `once` is
-detached and the Promise rejects with `MID_CALL_SUMMARY_TIMEOUT`; late WS
-arrivals still fire the public event for any external listeners (no
-double-settle).
+There is no public initiating-agent `task:midCallSummary` event. On the 30-second timeout (`AI_SUMMARY_REQUEST_TIMEOUT_MS`), the pending resolver is removed and the Promise rejects with `MID_CALL_SUMMARY_TIMEOUT`. A late frame is ignored safely and cannot settle the expired Promise.
 
 ## 7. Step-by-step walkthrough — Consult initiator
 
@@ -183,16 +184,15 @@ Each step lists: who does it → what happens → which file/method.
 ### STEP 2 — SDK validates the feature flag
 
 - **Where:** `Task.requestMidCallSummary(actionType)` in `src/services/task/Task.ts`
-- **Check:** `aiFeature.generatedSummaries.consultTransferSummariesEnabled === true`
+- **Check:** both `aiFeature.generatedSummaries.consultTransferSummariesEnabled === true` and the latest interaction-level `midCallEnabled === true`.
 - **If false:** throw `MID_CALL_SUMMARY_DISABLED` (caller's `await` rejects, no network call).
 - **If true:** continue.
 
-### STEP 3 — SDK arms the WS-await race BEFORE making the HTTP call
+### STEP 3 — SDK registers the pending request BEFORE making the HTTP call
 
-- Calls private helper `waitForSummaryEvent(TASK_MID_CALL_SUMMARY, 30_000ms, …)`.
-- This subscribes a **`once(...)`** listener for the `TASK_MID_CALL_SUMMARY` event AND starts a 30 s timer (`AI_SUMMARY_REQUEST_TIMEOUT_MS`).
-- Why subscribe first: if the WS push arrives before our HTTP call returns, we don't want to miss it.
-- Why `once`: it does NOT shadow any external `task.on('task:midCallSummary', …)` listeners — those still fire too (multi-session contract, spec §3.1.3).
+- Registers a private pending resolver keyed by `conversationId` and `MID_CALL_SUMMARY`, then starts a 30-second timer (`AI_SUMMARY_REQUEST_TIMEOUT_MS`).
+- Why register first: if the WS push arrives before our HTTP call returns, we don't want to miss it.
+- If another mid-call request is already pending for the same task, reject it with `AI_SUMMARY_REQUEST_ALREADY_PENDING` without sending another backend request.
 
 ### STEP 4 — SDK sends the GET event over HTTPS
 
@@ -219,14 +219,14 @@ Each step lists: who does it → what happens → which file/method.
     }
   }
   ```
-- **Backend response:** HTTP **202 Accepted** (no body). This is just the ack — the actual summary will arrive over WebSocket later.
+- **Backend response:** any successful **2xx** response is only an acknowledgement; the actual summary arrives over the realtime WebSocket later.
 - **Telemetry:** `metricsManager.timeEvent + trackEvent(AI_SUMMARY_GET_MID_CALL_SUCCESS)` on success, `_FAILED` on error.
 
 At this point, `requestMidCallSummary`'s Promise is **still pending** — waiting for the WS frame.
 
 ### STEP 5 — Backend pushes the summary on the WebSocket
 
-- **Channel:** `wss://api.<region>.cisco.com/v1/realtime/subscription/Desktop-<uuid>`
+- **Channel:** the existing RTD subscription managed by `rtdWebSocketManager`.
 - **Frame (double envelope, spec §6.2):**
   ```json
   {
@@ -259,60 +259,35 @@ At this point, `requestMidCallSummary`'s Promise is **still pending** — waitin
   ```
 - **Note the two `data` levels** — outer envelope wraps an inner envelope which holds the actual payload.
 
-### STEP 6 — `cc.ts` routes the WS frame
+### STEP 6 — `cc.ts` routes the RTD WS frame
 
-- **Where:** `cc.handleWebsocketMessage(eventData)` in `src/cc.ts`
-- **Top-level switch on `eventData.type`** (spec §15.5):
-  ```ts
-  case CC_EVENTS.MID_CALL_SUMMARY:
-    this.taskManager.handleAISummaryEvent({
-      type: 'MID_CALL_SUMMARY',
-      data: eventData.data?.data,   // ← double-unwrap to inner payload
-    });
-    break;
-  ```
-- The outer envelope fields (`agentId`, `notifType`, `trackingId`) are dropped here — only the inner payload is forwarded to consumers.
+- **Where:** `cc.handleRTDWebsocketMessage(event)` in `src/cc.ts`.
+- The handler forwards the raw AI realtime frame to `TaskManager.handleRealtimeWebsocketEvent(event)`.
+- `TaskManager` parses the double envelope and extracts the inner `data.data` summary payload.
 
-### STEP 7 — `TaskManager` finds the right Task and emits
+### STEP 7 — `TaskManager` resolves the pending request
 
-- **Where:** `TaskManager.handleAISummaryEvent({type, data})` in `src/services/task/TaskManager.ts`
-- **Lookup:** `findTaskByCorrelation(data.conversationId, data.interactionId)`
-  - first tries `taskCollection[interactionId]`
-  - falls back to a linear scan keyed by `conversationId` (until backend Q3 is answered)
-- **If no task found:** `LoggerProxy.warn(...)` and silently drop.
-- **If found:**
-  ```ts
-  task.emit(TASK_EVENTS.TASK_MID_CALL_SUMMARY, data);
-  ```
+- **Where:** `TaskManager.handleRealtimeWebsocketEvent(event)` in `src/services/task/TaskManager.ts`.
+- **Lookup:** match the private pending resolver by `data.conversationId` and `MID_CALL_SUMMARY`.
+- **Receiver-path distinction:** this step handles the initiating agent's `MID_CALL_SUMMARY`. For `MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT`, the receiving task shares the originator's `conversationId`; that `conversationId` is the sole authoritative correlation identifier, with no `interactionId` fallback.
+- **If no pending resolver exists:** log metadata-only diagnostics and ignore the late or uncorrelated payload.
+- **If found:** clear the timer and pending entry, then resolve `requestMidCallSummary()` with the inner payload.
 
-### STEP 8 — Two listeners fire concurrently
+### STEP 8 — The request Promise settles
 
-When `task.emit(TASK_MID_CALL_SUMMARY, payload)` runs, BOTH of these fire:
-
-| Listener | Source | Effect |
-|---|---|---|
-| **Internal `once(…)`** | armed in Step 3 | resolves the Promise from `requestMidCallSummary('CONSULT')` |
-| **External `task.on('task:midCallSummary', …)`** | wired by `wireSummaryListeners(task)` in app.js | runs the sample-app handler |
-
-So back in the sample app:
+Back in the sample app, the Promise is the only initiating-agent completion channel:
 
 ```js
-// (a) The Promise resolves
 const summary = await currentTask.requestMidCallSummary('CONSULT');
-// → updates "Summary ready." status
-
-// (b) The on(...) handler also fires (multi-session contract):
-task.on('task:midCallSummary', (payload) => {
-  midCallSummary.payload = payload;
-  document.getElementById('consult-summary-text').value = renderSummaryText(payload);
-  midCallSummary.numberOfTimesViewed += 1;          // ← view counter
-  document.getElementById('consult-summary-block').style.display = '';
-});
+midCallSummary.payload = summary;
+document.getElementById('consult-summary-text').value = renderSummaryText(summary);
+midCallSummary.numberOfTimesViewed += 1;
+document.getElementById('consult-summary-block').style.display = '';
 ```
 
 `renderSummaryText()` prefers typed `payload.sections`, falling back to `payload.summaryText`. Adaptive cards aren't rendered in the sample.
 
-> **Timeout case:** if no WS frame arrives within 30 s, the `once` listener is detached and the Promise rejects with `MID_CALL_SUMMARY_TIMEOUT`. External `task.on(...)` listeners still fire if a late frame arrives.
+> **Timeout case:** if no WS frame arrives within 30 seconds, the pending resolver is removed and the Promise rejects with `MID_CALL_SUMMARY_TIMEOUT`. A late frame is ignored.
 
 ### STEP 9 — Agent interacts with the summary block
 
@@ -335,19 +310,23 @@ async function initiateConsult() {
     if (editedSummary !== renderSummaryText(midCallSummary.payload)) {
       midCallSummary.numberOfTimesEdited += 1;
     }
-    // (1) Send the summary response FIRST
-    await currentTask.sendMidCallSummaryResponse({
-      conversationId: midCallSummary.payload.conversationId,
-      interactionId:  currentTask.data.interactionId,
-      summary: editedSummary,                          // Partial<MidCallSummarySections>
-      numberOfTimesViewed:  midCallSummary.numberOfTimesViewed,
-      numberOfTimesEdited:  midCallSummary.numberOfTimesEdited,
-      numberOfTimesCopied:  midCallSummary.numberOfTimesCopied,
-      feedback:             midCallSummary.feedback,
-      state: midCallSummary.excluded ? 'EXCLUDED' : 'DEFAULT',
-      agentName:            <agent's display name>,
-      // NO wrapUpCode key — OMITTED on mid-call
-    }, 'CONSULT');
+    // (1) Attempt the summary response FIRST
+    try {
+      await currentTask.sendMidCallSummaryResponse({
+        conversationId: midCallSummary.payload.conversationId,
+        interactionId:  currentTask.data.interactionId,
+        summary: editedSummary,                        // string or structured sections
+        numberOfTimesViewed:  midCallSummary.numberOfTimesViewed,
+        numberOfTimesEdited:  midCallSummary.numberOfTimesEdited,
+        numberOfTimesCopied:  midCallSummary.numberOfTimesCopied,
+        feedback:             midCallSummary.feedback,
+        state: midCallSummary.excluded ? 'EXCLUDED' : 'DEFAULT',
+        agentName:            <agent's display name>,
+        // NO wrapUpCode key — OMITTED on mid-call
+      }, 'CONSULT');
+    } catch (error) {
+      reportSummaryResponseFailure(error);             // do not block handoff
+    }
   }
 
   // (2) THEN call existing consult API (unchanged)
@@ -386,13 +365,14 @@ Inside the SDK, `Task.sendMidCallSummaryResponse(payload, 'CONSULT')` →
 
 Wire-contract critical points:
 - Counters are **plain numbers** (`1`, not `"1"`).
+- Counters are the application's observed values and are forwarded unchanged by the SDK; they are not SDK-generated constants or booleans.
 - `actionTimeStamp` is a **number**.
 - `wrapUpCode` key is **OMITTED entirely** (NOT sent as `null`).
-- `summary` is always an **object** (`{}` if no edits).
+- `summary` preserves structured sections when present; otherwise it is the final plain-text summary. If no summary was received, it is `''`.
 
 Telemetry: `trackEvent(AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS)` on success.
 
-After this resolves, the existing `currentTask.consult(...)` runs (unchanged WxCC consult API).
+After the response attempt settles, successfully or unsuccessfully, the existing `currentTask.consult(...)` runs.
 
 ### STEP 10B — Agent clicks **Cancel** instead (cancel path)
 
@@ -402,12 +382,13 @@ After this resolves, the existing `currentTask.consult(...)` runs (unchanged WxC
 ```js
 async function closeConsultDialog() {
   initiateConsultDialog.close();
-  if (midCallSummary.payload && midCallSummary.actionType === 'CONSULT') {
+  if (midCallSummary.actionType === 'CONSULT') {
+    const hasSummary = Boolean(midCallSummary.payload);
     await currentTask.sendMidCallSummaryResponse({
-      conversationId: midCallSummary.payload.conversationId,
+      conversationId: midCallSummary.payload?.conversationId ?? currentTask.data.interactionId,
       interactionId:  currentTask.data.interactionId,
-      summary: {},                                    // ← empty object (cancel-without-edits)
-      numberOfTimesViewed: midCallSummary.numberOfTimesViewed,  // typically 1
+      summary: hasSummary ? serializeReceivedSummary(midCallSummary.payload) : '',
+      numberOfTimesViewed: hasSummary ? midCallSummary.numberOfTimesViewed : 0,
       numberOfTimesEdited: 0,
       numberOfTimesCopied: 0,
       feedback: 'none',
@@ -422,21 +403,21 @@ async function closeConsultDialog() {
 
 Cancel-branch invariants:
 - Response IS still sent (backend telemetry consistency).
-- `state: 'MID_CALL_CANCELLED'`, `summary: {}`.
-- `numberOfTimesViewed: 1` even on immediate cancel (the dialog-open counted).
+- `state: 'MID_CALL_CANCELLED'`; preserve the received summary representation.
+- If no summary was received, use `summary: ''` and zero counters.
 - Existing consult API is **skipped**.
 
 ### Quick mental model
 
 1. **Click Consult** → app.js opens dialog, calls `task.requestMidCallSummary('CONSULT')`.
-2. **SDK** arms a `once` WS listener + 30 s timer, then fires `POST /event GET_MID_CALL_CONSULT_SUMMARY` (HTTP 202).
+2. **SDK** registers a private pending resolver + 30-second timer, then fires `POST /event GET_MID_CALL_CONSULT_SUMMARY` (successful 2xx acknowledgement).
 3. **Backend** pushes `MID_CALL_SUMMARY` over WS (double envelope).
-4. **`cc.ts`** unwraps two layers, hands inner payload to `TaskManager`.
-5. **`TaskManager`** finds the Task by `conversationId`/`interactionId` and emits `task:midCallSummary`.
-6. **Both consumers** fire — Promise resolves AND `task.on(...)` listener runs.
+4. **`cc.ts`** forwards the RTD frame to `TaskManager`.
+5. **`TaskManager`** matches the private pending request by `conversationId` and type, then resolves the Promise without emitting a public initiator event.
+6. **The requesting consumer** receives the summary exactly once through its Promise.
 7. **Agent edits / votes / copies** — counters tracked in app.js state.
-8. **Click Initiate Consult**: response POST first (`MID_CALL_CONSULT_SUMMARY_RESPONSE`, `state: 'DEFAULT' | 'EXCLUDED'`), THEN existing `consult()`.
-9. **Click Cancel**: response POST with `state: 'MID_CALL_CANCELLED'`, `summary: {}`; NO `consult()`.
+8. **Click Initiate Consult**: response POST is attempted first (`MID_CALL_CONSULT_SUMMARY_RESPONSE`, `state: 'DEFAULT' | 'EXCLUDED'`), then existing `consult()` runs even if the response fails.
+9. **Click Cancel**: response POST uses `state: 'MID_CALL_CANCELLED'` and the received summary representation; no `consult()`.
 
 Transfer flow is identical with `'TRANSFER'` actionType swapped in — `GET_MID_CALL_TRANSFER_SUMMARY` and `MID_CALL_TRANSFER_SUMMARY_RESPONSE` event names, and `currentTask.transfer(...)` instead of `consult(...)`.
 
@@ -449,8 +430,8 @@ Transfer flow is identical with `'TRANSFER'` actionType swapped in — `GET_MID_
   - §5.2 sequencing & cancel branch
   - §6.2 wire schemas
   - §8.1 redaction rules
-  - §15.5 `cc.handleWebsocketMessage` switch
-  - §15.7 `Task` public methods + `waitForSummaryEvent`
+  - §15.5 `cc.handleRTDWebsocketMessage` forwarding
+  - §15.7 `Task` public methods + private pending-request resolver
   - §17.2 / §17.3 sample-app wiring & sequencing
 - Companion docs:
   - [`ai-summary-postcall-flow.md`](./ai-summary-postcall-flow.md) — post-call summary

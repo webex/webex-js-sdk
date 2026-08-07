@@ -48,9 +48,9 @@ Deliver the initiator's mid-call summary to the task owned by the receiving agen
 
 #### G-4 — Stable consumer contract
 
-Support both Promise-based request flows and public event listeners without either mechanism suppressing the other.
+Return post-call and initiating-agent summaries through request Promises, while reserving a public task event for the push-only receiving-agent flow.
 
-**Why:** Single-session applications often prefer `await`, while multi-session applications and secondary panels rely on event subscriptions.
+**Why:** Each workflow needs one unambiguous consumer-facing completion channel: a Promise when the consumer initiated the request, and an event when it did not.
 
 #### G-5 — Safe, additive adoption
 
@@ -75,7 +75,7 @@ Add the capability without changing existing wrap-up, consult, transfer, transcr
 
 - Task-level APIs for requesting post-call and mid-call summaries.
 - Task-level APIs for sending the agent's response to those summaries.
-- Public SDK events for post-call summaries, mid-call summaries, and receiving-agent summaries.
+- Promise-based delivery for post-call and initiating-agent summaries, plus a public task event for receiving-agent summaries.
 - An agent-level feature-enablement event.
 - Feature gating through existing generated-summary flags.
 - Correlation of inbound summary events to the appropriate task.
@@ -114,9 +114,9 @@ No new public method is required on the contact-center root object. Feature enab
 | External event | Owner | Consumer purpose |
 |---|---|---|
 | `cc:featureEnablement` | Contact-center client | Learn whether mid-call and post-call summaries are enabled for an interaction. |
-| `task:postCallSummary` | Task | Receive a post-call summary payload. |
-| `task:midCallSummary` | Task | Receive a mid-call summary for the initiating agent. |
 | `task:midCallSummaryForReceivingAgent` | Task | Receive the handoff summary on the receiving agent's task. |
+
+Post-call and initiating-agent mid-call results are returned only through their request Promises. They are not duplicated as public task events. The receiver event remains public because the receiving agent did not initiate a request Promise.
 
 #### 6.3 Backend event names required
 
@@ -142,12 +142,12 @@ The SDK must recognize these inbound event names:
 
 #### FR-1 — Feature enablement
 
-The SDK must use the existing `wrapUpSummariesEnabled` and `consultTransferSummariesEnabled` configuration values to gate summary requests.
+The SDK must combine the existing organization configuration with the latest per-interaction `FEATURE_ENABLEMENT` event to gate summary requests.
 
-- `requestPostCallSummary()` must reject when `wrapUpSummariesEnabled` is false.
-- `requestMidCallSummary()` must reject when `consultTransferSummariesEnabled` is false.
+- `requestPostCallSummary()` is enabled only when `wrapUpSummariesEnabled` and the interaction's `postCallEnabled` value are both `true`.
+- `requestMidCallSummary()` is enabled only when `consultTransferSummariesEnabled` and the interaction's `midCallEnabled` value are both `true`.
 - A disabled request must not call the backend.
-- Missing optional flags must behave as disabled.
+- Missing organization flags, a missing per-interaction event, or missing per-interaction values must behave as disabled.
 - Repeated `FEATURE_ENABLEMENT` events must be forwarded; the SDK must not deduplicate them.
 
 **Why:** Administrators require independent rollout and kill-switch control for post-call and mid-call capabilities.
@@ -160,9 +160,8 @@ When post-call summaries are enabled, `task.requestPostCallSummary()` must:
 2. Treat the HTTP acknowledgement as acceptance of the request, not as the summary result.
 3. Wait for the corresponding inbound `POST_CALL_SUMMARY` event.
 4. Resolve with `PostCallSummaryEventPayload` after the inbound payload is associated with the task.
-5. Emit `task:postCallSummary` with the same payload.
 
-**Why:** Summary generation is asynchronous, and consumers need both direct request/response ergonomics and event-driven delivery.
+**Why:** Summary generation is asynchronous, while a Promise gives the requesting consumer one completion channel and avoids duplicate public delivery.
 
 #### FR-3 — Post-call agent response
 
@@ -171,7 +170,7 @@ When post-call summaries are enabled, `task.requestPostCallSummary()` must:
 The response must support:
 
 - Interaction and conversation identifiers.
-- The final structured summary, or an empty object when there are no edited sections.
+- The final summary as structured sections when sections are available, or as plain text when the received summary has no structured sections.
 - Numeric viewed, edited, and copied counters.
 - Feedback of `none`, `thumbs_up`, or `thumbs_down`.
 - The applicable state.
@@ -188,7 +187,6 @@ When mid-call summaries are enabled, `task.requestMidCallSummary(actionType)` mu
 2. Request the summary for the task's interaction and conversation.
 3. Wait for the corresponding inbound `MID_CALL_SUMMARY` event after the HTTP acknowledgement.
 4. Resolve with `MidCallSummaryEventPayload`.
-5. Emit `task:midCallSummary` with the same payload.
 
 **Why:** Consult and transfer are distinct backend actions but should share one clear SDK method.
 
@@ -199,7 +197,7 @@ When mid-call summaries are enabled, `task.requestMidCallSummary(actionType)` mu
 The response must support:
 
 - Interaction and conversation identifiers.
-- The final structured mid-call summary, or an empty object when no sections were edited.
+- The final mid-call summary as structured sections when sections are available, or as plain text when the received summary has no structured sections.
 - Numeric viewed, edited, and copied counters.
 - Feedback of `none`, `thumbs_up`, or `thumbs_down`.
 - A supported summary state.
@@ -212,7 +210,7 @@ The response must omit `wrapUpCode`; it must not send the property as `null`.
 
 #### FR-6 — Mid-call sequencing
 
-For a confirmed consult or transfer, the consuming application must send the mid-call summary response before calling the existing consult or transfer API.
+For a confirmed consult or transfer, the consuming application must attempt and await the mid-call summary response before calling the existing consult or transfer API. If the summary response fails, the application must record the failure and continue with the consult or transfer rather than blocking the core handoff.
 
 **Why:** The summary must be available to the handoff workflow before the receiver takes over.
 
@@ -228,10 +226,10 @@ The mid-call response must support these states:
 | `MID_CALL_CANCELLED` | Agent cancels the consult or transfer flow. | Send response and do not call consult or transfer. |
 | `NOT_RECEIVED` | Summary was not available to the agent. | Send a response representing the unavailable result when the application continues. |
 
-For `MID_CALL_CANCELLED` without edits:
+For `MID_CALL_CANCELLED`:
 
-- `summary` must be `{}`.
-- `numberOfTimesViewed` must be `1` once the dialog has been opened.
+- If a summary was received, `summary` must preserve its structured-object or plain-text representation and `numberOfTimesViewed` must be `1` once the dialog has been opened.
+- If no summary was received, `summary` must be an empty string and viewed, edited, and copied counters must be `0`.
 - Edited and copied counters must remain `0` unless those actions occurred.
 - `wrapUpCode` must be absent.
 
@@ -241,25 +239,29 @@ For `MID_CALL_CANCELLED` without edits:
 
 When `MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT` is received, the SDK must associate the payload with the receiving agent's task and emit `task:midCallSummaryForReceivingAgent` on that task.
 
+The receiving task must carry the same `conversationId` as the originating task. For this subsequent-agent event, `conversationId` is the authoritative correlation identifier; the SDK must not depend on an `interactionId` fallback because the inbound payload does not provide one for this purpose.
+
+If the receiving task is not registered when the event arrives, the SDK must buffer at most the latest payload for that `conversationId` for up to 30 seconds. It must deliver the payload when the matching task becomes available and clear it after delivery, timeout, task cleanup, or SDK deregistration.
+
 The SDK must forward the usable summary payload without requiring the receiving application to make a request.
 
 **Why:** The receiver path is push-driven; the receiving agent did not initiate summary generation.
 
 #### FR-9 — Task correlation
 
-Every task-scoped inbound summary must be delivered only to its matching task, using the available conversation or interaction identifier.
+Every inbound summary must be correlated by its `conversationId` and expected summary event type. Post-call and initiating-agent mid-call events settle only the matching pending request. `MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT` must be correlated exclusively to the receiving task whose `conversationId` matches both the payload and the originating task.
 
-If no task can be found, the SDK must safely drop the event and record a metadata-only warning. It must not emit the summary on an unrelated task or throw an uncaught error.
+If no task can be found for a subsequent-agent event, the SDK must apply the bounded buffering rule in FR-8. Other uncorrelated events, and subsequent-agent events whose buffer expires, must be dropped with a metadata-only warning. The SDK must not emit a summary on an unrelated task or throw an uncaught error.
 
 **Why:** Cross-interaction summary leakage would be both functionally incorrect and privacy-sensitive.
 
-#### FR-10 — Promise and event coexistence
+#### FR-10 — Promise-only request completion
 
-Inbound post-call and mid-call summaries must always emit their public task event, including when a pending request Promise is waiting for that payload.
+Inbound `POST_CALL_SUMMARY` and initiating-agent `MID_CALL_SUMMARY` payloads must settle only their matching pending request Promise. They must not be emitted as public task events.
 
-Resolving an awaiting Promise must not remove or shadow external listeners. Late events received after a request timeout must still reach external listeners.
+The pending resolver is an internal SDK concern. The public receiver event `task:midCallSummaryForReceivingAgent` remains independent of request-Promise completion.
 
-**Why:** Multiple views or sessions may independently observe the same task event.
+**Why:** A single consumer-facing completion channel prevents duplicate handling while retaining push delivery for the receiver-only workflow.
 
 #### FR-11 — Timeout behavior
 
@@ -268,29 +270,31 @@ If an accepted request does not receive its corresponding inbound summary within
 - Post-call requests must reject with `POST_CALL_SUMMARY_TIMEOUT`.
 - Mid-call requests must reject with `MID_CALL_SUMMARY_TIMEOUT`.
 - Request-specific waiting state must be cleaned up.
-- Public listeners must remain active for later events.
+- A later response must be ignored safely and must not settle the expired Promise.
 
-**Why:** Applications need a bounded wait without losing valid late events used by other consumers.
+**Why:** Applications need a bounded and deterministic request outcome.
 
 #### FR-12 — Repeated requests
 
-The SDK must permit repeated summary requests for the same task. Each request must have its own completion outcome and must not suppress public events.
+The SDK must permit a new summary request for the same task after the prior request has resolved, rejected, or timed out. While a request of the same summary type is pending for that task, an overlapping request must reject with `AI_SUMMARY_REQUEST_ALREADY_PENDING` and must not call the backend.
 
-**Why:** An agent may reopen a dialog or retry a user journey, while backend deduplication remains outside SDK scope.
+**Why:** Sequential retry supports the user journey, while rejecting overlap avoids resolving multiple Promises from an inbound event that has no unique request identifier.
 
 ### 8. Data requirements
 
 #### DR-1 — Common identifiers
 
-Outbound summary requests and responses must include the agent, organization, interaction, and conversation identifiers required by the existing AI Assistant contract.
+Outbound summary requests and responses must include the agent, organization, interaction, and conversation identifiers required by the existing AI Assistant contract. `conversationId` and `interactionId` must be populated; the no-summary/`NOT_RECEIVED` path must not replace `conversationId` with an empty string.
+
+For originating-agent requests and responses, the SDK must derive both required contract fields consistently from the requesting task's correlation data; neither field may be omitted. This does not change the receiver rule in FR-8: a subsequent-agent event is correlated using its shared `conversationId` only.
 
 **Why:** The backend and SDK require stable correlation across HTTP acknowledgement and WebSocket delivery.
 
 #### DR-2 — Summary representation
 
-- Post-call responses must use a structured object representing post-call sections.
-- Mid-call responses must use a structured object representing transfer/consult sections.
-- An unchanged or intentionally empty response must use `{}`, not a string placeholder.
+- Post-call and mid-call responses must use a structured object when the received summary contains sections.
+- When the received summary has no sections, the response must preserve the plain-text summary representation.
+- When no summary was received, the response must use an empty string and zero interaction counters.
 - Inbound Adaptive Card content and plain summary text must be forwarded without semantic rewriting.
 
 **Why:** Structured sections support editing while the original card and text preserve backend presentation options.
@@ -298,6 +302,8 @@ Outbound summary requests and responses must include the agent, organization, in
 #### DR-3 — Counters and timestamps
 
 `numberOfTimesViewed`, `numberOfTimesEdited`, `numberOfTimesCopied`, `actionTimeStamp`, and `publishTimestamp` must be numbers on the wire, not numeric strings.
+
+The consuming application owns the viewed, edited, and copied observations. The SDK must forward the supplied numeric counter values without hardcoding a viewed count or reducing the edited count to a boolean-derived `0` or `1`. The no-summary path is the exception defined by DR-2 and must send all three counters as `0`.
 
 **Why:** The live backend contract uses numeric values even where older published types may disagree.
 
@@ -326,9 +332,10 @@ The SDK must forward the inner summary payload to consumers without exposing tra
 | AI Assistant base URL unavailable | Reject with `AI_ASSISTANT_BASE_URL_NOT_AVAILABLE`. | Do not attempt the request. |
 | HTTP request fails | Reject the corresponding API Promise. | Record a failure metric; do not auto-retry. |
 | Summary event times out | Reject with the applicable timeout error. | Clean up request-specific waiting state. |
+| Same-type request already pending for the task | Reject with `AI_SUMMARY_REQUEST_ALREADY_PENDING`. | Do not call the backend or replace the existing pending resolver. |
 | Unknown task | No event delivered. | Log metadata-only warning and drop. |
 | Malformed inbound event | No event delivered. | Record a safe error and drop. |
-| Late event after timeout | Timed-out Promise remains rejected. | Continue emitting to public listeners. |
+| Late event after timeout | Timed-out Promise remains rejected. | Ignore safely and record metadata-only diagnostics. |
 
 Automatic retries are not required because summary operations are advisory and retries could duplicate backend telemetry.
 
@@ -397,25 +404,24 @@ All Unit tests must pass
 Given post-call summaries are enabled, when a consumer requests a summary and the matching inbound event arrives, then:
 
 - The Promise resolves with the summary payload.
-- `task:postCallSummary` fires with the same payload.
-- External listeners remain registered.
-- After successful wrap-up, the consumer can send a response containing numeric counters, feedback, state, structured summary, and wrap-up code.
+- No public post-call task event is emitted for the initiating request.
+- After successful wrap-up, the consumer can send a response containing numeric counters, feedback, state, the preserved structured or plain-text summary, and wrap-up code.
 
 ### AC-2 — Mid-call consult happy path
 
-Given mid-call summaries are enabled, when `CONSULT` is requested, then the SDK uses the consult request event, returns and emits the inbound summary, and sends the consult response event before the application invokes consult.
+Given mid-call summaries are enabled, when `CONSULT` is requested, then the SDK uses the consult request event, resolves the request Promise with the inbound summary without a public initiator event, and attempts the consult response before the application invokes consult.
 
 ### AC-3 — Mid-call transfer happy path
 
-Given mid-call summaries are enabled, when `TRANSFER` is requested, then the SDK uses the transfer request event, returns and emits the inbound summary, and sends the transfer response event before the application invokes transfer.
+Given mid-call summaries are enabled, when `TRANSFER` is requested, then the SDK uses the transfer request event, resolves the request Promise with the inbound summary without a public initiator event, and attempts the transfer response before the application invokes transfer.
 
 ### AC-4 — Cancel path
 
-When an agent cancels after opening the summary experience, the application can send `MID_CALL_CANCELLED` with an empty summary and numeric counters, and it does not invoke consult or transfer.
+When an agent cancels after opening the summary experience, the application can send `MID_CALL_CANCELLED` with the received summary representation and numeric counters, and it does not invoke consult or transfer. If no summary was received, it sends an empty string with zero counters.
 
 ### AC-5 — Receiving-agent path
 
-When the backend pushes `MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT`, only the correlated receiving task emits `task:midCallSummaryForReceivingAgent`.
+When the backend pushes `MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT`, the SDK uses its `conversationId` as the sole authoritative identifier. It emits `task:midCallSummaryForReceivingAgent` only on the matching task, buffering the latest payload for up to 30 seconds if that task is not registered yet.
 
 ### AC-6 — Feature-disabled paths
 
@@ -423,15 +429,15 @@ When the relevant feature flag is false or missing, the request rejects with the
 
 ### AC-7 — Timeout and late-event paths
 
-When no matching event arrives within 30 seconds, the Promise rejects with the documented timeout. A later event still reaches public listeners and does not change the rejected Promise outcome.
+When no matching event arrives within 30 seconds, the Promise rejects with the documented timeout. A later event is ignored and does not change the rejected Promise outcome.
 
-### AC-8 — Multi-listener behavior
+### AC-8 — Overlapping request behavior
 
-When multiple external listeners subscribe to a task event, all listeners receive each inbound summary even if a request Promise is also awaiting it.
+When a second request of the same summary type is made for a task whose first request is still pending, the second request rejects with `AI_SUMMARY_REQUEST_ALREADY_PENDING`, the backend is not called again, and the first request remains pending.
 
 ### AC-9 — Unknown or malformed event
 
-When an event cannot be correlated or parsed into a valid summary payload, no consumer event is emitted, no unrelated task is affected, and normal SDK operation continues.
+When an event cannot be correlated or parsed into a valid summary payload, no request Promise is settled, no receiver event is emitted, no unrelated task is affected, and normal SDK operation continues.
 
 ### AC-10 — Privacy
 
@@ -440,6 +446,3 @@ Logs and metrics generated by every success and failure path contain no summary 
 ### AC-11 — Backward compatibility
 
 The existing SDK test suites for task lifecycle, wrap-up, consult, transfer, events, and transcripts continue to pass without consumer changes.
-
-
-TODO: Confirm whether the receiving task shares the originating `conversationId`, and therefore which identifier is authoritative for subsequent-agent correlation.
