@@ -82,10 +82,10 @@ Non-goals are a widget, visual treatment, Adaptive Card interpretation, summary 
 | FR-5 | Addressed | requirement.md:L193-L209 -> Component: AI Assistant transport and outbound serialization |
 | FR-6 | Addressed | requirement.md:L211-L215 -> Change: Consumer sequencing and response semantics |
 | FR-7 | Addressed | requirement.md:L217-L236 -> Change: Consumer sequencing and response semantics |
-| FR-8 | Addressed | requirement.md:L238-L248 -> Component: Realtime coordination, correlation, and receiver delivery; the coordinator arms the receiver-buffer expiry timer only when `routeReceivingSummary(...)` retains/replaces the latest payload without one matching task, and every delivery/replacement/expiry/task/SDK removal clears it through the common timed-entry cleanup. |
+| FR-8 | Addressed | requirement.md:L238-L248 -> Component: Realtime coordination, correlation, and receiver delivery; the coordinator arms the receiver-buffer expiry timer only when `routeReceivingSummary(...)` retains/replaces the latest payload without exactly one matching task. After normal task registration/update, TaskManager calls `flushReceivingSummary(...)` with the recomputed candidate set; delivery, replacement, expiry, scoped task cleanup, and the `ContactCenter.deregister()` -> `TaskManager.clearAISummaryState()` handoff all clear the entry through common timed-entry cleanup. |
 | FR-9 | Addressed | requirement.md:L250-L256 -> Component: Realtime coordination, correlation, and receiver delivery; `getAISummaryCorrelation()` returns distinct `{conversationId, interactionId}` values derived from `mainInteractionId ?? interactionId` and top-level `interactionId`, respectively. |
 | FR-10 | Addressed | requirement.md:L258-L264 -> Component: Realtime coordination, correlation, and receiver delivery plus Component: Feature enablement and SDK lifecycle; legacy root-exported `CC_TASK_EVENTS` initiator names remain deprecated inbound aliases for compatibility but are never emitted, while only the two Requirement Section 6.2 events are subscribable additions. |
-| FR-11 | Addressed | requirement.md:L266-L275 -> Component: Realtime coordination, correlation, and receiver delivery; the coordinator arms the request timer when `registerPendingAISummaryRequest(...)` accepts and inserts a pending entry, and resolution, rejection/cancellation, timeout, task cleanup, and SDK cleanup clear it through the same timed-entry cleanup as receiver retention. |
+| FR-11 | Addressed | requirement.md:L266-L275 -> Component: Realtime coordination, correlation, and receiver delivery; the coordinator arms the request timer when `registerPendingAISummaryRequest(...)` accepts and inserts a pending entry. If the HTTP send rejects, Task owner-cancels that exact pending request before propagating the adapter error; resolution, cancellation, timeout, task cleanup, and SDK cleanup all clear its entry and timer through the same timed-entry cleanup as receiver retention. |
 | FR-12 | Addressed | requirement.md:L277-L281 -> Component: Realtime coordination, correlation, and receiver delivery; documented divergence: because FR-9 supplies no task/request identifier for inbound correlation, the pending key is `(conversationId, inbound summary type)` rather than per task, with task ID retained only as a cleanup ownership guard. |
 | DR-1 | Addressed | requirement.md:L285-L291 -> Component: AI Assistant transport and outbound serialization |
 | DR-2 | Addressed | requirement.md:L293-L300 -> Component: Public contracts and task API |
@@ -156,6 +156,8 @@ Reuse follows DRY/KISS/SOLID as follows:
 
 ## Target Architecture and Package Layout
 
+The exact exported adapter class name is `ApiAIAssistant`; its exact case-sensitive module path is `packages/@webex/contact-center/src/services/ApiAiAssistant.ts`. Component and type references use the exported-symbol spelling, while source and test paths use the filesystem spelling.
+
 Dependency direction remains acyclic:
 
 ```mermaid
@@ -167,6 +169,7 @@ flowchart LR
   TM[TaskManager] -->|owns one instance| ASC
   Config[AgentConfigService / Profile.aiFeature] -->|getAgentConfig result| CC[ContactCenter cc.ts]
   CC -->|setConfigFlags and forwards each raw RTD frame once| TM
+  TM -.->|EventEmitter: valid FEATURE_ENABLEMENT| CC
   TM -->|owns current view| OrgFlags[Current ConfigFlags.aiFeature.generatedSummaries]
   TM -->|configureAISummary with coordinator and getGeneratedSummaryFlags| Task
   Task -.->|calls injected accessor per request| OrgFlags
@@ -178,25 +181,30 @@ flowchart LR
   Task -->|public operation metrics, including timeout| Metrics
 ```
 
+The dotted `TaskManager` -> `ContactCenter` arrow is a runtime EventEmitter notification, not a reverse module dependency: TaskManager emits the shared `AGENT_EVENTS.FEATURE_ENABLEMENT` contract without importing or calling `ContactCenter`, and `cc.ts` owns the named subscription and public re-trigger. Static construction/import direction therefore remains `ContactCenter` -> `TaskManager`, so this notification path creates no module-level cycle.
+
 Layer responsibilities and handoffs:
 
 | Layer | Owns | Must not own |
 |---|---|---|
 | Consumer application | visual presentation, editing/copy/view observations, wrap-up/consult/transfer ordering, final `agentName` and wrap-up code selection | transport envelopes, correlation maps, timeout timers |
 | `Task` | public signatures, runtime argument validation, two-level gating by calling injected `getGeneratedSummaryFlags()` for the current organization value and reading the coordinator's latest interaction value, correlation derivation, and exactly one final public-operation metric, including timeout failure after coordinator rejection | config/profile fetching or storage, inbound receive/drop metrics, task registry, WebSocket parsing, UI state, consult/transfer invocation |
-| `TaskManager` | task registry, current profile-derived `ConfigFlags` view and bound `getGeneratedSummaryFlags` accessor, lifecycle ownership of its one coordinator and both FR-11/FR-8 timer policies, raw RTD parsing and payload validation, transcript/suggestion routing, receiving-task candidate selection, `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED` plus `AI_SUMMARY_INBOUND_EVENT_DROPPED` emission, delegation to the coordinator, and the SDK/task cleanup facade | direct summary maps/timer handles or parallel `setTimeout`/`clearTimeout` branches, HTTP body construction, summary rewriting, core task transitions, duplicate public-operation metrics |
+| `TaskManager` | task registry, current profile-derived `ConfigFlags` view and bound `getGeneratedSummaryFlags` accessor, lifecycle ownership of its one coordinator and both FR-11/FR-8 timer policies, raw RTD parsing and payload validation, transcript/suggestion routing, receiving-task candidate selection, internal `AGENT_EVENTS.FEATURE_ENABLEMENT` EventEmitter notification, `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED` plus `AI_SUMMARY_INBOUND_EVENT_DROPPED` emission, delegation to the coordinator, and the SDK/task cleanup facade | direct summary maps/timer handles or parallel `setTimeout`/`clearTimeout` branches, HTTP body construction, summary rewriting, core task transitions, duplicate public-operation metrics |
 | `AISummaryCoordinator` | direct timer-handle and state ownership: latest feature state, pending Promise state, exact validated event-type correlation, receiver buffer, an FR-11 request timer armed with accepted pending insertion, an FR-8 expiry timer armed/rearmed with receiver-buffer insertion/replacement, and common `removeTimedEntry` clearing before settlement, delivery, replacement, expiry, task cleanup, or SDK cleanup | raw RTD parsing, task registry ownership, HTTP serialization, direct metric emission, core task transitions |
 | `ApiAIAssistant` | base URL, auth/org lookup, exact request/response wire serialization | task lookup, feature gating, public event delivery |
 | Agent configuration / organization-flag source | `AgentConfigService.getAIFeatureFlags(orgId)` feeding `Profile.aiFeature`, propagation through `ContactCenter` to `TaskManager.setConfigFlags(...)`, and the current `ConfigFlags.aiFeature.generatedSummaries` view returned by `getGeneratedSummaryFlags()` | per-interaction feature snapshots, request gating decisions, summary timers, transport |
-| `ContactCenter` | agent-profile loading, propagation through `TaskManager.setConfigFlags(...)`, RTD connection lifecycle, single raw-frame forwarding handoff, and public client feature event | new summary request methods or payload mutation |
+| `ContactCenter` | agent-profile loading, propagation through `TaskManager.setConfigFlags(...)`, RTD connection lifecycle, single raw-frame forwarding handoff, named subscription to TaskManager's feature notification, and public client re-trigger as `cc:featureEnablement` | new summary request methods or payload mutation |
 
 Producer/consumer contracts:
 
 - `AgentConfigService.getAgentConfig()` fetches `getAIFeatureFlags(orgId)` into `Profile.aiFeature`; `ContactCenter` supplies it to `TaskManager.setConfigFlags(...)`. TaskManager injects a bound `getGeneratedSummaryFlags` accessor, and every `Task.request*` call reads that live organization view before combining it with `AISummaryRequestCoordinator.getFeatureEnablement(...)`.
 - An enabled `Task.request*` registers with its injected `AISummaryRequestCoordinator` before asking `ApiAIAssistant` to send; the concrete `AISummaryCoordinator` resolves/rejects that exact Promise.
+- If the `ApiAIAssistant` HTTP send rejects, `Task` synchronously calls `cancelPendingAISummaryRequest(taskId, conversationId, inboundType)` on the injected coordinator before rejecting its public request Promise with that adapter error. The coordinator owner-checks the entry and clears both its pending resolver and 30-second timer first, so a subsequent same-key request can register immediately and no failed send leaves a stale timer.
 - `cc.handleRTDWebsocketMessage` forwards the raw frame once; TaskManager performs the only JSON/double-envelope parse and delegates validated summary payloads to `AISummaryCoordinator`.
-- TaskManager classifies and metrics every `FEATURE_ENABLEMENT` frame, emits one bounded inbound-drop metric for each malformed, unknown, late, or uncorrelated summary frame, then asks `AISummaryCoordinator` to store each valid payload and emits it internally; `cc.ts` re-triggers valid feature payloads as `cc:featureEnablement` without deduplication.
-- TaskManager supplies the exact set of conversation-matching task candidates; `AISummaryCoordinator` emits the unwrapped subsequent-agent payload only when that set contains one task, or owns the bounded buffer otherwise.
+- TaskManager classifies and metrics every `FEATURE_ENABLEMENT` frame, emits one bounded inbound-drop metric for each malformed, unknown, late, or uncorrelated summary frame, then asks `AISummaryCoordinator` to store each valid payload and emits `AGENT_EVENTS.FEATURE_ENABLEMENT` through its EventEmitter; the named `cc.ts` listener re-triggers every valid payload as `cc:featureEnablement` without deduplication.
+- On a valid subsequent-agent payload, TaskManager supplies the complete set of conversation-matching task candidates. `AISummaryCoordinator` emits the unwrapped payload only for exactly one match; with no registered match (or an ambiguous set), it replaces the per-conversation buffer with the latest payload and arms/rearms its 30-second expiry timer.
+- After TaskManager inserts or updates a task and synchronously emits its incoming/hydrate lifecycle event, it recomputes candidates for that conversation and calls `flushReceivingSummary(...)`. A sole match makes the coordinator remove the buffer and clear its timer before emitting the payload exactly once; zero or multiple matches retain it until a later registration/update or expiry.
+- Task removal invokes TaskManager's scoped coordinator cleanup for that task/conversation. `ContactCenter.deregister()` invokes `TaskManager.clearAISummaryState()` before RTD listener/socket shutdown; delivery, 30-second expiry, scoped cleanup, and this full-SDK handoff all clear the receiver buffer and timer through the coordinator's common timed-entry removal path.
 - `Task.send*Response` passes a validated consumer payload plus SDK-derived identifiers to `ApiAIAssistant`; the adapter whitelists the wire fields.
 
 File actions:
