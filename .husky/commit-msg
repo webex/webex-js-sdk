@@ -1,4 +1,5 @@
 #!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
+_husky_sh="$(dirname "$0")/_/husky.sh"
+[ -f "$_husky_sh" ] && . "$_husky_sh"
 
 yarn commitlint --edit $1

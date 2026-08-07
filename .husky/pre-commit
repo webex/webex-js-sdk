@@ -2,6 +2,7 @@
 # Skip if in CI
 [ -n "$CI" ] && exit 0
 
-. "$(dirname "$0")/_/husky.sh"
+_husky_sh="$(dirname "$0")/_/husky.sh"
+[ -f "$_husky_sh" ] && . "$_husky_sh"
 
 yarn run --silent srcdist && yarn run --silent lint:staged

@@ -1,0 +1,106 @@
+{
+  "tasks": [
+    {
+      "id": "define-ai-summary-contracts",
+      "title": "Define additive AI summary contracts",
+      "description": "G-4, G-5, REQ-005, REQ-006, REQ-007, REQ-008, REQ-011, REQ-013, REQ-021, REQ-022, REQ-023, REQ-024, REQ-025, REQ-026, REQ-027, REQ-028, REQ-029, REQ-030, REQ-031, REQ-032, REQ-033, REQ-034, REQ-035, REQ-036, REQ-037, REQ-038, REQ-039, DR-2, DR-3, and DR-4 / Component: Public contracts and task API - extend AIAssistantEventName, CC_AI_SUMMARY_EVENTS, CC_EVENTS, AGENT_EVENTS.FEATURE_ENABLEMENT, TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT, ITask, payload/response/coordinator types, task/API method and timeout constants, metric names, and src/index.ts exports. Preserve existing generic AI constants and all existing events. This is the contract root, so it has no prerequisite and changes no package/build/dependency files.",
+      "files": [
+        "packages/@webex/contact-center/src/types.ts",
+        "packages/@webex/contact-center/src/constants.ts",
+        "packages/@webex/contact-center/src/index.ts",
+        "packages/@webex/contact-center/src/services/config/types.ts",
+        "packages/@webex/contact-center/src/services/agent/types.ts",
+        "packages/@webex/contact-center/src/services/task/types.ts",
+        "packages/@webex/contact-center/src/services/task/constants.ts",
+        "packages/@webex/contact-center/src/metrics/constants.ts"
+      ],
+      "dependencies": [],
+      "acceptance": "nvm use 22.14 && yarn workspace @webex/contact-center build:src"
+    },
+    {
+      "id": "add-ai-summary-transport",
+      "title": "Add exact AI Assistant summary transport",
+      "description": "REQ-030, REQ-031, REQ-032, REQ-033, REQ-034, REQ-035, FR-2, FR-3, FR-4, FR-5, DR-1, DR-3, REQ-042, REQ-043, PR-1, and PR-2 / Component: AI Assistant transport and outbound serialization - add ApiAIAssistant.sendSummaryGetEvent and sendSummaryResponseEvent, reusing getBaseUrl, credentials, /event, POST, auth, and getErrorDetails. Serialize required identifiers and one numeric timestamp into publishTimestamp/actionTimeStamp, whitelist response fields, omit wrapUpCode from mid-call, return Promise<void>, and perform no retry. Extend the existing ApiAiAssistant Jest target with complete request-object and privacy assertions. It depends on define-ai-summary-contracts for exact discriminants and transport types.",
+      "files": [
+        "packages/@webex/contact-center/src/services/ApiAiAssistant.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/ApiAiAssistant.ts"
+      ],
+      "dependencies": [
+        "define-ai-summary-contracts"
+      ],
+      "acceptance": "nvm use 22.14 && yarn workspace @webex/contact-center test:unit --targets services/ApiAiAssistant.ts"
+    },
+    {
+      "id": "coordinate-summary-realtime-state",
+      "title": "Coordinate pending requests and receiving-agent delivery",
+      "description": "G-3, G-4, REQ-006, REQ-009, REQ-010, REQ-028, REQ-029, REQ-037, REQ-038, REQ-039, FR-2, FR-4, FR-8, FR-9, FR-10, FR-11, FR-12, DR-5, REQ-044, REQ-045, REQ-046, REQ-047, REQ-048, and PR-3 / Component: Realtime coordination, correlation, and receiver delivery - add getAISummaryCorrelation, TaskManager's pendingAISummaryRequests/receivingSummaryBuffer/interactionFeatureEnablement maps, coordinator methods, exact double-envelope dispatch, timeout/overlap/late-event handling, conversation-only receiver matching, latest-only 30-second buffering, ambiguity protection, and scoped/full cleanup while preserving transcript and suggested-response routing. Extend TaskUtils and TaskManager Jest tests with fake-timer and concurrency cases. It depends only on contract types so it can proceed independently of HTTP transport.",
+      "files": [
+        "packages/@webex/contact-center/src/services/task/TaskUtils.ts",
+        "packages/@webex/contact-center/src/services/task/TaskManager.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/task/TaskUtils.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/task/TaskManager.ts"
+      ],
+      "dependencies": [
+        "define-ai-summary-contracts"
+      ],
+      "acceptance": "nvm use 22.14 && yarn workspace @webex/contact-center test:unit --targets services/task/TaskUtils.ts && yarn workspace @webex/contact-center test:unit --targets services/task/TaskManager.ts"
+    },
+    {
+      "id": "expose-task-summary-apis",
+      "title": "Expose task summary request and response APIs",
+      "description": "G-1, G-2, G-4, G-5, REQ-005, REQ-011, REQ-021, REQ-022, REQ-023, REQ-024, REQ-025, FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-10, FR-11, FR-12, DR-1, DR-2, DR-3, DR-4, REQ-040, REQ-041, REQ-042, REQ-043, REQ-044, and REQ-045 / Component: Public contracts and task API plus Change: Consumer sequencing and response semantics - implement Task.configureAISummary, requestPostCallSummary, sendPostCallSummaryResponse, requestMidCallSummary, and sendMidCallSummaryResponse; validate closed action/state/feedback vocabularies and discriminated empty/received shapes; derive correlation; gate on organization plus latest interaction flags; register before HTTP; select exact variants; pass counters unchanged; and emit one final metric. Modify TaskManager creation paths to configure every managed Task without changing TaskFactory or subclass constructors. Extend Task and TaskManager tests. It depends on both the adapter and coordinator because Task composes those contracts.",
+      "files": [
+        "packages/@webex/contact-center/src/services/task/Task.ts",
+        "packages/@webex/contact-center/src/services/task/TaskManager.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/task/Task.ts",
+        "packages/@webex/contact-center/test/unit/spec/services/task/TaskManager.ts"
+      ],
+      "dependencies": [
+        "define-ai-summary-contracts",
+        "add-ai-summary-transport",
+        "coordinate-summary-realtime-state"
+      ],
+      "acceptance": "nvm use 22.14 && yarn workspace @webex/contact-center test:unit --targets services/task/Task.ts && yarn workspace @webex/contact-center test:unit --targets services/task/TaskManager.ts"
+    },
+    {
+      "id": "wire-contact-center-summary-lifecycle",
+      "title": "Wire feature events and RTD lifecycle",
+      "description": "REQ-007, REQ-008, REQ-026, REQ-027, REQ-036, FR-1, FR-8, FR-9, REQ-054, and REQ-055 / Component: Feature enablement and SDK lifecycle - extend ContactCenter's RTD predicate with the two independent generated-summary organization flags, add named handleFeatureEnablement forwarding through trigger as cc:featureEnablement without deduplication, subscribe/unsubscribe it with existing task listeners, and call TaskManager.clearAISummaryState before RTD shutdown. Extend cc.ts tests for each flag, repeated events, listener cleanup, disabled behavior, and existing lifecycle regression. It depends on coordinator cleanup and public event contracts; Task APIs are complete before end-to-end wiring.",
+      "files": [
+        "packages/@webex/contact-center/src/cc.ts",
+        "packages/@webex/contact-center/test/unit/spec/cc.ts"
+      ],
+      "dependencies": [
+        "define-ai-summary-contracts",
+        "coordinate-summary-realtime-state",
+        "expose-task-summary-apis"
+      ],
+      "acceptance": "nvm use 22.14 && yarn workspace @webex/contact-center test:unit --targets cc.ts"
+    },
+    {
+      "id": "synchronize-summary-documentation-and-verify",
+      "title": "Synchronize summary references and run the regression gate",
+      "description": "REQ-002, REQ-003, G-1, G-2, G-3, G-4, G-5, REQ-004, REQ-005, REQ-006, REQ-007, REQ-008, REQ-009, REQ-010, REQ-011, REQ-012, REQ-013, REQ-021, REQ-022, REQ-023, REQ-024, REQ-025, REQ-026, REQ-027, REQ-028, REQ-029, REQ-030, REQ-031, REQ-032, REQ-033, REQ-034, REQ-035, REQ-036, REQ-037, REQ-038, REQ-039, FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-12, DR-1, DR-2, DR-3, DR-4, DR-5, REQ-040, REQ-041, REQ-042, REQ-043, REQ-044, REQ-045, REQ-046, REQ-047, REQ-048, REQ-049, PR-1, PR-2, PR-3, REQ-050, REQ-051, REQ-052, REQ-053, REQ-054, REQ-055, REQ-056, REQ-057, AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9, AC-10, and AC-11 / Change: Cross-cutting safeguards and verification, Current State and Reuse Analysis, Cross-Cutting Concerns, Test Strategy, and all component sections - revise the four existing detailed summary references and routed task/agent/metrics ai-docs to preserve valid wire/flow decisions while removing stale initiator-event, organization-only gating, overlap, receiver-fallback, and structured-only guidance. Record exact final symbols, lifecycle, privacy, metrics, and tests; create no sample UI. After all code tasks, run the complete contact-center unit, style, and source-build gate required by acceptance and backward compatibility.",
+      "files": [
+        "ai-summary.md",
+        "ai-summary-postcall-flow.md",
+        "ai-summary-initiator-flow.md",
+        "ai-summary-receiver-flow.md",
+        "packages/@webex/contact-center/src/services/task/ai-docs/AGENTS.md",
+        "packages/@webex/contact-center/src/services/task/ai-docs/ARCHITECTURE.md",
+        "packages/@webex/contact-center/src/services/agent/ai-docs/AGENTS.md",
+        "packages/@webex/contact-center/src/services/agent/ai-docs/ARCHITECTURE.md",
+        "packages/@webex/contact-center/src/metrics/ai-docs/AGENTS.md",
+        "packages/@webex/contact-center/src/metrics/ai-docs/ARCHITECTURE.md"
+      ],
+      "dependencies": [
+        "define-ai-summary-contracts",
+        "add-ai-summary-transport",
+        "coordinate-summary-realtime-state",
+        "expose-task-summary-apis",
+        "wire-contact-center-summary-lifecycle"
+      ],
+      "acceptance": "nvm use 22.14 && yarn workspace @webex/contact-center test:unit && yarn workspace @webex/contact-center test:style && yarn workspace @webex/contact-center build:src"
+    }
+  ]
+}
