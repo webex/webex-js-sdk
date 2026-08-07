@@ -47,7 +47,7 @@ Non-goals are a widget, visual treatment, Adaptive Card interpretation, summary 
 | REQ-009 | Addressed | requirement.md:L81-L81 -> Component: Realtime coordination, correlation, and receiver delivery |
 | REQ-010 | Addressed | requirement.md:L82-L82 -> Component: Realtime coordination, correlation, and receiver delivery |
 | REQ-011 | Addressed | requirement.md:L83-L83 -> Component: Public contracts and task API |
-| REQ-012 | Addressed | requirement.md:L84-L84 -> Change: Cross-cutting safeguards and verification |
+| REQ-012 | Addressed | requirement.md:L84-L84 -> Component: Realtime coordination, correlation, and receiver delivery; `define-ai-summary-contracts` declares the exact `MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT` inbound event and `coordinate-summary-realtime-state` recognizes, correlates, and delivers it. |
 | REQ-013 | Addressed | requirement.md:L85-L85 -> Component: Public contracts and task API |
 | REQ-014 | Out-of-Scope | requirement.md:L87-L89 -> The SDK exposes domain data only; a production widget and its visual design belong to consuming applications. |
 | REQ-015 | Out-of-Scope | requirement.md:L90-L90 -> Existing `wrapup`, `consult`, and `transfer` APIs are preserved and only sequenced by the consumer. |
@@ -77,7 +77,7 @@ Non-goals are a widget, visual treatment, Adaptive Card interpretation, summary 
 | REQ-039 | Addressed | requirement.md:L137-L139 -> Component: Realtime coordination, correlation, and receiver delivery |
 | FR-1 | Addressed | requirement.md:L143-L153 -> Component: Feature enablement and SDK lifecycle |
 | FR-2 | Addressed | requirement.md:L155-L164 -> Component: Public contracts and task API |
-| FR-3 | Addressed | requirement.md:L166-L180 -> Change: Consumer sequencing and response semantics |
+| FR-3 | Addressed | requirement.md:L166-L180 -> Component: Public contracts and task API plus Component: AI Assistant transport and outbound serialization own the structured-or-text/empty response shapes, finite non-negative numeric counters, bounded feedback/state, non-empty post-call `wrapUpCode`, validation, and whitelisted serialization through `define-ai-summary-contracts`, `add-ai-summary-transport`, and `expose-task-summary-apis`; Change: Consumer sequencing and response semantics owns only the documented application rule to complete wrap-up before sending the post-call response, through `expose-task-summary-apis` and `synchronize-summary-documentation-and-verify`. |
 | FR-4 | Addressed | requirement.md:L182-L191 -> Component: Public contracts and task API |
 | FR-5 | Addressed | requirement.md:L193-L209 -> Component: AI Assistant transport and outbound serialization |
 | FR-6 | Addressed | requirement.md:L211-L215 -> Change: Consumer sequencing and response semantics |
@@ -101,9 +101,9 @@ Non-goals are a widget, visual treatment, Adaptive Card interpretation, summary 
 | REQ-046 | Addressed | requirement.md:L336-L336 -> Component: Realtime coordination, correlation, and receiver delivery |
 | REQ-047 | Addressed | requirement.md:L337-L337 -> Component: Realtime coordination, correlation, and receiver delivery |
 | REQ-048 | Addressed | requirement.md:L338-L338 -> Component: Realtime coordination, correlation, and receiver delivery |
-| REQ-049 | Addressed | requirement.md:L340-L340 -> Change: Cross-cutting safeguards and verification |
-| PR-1 | Addressed | requirement.md:L344-L354 -> Change: Cross-cutting safeguards and verification |
-| PR-2 | Addressed | requirement.md:L356-L368 -> Change: Cross-cutting safeguards and verification |
+| REQ-049 | Addressed | requirement.md:L340-L340 -> Component: Public contracts and task API; `define-ai-summary-contracts` owns additive declarations/exports and `expose-task-summary-apis` owns additive Task methods and public-surface compatibility tests, while the cross-cutting verification task confirms that existing symbols and behavior remain unchanged. |
+| PR-1 | Addressed | requirement.md:L344-L354 -> Change: Cross-cutting safeguards and verification; privacy is implemented by `add-ai-summary-transport`, `coordinate-summary-realtime-state`, and `expose-task-summary-apis` at the adapter, inbound coordinator, and initiating-agent Task boundaries, then audited by `synchronize-summary-documentation-and-verify`. |
+| PR-2 | Addressed | requirement.md:L356-L368 -> Change: Cross-cutting safeguards and verification; `coordinate-summary-realtime-state` owns the classified feature-receive metric, `expose-task-summary-apis` owns one final metric per public operation, `add-ai-summary-transport` proves the adapter does not duplicate those metrics, and `synchronize-summary-documentation-and-verify` runs the integrated metric regression gate. |
 | PR-3 | Addressed | requirement.md:L370-L374 -> Change: Cross-cutting safeguards and verification |
 | REQ-050 | Addressed | requirement.md:L376-L378 -> Change: Cross-cutting safeguards and verification |
 | REQ-051 | Addressed | requirement.md:L379-L379 -> Change: Cross-cutting safeguards and verification |
@@ -209,7 +209,7 @@ The published type output does change: the existing `package.json` `types` expor
 
 ## Component: Public contracts and task API
 
-Requirements covered: G-1, G-2, G-4, G-5, REQ-005, REQ-011, REQ-013, REQ-021, REQ-022, REQ-023, REQ-024, REQ-025, FR-1, FR-2, FR-3, FR-4, FR-5, FR-10, FR-11, FR-12, DR-1, DR-2, DR-3, DR-4, REQ-040, REQ-041, REQ-042, REQ-043, REQ-044, and REQ-045. Corresponding DAG tasks: `define-ai-summary-contracts` and `expose-task-summary-apis`.
+Requirements covered: G-1, G-2, G-4, G-5, REQ-005, REQ-011, REQ-013, REQ-021, REQ-022, REQ-023, REQ-024, REQ-025, FR-1, FR-2, FR-3, FR-4, FR-5, FR-10, FR-11, FR-12, DR-1, DR-2, DR-3, DR-4, REQ-040, REQ-041, REQ-042, REQ-043, REQ-044, REQ-045, REQ-049, PR-1, and PR-2. Corresponding DAG tasks: `define-ai-summary-contracts` and `expose-task-summary-apis`.
 
 ### Files and symbols
 
@@ -515,7 +515,7 @@ Configuration reuses `WCC_API_GATEWAY`, `AI_ASSISTANT_ENV_MAP`, `AI_ASSISTANT_BA
 
 ## Component: Realtime coordination, correlation, and receiver delivery
 
-Requirements covered: G-3, G-4, REQ-006, REQ-009, REQ-010, REQ-028, REQ-029, REQ-037, REQ-038, REQ-039, FR-1, FR-2, FR-4, FR-8, FR-9, FR-10, FR-11, FR-12, DR-5, REQ-044, REQ-045, REQ-046, REQ-047, REQ-048, PR-2, and PR-3. Corresponding DAG task: `coordinate-summary-realtime-state`.
+Requirements covered: G-3, G-4, REQ-006, REQ-009, REQ-010, REQ-012, REQ-028, REQ-029, REQ-037, REQ-038, REQ-039, FR-1, FR-2, FR-4, FR-8, FR-9, FR-10, FR-11, FR-12, DR-5, REQ-044, REQ-045, REQ-046, REQ-047, REQ-048, PR-1, PR-2, and PR-3. Corresponding DAG tasks: `define-ai-summary-contracts` for the receiver-event contract and `coordinate-summary-realtime-state` for recognition, correlation, delivery, metrics, and privacy-safe failure handling.
 
 ### Files, exact state, and methods
 
@@ -693,6 +693,8 @@ Requirements covered: G-1, G-2, FR-3, FR-5, FR-6, FR-7, DR-2, DR-3, DR-4, AC-1, 
 
 This change defines a caller contract; it does not modify `Task.wrapup`, `Task.consult`, or `Task.transfer` and cannot atomically combine independently invoked APIs.
 
+For FR-3, this change owns only the consumer-visible sequencing rule: an application completes wrap-up before attempting the post-call summary response. The structured-or-text/empty payload unions, numeric-counter and bounded-vocabulary validation, non-empty post-call `wrapUpCode`, and whitelisted wire shape are enforcing SDK obligations owned by the public-contract, Task API, and transport components rather than by consumer sequencing.
+
 Implementation reuses `packages/@webex/contact-center/src/services/task/Task.ts` methods `wrapup`, `consult`, and `transfer` unchanged and adds only the four complete signatures already specified on `Task`/`ITask`: `requestPostCallSummary(): Promise<PostCallSummaryEventPayload>`, `sendPostCallSummaryResponse(payload: PostCallSummaryResponsePayload): Promise<void>`, `requestMidCallSummary(actionType: AISummaryActionType): Promise<MidCallSummaryEventPayload>`, and `sendMidCallSummaryResponse(payload: MidCallSummaryResponsePayload, actionType: AISummaryActionType): Promise<void>`. It updates `packages/@webex/contact-center/test/unit/spec/services/task/Task.ts` and the four root `ai-summary*.md` references; no new or removed source/test/UI file or symbol is justified. `Task` owns validation/transport invocation, while the consuming application remains the caller of the existing core transaction.
 
 The field-level contract is the `PostCallSummaryResponsePayload` and `MidCallSummaryResponsePayload` discriminated unions in Component: Public contracts and task API. They have no persistence mapping, accept structured objects or strings, use literal empty/zero unavailable values, and serialize through the whitelisted internal adapter union. Configuration is Not applicable - sequencing does not introduce a flag beyond request gating. Resource lifecycle is limited to awaiting each existing Promise; no timer, subscription, or abort handle is owned by the consumer-sequencing layer.
@@ -718,7 +720,7 @@ Storage/schema/configuration: Not applicable - sequencing is application control
 
 ## Change: Cross-cutting safeguards and verification
 
-Requirements covered: G-5, REQ-004, REQ-010, REQ-012, REQ-049, PR-1, PR-2, PR-3, REQ-050, REQ-051, REQ-052, REQ-053, REQ-055, REQ-056, REQ-057, AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9, AC-10, and AC-11. Corresponding DAG tasks: `define-ai-summary-contracts`, `add-ai-summary-transport`, `coordinate-summary-realtime-state`, `expose-task-summary-apis`, `wire-contact-center-summary-lifecycle`, and `synchronize-summary-documentation-and-verify`.
+Requirements covered: G-5, REQ-004, REQ-010, REQ-049, PR-1, PR-2, PR-3, REQ-050, REQ-051, REQ-052, REQ-053, REQ-055, REQ-056, REQ-057, AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9, AC-10, and AC-11. Corresponding DAG tasks: `define-ai-summary-contracts`, `add-ai-summary-transport`, `coordinate-summary-realtime-state`, `expose-task-summary-apis`, `wire-contact-center-summary-lifecycle`, and `synchronize-summary-documentation-and-verify`.
 
 ### Design authority, users, and externally visible boundary
 
@@ -728,13 +730,15 @@ Implementation reuses the exact files and symbols enumerated by the component se
 
 ### Data, control-flow, and failure safeguards
 
-REQ-010 and PR-3 are enforced by the ownership boundary: Task validation rejects before transport; TaskManager catches and drops invalid RTD input; summary failures never enter the existing task state machine; and applications continue core handoff after a caught mid-call response failure. REQ-049 prohibits automatic retry, so each API invocation makes at most one HTTP attempt and a later attempt requires a new explicit consumer call after prior state cleanup.
+REQ-010 and PR-3 are enforced by the ownership boundary: Task validation rejects before transport; TaskManager catches and drops invalid RTD input; summary failures never enter the existing task state machine; and applications continue core handoff after a caught mid-call response failure. The no-retry constraint is enforced by making at most one HTTP attempt per API invocation; a later attempt requires a new explicit consumer call after prior state cleanup.
 
 The public field models and signatures are the discriminated payload unions in Component: Public contracts and task API. Persistence mapping is Not applicable - state consists only of keyed in-memory resolver/feature/buffer records and 30-second timers. Serialization is the whitelisted `CTI_EVENT` body in Component: AI Assistant transport and outbound serialization. `null`/`undefined` summary representations are invalid; unavailable summaries use `''` and literal zero counters; timestamps/counters remain numbers; and mid-call serialization has no `wrapUpCode` property. State transitions are limited to pending -> resolved, rejected, timed out, or cancelled and buffered -> delivered, expired, replaced, or cleared. Map deletion precedes Promise settlement/event delivery so repeated calls cannot inherit stale state.
 
 ### Security, observability, compatibility, and lifecycle
 
-REQ-012 and PR-1 prohibit summary text, section values, Adaptive Card bodies, and initiating `agentName` from logs or metrics. Allowed fields are bounded operation/event names, policy-permitted identifiers, boolean enablement, numeric counters, state, feedback, action type, card IDs, section-key names, and bounded failure codes. PR-2 adds exactly the four success/failure operation pairs and one feature-event receive counter defined in Cross-Cutting Concerns; request success is recorded only after the matching RTD result resolves the public Promise, while the feature counter records every parsed frame classified as `FEATURE_ENABLEMENT` before payload validation. Raw envelopes, response bodies, arbitrary invalid fields, and arbitrary exception text are not telemetry attributes.
+PR-1 prohibits summary text, section values, Adaptive Card bodies, and initiating `agentName` from logs or metrics. Allowed fields are bounded operation/event names, policy-permitted identifiers, boolean enablement, numeric counters, state, feedback, action type, card IDs, section-key names, and bounded failure codes. PR-2 adds exactly the four success/failure operation pairs and one feature-event receive counter defined in Cross-Cutting Concerns; request success is recorded only after the matching RTD result resolves the public Promise, while the feature counter records every parsed frame classified as `FEATURE_ENABLEMENT` before payload validation. Raw envelopes, response bodies, arbitrary invalid fields, and arbitrary exception text are not telemetry attributes.
+
+REQ-049 is enforced where the public surface is declared and exposed: `define-ai-summary-contracts` only adds event/type/constant/metric exports, and `expose-task-summary-apis` only adds inherited Task methods while retaining existing APIs, event values, and generated declarations. The final cross-cutting regression gate verifies those additive boundaries; documentation alone is not the implementation owner.
 
 REQ-050, REQ-051, REQ-052, REQ-053, and REQ-055 preserve all existing event strings, payloads, wrap-up/consult/transfer/transcript behavior, package/build contracts, and configuration schema. The two existing generated-summary organization flags remain independent kill switches. With both false, summary requests reject locally and core contact-center behavior remains operational. Configuration migration, database/storage migration, worker/process management, and `AbortSignal` support are Not applicable - no such surface is introduced. Task cleanup and `cc.deregister()` clear all owned timers/maps/listeners as specified by the lifecycle component.
 
@@ -914,10 +918,10 @@ The authoritative machine-readable tasks are in `implementation_dag.json`.
 
 | Task | Depends on | Why this order | Primary requirement trace |
 |---|---|---|---|
-| `define-ai-summary-contracts` | none | Establish exact event/type/method/metric names before producers and consumers compile against them. | G-4, REQ-013, REQ-021 through REQ-039, DR-3, DR-4 |
-| `add-ai-summary-transport` | contracts | The adapter needs exact discriminants and internal wire types. | FR-2 through FR-5, DR-1, REQ-042, REQ-043, PR-1 |
-| `coordinate-summary-realtime-state` | contracts | Pending/buffer maps and RTD routing need payload/event types but can be built independently of HTTP. | G-3, FR-1, FR-8 through FR-12, DR-5, REQ-044 through REQ-048, PR-2 |
-| `expose-task-summary-apis` | contracts, transport, coordination | Task methods compose the established adapter and coordinator contracts. | G-1, G-2, FR-1 through FR-7, DR-1 through DR-4 |
+| `define-ai-summary-contracts` | none | Establish exact event/type/method/metric names before producers and consumers compile against them. | G-4, REQ-012, REQ-013, REQ-021 through REQ-039, FR-3, REQ-049, DR-3, DR-4 |
+| `add-ai-summary-transport` | contracts | The adapter needs exact discriminants and internal wire types. | FR-2 through FR-5, DR-1, REQ-042, REQ-043, PR-1, PR-2 |
+| `coordinate-summary-realtime-state` | contracts | Pending/buffer maps and RTD routing need payload/event types but can be built independently of HTTP. | G-3, REQ-012, FR-1, FR-8 through FR-12, DR-5, REQ-044 through REQ-048, PR-1, PR-2 |
+| `expose-task-summary-apis` | contracts, transport, coordination | Task methods compose the established adapter and coordinator contracts. | G-1, G-2, FR-1 through FR-7, DR-1 through DR-4, REQ-049, PR-1, PR-2 |
 | `wire-contact-center-summary-lifecycle` | contracts, coordination, task APIs | Client event/lifecycle wiring is safe after TaskManager and Task behavior are defined. | REQ-007, REQ-026, REQ-027, REQ-036, FR-1, REQ-054 |
 | `synchronize-summary-documentation-and-verify` | all implementation tasks | Documentation must reflect final symbols/behavior, then the complete regression/build gate validates the integrated feature. | REQ-056, REQ-057, AC-1 through AC-11 |
 
