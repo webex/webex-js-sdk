@@ -177,6 +177,25 @@ describe('Call Manager Tests with respect to calls', () => {
     expect(callManager).toMatchObject(callManagerNew);
   });
 
+  it('threads iceGathering config from getCallManager into newly created calls', () => {
+    const iceGatheringConfig = {reduceTimeoutForIceLite: true, iceLiteTimeout: 750};
+
+    /* getCallManager returns the existing singleton but refreshes the ice gathering config on it. */
+    const configuredManager = getCallManager(webex, defaultServiceIndicator, iceGatheringConfig);
+
+    expect(configuredManager).toBe(callManager);
+    expect(configuredManager['iceGatheringConfig']).toEqual(iceGatheringConfig);
+
+    const call = configuredManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
+
+    expect(call['iceGatheringConfig']).toEqual(iceGatheringConfig);
+
+    call.end();
+
+    /* Restore the singleton config so it does not leak into subsequent tests. */
+    configuredManager['setIceGatheringConfig'](undefined);
+  });
+
   it('create a call using call manager', async () => {
     callManager.updateLine('8a67806f-fc4d-446b-a131-31e71ea5b010', mockLine);
     webex.request.mockReturnValueOnce({
