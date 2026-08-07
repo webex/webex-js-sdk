@@ -17,7 +17,7 @@
         "packages/@webex/contact-center/test/unit/spec/services/config/index.ts"
       ],
       "dependencies": [],
-      "acceptance": "nvm use 22.14 && yarn workspace @webex/contact-center test:unit --targets index.ts && yarn workspace @webex/contact-center test:unit --targets services/config/index.ts && yarn workspace @webex/contact-center build:src"
+      "acceptance": "nvm exec 22.14 sh -c \"yarn workspace @webex/contact-center test:unit --targets index.ts && yarn workspace @webex/contact-center test:unit --targets services/config/index.ts && yarn workspace @webex/contact-center build:src\""
     },
     {
       "id": "add-ai-summary-transport",
@@ -30,7 +30,7 @@
       "dependencies": [
         "define-ai-summary-contracts"
       ],
-      "acceptance": "nvm use 22.14 && yarn workspace @webex/contact-center test:unit --targets services/ApiAiAssistant.ts"
+      "acceptance": "nvm exec 22.14 yarn workspace @webex/contact-center test:unit --targets services/ApiAiAssistant.ts"
     },
     {
       "id": "coordinate-summary-realtime-state",
@@ -47,7 +47,7 @@
       "dependencies": [
         "define-ai-summary-contracts"
       ],
-      "acceptance": "nvm use 22.14 && yarn workspace @webex/contact-center test:unit --targets services/task/TaskUtils.ts && yarn workspace @webex/contact-center test:unit --targets services/task/AISummaryCoordinator.ts && yarn workspace @webex/contact-center test:unit --targets services/task/TaskManager.ts"
+      "acceptance": "nvm exec 22.14 sh -c \"yarn workspace @webex/contact-center test:unit --targets services/task/TaskUtils.ts && yarn workspace @webex/contact-center test:unit --targets services/task/AISummaryCoordinator.ts && yarn workspace @webex/contact-center test:unit --targets services/task/TaskManager.ts\""
     },
     {
       "id": "expose-task-summary-apis",
@@ -64,7 +64,7 @@
         "add-ai-summary-transport",
         "coordinate-summary-realtime-state"
       ],
-      "acceptance": "nvm use 22.14 && yarn workspace @webex/contact-center test:unit --targets services/task/Task.ts && yarn workspace @webex/contact-center test:unit --targets services/task/TaskManager.ts"
+      "acceptance": "nvm exec 22.14 sh -c \"yarn workspace @webex/contact-center test:unit --targets services/task/Task.ts && yarn workspace @webex/contact-center test:unit --targets services/task/TaskManager.ts\""
     },
     {
       "id": "wire-contact-center-summary-lifecycle",
@@ -79,7 +79,7 @@
         "coordinate-summary-realtime-state",
         "expose-task-summary-apis"
       ],
-      "acceptance": "nvm use 22.14 && yarn workspace @webex/contact-center test:unit --targets cc.ts"
+      "acceptance": "nvm exec 22.14 yarn workspace @webex/contact-center test:unit --targets cc.ts"
     },
     {
       "id": "verify-summary-integration",
@@ -101,7 +101,7 @@
         "expose-task-summary-apis",
         "wire-contact-center-summary-lifecycle"
       ],
-      "acceptance": "nvm use 22.14 && yarn workspace @webex/contact-center test:unit && yarn workspace @webex/contact-center test:style && yarn workspace @webex/contact-center build:src"
+      "acceptance": "nvm exec 22.14 sh -c \"yarn workspace @webex/contact-center test:unit && yarn workspace @webex/contact-center test:style && yarn workspace @webex/contact-center build:src\""
     },
     {
       "id": "synchronize-summary-documentation",
