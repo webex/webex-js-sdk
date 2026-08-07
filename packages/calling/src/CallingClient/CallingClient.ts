@@ -150,7 +150,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     log.setLogger(logLevel, CALLING_CLIENT_FILE);
     validateServiceData(this.serviceData);
 
-    this.callManager = getCallManager(this.webex, this.serviceData.indicator);
+    this.callManager = getCallManager(
+      this.webex,
+      this.serviceData.indicator,
+      this.sdkConfig?.iceGathering
+    );
     this.metricManager = getMetricManager(this.webex, this.serviceData.indicator);
 
     this.mediaEngine = Media;
