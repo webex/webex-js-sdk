@@ -110,7 +110,7 @@ export type HashTreeParserCallbacks = {
   locusInfoUpdateCallback: LocusInfoUpdateCallback;
   syncLatencyTracker?: SyncLatencyTracker;
   generateTrackingId?: GenerateTrackingId;
-  isLlmConnected?: () => boolean;
+  isLlmExpected?: () => boolean;
 };
 
 const SYNC_METRICS_DATA_SETS = [
@@ -1840,8 +1840,8 @@ class HashTreeParser {
 
       if (
         dataSet.name === DataSetNames.MAIN &&
-        this.callbacks.isLlmConnected &&
-        !this.callbacks.isLlmConnected()
+        this.callbacks.isLlmExpected &&
+        !this.callbacks.isLlmExpected()
       ) {
         LoggerProxy.logger.info(
           `HashTreeParser#resetHeartbeatWatchdogs --> ${this.debugId} skipping heartbeat watchdog timer for data set "${dataSet.name}" because LLM is disconnected`
@@ -1858,7 +1858,7 @@ class HashTreeParser {
         dataSet.heartbeatWatchdogTimer = undefined;
 
         LoggerProxy.logger.warn(
-          `HashTreeParser#resetHeartbeatWatchdogs --> ${this.debugId} Heartbeat watchdog fired for data set "${dataSet.name}" - no heartbeat received within expected interval, initiating sync`
+          `HashTreeParser#resetHeartbeatWatchdogs --> ${this.debugId} Heartbeat watchdog fired for data set "${dataSet.name}" - no heartbeat received within expected interval(heartbeatIntervalMs=${heartbeatIntervalMs}, backoffTime=${backoffTime}), initiating sync`
         );
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED, {

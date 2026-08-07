@@ -181,7 +181,7 @@ describe('HashTreeParser', () => {
     syncLatencyTracker?: any,
     syncLatencyMeetingId = 'meeting-1',
     generateTrackingId?: any,
-    isLlmConnected?: () => boolean
+    isLlmExpected?: () => boolean
   ) {
     return new HashTreeParser({
       initialLocus,
@@ -191,7 +191,7 @@ describe('HashTreeParser', () => {
         locusInfoUpdateCallback: callback,
         syncLatencyTracker,
         generateTrackingId,
-        isLlmConnected,
+        isLlmExpected,
       },
       debugId: 'test',
       excludedDataSets,
@@ -3405,7 +3405,7 @@ describe('HashTreeParser', () => {
         expect(parser.dataSets.main.heartbeatWatchdogTimer).to.be.undefined;
       });
 
-      it('skips watchdog timer for main only when current meeting LLM is disconnected', async () => {
+      it('skips watchdog timer for main only when current meeting LLM is not expected', async () => {
         const parser = createHashTreeParser(
           undefined,
           undefined,
@@ -3432,7 +3432,7 @@ describe('HashTreeParser', () => {
           locusUrl,
         };
 
-        parser.handleMessage(heartbeatMessage, 'heartbeat with meeting-scoped llm disconnected');
+        parser.handleMessage(heartbeatMessage, 'heartbeat with meeting-scoped llm not expected');
 
         expect(parser.dataSets.main.heartbeatWatchdogTimer).to.be.undefined;
         expect(parser.dataSets.self.heartbeatWatchdogTimer).to.not.be.undefined;
