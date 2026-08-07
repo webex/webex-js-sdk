@@ -3,6 +3,6 @@
 [ -n "$CI" ] && exit 0
 
 _husky_sh="$(dirname "$0")/_/husky.sh"
-[ -f "$_husky_sh" ] && . "$_husky_sh"
-
+[ -f "$_husky_sh" ] || exit 0
+. "$_husky_sh"
 yarn run --silent srcdist && yarn run --silent lint:staged
