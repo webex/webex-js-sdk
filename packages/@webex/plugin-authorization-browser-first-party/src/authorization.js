@@ -103,6 +103,7 @@ const Authorization = WebexPlugin.extend({
     },
     /**
      * Retains the outcome of the automatic startup authorization-code exchange.
+     * Resets to not_attempted when the SDK logs out.
      */
     initialAuthorizationCodeGrantOutcome: {
       default: InitialAuthorizationCodeGrantOutcomes.notAttempted,
@@ -463,6 +464,8 @@ const Authorization = WebexPlugin.extend({
    * @returns {Promise<void>}
    */
   logout(options = {}) {
+    this.initialAuthorizationCodeGrantOutcome = InitialAuthorizationCodeGrantOutcomes.notAttempted;
+
     if (!options.noRedirect) {
       this.webex.getWindow().location = this.webex.credentials.buildLogoutUrl(options);
     }

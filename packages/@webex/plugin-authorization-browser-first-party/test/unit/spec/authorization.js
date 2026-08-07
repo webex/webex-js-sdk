@@ -536,6 +536,23 @@ describe('plugin-authorization-browser-first-party', () => {
           });
         });
       });
+
+      it('does not reset the retained initial exchange outcome', () => {
+        const webex = makeWebex();
+
+        webex.authorization.initialAuthorizationCodeGrantOutcome =
+          InitialAuthorizationCodeGrantOutcomes.success;
+        sinon
+          .stub(webex.authorization, 'initiateAuthorizationCodeGrant')
+          .returns(Promise.resolve());
+
+        return webex.authorization.initiateLogin().then(() => {
+          assert.equal(
+            webex.authorization.initialAuthorizationCodeGrantOutcome,
+            InitialAuthorizationCodeGrantOutcomes.success
+          );
+        });
+      });
     });
 
     describe('#initiateAuthorizationCodeGrant()', () => {
@@ -632,6 +649,43 @@ describe('plugin-authorization-browser-first-party', () => {
             data: {loginUrl: testLoginUrl},
           });
         });
+      });
+    });
+
+    describe('#logout()', () => {
+      it('resets the retained outcome without redirecting', () => {
+        const webex = makeWebex();
+        const changeSpy = sinon.spy();
+
+        webex.authorization.initialAuthorizationCodeGrantOutcome =
+          InitialAuthorizationCodeGrantOutcomes.success;
+        webex.authorization.on('change:initialAuthorizationCodeGrantOutcome', changeSpy);
+
+        webex.authorization.logout({noRedirect: true});
+
+        assert.equal(
+          webex.authorization.initialAuthorizationCodeGrantOutcome,
+          InitialAuthorizationCodeGrantOutcomes.notAttempted
+        );
+        assert.calledOnce(changeSpy);
+        assert.equal(webex.getWindow().location.href, 'https://example.com');
+      });
+
+      it('resets the retained outcome before redirecting', () => {
+        const logoutUrl = 'https://example.com/logout';
+        const webex = makeWebex();
+
+        webex.authorization.initialAuthorizationCodeGrantOutcome =
+          InitialAuthorizationCodeGrantOutcomes.failure;
+        sinon.stub(webex.credentials, 'buildLogoutUrl').returns(logoutUrl);
+
+        webex.authorization.logout();
+
+        assert.equal(
+          webex.authorization.initialAuthorizationCodeGrantOutcome,
+          InitialAuthorizationCodeGrantOutcomes.notAttempted
+        );
+        assert.equal(webex.getWindow().location, logoutUrl);
       });
     });
 
