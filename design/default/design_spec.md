@@ -8,11 +8,12 @@ The requirement is the target authority. Live source establishes the current sta
 
 Externally visible outcomes are:
 
-- four additive methods on `ITask` and every concrete task;
+- four summary methods implemented once on `Task`, inherited by every SDK-created concrete task, and declared as required members on the SDK-produced `ITask` consumer surface;
 - public summary payload/response types and exact backend event constants;
 - `cc:featureEnablement` on the contact-center client and `task:midCallSummaryForReceivingAgent` on the matching task;
 - deterministic disabled, overlap, transport, timeout, malformed-event, late-event, and cleanup behavior;
-- privacy-safe operational metrics for every requested summary operation and every valid feature-enablement event.
+- a volatile, per-`conversationId` receiver buffer that retains only the latest subsequent-agent payload for at most 30 seconds, then delivers it when the matching task registers or drops it;
+- privacy-safe success and failure metrics for post-call requests, mid-call requests, post-call responses, and mid-call responses, plus one receive metric for every parsed `FEATURE_ENABLEMENT` frame, including repeated and payload-invalid frames.
 
 Constraints and assumptions:
 
@@ -20,7 +21,7 @@ Constraints and assumptions:
 - `TaskData.interaction.mainInteractionId ?? TaskData.interactionId` is the existing codebase pattern for the stable conversation key. The current task's top-level `interactionId` remains the outbound interaction identifier.
 - A successful AI Assistant HTTP response is an acknowledgement only. A valid matching RTD event is required to fulfill a request Promise.
 - The SDK does not receive a unique backend request ID, so at most one request of each inbound summary type may be pending per conversation.
-- No dependency, package, lockfile, schema, persistence, worker, stream, or new SDK configuration key is introduced.
+- No dependency, package, lockfile, schema, persistence, worker, stream, or new SDK configuration key is introduced. The receiver buffer is bounded, process-local memory rather than persistence and is cleared on delivery, replacement, expiry, task cleanup, or SDK deregistration.
 - No `AbortSignal` parameter is added because the required public signatures contain none. Cancellation is internal and occurs on HTTP failure, timeout, task cleanup, or SDK deregistration.
 
 Non-goals are a widget, visual treatment, Adaptive Card interpretation, summary generation, backend changes, transcript changes, automatic retry/deduplication, or changes to existing handoff and wrap-up APIs. Application sequencing is documented but cannot be enforced across separate SDK calls: the application owns “wrap up, then response” and “response attempt, then consult/transfer.”
@@ -30,8 +31,8 @@ Non-goals are a widget, visual treatment, Adaptive Card interpretation, summary 
 | Fix # | Disposition | Reference |
 |---|---|---|
 | REQ-001 | Out-of-Scope | requirement.md:L3-L4 -> Branch selection is release-workflow metadata and does not change the SDK design. |
-| REQ-002 | Addressed | requirement.md:L7-L17 -> Change: Cross-cutting safeguards and verification |
-| REQ-003 | Addressed | requirement.md:L18-L27 -> Change: Cross-cutting safeguards and verification |
+| REQ-002 | Out-of-Scope | requirement.md:L7-L17 -> Section 1 is non-normative document-purpose and reference-routing context; it imposes no independently testable SDK obligation. |
+| REQ-003 | Out-of-Scope | requirement.md:L18-L27 -> Section 2 is non-normative background/problem framing; its normative goals and requirements are dispositioned separately below. |
 | G-1 | Addressed | requirement.md:L31-L35 -> Change: Consumer sequencing and response semantics |
 | G-2 | Addressed | requirement.md:L37-L41 -> Change: Consumer sequencing and response semantics |
 | G-3 | Addressed | requirement.md:L43-L47 -> Component: Realtime coordination, correlation, and receiver delivery |
@@ -202,6 +203,8 @@ File actions:
 | Remove | None | The feature is additive; stale statements are revised in place rather than files or public symbols being deleted. |
 
 `package.json`, `yarn.lock`, TypeScript/Jest/Babel configuration, state-machine files, task subclasses, sample applications, browser assets, and backend schemas remain unchanged.
+
+The published type output does change: the existing `package.json` `types` export points at generated `dist/types/index.d.ts`, and `build:src` must emit the four required summary methods on `ITask` plus the new payload/event types from the root barrel. This needs no package manifest, export-map, compiler, bundler, or dependency change, but it is an intentional addition to the public declaration surface and is verified by the source build and type-level tests described below.
 
 ## Component: Public contracts and task API
 
@@ -383,6 +386,10 @@ export interface AISummaryRequestCoordinator {
 }
 ```
 
+`ITask` is an SDK-produced output contract, not an application extension point. In the live package, only the SDK-owned abstract `Task` implements it, all concrete instances originate in the internal `TaskFactory`, and no public API accepts a consumer-supplied `ITask` implementation. The four members are therefore required rather than optional so applications consuming an SDK task get the exact callable signatures without feature-method existence checks; `Voice`, `WebRTC`, and `Digital` inherit the same runtime implementation from `Task`.
+
+This is runtime- and source-additive for the supported consumption model, but adding required members to the exported interface is still observable in TypeScript structural typing. A downstream project that chose to implement all of `ITask`, or declared a complete hand-written `ITask` mock, must add the four methods when compiling against the new declarations. That unsupported implementation pattern is not covered by G-5's no-migration promise because the SDK never consumes such objects. Repository tests, published examples, and recommended downstream test doubles must use an SDK-created task or a purpose-scoped `Pick<ITask, ...>`/`Partial<ITask>` instead of claiming to implement the complete SDK-owned interface; this shields existing behavior-focused doubles from future capability additions.
+
 `Task.configureAISummary` is package-internal and is not added to `ITask` or `src/index.ts`:
 
 ```ts
@@ -422,7 +429,7 @@ After validation, Task derives identifiers and selects the response event (`POST
 - Missing organization or per-interaction flags are disabled, never “unknown enabled.”
 - Base URL and HTTP failures retain `ApiAIAssistant` error translation. There is no retry.
 - Task logs and metrics include only operation/event name, identifiers allowed by existing policy, action type, numeric counters, state, feedback, card identifiers, and error code. Summary/card/section values and `agentName` are never passed to logging or metrics.
-- Public additions are source-compatible. Existing generic AI event constants remain; existing methods/events are unchanged.
+- Public additions preserve supported consumer compatibility: SDK-created tasks gain methods and existing generic AI event constants, methods, and events remain unchanged. The generated `ITask` declaration gains four required members; full structural implementations/mocks outside the supported output-only model need four stubs or must narrow their test type with `Pick`/`Partial` as described above.
 - Storage/schema migration: Not applicable - all state is in-memory and bounded to task/SDK lifetime.
 - Worker/process/stream lifecycle: Not applicable - the package uses the existing browser/Node event loop and RTD socket.
 
@@ -506,7 +513,7 @@ Configuration reuses `WCC_API_GATEWAY`, `AI_ASSISTANT_ENV_MAP`, `AI_ASSISTANT_BA
 
 ## Component: Realtime coordination, correlation, and receiver delivery
 
-Requirements covered: G-3, G-4, REQ-006, REQ-009, REQ-010, REQ-028, REQ-029, REQ-037, REQ-038, REQ-039, FR-2, FR-4, FR-8, FR-9, FR-10, FR-11, FR-12, DR-5, REQ-044, REQ-045, REQ-046, REQ-047, and REQ-048. Corresponding DAG task: `coordinate-summary-realtime-state`.
+Requirements covered: G-3, G-4, REQ-006, REQ-009, REQ-010, REQ-028, REQ-029, REQ-037, REQ-038, REQ-039, FR-1, FR-2, FR-4, FR-8, FR-9, FR-10, FR-11, FR-12, DR-5, REQ-044, REQ-045, REQ-046, REQ-047, REQ-048, PR-2, and PR-3. Corresponding DAG task: `coordinate-summary-realtime-state`.
 
 ### Files, exact state, and methods
 
@@ -559,7 +566,7 @@ TaskManager makes its constructor-required `apiAIAssistant` field non-optional a
 
 `handleRealtimeWebsocketEvent(event: string): void` remains the only RTD parser:
 
-1. Parse JSON inside `try/catch`. Reject a non-object frame, unknown type, missing double-envelope `frame.data.data`, or missing required identifier as malformed; log only type/tracking/correlation metadata and return.
+1. Parse JSON inside `try/catch`. Once a parsed frame can be classified as `FEATURE_ENABLEMENT`, record its receive metric before validating the inner payload; a missing/invalid feature identifier is therefore counted once but still dropped. Reject a non-object frame, unknown or unclassifiable type, missing double-envelope `frame.data.data`, or missing required identifier as malformed; log only type/tracking/correlation metadata and return.
 2. Preserve the existing `REAL_TIME_TRANSCRIPTION` and `SUGGESTED_RESPONSE` dispatch paths and payload shape.
 3. For `POST_CALL_SUMMARY` or initiator `MID_CALL_SUMMARY`, read the inner payload's `conversationId`, find the exact pending key, delete it and clear its timer before resolving with the original inner payload. Do not emit a task event.
 4. If no pending entry exists, treat it as late or uncorrelated: warn with metadata only and return without settling any Promise or task.
@@ -626,22 +633,25 @@ sequenceDiagram
 
 `TaskUtils.ts`: main-interaction conversation key, top-level fallback, distinct interaction/conversation fields, and empty identifier rejection.
 
-`TaskManager.ts`: post-call and mid-call exact Promise resolution; wrong event type/conversation isolation; no public initiator emit; independent post/mid pending keys; same-type overlap preserving first resolver; timeout errors under fake timers; late event ignored; sequential retry; malformed JSON/envelope/payload; unknown event; uncorrelated event; receiver direct delivery; no inbound-interaction fallback; buffer-latest replacement; delivery after task listener availability; buffer expiry; duplicate-task ambiguity; per-task cleanup; full deregistration cleanup; and transcript/suggestion regression. These cover AC-5, AC-7, AC-8, AC-9, and the correlation half of AC-1 through AC-3.
+`TaskManager.ts`: post-call and mid-call exact Promise resolution; wrong event type/conversation isolation; no public initiator emit; independent post/mid pending keys; same-type overlap preserving first resolver; timeout errors under fake timers; late event ignored; sequential retry; malformed JSON/envelope/payload; unknown event; uncorrelated event; valid/repeated/payload-invalid feature receive metrics; no metric for unparseable/unclassifiable frames; no state change or forwarding for invalid feature payloads; receiver direct delivery; no inbound-interaction fallback; buffer-latest replacement; delivery after task listener availability; buffer expiry; duplicate-task ambiguity; per-task cleanup; full deregistration cleanup; and transcript/suggestion regression. These cover PR-2, AC-5, AC-7, AC-8, AC-9, and the correlation half of AC-1 through AC-3.
 
 ## Component: Feature enablement and SDK lifecycle
 
-Requirements covered: REQ-007, REQ-008, REQ-026, REQ-027, REQ-036, FR-1, FR-8, FR-9, and REQ-054. Corresponding DAG task: `wire-contact-center-summary-lifecycle`.
+Requirements covered: REQ-007, REQ-008, REQ-026, REQ-027, REQ-036, FR-1, FR-8, FR-9, PR-2, and REQ-054. Corresponding DAG tasks: `coordinate-summary-realtime-state` and `wire-contact-center-summary-lifecycle`.
 
 ### Constants, files, and public behavior
 
 In `packages/@webex/contact-center/src/services/config/types.ts`, add a `CC_AI_SUMMARY_EVENTS` const object with `FEATURE_ENABLEMENT`, `POST_CALL_SUMMARY`, `MID_CALL_SUMMARY`, and `MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT`, and spread it into `CC_EVENTS`. Keep the existing `CC_TASK_EVENTS.POST_CALL_SUMMARY` and `CC_TASK_EVENTS.MID_CALL_SUMMARY` keys in place for compatibility; the duplicate entries in the new cohesive group have the same values and do not remove or rename the old property access. Export the new group from `src/index.ts`.
 
-In `packages/@webex/contact-center/src/services/agent/types.ts`, add `AGENT_EVENTS.FEATURE_ENABLEMENT = 'cc:featureEnablement'`. In `TaskManager`, every valid feature frame:
+In `packages/@webex/contact-center/src/services/agent/types.ts`, add `AGENT_EVENTS.FEATURE_ENABLEMENT = 'cc:featureEnablement'`. In `TaskManager`, every parsed frame identified as `FEATURE_ENABLEMENT` records `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED` exactly once before payload validation. This includes valid, repeated, and payload-invalid feature frames; an unparseable frame or a parsed frame whose event type cannot be identified is not classifiable and is not counted as feature enablement. The metric contains the bounded event name and `validationOutcome`; validated identifiers/booleans may be added only after validation, and arbitrary invalid fields are never copied into telemetry.
+
+After that observation, every valid feature frame:
 
 1. requires a non-empty inner `interactionId` but permits either boolean to be absent;
 2. replaces the latest map value for that interaction;
-3. emits `AGENT_EVENTS.FEATURE_ENABLEMENT` internally every time, even if identical to the prior event;
-4. records the feature-event metric with only event name, interaction ID, and boolean values.
+3. emits `AGENT_EVENTS.FEATURE_ENABLEMENT` internally every time, even if identical to the prior event.
+
+An invalid feature payload is counted with `validationOutcome: 'invalid'` and a bounded validation code, then dropped without changing the gating snapshot or emitting `AGENT_EVENTS.FEATURE_ENABLEMENT`/`cc:featureEnablement`.
 
 In `packages/@webex/contact-center/src/cc.ts`, add the named arrow handler:
 
@@ -667,13 +677,13 @@ The two generated-summary flags are independent kill switches. Missing flags do 
 
 Interaction flags are not persisted between registrations. Repeated feature events are forwarded and overwrite only the gating snapshot. Task response APIs remain usable for cancellation/`NOT_RECEIVED` reporting even if a later feature event disables a new request; gating applies only to `request*Summary()`.
 
-Failure isolation: RTD connection failures retain existing logged registration behavior; summary APIs then time out or fail without affecting the primary contact-center socket. Feature-event parse failures are metadata-only drops. There is no new root API, configuration key, schema, storage, permission, or dependency.
+Failure isolation: RTD connection failures retain existing logged registration behavior; summary APIs then time out or fail without affecting the primary contact-center socket. Feature-event parse failures are metadata-only drops; a parsed frame already classified as feature enablement is still counted once even when its payload fails validation. There is no new root API, configuration key, schema, storage, permission, or dependency.
 
 ### Named tests
 
 `cc.ts`: RTD connection for each summary organization switch independently; no connection when all AI switches are false/missing; existing transcript/suggestion predicates unchanged; every repeated feature event re-triggered as `cc:featureEnablement`; handler removed on deregister; summary state cleared before socket shutdown; and existing register/deregister/task events unchanged.
 
-`TaskManager.ts`: latest feature values replace prior values, missing values remain disabled, repeated values still emit/metric, interaction isolation, malformed event drop, and feature map cleanup. These cover FR-1, AC-6, AC-10, and AC-11.
+`TaskManager.ts`: latest feature values replace prior values, missing values remain disabled, repeated values still emit/metric, every classified invalid feature payload metrics once without forwarding or mutating state, unparseable/unclassifiable frames do not increment the feature metric, interaction isolation, malformed event drop, and feature map cleanup. These cover FR-1, PR-2, AC-6, AC-10, and AC-11.
 
 ## Change: Consumer sequencing and response semantics
 
@@ -706,11 +716,11 @@ Storage/schema/configuration: Not applicable - sequencing is application control
 
 ## Change: Cross-cutting safeguards and verification
 
-Requirements covered: REQ-002, REQ-003, G-5, REQ-004, REQ-010, REQ-012, REQ-049, PR-1, PR-2, PR-3, REQ-050, REQ-051, REQ-052, REQ-053, REQ-055, REQ-056, REQ-057, AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9, AC-10, and AC-11. Corresponding DAG tasks: `define-ai-summary-contracts`, `add-ai-summary-transport`, `coordinate-summary-realtime-state`, `expose-task-summary-apis`, `wire-contact-center-summary-lifecycle`, and `synchronize-summary-documentation-and-verify`.
+Requirements covered: G-5, REQ-004, REQ-010, REQ-012, REQ-049, PR-1, PR-2, PR-3, REQ-050, REQ-051, REQ-052, REQ-053, REQ-055, REQ-056, REQ-057, AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9, AC-10, and AC-11. Corresponding DAG tasks: `define-ai-summary-contracts`, `add-ai-summary-transport`, `coordinate-summary-realtime-state`, `expose-task-summary-apis`, `wire-contact-center-summary-lifecycle`, and `synchronize-summary-documentation-and-verify`.
 
 ### Design authority, users, and externally visible boundary
 
-REQ-002 makes the supplied requirement and its four named `ai-summary*.md` references the design inputs; REQ-003 establishes why task-oriented correlation, timeout, gating, and response handling belong in the SDK; REQ-004 keeps visual decisions with contact-center applications while the SDK supplies stable agent, receiver, administrator, operations, and backend contracts. G-5 requires all of those contracts to be additive. The concrete public surface remains exactly the four `ITask` Promise methods, `AGENT_EVENTS.FEATURE_ENABLEMENT`, `TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT`, and the types/constants exported through `packages/@webex/contact-center/src/index.ts`. No `ContactCenter` root method, UI component, task-state transition, or replacement API is added.
+The matrix labels `requirement.md` Section 1 (REQ-002) and Section 2 (REQ-003) Out-of-Scope because they are non-normative document-purpose/reference-routing and background/problem framing, not independently testable obligations. They remain useful context, but coverage begins with the separately dispositioned goals and requirements. REQ-004 keeps visual decisions with contact-center applications while the SDK supplies stable agent, receiver, administrator, operations, and backend contracts. G-5 requires the supported consumer contract to remain additive under the SDK-produced-task compatibility boundary described above. The concrete public surface remains exactly the four `ITask` Promise methods, `AGENT_EVENTS.FEATURE_ENABLEMENT`, `TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT`, and the types/constants exported through `packages/@webex/contact-center/src/index.ts`. No `ContactCenter` root method, UI component, task-state transition, or replacement API is added.
 
 Implementation reuses the exact files and symbols enumerated by the component sections: `src/services/task/Task.ts` owns the four async APIs; `src/services/task/TaskManager.ts` owns correlation and bounded state; `src/services/ApiAiAssistant.ts` owns HTTP serialization; `src/cc.ts` owns client event/socket lifecycle; `src/metrics/constants.ts` and the unchanged `MetricsManager` own operation names/emission; and the existing unit targets under `test/unit/spec` own verification. REQ-056 is implemented by synchronizing `ai-summary.md`, `ai-summary-postcall-flow.md`, `ai-summary-initiator-flow.md`, `ai-summary-receiver-flow.md`, and the routed task/agent/metrics `ai-docs` listed in `implementation_dag.json`. No new or removed source, test, configuration, migration, package, lockfile, or UI file is justified.
 
@@ -722,7 +732,7 @@ The public field models and signatures are the discriminated payload unions in C
 
 ### Security, observability, compatibility, and lifecycle
 
-REQ-012 and PR-1 prohibit summary text, section values, Adaptive Card bodies, and initiating `agentName` from logs or metrics. Allowed fields are bounded operation/event names, policy-permitted identifiers, boolean enablement, numeric counters, state, feedback, action type, card IDs, section-key names, and bounded failure codes. PR-2 adds exactly the four success/failure operation pairs and one feature-event counter defined in Cross-Cutting Concerns; request success is recorded only after the matching RTD result resolves the public Promise. Raw envelopes, response bodies, and arbitrary exception text are not telemetry attributes.
+REQ-012 and PR-1 prohibit summary text, section values, Adaptive Card bodies, and initiating `agentName` from logs or metrics. Allowed fields are bounded operation/event names, policy-permitted identifiers, boolean enablement, numeric counters, state, feedback, action type, card IDs, section-key names, and bounded failure codes. PR-2 adds exactly the four success/failure operation pairs and one feature-event receive counter defined in Cross-Cutting Concerns; request success is recorded only after the matching RTD result resolves the public Promise, while the feature counter records every parsed frame classified as `FEATURE_ENABLEMENT` before payload validation. Raw envelopes, response bodies, arbitrary invalid fields, and arbitrary exception text are not telemetry attributes.
 
 REQ-050, REQ-051, REQ-052, REQ-053, and REQ-055 preserve all existing event strings, payloads, wrap-up/consult/transfer/transcript behavior, package/build contracts, and configuration schema. The two existing generated-summary organization flags remain independent kill switches. With both false, summary requests reject locally and core contact-center behavior remains operational. Configuration migration, database/storage migration, worker/process management, and `AbortSignal` support are Not applicable - no such surface is introduced. Task cleanup and `cc.deregister()` clear all owned timers/maps/listeners as specified by the lifecycle component.
 
@@ -766,7 +776,7 @@ Browser/component journey, automated accessibility, responsive, and visual scree
 
 `wrapUpSummariesEnabled` and `consultTransferSummariesEnabled` remain optional members of the existing `AIFeatureFlags.generatedSummaries` object; no schema or SDK config key is added. An organization flag is necessary but not sufficient: the relevant latest interaction flag must also be exactly `true`. This supports independent rollout and kill switches. Disabling both summary flags removes summary-driven RTD connectivity when no other AI RTD feature needs it and leaves all primary WebSocket/task flows operational.
 
-Rollout is additive. Existing `GET_MID_CALL_SUMMARY` and `MID_CALL_SUMMARY_RESPONSE` constants are retained even though new Task APIs use only the exact consult/transfer variants. Existing public events and payloads are unchanged. No migration, data backfill, feature-state persistence, package dependency, lockfile edit, or consumer API migration is required.
+Rollout is additive for the supported model in which applications consume SDK-created task objects. Existing `GET_MID_CALL_SUMMARY` and `MID_CALL_SUMMARY_RESPONSE` constants are retained even though new Task APIs use only the exact consult/transfer variants. Existing public events and payloads are unchanged. No runtime consumer migration, data backfill, feature-state persistence, package dependency, or lockfile edit is required. The generated root declaration intentionally adds four required `ITask` methods; a project that structurally implements the complete output-only interface must add stubs or narrow its test double to `Pick`/`Partial`, while ordinary consumers require no source change.
 
 ### Error contract and failure isolation
 
@@ -830,13 +840,16 @@ AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED: 'AI Summary Feature Enablement Received'
 | mid-call request Promise | `AI_SUMMARY_GET_MID_CALL_SUCCESS` after matching inbound resolution | `AI_SUMMARY_GET_MID_CALL_FAILED` on the analogous failures |
 | post-call response HTTP | `AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS` | `AI_SUMMARY_POST_CALL_RESPONSE_FAILED` |
 | mid-call response HTTP | `AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS` | `AI_SUMMARY_MID_CALL_RESPONSE_FAILED` |
-| valid feature event | Not applicable - it is not a request/response pair | `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED` once for every received valid event, including repeats |
+| parsed `FEATURE_ENABLEMENT` frame | Not applicable - it is not a request/response pair | `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED` once for every classified frame, including repeats and payload-invalid frames |
 
 Each Task method calls `timeEvent` once before local validation and `trackEvent` exactly once on its final outcome. Request “success” means the public Promise received its summary, not merely HTTP acknowledgement. The adapter therefore does not emit a second summary operation metric. Timeout, overlap, and disabled outcomes remain distinguishable via a bounded `failureCode`; operation type/action is explicit, and content is absent.
+
+The feature receive metric has no success/failure twin. TaskManager emits it immediately after a parsed frame is identified as `FEATURE_ENABLEMENT`, with bounded `validationOutcome: 'valid' | 'invalid'`; valid frames may add validated interaction/boolean metadata, while invalid frames add only a bounded validation code. An unparseable frame or a frame whose type cannot be identified is excluded because it cannot be attributed to feature enablement. Invalid feature payloads are counted for PR-2 rollout visibility but are not stored, used for gating, or forwarded, while every valid repeat is both counted and forwarded as required by FR-1.
 
 ### Compatibility, migration, and ownership
 
 - TypeScript additions are exported from the package's existing `src/index.ts`; no deep import is required.
+- `ITask` remains an SDK-produced output interface: the package accepts no downstream implementation. Its four required methods appear in generated `dist/types/index.d.ts`, making the type-surface addition explicit; full structural mocks use `Pick`/`Partial` or provide four stubs, while consumers of SDK-created tasks require no migration.
 - JavaScript consumers receive runtime allowlist validation instead of unsafe default selection.
 - Existing task subclass constructors, TaskFactory public shape, contact endpoints, RTD transcript/suggestion payloads, event strings, and task state transitions are unchanged.
 - Existing wrap-up/consult/transfer behavior is not wrapped or reordered by the SDK. The application remains the sequencing owner.
@@ -850,7 +863,7 @@ Requirement coverage: REQ-057 and AC-1 through AC-11, plus the named scenarios i
 ### Unit tests
 
 - `test/unit/spec/services/task/Task.ts`: all four signatures; exact gating combinations; exact action mapping; register-before-send; Promise-only behavior; validation; numeric counter pass-through; response-state unions; HTTP/error propagation; cancellation and no-summary rules; metrics/redaction.
-- `test/unit/spec/services/task/TaskManager.ts`: double-envelope parsing; exact type/conversation matching; no initiator event; overlap/sequential requests; timer and late-event behavior; receiver direct/buffered/latest-only delivery; authoritative conversation matching; ambiguity; cleanup; feature snapshots/repeats; malformed/unknown isolation; transcript/suggestion regression.
+- `test/unit/spec/services/task/TaskManager.ts`: double-envelope parsing; exact type/conversation matching; no initiator event; overlap/sequential requests; timer and late-event behavior; receiver direct/buffered/latest-only delivery; authoritative conversation matching; ambiguity; cleanup; feature snapshots/repeats; one receive metric for each valid/repeated/payload-invalid feature frame; no feature metric for unparseable/unclassifiable frames; invalid feature no-forward/no-gating behavior; malformed/unknown isolation; transcript/suggestion regression.
 - `test/unit/spec/services/task/TaskUtils.ts`: stable identifier derivation and invalid zero values.
 - `test/unit/spec/services/ApiAiAssistant.ts`: exact wire bodies for all six outbound names, numeric fields, field omission, one request attempt, base URL/HTTP errors, and privacy spies.
 - `test/unit/spec/cc.ts`: summary-controlled RTD connection, feature-event forwarding, named-listener cleanup, deregistration cleanup, and existing event/register behavior.
@@ -863,7 +876,7 @@ The adapter unit suite is the HTTP serialization contract test: it asserts the c
 
 ### Type, build, and public API checks
 
-`yarn workspace @webex/contact-center build:src` must compile `ITask`, discriminated response unions, internal coordinator dependencies, and barrel exports. Type fixtures/examples in the existing tests must prove valid structured/text/empty shapes compile and invalid action/state/feedback/wrap-up combinations fail where the repository's current type-test convention permits. No compiler, bundler, package manifest, or lockfile change is expected.
+`yarn workspace @webex/contact-center build:src` must compile `ITask`, discriminated response unions, internal coordinator dependencies, and barrel exports, then emit the required task methods and new public types through the existing `dist/types/index.d.ts` entry. Type fixtures/examples in the existing tests must prove valid structured/text/empty shapes compile, invalid action/state/feedback/wrap-up combinations fail where the repository's current type-test convention permits, and behavior-focused task doubles use `Pick<ITask, ...>`/`Partial<ITask>` rather than complete structural implementations. No compiler, bundler, package manifest, export-map, or lockfile change is expected.
 
 ### Concurrency and boundary tests
 
@@ -901,9 +914,9 @@ The authoritative machine-readable tasks are in `implementation_dag.json`.
 |---|---|---|---|
 | `define-ai-summary-contracts` | none | Establish exact event/type/method/metric names before producers and consumers compile against them. | G-4, REQ-013, REQ-021 through REQ-039, DR-3, DR-4 |
 | `add-ai-summary-transport` | contracts | The adapter needs exact discriminants and internal wire types. | FR-2 through FR-5, DR-1, REQ-042, REQ-043, PR-1 |
-| `coordinate-summary-realtime-state` | contracts | Pending/buffer maps and RTD routing need payload/event types but can be built independently of HTTP. | G-3, FR-8 through FR-12, DR-5, REQ-044 through REQ-048 |
+| `coordinate-summary-realtime-state` | contracts | Pending/buffer maps and RTD routing need payload/event types but can be built independently of HTTP. | G-3, FR-1, FR-8 through FR-12, DR-5, REQ-044 through REQ-048, PR-2 |
 | `expose-task-summary-apis` | contracts, transport, coordination | Task methods compose the established adapter and coordinator contracts. | G-1, G-2, FR-1 through FR-7, DR-1 through DR-4 |
 | `wire-contact-center-summary-lifecycle` | contracts, coordination, task APIs | Client event/lifecycle wiring is safe after TaskManager and Task behavior are defined. | REQ-007, REQ-026, REQ-027, REQ-036, FR-1, REQ-054 |
-| `synchronize-summary-documentation-and-verify` | all implementation tasks | Documentation must reflect final symbols/behavior, then the complete regression/build gate validates the integrated feature. | REQ-002, REQ-003, REQ-056, REQ-057, AC-1 through AC-11 |
+| `synchronize-summary-documentation-and-verify` | all implementation tasks | Documentation must reflect final symbols/behavior, then the complete regression/build gate validates the integrated feature. | REQ-056, REQ-057, AC-1 through AC-11 |
 
 The DAG has two parallelizable roots after contracts: transport and coordination. Task APIs join them; client lifecycle wiring follows the coordinator; documentation/full verification is last. There are no database, build-system, dependency, UI, migration, or removal nodes because those surfaces do not change.
