@@ -211,7 +211,7 @@ File actions:
 
 | Action | Exact files | Responsibility |
 |---|---|---|
-| Modify | `packages/@webex/contact-center/src/types.ts`, `src/constants.ts`, `src/index.ts`, `src/services/task/constants.ts` | exact backend constants, API/task method names, timeout constants, public exports |
+| Modify | `packages/@webex/contact-center/src/types.ts`, `src/constants.ts`, `src/index.ts`, `src/services/task/constants.ts` | exact backend constants, API/task method names, and timeout constants; declare `AI_SUMMARY_ERROR_CODES` once in `packages/@webex/contact-center/src/constants.ts` with `POST_CALL_SUMMARY_DISABLED`, `MID_CALL_SUMMARY_DISABLED`, `AI_ASSISTANT_BASE_URL_NOT_AVAILABLE`, `POST_CALL_SUMMARY_TIMEOUT`, `MID_CALL_SUMMARY_TIMEOUT`, and `AI_SUMMARY_REQUEST_ALREADY_PENDING`, and re-export `AI_SUMMARY_ERROR_CODES` from `packages/@webex/contact-center/src/index.ts` as the stable consumer contract rather than inlining those rejection strings |
 | Modify | `packages/@webex/contact-center/src/services/config/types.ts`, `src/services/agent/types.ts`, `src/services/task/types.ts` | raw inbound names, public events, payloads, response unions, coordinator and organization-flag accessor contracts, `ITask` methods |
 | Modify | `packages/@webex/contact-center/src/services/task/TaskUtils.ts`, `src/services/task/Task.ts`, `src/services/task/TaskManager.ts` | correlation helper, public APIs, live organization-flag access, raw inbound routing, task-candidate selection, coordinator composition/delegation, inbound metric ownership |
 | Add | `packages/@webex/contact-center/src/services/task/AISummaryCoordinator.ts` | focused owner for feature snapshots, pending resolvers, receiver buffering, timers, and scoped/full summary cleanup |
