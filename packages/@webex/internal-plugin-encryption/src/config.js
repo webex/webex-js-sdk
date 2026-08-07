@@ -2,8 +2,18 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
+import DEFAULT_KMS_CAROOTS from './kms-default-caroots';
+
 export default {
   encryption: {
+    /**
+     * PEM (base64 DER) encoded CA certificates trusted to sign the KMS
+     * static-key certificate chain. KMS validation fails closed when this
+     * list is empty; deployments MUST provide the Webex KMS issuing roots.
+     * @type {Array<string>}
+     */
+    caroots: DEFAULT_KMS_CAROOTS,
+
     joseOptions: {
       compact: true,
       contentAlg: 'A256GCM',
