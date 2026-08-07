@@ -39,6 +39,13 @@ export const Events = {
   qRCodeLogin: 'qRCodeLogin',
 };
 
+export const InitialAuthorizationCodeGrantOutcomes = {
+  failure: 'failure',
+  notAttempted: 'not_attempted',
+  pending: 'pending',
+  success: 'success',
+};
+
 /**
  * Browser support for OAuth2 for first-party (Webex Web Client) usage.
  *
@@ -93,6 +100,13 @@ const Authorization = WebexPlugin.extend({
     isAuthorizing: {
       default: false,
       type: 'boolean',
+    },
+    /**
+     * Retains the outcome of the automatic startup authorization-code exchange.
+     */
+    initialAuthorizationCodeGrantOutcome: {
+      default: InitialAuthorizationCodeGrantOutcomes.notAttempted,
+      type: 'string',
     },
     /**
      * Indicates that the plugin has finished any automatic startup
@@ -232,8 +246,16 @@ const Authorization = WebexPlugin.extend({
       this.webex.internal.services
         .collectPreauthCatalog(preauthCatalogParams)
         .catch(() => Promise.resolve()) // Non-fatal if catalog collection fails
-        .then(() => this.requestAuthorizationCodeGrant({code, codeVerifier}))
+        .then(() => {
+          this.initialAuthorizationCodeGrantOutcome = InitialAuthorizationCodeGrantOutcomes.pending;
+
+          return this.requestAuthorizationCodeGrant({code, codeVerifier});
+        })
+        .then(() => {
+          this.initialAuthorizationCodeGrantOutcome = InitialAuthorizationCodeGrantOutcomes.success;
+        })
         .catch((error) => {
+          this.initialAuthorizationCodeGrantOutcome = InitialAuthorizationCodeGrantOutcomes.failure;
           this.logger.warn('authorization: failed initial authorization code grant request', error);
         })
         .then(() => {

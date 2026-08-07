@@ -14,7 +14,7 @@ import {base64, patterns} from '@webex/common';
 import {merge, times} from 'lodash';
 import CryptoJS from 'crypto-js';
 import Authorization from '@webex/plugin-authorization-browser-first-party';
-import {Events} from '../../../src';
+import {Events, InitialAuthorizationCodeGrantOutcomes} from '../../../src';
 
 // Necessary to require lodash this way in order to stub the method
 const lodash = require('lodash');
@@ -119,7 +119,42 @@ describe('plugin-authorization-browser-first-party', () => {
             assert.calledTwice(webex.request);
             assert.isTrue(webex.authorization.ready);
             assert.isTrue(webex.credentials.canAuthorize);
+            assert.equal(
+              webex.authorization.initialAuthorizationCodeGrantOutcome,
+              InitialAuthorizationCodeGrantOutcomes.success
+            );
           });
+        });
+
+        it('retains pending until the automatic exchange settles', async () => {
+          let resolveGrant;
+          const grantPromise = new Promise((resolve) => {
+            resolveGrant = resolve;
+          });
+          const requestAuthorizationCodeGrantStub = sinon
+            .stub(Authorization.prototype, 'requestAuthorizationCodeGrant')
+            .returns(grantPromise);
+          const webex = makeWebex('http://example.com/?code=5');
+
+          await webex.authorization.when('change:initialAuthorizationCodeGrantOutcome');
+
+          assert.calledOnceWithExactly(requestAuthorizationCodeGrantStub, {
+            code: '5',
+            codeVerifier: undefined,
+          });
+          assert.equal(
+            webex.authorization.initialAuthorizationCodeGrantOutcome,
+            InitialAuthorizationCodeGrantOutcomes.pending
+          );
+          assert.isFalse(webex.authorization.ready);
+
+          resolveGrant();
+          await webex.authorization.when('change:ready');
+
+          assert.equal(
+            webex.authorization.initialAuthorizationCodeGrantOutcome,
+            InitialAuthorizationCodeGrantOutcomes.success
+          );
         });
 
         it('validates the csrf token', () => {
@@ -264,7 +299,31 @@ describe('plugin-authorization-browser-first-party', () => {
               'authorization: failed initial authorization code grant request',
               error
             );
+            assert.equal(
+              webex.authorization.initialAuthorizationCodeGrantOutcome,
+              InitialAuthorizationCodeGrantOutcomes.failure
+            );
           });
+        });
+
+        it('retains failure when the automatic exchange promise rejects', async () => {
+          const error = new Error('exchange rejected');
+
+          sinon.stub(Authorization.prototype, 'requestAuthorizationCodeGrant').rejects(error);
+
+          const webex = makeWebex('http://example.com?code=5');
+
+          await webex.authorization.when('change:ready');
+
+          assert.equal(
+            webex.authorization.initialAuthorizationCodeGrantOutcome,
+            InitialAuthorizationCodeGrantOutcomes.failure
+          );
+          assert.calledOnceWithExactly(
+            webex.logger.warn,
+            'authorization: failed initial authorization code grant request',
+            error
+          );
         });
       });
       describe('when the url contains an error', () => {
@@ -287,6 +346,10 @@ describe('plugin-authorization-browser-first-party', () => {
 
           assert.isTrue(webex.authorization.ready);
           assert.isFalse(webex.credentials.canAuthorize);
+          assert.equal(
+            webex.authorization.initialAuthorizationCodeGrantOutcome,
+            InitialAuthorizationCodeGrantOutcomes.notAttempted
+          );
         });
       });
 
