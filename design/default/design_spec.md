@@ -110,20 +110,20 @@ Non-goals are a widget, visual treatment, Adaptive Card interpretation, summary 
 | REQ-052 | Addressed | requirement.md:L380-L380 -> Change: Cross-cutting safeguards and verification |
 | REQ-053 | Addressed | requirement.md:L381-L381 -> Change: Cross-cutting safeguards and verification |
 | REQ-054 | Addressed | requirement.md:L382-L382 -> Component: Feature enablement and SDK lifecycle |
-| REQ-055 | Addressed | requirement.md:L383-L385 -> Change: Cross-cutting safeguards and verification |
-| REQ-056 | Addressed | requirement.md:L387-L398 -> Change: Cross-cutting safeguards and verification |
+| REQ-055 | Addressed | requirement.md:L383-L385 -> Component: Feature enablement and SDK lifecycle; `wire-contact-center-summary-lifecycle` owns the two independent organization kill switches and the `cc.ts` regression proving that disabling both leaves existing SDK workflows operational. |
+| REQ-056 | Addressed | requirement.md:L387-L398 -> Component: Public contracts and task API plus Component: AI Assistant transport and outbound serialization plus Component: Realtime coordination, correlation, and receiver delivery; `expose-task-summary-apis` owns disabled/base-URL/overlap rejection behavior, `add-ai-summary-transport` owns HTTP-failure propagation, and `coordinate-summary-realtime-state` owns timeout, unknown-task, malformed-event, and late-event behavior. `synchronize-summary-documentation-and-verify` is only the final regression gate. |
 | REQ-057 | Addressed | requirement.md:L400-L401 -> Change: Cross-cutting safeguards and verification |
-| AC-1 | Addressed | requirement.md:L402-L408 -> Change: Cross-cutting safeguards and verification |
-| AC-2 | Addressed | requirement.md:L410-L412 -> Change: Cross-cutting safeguards and verification |
-| AC-3 | Addressed | requirement.md:L414-L416 -> Change: Cross-cutting safeguards and verification |
-| AC-4 | Addressed | requirement.md:L418-L420 -> Change: Cross-cutting safeguards and verification |
-| AC-5 | Addressed | requirement.md:L422-L424 -> Change: Cross-cutting safeguards and verification |
-| AC-6 | Addressed | requirement.md:L426-L428 -> Change: Cross-cutting safeguards and verification |
-| AC-7 | Addressed | requirement.md:L430-L432 -> Change: Cross-cutting safeguards and verification |
-| AC-8 | Addressed | requirement.md:L434-L436 -> Component: Realtime coordination, correlation, and receiver delivery; documented divergence: overlap is conversation-scoped rather than per task, and `CONSULT`/`TRANSFER` cross-action requests reject while their shared inbound `MID_CALL_SUMMARY` slot is occupied. |
-| AC-9 | Addressed | requirement.md:L438-L440 -> Change: Cross-cutting safeguards and verification |
-| AC-10 | Addressed | requirement.md:L442-L444 -> Change: Cross-cutting safeguards and verification |
-| AC-11 | Addressed | requirement.md:L446-L448 -> Change: Cross-cutting safeguards and verification |
+| AC-1 | Addressed | requirement.md:L402-L408 -> `expose-task-summary-apis` (`test/unit/spec/services/task/Task.ts`), `add-ai-summary-transport` (`test/unit/spec/services/ApiAiAssistant.ts`), and `coordinate-summary-realtime-state` (`test/unit/spec/services/task/AISummaryCoordinator.ts` and `test/unit/spec/services/task/TaskManager.ts`) own the post-call API, wire, and inbound-Promise assertions; `synchronize-summary-documentation-and-verify` runs the final regression gate. |
+| AC-2 | Addressed | requirement.md:L410-L412 -> `expose-task-summary-apis` (`test/unit/spec/services/task/Task.ts`), `add-ai-summary-transport` (`test/unit/spec/services/ApiAiAssistant.ts`), and `coordinate-summary-realtime-state` (`test/unit/spec/services/task/AISummaryCoordinator.ts` and `test/unit/spec/services/task/TaskManager.ts`) own consult selection, response serialization, and Promise-only correlation assertions; `synchronize-summary-documentation-and-verify` runs the final regression gate. |
+| AC-3 | Addressed | requirement.md:L414-L416 -> `expose-task-summary-apis` (`test/unit/spec/services/task/Task.ts`), `add-ai-summary-transport` (`test/unit/spec/services/ApiAiAssistant.ts`), and `coordinate-summary-realtime-state` (`test/unit/spec/services/task/AISummaryCoordinator.ts` and `test/unit/spec/services/task/TaskManager.ts`) own transfer selection, response serialization, and Promise-only correlation assertions; `synchronize-summary-documentation-and-verify` runs the final regression gate. |
+| AC-4 | Addressed | requirement.md:L418-L420 -> `expose-task-summary-apis` (`test/unit/spec/services/task/Task.ts`) owns cancellation validation and the no-consult/no-transfer assertion, while `add-ai-summary-transport` (`test/unit/spec/services/ApiAiAssistant.ts`) owns exact cancellation serialization; `synchronize-summary-documentation-and-verify` runs the final regression gate. |
+| AC-5 | Addressed | requirement.md:L422-L424 -> `coordinate-summary-realtime-state` owns the assertions in `test/unit/spec/services/task/AISummaryCoordinator.ts`, `test/unit/spec/services/task/TaskManager.ts`, and `test/unit/spec/services/task/TaskUtils.ts` for authoritative conversation matching, direct delivery, latest-only 30-second buffering, expiry, ambiguity, and cleanup; `synchronize-summary-documentation-and-verify` runs the final regression gate. |
+| AC-6 | Addressed | requirement.md:L426-L428 -> `expose-task-summary-apis` (`test/unit/spec/services/task/Task.ts`) owns two-level disabled rejection/no-HTTP assertions, `coordinate-summary-realtime-state` (`test/unit/spec/services/task/AISummaryCoordinator.ts` and `test/unit/spec/services/task/TaskManager.ts`) owns latest interaction-flag state, and `wire-contact-center-summary-lifecycle` (`test/unit/spec/cc.ts`) owns independent organization-flag behavior; `synchronize-summary-documentation-and-verify` runs the final regression gate. |
+| AC-7 | Addressed | requirement.md:L430-L432 -> `coordinate-summary-realtime-state` (`test/unit/spec/services/task/AISummaryCoordinator.ts` and `test/unit/spec/services/task/TaskManager.ts`) owns fake-timer timeout, cleanup, and late-event assertions, while `expose-task-summary-apis` (`test/unit/spec/services/task/Task.ts`) owns propagation through the public Promise; `synchronize-summary-documentation-and-verify` runs the final regression gate. |
+| AC-8 | Addressed | requirement.md:L434-L436 -> `coordinate-summary-realtime-state` (`test/unit/spec/services/task/AISummaryCoordinator.ts`) owns first-resolver preservation and conversation-scoped overlap, and `expose-task-summary-apis` (`test/unit/spec/services/task/Task.ts`) owns the no-second-HTTP assertion; `synchronize-summary-documentation-and-verify` runs the final regression gate. Documented divergence: `CONSULT` and `TRANSFER` share the conversation-scoped `MID_CALL_SUMMARY` slot. |
+| AC-9 | Addressed | requirement.md:L438-L440 -> `coordinate-summary-realtime-state` owns malformed/unknown/uncorrelated parsing assertions in `test/unit/spec/services/task/TaskManager.ts` and no-settlement/no-delivery state assertions in `test/unit/spec/services/task/AISummaryCoordinator.ts`; `synchronize-summary-documentation-and-verify` runs the final regression gate. |
+| AC-10 | Addressed | requirement.md:L442-L444 -> `add-ai-summary-transport` (`test/unit/spec/services/ApiAiAssistant.ts`), `coordinate-summary-realtime-state` (`test/unit/spec/services/task/AISummaryCoordinator.ts` and `test/unit/spec/services/task/TaskManager.ts`), and `expose-task-summary-apis` (`test/unit/spec/services/task/Task.ts`) own privacy-sentinel assertions at every implementation boundary; `synchronize-summary-documentation-and-verify` runs the final regression gate. |
+| AC-11 | Addressed | requirement.md:L446-L448 -> `expose-task-summary-apis` (`test/unit/spec/services/task/Task.ts`), `coordinate-summary-realtime-state` (`test/unit/spec/services/task/TaskManager.ts`), and `wire-contact-center-summary-lifecycle` (`test/unit/spec/cc.ts`) own focused existing-behavior regressions; `synchronize-summary-documentation-and-verify` then runs the complete existing `test:unit`, `test:style`, and `build:src` gate. |
 
 ## Current State and Reuse Analysis
 
@@ -133,7 +133,8 @@ The implementation stays inside `packages/@webex/contact-center`. The following 
 |---|---|---|---|
 | `src/services/ApiAiAssistant.ts` | `ApiAIAssistant` already owns AI Assistant URL resolution, authenticated `webex.request` calls, organization lookup, error augmentation, and generic transcript/suggestion events. | Extend | Reuse `getBaseUrl()`, credentials, `/event`, `HTTP_METHODS.POST`, and error conventions; add summary-specific serializers because generic `sendEvent()` emits a string timestamp and lacks the required double identifier/response fields. |
 | `src/services/task/Task.ts` and `src/services/task/types.ts` | `Task` is the shared base for voice, WebRTC, and digital tasks; `ITask` is the public contract. Existing wrap-up/consult/transfer methods are independent Promises. | Extend | Add the four APIs once on `Task`/`ITask`, so every existing subclass inherits them without constructor or behavior duplication. Existing call-control methods remain untouched. |
-| `src/services/task/TaskManager.ts` | Owns the task registry, parses RTD frames, maps `data.data.conversationId` to tasks for transcripts/suggestions, and controls task cleanup. | Extend | Own latest interaction enablement, private pending resolvers, exact event-type correlation, the receiver buffer, and summary cleanup. Preserve transcript/suggestion dispatch. |
+| `src/services/task/TaskManager.ts` | Owns the task registry, parses RTD frames, maps `data.data.conversationId` to tasks for transcripts/suggestions, and controls task cleanup. The current source is already 978 lines and its unit spec is 2,481 lines. | Extend | Preserve registry, RTD parsing, task matching, and transcript/suggestion dispatch. Validate and classify summary frames, then delegate resolver, feature-state, buffer, timer, and summary-cleanup transitions to a composed `AISummaryCoordinator`. |
+| `src/services/task/AISummaryCoordinator.ts` | No focused summary-state owner exists today; putting three maps and two independent 30-second timer lifecycles directly in the already-large TaskManager would mix state-machine-like Promise/buffer policy with raw-frame and task-registry orchestration. | Add | Implement the narrow `AISummaryRequestCoordinator` dependency consumed by `Task`, own all volatile summary maps/timers and their cleanup, and expose package-internal validated-input methods that are tested directly without constructing RTD envelopes. It does not parse JSON or own the task registry. |
 | `src/services/task/TaskUtils.ts` | Existing helpers repeatedly prefer `mainInteractionId` and otherwise use `interactionId` as the stable call identity. | Extend | Add one exported `getAISummaryCorrelation()` helper and reuse it from Task and TaskManager; do not duplicate correlation rules. |
 | `src/cc.ts` | Creates the AI adapter and TaskManager, forwards RTD messages, connects RTD only for transcripts/suggestions, re-triggers public events, and owns deregistration. | Extend | Include either generated-summary organization switch in RTD connection criteria, forward feature enablement, and clear summary resources on deregistration. Add no root method. |
 | `src/services/config/types.ts` | `AIFeatureFlags.generatedSummaries` already exposes optional `wrapUpSummariesEnabled` and `consultTransferSummariesEnabled`; raw `POST_CALL_SUMMARY` and `MID_CALL_SUMMARY` names already exist in `CC_TASK_EVENTS`. | Preserve and extend | Keep both optional switches, add a cohesive RTD summary-event constant group, retain existing string values, and add feature/subsequent-agent names. No new config key. |
@@ -148,9 +149,9 @@ Reuse follows DRY/KISS/SOLID as follows:
 
 - The existing AI HTTP adapter remains the only dependency on Webex request/credentials.
 - The existing Task base remains the only public task API implementation point.
-- TaskManager remains the only owner of task registration and inbound RTD correlation.
-- A concrete internal coordinator interface is introduced only as the dependency seam between `Task` and `TaskManager`; no factory/service layer is added.
-- No new source file is justified: `AISummaryService.ts` would duplicate `ApiAIAssistant`, an `AISummaryCoordinator.ts` would split TaskManager's existing registry/RTD ownership, and a summary state machine would incorrectly couple advisory summary state to core task lifecycle.
+- TaskManager remains the only owner of task registration, raw RTD parsing, payload classification, and selection of candidate receiving tasks.
+- `AISummaryCoordinator` implements the narrow `AISummaryRequestCoordinator` dependency consumed by `Task` and is composed by TaskManager. It owns only validated summary state transitions: feature snapshots, pending resolvers, receiver buffering, both timer lifecycles, and scoped/full cleanup.
+- The coordinator is a justified extraction rather than a second orchestration layer: TaskManager is already 978 source lines with a 2,481-line unit spec, while the new timeout, overlap, replacement, expiry, and owner-cleanup matrix has a cohesive direct fake-timer test seam. `AISummaryService.ts` would still duplicate `ApiAIAssistant`, and a summary state machine would still incorrectly couple advisory summary state to core task lifecycle.
 
 ## Target Architecture and Package Layout
 
@@ -161,12 +162,13 @@ flowchart LR
   Consumer[Consuming application] --> ITask[ITask / Task public API]
   ITask --> API[ApiAIAssistant HTTP adapter]
   ITask --> Coordinator[AISummaryRequestCoordinator]
-  Coordinator -. implemented by .-> TM[TaskManager]
+  ASC[AISummaryCoordinator] -. implements .-> Coordinator
+  TM[TaskManager] --> ASC
   CC[ContactCenter cc.ts] --> TM
   CC --> API
   RTD[Existing RTD WebSocket] --> CC
   CC --> TM
-  TM --> Receiver[Matching receiving Task event]
+  ASC --> Receiver[Matching receiving Task event]
   API --> Backend[AI Assistant /event]
   TM --> Metrics[MetricsManager]
   ITask --> Metrics
@@ -178,16 +180,17 @@ Layer responsibilities and handoffs:
 |---|---|---|
 | Consumer application | visual presentation, editing/copy/view observations, wrap-up/consult/transfer ordering, final `agentName` and wrap-up code selection | transport envelopes, correlation maps, timeout timers |
 | `Task` | public signatures, runtime argument validation, two-level gating, correlation derivation, outbound operation metrics | task registry, WebSocket parsing, UI state, consult/transfer invocation |
-| `TaskManager` | latest feature state, pending Promise state, RTD parsing/correlation, receiver buffer, lifecycle cleanup | HTTP body construction, summary rewriting, core task transitions |
+| `TaskManager` | task registry, raw RTD parsing and payload validation, transcript/suggestion routing, receiving-task candidate selection, delegation to the coordinator, and the SDK/task cleanup facade | summary maps or timers, HTTP body construction, summary rewriting, core task transitions |
+| `AISummaryCoordinator` | latest feature state, pending Promise state, exact validated event-type correlation, receiver buffer, timeout/expiry timers, and scoped/full summary cleanup | raw RTD parsing, task registry ownership, HTTP serialization, core task transitions |
 | `ApiAIAssistant` | base URL, auth/org lookup, exact request/response wire serialization | task lookup, feature gating, public event delivery |
 | `ContactCenter` | RTD connection lifecycle and public client feature event | new summary request methods or payload mutation |
 
 Producer/consumer contracts:
 
-- `Task.request*` registers with `TaskManager` before asking `ApiAIAssistant` to send; TaskManager resolves/rejects that exact Promise.
-- `cc.handleRTDWebsocketMessage` forwards the raw frame once; TaskManager performs the only JSON/double-envelope parse.
-- TaskManager emits every valid `FEATURE_ENABLEMENT` internally; `cc.ts` re-triggers it as `cc:featureEnablement` without deduplication.
-- TaskManager emits the unwrapped subsequent-agent payload only on the task whose derived conversation key matches the inbound `conversationId`.
+- `Task.request*` registers with its injected `AISummaryRequestCoordinator` before asking `ApiAIAssistant` to send; the concrete `AISummaryCoordinator` resolves/rejects that exact Promise.
+- `cc.handleRTDWebsocketMessage` forwards the raw frame once; TaskManager performs the only JSON/double-envelope parse and delegates validated summary payloads to `AISummaryCoordinator`.
+- TaskManager classifies and metrics every `FEATURE_ENABLEMENT` frame, then asks `AISummaryCoordinator` to store each valid payload and emits it internally; `cc.ts` re-triggers it as `cc:featureEnablement` without deduplication.
+- TaskManager supplies the exact set of conversation-matching task candidates; `AISummaryCoordinator` emits the unwrapped subsequent-agent payload only when that set contains one task, or owns the bounded buffer otherwise.
 - `Task.send*Response` passes a validated consumer payload plus SDK-derived identifiers to `ApiAIAssistant`; the adapter whitelists the wire fields.
 
 File actions:
@@ -196,11 +199,12 @@ File actions:
 |---|---|---|
 | Modify | `packages/@webex/contact-center/src/types.ts`, `src/constants.ts`, `src/index.ts`, `src/services/task/constants.ts` | exact backend constants, API/task method names, timeout constants, public exports |
 | Modify | `packages/@webex/contact-center/src/services/config/types.ts`, `src/services/agent/types.ts`, `src/services/task/types.ts` | raw inbound names, public events, payloads, response unions, coordinator contract, `ITask` methods |
-| Modify | `packages/@webex/contact-center/src/services/task/TaskUtils.ts`, `src/services/task/Task.ts`, `src/services/task/TaskManager.ts` | correlation helper, public APIs, pending state, inbound routing, receiver buffer |
+| Modify | `packages/@webex/contact-center/src/services/task/TaskUtils.ts`, `src/services/task/Task.ts`, `src/services/task/TaskManager.ts` | correlation helper, public APIs, raw inbound routing, task-candidate selection, coordinator composition/delegation |
+| Add | `packages/@webex/contact-center/src/services/task/AISummaryCoordinator.ts` | focused owner for feature snapshots, pending resolvers, receiver buffering, timers, and scoped/full summary cleanup |
 | Modify | `packages/@webex/contact-center/src/services/ApiAiAssistant.ts`, `src/cc.ts`, `src/metrics/constants.ts` | wire adapter, lifecycle/public forwarding, metrics names |
-| Modify tests | `packages/@webex/contact-center/test/unit/spec/services/ApiAiAssistant.ts`, `services/task/Task.ts`, `services/task/TaskManager.ts`, `services/task/TaskUtils.ts`, `cc.ts` | focused contract, timer, correlation, privacy, and regression coverage |
+| Add test | `packages/@webex/contact-center/test/unit/spec/services/task/AISummaryCoordinator.ts` | direct fake-timer, overlap, resolution, buffering, feature-state, privacy, and cleanup coverage without RTD envelopes |
+| Modify tests | `packages/@webex/contact-center/test/unit/spec/services/ApiAiAssistant.ts`, `services/task/Task.ts`, `services/task/TaskManager.ts`, `services/task/TaskUtils.ts`, `cc.ts` | focused contract, raw-frame routing, correlation, privacy, composition, and regression coverage |
 | Synchronize during implementation | `ai-summary.md`, `ai-summary-postcall-flow.md`, `ai-summary-initiator-flow.md`, `ai-summary-receiver-flow.md`, task/agent/metrics `ai-docs` listed in the DAG | eliminate conflicting guidance and preserve valid implementation references |
-| Add | None | Existing modules already have each required responsibility. |
 | Remove | None | The feature is additive; stale statements are revised in place rather than files or public symbols being deleted. |
 
 `package.json`, `yarn.lock`, TypeScript/Jest/Babel configuration, state-machine files, task subclasses, sample applications, browser assets, and backend schemas remain unchanged.
@@ -209,7 +213,7 @@ The published type output does change: the existing `package.json` `types` expor
 
 ## Component: Public contracts and task API
 
-Requirements covered: G-1, G-2, G-4, G-5, REQ-005, REQ-011, REQ-013, REQ-021, REQ-022, REQ-023, REQ-024, REQ-025, FR-1, FR-2, FR-3, FR-4, FR-5, FR-10, FR-11, FR-12, DR-1, DR-2, DR-3, DR-4, REQ-040, REQ-041, REQ-042, REQ-043, REQ-044, REQ-045, REQ-049, PR-1, and PR-2. Corresponding DAG tasks: `define-ai-summary-contracts` and `expose-task-summary-apis`.
+Requirements covered: G-1, G-2, G-4, G-5, REQ-005, REQ-011, REQ-013, REQ-021, REQ-022, REQ-023, REQ-024, REQ-025, FR-1, FR-2, FR-3, FR-4, FR-5, FR-10, FR-11, FR-12, DR-1, DR-2, DR-3, DR-4, REQ-040, REQ-041, REQ-042, REQ-043, REQ-044, REQ-045, REQ-049, REQ-056, PR-1, PR-2, AC-1, AC-2, AC-3, AC-4, AC-6, AC-7, AC-8, AC-10, and AC-11. Corresponding DAG tasks: `define-ai-summary-contracts` and `expose-task-summary-apis`.
 
 ### Files and symbols
 
@@ -307,7 +311,7 @@ export type FeatureEnablementEventPayload = {
 };
 ```
 
-Optional inbound fields reflect backend evolution and the requirement that missing per-interaction values behave as disabled. The string-key extension retains unknown backend domain fields at the type boundary. At runtime, TaskManager forwards the original inner payload object; it does not project the object through these types or strip unknown fields. `null`, an array, a missing/empty correlation identifier, or a non-object inner payload is malformed and is dropped.
+Optional inbound fields reflect backend evolution and the requirement that missing per-interaction values behave as disabled. The string-key extension retains unknown backend domain fields at the type boundary. At runtime, TaskManager validates and delegates the original inner payload object, and `AISummaryCoordinator` settles or emits that same object; neither projects it through these types or strips unknown fields. `null`, an array, a missing/empty correlation identifier, or a non-object inner payload is malformed and is dropped.
 
 Consumer response types intentionally exclude `agentId`, `orgId`, `interactionId`, `conversationId`, `publishTimestamp`, and `actionTimeStamp`. Those are transport fields derived by the SDK, preventing mismatched caller-provided correlation and implementing DR-1. They also exclude `wrapUpCode` from the mid-call shape so TypeScript rejects that invalid combination.
 
@@ -402,7 +406,7 @@ public configureAISummary(
 ): void;
 ```
 
-TaskManager invokes it for every newly managed task. This avoids changing `Voice`, `WebRTC`, and `Digital` constructors or exposing TaskManager publicly. A defensive call on an unconfigured Task rejects `AI_SUMMARY_NOT_INITIALIZED` without touching the backend.
+TaskManager invokes it for every newly managed task and passes its composed `AISummaryCoordinator` through the narrow interface. This avoids changing `Voice`, `WebRTC`, and `Digital` constructors or exposing either TaskManager or the concrete coordinator publicly. A defensive call on an unconfigured Task rejects `AI_SUMMARY_NOT_INITIALIZED` without touching the backend.
 
 ### Request control flow and state
 
@@ -412,7 +416,7 @@ For `requestPostCallSummary()`:
 2. Derive `{interactionId, conversationId}` with `getAISummaryCorrelation(task.data)` and require the configured `agentId`.
 3. Call `registerPendingAISummaryRequest(taskId, conversationId, 'POST_CALL_SUMMARY', 'POST_CALL_SUMMARY_TIMEOUT')` before HTTP. The key is `(conversationId, 'POST_CALL_SUMMARY')`; `taskId` is stored as the entry owner but is not part of the key. A same-key pending entry throws/rejects `AI_SUMMARY_REQUEST_ALREADY_PENDING`; therefore the HTTP method is never called for overlap.
 4. Start `sendSummaryGetEvent(..., GET_POST_CALL_SUMMARY)` and await it together with the already-registered pending Promise using `Promise.all([acknowledgementPromise, summaryPromise])`. This attaches rejection handlers to both immediately, returns only after HTTP acknowledgement and inbound resolution, permits a push to win the race without being lost, and lets the 30-second timer reject even if HTTP is still outstanding.
-5. On either rejection, synchronously call `cancelPendingAISummaryRequest(taskId, conversationId, eventType)` and rethrow the first detailed error. TaskManager deletes the entry/timer only if its stored owner equals `taskId`; a timeout entry is already absent, and a task whose overlap registration was rejected cannot cancel the sibling owner's live entry. The still-running HTTP Promise has the handler installed by `Promise.all`, so it cannot create an unhandled rejection. On success, return only the summary element. Only TaskManager can resolve it from a matching inbound event.
+5. On either rejection, synchronously call `cancelPendingAISummaryRequest(taskId, conversationId, eventType)` and rethrow the first detailed error. `AISummaryCoordinator` deletes the entry/timer only if its stored owner equals `taskId`; a timeout entry is already absent, and a task whose overlap registration was rejected cannot cancel the sibling owner's live entry. The still-running HTTP Promise has the handler installed by `Promise.all`, so it cannot create an unhandled rejection. On success, return only the summary element. Only the coordinator can resolve it after TaskManager delegates a validated matching inbound event.
 
 `requestMidCallSummary(actionType)` uses the same steps with the two mid-call flags, the single pending type `MID_CALL_SUMMARY`, timeout `MID_CALL_SUMMARY_TIMEOUT`, and exact action mapping `CONSULT -> GET_MID_CALL_CONSULT_SUMMARY`, `TRANSFER -> GET_MID_CALL_TRANSFER_SUMMARY`. Any other runtime value rejects `AI_SUMMARY_INVALID_ACTION_TYPE` before registration or HTTP. Consult and transfer requests therefore overlap with each other because both await the same inbound type, while a simultaneous post-call request uses an independent key.
 
@@ -441,7 +445,7 @@ After validation, Task derives identifiers and selects the response event (`POST
 
 ## Component: AI Assistant transport and outbound serialization
 
-Requirements covered: REQ-030, REQ-031, REQ-032, REQ-033, REQ-034, REQ-035, FR-2, FR-3, FR-4, FR-5, DR-1, DR-3, REQ-042, REQ-043, PR-1, and PR-2. Corresponding DAG task: `add-ai-summary-transport`.
+Requirements covered: REQ-030, REQ-031, REQ-032, REQ-033, REQ-034, REQ-035, FR-2, FR-3, FR-4, FR-5, DR-1, DR-3, REQ-042, REQ-043, REQ-056, PR-1, PR-2, AC-1, AC-2, AC-3, AC-4, and AC-10. Corresponding DAG task: `add-ai-summary-transport`.
 
 ### Files, responsibilities, and signatures
 
@@ -496,7 +500,7 @@ Both methods validate non-empty `agentId`, `orgId`, `interactionId`, and `conver
 }
 ```
 
-The request body has no summary fields. A response adds `action: eventName`, `summary`, the three number counters, `feedback`, `state`, and exactly one flow-specific field: post-call `wrapUpCode` or mid-call `agentName`. `undefined` fields are not intentionally serialized. The adapter does not inspect, flatten, normalize, or rewrite a structured/text summary. It does not stringify numbers. The HTTP response body is ignored, and any successful `webex.request` completion is treated as acknowledgement; the request Promise still waits on TaskManager.
+The request body has no summary fields. A response adds `action: eventName`, `summary`, the three number counters, `feedback`, `state`, and exactly one flow-specific field: post-call `wrapUpCode` or mid-call `agentName`. `undefined` fields are not intentionally serialized. The adapter does not inspect, flatten, normalize, or rewrite a structured/text summary. It does not stringify numbers. The HTTP response body is ignored, and any successful `webex.request` completion is treated as acknowledgement; the request Promise still waits on `AISummaryCoordinator` for the validated inbound event delegated by TaskManager.
 
 ### Control flow and failures
 
@@ -515,7 +519,7 @@ Configuration reuses `WCC_API_GATEWAY`, `AI_ASSISTANT_ENV_MAP`, `AI_ASSISTANT_BA
 
 ## Component: Realtime coordination, correlation, and receiver delivery
 
-Requirements covered: G-3, G-4, REQ-006, REQ-009, REQ-010, REQ-012, REQ-028, REQ-029, REQ-037, REQ-038, REQ-039, FR-1, FR-2, FR-4, FR-8, FR-9, FR-10, FR-11, FR-12, DR-5, REQ-044, REQ-045, REQ-046, REQ-047, REQ-048, PR-1, PR-2, and PR-3. Corresponding DAG tasks: `define-ai-summary-contracts` for the receiver-event contract and `coordinate-summary-realtime-state` for recognition, correlation, delivery, metrics, and privacy-safe failure handling.
+Requirements covered: G-3, G-4, REQ-006, REQ-009, REQ-010, REQ-012, REQ-028, REQ-029, REQ-037, REQ-038, REQ-039, FR-1, FR-2, FR-4, FR-8, FR-9, FR-10, FR-11, FR-12, DR-5, REQ-044, REQ-045, REQ-046, REQ-047, REQ-048, REQ-056, PR-1, PR-2, PR-3, AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-8, AC-9, AC-10, and AC-11. Corresponding DAG tasks: `define-ai-summary-contracts` for the receiver-event contract and `coordinate-summary-realtime-state` for recognition, correlation, delivery, metrics, resilience, and privacy-safe failure handling.
 
 ### Files, exact state, and methods
 
@@ -530,7 +534,7 @@ export function getAISummaryCorrelation(data: TaskData): {
 
 It returns `interactionId: data.interactionId` and `conversationId: data.interaction?.mainInteractionId ?? data.interactionId`, throwing `AI_SUMMARY_CORRELATION_NOT_AVAILABLE` for an empty value; an async public Task method exposes that throw as a rejected Promise. This is the only task-side mapping. Receiver lookup compares the inbound `conversationId` only against this derived task conversation key; it never reads an inbound `interactionId` or substitutes one when the payload lacks `conversationId`.
 
-Modify `packages/@webex/contact-center/src/services/task/TaskManager.ts` and its test. TaskManager implements `AISummaryRequestCoordinator` and adds these in-memory structures:
+Add `packages/@webex/contact-center/src/services/task/AISummaryCoordinator.ts` and its focused unit test. The package-internal `AISummaryCoordinator` implements the narrow `AISummaryRequestCoordinator` consumed by `Task` and owns these in-memory structures:
 
 ```ts
 type PendingAISummaryRequest = {
@@ -554,15 +558,32 @@ private interactionFeatureEnablement: Map<string, FeatureEnablementEventPayload>
 
 Pending keys are `${conversationId}:${eventType}` because the inbound FR-9 correlation envelope contains no task ID or unique request ID. The key intentionally excludes `taskId`: consult and transfer overlap because both expect `MID_CALL_SUMMARY`, post-call remains independent, and distinct task objects derived to the same conversation also contend for the relevant slot. This is the explicit implementation divergence from FR-12/AC-8's per-task wording recorded in the Feature Disposition Matrix. The stored `taskId` is an ownership guard: `cancelPendingAISummaryRequest(taskId, conversationId, eventType)` is a no-op unless the current entry's owner matches. `registerPendingAISummaryRequest` is implemented as a non-`async` method: it checks the map and throws the augmented overlap error synchronously before constructing/inserting a Promise, guaranteeing the caller cannot start HTTP for a rejected overlap. Receiver-buffer keys are `conversationId`; replacing an existing entry clears its old timer and retains only the latest payload. Feature keys are the event's `interactionId`.
 
-Public/package-internal coordinator methods are the interface methods defined above plus:
+In addition to the three narrow interface methods used by `Task`, the concrete class exposes these package-internal validated-input methods to TaskManager:
 
 ```ts
+public setFeatureEnablement(payload: FeatureEnablementEventPayload): void;
+public resolvePendingAISummaryRequest(
+  conversationId: string,
+  eventType: AISummaryInboundType,
+  payload: PostCallSummaryEventPayload | MidCallSummaryEventPayload
+): 'resolved' | 'not-found';
+public routeReceivingSummary(
+  payload: MidCallSummaryReceivingAgentPayload,
+  matchingTasks: ReadonlyArray<Pick<ITask, 'data' | 'emit'>>
+): 'delivered' | 'buffered';
+public flushReceivingSummary(
+  conversationId: string,
+  matchingTasks: ReadonlyArray<Pick<ITask, 'data' | 'emit'>>
+): 'delivered' | 'retained' | 'not-found';
+public clearTaskAISummaryState(taskId: string, interactionId: string, conversationId: string): void;
 public clearAISummaryState(reason = 'AI_SUMMARY_REQUEST_CANCELLED'): void;
 ```
 
-`clearAISummaryState` clears every timer and map and rejects still-pending Promises with an augmented cancellation error. `removeTaskFromCollection(task)` rejects/deletes a pending entry only when `entry.taskId === task.data.interactionId`; it must not delete solely because the task derives the same `conversationId` as the map key. It then performs the existing scoped feature/buffer cleanup. Thus cleanup of a sibling task sharing the conversation cannot strand the requesting task's Promise, while cleanup of the owning task leaves no Promise pending. Full SDK cleanup remains intentionally unscoped.
+These methods accept typed, already-validated payloads rather than raw frames. That boundary makes overlap, resolver settlement, timeout, latest-only replacement, buffer expiry/delivery, ambiguity, and cleanup directly testable with fake timers without entering TaskManager's RTD parser. `routeReceivingSummary` emits only when `matchingTasks` has exactly one member; zero or multiple candidates retain the latest bounded payload. `flushReceivingSummary` retains the entry while the set is empty or ambiguous and delivers only for exactly one candidate.
 
-TaskManager makes its constructor-required `apiAIAssistant` field non-optional and adds `private createManagedTask(taskData: TaskData): Task`, a wrapper around the existing `TaskFactory.createTask(...)`; it then calls `task.configureAISummary(this.apiAIAssistant, this, generatedSummaryFlags)`. All existing TaskFactory call sites in TaskManager use this wrapper. `TaskFactory` and concrete subclass constructors remain unchanged.
+`clearAISummaryState` clears every timer and map and rejects still-pending Promises with an augmented cancellation error. `clearTaskAISummaryState` rejects/deletes a pending entry only when `entry.taskId === taskId`; it must not delete solely because another task derives the same `conversationId` as the map key. It then performs scoped feature/buffer cleanup. Thus cleanup of a sibling task sharing the conversation cannot strand the requesting task's Promise, while cleanup of the owning task leaves no Promise pending. Full SDK cleanup remains intentionally unscoped.
+
+Modify `packages/@webex/contact-center/src/services/task/TaskManager.ts` and its test to compose one private `AISummaryCoordinator`. TaskManager remains the raw RTD parser and task-registry owner, derives the exact receiving-task candidates, and delegates only validated state transitions. It exposes `clearAISummaryState(reason?)` as the existing lifecycle facade for `cc.ts` and delegates scoped cleanup from `removeTaskFromCollection` to the coordinator. TaskManager makes its constructor-required `apiAIAssistant` field non-optional and adds `private createManagedTask(taskData: TaskData): Task`, a wrapper around the existing `TaskFactory.createTask(...)`; it then calls `task.configureAISummary(this.apiAIAssistant, this.aiSummaryCoordinator, generatedSummaryFlags)`. All existing TaskFactory call sites in TaskManager use this wrapper. `TaskFactory` and concrete subclass constructors remain unchanged.
 
 ### RTD parse and dispatch flow
 
@@ -570,27 +591,29 @@ TaskManager makes its constructor-required `apiAIAssistant` field non-optional a
 
 1. Parse JSON inside `try/catch`. Once a parsed frame can be classified as `FEATURE_ENABLEMENT`, record its receive metric before validating the inner payload; a missing/invalid feature identifier is therefore counted once but still dropped. Reject a non-object frame, unknown or unclassifiable type, missing double-envelope `frame.data.data`, or missing required identifier as malformed; log only type/tracking/correlation metadata and return.
 2. Preserve the existing `REAL_TIME_TRANSCRIPTION` and `SUGGESTED_RESPONSE` dispatch paths and payload shape.
-3. For `POST_CALL_SUMMARY` or initiator `MID_CALL_SUMMARY`, read the inner payload's `conversationId`, find the exact pending key, delete it and clear its timer before resolving with the original inner payload. Do not emit a task event.
-4. If no pending entry exists, treat it as late or uncorrelated: warn with metadata only and return without settling any Promise or task.
-5. For `MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT`, search registered tasks for exactly one whose `getAISummaryCorrelation(task.data).conversationId` equals the inbound `conversationId`. Do not consult any inbound `interactionId`.
-6. If a matching task exists, emit `TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT` with the original inner payload. If none exists, place/replace the bounded buffer entry and start its 30-second timer.
-7. After each normal task lifecycle event has inserted/updated a task and synchronously emitted its incoming/hydrate event, call `flushReceivingSummaryForTask(task)`. This ordering lets the application attach a task listener before a buffered payload is emitted. Delivery deletes/clears the buffer first, then emits once.
+3. For `POST_CALL_SUMMARY` or initiator `MID_CALL_SUMMARY`, read the inner payload's `conversationId` and call `aiSummaryCoordinator.resolvePendingAISummaryRequest(...)`. The coordinator deletes the exact entry and clears its timer before resolving with the original inner payload. Do not emit a task event.
+4. If the coordinator returns `not-found`, treat the frame as late or uncorrelated: warn with metadata only and return without settling any Promise or task.
+5. For `MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT`, search registered tasks for all tasks whose `getAISummaryCorrelation(task.data).conversationId` equals the inbound `conversationId`. Do not consult any inbound `interactionId`.
+6. Pass the validated payload and complete candidate set to `aiSummaryCoordinator.routeReceivingSummary(...)`. The coordinator emits to the sole match or replaces the bounded 30-second buffer when there are zero or multiple matches.
+7. After each normal task lifecycle event has inserted/updated a task and synchronously emitted its incoming/hydrate event, recompute all candidates for that conversation and call `aiSummaryCoordinator.flushReceivingSummary(...)`. This ordering lets the application attach a task listener before a buffered payload is emitted. Delivery deletes/clears the buffer first, then emits once.
 
 ```mermaid
 sequenceDiagram
   participant App
   participant Task
   participant TM as TaskManager
+  participant C as AISummaryCoordinator
   participant API as ApiAIAssistant
   participant RTD as RTD WebSocket
   App->>Task: requestPostCallSummary() / requestMidCallSummary(action)
-  Task->>TM: register pending(conversationId, expected type)
+  Task->>C: register pending(conversationId, expected type)
   Task->>API: POST exact GET_* event
   API-->>Task: successful HTTP acknowledgement
   Note over Task: returned Promise remains pending
   RTD->>TM: POST_CALL_SUMMARY or MID_CALL_SUMMARY
-  TM->>TM: unwrap + match conversationId and expected type
-  TM-->>Task: resolve private pending Promise
+  TM->>TM: unwrap + validate conversationId and expected type
+  TM->>C: resolve validated payload
+  C-->>Task: resolve private pending Promise
   Task-->>App: resolve inner payload only
   Note over TM,App: no public initiator task event
 ```
@@ -599,20 +622,24 @@ sequenceDiagram
 sequenceDiagram
   participant RTD as RTD WebSocket
   participant TM as TaskManager
+  participant C as AISummaryCoordinator
   participant Task
   participant App
   RTD->>TM: MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT
+  TM->>TM: unwrap + validate + find all conversation matches
+  TM->>C: route payload + candidate set
   alt matching receiver task registered
-    TM->>Task: emit task:midCallSummaryForReceivingAgent(payload)
+    C->>Task: emit task:midCallSummaryForReceivingAgent(payload)
     Task->>App: push inner payload
-  else task not registered
-    TM->>TM: replace latest buffer + start 30 s timer
+  else zero or ambiguous receiver matches
+    C->>C: replace latest buffer + start 30 s timer
     alt matching task registers before timeout
-      TM->>TM: clear/delete buffer
-      TM->>Task: emit after task incoming/hydrate delivery
+      TM->>C: flush payload + recomputed candidate set
+      C->>C: clear/delete buffer
+      C->>Task: emit after task incoming/hydrate delivery
       Task->>App: push inner payload once
     else timer expires
-      TM->>TM: delete + metadata-only warning
+      C->>C: delete + metadata-only warning
     end
   end
 ```
@@ -635,11 +662,13 @@ sequenceDiagram
 
 `TaskUtils.ts`: main-interaction conversation key, top-level fallback, distinct interaction/conversation fields, and empty identifier rejection.
 
-`TaskManager.ts`: post-call and mid-call exact Promise resolution; wrong event type/conversation isolation; no public initiator emit; independent post/mid pending keys; `CONSULT`/`TRANSFER` cross-action overlap; same-conversation overlap across distinct task IDs preserving the first resolver; non-owner cancellation/task cleanup leaving that resolver and timer live; owner cleanup rejecting it; timeout errors under fake timers; late event ignored; sequential retry; malformed JSON/envelope/payload; unknown event; uncorrelated event; valid/repeated/payload-invalid feature receive metrics; no metric for unparseable/unclassifiable frames; no state change or forwarding for invalid feature payloads; receiver direct delivery; no inbound-interaction fallback; buffer-latest replacement; delivery after task listener availability; buffer expiry; duplicate-task ambiguity; full deregistration cleanup; and transcript/suggestion regression. These cover PR-2, AC-5, AC-7, AC-8, AC-9, and the correlation half of AC-1 through AC-3.
+`AISummaryCoordinator.ts`: post-call and mid-call exact Promise resolution; wrong event type/conversation isolation; independent post/mid pending keys; `CONSULT`/`TRANSFER` cross-action overlap; same-conversation overlap across distinct task IDs preserving the first resolver; non-owner cancellation/scoped cleanup leaving that resolver and timer live; owner cleanup rejecting it; timeout errors under fake timers; late-event no-op; sequential retry; latest feature replacement/isolation/cleanup; receiver direct delivery; buffer-latest replacement; delivery, retention under ambiguity, expiry, and full cleanup. These tests call the typed coordinator methods directly and cover AC-5, AC-7, AC-8, and the state/correlation half of AC-1 through AC-3, AC-6, and AC-9.
+
+`TaskManager.ts`: raw JSON/double-envelope validation; exact delegation for initiator and receiver event types; no public initiator emit; authoritative conversation-only candidate selection; delivery after task listener availability; no inbound-interaction fallback; duplicate-task candidate forwarding; malformed/unknown/uncorrelated/late-event isolation; valid/repeated/payload-invalid feature receive metrics; no metric for unparseable/unclassifiable frames; no forwarding/delegation for invalid feature payloads; coordinator composition/scoped cleanup; and transcript/suggestion regression. These cover REQ-056, PR-2, AC-5, AC-6, AC-9, AC-10, AC-11, and the RTD integration half of AC-1 through AC-3 and AC-7.
 
 ## Component: Feature enablement and SDK lifecycle
 
-Requirements covered: REQ-007, REQ-008, REQ-026, REQ-027, REQ-036, FR-1, FR-8, FR-9, PR-2, and REQ-054. Corresponding DAG tasks: `coordinate-summary-realtime-state` and `wire-contact-center-summary-lifecycle`.
+Requirements covered: REQ-007, REQ-008, REQ-026, REQ-027, REQ-036, FR-1, FR-8, FR-9, PR-2, REQ-054, REQ-055, AC-6, and AC-11. Corresponding DAG tasks: `coordinate-summary-realtime-state` and `wire-contact-center-summary-lifecycle`.
 
 ### Constants, files, and public behavior
 
@@ -650,7 +679,7 @@ In `packages/@webex/contact-center/src/services/agent/types.ts`, add `AGENT_EVEN
 After that observation, every valid feature frame:
 
 1. requires a non-empty inner `interactionId` but permits either boolean to be absent;
-2. replaces the latest map value for that interaction;
+2. is delegated to `AISummaryCoordinator.setFeatureEnablement(...)`, replacing the latest map value for that interaction;
 3. emits `AGENT_EVENTS.FEATURE_ENABLEMENT` internally every time, even if identical to the prior event.
 
 An invalid feature payload is counted with `validationOutcome: 'invalid'` and a bounded validation code, then dropped without changing the gating snapshot or emitting `AGENT_EVENTS.FEATURE_ENABLEMENT`/`cc:featureEnablement`.
@@ -685,7 +714,9 @@ Failure isolation: RTD connection failures retain existing logged registration b
 
 `cc.ts`: RTD connection for each summary organization switch independently; no connection when all AI switches are false/missing; existing transcript/suggestion predicates unchanged; every repeated feature event re-triggered as `cc:featureEnablement`; handler removed on deregister; summary state cleared before socket shutdown; and existing register/deregister/task events unchanged.
 
-`TaskManager.ts`: latest feature values replace prior values, missing values remain disabled, repeated values still emit/metric, every classified invalid feature payload metrics once without forwarding or mutating state, unparseable/unclassifiable frames do not increment the feature metric, interaction isolation, malformed event drop, and feature map cleanup. These cover FR-1, PR-2, AC-6, AC-10, and AC-11.
+`AISummaryCoordinator.ts`: latest feature values replace prior values, missing values remain disabled, interaction isolation, and feature-map scoped/full cleanup.
+
+`TaskManager.ts`: every valid/repeated feature frame is delegated and emitted, every classified invalid payload metrics once without delegation/forwarding, unparseable/unclassifiable frames do not increment the feature metric, and malformed input is isolated. Together with `cc.ts`, these cover FR-1, PR-2, REQ-055, AC-6, AC-10, and AC-11.
 
 ## Change: Consumer sequencing and response semantics
 
@@ -726,7 +757,7 @@ Requirements covered: G-5, REQ-004, REQ-010, REQ-049, PR-1, PR-2, PR-3, REQ-050,
 
 The matrix labels `requirement.md` Section 1 (REQ-002) and Section 2 (REQ-003) Out-of-Scope because they are non-normative document-purpose/reference-routing and background/problem framing, not independently testable obligations. They remain useful context, but coverage begins with the separately dispositioned goals and requirements. REQ-004 keeps visual decisions with contact-center applications while the SDK supplies stable agent, receiver, administrator, operations, and backend contracts. G-5 requires the supported consumer contract to remain additive under the SDK-produced-task compatibility boundary described above. The concrete public surface remains exactly the four `ITask` Promise methods, `AGENT_EVENTS.FEATURE_ENABLEMENT`, `TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT`, and the types/constants exported through `packages/@webex/contact-center/src/index.ts`. No `ContactCenter` root method, UI component, task-state transition, or replacement API is added.
 
-Implementation reuses the exact files and symbols enumerated by the component sections: `src/services/task/Task.ts` owns the four async APIs; `src/services/task/TaskManager.ts` owns correlation and bounded state; `src/services/ApiAiAssistant.ts` owns HTTP serialization; `src/cc.ts` owns client event/socket lifecycle; `src/metrics/constants.ts` and the unchanged `MetricsManager` own operation names/emission; and the existing unit targets under `test/unit/spec` own verification. REQ-056 is implemented by synchronizing `ai-summary.md`, `ai-summary-postcall-flow.md`, `ai-summary-initiator-flow.md`, `ai-summary-receiver-flow.md`, and the routed task/agent/metrics `ai-docs` listed in `implementation_dag.json`. No new or removed source, test, configuration, migration, package, lockfile, or UI file is justified.
+Implementation uses the exact files and symbols enumerated by the component sections: `src/services/task/Task.ts` owns the four async APIs and disabled/base-URL/overlap propagation; the new package-internal `src/services/task/AISummaryCoordinator.ts` owns typed correlation state, timers, buffering, timeout, and late-event outcomes; `src/services/task/TaskManager.ts` owns raw RTD parsing, malformed/unknown isolation, and task-registry integration; `src/services/ApiAiAssistant.ts` owns HTTP serialization/failure propagation; `src/cc.ts` owns client event/socket lifecycle and the independent kill-switch regression; and `src/metrics/constants.ts` plus the unchanged `MetricsManager` own operation names/emission. Their focused tests are the concrete REQ-056 and AC-1 through AC-11 evidence. `synchronize-summary-documentation-and-verify` updates the four summary references and routed ai-docs only after those implementing tasks, then runs the full regression gate; documentation is not the implementation owner. No removed source/test, configuration, migration, package, lockfile, or UI file is justified.
 
 ### Data, control-flow, and failure safeguards
 
@@ -748,17 +779,17 @@ REQ-057 requires the complete contact-center unit suite. Each acceptance criteri
 
 | Criterion | Required automated evidence |
 |---|---|
-| AC-1 | `services/task/Task.ts`, `services/task/TaskManager.ts`, and `services/ApiAiAssistant.ts`: post-call Promise-only happy path, structured/text response, numeric counters, state, feedback, and wrap-up code. |
+| AC-1 | `services/task/Task.ts`, `services/task/AISummaryCoordinator.ts`, `services/task/TaskManager.ts`, and `services/ApiAiAssistant.ts`: post-call Promise-only happy path, structured/text response, numeric counters, state, feedback, and wrap-up code. |
 | AC-2 | The same targets: `CONSULT` request/response event selection, initiator Promise-only completion, and documented response-before-consult boundary. |
 | AC-3 | The same targets: `TRANSFER` request/response event selection, initiator Promise-only completion, and documented response-before-transfer boundary. |
-| AC-4 | `services/task/Task.ts`: received and unavailable `MID_CALL_CANCELLED` payloads, zero-value rules, no `wrapUpCode`, and no SDK call to consult/transfer. |
-| AC-5 | `services/task/TaskManager.ts` and `services/task/TaskUtils.ts`: conversation-only receiving-task match, latest-only 30-second buffering, delivery, expiry, ambiguity, and cleanup. |
-| AC-6 | `services/task/Task.ts` and `cc.ts`: false/missing organization or interaction flags reject without an outbound request; independent RTD flag behavior. |
-| AC-7 | `services/task/TaskManager.ts`: exact timeout codes, map/timer cleanup, and late-event drop under fake timers. |
-| AC-8 | `services/task/TaskManager.ts` and `services/task/Task.ts`: conversation-plus-inbound-type overlap rejection, including pending `CONSULT` followed by `TRANSFER` and distinct tasks sharing a conversation; no second HTTP call; non-owner cleanup cannot remove the first resolver; and a later sequential request is allowed. |
-| AC-9 | `services/task/TaskManager.ts`: malformed, unknown, uncorrelated, and ambiguous events settle/emit nothing and do not interrupt later valid events. |
-| AC-10 | all five focused targets: sentinel summary/card/section/agent-name values are absent from every logger and metric spy argument on success and failure. |
-| AC-11 | full `test:unit`, `test:style`, and `build:src`: existing task lifecycle, wrap-up, consult, transfer, event, transcript, type, and build behavior remains green. |
+| AC-4 | `services/task/Task.ts` and `services/ApiAiAssistant.ts`: received and unavailable `MID_CALL_CANCELLED` payloads, zero-value rules, exact serialization without `wrapUpCode`, and no SDK call to consult/transfer. |
+| AC-5 | `services/task/AISummaryCoordinator.ts`, `services/task/TaskManager.ts`, and `services/task/TaskUtils.ts`: conversation-only receiving-task match, latest-only 30-second buffering, delivery, expiry, ambiguity, and cleanup. |
+| AC-6 | `services/task/Task.ts`, `services/task/AISummaryCoordinator.ts`, `services/task/TaskManager.ts`, and `cc.ts`: false/missing organization or interaction flags reject without an outbound request; independent RTD flag behavior. |
+| AC-7 | `services/task/AISummaryCoordinator.ts`, `services/task/TaskManager.ts`, and `services/task/Task.ts`: exact timeout codes, map/timer cleanup, late-event drop, and public-Promise propagation under fake timers. |
+| AC-8 | `services/task/AISummaryCoordinator.ts` and `services/task/Task.ts`: conversation-plus-inbound-type overlap rejection, including pending `CONSULT` followed by `TRANSFER` and distinct tasks sharing a conversation; no second HTTP call; non-owner cleanup cannot remove the first resolver; and a later sequential request is allowed. |
+| AC-9 | `services/task/TaskManager.ts` and `services/task/AISummaryCoordinator.ts`: malformed, unknown, uncorrelated, and ambiguous events settle/emit nothing and do not interrupt later valid events. |
+| AC-10 | `services/task/Task.ts`, `services/task/AISummaryCoordinator.ts`, `services/task/TaskManager.ts`, and `services/ApiAiAssistant.ts`: sentinel summary/card/section/agent-name values are absent from every logger and metric spy argument on success and failure. |
+| AC-11 | focused existing-behavior cases in `services/task/Task.ts`, `services/task/TaskManager.ts`, and `cc.ts`, followed by full `test:unit`, `test:style`, and `build:src`: task lifecycle, wrap-up, consult, transfer, event, transcript, type, and build behavior remains green. |
 
 There is no browser/component/accessibility test target because this repository change produces no UI. The SDK tests cover the typed state/error inputs required by a consuming UI; consumer screen reader and browser verification is specified separately in UX Evidence and Productionization. The final DAG node runs `nvm use 22.14 && yarn workspace @webex/contact-center test:unit && yarn workspace @webex/contact-center test:style && yarn workspace @webex/contact-center build:src` after every implementation node.
 
@@ -809,11 +840,11 @@ The SDK remains single-process and event-loop driven. Pending and buffer map tra
 
 Resources are owned and cleared as follows:
 
-- TaskManager owns every resolver and timer.
-- HTTP rejection asks TaskManager to cancel only the matching request, supplying the requesting task ID; a key match with a different owner is a no-op.
+- `AISummaryCoordinator` owns every summary resolver, feature snapshot, receiver buffer, and request/expiry timer; TaskManager owns none of those collections.
+- HTTP rejection asks the coordinator to cancel only the matching request, supplying the requesting task ID; a key match with a different owner is a no-op.
 - inbound resolution, timeout, and overlap logic never replace a live resolver;
-- `removeTaskFromCollection` clears a pending entry only when its stored task owner matches the removed task, never merely because a sibling derives the same conversation key;
-- `cc.deregister` invokes full cleanup before removing/closing RTD listeners;
+- `removeTaskFromCollection` delegates scoped cleanup, which clears a pending entry only when its stored task owner matches the removed task, never merely because a sibling derives the same conversation key;
+- `cc.deregister` invokes TaskManager's full-cleanup facade, which delegates to the coordinator before removing/closing RTD listeners;
 - WebRTC/media listeners and all existing task cleanup continue independently.
 
 `AbortSignal`, workers, subprocesses, streams, database connections, and subscriptions beyond the existing named EventEmitter/RTD listeners are Not applicable - the required API contains no such resource.
@@ -869,7 +900,8 @@ Requirement coverage: REQ-057 and AC-1 through AC-11, plus the named scenarios i
 ### Unit tests
 
 - `test/unit/spec/services/task/Task.ts`: all four signatures; exact gating combinations; exact action mapping; register-before-send; Promise-only behavior; pending `CONSULT` then `TRANSFER` cross-action rejection with no second HTTP call; validation; numeric counter pass-through; response-state unions; HTTP/error propagation with owner ID supplied for cancellation; cancellation and no-summary rules; metrics/redaction.
-- `test/unit/spec/services/task/TaskManager.ts`: double-envelope parsing; exact type/conversation matching; no initiator event; independent post/mid slots; `CONSULT`/`TRANSFER` shared-slot and same-conversation cross-task overlap; first resolver retention; non-owner cancellation/task cleanup no-op; owner cleanup; sequential requests; timer and late-event behavior; receiver direct/buffered/latest-only delivery; authoritative conversation matching; ambiguity; full cleanup; feature snapshots/repeats; one receive metric for each valid/repeated/payload-invalid feature frame; no feature metric for unparseable/unclassifiable frames; invalid feature no-forward/no-gating behavior; malformed/unknown isolation; transcript/suggestion regression.
+- `test/unit/spec/services/task/AISummaryCoordinator.ts`: direct typed-method tests for independent post/mid slots; `CONSULT`/`TRANSFER` shared-slot and same-conversation cross-task overlap; first resolver retention; owner/non-owner cancellation and cleanup; sequential requests; fake-timer timeout/late-event behavior; receiver direct/buffered/latest-only delivery; ambiguity retention; feature snapshots; privacy; and full cleanup.
+- `test/unit/spec/services/task/TaskManager.ts`: double-envelope parsing; exact initiator delegation; no initiator event; authoritative conversation candidate selection; receiver delegation/flush after listener availability; one receive metric for each valid/repeated/payload-invalid feature frame; valid feature storage/event delegation; no feature metric for unparseable/unclassifiable frames; invalid feature no-forward/no-state behavior; malformed/unknown/uncorrelated/late-event isolation; coordinator composition/scoped/full cleanup; and transcript/suggestion regression.
 - `test/unit/spec/services/task/TaskUtils.ts`: stable identifier derivation and invalid zero values.
 - `test/unit/spec/services/ApiAiAssistant.ts`: exact wire bodies for all six outbound names, numeric fields, field omission, one request attempt, base URL/HTTP errors, and privacy spies.
 - `test/unit/spec/cc.ts`: summary-controlled RTD connection, feature-event forwarding, named-listener cleanup, deregistration cleanup, and existing event/register behavior.
@@ -878,7 +910,7 @@ All repeated event/action/flag cases should be table-driven. Timer cases use `je
 
 ### Contract and integration tests
 
-The adapter unit suite is the HTTP serialization contract test: it asserts the complete `webex.request` object rather than a subset match. Task plus TaskManager tests form an in-process integration seam using the real EventEmitter/Promise/timer control flow and mocked HTTP. `cc.ts` tests exercise TaskManager-to-client event forwarding and RTD lifecycle. A live backend integration test is Not applicable - CI has no deterministic AI Assistant generation service, and automatic retries are prohibited.
+The adapter unit suite is the HTTP serialization contract test: it asserts the complete `webex.request` object rather than a subset match. `AISummaryCoordinator.ts` is the direct state/timer contract test. Task plus TaskManager integration cases compose the real coordinator and use the real EventEmitter/Promise/timer control flow with mocked HTTP, while `cc.ts` tests exercise TaskManager-to-client event forwarding and RTD lifecycle. A live backend integration test is Not applicable - CI has no deterministic AI Assistant generation service, and automatic retries are prohibited.
 
 ### Type, build, and public API checks
 
@@ -899,6 +931,7 @@ Focused tasks use repository-standard targets relative to `test/unit/spec`:
 ```bash
 nvm use 22.14 && yarn workspace @webex/contact-center test:unit --targets services/ApiAiAssistant.ts
 nvm use 22.14 && yarn workspace @webex/contact-center test:unit --targets services/task/Task.ts
+nvm use 22.14 && yarn workspace @webex/contact-center test:unit --targets services/task/AISummaryCoordinator.ts
 nvm use 22.14 && yarn workspace @webex/contact-center test:unit --targets services/task/TaskManager.ts
 nvm use 22.14 && yarn workspace @webex/contact-center test:unit --targets services/task/TaskUtils.ts
 nvm use 22.14 && yarn workspace @webex/contact-center test:unit --targets cc.ts
@@ -919,10 +952,10 @@ The authoritative machine-readable tasks are in `implementation_dag.json`.
 | Task | Depends on | Why this order | Primary requirement trace |
 |---|---|---|---|
 | `define-ai-summary-contracts` | none | Establish exact event/type/method/metric names before producers and consumers compile against them. | G-4, REQ-012, REQ-013, REQ-021 through REQ-039, FR-3, REQ-049, DR-3, DR-4 |
-| `add-ai-summary-transport` | contracts | The adapter needs exact discriminants and internal wire types. | FR-2 through FR-5, DR-1, REQ-042, REQ-043, PR-1, PR-2 |
-| `coordinate-summary-realtime-state` | contracts | Pending/buffer maps and RTD routing need payload/event types but can be built independently of HTTP. | G-3, REQ-012, FR-1, FR-8 through FR-12, DR-5, REQ-044 through REQ-048, PR-1, PR-2 |
-| `expose-task-summary-apis` | contracts, transport, coordination | Task methods compose the established adapter and coordinator contracts. | G-1, G-2, FR-1 through FR-7, DR-1 through DR-4, REQ-049, PR-1, PR-2 |
-| `wire-contact-center-summary-lifecycle` | contracts, coordination, task APIs | Client event/lifecycle wiring is safe after TaskManager and Task behavior are defined. | REQ-007, REQ-026, REQ-027, REQ-036, FR-1, REQ-054 |
-| `synchronize-summary-documentation-and-verify` | all implementation tasks | Documentation must reflect final symbols/behavior, then the complete regression/build gate validates the integrated feature. | REQ-056, REQ-057, AC-1 through AC-11 |
+| `add-ai-summary-transport` | contracts | The adapter needs exact discriminants and internal wire types. | FR-2 through FR-5, DR-1, REQ-042, REQ-043, REQ-056, PR-1, PR-2, AC-1 through AC-4, AC-10 |
+| `coordinate-summary-realtime-state` | contracts | The focused coordinator and RTD adapter need payload/event types but can be built independently of HTTP. | G-3, REQ-012, FR-1, FR-8 through FR-12, DR-5, REQ-044 through REQ-048, REQ-056, PR-1, PR-2, AC-1 through AC-3, AC-5 through AC-11 |
+| `expose-task-summary-apis` | contracts, transport, coordination | Task methods compose the established adapter and coordinator contracts. | G-1, G-2, FR-1 through FR-7, DR-1 through DR-4, REQ-049, REQ-056, PR-1, PR-2, AC-1 through AC-4, AC-6 through AC-8, AC-10, AC-11 |
+| `wire-contact-center-summary-lifecycle` | contracts, coordination, task APIs | Client event/lifecycle wiring is safe after TaskManager and Task behavior are defined. | REQ-007, REQ-026, REQ-027, REQ-036, FR-1, REQ-054, REQ-055, AC-6, AC-11 |
+| `synchronize-summary-documentation-and-verify` | all implementation tasks | Documentation must reflect final symbols/behavior, then the complete regression/build gate validates the integrated feature; it is not the implementation owner for REQ-056 or any AC. | REQ-057 and final regression for AC-1 through AC-11 |
 
 The DAG has two parallelizable roots after contracts: transport and coordination. Task APIs join them; client lifecycle wiring follows the coordinator; documentation/full verification is last. There are no database, build-system, dependency, UI, migration, or removal nodes because those surfaces do not change.
