@@ -4,7 +4,7 @@ import {ISDKConnector} from '../SDKConnector/types';
 import {Eventing} from '../Events/impl';
 import {CallingClientEventTypes} from '../Events/types';
 import {DeviceType, ServiceData} from '../common/types';
-import {ICall} from './calling/types';
+import {ICall, IceGatheringConfig} from './calling/types';
 import {CallingClientError} from '../Errors';
 import {ILine} from './line/types';
 
@@ -17,11 +17,18 @@ interface DiscoveryConfig {
   region: string;
 }
 
+export {IceGatheringConfig};
+
 export interface CallingClientConfig {
   logger?: LoggerConfig;
   discovery?: DiscoveryConfig;
   serviceData?: ServiceData;
   jwe?: string;
+
+  /**
+   * Optional configuration to tune ICE candidate gathering during media negotiation.
+   */
+  iceGathering?: IceGatheringConfig;
 }
 
 export type CallingClientErrorEmitterCallback = (
