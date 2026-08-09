@@ -691,7 +691,9 @@ export interface EntryPointRecord {
 }
 
 export type EntryPointListResponse = PaginatedResponse<EntryPointRecord>;
-export type EntryPointSearchParams = BaseSearchParams;
+export interface EntryPointSearchParams extends BaseSearchParams {
+  desktopProfileFilter?: boolean;
+}
 
 /**
  * Queue types

@@ -238,6 +238,9 @@ function parseAgentConfigs(profileData: {
     callVariablesSuppressed: tenantData.callVariablesSuppressed,
     agentDbId: userData.dbId,
     allowConsultToQueue: agentProfileData.consultToQueue,
+    accessQueue: agentProfileData.accessQueue as 'ALL' | 'SPECIFIC' | 'NONE',
+    accessEntryPoint: agentProfileData.accessEntryPoint as 'ALL' | 'SPECIFIC' | 'NONE',
+    accessBuddyTeam: agentProfileData.accessBuddyTeam as 'ALL' | 'SPECIFIC' | 'NONE',
     agentPersonalStatsEnabled: agentProfileData.viewableStatistics
       ? agentProfileData.viewableStatistics.agentStats
       : false,

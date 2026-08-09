@@ -91,6 +91,7 @@ export class EntryPoint {
       attributes,
       sortBy,
       sortOrder = 'asc',
+      desktopProfileFilter,
     } = params;
 
     const orgId = this.webex.credentials.getOrgId();
@@ -147,6 +148,9 @@ export class EntryPoint {
       if (filter) queryParams.append('filter', filter);
       if (attributes) queryParams.append('attributes', attributes);
       if (sortBy) queryParams.append('sortBy', sortBy);
+      if (desktopProfileFilter !== undefined) {
+        queryParams.append('desktopProfileFilter', desktopProfileFilter.toString());
+      }
 
       const resource = endPointMap.entryPointList(orgId, queryParams.toString());
 

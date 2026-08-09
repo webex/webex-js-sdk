@@ -1169,6 +1169,12 @@ export type Profile = {
   agentAnalyzerId?: string;
   /** Whether consult to queue is allowed */
   allowConsultToQueue: boolean;
+  /** Access control for queues on Desktop Profile Collaboration tab */
+  accessQueue?: 'ALL' | 'SPECIFIC' | 'NONE';
+  /** Access control for entry points on Desktop Profile Collaboration tab */
+  accessEntryPoint?: 'ALL' | 'SPECIFIC' | 'NONE';
+  /** Access control for buddy teams on Desktop Profile Collaboration tab */
+  accessBuddyTeam?: 'ALL' | 'SPECIFIC' | 'NONE';
   /** Additional campaign manager information */
   campaignManagerAdditionalInfo?: string;
   /** Whether personal statistics are enabled */

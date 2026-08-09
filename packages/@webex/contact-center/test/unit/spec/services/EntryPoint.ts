@@ -162,6 +162,19 @@ describe('EntryPoint', () => {
       );
     });
 
+    it('should append desktopProfileFilter query param when provided', async () => {
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      await entryPointAPI.getEntryPoints({desktopProfileFilter: true});
+
+      expect(mockWebex.request).toHaveBeenCalledWith({
+        service: 'wcc-api-gateway',
+        resource:
+          '/organization/test-org-id/v2/entry-point?page=0&pageSize=100&sortOrder=asc&desktopProfileFilter=true',
+        method: HTTP_METHODS.GET,
+      });
+    });
+
     it('should handle API errors and track metrics', async () => {
       (mockWebex.request as jest.Mock).mockRejectedValue(new Error('Internal Server Error'));
 
