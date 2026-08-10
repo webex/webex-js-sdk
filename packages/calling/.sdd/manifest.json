@@ -31,11 +31,6 @@
       "source_file": "packages/calling/package.json",
       "verified_at": "2026-08-05T10:53:14Z"
     },
-    "test_unit": {
-      "command": "yarn workspace @webex/calling test:unit",
-      "source_file": "packages/calling/package.json",
-      "verified_at": "2026-07-06T10:46:38Z"
-    },
     "lint": {
       "command": "yarn workspace @webex/calling test:style",
       "source_file": "packages/calling/package.json",
