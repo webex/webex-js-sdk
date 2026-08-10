@@ -52,6 +52,7 @@ const Webinar = WebexPlugin.extend({
   /**
    * Pending practice session datachannel token, saved from join response.
    * Used when creating the practice session LLM channel.
+   * @private
    * @type {string|undefined}
    */
   _pendingPracticeSessionDatachannelToken: undefined as string | undefined,
@@ -193,6 +194,14 @@ const Webinar = WebexPlugin.extend({
    */
   isPracticeSessionLLMChannelConnected() {
     return this._practiceSessionLLMChannel?.isConnected() ?? false;
+  },
+
+  /**
+   * Returns the practice session LLM channel's locus URL, if available.
+   * @returns {string|undefined}
+   */
+  getPracticeSessionLocusUrl() {
+    return this._practiceSessionLLMChannel?.getLocusUrl();
   },
 
   /**

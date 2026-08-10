@@ -56,7 +56,7 @@ export class LLMPlugin extends (WebexPlugin as any) {
     const channel = new LLMChannel({parent: this.webex});
 
     this.channels.add(channel);
-    channel.onDisconnect = () => this.channels.delete(channel);
+    channel.on('disconnected', () => this.channels.delete(channel));
 
     return channel;
   }

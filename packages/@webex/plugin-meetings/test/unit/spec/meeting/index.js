@@ -15056,6 +15056,7 @@ describe('plugin-meetings', () => {
           meeting.handleLLMOnline = sinon.stub();
           meeting.clearLLMHealthCheckTimer = sinon.stub();
           meeting.startLLMHealthCheckTimer = sinon.stub();
+          meeting.annotation.registerChannel = sinon.stub();
 
           meeting.webinar.isJoinPracticeSessionDataChannel = sinon.stub().returns(false);
         });
@@ -15324,6 +15325,35 @@ describe('plugin-meetings', () => {
 
           assert.calledOnce(meeting.startLLMHealthCheckTimer);
         });
+
+        it('registers annotation channel when not in practice session', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+          meeting.webinar.isJoinPracticeSessionDataChannel.returns(false);
+
+          await meeting.updateLLMConnection();
+
+          assert.calledOnceWithExactly(meeting.annotation.registerChannel, mockChannel);
+        });
+
+        it('does not register annotation channel when in practice session', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+          meeting.webinar.isJoinPracticeSessionDataChannel.returns(true);
+
+          await meeting.updateLLMConnection();
+
+          assert.notCalled(meeting.annotation.registerChannel);
+        });
+
         it('still need connect main session data channel when PS started', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {
@@ -17230,12 +17260,129 @@ describe('plugin-meetings', () => {
         it('returns the correct structured result', async () => {
           const result = await meeting.refreshDataChannelToken();
 
-          expect(result).to.deep.equal({
+                  expect(result).to.deep.equal({
             body: {
               datachannelToken: 'mock-token',
               dataChannelTokenType: 'llm-practice-session',
             },
           });
+        });
+      });
+      describe('#isLLMConnected', () => {
+        it('returns true when main LLM channel is connected and not in practice session', () => {
+          meeting.webinar = {
+            isJoinPracticeSessionDataChannel: sinon.stub().returns(false),
+          };
+          meeting.llmChannel = {
+            isConnected: sinon.stub().returns(true),
+          };
+
+          const result = meeting.isLLMConnected();
+
+          expect(result).to.equal(true);
+        });
+
+        it('returns false when main LLM channel is not connected and not in practice session', () => {
+          meeting.webinar = {
+            isJoinPracticeSessionDataChannel: sinon.stub().returns(false),
+          };
+          meeting.llmChannel = {
+            isConnected: sinon.stub().returns(false),
+          };
+
+          const result = meeting.isLLMConnected();
+
+          expect(result).to.equal(false);
+        });
+
+        it('returns false when no LLM channel exists and not in practice session', () => {
+          meeting.webinar = {
+            isJoinPracticeSessionDataChannel: sinon.stub().returns(false),
+          };
+          meeting.llmChannel = undefined;
+
+          const result = meeting.isLLMConnected();
+
+          expect(result).to.equal(false);
+        });
+
+        it('returns practice session LLM channel status when in practice session', () => {
+          meeting.webinar = {
+            isJoinPracticeSessionDataChannel: sinon.stub().returns(true),
+            isPracticeSessionLLMChannelConnected: sinon.stub().returns(true),
+          };
+          meeting.llmChannel = {
+            isConnected: sinon.stub().returns(false),
+          };
+
+          const result = meeting.isLLMConnected();
+
+          expect(result).to.equal(true);
+          sinon.assert.calledOnce(meeting.webinar.isPracticeSessionLLMChannelConnected);
+          sinon.assert.notCalled(meeting.llmChannel.isConnected);
+        });
+
+        it('returns false when webinar is undefined', () => {
+          meeting.webinar = undefined;
+          meeting.llmChannel = {
+            isConnected: sinon.stub().returns(true),
+          };
+
+          const result = meeting.isLLMConnected();
+
+          expect(result).to.equal(true);
+        });
+      });
+      describe('#getLLMLocusUrl', () => {
+        it('returns locus URL from main LLM channel when not in practice session', () => {
+          meeting.webinar = {
+            isJoinPracticeSessionDataChannel: sinon.stub().returns(false),
+          };
+          meeting.llmChannel = {
+            getLocusUrl: sinon.stub().returns('https://locus.example.com/main'),
+          };
+
+          const result = meeting.getLLMLocusUrl();
+
+          expect(result).to.equal('https://locus.example.com/main');
+        });
+
+        it('returns undefined when no LLM channel exists and not in practice session', () => {
+          meeting.webinar = {
+            isJoinPracticeSessionDataChannel: sinon.stub().returns(false),
+          };
+          meeting.llmChannel = undefined;
+
+          const result = meeting.getLLMLocusUrl();
+
+          expect(result).to.be.undefined;
+        });
+
+        it('returns practice session locus URL when in practice session', () => {
+          meeting.webinar = {
+            isJoinPracticeSessionDataChannel: sinon.stub().returns(true),
+            getPracticeSessionLocusUrl: sinon.stub().returns('https://locus.example.com/practice'),
+          };
+          meeting.llmChannel = {
+            getLocusUrl: sinon.stub().returns('https://locus.example.com/main'),
+          };
+
+          const result = meeting.getLLMLocusUrl();
+
+          expect(result).to.equal('https://locus.example.com/practice');
+          sinon.assert.calledOnce(meeting.webinar.getPracticeSessionLocusUrl);
+          sinon.assert.notCalled(meeting.llmChannel.getLocusUrl);
+        });
+
+        it('returns main channel locus URL when webinar is undefined', () => {
+          meeting.webinar = undefined;
+          meeting.llmChannel = {
+            getLocusUrl: sinon.stub().returns('https://locus.example.com/main'),
+          };
+
+          const result = meeting.getLLMLocusUrl();
+
+          expect(result).to.equal('https://locus.example.com/main');
         });
       });
       describe('#getDataChannelTokenType', () => {

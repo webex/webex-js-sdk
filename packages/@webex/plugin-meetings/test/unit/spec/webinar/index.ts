@@ -303,6 +303,28 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#getPracticeSessionLocusUrl', () => {
+        it('returns locus URL when practice session channel exists', () => {
+          const mockChannel = createMockLLMChannel({
+            getLocusUrl: sinon.stub().returns('https://locus.example.com/practice'),
+          });
+          webinar._practiceSessionLLMChannel = mockChannel;
+
+          const locusUrl = webinar.getPracticeSessionLocusUrl();
+
+          assert.equal(locusUrl, 'https://locus.example.com/practice');
+          assert.calledOnce(mockChannel.getLocusUrl);
+        });
+
+        it('returns undefined when no practice session channel exists', () => {
+          webinar._practiceSessionLLMChannel = undefined;
+
+          const locusUrl = webinar.getPracticeSessionLocusUrl();
+
+          assert.isUndefined(locusUrl);
+        });
+      });
+
       describe('#ensurePracticeSessionDatachannelToken', () => {
         let meeting;
 

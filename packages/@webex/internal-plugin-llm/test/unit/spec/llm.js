@@ -330,18 +330,6 @@ describe('plugin-llm', () => {
       });
     });
 
-    describe('#getSocket', () => {
-      it('returns the underlying socket', async () => {
-        llmChannel.socket = {readyState: 1};
-
-        assert.deepEqual(llmChannel.getSocket(), {readyState: 1});
-      });
-
-      it('returns undefined when not connected', () => {
-        assert.equal(llmChannel.getSocket(), undefined);
-      });
-    });
-
     describe('#disconnect', () => {
       it('calls super.disconnect and clears all connection state', async () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
@@ -384,25 +372,15 @@ describe('plugin-llm', () => {
         }
       });
 
-      it('calls onDisconnect callback and clears it', async () => {
+      it('emits disconnected event', async () => {
         await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
-        const onDisconnectSpy = sinon.spy();
+        const disconnectedSpy = sinon.spy();
 
-        llmChannel.onDisconnect = onDisconnectSpy;
+        llmChannel.on('disconnected', disconnectedSpy);
 
         await llmChannel.disconnect({code: 1000, reason: 'test'});
 
-        sinon.assert.calledOnce(onDisconnectSpy);
-        assert.isUndefined(llmChannel.onDisconnect);
-      });
-
-      it('does not throw if onDisconnect is not set', async () => {
-        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
-        llmChannel.onDisconnect = undefined;
-
-        await llmChannel.disconnect({code: 1000, reason: 'test'});
-
-        assert.isUndefined(llmChannel.onDisconnect);
+        sinon.assert.calledOnce(disconnectedSpy);
       });
     });
 

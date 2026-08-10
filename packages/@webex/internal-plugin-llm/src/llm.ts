@@ -62,9 +62,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   /** In-flight connection promise for deduplication. */
   private connectingPromise?: Promise<RegisterAndConnectTiming | void>;
 
-  /** Callback invoked after disconnect completes, used by LLMPlugin for cleanup. */
-  public onDisconnect?: () => void;
-
   /**
    * Check if a connection is currently in progress.
    * @returns {boolean} True if connecting
@@ -267,8 +264,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.datachannelUrl = undefined;
     this.datachannelToken = undefined;
     this.refreshHandler = undefined;
-    this.onDisconnect?.();
-    this.onDisconnect = undefined;
+    this.emit('disconnected');
   }
 
   /**

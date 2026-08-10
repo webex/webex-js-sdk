@@ -825,7 +825,7 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * The Voicea channel for transcription/captions, bound to this meeting's LLM channel.
    */
-  private voiceaChannel?: VoiceaChannel;
+  voiceaChannel?: VoiceaChannel;
 
   /**
    * Pending datachannel token saved from join response, used when creating the LLM channel.
@@ -6894,7 +6894,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
         // Register annotation channel only if not in practice session
         // (practice session manages its own annotation channel via updatePSDataChannel)
-        if (!this.webinar?.isPracticeSessionLLMChannelConnected()) {
+        if (!this.webinar?.isJoinPracticeSessionDataChannel()) {
           this.annotation.registerChannel(this.llmChannel);
         }
 
@@ -11171,6 +11171,34 @@ export default class Meeting extends StatelessWebexPlugin {
 
       return null;
     }
+  }
+
+  /**
+   * Checks if the LLM channel is connected.
+   * Handles practice session context automatically - returns practice session
+   * LLM channel status when in practice session, main LLM channel status otherwise.
+   * @returns {boolean} True if the appropriate LLM channel is connected
+   */
+  public isLLMConnected(): boolean {
+    if (this.webinar?.isJoinPracticeSessionDataChannel()) {
+      return this.webinar.isPracticeSessionLLMChannelConnected();
+    }
+
+    return this.llmChannel?.isConnected() ?? false;
+  }
+
+  /**
+   * Gets the locus URL from the LLM channel.
+   * Handles practice session context automatically - returns practice session
+   * LLM channel's locus URL when in practice session, main LLM channel's locus URL otherwise.
+   * @returns {string | undefined} The locus URL or undefined
+   */
+  public getLLMLocusUrl(): string | undefined {
+    if (this.webinar?.isJoinPracticeSessionDataChannel()) {
+      return this.webinar.getPracticeSessionLocusUrl();
+    }
+
+    return this.llmChannel?.getLocusUrl();
   }
 
   /**
