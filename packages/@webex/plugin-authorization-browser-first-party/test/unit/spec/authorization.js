@@ -14,7 +14,11 @@ import {base64, patterns} from '@webex/common';
 import {merge, times} from 'lodash';
 import CryptoJS from 'crypto-js';
 import Authorization from '@webex/plugin-authorization-browser-first-party';
-import {Events, InitialAuthorizationCodeGrantOutcomes} from '../../../src';
+import {
+  config as authorizationConfig,
+  Events,
+  InitialAuthorizationCodeGrantOutcomes,
+} from '../../../src';
 
 // Necessary to require lodash this way in order to stub the method
 const lodash = require('lodash');
@@ -136,7 +140,9 @@ describe('plugin-authorization-browser-first-party', () => {
     describe('#initialize()', () => {
       describe('when there is a code in the url', () => {
         it('exchanges it for an access token and sets ready', () => {
-          const webex = makeWebex('http://example.com/?code=5');
+          const webex = makeWebex('http://example.com/?code=5', undefined, undefined, {
+            credentials: {enableInitialAuthorizationCodeGrantOutcomeTracking: true},
+          });
 
           assert.isFalse(webex.authorization.ready);
           assert.isFalse(webex.credentials.canAuthorize);
@@ -155,179 +161,18 @@ describe('plugin-authorization-browser-first-party', () => {
           });
         });
 
-        it('retains pending until the automatic exchange settles', async () => {
-          let resolveGrant;
-          const grantPromise = new Promise((resolve) => {
-            resolveGrant = resolve;
-          });
-          const requestAuthorizationCodeGrantStub = sinon
-            .stub(Authorization.prototype, 'requestAuthorizationCodeGrant')
-            .returns(grantPromise);
+        it('does not retain the exchange outcome when tracking is disabled by default', async () => {
           const webex = makeWebex('http://example.com/?code=5');
 
-          await webex.authorization.when('change:initialAuthorizationCodeGrantOutcome');
-
-          assert.calledOnceWithExactly(requestAuthorizationCodeGrantStub, {
-            code: '5',
-            codeVerifier: undefined,
-          });
-          assert.equal(
-            webex.authorization.initialAuthorizationCodeGrantOutcome,
-            InitialAuthorizationCodeGrantOutcomes.pending
+          assert.isFalse(
+            authorizationConfig.credentials.enableInitialAuthorizationCodeGrantOutcomeTracking
           );
-          assert.isFalse(webex.authorization.ready);
-
-          resolveGrant();
           await webex.authorization.when('change:ready');
 
-          assert.equal(
-            webex.authorization.initialAuthorizationCodeGrantOutcome,
-            InitialAuthorizationCodeGrantOutcomes.success
-          );
-        });
-
-        it('does not start deferred authorization after logout', async () => {
-          const collectPreauthCatalogStub = sinon
-            .stub(Services.prototype, 'collectPreauthCatalog')
-            .resolves();
-          const requestAuthorizationCodeGrantStub = sinon
-            .stub(Authorization.prototype, 'requestAuthorizationCodeGrant')
-            .resolves();
-          const webex = makeWebex('http://example.com/?code=5');
-          const readyPromise = webex.authorization.when('change:ready');
-
-          webex.authorization.logout({noRedirect: true});
-          await readyPromise;
-
-          assert.notCalled(collectPreauthCatalogStub);
-          assert.notCalled(requestAuthorizationCodeGrantStub);
+          assert.isTrue(webex.credentials.canAuthorize);
           assert.equal(
             webex.authorization.initialAuthorizationCodeGrantOutcome,
             InitialAuthorizationCodeGrantOutcomes.notAttempted
-          );
-        });
-
-        it('does not start the authorization exchange after logout during preauth', async () => {
-          let resolvePreauth;
-          const preauthPromise = new Promise((resolve) => {
-            resolvePreauth = resolve;
-          });
-          const collectPreauthCatalogStub = sinon
-            .stub(Services.prototype, 'collectPreauthCatalog')
-            .returns(preauthPromise);
-          const requestAuthorizationCodeGrantStub = sinon
-            .stub(Authorization.prototype, 'requestAuthorizationCodeGrant')
-            .resolves();
-          const webex = makeWebex('http://example.com/?code=5');
-          const readyPromise = webex.authorization.when('change:ready');
-
-          await new Promise((resolve) => process.nextTick(resolve));
-          assert.calledOnce(collectPreauthCatalogStub);
-
-          webex.authorization.logout({noRedirect: true});
-          resolvePreauth();
-          await readyPromise;
-
-          assert.notCalled(requestAuthorizationCodeGrantStub);
-          assert.equal(
-            webex.authorization.initialAuthorizationCodeGrantOutcome,
-            InitialAuthorizationCodeGrantOutcomes.notAttempted
-          );
-        });
-
-        it('does not start the authorization exchange when a pending listener logs out', async () => {
-          const requestAuthorizationCodeGrantStub = sinon
-            .stub(Authorization.prototype, 'requestAuthorizationCodeGrant')
-            .resolves();
-          const webex = makeWebex('http://example.com/?code=5');
-          const readyPromise = webex.authorization.when('change:ready');
-
-          webex.authorization.on('change:initialAuthorizationCodeGrantOutcome', () => {
-            if (
-              webex.authorization.initialAuthorizationCodeGrantOutcome ===
-              InitialAuthorizationCodeGrantOutcomes.pending
-            ) {
-              webex.authorization.logout({noRedirect: true});
-            }
-          });
-
-          await readyPromise;
-
-          assert.notCalled(requestAuthorizationCodeGrantStub);
-          assert.equal(
-            webex.authorization.initialAuthorizationCodeGrantOutcome,
-            InitialAuthorizationCodeGrantOutcomes.notAttempted
-          );
-          assert.isTrue(webex.authorization.ready);
-        });
-
-        it('does not retain success when logout occurs during the exchange', async () => {
-          let resolveGrant;
-          const grantPromise = new Promise((resolve) => {
-            resolveGrant = resolve;
-          });
-
-          sinon
-            .stub(Authorization.prototype, 'requestAuthorizationCodeGrant')
-            .returns(grantPromise);
-
-          const webex = makeWebex('http://example.com/?code=5');
-
-          await webex.authorization.when('change:initialAuthorizationCodeGrantOutcome');
-
-          const changeSpy = sinon.spy();
-
-          webex.authorization.on('change:initialAuthorizationCodeGrantOutcome', changeSpy);
-          webex.authorization.logout({noRedirect: true});
-          resolveGrant();
-          await webex.authorization.when('change:ready');
-
-          assert.equal(
-            webex.authorization.initialAuthorizationCodeGrantOutcome,
-            InitialAuthorizationCodeGrantOutcomes.notAttempted
-          );
-          assert.calledOnceWithExactly(
-            changeSpy,
-            webex.authorization,
-            InitialAuthorizationCodeGrantOutcomes.notAttempted
-          );
-        });
-
-        it('does not retain failure when logout occurs during the exchange', async () => {
-          const error = new Error('exchange rejected after logout');
-          let rejectGrant;
-          const grantPromise = new Promise((resolve, reject) => {
-            rejectGrant = reject;
-          });
-
-          sinon
-            .stub(Authorization.prototype, 'requestAuthorizationCodeGrant')
-            .returns(grantPromise);
-
-          const webex = makeWebex('http://example.com/?code=5');
-
-          await webex.authorization.when('change:initialAuthorizationCodeGrantOutcome');
-
-          const changeSpy = sinon.spy();
-
-          webex.authorization.on('change:initialAuthorizationCodeGrantOutcome', changeSpy);
-          webex.authorization.logout({noRedirect: true});
-          rejectGrant(error);
-          await webex.authorization.when('change:ready');
-
-          assert.equal(
-            webex.authorization.initialAuthorizationCodeGrantOutcome,
-            InitialAuthorizationCodeGrantOutcomes.notAttempted
-          );
-          assert.calledOnceWithExactly(
-            changeSpy,
-            webex.authorization,
-            InitialAuthorizationCodeGrantOutcomes.notAttempted
-          );
-          assert.calledOnceWithExactly(
-            webex.logger.warn,
-            'authorization: failed initial authorization code grant request',
-            error
           );
         });
 
@@ -462,7 +307,9 @@ describe('plugin-authorization-browser-first-party', () => {
             .stub(Authorization.prototype, 'requestAuthorizationCodeGrant')
             .throws(error);
 
-          const webex = makeWebex(`http://example.com?code=${code}`);
+          const webex = makeWebex(`http://example.com?code=${code}`, undefined, undefined, {
+            credentials: {enableInitialAuthorizationCodeGrantOutcomeTracking: true},
+          });
 
           return webex.authorization.when('change:ready').then(() => {
             assert.calledOnce(requestAuthorizationCodeGrantStub);
@@ -485,7 +332,9 @@ describe('plugin-authorization-browser-first-party', () => {
 
           sinon.stub(Authorization.prototype, 'requestAuthorizationCodeGrant').rejects(error);
 
-          const webex = makeWebex('http://example.com?code=5');
+          const webex = makeWebex('http://example.com?code=5', undefined, undefined, {
+            credentials: {enableInitialAuthorizationCodeGrantOutcomeTracking: true},
+          });
 
           await webex.authorization.when('change:ready');
 
@@ -710,23 +559,6 @@ describe('plugin-authorization-browser-first-party', () => {
           });
         });
       });
-
-      it('does not reset the retained initial exchange outcome', () => {
-        const webex = makeWebex();
-
-        webex.authorization._initialAuthorizationCodeGrantOutcome =
-          InitialAuthorizationCodeGrantOutcomes.success;
-        sinon
-          .stub(webex.authorization, 'initiateAuthorizationCodeGrant')
-          .returns(Promise.resolve());
-
-        return webex.authorization.initiateLogin().then(() => {
-          assert.equal(
-            webex.authorization.initialAuthorizationCodeGrantOutcome,
-            InitialAuthorizationCodeGrantOutcomes.success
-          );
-        });
-      });
     });
 
     describe('#initiateAuthorizationCodeGrant()', () => {
@@ -823,43 +655,6 @@ describe('plugin-authorization-browser-first-party', () => {
             data: {loginUrl: testLoginUrl},
           });
         });
-      });
-    });
-
-    describe('#logout()', () => {
-      it('resets the retained outcome without redirecting', () => {
-        const webex = makeWebex();
-        const changeSpy = sinon.spy();
-
-        webex.authorization._initialAuthorizationCodeGrantOutcome =
-          InitialAuthorizationCodeGrantOutcomes.success;
-        webex.authorization.on('change:initialAuthorizationCodeGrantOutcome', changeSpy);
-
-        webex.authorization.logout({noRedirect: true});
-
-        assert.equal(
-          webex.authorization.initialAuthorizationCodeGrantOutcome,
-          InitialAuthorizationCodeGrantOutcomes.notAttempted
-        );
-        assert.calledOnce(changeSpy);
-        assert.equal(webex.getWindow().location.href, 'https://example.com');
-      });
-
-      it('resets the retained outcome before redirecting', () => {
-        const logoutUrl = 'https://example.com/logout';
-        const webex = makeWebex();
-
-        webex.authorization._initialAuthorizationCodeGrantOutcome =
-          InitialAuthorizationCodeGrantOutcomes.failure;
-        sinon.stub(webex.credentials, 'buildLogoutUrl').returns(logoutUrl);
-
-        webex.authorization.logout();
-
-        assert.equal(
-          webex.authorization.initialAuthorizationCodeGrantOutcome,
-          InitialAuthorizationCodeGrantOutcomes.notAttempted
-        );
-        assert.equal(webex.getWindow().location, logoutUrl);
       });
     });
 

@@ -42,7 +42,6 @@ export const Events = {
 export const InitialAuthorizationCodeGrantOutcomes = {
   failure: 'failure',
   notAttempted: 'not_attempted',
-  pending: 'pending',
   success: 'success',
 };
 
@@ -77,8 +76,9 @@ export const InitialAuthorizationCodeGrantOutcomes = {
 const Authorization = WebexPlugin.extend({
   derived: {
     /**
-     * Retains the outcome of the automatic startup authorization-code exchange.
-     * Resets to not_attempted when the SDK logs out.
+     * When enabled by configuration, retains the outcome of the automatic
+     * startup authorization-code exchange for the lifetime of this SDK instance.
+     * Interpret only after authorization readiness.
      * @instance
      * @memberof AuthorizationBrowserFirstParty
      * @readonly
@@ -143,15 +143,6 @@ const Authorization = WebexPlugin.extend({
    * @public
    */
   eventEmitter: new EventEmitter(),
-
-  /**
-   * Monotonically increasing id used to invalidate stale startup exchanges.
-   * @instance
-   * @memberof AuthorizationBrowserFirstParty
-   * @type {number}
-   * @private
-   */
-  _initialAuthorizationCodeGrantGeneration: 0,
 
   /**
    * Stores the timer ID for QR code polling (device authorization)
@@ -265,44 +256,20 @@ const Authorization = WebexPlugin.extend({
       preauthCatalogParams = {orgId};
     }
 
-    this._initialAuthorizationCodeGrantGeneration += 1;
-    const initialAuthorizationCodeGrantGeneration = this._initialAuthorizationCodeGrantGeneration;
-    const isCurrentInitialAuthorizationCodeGrant = () =>
-      initialAuthorizationCodeGrantGeneration === this._initialAuthorizationCodeGrantGeneration;
-
     // Defer token exchange until next tick in case credentials plugin not ready yet
     process.nextTick(() => {
-      if (!isCurrentInitialAuthorizationCodeGrant()) {
-        this.ready = true;
-        return;
-      }
-
       this.webex.internal.services
         .collectPreauthCatalog(preauthCatalogParams)
         .catch(() => Promise.resolve()) // Non-fatal if catalog collection fails
+        .then(() => this.requestAuthorizationCodeGrant({code, codeVerifier}))
         .then(() => {
-          if (!isCurrentInitialAuthorizationCodeGrant()) {
-            return undefined;
-          }
-
-          this._initialAuthorizationCodeGrantOutcome =
-            InitialAuthorizationCodeGrantOutcomes.pending;
-
-          // Outcome changes emit synchronously; a listener may log out and invalidate this grant.
-          if (!isCurrentInitialAuthorizationCodeGrant()) {
-            return undefined;
-          }
-
-          return this.requestAuthorizationCodeGrant({code, codeVerifier});
-        })
-        .then(() => {
-          if (isCurrentInitialAuthorizationCodeGrant()) {
+          if (this.config.enableInitialAuthorizationCodeGrantOutcomeTracking) {
             this._initialAuthorizationCodeGrantOutcome =
               InitialAuthorizationCodeGrantOutcomes.success;
           }
         })
         .catch((error) => {
-          if (isCurrentInitialAuthorizationCodeGrant()) {
+          if (this.config.enableInitialAuthorizationCodeGrantOutcomeTracking) {
             this._initialAuthorizationCodeGrantOutcome =
               InitialAuthorizationCodeGrantOutcomes.failure;
           }
@@ -496,7 +463,12 @@ const Authorization = WebexPlugin.extend({
     this._verifySecurityToken(location.query, {requireMatch: true});
     this._cleanUrl(location);
 
-    const {id_token: idToken, email, error, state: {csrf_token, ...state}} = location.query;
+    const {
+      id_token: idToken,
+      email,
+      error,
+      state: {csrf_token, ...state},
+    } = location.query;
 
     return {idToken, email, error, state};
   },
@@ -513,9 +485,6 @@ const Authorization = WebexPlugin.extend({
    * @returns {Promise<void>}
    */
   logout(options = {}) {
-    this._initialAuthorizationCodeGrantGeneration += 1;
-    this._initialAuthorizationCodeGrantOutcome = InitialAuthorizationCodeGrantOutcomes.notAttempted;
-
     if (!options.noRedirect) {
       this.webex.getWindow().location = this.webex.credentials.buildLogoutUrl(options);
     }

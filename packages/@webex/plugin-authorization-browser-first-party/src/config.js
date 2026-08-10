@@ -5,6 +5,11 @@
 export default {
   credentials: {
     /**
+     * Enables retention of the automatic startup authorization-code grant outcome.
+     * @type {boolean}
+     */
+    enableInitialAuthorizationCodeGrantOutcomeTracking: false,
+    /**
      * Controls whether {@link Authorization#initiateLogin()} requests a token
      * or an auth code. Anything other than 'confidential' will be treated as
      * 'public'
@@ -13,6 +18,12 @@ export default {
      */
     clientType: 'public',
 
+    /**
+     * Exchanges a refresh token for a new token bundle.
+     * @param {Webex} webex
+     * @param {Token} token
+     * @returns {Promise<Object>}
+     */
     refreshCallback(webex, token) {
       /* eslint-disable camelcase */
       return webex
