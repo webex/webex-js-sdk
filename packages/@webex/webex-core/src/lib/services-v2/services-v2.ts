@@ -501,16 +501,15 @@ const Services = WebexPlugin.extend({
   switchActiveClusterIds(newActiveClusters: ActiveServices): Promise<void> {
     this.logger.info('services: switching active cluster ids');
 
-    const newActiveClusterIds = Object.values(newActiveClusters);
+    const invalidEntries = Object.entries(newActiveClusters).some(([serviceName, clusterId]) => {
+      const service = this._services.find((s) => s.id === clusterId);
 
-    const missingClusterIds = newActiveClusterIds.some((clusterId) => {
-      // if the clusterId does not exist in the catalog, fetch the catalog
-      return !this._services.find((service) => service.id === clusterId);
+      return !service || service.serviceName !== serviceName;
     });
 
-    if (missingClusterIds) {
+    if (invalidEntries) {
       this.logger.warn(
-        'services: some cluster ids do not exist in the catalog, fetching the catalog'
+        'services: some cluster ids are unknown or do not match their service, fetching the catalog'
       );
 
       // fetch the catalog
