@@ -178,13 +178,30 @@ webex.authorization.initQRCodeLogin();
 
 ### Properties
 
-| Property           | Type             | Description                                               |
-| ------------------ | ---------------- | --------------------------------------------------------- |
-| `isAuthorizing`    | boolean          | True while a grant request is in flight                   |
-| `isAuthenticating` | boolean          | Alias of `isAuthorizing`                                  |
-| `ready`            | boolean          | Set true after initial redirect/code processing completes |
-| `eventEmitter`     | EventEmitter     | Emits QR/Device login lifecycle events                    |
-| `Events`           | enum-like object | Accessible names for event types                          |
+| Property                               | Type             | Description                                               |
+| -------------------------------------- | ---------------- | --------------------------------------------------------- |
+| `initialAuthorizationCodeGrantOutcome` | string           | Retained outcome of the automatic initialization exchange |
+| `isAuthorizing`                        | boolean          | True while a grant request is in flight                   |
+| `isAuthenticating`                     | boolean          | Alias of `isAuthorizing`                                  |
+| `ready`                                | boolean          | Set true after initial redirect/code processing completes |
+| `eventEmitter`                         | EventEmitter     | Emits QR/Device login lifecycle events                    |
+| `Events`                               | enum-like object | Accessible names for event types                          |
+
+#### Initial authorization-code grant outcome
+
+`initialAuthorizationCodeGrantOutcome` describes only the automatic
+`requestAuthorizationCodeGrant()` call made while this authorization plugin
+instance initializes. Read it after `ready`:
+
+- `not_attempted`: initialization did not invoke the exchange.
+- `success`: the initialization exchange fulfilled.
+- `failure`: the initialization exchange threw or rejected.
+
+The value is a historical result retained for the lifetime of the SDK instance
+and is not reset by logout. It does not represent current authorization state
+or credentials hydrated from storage. It also does not track guest or device
+authentication, errors before the exchange begins, token refreshes, or
+authorization-code exchanges requested later on the same SDK instance.
 
 ## Security Considerations
 

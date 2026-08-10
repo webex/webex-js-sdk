@@ -14,11 +14,7 @@ import {base64, patterns} from '@webex/common';
 import {merge, times} from 'lodash';
 import CryptoJS from 'crypto-js';
 import Authorization from '@webex/plugin-authorization-browser-first-party';
-import {
-  config as authorizationConfig,
-  Events,
-  InitialAuthorizationCodeGrantOutcomes,
-} from '../../../src';
+import {Events, InitialAuthorizationCodeGrantOutcomes} from '../../../src';
 
 // Necessary to require lodash this way in order to stub the method
 const lodash = require('lodash');
@@ -140,9 +136,7 @@ describe('plugin-authorization-browser-first-party', () => {
     describe('#initialize()', () => {
       describe('when there is a code in the url', () => {
         it('exchanges it for an access token and sets ready', () => {
-          const webex = makeWebex('http://example.com/?code=5', undefined, undefined, {
-            credentials: {enableInitialAuthorizationCodeGrantOutcomeTracking: true},
-          });
+          const webex = makeWebex('http://example.com/?code=5');
 
           assert.isFalse(webex.authorization.ready);
           assert.isFalse(webex.credentials.canAuthorize);
@@ -161,18 +155,15 @@ describe('plugin-authorization-browser-first-party', () => {
           });
         });
 
-        it('does not retain the exchange outcome when tracking is disabled by default', async () => {
+        it('retains the initialization exchange outcome after logout', async () => {
           const webex = makeWebex('http://example.com/?code=5');
 
-          assert.isFalse(
-            authorizationConfig.credentials.enableInitialAuthorizationCodeGrantOutcomeTracking
-          );
           await webex.authorization.when('change:ready');
+          webex.authorization.logout({noRedirect: true});
 
-          assert.isTrue(webex.credentials.canAuthorize);
           assert.equal(
             webex.authorization.initialAuthorizationCodeGrantOutcome,
-            InitialAuthorizationCodeGrantOutcomes.notAttempted
+            InitialAuthorizationCodeGrantOutcomes.success
           );
         });
 
@@ -307,9 +298,7 @@ describe('plugin-authorization-browser-first-party', () => {
             .stub(Authorization.prototype, 'requestAuthorizationCodeGrant')
             .throws(error);
 
-          const webex = makeWebex(`http://example.com?code=${code}`, undefined, undefined, {
-            credentials: {enableInitialAuthorizationCodeGrantOutcomeTracking: true},
-          });
+          const webex = makeWebex(`http://example.com?code=${code}`);
 
           return webex.authorization.when('change:ready').then(() => {
             assert.calledOnce(requestAuthorizationCodeGrantStub);
@@ -332,9 +321,7 @@ describe('plugin-authorization-browser-first-party', () => {
 
           sinon.stub(Authorization.prototype, 'requestAuthorizationCodeGrant').rejects(error);
 
-          const webex = makeWebex('http://example.com?code=5', undefined, undefined, {
-            credentials: {enableInitialAuthorizationCodeGrantOutcomeTracking: true},
-          });
+          const webex = makeWebex('http://example.com?code=5');
 
           await webex.authorization.when('change:ready');
 
@@ -369,6 +356,17 @@ describe('plugin-authorization-browser-first-party', () => {
 
           assert.isTrue(webex.authorization.ready);
           assert.isFalse(webex.credentials.canAuthorize);
+          assert.equal(
+            webex.authorization.initialAuthorizationCodeGrantOutcome,
+            InitialAuthorizationCodeGrantOutcomes.notAttempted
+          );
+        });
+
+        it('does not treat a later authorization-code grant as the initialization exchange', async () => {
+          const webex = makeWebex('http://example.com');
+
+          await webex.authorization.requestAuthorizationCodeGrant({code: 'later-code'});
+
           assert.equal(
             webex.authorization.initialAuthorizationCodeGrantOutcome,
             InitialAuthorizationCodeGrantOutcomes.notAttempted

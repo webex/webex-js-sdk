@@ -39,6 +39,12 @@ export const Events = {
   qRCodeLogin: 'qRCodeLogin',
 };
 
+/**
+ * Terminal outcomes for the automatic authorization-code exchange performed
+ * during authorization plugin initialization.
+ *
+ * @enum {string}
+ */
 export const InitialAuthorizationCodeGrantOutcomes = {
   failure: 'failure',
   notAttempted: 'not_attempted',
@@ -76,9 +82,19 @@ export const InitialAuthorizationCodeGrantOutcomes = {
 const Authorization = WebexPlugin.extend({
   derived: {
     /**
-     * When enabled by configuration, retains the outcome of the automatic
-     * startup authorization-code exchange for the lifetime of this SDK instance.
-     * Interpret only after authorization readiness.
+     * Retains the terminal outcome of the automatic authorization-code exchange
+     * performed during this authorization plugin instance's initialization.
+     *
+     * This historical value does not represent current authorization state,
+     * credentials hydrated from storage, guest authentication, errors before the
+     * exchange begins, or authorization-code exchanges requested later on the
+     * same SDK instance. It is not reset by logout.
+     *
+     * Interpret only after authorization readiness:
+     * - not_attempted: initialization did not invoke requestAuthorizationCodeGrant()
+     * - success: the initialization exchange fulfilled
+     * - failure: the initialization exchange threw or rejected
+     *
      * @instance
      * @memberof AuthorizationBrowserFirstParty
      * @readonly
@@ -263,16 +279,12 @@ const Authorization = WebexPlugin.extend({
         .catch(() => Promise.resolve()) // Non-fatal if catalog collection fails
         .then(() => this.requestAuthorizationCodeGrant({code, codeVerifier}))
         .then(() => {
-          if (this.config.enableInitialAuthorizationCodeGrantOutcomeTracking) {
-            this._initialAuthorizationCodeGrantOutcome =
-              InitialAuthorizationCodeGrantOutcomes.success;
-          }
+          this._initialAuthorizationCodeGrantOutcome =
+            InitialAuthorizationCodeGrantOutcomes.success;
         })
         .catch((error) => {
-          if (this.config.enableInitialAuthorizationCodeGrantOutcomeTracking) {
-            this._initialAuthorizationCodeGrantOutcome =
-              InitialAuthorizationCodeGrantOutcomes.failure;
-          }
+          this._initialAuthorizationCodeGrantOutcome =
+            InitialAuthorizationCodeGrantOutcomes.failure;
           this.logger.warn('authorization: failed initial authorization code grant request', error);
         })
         .then(() => {

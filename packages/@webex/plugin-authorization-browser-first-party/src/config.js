@@ -5,11 +5,6 @@
 export default {
   credentials: {
     /**
-     * Enables retention of the automatic startup authorization-code grant outcome.
-     * @type {boolean}
-     */
-    enableInitialAuthorizationCodeGrantOutcomeTracking: false,
-    /**
      * Controls whether {@link Authorization#initiateLogin()} requests a token
      * or an auth code. Anything other than 'confidential' will be treated as
      * 'public'
