@@ -288,6 +288,7 @@ const Authorization = WebexPlugin.extend({
           this._initialAuthorizationCodeGrantOutcome =
             InitialAuthorizationCodeGrantOutcomes.pending;
 
+          // Outcome changes emit synchronously; a listener may log out and invalidate this grant.
           if (!isCurrentInitialAuthorizationCodeGrant()) {
             return undefined;
           }
