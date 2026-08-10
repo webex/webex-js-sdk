@@ -8919,7 +8919,7 @@ __metadata:
     "@webex/test-helper-retry": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
     "@webex/ts-sdp": ^1.8.1
-    "@webex/web-capabilities": ^1.12.0
+    "@webex/web-capabilities": "link:../../../../web-capabilities"
     "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
     bowser: ^2.11.0
@@ -9604,6 +9604,12 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/typescript-config@workspace:packages/config/typescript"
   languageName: unknown
+  linkType: soft
+
+"@webex/web-capabilities@link:../../../../web-capabilities::locator=%40webex%2Fplugin-meetings%40workspace%3Apackages%2F%40webex%2Fplugin-meetings":
+  version: 0.0.0-use.local
+  resolution: "@webex/web-capabilities@link:../../../../web-capabilities::locator=%40webex%2Fplugin-meetings%40workspace%3Apackages%2F%40webex%2Fplugin-meetings"
+  languageName: node
   linkType: soft
 
 "@webex/web-capabilities@npm:^1.10.0":
