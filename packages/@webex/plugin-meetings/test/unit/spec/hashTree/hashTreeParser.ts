@@ -13,6 +13,7 @@ import testUtils from '@webex/plugin-meetings/test/utils/testUtils';
 import { some } from 'lodash';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
+import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 
 const visibleDataSetsUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/visibleDataSets';
 
@@ -159,6 +160,7 @@ describe('HashTreeParser', () => {
   let callback: sinon.SinonStub;
   let mathRandomStub: sinon.SinonStub;
   let metricsStub: sinon.SinonStub;
+  let loggerInfoStub: sinon.SinonStub;
 
   beforeEach(() => {
     clock = sinon.useFakeTimers();
@@ -166,11 +168,13 @@ describe('HashTreeParser', () => {
     callback = sinon.stub();
     mathRandomStub = sinon.stub(Math, 'random').returns(0);
     metricsStub = sinon.stub(Metrics, 'sendBehavioralMetric');
+    loggerInfoStub = sinon.stub(LoggerProxy.logger, 'info');
   });
   afterEach(() => {
     clock.restore();
     mathRandomStub.restore();
     metricsStub.restore();
+    loggerInfoStub.restore();
   });
 
   // Helper to create a HashTreeParser instance with common defaults
@@ -1779,6 +1783,118 @@ describe('HashTreeParser', () => {
             },
           ],
         });
+      });
+
+      it('filters a "main" sync response down to the requested dataset, ignoring shared datasets like "unjoined"', async () => {
+        // Set up a parser where both "main" and "unjoined" are visible and share the core locus
+        // element (they always advance to the same version on the server).
+        const sharedInitialLocus = {
+          dataSets: [createDataSet('main', 16, 1000), createDataSet('unjoined', 16, 1000)],
+          locus: {
+            url: locusUrl,
+            htMeta: {
+              elementId: {type: 'locus', id: 0, version: 200},
+              dataSetNames: ['main', 'unjoined'],
+            },
+            links: {resources: {visibleDataSets: {url: visibleDataSetsUrl}}},
+            participants: [],
+          },
+        };
+        const sharedMetadata = {
+          htMeta: {elementId: {type: 'metadata', id: 5, version: 50}, dataSetNames: ['self']},
+          visibleDataSets: [
+            {name: 'main', url: `${locusUrl}/datasets/main`},
+            {name: 'unjoined', url: `${locusUrl}/datasets/unjoined`},
+          ],
+        };
+
+        const parser = createHashTreeParser(sharedInitialLocus, sharedMetadata);
+
+        // both datasets have their own hash tree, sharing the locus element
+        assert.exists(parser.dataSets.main.hashTree);
+        assert.exists(parser.dataSets.unjoined.hashTree);
+
+        // start the sync timer with a normal "main" message (mismatched root hash)
+        const message = {
+          dataSets: [{...createDataSet('main', 16, 1100), root: 'a'.repeat(32)}],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {type: 'locus' as const, id: 0, version: 201},
+                dataSetNames: ['main'],
+              },
+              data: {info: {id: 'initial-update'}},
+            },
+          ],
+        };
+        parser.handleMessage(message, 'initial message');
+        assert.calledOnce(callback);
+        callback.resetHistory();
+
+        const mainDataSetUrl = parser.dataSets.main.url;
+
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('0'.repeat(32)),
+          createDataSet('main', 16, 1101)
+        );
+
+        // The sync response for "main" also carries the "unjoined" dataset, the shared locus
+        // element tagged with both datasets, and an "unjoined"-only element - all of which must
+        // be filtered out so that only the requested "main" data is processed.
+        const mainSyncDataSet = createDataSet('main', 16, 1101);
+        mainSyncDataSet.root = parser.dataSets.main.hashTree.getRootHash();
+        mockSendSyncRequestResponse(mainDataSetUrl, {
+          dataSets: [mainSyncDataSet, createDataSet('unjoined', 16, 1101)],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {type: 'locus' as const, id: 0, version: 202},
+                dataSetNames: ['main', 'unjoined'],
+              },
+              data: {info: {id: 'synced-shared-locus'}},
+            },
+            {
+              htMeta: {
+                elementId: {type: 'participant' as const, id: 99, version: 500},
+                dataSetNames: ['unjoined'],
+              },
+              data: {person: {name: 'unjoined-only'}},
+            },
+          ],
+        });
+
+        await clock.tickAsync(1000);
+
+        // the "unjoined" dataset info must NOT be updated from a "main" sync response
+        expect(parser.dataSets.unjoined.version).to.equal(1000);
+
+        // the shared locus element is reported exactly once (not once per dataset), and the
+        // "unjoined"-only element is not reported at all
+        assert.calledOnceWithExactly(callback, {
+          updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
+          updatedObjects: [
+            {
+              htMeta: {
+                elementId: {type: 'locus', id: 0, version: 202},
+                dataSetNames: ['main', 'unjoined'],
+              },
+              data: {info: {id: 'synced-shared-locus'}},
+            },
+          ],
+        });
+
+        // the filtered-out dataset and element are logged
+        assert.calledWith(
+          loggerInfoStub,
+          sinon.match(
+            'keeping only dataset "main", filtering out datasets: [unjoined:1101], elements: [participant:99:500]'
+          )
+        );
       });
 
       describe('emits MEETING_ENDED when 409/2403004 is returned', () => {
