@@ -80,6 +80,8 @@ class Metrics extends WebexPlugin {
 
     // @ts-ignore
     this.callDiagnosticLatencies = new CallDiagnosticLatencies({}, {parent: this.webex});
+    // @ts-ignore
+    this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
     this.onReady();
   }
 
@@ -89,8 +91,6 @@ class Metrics extends WebexPlugin {
   private onReady() {
     // @ts-ignore
     this.webex.once('ready', () => {
-      // @ts-ignore
-      this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
       this.preLoginMetrics = new PreLoginMetrics(
         // @ts-ignore
         new PreLoginMetricsBatcher({}, {parent: this.webex}),
@@ -333,7 +333,7 @@ class Metrics extends WebexPlugin {
     payload?: RecursivePartial<FeatureEvent['payload']>;
     options: any;
   }) {
-    if (!this.callDiagnosticLatencies || !this.callDiagnosticMetrics) {
+    if (!this.isReady) {
       // @ts-ignore
       this.webex.logger.log(
         `NewMetrics: @submitFeatureEvent. Attempted to submit before webex.ready. Event name: ${name}`
@@ -368,7 +368,7 @@ class Metrics extends WebexPlugin {
     payload?: RecursivePartial<ClientEvent['payload']>;
     options?: SubmitClientEventOptions;
   }): Promise<any> {
-    if (!this.callDiagnosticLatencies || !this.callDiagnosticMetrics) {
+    if (!this.isReady) {
       // @ts-ignore
       this.webex.logger.log(
         `NewMetrics: @submitClientEvent. Attempted to submit before webex.ready. Event name: ${name}`
