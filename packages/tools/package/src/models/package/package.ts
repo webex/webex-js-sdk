@@ -174,7 +174,12 @@ class Package {
           return this;
         }
 
-        this.data.version = Package.parseVersionStringToObject(`${packageInfo.version}-${tag}.0`);
+        // Use only the semantic base of the registry version; it may itself
+        // carry a prerelease suffix (e.g. `0.0.0-next.1`) which would otherwise
+        // be mis-parsed as this Package's tag and release.
+        const [baseVersion] = packageInfo.version.split('-');
+
+        this.data.version = Package.parseVersionStringToObject(`${baseVersion}-${tag}.0`);
 
         return this;
       });

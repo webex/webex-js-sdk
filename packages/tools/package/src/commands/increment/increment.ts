@@ -54,7 +54,7 @@ const increment: CommandsCommand<Options> = {
         name,
         tag,
       })))
-      .then((packs: Array<Package>) => packs.filter((pack) => (options.packages
+      .then((packs: Array<Package>) => packs.filter((pack) => (options.packages?.length
         ? options.packages.includes(pack.name)
         : true)))
       .then((packs) => Promise.all(packs.map((pack) => pack.inspect())))

@@ -381,6 +381,27 @@ describe('Package', () => {
             });
         },
       );
+
+      it(
+        'should strip any prerelease suffix from the registry version when the tag version was not found',
+        () => {
+          const expectedTag = 'unknown-tag';
+          pack.data.version.tag = expectedTag;
+          spies.Package.inspect.mockResolvedValue({
+            version: '1.2.3-next.4',
+            'dist-tags': {
+              [Package.CONSTANTS.STABLE_TAG]: '1.2.3-next.4',
+            },
+          });
+
+          return pack.inspect()
+            .then(() => {
+              expect(spies.Package.parseVersionStringToObject).toHaveBeenCalledTimes(1);
+              expect(spies.Package.parseVersionStringToObject)
+                .toHaveBeenCalledWith(`1.2.3-${expectedTag}.0`);
+            });
+        },
+      );
     });
 
     describe('setVersion', () => {
