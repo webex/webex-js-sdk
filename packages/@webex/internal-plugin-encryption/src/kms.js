@@ -340,6 +340,8 @@ const KMS = WebexPlugin.extend({
    * @property {UUID} assignedOrgId
    * @property {string} uri
    * @property {string} source
+   * @property {string | undefined} awsKmsCmkExternalId
+   * @property {string | undefined} awsKmsCiscoRoleArn
    * @property {Date | undefined} stateUpdatedOn
    * @property {Date | undefined} rotation
    */
