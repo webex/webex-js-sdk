@@ -1223,11 +1223,11 @@ class HashTreeParser {
       // emitted only from the LLM message path, so no completion happens here.
       const updatedObjects = this.parseMessage(message, debugText);
 
-      this.resetHeartbeatWatchdogs(message.dataSets);
       this.callLocusInfoUpdateCallback({
         updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
         updatedObjects,
       });
+      this.resetHeartbeatWatchdogs(message.dataSets);
     }
   }
 
