@@ -1,6 +1,7 @@
 import uuid from 'uuid';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import {WebexPlugin, config} from '@webex/webex-core';
+import type LLMChannel from '@webex/internal-plugin-llm';
 import TriggerProxy from '../common/events/trigger-proxy';
 
 import {
@@ -13,7 +14,7 @@ import {
 } from './constants';
 
 import {StrokeData, RequestData, IAnnotationChannel, CommandRequestBody} from './annotation.types';
-import {HTTP_VERBS, LOCUSEVENT, LLM_PRACTICE_SESSION} from '../constants';
+import {HTTP_VERBS, LOCUSEVENT} from '../constants';
 
 /**
  * @description Annotation to handle LLM and Mercury message and locus API
@@ -30,12 +31,49 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   locusUrl: string;
   deviceUrl: string;
 
+  /** Currently registered LLM channel */
+  private channel?: LLMChannel;
+
+  /** Event handler bound to the channel, for cleanup */
+  private channelHandler?: (e: any) => void;
+
   /**
    * Initializes annotation module
    */
   constructor(...args) {
     super(...args);
     this.seqNum = 1;
+  }
+
+  /**
+   * Register an LLMChannel with annotation. Only one channel can be registered
+   * at a time - the owner is responsible for switching channels when context
+   * changes (e.g., entering/leaving practice session).
+   * @param {LLMChannel} channel - The LLM channel to register
+   * @returns {void}
+   */
+  public registerChannel(channel: LLMChannel): void {
+    // Unregister existing channel first
+    this.unregisterChannel();
+
+    this.channel = channel;
+
+    // Subscribe to relay events from this channel
+    this.channelHandler = this.eventDataProcessor.bind(this);
+    channel.on('event:relay.event', this.channelHandler);
+  }
+
+  /**
+   * Unregister the current LLMChannel from annotation
+   * @returns {void}
+   */
+  public unregisterChannel(): void {
+    if (this.channel && this.channelHandler) {
+      this.channel.off('event:relay.event', this.channelHandler);
+    }
+
+    this.channel = undefined;
+    this.channelHandler = undefined;
   }
 
   /**
@@ -104,6 +142,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
 
   /**
    * Listen to websocket messages
+   * @deprecated LLM event subscription is now handled by registerChannel()
    * @returns {undefined}
    */
   private listenToEvents() {
@@ -114,14 +153,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
         this.eventCommandProcessor,
         this
       );
-      // @ts-ignore
-      this.webex.internal.llm.on('event:relay.event', this.eventDataProcessor, this);
-      // @ts-ignore
-      this.webex.internal.llm.on(
-        `event:relay.event:${LLM_PRACTICE_SESSION}`,
-        this.eventDataProcessor,
-        this
-      );
+      // LLM event subscription is now handled by registerChannel()
       this.hasSubscribedToEvents = true;
     }
   }
@@ -138,13 +170,9 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
         this.eventCommandProcessor
       );
 
-      // @ts-ignore
-      this.webex.internal.llm.off('event:relay.event', this.eventDataProcessor);
-      // @ts-ignore
-      this.webex.internal.llm.off(
-        `event:relay.event:${LLM_PRACTICE_SESSION}`,
-        this.eventDataProcessor
-      );
+      // Unregister LLM channel
+      this.unregisterChannel();
+
       this.hasSubscribedToEvents = false;
     }
   }
@@ -300,8 +328,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @returns {void}
    */
   public sendStrokeData = (strokeData: StrokeData): void => {
-    // @ts-ignore
-    if (!this.webex.internal.llm.isConnected()) return;
+    if (!this.channel?.isConnected()) return;
     this.encryptContent(strokeData.encryptionKeyUrl, strokeData.content).then(
       (encryptedContent) => {
         this.publishEncrypted(encryptedContent, strokeData);
@@ -316,13 +343,16 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @returns {void}
    */
   private publishEncrypted(encryptedContent: string, strokeData: StrokeData) {
-    // @ts-ignore
-    const {llm} = this.webex.internal;
-    const isPracticeSessionConnected = llm.isConnected(LLM_PRACTICE_SESSION);
-    const socket =
-      (isPracticeSessionConnected && llm.getSocket(LLM_PRACTICE_SESSION)) || llm.socket;
-    const binding =
-      (isPracticeSessionConnected && llm.getBinding(LLM_PRACTICE_SESSION)) || llm.getBinding();
+    if (!this.channel) {
+      return;
+    }
+
+    const socket = this.channel.getSocket();
+    const binding = this.channel.getBinding();
+    if (!socket || !binding) {
+      return;
+    }
+
     const data = {
       id: `${this.seqNum}`,
       type: 'publishRequest',

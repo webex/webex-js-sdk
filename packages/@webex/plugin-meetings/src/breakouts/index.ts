@@ -3,6 +3,7 @@
  */
 import {WebexPlugin} from '@webex/webex-core';
 import {debounce, forEach} from 'lodash';
+import type LLMChannel from '@webex/internal-plugin-llm';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {BREAKOUTS, MEETINGS, HTTP_VERBS, _ID_} from '../constants';
@@ -48,6 +49,8 @@ const Breakouts = WebexPlugin.extend({
     canManageBreakouts: 'boolean', // appear the ability to manage breakouts
     mainGroupId: 'string', // appears from the moment you enable breakouts
     mainSessionId: 'string', // appears from the moment you enable breakouts
+    hasSubscribedToMessage: 'boolean', // tracks if listening to LLM broadcast messages
+    _llmChannel: 'object', // registered LLM channel for broadcast messages
   },
   children: {
     currentBreakoutSession: Breakout,
@@ -260,15 +263,43 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
+   * Registers the LLM channel for broadcast messages
+   * @param {LLMChannel} channel - The LLM channel to use for breakout messages
+   * @returns {void}
+   */
+  registerLLMChannel(channel: LLMChannel) {
+    // If already subscribed to a previous channel, clean it up
+    if (this.hasSubscribedToMessage && this._llmChannel) {
+      this.stopListening(this._llmChannel);
+      this.hasSubscribedToMessage = false;
+    }
+
+    this._llmChannel = channel;
+    this.listenToBroadcastMessages();
+  },
+
+  /**
+   * Unregisters the LLM channel
+   * @returns {void}
+   */
+  unregisterLLMChannel() {
+    if (this._llmChannel) {
+      this.stopListening(this._llmChannel);
+      this._llmChannel = undefined;
+      this.hasSubscribedToMessage = false;
+    }
+  },
+
+  /**
    * Sets up listener for broadcast messages sent to the breakout session
    * @returns {void}
    */
   listenToBroadcastMessages() {
-    if (!this.webex.internal.llm.isConnected() || this.hasSubscribedToMessage) {
+    if (!this._llmChannel?.isConnected() || this.hasSubscribedToMessage) {
       return;
     }
 
-    this.listenTo(this.webex.internal.llm, 'event:breakout.message', (event) => {
+    this.listenTo(this._llmChannel, 'event:breakout.message', (event) => {
       const {
         data: {senderUserId, sentTime, message},
       } = event;

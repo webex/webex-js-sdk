@@ -42,8 +42,10 @@ export const config = {
 
 /**
  * LLMChannel — a single WebSocket connection to the LLM data channel.
- * Session-level routing (multiple connections keyed by sessionId) is handled
- * by LLMPlugin, which owns a Map<sessionId, LLMChannel>.
+ *
+ * Created via `webex.internal.llm.createConnection()`. The caller owns the
+ * channel and is responsible for its lifecycle (connect, disconnect, cleanup).
+ * Multiple LLMChannels can exist simultaneously for different meetings.
  */
 export default class LLMChannel extends (Mercury as any) implements ILLMChannel {
   namespace = LLM;
@@ -57,11 +59,16 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
   }>;
 
-  /** Owning meeting ID — set by LLMPlugin to prevent cross-meeting teardown. */
-  public ownerMeetingId?: string;
-
   /** In-flight connection promise for deduplication. */
   private connectingPromise?: Promise<RegisterAndConnectTiming | void>;
+
+  /**
+   * Check if a connection is currently in progress.
+   * @returns {boolean} True if connecting
+   */
+  public isConnecting(): boolean {
+    return !!this.connectingPromise;
+  }
 
   /**
    * Register to the websocket
@@ -257,7 +264,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.datachannelUrl = undefined;
     this.datachannelToken = undefined;
     this.refreshHandler = undefined;
-    this.ownerMeetingId = undefined;
+    this.emit('disconnected');
   }
 
   /**
