@@ -101,6 +101,8 @@ jobs:
     steps:
       - name: Checkout Project
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -123,9 +125,6 @@ jobs:
 
       - name: Synchronize Packages
         run: yarn
-
-      - name: Update Main Branch
-        run: git fetch origin ${GITHUB_REF##*/} --unshallow
 
         # Used for running node scripts against all changed packages since the last push to the target branch.
       - id: generate-package-matrix-node-changed
