@@ -4,7 +4,7 @@ run-name: ${{ github.actor }} is running Deploy CD
 on:
   push:
     branches: # White-list of deployable tags and branches. Note that all white-listed branches cannot include any `/` characters
-      - next
+      - metrics-init-fix-2
 
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
@@ -130,22 +130,46 @@ jobs:
         # Used for running node scripts against all changed packages since the last push to the target branch.
       - id: generate-package-matrix-node-changed
         name: Generate Package Matrix
-        run: echo "node-changed=$(yarn package-tools list --mode node --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
+        run: |
+          SINCE="${{ github.event.before }}"
+          if [ "$SINCE" = "0000000000000000000000000000000000000000" ]; then
+            echo "node-changed=$(yarn package-tools list --mode node)" >> $GITHUB_OUTPUT
+          else
+            echo "node-changed=$(yarn package-tools list --mode node --since $SINCE)" >> $GITHUB_OUTPUT
+          fi
 
         # Used for running node scripts against all changed packages, and their dependents, since the last push to the target branch.
       - id: generate-package-matrix-node-recursive
         name: Generate Package Matrix
-        run: echo "node-recursive=$(yarn package-tools list --mode node --recursive --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
+        run: |
+          SINCE="${{ github.event.before }}"
+          if [ "$SINCE" = "0000000000000000000000000000000000000000" ]; then
+            echo "node-recursive=$(yarn package-tools list --mode node --recursive)" >> $GITHUB_OUTPUT
+          else
+            echo "node-recursive=$(yarn package-tools list --mode node --recursive --since $SINCE)" >> $GITHUB_OUTPUT
+          fi
 
         # Used for running yarn tools against all changed packages since the last push to the target branch.
       - id: generate-package-matrix-yarn-changed
         name: Generate Package Matrix
-        run: echo "yarn-changed=$(yarn package-tools list --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
+        run: |
+          SINCE="${{ github.event.before }}"
+          if [ "$SINCE" = "0000000000000000000000000000000000000000" ]; then
+            echo "yarn-changed=$(yarn package-tools list)" >> $GITHUB_OUTPUT
+          else
+            echo "yarn-changed=$(yarn package-tools list --since $SINCE)" >> $GITHUB_OUTPUT
+          fi
 
         # Used for running yarn tools against all changed packages, and their dependents, since the last push to the target branch.
       - id: generate-package-matrix-yarn-recursive
         name: Generate Package Matrix
-        run: echo "yarn-recursive=$(yarn package-tools list --recursive --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
+        run: |
+          SINCE="${{ github.event.before }}"
+          if [ "$SINCE" = "0000000000000000000000000000000000000000" ]; then
+            echo "yarn-recursive=$(yarn package-tools list --recursive)" >> $GITHUB_OUTPUT
+          else
+            echo "yarn-recursive=$(yarn package-tools list --recursive --since $SINCE)" >> $GITHUB_OUTPUT
+          fi
 
       - name: Display Package Matrix
         run: |
