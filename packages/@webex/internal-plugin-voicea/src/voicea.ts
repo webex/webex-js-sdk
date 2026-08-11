@@ -1,19 +1,19 @@
+import EventEmitter from 'events';
 import uuid from 'uuid';
-import {WebexPlugin, config} from '@webex/webex-core';
+// @ts-ignore - webex-core types
+import {config} from '@webex/webex-core';
 
+// @ts-ignore - internal-plugin-llm types
+import type LLMChannel from '@webex/internal-plugin-llm';
 import {
   EVENT_TRIGGERS,
   AIBRIDGE_RELAY_TYPES,
   TRANSCRIPTION_TYPE,
-  VOICEA,
-  LLM_PRACTICE_SESSION,
   ANNOUNCE_STATUS,
   TURN_ON_CAPTION_STATUS,
   TOGGLE_MANUAL_CAPTION_STATUS,
   DEFAULT_SPOKEN_LANGUAGE,
-  LANGUAGE_ASSIGNMENT,
 } from './constants';
-// eslint-disable-next-line no-unused-vars
 import {
   AnnouncementPayload,
   CaptionLanguageResponse,
@@ -23,41 +23,64 @@ import {
 import {millisToMinutesAndSeconds} from './utils';
 
 /**
- * @description VoiceaChannel to hold single instance of LLM
+ * @description VoiceaChannel — handles voicea/transcription functionality for a single LLM connection.
+ * Created via `webex.internal.voicea.createChannel(llmChannel)`. The caller owns the
+ * channel and is responsible for its lifecycle.
  * @export
  * @class VoiceaChannel
  */
-export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
-  namespace = VOICEA;
+export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
+  private request: (options: {method: string; url: string; body?: object}) => Promise<any>;
+  private llmChannel: LLMChannel;
 
   private seqNum: number;
-
   private areCaptionsEnabled: boolean;
-
   private hasSubscribedToEvents = false;
-
   private captionServiceId?: string;
-
   private announceStatus: string;
-
   private captionStatus: string;
 
   private keepTranscriptionSubscribed: boolean;
 
   private toggleManualCaptionStatus: string;
-
   private currentSpokenLanguage?: string;
-
   private spokenLanguages: string[] = [];
-
   private currentCaptionLanguage?: string;
 
   /**
-   * @param {Object} e
-   * @returns {undefined}
+   * Creates a VoiceaChannel bound to the given LLMChannel
+   * @param {LLMChannel} llmChannel - The LLM channel to use
+   * @param {Function} request - The request function for making API calls (typically webex.request bound to webex)
    */
+  constructor(
+    llmChannel: LLMChannel,
+    request: (options: {method: string; url: string; body?: object}) => Promise<any>
+  ) {
+    super();
+    this.llmChannel = llmChannel;
+    this.request = request;
 
-  private eventProcessor = (e) => {
+    this.seqNum = 1;
+    this.areCaptionsEnabled = false;
+    this.captionServiceId = undefined;
+    this.announceStatus = ANNOUNCE_STATUS.IDLE;
+    this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
+    this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
+    this.currentSpokenLanguage = DEFAULT_SPOKEN_LANGUAGE;
+    this.currentCaptionLanguage = undefined;
+    this.keepTranscriptionSubscribed = false;
+
+    // Subscribe to relay events from the LLM channel
+    this.llmChannel.on('event:relay.event', this.eventProcessor);
+    this.hasSubscribedToEvents = true;
+  }
+
+  /**
+   * Process events from LLM channel
+   * @param {Object} e - Event data
+   * @returns {void}
+   */
+  private eventProcessor = (e: any): void => {
     this.seqNum = e.sequenceNumber + 1;
     switch (e.data.relayType) {
       case AIBRIDGE_RELAY_TYPES.VOICEA.ANNOUNCEMENT:
@@ -85,32 +108,19 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   };
 
   /**
-   * Listen to websocket messages
-   * @returns {undefined}
-   */
-  private listenToEvents() {
-    if (!this.hasSubscribedToEvents) {
-      // @ts-ignore
-      this.webex.internal.llm.on('event:relay.event', this.eventProcessor);
-      // @ts-ignore
-      this.webex.internal.llm.on(`event:relay.event:${LLM_PRACTICE_SESSION}`, this.eventProcessor);
-      this.hasSubscribedToEvents = true;
-    }
-  }
-
-  /**
-   * Listen to websocket messages
+   * Deregister events and clean up
    * @returns {void}
    */
-  public deregisterEvents() {
+  public deregisterEvents(): void {
     this.areCaptionsEnabled = false;
     this.keepTranscriptionSubscribed = false;
     this.captionServiceId = undefined;
-    // @ts-ignore
-    this.webex.internal.llm.off('event:relay.event', this.eventProcessor);
-    // @ts-ignore
-    this.webex.internal.llm.off(`event:relay.event:${LLM_PRACTICE_SESSION}`, this.eventProcessor);
-    this.hasSubscribedToEvents = false;
+
+    if (this.hasSubscribedToEvents) {
+      this.llmChannel.off('event:relay.event', this.eventProcessor);
+      this.hasSubscribedToEvents = false;
+    }
+
     this.announceStatus = ANNOUNCE_STATUS.IDLE;
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
     this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
@@ -119,20 +129,42 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   }
 
   /**
-   * Initializes Voicea plugin
-   * @param {any} args
+   * Switch to a different LLM channel while preserving caption state.
+   * Used when transitioning between main meeting and practice session.
+   * - Preserves keepTranscriptionSubscribed and spokenLanguage state
+   * - Unsubscribes from old channel, subscribes to new channel
+   * - Re-announces and re-enables captions if they were on
+   * @param {LLMChannel} newLLMChannel - The new LLM channel to switch to
+   * @returns {Promise<void>}
    */
-  constructor(...args) {
-    super(...args);
-    this.seqNum = 1;
-    this.areCaptionsEnabled = false;
-    this.keepTranscriptionSubscribed = false;
-    this.captionServiceId = undefined;
+  public async switchLLMChannel(newLLMChannel: LLMChannel): Promise<void> {
+    // Save current state
+    const captionsWereOn = this.keepTranscriptionSubscribed;
+    const spokenLanguage = this.currentSpokenLanguage;
+
+    // Unsubscribe from old channel
+    if (this.hasSubscribedToEvents && this.llmChannel) {
+      this.llmChannel.off('event:relay.event', this.eventProcessor);
+      this.hasSubscribedToEvents = false;
+    }
+
+    // Switch to new channel
+    this.llmChannel = newLLMChannel;
+
+    // Subscribe to new channel
+    this.llmChannel.on('event:relay.event', this.eventProcessor);
+    this.hasSubscribedToEvents = true;
+
+    // Reset announcement state for new connection
     this.announceStatus = ANNOUNCE_STATUS.IDLE;
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
-    this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
-    this.currentSpokenLanguage = DEFAULT_SPOKEN_LANGUAGE;
-    this.currentCaptionLanguage = undefined;
+    this.captionServiceId = undefined;
+    this.areCaptionsEnabled = false;
+
+    // Re-announce and re-enable captions if they were on
+    if (captionsWereOn) {
+      await this.turnOnCaptions(spokenLanguage);
+    }
   }
 
   /**
@@ -145,8 +177,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       transcriptPayload.type === TRANSCRIPTION_TYPE.MANUAL_CAPTION_FINAL_RESULT ||
       transcriptPayload.type === TRANSCRIPTION_TYPE.MANUAL_CAPTION_INTERIM_RESULT
     ) {
-      // @ts-ignore
-      this.trigger(EVENT_TRIGGERS.NEW_MANUAL_CAPTION, {
+      this.emit(EVENT_TRIGGERS.NEW_MANUAL_CAPTION, {
         isFinal: transcriptPayload.type === TRANSCRIPTION_TYPE.MANUAL_CAPTION_FINAL_RESULT,
         transcriptId: transcriptPayload.id,
         transcripts: transcriptPayload.transcripts,
@@ -164,8 +195,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   private processTranscription = (voiceaPayload: TranscriptionResponse): void => {
     switch (voiceaPayload.type) {
       case TRANSCRIPTION_TYPE.TRANSCRIPT_INTERIM_RESULTS:
-        // @ts-ignore
-        this.trigger(EVENT_TRIGGERS.NEW_CAPTION, {
+        this.emit(EVENT_TRIGGERS.NEW_CAPTION, {
           isFinal: false,
           transcriptId: voiceaPayload.transcript_id,
           transcripts: voiceaPayload.transcripts,
@@ -173,11 +203,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         break;
 
       case TRANSCRIPTION_TYPE.TRANSCRIPT_FINAL_RESULT:
-        // @ts-ignore
-        this.trigger(EVENT_TRIGGERS.NEW_CAPTION, {
+        this.emit(EVENT_TRIGGERS.NEW_CAPTION, {
           isFinal: true,
           transcriptId: voiceaPayload.transcript_id,
-          transcripts: voiceaPayload.transcripts.map((transcript) => {
+          transcripts: voiceaPayload.transcripts?.map((transcript) => {
             transcript.timestamp = millisToMinutesAndSeconds(transcript.end_millis);
 
             return transcript;
@@ -186,20 +215,18 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         break;
 
       case TRANSCRIPTION_TYPE.HIGHLIGHT_CREATED:
-        // @ts-ignore
-        this.trigger(EVENT_TRIGGERS.HIGHLIGHT_CREATED, {
-          csis: voiceaPayload.highlight.csis,
-          highlightId: voiceaPayload.highlight.highlight_id,
-          text: voiceaPayload.highlight.transcript,
-          highlightLabel: voiceaPayload.highlight.highlight_label,
-          highlightSource: voiceaPayload.highlight.highlight_source,
-          timestamp: millisToMinutesAndSeconds(voiceaPayload.highlight.end_millis),
+        this.emit(EVENT_TRIGGERS.HIGHLIGHT_CREATED, {
+          csis: voiceaPayload.highlight?.csis,
+          highlightId: voiceaPayload.highlight?.highlight_id,
+          text: voiceaPayload.highlight?.transcript,
+          highlightLabel: voiceaPayload.highlight?.highlight_label,
+          highlightSource: voiceaPayload.highlight?.highlight_source,
+          timestamp: millisToMinutesAndSeconds(voiceaPayload.highlight?.end_millis ?? 0),
         });
         break;
 
       case TRANSCRIPTION_TYPE.EVA_THANKS:
-        // @ts-ignore
-        this.trigger(EVENT_TRIGGERS.EVA_COMMAND, {
+        this.emit(EVENT_TRIGGERS.EVA_COMMAND, {
           isListening: false,
           text: voiceaPayload.command_response,
         });
@@ -207,22 +234,18 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
       case TRANSCRIPTION_TYPE.EVA_WAKE:
       case TRANSCRIPTION_TYPE.EVA_CANCEL:
-        // @ts-ignore
-        this.trigger(EVENT_TRIGGERS.EVA_COMMAND, {
+        this.emit(EVENT_TRIGGERS.EVA_COMMAND, {
           isListening: voiceaPayload.type === TRANSCRIPTION_TYPE.EVA_WAKE,
         });
         break;
 
       case TRANSCRIPTION_TYPE.LANGUAGE_DETECTED: {
         const isInSpokenLanguages = this.spokenLanguages.includes(voiceaPayload.language);
-
         if (isInSpokenLanguages) {
-          // @ts-ignore
-          this.trigger(EVENT_TRIGGERS.LANGUAGE_DETECTED, {
+          this.emit(EVENT_TRIGGERS.LANGUAGE_DETECTED, {
             languageCode: voiceaPayload.language,
           });
         }
-
         break;
       }
       default:
@@ -237,11 +260,9 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   private processCaptionLanguageResponse = (voiceaPayload: CaptionLanguageResponse): void => {
     if (voiceaPayload.statusCode === 200) {
-      // @ts-ignore
-      this.trigger(EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE, {statusCode: 200});
+      this.emit(EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE, {statusCode: 200});
     } else {
-      // @ts-ignore
-      this.trigger(EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE, {
+      this.emit(EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE, {
         statusCode: voiceaPayload.errorCode,
         errorMessage: voiceaPayload.message,
       });
@@ -262,51 +283,27 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     };
 
     this.spokenLanguages = voiceaPayload?.ASR?.spoken_languages ?? [];
-    // @ts-ignore
-    this.trigger(EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT, voiceaLanguageOptions);
+    this.emit(EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT, voiceaLanguageOptions);
   };
 
   /**
-   * Indicates whether the default or practice-session LLM connection is active.
+   * Indicates whether the LLM channel is connected.
    * @returns {boolean}
    */
-  private isLLMConnected = (): boolean =>
-    // @ts-ignore
-    this.webex.internal.llm.isConnected() ||
-    // @ts-ignore
-    this.webex.internal.llm.isConnected(LLM_PRACTICE_SESSION);
+  public isLLMConnected = (): boolean => this.llmChannel.isConnected();
 
   public getKeepTranscriptionSubscribed = (): boolean => this.keepTranscriptionSubscribed;
-
-  /**
-   * Resolves the active LLM publish transport, preferring the practice-session
-   * connection only when that session is fully connected.
-   * @returns {Object}
-   */
-  private getPublishTransport = () => {
-    // @ts-ignore
-    const {llm} = this.webex.internal;
-    const isPracticeSessionConnected = llm.isConnected(LLM_PRACTICE_SESSION);
-
-    return {
-      socket: (isPracticeSessionConnected && llm.getSocket(LLM_PRACTICE_SESSION)) || llm.socket,
-      binding:
-        (isPracticeSessionConnected && llm.getBinding(LLM_PRACTICE_SESSION)) || llm.getBinding(),
-      datachannelUrl:
-        (isPracticeSessionConnected && llm.getDatachannelUrl(LLM_PRACTICE_SESSION)) ||
-        llm.getDatachannelUrl(),
-    };
-  };
 
   /**
    * Sends Announcement to add voicea to the meeting
    * @returns {void}
    */
-  private sendAnnouncement = (): void => {
+  public sendAnnouncement = (): void => {
     this.announceStatus = ANNOUNCE_STATUS.JOINING;
-    this.listenToEvents();
-    const {socket, binding} = this.getPublishTransport();
-    socket.send({
+    const socket = this.llmChannel.getSocket();
+    const binding = this.llmChannel.getBinding();
+
+    const payload = {
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: [
@@ -324,7 +321,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         relayType: AIBRIDGE_RELAY_TYPES.VOICEA.CLIENT_ANNOUNCEMENT,
       },
       trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
-    });
+    };
+    socket.send(payload);
     this.seqNum += 1;
   };
 
@@ -338,11 +336,9 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     languageCode: string,
     languageAssignment?: 'DEFAULT' | 'AUTO' | 'MANUAL'
   ): Promise<void> =>
-    // @ts-ignore
     this.request({
       method: 'PUT',
-      // @ts-ignore
-      url: `${this.webex.internal.llm.getLocusUrl()}/controls/`,
+      url: `${this.llmChannel.getLocusUrl()}/controls/`,
       body: {
         transcribe: {
           spokenLanguage: languageCode,
@@ -350,8 +346,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         },
       },
     }).then(() => {
-      // @ts-ignore
-      this.trigger(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode});
+      this.emit(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode});
     });
 
   /**
@@ -364,7 +359,9 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       return;
     }
 
-    const {socket, binding} = this.getPublishTransport();
+    const socket = this.llmChannel.getSocket();
+    const binding = this.llmChannel.getBinding();
+
     socket.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
@@ -387,7 +384,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
     });
     this.currentCaptionLanguage = languageCode;
-
     this.seqNum += 1;
   };
 
@@ -409,7 +405,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       return;
     }
 
-    const {socket, binding} = this.getPublishTransport();
+    const socket = this.llmChannel.getSocket();
+    const binding = this.llmChannel.getBinding();
 
     socket?.send({
       id: `${this.seqNum}`,
@@ -446,36 +443,33 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   /**
    * request turn on Captions
-   * @param {string} [languageCode] - Optional Parameter for spoken language code. Defaults to English
+   * @param {string} [languageCode] - Optional Parameter for spoken language code
    * @returns {Promise}
    */
-  private requestTurnOnCaptions = (languageCode?): undefined | Promise<void> => {
+  private requestTurnOnCaptions = (languageCode?: string): undefined | Promise<void> => {
     this.captionStatus = TURN_ON_CAPTION_STATUS.SENDING;
 
-    // only set the spoken language if it is provided
+    const locusUrl = this.llmChannel.getLocusUrl();
+
     const body = {
       transcribe: {caption: true},
       languageCode,
     };
 
-    // @ts-ignore
-    // eslint-disable-next-line newline-before-return
     return this.request({
       method: 'PUT',
-      // @ts-ignore
-      url: `${this.webex.internal.llm.getLocusUrl()}/controls/`,
+      url: `${locusUrl}/controls/`,
       body,
     })
       .then(() => {
-        // @ts-ignore
-        this.trigger(EVENT_TRIGGERS.CAPTIONS_TURNED_ON);
+        this.emit(EVENT_TRIGGERS.CAPTIONS_TURNED_ON);
 
         this.areCaptionsEnabled = true;
         this.captionStatus = TURN_ON_CAPTION_STATUS.ENABLED;
         this.announce();
         this.updateSubchannelSubscriptionsAndSyncCaptionState({subscribe: ['transcription']}, true);
       })
-      .catch(() => {
+      .catch((error) => {
         this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
         throw new Error('turn on captions fail');
       });
@@ -485,20 +479,20 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * is announce processing
    * @returns {boolean}
    */
-  private isAnnounceProcessing = () =>
+  private isAnnounceProcessing = (): boolean =>
     [ANNOUNCE_STATUS.JOINING, ANNOUNCE_STATUS.JOINED].includes(this.announceStatus);
 
   /**
    * is announce processed
    * @returns {boolean}
    */
-  private isAnnounceProcessed = () => this.announceStatus === ANNOUNCE_STATUS.JOINED;
+  private isAnnounceProcessed = (): boolean => this.announceStatus === ANNOUNCE_STATUS.JOINED;
 
   /**
-   * announce to voicea data chanel
+   * announce to voicea data channel
    * @returns {void}
    */
-  public announce = () => {
+  public announce = (): void => {
     if (this.isAnnounceProcessed()) {
       return;
     }
@@ -512,7 +506,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * is turn on caption processing
    * @returns {boolean}
    */
-  private isCaptionProcessing = () =>
+  private isCaptionProcessing = (): boolean =>
     [TURN_ON_CAPTION_STATUS.SENDING, TURN_ON_CAPTION_STATUS.ENABLED].includes(this.captionStatus);
 
   /**
@@ -520,7 +514,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @param {string} [spokenLanguage] - Optional Spoken language code
    * @returns {Promise}
    */
-  public turnOnCaptions = async (spokenLanguage?): undefined | Promise<void> => {
+  public turnOnCaptions = async (spokenLanguage?: string): Promise<void | undefined> => {
     if (this.captionStatus === TURN_ON_CAPTION_STATUS.SENDING) return undefined;
 
     if (!this.isLLMConnected()) {
@@ -540,11 +534,9 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     activate: boolean,
     spokenLanguage?: string
   ): undefined | Promise<void> => {
-    // @ts-ignore
     return this.request({
       method: 'PUT',
-      // @ts-ignore
-      url: `${this.webex.internal.llm.getLocusUrl()}/controls/`,
+      url: `${this.llmChannel.getLocusUrl()}/controls/`,
       body: {
         transcribe: {
           transcribing: activate,
@@ -570,11 +562,9 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
     this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.SENDING;
 
-    // @ts-ignore
     return this.request({
       method: 'PUT',
-      // @ts-ignore
-      url: `${this.webex.internal.llm.getLocusUrl()}/controls/`,
+      url: `${this.llmChannel.getLocusUrl()}/controls/`,
       body: {
         manualCaption: {
           enable,
@@ -598,9 +588,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @param {string} meetingId
    * @returns {void}
    */
-  public onSpokenLanguageUpdate = (languageCode: string, meetingId): void => {
-    // @ts-ignore
-    this.trigger(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode, meetingId});
+  public onSpokenLanguageUpdate = (languageCode: string, meetingId: string): void => {
+    this.emit(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode, meetingId});
     this.currentSpokenLanguage = languageCode;
   };
 
@@ -615,7 +604,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     }
     if (this.captionServiceId !== serviceId) {
       this.captionServiceId = serviceId;
-      // if service id value has changed and the translation language has been set, client needs to resend the translator language message to the LLM.
       if (this.currentCaptionLanguage) {
         this.requestLanguage(this.currentCaptionLanguage);
       }
@@ -626,18 +614,16 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * get caption status
    * @returns {string}
    */
-  public getCaptionStatus = () => this.captionStatus;
+  public getCaptionStatus = (): string => this.captionStatus;
 
   /**
    * get announce status
    * @returns {string}
    */
-  public getAnnounceStatus = () => this.announceStatus;
+  public getAnnounceStatus = (): string => this.announceStatus;
+
   /**
    * update LLM sub‑channel subscriptions.
-   *
-   * sends a single `subchannelSubscriptionRequest` to LLM,
-   * allowing subscribe and unsubscribe subchannel.
    *
    * @param {string[]} options.subscribe   Sub‑channels to subscribe to.
    * @param {string[]} options.unsubscribe Sub‑channels to unsubscribe from.
@@ -650,19 +636,18 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     subscribe?: string[];
     unsubscribe?: string[];
   } = {}): Promise<void> => {
-    // @ts-ignore
-    const isDataChannelTokenEnabled = await this.webex.internal.llm.isDataChannelTokenEnabled();
-    // @ts-ignore
-    if (!this.isLLMConnected() || !isDataChannelTokenEnabled) return;
+    if (!this.isLLMConnected()) return;
 
-    const {socket, datachannelUrl} = this.getPublishTransport();
+    const isDataChannelTokenEnabled = await this.llmChannel.isDataChannelTokenEnabled();
+    if (!isDataChannelTokenEnabled) return;
 
-    // @ts-ignore
+    const socket = this.llmChannel.getSocket();
+    const datachannelUrl = this.llmChannel.getDatachannelUrl();
+
     socket.send({
       id: `${this.seqNum}`,
       type: 'subchannelSubscriptionRequest',
       data: {
-        // @ts-ignore
         datachannelUri: datachannelUrl,
         subscribe,
         unsubscribe,
