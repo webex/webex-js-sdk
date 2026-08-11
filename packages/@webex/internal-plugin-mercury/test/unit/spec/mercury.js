@@ -778,14 +778,7 @@ describe('plugin-mercury', () => {
             // Calling disconnect will abort the backoffCall, close the socket, and
             // reject the connect
             mercury.disconnect();
-<<<<<<< HEAD
-            assert.notOk(
-              mercury.backoffCall,
-              'Mercury backoffCall is still defined'
-            );
-=======
             assert.notExists(mercury.backoffCall, 'Mercury backoffCall is still defined');
->>>>>>> 9cbdb1698e (feat(internal-plugin-mercury): removed redundant _shutdownSwitchoverInProgress (#5084))
             // The socket will never be unset (which seems bad)
             assert.isDefined(mercury.socket, 'Mercury socket is not defined');
 
