@@ -1340,6 +1340,46 @@ class HashTreeParser {
   }
 
   /**
+   * Returns a copy of a hash tree message restricted to a single dataset, keeping only the
+   * requested dataset and the elements belonging to it. Used to strip out datasets that Locus
+   * may include in a sync response but that we didn't request (e.g. "unjoined" sharing elements
+   * with "main"), which would otherwise be applied once per dataset.
+   *
+   * @param {HashTreeMessage} message the sync response message
+   * @param {string} dataSetName the dataset that was requested
+   * @returns {HashTreeMessage} a new message containing only the requested dataset
+   */
+  private filterMessageToDataSet(message: HashTreeMessage, dataSetName: string): HashTreeMessage {
+    const filteredOutDataSets = message.dataSets?.filter((ds) => ds.name !== dataSetName) ?? [];
+    const filteredOutElements =
+      message.locusStateElements?.filter((el) => !el.htMeta.dataSetNames?.includes(dataSetName)) ??
+      [];
+
+    if (filteredOutDataSets.length > 0 || filteredOutElements.length > 0) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#filterMessageToDataSet --> ${
+          this.debugId
+        } keeping only dataset "${dataSetName}", filtering out datasets: [${filteredOutDataSets
+          .map((ds) => `${ds.name}:${ds.version}`)
+          .join(',')}], elements: [${filteredOutElements
+          .map(
+            (el) =>
+              `${el.htMeta?.elementId?.type}:${el.htMeta?.elementId?.id}:${el.htMeta?.elementId?.version}`
+          )
+          .join(',')}]`
+      );
+    }
+
+    return {
+      ...message,
+      dataSets: message.dataSets?.filter((ds) => ds.name === dataSetName),
+      locusStateElements: message.locusStateElements?.filter((el) =>
+        el.htMeta.dataSetNames?.includes(dataSetName)
+      ),
+    };
+  }
+
+  /**
    * Performs a sync for the given data set.
    *
    * @param {InternalDataSet} dataSet - The data set to sync
@@ -1473,9 +1513,13 @@ class HashTreeParser {
         // misleading "aborting sync" message for this already-completed sync
         dataSet.syncAbortController = undefined;
 
+        // we only requested this dataset, so restrict the response to it before processing
+        // (Locus may include shared datasets like "unjoined" alongside "main")
+        const filteredResponse = this.filterMessageToDataSet(syncResponse, dataSet.name);
+
         // the format of sync response is the same as messages, so we can reuse the same handler
         this.handleMessage(
-          syncResponse,
+          filteredResponse,
           `via sync API (${
             isInitialization ? 'init' : `${Object.keys(leavesData).length} mismatched leaves`
           })`

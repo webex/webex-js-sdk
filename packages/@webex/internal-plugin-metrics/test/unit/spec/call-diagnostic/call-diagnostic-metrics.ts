@@ -394,6 +394,64 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('builds origin correctly with browser details provided by the host client', () => {
+        // host resolves wrapper browsers (WebOS, Electron) to the engine that determines capability
+        webex.meetings.config.metrics.browser = 'WebOS Browser';
+        webex.meetings.config.metrics.browserVersion = '108.0.0.0';
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.equal(res.clientInfo.browser, 'WebOS Browser');
+        assert.equal(res.clientInfo.browserVersion, '108.0.0.0');
+      });
+
+      it('falls back to SDK browser detection when the host provides nothing', () => {
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.equal(res.clientInfo.browser, getBrowserName());
+        assert.equal(res.clientInfo.browserVersion, getBrowserVersion());
+      });
+
+      it('builds origin correctly with the browser support flags from config', () => {
+        // `false` is the meaningful "unsupported family" signal, so it must survive a truthy check
+        webex.meetings.config.metrics.isSupportedBrowserFamily = false;
+        webex.meetings.config.metrics.isOutdatedBrowserVersion = true;
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.3.4.0',
+            localNetworkPrefix: '192.168.1.80',
+            os: getOSNameInternal(),
+            osVersion: getOSVersion() || 'unknown',
+            subClientType: 'WEB_APP',
+            isSupportedBrowserFamily: false,
+            isOutdatedBrowserVersion: true,
+          },
+          environment: 'meeting_evn',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      });
+
       it('should build origin correctly with no meeting or stats analyzer', () => {
         //@ts-ignore
         const res = cd.getOrigin();
