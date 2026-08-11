@@ -86,9 +86,15 @@ const Authorization = WebexPlugin.extend({
      * performed during this authorization plugin instance's initialization.
      *
      * This historical value does not represent current authorization state,
-     * credentials hydrated from storage, guest authentication, errors before the
-     * exchange begins, or authorization-code exchanges requested later on the
-     * same SDK instance. It is not reset by logout.
+     * credentials hydrated from storage, guest authentication, or
+     * authorization-code exchanges requested later on the same SDK instance. It
+     * is not reset by logout. OAuth redirect errors and CSRF validation failures
+     * occur before the exchange, so the value remains not_attempted; these errors
+     * can throw before ready becomes true.
+     *
+     * Calling logout({noRedirect: true}) does not cancel an initialization
+     * exchange already in flight. If that exchange later settles, it can still
+     * update credentials and this retained outcome.
      *
      * Interpret only after authorization readiness:
      * - not_attempted: initialization did not invoke requestAuthorizationCodeGrant()

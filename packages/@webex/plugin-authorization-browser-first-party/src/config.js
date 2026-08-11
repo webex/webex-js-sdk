@@ -13,12 +13,6 @@ export default {
      */
     clientType: 'public',
 
-    /**
-     * Exchanges a refresh token for a new token bundle.
-     * @param {Webex} webex
-     * @param {Token} token
-     * @returns {Promise<Object>}
-     */
     refreshCallback(webex, token) {
       /* eslint-disable camelcase */
       return webex

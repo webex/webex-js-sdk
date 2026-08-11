@@ -189,6 +189,14 @@ webex.authorization.initQRCodeLogin();
 
 #### Initial authorization-code grant outcome
 
+```javascript
+import {InitialAuthorizationCodeGrantOutcomes} from '@webex/plugin-authorization-browser-first-party';
+
+const didInitialExchangeSucceed =
+  webex.authorization.initialAuthorizationCodeGrantOutcome ===
+  InitialAuthorizationCodeGrantOutcomes.success;
+```
+
 `initialAuthorizationCodeGrantOutcome` describes only the automatic
 `requestAuthorizationCodeGrant()` call made while this authorization plugin
 instance initializes. Read it after `ready`:
@@ -200,8 +208,14 @@ instance initializes. Read it after `ready`:
 The value is a historical result retained for the lifetime of the SDK instance
 and is not reset by logout. It does not represent current authorization state
 or credentials hydrated from storage. It also does not track guest or device
-authentication, errors before the exchange begins, token refreshes, or
-authorization-code exchanges requested later on the same SDK instance.
+authentication, token refreshes, or authorization-code exchanges requested
+later on the same SDK instance.
+
+OAuth redirect errors and CSRF validation failures occur before the exchange,
+so the value remains `not_attempted`; these errors can throw before `ready`
+becomes `true`. A non-redirecting logout does not cancel an initialization
+exchange already in flight. If that exchange later settles, it can still update
+credentials and this retained outcome.
 
 ## Security Considerations
 
