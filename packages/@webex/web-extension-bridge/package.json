@@ -1,0 +1,78 @@
+{
+  "name": "@webex/web-extension-bridge",
+  "description": "Secure bridge SDK between a web application and a Chrome MV3 extension",
+  "license": "Cisco's General Terms (https://www.cisco.com/site/us/en/about/legal/contract-experience/index.html)",
+  "author": "devsupport@webex.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/web-extension-bridge"
+  },
+  "main": "dist/index.js",
+  "types": "dist/types/index.d.ts",
+  "devMain": "src/index.ts",
+  "sideEffects": [
+    "./dist/extension/content.js"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./web": {
+      "types": "./dist/types/web/webBridge.d.ts",
+      "import": "./dist/web/webBridge.js",
+      "require": "./dist/web/webBridge.js"
+    },
+    "./extension/background": {
+      "types": "./dist/types/extension/background.d.ts",
+      "import": "./dist/extension/background.js",
+      "require": "./dist/extension/background.js"
+    },
+    "./extension/content": {
+      "types": "./dist/types/extension/content.d.ts",
+      "import": "./dist/extension/content.js",
+      "require": "./dist/extension/content.js"
+    },
+    "./extension/client": {
+      "types": "./dist/types/extension/client.d.ts",
+      "import": "./dist/extension/client.js",
+      "require": "./dist/extension/client.js"
+    },
+    "./package": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "SECURITY.md"
+  ],
+  "scripts": {
+    "prebuild": "rimraf dist",
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
+    "build:samples": "node ./scripts/build-samples.mjs && node ./scripts/prepare-samples.mjs",
+    "deploy:npm": "yarn npm publish",
+    "test": "yarn test:style && yarn test:unit",
+    "test:style": "eslint \"./src/**/*.ts\" && eslint --no-eslintrc --no-ignore -c ./.eslintrc.samples.js ../../../docs/samples/web-extension-bridge/app.js ../../../docs/samples/web-extension-bridge-extension/popup.js ../../../docs/samples/web-extension-bridge-extension/service-worker.js",
+    "test:unit": "webex-legacy-tools test --unit --runner mocha",
+    "typecheck": "yarn run -T tsc --noEmit false --emitDeclarationOnly true --declaration true --declarationDir ./dist/types"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.22.11",
+    "@babel/preset-env": "^7.22.11",
+    "@babel/preset-typescript": "7.22.11",
+    "@webex/eslint-config-legacy": "workspace:*",
+    "@webex/legacy-tools": "workspace:*",
+    "@webex/test-helper-chai": "workspace:*",
+    "chai": "^4.3.4",
+    "esbuild": "^0.17.19",
+    "eslint": "^8.24.0",
+    "mocha": "10.0",
+    "sinon": "^9.2.4",
+    "typescript": "^4.9.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
