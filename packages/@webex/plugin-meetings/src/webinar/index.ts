@@ -410,7 +410,7 @@ const Webinar = WebexPlugin.extend({
 
     // Create a new practice session LLM channel
     // @ts-ignore - Fix type
-    const psChannel = this.webex.internal.llm.createConnection();
+    const psChannel = this.webex.internal.llm.createChannel();
     this._practiceSessionLLMChannel = psChannel;
 
     // Set up refresh handler before registration

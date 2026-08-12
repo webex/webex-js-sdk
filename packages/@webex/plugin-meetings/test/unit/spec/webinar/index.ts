@@ -50,10 +50,10 @@ describe('plugin-meetings', () => {
         webex.meetings.getMeetingByType = sinon.stub();
         webex.internal.voicea.announce = sinon.stub();
 
-        // Factory pattern: createConnection returns a mock channel
+        // Factory pattern: createChannel returns a mock channel
         webex.internal.llm = {
           isDataChannelTokenEnabled: sinon.stub().resolves(false),
-          createConnection: sinon.stub().callsFake(() => createMockLLMChannel()),
+          createChannel: sinon.stub().callsFake(() => createMockLLMChannel()),
         };
 
         // Mock voicea createChannel for practice session
@@ -590,7 +590,7 @@ describe('plugin-meetings', () => {
           };
 
           webex.meetings.getMeetingByType = sinon.stub().returns(meeting);
-          webex.internal.llm.createConnection = sinon.stub().returns(mockPSChannel);
+          webex.internal.llm.createChannel = sinon.stub().returns(mockPSChannel);
 
           // Ensure connect path is eligible
           webinar.selfIsPanelist = true;
@@ -671,7 +671,7 @@ describe('plugin-meetings', () => {
           const result = await webinar.updatePSDataChannel();
 
           assert.isUndefined(result);
-          assert.notCalled(webex.internal.llm.createConnection);
+          assert.notCalled(webex.internal.llm.createChannel);
         });
 
         it('no-ops when already connected to the same endpoints', async () => {
@@ -688,13 +688,13 @@ describe('plugin-meetings', () => {
 
           assert.isUndefined(result);
           assert.notCalled(cleanupPSDataChannelStub);
-          assert.notCalled(webex.internal.llm.createConnection);
+          assert.notCalled(webex.internal.llm.createChannel);
         });
 
         it('connects when eligible', async () => {
           const result = await webinar.updatePSDataChannel();
 
-          assert.calledOnce(webex.internal.llm.createConnection);
+          assert.calledOnce(webex.internal.llm.createChannel);
           assert.calledWith(mockPSChannel.registerAndConnect, 'locus-url', 'dc-url', 'ps-token');
           assert.equal(result, 'REGISTER_AND_CONNECT_RESULT');
         });

@@ -6864,7 +6864,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // Create a new LLM channel for this meeting
     // @ts-ignore - Fix type
-    this.llmChannel = this.webex.internal.llm.createConnection();
+    this.llmChannel = this.webex.internal.llm.createChannel();
 
     // Get token from pending (saved from join response) or channel
     const datachannelToken = this._pendingDatachannelToken ?? this.llmChannel.getDatachannelToken();
