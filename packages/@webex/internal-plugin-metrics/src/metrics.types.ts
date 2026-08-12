@@ -27,6 +27,11 @@ export type PrivacyAndSecurityPermission = NonNullable<
   RawClientEvent['privacyAndSecurityPermission']
 >;
 
+export type PrivacyAndSecurityPermissionResource = keyof PrivacyAndSecurityPermission;
+
+export type PrivacyAndSecurityPermissionState =
+  PrivacyAndSecurityPermission[PrivacyAndSecurityPermissionResource];
+
 export type PrivacyAndSecurityPermissionProvider = () => PrivacyAndSecurityPermission | undefined;
 
 export type BrowserLaunchMethodType = NonNullable<

@@ -376,6 +376,42 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(submissions[2][0].payload.privacyAndSecurityPermission, permission);
       });
 
+      it('clears permission history when a terminal event has no snapshot', () => {
+        const options = {meetingId: 'meeting-1'};
+        let currentPermission: typeof permission | undefined = permission;
+
+        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => currentPermission);
+        webex.internal.newMetrics.submitClientEvent({name: 'client.call.initiated', options});
+        currentPermission = undefined;
+        webex.internal.newMetrics.submitClientEvent({name: 'client.call.leave', options});
+        currentPermission = permission;
+        webex.internal.newMetrics.submitClientEvent({name: 'client.call.initiated', options});
+
+        const submissions = webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent.args;
+
+        assert.isUndefined(submissions[1][0].payload);
+        assert.deepEqual(submissions[2][0].payload.privacyAndSecurityPermission, {
+          camera: permission.camera,
+          microphone: permission.microphone,
+        });
+      });
+
+      it('reports initial permission again when a meeting scope is reused after a terminal event', () => {
+        const options = {meetingId: 'meeting-1'};
+
+        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => permission);
+        webex.internal.newMetrics.submitClientEvent({name: 'client.call.initiated', options});
+        webex.internal.newMetrics.submitClientEvent({name: 'client.call.leave', options});
+        webex.internal.newMetrics.submitClientEvent({name: 'client.call.initiated', options});
+
+        const submissions = webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent.args;
+
+        assert.deepEqual(submissions[2][0].payload.privacyAndSecurityPermission, {
+          camera: permission.camera,
+          microphone: permission.microphone,
+        });
+      });
+
       it('preserves an explicit permission payload without invoking the provider', () => {
         const provider = sinon.stub().returns(permission);
         const explicitPermission = {

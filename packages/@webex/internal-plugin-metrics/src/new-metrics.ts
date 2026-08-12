@@ -19,106 +19,19 @@ import {
   ClientEvent,
   FeatureEvent,
   EventPayload,
-  OperationalEvent,
   MediaQualityEvent,
   InternalEvent,
   SubmitClientEventOptions,
   Table,
   DelayedClientEvent,
   DelayedClientFeatureEvent,
-  PrivacyAndSecurityPermission,
   PrivacyAndSecurityPermissionProvider,
 } from './metrics.types';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 import {setMetricTimings} from './call-diagnostic/call-diagnostic-metrics.util';
 import {generateCommonErrorMetadata} from './utils';
 import {isAutomatedUser as detectAutomatedUser} from './automated-user';
-
-const CAMERA_AND_MICROPHONE_PERMISSION_EVENTS = new Set<ClientEvent['name']>([
-  'client.call.initiated',
-  'client.media.capabilities',
-  'client.ice.end',
-  'client.locus.join.request',
-  'client.locus.join.response',
-  'client.media-engine.ready',
-]);
-
-const MEDIA_TX_PERMISSION_EVENTS = new Set<ClientEvent['name']>([
-  'client.media.tx.start',
-  'client.media.tx.stop',
-]);
-
-const CONTENT_SHARE_PERMISSION_EVENTS = new Set<ClientEvent['name']>([
-  'client.share.initiated',
-  'client.share.floor-grant.request',
-  'client.share.floor-granted.local',
-]);
-
-const FINAL_PERMISSION_EVENTS = new Set<ClientEvent['name']>([
-  'client.call.leave',
-  'client.call.remote-ended',
-  'client.call.aborted',
-]);
-
-type PermissionResource = keyof PrivacyAndSecurityPermission;
-type PermissionState = PrivacyAndSecurityPermission[PermissionResource];
-
-const DEFAULT_PERMISSION_SCOPE = 'default';
-
-const isSamePermissionState = (current?: PermissionState, previous?: PermissionState): boolean =>
-  current?.status === previous?.status && current?.reason === previous?.reason;
-
-const getPermissionResourcesForEvent = (
-  name: ClientEvent['name'],
-  payload?: RecursivePartial<ClientEvent['payload']>
-): PermissionResource[] => {
-  if (CAMERA_AND_MICROPHONE_PERMISSION_EVENTS.has(name)) {
-    return ['camera', 'microphone'];
-  }
-
-  if (MEDIA_TX_PERMISSION_EVENTS.has(name)) {
-    if (payload?.mediaType === 'audio') {
-      return ['microphone'];
-    }
-
-    if (payload?.mediaType === 'video') {
-      return ['camera'];
-    }
-
-    if (payload?.mediaType === 'share') {
-      return ['contentShare'];
-    }
-
-    return [];
-  }
-
-  if (CONTENT_SHARE_PERMISSION_EVENTS.has(name)) {
-    return payload?.mediaType === 'share' ? ['contentShare'] : [];
-  }
-
-  if (FINAL_PERMISSION_EVENTS.has(name)) {
-    return ['camera', 'microphone', 'contentShare'];
-  }
-
-  return [];
-};
-
-const projectPrivacyAndSecurityPermission = (
-  permission: PrivacyAndSecurityPermission,
-  resources: PermissionResource[]
-): PrivacyAndSecurityPermission | undefined => {
-  const projectedPermission: PrivacyAndSecurityPermission = {
-    ...(resources.includes('camera') && permission.camera ? {camera: {...permission.camera}} : {}),
-    ...(resources.includes('microphone') && permission.microphone
-      ? {microphone: {...permission.microphone}}
-      : {}),
-    ...(resources.includes('contentShare') && permission.contentShare
-      ? {contentShare: {...permission.contentShare}}
-      : {}),
-  };
-
-  return Object.keys(projectedPermission).length > 0 ? projectedPermission : undefined;
-};
+import PrivacyAndSecurityPermissionEnricher from './privacy-and-security-permission-enricher';
 
 /**
  * Metrics plugin to centralize all types of metrics.
@@ -156,12 +69,7 @@ class Metrics extends WebexPlugin {
 
   delayedClientFeatureEventsOverrides: Partial<DelayedClientFeatureEvent['options']> = {};
 
-  private privacyAndSecurityPermissionProvider?: PrivacyAndSecurityPermissionProvider;
-
-  private lastReportedPrivacyAndSecurityPermission = new Map<
-    string,
-    PrivacyAndSecurityPermission
-  >();
+  private privacyAndSecurityPermissionEnricher: PrivacyAndSecurityPermissionEnricher;
 
   /**
    * Constructor
@@ -173,6 +81,15 @@ class Metrics extends WebexPlugin {
   constructor(...args) {
     super(...args);
 
+    this.privacyAndSecurityPermissionEnricher = new PrivacyAndSecurityPermissionEnricher(
+      (error) => {
+        // @ts-ignore
+        this.webex.logger.error(
+          'NewMetrics: @submitClientEvent. Privacy and security permission provider failed.',
+          error
+        );
+      }
+    );
     // @ts-ignore
     this.callDiagnosticLatencies = new CallDiagnosticLatencies({}, {parent: this.webex});
     this.onReady();
@@ -476,7 +393,11 @@ class Metrics extends WebexPlugin {
       options: {meetingId: options?.meetingId},
     });
 
-    const enrichedPayload = this.addPrivacyAndSecurityPermission({name, payload, options});
+    const enrichedPayload = this.privacyAndSecurityPermissionEnricher.enrich({
+      name,
+      payload,
+      scope: this.getPermissionScope(options),
+    });
 
     return this.callDiagnosticMetrics.submitClientEvent({
       name,
@@ -493,8 +414,7 @@ class Metrics extends WebexPlugin {
   public setPrivacyAndSecurityPermissionProvider(
     provider?: PrivacyAndSecurityPermissionProvider
   ): void {
-    this.privacyAndSecurityPermissionProvider = provider;
-    this.lastReportedPrivacyAndSecurityPermission.clear();
+    this.privacyAndSecurityPermissionEnricher.setProvider(provider);
   }
 
   /**
@@ -507,106 +427,7 @@ class Metrics extends WebexPlugin {
       ? (this as any).webex.meetings?.getBasicMeetingInformation?.(options.meetingId)
       : undefined;
 
-    return options?.correlationId ?? meeting?.correlationId ?? DEFAULT_PERMISSION_SCOPE;
-  }
-
-  /**
-   * Adds the relevant permission resources to an eligible client event.
-   * @param args client event name and payload
-   * @returns the original or enriched payload
-   */
-  private addPrivacyAndSecurityPermission({
-    name,
-    payload,
-    options,
-  }: {
-    name: ClientEvent['name'];
-    payload?: RecursivePartial<ClientEvent['payload']>;
-    options?: SubmitClientEventOptions;
-  }): RecursivePartial<ClientEvent['payload']> | undefined {
-    const scope = this.getPermissionScope(options);
-    const isFinalEvent = FINAL_PERMISSION_EVENTS.has(name);
-
-    if (payload?.privacyAndSecurityPermission !== undefined) {
-      if (isFinalEvent) {
-        this.lastReportedPrivacyAndSecurityPermission.delete(scope);
-      } else {
-        this.lastReportedPrivacyAndSecurityPermission.set(scope, {
-          ...this.lastReportedPrivacyAndSecurityPermission.get(scope),
-          ...(payload.privacyAndSecurityPermission as PrivacyAndSecurityPermission),
-        });
-      }
-
-      return payload;
-    }
-
-    const resources = getPermissionResourcesForEvent(name, payload);
-
-    if (!this.privacyAndSecurityPermissionProvider || resources.length === 0) {
-      if (isFinalEvent) {
-        this.lastReportedPrivacyAndSecurityPermission.delete(scope);
-      }
-
-      return payload;
-    }
-
-    try {
-      const permission = this.privacyAndSecurityPermissionProvider();
-      const projectedPermission = permission
-        ? projectPrivacyAndSecurityPermission(permission, resources)
-        : undefined;
-
-      if (!projectedPermission) {
-        return payload;
-      }
-
-      if (isFinalEvent) {
-        this.lastReportedPrivacyAndSecurityPermission.delete(scope);
-
-        return {...payload, privacyAndSecurityPermission: projectedPermission};
-      }
-
-      const lastReported = this.lastReportedPrivacyAndSecurityPermission.get(scope) ?? {};
-      const changedPermission: PrivacyAndSecurityPermission = {
-        ...(resources.includes('camera') &&
-        projectedPermission.camera &&
-        !isSamePermissionState(projectedPermission.camera, lastReported.camera)
-          ? {camera: {...projectedPermission.camera}}
-          : {}),
-        ...(resources.includes('microphone') &&
-        projectedPermission.microphone &&
-        !isSamePermissionState(projectedPermission.microphone, lastReported.microphone)
-          ? {microphone: {...projectedPermission.microphone}}
-          : {}),
-        ...(resources.includes('contentShare') &&
-        projectedPermission.contentShare &&
-        !isSamePermissionState(projectedPermission.contentShare, lastReported.contentShare)
-          ? {contentShare: {...projectedPermission.contentShare}}
-          : {}),
-      };
-
-      if (Object.keys(changedPermission).length === 0) {
-        return payload;
-      }
-
-      this.lastReportedPrivacyAndSecurityPermission.set(scope, {
-        ...lastReported,
-        ...changedPermission,
-      });
-
-      return {...payload, privacyAndSecurityPermission: changedPermission};
-    } catch (error) {
-      if (isFinalEvent) {
-        this.lastReportedPrivacyAndSecurityPermission.delete(scope);
-      }
-      // @ts-ignore
-      this.webex.logger.error(
-        'NewMetrics: @submitClientEvent. Privacy and security permission provider failed.',
-        error
-      );
-
-      return payload;
-    }
+    return options?.correlationId ?? meeting?.correlationId ?? 'default';
   }
 
   /**
