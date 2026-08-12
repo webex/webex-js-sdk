@@ -25,6 +25,7 @@ import {
   Table,
   DelayedClientEvent,
   DelayedClientFeatureEvent,
+  PrivacyAndSecurityPermission,
   PrivacyAndSecurityPermissionProvider,
 } from './metrics.types';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
@@ -415,6 +416,21 @@ class Metrics extends WebexPlugin {
     provider?: PrivacyAndSecurityPermissionProvider
   ): void {
     this.privacyAndSecurityPermissionEnricher.setProvider(provider);
+  }
+
+  /**
+   * Preserves a permission snapshot for terminal events before call teardown mutates client state.
+   * @param permission point-in-time permission snapshot
+   * @param options call identity used to scope the snapshot
+   */
+  public setPrivacyAndSecurityPermissionForTerminalEvents(
+    permission: PrivacyAndSecurityPermission,
+    options?: SubmitClientEventOptions
+  ): void {
+    this.privacyAndSecurityPermissionEnricher.setTerminalSnapshot(
+      this.getPermissionScope(options),
+      permission
+    );
   }
 
   /**

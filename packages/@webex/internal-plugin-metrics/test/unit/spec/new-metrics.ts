@@ -376,6 +376,66 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(submissions[2][0].payload.privacyAndSecurityPermission, permission);
       });
 
+      it('uses a preserved pre-teardown snapshot for every terminal event in the call scope', () => {
+        const options = {meetingId: 'meeting-1'};
+        const terminalPermission = {
+          camera: {status: 'DENIED' as const, reason: 'DENIED_BY_USER' as const},
+          microphone: {status: 'GRANTED' as const},
+          contentShare: {status: 'GRANTED' as const},
+        };
+        const postTeardownPermission = {
+          camera: {status: 'UNKNOWN' as const, reason: 'UNKNOWN' as const},
+          microphone: {status: 'UNKNOWN' as const, reason: 'UNKNOWN' as const},
+          contentShare: {status: 'UNKNOWN' as const, reason: 'UNKNOWN' as const},
+        };
+
+        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(
+          () => postTeardownPermission
+        );
+        webex.internal.newMetrics.setPrivacyAndSecurityPermissionForTerminalEvents(
+          terminalPermission,
+          options
+        );
+        webex.internal.newMetrics.submitClientEvent({name: 'client.call.remote-ended', options});
+        webex.internal.newMetrics.submitClientEvent({name: 'client.call.leave', options});
+        webex.internal.newMetrics.submitClientEvent({name: 'client.call.aborted', options});
+
+        const submissions = webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent.args;
+
+        assert.deepEqual(
+          submissions[0][0].payload.privacyAndSecurityPermission,
+          terminalPermission
+        );
+        assert.deepEqual(
+          submissions[1][0].payload.privacyAndSecurityPermission,
+          terminalPermission
+        );
+        assert.deepEqual(
+          submissions[2][0].payload.privacyAndSecurityPermission,
+          terminalPermission
+        );
+      });
+
+      it('clears a preserved terminal snapshot when the call scope is reused', () => {
+        const options = {meetingId: 'meeting-1'};
+        const terminalPermission = {
+          camera: {status: 'DENIED' as const, reason: 'DENIED_BY_USER' as const},
+          microphone: {status: 'DENIED' as const, reason: 'DENIED_BY_USER' as const},
+        };
+
+        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => permission);
+        webex.internal.newMetrics.setPrivacyAndSecurityPermissionForTerminalEvents(
+          terminalPermission,
+          options
+        );
+        webex.internal.newMetrics.submitClientEvent({name: 'client.locus.join.request', options});
+        webex.internal.newMetrics.submitClientEvent({name: 'client.call.remote-ended', options});
+
+        const submissions = webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent.args;
+
+        assert.deepEqual(submissions[1][0].payload.privacyAndSecurityPermission, permission);
+      });
+
       it('clears permission history when a terminal event has no snapshot', () => {
         const options = {meetingId: 'meeting-1'};
         let currentPermission: typeof permission | undefined = permission;

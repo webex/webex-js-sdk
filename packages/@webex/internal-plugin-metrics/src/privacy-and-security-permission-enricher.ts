@@ -167,6 +167,8 @@ export default class PrivacyAndSecurityPermissionEnricher {
 
   private lastReported = new Map<string, PrivacyAndSecurityPermission>();
 
+  private terminalSnapshots = new Map<string, PrivacyAndSecurityPermission>();
+
   private readonly onProviderError: (error: unknown) => void;
 
   /**
@@ -185,6 +187,21 @@ export default class PrivacyAndSecurityPermissionEnricher {
   public setProvider(provider?: PrivacyAndSecurityPermissionProvider): void {
     this.provider = provider;
     this.lastReported.clear();
+    this.terminalSnapshots.clear();
+  }
+
+  /**
+   * Preserves a point-in-time permission snapshot for terminal events in a call scope.
+   * @param {string} scope permission history scope
+   * @param {PrivacyAndSecurityPermission} permission permission snapshot
+   * @returns {void}
+   */
+  public setTerminalSnapshot(scope: string, permission: PrivacyAndSecurityPermission): void {
+    this.terminalSnapshots.set(scope, {
+      ...(permission.camera ? {camera: {...permission.camera}} : {}),
+      ...(permission.microphone ? {microphone: {...permission.microphone}} : {}),
+      ...(permission.contentShare ? {contentShare: {...permission.contentShare}} : {}),
+    });
   }
 
   /**
@@ -199,6 +216,10 @@ export default class PrivacyAndSecurityPermissionEnricher {
   }: PermissionEnrichmentContext): ClientEventPayload | undefined {
     const policy = resolvePermissionEnrichmentPolicy(name, payload);
 
+    if (CAMERA_AND_MICROPHONE_PERMISSION_EVENTS.has(name)) {
+      this.terminalSnapshots.delete(scope);
+    }
+
     try {
       if (payload?.privacyAndSecurityPermission !== undefined) {
         // An explicitly supplied permission payload is authoritative for this event.
@@ -212,11 +233,13 @@ export default class PrivacyAndSecurityPermissionEnricher {
         return payload;
       }
 
-      if (!this.provider || policy.resources.length === 0) {
+      if (policy.resources.length === 0) {
         return payload;
       }
 
-      const permission = this.provider();
+      const permission = policy.terminal
+        ? this.terminalSnapshots.get(scope) ?? this.provider?.()
+        : this.provider?.();
       const projectedPermission = permission
         ? projectPrivacyAndSecurityPermission(permission, policy.resources)
         : undefined;

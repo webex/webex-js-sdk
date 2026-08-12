@@ -21,6 +21,7 @@ import {
   PreComputedLatencies,
   SubmitFeatureEvent,
   LocusSyncLatencyEventName,
+  PrivacyAndSecurityPermission,
   PrivacyAndSecurityPermissionProvider,
 } from './metrics.types';
 import * as CALL_DIAGNOSTIC_CONFIG from './call-diagnostic/config';
@@ -71,5 +72,6 @@ export type {
   PreComputedLatencies,
   SubmitFeatureEvent,
   LocusSyncLatencyEventName,
+  PrivacyAndSecurityPermission,
   PrivacyAndSecurityPermissionProvider,
 };
