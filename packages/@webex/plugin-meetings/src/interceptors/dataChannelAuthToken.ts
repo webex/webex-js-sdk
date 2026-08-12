@@ -48,7 +48,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
       // 3) If no channel matches, fall back to finding the meeting by locusUrl
       refreshDataChannelToken: async (requestUrl?: string) => {
         // @ts-ignore
-        const channel = this.internal.llm.getConnectionByDatachannelUrl(requestUrl);
+        const channel = this.internal.llm.getChannelByDatachannelUrl(requestUrl);
 
         if (channel) {
           // Channel found - use its refresh handler

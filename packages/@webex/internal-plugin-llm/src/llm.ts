@@ -43,7 +43,7 @@ export const config = {
 /**
  * LLMChannel — a single WebSocket connection to the LLM data channel.
  *
- * Created via `webex.internal.llm.createConnection()`. The caller owns the
+ * Created via `webex.internal.llm.createChannel()`. The caller owns the
  * channel and is responsible for its lifecycle (connect, disconnect, cleanup).
  * Multiple LLMChannels can exist simultaneously for different meetings.
  */

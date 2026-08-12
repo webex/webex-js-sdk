@@ -286,8 +286,8 @@ describe('plugin-meetings', () => {
       });
     webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(false);
     webex.internal.llm.on = sinon.stub();
-    // Factory pattern: createConnection returns a mock channel
-    webex.internal.llm.createConnection = sinon.stub().callsFake(() => ({
+    // Factory pattern: createChannel returns a mock channel
+    webex.internal.llm.createChannel = sinon.stub().callsFake(() => ({
       registerAndConnect: sinon.stub().resolves({}),
       disconnect: sinon.stub().resolves(),
       isConnected: sinon.stub().returns(false),
@@ -367,6 +367,27 @@ describe('plugin-meetings', () => {
   });
 
   describe('meeting index', () => {
+    /**
+     * Creates a mock LLM channel with sensible defaults that can be overridden.
+     * @param {Object} overrides - Properties to override on the mock channel
+     * @returns {Object} Mock channel object with sinon stubs
+     */
+    const createMockLLMChannel = (overrides = {}) => ({
+      registerAndConnect: sinon.stub().resolves({}),
+      disconnect: sinon.stub().resolves(),
+      isConnected: sinon.stub().returns(false),
+      isConnecting: sinon.stub().returns(false),
+      getLocusUrl: sinon.stub().returns(undefined),
+      getDatachannelUrl: sinon.stub().returns(undefined),
+      getDatachannelToken: sinon.stub().returns(undefined),
+      setDatachannelToken: sinon.stub(),
+      getBinding: sinon.stub().returns(undefined),
+      setRefreshHandler: sinon.stub(),
+      on: sinon.stub(),
+      off: sinon.stub(),
+      ...overrides,
+    });
+
     describe('Public Api Contract', () => {
       describe('#constructor', () => {
         it('should have created a meeting object with public properties', () => {
@@ -3272,25 +3293,14 @@ describe('plugin-meetings', () => {
               sinon.stub(meeting, 'isJoined').returns(true);
 
               let locusLLMEventListener;
-              const mockChannel = {
-                registerAndConnect: sinon.stub().resolves({}),
-                disconnect: sinon.stub().resolves(),
-                isConnected: sinon.stub().returns(false),
-                isConnecting: sinon.stub().returns(false),
-                getLocusUrl: sinon.stub().returns(undefined),
-                getDatachannelUrl: sinon.stub().returns(undefined),
-                getDatachannelToken: sinon.stub().returns(undefined),
-                setDatachannelToken: sinon.stub(),
-                getBinding: sinon.stub().returns(undefined),
-                setRefreshHandler: sinon.stub(),
+              const mockChannel = createMockLLMChannel({
                 on: sinon.stub().callsFake((eventName, callback) => {
                   if (eventName === 'event:locus.state_message') {
                     locusLLMEventListener = callback;
                   }
                 }),
-                off: sinon.stub(),
-              };
-              webex.internal.llm.createConnection = sinon.stub().returns(mockChannel);
+              });
+              webex.internal.llm.createChannel = sinon.stub().returns(mockChannel);
 
               meeting.updateLLMConnection.restore();
 
@@ -3314,22 +3324,8 @@ describe('plugin-meetings', () => {
             it('UpdateLLMConnection sends a metric if not connected after timeout', async () => {
               sinon.stub(meeting, 'isJoined').returns(true);
 
-              const mockChannel = {
-                registerAndConnect: sinon.stub().resolves({}),
-                disconnect: sinon.stub().resolves(),
-                isConnected: sinon.stub().returns(false),
-                isConnecting: sinon.stub().returns(false),
-                getLocusUrl: sinon.stub().returns(undefined),
-                getDatachannelUrl: sinon.stub().returns(undefined),
-                getDatachannelToken: sinon.stub().returns(undefined),
-                setDatachannelToken: sinon.stub(),
-                getBinding: sinon.stub().returns(undefined),
-                setRefreshHandler: sinon.stub(),
-                hasEverConnected: true,
-                on: sinon.stub(),
-                off: sinon.stub(),
-              };
-              webex.internal.llm.createConnection = sinon.stub().returns(mockChannel);
+              const mockChannel = createMockLLMChannel({hasEverConnected: true});
+              webex.internal.llm.createChannel = sinon.stub().returns(mockChannel);
 
               meeting.updateLLMConnection.restore();
 
@@ -3403,10 +3399,10 @@ describe('plugin-meetings', () => {
 
             it('does not emit failed breakout join response metric when breakout session is missing', async () => {
               sinon.stub(meeting, 'isJoined').returns(true);
-              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
-              sinon
-                .stub(meeting.webex.internal.llm, 'registerAndConnect')
-                .rejects(new Error('failed to connect LLM'));
+              const mockChannel = createMockLLMChannel({
+                registerAndConnect: sinon.stub().rejects(new Error('failed to connect LLM')),
+              });
+              webex.internal.llm.createChannel = sinon.stub().returns(mockChannel);
 
               meeting.meetingInfo.enableConvergedArchitecture = true;
               meeting.breakouts.set('breakoutMoveId', 'move-id-1');
@@ -3430,11 +3426,13 @@ describe('plugin-meetings', () => {
 
             it('emits llm breakout join response metric after suppressing join response without llmLatency', async () => {
               sinon.stub(meeting, 'isJoined').returns(true);
-              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
-              sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves({
-                clientLLMDatachannelResponseTime: 10,
-                clientLLMWebSocketConnectTime: 20,
+              const mockChannel = createMockLLMChannel({
+                registerAndConnect: sinon.stub().resolves({
+                  clientLLMDatachannelResponseTime: 10,
+                  clientLLMWebSocketConnectTime: 20,
+                }),
               });
+              webex.internal.llm.createChannel = sinon.stub().returns(mockChannel);
 
               meeting.config.enableAutomaticLLM = true;
               meeting.meetingInfo.enableConvergedArchitecture = true;
@@ -3466,11 +3464,13 @@ describe('plugin-meetings', () => {
 
             it('emits breakout join response metric with llmLatency when returning to main session', async () => {
               sinon.stub(meeting, 'isJoined').returns(true);
-              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
-              sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves({
-                clientLLMDatachannelResponseTime: 10,
-                clientLLMWebSocketConnectTime: 20,
+              const mockChannel = createMockLLMChannel({
+                registerAndConnect: sinon.stub().resolves({
+                  clientLLMDatachannelResponseTime: 10,
+                  clientLLMWebSocketConnectTime: 20,
+                }),
               });
+              webex.internal.llm.createChannel = sinon.stub().returns(mockChannel);
 
               meeting.meetingInfo.enableConvergedArchitecture = true;
               meeting.breakouts.set('breakoutMoveId', 'move-id-1');
@@ -3499,10 +3499,12 @@ describe('plugin-meetings', () => {
 
             it('uses the partial datachannel timing from the error when the websocket connect fails', async () => {
               sinon.stub(meeting, 'isJoined').returns(true);
-              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
               const connectError = new Error('failed to connect LLM');
               connectError.timing = {clientLLMDatachannelResponseTime: 42};
-              sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').rejects(connectError);
+              const mockChannel = createMockLLMChannel({
+                registerAndConnect: sinon.stub().rejects(connectError),
+              });
+              webex.internal.llm.createChannel = sinon.stub().returns(mockChannel);
 
               meeting.meetingInfo.enableConvergedArchitecture = true;
               meeting.breakouts.set('breakoutMoveId', 'move-id-1');
@@ -3536,10 +3538,12 @@ describe('plugin-meetings', () => {
 
             it('reports the partial datachannel timing on client.llm.connect.response when the websocket connect fails during initial join', async () => {
               sinon.stub(meeting, 'isJoined').returns(true);
-              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
               const connectError = new Error('failed to connect LLM');
               connectError.timing = {clientLLMDatachannelResponseTime: 42};
-              sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').rejects(connectError);
+              const mockChannel = createMockLLMChannel({
+                registerAndConnect: sinon.stub().rejects(connectError),
+              });
+              webex.internal.llm.createChannel = sinon.stub().returns(mockChannel);
 
               webex.internal.newMetrics.submitClientEvent.resetHistory();
               meeting.updateLLMConnection.restore();
@@ -3565,21 +3569,8 @@ describe('plugin-meetings', () => {
             it('clears the LLM health check timer when disconnecting LLM', async () => {
               const isJoinedStub = sinon.stub(meeting, 'isJoined');
 
-              const mockChannel = {
-                registerAndConnect: sinon.stub().resolves({}),
-                disconnect: sinon.stub().resolves(),
-                isConnected: sinon.stub().returns(false),
-                isConnecting: sinon.stub().returns(false),
-                getLocusUrl: sinon.stub().returns(undefined),
-                getDatachannelUrl: sinon.stub().returns(undefined),
-                getDatachannelToken: sinon.stub().returns(undefined),
-                setDatachannelToken: sinon.stub(),
-                getBinding: sinon.stub().returns(undefined),
-                setRefreshHandler: sinon.stub(),
-                on: sinon.stub(),
-                off: sinon.stub(),
-              };
-              webex.internal.llm.createConnection = sinon.stub().returns(mockChannel);
+              const mockChannel = createMockLLMChannel();
+              webex.internal.llm.createChannel = sinon.stub().returns(mockChannel);
 
               meeting.updateLLMConnection.restore();
 
@@ -15018,20 +15009,10 @@ describe('plugin-meetings', () => {
         let mockVoiceaChannel;
 
         beforeEach(() => {
-          // Create a mock channel that createConnection will return
-          mockChannel = {
+          // Create a mock channel that createChannel will return
+          mockChannel = createMockLLMChannel({
             registerAndConnect: sinon.stub().resolves('something'),
-            disconnect: sinon.stub().resolves(),
-            isConnected: sinon.stub().returns(false),
-            getLocusUrl: sinon.stub().returns(undefined),
-            getDatachannelUrl: sinon.stub().returns(undefined),
-            getDatachannelToken: sinon.stub().returns(undefined),
-            setDatachannelToken: sinon.stub(),
-            getBinding: sinon.stub().returns(undefined),
-            setRefreshHandler: sinon.stub(),
-            on: sinon.stub(),
-            off: sinon.stub(),
-          };
+          });
 
           // Create a mock voicea channel
           mockVoiceaChannel = {
@@ -15048,7 +15029,7 @@ describe('plugin-meetings', () => {
             updateSubchannelSubscriptions: sinon.stub(),
           };
 
-          webex.internal.llm.createConnection = sinon.stub().returns(mockChannel);
+          webex.internal.llm.createChannel = sinon.stub().returns(mockChannel);
           webex.internal.voicea.createChannel = sinon.stub().returns(mockVoiceaChannel);
 
           meeting.processRelayEvent = sinon.stub();
@@ -15072,7 +15053,7 @@ describe('plugin-meetings', () => {
 
           const result = await meeting.updateLLMConnection();
 
-          assert.notCalled(webex.internal.llm.createConnection);
+          assert.notCalled(webex.internal.llm.createChannel);
           assert.equal(result, undefined);
         });
 
@@ -15086,7 +15067,7 @@ describe('plugin-meetings', () => {
 
           const result = await meeting.updateLLMConnection();
 
-          assert.calledOnce(webex.internal.llm.createConnection);
+          assert.calledOnce(webex.internal.llm.createChannel);
           assert.calledWithExactly(
             mockChannel.registerAndConnect,
             'a url',
@@ -15109,8 +15090,16 @@ describe('plugin-meetings', () => {
 
           assert.calledWithExactly(mockChannel.off, 'event:relay.event', meeting.processRelayEvent);
           assert.calledWithExactly(mockChannel.on, 'event:relay.event', meeting.processRelayEvent);
-          assert.calledWithExactly(mockChannel.off, 'event:locus.state_message', meeting.processLocusLLMEvent);
-          assert.calledWithExactly(mockChannel.on, 'event:locus.state_message', meeting.processLocusLLMEvent);
+          assert.calledWithExactly(
+            mockChannel.off,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
+          );
+          assert.calledWithExactly(
+            mockChannel.on,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
+          );
           assert.calledWithExactly(mockChannel.off, 'online', meeting.handleLLMOnline);
           assert.calledWithExactly(mockChannel.on, 'online', meeting.handleLLMOnline);
         });
@@ -15149,7 +15138,7 @@ describe('plugin-meetings', () => {
 
           const result = await meeting.updateLLMConnection();
 
-          assert.notCalled(webex.internal.llm.createConnection);
+          assert.notCalled(webex.internal.llm.createChannel);
           assert.equal(result, undefined);
         });
 
@@ -15178,7 +15167,7 @@ describe('plugin-meetings', () => {
           // Should disconnect old channel
           assert.calledOnce(existingChannel.disconnect);
           // Should create new channel
-          assert.calledOnce(webex.internal.llm.createConnection);
+          assert.calledOnce(webex.internal.llm.createChannel);
           // Should connect with new URL
           assert.calledWithExactly(
             mockChannel.registerAndConnect,
@@ -15213,7 +15202,7 @@ describe('plugin-meetings', () => {
           // Should disconnect old channel
           assert.calledOnce(existingChannel.disconnect);
           // Should create new channel
-          assert.calledOnce(webex.internal.llm.createConnection);
+          assert.calledOnce(webex.internal.llm.createChannel);
           // Should connect with new datachannel URL
           assert.calledWithExactly(
             mockChannel.registerAndConnect,
@@ -15246,7 +15235,7 @@ describe('plugin-meetings', () => {
           const result = await meeting.updateLLMConnection();
 
           assert.calledOnce(existingChannel.disconnect);
-          assert.notCalled(webex.internal.llm.createConnection);
+          assert.notCalled(webex.internal.llm.createChannel);
           assert.equal(result, undefined);
         });
 
@@ -17260,7 +17249,7 @@ describe('plugin-meetings', () => {
         it('returns the correct structured result', async () => {
           const result = await meeting.refreshDataChannelToken();
 
-                  expect(result).to.deep.equal({
+          expect(result).to.deep.equal({
             body: {
               datachannelToken: 'mock-token',
               dataChannelTokenType: 'llm-practice-session',

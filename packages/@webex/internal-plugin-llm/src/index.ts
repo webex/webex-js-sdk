@@ -7,7 +7,7 @@ export type {RegisterAndConnectTiming} from './llm.types';
 WebexCore.registerInternalPlugin('llm', LLMPlugin, {
   config,
   onBeforeLogout() {
-    return this.disconnectAll();
+    return this.disconnectAllChannels();
   },
 });
 

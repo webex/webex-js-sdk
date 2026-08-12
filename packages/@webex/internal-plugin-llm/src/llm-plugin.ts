@@ -18,7 +18,7 @@ import {DATA_CHANNEL_WITH_JWT_TOKEN} from './constants';
  *   webex.internal.llm.registerAndConnect(url, dcUrl, token, sessionId)
  *
  * New usage:
- *   const llm = webex.internal.llm.createConnection();
+ *   const llm = webex.internal.llm.createChannel();
  *   await llm.registerAndConnect(url, dcUrl, token);
  *   llm.isConnected();
  *   // When done:
@@ -38,7 +38,7 @@ export class LLMPlugin extends (WebexPlugin as any) {
    * responsible for connecting, disconnecting, and cleaning it up.
    *
    * @example
-   * const llm = webex.internal.llm.createConnection();
+   * const llm = webex.internal.llm.createChannel();
    * llm.setRefreshHandler(() => meeting.refreshDataChannelToken());
    * await llm.registerAndConnect(locusUrl, datachannelUrl, token);
    *
@@ -49,9 +49,9 @@ export class LLMPlugin extends (WebexPlugin as any) {
    * // When done
    * await llm.disconnect();
    *
-   * @returns {LLMChannel} A new LLM connection instance
+   * @returns {LLMChannel} A new LLM channel instance
    */
-  public createConnection(): LLMChannel {
+  public createChannel(): LLMChannel {
     // @ts-ignore — WebexPlugin children require {parent: this.webex}
     const channel = new LLMChannel({parent: this.webex});
 
@@ -72,12 +72,12 @@ export class LLMPlugin extends (WebexPlugin as any) {
   }
 
   /**
-   * Find a connection by its datachannel URL. Used by the interceptor to
+   * Find a channel by its datachannel URL. Used by the interceptor to
    * route token refresh requests to the correct channel.
    * @param {string} url - The request URL to match
    * @returns {LLMChannel | undefined}
    */
-  public getConnectionByDatachannelUrl(url: string): LLMChannel | undefined {
+  public getChannelByDatachannelUrl(url: string): LLMChannel | undefined {
     for (const channel of this.channels) {
       const datachannelUrl = channel.getDatachannelUrl();
 
@@ -90,21 +90,21 @@ export class LLMPlugin extends (WebexPlugin as any) {
   }
 
   /**
-   * Get all active connections. Useful for diagnostics/debugging.
+   * Get all active channels. Useful for diagnostics/debugging.
    * @returns {Set<LLMChannel>}
    */
-  public getAllConnections(): Set<LLMChannel> {
+  public getAllChannels(): Set<LLMChannel> {
     return new Set(this.channels);
   }
 
   /**
-   * Disconnect all active connections. Useful for cleanup on logout.
+   * Disconnect all active channels. Useful for cleanup on logout.
    * @param {object} [options] - Disconnect options
    * @param {number} [options.code] - WebSocket close code
    * @param {string} [options.reason] - WebSocket close reason
    * @returns {Promise<void>}
    */
-  public async disconnectAll(options?: {code: number; reason: string}): Promise<void> {
+  public async disconnectAllChannels(options?: {code: number; reason: string}): Promise<void> {
     const promises = Array.from(this.channels).map((channel) => channel.disconnect(options));
 
     await Promise.all(promises);

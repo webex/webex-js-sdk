@@ -26,78 +26,78 @@ describe('plugin-llm', () => {
 
     afterEach(() => sinon.restore());
 
-    describe('#createConnection', () => {
+    describe('#createChannel', () => {
       it('creates a new LLMChannel instance', () => {
-        const channel = plugin.createConnection();
+        const channel = plugin.createChannel();
 
         assert.instanceOf(channel, LLMChannel);
       });
 
-      it('adds the channel to the connections registry', () => {
-        const channel = plugin.createConnection();
+      it('adds the channel to the channels registry', () => {
+        const channel = plugin.createChannel();
 
-        const connections = plugin.getAllConnections();
+        const channels = plugin.getAllChannels();
 
-        assert.equal(connections.size, 1);
-        assert.isTrue(connections.has(channel));
+        assert.equal(channels.size, 1);
+        assert.isTrue(channels.has(channel));
       });
 
       it('creates independent channels for multiple calls', () => {
-        const channel1 = plugin.createConnection();
-        const channel2 = plugin.createConnection();
+        const channel1 = plugin.createChannel();
+        const channel2 = plugin.createChannel();
 
         assert.notStrictEqual(channel1, channel2);
-        assert.equal(plugin.getAllConnections().size, 2);
+        assert.equal(plugin.getAllChannels().size, 2);
       });
     });
 
-    describe('#getAllConnections', () => {
-      it('returns an empty set when no connections exist', () => {
-        const connections = plugin.getAllConnections();
+    describe('#getAllChannels', () => {
+      it('returns an empty set when no channels exist', () => {
+        const channels = plugin.getAllChannels();
 
-        assert.equal(connections.size, 0);
+        assert.equal(channels.size, 0);
       });
 
-      it('returns a copy of the connections set', () => {
-        const channel = plugin.createConnection();
-        const connections = plugin.getAllConnections();
+      it('returns a copy of the channels set', () => {
+        const channel = plugin.createChannel();
+        const channels = plugin.getAllChannels();
 
         // Verify it's a copy, not the same reference
-        connections.delete(channel);
-        assert.equal(plugin.getAllConnections().size, 1);
+        channels.delete(channel);
+        assert.equal(plugin.getAllChannels().size, 1);
       });
     });
 
-    describe('#disconnectAll', () => {
-      it('disconnects all active connections', async () => {
-        const channel1 = plugin.createConnection();
-        const channel2 = plugin.createConnection();
+    describe('#disconnectAllChannels', () => {
+      it('disconnects all active channels', async () => {
+        const channel1 = plugin.createChannel();
+        const channel2 = plugin.createChannel();
 
         sinon.stub(channel1, 'disconnect').resolves();
         sinon.stub(channel2, 'disconnect').resolves();
 
-        await plugin.disconnectAll({code: 1000, reason: 'cleanup'});
+        await plugin.disconnectAllChannels({code: 1000, reason: 'cleanup'});
 
         sinon.assert.calledOnceWithExactly(channel1.disconnect, {code: 1000, reason: 'cleanup'});
         sinon.assert.calledOnceWithExactly(channel2.disconnect, {code: 1000, reason: 'cleanup'});
       });
 
-      it('works with no active connections', async () => {
-        await plugin.disconnectAll({code: 1000, reason: 'cleanup'});
+      it('works with no active channels', async () => {
+        await plugin.disconnectAllChannels({code: 1000, reason: 'cleanup'});
 
-        assert.equal(plugin.getAllConnections().size, 0);
+        assert.equal(plugin.getAllChannels().size, 0);
       });
     });
 
-    describe('#getConnectionByDatachannelUrl', () => {
+    describe('#getChannelByDatachannelUrl', () => {
       it('returns channel matching datachannel URL', () => {
-        const channel = plugin.createConnection();
+        const channel = plugin.createChannel();
 
         sinon
           .stub(channel, 'getDatachannelUrl')
           .returns('https://board.wbx2.com/datachannel/api/v1/locus/123/registrations');
 
-        const result = plugin.getConnectionByDatachannelUrl(
+        const result = plugin.getChannelByDatachannelUrl(
           'https://board.wbx2.com/datachannel/api/v1/locus/123/registrations/events'
         );
 
@@ -105,27 +105,27 @@ describe('plugin-llm', () => {
       });
 
       it('returns undefined when no match', () => {
-        const channel = plugin.createConnection();
+        const channel = plugin.createChannel();
 
         sinon.stub(channel, 'getDatachannelUrl').returns('https://board.wbx2.com/datachannel/123');
 
-        const result = plugin.getConnectionByDatachannelUrl('https://unknown.example.com');
+        const result = plugin.getChannelByDatachannelUrl('https://unknown.example.com');
 
         assert.equal(result, undefined);
       });
 
-      it('returns undefined when no connections exist', () => {
-        const result = plugin.getConnectionByDatachannelUrl('https://example.com');
+      it('returns undefined when no channels exist', () => {
+        const result = plugin.getChannelByDatachannelUrl('https://example.com');
 
         assert.equal(result, undefined);
       });
 
       it('skips channels with no datachannel URL set', () => {
-        const channel = plugin.createConnection();
+        const channel = plugin.createChannel();
 
         sinon.stub(channel, 'getDatachannelUrl').returns(undefined);
 
-        const result = plugin.getConnectionByDatachannelUrl('https://example.com');
+        const result = plugin.getChannelByDatachannelUrl('https://example.com');
 
         assert.equal(result, undefined);
       });
@@ -156,8 +156,8 @@ describe('plugin-llm', () => {
 
     describe('channel isolation multi-meeting scenarios', () => {
       it('disconnecting one channel does not affect another channel', async () => {
-        const channel1 = plugin.createConnection();
-        const channel2 = plugin.createConnection();
+        const channel1 = plugin.createChannel();
+        const channel2 = plugin.createChannel();
 
         // Stub disconnect on channel1 only - simulating the real behavior where
         // disconnect clears the connected state
@@ -189,8 +189,8 @@ describe('plugin-llm', () => {
         const sameLocus = 'https://locus.example.com/loci/shared-meeting';
         const sameDc = 'https://datachannel.example.com/dc/shared';
 
-        const channel1 = plugin.createConnection();
-        const channel2 = plugin.createConnection();
+        const channel1 = plugin.createChannel();
+        const channel2 = plugin.createChannel();
 
         // Both channels have the same locus URL (the scenario in the bug)
         sinon.stub(channel1, 'getLocusUrl').returns(sameLocus);
@@ -202,11 +202,11 @@ describe('plugin-llm', () => {
         assert.notStrictEqual(channel1, channel2);
 
         // Both are tracked independently
-        const connections = plugin.getAllConnections();
+        const channels = plugin.getAllChannels();
 
-        assert.equal(connections.size, 2);
-        assert.isTrue(connections.has(channel1));
-        assert.isTrue(connections.has(channel2));
+        assert.equal(channels.size, 2);
+        assert.isTrue(channels.has(channel1));
+        assert.isTrue(channels.has(channel2));
       });
 
       it('simulates overlapping meeting lifecycle without cross-channel impact', async () => {
@@ -215,7 +215,7 @@ describe('plugin-llm', () => {
         const sameDc = 'https://datachannel.example.com/dc/abc123';
 
         // Meeting A has an active channel
-        const channelA = plugin.createConnection();
+        const channelA = plugin.createChannel();
 
         sinon.stub(channelA, 'getLocusUrl').returns(sameLocus);
         sinon.stub(channelA, 'getDatachannelUrl').returns(sameDc);
@@ -223,7 +223,7 @@ describe('plugin-llm', () => {
         channelA.connected = true;
 
         // Meeting B creates its own channel for the same locus
-        const channelB = plugin.createConnection();
+        const channelB = plugin.createChannel();
 
         sinon.stub(channelB, 'registerAndConnect').resolves();
         sinon.stub(channelB, 'isConnected').returns(false);
@@ -245,27 +245,27 @@ describe('plugin-llm', () => {
       });
 
       it('individual channel disconnect removes only that channel from registry', async () => {
-        const channel1 = plugin.createConnection();
-        const channel2 = plugin.createConnection();
-        const channel3 = plugin.createConnection();
+        const channel1 = plugin.createChannel();
+        const channel2 = plugin.createChannel();
+        const channel3 = plugin.createChannel();
 
-        assert.equal(plugin.getAllConnections().size, 3);
+        assert.equal(plugin.getAllChannels().size, 3);
 
         // Disconnect channel2 - real disconnect triggers onDisconnect callback
         await channel2.disconnect({code: 3050, reason: 'meeting ended'});
 
         // Only channel2 should be removed from registry
-        const connections = plugin.getAllConnections();
+        const channels = plugin.getAllChannels();
 
-        assert.equal(connections.size, 2);
-        assert.isTrue(connections.has(channel1));
-        assert.isFalse(connections.has(channel2));
-        assert.isTrue(connections.has(channel3));
+        assert.equal(channels.size, 2);
+        assert.isTrue(channels.has(channel1));
+        assert.isFalse(channels.has(channel2));
+        assert.isTrue(channels.has(channel3));
       });
 
-      it('getConnectionByDatachannelUrl returns correct channel when multiple exist for similar URLs', () => {
-        const channel1 = plugin.createConnection();
-        const channel2 = plugin.createConnection();
+      it('getChannelByDatachannelUrl returns correct channel when multiple exist for similar URLs', () => {
+        const channel1 = plugin.createChannel();
+        const channel2 = plugin.createChannel();
 
         // Different locus IDs in the URL
         sinon
@@ -276,14 +276,14 @@ describe('plugin-llm', () => {
           .returns('https://board.wbx2.com/datachannel/api/v1/locus/meeting-222/registrations');
 
         // Request for meeting-111 should return channel1
-        const result1 = plugin.getConnectionByDatachannelUrl(
+        const result1 = plugin.getChannelByDatachannelUrl(
           'https://board.wbx2.com/datachannel/api/v1/locus/meeting-111/registrations/events'
         );
 
         assert.equal(result1, channel1);
 
         // Request for meeting-222 should return channel2
-        const result2 = plugin.getConnectionByDatachannelUrl(
+        const result2 = plugin.getChannelByDatachannelUrl(
           'https://board.wbx2.com/datachannel/api/v1/locus/meeting-222/registrations/events'
         );
 
@@ -298,7 +298,7 @@ describe('plugin-llm', () => {
         // This test verifies URL-based routing, not actual JWT expiry. The real flow is:
         //   1. Request to datachannel URL fails with 401/403 (expired token)
         //   2. Interceptor extracts the request URL from the error
-        //   3. Interceptor calls getConnectionByDatachannelUrl(requestUrl) to find the channel
+        //   3. Interceptor calls getChannelByDatachannelUrl(requestUrl) to find the channel
         //   4. Interceptor calls channel.refreshDataChannelToken() to get new token
         //   5. Interceptor retries the original request
         //
@@ -311,8 +311,8 @@ describe('plugin-llm', () => {
         const webinarBPSDatachannelUrl =
           'https://board.wbx2.com/datachannel/api/v1/locus/webinar-bbb-222/practiceSession/registrations';
 
-        const psChannelA = plugin.createConnection();
-        const psChannelB = plugin.createConnection();
+        const psChannelA = plugin.createChannel();
+        const psChannelB = plugin.createChannel();
 
         // Mock meeting refresh handlers that track which meeting's handler was invoked
         const refreshCallLog = [];
@@ -334,7 +334,7 @@ describe('plugin-llm', () => {
 
         // --- Simulate interceptor handling a 401 on webinar A's request ---
         const failingRequestUrlA = webinarAPSDatachannelUrl + '/events';
-        const channelForARequest = plugin.getConnectionByDatachannelUrl(failingRequestUrlA);
+        const channelForARequest = plugin.getChannelByDatachannelUrl(failingRequestUrlA);
 
         assert.equal(channelForARequest, psChannelA);
 
@@ -348,7 +348,7 @@ describe('plugin-llm', () => {
         refreshCallLog.length = 0;
 
         const failingRequestUrlB = webinarBPSDatachannelUrl + '/events';
-        const channelForBRequest = plugin.getConnectionByDatachannelUrl(failingRequestUrlB);
+        const channelForBRequest = plugin.getChannelByDatachannelUrl(failingRequestUrlB);
 
         assert.equal(channelForBRequest, psChannelB);
 
@@ -362,13 +362,13 @@ describe('plugin-llm', () => {
       it('PS channel refresh handlers remain independent after subsequent channel creation', async () => {
         // Verify that creating channel B does not affect channel A's refresh handler
 
-        const psChannelA = plugin.createConnection();
+        const psChannelA = plugin.createChannel();
         const mockRefreshA = sinon.stub().resolves({body: {datachannelToken: 'token-A'}});
 
         psChannelA.setRefreshHandler(mockRefreshA);
 
         // Create channel B after A (simulating User 1 getting promoted in webinar B)
-        const psChannelB = plugin.createConnection();
+        const psChannelB = plugin.createChannel();
         const mockRefreshB = sinon.stub().resolves({body: {datachannelToken: 'token-B'}});
 
         psChannelB.setRefreshHandler(mockRefreshB);

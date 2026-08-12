@@ -209,7 +209,7 @@ describe('plugin-voicea', () => {
         assert.equal(voiceaChannel.captionServiceId, undefined);
         assert.equal(voiceaChannel.getAnnounceStatus(), 'idle');
         assert.equal(voiceaChannel.getCaptionStatus(), 'idle');
-        assert.equal(voiceaChannel.getIsCaptionBoxOn(), false);
+        assert.equal(voiceaChannel.keepTranscriptionSubscribed, false);
         assert.calledWith(mockLLMChannel.off, 'event:relay.event', sinon.match.func);
       });
     });
@@ -221,7 +221,7 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(mockLLMChannel.socket.send, {
           id: '1',
           type: 'publishRequest',
-          recipients: [{route: undefined}],
+          recipients: [{route: 'binding'}],
           headers: {to: undefined},
           data: {
             clientPayload: {
@@ -243,7 +243,7 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(mockLLMChannel.socket.send, {
           id: '1',
           type: 'publishRequest',
-          recipients: [{route: undefined}],
+          recipients: [{route: 'binding'}],
           headers: {to: 'svc-456'},
           data: {
             clientPayload: {
@@ -333,18 +333,6 @@ describe('plugin-voicea', () => {
       it('returns true when keepTranscriptionSubscribed is true', () => {
         voiceaChannel.keepTranscriptionSubscribed = true;
         assert.equal(voiceaChannel.getKeepTranscriptionSubscribed(), true);
-      });
-    });
-
-    describe('#getIsCaptionBoxOn', () => {
-      it('returns false when isCaptionBoxOn is false', () => {
-        voiceaChannel.isCaptionBoxOn = false;
-        assert.equal(voiceaChannel.getIsCaptionBoxOn(), false);
-      });
-
-      it('returns true when isCaptionBoxOn is true', () => {
-        voiceaChannel.isCaptionBoxOn = true;
-        assert.equal(voiceaChannel.getIsCaptionBoxOn(), true);
       });
     });
 
@@ -951,7 +939,7 @@ describe('plugin-voicea', () => {
     describe('#switchLLMChannel', () => {
       it('switches to a new LLM channel and preserves caption state', async () => {
         // First enable captions
-        voiceaChannel.isCaptionBoxOn = true;
+        voiceaChannel.keepTranscriptionSubscribed = true;
         voiceaChannel.currentSpokenLanguage = 'es';
 
         const newMockLLMChannel = createMockLLMChannel({locusUrl: 'newLocusUrl'});
@@ -974,7 +962,7 @@ describe('plugin-voicea', () => {
         assert.calledWithExactly(newMockLLMChannel.socket.send.getCall(0), {
           id: '1',
           type: 'publishRequest',
-          recipients: {route: 'binding'},
+          recipients: [{route: 'binding'}],
           headers: {},
           data: {
             clientPayload: {
@@ -989,7 +977,7 @@ describe('plugin-voicea', () => {
 
       it('does not turn on captions if they were not on before switching', async () => {
         // Captions are off
-        voiceaChannel.isCaptionBoxOn = false;
+        voiceaChannel.keepTranscriptionSubscribed = false;
 
         const newMockLLMChannel = createMockLLMChannel({locusUrl: 'newLocusUrl'});
 

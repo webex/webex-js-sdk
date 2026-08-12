@@ -27,8 +27,8 @@ import WebexCore from '@webex/webex-core';
 
 const webex = new WebexCore();
 
-// Create a new LLM connection (each meeting owns its own channel)
-const llmChannel = webex.internal.llm.createConnection();
+// Create a new LLM channel (each meeting owns its own channel)
+const llmChannel = webex.internal.llm.createChannel();
 
 // locusUrl and datachannelUrl are from meeting.locusInfo
 const locusUrl = meeting.locusInfo.url;
@@ -82,14 +82,14 @@ await llmChannel.disconnect({code: 1000, reason: 'done'});
 // Check if data channel token feature flag is enabled
 await webex.internal.llm.isDataChannelTokenEnabled();
 
-// Get all active connections (useful for diagnostics)
-webex.internal.llm.getAllConnections();
+// Get all active channels (useful for diagnostics)
+webex.internal.llm.getAllChannels();
 
 // Find a channel by datachannel URL (used by interceptors)
-webex.internal.llm.getConnectionByDatachannelUrl(datachannelUrl);
+webex.internal.llm.getChannelByDatachannelUrl(datachannelUrl);
 
-// Disconnect all connections (useful for cleanup on logout)
-await webex.internal.llm.disconnectAll({code: 1000, reason: 'shutdown'});
+// Disconnect all channels (useful for cleanup on logout)
+await webex.internal.llm.disconnectAllChannels({code: 1000, reason: 'shutdown'});
 ```
 
 ## Maintainers

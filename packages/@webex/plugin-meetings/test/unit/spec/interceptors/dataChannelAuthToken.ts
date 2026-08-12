@@ -254,7 +254,7 @@ describe('plugin-meetings', () => {
 
           llmMock = {
             isDataChannelTokenEnabled: sinon.stub().resolves(true),
-            getConnectionByDatachannelUrl: sinon.stub().returns(undefined),
+            getChannelByDatachannelUrl: sinon.stub().returns(undefined),
           };
 
           meetingsMock = {
@@ -279,13 +279,13 @@ describe('plugin-meetings', () => {
             }),
             setDatachannelToken: sinon.stub(),
           };
-          llmMock.getConnectionByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns(mockChannel);
+          llmMock.getChannelByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns(mockChannel);
 
           const token = await dispatcherInterceptor._refreshDataChannelToken(PS_DATACHANNEL_URL);
 
           expect(token).to.equal('token-from-channel');
           sinon.assert.calledOnceWithExactly(
-            llmMock.getConnectionByDatachannelUrl,
+            llmMock.getChannelByDatachannelUrl,
             PS_DATACHANNEL_URL
           );
           sinon.assert.calledOnceWithExactly(mockChannel.refreshDataChannelToken);
@@ -293,7 +293,7 @@ describe('plugin-meetings', () => {
         });
 
         it('falls back to meeting lookup when no channel matches', async () => {
-          llmMock.getConnectionByDatachannelUrl.returns(undefined);
+          llmMock.getChannelByDatachannelUrl.returns(undefined);
 
           // Import the static method for matching datachannel URLs
           const LLMChannel = require('@webex/internal-plugin-llm').default;
@@ -328,7 +328,7 @@ describe('plugin-meetings', () => {
         });
 
         it('throws when no channel or meeting matches', async () => {
-          llmMock.getConnectionByDatachannelUrl.returns(undefined);
+          llmMock.getChannelByDatachannelUrl.returns(undefined);
           meetingsMock.getAllMeetings.returns({});
 
           await assert.isRejected(
@@ -344,7 +344,7 @@ describe('plugin-meetings', () => {
             refreshDataChannelToken: sinon.stub().resolves(null),
             setDatachannelToken: sinon.stub(),
           };
-          llmMock.getConnectionByDatachannelUrl.returns(mockChannel);
+          llmMock.getChannelByDatachannelUrl.returns(mockChannel);
 
           await assert.isRejected(
             dispatcherInterceptor._refreshDataChannelToken(PS_DATACHANNEL_URL),
@@ -353,7 +353,7 @@ describe('plugin-meetings', () => {
         });
 
         it('throws when meeting refresh returns no payload', async () => {
-          llmMock.getConnectionByDatachannelUrl.returns(undefined);
+          llmMock.getChannelByDatachannelUrl.returns(undefined);
 
           const LLMChannel = require('@webex/internal-plugin-llm').default;
           sinon.stub(LLMChannel, 'matchesDatachannelRequestUrl').returns(true);

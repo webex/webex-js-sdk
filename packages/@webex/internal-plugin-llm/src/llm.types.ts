@@ -15,7 +15,7 @@ type RegisterAndConnectTiming = {
 
 /**
  * ILLMChannel — interface for a single LLM WebSocket connection.
- * Created via `webex.internal.llm.createConnection()`.
+ * Created via `webex.internal.llm.createChannel()`.
  */
 interface ILLMChannel {
   /** Register with the server and connect the WebSocket. */
@@ -76,20 +76,20 @@ interface ILLMChannel {
  * Accessed via `webex.internal.llm`.
  */
 interface ILLMPlugin {
-  /** Create a new LLM connection instance. */
-  createConnection: () => ILLMChannel;
+  /** Create a new LLM channel instance. */
+  createChannel: () => ILLMChannel;
 
   /** Check if the datachannel token feature flag is enabled globally. */
   isDataChannelTokenEnabled: () => Promise<boolean>;
 
-  /** Find a connection by matching a request URL to its datachannel URL. */
-  getConnectionByDatachannelUrl: (url: string) => ILLMChannel | undefined;
+  /** Find a channel by matching a request URL to its datachannel URL. */
+  getChannelByDatachannelUrl: (url: string) => ILLMChannel | undefined;
 
-  /** Get all active connections. */
-  getAllConnections: () => Set<ILLMChannel>;
+  /** Get all active channels. */
+  getAllChannels: () => Set<ILLMChannel>;
 
-  /** Disconnect all active connections. */
-  disconnectAll: (options?: {code: number; reason: string}) => Promise<void>;
+  /** Disconnect all active channels. */
+  disconnectAllChannels: (options?: {code: number; reason: string}) => Promise<void>;
 }
 
 // eslint-disable-next-line import/prefer-default-export
