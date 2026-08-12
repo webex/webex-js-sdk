@@ -16179,13 +16179,6 @@ describe('plugin-meetings', () => {
                     }
                   }
 
-                  if (isAccepting) {
-                    eventTrigger.share.push({
-                      eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
-                      functionName: 'stopWhiteboardShare',
-                    });
-                  }
-
                   // Web client is sharing locally
                   if (beneficiaryId === USER_IDS.ME && deviceUrlSharing === DEVICE_URL.LOCAL_WEB) {
                     eventTrigger.share.push({
@@ -16327,29 +16320,12 @@ describe('plugin-meetings', () => {
                   newPayload.current.content.disposition = FLOOR_ACTION.ACCEPTED;
                   newPayload.current.content.beneficiaryId = otherBeneficiaryId;
 
-                  eventTrigger.share.push(
-                    meeting.webinar.selfIsAttendee
-                      ? {
-                          eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
-                          functionName: 'remoteShare',
-                          eventPayload: {
-                            memberId: beneficiaryId,
-                            url,
-                            shareInstanceId,
-                            annotationInfo: undefined,
-                            resourceType: undefined,
-                          },
-                        }
-                      : {
-                          eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_WHITEBOARD,
-                          functionName: 'startWhiteboardShare',
-                          eventPayload: {resourceUrl, memberId: beneficiaryId},
-                        }
-                  );
+                  eventTrigger.share.push({
+                    eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
+                    functionName: 'stopWhiteboardShare',
+                  });
 
-                  shareStatus = meeting.webinar.selfIsAttendee
-                    ? SHARE_STATUS.REMOTE_SHARE_ACTIVE
-                    : SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
+                  shareStatus = SHARE_STATUS.NO_SHARE;
                 } else {
                   eventTrigger.share.push({
                     eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
