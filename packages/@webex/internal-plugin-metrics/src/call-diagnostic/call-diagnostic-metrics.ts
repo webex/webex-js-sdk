@@ -289,6 +289,18 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       versionMetadata = extractVersionMetadata(providedClientVersion);
     }
 
+    // Browser details and the support verdict can all be supplied by the host client, which is able
+    // to resolve wrapper browsers (Electron, WebOS) to the engine that actually determines
+    // capability. The browser fields fall back to the SDK's own detection when not supplied, the
+    // same way clientVersion falls back to the SDK version.
+    const {
+      browser: providedBrowser,
+      browserVersion: providedBrowserVersion,
+      isSupportedBrowserFamily,
+      isOutdatedBrowserVersion,
+      // @ts-ignore
+    } = this.webex.meetings.config?.metrics ?? {};
+
     if (!this.hasLoggedBrowserSerial) {
       this.logger.log(
         CALL_DIAGNOSTIC_LOG_IDENTIFIER,
@@ -329,8 +341,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           osVersion: getOSVersion() || 'unknown',
           subClientType: options?.subClientType || defaultSubClientType,
           os: getOSNameInternal(),
-          browser: getBrowserName(),
-          browserVersion: getBrowserVersion(),
+          browser: providedBrowser || getBrowserName(),
+          browserVersion: providedBrowserVersion || getBrowserVersion(),
+          ...(isSupportedBrowserFamily === undefined ? {} : {isSupportedBrowserFamily}),
+          ...(isOutdatedBrowserVersion === undefined ? {} : {isOutdatedBrowserVersion}),
         },
       };
 
