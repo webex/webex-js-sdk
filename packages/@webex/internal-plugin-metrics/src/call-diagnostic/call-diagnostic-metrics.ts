@@ -302,7 +302,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       isSupportedBrowserFamily,
       isOutdatedBrowserVersion,
       // @ts-ignore
-    } = this.webex.meetings.config?.metrics ?? {};
+    } = this.webex.meetings?.config?.metrics ?? {};
 
     if (!this.hasLoggedBrowserSerial) {
       this.logger.log(
@@ -353,7 +353,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
       if (meetingId) {
         // @ts-ignore
-        const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
+        const meeting = this.webex.meetings?.getBasicMeetingInformation(meetingId);
         if (meeting?.environment) {
           origin.environment = meeting.environment;
         }
