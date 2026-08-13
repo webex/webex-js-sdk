@@ -70,25 +70,7 @@ const resolveMediaResources = (
   }
 };
 
-const createNonOverlappingPermissionEnrichmentRules = (
-  rules: readonly PermissionEnrichmentRule[]
-): readonly PermissionEnrichmentRule[] => {
-  const registeredEvents = new Set<ClientEvent['name']>();
-
-  rules.forEach(({events}) => {
-    events.forEach((event) => {
-      if (registeredEvents.has(event)) {
-        throw new Error(`Permission enrichment event is registered more than once: ${event}`);
-      }
-
-      registeredEvents.add(event);
-    });
-  });
-
-  return rules;
-};
-
-const PERMISSION_ENRICHMENT_RULES = createNonOverlappingPermissionEnrichmentRules([
+export const PERMISSION_ENRICHMENT_RULES = [
   {
     events: CAMERA_AND_MICROPHONE_PERMISSION_EVENTS,
     resolve: () => ({resources: ['camera', 'microphone'], terminal: false}),
@@ -108,7 +90,7 @@ const PERMISSION_ENRICHMENT_RULES = createNonOverlappingPermissionEnrichmentRule
     events: FINAL_PERMISSION_EVENTS,
     resolve: () => ({resources: ['camera', 'microphone', 'contentShare'], terminal: true}),
   },
-] satisfies readonly PermissionEnrichmentRule[]);
+] satisfies readonly PermissionEnrichmentRule[];
 
 const NO_PERMISSION_ENRICHMENT: PermissionEnrichmentPolicy = {
   resources: [],
