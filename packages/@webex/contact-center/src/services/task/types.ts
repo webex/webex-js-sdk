@@ -235,6 +235,11 @@ export enum TASK_EVENTS {
   TASK_UI_CONTROLS_UPDATED = 'task:ui-controls-updated',
 
   /**
+   * Triggered when wxApp mute state changes from Webex App (Mercury sync or call details).
+   */
+  TASK_WXAPP_MUTE_STATE_UPDATED = 'task:wxapp-mute-state-updated',
+
+  /**
    * Triggered when a consultation request is accepted
    * @example
    * ```typescript
@@ -1215,6 +1220,7 @@ export type InteractionUIControls = {
   mergeToConference: TaskUIControlState;
   wrapup: TaskUIControlState;
   switch: TaskUIControlState;
+  keypad?: TaskUIControlState;
 };
 
 export type TaskUILeg = 'main' | 'consult';
@@ -1688,6 +1694,17 @@ export interface ITask extends IEventEmitter {
   readonly uiControls: TaskUIControls;
 
   /**
+   * Update wxApp thick-client answer flag at runtime.
+   * Voice tasks override to refresh uiControls; other channel types no-op.
+   */
+  setEnableAnswerOnWebex(enabled: boolean): void;
+
+  /**
+   * Apply wxApp mute state from Mercury sync or call-details fetch.
+   */
+  applyWxAppMuteStateFromSync(incomingCallId: string, muted: boolean): void;
+
+  /**
    * State machine instance for managing task state transitions and derived properties.
    * The state machine handles:
    * - State transitions (IDLE → OFFERED → CONNECTED → HELD, etc.)
@@ -1952,6 +1969,20 @@ export interface IVoice extends ITask {
    * ```
    */
   holdResume(): Promise<TaskResponse>;
+  /** @see wxAppVoiceMethods — WXCC-6026 */
+  isWebexAppCallingOffer(): boolean;
+  /** @see wxAppVoiceMethods — WXCC-6026 */
+  getCallingDeviceDetails(): import('./WebexCallingUtils').WebexCallingDeviceDetails | undefined;
+  /** @see wxAppVoiceMethods — WXCC-6026 */
+  getWebexCallingCallId(): string | null;
+  /** @see wxAppVoiceMethods — WXCC-6026 */
+  acceptOnWebex(options?: {lineOwnerId?: string}): Promise<void>;
+  /** @see wxAppVoiceMethods — WXCC-6026 */
+  rejectOnWebex(options?: {lineOwnerId?: string}): Promise<void>;
+  /** @see wxAppVoiceMethods — WXCC-6026 */
+  toggleMuteOnWebex(options?: {lineOwnerId?: string; muted?: boolean}): Promise<void>;
+  /** @see wxAppVoiceMethods — WXCC-6026 */
+  transmitDtmfOnWebex(options: {dtmf: string; lineOwnerId?: string}): Promise<void>;
 }
 
 /**
@@ -1962,6 +1993,8 @@ export type VoiceUIControlOptions = {
   isEndConsultEnabled?: boolean;
   voiceVariant?: VoiceVariant;
   isRecordingEnabled?: boolean;
+  enableAnswerOnWebex?: boolean;
+  answerCallOnWebexService?: import('../AnswerCallOnWebexService').default;
 };
 
 /**

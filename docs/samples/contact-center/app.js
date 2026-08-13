@@ -109,6 +109,7 @@ const aiAssistantRawOutputPanelElm = document.querySelector('#assistant-raw-outp
 const aiAssistantRawOutputContentElm = document.querySelector('#assistant-raw-output-content');
 const multiLoginCheckbox = document.querySelector('#multiLoginFlag');
 const disableWebRTCRegistrationCheckbox = document.querySelector('#disableWebRTCRegistrationFlag');
+const enableAnswerOnWebexCheckbox = document.querySelector('#enableAnswerOnWebexFlag');
 deregisterBtn.style.backgroundColor = 'red';
 let enableProd = true;
 
@@ -128,6 +129,11 @@ if (disableWebRTCRegistrationCheckbox) {
   disableWebRTCRegistrationCheckbox.checked = isWebRTCRegistrationDisabled;
 }
 
+let isAnswerOnWebexEnabled = localStorage.getItem('isAnswerOnWebexEnabled') === 'true';
+if (enableAnswerOnWebexCheckbox) {
+  enableAnswerOnWebexCheckbox.checked = isAnswerOnWebexEnabled;
+}
+
 function toggleMultiLogin() {
   isMultiLoginEnabled = multiLoginCheckbox.checked;
   localStorage.setItem('isMultiLoginEnabled', String(isMultiLoginEnabled));
@@ -136,6 +142,11 @@ function toggleMultiLogin() {
 function toggleWebRTCRegistration() {
   isWebRTCRegistrationDisabled = disableWebRTCRegistrationCheckbox.checked;
   localStorage.setItem('isWebRTCRegistrationDisabled', String(isWebRTCRegistrationDisabled));
+}
+
+function toggleAnswerOnWebex() {
+  isAnswerOnWebexEnabled = enableAnswerOnWebexCheckbox.checked;
+  localStorage.setItem('isAnswerOnWebexEnabled', String(isAnswerOnWebexEnabled));
 }
 
 const transcriptEntries = [];
@@ -2598,6 +2609,7 @@ function generateWebexConfig({credentials}) {
     cc: {
       allowMultiLogin: isMultiLoginEnabled,
       disableWebRTCRegistration: isWebRTCRegistrationDisabled,
+      enableAnswerOnWebex: isAnswerOnWebexEnabled,
     },
     credentials,
   };
@@ -3187,20 +3199,52 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 });
 
  async function answer() {
-  // Button states will be updated by task.uiControls after accept() completes
-  await currentTask.accept();
+  // WXCC-6026: use acceptOnWebex for wxApp thick-client calls when enabled
+  if (isAnswerOnWebexEnabled && currentTask.isWebexAppCallingOffer && currentTask.isWebexAppCallingOffer()) {
+    await currentTask.acceptOnWebex();
+  } else {
+    // Button states will be updated by task.uiControls after accept() completes
+    await currentTask.accept();
+  }
   updateTaskList();
   incomingDetailsElm.innerText = 'Task Accepted';
 }
 
 async function decline() {
   try {
-    await currentTask.decline();
+    // WXCC-6026: use rejectOnWebex for wxApp thick-client calls when enabled
+    if (isAnswerOnWebexEnabled && currentTask.isWebexAppCallingOffer && currentTask.isWebexAppCallingOffer()) {
+      await currentTask.rejectOnWebex();
+    } else {
+      await currentTask.decline();
+    }
   } catch (e) {
     console.error('Decline failed', e);
   }
   incomingDetailsElm.innerText = 'No incoming Tasks';
   updateTaskList();
+}
+
+// WXCC-6026: wxApp mute toggle handler
+async function toggleWxAppMute() {
+  if (!currentTask || !isAnswerOnWebexEnabled) return;
+  try {
+    await currentTask.toggleMuteOnWebex();
+    console.log('wxApp mute toggled');
+  } catch (e) {
+    console.error('wxApp toggleMute failed', e);
+  }
+}
+
+// WXCC-6026: wxApp DTMF transmit handler
+async function transmitWxAppDtmf(digit) {
+  if (!currentTask || !isAnswerOnWebexEnabled) return;
+  try {
+    await currentTask.transmitDtmfOnWebex({dtmf: digit});
+    console.log('wxApp DTMF sent:', digit);
+  } catch (e) {
+    console.error('wxApp transmitDtmf failed', e);
+  }
 }
 
 const allCollapsibleElements = document.querySelectorAll('.collapsible');

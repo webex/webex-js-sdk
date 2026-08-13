@@ -27,6 +27,7 @@ import {
   shouldAutoAnswerTask,
 } from './TaskUtils';
 import TaskFactory from './TaskFactory';
+import AnswerCallOnWebexService from '../AnswerCallOnWebexService';
 import WebRTC from './voice/WebRTC';
 import {TaskEvent, type TaskEventPayload} from './state-machine';
 import {normalizeTaskData} from './taskDataNormalizer';
@@ -55,6 +56,7 @@ export default class TaskManager extends EventEmitter {
   private wrapupData: WrapupData;
   private agentId: string;
   private webRtcEnabled: boolean;
+  private answerCallOnWebexService?: AnswerCallOnWebexService;
   private apiAIAssistant?: ApiAIAssistant;
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
@@ -146,6 +148,10 @@ export default class TaskManager extends EventEmitter {
 
   public setWebRtcEnabled(webRtcEnabled: boolean) {
     this.webRtcEnabled = webRtcEnabled;
+  }
+
+  public setAnswerCallOnWebexService(answerCallOnWebexService: AnswerCallOnWebexService) {
+    this.answerCallOnWebexService = answerCallOnWebexService;
   }
 
   private handleIncomingWebCall = (call: ICall) => {
@@ -647,7 +653,8 @@ export default class TaskManager extends EventEmitter {
         },
         this.configFlags,
         this.wrapupData,
-        this.agentId
+        this.agentId,
+        this.answerCallOnWebexService
       );
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
@@ -685,7 +692,8 @@ export default class TaskManager extends EventEmitter {
       taskData,
       this.configFlags,
       this.wrapupData,
-      this.agentId
+      this.agentId,
+      this.answerCallOnWebexService
     );
 
     this.setupTaskListeners(task);
@@ -725,7 +733,8 @@ export default class TaskManager extends EventEmitter {
         taskData,
         this.configFlags,
         this.wrapupData,
-        this.agentId
+        this.agentId,
+        this.answerCallOnWebexService
       );
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
@@ -864,7 +873,8 @@ export default class TaskManager extends EventEmitter {
         taskData,
         this.configFlags,
         this.wrapupData,
-        this.agentId
+        this.agentId,
+        this.answerCallOnWebexService
       );
       this.taskCollection[payload.interactionId] = task;
 
@@ -954,6 +964,28 @@ export default class TaskManager extends EventEmitter {
 
   public getAllTasks(): Record<TaskId, ITask> {
     return {...this.taskCollection};
+  }
+
+  /**
+   * Propagate runtime enableAnswerOnWebex changes to config flags and active tasks.
+   */
+  public applyEnableAnswerOnWebex(enabled: boolean): void {
+    if (this.configFlags) {
+      this.configFlags = {...this.configFlags, enableAnswerOnWebex: enabled};
+    }
+
+    Object.values(this.taskCollection).forEach((task) => {
+      task.setEnableAnswerOnWebex(enabled);
+    });
+  }
+
+  /**
+   * Propagate wxApp mute state from Mercury sync to active voice tasks.
+   */
+  public applyWxAppMuteStateFromSync(callId: string, muted: boolean): void {
+    Object.values(this.taskCollection).forEach((task) => {
+      task.applyWxAppMuteStateFromSync(callId, muted);
+    });
   }
 
   public static getTaskManager(

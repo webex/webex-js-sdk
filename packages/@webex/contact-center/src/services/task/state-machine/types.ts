@@ -43,6 +43,8 @@ export interface UIControlConfig {
   isRecordingEnabled: boolean;
   /** Current agent ID for ownership checks (transfer conference) */
   agentId?: string;
+  /** Whether wxApp thick-client answer is enabled (WXCC-6026) */
+  enableAnswerOnWebex?: boolean;
 }
 
 /**

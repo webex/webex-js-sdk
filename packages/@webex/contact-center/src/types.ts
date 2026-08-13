@@ -163,6 +163,8 @@ export interface CCPluginConfig {
   callingClientConfig: CallingClientConfig;
   /** Whether to skip Mobius/WebRTC registration for browser login flows */
   disableWebRTCRegistration?: boolean;
+  /** Whether wxApp thick-client answer (telephony REST + usersub) is enabled (WXCC-6026) */
+  enableAnswerOnWebex?: boolean;
 }
 
 /**
@@ -293,6 +295,12 @@ interface IWebexInternal {
     version: string;
     /** Calling behavior configuration */
     callingBehavior: string;
+    /** Whether the device is registered with WDM */
+    registered?: boolean;
+    /** Register the device with WDM */
+    register?: () => Promise<void>;
+    /** Unregister the device from WDM */
+    unregister?: () => Promise<void>;
   };
   /** Presence service */
   presence: unknown;
@@ -592,6 +600,8 @@ export type ConfigFlags = {
    * Falls back to backend hints when omitted.
    */
   isRecordingEnabled?: boolean;
+  /** Whether wxApp thick-client answer controls/APIs are enabled (WXCC-6026) */
+  enableAnswerOnWebex?: boolean;
 };
 
 /**

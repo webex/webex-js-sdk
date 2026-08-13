@@ -2,6 +2,7 @@ import Voice from '../../../../../../src/services/task/voice/Voice';
 import {
   TaskData,
   CONSULT_TRANSFER_DESTINATION_TYPE,
+  TASK_EVENTS,
 } from '../../../../../../src/services/task/types';
 import {CC_EVENTS} from '../../../../../../src/services/config/types';
 import {TaskEvent, TaskState} from '../../../../../../src/services/task/state-machine';
@@ -644,6 +645,79 @@ describe('Voice Task', () => {
           to: 'derivedAgent',
         }),
       });
+    });
+  });
+
+  describe('setEnableAnswerOnWebex', () => {
+    it('updates runtime flag, uiControlConfig, and emits ui control updates', () => {
+      const voice = new Voice(dummyContact, createBaseData(), {enableAnswerOnWebex: true});
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      voice.setEnableAnswerOnWebex(false);
+
+      expect(voice['enableAnswerOnWebex']).toBe(false);
+      expect(voice['uiControlConfig'].enableAnswerOnWebex).toBe(false);
+      expect(emitSpy).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_UI_CONTROLS_UPDATED,
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('applyWxAppMuteStateFromSync', () => {
+    const wxAppParticipant = {
+      deviceType: 'wxApp',
+      deviceId: 'device-id-1',
+      deviceCallId: 'call-id-1',
+    };
+
+    const makeWxAppTaskData = () =>
+      createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+
+    it('emits TASK_WXAPP_MUTE_STATE_UPDATED when callId matches via endsWith', () => {
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableAnswerOnWebex: true});
+      primeConnectedState(voice, taskData);
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      voice.applyWxAppMuteStateFromSync('prefix:call-id-1', true);
+
+      expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, {muted: true});
+    });
+
+    it('no-ops when callId does not match active call', () => {
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableAnswerOnWebex: true});
+      primeConnectedState(voice, taskData);
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      voice.applyWxAppMuteStateFromSync('other-call-id', true);
+
+      expect(emitSpy).not.toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED,
+        expect.anything()
+      );
+    });
+
+    it('no-ops when enableAnswerOnWebex is false', () => {
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableAnswerOnWebex: false});
+      primeConnectedState(voice, taskData);
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      voice.applyWxAppMuteStateFromSync('prefix:call-id-1', true);
+
+      expect(emitSpy).not.toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED,
+        expect.anything()
+      );
     });
   });
 });

@@ -169,10 +169,12 @@ describe('webex.cc', () => {
       setWrapupData: jest.fn(),
       setAgentId: jest.fn(),
       setWebRtcEnabled: jest.fn(),
+      setAnswerCallOnWebexService: jest.fn(),
       registerIncomingCallEvent: jest.fn(),
       registerTaskListeners: jest.fn(),
       getTask: jest.fn(),
       getActiveTasks: jest.fn(),
+      applyEnableAnswerOnWebex: jest.fn(),
       on: jest.fn(),
       off: jest.fn(),
       emit: jest.fn(),
@@ -404,6 +406,7 @@ describe('webex.cc', () => {
         webRtcEnabled: mockAgentProfile.webRtcEnabled,
         autoWrapup: mockAgentProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
         aiFeature: mockAgentProfile.aiFeature,
+        enableAnswerOnWebex: false,
       });
       expect(reloadSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
@@ -2638,6 +2641,96 @@ describe('webex.cc', () => {
         {module: CC_FILE, method: 'removePreviewContact', trackingId: error.details.trackingId}
       );
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'removePreviewContact', CC_FILE);
+    });
+  });
+
+  describe('setManageWebexCallingInWxcc', () => {
+    beforeEach(() => {
+      webex.internal.device = {userId: 'user-123'};
+      webex.cc.$config = {...webex.cc.$config, enableAnswerOnWebex: false};
+    });
+
+    it('should update config, task manager, and publish usersub when enabled', async () => {
+      const publishSpy = jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+
+      await webex.cc.setManageWebexCallingInWxcc(true);
+
+      expect(webex.cc.isAnswerOnWebexEnabled()).toBe(true);
+      expect(mockTaskManager.applyEnableAnswerOnWebex).toHaveBeenCalledWith(true);
+      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123'});
+    });
+
+    it('should publish false and update config when disabled', async () => {
+      webex.cc.$config = {...webex.cc.$config, enableAnswerOnWebex: true};
+      const publishSpy = jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+
+      await webex.cc.setManageWebexCallingInWxcc(false);
+
+      expect(webex.cc.isAnswerOnWebexEnabled()).toBe(false);
+      expect(mockTaskManager.applyEnableAnswerOnWebex).toHaveBeenCalledWith(false);
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
+    });
+
+    it('should throw when enabling before login', async () => {
+      webex.internal.device = undefined;
+
+      await expect(webex.cc.setManageWebexCallingInWxcc(true)).rejects.toThrow(
+        'Cannot publish answer-calls-on-wxcc: user is not logged in'
+      );
+      expect(webex.cc.isAnswerOnWebexEnabled()).toBe(false);
+      expect(mockTaskManager.applyEnableAnswerOnWebex).not.toHaveBeenCalled();
+    });
+
+    it('should no-op usersub publish when disabling before login', async () => {
+      webex.internal.device = undefined;
+      const publishSpy = jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+
+      await webex.cc.setManageWebexCallingInWxcc(false);
+
+      expect(webex.cc.isAnswerOnWebexEnabled()).toBe(false);
+      expect(mockTaskManager.applyEnableAnswerOnWebex).toHaveBeenCalledWith(false);
+      expect(publishSpy).not.toHaveBeenCalled();
+    });
+
+    it('should subscribe to wxApp Mercury mute sync when enabled', async () => {
+      webex.cc['agentConfig'] = {agentId: 'agent-123'} as Profile;
+      webex.internal.device = {
+        ...webex.internal.device,
+        registered: true,
+        register: jest.fn().mockResolvedValue(undefined),
+      };
+      webex.internal.mercury.connected = true;
+      webex.internal.mercury.connect = jest.fn().mockResolvedValue(undefined);
+      jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+      const subscribeSpy = jest
+        .spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe')
+        .mockImplementation(() => {});
+
+      await webex.cc.setManageWebexCallingInWxcc(true);
+
+      expect(subscribeSpy).toHaveBeenCalledWith('agent-123', expect.any(Function));
+    });
+
+    it('should unsubscribe from wxApp Mercury mute sync when disabled', async () => {
+      webex.cc.$config = {...webex.cc.$config, enableAnswerOnWebex: true};
+      jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+      const unsubscribeSpy = jest
+        .spyOn(webex.cc['wxAppTelephonyMercurySync'], 'unsubscribe')
+        .mockImplementation(() => {});
+
+      await webex.cc.setManageWebexCallingInWxcc(false);
+
+      expect(unsubscribeSpy).toHaveBeenCalled();
     });
   });
 });

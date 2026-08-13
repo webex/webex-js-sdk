@@ -28,8 +28,24 @@ import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 import {TaskState, TaskEvent, TaskActionArgs} from '../state-machine';
 import {WrapupData} from '../../config/types';
 import {getConsultMediaResourceId, getIsConferenceInProgress} from '../TaskUtils';
+import AnswerCallOnWebexService from '../../AnswerCallOnWebexService';
+import {
+  acceptOnWebex as wxAcceptOnWebex,
+  getCallingDeviceDetails,
+  getWebexCallingCallId,
+  isWebexAppCallingOffer,
+  mapWxAppVoiceError,
+  rejectOnWebex as wxRejectOnWebex,
+  toggleMuteOnWebex as wxToggleMuteOnWebex,
+  transmitDtmfOnWebex as wxTransmitDtmfOnWebex,
+  WxAppVoiceDeps,
+} from './wxAppVoiceMethods';
 
 export default class Voice extends Task implements IVoice {
+  private answerCallOnWebexService?: AnswerCallOnWebexService;
+  private enableAnswerOnWebex = false;
+  private wxAppMuted = false;
+
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
@@ -42,6 +58,7 @@ export default class Voice extends Task implements IVoice {
       isEndConsultEnabled: callOptions?.isEndConsultEnabled ?? true,
       voiceVariant: callOptions?.voiceVariant ?? VOICE_VARIANT.PSTN,
       isRecordingEnabled: callOptions?.isRecordingEnabled ?? true,
+      enableAnswerOnWebex: callOptions?.enableAnswerOnWebex ?? false,
     };
 
     super(
@@ -53,6 +70,117 @@ export default class Voice extends Task implements IVoice {
       wrapupData,
       agentId
     );
+
+    this.enableAnswerOnWebex = resolvedOptions.enableAnswerOnWebex;
+    this.answerCallOnWebexService = callOptions?.answerCallOnWebexService;
+  }
+
+  private getWxAppVoiceDeps(): WxAppVoiceDeps {
+    return {
+      enableAnswerOnWebex: this.enableAnswerOnWebex,
+      answerCallOnWebexService: this.answerCallOnWebexService,
+      agentId: this.agentId,
+      getTaskData: () => this.data,
+      getTaskState: () => this.stateMachineService?.getSnapshot?.()?.value as TaskState | undefined,
+      getWxAppMuted: () => this.wxAppMuted,
+      setWxAppMuted: (muted: boolean) => {
+        this.wxAppMuted = muted;
+      },
+    };
+  }
+
+  public isWebexAppCallingOffer(): boolean {
+    return isWebexAppCallingOffer(this.getWxAppVoiceDeps());
+  }
+
+  public setEnableAnswerOnWebex(enabled: boolean): void {
+    this.enableAnswerOnWebex = enabled;
+    this.uiControlConfig = {...this.uiControlConfig, enableAnswerOnWebex: enabled};
+    this.updateUiControls(true);
+  }
+
+  public applyWxAppMuteStateFromSync(incomingCallId: string, muted: boolean): void {
+    if (!this.enableAnswerOnWebex) {
+      return;
+    }
+
+    const activeCallId = this.getWebexCallingCallId();
+    if (!activeCallId || !incomingCallId.endsWith(activeCallId) || this.wxAppMuted === muted) {
+      return;
+    }
+
+    this.wxAppMuted = muted;
+    this.emit(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, {muted});
+  }
+
+  public async syncWxAppMuteFromCallDetails(): Promise<void> {
+    if (!this.enableAnswerOnWebex || !this.answerCallOnWebexService) {
+      return;
+    }
+
+    const callId = this.getWebexCallingCallId();
+    if (!callId) {
+      return;
+    }
+
+    try {
+      const details = await this.answerCallOnWebexService.getCallDetails({callId});
+      if (details.muted !== undefined) {
+        this.applyWxAppMuteStateFromSync(callId, details.muted);
+      }
+    } catch (error) {
+      LoggerProxy.error(`Failed to sync wxApp mute from call details: ${error}`, {
+        module: CC_FILE,
+        method: METHODS.GET_CALL_DETAILS_ON_WEBEX,
+        interactionId: this.data?.interactionId,
+      });
+    }
+  }
+
+  protected onTaskAssigned(): void {
+    this.syncWxAppMuteFromCallDetails().catch(() => undefined);
+  }
+
+  public getCallingDeviceDetails() {
+    return getCallingDeviceDetails(this.getWxAppVoiceDeps());
+  }
+
+  public getWebexCallingCallId(): string | null {
+    return getWebexCallingCallId(this.getWxAppVoiceDeps());
+  }
+
+  public async acceptOnWebex(options?: {lineOwnerId?: string}): Promise<void> {
+    try {
+      await wxAcceptOnWebex(this.getWxAppVoiceDeps(), options);
+      this.wxAppMuted = false;
+      await this.syncWxAppMuteFromCallDetails();
+    } catch (error) {
+      mapWxAppVoiceError(error, METHODS.ACCEPT_ON_WEBEX, CC_FILE);
+    }
+  }
+
+  public async rejectOnWebex(options?: {lineOwnerId?: string}): Promise<void> {
+    try {
+      await wxRejectOnWebex(this.getWxAppVoiceDeps(), options);
+    } catch (error) {
+      mapWxAppVoiceError(error, METHODS.REJECT_ON_WEBEX, CC_FILE);
+    }
+  }
+
+  public async toggleMuteOnWebex(options?: {lineOwnerId?: string; muted?: boolean}): Promise<void> {
+    try {
+      await wxToggleMuteOnWebex(this.getWxAppVoiceDeps(), options);
+    } catch (error) {
+      mapWxAppVoiceError(error, METHODS.TOGGLE_MUTE_ON_WEBEX, CC_FILE);
+    }
+  }
+
+  public async transmitDtmfOnWebex(options: {dtmf: string; lineOwnerId?: string}): Promise<void> {
+    try {
+      await wxTransmitDtmfOnWebex(this.getWxAppVoiceDeps(), options);
+    } catch (error) {
+      mapWxAppVoiceError(error, METHODS.TRANSMIT_DTMF_ON_WEBEX, CC_FILE);
+    }
   }
 
   private getStateMachineSnapshot() {

@@ -32,6 +32,13 @@ export default {
      */
     disableWebRTCRegistration: false,
     /**
+     * Whether wxApp thick-client answer (Answer on Webex) is enabled.
+     * Must be set before SDK init. Default false (WXCC-6026).
+     * @type {boolean}
+     * @default false
+     */
+    enableAnswerOnWebex: false,
+    /**
      * The type of client making the connection.
      * @type {string}
      * @default 'WebexCCSDK'

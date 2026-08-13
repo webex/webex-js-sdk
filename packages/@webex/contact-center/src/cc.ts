@@ -56,6 +56,9 @@ import {
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
+import AnswerCallOnWebexService from './services/AnswerCallOnWebexService';
+import WebexCrossClientService from './services/WebexCrossClientService';
+import WxAppTelephonyMercurySync from './services/WxAppTelephonyMercurySync';
 import {
   ITask,
   TASK_EVENTS,
@@ -233,6 +236,24 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private webCallingService: WebCallingService;
 
   /**
+   * REST telephony for wxApp thick-client answer (WXCC-6026)
+   * @private
+   */
+  private answerCallOnWebexService: AnswerCallOnWebexService;
+
+  /**
+   * usersub cross-client state for Webex App toast suppression
+   * @private
+   */
+  private webexCrossClientService: WebexCrossClientService;
+
+  /**
+   * Mercury telephony mute sync for wxApp thick-client answer
+   * @private
+   */
+  private wxAppTelephonyMercurySync: WxAppTelephonyMercurySync;
+
+  /**
    * Core service managers for Contact Center operations
    * Includes agent, connection, and configuration services
    * @type {Services}
@@ -405,6 +426,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       });
 
       this.webCallingService = new WebCallingService(this.$webex);
+      this.answerCallOnWebexService = new AnswerCallOnWebexService(this.$webex);
+      this.webexCrossClientService = new WebexCrossClientService(this.$webex);
+      this.wxAppTelephonyMercurySync = new WxAppTelephonyMercurySync(this.$webex);
       this.apiAIAssistant = new ApiAIAssistant(this.$webex);
       this.metricsManager = MetricsManager.getInstance({webex: this.$webex});
       this.taskManager = TaskManager.getTaskManager(
@@ -414,6 +438,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.services.webSocketManager,
         this.services.rtdWebSocketManager
       );
+      this.taskManager.setAnswerCallOnWebexService(this.answerCallOnWebexService);
       this.incomingTaskListener();
 
       // Initialize API instances
@@ -665,6 +690,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // Clear any cached agent configuration
       this.agentConfig = null;
 
+      await this.publishAnswerOnWebexCrossClientState(false);
+      this.webexCrossClientService.teardown();
+      this.wxAppTelephonyMercurySync.unsubscribe();
+
       LoggerProxy.log('Deregistered successfully', {
         module: CC_FILE,
         method: METHODS.DEREGISTER,
@@ -808,6 +837,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webRtcEnabled: this.agentConfig.webRtcEnabled,
         autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
         aiFeature: this.agentConfig.aiFeature,
+        enableAnswerOnWebex: this.isAnswerOnWebexEnabled(),
       };
       this.taskManager.setConfigFlags(configFlags);
       // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
@@ -1030,6 +1060,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       );
 
+      await this.ensureWxAppMercuryAndSubscribe();
+
       return response;
     } catch (error) {
       const failure = error.details as Failure;
@@ -1097,6 +1129,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (this.webCallingService) {
         this.webCallingService.deregisterWebCallingLine();
       }
+
+      await this.publishAnswerOnWebexCrossClientState(false);
+      this.webexCrossClientService.teardown();
+      this.wxAppTelephonyMercurySync.unsubscribe();
 
       LoggerProxy.log(`Agent station logout completed successfully`, {
         module: CC_FILE,
@@ -1374,6 +1410,114 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       throw new Error(
         'Invalid Contact Center configuration: disableWebRTCRegistration cannot be true when allowMultiLogin is false. Enable allowMultiLogin or allow WebRTC registration so an SDK instance can receive Mobius/WebRTC task events.'
       );
+    }
+
+    if (this.$config?.enableAnswerOnWebex === true && this.$config?.allowMultiLogin === true) {
+      LoggerProxy.warn(
+        'enableAnswerOnWebex with allowMultiLogin is not supported — wxApp answer is single-consumer',
+        {module: CC_FILE, method: METHODS.IS_ANSWER_ON_WEBEX_ENABLED}
+      );
+    }
+  }
+
+  /**
+   * Whether wxApp thick-client answer is enabled for this SDK instance.
+   * @public
+   */
+  public isAnswerOnWebexEnabled(): boolean {
+    return this.$config?.enableAnswerOnWebex === true;
+  }
+
+  /**
+   * Runtime toggle for wxApp thick-client answer and cross-client toast suppression.
+   * Updates config, publishes usersub state, and refreshes uiControls on active tasks.
+   * @public
+   */
+  public async setManageWebexCallingInWxcc(enabled: boolean): Promise<void> {
+    if (enabled && !this.$webex.internal.device?.userId) {
+      throw new Error('Cannot publish answer-calls-on-wxcc: user is not logged in');
+    }
+
+    if (this.$config) {
+      this.$config.enableAnswerOnWebex = enabled;
+    }
+
+    this.taskManager.applyEnableAnswerOnWebex(enabled);
+    await this.publishAnswerOnWebexCrossClientState(enabled);
+
+    if (enabled) {
+      await this.ensureWxAppMercuryAndSubscribe();
+    } else {
+      this.wxAppTelephonyMercurySync.unsubscribe();
+    }
+  }
+
+  private async ensureWxAppMercuryConnected(): Promise<void> {
+    const device = this.$webex.internal.device;
+    const mercury = this.$webex.internal.mercury;
+
+    if (device && !device.registered && device.register) {
+      await device.register();
+      LoggerProxy.log('WxApp mute sync: device registered', {
+        module: CC_FILE,
+        method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+      });
+    }
+
+    if (mercury && !mercury.connected) {
+      await mercury.connect();
+      LoggerProxy.log('WxApp mute sync: mercury connected', {
+        module: CC_FILE,
+        method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+      });
+    }
+  }
+
+  private async ensureWxAppMercuryAndSubscribe(): Promise<void> {
+    if (!this.isAnswerOnWebexEnabled()) {
+      return;
+    }
+
+    const agentId = this.agentConfig?.agentId;
+    if (!agentId) {
+      LoggerProxy.error('Cannot subscribe wxApp mute sync: agentId unavailable', {
+        module: CC_FILE,
+        method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
+      });
+
+      return;
+    }
+
+    try {
+      await this.ensureWxAppMercuryConnected();
+      this.wxAppTelephonyMercurySync.subscribe(agentId, (callId, muted) => {
+        this.taskManager.applyWxAppMuteStateFromSync(callId, muted);
+      });
+    } catch (error) {
+      LoggerProxy.error(`Failed to ensure wxApp Mercury mute sync: ${error}`, {
+        module: CC_FILE,
+        method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
+      });
+    }
+  }
+
+  private async publishAnswerOnWebexCrossClientState(enable: boolean): Promise<void> {
+    if (enable && !this.isAnswerOnWebexEnabled()) {
+      return;
+    }
+
+    const userId = this.$webex.internal.device?.userId;
+    if (!userId) {
+      return;
+    }
+
+    try {
+      await this.webexCrossClientService.setManageWebexCallingInWxcc(enable, {userId});
+    } catch (error) {
+      LoggerProxy.error(`Failed to publish answer-calls-on-wxcc cross-client state: ${error}`, {
+        module: CC_FILE,
+        method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+      });
     }
   }
 

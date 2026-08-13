@@ -2478,4 +2478,44 @@ describe('TaskManager', () => {
       sendStateMachineEventSpy.mockRestore();
     });
   });
+
+  describe('applyEnableAnswerOnWebex', () => {
+    it('updates config flags and propagates to active tasks', () => {
+      const taskOne = {setEnableAnswerOnWebex: jest.fn()};
+      const taskTwo = {setEnableAnswerOnWebex: jest.fn()};
+
+      taskManager.setConfigFlags({
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+        enableAnswerOnWebex: true,
+      });
+      taskManager['taskCollection'] = {
+        [taskId]: taskOne,
+        'task-2': taskTwo,
+      };
+
+      taskManager.applyEnableAnswerOnWebex(false);
+
+      expect(taskManager['configFlags']?.enableAnswerOnWebex).toBe(false);
+      expect(taskOne.setEnableAnswerOnWebex).toHaveBeenCalledWith(false);
+      expect(taskTwo.setEnableAnswerOnWebex).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe('applyWxAppMuteStateFromSync', () => {
+    it('propagates mute state to all tasks', () => {
+      const taskOne = {applyWxAppMuteStateFromSync: jest.fn()};
+      const taskTwo = {applyWxAppMuteStateFromSync: jest.fn()};
+
+      taskManager['taskCollection'] = {
+        [taskId]: taskOne,
+        'task-2': taskTwo,
+      };
+
+      taskManager.applyWxAppMuteStateFromSync('call-1', true);
+
+      expect(taskOne.applyWxAppMuteStateFromSync).toHaveBeenCalledWith('call-1', true);
+      expect(taskTwo.applyWxAppMuteStateFromSync).toHaveBeenCalledWith('call-1', true);
+    });
+  });
 });

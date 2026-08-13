@@ -11,6 +11,7 @@ import {
   VOICE_VARIANT,
 } from '../types';
 import {TaskContext, UIControlConfig} from './types';
+import {getWebexCallingDeviceDetailsForAgent} from '../WebexCallingUtils';
 import {TaskState, MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE, INTERACTION_STATE} from './constants';
 import {
   getIsCustomerInCall,
@@ -43,6 +44,7 @@ function getDefaultInteractionUIControls(): InteractionUIControls {
     transferConference: DISABLED,
     mergeToConference: DISABLED,
     switch: DISABLED,
+    keypad: DISABLED,
   };
 }
 
@@ -134,6 +136,22 @@ function computeVoiceInteractionUIControls(
     interaction && mainCallId ? getConferenceParticipantsCount(interaction, mainCallId) : 0;
   const maxParticipants = participantCount >= MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE;
   const selfAgentId = config.agentId ?? taskData?.agentId;
+  const enableAnswerOnWebex = config.enableAnswerOnWebex ?? false;
+  const wxAppDeviceDetails = enableAnswerOnWebex
+    ? getWebexCallingDeviceDetailsForAgent(selfAgentId, interaction?.participants)
+    : undefined;
+  const isWxAppParticipant =
+    enableAnswerOnWebex &&
+    Boolean(
+      interaction?.participants &&
+        Object.values(interaction.participants).some(
+          (participant: {deviceType?: string}) => participant?.deviceType === 'wxApp'
+        )
+    );
+  const isWxAppOffer =
+    isWxAppParticipant && Boolean(wxAppDeviceDetails) && state === TaskState.OFFERED;
+  const isWxAppEngaged =
+    isWxAppParticipant && Boolean(wxAppDeviceDetails) && state !== TaskState.OFFERED;
   const consultInProgress = getIsConsultInProgressForConferenceControls(
     interaction,
     mainCallId,
@@ -415,11 +433,16 @@ function computeVoiceInteractionUIControls(
     // Desktop/WebRTC + inbound: accept enabled (agent manually accepts)
     // Desktop/WebRTC + outdial: accept disabled (auto-answer handles it; Widgets show "Accept" disabled)
     // Extension mode (non-WebRTC): accept disabled (Widgets show "Ringing...")
-    accept:
-      state === TaskState.OFFERED && !interaction?.isTerminated
-        ? {isVisible: true, isEnabled: isWebrtc && !isOutdial}
-        : DISABLED,
+    accept: (() => {
+      if (isWxAppOffer) return VISIBLE_ENABLED;
+      if (state === TaskState.OFFERED && !interaction?.isTerminated) {
+        return {isVisible: true, isEnabled: isWebrtc && !isOutdial};
+      }
+
+      return DISABLED;
+    })(),
     decline: (() => {
+      if (isWxAppOffer) return VISIBLE_ENABLED;
       if (!isWebrtc || state !== TaskState.OFFERED || interaction?.isTerminated) return DISABLED;
 
       return isOutdial ? VISIBLE_DISABLED : VISIBLE_ENABLED;
@@ -447,8 +470,9 @@ function computeVoiceInteractionUIControls(
       return canHold ? VISIBLE_ENABLED : VISIBLE_DISABLED;
     })(),
 
-    // Mute: WebRTC only, active calls; hidden entirely during wrapup
+    // Mute: WebRTC or wxApp engaged calls; hidden entirely during wrapup
     mute: (() => {
+      if (isWxAppEngaged && !isWrappingUp) return VISIBLE_ENABLED;
       if (!isWebrtc) return DISABLED;
       if (isWrappingUp) return DISABLED;
       if (isEpDnPostCallCustomerLeft && inConference) return VISIBLE_DISABLED;
@@ -712,6 +736,8 @@ function computeVoiceInteractionUIControls(
 
       return DISABLED;
     })(),
+
+    keypad: isWxAppEngaged && !isWrappingUp ? VISIBLE_ENABLED : DISABLED,
   };
 }
 
