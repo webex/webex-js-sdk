@@ -1389,6 +1389,28 @@ const Services = WebexPlugin.extend({
   },
 
   /**
+   * Build a promise that rejects once the catalog init timeout elapses. Race
+   * this against catalog collection so a hung request never leaves
+   * `services.ready` false forever - that would stall `webex.ready` and leave
+   * consumers waiting on it indefinitely. Timeout is configurable via
+   * `config.services.catalogInitTimeout` (defaults to 15s in config). Created
+   * lazily so paths that skip catalog collection never schedule a stray timer.
+   *
+   * @private
+   * @returns {Promise<never>}
+   */
+  _makeInitTimeout(): Promise<never> {
+    const initTimeoutMs = this.webex.config?.services?.catalogInitTimeout;
+
+    return new Promise<never>((_, reject) => {
+      setTimeout(
+        () => reject(new Error(`services: init timed out after ${initTimeoutMs}ms`)),
+        initTimeoutMs
+      );
+    });
+  },
+
+  /**
    * Initializer
    *
    * @instance
@@ -1455,6 +1477,14 @@ const Services = WebexPlugin.extend({
       } else {
         const {email} = this.webex.config;
 
+        if (this.webex.config?.services?.skipPreauthCatalogOnUnauthenticated === true) {
+          this.logger.info(
+            'services: skipping preauth catalog collection while unauthenticated as per the config'
+          );
+
+          return;
+        }
+
         this.collectPreauthCatalog(email ? {email} : undefined).catch((error) => {
           this.initFailed = true;
           this.logger.error(
@@ -1489,24 +1519,12 @@ const Services = WebexPlugin.extend({
       }
       const {supertoken} = this.webex.credentials;
 
-      // Race init against a hard timeout so a hung request never leaves
-      // `services.ready` false forever - that would stall `webex.ready` and
-      // leave consumers waiting on it indefinitely. Timeout is configurable via
-      // `config.services.catalogInitTimeout` (defaults to 15s in config).
-      const initTimeoutMs = this.webex.config?.services?.catalogInitTimeout;
-      const initServiceCatalogsTimeout = new Promise<never>((_, reject) => {
-        setTimeout(
-          () => reject(new Error(`services: init timed out after ${initTimeoutMs}ms`)),
-          initTimeoutMs
-        );
-      });
-
       // Validate if the supertoken exists.
       if (supertoken && supertoken.access_token) {
         // `initServiceCatalogs` marks the catalog ready internally once the
         // postauth catalog is collected - even if it loses the timeout race
-        // above, so a slow fetch still eventually flips `catalog.isReady`.
-        Promise.race([this.initServiceCatalogs(), initServiceCatalogsTimeout])
+        // below, so a slow fetch still eventually flips `catalog.isReady`.
+        Promise.race([this.initServiceCatalogs(), this._makeInitTimeout()])
           .catch((error) => {
             this.initFailed = true;
             this.logger.error(
@@ -1517,17 +1535,28 @@ const Services = WebexPlugin.extend({
       } else {
         const {email} = this.webex.config;
 
-        Promise.race([
-          this.collectPreauthCatalog(email ? {email} : undefined),
-          initServiceCatalogsTimeout,
-        ])
-          .catch((error) => {
-            this.initFailed = true;
-            this.logger.error(
-              `services: failed to init initial services when no credentials available, ${error?.message}`
-            );
-          })
-          .finally(() => this._finalizeReady());
+        if (this.webex.config?.services?.skipPreauthCatalogOnUnauthenticated === true) {
+          // Skip the preauth catalog fetch (it will be collected manually
+          // later), but still finalize `services.ready` so `webex.ready` is not
+          // stalled while unauthenticated. No timeout is created here so there
+          // is no stray timer or unhandled rejection.
+          this.logger.info(
+            'services: skipping preauth catalog collection while unauthenticated as per the config'
+          );
+          this._finalizeReady();
+        } else {
+          Promise.race([
+            this.collectPreauthCatalog(email ? {email} : undefined),
+            this._makeInitTimeout(),
+          ])
+            .catch((error) => {
+              this.initFailed = true;
+              this.logger.error(
+                `services: failed to init initial services when no credentials available, ${error?.message}`
+              );
+            })
+            .finally(() => this._finalizeReady());
+        }
 
         // Handle fresh login: 'loaded' fires before OAuth completes, so listen
         // for `canAuthorize` flipping true and then collect the postauth catalog.
