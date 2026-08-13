@@ -174,10 +174,9 @@ describe('internal-plugin-metrics', () => {
       };
 
       it('projects camera and microphone onto join events without mutating the input', () => {
-        const provider = sinon.stub().returns(permission);
         const payload = {mediaType: 'audio' as const};
 
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(provider);
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(permission);
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.call.initiated',
           payload,
@@ -208,7 +207,7 @@ describe('internal-plugin-metrics', () => {
         {mediaType: 'share' as const, expected: {contentShare: permission.contentShare}},
       ].forEach(({mediaType, expected}) => {
         it(`projects the matching resource for media tx ${mediaType}`, () => {
-          webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => permission);
+          webex.internal.newMetrics.setPrivacyAndSecurityPermission(permission);
           webex.internal.newMetrics.submitClientEvent({
             name: 'client.media.tx.start',
             payload: {mediaType},
@@ -223,7 +222,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('only enriches screen-share events when mediaType is share', () => {
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => permission);
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(permission);
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.share.initiated',
           payload: {mediaType: 'share'},
@@ -247,7 +246,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('projects every available resource onto final events', () => {
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => permission);
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(permission);
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.remote-ended'});
 
         const submittedPayload =
@@ -260,7 +259,7 @@ describe('internal-plugin-metrics', () => {
       it('reports initial permission once and suppresses an unchanged later join event', () => {
         const options = {meetingId: 'meeting-1'};
 
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => permission);
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(permission);
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.call.initiated',
           payload: {},
@@ -285,7 +284,7 @@ describe('internal-plugin-metrics', () => {
         webex.meetings.getBasicMeetingInformation
           .withArgs('meeting-1')
           .returns({id: 'meeting-1', correlationId: 'correlation-1'});
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => permission);
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(permission);
 
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.call.initiated',
@@ -305,7 +304,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('uses the default scope when no correlation id can be resolved', () => {
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => permission);
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(permission);
 
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.call.initiated',
@@ -328,12 +327,13 @@ describe('internal-plugin-metrics', () => {
         let currentPermission = permission;
         const options = {meetingId: 'meeting-1'};
 
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => currentPermission);
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(currentPermission);
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.initiated', options});
         currentPermission = {
           ...permission,
           camera: {status: 'DENIED' as const, reason: 'DENIED_BY_SYSTEM' as const},
         };
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(currentPermission);
         webex.internal.newMetrics.submitClientEvent({name: 'client.ice.end', options});
 
         const submittedPayload =
@@ -346,7 +346,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('tracks the last report independently for concurrent meeting scopes', () => {
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => permission);
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(permission);
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.call.initiated',
           options: {meetingId: 'meeting-1'},
@@ -365,7 +365,7 @@ describe('internal-plugin-metrics', () => {
       it('always reports current permission on each emitted terminal event', () => {
         const options = {meetingId: 'meeting-1'};
 
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => permission);
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(permission);
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.initiated', options});
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.leave', options});
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.remote-ended', options});
@@ -376,80 +376,52 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(submissions[2][0].payload.privacyAndSecurityPermission, permission);
       });
 
-      it('uses a preserved pre-teardown snapshot for every terminal event in the call scope', () => {
+      it('uses the last permission pushed by the client for every terminal event', () => {
         const options = {meetingId: 'meeting-1'};
-        const terminalPermission = {
+        const latestPermission = {
           camera: {status: 'DENIED' as const, reason: 'DENIED_BY_USER' as const},
           microphone: {status: 'GRANTED' as const},
           contentShare: {status: 'GRANTED' as const},
         };
-        const postTeardownPermission = {
-          camera: {status: 'UNKNOWN' as const, reason: 'UNKNOWN' as const},
-          microphone: {status: 'UNKNOWN' as const, reason: 'UNKNOWN' as const},
-          contentShare: {status: 'UNKNOWN' as const, reason: 'UNKNOWN' as const},
-        };
 
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(
-          () => postTeardownPermission
-        );
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionForTerminalEvents(
-          terminalPermission,
-          options
-        );
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(latestPermission);
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.remote-ended', options});
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.leave', options});
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.aborted', options});
 
         const submissions = webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent.args;
 
-        assert.deepEqual(
-          submissions[0][0].payload.privacyAndSecurityPermission,
-          terminalPermission
-        );
-        assert.deepEqual(
-          submissions[1][0].payload.privacyAndSecurityPermission,
-          terminalPermission
-        );
-        assert.deepEqual(
-          submissions[2][0].payload.privacyAndSecurityPermission,
-          terminalPermission
-        );
+        assert.deepEqual(submissions[0][0].payload.privacyAndSecurityPermission, latestPermission);
+        assert.deepEqual(submissions[1][0].payload.privacyAndSecurityPermission, latestPermission);
+        assert.deepEqual(submissions[2][0].payload.privacyAndSecurityPermission, latestPermission);
       });
 
-      it('clears a preserved terminal snapshot when the call scope is reused', () => {
+      it('uses a newer pushed permission value for later terminal events', () => {
         const options = {meetingId: 'meeting-1'};
-        const terminalPermission = {
+        const previousPermission = {
           camera: {status: 'DENIED' as const, reason: 'DENIED_BY_USER' as const},
           microphone: {status: 'DENIED' as const, reason: 'DENIED_BY_USER' as const},
         };
 
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => permission);
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionForTerminalEvents(
-          terminalPermission,
-          options
-        );
-        webex.internal.newMetrics.submitClientEvent({name: 'client.locus.join.request', options});
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(previousPermission);
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(permission);
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.remote-ended', options});
 
         const submissions = webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent.args;
 
-        assert.deepEqual(submissions[1][0].payload.privacyAndSecurityPermission, permission);
+        assert.deepEqual(submissions[0][0].payload.privacyAndSecurityPermission, permission);
       });
 
-      it('clears permission history when a terminal event has no snapshot', () => {
+      it('clears permission history after a terminal event', () => {
         const options = {meetingId: 'meeting-1'};
-        let currentPermission: typeof permission | undefined = permission;
 
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => currentPermission);
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(permission);
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.initiated', options});
-        currentPermission = undefined;
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.leave', options});
-        currentPermission = permission;
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.initiated', options});
 
         const submissions = webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent.args;
 
-        assert.isUndefined(submissions[1][0].payload);
         assert.deepEqual(submissions[2][0].payload.privacyAndSecurityPermission, {
           camera: permission.camera,
           microphone: permission.microphone,
@@ -459,7 +431,7 @@ describe('internal-plugin-metrics', () => {
       it('reports initial permission again when a meeting scope is reused after a terminal event', () => {
         const options = {meetingId: 'meeting-1'};
 
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => permission);
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(permission);
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.initiated', options});
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.leave', options});
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.initiated', options});
@@ -472,13 +444,12 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      it('preserves an explicit permission payload without invoking the provider', () => {
-        const provider = sinon.stub().returns(permission);
+      it('preserves an explicit permission payload', () => {
         const explicitPermission = {
           camera: {status: 'FAILED' as const, reason: 'UNKNOWN' as const},
         };
 
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(provider);
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(permission);
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.call.leave',
           payload: {privacyAndSecurityPermission: explicitPermission},
@@ -489,7 +460,6 @@ describe('internal-plugin-metrics', () => {
             .payload;
 
         assert.strictEqual(submittedPayload.privacyAndSecurityPermission, explicitPermission);
-        assert.notCalled(provider);
       });
 
       it('uses an explicit permission payload as the baseline for later events', () => {
@@ -501,7 +471,7 @@ describe('internal-plugin-metrics', () => {
           },
         };
 
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => permission);
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(permission);
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.call.initiated',
           payload,
@@ -520,11 +490,9 @@ describe('internal-plugin-metrics', () => {
         assert.notProperty(submittedPayload, 'privacyAndSecurityPermission');
       });
 
-      it('submits unchanged when the provider is cleared or throws', () => {
+      it('submits unchanged before the client supplies permission state', () => {
         const payload = {mediaType: 'audio' as const};
 
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => permission);
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider();
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.initiated', payload});
 
         assert.strictEqual(
@@ -532,24 +500,12 @@ describe('internal-plugin-metrics', () => {
             .payload,
           payload
         );
-
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => {
-          throw new Error('provider failed');
-        });
-        webex.internal.newMetrics.submitClientEvent({name: 'client.call.initiated', payload});
-
-        assert.strictEqual(
-          webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent.secondCall.args[0]
-            .payload,
-          payload
-        );
-        assert.calledOnce(webex.logger.error);
       });
 
       it('captures the permission snapshot before a delayed event is queued', () => {
         let currentPermission = permission;
 
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(() => currentPermission);
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(currentPermission);
         webex.internal.newMetrics.setDelaySubmitClientEvents({shouldDelay: true});
         webex.internal.newMetrics.submitClientEvent({name: 'client.call.initiated'});
         currentPermission = {camera: {status: 'DENIED' as const}};
@@ -564,14 +520,15 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      it('does not invoke the provider for unrelated or permission prompt events', () => {
-        const provider = sinon.stub().returns(permission);
-
-        webex.internal.newMetrics.setPrivacyAndSecurityPermissionProvider(provider);
+      it('does not enrich unrelated or permission prompt events', () => {
+        webex.internal.newMetrics.setPrivacyAndSecurityPermission(permission);
         webex.internal.newMetrics.submitClientEvent({name: 'client.alert.displayed'});
         webex.internal.newMetrics.submitClientEvent({name: 'client.permission.prompted'});
 
-        assert.notCalled(provider);
+        const submissions = webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent.args;
+
+        assert.isUndefined(submissions[0][0].payload);
+        assert.isUndefined(submissions[1][0].payload);
       });
     });
 

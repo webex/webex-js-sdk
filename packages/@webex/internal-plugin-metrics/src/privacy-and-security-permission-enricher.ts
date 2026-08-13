@@ -4,7 +4,6 @@ import {
   ClientEvent,
   ClientEventPayload,
   PrivacyAndSecurityPermission,
-  PrivacyAndSecurityPermissionProvider,
   PrivacyAndSecurityPermissionResource,
   PrivacyAndSecurityPermissionState,
 } from './metrics.types';
@@ -163,45 +162,31 @@ const getChangedPermission = (
  * Enriches eligible client events with relevant browser permission changes.
  */
 export default class PrivacyAndSecurityPermissionEnricher {
-  private provider?: PrivacyAndSecurityPermissionProvider;
+  private permission?: PrivacyAndSecurityPermission;
 
   private lastReported = new Map<string, PrivacyAndSecurityPermission>();
 
-  private terminalSnapshots = new Map<string, PrivacyAndSecurityPermission>();
-
-  private readonly onProviderError: (error: unknown) => void;
+  private readonly onEnrichmentError: (error: unknown) => void;
 
   /**
    * Creates a permission enricher.
-   * @param {Function} onProviderError permission provider error handler
+   * @param {Function} onEnrichmentError permission enrichment error handler
    */
-  constructor(onProviderError: (error: unknown) => void) {
-    this.onProviderError = onProviderError;
+  constructor(onEnrichmentError: (error: unknown) => void) {
+    this.onEnrichmentError = onEnrichmentError;
   }
 
   /**
-   * Registers the provider for the latest browser permission state.
-   * @param {PrivacyAndSecurityPermissionProvider} provider permission snapshot provider, or undefined to clear it
-   * @returns {void}
-   */
-  public setProvider(provider?: PrivacyAndSecurityPermissionProvider): void {
-    this.provider = provider;
-    this.lastReported.clear();
-    this.terminalSnapshots.clear();
-  }
-
-  /**
-   * Preserves a point-in-time permission snapshot for terminal events in a call scope.
-   * @param {string} scope permission history scope
+   * Stores the latest normalized browser permission state.
    * @param {PrivacyAndSecurityPermission} permission permission snapshot
    * @returns {void}
    */
-  public setTerminalSnapshot(scope: string, permission: PrivacyAndSecurityPermission): void {
-    this.terminalSnapshots.set(scope, {
+  public setPermission(permission: PrivacyAndSecurityPermission): void {
+    this.permission = {
       ...(permission.camera ? {camera: {...permission.camera}} : {}),
       ...(permission.microphone ? {microphone: {...permission.microphone}} : {}),
       ...(permission.contentShare ? {contentShare: {...permission.contentShare}} : {}),
-    });
+    };
   }
 
   /**
@@ -215,10 +200,6 @@ export default class PrivacyAndSecurityPermissionEnricher {
     scope,
   }: PermissionEnrichmentContext): ClientEventPayload | undefined {
     const policy = resolvePermissionEnrichmentPolicy(name, payload);
-
-    if (CAMERA_AND_MICROPHONE_PERMISSION_EVENTS.has(name)) {
-      this.terminalSnapshots.delete(scope);
-    }
 
     try {
       if (payload?.privacyAndSecurityPermission !== undefined) {
@@ -237,11 +218,8 @@ export default class PrivacyAndSecurityPermissionEnricher {
         return payload;
       }
 
-      const permission = policy.terminal
-        ? this.terminalSnapshots.get(scope) ?? this.provider?.()
-        : this.provider?.();
-      const projectedPermission = permission
-        ? projectPrivacyAndSecurityPermission(permission, policy.resources)
+      const projectedPermission = this.permission
+        ? projectPrivacyAndSecurityPermission(this.permission, policy.resources)
         : undefined;
 
       if (!projectedPermission) {
@@ -263,7 +241,7 @@ export default class PrivacyAndSecurityPermissionEnricher {
 
       return {...payload, privacyAndSecurityPermission: changedPermission};
     } catch (error) {
-      this.onProviderError(error);
+      this.onEnrichmentError(error);
 
       return payload;
     } finally {

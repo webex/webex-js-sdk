@@ -26,7 +26,6 @@ import {
   DelayedClientEvent,
   DelayedClientFeatureEvent,
   PrivacyAndSecurityPermission,
-  PrivacyAndSecurityPermissionProvider,
 } from './metrics.types';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 import {setMetricTimings} from './call-diagnostic/call-diagnostic-metrics.util';
@@ -86,7 +85,7 @@ class Metrics extends WebexPlugin {
       (error) => {
         // @ts-ignore
         this.webex.logger.error(
-          'NewMetrics: @submitClientEvent. Privacy and security permission provider failed.',
+          'NewMetrics: @submitClientEvent. Privacy and security permission enrichment failed.',
           error
         );
       }
@@ -409,28 +408,11 @@ class Metrics extends WebexPlugin {
   }
 
   /**
-   * Registers a provider for the latest browser permission state.
-   * @param provider permission snapshot provider, or undefined to clear it
+   * Stores the latest browser permission state supplied by the client.
+   * @param permission latest normalized permission snapshot
    */
-  public setPrivacyAndSecurityPermissionProvider(
-    provider?: PrivacyAndSecurityPermissionProvider
-  ): void {
-    this.privacyAndSecurityPermissionEnricher.setProvider(provider);
-  }
-
-  /**
-   * Preserves a permission snapshot for terminal events before call teardown mutates client state.
-   * @param permission point-in-time permission snapshot
-   * @param options call identity used to scope the snapshot
-   */
-  public setPrivacyAndSecurityPermissionForTerminalEvents(
-    permission: PrivacyAndSecurityPermission,
-    options?: SubmitClientEventOptions
-  ): void {
-    this.privacyAndSecurityPermissionEnricher.setTerminalSnapshot(
-      this.getPermissionScope(options),
-      permission
-    );
+  public setPrivacyAndSecurityPermission(permission: PrivacyAndSecurityPermission): void {
+    this.privacyAndSecurityPermissionEnricher.setPermission(permission);
   }
 
   /**
