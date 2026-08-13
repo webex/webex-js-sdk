@@ -719,5 +719,93 @@ describe('Voice Task', () => {
         expect.anything()
       );
     });
+
+    it('no-ops when muted state is unchanged', () => {
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableAnswerOnWebex: true});
+      primeConnectedState(voice, taskData);
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      voice.applyWxAppMuteStateFromSync('prefix:call-id-1', true);
+      emitSpy.mockClear();
+
+      voice.applyWxAppMuteStateFromSync('prefix:call-id-1', true);
+
+      expect(emitSpy).not.toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED,
+        expect.anything()
+      );
+    });
+  });
+
+  describe('syncWxAppMuteFromCallDetails', () => {
+    const wxAppParticipant = {
+      deviceType: 'wxApp',
+      deviceId: 'device-id-1',
+      deviceCallId: 'call-id-1',
+    };
+
+    const makeWxAppTaskData = () =>
+      createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+
+    it('seeds mute state from telephony GET call details on engaged wxApp call', async () => {
+      const mockSvc = {
+        getCallDetails: jest.fn().mockResolvedValue({muted: true}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).toHaveBeenCalledWith({callId: 'call-id-1'});
+      expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, {
+        muted: true,
+      });
+    });
+
+    it('no-ops when enableAnswerOnWebex is false', async () => {
+      const mockSvc = {getCallDetails: jest.fn()};
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: false,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).not.toHaveBeenCalled();
+    });
+
+    it('syncs mute state after task assignment (onTaskAssigned)', async () => {
+      const mockSvc = {
+        getCallDetails: jest.fn().mockResolvedValue({muted: false}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      const syncSpy = jest.spyOn(voice, 'syncWxAppMuteFromCallDetails');
+
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+      voice.stateMachineService?.send({type: TaskEvent.ASSIGN, taskData});
+
+      await Promise.resolve();
+
+      expect(syncSpy).toHaveBeenCalled();
+    });
   });
 });

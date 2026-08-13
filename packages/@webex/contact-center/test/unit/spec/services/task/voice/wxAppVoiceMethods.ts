@@ -216,6 +216,12 @@ describe('rejectOnWebex', () => {
 
     await expect(rejectOnWebex(deps)).rejects.toThrow();
   });
+
+  it('throws when enableAnswerOnWebex is false', async () => {
+    const deps = makeDeps({enableAnswerOnWebex: false});
+
+    await expect(rejectOnWebex(deps)).rejects.toThrow();
+  });
 });
 
 describe('toggleMuteOnWebex', () => {

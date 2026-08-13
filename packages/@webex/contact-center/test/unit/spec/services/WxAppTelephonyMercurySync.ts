@@ -73,4 +73,30 @@ describe('WxAppTelephonyMercurySync', () => {
     expect(sync.isSubscribed()).toBe(false);
     expect(onMuteChange).not.toHaveBeenCalled();
   });
+
+  it('invokes callback with muted false on unmuted Mercury event', () => {
+    const callId = 'prefix:call-half-1';
+    const encodedCallId = btoa(callId);
+    const encodedActorId = btoa(`some-prefix-${agentId}`);
+
+    sync.subscribe(agentId, onMuteChange);
+    const unmuteHandler = mercury.on.mock.calls.find(
+      ([event]) => event === TELEPHONY_CALL_UNMUTED
+    )![1];
+    unmuteHandler({data: {actorId: encodedActorId, callId: encodedCallId, muted: false}});
+
+    expect(onMuteChange).toHaveBeenCalledWith(callId, false);
+  });
+
+  it('resubscribe replaces previous Mercury listeners', () => {
+    sync.subscribe(agentId, onMuteChange);
+    expect(mercury.on).toHaveBeenCalledTimes(2);
+
+    const secondHandler = jest.fn();
+    sync.subscribe(agentId, secondHandler);
+
+    expect(mercury.off).toHaveBeenCalledWith(TELEPHONY_CALL_MUTED);
+    expect(mercury.off).toHaveBeenCalledWith(TELEPHONY_CALL_UNMUTED);
+    expect(mercury.on).toHaveBeenCalledTimes(4);
+  });
 });

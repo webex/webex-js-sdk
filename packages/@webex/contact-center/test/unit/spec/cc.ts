@@ -1022,6 +1022,38 @@ describe('webex.cc', () => {
         {module: CC_FILE, method: 'stationLogin', trackingId: error.details.trackingId}
       );
     });
+
+    it('should not publish usersub on station login when enableAnswerOnWebex is true at init', async () => {
+      webex.cc.$config = {...webex.cc.$config, enableAnswerOnWebex: true};
+      webex.internal.device = {userId: 'user-123', url: 'https://wdm.example.com/devices/dev-1'};
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        webRtcEnabled: false,
+        loginVoiceOptions: ['EXTENSION'],
+      };
+
+      const publishSpy = jest.spyOn(
+        webex.cc['webexCrossClientService'],
+        'setManageWebexCallingInWxcc'
+      );
+
+      jest.spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue({
+        data: {
+          agentId: 'agentId',
+          teamId: 'teamId',
+          channelsMap: {chat: [], email: [], social: [], telephony: []},
+        },
+        trackingId: 'track-1',
+      } as StationLoginSuccess);
+
+      await webex.cc.stationLogin({
+        teamId: 'teamId',
+        loginOption: LoginOption.EXTENSION,
+        dialNumber: '1001',
+      });
+
+      expect(publishSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('stationLogout', () => {
@@ -1062,6 +1094,25 @@ describe('webex.cc', () => {
         METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
         METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED,
       ]);
+    });
+
+    it('should publish usersub false and teardown wxApp sync on logout', async () => {
+      webex.internal.device = {userId: 'user-123'};
+      const publishSpy = jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+      const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
+      const unsubscribeSpy = jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'unsubscribe');
+
+      jest.spyOn(webex.cc.services.agent, 'logout').mockResolvedValue({
+        trackingId: 'track-1',
+      } as StationLogoutResponse);
+
+      await webex.cc.stationLogout({logoutReason: 'Logout reason'});
+
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
+      expect(teardownSpy).toHaveBeenCalled();
+      expect(unsubscribeSpy).toHaveBeenCalled();
     });
 
     it('should handle error during stationLogout', async () => {
@@ -1744,6 +1795,18 @@ describe('webex.cc', () => {
         on: jest.fn(),
       } as any;
 
+      webex.internal.device = {
+        ...webex.internal.device,
+        userId: 'user-123',
+        unregister: jest.fn().mockResolvedValue(undefined),
+      };
+      deviceUnregisterSpy = jest.spyOn(webex.internal.device, 'unregister');
+      const publishSpy = jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+      const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
+      const unsubscribeSpy = jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'unsubscribe');
+
       await webex.cc.deregister();
 
       expect(mockTaskManager.off).toHaveBeenCalledWith(
@@ -1832,6 +1895,10 @@ describe('webex.cc', () => {
       expect(connectionCalls).toHaveLength(1);
       const [, connectionCallback] = connectionCalls[0];
       expect(connectionCallback).toBe(webex.cc['handleConnectionLost']);
+
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
+      expect(teardownSpy).toHaveBeenCalled();
+      expect(unsubscribeSpy).toHaveBeenCalled();
     });
 
     it('should skip webCallingService and internal cleanup when webrtc is disabled', async () => {
@@ -2731,6 +2798,31 @@ describe('webex.cc', () => {
       await webex.cc.setManageWebexCallingInWxcc(false);
 
       expect(unsubscribeSpy).toHaveBeenCalled();
+    });
+
+    it('should register device and connect mercury when enabling wxApp sync', async () => {
+      webex.cc['agentConfig'] = {agentId: 'agent-123'} as Profile;
+      webex.internal.device = {
+        userId: 'user-123',
+        registered: false,
+        register: jest.fn().mockResolvedValue(undefined),
+      };
+      webex.internal.mercury = {
+        connected: false,
+        connect: jest.fn().mockResolvedValue(undefined),
+      };
+      jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+      const subscribeSpy = jest
+        .spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe')
+        .mockImplementation(() => {});
+
+      await webex.cc.setManageWebexCallingInWxcc(true);
+
+      expect(webex.internal.device.register).toHaveBeenCalled();
+      expect(webex.internal.mercury.connect).toHaveBeenCalled();
+      expect(subscribeSpy).toHaveBeenCalledWith('agent-123', expect.any(Function));
     });
   });
 });

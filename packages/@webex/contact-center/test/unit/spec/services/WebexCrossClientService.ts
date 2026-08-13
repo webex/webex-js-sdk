@@ -74,4 +74,105 @@ describe('WebexCrossClientService', () => {
       })
     );
   });
+
+  it('throws when user ID is unavailable', async () => {
+    webex.internal.device.userId = undefined as unknown as string;
+
+    await expect(service.setManageWebexCallingInWxcc(true)).rejects.toThrow(
+      'User ID is unavailable for cross-client publish'
+    );
+    expect(webex.request).not.toHaveBeenCalled();
+  });
+
+  it('throws when device URL is unavailable', async () => {
+    webex.internal.device.url = undefined as unknown as string;
+
+    await expect(service.setManageWebexCallingInWxcc(true)).rejects.toThrow(
+      'Device URL is unavailable for cross-client publish'
+    );
+    expect(webex.request).not.toHaveBeenCalled();
+  });
+
+  it('rejects when usersub publish fails', async () => {
+    const err = new Error('usersub failed');
+    webex.request = jest.fn().mockRejectedValue(err);
+
+    await expect(service.setManageWebexCallingInWxcc(true)).rejects.toThrow('usersub failed');
+  });
+
+  it('uses custom ttl from options', async () => {
+    await service.setManageWebexCallingInWxcc(true, {ttl: 1200});
+
+    expect(webex.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          compositions: [expect.objectContaining({ttl: 1200})],
+        }),
+      })
+    );
+  });
+
+  it('refreshes publish before ttl expiry while enabled', async () => {
+    jest.useFakeTimers();
+    try {
+      await service.setManageWebexCallingInWxcc(true, {ttl: 900});
+      expect(webex.request).toHaveBeenCalledTimes(1);
+
+      jest.advanceTimersByTime(840_000);
+
+      await Promise.resolve();
+
+      expect(webex.request).toHaveBeenCalledTimes(2);
+      expect(webex.request).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            compositions: [
+              expect.objectContaining({
+                composition: {
+                  devices: [
+                    {
+                      deviceId: 'device-abc',
+                      appName: 'wxcc',
+                      state: {'answer-calls-on-wxcc': true},
+                    },
+                  ],
+                },
+              }),
+            ],
+          }),
+        })
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('teardown clears refresh timer so publish is not repeated', async () => {
+    jest.useFakeTimers();
+    try {
+      await service.setManageWebexCallingInWxcc(true, {ttl: 900});
+      service.teardown();
+
+      jest.advanceTimersByTime(840_000);
+      await Promise.resolve();
+
+      expect(webex.request).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('does not schedule refresh when disabled', async () => {
+    jest.useFakeTimers();
+    try {
+      await service.setManageWebexCallingInWxcc(false);
+
+      jest.advanceTimersByTime(840_000);
+      await Promise.resolve();
+
+      expect(webex.request).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
