@@ -49,14 +49,13 @@ describe('webex-core', () => {
         services.listenToOnce.getCall(0).args[2]();
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
-
+        
         assert.isFalse(services.initFailed);
       });
 
       it('initFailed is false when initialization succeeds no credentials are available', async () => {
         services.listenToOnce = sinon.stub();
         services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
-
         services.initialize();
 
         // call the onReady callback
@@ -429,6 +428,8 @@ describe('webex-core', () => {
           canAuthorize: true,
         };
 
+        webex.internal.metrics.submitClientMetrics = sinon.stub();
+
         services.collectPreauthCatalog = sinon.stub().callsFake(() => {
           return Promise.resolve();
         });
@@ -454,6 +455,8 @@ describe('webex-core', () => {
           getOrgId: sinon.stub().returns('orgId'),
           canAuthorize: true,
         };
+
+        webex.internal.metrics.submitClientMetrics = sinon.stub();
 
         services.collectPreauthCatalog = sinon.stub().callsFake(() => {
           return Promise.resolve();
