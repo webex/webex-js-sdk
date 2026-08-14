@@ -267,7 +267,13 @@ describe('plugin-mercury', () => {
           },
           {
             code: 4000,
+            reason: 'Replaced',
             action: 'replace',
+          },
+          {
+            code: 4000,
+            reason: 'Unexpected close',
+            action: 'reconnect',
           },
           {
             action: 'close',
