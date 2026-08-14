@@ -97,10 +97,10 @@ export default class WxAppTelephonyMercurySync {
     const mercury = this.webex.internal.mercury;
 
     if (mercury && this.boundMuteHandler) {
-      mercury.off(TELEPHONY_CALL_MUTED);
+      mercury.off(TELEPHONY_CALL_MUTED, this.boundMuteHandler);
     }
     if (mercury && this.boundUnmuteHandler) {
-      mercury.off(TELEPHONY_CALL_UNMUTED);
+      mercury.off(TELEPHONY_CALL_UNMUTED, this.boundUnmuteHandler);
     }
 
     this.subscribedAgentId = undefined;

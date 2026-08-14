@@ -13,6 +13,7 @@
 | `contact-center.user-preference` | Services/Config | `UserPreference`, `cc.userPreference`, `UserPreferenceData`, request/response types | `getUserPreference(params?)`, `createUserPreference(data)`, `updateUserPreference(userId, data)`, `deleteUserPreference(userId)` | semver public | `src/services/ai-docs/services-spec.md` | `src/index.ts`, `src/cc.ts`, `src/services/UserPreference.ts`, `src/services/config/types.ts` |
 | `contact-center.preview-campaign` | Contact Center/Task | `acceptPreviewContact`, `skipPreviewContact`, `removePreviewContact` | `(payload: PreviewContactPayload) => Promise<TaskResponse>` | semver public | `ai-docs/contact-center-spec.md`, `src/services/task/ai-docs/task-spec.md` | `src/cc.ts`, `src/services/task/dialer.ts`, `src/services/task/types.ts` |
 | `contact-center.state-controls` | Task state machine | `getDefaultUIControls`, task state/control types | function is exported directly from `uiControlsComputer.ts` by package root | semver public | `src/services/task/state-machine/ai-docs/task-state-machine-spec.md` | `src/index.ts`, `src/services/task/state-machine/uiControlsComputer.ts` |
+| `contact-center.wxapp-answer` | Contact Center / Task | `enableAnswerOnWebex`, `setManageWebexCallingInWxcc`, Task wxApp telephony methods | init config + runtime toggle; usersub publish on setter only (AD parity); `setManageWebexCallingInWxcc(true)` rejects `BROWSER` login | semver public | `src/services/task/ai-docs/task-spec.md`, `ai-docs/contact-center-spec.md` | `src/cc.ts`, `src/services/task/voice/Voice.ts`, `src/services/task/voice/wxAppVoiceMethods.ts` |
 
 ### Events
 
@@ -20,6 +21,7 @@
 |---|---|---|---|---|---|---|---|
 | `agent.events` | Agent | `agent:*` | publish to application | agent spec/types | realtime; backend ordering/correlation | additive constants | `src/services/agent/types.ts` |
 | `task.events` | Task | `task:*` | publish to application/task | task spec/types | event-driven; state guarded | additive constants | `src/services/task/types.ts` |
+| `task.wxapp-mute.events` | Task | `task:wxapp-mute-state-updated` | publish to application/task | task spec/types | event-driven | additive | `src/services/task/types.ts`, `src/services/task/voice/Voice.ts` |
 | `cc.events` | Config/Core | backend CC_EVENTS | consume/map | config/core specs | remote WebSocket delivery; AQM correlation where configured | backend contract | `src/services/config/types.ts` |
 | `rtd.events` | Task | realtime transcription/suggestion | consume then publish per task | task spec | websocket best-effort according to remote service | additive payloads | `src/services/task/TaskManager.ts` |
 

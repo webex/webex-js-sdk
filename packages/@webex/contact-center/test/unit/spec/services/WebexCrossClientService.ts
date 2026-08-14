@@ -175,4 +175,16 @@ describe('WebexCrossClientService', () => {
       jest.useRealTimers();
     }
   });
+
+  it('reports whether answer-calls-on-wxcc true was published', async () => {
+    expect(service.isAnswerCallsStateActive()).toBe(false);
+
+    await service.setManageWebexCallingInWxcc(true);
+
+    expect(service.isAnswerCallsStateActive()).toBe(true);
+
+    await service.setManageWebexCallingInWxcc(false);
+
+    expect(service.isAnswerCallsStateActive()).toBe(false);
+  });
 });

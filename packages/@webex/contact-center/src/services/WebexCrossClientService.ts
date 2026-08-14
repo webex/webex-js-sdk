@@ -18,6 +18,8 @@ export default class WebexCrossClientService {
   private refreshTimer?: RefreshTimer;
   private answerCallsState = false;
   private appName = DEFAULT_APP_NAME;
+  /** Incremented on teardown/disable to ignore stale refresh timer callbacks. */
+  private refreshGeneration = 0;
 
   constructor(webex: WebexSDK) {
     this.webex = webex;
@@ -48,7 +50,12 @@ export default class WebexCrossClientService {
     }
 
     const refreshTime = ttl * 1000 - EXPIRATION_OFFSET_MS;
+    const scheduledGeneration = this.refreshGeneration;
     this.refreshTimer = setTimeout(() => {
+      if (scheduledGeneration !== this.refreshGeneration || !this.answerCallsState) {
+        return;
+      }
+
       this.setManageWebexCallingInWxcc(true, {userId, ttl, appName: this.appName}).catch(
         (error) => {
           LoggerProxy.error(`WebexCrossClientService refresh failed: ${error}`, {
@@ -99,6 +106,7 @@ export default class WebexCrossClientService {
     enable: boolean,
     options?: {userId?: string; ttl?: number; appName?: string}
   ): Promise<void> {
+    const operationGeneration = this.refreshGeneration;
     const userId = options?.userId ?? this.webex.internal.device?.userId;
     const ttl = options?.ttl ?? DEFAULT_CROSS_CLIENT_STATE_TTL;
     const appName = options?.appName ?? DEFAULT_APP_NAME;
@@ -126,11 +134,17 @@ export default class WebexCrossClientService {
     };
 
     await this.publishCrossClientState([userId], ttl, composition, 'setManageWebexCallingInWxcc');
+
+    if (operationGeneration !== this.refreshGeneration) {
+      return;
+    }
+
     this.answerCallsState = enable;
 
     if (enable) {
       this.startRefreshTimer(userId, ttl);
     } else {
+      this.refreshGeneration += 1;
       this.clearRefreshTimer();
     }
 
@@ -146,7 +160,13 @@ export default class WebexCrossClientService {
   }
 
   public teardown(): void {
+    this.refreshGeneration += 1;
     this.clearRefreshTimer();
     this.answerCallsState = false;
+  }
+
+  /** Whether usersub `answer-calls-on-wxcc: true` was successfully published this session. */
+  public isAnswerCallsStateActive(): boolean {
+    return this.answerCallsState;
   }
 }

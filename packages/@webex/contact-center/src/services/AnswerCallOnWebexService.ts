@@ -5,6 +5,22 @@ import {getErrorDetails} from './core/Utils';
 
 const ANSWER_CALL_ON_WEBEX_FILE = 'AnswerCallOnWebexService';
 
+export type WxAppTelephonyError = Error & {
+  isWxAppTelephonyError: true;
+  trackingId?: string;
+};
+
+const markWxAppTelephonyError = (error: Error, source: unknown): WxAppTelephonyError => {
+  const marked = error as WxAppTelephonyError;
+  marked.isWxAppTelephonyError = true;
+  const trackingId = (source as {details?: {trackingId?: string}})?.details?.trackingId;
+  if (trackingId) {
+    marked.trackingId = trackingId;
+  }
+
+  return marked;
+};
+
 export type AnswerCallParams = {
   callId: string;
   endpointId: string;
@@ -73,7 +89,7 @@ export default class AnswerCallOnWebexService {
         method: logMethod,
       });
       const {error: detailedError} = getErrorDetails(error, logMethod, CC_FILE);
-      throw detailedError;
+      throw markWxAppTelephonyError(detailedError, error);
     }
   }
 
@@ -165,7 +181,7 @@ export default class AnswerCallOnWebexService {
         METHODS.GET_CALL_DETAILS_ON_WEBEX,
         CC_FILE
       );
-      throw detailedError;
+      throw markWxAppTelephonyError(detailedError, error);
     }
   }
 }

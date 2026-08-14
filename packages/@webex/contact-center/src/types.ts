@@ -94,11 +94,18 @@ export type WebexRequestPayload = {
 type Listener = (e: string, data?: unknown) => void;
 
 /**
+ * Mercury event handler callback.
+ * @internal
+ * @ignore
+ */
+type MercuryEventHandler = (data?: unknown) => void;
+
+/**
  * Event listener removal function type.
  * @internal
  * @ignore
  */
-type ListenerOff = (e: string) => void;
+type ListenerOff = (e: string, handler?: MercuryEventHandler) => void;
 
 /**
  * Service host configuration.

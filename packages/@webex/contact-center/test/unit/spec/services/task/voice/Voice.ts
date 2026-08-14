@@ -807,5 +807,26 @@ describe('Voice Task', () => {
 
       expect(syncSpy).toHaveBeenCalled();
     });
+
+    it('syncs mute state after task hydrate (onTaskHydrated)', async () => {
+      const mockSvc = {
+        getCallDetails: jest.fn().mockResolvedValue({muted: true}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      voice.onTaskHydrated();
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(mockSvc.getCallDetails).toHaveBeenCalledWith({callId: 'call-id-1'});
+      expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, {
+        muted: true,
+      });
+    });
   });
 });

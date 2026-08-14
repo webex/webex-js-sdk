@@ -141,6 +141,10 @@ export default class Voice extends Task implements IVoice {
     this.syncWxAppMuteFromCallDetails().catch(() => undefined);
   }
 
+  protected onTaskHydrated(): void {
+    this.syncWxAppMuteFromCallDetails().catch(() => undefined);
+  }
+
   public getCallingDeviceDetails() {
     return getCallingDeviceDetails(this.getWxAppVoiceDeps());
   }

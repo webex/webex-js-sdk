@@ -7,6 +7,7 @@ import {
   rejectOnWebex,
   toggleMuteOnWebex,
   transmitDtmfOnWebex,
+  mapWxAppVoiceError,
   WxAppVoiceDeps,
 } from '../../../../../../src/services/task/voice/wxAppVoiceMethods';
 import {TaskState} from '../../../../../../src/services/task/state-machine';
@@ -349,5 +350,16 @@ describe('transmitDtmfOnWebex', () => {
     await expect(transmitDtmfOnWebex(deps, {dtmf: '1'})).rejects.toThrow(
       'WxApp call ID is unavailable'
     );
+  });
+});
+
+describe('mapWxAppVoiceError', () => {
+  it('rethrows normalized wxApp telephony errors without remapping', () => {
+    const normalized = Object.assign(new Error('TELEPHONY_ERROR'), {
+      isWxAppTelephonyError: true,
+      trackingId: 'track-wxapp-1',
+    });
+
+    expect(() => mapWxAppVoiceError(normalized, 'acceptOnWebex', 'cc')).toThrow(normalized);
   });
 });

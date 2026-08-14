@@ -291,6 +291,13 @@ export default abstract class Task extends EventEmitter implements ITask {
     // no-op by default
   }
 
+  /**
+   * Hook for post-hydrate wxApp sync (Voice overrides).
+   */
+  protected onTaskHydrated(): void {
+    // no-op by default
+  }
+
   protected computeUIControls(): TaskUIControls {
     const snapshot = this.stateMachineService?.getSnapshot?.();
 
@@ -454,9 +461,16 @@ export default abstract class Task extends EventEmitter implements ITask {
       emitTaskCampaignPreviewRemoveFailed: this.createEmitSelfAction(
         TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_REMOVE_FAILED
       ),
-      emitTaskHydrate: this.createEmitSelfAction(TASK_EVENTS.TASK_HYDRATE, {
-        updateTaskData: true,
-      }),
+      emitTaskHydrate: ({event}: TaskActionArgs) => {
+        this.updateTaskFromEvent(event);
+        LoggerProxy.info(`Emitting task event ${TASK_EVENTS.TASK_HYDRATE}`, {
+          module: TASK_FILE,
+          method: 'emitTaskEvent',
+          interactionId: this.data?.interactionId,
+        });
+        this.emit(TASK_EVENTS.TASK_HYDRATE, this);
+        this.onTaskHydrated();
+      },
       emitTaskOfferContact: this.createEmitSelfAction(TASK_EVENTS.TASK_OFFER_CONTACT, {
         updateTaskData: true,
       }),

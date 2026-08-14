@@ -140,14 +140,7 @@ function computeVoiceInteractionUIControls(
   const wxAppDeviceDetails = enableAnswerOnWebex
     ? getWebexCallingDeviceDetailsForAgent(selfAgentId, interaction?.participants)
     : undefined;
-  const isWxAppParticipant =
-    enableAnswerOnWebex &&
-    Boolean(
-      interaction?.participants &&
-        Object.values(interaction.participants).some(
-          (participant: {deviceType?: string}) => participant?.deviceType === 'wxApp'
-        )
-    );
+  const isWxAppParticipant = enableAnswerOnWebex && wxAppDeviceDetails?.deviceType === 'wxApp';
   const isWxAppOffer =
     isWxAppParticipant && Boolean(wxAppDeviceDetails) && state === TaskState.OFFERED;
   const isWxAppEngaged =

@@ -147,6 +147,17 @@ function toggleWebRTCRegistration() {
 function toggleAnswerOnWebex() {
   isAnswerOnWebexEnabled = enableAnswerOnWebexCheckbox.checked;
   localStorage.setItem('isAnswerOnWebexEnabled', String(isAnswerOnWebexEnabled));
+
+  if (webex?.cc?.agentConfig?.isAgentLoggedIn) {
+    webex.cc.setManageWebexCallingInWxcc(isAnswerOnWebexEnabled).catch((error) => {
+      console.error('setManageWebexCallingInWxcc failed', error);
+      isAnswerOnWebexEnabled = !isAnswerOnWebexEnabled;
+      localStorage.setItem('isAnswerOnWebexEnabled', String(isAnswerOnWebexEnabled));
+      if (enableAnswerOnWebexCheckbox) {
+        enableAnswerOnWebexCheckbox.checked = isAnswerOnWebexEnabled;
+      }
+    });
+  }
 }
 
 const transcriptEntries = [];
@@ -2609,7 +2620,7 @@ function generateWebexConfig({credentials}) {
     cc: {
       allowMultiLogin: isMultiLoginEnabled,
       disableWebRTCRegistration: isWebRTCRegistrationDisabled,
-      enableAnswerOnWebex: isAnswerOnWebexEnabled,
+      enableAnswerOnWebex: false,
     },
     credentials,
   };
@@ -2893,6 +2904,12 @@ function register() {
       const idx    = [...idleCodesDropdown.options].findIndex(o => o.value === auxId);
       idleCodesDropdown.selectedIndex = idx >= 0 ? idx : 0;
       startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
+
+      if (isAnswerOnWebexEnabled) {
+        webex.cc.setManageWebexCallingInWxcc(true).catch((error) => {
+          console.error('setManageWebexCallingInWxcc failed on station login', error);
+        });
+      }
     });
         updateTaskList();
     }).catch((error) => {
@@ -3225,17 +3242,6 @@ async function decline() {
   updateTaskList();
 }
 
-// WXCC-6026: wxApp mute toggle handler
-async function toggleWxAppMute() {
-  if (!currentTask || !isAnswerOnWebexEnabled) return;
-  try {
-    await currentTask.toggleMuteOnWebex();
-    console.log('wxApp mute toggled');
-  } catch (e) {
-    console.error('wxApp toggleMute failed', e);
-  }
-}
-
 // WXCC-6026: wxApp DTMF transmit handler
 async function transmitWxAppDtmf(digit) {
   if (!currentTask || !isAnswerOnWebexEnabled) return;
@@ -3325,6 +3331,32 @@ function holdResumeCall() {
 }
 
 function muteUnmute() {
+  if (!currentTask) {
+    return;
+  }
+
+  const wxAppCallId =
+    isAnswerOnWebexEnabled &&
+    currentTask.getWebexCallingCallId &&
+    currentTask.getWebexCallingCallId();
+
+  if (wxAppCallId) {
+    const currentlyMuted = muteElm.innerText === 'Unmute';
+    const intendedMuted = !currentlyMuted;
+
+    currentTask
+      .toggleMuteOnWebex({muted: intendedMuted})
+      .then(() => {
+        muteElm.innerText = intendedMuted ? 'Unmute' : 'Mute';
+        console.info(intendedMuted ? 'Call is muted' : 'Call is unmuted');
+      })
+      .catch((error) => {
+        console.error('wxApp toggleMute failed', error);
+      });
+
+    return;
+  }
+
   if (muteElm.innerText === 'Mute') {
     muteElm.innerText = 'Unmute';
     console.info('Call is muted');

@@ -4,6 +4,12 @@ import {WebexSDK} from '../../../../src/types';
 import LoggerProxy from '../../../../src/logger-proxy';
 
 jest.mock('../../../../src/logger-proxy');
+jest.mock('../../../../src/services/core/WebexRequest', () => ({
+  __esModule: true,
+  default: {
+    getInstance: () => ({uploadLogs: jest.fn()}),
+  },
+}));
 
 const TELEPHONY_BASE = 'https://api.ciscospark.com';
 const CALLS_URL = `${TELEPHONY_BASE}/telephony/calls`;
@@ -105,10 +111,19 @@ describe('AnswerCallOnWebexService', () => {
     });
 
     it('rejects and logs on request failure', async () => {
-      const err = new Error('network fail');
+      const err = {
+        details: {
+          trackingId: 'track-wxapp-1',
+          data: {reason: 'TELEPHONY_ERROR'},
+        },
+      };
       (webex.request as jest.Mock).mockRejectedValue(err);
 
-      await expect(service.answerCall({callId: 'c1', endpointId: 'e1'})).rejects.toBeDefined();
+      await expect(service.answerCall({callId: 'c1', endpointId: 'e1'})).rejects.toMatchObject({
+        isWxAppTelephonyError: true,
+        message: 'TELEPHONY_ERROR',
+        trackingId: 'track-wxapp-1',
+      });
       expect(LoggerProxy.error).toHaveBeenCalled();
     });
   });

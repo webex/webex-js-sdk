@@ -1096,8 +1096,34 @@ describe('webex.cc', () => {
       ]);
     });
 
-    it('should publish usersub false and teardown wxApp sync on logout', async () => {
+    it('should not publish usersub false on logout when wxApp was never enabled', async () => {
       webex.internal.device = {userId: 'user-123'};
+      const publishSpy = jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+      const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
+      const unsubscribeSpy = jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'unsubscribe');
+
+      jest.spyOn(webex.cc.services.agent, 'logout').mockResolvedValue({
+        trackingId: 'track-1',
+      } as StationLogoutResponse);
+
+      await webex.cc.stationLogout({logoutReason: 'Logout reason'});
+
+      expect(publishSpy).not.toHaveBeenCalled();
+      expect(teardownSpy).toHaveBeenCalled();
+      expect(unsubscribeSpy).toHaveBeenCalled();
+    });
+
+    it('should publish usersub false and teardown wxApp sync on logout when wxApp was enabled', async () => {
+      webex.internal.device = {
+        userId: 'user-123',
+        url: 'https://wdm.example.com/devices/dev-1',
+      };
+      webex.request = jest.fn().mockResolvedValue({body: {}});
+
+      await webex.cc.setManageWebexCallingInWxcc(true);
+
       const publishSpy = jest
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockResolvedValue(undefined);
@@ -1896,7 +1922,7 @@ describe('webex.cc', () => {
       const [, connectionCallback] = connectionCalls[0];
       expect(connectionCallback).toBe(webex.cc['handleConnectionLost']);
 
-      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
+      expect(publishSpy).not.toHaveBeenCalled();
       expect(teardownSpy).toHaveBeenCalled();
       expect(unsubscribeSpy).toHaveBeenCalled();
     });
@@ -2715,6 +2741,10 @@ describe('webex.cc', () => {
     beforeEach(() => {
       webex.internal.device = {userId: 'user-123'};
       webex.cc.$config = {...webex.cc.$config, enableAnswerOnWebex: false};
+      webex.cc['agentConfig'] = {
+        agentId: 'agent-123',
+        deviceType: LoginOption.EXTENSION,
+      } as Profile;
     });
 
     it('should update config, task manager, and publish usersub when enabled', async () => {
@@ -2729,8 +2759,15 @@ describe('webex.cc', () => {
       expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123'});
     });
 
-    it('should publish false and update config when disabled', async () => {
-      webex.cc.$config = {...webex.cc.$config, enableAnswerOnWebex: true};
+    it('should publish false and update config when disabled after wxApp was enabled', async () => {
+      webex.internal.device = {
+        userId: 'user-123',
+        url: 'https://wdm.example.com/devices/dev-1',
+      };
+      webex.request = jest.fn().mockResolvedValue({body: {}});
+
+      await webex.cc.setManageWebexCallingInWxcc(true);
+
       const publishSpy = jest
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockResolvedValue(undefined);
@@ -2742,6 +2779,19 @@ describe('webex.cc', () => {
       expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
     });
 
+    it('should skip usersub publish when disabling without prior wxApp publish', async () => {
+      webex.cc.$config = {...webex.cc.$config, enableAnswerOnWebex: true};
+      const publishSpy = jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+
+      await webex.cc.setManageWebexCallingInWxcc(false);
+
+      expect(webex.cc.isAnswerOnWebexEnabled()).toBe(false);
+      expect(mockTaskManager.applyEnableAnswerOnWebex).toHaveBeenCalledWith(false);
+      expect(publishSpy).not.toHaveBeenCalled();
+    });
+
     it('should throw when enabling before login', async () => {
       webex.internal.device = undefined;
 
@@ -2750,6 +2800,35 @@ describe('webex.cc', () => {
       );
       expect(webex.cc.isAnswerOnWebexEnabled()).toBe(false);
       expect(mockTaskManager.applyEnableAnswerOnWebex).not.toHaveBeenCalled();
+    });
+
+    it('should throw when enabling on BROWSER (Desktop) login', async () => {
+      webex.cc['agentConfig'] = {deviceType: LoginOption.BROWSER} as Profile;
+      const publishSpy = jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+
+      await expect(webex.cc.setManageWebexCallingInWxcc(true)).rejects.toThrow(
+        'setManageWebexCallingInWxcc is not supported for BROWSER (Desktop) login'
+      );
+      expect(webex.cc.isAnswerOnWebexEnabled()).toBe(false);
+      expect(mockTaskManager.applyEnableAnswerOnWebex).not.toHaveBeenCalled();
+      expect(publishSpy).not.toHaveBeenCalled();
+    });
+
+    it('should publish usersub when enabling on AGENT_DN login', async () => {
+      webex.cc['agentConfig'] = {
+        agentId: 'agent-123',
+        deviceType: LoginOption.AGENT_DN,
+      } as Profile;
+      const publishSpy = jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+
+      await webex.cc.setManageWebexCallingInWxcc(true);
+
+      expect(webex.cc.isAnswerOnWebexEnabled()).toBe(true);
+      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123'});
     });
 
     it('should no-op usersub publish when disabling before login', async () => {
@@ -2823,6 +2902,19 @@ describe('webex.cc', () => {
       expect(webex.internal.device.register).toHaveBeenCalled();
       expect(webex.internal.mercury.connect).toHaveBeenCalled();
       expect(subscribeSpy).toHaveBeenCalledWith('agent-123', expect.any(Function));
+    });
+
+    it('should rollback config and task manager when usersub publish fails', async () => {
+      webex.cc.$config = {...webex.cc.$config, enableAnswerOnWebex: false};
+      jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockRejectedValue(new Error('usersub failed'));
+
+      await expect(webex.cc.setManageWebexCallingInWxcc(true)).rejects.toThrow('usersub failed');
+
+      expect(webex.cc.isAnswerOnWebexEnabled()).toBe(false);
+      expect(mockTaskManager.applyEnableAnswerOnWebex).toHaveBeenCalledWith(true);
+      expect(mockTaskManager.applyEnableAnswerOnWebex).toHaveBeenLastCalledWith(false);
     });
   });
 });

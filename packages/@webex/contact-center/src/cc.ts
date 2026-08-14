@@ -1429,6 +1429,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
+   * wxApp thick-client answer is supported for Extension and Dial Number station login only —
+   * not Browser/Desktop (WebRTC) login.
+   * @private
+   */
+  private assertWxAppStationLoginSupportedForEnable(): void {
+    if (this.agentConfig?.deviceType === LoginOption.BROWSER) {
+      throw new Error(
+        'setManageWebexCallingInWxcc is not supported for BROWSER (Desktop) login. Use EXTENSION or AGENT_DN.'
+      );
+    }
+  }
+
+  /**
    * Runtime toggle for wxApp thick-client answer and cross-client toast suppression.
    * Updates config, publishes usersub state, and refreshes uiControls on active tasks.
    * @public
@@ -1438,17 +1451,32 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       throw new Error('Cannot publish answer-calls-on-wxcc: user is not logged in');
     }
 
+    if (enabled) {
+      this.assertWxAppStationLoginSupportedForEnable();
+    }
+
+    const previousEnabled = this.isAnswerOnWebexEnabled();
+
     if (this.$config) {
       this.$config.enableAnswerOnWebex = enabled;
     }
 
     this.taskManager.applyEnableAnswerOnWebex(enabled);
-    await this.publishAnswerOnWebexCrossClientState(enabled);
 
-    if (enabled) {
-      await this.ensureWxAppMercuryAndSubscribe();
-    } else {
-      this.wxAppTelephonyMercurySync.unsubscribe();
+    try {
+      await this.publishAnswerOnWebexCrossClientState(enabled);
+
+      if (enabled) {
+        await this.ensureWxAppMercuryAndSubscribe();
+      } else {
+        this.wxAppTelephonyMercurySync.unsubscribe();
+      }
+    } catch (error) {
+      if (this.$config) {
+        this.$config.enableAnswerOnWebex = previousEnabled;
+      }
+      this.taskManager.applyEnableAnswerOnWebex(previousEnabled);
+      throw error;
     }
   }
 
@@ -1506,19 +1534,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return;
     }
 
+    if (!enable && !this.webexCrossClientService.isAnswerCallsStateActive()) {
+      return;
+    }
+
     const userId = this.$webex.internal.device?.userId;
     if (!userId) {
       return;
     }
 
-    try {
-      await this.webexCrossClientService.setManageWebexCallingInWxcc(enable, {userId});
-    } catch (error) {
-      LoggerProxy.error(`Failed to publish answer-calls-on-wxcc cross-client state: ${error}`, {
-        module: CC_FILE,
-        method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
-      });
-    }
+    await this.webexCrossClientService.setManageWebexCallingInWxcc(enable, {userId});
   }
 
   /**

@@ -192,6 +192,13 @@ export async function transmitDtmfOnWebex(
 }
 
 export function mapWxAppVoiceError(error: unknown, method: string, module: string): never {
+  if (
+    error instanceof Error &&
+    (error as Error & {isWxAppTelephonyError?: boolean}).isWxAppTelephonyError
+  ) {
+    throw error;
+  }
+
   const {error: detailedError} = getErrorDetails(error, method, module);
   throw detailedError;
 }

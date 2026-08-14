@@ -59,10 +59,15 @@ describe('WxAppTelephonyMercurySync', () => {
 
   it('unsubscribes and removes Mercury listeners', () => {
     sync.subscribe(agentId, onMuteChange);
+    const muteHandler = mercury.on.mock.calls.find(([event]) => event === TELEPHONY_CALL_MUTED)![1];
+    const unmuteHandler = mercury.on.mock.calls.find(
+      ([event]) => event === TELEPHONY_CALL_UNMUTED
+    )![1];
+
     sync.unsubscribe();
 
-    expect(mercury.off).toHaveBeenCalledWith(TELEPHONY_CALL_MUTED);
-    expect(mercury.off).toHaveBeenCalledWith(TELEPHONY_CALL_UNMUTED);
+    expect(mercury.off).toHaveBeenCalledWith(TELEPHONY_CALL_MUTED, muteHandler);
+    expect(mercury.off).toHaveBeenCalledWith(TELEPHONY_CALL_UNMUTED, unmuteHandler);
     expect(sync.isSubscribed()).toBe(false);
   });
 
@@ -90,13 +95,19 @@ describe('WxAppTelephonyMercurySync', () => {
 
   it('resubscribe replaces previous Mercury listeners', () => {
     sync.subscribe(agentId, onMuteChange);
+    const firstMuteHandler = mercury.on.mock.calls.find(
+      ([event]) => event === TELEPHONY_CALL_MUTED
+    )![1];
+    const firstUnmuteHandler = mercury.on.mock.calls.find(
+      ([event]) => event === TELEPHONY_CALL_UNMUTED
+    )![1];
     expect(mercury.on).toHaveBeenCalledTimes(2);
 
     const secondHandler = jest.fn();
     sync.subscribe(agentId, secondHandler);
 
-    expect(mercury.off).toHaveBeenCalledWith(TELEPHONY_CALL_MUTED);
-    expect(mercury.off).toHaveBeenCalledWith(TELEPHONY_CALL_UNMUTED);
+    expect(mercury.off).toHaveBeenCalledWith(TELEPHONY_CALL_MUTED, firstMuteHandler);
+    expect(mercury.off).toHaveBeenCalledWith(TELEPHONY_CALL_UNMUTED, firstUnmuteHandler);
     expect(mercury.on).toHaveBeenCalledTimes(4);
   });
 });
