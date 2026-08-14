@@ -1,238 +1,156 @@
 # Agent Service - AI Agent Guide
 
-> **Purpose**: Manage agent lifecycle including login, logout, state changes, and buddy agent queries.
+## Purpose
 
----
+Manage agent lifecycle operations such as registration, station login/logout,
+state changes, buddy-agent lookup, and silent relogin. AI summary work does not
+add agent service APIs; it consumes agent profile feature flags and forwards one
+client-level feature event.
 
-## Quick Start
+## Core Capabilities
+
+- `cc.register()` loads the agent profile and initializes SDK services.
+- `cc.stationLogin(...)` and `cc.stationLogout(...)` manage station state.
+- `cc.setAgentState(...)` updates agent availability.
+- `cc.getBuddyAgents(...)` supports consult and transfer destination lookup.
+- Connection re-establishment may perform silent relogin when configured.
+
+## AI Summary Feature Source
+
+Generated-summary organization flags are read from the existing profile path:
+
+`getAgentConfig() -> Profile.aiFeature -> TaskManager.setConfigFlags(...) -> Task.getGeneratedSummaryFlags()`
+
+The SDK uses optional chaining and strict `=== true` checks for:
+
+- `aiFeature.generatedSummaries.wrapUpSummariesEnabled`
+- `aiFeature.generatedSummaries.consultTransferSummariesEnabled`
+
+Absent `aiFeature` or absent `generatedSummaries` must not throw during
+registration. Existing realtime transcript and suggested-response workflows
+continue to operate independently.
+
+## Feature Enablement Event
+
+`AGENT_EVENTS.FEATURE_ENABLEMENT` is emitted to consumers as:
+
+```typescript
+cc.on('cc:featureEnablement', (payload) => {
+  // payload.interactionId
+  // payload.postCallEnabled
+  // payload.midCallEnabled
+  // payload.actionTimeStamp
+});
+```
+
+`postCallEnabled` and `midCallEnabled` are independently optional booleans.
+Absence remains `undefined`. Consumers may use this event as a discovery signal,
+but an unchecked Task request is still safe: it rejects disabled locally without
+creating backend work.
+
+`incomingTaskListener()` removes the named feature handler before adding it, so
+repeated listener setup remains single-subscribed. Distinct inbound frames,
+including identical repeats, are still forwarded once each.
+
+## Lifecycle Cleanup
+
+`ContactCenter.register()`, connection re-establishment, and
+`ContactCenter.deregister()` call `TaskManager.clearAISummaryState()` to clear
+session-scoped summary state.
+
+The clear happens before applying a new profile on register/reconnect and in a
+`finally` block during deregister, so earlier teardown failure cannot skip AI
+summary cleanup. Full cleanup:
+
+- marks inbound summary handling inactive
+- rejects live summary request Promises with `AI_SUMMARY_REQUEST_CANCELLED`
+- clears pending request timers, receiver buffers, feature snapshots, and their
+  timers
+- makes queued classified summary frames metadata-only `sdk-deregistered` drops
+
+The next `setConfigFlags(...)` call reactivates summary handling for the new
+session.
+
+## Privacy
+
+Agent-facing AI summary lifecycle logs and metrics may include bounded event
+names, validation outcomes, boolean enablement values, and safe identifiers.
+They must not include summary text, section keys or values, Adaptive Card
+bodies, agent names, raw payloads, or arbitrary exception text.
+
+## Validation
+
+Focused lifecycle evidence lives in:
+
+```bash
+yarn workspace @webex/contact-center test:unit --targets cc.ts
+```
+
+## Agent Lifecycle Quick Start
+
+AI-summary support extends the existing agent service; it does not replace its login, state, or
+buddy-agent responsibilities.
 
 ```typescript
 const cc = webex.cc;
-
-// Register and login
 const profile = await cc.register();
-await cc.stationLogin({
-  teamId: profile.teams[0].teamId,
-  loginOption: 'BROWSER',
-});
-
-// Set state to Available
-await cc.setAgentState({
-  state: 'Available',
-  auxCodeId: '0',
-});
-
-// Get available agents for transfer
-const buddies = await cc.getBuddyAgents({
-  state: 'Available',
-  mediaType: 'telephony',
-});
+await cc.stationLogin({teamId: profile.teams[0].teamId, loginOption: 'BROWSER'});
+await cc.setAgentState({state: 'Available', auxCodeId: '0'});
+const buddies = await cc.getBuddyAgents({state: 'Available', mediaType: 'telephony'});
 ```
 
----
+### Login options
 
-## Key Capabilities
+| Option | Description | Dial number |
+| --- | --- | --- |
+| `BROWSER` | WebRTC softphone in the browser | Not required |
+| `EXTENSION` | Desk-phone extension | Required |
+| `AGENT_DN` | Direct agent dial number | Required |
 
-- **Station Login**: Login with browser (WebRTC), extension, or dial number
-- **Station Logout**: Logout from current station with reason
-- **State Management**: Toggle between Available/Idle states with aux codes
-- **Buddy Agents**: Query available agents for consult/transfer
-- **Silent Relogin**: Automatic re-authentication on reconnection
+### Existing public methods
 
----
+| Method | Purpose | Important inputs | Result |
+| --- | --- | --- | --- |
+| `cc.stationLogin(params)` | Log the agent into a station | `teamId`, `loginOption`, and `dialNumber` when required | `Promise<StationLoginResponse>` |
+| `cc.stationLogout(params)` | Log the agent out of the station | Optional `logoutReason` | `Promise<StationLogoutResponse>` |
+| `cc.setAgentState(params)` | Change between Available, Idle, or backend-defined states | `state`, `auxCodeId`, optional reason/agent ID | `Promise<SetStateResponse>` |
+| `cc.getBuddyAgents(params)` | Find agents for consult or transfer | Optional state and required media type | `Promise<BuddyAgentsResponse>` |
 
-## API Reference
+`cc.register()` must finish before station operations. Browser login also requires the Mercury and
+Web Calling setup performed by `ContactCenter`.
 
-### Login Options
+## Existing Agent Events
 
-| Option | Description | Requires dialNumber |
-|--------|-------------|---------------------|
-| `BROWSER` | WebRTC softphone in browser | No |
-| `EXTENSION` | Desk phone extension | Yes |
-| `AGENT_DN` | Direct dial number | Yes |
+| Event | Meaning |
+| --- | --- |
+| `agent:stationLoginSuccess` / `agent:stationLoginFailed` | Station-login outcome |
+| `agent:logoutSuccess` / `agent:logoutFailed` | Station-logout outcome |
+| `agent:stateChange` | State update received from any supported source |
+| `agent:stateChangeSuccess` / `agent:stateChangeFailed` | Requested state-change outcome |
+| `agent:multiLogin` | Another active agent session was detected |
+| `agent:reloginSuccess` | Silent relogin completed |
+| `agent:dnRegistered` | Dial-number registration completed |
+| `cc:featureEnablement` | Valid AI-summary feature flags were received |
 
-### Methods
+Consumers should treat `AgentState` as extensible. Known values include Available, Idle, RONA, and
+LoggedOut, but organizations can expose additional backend-defined values through auxiliary codes.
 
-#### `cc.stationLogin(params)`
+## Existing Error Guidance
 
-Login agent to a station.
+Agent operations reject with structured errors. Preserve `error.data` when presenting field-level
+login failures, and handle unknown error shapes without assuming every failure is an `Error` object.
 
-**Parameters**:
-- `teamId` (string): Team to login to
-- `loginOption` ('BROWSER' | 'EXTENSION' | 'AGENT_DN'): Device type
-- `dialNumber` (string, optional): Required for EXTENSION/AGENT_DN
+| Reason | Meaning |
+| --- | --- |
+| `DUPLICATE_LOCATION` | The extension or dial number is already in use |
+| `INVALID_DIAL_NUMBER` | The submitted dial number failed validation |
+| `AGENT_NOT_FOUND` | The agent no longer exists; silent relogin handles this specially |
 
-**Returns**: `Promise<StationLoginResponse>`
+## Dependencies And Related Files
 
-**Example**:
-```typescript
-// Browser login
-const response = await cc.stationLogin({
-  teamId: 'team-123',
-  loginOption: 'BROWSER',
-});
-
-// Extension login
-const response = await cc.stationLogin({
-  teamId: 'team-123',
-  loginOption: 'EXTENSION',
-  dialNumber: '1234',
-});
-```
-
----
-
-#### `cc.stationLogout(params)`
-
-Logout agent from station.
-
-**Parameters**:
-- `logoutReason` (string, optional): 'User requested logout' | 'Inactivity Logout' | 'User requested agent profile update'
-
-**Returns**: `Promise<StationLogoutResponse>`
-
-**Example**:
-```typescript
-await cc.stationLogout({
-  logoutReason: 'User requested logout',
-});
-```
-
----
-
-#### `cc.setAgentState(params)`
-
-Change agent state (Available/Idle).
-
-**Parameters**:
-- `state` ('Available' | 'Idle'): New state
-- `auxCodeId` (string): Auxiliary code ID
-- `lastStateChangeReason` (string, optional): Reason for change
-- `agentId` (string, optional): Agent ID (defaults to current agent)
-
-**Returns**: `Promise<SetStateResponse>`
-
-**Example**:
-```typescript
-// Go Available
-await cc.setAgentState({
-  state: 'Available',
-  auxCodeId: '0',
-});
-
-// Go to Idle with specific code
-await cc.setAgentState({
-  state: 'Idle',
-  auxCodeId: 'break-code-123',
-  lastStateChangeReason: 'Coffee break',
-});
-```
-
----
-
-#### `cc.getBuddyAgents(params)`
-
-Get list of agents for consult/transfer.
-
-**Parameters**:
-- `state` (string, optional): Filter by state ('Available', 'Idle')
-- `mediaType` (string): Media type filter ('telephony', 'chat', 'social', 'email')  
-**Returns**: `Promise<BuddyAgentsResponse>`
-
-**Example**:
-```typescript
-const response = await cc.getBuddyAgents({
-  state: 'Available',
-  mediaType: 'telephony',
-});
-
-response.data.agentList.forEach(agent => {
-  console.log(`${agent.agentName} (${agent.state})`);
-});
-```
-
----
-
-## Events
-
-| Event | Type | Description |
-|-------|------|-------------|
-| `agent:stationLoginSuccess` | `StationLoginSuccessResponse` | Login succeeded |
-| `agent:stationLoginFailed` | Error | Login failed |
-| `agent:logoutSuccess` | `LogoutSuccess` | Logout succeeded |
-| `agent:logoutFailed` | Error | Logout failed |
-| `agent:stateChange` | `StateChangeSuccess` | State changed (any source) |
-| `agent:stateChangeSuccess` | `StateChangeSuccess` | State change succeeded |
-| `agent:stateChangeFailed` | Error | State change failed |
-| `agent:multiLogin` | Object | Multi-login detected |
-| `agent:reloginSuccess` | `ReloginSuccess` | Silent relogin succeeded |
-| `agent:dnRegistered` | Object | DN registration complete |
-
-### Event Usage
-
-```typescript
-cc.on('agent:stateChange', (event) => {
-  console.log(`State: ${event.subStatus}, AuxCode: ${event.auxCodeId}`);
-});
-
-cc.on('agent:multiLogin', (event) => {
-  console.warn('Another session detected');
-});
-```
-
----
-
-## Agent States
-
-The `AgentState` type (`'Available' | 'Idle' | 'RONA' | string`) is extensible -- the `string` union member allows backend-defined states beyond the known values listed below.
-
-| State | SubStatus | Description |
-|-------|-----------|-------------|
-| LoggedIn | Available | Ready to receive tasks |
-| LoggedIn | Idle | On break or not ready (uses aux code for sub-reason) |
-| RONA | - | Rang but no answer; agent failed to accept offered task |
-| LoggedOut | - | Not logged in |
-| LoggedIn | *(custom)* | Additional org-specific states defined via aux codes |
-
-> **Note**: `AgentState` is a union with `string`, so consumers should handle unknown state values gracefully rather than exhaustively matching only the known literals.
-
----
-
-## Error Handling
-
-```typescript
-try {
-  await cc.stationLogin(params);
-} catch (error) {
-  console.error('Login failed:', error.message);
-  // Access error details
-  if (error.data) {
-    console.error('Field:', error.data.fieldName);
-    console.error('Message:', error.data.message);
-  }
-}
-```
-
-### Common Error Reasons
-
-| Reason | Description |
-|--------|-------------|
-| `DUPLICATE_LOCATION` | Extension/DN already in use |
-| `INVALID_DIAL_NUMBER` | Invalid phone number format |
-| `AGENT_NOT_FOUND` | Agent doesn't exist (silent relogin) |
-
----
-
-## Dependencies
-
-- Requires `cc.register()` to be called first
-- Agent profile must be fetched before login
-- WebRTC (BROWSER option) requires mercury connection
-
----
-
-## Related
-
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Technical deep-dive
-- [`cc.ts`](../../../cc.ts) - Main plugin implementation
-- [`types.ts`](../types.ts) - Type definitions
+- `cc.register()` and the agent profile are prerequisites for station login.
+- Browser login depends on the Mercury connection and Web Calling registration.
+- `../index.ts` defines the routing-agent request factory.
+- `../types.ts` owns agent payloads and event constants.
+- `../../../cc.ts` owns the public methods, lifecycle, and event forwarding.
+- [ARCHITECTURE.md](ARCHITECTURE.md) describes the request and reconnection flows.

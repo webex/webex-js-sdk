@@ -135,10 +135,27 @@ export const CC_TASK_EVENTS = {
   SUGGESTED_RESPONSE: 'SUGGESTED_RESPONSE',
   /** Event emitted when backend acknowledges it is listening for more context */
   SUGGESTED_RESPONSE_ACKNOWLEDGE: 'SUGGESTED_RESPONSE_ACKNOWLEDGE',
-  /** Event emitted when a mid-call summary is available */
+  /**
+   * @deprecated Use CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY for inbound AI-summary routing.
+   */
   MID_CALL_SUMMARY: 'MID_CALL_SUMMARY',
-  /** Event emitted when a post-call summary is available */
+  /**
+   * @deprecated Use CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY for inbound AI-summary routing.
+   */
   POST_CALL_SUMMARY: 'POST_CALL_SUMMARY',
+} as const;
+
+/**
+ * AI summary events received through Contact Center realtime delivery.
+ * Shared post-call and mid-call wire names derive from CC_TASK_EVENTS for compatibility.
+ * @enum {string}
+ * @public
+ */
+export const CC_AI_SUMMARY_EVENTS = {
+  POST_CALL_SUMMARY: CC_TASK_EVENTS.POST_CALL_SUMMARY,
+  MID_CALL_SUMMARY: CC_TASK_EVENTS.MID_CALL_SUMMARY,
+  FEATURE_ENABLEMENT: 'FEATURE_ENABLEMENT',
+  MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT: 'MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT',
 } as const;
 
 /**
@@ -194,6 +211,7 @@ export const CC_AGENT_EVENTS = {
 export const CC_EVENTS = {
   ...CC_AGENT_EVENTS,
   ...CC_TASK_EVENTS,
+  ...CC_AI_SUMMARY_EVENTS,
 } as const;
 
 /**
@@ -225,6 +243,12 @@ export type WelcomeResponse = WelcomeEvent | Error;
  * @public
  */
 export type CC_EVENTS = Enum<typeof CC_EVENTS>;
+
+/**
+ * Type representing AI summary realtime event names.
+ * @public
+ */
+export type CC_AI_SUMMARY_EVENTS = Enum<typeof CC_AI_SUMMARY_EVENTS>;
 
 /**
  * WebSocket event structure for Contact Center events

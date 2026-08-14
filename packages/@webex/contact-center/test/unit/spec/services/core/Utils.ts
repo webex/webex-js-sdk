@@ -3,6 +3,7 @@ import LoggerProxy from '../../../../../src/logger-proxy';
 import WebexRequest from '../../../../../src/services/core/WebexRequest';
 import {LoginOption, WebexRequestPayload} from '../../../../../src/types';
 import {Failure} from '../../../../../src/services/core/GlobalTypes';
+import {CC_FILE} from '../../../../../src/constants';
 
 // Mock dependencies
 jest.mock('../../../../../src/logger-proxy', () => ({
@@ -43,6 +44,56 @@ jest.mock('../../../../../src/services/core/Err', () => {
 describe('Utils', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe('generateTaskErrorObject', () => {
+    it('normalizes structured task failures and uploads logs with the tracking id', () => {
+      const taskError = Utils.generateTaskErrorObject(
+        {
+          details: {
+            trackingId: 'task-track',
+            msg: {
+              errorMessage: 'Denied',
+              errorType: 'Bad Request',
+              errorData: 'field',
+              reasonCode: 400,
+            },
+          },
+        },
+        'taskMethod',
+        CC_FILE
+      );
+
+      expect(taskError.message).toBe('Bad Request: Denied (field)');
+      expect(taskError.data).toMatchObject({
+        message: 'Denied',
+        errorType: 'Bad Request',
+        errorData: 'field',
+        reasonCode: 400,
+        trackingId: 'task-track',
+      });
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'taskMethod failed: Denied (Bad Request)',
+        {
+          module: CC_FILE,
+          method: 'taskMethod',
+          trackingId: 'task-track',
+        }
+      );
+      expect(WebexRequest.getInstance({} as any).uploadLogs).toHaveBeenCalledWith({
+        correlationId: 'task-track',
+      });
+    });
+
+    it('preserves the fallback Error representation', () => {
+      const taskError = Utils.generateTaskErrorObject(
+        new Error('Fallback failure'),
+        'fallbackMethod',
+        CC_FILE
+      );
+
+      expect(taskError.message).toBe('Error: Fallback failure');
+    });
   });
 
   // Skip getCommonErrorDetails tests as it's a private function
@@ -127,6 +178,47 @@ describe('Utils', () => {
       expect(WebexRequest.getInstance().uploadLogs).toHaveBeenCalledWith({
         correlationId: trackingId,
       });
+    });
+
+    it('should skip log upload when explicitly disabled', () => {
+      const trackingId = 'local-summary-tracking-id';
+      const error = {
+        details: {
+          data: {
+            reason: 'LOCAL_SUMMARY_ERROR',
+          },
+          trackingId,
+        },
+      };
+
+      Utils.getErrorDetails(error, 'summaryMethod', moduleName, {uploadLogs: false});
+
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `summaryMethod failed with reason: ${error.details.data.reason}`,
+        {module: moduleName, method: 'summaryMethod', trackingId}
+      );
+      expect(WebexRequest.getInstance().uploadLogs).not.toHaveBeenCalled();
+    });
+
+    it('should observe rejected default upload log promises', async () => {
+      const trackingId = 'upload-rejection-tracking-id';
+      const error = {
+        details: {
+          data: {
+            reason: 'UPLOAD_LOGS_REJECTED',
+          },
+          trackingId,
+        },
+      };
+      const uploadPromise = Promise.reject(new Error('upload failed'));
+      const catchSpy = jest.spyOn(uploadPromise, 'catch');
+
+      (WebexRequest.getInstance().uploadLogs as jest.Mock).mockReturnValue(uploadPromise);
+
+      Utils.getErrorDetails(error, methodName, moduleName);
+
+      expect(catchSpy).toHaveBeenCalledWith(expect.any(Function));
+      await expect(catchSpy.mock.results[0].value).resolves.toBeUndefined();
     });
 
     it('should handle null or undefined error object gracefully', () => {

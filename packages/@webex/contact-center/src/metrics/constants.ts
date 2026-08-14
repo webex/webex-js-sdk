@@ -179,6 +179,18 @@ export const METRIC_EVENT_NAMES = {
   AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS:
     'AI Assistant Fetch Historic Transcripts Success',
   AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED: 'AI Assistant Fetch Historic Transcripts Failed',
+
+  // AI summary events
+  AI_SUMMARY_GET_POST_CALL_SUCCESS: 'AI Summary Get Post Call Success',
+  AI_SUMMARY_GET_POST_CALL_FAILED: 'AI Summary Get Post Call Failed',
+  AI_SUMMARY_GET_MID_CALL_SUCCESS: 'AI Summary Get Mid Call Success',
+  AI_SUMMARY_GET_MID_CALL_FAILED: 'AI Summary Get Mid Call Failed',
+  AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS: 'AI Summary Post Call Response Success',
+  AI_SUMMARY_POST_CALL_RESPONSE_FAILED: 'AI Summary Post Call Response Failed',
+  AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS: 'AI Summary Mid Call Response Success',
+  AI_SUMMARY_MID_CALL_RESPONSE_FAILED: 'AI Summary Mid Call Response Failed',
+  AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED: 'AI Summary Feature Enablement Received',
+  AI_SUMMARY_INBOUND_EVENT_DROPPED: 'AI Summary Inbound Event Dropped',
 } as const;
 
 /**

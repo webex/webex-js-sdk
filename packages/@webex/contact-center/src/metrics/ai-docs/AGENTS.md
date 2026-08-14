@@ -1,8 +1,11 @@
 # Metrics Module - AI Agent Guide
 
-> **Purpose**: Track behavioral, operational, and business metrics for Contact Center SDK operations using a singleton `MetricsManager`. Provides event timing, payload preparation, batching, and submission to the Webex metrics backend.
+## Purpose
 
----
+`MetricsManager` tracks behavioral, operational, and business metrics for the
+Contact Center SDK. It remains a shared singleton. AI summary code uses the
+same `trackEvent(...)` API but intentionally does not use the singleton
+`timeEvent(...)` timing store.
 
 ## Quick Start
 
@@ -10,93 +13,76 @@
 import MetricsManager from '../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
 
-// Get the singleton instance (webex is set during cc.register())
 const metrics = MetricsManager.getInstance();
 
-// Time an operation, then track its result
-metrics.timeEvent(METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS);
-// ... perform the operation ...
-metrics.trackEvent(METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS, {agentId: '123'});
-```
-
----
-
-## Key Capabilities
-
-- **Singleton Pattern**: Single `MetricsManager` instance shared across the entire SDK
-- **Three Metric Types**: Behavioral (user actions), operational (system events), business (business-level analytics)
-- **Event Timing**: `timeEvent` + `trackEvent` pattern automatically calculates `duration_ms`
-- **Queued Submission**: Events are queued until the Webex SDK is ready, then submitted in order
-- **Behavioral Taxonomy**: Structured `product.agent.target.verb` naming convention for behavioral events
-- **Payload Preparation**: Automatic cleanup of empty fields, space-to-underscore conversion, and `tabHidden` metadata
-- **AQM Response Helpers**: Static methods to extract common tracking fields from AQM responses
-
----
-
-## API Reference
-
-### Methods
-
-#### `MetricsManager.getInstance(options?)`
-
-Returns the singleton instance. On first call with `{webex}`, binds to the Webex SDK and begins listening for the `ready` event.
-
-**Parameters**:
-- `options` (object, optional): `{webex: WebexSDK}` - The Webex SDK instance
-
-**Returns**: `MetricsManager`
-
-**Example**:
-```typescript
-// During initialization (called internally by cc.register())
-const metrics = MetricsManager.getInstance({webex});
-
-// Subsequent calls (no webex needed)
-const metrics = MetricsManager.getInstance();
-```
-
----
-
-#### `metrics.timeEvent(keys)`
-
-Starts a timer for one or more event keys. When a matching `trackEvent` / `trackBehavioralEvent` / `trackOperationalEvent` / `trackBusinessEvent` is called, `duration_ms` is automatically added to the payload.
-
-**Parameters**:
-- `keys` (string | string[]): One or more `METRIC_EVENT_NAMES` values. The first key is the tracking key; all keys in the array will resolve the same timer.
-
-**Returns**: `void`
-
-**Example**:
-```typescript
-// Single key
-metrics.timeEvent(METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS);
-
-// Multiple keys (success/failure share one timer)
 metrics.timeEvent([
   METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
   METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
 ]);
+
+try {
+  const response = await performLogin(params);
+
+  metrics.trackEvent(METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS, {
+    ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+  });
+} catch (error) {
+  metrics.trackEvent(METRIC_EVENT_NAMES.STATION_LOGIN_FAILED, {
+    ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error),
+  });
+}
 ```
 
----
+## Key Capabilities
 
-#### `metrics.trackEvent(name, payload?, metricServices?)`
+- **Singleton pattern**: one `MetricsManager` instance is shared across the SDK.
+- **Three metric types**: behavioral, operational, and business.
+- **Event timing**: `timeEvent(...)` plus a later tracking call adds `duration_ms`.
+- **Queued submission**: events queue until the Webex SDK is ready, then flush.
+- **Behavioral taxonomy**: behavioral events are mapped in `behavioral-events.ts`.
+- **Payload preparation**: empty fields are removed, keys are normalized, and browser payloads include `tabHidden`.
+- **AQM response helpers**: static helpers extract common success and failure fields.
 
-Tracks an event across one or more metric services.
+## API Reference
 
-**Parameters**:
-- `name` (METRIC_EVENT_NAMES): The event name constant
-- `payload` (EventPayload, optional): Key-value pairs of event data
-- `metricServices` (MetricsType[], optional): Array of `'behavioral'` | `'operational'` | `'business'` (default: `['behavioral']`)
+### `MetricsManager.getInstance(options?)`
 
-**Returns**: `void`
+Returns the singleton instance. The first call with `{webex}` binds the Webex
+SDK instance and installs readiness handling.
 
-**Example**:
+- `options` (optional): `{webex: WebexSDK}`
+- Returns: `MetricsManager`
+
 ```typescript
-// Behavioral only (default)
-metrics.trackEvent(METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS, {agentId: '123'});
+const metrics = MetricsManager.getInstance({webex});
+const sameMetrics = MetricsManager.getInstance();
+```
 
-// Multiple services
+### `metrics.timeEvent(keys)`
+
+Starts a timer for one or more event keys. The first key is the storage key; any
+key in the set can later consume that duration through `trackEvent(...)`,
+`trackBehavioralEvent(...)`, `trackOperationalEvent(...)`, or
+`trackBusinessEvent(...)`.
+
+```typescript
+const metrics = MetricsManager.getInstance();
+
+metrics.timeEvent([
+  METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+  METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
+]);
+```
+
+### `metrics.trackEvent(name, payload?, metricServices?)`
+
+Tracks an event across one or more services. `metricServices` defaults to
+`['behavioral']`; pass `['behavioral', 'operational']` or
+`['behavioral', 'operational', 'business']` when the caller owns those signals.
+
+```typescript
+const metrics = MetricsManager.getInstance();
+
 metrics.trackEvent(
   METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
   {interactionId: 'abc'},
@@ -104,102 +90,87 @@ metrics.trackEvent(
 );
 ```
 
----
+### `metrics.trackBehavioralEvent(name, options?)`
 
-#### `metrics.trackBehavioralEvent(name, options?)`
+Tracks one behavioral event. The event must have a taxonomy mapping in
+`behavioral-events.ts` before it is safe to call this method directly.
 
-Tracks a single behavioral event. Looks up the event taxonomy from `behavioral-events.ts` and submits via `webex.internal.newMetrics.submitBehavioralEvent`.
+### `metrics.trackOperationalEvent(name, options?)`
 
-**Parameters**:
-- `name` (METRIC_EVENT_NAMES): The event name
-- `options` (EventPayload, optional): Additional payload data
+Tracks one operational event. The submitted name is prefixed with `WXCC_SDK_`
+and uppercased with spaces converted to underscores.
 
-**Returns**: `void`
+### `metrics.trackBusinessEvent(name, options?)`
 
----
+Tracks one business event. The submitted name uses the same transform as
+operational events and includes `metadata: {appType: 'wxcc_sdk'}`.
 
-#### `metrics.trackOperationalEvent(name, options?)`
+### `metrics.setMetricsDisabled(disabled)`
 
-Tracks a single operational event. Prefixes the event name with `WXCC_SDK_` and submits via `webex.internal.newMetrics.submitOperationalEvent`.
+Enables or disables metrics collection. Disabling metrics clears pending queues
+and causes later track calls to return without submission.
 
-**Parameters**:
-- `name` (METRIC_EVENT_NAMES): The event name
-- `options` (EventPayload, optional): Additional payload data
+### `MetricsManager.getCommonTrackingFieldForAQMResponse(response)`
 
-**Returns**: `void`
+Extracts common success fields from an AQM response:
+`agentId`, `agentSessionId`, `teamId`, `siteId`, `orgId`, `eventType`,
+`trackingId`, and `notifTrackingId`.
 
----
-
-#### `metrics.trackBusinessEvent(name, options?)`
-
-Tracks a single business event. Prefixes the event name with `WXCC_SDK_` and submits via `webex.internal.newMetrics.submitBusinessEvent` with `appType: 'wxcc_sdk'`.
-
-**Parameters**:
-- `name` (METRIC_EVENT_NAMES): The event name
-- `options` (EventPayload, optional): Additional payload data
-
-**Returns**: `void`
-
----
-
-#### `metrics.setMetricsDisabled(disabled)`
-
-Enables or disables metrics collection. When disabled, all pending events are cleared and new events are dropped.
-
-**Parameters**:
-- `disabled` (boolean): `true` to disable, `false` to enable
-
-**Returns**: `void`
-
----
-
-#### `MetricsManager.getCommonTrackingFieldForAQMResponse(response)`
-
-Static helper that extracts common tracking fields from an AQM success response.
-
-**Parameters**:
-- `response` (any): The AQM response object
-
-**Returns**: `Record<string, any>` with fields: `agentId`, `agentSessionId`, `teamId`, `siteId`, `orgId`, `eventType`, `trackingId`, `notifTrackingId`
-
-**Example**:
 ```typescript
-const fields = MetricsManager.getCommonTrackingFieldForAQMResponse(aqmResponse);
-metrics.trackEvent(METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS, {
-  ...fields,
-  interactionId: task.interactionId,
-});
+const metrics = MetricsManager.getInstance();
+const fields = MetricsManager.getCommonTrackingFieldForAQMResponse(response);
+
+metrics.trackEvent(METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS, fields);
 ```
 
----
+### `MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failureResponse)`
 
-#### `MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failureResponse)`
+Extracts common failure fields from an AQM failure:
+`agentId`, `trackingId`, `notifTrackingId`, `orgId`, `failureType`,
+`failureReason`, and `reasonCode`.
 
-Static helper that extracts common tracking fields from an AQM failure response.
+```typescript
+const metrics = MetricsManager.getInstance();
+const fields = MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure);
 
-**Parameters**:
-- `failureResponse` (Failure): The AQM failure response object
+metrics.trackEvent(METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED, fields);
+```
 
-**Returns**: `Record<string, any>` with fields: `agentId`, `trackingId`, `notifTrackingId`, `orgId`, `failureType`, `failureReason`, `reasonCode`
+### `MetricsManager.resetInstance()`
 
----
+Resets the singleton instance. This is test-only behavior.
 
-#### `MetricsManager.resetInstance()`
+## General Metrics Usage
 
-Resets the singleton instance. Used for testing only.
+Existing non-summary operations may use:
 
-**Returns**: `void`
+```typescript
+const metrics = MetricsManager.getInstance();
 
----
+metrics.timeEvent([
+  METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
+  METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
+]);
+metrics.trackEvent(
+  METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
+  payload,
+  ['behavioral', 'operational']
+);
+```
+
+`timeEvent(...)` stores timing by metric name in the singleton manager and is
+appropriate for existing single-operation patterns.
 
 ## Metric Event Names
 
-All event names are defined in `METRIC_EVENT_NAMES` (`constants.ts`). Events follow a `<Category> <Action> <Result>` pattern.
+All documented names below are constants in `METRIC_EVENT_NAMES`
+(`constants.ts`). Do not document or consume a metric identifier unless it is
+defined there.
 
 ### Agent Events
 
 | Constant | Value | Description |
-|----------|-------|-------------|
+| --- | --- | --- |
 | `STATION_LOGIN_SUCCESS` | `'Station Login Success'` | Agent station login succeeded |
 | `STATION_LOGIN_FAILED` | `'Station Login Failed'` | Agent station login failed |
 | `STATION_LOGOUT_SUCCESS` | `'Station Logout Success'` | Agent station logout succeeded |
@@ -219,130 +190,137 @@ All event names are defined in `METRIC_EVENT_NAMES` (`constants.ts`). Events fol
 ### Task Events
 
 | Constant | Value | Description |
-|----------|-------|-------------|
-| `TASK_ACCEPT_SUCCESS` / `FAILED` | `'Task Accept ...'` | Task accept result |
-| `TASK_DECLINE_SUCCESS` / `FAILED` | `'Task Decline ...'` | Task decline result |
-| `TASK_END_SUCCESS` / `FAILED` | `'Task End ...'` | Task end result |
-| `TASK_WRAPUP_SUCCESS` / `FAILED` | `'Task Wrapup ...'` | Task wrapup result |
-| `TASK_HOLD_SUCCESS` / `FAILED` | `'Task Hold ...'` | Task hold result |
-| `TASK_RESUME_SUCCESS` / `FAILED` | `'Task Resume ...'` | Task resume result |
-| `TASK_CONSULT_START_SUCCESS` / `FAILED` | `'Task Consult Start ...'` | Consult start result |
-| `TASK_CONSULT_END_SUCCESS` / `FAILED` | `'Task Consult End ...'` | Consult end result |
-| `TASK_TRANSFER_SUCCESS` / `FAILED` | `'Task Transfer ...'` | Transfer result |
-| `TASK_PAUSE_RECORDING_SUCCESS` / `FAILED` | `'Task Pause Recording ...'` | Pause recording result |
-| `TASK_RESUME_RECORDING_SUCCESS` / `FAILED` | `'Task Resume Recording ...'` | Resume recording result |
-| `TASK_ACCEPT_CONSULT_SUCCESS` / `FAILED` | `'Task Accept Consult ...'` | Accept consult result |
-| `TASK_AUTO_ANSWER_SUCCESS` / `FAILED` | `'Task Auto Answer ...'` | Auto-answer result |
-| `TASK_OUTDIAL_SUCCESS` / `FAILED` | `'Task Outdial ...'` | Outdial result |
+| --- | --- | --- |
+| `TASK_ACCEPT_SUCCESS` / `TASK_ACCEPT_FAILED` | `'Task Accept Success'` / `'Task Accept Failed'` | Task accept result |
+| `TASK_DECLINE_SUCCESS` / `TASK_DECLINE_FAILED` | `'Task Decline Success'` / `'Task Decline Failed'` | Task decline result |
+| `TASK_END_SUCCESS` / `TASK_END_FAILED` | `'Task End Success'` / `'Task End Failed'` | Task end result |
+| `TASK_WRAPUP_SUCCESS` / `TASK_WRAPUP_FAILED` | `'Task Wrapup Success'` / `'Task Wrapup Failed'` | Task wrapup result |
+| `TASK_HOLD_SUCCESS` / `TASK_HOLD_FAILED` | `'Task Hold Success'` / `'Task Hold Failed'` | Task hold result |
+| `TASK_RESUME_SUCCESS` / `TASK_RESUME_FAILED` | `'Task Resume Success'` / `'Task Resume Failed'` | Task resume result |
+| `TASK_CONSULT_START_SUCCESS` / `TASK_CONSULT_START_FAILED` | `'Task Consult Start Success'` / `'Task Consult Start Failed'` | Consult start result |
+| `TASK_CONSULT_END_SUCCESS` / `TASK_CONSULT_END_FAILED` | `'Task Consult End Success'` / `'Task Consult End Failed'` | Consult end result |
+| `TASK_TRANSFER_SUCCESS` / `TASK_TRANSFER_FAILED` | `'Task Transfer Success'` / `'Task Transfer Failed'` | Transfer result |
+| `TASK_PAUSE_RECORDING_SUCCESS` / `TASK_PAUSE_RECORDING_FAILED` | `'Task Pause Recording Success'` / `'Task Pause Recording Failed'` | Pause recording result |
+| `TASK_RESUME_RECORDING_SUCCESS` / `TASK_RESUME_RECORDING_FAILED` | `'Task Resume Recording Success'` / `'Task Resume Recording Failed'` | Resume recording result |
+| `TASK_ACCEPT_CONSULT_SUCCESS` / `TASK_ACCEPT_CONSULT_FAILED` | `'Task Accept Consult Success'` / `'Task Accept Consult Failed'` | Consult accept result |
+| `TASK_AUTO_ANSWER_SUCCESS` / `TASK_AUTO_ANSWER_FAILED` | `'Task Auto Answer Success'` / `'Task Auto Answer Failed'` | Auto-answer result |
+| `TASK_OUTDIAL_SUCCESS` / `TASK_OUTDIAL_FAILED` | `'Task Outdial Success'` / `'Task Outdial Failed'` | Outdial result |
 
 ### Conference Events
 
 | Constant | Value | Description |
-|----------|-------|-------------|
-| `TASK_CONFERENCE_START_SUCCESS` / `FAILED` | `'Task Conference Start ...'` | Conference start result |
-| `TASK_CONFERENCE_END_SUCCESS` / `FAILED` | `'Task Conference End ...'` | Conference end result |
-| `TASK_CONFERENCE_TRANSFER_SUCCESS` / `FAILED` | `'Task Conference Transfer ...'` | Conference transfer result |
-| `TASK_CONFERENCE_EXIT_SUCCESS` / `FAILED` | `'Task Conference Exit ...'` | Conference exit result |
-| `TASK_SWITCH_CALL_SUCCESS` / `FAILED` | `'Task Switch Call ...'` | Switch call result |
+| --- | --- | --- |
+| `TASK_CONFERENCE_START_SUCCESS` / `TASK_CONFERENCE_START_FAILED` | `'Task Conference Start Success'` / `'Task Conference Start Failed'` | Conference start result |
+| `TASK_CONFERENCE_END_SUCCESS` / `TASK_CONFERENCE_END_FAILED` | `'Task Conference End Success'` / `'Task Conference End Failed'` | Conference end result |
+| `TASK_CONFERENCE_TRANSFER_SUCCESS` / `TASK_CONFERENCE_TRANSFER_FAILED` | `'Task Conference Transfer Success'` / `'Task Conference Transfer Failed'` | Conference transfer result |
+| `TASK_CONFERENCE_EXIT_SUCCESS` / `TASK_CONFERENCE_EXIT_FAILED` | `'Task Conference Exit Success'` / `'Task Conference Exit Failed'` | Conference exit result |
+| `TASK_SWITCH_CALL_SUCCESS` / `TASK_SWITCH_CALL_FAILED` | `'Task Switch Call Success'` / `'Task Switch Call Failed'` | Switch-call result |
 
-### System Events
+### System And Data Events
 
 | Constant | Value | Description |
-|----------|-------|-------------|
-| `WEBSOCKET_REGISTER_SUCCESS` / `FAILED` | `'Websocket Register ...'` | WebSocket registration result |
-| `WEBSOCKET_DEREGISTER_SUCCESS` / `FAIL` | `'Websocket Deregister ...'` | WebSocket deregistration result |
+| --- | --- | --- |
+| `WEBSOCKET_REGISTER_SUCCESS` / `WEBSOCKET_REGISTER_FAILED` | `'Websocket Register Success'` / `'Websocket Register Failed'` | WebSocket registration result |
+| `WEBSOCKET_DEREGISTER_SUCCESS` / `WEBSOCKET_DEREGISTER_FAIL` | `'Websocket Deregister Success'` / `'Websocket Deregister Failed'` | WebSocket deregistration result |
 | `WEBSOCKET_EVENT_RECEIVED` | `'Websocket Event Received'` | WebSocket event received |
-| `UPLOAD_LOGS_SUCCESS` / `FAILED` | `'Upload Logs ...'` | Log upload result |
+| `UPLOAD_LOGS_SUCCESS` / `UPLOAD_LOGS_FAILED` | `'Upload Logs Success'` / `'Upload Logs Failed'` | Log upload result |
+| `ENTRYPOINT_FETCH_SUCCESS` / `ENTRYPOINT_FETCH_FAILED` | `'Entrypoint Fetch Success'` / `'Entrypoint Fetch Failed'` | Entry point fetch result |
+| `ADDRESSBOOK_FETCH_SUCCESS` / `ADDRESSBOOK_FETCH_FAILED` | `'AddressBook Fetch Success'` / `'AddressBook Fetch Failed'` | Address book fetch result |
+| `QUEUE_FETCH_SUCCESS` / `QUEUE_FETCH_FAILED` | `'Queue Fetch Success'` / `'Queue Fetch Failed'` | Queue fetch result |
+| `OUTDIAL_ANI_EP_FETCH_SUCCESS` / `OUTDIAL_ANI_EP_FETCH_FAILED` | `'Outdial ANI Entries Fetch Success'` / `'Outdial ANI Entries Fetch Failed'` | Outdial ANI entries fetch result |
 
-### Data Fetch Events
+### Campaign Preview Events
 
 | Constant | Value | Description |
-|----------|-------|-------------|
-| `ENTRYPOINT_FETCH_SUCCESS` / `FAILED` | `'Entrypoint Fetch ...'` | Entry point fetch result |
-| `ADDRESSBOOK_FETCH_SUCCESS` / `FAILED` | `'AddressBook Fetch ...'` | Address book fetch result |
-| `QUEUE_FETCH_SUCCESS` / `FAILED` | `'Queue Fetch ...'` | Queue fetch result |
-| `OUTDIAL_ANI_EP_FETCH_SUCCESS` / `FAILED` | `'Outdial ANI Entries Fetch ...'` | Outdial ANI entries fetch result |
+| --- | --- | --- |
+| `CAMPAIGN_PREVIEW_ACCEPT_SUCCESS` / `CAMPAIGN_PREVIEW_ACCEPT_FAILED` | `'Campaign Preview Accept Success'` / `'Campaign Preview Accept Failed'` | Campaign preview accept result |
+| `CAMPAIGN_PREVIEW_SKIP_SUCCESS` / `CAMPAIGN_PREVIEW_SKIP_FAILED` | `'Campaign Preview Skip Success'` / `'Campaign Preview Skip Failed'` | Campaign preview skip result |
+| `CAMPAIGN_PREVIEW_REMOVE_SUCCESS` / `CAMPAIGN_PREVIEW_REMOVE_FAILED` | `'Campaign Preview Remove Success'` / `'Campaign Preview Remove Failed'` | Campaign preview remove result |
 
----
+### AI Assistant Transcript Events
+
+| Constant | Value | Description |
+| --- | --- | --- |
+| `AI_ASSISTANT_SEND_EVENT_SUCCESS` / `AI_ASSISTANT_SEND_EVENT_FAILED` | `'AI Assistant Send Event Success'` / `'AI Assistant Send Event Failed'` | AI assistant send-event result |
+| `AI_ASSISTANT_GET_SUGGESTED_RESPONSE_SUCCESS` / `AI_ASSISTANT_GET_SUGGESTED_RESPONSE_FAILED` | `'AI Assistant Get Suggested Response Success'` / `'AI Assistant Get Suggested Response Failed'` | Suggested response fetch result |
+| `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS` / `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED` | `'AI Assistant Fetch Historic Transcripts Success'` / `'AI Assistant Fetch Historic Transcripts Failed'` | Historic transcript fetch result |
+
+### AI Summary Events
+
+AI-summary metric names and owner boundaries are canonical in
+[Metrics And Privacy](../../../../../../ai-summary.md#metrics-and-privacy).
+Every identifier must also exist in `metrics/constants.ts`; do not reproduce
+the full owner table in this implementation guide.
+
 
 ## Behavioral Event Taxonomy
 
-Each behavioral event maps to a structured taxonomy in `behavioral-events.ts`:
+Behavioral events map to a structured taxonomy in `behavioral-events.ts`:
 
-```
+```text
 {product}.{agent}.{target}.{verb}
 ```
 
-- **product**: Always `'wxcc_sdk'` (from `PRODUCT_NAME`)
-- **agent**: `'user'` for user-initiated actions, `'service'` for system-generated events
-- **target**: Snake_case description of the action (e.g., `'station_login'`, `'task_accept'`)
-- **verb**: `'complete'` for success, `'fail'` for failure, `'set'` for RONA events
+- `product`: always `'wxcc_sdk'` from `PRODUCT_NAME`
+- `agent`: `'user'` for user-initiated actions or `'service'` for system-generated events
+- `target`: snake_case action target such as `'station_login'` or `'task_accept'`
+- `verb`: `'complete'`, `'fail'`, or `'set'`
 
-**Example**: `STATION_LOGIN_SUCCESS` maps to `wxcc_sdk.user.station_login.complete`
+Events without behavioral taxonomy must not use default `trackEvent(...)` or
+`trackBehavioralEvent(...)`: `WEBSOCKET_DEREGISTER_SUCCESS`,
+`WEBSOCKET_DEREGISTER_FAIL`, `WEBSOCKET_EVENT_RECEIVED`, all `AI_ASSISTANT_*`
+events, and all `AI_SUMMARY_*` events. AI summary emits operational metrics
+explicitly with `['operational']`.
 
-> **Note**: The following events do **not** have behavioral taxonomy mappings in `behavioral-events.ts`:
-> - `WEBSOCKET_DEREGISTER_SUCCESS`
-> - `WEBSOCKET_DEREGISTER_FAIL`
-> - `WEBSOCKET_EVENT_RECEIVED`
->
-> Calling `trackBehavioralEvent` with these event names will push an event with an `undefined` taxonomy.
+## AI Summary Implementation Rules
 
----
+- Emit AI-summary events explicitly to the operational service; they have no
+  behavioral taxonomy.
+- Use a method-local duration for every public Task summary invocation and
+  exactly one final success or failure event. Never call `timeEvent(...)` for
+  these overlapping operations.
+- Task owns request/response operation outcomes. TaskManager owns feature
+  receive and terminal inbound-drop outcomes. The coordinator reports expiry
+  through TaskManager rather than emitting operation metrics.
+- Pass only bounded codes, validated flags, safe identifiers, counters, state,
+  feedback, and action type. Never pass summary/card content, human-authored
+  keys, agent names, raw payloads, or arbitrary exception details.
 
-## Usage Pattern (timeEvent + trackEvent)
+The canonical [Metrics And Privacy contract](../../../../../../ai-summary.md#metrics-and-privacy)
+owns exact success conditions, event names, receive/drop outcomes, and the
+complete privacy allow/deny boundary.
 
-The standard pattern used throughout the Contact Center SDK:
-
-```typescript
-const metrics = MetricsManager.getInstance();
-
-// 1. Start timing before the operation
-metrics.timeEvent([
-  METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
-  METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
-]);
-
-try {
-  const response = await performLogin(params);
-
-  // 2a. Track success (duration_ms auto-added)
-  metrics.trackEvent(METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS, {
-    ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-  });
-} catch (error) {
-  // 2b. Track failure (duration_ms auto-added)
-  metrics.trackEvent(METRIC_EVENT_NAMES.STATION_LOGIN_FAILED, {
-    ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error),
-  });
-}
-```
-
----
 
 ## Error Handling
 
-MetricsManager is designed to be non-blocking. Metric failures do not propagate to callers:
+MetricsManager is non-blocking for callers:
 
-- If `webex` is not yet ready, events are queued in `pendingBehavioralEvents`, `pendingOperationalEvents`, or `pendingBusinessEvents`
-- Once `webex.ready` fires, all pending events are flushed
-- If metrics are disabled via `setMetricsDisabled(true)`, all track methods silently return
-- Invalid metric types log an error via `LoggerProxy` but do not throw
-
----
+- Events are queued until `webex.ready` fires.
+- `setMetricsDisabled(true)` clears pending queues and drops later metrics.
+- Invalid metric service names are logged through `LoggerProxy.error`.
+- Empty `timeEvent([])` input is logged and ignored.
 
 ## Dependencies
 
-- **`@webex/internal-plugin-metrics`**: Provides `webex.internal.newMetrics` for actual metric submission (`submitBehavioralEvent`, `submitOperationalEvent`, `submitBusinessEvent`)
-- **`LoggerProxy`**: Used for error logging within the metrics module
-- **`Failure` type** (from `services/core/GlobalTypes`): Used in `getCommonTrackingFieldForAQMResponseFailed`
-- **`PRODUCT_NAME`** (from `constants.ts`): Set to `'wxcc_sdk'`, used as the product identifier in behavioral taxonomy and as prefix for operational/business event names
+- `@webex/internal-plugin-metrics`: provides `webex.internal.newMetrics`.
+- `LoggerProxy`: records local metrics-module errors.
+- `Failure`: shapes AQM failure extraction.
+- `PRODUCT_NAME`: provides the behavioral product value and service prefix.
 
----
+## Validation
+
+Focused evidence:
+
+```bash
+yarn workspace @webex/contact-center test:unit --targets services/task/Task.ts
+yarn workspace @webex/contact-center test:unit --targets services/task/TaskManager.ts
+yarn workspace @webex/contact-center test:unit --targets services/ApiAiAssistant.ts
+```
 
 ## Related
 
-- [`MetricsManager.ts`](../MetricsManager.ts) - Singleton metrics manager implementation
-- [`behavioral-events.ts`](../behavioral-events.ts) - Event taxonomy mapping
-- [`constants.ts`](../constants.ts) - `METRIC_EVENT_NAMES` definitions
-- [`../../constants.ts`](../../constants.ts) - `PRODUCT_NAME` constant
-- [`services/core/GlobalTypes.ts`](../../services/core/GlobalTypes.ts) - `Failure` type definition
+- [`MetricsManager.ts`](../MetricsManager.ts)
+- [`behavioral-events.ts`](../behavioral-events.ts)
+- [`constants.ts`](../constants.ts)
+- [`../../cc.ts`](../../cc.ts)
+- [`../../constants.ts`](../../constants.ts)

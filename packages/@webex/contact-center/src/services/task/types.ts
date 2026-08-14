@@ -3,6 +3,7 @@ import type {AnyActorRef} from 'xstate';
 import {TaskEventPayload} from './state-machine';
 import {Msg} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
+import type {AIFeatureFlags} from '../config/types';
 
 /**
  * Unique identifier for a task in the contact center system
@@ -699,6 +700,11 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_CAMPAIGN_CONTACT_UPDATED = 'task:campaignContactUpdated',
+
+  /**
+   * Triggered when a mid-call summary is available for the receiving agent.
+   */
+  TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT = 'task:midCallSummaryForReceivingAgent',
 }
 
 /**
@@ -1629,6 +1635,189 @@ export type ParticipantBooleanKey =
  */
 export type TaskResponse = AgentContact | Error | void;
 
+export type AISummaryActionType = 'CONSULT' | 'TRANSFER';
+export type AISummaryFeedback = 'none' | 'thumbs_up' | 'thumbs_down';
+export type PostCallSummaryState = 'DEFAULT' | 'IGNORED' | 'NOT_RECEIVED';
+export type MidCallSummaryState =
+  | 'DEFAULT'
+  | 'EXCLUDED'
+  | 'IGNORED'
+  | 'MID_CALL_CANCELLED'
+  | 'NOT_RECEIVED';
+
+export type PostCallSummarySections = {
+  initialContactReason?: string;
+  additionalContactReasons?: string;
+  additionalContext?: string;
+  keyActionsTaken?: string;
+  nextSteps?: string;
+};
+
+export type MidCallSummarySections = {
+  reasonForTransferOrConsult?: string;
+  additionalContext?: string;
+  keyActionsTaken?: string;
+};
+
+export type SummaryCounters = {
+  numberOfTimesViewed: number;
+  numberOfTimesEdited: number;
+  numberOfTimesCopied: number;
+};
+
+export type PostCallSummaryEventPayload = {
+  conversationId: string;
+  adaptiveCard?: Record<string, unknown>;
+  adaptiveCardId?: string;
+  editAdaptiveCard?: Record<string, unknown>;
+  editAdaptiveCardId?: string;
+  languageCode?: string;
+  summaryText?: string;
+  resolution?: string;
+  areTranscriptsAvailable?: boolean;
+  sections?: PostCallSummarySections;
+  suggestedWrapUpCodes?: Array<{name: string; [key: string]: unknown}>;
+  suggestedWrapUpCodesMessage?: string;
+  timestamp?: number;
+  [key: string]: unknown;
+};
+
+export type MidCallSummaryEventPayload = {
+  conversationId: string;
+  adaptiveCard?: Record<string, unknown>;
+  adaptiveCardId?: string;
+  editAdaptiveCard?: Record<string, unknown>;
+  editAdaptiveCardId?: string;
+  languageCode?: string;
+  summaryText?: string;
+  resolution?: string;
+  areTranscriptsAvailable?: boolean;
+  sections?: MidCallSummarySections;
+  timestamp?: number;
+  [key: string]: unknown;
+};
+
+export type MidCallSummaryReceivingAgentPayload = {
+  conversationId: string;
+  adaptiveCard?: Record<string, unknown>;
+  adaptiveCardId?: string;
+  languageCode?: string;
+  resolution?: string;
+  summaryText?: string;
+  timestamp?: number;
+  [key: string]: unknown;
+};
+
+export type FeatureEnablementEventPayload = {
+  interactionId: string;
+  midCallEnabled?: boolean;
+  postCallEnabled?: boolean;
+  actionTimeStamp?: number;
+  [key: string]: unknown;
+};
+
+export type SummaryResponseTimestamps = {
+  actionTimeStamp?: number;
+  publishTimestamp?: number;
+};
+
+export type PostCallReceivedResponse = SummaryCounters &
+  SummaryResponseTimestamps & {
+    summary: PostCallSummarySections | string;
+    feedback: AISummaryFeedback;
+    state: Exclude<PostCallSummaryState, 'NOT_RECEIVED'>;
+    wrapUpCode: string;
+  };
+
+export type PostCallNotReceivedResponse = SummaryResponseTimestamps & {
+  summary: '';
+  numberOfTimesViewed: 0;
+  numberOfTimesEdited: 0;
+  numberOfTimesCopied: 0;
+  feedback: AISummaryFeedback;
+  state: Extract<PostCallSummaryState, 'NOT_RECEIVED'>;
+  wrapUpCode: string;
+};
+
+export type PostCallSummaryResponsePayload = PostCallReceivedResponse | PostCallNotReceivedResponse;
+
+export type MidCallReceivedResponse = SummaryCounters &
+  SummaryResponseTimestamps & {
+    summaryReceived: true;
+    summary: MidCallSummarySections | string;
+    feedback: AISummaryFeedback;
+    state: Exclude<MidCallSummaryState, 'NOT_RECEIVED'>;
+    agentName: string;
+  };
+
+export type MidCallUnavailableResponse = SummaryResponseTimestamps & {
+  summaryReceived: false;
+  summary: '';
+  numberOfTimesViewed: 0;
+  numberOfTimesEdited: 0;
+  numberOfTimesCopied: 0;
+  feedback: AISummaryFeedback;
+  state: Extract<MidCallSummaryState, 'NOT_RECEIVED' | 'MID_CALL_CANCELLED'>;
+  agentName: string;
+};
+
+export type MidCallSummaryResponsePayload = MidCallReceivedResponse | MidCallUnavailableResponse;
+
+export type AISummaryInboundType = 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY';
+
+export type AISummaryPayloadByInboundType = {
+  POST_CALL_SUMMARY: PostCallSummaryEventPayload;
+  MID_CALL_SUMMARY: MidCallSummaryEventPayload;
+};
+
+export type AISummaryTimeoutCodeByInboundType = {
+  POST_CALL_SUMMARY: typeof import('../../constants').AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_TIMEOUT;
+  MID_CALL_SUMMARY: typeof import('../../constants').AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_TIMEOUT;
+};
+
+export type AISummaryPendingRegistration<T extends AISummaryInboundType> = Readonly<{
+  requestToken: symbol;
+  result: Promise<AISummaryPayloadByInboundType[T]>;
+}>;
+
+export type GeneratedSummaryFlagsAccessor = () => AIFeatureFlags['generatedSummaries'] | undefined;
+
+export type AISummaryReceiverDropReason = 'ambiguous-receiver' | 'receiver-buffer-expired';
+
+export interface AISummaryRequestCoordinator {
+  getFeatureEnablement(interactionId: string): FeatureEnablementEventPayload | undefined;
+  registerPendingAISummaryRequest<T extends AISummaryInboundType>(
+    taskId: string,
+    conversationId: string,
+    eventType: T,
+    timeoutCode: AISummaryTimeoutCodeByInboundType[T]
+  ): Promise<AISummaryPendingRegistration<T>>;
+  cancelPendingAISummaryRequest<T extends AISummaryInboundType>(
+    taskId: string,
+    conversationId: string,
+    eventType: T,
+    requestToken: symbol
+  ): void;
+  setFeatureEnablement(payload: FeatureEnablementEventPayload, hasRegisteredTask: boolean): void;
+  retainFeatureEnablementForTask(interactionId: string): void;
+  clearFeatureEnablement(interactionId: string): void;
+  resolvePendingAISummaryRequest<T extends AISummaryInboundType>(
+    conversationId: string,
+    eventType: T,
+    payload: AISummaryPayloadByInboundType[T]
+  ): 'resolved' | 'not-found';
+  routeReceivingSummary(
+    payload: MidCallSummaryReceivingAgentPayload,
+    matchingTasks: ReadonlyArray<Pick<ITask, 'data' | 'emit'>>
+  ): 'delivered' | 'buffered' | 'dropped-ambiguous';
+  flushReceivingSummary(
+    conversationId: string,
+    matchingTasks: ReadonlyArray<Pick<ITask, 'data' | 'emit'>>
+  ): 'delivered' | 'retained' | 'dropped-ambiguous' | 'not-found';
+  clearTaskAISummaryState(taskId: string, conversationId: string): void;
+  clearAISummaryState(): void;
+}
+
 /**
  * Payload shape used by consult conference helper utilities.
  */
@@ -1717,6 +1906,37 @@ export interface ITask extends IEventEmitter {
    * @returns void
    */
   cancelAutoWrapupTimer(): void;
+
+  /**
+   * Requests an AI-generated post-call summary for this task.
+   * @returns Promise resolving with the matching post-call summary payload.
+   */
+  requestPostCallSummary(): Promise<PostCallSummaryEventPayload>;
+
+  /**
+   * Sends the consumer's post-call summary response.
+   * @param payload - Validated post-call response observations and summary state.
+   * @returns Promise resolving when AI Assistant acknowledges the response.
+   */
+  sendPostCallSummaryResponse(payload: PostCallSummaryResponsePayload): Promise<void>;
+
+  /**
+   * Requests an AI-generated mid-call summary for a consult or transfer flow.
+   * @param actionType - The consult or transfer flow requesting the summary.
+   * @returns Promise resolving with the matching mid-call summary payload.
+   */
+  requestMidCallSummary(actionType: AISummaryActionType): Promise<MidCallSummaryEventPayload>;
+
+  /**
+   * Sends the consumer's mid-call summary response for a consult or transfer flow.
+   * @param payload - Validated mid-call response observations and summary state.
+   * @param actionType - The consult or transfer flow responding to the summary.
+   * @returns Promise resolving when AI Assistant acknowledges the response.
+   */
+  sendMidCallSummaryResponse(
+    payload: MidCallSummaryResponsePayload,
+    actionType: AISummaryActionType
+  ): Promise<void>;
 
   /**
    * Deregisters all web call event listeners.

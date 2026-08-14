@@ -46,6 +46,12 @@ docs/samples/webex.min.js
 docs/samples/webex.min.js.map
 docs/samples/meetings.min.js
 docs/samples/meetings.min.js.map
+docs/samples/contact-center.min.js
+docs/samples/contact-center.min.js.map
+docs/samples/encryption.min.js
+docs/samples/encryption.min.js.map
+docs/samples/calling.min.js
+docs/samples/calling.min.js.map
 coverage
 
 # patch-package

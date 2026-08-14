@@ -437,4 +437,7 @@ export enum AGENT_EVENTS {
 
   /** Emitted when agent state change attempt fails */
   AGENT_STATE_CHANGE_FAILED = 'agent:stateChangeFailed',
+
+  /** Emitted when AI summary feature enablement changes for an interaction */
+  FEATURE_ENABLEMENT = 'cc:featureEnablement',
 }

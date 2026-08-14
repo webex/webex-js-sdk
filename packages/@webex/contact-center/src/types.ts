@@ -909,14 +909,22 @@ export const AIAssistantEventName = {
   GET_SUGGESTIONS: 'GET_SUGGESTIONS',
   /** Add extra context to refine a suggested response */
   ADD_SUGGESTIONS_EXTRA_CONTEXT: 'ADD_SUGGESTIONS_EXTRA_CONTEXT',
-  /** Request mid-call summary generation */
+  /** @deprecated Use GET_MID_CALL_CONSULT_SUMMARY for CONSULT or GET_MID_CALL_TRANSFER_SUMMARY for TRANSFER. */
   GET_MID_CALL_SUMMARY: 'GET_MID_CALL_SUMMARY',
   /** Request post-call summary generation */
   GET_POST_CALL_SUMMARY: 'GET_POST_CALL_SUMMARY',
-  /** Mid-call summary response event */
+  /** Request consult mid-call summary generation */
+  GET_MID_CALL_CONSULT_SUMMARY: 'GET_MID_CALL_CONSULT_SUMMARY',
+  /** Request transfer mid-call summary generation */
+  GET_MID_CALL_TRANSFER_SUMMARY: 'GET_MID_CALL_TRANSFER_SUMMARY',
+  /** @deprecated Use MID_CALL_CONSULT_SUMMARY_RESPONSE for CONSULT or MID_CALL_TRANSFER_SUMMARY_RESPONSE for TRANSFER. */
   MID_CALL_SUMMARY_RESPONSE: 'MID_CALL_SUMMARY_RESPONSE',
   /** Post-call summary response event */
   POST_CALL_SUMMARY_RESPONSE: 'POST_CALL_SUMMARY_RESPONSE',
+  /** Consult mid-call summary response event */
+  MID_CALL_CONSULT_SUMMARY_RESPONSE: 'MID_CALL_CONSULT_SUMMARY_RESPONSE',
+  /** Transfer mid-call summary response event */
+  MID_CALL_TRANSFER_SUMMARY_RESPONSE: 'MID_CALL_TRANSFER_SUMMARY_RESPONSE',
   /** Suggested digital response event */
   SUGGESTED_RESPONSES_DIGITAL: 'SUGGESTED_RESPONSES_DIGITAL',
 } as const;
@@ -929,6 +937,29 @@ export const AIAssistantEventName = {
  * @ignore
  */
 export type AIAssistantEventName = Enum<typeof AIAssistantEventName>;
+
+type AISummaryResponseTransportIdentifiers = {
+  agentId: string;
+  interactionId: string;
+  conversationId: string;
+};
+
+type AISummaryMidCallResponseTransportPayload = (
+  | Omit<Contact.MidCallReceivedResponse, 'summaryReceived'>
+  | Omit<Contact.MidCallUnavailableResponse, 'summaryReceived'>
+) &
+  AISummaryResponseTransportIdentifiers & {
+    eventName:
+      | typeof AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE
+      | typeof AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE;
+  };
+
+export type AISummaryResponseTransportPayload =
+  | (Contact.PostCallSummaryResponsePayload &
+      AISummaryResponseTransportIdentifiers & {
+        eventName: typeof AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE;
+      })
+  | AISummaryMidCallResponseTransportPayload;
 
 /**
  * A single transcript message entry returned by AI Assistant APIs.

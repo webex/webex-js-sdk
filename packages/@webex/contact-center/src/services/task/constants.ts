@@ -28,6 +28,11 @@ export const CAMPAIGN_PREVIEW_SKIP = '/skip';
 export const CAMPAIGN_PREVIEW_REMOVE = '/remove';
 /** 80-second timeout for accepting preview contact (outbound call setup takes longer than default 20s) */
 export const TIMEOUT_PREVIEW_ACCEPT = 80000;
+export const AI_SUMMARY_DURATION_MS = 30_000;
+export const AI_SUMMARY_REQUEST_TIMEOUT_MS = AI_SUMMARY_DURATION_MS;
+export const AI_SUMMARY_RECEIVER_BUFFER_RETENTION_MS = AI_SUMMARY_DURATION_MS;
+export const AI_SUMMARY_FEATURE_ORPHAN_RETENTION_MS = AI_SUMMARY_DURATION_MS;
+export const AI_SUMMARY_REQUEST_CANCELLED = 'AI_SUMMARY_REQUEST_CANCELLED' as const;
 export const TASK_MANAGER_FILE = 'taskManager';
 export const TASK_FILE = 'task';
 
@@ -90,6 +95,12 @@ export const METHODS = {
   SETUP_AUTO_WRAPUP_TIMER: 'setupAutoWrapupTimer',
   CANCEL_AUTO_WRAPUP_TIMER: 'cancelAutoWrapupTimer',
   REQUEST_REAL_TIME_TRANSCRIPTS: 'requestRealTimeTranscripts',
+  REQUEST_POST_CALL_SUMMARY: 'requestPostCallSummary',
+  SEND_POST_CALL_SUMMARY_RESPONSE: 'sendPostCallSummaryResponse',
+  REQUEST_MID_CALL_SUMMARY: 'requestMidCallSummary',
+  SEND_MID_CALL_SUMMARY_RESPONSE: 'sendMidCallSummaryResponse',
+  HANDLE_AI_SUMMARY_EVENT: 'handleAISummaryEvent',
+  CLEAR_AI_SUMMARY_STATE: 'clearAISummaryState',
 };
 
 export const TRANSCRIPT_EVENT_MAP = {

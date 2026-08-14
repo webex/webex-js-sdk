@@ -14,9 +14,16 @@ import {
   isSecondaryEpDnAgent,
   getConsultMediaResourceId,
   getIsConsultInProgressForConferenceControls,
+  getIsConsultedAgentForControls,
+  getServerHoldStateForControls,
+  tryGetAISummaryCorrelation,
+  getAISummaryCorrelation,
+  isCampaignPreviewTask,
+  isCampaignPreviewReservation,
 } from '../../../../../src/services/task/TaskUtils';
 import {ITask, Interaction, TaskData} from '../../../../../src/services/task/types';
 import {LoginOption} from '../../../../../src/types';
+import {CC_EVENTS} from '../../../../../src/services/config/types';
 
 describe('TaskUtils', () => {
   let mockTask: ITask;
@@ -45,6 +52,125 @@ describe('TaskUtils', () => {
       emit: jest.fn(),
       updateTaskData: jest.fn(),
     } as any;
+  });
+
+  describe('AI summary correlation helpers', () => {
+    it('should return top-level interactionId and mainInteractionId conversation when available', () => {
+      const taskData = {
+        interactionId: 'child-interaction',
+        interaction: {mainInteractionId: 'main-interaction'},
+      } as TaskData;
+
+      expect(tryGetAISummaryCorrelation(taskData)).toEqual({
+        conversationId: 'main-interaction',
+        interactionId: 'child-interaction',
+      });
+      expect(getAISummaryCorrelation(taskData)).toEqual({
+        conversationId: 'main-interaction',
+        interactionId: 'child-interaction',
+      });
+    });
+
+    it('should fall back to interactionId for the conversation and return undefined for empty identifiers', () => {
+      expect(
+        tryGetAISummaryCorrelation({
+          interactionId: 'interaction-only',
+          interaction: {},
+        } as TaskData)
+      ).toEqual({
+        conversationId: 'interaction-only',
+        interactionId: 'interaction-only',
+      });
+
+      expect(tryGetAISummaryCorrelation({interactionId: ''} as TaskData)).toBeUndefined();
+      expect(
+        tryGetAISummaryCorrelation({
+          interactionId: 'child-interaction',
+          interaction: {mainInteractionId: ''},
+        } as TaskData)
+      ).toBeUndefined();
+    });
+
+    it('should throw the exact error code when outbound validation needs correlation', () => {
+      expect(() => getAISummaryCorrelation({interactionId: ''} as TaskData)).toThrow(
+        'AI_SUMMARY_CORRELATION_NOT_AVAILABLE'
+      );
+
+      try {
+        getAISummaryCorrelation({interactionId: ''} as TaskData);
+      } catch (error) {
+        expect((error as Error & {data?: {errorCode?: string}}).data?.errorCode).toBe(
+          'AI_SUMMARY_CORRELATION_NOT_AVAILABLE'
+        );
+      }
+    });
+  });
+
+  describe('state-control helper branches', () => {
+    it('should derive consulted-agent and hold states from task context', () => {
+      expect(
+        getIsConsultedAgentForControls({isConsulted: true} as TaskData, {} as any, false)
+      ).toBe(true);
+      expect(
+        getIsConsultedAgentForControls(
+          {} as TaskData,
+          {consultInitiator: false} as any,
+          true
+        )
+      ).toBe(true);
+      expect(
+        getIsConsultedAgentForControls(
+          {} as TaskData,
+          {consultInitiator: true} as any,
+          true
+        )
+      ).toBe(false);
+
+      const taskData = {
+        interaction: {
+          media: {
+            main: {isHold: true},
+            fallback: {isHold: false},
+          },
+        },
+        mediaResourceId: 'fallback',
+      } as TaskData;
+
+      expect(getServerHoldStateForControls({taskData} as any, 'main')).toBe(true);
+      expect(getServerHoldStateForControls({taskData} as any)).toBe(false);
+      expect(getServerHoldStateForControls({} as any)).toBeUndefined();
+    });
+
+    it('should detect campaign preview tasks and reservations', () => {
+      expect(
+        isCampaignPreviewTask({
+          interaction: {
+            outboundType: 'STANDARD_PREVIEW_CAMPAIGN',
+            callProcessingDetails: {},
+          },
+        } as TaskData)
+      ).toBe(true);
+      expect(
+        isCampaignPreviewTask({
+          interaction: {
+            outboundType: 'OUTDIAL',
+            callProcessingDetails: {campaignType: 'preview_standard'},
+          },
+        } as unknown as TaskData)
+      ).toBe(true);
+      expect(isCampaignPreviewTask({interaction: {callProcessingDetails: {}}} as TaskData)).toBe(
+        false
+      );
+
+      expect(
+        isCampaignPreviewReservation({
+          data: {type: CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION},
+        } as ITask)
+      ).toBe(true);
+      expect(isCampaignPreviewReservation({data: {type: CC_EVENTS.AGENT_CONTACT}} as ITask)).toBe(
+        false
+      );
+    });
   });
 
   describe('isPrimary', () => {

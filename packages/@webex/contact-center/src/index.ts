@@ -4,7 +4,7 @@ import ContactCenter from './cc';
 
 /**
  * @module ContactCenterModule
- * /
+ */
 
 // Core exports
 /**
@@ -28,6 +28,8 @@ export {default as Task} from './services/task/Task';
 // API exports (AddressBook is public, EntryPoint and Queue are accessed via cc wrappers)
 export {default as AddressBook} from './services/AddressBook';
 export {default as ApiAIAssistant} from './services/ApiAiAssistant';
+export {AIAssistantEventName} from './types';
+export {AI_SUMMARY_ERROR_CODES} from './constants';
 
 /** EntryPoint API types */
 export type {
@@ -72,6 +74,13 @@ export {CC_TASK_EVENTS} from './services/config/types';
  * @category Enums
  */
 export {CC_AGENT_EVENTS} from './services/config/types';
+
+/**
+ * Contact Center AI summary events
+ * @enum {string}
+ * @category Enums
+ */
+export {CC_AI_SUMMARY_EVENTS} from './services/config/types';
 
 /**
  * Combined Contact Center Events
@@ -145,6 +154,19 @@ export type {
   TaskUILeg,
   TaskUIControls,
   TaskUIControlState,
+  AISummaryActionType,
+  AISummaryFeedback,
+  PostCallSummaryState,
+  MidCallSummaryState,
+  PostCallSummarySections,
+  MidCallSummarySections,
+  SummaryCounters,
+  PostCallSummaryEventPayload,
+  MidCallSummaryEventPayload,
+  MidCallSummaryReceivingAgentPayload,
+  FeatureEnablementEventPayload,
+  PostCallSummaryResponsePayload,
+  MidCallSummaryResponsePayload,
 } from './services/task/types';
 
 /** UI controls utilities */

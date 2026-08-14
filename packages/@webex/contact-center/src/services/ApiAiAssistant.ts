@@ -2,7 +2,7 @@ import {v4 as uuidv4} from 'uuid';
 import LoggerProxy from '../logger-proxy';
 import MetricsManager from '../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
-import {CC_FILE, METHODS} from '../constants';
+import {AI_ASSISTANT_CLIENT_TYPE, AI_SUMMARY_ERROR_CODES, CC_FILE, METHODS} from '../constants';
 import {
   HTTP_METHODS,
   WebexSDK,
@@ -12,8 +12,10 @@ import {
   AIAssistantEventName,
   HistoricTranscriptsResponse,
   SuggestedResponseParams,
+  AISummaryResponseTransportPayload,
 } from '../types';
 import {getErrorDetails} from './core/Utils';
+import {TIMEOUT_REQ} from './core/constants';
 import {
   AI_ASSISTANT_BASE_URL_TEMPLATE,
   AI_ASSISTANT_ENV_MAP,
@@ -21,6 +23,76 @@ import {
   WCC_API_GATEWAY,
 } from './constants';
 import {AIFeatureFlags} from './config/types';
+import {isFiniteNonNegativeNumber, isNonEmptyString} from './AISummaryUtils';
+
+export const AI_SUMMARY_HTTP_TIMEOUT_MS = TIMEOUT_REQ;
+
+export const AI_SUMMARY_TRANSPORT_ERROR_CODES = {
+  VALIDATION_FAILED: 'AI_SUMMARY_TRANSPORT_VALIDATION_FAILED',
+  HTTP_REQUEST_FAILED: 'AI_SUMMARY_HTTP_REQUEST_FAILED',
+  TIMEOUT: 'AI_SUMMARY_TRANSPORT_TIMEOUT',
+} as const;
+
+type SummaryGetEventName =
+  | typeof AIAssistantEventName.GET_POST_CALL_SUMMARY
+  | typeof AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY
+  | typeof AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY;
+
+type SummaryResponseEventName =
+  | typeof AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE
+  | typeof AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE
+  | typeof AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE;
+
+type SummaryResponseTransportPayload = AISummaryResponseTransportPayload & {
+  eventName: SummaryResponseEventName;
+};
+
+type SummaryEnvelopeInput =
+  | {
+      kind: 'get';
+      agentId: string;
+      orgId: string;
+      interactionId: string;
+      conversationId: string;
+      eventName: SummaryGetEventName;
+      publishTimestamp: number;
+      actionTimeStamp: number;
+    }
+  | {
+      kind: 'response';
+      agentId: string;
+      orgId: string;
+      payload: SummaryResponseTransportPayload;
+      publishTimestamp: number;
+      actionTimeStamp: number;
+    };
+
+type SummaryFailureContext = {
+  methodName: string;
+  eventName: string;
+  agentId: string;
+  orgId: string;
+  interactionId: string;
+  conversationId: string;
+};
+
+const SUMMARY_GET_EVENT_NAMES = new Set<string>([
+  AIAssistantEventName.GET_POST_CALL_SUMMARY,
+  AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY,
+  AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY,
+]);
+
+const SUMMARY_RESPONSE_EVENT_NAMES = new Set<string>([
+  AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+  AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE,
+  AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE,
+]);
+
+const SUMMARY_FEEDBACK_VALUES = new Set<unknown>([
+  'none',
+  'thumbs_up',
+  'thumbs_down',
+] satisfies SummaryResponseTransportPayload['feedback'][]);
 
 /**
  * ApiAIAssistant provides AI Assistant APIs for transcript controls.
@@ -40,16 +112,11 @@ export class ApiAIAssistant {
     this.aiFeature = aiFeature;
   }
 
-  private getBaseUrl(): string {
+  private resolveBaseUrl(): string | undefined {
     const wccApiGatewayUrl = this.webex.internal.services.get(WCC_API_GATEWAY) || '';
 
     if (!wccApiGatewayUrl) {
-      const {error: detailedError} = getErrorDetails(
-        new Error('AI_ASSISTANT_BASE_URL_NOT_AVAILABLE'),
-        METHODS.GET_BASE_URL,
-        CC_FILE
-      );
-      throw detailedError;
+      return undefined;
     }
 
     let hostname = '';
@@ -60,7 +127,14 @@ export class ApiAIAssistant {
     }
 
     const resolvedEnv = AI_ASSISTANT_ENV_MAP[hostname];
-    if (!resolvedEnv) {
+
+    return resolvedEnv ? AI_ASSISTANT_BASE_URL_TEMPLATE.replace('%s', resolvedEnv) : undefined;
+  }
+
+  private getBaseUrl(): string {
+    const baseUrl = this.resolveBaseUrl();
+
+    if (!baseUrl) {
       const {error: detailedError} = getErrorDetails(
         new Error('AI_ASSISTANT_BASE_URL_NOT_AVAILABLE'),
         METHODS.GET_BASE_URL,
@@ -69,7 +143,265 @@ export class ApiAIAssistant {
       throw detailedError;
     }
 
-    return AI_ASSISTANT_BASE_URL_TEMPLATE.replace('%s', resolvedEnv);
+    return baseUrl;
+  }
+
+  private createSummaryError(
+    errorCode: string,
+    methodName: string,
+    context?: Partial<SummaryFailureContext> & {statusCode?: number}
+  ): Error {
+    const {error} = getErrorDetails(
+      {
+        ...(context?.statusCode !== undefined ? {statusCode: context.statusCode} : {}),
+        details: {
+          data: {
+            reason: errorCode,
+            methodName,
+            ...(context?.eventName ? {eventName: context.eventName} : {}),
+            ...(context?.agentId ? {agentId: context.agentId} : {}),
+            ...(context?.orgId ? {orgId: context.orgId} : {}),
+            ...(context?.interactionId ? {interactionId: context.interactionId} : {}),
+            ...(context?.conversationId ? {conversationId: context.conversationId} : {}),
+          },
+        },
+      },
+      methodName,
+      CC_FILE,
+      {uploadLogs: false}
+    );
+
+    (error as Error & {data?: Record<string, unknown>}).data = {
+      ...((error as Error & {data?: Record<string, unknown>}).data ?? {}),
+      errorCode,
+      ...(context?.statusCode !== undefined ? {statusCode: context.statusCode} : {}),
+    };
+
+    return error;
+  }
+
+  private getSummaryBaseUrl(): string {
+    try {
+      const baseUrl = this.resolveBaseUrl();
+
+      if (!baseUrl) {
+        throw new Error(AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE);
+      }
+
+      return baseUrl;
+    } catch (_error) {
+      throw this.createSummaryError(
+        AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE,
+        METHODS.GET_BASE_URL
+      );
+    }
+  }
+
+  private buildSummaryEventEnvelope(input: SummaryEnvelopeInput): Record<string, unknown> {
+    const eventName = input.kind === 'get' ? input.eventName : input.payload.eventName;
+    const interactionId = input.kind === 'get' ? input.interactionId : input.payload.interactionId;
+    const conversationId =
+      input.kind === 'get' ? input.conversationId : input.payload.conversationId;
+    const data: Record<string, unknown> = {
+      interactionId,
+      conversationId,
+      clientType: AI_ASSISTANT_CLIENT_TYPE,
+      actionTimeStamp: input.actionTimeStamp,
+    };
+
+    if (input.kind === 'response') {
+      data.action = eventName;
+      data.summary = input.payload.summary;
+      data.numberOfTimesViewed = input.payload.numberOfTimesViewed;
+      data.numberOfTimesEdited = input.payload.numberOfTimesEdited;
+      data.numberOfTimesCopied = input.payload.numberOfTimesCopied;
+      data.feedback = input.payload.feedback;
+      data.state = input.payload.state;
+
+      if (input.payload.eventName === AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE) {
+        if (input.payload.wrapUpCode !== undefined) {
+          data.wrapUpCode = input.payload.wrapUpCode;
+        }
+      } else if (input.payload.agentName !== undefined) {
+        data.agentName = input.payload.agentName;
+      }
+    }
+
+    return {
+      agentId: input.agentId,
+      orgId: input.orgId,
+      eventType: AIAssistantEventType.CTI_EVENT,
+      eventName,
+      publishTimestamp: input.publishTimestamp,
+      eventDetails: {
+        data,
+      },
+    };
+  }
+
+  private async boundedSummaryPost(
+    baseUrl: string,
+    body: Record<string, unknown>,
+    context: SummaryFailureContext
+  ): Promise<void> {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutMarker = {code: AI_SUMMARY_TRANSPORT_ERROR_CODES.TIMEOUT};
+
+    const timeoutPromise = new Promise<never>((_resolve, reject) => {
+      timeoutId = setTimeout(() => reject(timeoutMarker), AI_SUMMARY_HTTP_TIMEOUT_MS);
+    });
+
+    try {
+      const requestPromise = Promise.resolve(
+        this.webex.request({
+          uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
+          method: HTTP_METHODS.POST,
+          addAuthHeader: true,
+          body,
+          timeout: AI_SUMMARY_HTTP_TIMEOUT_MS,
+        } as Parameters<WebexSDK['request']>[0] & {timeout: number})
+      );
+      requestPromise.catch(() => undefined);
+
+      const response = await Promise.race([requestPromise, timeoutPromise]);
+      if ((response as {code?: unknown})?.code === 'ETIMEDOUT') {
+        throw timeoutMarker;
+      }
+    } catch (error) {
+      if (error === timeoutMarker || (error as {code?: unknown})?.code === 'ETIMEDOUT') {
+        throw this.createSummaryError(
+          AI_SUMMARY_TRANSPORT_ERROR_CODES.TIMEOUT,
+          context.methodName,
+          context
+        );
+      }
+
+      const statusCode = isFiniteNonNegativeNumber((error as {statusCode?: unknown})?.statusCode)
+        ? (error as {statusCode: number}).statusCode
+        : undefined;
+
+      throw this.createSummaryError(
+        AI_SUMMARY_TRANSPORT_ERROR_CODES.HTTP_REQUEST_FAILED,
+        context.methodName,
+        {...context, ...(statusCode !== undefined ? {statusCode} : {})}
+      );
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  }
+
+  public async sendSummaryGetEvent(
+    agentId: string,
+    interactionId: string,
+    conversationId: string,
+    eventName: SummaryGetEventName
+  ): Promise<void> {
+    let orgId: string;
+
+    try {
+      orgId = this.webex.credentials.getOrgId();
+    } catch (_error) {
+      throw this.createSummaryError(
+        AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED,
+        METHODS.SEND_SUMMARY_GET_EVENT
+      );
+    }
+
+    if (
+      !isNonEmptyString(agentId) ||
+      !isNonEmptyString(orgId) ||
+      !isNonEmptyString(interactionId) ||
+      !isNonEmptyString(conversationId) ||
+      !SUMMARY_GET_EVENT_NAMES.has(eventName)
+    ) {
+      throw this.createSummaryError(
+        AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED,
+        METHODS.SEND_SUMMARY_GET_EVENT
+      );
+    }
+
+    const now = Date.now();
+    const baseUrl = this.getSummaryBaseUrl();
+    const body = this.buildSummaryEventEnvelope({
+      kind: 'get',
+      agentId,
+      orgId,
+      interactionId,
+      conversationId,
+      eventName,
+      publishTimestamp: now,
+      actionTimeStamp: now,
+    });
+
+    await this.boundedSummaryPost(baseUrl, body, {
+      methodName: METHODS.SEND_SUMMARY_GET_EVENT,
+      eventName,
+      agentId,
+      orgId,
+      interactionId,
+      conversationId,
+    });
+  }
+
+  public async sendSummaryResponseEvent(
+    agentId: string,
+    payload: SummaryResponseTransportPayload
+  ): Promise<void> {
+    let orgId: string;
+
+    try {
+      orgId = this.webex.credentials.getOrgId();
+    } catch (_error) {
+      throw this.createSummaryError(
+        AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED,
+        METHODS.SEND_SUMMARY_RESPONSE_EVENT
+      );
+    }
+
+    if (
+      !isNonEmptyString(agentId) ||
+      !isNonEmptyString(orgId) ||
+      !isNonEmptyString(payload?.interactionId) ||
+      !isNonEmptyString(payload?.conversationId) ||
+      !SUMMARY_RESPONSE_EVENT_NAMES.has(payload?.eventName) ||
+      !isFiniteNonNegativeNumber(payload?.numberOfTimesViewed) ||
+      !isFiniteNonNegativeNumber(payload?.numberOfTimesEdited) ||
+      !isFiniteNonNegativeNumber(payload?.numberOfTimesCopied) ||
+      !SUMMARY_FEEDBACK_VALUES.has(payload?.feedback) ||
+      (payload?.actionTimeStamp !== undefined &&
+        !isFiniteNonNegativeNumber(payload.actionTimeStamp)) ||
+      (payload?.publishTimestamp !== undefined &&
+        !isFiniteNonNegativeNumber(payload.publishTimestamp))
+    ) {
+      throw this.createSummaryError(
+        AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED,
+        METHODS.SEND_SUMMARY_RESPONSE_EVENT
+      );
+    }
+
+    const fallbackNow = Date.now();
+    const actionTimeStamp = payload.actionTimeStamp ?? fallbackNow;
+    const publishTimestamp = payload.publishTimestamp ?? fallbackNow;
+    const baseUrl = this.getSummaryBaseUrl();
+    const body = this.buildSummaryEventEnvelope({
+      kind: 'response',
+      agentId,
+      orgId,
+      payload,
+      publishTimestamp,
+      actionTimeStamp,
+    });
+
+    await this.boundedSummaryPost(baseUrl, body, {
+      methodName: METHODS.SEND_SUMMARY_RESPONSE_EVENT,
+      eventName: payload.eventName,
+      agentId,
+      orgId,
+      interactionId: payload.interactionId,
+      conversationId: payload.conversationId,
+    });
   }
 
   /**

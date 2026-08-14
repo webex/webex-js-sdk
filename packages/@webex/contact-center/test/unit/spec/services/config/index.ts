@@ -3,9 +3,16 @@ import AgentConfigService from '../../../../../src/services/config';
 import WebexRequest from '../../../../../src/services/core/WebexRequest';
 import {WCC_API_GATEWAY} from '../../../../../src/services/constants';
 import {CONFIG_FILE_NAME} from '../../../../../src/constants';
+import {
+  CC_AGENT_EVENTS,
+  CC_AI_SUMMARY_EVENTS,
+  CC_EVENTS,
+  CC_TASK_EVENTS,
+} from '../../../../../src/services/config/types';
 import MockWebex from '@webex/test-helper-mock-webex';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import * as util from '../../../../../src/services/config/Util';
+import * as ConfigConstants from '../../../../../src/services/config/constants';
 
 jest.mock('../../../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -42,6 +49,103 @@ describe('AgentConfigService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe('AI summary event contracts', () => {
+    it('derives shared AI summary wire names from CC_TASK_EVENTS and preserves raw discriminators', () => {
+      expect(CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY).toBe(CC_TASK_EVENTS.POST_CALL_SUMMARY);
+      expect(CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY).toBe(CC_TASK_EVENTS.MID_CALL_SUMMARY);
+      expect(CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT).toBe('FEATURE_ENABLEMENT');
+      expect(CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT).toBe(
+        'MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT'
+      );
+    });
+
+    it('keeps CC_EVENTS spread in agent, task, then AI summary order', () => {
+      const agentKeys = Object.keys(CC_AGENT_EVENTS);
+      const taskKeys = Object.keys(CC_TASK_EVENTS);
+      const ccEventKeys = Object.keys(CC_EVENTS);
+
+      expect(ccEventKeys.slice(0, agentKeys.length)).toEqual(agentKeys);
+      expect(ccEventKeys.slice(agentKeys.length, agentKeys.length + taskKeys.length)).toEqual(
+        taskKeys
+      );
+      expect(ccEventKeys.slice(agentKeys.length + taskKeys.length)).toEqual([
+        'FEATURE_ENABLEMENT',
+        'MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT',
+      ]);
+      expect(CC_EVENTS.FEATURE_ENABLEMENT).toBe(CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT);
+      expect(CC_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT).toBe(
+        CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT
+      );
+    });
+  });
+
+  describe('configuration constants', () => {
+    it('exposes agent-state defaults and builds configuration endpoints', () => {
+      expect(ConfigConstants.AGENT_STATE_AVAILABLE).toBe('Available');
+      expect(ConfigConstants.AGENT_STATE_AVAILABLE_ID).toBe('0');
+      expect(ConfigConstants.AGENT_STATE_AVAILABLE_DESCRIPTION).toBe(
+        'Agent is available to receive calls'
+      );
+      expect(ConfigConstants.DEFAULT_AUXCODE_ATTRIBUTES).toContain('id');
+
+      const {endPointMap} = ConfigConstants;
+
+      expect(endPointMap.userByCI('org', 'agent')).toBe(
+        'organization/org/user/by-ci-user-id/agent'
+      );
+      expect(endPointMap.desktopProfile('org', 'desktop')).toBe(
+        'organization/org/agent-profile/desktop'
+      );
+      expect(endPointMap.multimediaProfile('org', 'multimedia')).toBe(
+        'organization/org/multimedia-profile/multimedia'
+      );
+      expect(endPointMap.listTeams('org', 0, 100, ['team1', 'team2'])).toBe(
+        'organization/org/v2/team?page=0&pageSize=100&filter=id=in=(team1,team2)'
+      );
+      expect(endPointMap.listTeams('org', 0, 100, [])).toBe(
+        'organization/org/v2/team?page=0&pageSize=100'
+      );
+      expect(endPointMap.listAuxCodes('org', 1, 50, ['aux1'], ['id', 'name'])).toBe(
+        'organization/org/v2/auxiliary-code?page=1&pageSize=50&filter=id=in=(aux1)&attributes=id,name&desktopProfileFilter=true'
+      );
+      expect(endPointMap.listAuxCodes('org', 1, 50, [], ['id'])).toBe(
+        'organization/org/v2/auxiliary-code?page=1&pageSize=50&attributes=id&desktopProfileFilter=true'
+      );
+      expect(endPointMap.orgInfo('org')).toBe('organization/org');
+      expect(endPointMap.orgSettings('org')).toBe(
+        'organization/org/v2/organization-setting?agentView=true'
+      );
+      expect(endPointMap.siteInfo('org', 'site')).toBe('organization/org/site/site');
+      expect(endPointMap.tenantData('org')).toBe(
+        'organization/org/v2/tenant-configuration?agentView=true'
+      );
+      expect(endPointMap.urlMapping('org')).toBe(
+        'organization/org/v2/org-url-mapping?sort=name,ASC'
+      );
+      expect(endPointMap.dialPlan('org')).toBe(
+        'organization/org/dial-plan?agentView=true'
+      );
+      expect(endPointMap.aiFeature('org')).toBe(
+        'organization/org/v2/ai-feature?page=0&pageSize=100'
+      );
+      expect(endPointMap.queueList('org', 'page=0&pageSize=10')).toBe(
+        '/organization/org/v2/contact-service-queue?page=0&pageSize=10'
+      );
+      expect(endPointMap.entryPointList('org', 'page=0&pageSize=10')).toBe(
+        '/organization/org/v2/entry-point?page=0&pageSize=10'
+      );
+      expect(endPointMap.addressBookEntries('org', 'book', 'page=0&pageSize=10')).toBe(
+        '/organization/org/v2/address-book/book/entry?page=0&pageSize=10'
+      );
+      expect(endPointMap.outdialAniEntries('org', 'ani', 'page=0&pageSize=10')).toBe(
+        'organization/org/v2/outdial-ani/ani/entry?page=0&pageSize=10'
+      );
+      expect(endPointMap.outdialAniEntries('org', 'ani', '')).toBe(
+        'organization/org/v2/outdial-ani/ani/entry'
+      );
+    });
   });
 
   describe('getUserUsingCI', () => {

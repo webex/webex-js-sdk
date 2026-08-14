@@ -1,13 +1,22 @@
 import Voice from '../../../../../../src/services/task/voice/Voice';
+import AISummaryCoordinator from '../../../../../../src/services/task/AISummaryCoordinator';
 import {
   TaskData,
   CONSULT_TRANSFER_DESTINATION_TYPE,
+  DESTINATION_TYPE,
 } from '../../../../../../src/services/task/types';
 import {CC_EVENTS} from '../../../../../../src/services/config/types';
 import {TaskEvent, TaskState} from '../../../../../../src/services/task/state-machine';
 import {computeUIControls} from '../../../../../../src/services/task/state-machine/uiControlsComputer';
 import * as Utils from '../../../../../../src/services/core/Utils';
 import {createTaskData} from '../taskTestUtils';
+import {AIAssistantEventName} from '../../../../../../src/types';
+import {AI_SUMMARY_ERROR_CODES} from '../../../../../../src/constants';
+import {AI_SUMMARY_REQUEST_CANCELLED} from '../../../../../../src/services/task/constants';
+import {
+  createAISummaryError,
+  flushMicrotasks,
+} from '../../../../fixtures/aiSummaryTestUtils';
 
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
@@ -539,6 +548,308 @@ describe('Voice Task', () => {
         data: {mediaResourceId: 'media1'},
       });
       expect(dummyContact.unHold).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('AI summary noninterference for call controls', () => {
+    const summaryAgentId = 'summary-agent-1';
+    const wrapupPayload = {wrapUpReason: 'Customer resolved', auxCodeId: 'wrapup-code-1'} as const;
+    const consultPayload = {
+      to: 'consult-agent-1',
+      destinationType: DESTINATION_TYPE.AGENT,
+      holdParticipants: true,
+    } as const;
+    const transferPayload = {
+      to: 'transfer-agent-1',
+      destinationType: DESTINATION_TYPE.AGENT,
+    } as const;
+    const callControlMethods = [
+      'wrapup',
+      'consult',
+      'blindTransfer',
+      'vteamTransfer',
+      'consultTransfer',
+    ] as const;
+    type CallControlMethod = (typeof callControlMethods)[number];
+    type CallControlCase = {
+      label: string;
+      createOperationResult: () => unknown;
+      expectedContactCalls: Record<CallControlMethod, unknown[][]>;
+      prime: (voice: Voice, taskData: TaskData) => void;
+      invoke: (voice: Voice) => Promise<unknown>;
+      requestSummary: (voice: Voice) => Promise<unknown>;
+      summaryEventName: AIAssistantEventName;
+    };
+
+    const createContactMock = (operationResult: any) =>
+      ({
+        hold: jest.fn().mockResolvedValue('held'),
+        unHold: jest.fn().mockResolvedValue('resumed'),
+        pauseRecording: jest.fn().mockResolvedValue('paused'),
+        resumeRecording: jest.fn().mockResolvedValue('resumedRecording'),
+        wrapup: jest.fn().mockResolvedValue(operationResult),
+        consult: jest.fn().mockResolvedValue(operationResult),
+        blindTransfer: jest.fn().mockResolvedValue(operationResult),
+        vteamTransfer: jest.fn().mockResolvedValue(operationResult),
+        consultTransfer: jest.fn().mockResolvedValue(operationResult),
+      }) as any;
+
+    const createSummaryAdapter = () => ({
+      sendSummaryGetEvent: jest.fn().mockResolvedValue(undefined),
+      sendSummaryResponseEvent: jest.fn().mockResolvedValue(undefined),
+    });
+
+    const configureAISummary = (
+      voice: Voice,
+      adapter = createSummaryAdapter(),
+      coordinator = new AISummaryCoordinator()
+    ) => {
+      coordinator.setFeatureEnablement(
+        {interactionId: 'int1', postCallEnabled: true, midCallEnabled: true},
+        true
+      );
+      voice.configureAISummary(
+        adapter as any,
+        coordinator as any,
+        jest.fn(() => ({
+          wrapUpSummariesEnabled: true,
+          consultTransferSummariesEnabled: true,
+        }))
+      );
+
+      return {adapter, coordinator};
+    };
+
+    const normalizeEmitCalls = (emitSpy: jest.SpyInstance, voice: Voice) =>
+      emitSpy.mock.calls.map(([eventName, ...args]) => [
+        eventName,
+        ...args.map((arg) => (arg === voice ? 'VOICE_SELF' : arg)),
+      ]);
+
+    const getContactCalls = (contact: any) =>
+      callControlMethods.reduce((calls, method) => {
+        calls[method] = contact[method].mock.calls;
+
+        return calls;
+      }, {} as Record<CallControlMethod, unknown[][]>);
+
+    const createVoiceHarness = (testCase: CallControlCase) => {
+      const taskData = createBaseData();
+      const operationResult = testCase.createOperationResult();
+      const contact = createContactMock(operationResult);
+      const voice = new Voice(
+        contact,
+        taskData,
+        {isEndTaskEnabled: true, isEndConsultEnabled: true},
+        undefined,
+        summaryAgentId
+      );
+
+      testCase.prime(voice, taskData);
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      return {contact, emitSpy, operationResult, taskData, voice};
+    };
+
+    const captureCallControlOutcome = (
+      harness: ReturnType<typeof createVoiceHarness>,
+      result: unknown
+    ) => {
+      const snapshot = harness.voice.stateMachineService?.getSnapshot();
+
+      return {
+        contactCalls: getContactCalls(harness.contact),
+        emitCalls: normalizeEmitCalls(harness.emitSpy, harness.voice),
+        result,
+        state: snapshot?.value,
+        context: snapshot?.context,
+        uiControls: harness.voice.uiControls,
+      };
+    };
+
+    const runCallControl = async (testCase: CallControlCase) => {
+      const harness = createVoiceHarness(testCase);
+      const result = await testCase.invoke(harness.voice);
+
+      expect(result).toBe(harness.operationResult);
+
+      return captureCallControlOutcome(harness, result);
+    };
+
+    const callControlCases: CallControlCase[] = [
+      {
+        label: 'wrapup',
+        createOperationResult: () => ({
+          trackingId: 'wrapup-tracking-1',
+          data: {wrappedUp: true},
+        }),
+        expectedContactCalls: {
+          wrapup: [[{interactionId: 'int1', data: wrapupPayload}]],
+          consult: [],
+          blindTransfer: [],
+          vteamTransfer: [],
+          consultTransfer: [],
+        },
+        prime: primeConnectedState,
+        invoke: (voice: Voice) => voice.wrapup({...wrapupPayload}),
+        requestSummary: (voice: Voice) => voice.requestPostCallSummary(),
+        summaryEventName: AIAssistantEventName.GET_POST_CALL_SUMMARY,
+      },
+      {
+        label: 'consult',
+        createOperationResult: () => ({
+          trackingId: 'consult-tracking-1',
+          data: createBaseData({
+            destinationType: DESTINATION_TYPE.AGENT,
+            destAgentId: 'consult-agent-1',
+            interaction: {state: 'consulting'} as any,
+          }),
+        }),
+        expectedContactCalls: {
+          wrapup: [],
+          consult: [[{interactionId: 'int1', data: consultPayload}]],
+          blindTransfer: [],
+          vteamTransfer: [],
+          consultTransfer: [],
+        },
+        prime: primeConnectedState,
+        invoke: (voice: Voice) => voice.consult({...consultPayload}),
+        requestSummary: (voice: Voice) => voice.requestMidCallSummary('CONSULT'),
+        summaryEventName: AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY,
+      },
+      {
+        label: 'transfer',
+        createOperationResult: () => ({
+          trackingId: 'transfer-tracking-1',
+          data: {transferred: true},
+        }),
+        expectedContactCalls: {
+          wrapup: [],
+          consult: [],
+          blindTransfer: [[{interactionId: 'int1', data: transferPayload}]],
+          vteamTransfer: [],
+          consultTransfer: [],
+        },
+        prime: primeConnectedState,
+        invoke: (voice: Voice) => voice.transfer({...transferPayload}),
+        requestSummary: (voice: Voice) => voice.requestMidCallSummary('TRANSFER'),
+        summaryEventName: AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY,
+      },
+    ];
+
+    const expectSummaryGetRequest = (
+      adapter: ReturnType<typeof createSummaryAdapter>,
+      summaryEventName: AIAssistantEventName
+    ) => {
+      expect(adapter.sendSummaryGetEvent).toHaveBeenCalledTimes(1);
+      expect(adapter.sendSummaryGetEvent).toHaveBeenCalledWith(
+        summaryAgentId,
+        'int1',
+        'int1',
+        summaryEventName
+      );
+    };
+
+    const expectCancelledSummary = async (summaryRequest: Promise<unknown>) => {
+      await expect(summaryRequest).rejects.toMatchObject({
+        message: AI_SUMMARY_REQUEST_CANCELLED,
+        data: {errorCode: AI_SUMMARY_REQUEST_CANCELLED},
+      });
+    };
+
+    const summaryActivityCases = [
+      {
+        label: 'while the matching AI summary request is pending',
+        prepare: async (harness: VoiceHarnessWithCase) => {
+          const {adapter, coordinator} = configureAISummary(harness.voice);
+          const summaryRequest = harness.testCase.requestSummary(harness.voice);
+          const summaryObserver = jest.fn();
+
+          summaryRequest.then(summaryObserver, summaryObserver);
+          await flushMicrotasks();
+
+          expectSummaryGetRequest(adapter, harness.testCase.summaryEventName);
+          expect(summaryObserver).not.toHaveBeenCalled();
+
+          return async () => {
+            expect(summaryObserver).not.toHaveBeenCalled();
+            coordinator.clearTaskAISummaryState('int1', 'int1');
+            await expectCancelledSummary(summaryRequest);
+          };
+        },
+      },
+      {
+        label: 'after coordinator owner cancellation',
+        prepare: async (harness: VoiceHarnessWithCase) => {
+          const {adapter, coordinator} = configureAISummary(harness.voice);
+          const summaryRequest = harness.testCase.requestSummary(harness.voice);
+
+          await flushMicrotasks();
+          expectSummaryGetRequest(adapter, harness.testCase.summaryEventName);
+
+          coordinator.clearTaskAISummaryState('int1', 'int1');
+          await expectCancelledSummary(summaryRequest);
+
+          return async () => undefined;
+        },
+      },
+      {
+        label: 'after adapter rejection',
+        prepare: async (harness: VoiceHarnessWithCase) => {
+          const adapter = createSummaryAdapter();
+          const adapterError = createAISummaryError(
+            AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE
+          );
+
+          adapter.sendSummaryGetEvent.mockRejectedValueOnce(adapterError);
+          configureAISummary(harness.voice, adapter);
+
+          await expect(harness.testCase.requestSummary(harness.voice)).rejects.toBe(adapterError);
+          expectSummaryGetRequest(adapter, harness.testCase.summaryEventName);
+
+          return async () => undefined;
+        },
+      },
+    ];
+
+    type VoiceHarnessWithCase = ReturnType<typeof createVoiceHarness> & {
+      testCase: CallControlCase;
+    };
+
+    const createVoiceHarnessWithCase = (testCase: CallControlCase): VoiceHarnessWithCase => ({
+      ...createVoiceHarness(testCase),
+      testCase,
+    });
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+    });
+
+    describe.each(summaryActivityCases)('$label', (summaryActivity) => {
+      it.each(callControlCases)(
+        '$label preserves contact arguments, resolved value, and task events',
+        async (testCase) => {
+          const baseline = await runCallControl(testCase);
+          const harness = createVoiceHarnessWithCase(testCase);
+          const finalizeSummaryActivity = await summaryActivity.prepare(harness);
+
+          try {
+            const result = await testCase.invoke(harness.voice);
+            const observed = captureCallControlOutcome(harness, result);
+
+            expect(result).toBe(harness.operationResult);
+            expect(observed.contactCalls).toEqual(testCase.expectedContactCalls);
+            expect(observed).toEqual(baseline);
+          } finally {
+            await finalizeSummaryActivity();
+          }
+        }
+      );
     });
   });
 
