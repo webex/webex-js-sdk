@@ -1396,23 +1396,29 @@ const Services = WebexPlugin.extend({
   },
 
   /**
-   * Await any in-flight credentials refresh, then flip `services.ready` so
-   * `webex.ready` can fire. Closes the parallel-refresh window: if a credential
-   * refresh is in flight when initial catalog collection settles, we must not
-   * signal ready until the refresh has resolved - otherwise downstream
-   * consumers may observe `canAuthorize`/token state that is about to change
-   * under them.
+   * Await any in-flight credentials refresh until the startup deadline, then
+   * flip `services.ready` so `webex.ready` can fire.
    *
    * @private
+   * @param {Promise<void>} [startupDeadline]
    * @returns {Promise<void>}
    */
-  async _finalizeReady() {
+  async _finalizeReady(startupDeadline) {
     const {credentials} = this.webex;
 
     if (credentials && credentials.isRefreshing) {
-      await new Promise((resolve) => {
-        credentials.once('change:isRefreshing', resolve);
+      let onChangeIsRefreshing = () => {};
+      const refreshSettled = new Promise((resolve) => {
+        onChangeIsRefreshing = resolve;
+        credentials.once('change:isRefreshing', onChangeIsRefreshing);
+
+        if (!credentials.isRefreshing) {
+          resolve();
+        }
       });
+
+      await (startupDeadline ? Promise.race([refreshSettled, startupDeadline]) : refreshSettled);
+      credentials.off('change:isRefreshing', onChangeIsRefreshing);
     }
 
     this.ready = true;
@@ -1517,26 +1523,26 @@ const Services = WebexPlugin.extend({
     // catalogs. We listen for 'loaded' instead of 'ready' because `services.ready`
     // now blocks `webex.ready` - listening to 'ready' would deadlock.
     this.listenToOnce(this.webex, 'loaded', async () => {
+      const initTimeoutMs = this.webex.config?.services?.catalogInitTimeout;
+      let cancelStartupDeadline = () => {};
+      const startupDeadline = new Promise((resolve) => {
+        const timeout = setTimeout(resolve, initTimeoutMs);
+
+        cancelStartupDeadline = () => clearTimeout(timeout);
+      });
+      const finalizeReady = () =>
+        this._finalizeReady(startupDeadline).finally(cancelStartupDeadline);
+
       const cachedCatalog = await this._loadCatalogFromCache();
       if (cachedCatalog) {
         catalog.isReady = true;
-        await this._finalizeReady();
+        await finalizeReady();
 
         return; // skip initServiceCatalogs() on reload when cache exists
       }
       const {supertoken} = this.webex.credentials;
-
-      // Race init against a hard timeout so a hung request never leaves
-      // `services.ready` false forever - that would stall `webex.ready` and
-      // leave consumers waiting on it indefinitely. Timeout is configurable via
-      // `config.services.catalogInitTimeout` (defaults to 15s in config).
-      const initTimeoutMs = this.webex.config?.services?.catalogInitTimeout;
-
-      const initServiceCatalogsTimeout = new Promise((_, reject) => {
-        setTimeout(
-          () => reject(new Error(`services: init timed out after ${initTimeoutMs}ms`)),
-          initTimeoutMs
-        );
+      const initServiceCatalogsTimeout = startupDeadline.then(() => {
+        throw new Error(`services: init timed out after ${initTimeoutMs}ms`);
       });
 
       // Validate if the supertoken exists.
@@ -1551,7 +1557,7 @@ const Services = WebexPlugin.extend({
               `services: failed to init initial services when credentials available, ${error?.message}`
             );
           })
-          .finally(() => this._finalizeReady());
+          .finally(finalizeReady);
       } else {
         const {email} = this.webex.config;
 
@@ -1565,7 +1571,7 @@ const Services = WebexPlugin.extend({
               `services: failed to init initial services when no credentials available, ${error?.message}`
             );
           })
-          .finally(() => this._finalizeReady());
+          .finally(finalizeReady);
 
         // Handle fresh login: 'loaded' fires before OAuth completes, so listen
         // for `canAuthorize` flipping true and then collect the postauth catalog.

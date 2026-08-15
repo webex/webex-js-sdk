@@ -266,6 +266,41 @@ describe('webex-core', () => {
         );
       });
 
+      it('does not extend the init timeout for an in-flight credentials refresh', async () => {
+        const clock = sinon.useFakeTimers();
+        let onChangeIsRefreshing: (() => void) | undefined;
+
+        services.listenToOnce = sinon.stub();
+        services.initServiceCatalogs = sinon.stub().returns(new Promise(() => {}));
+        services.webex.credentials = {
+          supertoken: {access_token: 'token'},
+          isRefreshing: true,
+          once: sinon.stub().callsFake((event: string, callback: () => void) => {
+            if (event === 'change:isRefreshing') onChangeIsRefreshing = callback;
+          }),
+          off: sinon.stub(),
+        };
+        services.logger.error = sinon.stub();
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+
+        await clock.tickAsync(15_000);
+        clock.restore();
+
+        assert.isTrue(services.initFailed);
+        assert.isTrue(
+          services.ready,
+          'credential refresh must not extend the catalog init deadline'
+        );
+        sinon.assert.calledOnceWithExactly(
+          services.webex.credentials.off,
+          'change:isRefreshing',
+          onChangeIsRefreshing
+        );
+      });
+
       it('awaits an in-flight credentials refresh before flipping services.ready=true', async () => {
         services.listenToOnce = sinon.stub();
         services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
@@ -277,6 +312,7 @@ describe('webex-core', () => {
           once: sinon.stub().callsFake((event: string, cb: () => void) => {
             if (event === 'change:isRefreshing') onChangeIsRefreshing = cb;
           }),
+          off: sinon.stub(),
         };
 
         services.initialize();
@@ -407,6 +443,7 @@ describe('webex-core', () => {
           once: sinon.stub().callsFake((event: string, cb: () => void) => {
             if (event === 'change:isRefreshing') onChangeIsRefreshing = cb;
           }),
+          off: sinon.stub(),
         };
 
         const settled = services._finalizeReady();
@@ -419,6 +456,37 @@ describe('webex-core', () => {
         await settled;
 
         assert.isTrue(services.ready);
+      });
+
+      it('sets ready=true when the startup deadline settles before credentials refresh', async () => {
+        let resolveDeadline = () => {};
+        let onChangeIsRefreshing: (() => void) | undefined;
+        const deadline = new Promise<void>((resolve) => {
+          resolveDeadline = resolve;
+        });
+
+        services.webex.credentials = {
+          isRefreshing: true,
+          once: sinon.stub().callsFake((event: string, callback: () => void) => {
+            if (event === 'change:isRefreshing') onChangeIsRefreshing = callback;
+          }),
+          off: sinon.stub(),
+        };
+
+        const settled = services._finalizeReady(deadline);
+
+        await waitForAsync();
+        assert.isFalse(services.ready);
+
+        resolveDeadline();
+        await settled;
+
+        assert.isTrue(services.ready);
+        sinon.assert.calledOnceWithExactly(
+          services.webex.credentials.off,
+          'change:isRefreshing',
+          onChangeIsRefreshing
+        );
       });
     });
 
