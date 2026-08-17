@@ -34,6 +34,7 @@ registration/
 | Failover (primary → backup) | `startFailoverTimer()` with exponential backoff |
 | Failback (backup → primary) | `initiateFailback()` → `executeFailback()` |
 | 429 handling | `Retry-After` header with retry budget |
+| 409 handling on keepalive | `handle409KeepaliveFailure()` → hard stop, no re-registration |
 | Reconnection | `handleConnectionRestoration()` / `reconnectOnFailure()` |
 | Deregistration | `DELETE /devices/{id}` + worker termination |
 | Mobius WSS connect/disconnect (when `apiRequest.isSocketEnabled()`) | Per-server `apiRequest.connectToMobiusSocket(wssNormalizedUrl)` inside `attemptRegistrationWithServers`; `apiRequest.disconnectFromMobiusSocket({code: 3050, reason: 'done (permanent)'})` on failover, failback, registration-down, restore-previous-registration, and deregister-with-`closeMobiusWss=true`. |
@@ -488,7 +489,7 @@ When `apiRequest.isSocketEnabled()` is true (driven by `isMobiusWssEnabled(webex
 | `startFailoverTimer` switching primary → backup | disconnect primary WSS before backup re-registration | `register.ts ~ L508–L520` |
 | `executeFailback` primary recovered + no active calls | disconnect backup WSS before primary re-registration | `register.ts ~ L713–L725` |
 | `deregister(closeMobiusWss = true)` | disconnect WSS after DELETE returns | `register.ts ~ L1264–L1270` |
-| `performRegistrationDownCleanup` (after Mobius async `registration.down`) | disconnect WSS as final cleanup step | `register.ts ~ L1411–L1419` |
+| `performHardStopCleanup` (after Mobius async `registration.down`, or a keepalive `409 Conflict`) | disconnect WSS as final cleanup step | `register.ts` — `performHardStopCleanup` |
 
 ### Constants Used
 
@@ -515,7 +516,7 @@ sequenceDiagram
     CC->>Reg: line.registration.handleRegistrationDownEvent(event)
 
     Reg->>CM: getActiveCalls() → end first active call
-    Reg->>Reg: performRegistrationDownCleanup()
+    Reg->>Reg: performHardStopCleanup(REGISTRATION_DOWN)
 
     Reg->>Reg: mutex.runExclusive(...)
     Reg->>Reg: clearFailbackTimer + clearKeepaliveTimer
@@ -531,6 +532,39 @@ sequenceDiagram
 ```
 
 > **Note:** The synthetic `MOBIUS_SOCKET_4001_EVENT` envelope emitted when the server closes the socket with code `4001` carries `eventType: 'registration.down'` and therefore drives the **same** cleanup path as a server-pushed async `registration.down`. See [`mobius-socket/ai-docs/ARCHITECTURE.md`](../../../mobius-socket/ai-docs/ARCHITECTURE.md) for the close-code matrix.
+
+### Keepalive `409 Conflict` — Session Superseded
+
+```mermaid
+sequenceDiagram
+    participant WW as Keepalive Worker
+    participant Reg as Registration
+    participant MM as MetricManager
+    participant API as APIRequest
+    participant MS as MobiusSocket
+    participant Line as Line
+
+    WW-->>Reg: KEEPALIVE_FAILURE {err.statusCode: 409, keepAliveRetryCount}
+    Note over Reg: statusCode === ERROR_CODE.CONFLICT<br/>→ short-circuit before handleRegistrationErrors
+    Reg->>Reg: handle409KeepaliveFailure(err, serverType, retryCount)
+    Reg->>WW: clearKeepaliveTimer() → CLEAR_KEEPALIVE + terminate()
+    Reg->>Reg: createLineError(SESSION_SUPERSEDED_MESSAGE,<br/>ERROR_TYPE.SESSION_SUPERSEDED, INACTIVE)
+    Reg->>MM: submitRegistrationMetric(KEEPALIVE_ERROR, KEEPALIVE_FAILURE, ...)
+    Reg->>Reg: performHardStopCleanup(SESSION_SUPERSEDED)
+
+    opt apiRequest.isSocketEnabled()
+        Reg->>API: disconnectFromMobiusSocket({code:3050, reason:'done (permanent)'})
+        API->>MS: disconnect
+    end
+
+    Reg->>Line: lineEmitter(LINE_EVENTS.UNREGISTERED)
+    Reg->>Line: lineEmitter(LINE_EVENTS.SESSION_SUPERSEDED, undefined, lineError)
+    Reg->>Reg: uploadLogs()
+```
+
+The 409 short-circuit is scoped to the keepalive worker's `KEEPALIVE_FAILURE` branch. Registration, restoration, failover, and failback still route `409` through `handleRegistrationErrors`, and keepalive `404` / `429` / `5xx` handling is unchanged.
+
+---
 
 ---
 

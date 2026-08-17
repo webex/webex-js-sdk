@@ -213,6 +213,12 @@ export type LineEventTypes = {
   [LINE_EVENTS.RECONNECTING]: () => void;
   [LINE_EVENTS.REGISTERED]: (lineInfo: ILine) => void;
   [LINE_EVENTS.UNREGISTERED]: () => void;
+  /**
+   * Emitted when Mobius reports that this registration was superseded by another
+   * registration for the same user (for example, calling opened in a second browser tab).
+   * The line is not re-registered after this event.
+   */
+  [LINE_EVENTS.SESSION_SUPERSEDED]: (error: LineError) => void;
   [LINE_EVENTS.INCOMING_CALL]: (callObj: ICall) => void;
 };
 

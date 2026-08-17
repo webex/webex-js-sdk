@@ -78,8 +78,8 @@ flowchart TD
   B -->|RECONNECTED| H[emit RECONNECTED]
   B -->|RECONNECTING| I[emit RECONNECTING]
 
-  B -->|ERROR| J{lineError provided?}
-  J -- Yes --> K[emit ERROR with LineError]
+  B -->|ERROR or SESSION_SUPERSEDED| J{lineError provided?}
+  J -- Yes --> K[emit event with LineError]
   J -- No --> Z
 
   F --> APP[Application receives event]

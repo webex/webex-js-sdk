@@ -19,6 +19,8 @@ import {LINE_EVENTS} from './types';
 import Line from '.';
 import * as utils from '../../common/Utils';
 import SDKConnector from '../../SDKConnector';
+import {createLineError} from '../../Errors/catalog/LineError';
+import {ERROR_TYPE} from '../../Errors/types';
 import {REGISTRATION_FILE} from '../constants';
 import {LOGGER} from '../../Logger/types';
 import * as regUtils from '../registration/register';
@@ -225,6 +227,56 @@ describe('Line Tests', () => {
       await line.deregister();
       expect(line.getStatus()).toEqual(RegistrationStatus.IDLE);
     });
+  });
+
+  describe('Line event emission tests', () => {
+    let line;
+
+    beforeEach(() => {
+      line = new Line(
+        userId,
+        clientDeviceUri,
+        mutex,
+        primaryMobiusUris(),
+        backupMobiusUris(),
+        LOGGER.INFO
+      );
+    });
+
+    afterEach(() => {
+      jest.clearAllMocks();
+      line.removeAllListeners();
+    });
+
+    it.each([LINE_EVENTS.ERROR, LINE_EVENTS.SESSION_SUPERSEDED])(
+      're-emits %s with the line error to the consumer',
+      (event) => {
+        const listener = jest.fn();
+        const lineError = createLineError(
+          'session superseded',
+          {file: REGISTRATION_FILE, method: 'handle409KeepaliveFailure'},
+          ERROR_TYPE.SESSION_SUPERSEDED,
+          RegistrationStatus.INACTIVE
+        );
+
+        line.on(event, listener);
+        line.lineEmitter(event, undefined, lineError);
+
+        expect(listener).toBeCalledOnceWith(lineError);
+      }
+    );
+
+    it.each([LINE_EVENTS.ERROR, LINE_EVENTS.SESSION_SUPERSEDED])(
+      'does not emit %s when no line error is provided',
+      (event) => {
+        const listener = jest.fn();
+
+        line.on(event, listener);
+        line.lineEmitter(event);
+
+        expect(listener).not.toBeCalled();
+      }
+    );
   });
 
   describe('Line calling tests', () => {

@@ -1,9 +1,27 @@
 import {Devices, IDeviceInfo, RegistrationStatus} from '../../common/types';
+import {LineError} from '../../Errors/catalog/LineError';
 import {MobiusAsyncEvent} from '../calling/types';
 
 export type Header = {
   [key: string]: string;
 };
+
+/**
+ * Reason a registration is torn down without any re-registration attempt.
+ * The values double as the label used in hard-stop log messages.
+ */
+export enum HARD_STOP_REASON {
+  REGISTRATION_DOWN = 'registration-down',
+  SESSION_SUPERSEDED = 'session-superseded',
+}
+
+/**
+ * Describes a hard stop of the registration. A superseded session must carry the
+ * {@link LineError} that is handed to the SDK consumer with the terminal event.
+ */
+export type HardStop =
+  | {reason: HARD_STOP_REASON.REGISTRATION_DOWN}
+  | {reason: HARD_STOP_REASON.SESSION_SUPERSEDED; error: LineError};
 
 export type restoreRegistrationCallBack = (
   restoreData: IDeviceInfo,

@@ -205,6 +205,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
         this.emit(event);
         break;
       case LINE_EVENTS.ERROR:
+      case LINE_EVENTS.SESSION_SUPERSEDED:
         if (lineError) {
           this.emit(event, lineError);
         }

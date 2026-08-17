@@ -15,7 +15,7 @@ import {ICallManager, MobiusAsyncEvent} from '../calling/types';
 import {getCallManager} from '../calling';
 import {LOGGER} from '../../Logger/types';
 import log from '../../Logger';
-import {FailoverCacheState, IRegistration} from './types';
+import {FailoverCacheState, HardStop, HARD_STOP_REASON, IRegistration} from './types';
 import SDKConnector from '../../SDKConnector';
 import {
   ALLOWED_SERVICES,
@@ -56,9 +56,11 @@ import {
   URL_ENDPOINT,
   RECONNECT_ON_FAILURE_UTIL,
   FAILOVER_CACHE_PREFIX,
+  SESSION_SUPERSEDED_MESSAGE,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
-import {LineError} from '../../Errors/catalog/LineError';
+import {createLineError, LineError} from '../../Errors/catalog/LineError';
+import {ERROR_CODE, ERROR_TYPE} from '../../Errors/types';
 import {APIRequest} from '../utils/request';
 
 /**
@@ -384,6 +386,64 @@ export class Registration implements IRegistration {
         );
       }
     }
+  }
+
+  /**
+   * Handles a 409 Conflict response to a keepalive (device_status) message.
+   *
+   * Mobius returns 409 when this deviceId is gone but the same user still has an active
+   * registration elsewhere (typically calling opened in another browser tab, which
+   * superseded this device). Re-registering here would unregister the other device and
+   * restart the registration ping-pong between the two, so this is a hard stop: the
+   * keepalive worker is terminated, no registration is attempted, the Mobius WebSocket is
+   * closed and the consumer is notified through `LINE_EVENTS.SESSION_SUPERSEDED`.
+   *
+   * @param error - The keepalive failure payload forwarded by the keepalive worker.
+   * @param serverType - Mobius server type the keepalive was sent to, for metrics.
+   * @param keepaliveRetryCount - Consecutive keepalive failures reported by the worker.
+   */
+  private async handle409KeepaliveFailure(
+    error: WebexRequestPayload,
+    serverType: SERVER_TYPE,
+    keepaliveRetryCount: number
+  ): Promise<void> {
+    const loggerContext = {
+      file: REGISTRATION_FILE,
+      method: METHODS.HANDLE_409_KEEPALIVE_FAILURE,
+    };
+
+    log.warn(
+      `Keepalive received 409 Conflict, registration superseded by another device for this user. Stopping keepalive without re-registration - keepaliveRetryCount: ${keepaliveRetryCount}`,
+      loggerContext
+    );
+
+    /* Stop the keepalive worker up front so no further keepalive is sent while cleanup waits on the mutex. */
+    this.clearKeepaliveTimer();
+
+    const lineError = createLineError(
+      SESSION_SUPERSEDED_MESSAGE,
+      loggerContext,
+      ERROR_TYPE.SESSION_SUPERSEDED,
+      RegistrationStatus.INACTIVE
+    );
+
+    this.metricManager.submitRegistrationMetric(
+      METRIC_EVENT.KEEPALIVE_ERROR,
+      REG_ACTION.KEEPALIVE_FAILURE,
+      METRIC_TYPE.BEHAVIORAL,
+      METHODS.HANDLE_409_KEEPALIVE_FAILURE,
+      serverType,
+      error.headers?.trackingid ?? '',
+      keepaliveRetryCount,
+      lineError
+    );
+
+    await this.performHardStopCleanup(METHODS.HANDLE_409_KEEPALIVE_FAILURE, {
+      reason: HARD_STOP_REASON.SESSION_SUPERSEDED,
+      error: lineError,
+    });
+
+    await uploadLogs();
   }
 
   /**
@@ -1193,6 +1253,16 @@ export class Registration implements IRegistration {
                 logContext
               );
 
+              if (Number(error.statusCode) === ERROR_CODE.CONFLICT) {
+                await this.handle409KeepaliveFailure(
+                  error,
+                  serverType,
+                  event.data.keepAliveRetryCount
+                );
+
+                return;
+              }
+
               const {finalError: abort} = await handleRegistrationErrors(
                 error,
                 (clientError, finalError) => {
@@ -1387,27 +1457,33 @@ export class Registration implements IRegistration {
     const [activeCall] = Object.values(this.callManager.getActiveCalls());
     activeCall?.end();
 
-    await this.performRegistrationDownCleanup(METHODS.HANDLE_REGISTRATION_DOWN_EVENT);
+    await this.performHardStopCleanup(METHODS.HANDLE_REGISTRATION_DOWN_EVENT, {
+      reason: HARD_STOP_REASON.REGISTRATION_DOWN,
+    });
   }
 
   /**
-   * Cleans up registration-side state after a Mobius registration-down event.
+   * Cleans up registration-side state for a hard stop, i.e. a registration that is gone
+   * and must not be re-established by the SDK (Mobius registration-down event, or a
+   * session superseded by another registration for the same user).
    *
    * Stops timers, resets transient flags, clears failover cache, sets status to
    * INACTIVE, tears down the Mobius WebSocket (when enabled), and finally emits
-   * `LINE_EVENTS.UNREGISTERED` so the SDK consumer is notified.
+   * `LINE_EVENTS.UNREGISTERED` so the SDK consumer is notified. A superseded session
+   * additionally emits `LINE_EVENTS.SESSION_SUPERSEDED` with the reason.
    *
    * Runs under the shared mutex to avoid racing with other registration flows.
    *
    * @param caller - Identifier of the caller, used for logs.
+   * @param hardStop - Why the registration is being torn down as {@link HardStop}.
    */
-  private async performRegistrationDownCleanup(caller: string): Promise<void> {
+  private async performHardStopCleanup(caller: string, hardStop: HardStop): Promise<void> {
     const loggerContext = {
       file: REGISTRATION_FILE,
-      method: METHODS.HANDLE_REGISTRATION_DOWN_EVENT,
+      method: caller,
     };
 
-    log.info(`[${caller}] : Running registration-down cleanup`, loggerContext);
+    log.info(`[${caller}] : Running ${hardStop.reason} cleanup`, loggerContext);
 
     await this.mutex.runExclusive(async () => {
       this.clearFailbackTimer();
@@ -1428,16 +1504,20 @@ export class Registration implements IRegistration {
             code: 3050,
             reason: 'done (permanent)',
           });
-          log.log('Mobius socket disconnect complete after registration-down', loggerContext);
+          log.log(`Mobius socket disconnect complete after ${hardStop.reason}`, loggerContext);
         } catch (err) {
           log.warn(
-            `Mobius socket disconnect failed after registration-down: ${String(err)}`,
+            `Mobius socket disconnect failed after ${hardStop.reason}: ${String(err)}`,
             loggerContext
           );
         }
       }
 
       this.lineEmitter(LINE_EVENTS.UNREGISTERED);
+
+      if (hardStop.reason === HARD_STOP_REASON.SESSION_SUPERSEDED) {
+        this.lineEmitter(LINE_EVENTS.SESSION_SUPERSEDED, undefined, hardStop.error);
+      }
     });
   }
 }
