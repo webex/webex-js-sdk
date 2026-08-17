@@ -44,7 +44,7 @@ import {createWebBridge} from '@webex/web-extension-bridge/web';
 const webBridge = createWebBridge({allowedOrigins: [location.origin]});
 
 // FR1 — push a message to the extension
-webBridge.publish('message', {text: 'Hello extension'});
+webBridge.publish('message', {payload: 'Hello extension'});
 
 // FR2/FR3 — answer on-demand requests from the extension
 webBridge.requestHandler('snapshot', () => ({value: readValue()}));

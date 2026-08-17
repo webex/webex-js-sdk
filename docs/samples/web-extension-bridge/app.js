@@ -171,7 +171,7 @@
 
     try {
       // FR1: fire and forget. The extension buffers this until its popup opens.
-      bridge.publish('message', {text: text, at: new Date().toISOString()});
+      bridge.publish('message', {payload: text, at: new Date().toISOString()});
       elements.errorSurface.hidden = true;
       log('out', 'publish message: ' + text);
     } catch (error) {

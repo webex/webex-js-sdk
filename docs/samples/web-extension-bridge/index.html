@@ -26,12 +26,12 @@
     <section class="card" aria-labelledby="publish-heading">
       <h2 id="publish-heading">Push to the extension</h2>
       <p class="muted">
-        Sends <code>publish('message', { text })</code>. Fire and forget: the extension
+        Sends <code>publish('message', { payload })</code>. Fire and forget: the extension
         buffers it until the popup is opened.
       </p>
       <form id="publish-form" class="row">
         <label class="grow" for="message-text">Message</label>
-        <input id="message-text" name="text" type="text" value="Hello from the web app"
+        <input id="message-text" name="payload" type="text" value="Hello from the web app"
           autocomplete="off" required>
         <button type="submit" class="button button--primary">Publish to extension</button>
       </form>
