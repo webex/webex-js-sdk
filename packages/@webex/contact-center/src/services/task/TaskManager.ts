@@ -153,6 +153,7 @@ export default class TaskManager extends EventEmitter {
   private configFlags?: ConfigFlags;
   private wrapupData: WrapupData;
   private agentId: string;
+  private agentName: string;
   private webRtcEnabled: boolean;
   private apiAIAssistant?: ApiAIAssistant;
   private metricsManager: MetricsManager;
@@ -672,6 +673,10 @@ export default class TaskManager extends EventEmitter {
     this.agentId = agentId;
   }
 
+  public setAgentName(agentName: string) {
+    this.agentName = agentName;
+  }
+
   /**
    * Gets the current agent ID
    * @returns {string} The agent ID set for this task manager instance
@@ -1187,7 +1192,8 @@ export default class TaskManager extends EventEmitter {
         },
         this.configFlags,
         this.wrapupData,
-        this.agentId
+        this.agentId,
+        this.agentName
       );
       this.configureTaskAISummary(task);
       this.setupTaskListeners(task);
@@ -1270,7 +1276,8 @@ export default class TaskManager extends EventEmitter {
         taskData,
         this.configFlags,
         this.wrapupData,
-        this.agentId
+        this.agentId,
+        this.agentName
       );
       this.configureTaskAISummary(task);
       this.setupTaskListeners(task);
@@ -1421,7 +1428,8 @@ export default class TaskManager extends EventEmitter {
         taskData,
         this.configFlags,
         this.wrapupData,
-        this.agentId
+        this.agentId,
+        this.agentName
       );
       this.configureTaskAISummary(task);
       this.taskCollection[payload.interactionId] = task;

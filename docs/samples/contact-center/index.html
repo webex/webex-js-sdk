@@ -248,10 +248,11 @@
                   <fieldset id="consult-summary-block" style="display: none;">
                     <legend>AI Mid-Call Summary (Consult)</legend>
                     <div id="consult-summary-status">Requesting summary…</div>
-                    <textarea id="consult-summary-text" rows="6" placeholder="Summary will appear here. You can edit before transferring/consulting."></textarea>
+                    <button type="button" id="consult-summary-retry" style="display:none;" onclick="retrySummary('CONSULT')">Retry</button>
+                    <div id="consult-summary-sections" class="summary-sections-container"></div>
                     <div>
-                      <button type="button" id="consult-summary-thumbs-up">👍</button>
-                      <button type="button" id="consult-summary-thumbs-down">👎</button>
+                      <button type="button" id="consult-summary-thumbs-up" aria-pressed="false">👍</button>
+                      <button type="button" id="consult-summary-thumbs-down" aria-pressed="false">👎</button>
                       <button type="button" id="consult-summary-copy">Copy</button>
                       <label><input type="checkbox" id="consult-summary-exclude" /> Exclude from handoff</label>
                     </div>
@@ -275,25 +276,30 @@
               <fieldset id="transfer-summary-block" style="display: none;">
                 <legend>AI Mid-Call Summary (Transfer)</legend>
                 <div id="transfer-summary-status">Requesting summary…</div>
-                <textarea id="transfer-summary-text" rows="6" placeholder="Summary will appear here. You can edit before transferring."></textarea>
+                <button type="button" id="transfer-summary-retry" style="display:none;" onclick="retrySummary('TRANSFER')">Retry</button>
+                <div id="transfer-summary-sections" class="summary-sections-container"></div>
                 <div>
-                  <button type="button" id="transfer-summary-thumbs-up">👍</button>
-                  <button type="button" id="transfer-summary-thumbs-down">👎</button>
+                  <button type="button" id="transfer-summary-thumbs-up" aria-pressed="false">👍</button>
+                  <button type="button" id="transfer-summary-thumbs-down" aria-pressed="false">👎</button>
                   <button type="button" id="transfer-summary-copy">Copy</button>
                   <label><input type="checkbox" id="transfer-summary-exclude" /> Exclude from handoff</label>
                 </div>
               </fieldset>
               <button id="initiate-transfer" onclick="initiateTransfer()" class="btn--green">Initiate Transfer</button>
             </fieldset>
+            <fieldset id="incoming-summary-block" style="display: none;">
+              <legend>AI Summary (from consulting agent)</legend>
+              <pre id="incoming-summary-text" class="incoming-summary-text"></pre>
+            </fieldset>
             <fieldset>
               <legend>Task Wrapup</legend>
               <fieldset id="postcall-summary-block" style="display: none;">
                 <legend>AI Post-Call Summary</legend>
                 <div id="postcall-summary-status">Waiting for summary…</div>
-                <textarea id="postcall-summary-text" rows="8" placeholder="AI-generated summary. Edit before submitting."></textarea>
+                <div id="postcall-summary-sections" class="summary-sections-container"></div>
                 <div>
-                  <button type="button" id="postcall-summary-thumbs-up">👍</button>
-                  <button type="button" id="postcall-summary-thumbs-down">👎</button>
+                  <button type="button" id="postcall-summary-thumbs-up" aria-pressed="false">👍</button>
+                  <button type="button" id="postcall-summary-thumbs-down" aria-pressed="false">👎</button>
                   <button type="button" id="postcall-summary-copy">Copy</button>
                 </div>
               </fieldset>

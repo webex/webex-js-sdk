@@ -27,14 +27,15 @@ export default class WebRTC extends Voice implements IWebRTC {
     data: TaskData,
     callOptions?: VoiceUIControlOptions,
     wrapupData?: WrapupData,
-    agentId?: string
+    agentId?: string,
+    agentName?: string
   ) {
     const mergedCallOptions: VoiceUIControlOptions = {
       ...callOptions,
       voiceVariant: VOICE_VARIANT.WEBRTC,
     };
 
-    super(contact, data, mergedCallOptions, wrapupData, agentId);
+    super(contact, data, mergedCallOptions, wrapupData, agentId, agentName);
     this.webCallingService = webCallingService;
     this.registerWebCallListeners();
   }

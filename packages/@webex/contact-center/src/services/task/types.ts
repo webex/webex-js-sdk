@@ -1747,7 +1747,6 @@ export type MidCallReceivedResponse = SummaryCounters &
     summary: MidCallSummarySections | string;
     feedback: AISummaryFeedback;
     state: Exclude<MidCallSummaryState, 'NOT_RECEIVED'>;
-    agentName: string;
   };
 
 export type MidCallUnavailableResponse = SummaryResponseTimestamps & {
@@ -1758,7 +1757,6 @@ export type MidCallUnavailableResponse = SummaryResponseTimestamps & {
   numberOfTimesCopied: 0;
   feedback: AISummaryFeedback;
   state: Extract<MidCallSummaryState, 'NOT_RECEIVED' | 'MID_CALL_CANCELLED'>;
-  agentName: string;
 };
 
 export type MidCallSummaryResponsePayload = MidCallReceivedResponse | MidCallUnavailableResponse;

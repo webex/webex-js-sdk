@@ -137,6 +137,7 @@ export default abstract class Task extends EventEmitter implements ITask {
   protected wrapupData?: WrapupData;
   public autoWrapup?: AutoWrapup;
   protected agentId?: string;
+  protected agentName?: string;
   private aiSummaryAdapter?: AISummaryAdapter;
   private aiSummaryCoordinator?: AISummaryRequestCoordinator;
   private getGeneratedSummaryFlags?: GeneratedSummaryFlagsAccessor;
@@ -147,7 +148,8 @@ export default abstract class Task extends EventEmitter implements ITask {
     data: TaskData,
     uiControlConfig: UIControlConfigInput,
     wrapupData?: WrapupData,
-    agentId?: string
+    agentId?: string,
+    agentName?: string
   ) {
     super();
     this.contact = contact;
@@ -157,6 +159,7 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.uiControlConfig = {...uiControlConfig, channelType, agentId};
     this.wrapupData = wrapupData;
     this.agentId = agentId;
+    this.agentName = agentName;
     this.metricsManager = MetricsManager.getInstance();
     this.webCallMap = {};
     this.currentUiControls = getDefaultUIControls();
@@ -621,8 +624,7 @@ export default abstract class Task extends EventEmitter implements ITask {
       Task.throwInvalidSummaryResponse();
     }
 
-    const hasValidCommonFields =
-      Task.hasValidSummaryResponseCommonFields(candidate) && isNonEmptyString(candidate.agentName);
+    const hasValidCommonFields = Task.hasValidSummaryResponseCommonFields(candidate);
 
     if (!hasValidCommonFields) {
       Task.throwInvalidSummaryResponse();
@@ -685,7 +687,7 @@ export default abstract class Task extends EventEmitter implements ITask {
       conversationId: context.conversationId,
       eventName: Task.getMidCallSummaryResponseEventName(actionType),
       feedback: payload.feedback,
-      agentName: payload.agentName,
+      agentName: this.agentName ?? '',
       ...(payload.actionTimeStamp !== undefined ? {actionTimeStamp: payload.actionTimeStamp} : {}),
       ...(payload.publishTimestamp !== undefined
         ? {publishTimestamp: payload.publishTimestamp}

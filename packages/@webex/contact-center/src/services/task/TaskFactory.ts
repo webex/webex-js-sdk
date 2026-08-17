@@ -18,7 +18,8 @@ export default class TaskFactory {
     data: TaskData,
     configFlags: ConfigFlags,
     wrapupData?: WrapupData,
-    agentId?: string
+    agentId?: string,
+    agentName?: string
   ): Task {
     const mediaType = data.interaction.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
     const {isEndTaskEnabled, isEndConsultEnabled} = configFlags;
@@ -37,11 +38,12 @@ export default class TaskFactory {
             data,
             voiceControlOptions,
             wrapupData,
-            agentId
+            agentId,
+            agentName
           );
         }
 
-        return new Voice(contact, data, voiceControlOptions, wrapupData, agentId);
+        return new Voice(contact, data, voiceControlOptions, wrapupData, agentId, agentName);
 
       case MEDIA_CHANNEL.CHAT:
       case MEDIA_CHANNEL.EMAIL:

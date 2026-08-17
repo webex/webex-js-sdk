@@ -20,6 +20,8 @@ let campaignPreviewAutoAction = null; // Auto-action on timeout: ACCEPT, SKIP, R
 let outdialANIId; // Store outdial ANI ID from agent profile
 const taskCreationTimes = new Map(); // Track when tasks first appear (taskId -> timestamp)
 const summaryFeatureMap = new Map(); // interactionId -> { midCallEnabled, postCallEnabled }
+const summaryFieldMap = new Map(); // prefix -> [{ id, label }] for per-section mode, [] for flat
+let incomingMidCallSummaryPayload = null; // buffered until task:assigned (mirrors desktop behaviour)
 
 let midCallSummary = {
   actionType: null,
@@ -29,6 +31,8 @@ let midCallSummary = {
   numberOfTimesCopied: 0,
   feedback: 'none',
   excluded: false,
+  _viewCounted: false,
+  requestFailed: false,
 };
 
 let postCallSummary = {
@@ -37,6 +41,8 @@ let postCallSummary = {
   numberOfTimesEdited: 0,
   numberOfTimesCopied: 0,
   feedback: 'none',
+  _viewCounted: false,
+  requestFailed: false,
 };
 let postCallSummaryPending = null; // Promise from requestPostCallSummary, awaited by wrapupCall
 
@@ -591,10 +597,12 @@ async function showInitiateConsultDialog() {
   midCallSummary.numberOfTimesCopied = 0;
   midCallSummary.feedback = 'none';
   midCallSummary.excluded = false;
-  const consultTa = document.getElementById('consult-summary-text');
-  if (consultTa) consultTa.value = '';
+  midCallSummary._viewCounted = false;
+  midCallSummary.requestFailed = false;
+  clearSummarySection('consult-summary');
   const consultExclude = document.getElementById('consult-summary-exclude');
   if (consultExclude) consultExclude.checked = false;
+  resetSummaryFeedbackUI('consult-summary');
   const consultInteractionId = currentTask?.data?.interactionId;
   const consultFeatures = summaryFeatureMap.get(consultInteractionId) || {};
   if (!consultFeatures.midCallEnabled) {
@@ -606,32 +614,80 @@ async function showInitiateConsultDialog() {
   try {
     const summary = await currentTask.requestMidCallSummary('CONSULT');
     document.getElementById('consult-summary-status').textContent = 'Summary ready.';
-    if (!midCallSummary.payload) midCallSummary.payload = summary;
-    const ta = document.getElementById('consult-summary-text');
-    if (ta && !ta.value) ta.value = renderSummaryText(summary);
+    document.getElementById('consult-summary-retry').style.display = 'none';
+    if (!midCallSummary.payload) {
+      midCallSummary.payload = summary;
+      renderSummarySection('consult-summary', summary);
+    }
+    if (!midCallSummary._viewCounted) {
+      midCallSummary.numberOfTimesViewed += 1;
+      midCallSummary._viewCounted = true;
+    }
   } catch (e) {
+    midCallSummary.requestFailed = true;
     document.getElementById('consult-summary-status').textContent = `Summary unavailable: ${e?.message || e}`;
+    document.getElementById('consult-summary-retry').style.display = '';
   }
 }
 
 async function closeConsultDialog() {
   initiateConsultDialog.close();
-  if (midCallSummary.payload && midCallSummary.actionType === 'CONSULT') {
-    try {
+  if (midCallSummary.actionType !== 'CONSULT') return;
+  const interactionId = currentTask?.data?.interactionId;
+  const features = summaryFeatureMap.get(interactionId) || {};
+  if (!features.midCallEnabled || !interactionId) return;
+  try {
+    if (midCallSummary.payload) {
       await currentTask.sendMidCallSummaryResponse({
-        conversationId: midCallSummary.payload.conversationId,
-        interactionId: currentTask.data.interactionId,
-        summary: {},
+        summaryReceived: true,
+        summary: buildSummaryPayload('consult-summary'),
         numberOfTimesViewed: midCallSummary.numberOfTimesViewed,
         numberOfTimesEdited: midCallSummary.numberOfTimesEdited,
         numberOfTimesCopied: midCallSummary.numberOfTimesCopied,
-        feedback: 'none',
+        feedback: midCallSummary.feedback,
         state: 'MID_CALL_CANCELLED',
-        agentName: agentName,
       }, 'CONSULT');
-    } catch (e) {
-      console.error('Failed to send consult cancel response', e);
+    } else {
+      await currentTask.sendMidCallSummaryResponse({
+        summaryReceived: false,
+        summary: '',
+        numberOfTimesViewed: 0,
+        numberOfTimesEdited: 0,
+        numberOfTimesCopied: 0,
+        feedback: 'none',
+        state: midCallSummary.requestFailed ? 'NOT_RECEIVED' : 'MID_CALL_CANCELLED',
+      }, 'CONSULT');
     }
+  } catch (e) {
+    console.error('Failed to send consult cancel response', e);
+  }
+}
+
+async function retrySummary(type) {
+  const interactionId = currentTask?.data?.interactionId;
+  const features = summaryFeatureMap.get(interactionId) || {};
+  if (!features.midCallEnabled || !interactionId) return;
+  const prefix = type === 'CONSULT' ? 'consult-summary' : 'transfer-summary';
+  const statusEl = document.getElementById(`${prefix}-status`);
+  const retryBtn = document.getElementById(`${prefix}-retry`);
+  midCallSummary.requestFailed = false;
+  midCallSummary.payload = null;
+  clearSummarySection(prefix);
+  if (retryBtn) retryBtn.style.display = 'none';
+  if (statusEl) statusEl.textContent = 'Requesting summary…';
+  try {
+    const summary = await currentTask.requestMidCallSummary(type);
+    if (statusEl) statusEl.textContent = 'Summary ready.';
+    midCallSummary.payload = summary;
+    renderSummarySection(prefix, summary);
+    if (!midCallSummary._viewCounted) {
+      midCallSummary.numberOfTimesViewed += 1;
+      midCallSummary._viewCounted = true;
+    }
+  } catch (e) {
+    midCallSummary.requestFailed = true;
+    if (statusEl) statusEl.textContent = `Summary unavailable: ${e?.message || e}`;
+    if (retryBtn) retryBtn.style.display = '';
   }
 }
 
@@ -651,39 +707,47 @@ function extractInputTextValues(items) {
   return parts.join('\n\n');
 }
 
+function isUnresolvedTemplate(text) {
+  return /^\$\{[^}]+\}$/.test(String(text).trim());
+}
+
 function extractTextBlockValues(items) {
-  const parts = [];
+  const blocks = [];
   function traverse(nodes) {
     if (!Array.isArray(nodes)) return;
     for (const node of nodes) {
-      if (node.type === 'TextBlock' && node.weight !== 'Bolder' && node.text && String(node.text).trim()) {
-        parts.push(String(node.text).trim());
+      const text = node.type === 'TextBlock' && node.text ? String(node.text).trim() : '';
+      if (text && !isUnresolvedTemplate(text)) {
+        blocks.push({ text, isLabel: node.weight === 'Bolder' });
       }
       if (node.items) traverse(node.items);
       if (node.columns) node.columns.forEach((c) => traverse(c.items || []));
     }
   }
   traverse(items);
+
+  const parts = [];
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
+    if (block.isLabel) {
+      const next = blocks[i + 1];
+      if (next && !next.isLabel) {
+        parts.push(`${block.text}\n${next.text}`);
+        i++;
+      } else {
+        parts.push(block.text);
+      }
+    } else {
+      parts.push(block.text);
+    }
+  }
   return parts.join('\n\n');
 }
 
 function renderSummaryText(payload) {
   if (!payload) return '';
 
-  // Path 1: full payload has a `sections` map — cleanest plain text
-  const sections = payload.sections ?? payload.data?.sections;
-  if (sections && typeof sections === 'object') {
-    const parts = Object.keys(sections)
-      .map((k) => { const v = sections[k]; return typeof v === 'string' && v.trim() ? v.trim() : null; })
-      .filter(Boolean);
-    if (parts.length) return parts.join('\n\n');
-  }
-
-  // Path 2: plain-text `summaryText` field
-  const summaryText = payload.summaryText ?? payload.data?.summaryText;
-  if (typeof summaryText === 'string' && summaryText.trim()) return summaryText.trim();
-
-  // Path 3: editAdaptiveCard Input.Text values — SDK sometimes resolves with just the card
+  // Path 1: editAdaptiveCard Input.Text values (editable card pre-populated with content)
   const editCard =
     payload.editAdaptiveCard ??
     (payload.type === 'AdaptiveCard' && payload.body && payload.id && payload.id !== payload.adaptiveCardId
@@ -694,7 +758,7 @@ function renderSummaryText(payload) {
     if (text) return text;
   }
 
-  // Path 4: adaptiveCard TextBlock content (non-label blocks)
+  // Path 2: adaptiveCard TextBlock content — full structured card with section labels
   const card =
     payload.adaptiveCard ??
     (payload.type === 'AdaptiveCard' ? payload : null);
@@ -703,35 +767,52 @@ function renderSummaryText(payload) {
     if (text) return text;
   }
 
+  // Path 3: full payload has a `sections` map
+  const sections = payload.sections ?? payload.data?.sections;
+  if (sections && typeof sections === 'object') {
+    const parts = Object.entries(sections)
+      .filter(([, v]) => typeof v === 'string' && v.trim())
+      .map(([k, v]) => {
+        const label = k.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trimStart();
+        return `${label}:\n${v.trim()}`;
+      });
+    if (parts.length) return parts.join('\n\n');
+  }
+
+  // Path 4: plain-text summaryText — condensed fallback
+  const summaryText = payload.summaryText ?? payload.data?.summaryText;
+  if (typeof summaryText === 'string' && summaryText.trim()) return summaryText.trim();
+
   return '';
 }
 
 function wireSummaryListeners(task) {
   task.on('task:midCallSummary', (payload) => {
     midCallSummary.payload = payload;
-    const block = midCallSummary.actionType === 'TRANSFER'
-      ? document.getElementById('transfer-summary-block')
-      : document.getElementById('consult-summary-block');
+    const prefix = midCallSummary.actionType === 'TRANSFER' ? 'transfer-summary' : 'consult-summary';
+    const block = document.getElementById(`${prefix}-block`);
     if (block) block.style.display = '';
-    const textareaId = midCallSummary.actionType === 'TRANSFER'
-      ? 'transfer-summary-text'
-      : 'consult-summary-text';
-    const ta = document.getElementById(textareaId);
-    if (ta) ta.value = renderSummaryText(payload);
-    midCallSummary.numberOfTimesViewed += 1;
+    renderSummarySection(prefix, payload);
+    if (!midCallSummary._viewCounted) {
+      midCallSummary.numberOfTimesViewed += 1;
+      midCallSummary._viewCounted = true;
+    }
   });
 
   task.on('task:postCallSummary', (payload) => {
     postCallSummary.payload = payload;
     const block = document.getElementById('postcall-summary-block');
     if (block) block.style.display = '';
-    const ta = document.getElementById('postcall-summary-text');
-    if (ta) ta.value = renderSummaryText(payload);
-    postCallSummary.numberOfTimesViewed += 1;
+    renderSummarySection('postcall-summary', payload);
+    if (!postCallSummary._viewCounted) {
+      postCallSummary.numberOfTimesViewed += 1;
+      postCallSummary._viewCounted = true;
+    }
   });
 
   task.on('task:midCallSummaryForReceivingAgent', (payload) => {
-    console.info('[Receiving agent] mid-call summary delivered', { conversationId: payload.conversationId });
+    console.info('[Receiving agent] mid-call summary buffered, waiting for task:assigned', payload);
+    incomingMidCallSummaryPayload = payload;
   });
 }
 
@@ -742,6 +823,10 @@ async function onWrapupEntry(task) {
   postCallSummary.numberOfTimesEdited = 0;
   postCallSummary.numberOfTimesCopied = 0;
   postCallSummary.feedback = 'none';
+  postCallSummary._viewCounted = false;
+  postCallSummary.requestFailed = false;
+  clearSummarySection('postcall-summary');
+  resetSummaryFeedbackUI('postcall-summary');
   const block = document.getElementById('postcall-summary-block');
   const statusEl = document.getElementById('postcall-summary-status');
   const wrapupInteractionId = task?.data?.interactionId;
@@ -754,10 +839,16 @@ async function onWrapupEntry(task) {
   if (statusEl) statusEl.textContent = 'Waiting for summary…';
   postCallSummaryPending = task.requestPostCallSummary().then((summary) => {
     if (statusEl) statusEl.textContent = 'Summary ready.';
-    if (!postCallSummary.payload) postCallSummary.payload = summary;
-    const ta = document.getElementById('postcall-summary-text');
-    if (ta && !ta.value) ta.value = renderSummaryText(summary);
+    if (!postCallSummary.payload) {
+      postCallSummary.payload = summary;
+      renderSummarySection('postcall-summary', summary);
+    }
+    if (!postCallSummary._viewCounted) {
+      postCallSummary.numberOfTimesViewed += 1;
+      postCallSummary._viewCounted = true;
+    }
   }).catch((e) => {
+    postCallSummary.requestFailed = true;
     if (statusEl) statusEl.textContent = `Summary unavailable: ${e?.message || e}`;
   }).finally(() => {
     postCallSummaryPending = null;
@@ -770,16 +861,158 @@ function bindSummaryControls(prefix, stateRef) {
   const copyBtn = document.getElementById(`${prefix}-copy`);
   const excludeChk = document.getElementById(`${prefix}-exclude`);
 
-  if (thumbsUp) thumbsUp.addEventListener('click', () => { stateRef.feedback = 'thumbs_up'; });
-  if (thumbsDown) thumbsDown.addEventListener('click', () => { stateRef.feedback = 'thumbs_down'; });
+  if (thumbsUp && thumbsDown) {
+    thumbsUp.addEventListener('click', () => {
+      stateRef.feedback = 'thumbs_up';
+      thumbsUp.setAttribute('aria-pressed', 'true');
+      thumbsDown.setAttribute('aria-pressed', 'false');
+    });
+    thumbsDown.addEventListener('click', () => {
+      stateRef.feedback = 'thumbs_down';
+      thumbsDown.setAttribute('aria-pressed', 'true');
+      thumbsUp.setAttribute('aria-pressed', 'false');
+    });
+  }
   if (copyBtn) copyBtn.addEventListener('click', () => {
-    const ta = document.getElementById(`${prefix}-text`);
-    if (ta) navigator.clipboard.writeText(ta.value).catch(() => {});
+    navigator.clipboard.writeText(getSummaryText(prefix)).catch(() => {});
     stateRef.numberOfTimesCopied += 1;
   });
   if (excludeChk) excludeChk.addEventListener('change', (e) => {
     stateRef.excluded = e.target.checked;
   });
+}
+
+function resetSummaryFeedbackUI(prefix) {
+  const up = document.getElementById(`${prefix}-thumbs-up`);
+  const down = document.getElementById(`${prefix}-thumbs-down`);
+  if (up) up.setAttribute('aria-pressed', 'false');
+  if (down) down.setAttribute('aria-pressed', 'false');
+}
+
+function extractEditFields(payload) {
+  const editCard = payload?.editAdaptiveCard;
+  if (!editCard?.body) return [];
+  const fields = [];
+  function traverse(nodes) {
+    if (!Array.isArray(nodes)) return;
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      if (node.type === 'Input.Text' && node.id) {
+        const prev = nodes[i - 1];
+        const rawLabel = prev?.type === 'TextBlock' && prev.text ? String(prev.text) : '';
+        const label = (rawLabel && !isUnresolvedTemplate(rawLabel))
+          ? rawLabel.replace(/:$/, '').trim()
+          : node.id.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trimStart();
+        const value = node.value && !isUnresolvedTemplate(node.value) ? node.value : '';
+        fields.push({ id: node.id, label, value });
+      }
+      if (node.items) traverse(node.items);
+      if (node.columns) node.columns.forEach((c) => traverse(c.items || []));
+    }
+  }
+  traverse(editCard.body);
+  return fields;
+}
+
+function renderSummarySection(prefix, payload) {
+  const container = document.getElementById(`${prefix}-sections`);
+  if (!container) return;
+  container.innerHTML = '';
+
+  const fields = extractEditFields(payload);
+  if (fields.length > 0) {
+    summaryFieldMap.set(prefix, fields.map((f) => ({ id: f.id, label: f.label })));
+    fields.forEach((field) => {
+      const label = document.createElement('label');
+      label.textContent = `${field.label}:`;
+      label.htmlFor = `${prefix}-${field.id}`;
+      const ta = document.createElement('textarea');
+      ta.id = `${prefix}-${field.id}`;
+      ta.rows = 3;
+      ta.value = field.value;
+      container.appendChild(label);
+      container.appendChild(ta);
+    });
+  } else {
+    summaryFieldMap.set(prefix, []);
+    const ta = document.createElement('textarea');
+    ta.id = `${prefix}-text`;
+    ta.rows = prefix.startsWith('postcall') ? 8 : 6;
+    ta.value = payload ? renderSummaryText(payload) : '';
+    ta.placeholder = 'Summary will appear here.';
+    container.appendChild(ta);
+  }
+}
+
+function clearSummarySection(prefix) {
+  const container = document.getElementById(`${prefix}-sections`);
+  if (!container) return;
+  container.innerHTML = '';
+  summaryFieldMap.set(prefix, []);
+}
+
+function dismissAllSummaryUI() {
+  clearSummarySection('consult-summary');
+  clearSummarySection('transfer-summary');
+  clearSummarySection('postcall-summary');
+
+  incomingMidCallSummaryPayload = null;
+  const incomingText = document.getElementById('incoming-summary-text');
+  if (incomingText) incomingText.textContent = '';
+
+  ['consult-summary-block', 'transfer-summary-block', 'postcall-summary-block', 'incoming-summary-block'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
+  resetSummaryFeedbackUI('consult-summary');
+  resetSummaryFeedbackUI('transfer-summary');
+  resetSummaryFeedbackUI('postcall-summary');
+
+  if (initiateConsultDialog?.open) initiateConsultDialog.close();
+
+  const transferOptions = document.getElementById('transfer-options');
+  if (transferOptions) transferOptions.style.display = 'none';
+}
+
+function getSummaryText(prefix) {
+  const fields = summaryFieldMap.get(prefix) || [];
+  if (fields.length > 0) {
+    return fields
+      .map((f) => { const ta = document.getElementById(`${prefix}-${f.id}`); return ta ? ta.value.trim() : ''; })
+      .filter(Boolean)
+      .join('\n\n');
+  }
+  const ta = document.getElementById(`${prefix}-text`);
+  return ta ? ta.value : '';
+}
+
+function buildSummaryPayload(prefix) {
+  const fields = summaryFieldMap.get(prefix) || [];
+  if (fields.length > 0) {
+    const sections = {};
+    fields.forEach((f) => {
+      const ta = document.getElementById(`${prefix}-${f.id}`);
+      if (ta) sections[f.id] = ta.value;
+    });
+    return sections;
+  }
+  const ta = document.getElementById(`${prefix}-text`);
+  return ta ? ta.value : '';
+}
+
+function isSummaryEdited(prefix, originalPayload) {
+  const fields = summaryFieldMap.get(prefix) || [];
+  if (fields.length > 0) {
+    const originalFields = extractEditFields(originalPayload);
+    const origMap = Object.fromEntries(originalFields.map((f) => [f.id, f.value]));
+    return fields.some((f) => {
+      const ta = document.getElementById(`${prefix}-${f.id}`);
+      return ta && ta.value !== (origMap[f.id] || '');
+    });
+  }
+  const ta = document.getElementById(`${prefix}-text`);
+  return ta ? ta.value !== renderSummaryText(originalPayload) : false;
 }
 
 async function getQueueListForTelephonyChannel() {
@@ -1125,25 +1358,40 @@ async function initiateConsult() {
     return;
   }
 
-  if (midCallSummary.payload && midCallSummary.actionType === 'CONSULT') {
-    const editedSummary = document.getElementById('consult-summary-text')?.value || '';
-    if (editedSummary !== renderSummaryText(midCallSummary.payload)) {
-      midCallSummary.numberOfTimesEdited += 1;
-    }
-    try {
-      await currentTask.sendMidCallSummaryResponse({
-        conversationId: midCallSummary.payload.conversationId,
-        interactionId: currentTask.data.interactionId,
-        summary: editedSummary,
-        numberOfTimesViewed: midCallSummary.numberOfTimesViewed,
-        numberOfTimesEdited: midCallSummary.numberOfTimesEdited,
-        numberOfTimesCopied: midCallSummary.numberOfTimesCopied,
-        feedback: midCallSummary.feedback,
-        state: midCallSummary.excluded ? 'EXCLUDED' : 'DEFAULT',
-        agentName: agentName,
-      }, 'CONSULT');
-    } catch (e) {
-      console.error('Failed to send consult summary response', e);
+  const consultInteractionId = currentTask?.data?.interactionId;
+  const consultSendFeatures = summaryFeatureMap.get(consultInteractionId) || {};
+  if (midCallSummary.actionType === 'CONSULT' && consultSendFeatures.midCallEnabled && consultInteractionId) {
+    if (midCallSummary.payload) {
+      const consultEdited = isSummaryEdited('consult-summary', midCallSummary.payload);
+      if (consultEdited) midCallSummary.numberOfTimesEdited += 1;
+      const consultSummaryPayload = consultEdited ? buildSummaryPayload('consult-summary') : {};
+      try {
+        await currentTask.sendMidCallSummaryResponse({
+          summaryReceived: true,
+          summary: consultSummaryPayload,
+          numberOfTimesViewed: midCallSummary.numberOfTimesViewed,
+          numberOfTimesEdited: midCallSummary.numberOfTimesEdited,
+          numberOfTimesCopied: midCallSummary.numberOfTimesCopied,
+          feedback: midCallSummary.feedback,
+          state: midCallSummary.excluded ? 'EXCLUDED' : 'DEFAULT',
+        }, 'CONSULT');
+      } catch (e) {
+        console.error('Failed to send consult summary response', e);
+      }
+    } else if (midCallSummary.requestFailed) {
+      try {
+        await currentTask.sendMidCallSummaryResponse({
+          summaryReceived: false,
+          summary: '',
+          numberOfTimesViewed: 0,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+          feedback: 'none',
+          state: 'NOT_RECEIVED',
+        }, 'CONSULT');
+      } catch (e) {
+        console.error('Failed to send consult NOT_RECEIVED response', e);
+      }
     }
   }
 
@@ -1214,25 +1462,41 @@ async function initiateTransfer() {
     return;
   }
 
-  if (midCallSummary.payload && midCallSummary.actionType === 'TRANSFER') {
-    const editedSummary = document.getElementById('transfer-summary-text')?.value || '';
-    if (editedSummary !== renderSummaryText(midCallSummary.payload)) {
-      midCallSummary.numberOfTimesEdited += 1;
-    }
-    try {
-      await currentTask.sendMidCallSummaryResponse({
-        conversationId: midCallSummary.payload.conversationId,
-        interactionId: currentTask.data.interactionId,
-        summary: editedSummary,
-        numberOfTimesViewed: midCallSummary.numberOfTimesViewed,
-        numberOfTimesEdited: midCallSummary.numberOfTimesEdited,
-        numberOfTimesCopied: midCallSummary.numberOfTimesCopied,
-        feedback: midCallSummary.feedback,
-        state: midCallSummary.excluded ? 'EXCLUDED' : 'DEFAULT',
-        agentName: agentName,
-      }, 'TRANSFER');
-    } catch (e) {
-      console.error('Failed to send transfer summary response', e);
+  const transferSummaryInteractionId = currentTask?.data?.interactionId;
+  const transferSummaryFeatures = summaryFeatureMap.get(transferSummaryInteractionId) || {};
+  if (midCallSummary.actionType === 'TRANSFER' && transferSummaryFeatures.midCallEnabled && transferSummaryInteractionId) {
+    if (midCallSummary.payload) {
+      const transferEdited = isSummaryEdited('transfer-summary', midCallSummary.payload);
+      if (transferEdited) midCallSummary.numberOfTimesEdited += 1;
+      const transferSummaryPayload = transferEdited ? buildSummaryPayload('transfer-summary') : {};
+      try {
+        await currentTask.sendMidCallSummaryResponse({
+          summaryReceived: true,
+          summary: transferSummaryPayload,
+          numberOfTimesViewed: midCallSummary.numberOfTimesViewed,
+          numberOfTimesEdited: midCallSummary.numberOfTimesEdited,
+          numberOfTimesCopied: midCallSummary.numberOfTimesCopied,
+          feedback: midCallSummary.feedback,
+          state: midCallSummary.excluded ? 'EXCLUDED' : 'DEFAULT',
+        }, 'TRANSFER');
+        midCallSummary.payload = null;
+      } catch (e) {
+        console.error('Failed to send transfer summary response', e);
+      }
+    } else if (midCallSummary.requestFailed) {
+      try {
+        await currentTask.sendMidCallSummaryResponse({
+          summaryReceived: false,
+          summary: '',
+          numberOfTimesViewed: 0,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+          feedback: 'none',
+          state: 'NOT_RECEIVED',
+        }, 'TRANSFER');
+      } catch (e) {
+        console.error('Failed to send transfer NOT_RECEIVED response', e);
+      }
     }
   }
 
@@ -1339,10 +1603,14 @@ async function toggleTransferOptions() {
     midCallSummary.numberOfTimesCopied = 0;
     midCallSummary.feedback = 'none';
     midCallSummary.excluded = false;
-    const transferTa = document.getElementById('transfer-summary-text');
-    if (transferTa) transferTa.value = '';
+    midCallSummary._viewCounted = false;
+    midCallSummary.requestFailed = false;
+    clearSummarySection('transfer-summary');
     const transferExclude = document.getElementById('transfer-summary-exclude');
     if (transferExclude) transferExclude.checked = false;
+    resetSummaryFeedbackUI('transfer-summary');
+    const transferRetryBtn = document.getElementById('transfer-summary-retry');
+    if (transferRetryBtn) transferRetryBtn.style.display = 'none';
     const transferInteractionId = currentTask?.data?.interactionId;
     const transferFeatures = summaryFeatureMap.get(transferInteractionId) || {};
     if (!transferFeatures.midCallEnabled) {
@@ -1355,30 +1623,50 @@ async function toggleTransferOptions() {
     try {
       const summary = await currentTask.requestMidCallSummary('TRANSFER');
       document.getElementById('transfer-summary-status').textContent = 'Summary ready.';
-      if (!midCallSummary.payload) midCallSummary.payload = summary;
-      const ta = document.getElementById('transfer-summary-text');
-      if (ta && !ta.value) ta.value = renderSummaryText(summary);
+      if (transferRetryBtn) transferRetryBtn.style.display = 'none';
+      if (!midCallSummary.payload) {
+        midCallSummary.payload = summary;
+        renderSummarySection('transfer-summary', summary);
+      }
+      if (!midCallSummary._viewCounted) {
+        midCallSummary.numberOfTimesViewed += 1;
+        midCallSummary._viewCounted = true;
+      }
     } catch (e) {
+      midCallSummary.requestFailed = true;
       document.getElementById('transfer-summary-status').textContent = `Summary unavailable: ${e?.message || e}`;
+      if (transferRetryBtn) transferRetryBtn.style.display = '';
     }
   } else {
     transferOptions.style.display = 'none';
-    if (midCallSummary.payload && midCallSummary.actionType === 'TRANSFER') {
-      try {
+    if (midCallSummary.actionType !== 'TRANSFER') return;
+    const cancelInteractionId = currentTask?.data?.interactionId;
+    const cancelFeatures = summaryFeatureMap.get(cancelInteractionId) || {};
+    if (!cancelFeatures.midCallEnabled || !cancelInteractionId) return;
+    try {
+      if (midCallSummary.payload) {
         await currentTask.sendMidCallSummaryResponse({
-          conversationId: midCallSummary.payload.conversationId,
-          interactionId: currentTask.data.interactionId,
-          summary: {},
+          summaryReceived: true,
+          summary: buildSummaryPayload('transfer-summary'),
           numberOfTimesViewed: midCallSummary.numberOfTimesViewed,
           numberOfTimesEdited: midCallSummary.numberOfTimesEdited,
           numberOfTimesCopied: midCallSummary.numberOfTimesCopied,
-          feedback: 'none',
+          feedback: midCallSummary.feedback,
           state: 'MID_CALL_CANCELLED',
-          agentName: agentName,
         }, 'TRANSFER');
-      } catch (e) {
-        console.error('Failed to send transfer cancel response', e);
+      } else {
+        await currentTask.sendMidCallSummaryResponse({
+          summaryReceived: false,
+          summary: '',
+          numberOfTimesViewed: 0,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+          feedback: 'none',
+          state: midCallSummary.requestFailed ? 'NOT_RECEIVED' : 'MID_CALL_CANCELLED',
+        }, 'TRANSFER');
       }
+    } catch (e) {
+      console.error('Failed to send transfer cancel response', e);
     }
   }
 }
@@ -2050,9 +2338,19 @@ function registerTaskListeners(task) {
   });
 
   task.on('task:assigned', (task) => {
-    updateTaskList(); // Update the task list UI to have latest tasks
+    updateTaskList();
     console.info('Call has been accepted for task: ', task.data.interactionId);
     handleTaskSelect(task);
+
+    if (incomingMidCallSummaryPayload) {
+      const block = document.getElementById('incoming-summary-block');
+      const el = document.getElementById('incoming-summary-text');
+      if (block && el) {
+        el.textContent = renderSummaryText(incomingMidCallSummaryPayload) || '(No summary text available)';
+        block.style.display = '';
+      }
+      incomingMidCallSummaryPayload = null;
+    }
   });
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
@@ -2250,6 +2548,7 @@ function registerTaskListeners(task) {
     // Clean up task creation time tracking
     taskCreationTimes.delete(task.data.interactionId);
     summaryFeatureMap.delete(task.data.interactionId);
+    dismissAllSummaryUI();
 
     // If this is the current task, clear all controls
     if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
@@ -3068,7 +3367,7 @@ function register() {
           console.log('Incoming task received: ', task);
           updateTaskList();
           taskId = task.data.interactionId;
-          registerTaskListeners(currentTask);
+          registerTaskListeners(task);
         });
 
     webex.cc.on('task:hydrate', (currentTask) => {
@@ -3602,16 +3901,15 @@ async function wrapupCall() {
       await postCallSummaryPending.catch(() => {});
     }
 
+    const wrapupInteractionId = currentTask?.data?.interactionId;
+    const wrapupSummaryFeatures = summaryFeatureMap.get(wrapupInteractionId) || {};
     if (postCallSummary.payload) {
-      const editedSummary = document.getElementById('postcall-summary-text')?.value || '';
-      if (editedSummary !== renderSummaryText(postCallSummary.payload)) {
-        postCallSummary.numberOfTimesEdited += 1;
-      }
+      const postCallEdited = isSummaryEdited('postcall-summary', postCallSummary.payload);
+      if (postCallEdited) postCallSummary.numberOfTimesEdited += 1;
+      const postCallSummaryPayload = postCallEdited ? buildSummaryPayload('postcall-summary') : {};
       try {
         await currentTask.sendPostCallSummaryResponse({
-          conversationId: postCallSummary.payload.conversationId,
-          interactionId: currentTask.data.interactionId,
-          summary: editedSummary,
+          summary: postCallSummaryPayload,
           numberOfTimesViewed: postCallSummary.numberOfTimesViewed,
           numberOfTimesEdited: postCallSummary.numberOfTimesEdited,
           numberOfTimesCopied: postCallSummary.numberOfTimesCopied,
@@ -3622,7 +3920,23 @@ async function wrapupCall() {
       } catch (e) {
         console.error('Failed to send post-call summary response', e);
       }
+    } else if (postCallSummary.requestFailed && wrapupSummaryFeatures.postCallEnabled && wrapupInteractionId) {
+      try {
+        await currentTask.sendPostCallSummaryResponse({
+          summary: '',
+          numberOfTimesViewed: 0,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+          feedback: 'none',
+          state: 'NOT_RECEIVED',
+          wrapUpCode: wrapupReason,
+        });
+      } catch (e) {
+        console.error('Failed to send post-call NOT_RECEIVED response', e);
+      }
     }
+    const postcallBlock = document.getElementById('postcall-summary-block');
+    if (postcallBlock) postcallBlock.style.display = 'none';
   } catch (error) {
     console.error('Failed to wrap up the call', error);
   } finally {
