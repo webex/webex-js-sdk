@@ -1,6 +1,8 @@
 # Utils
 
-> **This is the authoritative documentation for the `src/utils` scope.** It covers shared pagination/cache contracts used by data services. For task routing and cross-service conventions, see the [root orchestrator AGENTS.md](../../AGENTS.md).
+> **Legacy/reference-only.** Canonical SDD: [`ai-docs/utils-spec.md`](ai-docs/utils-spec.md). Use the package [manifest](../../.sdd/manifest.json) and [`SPEC_INDEX.md`](../../ai-docs/SPEC_INDEX.md) for routing; code and tests remain the behavioral referee.
+>
+> **Legacy scope:** This guide covers shared pagination/cache contracts used by data services. For repository rules and cross-service conventions, see the [root orchestrator AGENTS.md](../../AGENTS.md).
 
 ---
 

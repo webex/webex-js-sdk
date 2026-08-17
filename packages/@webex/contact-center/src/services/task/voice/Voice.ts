@@ -132,9 +132,11 @@ export default class Voice extends Task implements IVoice {
       this.data.interaction?.media?.[mainInteractionId]?.isHold ??
       this.data.interaction.media?.[mainMediaResource]?.isHold;
     let shouldHold = !(mediaHoldState ?? false);
-    if (snapshotState === TaskState.HELD) {
+    if (snapshotState === TaskState.HELD || snapshotState === TaskState.RESUME_INITIATING) {
       shouldHold = false;
-    } else if (snapshotState === TaskState.CONNECTED) {
+    } else if (snapshotState === TaskState.CONNECTED && mediaHoldState !== true) {
+      // CONNECTED with isHold:true can happen after consult RONA/decline when event ordering
+      // leaves the machine in CONNECTED while main media is still on hold — resume on first click.
       shouldHold = true;
     }
 
@@ -154,7 +156,8 @@ export default class Voice extends Task implements IVoice {
         }
       } else if (
         !state.matches(TaskState.HELD) &&
-        !(state.matches(TaskState.CONFERENCING) && mediaHoldState === true)
+        !(state.matches(TaskState.CONFERENCING) && mediaHoldState === true) &&
+        !(state.matches(TaskState.CONNECTED) && mediaHoldState === true)
       ) {
         const error = new Error(`Cannot resume call in current state: ${currentState}`);
         LoggerProxy.error('Resume operation not allowed', {

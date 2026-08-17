@@ -1,5 +1,9 @@
 # Metrics Module - AI Agent Guide
 
+> **Legacy/reference-only.** Canonical SDD: [`metrics-spec.md`](metrics-spec.md). Use the package [manifest](../../../.sdd/manifest.json) and [`SPEC_INDEX.md`](../../../ai-docs/SPEC_INDEX.md) for routing; code and tests remain the behavioral referee.
+
+> **Purpose**: Track behavioral, operational, and business metrics for Contact Center SDK operations using a singleton `MetricsManager`. Provides event timing, payload preparation, batching, and submission to the Webex metrics backend.
+
 ## Purpose
 
 `MetricsManager` tracks behavioral, operational, and business metrics for the

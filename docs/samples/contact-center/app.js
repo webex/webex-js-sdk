@@ -318,6 +318,37 @@ function removeListeningIndicator() {
   if (existing) existing.remove();
 }
 
+function getRealTimeAssistanceAdaptiveCardId(data) {
+  return data?.adaptiveCardId || data?.adaptiveCard?.id || data?.cardId || data?.id;
+}
+
+async function sendRealTimeAssistanceUserAction(actionId, data, options = {}) {
+  const interactionId = options.interactionId || currentTask?.data?.interactionId;
+  const adaptiveCardId = getRealTimeAssistanceAdaptiveCardId(data);
+
+  if (!interactionId || !adaptiveCardId || !webex?.cc?.apiAIAssistant) {
+    console.warn('Unable to send suggested response user action', {
+      actionId,
+      interactionId,
+      adaptiveCardId,
+    });
+
+    return;
+  }
+
+  try {
+    await webex.cc.apiAIAssistant.sendRealTimeAssistanceUserAction({
+      agentId,
+      interactionId,
+      adaptiveCardId,
+      actionId,
+    });
+    console.info('Suggested response user action sent:', actionId);
+  } catch (error) {
+    console.error('Suggested response user action failed:', error);
+  }
+}
+
 function appendSuggestionCard(data, options = {}) {
   if (!aiAssistantContentElm) return;
 
@@ -329,11 +360,29 @@ function appendSuggestionCard(data, options = {}) {
   card.innerHTML = `
     <div class="assistant-suggestion-card__title"></div>
     <div class="assistant-suggestion-card__body"></div>
-    <div class="assistant-suggestion-card__meta"></div>
+    <div class="assistant-suggestion-card__footer">
+      <div class="assistant-suggestion-card__meta"></div>
+      <div class="assistant-suggestion-card__actions">
+        <button type="button" data-action-id="likeButton">Like</button>
+        <button type="button" data-action-id="dislikeButton">Dislike</button>
+        <button type="button" data-action-id="copyButton">Copy</button>
+      </div>
+    </div>
   `;
   card.querySelector('.assistant-suggestion-card__title').textContent = data.title || 'Suggested response';
   card.querySelector('.assistant-suggestion-card__body').textContent = data.suggestion || '';
   card.querySelector('.assistant-suggestion-card__meta').textContent = data.suggestionSource || '';
+  card.querySelectorAll('.assistant-suggestion-card__actions button').forEach((button) => {
+    button.addEventListener('click', () => {
+      card.querySelectorAll('.assistant-suggestion-card__actions button').forEach((actionButton) => {
+        actionButton.classList.remove('assistant-suggestion-card__action--selected');
+        actionButton.setAttribute('aria-pressed', 'false');
+      });
+      button.classList.add('assistant-suggestion-card__action--selected');
+      button.setAttribute('aria-pressed', 'true');
+      sendRealTimeAssistanceUserAction(button.dataset.actionId, data, options);
+    });
+  });
   aiAssistantContentElm.appendChild(card);
 
   if (keepListening) {
@@ -346,7 +395,7 @@ function appendSuggestionCard(data, options = {}) {
   aiAssistantContentElm.scrollTop = aiAssistantContentElm.scrollHeight;
 }
 
-async function requestSuggestedResponse() {
+async function requestRealTimeAssistance() {
   if (!currentTask || !webex?.cc?.apiAIAssistant) return;
 
   const interactionId = currentTask.data.interactionId;
@@ -369,7 +418,7 @@ async function requestSuggestedResponse() {
   showListeningIndicator();
 
   try {
-    await webex.cc.apiAIAssistant.getSuggestedResponse({
+    await webex.cc.apiAIAssistant.getRealTimeAssistance({
       agentId,
       interactionId,
       actionTimeStamp: Date.now(),
@@ -404,18 +453,18 @@ if (clearTranscriptsButton) {
 }
 
 if (aiAssistantActionBtn) {
-  aiAssistantActionBtn.addEventListener('click', requestSuggestedResponse);
+  aiAssistantActionBtn.addEventListener('click', requestRealTimeAssistance);
 }
 
 if (aiAssistantContextBtn) {
-  aiAssistantContextBtn.addEventListener('click', requestSuggestedResponse);
+  aiAssistantContextBtn.addEventListener('click', requestRealTimeAssistance);
 }
 
 if (aiAssistantContextInputElm) {
   aiAssistantContextInputElm.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
-      requestSuggestedResponse();
+      requestRealTimeAssistance();
     }
   });
 }
@@ -3373,6 +3422,7 @@ function register() {
         registerBtn.disabled = true;
         deregisterBtn.disabled = false;
         uploadLogsButton.disabled = false;
+        enableUserPreferenceButtons(true);
         updateUnregisterButtonState();
         console.log('Event subscription successful: ', agentProfile);
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
@@ -3529,6 +3579,7 @@ function doDeRegister() {
         registerBtn.disabled = false;
         deregisterBtn.disabled = true;
         uploadLogsButton.disabled = true;
+        enableUserPreferenceButtons(false);
         
         // Clear all dropdowns that are populated during registration
         teamsDropdown.innerHTML = '';
@@ -4383,3 +4434,166 @@ bindSummaryControls('transfer-summary', midCallSummary);
 bindSummaryControls('postcall-summary', postCallSummary);
 
 updateApplyButtonState();
+
+// ==================== User Preferences API ====================
+
+const userPrefResultElm = document.getElementById('userPrefResult');
+const getUserPrefBtn = document.getElementById('getUserPrefBtn');
+const createUserPrefBtn = document.getElementById('createUserPrefBtn');
+const updateUserPrefBtn = document.getElementById('updateUserPrefBtn');
+const deleteUserPrefBtn = document.getElementById('deleteUserPrefBtn');
+const userPrefCreateDialog = document.getElementById('userPrefCreateDialog');
+const userPrefUpdateDialog = document.getElementById('userPrefUpdateDialog');
+
+function enableUserPreferenceButtons(enabled) {
+  getUserPrefBtn.disabled = !enabled;
+  createUserPrefBtn.disabled = !enabled;
+  updateUserPrefBtn.disabled = !enabled;
+  deleteUserPrefBtn.disabled = !enabled;
+}
+
+function showUserPrefResult(result, isError = false) {
+  userPrefResultElm.textContent = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+  userPrefResultElm.style.color = isError ? 'red' : 'inherit';
+}
+
+async function getUserPreference() {
+  const userId = document.getElementById('userPrefUserId').value.trim();
+  const pageInput = document.getElementById('userPrefPage').value;
+  const pageSizeInput = document.getElementById('userPrefPageSize').value;
+  
+  const params = {};
+  if (userId) params.userId = userId;
+  if (pageInput !== '') params.page = parseInt(pageInput, 10);
+  if (pageSizeInput !== '') params.pageSize = parseInt(pageSizeInput, 10);
+  
+  try {
+    showUserPrefResult('Fetching user preferences...');
+    const result = await webex.cc.userPreference.getUserPreference(Object.keys(params).length > 0 ? params : undefined);
+    showUserPrefResult(result);
+    console.log('User Preferences:', result);
+  } catch (error) {
+    showUserPrefResult(`Error: ${error.message}`, true);
+    console.error('getUserPreference error:', error);
+  }
+}
+
+function showCreatePreferenceDialog() {
+  userPrefCreateDialog.classList.remove('hidden');
+  userPrefUpdateDialog.classList.add('hidden');
+  // Pre-fill with current agent ID if available
+  if (agentId) {
+    document.getElementById('createPrefUserId').value = agentId;
+  }
+}
+
+function hideCreatePreferenceDialog() {
+  userPrefCreateDialog.classList.add('hidden');
+}
+
+async function createUserPreference() {
+  const userId = document.getElementById('createPrefUserId').value.trim();
+  const desktopPreferenceJson = document.getElementById('createPrefDesktopPref').value.trim();
+  
+  if (!userId) {
+    showUserPrefResult('Error: User ID is required for creating preferences', true);
+    return;
+  }
+  
+  if (!desktopPreferenceJson) {
+    showUserPrefResult('Error: Desktop Preference JSON is required for creating preferences', true);
+    return;
+  }
+  
+  try {
+    // Validate desktopPreference is valid JSON
+    JSON.parse(desktopPreferenceJson);
+    
+    showUserPrefResult('Creating user preferences...');
+    const result = await webex.cc.userPreference.createUserPreference({
+      userId,
+      desktopPreference: desktopPreferenceJson
+    });
+    showUserPrefResult(result);
+    hideCreatePreferenceDialog();
+    console.log('Created User Preferences:', result);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      showUserPrefResult('Error: Invalid JSON format in Desktop Preference field.', true);
+    } else {
+      showUserPrefResult(`Error: ${error.message}`, true);
+    }
+    console.error('createUserPreference error:', error);
+  }
+}
+
+function showUpdatePreferenceDialog() {
+  userPrefUpdateDialog.classList.remove('hidden');
+  userPrefCreateDialog.classList.add('hidden');
+  // Pre-fill with current agent ID if available
+  if (agentId) {
+    document.getElementById('updatePrefUserId').value = agentId;
+  }
+}
+
+function hideUpdatePreferenceDialog() {
+  userPrefUpdateDialog.classList.add('hidden');
+}
+
+async function updateUserPreference() {
+  const userId = document.getElementById('updatePrefUserId').value.trim();
+  const desktopPreferenceJson = document.getElementById('updatePrefDesktopPref').value.trim();
+  
+  if (!userId) {
+    showUserPrefResult('Error: User ID is required for updating preferences', true);
+    return;
+  }
+  
+  if (!desktopPreferenceJson) {
+    showUserPrefResult('Error: Desktop Preference JSON is required for updating preferences', true);
+    return;
+  }
+  
+  try {
+    // Validate desktopPreference is valid JSON
+    JSON.parse(desktopPreferenceJson);
+    
+    showUserPrefResult('Updating user preferences...');
+    const result = await webex.cc.userPreference.updateUserPreference(userId, {
+      desktopPreference: desktopPreferenceJson
+    });
+    showUserPrefResult(result);
+    hideUpdatePreferenceDialog();
+    console.log('Updated User Preferences:', result);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      showUserPrefResult('Error: Invalid JSON format in Desktop Preference field.', true);
+    } else {
+      showUserPrefResult(`Error: ${error.message}`, true);
+    }
+    console.error('updateUserPreference error:', error);
+  }
+}
+
+async function deleteUserPreference() {
+  const userId = document.getElementById('userPrefUserId').value.trim();
+  
+  if (!userId) {
+    showUserPrefResult('Error: User ID is required for deleting preferences. Enter it in the User ID field above.', true);
+    return;
+  }
+  
+  if (!confirm(`Are you sure you want to delete preferences for user: ${userId}?`)) {
+    return;
+  }
+  
+  try {
+    showUserPrefResult('Deleting user preferences...');
+    await webex.cc.userPreference.deleteUserPreference(userId);
+    showUserPrefResult('User preferences deleted successfully');
+    console.log('Deleted User Preferences for:', userId);
+  } catch (error) {
+    showUserPrefResult(`Error: ${error.message}`, true);
+    console.error('deleteUserPreference error:', error);
+  }
+}

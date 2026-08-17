@@ -1,5 +1,7 @@
 # Calling Sub-module - Architecture Specification
 
+> Canonical SDD target: [`src/CallingClient/calling/ai-docs/calling-spec.md`](calling-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Component Overview
 
 The Calling sub-module is organized around one manager (`CallManager`) and per-call executors (`Call`).  

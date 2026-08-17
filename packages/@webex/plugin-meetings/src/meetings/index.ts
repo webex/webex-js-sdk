@@ -1,5 +1,6 @@
 /* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
-import {cloneDeep, clone, set} from 'lodash';
+import {cloneDeep, clone, set, once} from 'lodash';
+import {WasmRuntimeProbe} from '@webex/web-capabilities';
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-metrics';
@@ -209,6 +210,37 @@ export default class Meetings extends WebexPlugin {
   breakoutLocusForHandleLater: any;
   namespace = MEETINGS;
   registrationStatus: MeetingRegistrationStatus;
+
+  /**
+   * Emits a metric describing how well this browser runs WebAssembly, used to spot browsers
+   * where real-time WASM effects (e.g. background noise removal) run poorly.
+   *
+   * @param {string} correlationId - correlation id to report the result against
+   * @returns {void}
+   */
+  private emitWasmRuntimePerformance = once((correlationId: string): void => {
+    // This check is designed to swallow any probe/metrics failure so it can never break meeting
+    // creation, while still reporting the status so we can track browsers with WASM issues.
+    WasmRuntimeProbe.check()
+      .then((result) => {
+        LoggerProxy.logger.log(
+          `Meetings:index#emitWasmRuntimePerformance --> WASM runtime performance status: ${result.status}, ratio: ${result.ratio}, wasmMs: ${result.wasmMs}, jsMs: ${result.jsMs}`
+        );
+
+        return Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.WASM_RUNTIME_PERFORMANCE, {
+          status: result.status,
+          ratio: result.ratio,
+          wasmMs: result.wasmMs,
+          jsMs: result.jsMs,
+          correlation_id: correlationId,
+        });
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error(
+          `Meetings:index#emitWasmRuntimePerformance --> ERROR, failed to probe or report WASM runtime performance: ${error.message}`
+        );
+      });
+  });
 
   /**
    * Initializes the Meetings Plugin
@@ -513,6 +545,7 @@ export default class Meetings extends WebexPlugin {
       if (meeting && !MeetingsUtil.isBreakoutLocusDTO(data.locus)) {
         meeting.locusInfo.updateMainSessionLocusCache(data.locus); // here data.locus will never be a complete locus
       }
+
       if (!this.isNeedHandleLocusDTO(meeting, data.locus)) {
         LoggerProxy.logger.log(
           `Meetings:index#handleLocusEvent --> doesn't need to process locus event`
@@ -1634,6 +1667,8 @@ export default class Meetings extends WebexPlugin {
                     });
                   }
                 });
+
+                this.emitWasmRuntimePerformance(createdMeeting.correlationId);
               } else {
                 LoggerProxy.logger.error(
                   `Meetings:index#create --> ERROR, meeting does not have on method, will not be destroyed, meeting cleanup impossible for meeting: ${meeting}`

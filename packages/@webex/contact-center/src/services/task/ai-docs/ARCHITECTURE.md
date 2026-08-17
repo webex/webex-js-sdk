@@ -1,8 +1,8 @@
 # Task Service - Architecture
 
-Technical architecture for Contact Center task lifecycle management, task
-operations, realtime task event routing, WebRTC call association, auto wrap-up,
-and additive AI summary flows.
+> **Legacy/reference-only.** Canonical SDD: [`task-spec.md`](task-spec.md). Use the package [manifest](../../../../.sdd/manifest.json) and [`SPEC_INDEX.md`](../../../../ai-docs/SPEC_INDEX.md) for routing; code and tests remain the behavioral referee.
+
+> **Purpose**: Technical architecture for Contact Center task lifecycle management, task operations, realtime task event routing, WebRTC call association, auto wrap-up, and additive AI summary flows.
 
 ## Component Overview
 
@@ -601,8 +601,13 @@ The HTTP request path is `Task` or `Voice` to `contact.ts` to `AqmReqs`; the
 websocket event that follows is a notification and not the operation transport.
 
 ```typescript
-if (task.uiControls.hold.isEnabled) {
+if (task.uiControls.main.hold.isEnabled) {
   await task.hold();
+}
+
+// Consult-leg controls are exposed separately.
+if (task.uiControls.consult.hold.isEnabled) {
+  // Render or enable the consult-leg hold action.
 }
 ```
 

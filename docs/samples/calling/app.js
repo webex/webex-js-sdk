@@ -17,6 +17,7 @@ let callingClient;
 let correlationId;
 let callHistory;
 let voicemail;
+let voicemailInitPromise;
 let callRecording;
 let contacts;
 let callSettings;
@@ -127,6 +128,17 @@ const getOptionValue = (select) => {
 
   return selected ? selected.value : undefined;
 };
+
+async function ensureVoicemailInitialized() {
+  if (!voicemailInitPromise) {
+    voicemailInitPromise = Promise.resolve(voicemail.init()).catch((err) => {
+      voicemailInitPromise = undefined;
+      throw err;
+    });
+  }
+
+  return voicemailInitPromise;
+}
 
 async function uploadLogs() {
     try {
@@ -334,6 +346,9 @@ async function initCalling(e) {
     },
     serviceData,
     jwe: jwtTokenForDestElm.value,
+    iceGathering: {
+      reduceTimeoutForIceLite: true,
+    },
   };
 
   if (callingClientConfig.discovery.country === 'Country') {
@@ -347,7 +362,7 @@ async function initCalling(e) {
   const callingConfig = {
     clientConfig : clientConfig,
     callingClientConfig: callingClientConfig,
-    logger:loggerConfig
+    logger:loggerConfig,
   }
 
   calling = await Calling.init({webexConfig, callingConfig});
@@ -1249,8 +1264,12 @@ async function fetchRecordingsBySession() {
 /**
  * Function to use Voice Mail API's.
  */
-async function createVoiceMail() {
-  await voicemail.init();
+async function createVoiceMail(
+  offset = voicemailOffset,
+  offsetLimit = voicemailOffsetLimit,
+  runDemoActions = true
+) {
+  await ensureVoicemailInitialized();
   const backendConnector = calling.webex.internal.device.callingBehavior;
 
   if (backendConnector === 'NATIVE_SIP_CALL_TO_UCM') {
@@ -1258,8 +1277,8 @@ async function createVoiceMail() {
 
     try {
       const getVoicemailListResponse = await voicemail.getVoicemailList(
-        voicemailOffset,
-        voicemailOffsetLimit,
+        offset,
+        offsetLimit,
         voicemailSort,
         true
       );
@@ -1360,12 +1379,11 @@ async function createVoiceMail() {
     }
   } else {
     voicemailElm.disabled = true;
-    const logger = {level: 'info'};
 
     try {
       const getVoicemailListResponse = await voicemail.getVoicemailList(
-        voicemailOffset,
-        voicemailOffsetLimit,
+        offset,
+        offsetLimit,
         voicemailSort,
         true
       );
@@ -1373,7 +1391,7 @@ async function createVoiceMail() {
       const voicemailList = getVoicemailListResponse.data.voicemailList;
 
       console.log('Voice mail list response', getVoicemailListResponse.data.voicemailList);
-      const vmLength = voicemailList.voicemailList.length;
+      const vmLength = voicemailList.length;
 
       const voicemailTable = document.getElementById('voicemailTable');
 
@@ -1410,7 +1428,7 @@ async function createVoiceMail() {
         const tbody = document.createElement('tbody');
 
         for (let index = 0; index < vmLength; index += 1) {
-          const vm = voiceMailList[index];
+          const vm = voicemailList[index];
           const tr = document.createElement('tr');
           let td = document.createElement('td');
 
@@ -1446,7 +1464,7 @@ async function createVoiceMail() {
           table.appendChild(tbody);
         }
         for (let index = 0; index < vmLength; index += 1) {
-          const vm = voiceMailList[index];
+          const vm = voicemailList[index];
 
           if (vm.read === 'true') {
             this.markAsRead(index);
@@ -1460,7 +1478,7 @@ async function createVoiceMail() {
 
       voicemailElm.disabled = false;
 
-      if (getVoicemailListResponse?.data.voicemailList.length) {
+      if (runDemoActions && getVoicemailListResponse?.data.voicemailList.length) {
         const messageId = getVoicemailListResponse.data.voicemailList[0].messageId.$;
 
         const getVoicemailContentResponse = await voicemail.getVoicemailContent(messageId);
@@ -1639,20 +1657,18 @@ async function resolveContactInfo() {
   return null;
 }
 
-function fetchVoicemailList() {
+async function fetchVoicemailList() {
   const offset = document.getElementById('offset').value;
   const offsetLength = document.getElementById('offsetLength').value;
 
   // eslint-disable-next-line prefer-template
   console.log('Fetching voicemails with offset and offsetLength ', offset, offsetLength);
 
-  const response = voicemail.getVoicemailList(
+  await createVoiceMail(
     parseInt(offset, 10),
     parseInt(offsetLength, 10),
-    voicemailSort
+    false
   );
-
-  console.log(response);
 }
 
 /**
@@ -1675,8 +1691,9 @@ async function fetchVoicemailSummary() {
   // eslint-disable-next-line prefer-template
   if (window.voicemail === undefined) {
     voicemail = window.voicemail = CreateVoicemailClient(webex, logger);
-    voicemail.init();
   }
+
+  await ensureVoicemailInitialized();
 
   const summary = await voicemail.getVoicemailSummary();
   const summaryStr =JSON.stringify(summary.data.voicemailSummary, undefined, 2);

@@ -6,7 +6,12 @@ import {
 } from '@webex/internal-plugin-metrics/src/metrics.types';
 import * as Agent from './services/agent/types';
 import * as Contact from './services/task/types';
-import {AIFeatureFlags, Profile} from './services/config/types';
+import {
+  AIFeatureFlags,
+  Profile,
+  CreateUserPreferenceRequest,
+  UpdateUserPreferenceRequest,
+} from './services/config/types';
 import {PaginatedResponse, BaseSearchParams} from './utils/PageCache';
 
 /**
@@ -544,7 +549,9 @@ export type RequestBody =
   | Contact.cancelCtq
   | Contact.WrapupPayLoad
   | Contact.DialerPayload
-  | Contact.PreviewContactPayload;
+  | Contact.PreviewContactPayload
+  | CreateUserPreferenceRequest
+  | UpdateUserPreferenceRequest;
 
 /**
  * Represents the options to fetch buddy agents for the logged in agent.
@@ -852,23 +859,65 @@ export type UpdateDeviceTypeResponse = Agent.DeviceTypeUpdateSuccess | Error;
 export type TranscriptAction = 'START' | 'STOP';
 
 /**
- * Parameters used to request an AI Assistant suggested response.
+ * Parameters used to request AI Assistant real-time assistance.
  * @public
  * @example
- * const params: SuggestedResponseParams = {
+ * const params: RealTimeAssistanceParams = {
  *   interactionId: 'interaction-123',
- *   actionTimeStamp: Date.now(),
  *   context: 'Need help with credit card payment due date',
  * };
  */
-export type SuggestedResponseParams = {
+export type RealTimeAssistanceParams = {
   /** Agent identifier */
   agentId: string;
-  /** Interaction identifier for which suggestion should be generated */
+  /** Interaction identifier for which assistance should be generated */
   interactionId: string;
-  /** Optional additional context that should refine the suggestion */
+  /** Optional additional context that should refine the assistance */
   context?: string;
-  /** Optional language code for suggestions (for example, 'en'). Defaults to 'en'. */
+  /** Optional language code for assistance (for example, 'en'). Defaults to 'en'. */
+  languageCode?: string;
+};
+
+/**
+ * Supported user actions on an AI Assistant real-time assistance adaptive card.
+ * @public
+ */
+export const RealTimeAssistanceUserActionId = {
+  /** User liked the real-time assistance response */
+  LIKE: 'likeButton',
+  /** User disliked the real-time assistance response */
+  DISLIKE: 'dislikeButton',
+  /** User copied the real-time assistance response */
+  COPY: 'copyButton',
+} as const;
+
+/**
+ * Union type of supported real-time assistance user actions.
+ * @public
+ */
+export type RealTimeAssistanceUserActionId = Enum<typeof RealTimeAssistanceUserActionId>;
+
+/**
+ * Parameters used to send user action feedback for a real-time assistance adaptive card.
+ * @public
+ * @example
+ * const params: RealTimeAssistanceUserActionParams = {
+ *   agentId: 'agent-123',
+ *   interactionId: 'interaction-123',
+ *   adaptiveCardId: 'adaptive-card-123',
+ *   actionId: RealTimeAssistanceUserActionId.LIKE,
+ * };
+ */
+export type RealTimeAssistanceUserActionParams = {
+  /** Agent identifier */
+  agentId: string;
+  /** Interaction identifier associated with the real-time assistance response */
+  interactionId: string;
+  /** Adaptive card identifier from the real-time assistance payload */
+  adaptiveCardId: string;
+  /** User action performed on the adaptive card */
+  actionId: RealTimeAssistanceUserActionId;
+  /** Optional language code. Defaults to 'en'. */
   languageCode?: string;
 };
 
@@ -927,6 +976,8 @@ export const AIAssistantEventName = {
   MID_CALL_TRANSFER_SUMMARY_RESPONSE: 'MID_CALL_TRANSFER_SUMMARY_RESPONSE',
   /** Suggested digital response event */
   SUGGESTED_RESPONSES_DIGITAL: 'SUGGESTED_RESPONSES_DIGITAL',
+  /** User action on a suggested response adaptive card */
+  SUGGESTED_RESPONSES_USER_ACTION: 'SUGGESTED_RESPONSES_USER_ACTION',
 } as const;
 
 /**

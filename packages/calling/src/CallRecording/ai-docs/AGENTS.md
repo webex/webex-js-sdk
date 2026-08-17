@@ -1,10 +1,12 @@
 # CallRecording Module
 
+> Canonical SDD target: [`src/CallRecording/ai-docs/call-recording-spec.md`](call-recording-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## Overview
 
 The `CallRecording` module provides read access to **Post Call Recordings** (recordings, transcripts,
 summaries, and action items) produced for Webex Calling sessions through a single
-`getCallRecording` method, supports permanently deleting a recording, and forwards recording
+`getCallRecording` method, moves a recording to the recycle bin via `deleteRecording`, and forwards recording
 lifecycle events received over Mercury as typed SDK events.
 
 Recordings are fetched from the **Webex public developer API (hydra)** — catalog service
@@ -60,7 +62,7 @@ All reads go through a **single** `getCallRecording` method, which dispatches on
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `getCallRecording` | `<T extends GetCallRecordingRequest>(request: T): Promise<RecordingResponseFor<T>>` | Reads recordings; the `request.type` selects LIST / DETAIL / METADATA / BY_CALL_SESSION |
-| `deleteRecording` | `(recordingId: string, options?: DeleteRecordingOptions): Promise<RecordingDeleteResponse>` | Permanently deletes a recording (cannot be recovered); needs `spark-compliance:recordings_write`. Optional `reason`/`comment` for Compliance Officer deletions |
+| `deleteRecording` | `(recordingId: string, options?: DeleteRecordingOptions): Promise<RecordingDeleteResponse>` | Moves a recording to the recycle bin via `POST /convergedRecordings/softDelete`; needs `spark:recordings_write`. `options` is deprecated and ignored |
 
 ### Helpers (exported from `@webex/calling`)
 
@@ -134,7 +136,7 @@ All reads go through a **single** `getCallRecording` method, which dispatches on
 | `RecordingResponse` | `{statusCode, data: {recording?, error?}, message}` |
 | `RecordingMetadataResponse` | `{statusCode, data: {metadata?, error?}, message}` |
 | `RecordingDeleteResponse` | `{statusCode, data: {error?}, message}` |
-| `DeleteRecordingOptions` | `{reason?, comment?}` (Compliance Officer deletions) |
+| `DeleteRecordingOptions` | `{reason?, comment?}` — **deprecated**, ignored by `deleteRecording` |
 | `RecordingEvent` | Mercury event envelope: `{id?, data: {activity, eventType, eventSubType?}, timestamp?, trackingId?}` |
 
 ### Field Mapping Notes
@@ -235,25 +237,18 @@ const response = await callRecording.getCallRecording({
 console.log(`Found ${response.data.recordings?.length} recordings for the session`);
 ```
 
-### Delete a Recording (permanent)
+### Delete a Recording (soft delete / recycle bin)
 
 ```typescript
-// Deleting your own recording:
 const response = await callRecording.deleteRecording('recording-uuid');
 
-// Compliance Officer deleting another user's recording (reason/comment required):
-await callRecording.deleteRecording('recording-uuid', {
-  reason: 'audit',
-  comment: 'Maintain data privacy',
-});
-
-if (response.statusCode === 200) {
-  // Recording is permanently deleted (cannot be recovered) and no longer appears in a LIST request.
+if (response.statusCode >= 200 && response.statusCode < 300) {
+  // Recording moved to recycle bin; Mercury TRASH -> callRecording:deleted.
 }
 ```
 
-> The recoverable recycle-bin flow (*Move / Purge / Restore Recordings from Recycle Bin*) is a
-> separate set of `POST` endpoints not yet implemented in this client.
+> Compliance permanent delete (`DELETE /convergedRecordings/{id}`) and batch purge/restore APIs are
+> not exposed on this client.
 
 ### Listen for Recording Events
 
@@ -305,7 +300,7 @@ builds the list URL as:
 - The raw list response is `{ "items": [ ... ] }`; the client maps `items` to `data.recordings`.
 - `DETAIL`: `GET {recordingServiceUrl}/convergedRecordings/{recordingId}`.
 - `METADATA`: `GET {recordingServiceUrl}/convergedRecordings/{recordingId}/metadata`.
-- `deleteRecording`: `DELETE {recordingServiceUrl}/convergedRecordings/{recordingId}` (permanent; optional `{reason, comment}` body).
+- `deleteRecording`: `POST {recordingServiceUrl}/convergedRecordings/softDelete` with body `{ recordingIds: [recordingId] }` (soft delete / recycle bin; requires `spark:recordings_write`).
 
 ### `BY_CALL_SESSION` request (API gap)
 

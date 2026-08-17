@@ -7,8 +7,7 @@ import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 import BreakoutEditLockedError from '@webex/plugin-meetings/src/breakouts/edit-lock-error';
-import breakoutEvent from '../../../../src/breakouts/events';
-
+import breakoutEvent from '../../../../src/breakouts/events'
 const getBOResponse = (status: string) => {
   return {
     url: 'url',
@@ -89,6 +88,7 @@ describe('plugin-meetings', () => {
       webex = new MockWebex({});
       webex.internal.llm.on = sinon.stub();
       webex.internal.llm.isConnected = sinon.stub();
+      webex.internal.llm.getLocusUrl = sinon.stub().returns('newUrl');
       webex.internal.mercury.on = sinon.stub();
       breakouts = new Breakouts({}, {parent: webex});
       breakouts.groupId = 'groupId';
@@ -216,6 +216,21 @@ describe('plugin-meetings', () => {
           hasBreakoutPreAssignments: true,
         });
         assert.calledThrice(breakouts.queryPreAssignments);
+      });
+
+      it('wires LLM_CONNECT_RESPONSE to handleLLMBreakoutJoinResponseMetric', () => {
+        const handleStub = sinon.stub(Breakouts.prototype, 'handleLLMBreakoutJoinResponseMetric');
+        const bo = new Breakouts({}, {parent: webex});
+
+        const eventInfo = {
+          meeting: {id: 'meeting-id'},
+          llmLatency: {clientLLMWebSocketConnectTime: 1},
+        };
+        bo.trigger(BREAKOUTS.EVENTS.LLM_CONNECT_RESPONSE, eventInfo);
+
+        assert.calledOnceWithExactly(handleStub, eventInfo);
+
+        handleStub.restore();
       });
     });
 
@@ -374,6 +389,27 @@ describe('plugin-meetings', () => {
         assert.calledOnce(breakouts.clearBreakouts);
       });
 
+      it('preserves the last non-empty breakoutMoveId when a later update omits it', () => {
+        breakouts.updateBreakout({
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          sessionType: 'BREAKOUT',
+          status: 'active',
+          breakoutMoveId: 'move-id-1',
+        });
+        assert.equal(breakouts.breakoutMoveId, 'move-id-1');
+
+        // a later controls update arrives without a replaces entry -> null move id
+        breakouts.updateBreakout({
+          sessionId: 'sessionId',
+          groupId: 'groupId',
+          sessionType: 'BREAKOUT',
+          status: 'active',
+          breakoutMoveId: null,
+        });
+        assert.equal(breakouts.breakoutMoveId, 'move-id-1');
+      });
+
       it('updates the current breakout session, call onBreakoutJoinResponse when session changed', () => {
         breakouts.webex.meetings = {
           getMeetingByType: sinon.stub().returns({
@@ -428,6 +464,111 @@ describe('plugin-meetings', () => {
 
         assert.notCalled(onBreakoutJoinResponseSpy);
         onBreakoutJoinResponseSpy.restore();
+      });
+    });
+
+    describe('#submitLLMBreakoutJoinResponseMetric', () => {
+      let onBreakoutJoinResponseSpy;
+
+      const setupReadyToEmit = () => {
+        breakouts.webex.meetings = {
+          getMeetingByType: sinon.stub().returns({id: 'meeting-id'}),
+        };
+        breakouts.webex.internal.newMetrics = {submitClientEvent: sinon.stub()};
+        breakouts.webex.internal.llm.getWebSocketUrl = sinon.stub().returns('wss://llm');
+        breakouts.breakoutMoveId = 'moveId';
+        breakouts.currentBreakoutSession.set({sessionId: 'sessionId', groupId: 'groupId'});
+        breakouts.llmBreakoutJoinResponseInfo = {
+          breakoutMoveId: 'moveId',
+          meeting: {id: 'meeting-id'},
+          llmLatency: {clientLLMWebSocketConnectTime: 1},
+        };
+      };
+
+      beforeEach(() => {
+        onBreakoutJoinResponseSpy = sinon.stub(breakoutEvent, 'onBreakoutJoinResponse');
+      });
+
+      afterEach(() => {
+        onBreakoutJoinResponseSpy.restore();
+      });
+
+      it('emits the join response while an active breakout is in progress', () => {
+        setupReadyToEmit();
+        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.BREAKOUT);
+        breakouts.set('status', BREAKOUTS.STATUS.OPEN);
+
+        breakouts.submitLLMBreakoutJoinResponseMetric();
+
+        assert.calledOnce(onBreakoutJoinResponseSpy);
+        const eventInfoArg = onBreakoutJoinResponseSpy.getCall(0).args[0];
+        assert.equal(eventInfoArg.breakoutMoveId, 'moveId');
+        assert.deepEqual(eventInfoArg.llmLatency, {clientLLMWebSocketConnectTime: 1});
+        assert.equal(eventInfoArg.llmWebsocketUrl, 'wss://llm');
+        assert.equal(eventInfoArg.meeting.id, 'meeting-id');
+        assert.equal(eventInfoArg.currentSession.sessionId, 'sessionId');
+        assert.equal(eventInfoArg.currentSession.groupId, 'groupId');
+        assert.isUndefined(eventInfoArg.error);
+        assert.isUndefined(breakouts.llmBreakoutJoinResponseInfo);
+      });
+
+      it('emits the join response after returning to the main session', () => {
+        setupReadyToEmit();
+        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
+        breakouts.currentBreakoutSession.set({sessionType: BREAKOUTS.SESSION_TYPES.MAIN});
+
+        breakouts.submitLLMBreakoutJoinResponseMetric();
+
+        assert.calledOnce(onBreakoutJoinResponseSpy);
+        const eventInfoArg = onBreakoutJoinResponseSpy.getCall(0).args[0];
+        assert.equal(eventInfoArg.breakoutMoveId, 'moveId');
+        assert.deepEqual(eventInfoArg.llmLatency, {clientLLMWebSocketConnectTime: 1});
+        assert.equal(eventInfoArg.llmWebsocketUrl, 'wss://llm');
+        assert.equal(eventInfoArg.meeting.id, 'meeting-id');
+        assert.equal(eventInfoArg.currentSession.sessionId, 'sessionId');
+        assert.equal(eventInfoArg.currentSession.groupId, 'groupId');
+        assert.isUndefined(eventInfoArg.error);
+        assert.isUndefined(breakouts.llmBreakoutJoinResponseInfo);
+      });
+
+      it('does not emit without a breakoutMoveId (non-breakout meeting)', () => {
+        setupReadyToEmit();
+        breakouts.breakoutMoveId = undefined;
+        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
+
+        breakouts.submitLLMBreakoutJoinResponseMetric();
+
+        assert.notCalled(onBreakoutJoinResponseSpy);
+      });
+
+      it('does not emit when the LLM latency belongs to a different move id', () => {
+        setupReadyToEmit();
+        breakouts.set('sessionType', BREAKOUTS.SESSION_TYPES.MAIN);
+        breakouts.llmBreakoutJoinResponseInfo.breakoutMoveId = 'staleMoveId';
+
+        breakouts.submitLLMBreakoutJoinResponseMetric();
+
+        assert.notCalled(onBreakoutJoinResponseSpy);
+      });
+    });
+
+    describe('#handleLLMBreakoutJoinResponseMetric', () => {
+      it('stores the LLM connect response with the current breakoutMoveId and tries to emit', () => {
+        breakouts.breakoutMoveId = 'moveId';
+        breakouts.submitLLMBreakoutJoinResponseMetric = sinon.stub();
+
+        const eventInfo = {
+          meeting: {id: 'meeting-id'},
+          llmLatency: {clientLLMWebSocketConnectTime: 1},
+        };
+
+        breakouts.handleLLMBreakoutJoinResponseMetric(eventInfo);
+
+        assert.deepEqual(breakouts.llmBreakoutJoinResponseInfo, {
+          ...eventInfo,
+          breakoutMoveId: 'moveId',
+        });
+        assert.calledOnce(breakouts.submitLLMBreakoutJoinResponseMetric);
       });
     });
 
@@ -509,6 +650,15 @@ describe('plugin-meetings', () => {
         assert.notCalled(breakouts.listenTo);
       });
 
+      it('do not subscribe message if the connected llm does not belong to this meeting', () => {
+        webex.internal.llm.isConnected = sinon.stub().returns(true);
+        webex.internal.llm.getLocusUrl = sinon.stub().returns('anotherMeetingLocusUrl');
+        breakouts.listenTo = sinon.stub();
+        breakouts.locusUrlUpdate('newUrl');
+        assert.equal(breakouts.locusUrl, 'newUrl');
+        assert.notCalled(breakouts.listenTo);
+      });
+
       it('do not subscribe message if already done', () => {
         webex.internal.llm.isConnected = sinon.stub().returns(true);
         breakouts.hasSubscribedToMessage = true;
@@ -521,7 +671,9 @@ describe('plugin-meetings', () => {
       it('triggers message event when a message received', () => {
         webex.internal.llm.isConnected = sinon.stub().returns(true);
         breakouts.locusUrlUpdate('newUrl');
-        const call = webex.internal.llm.on.getCall(0);
+        const call = webex.internal.llm.on
+          .getCalls()
+          .find((c) => c.args[0] === 'event:breakout.message');
         const callback = call.args[1];
 
         assert.equal(call.args[0], 'event:breakout.message');
@@ -548,6 +700,25 @@ describe('plugin-meetings', () => {
           message: 'message',
           sessionId: 'sessionId',
         });
+      });
+
+      it('re-checks the subscription when the llm emits online', () => {
+        const onlineCall = webex.internal.llm.on
+          .getCalls()
+          .find((c) => c.args[0] === 'online');
+        assert.exists(onlineCall, 'expected an online listener to be registered');
+        const onlineHandler = onlineCall.args[1];
+
+        webex.internal.llm.isConnected = sinon.stub().returns(true);
+        webex.internal.llm.getLocusUrl = sinon.stub().returns(breakouts.locusUrl);
+
+        onlineHandler.call(breakouts);
+
+        const call = webex.internal.llm.on
+          .getCalls()
+          .find((c) => c.args[0] === 'event:breakout.message');
+        assert.exists(call, 'expected broadcast message subscription after online');
+        assert.isTrue(breakouts.hasSubscribedToMessage);
       });
     });
 

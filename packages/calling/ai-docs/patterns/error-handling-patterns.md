@@ -553,3 +553,34 @@ try {
 - [Event Patterns](./event-patterns.md)
 - [Testing Patterns](./testing-patterns.md)
 - [TypeScript Patterns](./typescript-patterns.md)
+## Pattern-Extract Verification
+
+### When to use
+
+Use the shared service error mapper in service-backed client modules so HTTP status handling and caller-visible response shapes stay consistent. This convention covers domain error routing that lint rules cannot enforce.
+
+### Correct
+
+```typescript
+return serviceErrorCodeHandler(error, logger, context);
+```
+
+### Incorrect
+
+```typescript
+return {statusCode: error.statusCode, data: undefined};
+```
+
+Hand-building a response can omit the package's status mapping, logging context, and normalized failure payload.
+
+### Where it appears
+
+- `src/CallHistory/CallHistory.ts`
+- `src/CallRecording/WxcCallRecordingConnector.ts`
+- `src/CallSettings/WxCallBackendConnector.ts`
+- `src/Contacts/ContactsClient.ts`
+- `src/Voicemail/WxCallBackendConnector.ts`
+
+### Edge cases
+
+Call, line, and client lifecycle errors use typed error factories and events because their consumers observe asynchronous state changes. Transport-specific errors may first be normalized by the owning adapter before entering either path.

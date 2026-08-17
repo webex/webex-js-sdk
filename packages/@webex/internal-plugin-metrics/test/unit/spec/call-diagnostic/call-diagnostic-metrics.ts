@@ -9,6 +9,7 @@ import {
   CallDiagnosticMetrics,
   getOSNameInternal,
   CallDiagnosticUtils,
+  AutomatedUserUtils,
   config,
 } from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
@@ -34,6 +35,7 @@ describe('internal-plugin-metrics', () => {
     var now = new Date();
 
     let cd: CallDiagnosticMetrics;
+    let isAutomatedUserStub: sinon.SinonStub;
 
     const fakeMeeting = {
       id: '1',
@@ -155,6 +157,7 @@ describe('internal-plugin-metrics', () => {
       sinon.useFakeTimers(now.getTime());
       cd = new CallDiagnosticMetrics({}, {parent: webex});
       sinon.stub(uuid, 'v4').returns('my-fake-id');
+      isAutomatedUserStub = sinon.stub(AutomatedUserUtils, 'isAutomatedUser').returns(false);
       cd.setDeviceInfo(webex.internal.device);
     });
 
@@ -361,6 +364,23 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should build origin correctly when the meetings plugin is not available (before webex is ready)', () => {
+        // meetings plugin, geoHintInfo and meetingCollection are all absent before webex.ready
+        webex.meetings = undefined;
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.equal(res.clientInfo.clientType, 'TEAMS_CLIENT');
+        assert.equal(res.clientInfo.subClientType, 'WEB_APP');
+        assert.isUndefined(res.clientInfo.publicNetworkPrefix);
+        assert.isUndefined(res.clientInfo.localNetworkPrefix);
+        assert.equal(res.name, 'endpoint');
+      });
+
       it('builds origin correctly, when overriding clientVersion', () => {
         webex.meetings.config.metrics.clientVersion = '43.9.0.1234';
 
@@ -383,6 +403,64 @@ describe('internal-plugin-metrics', () => {
             os: getOSNameInternal(),
             osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
+          },
+          environment: 'meeting_evn',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      });
+
+      it('builds origin correctly with browser details provided by the host client', () => {
+        // host resolves wrapper browsers (WebOS, Electron) to the engine that determines capability
+        webex.meetings.config.metrics.browser = 'WebOS Browser';
+        webex.meetings.config.metrics.browserVersion = '108.0.0.0';
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.equal(res.clientInfo.browser, 'WebOS Browser');
+        assert.equal(res.clientInfo.browserVersion, '108.0.0.0');
+      });
+
+      it('falls back to SDK browser detection when the host provides nothing', () => {
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.equal(res.clientInfo.browser, getBrowserName());
+        assert.equal(res.clientInfo.browserVersion, getBrowserVersion());
+      });
+
+      it('builds origin correctly with the browser support flags from config', () => {
+        // `false` is the meaningful "unsupported family" signal, so it must survive a truthy check
+        webex.meetings.config.metrics.isSupportedBrowserFamily = false;
+        webex.meetings.config.metrics.isOutdatedBrowserVersion = true;
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.3.4.0',
+            localNetworkPrefix: '192.168.1.80',
+            os: getOSNameInternal(),
+            osVersion: getOSVersion() || 'unknown',
+            subClientType: 'WEB_APP',
+            isSupportedBrowserFamily: false,
+            isOutdatedBrowserVersion: true,
           },
           environment: 'meeting_evn',
           name: 'endpoint',
@@ -868,6 +946,7 @@ describe('internal-plugin-metrics', () => {
             identifiers: {correlationId: 'test-id'},
             name: 'client.alert.displayed',
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -889,6 +968,7 @@ describe('internal-plugin-metrics', () => {
             identifiers: {correlationId: 'test-id'},
             name: 'client.alert.displayed',
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -898,14 +978,8 @@ describe('internal-plugin-metrics', () => {
         assert.isBoolean(res.event.isAutomatedUser, 'isAutomatedUser should be a boolean');
       });
 
-      it('should set isAutomatedUser to true when navigator.webdriver is true', () => {
-        const originalDescriptor = Object.getOwnPropertyDescriptor(global, 'navigator');
-        Object.defineProperty(global, 'navigator', {
-          value: {webdriver: true},
-          configurable: true,
-          writable: true,
-        });
-
+      it('should set isAutomatedUser to true when the user is automated', () => {
+        isAutomatedUserStub.returns(true);
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
         cd.setMercuryConnectedStatus(true);
@@ -917,14 +991,44 @@ describe('internal-plugin-metrics', () => {
 
         assert.isTrue(
           prepareDiagnosticEventSpy.firstCall.args[0].isAutomatedUser,
-          'isAutomatedUser should be true when navigator.webdriver is set'
+          'isAutomatedUser should be true for an automated user'
         );
+      });
+    });
 
+    describe('#getUserActivation', () => {
+      let originalDescriptor;
+
+      beforeEach(() => {
+        originalDescriptor = Object.getOwnPropertyDescriptor(global, 'navigator');
+      });
+
+      afterEach(() => {
         if (originalDescriptor) {
           Object.defineProperty(global, 'navigator', originalDescriptor);
         } else {
           delete (global as any).navigator;
         }
+      });
+
+      it('should return the userActivation state when navigator.userActivation is available', () => {
+        Object.defineProperty(global, 'navigator', {
+          value: {userActivation: {hasBeenActive: true, isActive: false}},
+          configurable: true,
+          writable: true,
+        });
+
+        assert.deepEqual(cd.getUserActivation(), {hasBeenActive: true, isActive: false});
+      });
+
+      it('should return undefined when navigator.userActivation is not available', () => {
+        Object.defineProperty(global, 'navigator', {
+          value: {},
+          configurable: true,
+          writable: true,
+        });
+
+        assert.isUndefined(cd.getUserActivation());
       });
     });
 
@@ -986,6 +1090,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -1017,6 +1122,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1059,6 +1165,7 @@ describe('internal-plugin-metrics', () => {
               webClientPreload: undefined,
               isVipMeeting: false,
               isAutomatedUser: false,
+              userActivation: undefined,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1137,6 +1244,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -1168,6 +1276,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1210,6 +1319,7 @@ describe('internal-plugin-metrics', () => {
               webClientPreload: undefined,
               isVipMeeting: false,
               isAutomatedUser: false,
+              userActivation: undefined,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1289,6 +1399,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -1321,6 +1432,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1364,6 +1476,7 @@ describe('internal-plugin-metrics', () => {
               webClientPreload: undefined,
               isVipMeeting: false,
               isAutomatedUser: false,
+              userActivation: undefined,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1442,6 +1555,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -1474,6 +1588,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1517,6 +1632,7 @@ describe('internal-plugin-metrics', () => {
               webexSubServiceType: undefined,
               isVipMeeting: false,
               isAutomatedUser: false,
+              userActivation: undefined,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1597,6 +1713,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -1631,6 +1748,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1676,6 +1794,7 @@ describe('internal-plugin-metrics', () => {
               webClientPreload: undefined,
               isVipMeeting: false,
               isAutomatedUser: false,
+              userActivation: undefined,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1804,6 +1923,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -1829,6 +1949,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1906,6 +2027,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -1936,6 +2058,7 @@ describe('internal-plugin-metrics', () => {
               telemetryOptOut: undefined,
               webClientPreload: undefined,
               isAutomatedUser: false,
+              userActivation: undefined,
             },
           },
           options.preLoginId
@@ -2001,6 +2124,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -2033,6 +2157,7 @@ describe('internal-plugin-metrics', () => {
               emailInput: 'current',
               webClientPreload: undefined,
               isAutomatedUser: false,
+              userActivation: undefined,
             },
           },
           options.preLoginId
@@ -2081,6 +2206,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2139,6 +2265,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2197,6 +2324,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             webClientPreload: true,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -2222,6 +2350,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             webClientPreload: true,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2293,6 +2422,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -2325,6 +2455,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2396,6 +2527,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: true,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           options
         );
@@ -2428,6 +2560,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: true,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2505,6 +2638,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2590,6 +2724,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2665,6 +2800,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2742,6 +2878,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             webClientPreload: undefined,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2830,6 +2967,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -3119,7 +3257,10 @@ describe('internal-plugin-metrics', () => {
         cd.callDiagnosticEventsBatcher = {request: requestStub};
         //@ts-ignore
         cd.submitToCallDiagnostics({event: 'test'});
-        assert.calledWith(requestStub, {eventPayload: {event: 'test'}, type: ['diagnostic-event']});
+        assert.calledWith(requestStub, {
+          eventPayload: {event: 'test'},
+          type: ['diagnostic-event'],
+        });
       });
     });
 
@@ -4031,15 +4172,93 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('#getTelemetryOptOut', () => {
-      ['manual', 'automatic', undefined].forEach((telemetryOptOut) => {
-        it(`returns ${telemetryOptOut} if telemetryOptOut is ${telemetryOptOut}`, () => {
-          cd.setTelemetryOptOut(telemetryOptOut);
-          assert.deepEqual(cd.getTelemetryOptOut(), telemetryOptOut);
-        });
+      it('returns "manual" when manual telemetry opt-out is enabled', () => {
+        cd.setIsTelemetryOptOutManual(true);
+        assert.equal(cd.getTelemetryOptOut(), 'manual');
+      });
 
-        it('returns undefined if telemetryOptOut is not set', () => {
-          assert.deepEqual(cd.getTelemetryOptOut(), undefined);
-        });
+      it('returns "automatic" when automatic telemetry opt-out is enabled', () => {
+        cd.setIsTelemetryOptOutAutomatic(true);
+        assert.equal(cd.getTelemetryOptOut(), 'automatic');
+      });
+
+      it('returns "manual" when manual opt-out takes precedence over automatic', () => {
+        cd.setIsTelemetryOptOutManual(true);
+        cd.setIsTelemetryOptOutAutomatic(true);
+        assert.equal(cd.getTelemetryOptOut(), 'manual');
+      });
+
+      it('returns undefined when neither manual nor automatic opt-out is set', () => {
+        assert.isUndefined(cd.getTelemetryOptOut());
+      });
+
+      it('returns undefined after disabling manual opt-out', () => {
+        cd.setIsTelemetryOptOutManual(true);
+        cd.setIsTelemetryOptOutManual(false);
+        assert.isUndefined(cd.getTelemetryOptOut());
+      });
+    });
+
+    describe('#setIsTelemetryOptOutManual', () => {
+      it('sets manual telemetry opt-out to true', () => {
+        cd.setIsTelemetryOptOutManual(true);
+        assert.equal(cd.getTelemetryOptOut(), 'manual');
+      });
+
+      it('sets manual telemetry opt-out to false', () => {
+        cd.setIsTelemetryOptOutManual(true);
+        cd.setIsTelemetryOptOutManual(false);
+        assert.isUndefined(cd.getTelemetryOptOut());
+      });
+
+      it('can toggle manual telemetry opt-out multiple times', () => {
+        cd.setIsTelemetryOptOutManual(true);
+        assert.equal(cd.getTelemetryOptOut(), 'manual');
+
+        cd.setIsTelemetryOptOutManual(false);
+        assert.isUndefined(cd.getTelemetryOptOut());
+
+        cd.setIsTelemetryOptOutManual(true);
+        assert.equal(cd.getTelemetryOptOut(), 'manual');
+      });
+
+      it('manual opt-out takes precedence when automatic is also set', () => {
+        cd.setIsTelemetryOptOutAutomatic(true);
+        cd.setIsTelemetryOptOutManual(true);
+        assert.equal(cd.getTelemetryOptOut(), 'manual');
+      });
+    });
+
+    describe('#setIsTelemetryOptOutAutomatic', () => {
+      it('sets automatic telemetry opt-out to true', () => {
+        cd.setIsTelemetryOptOutAutomatic(true);
+        assert.equal(cd.getTelemetryOptOut(), 'automatic');
+      });
+
+      it('sets automatic telemetry opt-out to false', () => {
+        cd.setIsTelemetryOptOutAutomatic(true);
+        cd.setIsTelemetryOptOutAutomatic(false);
+        assert.isUndefined(cd.getTelemetryOptOut());
+      });
+
+      it('can toggle automatic telemetry opt-out multiple times', () => {
+        cd.setIsTelemetryOptOutAutomatic(true);
+        assert.equal(cd.getTelemetryOptOut(), 'automatic');
+
+        cd.setIsTelemetryOptOutAutomatic(false);
+        assert.isUndefined(cd.getTelemetryOptOut());
+
+        cd.setIsTelemetryOptOutAutomatic(true);
+        assert.equal(cd.getTelemetryOptOut(), 'automatic');
+      });
+
+      it('does not override manual opt-out', () => {
+        cd.setIsTelemetryOptOutManual(true);
+        cd.setIsTelemetryOptOutAutomatic(true);
+        assert.equal(cd.getTelemetryOptOut(), 'manual');
+
+        cd.setIsTelemetryOptOutAutomatic(false);
+        assert.equal(cd.getTelemetryOptOut(), 'manual');
       });
     });
 
@@ -4170,6 +4389,7 @@ describe('internal-plugin-metrics', () => {
                     webClientPreload: undefined,
                     isVipMeeting: false,
                     isAutomatedUser: false,
+                    userActivation: undefined,
                   },
                   eventId: 'my-fake-id',
                   origin: {
@@ -4324,6 +4544,30 @@ describe('internal-plugin-metrics', () => {
           options.meetingJoinPhase
         );
       });
+
+      it('builds request options before webex is ready (no meetings plugin or internal metrics config)', async () => {
+        // before webex.ready the meetings plugin and internal metrics config are not available
+        webex.meetings = undefined;
+        webex.internal.metrics = undefined;
+
+        const options = {
+          correlationId: 'myCorrelationId',
+          clientType: 'TEAMS_CLIENT',
+          subClientType: 'WEB_APP',
+        };
+
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        const eventPayload = fetchOptions.body.metrics[0].eventPayload;
+        assert.equal(eventPayload.event.name, 'client.exit.app');
+        assert.isUndefined(eventPayload.senderCountryCode);
+        assert.isUndefined(fetchOptions.waitForServiceTimeout);
+        assert.equal(fetchOptions.resource, 'clientmetrics');
+      });
     });
 
     describe('#submitToCallDiagnosticsPreLogin', () => {
@@ -4337,7 +4581,10 @@ describe('internal-plugin-metrics', () => {
         cd.submitToCallDiagnosticsPreLogin({event: 'test'}, preLoginId);
         //@ts-ignore
         assert.calledWith(cd.preLoginMetricsBatcher.savePreLoginId, preLoginId);
-        assert.calledWith(requestStub, {eventPayload: {event: 'test'}, type: ['diagnostic-event']});
+        assert.calledWith(requestStub, {
+          eventPayload: {event: 'test'},
+          type: ['diagnostic-event'],
+        });
       });
     });
 
@@ -4575,6 +4822,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
             meetingSummaryInfo: {
               featureName: 'syncSystemMuteStatus',
               featureActions: [
@@ -4619,6 +4867,7 @@ describe('internal-plugin-metrics', () => {
             webClientPreload: undefined,
             isVipMeeting: false,
             isAutomatedUser: false,
+            userActivation: undefined,
             meetingSummaryInfo: {
               featureName: 'syncSystemMuteStatus',
               featureActions: [

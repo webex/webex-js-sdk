@@ -155,6 +155,24 @@ describe('Voice Task', () => {
     });
   });
 
+  it('calls contact.unHold when state is connected and main media is held', async () => {
+    const heldConnectedData = createBaseData({
+      interaction: {
+        media: {media1: {mediaResourceId: 'media1', isHold: true}},
+      } as any,
+    }) as any;
+    const voice = new Voice(dummyContact, heldConnectedData, {});
+    primeConnectedState(voice, heldConnectedData);
+
+    await voice.holdResume();
+
+    expect(dummyContact.unHold).toHaveBeenCalledWith({
+      interactionId: 'int1',
+      data: {mediaResourceId: 'media1'},
+    });
+    expect(dummyContact.hold).not.toHaveBeenCalled();
+  });
+
   it('calls contact.unHold when state is conferencing and main media is held', async () => {
     const heldConferenceData = createBaseData({
       interaction: {

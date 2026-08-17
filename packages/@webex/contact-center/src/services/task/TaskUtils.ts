@@ -1,7 +1,13 @@
 /* eslint-disable import/prefer-default-export */
 import {Interaction, ITask, TaskData, MEDIA_CHANNEL} from './types';
 import {LoginOption} from '../../types';
-import {PARTICIPANT_TYPE, MEDIA_TYPE_MAIN_CALL} from './state-machine/constants';
+import {
+  PARTICIPANT_TYPE,
+  MEDIA_TYPE_MAIN_CALL,
+  CONSULT_STATE,
+  INTERACTION_STATE,
+  MEDIA_TYPE_CONSULT,
+} from './state-machine/constants';
 import {TaskContext} from './state-machine/types';
 import {CC_EVENTS} from '../config/types';
 import {OUTBOUND_TYPE, OUTDIAL_DIRECTION, OUTDIAL_MEDIA_TYPE} from '../../constants';
@@ -93,6 +99,25 @@ export const getIsConsultInProgressForConferenceControls = (
       const p: any = interaction.participants?.[participantId];
       if (!p || p.hasLeft) return false;
       if (selfAgentId && participantId === selfAgentId) return false;
+      if (mainSet.has(participantId)) return false;
+
+      const participantType = String(p.pType ?? '').toUpperCase();
+      const isEpDnParticipant =
+        participantType === 'EP-DN' || participantType === 'EP_DN' || participantType === 'DN';
+      if (isEpDnParticipant) {
+        if (!selfAgentId) {
+          return true;
+        }
+        const selfConsultState = interaction.participants?.[selfAgentId]?.consultState as
+          | string
+          | undefined;
+
+        return (
+          selfConsultState === 'consulting' ||
+          selfConsultState === 'conferencing' ||
+          selfConsultState === 'consultInitiated'
+        );
+      }
 
       const consultState = p.consultState as string | undefined;
       const isRonaPendingConsultee = consultState === 'consultReserved' && p.hasJoined === false;
@@ -101,7 +126,7 @@ export const getIsConsultInProgressForConferenceControls = (
         p.currentState === 'consulting' ||
         (p.isConsulted === true && consultState !== 'consultCompleted' && !isRonaPendingConsultee);
 
-      return consultLegActive && !mainSet.has(participantId);
+      return consultLegActive;
     });
   });
 };
@@ -245,6 +270,79 @@ export const getAISummaryCorrelation = (taskData?: TaskData | null): AISummaryCo
   }
 
   return correlation;
+};
+
+const EP_DN_MERGE_TERMINAL_CONSULT_EVENTS = new Set<string>([
+  CC_EVENTS.AGENT_CONSULT_ENDED,
+  CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED,
+]);
+
+const isEpDnParticipantType = (pType: string | undefined): boolean => {
+  const normalized = String(pType ?? '').toUpperCase();
+
+  return normalized === 'EP-DN' || normalized === 'EP_DN' || normalized === 'DN';
+};
+
+/** EP-DN consult merged to conference before a second agent joins the main leg (CAI-8329). */
+export const isEpDnConsultPendingConferenceMerge = (
+  taskData: TaskData | undefined,
+  selfAgentId: string | undefined
+): boolean => {
+  if (!taskData?.interaction || !selfAgentId) return false;
+
+  if (taskData.type && EP_DN_MERGE_TERMINAL_CONSULT_EVENTS.has(taskData.type)) {
+    return false;
+  }
+
+  const interaction = taskData.interaction;
+  const mainCallId = interaction.mainInteractionId || taskData.interactionId;
+  if (!mainCallId) return false;
+
+  if (getConferenceParticipantsCount(interaction, mainCallId) > 1) return false;
+
+  const selfParticipant = interaction.participants?.[selfAgentId] as
+    | {consultState?: string}
+    | undefined;
+  if (taskData.isConsulted === true || selfParticipant?.consultState === 'consultCompleted') {
+    return false;
+  }
+
+  const mainParticipantIds = new Set(interaction.media?.[mainCallId]?.participants ?? []);
+  const hasEpDnOnConsultLegNotMain = Object.values(interaction.media ?? {}).some((media: any) => {
+    if (media?.mType !== MEDIA_TYPE_CONSULT) return false;
+
+    return (media.participants ?? []).some((participantId: string) => {
+      if (participantId === selfAgentId || mainParticipantIds.has(participantId)) return false;
+      const participant = interaction.participants?.[participantId] as
+        | {hasLeft?: boolean; pType?: string}
+        | undefined;
+      if (!participant || participant.hasLeft) return false;
+
+      return isEpDnParticipantType(participant.pType);
+    });
+  });
+  if (!hasEpDnOnConsultLegNotMain) return false;
+
+  const callProcessingDetails = interaction.callProcessingDetails as
+    | {hasCustomerLeft?: string}
+    | undefined;
+  const customerLeft =
+    callProcessingDetails?.hasCustomerLeft === 'true' ||
+    !getIsCustomerInCall(interaction, mainCallId);
+
+  const conferenceFromPayload =
+    interaction.state === INTERACTION_STATE.CONFERENCE ||
+    getIsConferenceInProgress(taskData) ||
+    (interaction.state === INTERACTION_STATE.POST_CALL && customerLeft);
+  if (!conferenceFromPayload) return false;
+
+  return (
+    taskData.consultingAgentId === selfAgentId ||
+    interaction.owner === selfAgentId ||
+    selfParticipant?.consultState === CONSULT_STATE.CONSULTING ||
+    selfParticipant?.consultState === CONSULT_STATE.CONFERENCING ||
+    selfParticipant?.consultState === 'consultInitiated'
+  );
 };
 
 /**

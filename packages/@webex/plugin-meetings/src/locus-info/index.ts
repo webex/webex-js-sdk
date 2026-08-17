@@ -1,4 +1,6 @@
 import {isEqual, assignWith, cloneDeep, isEmpty} from 'lodash';
+import uuid from 'uuid';
+import {webexTrackingIdSequenceNumbers} from '@webex/webex-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
@@ -37,6 +39,7 @@ import HashTreeParser, {
   LocusInfoUpdate,
   LocusInfoUpdateType,
   Metadata,
+  SyncLatencyTracker,
 } from '../hashTree/hashTreeParser';
 import {HashTreeObject, ObjectType, ObjectTypeToLocusKeyMap} from '../hashTree/types';
 import {isMetadata, isSelf} from '../hashTree/utils';
@@ -46,6 +49,7 @@ import {MEETING_KEY} from '../meetings/meetings.types';
 import MeetingCollection from '../meetings/collection';
 
 export type LocusLLMEvent = {
+  trackingId?: string;
   data: {
     eventType: typeof LOCUSEVENT.HASH_TREE_DATA_UPDATED;
     stateElementsMessage: HashTreeMessage;
@@ -92,6 +96,11 @@ export type HashTreeParserEntry = {
   parser: HashTreeParser;
   replacedAt?: string;
   initializedFromHashTree: boolean;
+};
+
+export type LocusInfoCallbacks = {
+  updateMeeting: (object: any) => void;
+  syncLatencyTracker?: SyncLatencyTracker;
 };
 
 /**
@@ -262,7 +271,6 @@ export default class LocusInfo extends EventsScope {
   locusParser: any;
   meetingId: any;
   parsedLocus: any;
-  updateMeeting: any;
   webex: any;
   aclUrl: any;
   baseSequence: any;
@@ -286,24 +294,27 @@ export default class LocusInfo extends EventsScope {
   hashTreeParsers: Map<string, HashTreeParserEntry>;
   hashTreeObjectId2ParticipantId: Map<number, string>; // mapping of hash tree object ids to participant ids
   classicVsHashTreeMismatchMetricCounter = 0;
+  private callbacks: LocusInfoCallbacks;
+  private destroyMeetingSuspended = false;
 
   /**
    * Constructor
-   * @param {function} updateMeeting callback to update the meeting object from an object
+   * @param {Object} callbacks callbacks used by LocusInfo
+   * @param {function} callbacks.updateMeeting callback to update the meeting object from an object
    * @param {object} webex
    * @param {string} meetingId
    * @returns {undefined}
    */
-  constructor(updateMeeting, webex, meetingId) {
+  constructor(callbacks: LocusInfoCallbacks, webex: any, meetingId: any) {
     super();
     this.parsedLocus = {
       states: [],
     };
+    this.callbacks = callbacks;
     this.webex = webex;
     this.emitChange = false;
     this.compareAndUpdateFlags = {};
     this.meetingId = meetingId;
-    this.updateMeeting = updateMeeting;
     this.locusParser = new LocusDeltaParser();
     this.hashTreeParsers = new Map();
     this.hashTreeObjectId2ParticipantId = new Map();
@@ -518,7 +529,7 @@ export default class LocusInfo extends EventsScope {
     this.updateControls(locus.controls, locus.self);
     this.updateLocusUrl(locus.url, ControlsUtils.isMainSessionDTO(locus));
     this.updateFullState(locus.fullState);
-    this.updateMeetingInfo(locus.info);
+    this.updateMeetingInfo(locus.info, locus.self);
     this.updateEmbeddedApps(locus.embeddedApps);
     // self and participants generate sipUrl for 1:1 meeting
     this.updateSelf(locus.self);
@@ -554,9 +565,26 @@ export default class LocusInfo extends EventsScope {
       initialLocus,
       metadata,
       webexRequest: this.webex.request.bind(this.webex),
-      locusInfoUpdateCallback: this.updateFromHashTree.bind(this, locusUrl),
+      callbacks: {
+        locusInfoUpdateCallback: this.updateFromHashTree.bind(this, locusUrl),
+        syncLatencyTracker: this.callbacks.syncLatencyTracker,
+        // Reuse webex-core's tracking-id interceptor sequence (exposed publicly via
+        // webexTrackingIdSequenceNumbers) so Locus requests share the client's unified
+        // ${sessionId}_${sequence} tracking id space instead of minting an unrelated id. Fall
+        // back to a uuid on the rare chance the interceptor hasn't issued any request yet (and so
+        // isn't in the map). The value is opaque to the metrics layer and is forced onto the
+        // /hashtree and /sync request headers.
+        generateTrackingId: () => {
+          const interceptor = [...webexTrackingIdSequenceNumbers.keys()].find(
+            (candidate) => candidate?.webex === this.webex
+          );
+
+          return `${this.webex.sessionId}_${interceptor ? interceptor.sequence : uuid.v4()}`;
+        },
+      },
       debugId: `HT-${locusUrl.split('/')?.pop()?.substring(0, 4)}`,
       excludedDataSets: this.webex.config.meetings.locus?.excludedDataSets,
+      syncLatencyMeetingId: this.meetingId,
     });
 
     // When a new HashTreeParser is created, previous one should be stopped.
@@ -1752,7 +1780,7 @@ export default class LocusInfo extends EventsScope {
       // @ts-ignore
       const partner = this.getLocusPartner(this.participants, this.self);
 
-      this.updateMeeting({partner});
+      this.callbacks.updateMeeting({partner});
 
       // Check if guest user needs to be checked here
 
@@ -1773,8 +1801,19 @@ export default class LocusInfo extends EventsScope {
           options: {
             meetingId: this.meetingId,
           },
+          payload: {
+            eventData: {
+              joinInProgress: this.destroyMeetingSuspended,
+            },
+          },
         });
 
+        if (this.destroyMeetingSuspended) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DESTROY_MEETING_WHILE_SUSPENDED, {
+            meetingId: this.meetingId,
+            reason: 'CALL_INACTIVE',
+          });
+        }
         this.emitScoped(
           {
             file: 'locus-info',
@@ -1799,7 +1838,18 @@ export default class LocusInfo extends EventsScope {
           options: {
             meetingId: this.meetingId,
           },
+          payload: {
+            eventData: {
+              joinInProgress: this.destroyMeetingSuspended,
+            },
+          },
         });
+        if (this.destroyMeetingSuspended) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DESTROY_MEETING_WHILE_SUSPENDED, {
+            meetingId: this.meetingId,
+            reason: 'PARTNER_LEFT',
+          });
+        }
         this.emitScoped(
           {
             file: 'locus-info',
@@ -1826,8 +1876,19 @@ export default class LocusInfo extends EventsScope {
           options: {
             meetingId: this.meetingId,
           },
+          payload: {
+            eventData: {
+              joinInProgress: this.destroyMeetingSuspended,
+            },
+          },
         });
 
+        if (this.destroyMeetingSuspended) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DESTROY_MEETING_WHILE_SUSPENDED, {
+            meetingId: this.meetingId,
+            reason: 'SELF_LEFT',
+          });
+        }
         this.emitScoped(
           {
             file: 'locus-info',
@@ -1842,48 +1903,79 @@ export default class LocusInfo extends EventsScope {
       }
     } else if (this.parsedLocus.fullState?.type === _MEETING_) {
       if (this.fullState && MeetingsUtil.isWholeMeetingEnded(this.fullState)) {
-        LoggerProxy.logger.warn(
-          'Locus-info:index#isMeetingActive --> Meeting is ending due to inactive'
-        );
-
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.call.remote-ended',
-          options: {
+        if (this.destroyMeetingSuspended) {
+          LoggerProxy.logger.info(
+            'Locus-info:index#isMeetingActive --> suppressing DESTROY_MEETING (MEETING_INACTIVE_TERMINATING) because destroyMeeting is suspended'
+          );
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DESTROY_MEETING_WHILE_SUSPENDED, {
             meetingId: this.meetingId,
-          },
-        });
-        this.emitScoped(
-          {
-            file: 'locus-info',
-            function: 'isMeetingActive',
-          },
-          EVENTS.DESTROY_MEETING,
-          {
-            reason: MEETING_REMOVED_REASON.MEETING_INACTIVE_TERMINATING,
-            shouldLeave: false,
-          }
-        );
+            reason: 'MEETING_INACTIVE_TERMINATING',
+          });
+        } else {
+          LoggerProxy.logger.warn(
+            'Locus-info:index#isMeetingActive --> Meeting is ending due to inactive'
+          );
+
+          // @ts-ignore
+          this.webex.internal.newMetrics.submitClientEvent({
+            name: 'client.call.remote-ended',
+            options: {
+              meetingId: this.meetingId,
+            },
+          });
+
+          this.emitScoped(
+            {
+              file: 'locus-info',
+              function: 'isMeetingActive',
+            },
+            EVENTS.DESTROY_MEETING,
+            {
+              reason: MEETING_REMOVED_REASON.MEETING_INACTIVE_TERMINATING,
+              shouldLeave: false,
+            }
+          );
+        }
       }
       // If you are  guest and you are removed from the meeting
       // You wont get any further events
       else if (this.parsedLocus.self && this.parsedLocus.self.removed) {
-        // Check if we need to send an event
-        this.emitScoped(
-          {
-            file: 'locus-info',
-            function: 'isMeetingActive',
-          },
-          EVENTS.DESTROY_MEETING,
-          {
-            reason: MEETING_REMOVED_REASON.SELF_REMOVED,
-            shouldLeave: false,
-          }
-        );
+        if (this.destroyMeetingSuspended) {
+          LoggerProxy.logger.info(
+            'Locus-info:index#isMeetingActive --> suppressing DESTROY_MEETING (SELF_REMOVED) because destroyMeeting is suspended'
+          );
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DESTROY_MEETING_WHILE_SUSPENDED, {
+            meetingId: this.meetingId,
+            reason: 'SELF_REMOVED',
+          });
+        } else {
+          this.emitScoped(
+            {
+              file: 'locus-info',
+              function: 'isMeetingActive',
+            },
+            EVENTS.DESTROY_MEETING,
+            {
+              reason: MEETING_REMOVED_REASON.SELF_REMOVED,
+              shouldLeave: false,
+            }
+          );
+        }
       }
     } else {
       LoggerProxy.logger.warn('Locus-info:index#isMeetingActive --> Meeting Type is unknown.');
     }
+  }
+
+  /**
+   * Suspends or resumes the emission of DESTROY_MEETING events in certain situations.
+   * Used by joinWithMedia to prevent meeting destruction during retry flows.
+   * @param {boolean} suspend - true to suppress, false to resume
+   * @returns {undefined}
+   * @memberof LocusInfo
+   */
+  suspendDestroyMeeting(suspend: boolean) {
+    this.destroyMeetingSuspended = suspend;
   }
 
   /**
@@ -2237,7 +2329,7 @@ export default class LocusInfo extends EventsScope {
       if (hasEntryExitToneChanged) {
         const {entryExitTone} = current;
 
-        this.updateMeeting({entryExitTone});
+        this.callbacks.updateMeeting({entryExitTone});
 
         this.emitScoped(
           {
@@ -2256,7 +2348,7 @@ export default class LocusInfo extends EventsScope {
       if (hasVideoEnabledChanged) {
         const {videoEnabled} = current;
 
-        this.updateMeeting({unmuteVideoAllowed: videoEnabled});
+        this.callbacks.updateMeeting({unmuteVideoAllowed: videoEnabled});
 
         this.emitScoped(
           {
@@ -2348,14 +2440,14 @@ export default class LocusInfo extends EventsScope {
   updateConversationUrl(conversationUrl: string, info: any) {
     if (conversationUrl && !isEqual(this.conversationUrl, conversationUrl)) {
       this.conversationUrl = conversationUrl;
-      this.updateMeeting({conversationUrl});
+      this.callbacks.updateMeeting({conversationUrl});
     } else if (
       info &&
       info.conversationUrl &&
       !isEqual(this.conversationUrl, info.conversationUrl)
     ) {
       this.conversationUrl = info.conversationUrl;
-      this.updateMeeting({conversationUrl: info.conversationUrl});
+      this.callbacks.updateMeeting({conversationUrl: info.conversationUrl});
     }
   }
 
@@ -2417,7 +2509,7 @@ export default class LocusInfo extends EventsScope {
     if (fullState && !isEqual(this.fullState, fullState)) {
       const result = FullState.getFullState(this.fullState, fullState);
 
-      this.updateMeeting(result.current);
+      this.callbacks.updateMeeting(result.current);
 
       if (result.updates.meetingStateChangedTo) {
         this.emitScoped(
@@ -2461,7 +2553,7 @@ export default class LocusInfo extends EventsScope {
     if (host && !isEqual(this.host, host)) {
       const parsedHosts = HostUtils.getHosts(this.host, host);
 
-      this.updateMeeting(parsedHosts.current);
+      this.callbacks.updateMeeting(parsedHosts.current);
       this.parsedLocus.host = parsedHosts.current;
       if (parsedHosts.updates.isNewHost) {
         this.compareAndUpdateFlags.compareSelfAndHost = true;
@@ -2491,9 +2583,19 @@ export default class LocusInfo extends EventsScope {
    */
   updateMeetingInfo(info: object, self?: object) {
     const roles = self ? SelfUtils.getRoles(self) : this.parsedLocus.self?.roles || [];
-    if ((info && !isEqual(this.info, info)) || (!isEqual(this.roles, roles) && info)) {
-      const isJoined = SelfUtils.isJoined(self || this.parsedLocus.self);
-      const parsedInfo = InfoUtils.getInfos(this.parsedLocus.info, info, roles, isJoined);
+    const isJoined = SelfUtils.isJoined(self || this.parsedLocus.self);
+
+    // The parsed userDisplayHints depend on info, roles and isJoined, so we must recompute
+    // whenever any of them changes. A common case is self transitioning to JOINED via a delta
+    // that doesn't carry an info section - in that case we fall back to the previously stored
+    // info so the hints get reparsed with the new joined state (e.g. VIEW_THE_PARTICIPANT_LIST).
+    const infoToParse = info || this.info;
+    const infoChanged = info && !isEqual(this.info, info);
+    const rolesChanged = !isEqual(this.roles, roles);
+    const isJoinedChanged = SelfUtils.isJoined(this.parsedLocus.self) !== isJoined;
+
+    if (infoToParse && (infoChanged || rolesChanged || isJoinedChanged)) {
+      const parsedInfo = InfoUtils.getInfos(this.parsedLocus.info, infoToParse, roles, isJoined);
 
       if (parsedInfo.updates.isLocked) {
         this.emitScoped(
@@ -2516,10 +2618,10 @@ export default class LocusInfo extends EventsScope {
         );
       }
 
-      this.info = info;
+      this.info = infoToParse;
       this.parsedLocus.info = parsedInfo.current;
       // Parses the info and adds necessary values
-      this.updateMeeting(parsedInfo.current);
+      this.callbacks.updateMeeting(parsedInfo.current);
 
       this.emitScoped(
         {
@@ -2548,7 +2650,7 @@ export default class LocusInfo extends EventsScope {
 
     const parsedEmbeddedApps = EmbeddedAppsUtils.parse(embeddedApps);
 
-    this.updateMeeting({embeddedApps: parsedEmbeddedApps});
+    this.callbacks.updateMeeting({embeddedApps: parsedEmbeddedApps});
 
     this.emitScoped(
       {
@@ -2573,7 +2675,7 @@ export default class LocusInfo extends EventsScope {
     if (mediaShares && (!isEqual(this.mediaShares, mediaShares) || forceUpdate)) {
       const parsedMediaShares = MediaSharesUtils.getMediaShares(this.mediaShares, mediaShares);
 
-      this.updateMeeting(parsedMediaShares.current);
+      this.callbacks.updateMeeting(parsedMediaShares.current);
       this.parsedLocus.mediaShares = parsedMediaShares.current;
       this.mediaShares = mediaShares;
       this.emitScoped(
@@ -2619,7 +2721,7 @@ export default class LocusInfo extends EventsScope {
         this.participants // using this.participants instead of locus.participants here, because with delta DTOs locus.participants will only contain a small subset of participants
       );
 
-      this.updateMeeting(parsedSelves.current);
+      this.callbacks.updateMeeting(parsedSelves.current);
       this.parsedLocus.self = parsedSelves.current;
 
       const element = this.parsedLocus.states[this.parsedLocus.states.length - 1];
@@ -2637,7 +2739,7 @@ export default class LocusInfo extends EventsScope {
       );
 
       if (result?.sipUri) {
-        this.updateMeeting(result);
+        this.callbacks.updateMeeting(result);
       }
 
       if (parsedSelves.updates.moderatorChanged) {
@@ -2764,6 +2866,7 @@ export default class LocusInfo extends EventsScope {
           {
             muted: parsedSelves.current.remoteMuted,
             unmuteAllowed: parsedSelves.current.unmuteAllowed,
+            modifiedBy: parsedSelves.current.modifiedBy ?? null,
           }
         );
       }
@@ -2904,7 +3007,7 @@ export default class LocusInfo extends EventsScope {
   updateLocusUrl(url: string, isMainLocus = true) {
     if (url && this.url !== url) {
       this.url = url;
-      this.updateMeeting({locusUrl: url});
+      this.callbacks.updateMeeting({locusUrl: url});
       this.emitScoped(
         {
           file: 'locus-info',

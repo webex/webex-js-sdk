@@ -761,5 +761,34 @@ describe('TaskUtils', () => {
         getIsConsultInProgressForConferenceControls(interaction, 'interaction-1', 'agent-1')
       ).toBe(true);
     });
+
+    it('returns true when EP-DN participant is on consult leg but not main call (CAI-8329)', () => {
+      const interaction = {
+        participants: {
+          'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false, consultState: 'conferencing'},
+          '+13159998087': {
+            id: '+13159998087',
+            pType: 'EP-DN',
+            type: 'EpDn',
+            hasLeft: false,
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false, hasJoined: true},
+        },
+        media: {
+          'interaction-1': {
+            mType: 'mainCall',
+            participants: ['customer-1', 'agent-1'],
+          },
+          'consult-media-1': {
+            mType: 'consult',
+            participants: ['+13159998087', 'agent-1'],
+          },
+        },
+      } as any;
+
+      expect(
+        getIsConsultInProgressForConferenceControls(interaction, 'interaction-1', 'agent-1')
+      ).toBe(true);
+    });
   });
 });

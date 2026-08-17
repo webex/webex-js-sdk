@@ -19,9 +19,16 @@ import {
   MEDIA_TYPE_CONSULT,
 } from './constants';
 import {DestinationType, TaskData} from '../types';
+import {CC_EVENTS} from '../../config/types';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
-import {getIsConferenceInProgress} from '../TaskUtils';
+import {getIsConferenceInProgress, isEpDnConsultPendingConferenceMerge} from '../TaskUtils';
 import {hasActiveConsultInPostCall} from './guards';
+
+/** Terminal consult events that clear consult context in deriveTaskDataUpdates. */
+const CONSULT_CONTEXT_CLEAR_EVENTS = new Set<string>([
+  CC_EVENTS.AGENT_CONSULT_ENDED,
+  CC_EVENTS.AGENT_CONSULT_FAILED,
+]);
 
 const determineConsultInitiator = (
   taskData: TaskData | undefined,
@@ -98,7 +105,8 @@ const isActiveConsultState = (taskData: TaskData | undefined, selfAgentId?: stri
       return false;
     }
     if (
-      selfParticipant?.consultState === CONSULT_STATE.CONSULTING &&
+      (selfParticipant?.consultState === CONSULT_STATE.CONSULTING ||
+        selfParticipant?.consultState === CONSULT_STATE.CONFERENCING) &&
       hasConsultMedia &&
       taskData?.isConsulted === false
     ) {
@@ -125,6 +133,7 @@ const isSelfConsultingOrPending = (
 
   return (
     selfParticipant?.consultState === CONSULT_STATE.CONSULTING ||
+    selfParticipant?.consultState === CONSULT_STATE.CONFERENCING ||
     selfParticipant?.consultState === 'consultInitiated'
   );
 };
@@ -225,6 +234,11 @@ export const getTaskStateForUiControls = (
     return TaskState.WRAPPING_UP;
   }
 
+  // EP-DN consult merged to conference before Agent 2 joins main — UI is conferencing (CAI-8329).
+  if (isEpDnConsultPendingConferenceMerge(taskData, selfAgentId)) {
+    return TaskState.CONFERENCING;
+  }
+
   if (isActiveConsultState(taskData, selfAgentId)) {
     return TaskState.CONSULTING;
   }
@@ -250,34 +264,43 @@ export const getTaskStateForUiControls = (
 const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefined) =>
   taskData
     ? (() => {
+        const enrichedTaskData: TaskData =
+          taskData.type === 'AgentConsultCreated' && taskData.agentId
+            ? {...taskData, consultingAgentId: taskData.agentId}
+            : taskData;
+
         const updates: Partial<TaskContext> = {
-          taskData,
-          ...deriveRecordingState(taskData),
+          taskData: enrichedTaskData,
+          ...deriveRecordingState(enrichedTaskData),
         };
 
-        const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
+        const selfAgentId = context.uiControlConfig.agentId ?? enrichedTaskData?.agentId;
         const consultingActive =
-          isActiveConsultState(taskData, selfAgentId) ||
-          hasActiveConsultInPostCall(taskData, selfAgentId);
+          isActiveConsultState(enrichedTaskData, selfAgentId) ||
+          hasActiveConsultInPostCall(enrichedTaskData, selfAgentId);
         const conferenceFromPayload =
-          taskData?.interaction?.state === INTERACTION_STATE.CONFERENCE ||
-          getIsConferenceInProgress(taskData);
-        const selfConsultingOrPending = isSelfConsultingOrPending(taskData, selfAgentId);
+          enrichedTaskData?.interaction?.state === INTERACTION_STATE.CONFERENCE ||
+          getIsConferenceInProgress(enrichedTaskData);
+        const selfConsultingOrPending = isSelfConsultingOrPending(enrichedTaskData, selfAgentId);
         const inferredConsultingInitiator =
-          selfConsultingOrPending && taskData?.isConsulted === false;
+          selfConsultingOrPending && enrichedTaskData?.isConsulted === false;
 
-        if (taskData.destAgentId) {
+        if (enrichedTaskData.destAgentId) {
           const isEpDnWithStoredId =
             context.consultDestinationType === 'entryPoint' && context.consultDestinationAgentId;
           if (!isEpDnWithStoredId) {
-            updates.consultDestinationAgentId = taskData.destAgentId;
+            updates.consultDestinationAgentId = enrichedTaskData.destAgentId;
           }
         }
 
         const isConsultTerminalEvent =
-          taskData.type === 'AgentConsultEnded' || taskData.type === 'AgentConsultFailed';
+          enrichedTaskData.type != null && CONSULT_CONTEXT_CLEAR_EVENTS.has(enrichedTaskData.type);
+        const epDnPendingMergeActive = isEpDnConsultPendingConferenceMerge(
+          enrichedTaskData,
+          selfAgentId
+        );
 
-        if (isConsultTerminalEvent) {
+        if (isConsultTerminalEvent && !epDnPendingMergeActive) {
           updates.consultInitiator = false;
           updates.consultFromConference = false;
           updates.consultDestinationAgentJoined = false;
@@ -285,21 +308,38 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
           updates.consultDestinationType = null;
           updates.consultDestinationAgentId = null;
           updates.transferConferenceRequested = false;
+          updates.hideBlindTransferForEpDnPendingMerge = false;
         }
 
-        if (consultingActive && taskData.destinationType) {
-          updates.consultDestinationType = mapConsultDestinationType(taskData.destinationType);
+        updates.hideBlindTransferForEpDnPendingMerge = isEpDnConsultPendingConferenceMerge(
+          enrichedTaskData,
+          selfAgentId
+        );
+
+        if (consultingActive && enrichedTaskData.destinationType) {
+          updates.consultDestinationType = mapConsultDestinationType(
+            enrichedTaskData.destinationType
+          );
         }
 
-        if (!isConsultTerminalEvent && !context.consultInitiator) {
-          const consultInitiator = determineConsultInitiator(taskData, selfAgentId);
+        if (!isConsultTerminalEvent) {
+          const consultInitiator = determineConsultInitiator(enrichedTaskData, selfAgentId);
           if (consultInitiator !== undefined) {
             updates.consultInitiator = consultInitiator;
           } else if (
-            inferredConsultingInitiator ||
-            (consultingActive && taskData.isConsulted === false)
+            enrichedTaskData.type === 'AgentConsultCreated' &&
+            enrichedTaskData.agentId &&
+            enrichedTaskData.agentId !== selfAgentId &&
+            conferenceFromPayload
           ) {
-            updates.consultInitiator = true;
+            updates.consultInitiator = false;
+          } else if (!context.consultInitiator) {
+            if (
+              inferredConsultingInitiator ||
+              (consultingActive && enrichedTaskData.isConsulted === false)
+            ) {
+              updates.consultInitiator = true;
+            }
           }
         }
 
@@ -308,7 +348,9 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
           !isConsultTerminalEvent &&
           effectiveConsultInitiator &&
           conferenceFromPayload &&
-          (consultingActive || selfConsultingOrPending || Boolean(taskData?.consultMediaResourceId))
+          (consultingActive ||
+            selfConsultingOrPending ||
+            Boolean(enrichedTaskData?.consultMediaResourceId))
         ) {
           updates.consultFromConference = true;
         }
@@ -316,16 +358,16 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
         if (
           !isConsultTerminalEvent &&
           (consultingActive || selfConsultingOrPending) &&
-          taskData.interaction
+          enrichedTaskData.interaction
         ) {
-          const joinedConsultee = hasJoinedConsultDestination(taskData, selfAgentId);
+          const joinedConsultee = hasJoinedConsultDestination(enrichedTaskData, selfAgentId);
           const selfParticipant = selfAgentId
-            ? (taskData.interaction.participants?.[selfAgentId] as
+            ? (enrichedTaskData.interaction.participants?.[selfAgentId] as
                 | {consultState?: string}
                 | undefined)
             : undefined;
           const agentConsultingSelfJoined =
-            taskData.type === 'AgentConsulting' &&
+            enrichedTaskData.type === 'AgentConsulting' &&
             effectiveConsultInitiator &&
             selfParticipant?.consultState === CONSULT_STATE.CONSULTING;
 
@@ -337,8 +379,8 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
 
           if (!context.consultDestinationType && !updates.consultDestinationType) {
             const hasEpDnParticipant = Boolean(
-              taskData.interaction.participants &&
-                Object.values(taskData.interaction.participants).some((p: any) => {
+              enrichedTaskData.interaction.participants &&
+                Object.values(enrichedTaskData.interaction.participants).some((p: any) => {
                   if (p?.hasLeft) return false;
                   const pType = String(p?.pType ?? '').toUpperCase();
 
@@ -349,7 +391,7 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
           }
 
           if (effectiveConsultInitiator) {
-            const consultCallHeld = deriveConsultCallHeldFromTaskData(taskData);
+            const consultCallHeld = deriveConsultCallHeldFromTaskData(enrichedTaskData);
             if (consultCallHeld !== undefined) {
               updates.consultCallHeld = consultCallHeld;
             }
@@ -360,9 +402,9 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
           ...context,
           ...updates,
         } as TaskContext;
-        const inferredState = getTaskStateForUiControls(taskData, selfAgentId);
+        const inferredState = getTaskStateForUiControls(enrichedTaskData, selfAgentId);
 
-        updates.uiControls = computeUIControls(inferredState, nextContext, taskData);
+        updates.uiControls = computeUIControls(inferredState, nextContext, enrichedTaskData);
 
         return updates;
       })()
@@ -385,6 +427,7 @@ export function createInitialContext(
     consultDestinationAgentId: null,
     consultDestinationAgentJoined: false,
     consultCallHeld: false,
+    hideBlindTransferForEpDnPendingMerge: false,
     recordingControlsAvailable: false,
     recordingInProgress: false,
     uiControlConfig,
@@ -446,6 +489,11 @@ export const actions: TaskActionsMap = {
 
   handleConsultFailed: assign(({context, event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event) ?? context.taskData;
+    const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
+    const hideBlindTransferForEpDnPendingMerge = isEpDnConsultPendingConferenceMerge(
+      taskData,
+      selfAgentId
+    );
     const cleared = {
       consultDestinationType: null,
       consultDestinationAgentId: null,
@@ -455,8 +503,8 @@ export const actions: TaskActionsMap = {
       consultCallHeld: false,
       consultFromConference: false,
       transferConferenceRequested: false,
+      hideBlindTransferForEpDnPendingMerge,
     };
-    const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
     const nextContext = {...context, ...cleared, taskData} as TaskContext;
     const inferredState = getTaskStateForUiControls(taskData, selfAgentId);
 
@@ -539,6 +587,12 @@ export const actions: TaskActionsMap = {
   }),
 
   clearConsultState: assign(({context, event}: TaskActionArgs) => {
+    const taskData = context.taskData ?? getTaskDataFromEvent(event);
+    const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
+    const hideBlindTransferForEpDnPendingMerge = isEpDnConsultPendingConferenceMerge(
+      taskData,
+      selfAgentId
+    );
     const cleared = {
       consultDestinationType: null,
       consultDestinationAgentId: null,
@@ -548,9 +602,8 @@ export const actions: TaskActionsMap = {
       consultCallHeld: false,
       consultFromConference: false,
       transferConferenceRequested: false,
+      hideBlindTransferForEpDnPendingMerge,
     };
-    const taskData = context.taskData ?? getTaskDataFromEvent(event);
-    const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
     const nextContext = {...context, ...cleared, taskData} as TaskContext;
     const inferredState = getTaskStateForUiControls(taskData, selfAgentId);
 

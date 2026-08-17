@@ -1,25 +1,21 @@
+/* eslint-disable no-await-in-loop */
 import {expect, Page, BrowserContext, Browser} from '@playwright/test';
-import {loginViaAccessToken} from './Utils/initUtils';
 import {stationLogout} from './Utils/stationLoginUtils';
 import {loginExtension} from './Utils/incomingTaskUtils';
 import {setupConsoleLogging} from './Utils/taskControlUtils';
 import {setupAdvancedConsoleLogging} from './Utils/advancedTaskControlUtils';
-import {pageSetup, handleStrayTasks} from './Utils/helperUtils';
+import {pageSetup, handleStrayTasks, runWithTimeout, sleep} from './Utils/helperUtils';
 import {
   LOGIN_MODE,
   LoginMode,
   DEFAULT_MAX_RETRIES,
   DEFAULT_TIMEOUT,
-  OPERATION_TIMEOUT,
-  UI_SETTLE_TIMEOUT,
   AWAIT_TIMEOUT,
   PAGE_TYPES,
   PageType,
 } from './constants';
 
-// Configuration interfaces for setup options
 interface SetupConfig {
-  // Core requirements
   needsAgent1?: boolean;
   needsAgent2?: boolean;
   needsAgent3?: boolean;
@@ -29,76 +25,65 @@ interface SetupConfig {
   needsChat?: boolean;
   needsMultiSession?: boolean;
 
-  // Login modes
   agent1LoginMode?: LoginMode;
 
-  // Console logging
   enableConsoleLogging?: boolean;
   enableAdvancedLogging?: boolean;
   needDialNumberLogin?: boolean;
 }
 
-// Environment variable helper interface
 interface EnvTokens {
   agent1AccessToken: string;
   agent2AccessToken: string;
   agent3AccessToken: string;
   agent4AccessToken: string;
+  callerAccessToken: string;
   agent1Username: string;
   agent2Username: string;
   agent3Username: string;
   agent4Username: string;
   agent1ExtensionNumber: string;
+  entryPoint: string;
   password: string;
   dialNumberLoginAccessToken?: string;
 }
 
-// Context creation result interface
 interface ContextCreationResult {
   context: BrowserContext;
   page: Page;
   type: PageType;
 }
 
-// 🏗️ Simple Test Context Manager
+const PAGE_SETUP_ATTEMPT_TIMEOUT_MS = 4 * 60 * 1000;
+const LOGIN_SETUP_ATTEMPT_TIMEOUT_MS = 2 * 60 * 1000;
+
 export class TestManager {
-  // Main widget page (Agent 1 login)
   public agent1Page!: Page;
   public agent1Context!: BrowserContext;
 
-  // Multi-session page (Agent 1 second session)
   public multiSessionAgent1Page: Page;
   public multiSessionContext: BrowserContext;
 
-  // Agent 2 main widget page (Agent 2 login)
   public agent2Page: Page;
   public agent2Context: BrowserContext;
 
-  // Agent 3 main widget page (Agent 3 login)
   public agent3Page: Page;
   public agent3Context: BrowserContext;
 
-  // Agent 4 main widget page (Agent 4 login)
   public agent4Page: Page;
   public agent4Context: BrowserContext;
 
-  // Caller extension page (Agent 2 for making calls)
   public callerPage: Page;
   public callerExtensionContext: BrowserContext;
 
-  // Extension page (Agent 1 extension login)
   public agent1ExtensionPage: Page;
   public extensionContext: BrowserContext;
 
-  // Chat page
   public chatPage: Page;
   public chatContext: BrowserContext;
 
-  // Dial Number page
   public dialNumberPage: Page;
   public dialNumberContext: BrowserContext;
-
-  // Console messages collected from pages
 
   public consoleMessages: string[] = [];
   public readonly maxRetries: number;
@@ -109,24 +94,27 @@ export class TestManager {
     this.maxRetries = maxRetries;
   }
 
-  // Helper method to get environment tokens
   private getEnvTokens(): EnvTokens {
     return {
       agent1AccessToken: process.env[`${this.projectName}_AGENT1_ACCESS_TOKEN`] ?? '',
       agent2AccessToken: process.env[`${this.projectName}_AGENT2_ACCESS_TOKEN`] ?? '',
       agent3AccessToken: process.env[`${this.projectName}_AGENT3_ACCESS_TOKEN`] ?? '',
       agent4AccessToken: process.env[`${this.projectName}_AGENT4_ACCESS_TOKEN`] ?? '',
+      callerAccessToken:
+        process.env[`${this.projectName}_CALLER_ACCESS_TOKEN`] ??
+        process.env.CALLER_ACCESS_TOKEN ??
+        '',
       agent1Username: process.env[`${this.projectName}_AGENT1_USERNAME`] ?? '',
       agent2Username: process.env[`${this.projectName}_AGENT2_USERNAME`] ?? '',
       agent3Username: process.env[`${this.projectName}_AGENT3_USERNAME`] ?? '',
       agent4Username: process.env[`${this.projectName}_AGENT4_USERNAME`] ?? '',
       agent1ExtensionNumber: process.env[`${this.projectName}_AGENT1_EXTENSION_NUMBER`] ?? '',
+      entryPoint: process.env[`${this.projectName}_ENTRY_POINT`] ?? '',
       password: process.env.PW_SANDBOX_PASSWORD ?? '',
       dialNumberLoginAccessToken: process.env.DIAL_NUMBER_LOGIN_ACCESS_TOKEN ?? '',
     };
   }
 
-  // Helper method to create context with error handling
   private async createContextWithPage(
     browser: Browser,
     type: PageType
@@ -141,38 +129,52 @@ export class TestManager {
     }
   }
 
-  // Helper method to setup console logging for a page
   private setupPageConsoleLogging(page: Page, enableLogging = true): void {
     if (enableLogging) {
       page.on('console', (msg) => this.consoleMessages.push(msg.text()));
     }
   }
 
-  // Helper method to retry operations with exponential backoff
   private async retryOperation<T>(
     operation: () => Promise<T>,
     operationName: string,
-    maxRetries: number = this.maxRetries
+    maxRetries?: number,
+    attemptTimeoutMs?: number
   ): Promise<T> {
-    /* eslint-disable no-await-in-loop, no-plusplus */
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const retryCount = maxRetries ?? this.maxRetries;
+    /* eslint-disable no-plusplus */
+    for (let attempt = 0; attempt < retryCount; attempt++) {
       try {
-        return await operation();
-      } catch (error) {
-        if (attempt === maxRetries - 1) {
-          throw new Error(`Failed ${operationName} after ${maxRetries} attempts: ${error}`);
+        if (!attemptTimeoutMs) {
+          return await operation();
         }
-        // Simple exponential backoff
-        await new Promise((resolve) => {
-          setTimeout(resolve, 2 ** attempt * 1000);
-        });
+
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          return await Promise.race([
+            operation(),
+            new Promise<T>((_, reject) => {
+              timer = setTimeout(() => {
+                reject(new Error(`${operationName} timed out after ${attemptTimeoutMs}ms`));
+              }, attemptTimeoutMs);
+            }),
+          ]);
+        } finally {
+          if (timer) {
+            clearTimeout(timer);
+          }
+        }
+      } catch (error) {
+        if (attempt === retryCount - 1) {
+          throw new Error(`Failed ${operationName} after ${retryCount} attempts: ${error}`);
+        }
+        await sleep(2 ** attempt * 1000);
       }
     }
-    /* eslint-enable no-await-in-loop, no-plusplus */
+    /* eslint-enable no-plusplus */
     throw new Error(`Retry operation failed unexpectedly for ${operationName}`);
   }
 
-  // Helper method to check if logout button is visible
   private async isLogoutButtonVisible(
     page: Page,
     timeout: number = DEFAULT_TIMEOUT
@@ -184,18 +186,6 @@ export class TestManager {
     }
   }
 
-  // Best-effort guard to prevent cleanup/setup hooks from hanging indefinitely.
-  private async runBestEffortWithTimeout(
-    operation: () => Promise<void>,
-    timeout: number = OPERATION_TIMEOUT
-  ): Promise<void> {
-    const guardedOperation = operation().catch(() => {});
-    const timeoutGuard = new Promise<void>((resolve) => {
-      setTimeout(resolve, timeout);
-    });
-    await Promise.race([guardedOperation, timeoutGuard]);
-  }
-
   private async safeHandleStrayTasks(
     page?: Page,
     extensionPage: Page | null = null
@@ -204,7 +194,7 @@ export class TestManager {
       return;
     }
     const validExtension = extensionPage && !extensionPage.isClosed() ? extensionPage : null;
-    await this.runBestEffortWithTimeout(() => handleStrayTasks(page, validExtension));
+    await runWithTimeout(() => handleStrayTasks(page, validExtension));
   }
 
   private async safeStationLogout(page?: Page): Promise<void> {
@@ -215,15 +205,10 @@ export class TestManager {
     if (!hasLogoutButton) {
       return;
     }
-    await this.runBestEffortWithTimeout(
-      () => stationLogout(page, false),
-      OPERATION_TIMEOUT + UI_SETTLE_TIMEOUT * 10
-    );
+    await runWithTimeout(() => stationLogout(page, false), AWAIT_TIMEOUT);
   }
 
-  // 🎯 Universal Setup Method - Handles all test scenarios (Parallelized)
   async setup(browser: Browser, config: SetupConfig = {}): Promise<void> {
-    // Default configuration
     const defaults: SetupConfig = {
       needsAgent1: true,
       needsAgent2: false,
@@ -242,24 +227,21 @@ export class TestManager {
     const finalConfig: Required<SetupConfig> = {...defaults, ...config} as Required<SetupConfig>;
     const envTokens = this.getEnvTokens();
 
-    // 🚀 Step 1: Create all required browser contexts in parallel
     const contextCreationPromises = this.createContextsForConfig(browser, finalConfig);
     await this.processContextCreations(contextCreationPromises, finalConfig);
 
-    // 🚀 Step 2: Setup login and widgets in parallel for independent pages
-    const setupPromises = this.createSetupPromises(finalConfig, envTokens);
-    await Promise.all(setupPromises);
+    const setupOperations = this.createSetupOperations(finalConfig, envTokens);
+    for (const setupOperation of setupOperations) {
+      await setupOperation();
+    }
 
-    // Multi-session setup - Remove dependency wait, make it truly parallel
     if (finalConfig.needsMultiSession && this.multiSessionAgent1Page) {
       await this.setupMultiSessionFlow(finalConfig, envTokens);
     }
 
-    // 🚀 Step 3: Setup console logging (can be done in parallel too)
     await this.setupConsoleLogging(finalConfig);
   }
 
-  // Helper method to create context creation promises
   private createContextsForConfig(
     browser: Browser,
     config: Required<SetupConfig>
@@ -297,7 +279,6 @@ export class TestManager {
     return promises;
   }
 
-  // Helper method to process context creations
   private async processContextCreations(
     promises: Promise<ContextCreationResult>[],
     config: Required<SetupConfig>
@@ -353,116 +334,367 @@ export class TestManager {
     }
   }
 
-  // Helper method to create setup promises
-  private createSetupPromises(
+  private createSetupOperations(
     config: Required<SetupConfig>,
     envTokens: EnvTokens
-  ): Promise<void>[] {
-    const setupPromises: Promise<void>[] = [];
+  ): Array<() => Promise<void>> {
+    const setupOperations: Array<() => Promise<void>> = [];
 
-    // Agent1 setup
     if (config.needsAgent1) {
-      setupPromises.push(this.setupAgent1(config, envTokens));
+      setupOperations.push(() => this.setupAgent1(config, envTokens));
     }
 
-    // Agent2 setup
     if (config.needsAgent2) {
-      setupPromises.push(this.setupAgent2(envTokens));
+      setupOperations.push(() => this.setupAgent2(envTokens));
     }
 
-    // Agent3 setup
     if (config.needsAgent3) {
-      setupPromises.push(this.setupAgent3(envTokens));
+      setupOperations.push(() => this.setupAgent3(envTokens));
     }
 
-    // Agent4 setup
     if (config.needsAgent4) {
-      setupPromises.push(this.setupAgent4(envTokens));
+      setupOperations.push(() => this.setupAgent4(envTokens));
     }
 
-    // Caller extension setup
     if (config.needsCaller && this.callerPage) {
-      setupPromises.push(this.setupCaller(envTokens));
+      setupOperations.push(() => this.setupCaller(config, envTokens));
     }
 
-    // Dial Number setup
     if (config.needDialNumberLogin && this.dialNumberPage) {
-      setupPromises.push(this.setupDialNumber(envTokens));
+      setupOperations.push(() => this.setupDialNumber(envTokens));
     }
 
-    return setupPromises;
+    return setupOperations;
   }
 
-  // Helper method for Agent1 setup
   private async setupAgent1(config: Required<SetupConfig>, envTokens: EnvTokens): Promise<void> {
+    const ensureFreshAgent1Page = async (forceRecreate = false): Promise<void> => {
+      if (!forceRecreate && this.agent1Page && !this.agent1Page.isClosed()) {
+        return;
+      }
+
+      if (!this.agent1Context) {
+        throw new Error('Agent1 context is unavailable for recreation');
+      }
+
+      const browser = this.agent1Context.browser();
+      if (!browser) {
+        throw new Error('Browser is unavailable for agent1 page recreation');
+      }
+
+      await this.agent1Context.close().catch(() => {});
+      const recreated = await this.createContextWithPage(browser, PAGE_TYPES.AGENT1);
+      this.agent1Context = recreated.context;
+      this.agent1Page = recreated.page;
+      this.consoleMessages = [];
+      this.setupPageConsoleLogging(this.agent1Page, true);
+    };
+
     if (config.agent1LoginMode === LOGIN_MODE.DESKTOP) {
-      await pageSetup(this.agent1Page, LOGIN_MODE.DESKTOP, envTokens.agent1AccessToken);
-    } else if (config.agent1LoginMode === LOGIN_MODE.EXTENSION && this.agent1ExtensionPage) {
-      await Promise.all([
-        pageSetup(
-          this.agent1Page,
-          LOGIN_MODE.EXTENSION,
-          envTokens.agent1AccessToken,
-          envTokens.agent1ExtensionNumber
-        ),
-        this.retryOperation(
+      let attempt = 0;
+      await this.retryOperation(
+        async () => {
+          await ensureFreshAgent1Page(attempt > 0);
+          attempt += 1;
+
+          return pageSetup(
+            this.agent1Page,
+            LOGIN_MODE.DESKTOP,
+            envTokens.agent1AccessToken,
+            undefined,
+            config.needsMultiSession,
+            false
+          );
+        },
+        'agent1 desktop station setup',
+        this.maxRetries,
+        PAGE_SETUP_ATTEMPT_TIMEOUT_MS
+      );
+    } else if (config.agent1LoginMode === LOGIN_MODE.EXTENSION) {
+      let attempt = 0;
+      await this.retryOperation(
+        async () => {
+          await ensureFreshAgent1Page(attempt > 0);
+          attempt += 1;
+
+          return pageSetup(
+            this.agent1Page,
+            LOGIN_MODE.EXTENSION,
+            envTokens.agent1AccessToken,
+            envTokens.agent1ExtensionNumber,
+            config.needsMultiSession,
+            false
+          );
+        },
+        'agent1 extension station setup',
+        this.maxRetries,
+        PAGE_SETUP_ATTEMPT_TIMEOUT_MS
+      );
+
+      if (this.agent1ExtensionPage) {
+        await this.retryOperation(
           () => loginExtension(this.agent1ExtensionPage, envTokens.agent1AccessToken),
-          'agent1 extension login'
-        ),
-      ]);
-    }
-  }
+          'agent1 extension login',
+          this.maxRetries,
+          LOGIN_SETUP_ATTEMPT_TIMEOUT_MS
+        );
+      }
+    } else if (config.agent1LoginMode === LOGIN_MODE.DIAL_NUMBER) {
+      let attempt = 0;
+      await this.retryOperation(
+        async () => {
+          await ensureFreshAgent1Page(attempt > 0);
+          attempt += 1;
 
-  // Helper method for Agent2 setup
-  private async setupAgent2(envTokens: EnvTokens): Promise<void> {
-    await pageSetup(this.agent2Page, LOGIN_MODE.DESKTOP, envTokens.agent2AccessToken);
-  }
-
-  // Helper method for Agent3 setup
-  private async setupAgent3(envTokens: EnvTokens): Promise<void> {
-    await pageSetup(this.agent3Page, LOGIN_MODE.DESKTOP, envTokens.agent3AccessToken);
-  }
-
-  // Helper method for Agent4 setup
-  private async setupAgent4(envTokens: EnvTokens): Promise<void> {
-    await pageSetup(this.agent4Page, LOGIN_MODE.DESKTOP, envTokens.agent4AccessToken);
-  }
-
-  // Helper method for Dial Number setup
-  private async setupDialNumber(envTokens: EnvTokens): Promise<void> {
-    await this.retryOperation(
-      () => loginExtension(this.dialNumberPage, envTokens.dialNumberLoginAccessToken),
-      'dial number login'
-    );
-    // Ensure only one page remains in the Dial Number context to avoid duplicate web client instances
-    // await this.enforceSingleDialNumberInOwnContext();
-  }
-
-  // Helper method for Caller setup
-  private async setupCaller(envTokens: EnvTokens): Promise<void> {
-    await this.retryOperation(
-      () => loginExtension(this.callerPage!, envTokens.agent2AccessToken),
-      'caller extension login'
-    );
-  }
-
-  // Helper method for multi-session setup
-  private async setupMultiSessionFlow(
-    config: Required<SetupConfig>,
-    envTokens: EnvTokens
-  ): Promise<void> {
-    if (config.agent1LoginMode === LOGIN_MODE.EXTENSION) {
-      await pageSetup(
-        this.multiSessionAgent1Page!,
-        LOGIN_MODE.EXTENSION,
-        envTokens.agent1AccessToken,
-        envTokens.agent1ExtensionNumber,
-        true // Enable multi-session mode
+          return pageSetup(
+            this.agent1Page,
+            LOGIN_MODE.DIAL_NUMBER,
+            envTokens.agent1AccessToken,
+            envTokens.entryPoint,
+            config.needsMultiSession,
+            false
+          );
+        },
+        'agent1 dial-number station setup',
+        this.maxRetries,
+        PAGE_SETUP_ATTEMPT_TIMEOUT_MS
       );
     }
   }
 
-  // Helper method for console logging setup
+  private async setupAgent2(envTokens: EnvTokens): Promise<void> {
+    const ensureFreshAgent2Page = async (forceRecreate = false): Promise<void> => {
+      if (!forceRecreate && this.agent2Page && !this.agent2Page.isClosed()) {
+        return;
+      }
+
+      if (!this.agent2Context) {
+        throw new Error('Agent2 context is unavailable for recreation');
+      }
+
+      const browser = this.agent2Context.browser();
+      if (!browser) {
+        throw new Error('Browser is unavailable for agent2 page recreation');
+      }
+
+      await this.agent2Context.close().catch(() => {});
+      const recreated = await this.createContextWithPage(browser, PAGE_TYPES.AGENT2);
+      this.agent2Context = recreated.context;
+      this.agent2Page = recreated.page;
+      this.setupPageConsoleLogging(this.agent2Page, true);
+    };
+
+    let attempt = 0;
+    await this.retryOperation(
+      async () => {
+        await ensureFreshAgent2Page(attempt > 0);
+        attempt += 1;
+
+        return pageSetup(this.agent2Page, LOGIN_MODE.DESKTOP, envTokens.agent2AccessToken);
+      },
+      'agent2 desktop station setup',
+      this.maxRetries,
+      PAGE_SETUP_ATTEMPT_TIMEOUT_MS
+    );
+  }
+
+  private async setupAgent3(envTokens: EnvTokens): Promise<void> {
+    const ensureFreshAgent3Page = async (forceRecreate = false): Promise<void> => {
+      if (!forceRecreate && this.agent3Page && !this.agent3Page.isClosed()) {
+        return;
+      }
+
+      if (!this.agent3Context) {
+        throw new Error('Agent3 context is unavailable for recreation');
+      }
+
+      const browser = this.agent3Context.browser();
+      if (!browser) {
+        throw new Error('Browser is unavailable for agent3 page recreation');
+      }
+
+      await this.agent3Context.close().catch(() => {});
+      const recreated = await this.createContextWithPage(browser, PAGE_TYPES.AGENT3);
+      this.agent3Context = recreated.context;
+      this.agent3Page = recreated.page;
+      this.setupPageConsoleLogging(this.agent3Page, true);
+    };
+
+    let attempt = 0;
+    await this.retryOperation(
+      async () => {
+        await ensureFreshAgent3Page(attempt > 0);
+        attempt += 1;
+
+        return pageSetup(this.agent3Page, LOGIN_MODE.DESKTOP, envTokens.agent3AccessToken);
+      },
+      'agent3 desktop station setup',
+      this.maxRetries,
+      PAGE_SETUP_ATTEMPT_TIMEOUT_MS
+    );
+  }
+
+  private async setupAgent4(envTokens: EnvTokens): Promise<void> {
+    const ensureFreshAgent4Page = async (forceRecreate = false): Promise<void> => {
+      if (!forceRecreate && this.agent4Page && !this.agent4Page.isClosed()) {
+        return;
+      }
+
+      if (!this.agent4Context) {
+        throw new Error('Agent4 context is unavailable for recreation');
+      }
+
+      const browser = this.agent4Context.browser();
+      if (!browser) {
+        throw new Error('Browser is unavailable for agent4 page recreation');
+      }
+
+      await this.agent4Context.close().catch(() => {});
+      const recreated = await this.createContextWithPage(browser, PAGE_TYPES.AGENT4);
+      this.agent4Context = recreated.context;
+      this.agent4Page = recreated.page;
+      this.setupPageConsoleLogging(this.agent4Page, true);
+    };
+
+    let attempt = 0;
+    await this.retryOperation(
+      async () => {
+        await ensureFreshAgent4Page(attempt > 0);
+        attempt += 1;
+
+        return pageSetup(this.agent4Page, LOGIN_MODE.DESKTOP, envTokens.agent4AccessToken);
+      },
+      'agent4 desktop station setup',
+      this.maxRetries,
+      PAGE_SETUP_ATTEMPT_TIMEOUT_MS
+    );
+  }
+
+  private async setupDialNumber(envTokens: EnvTokens): Promise<void> {
+    await this.retryOperation(
+      () => loginExtension(this.dialNumberPage, envTokens.dialNumberLoginAccessToken),
+      'dial number login',
+      this.maxRetries,
+      LOGIN_SETUP_ATTEMPT_TIMEOUT_MS
+    );
+  }
+
+  private async setupCaller(config: Required<SetupConfig>, envTokens: EnvTokens): Promise<void> {
+    const callerToken =
+      envTokens.callerAccessToken ||
+      (config.needsAgent2 && !config.needDialNumberLogin
+        ? envTokens.dialNumberLoginAccessToken
+        : undefined) ||
+      envTokens.agent2AccessToken ||
+      envTokens.dialNumberLoginAccessToken;
+
+    const ensureFreshCallerPage = async (forceRecreate = false): Promise<void> => {
+      if (!forceRecreate && this.callerPage && !this.callerPage.isClosed()) {
+        return;
+      }
+
+      if (!this.callerExtensionContext) {
+        throw new Error('Caller context is unavailable for recreation');
+      }
+
+      const browser = this.callerExtensionContext.browser();
+      if (!browser) {
+        throw new Error('Browser is unavailable for caller page recreation');
+      }
+
+      await this.callerExtensionContext.close().catch(() => {});
+      const recreated = await this.createContextWithPage(browser, PAGE_TYPES.CALLER);
+      this.callerExtensionContext = recreated.context;
+      this.callerPage = recreated.page;
+      this.setupPageConsoleLogging(this.callerPage, config.enableConsoleLogging);
+    };
+
+    let attempt = 0;
+    await this.retryOperation(
+      async () => {
+        await ensureFreshCallerPage(attempt > 0);
+        attempt += 1;
+
+        return loginExtension(this.callerPage!, callerToken ?? '');
+      },
+      'caller extension login',
+      this.maxRetries,
+      LOGIN_SETUP_ATTEMPT_TIMEOUT_MS
+    );
+  }
+
+  private async setupMultiSessionFlow(
+    config: Required<SetupConfig>,
+    envTokens: EnvTokens
+  ): Promise<void> {
+    const ensureFreshMultiSessionPage = async (forceRecreate = false): Promise<void> => {
+      if (
+        !forceRecreate &&
+        this.multiSessionAgent1Page &&
+        !this.multiSessionAgent1Page.isClosed()
+      ) {
+        return;
+      }
+
+      if (!this.multiSessionContext) {
+        throw new Error('Multi-session context is unavailable for recreation');
+      }
+
+      const browser = this.multiSessionContext.browser();
+      if (!browser) {
+        throw new Error('Browser is unavailable for multi-session page recreation');
+      }
+
+      await this.multiSessionContext.close().catch(() => {});
+      const recreated = await this.createContextWithPage(browser, PAGE_TYPES.MULTI_SESSION);
+      this.multiSessionContext = recreated.context;
+      this.multiSessionAgent1Page = recreated.page;
+      this.setupPageConsoleLogging(this.multiSessionAgent1Page, config.enableConsoleLogging);
+    };
+
+    if (config.agent1LoginMode === LOGIN_MODE.EXTENSION) {
+      let attempt = 0;
+      await this.retryOperation(
+        async () => {
+          await ensureFreshMultiSessionPage(attempt > 0);
+          attempt += 1;
+
+          return pageSetup(
+            this.multiSessionAgent1Page!,
+            LOGIN_MODE.EXTENSION,
+            envTokens.agent1AccessToken,
+            envTokens.agent1ExtensionNumber,
+            true,
+            false
+          );
+        },
+        'multi-session agent1 extension station setup',
+        this.maxRetries,
+        PAGE_SETUP_ATTEMPT_TIMEOUT_MS
+      );
+    } else if (config.agent1LoginMode === LOGIN_MODE.DIAL_NUMBER) {
+      let attempt = 0;
+      await this.retryOperation(
+        async () => {
+          await ensureFreshMultiSessionPage(attempt > 0);
+          attempt += 1;
+
+          return pageSetup(
+            this.multiSessionAgent1Page!,
+            LOGIN_MODE.DIAL_NUMBER,
+            envTokens.agent1AccessToken,
+            envTokens.entryPoint,
+            true,
+            false
+          );
+        },
+        'multi-session agent1 dial-number station setup',
+        this.maxRetries,
+        PAGE_SETUP_ATTEMPT_TIMEOUT_MS
+      );
+    }
+  }
+
   private async setupConsoleLogging(config: Required<SetupConfig>): Promise<void> {
     const setupOperations: (() => void)[] = [];
 
@@ -498,7 +730,6 @@ export class TestManager {
       setupOperations.push(() => setupAdvancedConsoleLogging(this.agent4Page));
     }
 
-    // Execute all setup operations synchronously since they don't return promises
     setupOperations.forEach((operation) => operation());
   }
 
@@ -566,140 +797,55 @@ export class TestManager {
   async setupForStationLogin(browser: Browser): Promise<void> {
     const envTokens = this.getEnvTokens();
 
-    // Create browser context and page
     this.agent1Context = await browser.newContext({ignoreHTTPSErrors: true});
     this.agent1Page = await this.agent1Context.newPage();
     this.consoleMessages = [];
     this.setupPageConsoleLogging(this.agent1Page, true);
 
-    // Note: Multi-session support removed - sample app doesn't support widget-based multi-session
-    // For multi-session tests, create separate contexts manually with different agent credentials
+    await pageSetup(
+      this.agent1Page,
+      LOGIN_MODE.DESKTOP,
+      envTokens.agent1AccessToken,
+      undefined,
+      false,
+      true
+    );
 
-    // Setup page with SDK initialization
-    await this.setupPageWithWidgets(this.agent1Page, envTokens.agent1AccessToken);
-
-    // Handle station logout
-    await this.handleStationLogouts();
+    await this.safeStationLogout(this.agent1Page);
 
     // Ensure station login widget is visible
     await this.verifyStationLoginWidgets();
   }
 
-  // Helper method to setup page with widgets
-  private async setupPageWithWidgets(page: Page, accessToken: string): Promise<void> {
-    await loginViaAccessToken(page, accessToken);
-    await page.waitForLoadState('domcontentloaded');
-
-    // Check current status to determine if we need to register
-    const currentStatus = await page.locator('#ws-connection-status').textContent();
-    const isSubscribed = currentStatus?.trim() === 'Subscribed';
-
-    if (isSubscribed) {
-      // SDK already registered and active - just ensure dropdowns are populated
-      await page.waitForTimeout(2000); // Let any pending restoration complete
-    } else {
-      // Need to initialize and register
-      // Initialize SDK - click webex.init() button
-      const saveButton = page.locator('#access-token-save');
-      const saveEnabled = await saveButton.isEnabled().catch(() => false);
-
-      if (saveEnabled) {
-        await saveButton.click();
-        await expect(page.locator('#webexcc-register')).toBeEnabled({timeout: OPERATION_TIMEOUT});
-      }
-
-      // Register with contact center - populates login options dropdown
-      const registerButton = page.locator('#webexcc-register');
-      const registerEnabled = await registerButton.isEnabled().catch(() => false);
-
-      if (registerEnabled) {
-        await registerButton.click();
-
-        // Wait for registration to complete - status should change to "Subscribed"
-        await expect(page.locator('#ws-connection-status')).toHaveText('Subscribed', {
-          timeout: OPERATION_TIMEOUT,
-        });
-      } else {
-        // Button disabled but not subscribed - partial state, wait for restoration
-        await page.waitForTimeout(3000);
-        await expect(page.locator('#ws-connection-status')).toHaveText('Subscribed', {
-          timeout: OPERATION_TIMEOUT,
-        });
-      }
-    }
-
-    // Wait for teams dropdown to populate - confirms agent profile loaded
-    await page.locator('#teamsDropdown option:not([value=""])').first().waitFor({
-      state: 'attached',
-      timeout: OPERATION_TIMEOUT,
-    });
-
-    // Wait for login options dropdown to populate - confirms loginVoiceOptions are loaded
-    // This dropdown contains BROWSER, EXTENSION, AGENT_DN options
-    await page.locator('#AgentLogin option:not([value=""])').first().waitFor({
-      state: 'attached',
-      timeout: OPERATION_TIMEOUT,
+  async setupForStationLoginMultiSession(browser: Browser, loginMode: LoginMode): Promise<void> {
+    await this.setup(browser, {
+      needsAgent1: true,
+      needsMultiSession: true,
+      agent1LoginMode: loginMode,
+      enableConsoleLogging: true,
+      enableAdvancedLogging: false,
     });
   }
 
-  // Helper method to handle station logouts
-  private async handleStationLogouts(): Promise<void> {
-    // Logout from station if already logged in
-    if (await this.isLogoutButtonVisible(this.agent1Page)) {
-      await stationLogout(this.agent1Page, false); // Don't throw during setup cleanup
-    }
+  async setupForUserStateMultiSession(browser: Browser): Promise<void> {
+    await this.setup(browser, {
+      needsAgent1: true,
+      needsMultiSession: true,
+      agent1LoginMode: LOGIN_MODE.EXTENSION,
+      enableConsoleLogging: true,
+      enableAdvancedLogging: false,
+    });
   }
 
-  // Helper method to verify station login widgets
   private async verifyStationLoginWidgets(): Promise<void> {
     await expect(this.agent1Page.locator('#AgentLogin')).toBeVisible({timeout: AWAIT_TIMEOUT});
   }
 
-  async setupMultiSessionPage(): Promise<void> {
-    if (!this.multiSessionAgent1Page) {
-      return;
-    }
-
-    const envTokens = this.getEnvTokens();
-
-    // Setup multi-session page with full SDK initialization
-    await loginViaAccessToken(this.multiSessionAgent1Page, envTokens.agent1AccessToken);
-    await this.multiSessionAgent1Page.waitForLoadState('domcontentloaded');
-
-    // Initialize SDK - click webex.init() button
-    await this.multiSessionAgent1Page.click('#access-token-save');
-    await expect(this.multiSessionAgent1Page.locator('#webexcc-register')).toBeEnabled({
-      timeout: OPERATION_TIMEOUT,
-    });
-
-    // Register with contact center - populates login options dropdown
-    await this.multiSessionAgent1Page.click('#webexcc-register');
-
-    // Wait for registration status to update (from "Not Subscribed" to "Subscribed")
-    await expect(this.multiSessionAgent1Page.locator('#ws-connection-status')).toHaveText(
-      'Subscribed',
-      {
-        timeout: OPERATION_TIMEOUT,
-      }
-    );
-
-    // Wait for teams dropdown to populate - confirms agent profile loaded
-    await this.multiSessionAgent1Page
-      .locator('#teamsDropdown option:not([value=""])')
-      .first()
-      .waitFor({
-        state: 'attached',
-        timeout: OPERATION_TIMEOUT,
-      });
-  }
-
-  // Specific setup methods that use the universal setup
   async setupForIncomingTaskDesktop(browser: Browser) {
     await this.setup(browser, {
       needsAgent1: true,
       needsCaller: true,
       agent1LoginMode: LOGIN_MODE.DESKTOP,
-      needsChat: true,
       enableConsoleLogging: true,
     });
   }
@@ -763,30 +909,39 @@ export class TestManager {
    * Use this only at the end of the entire test suite.
    */
   async cleanup(): Promise<void> {
+    const boundedCleanup = async (
+      operation: () => Promise<unknown>,
+      timeoutMs = 5000
+    ): Promise<void> => {
+      await Promise.race([operation().catch(() => {}), sleep(timeoutMs)]);
+    };
+
     // First handle any stray tasks
-    await this.softCleanup().catch(() => {});
+    await boundedCleanup(() => this.softCleanup(), 8000);
 
     // Logout operations - can be done in parallel
     const logoutOperations: Promise<void>[] = [];
 
     if (this.agent1Page) {
-      logoutOperations.push(this.safeStationLogout(this.agent1Page));
+      logoutOperations.push(boundedCleanup(() => this.safeStationLogout(this.agent1Page)));
     }
 
     if (this.multiSessionAgent1Page) {
-      logoutOperations.push(this.safeStationLogout(this.multiSessionAgent1Page));
+      logoutOperations.push(
+        boundedCleanup(() => this.safeStationLogout(this.multiSessionAgent1Page))
+      );
     }
 
     if (this.agent2Page) {
-      logoutOperations.push(this.safeStationLogout(this.agent2Page));
+      logoutOperations.push(boundedCleanup(() => this.safeStationLogout(this.agent2Page)));
     }
 
     if (this.agent3Page) {
-      logoutOperations.push(this.safeStationLogout(this.agent3Page));
+      logoutOperations.push(boundedCleanup(() => this.safeStationLogout(this.agent3Page)));
     }
 
     if (this.agent4Page) {
-      logoutOperations.push(this.safeStationLogout(this.agent4Page));
+      logoutOperations.push(boundedCleanup(() => this.safeStationLogout(this.agent4Page)));
     }
 
     await Promise.all(logoutOperations);
@@ -809,7 +964,7 @@ export class TestManager {
 
     pagesToClose.forEach((page) => {
       if (page) {
-        cleanupOperations.push(page.close().catch(() => {})); // Ignore errors during cleanup
+        cleanupOperations.push(boundedCleanup(() => page.close()));
       }
     });
 
@@ -828,7 +983,7 @@ export class TestManager {
 
     contextsToClose.forEach((context) => {
       if (context) {
-        cleanupOperations.push(context.close().catch(() => {})); // Ignore errors during cleanup
+        cleanupOperations.push(boundedCleanup(() => context.close()));
       }
     });
 
