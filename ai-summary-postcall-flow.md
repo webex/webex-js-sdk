@@ -73,6 +73,14 @@ sequenceDiagram
 The existing wrap-up API runs before the advisory summary response. A summary
 request rejection must not block wrap-up.
 
+## IGNORED Branch
+
+When the feature is enabled (`postCallEnabled === true`) but no summary was ever
+requested — for example, the feature flag arrived after wrapup was already
+initiated — the application must send `sendPostCallSummaryResponse` with `state:
+'IGNORED'`, `summary: ''`, all counters at zero, and the actual `wrapUpCode`
+before completing wrapup.
+
 ## Contract References
 
 This page owns the post-call sequence only. The canonical contract defines the

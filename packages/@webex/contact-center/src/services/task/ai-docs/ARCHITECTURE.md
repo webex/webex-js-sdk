@@ -387,6 +387,10 @@ flowchart LR
 
 - `Task` owns caller validation, organization/interaction gating, retained
   post-call response context, and one final metric per public invocation.
+  Mid-call response validation uses two internal state sets: the received branch
+  (`summaryReceived: true`) accepts `DEFAULT`, `EXCLUDED`, `IGNORED`, and
+  `MID_CALL_CANCELLED`; the unavailable branch (`summaryReceived: false`)
+  accepts `NOT_RECEIVED`, `MID_CALL_CANCELLED`, and `IGNORED`.
 - `TaskManager` owns task registry integration, realtime classification,
   feature-state keys, receiving-task candidate discovery, and lifecycle hooks.
 - `AISummaryCoordinator` owns pending slots, exact owner/token cleanup, feature

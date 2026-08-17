@@ -36,12 +36,12 @@ const AI_SUMMARY_TRANSPORT_ERROR_CODES = {
 } as const;
 
 class DummyTask extends Task {
-  constructor(contact: any, data: TaskData, agentId = 'agent-1') {
+  constructor(contact: any, data: TaskData, agentId = 'agent-1', agentName = 'Receiving Agent') {
     super(contact, data, {
       channelType: 'voice',
       isEndTaskEnabled: true,
       isEndConsultEnabled: true,
-    }, undefined, agentId);
+    }, undefined, agentId, agentName);
   }
 
   public accept() {
@@ -747,7 +747,6 @@ const createMidCallResponsePayloadWithoutTimestamps = (
     summary: {midCallSectionKeySentinel: 'mid-call-section-value-sentinel'} as any,
     feedback: 'none',
     state: 'DEFAULT',
-    agentName: 'Receiving Agent',
     numberOfTimesViewed: 1,
     numberOfTimesEdited: 0,
     numberOfTimesCopied: 0,
@@ -2474,6 +2473,31 @@ describe('Task AI summary APIs', () => {
     );
   });
 
+  it('accepts mid-call IGNORED on the unavailable branch (summaryReceived:false)', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const {adapter} = createSummaryMocks(task);
+
+    await expect(
+      task.sendMidCallSummaryResponse(
+        {
+          summaryReceived: false,
+          summary: '',
+          numberOfTimesViewed: 0,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+          feedback: 'none',
+          state: 'IGNORED',
+        },
+        'CONSULT'
+      )
+    ).resolves.toBeUndefined();
+
+    expect(adapter.sendSummaryResponseEvent).toHaveBeenCalledWith(
+      'agent-1',
+      expect.objectContaining({state: 'IGNORED'})
+    );
+  });
+
   it.each(['none', 'thumbs_up', 'thumbs_down'] as const)(
     'forwards valid %s feedback unchanged for both response flows',
     async (feedback) => {
@@ -2666,7 +2690,6 @@ describe('Task AI summary APIs', () => {
       },
     ],
     ['summaryReceived false with DEFAULT state', {summaryReceived: false, state: 'DEFAULT'}],
-    ['summaryReceived false with IGNORED state', {summaryReceived: false, state: 'IGNORED'}],
     ['summaryReceived false with EXCLUDED state', {summaryReceived: false, state: 'EXCLUDED'}],
     ['NOT_RECEIVED with non-empty summary', {summaryReceived: false, summary: 'summary'}],
     [

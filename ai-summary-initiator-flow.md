@@ -76,6 +76,16 @@ independently invoking consult or transfer, catches and records response failure
 and still continues the handoff. Unit tests prove event-name selection and
 bounded response settlement, not cross-call ordering between public APIs.
 
+## IGNORED Branch
+
+When the feature is enabled (`midCallEnabled === true`) but no summary was ever
+requested — for example, the feature flag arrived after the consult/transfer
+decision was already made, or the request was never triggered — the application
+must send `sendMidCallSummaryResponse` with `state: 'IGNORED'`, `summaryReceived:
+false`, `summary: ''`, and all counters at zero before invoking the handoff. The
+SDK accepts `IGNORED` in the unavailable branch (`summaryReceived: false`)
+alongside `NOT_RECEIVED` and `MID_CALL_CANCELLED`.
+
 ## Consumer Recovery Example
 
 This is the authoritative consumer control-flow example for FR-6 recovery

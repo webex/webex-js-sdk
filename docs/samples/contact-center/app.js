@@ -1392,6 +1392,20 @@ async function initiateConsult() {
       } catch (e) {
         console.error('Failed to send consult NOT_RECEIVED response', e);
       }
+    } else {
+      try {
+        await currentTask.sendMidCallSummaryResponse({
+          summaryReceived: false,
+          summary: '',
+          numberOfTimesViewed: 0,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+          feedback: 'none',
+          state: 'IGNORED',
+        }, 'CONSULT');
+      } catch (e) {
+        console.error('Failed to send consult IGNORED response', e);
+      }
     }
   }
 
@@ -1496,6 +1510,20 @@ async function initiateTransfer() {
         }, 'TRANSFER');
       } catch (e) {
         console.error('Failed to send transfer NOT_RECEIVED response', e);
+      }
+    } else {
+      try {
+        await currentTask.sendMidCallSummaryResponse({
+          summaryReceived: false,
+          summary: '',
+          numberOfTimesViewed: 0,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+          feedback: 'none',
+          state: 'IGNORED',
+        }, 'TRANSFER');
+      } catch (e) {
+        console.error('Failed to send transfer IGNORED response', e);
       }
     }
   }
@@ -3933,6 +3961,20 @@ async function wrapupCall() {
         });
       } catch (e) {
         console.error('Failed to send post-call NOT_RECEIVED response', e);
+      }
+    } else if (wrapupSummaryFeatures.postCallEnabled && wrapupInteractionId) {
+      try {
+        await currentTask.sendPostCallSummaryResponse({
+          summary: '',
+          numberOfTimesViewed: 0,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+          feedback: 'none',
+          state: 'IGNORED',
+          wrapUpCode: wrapupReason,
+        });
+      } catch (e) {
+        console.error('Failed to send post-call IGNORED response', e);
       }
     }
     const postcallBlock = document.getElementById('postcall-summary-block');

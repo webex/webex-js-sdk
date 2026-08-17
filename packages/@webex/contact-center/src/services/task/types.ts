@@ -1756,7 +1756,7 @@ export type MidCallUnavailableResponse = SummaryResponseTimestamps & {
   numberOfTimesEdited: 0;
   numberOfTimesCopied: 0;
   feedback: AISummaryFeedback;
-  state: Extract<MidCallSummaryState, 'NOT_RECEIVED' | 'MID_CALL_CANCELLED'>;
+  state: Extract<MidCallSummaryState, 'NOT_RECEIVED' | 'MID_CALL_CANCELLED' | 'IGNORED'>;
 };
 
 export type MidCallSummaryResponsePayload = MidCallReceivedResponse | MidCallUnavailableResponse;

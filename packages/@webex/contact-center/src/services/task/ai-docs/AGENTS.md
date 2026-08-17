@@ -17,7 +17,11 @@ adapter plus the package-internal summary coordinator.
   feature-enable snapshots, and timers.
 - `TaskUtils.ts`: task state helpers plus AI summary correlation helpers.
 - `types.ts`: `ITask`, task data types, public summary payloads, and internal
-  coordinator contracts.
+  coordinator contracts. The mid-call response payload is a discriminated union
+  on `summaryReceived`: `MidCallReceivedResponse` (`summaryReceived: true`,
+  states `DEFAULT | EXCLUDED | IGNORED | MID_CALL_CANCELLED`) and
+  `MidCallUnavailableResponse` (`summaryReceived: false`, states
+  `NOT_RECEIVED | MID_CALL_CANCELLED | IGNORED`).
 - `constants.ts`: task API method names and package-internal summary timeout
   aliases.
 - `TaskFactory.ts`: media-channel task construction. It does not know about AI
@@ -45,7 +49,10 @@ limited to task-layer implementation boundaries:
   current generated-summary flags accessor through `configureAISummary(...)`
   before listener setup or registry insertion.
 - Task owns public request/response validation and final operation metrics; it
-  must not import TaskManager or configuration services.
+  must not import TaskManager or configuration services. For mid-call response
+  validation, `summaryReceived: false` is accepted when `state` is one of
+  `NOT_RECEIVED`, `MID_CALL_CANCELLED`, or `IGNORED`; `summaryReceived: true`
+  accepts `DEFAULT`, `EXCLUDED`, `IGNORED`, or `MID_CALL_CANCELLED`.
 - Register pending requests before HTTP. Use the returned owner/token identity
   only for exact transport cleanup; lifecycle cleanup settles live requests.
 - Use `getAISummaryCorrelation(...)` for caller-facing validation and

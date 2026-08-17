@@ -211,6 +211,7 @@ Request recovery guidance:
 | HTTP transport failure | Pending entry is cleared by owner/token without settling `registration.result` | Response is optional; the application may continue the workflow. |
 | `AI_SUMMARY_REQUEST_ALREADY_PENDING` | No second pending entry and no second HTTP | Response is optional; the first accepted request remains pending. |
 | Inbound result timeout | Live resolver rejects with `POST_CALL_SUMMARY_TIMEOUT` or `MID_CALL_SUMMARY_TIMEOUT` | The application may send a `NOT_RECEIVED` response with the empty/zero unavailable branch. |
+| No request made (feature enabled but summary never triggered) | N/A | Send `IGNORED` with the empty/zero unavailable branch before continuing the business workflow. |
 
 No request rejection may block wrap-up, consult, or transfer.
 
@@ -240,10 +241,10 @@ Both require the organization mid-call flag and latest per-interaction
 
 `sendMidCallSummaryResponse(payload, 'CONSULT')` sends
 `MID_CALL_CONSULT_SUMMARY_RESPONSE`; the TRANSFER action sends
-`MID_CALL_TRANSFER_SUMMARY_RESPONSE`. Mid-call responses require non-empty
-`agentName`, omit `wrapUpCode`, and require the validation-only
-`summaryReceived: true | false` discriminator. That discriminator is not sent to
-transport.
+`MID_CALL_TRANSFER_SUMMARY_RESPONSE`. Mid-call responses omit `wrapUpCode` and
+require the validation-only `summaryReceived: true | false` discriminator. That
+discriminator is not sent to transport. The SDK supplies `agentName` from the
+agent registration config; callers do not include it in the payload.
 
 Consumer sequencing for CONSULT and TRANSFER is documentation-only evidence:
 applications should attempt and await `sendMidCallSummaryResponse(...)` before
@@ -280,14 +281,14 @@ Counter rules:
 - `numberOfTimesViewed` is exactly one on first dialog open.
 - `numberOfTimesEdited` and `numberOfTimesCopied` remain zero unless those
   actions occurred.
-- The no-summary branch uses `summary: ''` with all three counters set to zero.
+- The no-summary branch (`NOT_RECEIVED`, `MID_CALL_CANCELLED`, `IGNORED`) uses `summary: ''` with all three counters set to zero.
 
 Transport builds whitelist objects field by field:
 
 - no caller-object spread reaches the wire
 - flow-invalid fields are absent as own keys, not present with `undefined`
 - post-call has `wrapUpCode` and no `agentName`
-- mid-call has `agentName` and no `wrapUpCode`
+- mid-call has `agentName` (SDK-sourced from agent registration) and no `wrapUpCode`
 - mid-call omits `summaryReceived`
 
 ## Transport
