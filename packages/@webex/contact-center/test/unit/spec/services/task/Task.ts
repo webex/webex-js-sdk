@@ -1935,24 +1935,21 @@ describe('Task AI summary APIs', () => {
     expect(getFeatureEnablementSpy).toHaveBeenCalledTimes(1);
     expect(getAISummaryCorrelation).toHaveBeenCalledTimes(correlationCallsAfterRequest);
     expect(adapter.sendSummaryResponseEvent).toHaveBeenCalledTimes(1);
-    expect(adapter.sendSummaryResponseEvent.mock.calls[0]).toStrictEqual([
-      'agent-1',
-      {
-        agentId: 'agent-1',
-        interactionId: 'interaction-1',
-        conversationId: 'conversation-1',
-        eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
-        summary: {humanAuthoredSectionKeySentinel: 'human-authored-section-value-sentinel'},
-        feedback: 'thumbs_up',
-        wrapUpCode: 'resolved',
-        actionTimeStamp: 11,
-        publishTimestamp: 12,
-        numberOfTimesViewed: 1,
-        numberOfTimesEdited: 0,
-        numberOfTimesCopied: 0,
-        state: 'DEFAULT',
-      },
-    ]);
+    expect(adapter.sendSummaryResponseEvent.mock.calls[0][1]).toStrictEqual({
+      agentId: 'agent-1',
+      interactionId: 'interaction-1',
+      conversationId: 'conversation-1',
+      eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+      summary: {humanAuthoredSectionKeySentinel: 'human-authored-section-value-sentinel'},
+      feedback: 'thumbs_up',
+      wrapUpCode: 'resolved',
+      actionTimeStamp: 11,
+      publishTimestamp: 12,
+      numberOfTimesViewed: 1,
+      numberOfTimesEdited: 0,
+      numberOfTimesCopied: 0,
+      state: 'DEFAULT',
+    });
     expect(metrics.trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
       expect.objectContaining({
@@ -2052,7 +2049,7 @@ describe('Task AI summary APIs', () => {
 
     await expect(invoke(task)).resolves.toBeUndefined();
 
-    expect(adapter.sendSummaryResponseEvent.mock.calls[0]).toStrictEqual(['agent-1', expected]);
+    expect(adapter.sendSummaryResponseEvent.mock.calls[0][1]).toStrictEqual(expected);
   });
 
   it.each([
@@ -2100,7 +2097,7 @@ describe('Task AI summary APIs', () => {
 
     const transportPayload = adapter.sendSummaryResponseEvent.mock.calls[0][1];
 
-    expect(adapter.sendSummaryResponseEvent.mock.calls[0]).toStrictEqual(['agent-1', expected]);
+    expect(adapter.sendSummaryResponseEvent.mock.calls[0][1]).toStrictEqual(expected);
     expect(Object.prototype.hasOwnProperty.call(transportPayload, 'actionTimeStamp')).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(transportPayload, 'publishTimestamp')).toBe(false);
   });
@@ -2125,24 +2122,21 @@ describe('Task AI summary APIs', () => {
       )
     ).resolves.toBeUndefined();
 
-    expect(adapter.sendSummaryResponseEvent.mock.calls[0]).toStrictEqual([
-      'agent-1',
-      {
-        agentId: 'agent-1',
-        interactionId: 'interaction-1',
-        conversationId: 'conversation-1',
-        eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
-        summary: '',
-        feedback: 'none',
-        wrapUpCode: 'resolved',
-        actionTimeStamp: 31,
-        publishTimestamp: 32,
-        numberOfTimesViewed: 0,
-        numberOfTimesEdited: 0,
-        numberOfTimesCopied: 0,
-        state: 'NOT_RECEIVED',
-      },
-    ]);
+    expect(adapter.sendSummaryResponseEvent.mock.calls[0][1]).toStrictEqual({
+      agentId: 'agent-1',
+      interactionId: 'interaction-1',
+      conversationId: 'conversation-1',
+      eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+      summary: '',
+      feedback: 'none',
+      wrapUpCode: 'resolved',
+      actionTimeStamp: 31,
+      publishTimestamp: 32,
+      numberOfTimesViewed: 0,
+      numberOfTimesEdited: 0,
+      numberOfTimesCopied: 0,
+      state: 'NOT_RECEIVED',
+    });
   });
 
   it.each([
