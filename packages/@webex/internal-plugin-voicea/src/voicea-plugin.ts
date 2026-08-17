@@ -20,7 +20,7 @@ export class VoiceaPlugin extends WebexPlugin {
    * lifecycle (connection, disconnection, cleanup).
    *
    * @param {LLMChannel} llmChannel - The LLM channel to use for voicea
-   * @returns {VoiceaChannel} A new VoiceaChannel instance
+   * @returns {VoiceaChannel} a new VoiceaChannel instance
    */
   public createChannel(llmChannel: LLMChannel): VoiceaChannel {
     // @ts-ignore - webex is available on WebexPlugin

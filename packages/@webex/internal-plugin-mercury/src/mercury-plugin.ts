@@ -8,7 +8,7 @@ import {WebexPlugin} from '@webex/webex-core';
 
 import config from './config';
 
-// Since mercury-plugin.ts is a .ts file, the TS language server tries to parse mercury.js and chokes on the @deprecated decorator.
+// since mercury-plugin.ts is a .ts file, the TS language server tries to parse mercury.js and chokes on the @deprecated decorator.
 // using a require() call instead of import to avoid TS parsing the file:
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires

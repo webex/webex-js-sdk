@@ -578,7 +578,7 @@ const Webinar = WebexPlugin.extend({
   },
 
   /**
-   * update webcast layout for webinar
+   * Update webcast ayout for webinar
    * @param {object} layout
    * @returns {Promise}
    */

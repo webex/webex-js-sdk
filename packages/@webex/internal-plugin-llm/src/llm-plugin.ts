@@ -6,7 +6,7 @@ import {DATA_CHANNEL_WITH_JWT_TOKEN} from './constants';
 /**
  * LLMPlugin — registered as `webex.internal.llm`.
  *
- * Factory for creating LLMChannel instances. Each Meeting creates and owns
+ * factory for creating LLMChannel instances. Each Meeting creates and owns
  * its own LLMChannel(s), allowing multiple independent connections without
  * the need for session IDs or ownership tracking.
  *
