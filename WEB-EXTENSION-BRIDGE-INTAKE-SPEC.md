@@ -131,7 +131,7 @@ import { createWebBridge } from 'web-extension-bridge/web';
 const webBridge = createWebBridge({ allowedOrigins: [location.origin] });
 
 // FR1 — push a message to the extension
-webBridge.publish('message', { text: 'Hello extension' });
+webBridge.publish('message', { payload: 'Hello extension' });
 
 // FR2/FR3 — answer on-demand requests from the extension
 webBridge.requestHandler('snapshot', () => ({ value: readValue() }));
@@ -625,7 +625,7 @@ Plain HTML, CSS and JavaScript — no framework, no build step beyond the vendor
 | Element | Behaviour |
 | --- | --- |
 | Connection pill | "Waiting for extension…" → "Extension attached", driven by `onConnected`/`onDisconnected`. |
-| Push composer | Text input + **Publish to extension** → `webBridge.publish('message', { text })`. Shows a local echo log of what was sent. |
+| Push composer | Text input + **Publish to extension** → `webBridge.publish('message', { payload })`. Shows a local echo log of what was sent. |
 | Shared value field | Editable input read by the `snapshot` handler, so a tester can prove the pull returns the value **at request time**, not a stale copy. |
 | Requests-served counter | Increments each time the handler runs — visible proof the pull reached the page. |
 | Event log | Append-only, `textContent`-rendered, capped at N rows. |
