@@ -693,83 +693,11 @@ async function retrySummary(type) {
   }
 }
 
-function extractInputTextValues(items) {
-  const parts = [];
-  function traverse(nodes) {
-    if (!Array.isArray(nodes)) return;
-    for (const node of nodes) {
-      if (node.type === 'Input.Text' && node.value && String(node.value).trim()) {
-        parts.push(String(node.value).trim());
-      }
-      if (node.items) traverse(node.items);
-      if (node.columns) node.columns.forEach((c) => traverse(c.items || []));
-    }
-  }
-  traverse(items);
-  return parts.join('\n\n');
-}
-
-function isUnresolvedTemplate(text) {
-  return /^\$\{[^}]+\}$/.test(String(text).trim());
-}
-
-function extractTextBlockValues(items) {
-  const blocks = [];
-  function traverse(nodes) {
-    if (!Array.isArray(nodes)) return;
-    for (const node of nodes) {
-      const text = node.type === 'TextBlock' && node.text ? String(node.text).trim() : '';
-      if (text && !isUnresolvedTemplate(text)) {
-        blocks.push({ text, isLabel: node.weight === 'Bolder' });
-      }
-      if (node.items) traverse(node.items);
-      if (node.columns) node.columns.forEach((c) => traverse(c.items || []));
-    }
-  }
-  traverse(items);
-
-  const parts = [];
-  for (let i = 0; i < blocks.length; i++) {
-    const block = blocks[i];
-    if (block.isLabel) {
-      const next = blocks[i + 1];
-      if (next && !next.isLabel) {
-        parts.push(`${block.text}\n${next.text}`);
-        i++;
-      } else {
-        parts.push(block.text);
-      }
-    } else {
-      parts.push(block.text);
-    }
-  }
-  return parts.join('\n\n');
-}
 
 function renderSummaryText(payload) {
   if (!payload) return '';
 
-  // Path 1: editAdaptiveCard Input.Text values (editable card pre-populated with content)
-  const editCard =
-    payload.editAdaptiveCard ??
-    (payload.type === 'AdaptiveCard' && payload.body && payload.id && payload.id !== payload.adaptiveCardId
-      ? payload
-      : null);
-  if (editCard?.body) {
-    const text = extractInputTextValues(editCard.body);
-    if (text) return text;
-  }
-
-  // Path 2: adaptiveCard TextBlock content — full structured card with section labels
-  const card =
-    payload.adaptiveCard ??
-    (payload.type === 'AdaptiveCard' ? payload : null);
-  if (card?.body) {
-    const text = extractTextBlockValues(card.body);
-    if (text) return text;
-  }
-
-  // Path 3: full payload has a `sections` map
+  // Path 1: sections map — keyed by section name, values are strings
   const sections = payload.sections ?? payload.data?.sections;
   if (sections && typeof sections === 'object') {
     const parts = Object.entries(sections)
@@ -781,7 +709,7 @@ function renderSummaryText(payload) {
     if (parts.length) return parts.join('\n\n');
   }
 
-  // Path 4: plain-text summaryText — condensed fallback
+  // Path 2: plain summaryText fallback
   const summaryText = payload.summaryText ?? payload.data?.summaryText;
   if (typeof summaryText === 'string' && summaryText.trim()) return summaryText.trim();
 
