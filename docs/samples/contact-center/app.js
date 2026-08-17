@@ -19,7 +19,7 @@ let campaignCountdownInterval = null; // Campaign preview countdown timer
 let campaignPreviewAutoAction = null; // Auto-action on timeout: ACCEPT, SKIP, REMOVE
 let outdialANIId; // Store outdial ANI ID from agent profile
 const taskCreationTimes = new Map(); // Track when tasks first appear (taskId -> timestamp)
-const summaryFeatureMap = new Map(); // interactionId -> { midCallEnabled, postCallEnabled }
+const summaryFeatureMap = new Map(); // interactionId -> { midCallEnabled, postCallEnabled } (populated from task:featureEnablement)
 const summaryFieldMap = new Map(); // prefix -> [{ id, label }] for per-section mode, [] for flat
 const summaryOriginalPayload = new Map(); // prefix -> original payload (for read-only/delta)
 const SUMMARY_STORAGE_KEY = 'cc_summary_state';
@@ -820,6 +820,17 @@ function wireSummaryListeners(task) {
   task.on('task:midCallSummaryForReceivingAgent', (payload) => {
     console.info('[Receiving agent] mid-call summary buffered, waiting for task:assigned', payload);
     incomingMidCallSummaryPayload = payload;
+  });
+
+  task.on('task:featureEnablement', (payload) => {
+    console.info('FEATURE_ENABLEMENT received on task', payload);
+    if (payload?.interactionId) {
+      summaryFeatureMap.set(payload.interactionId, {
+        midCallEnabled: !!payload.midCallEnabled,
+        postCallEnabled: !!payload.postCallEnabled,
+      });
+      saveSummaryState(payload.interactionId);
+    }
   });
 }
 
@@ -3573,16 +3584,6 @@ function register() {
       const idx    = [...idleCodesDropdown.options].findIndex(o => o.value === auxId);
       idleCodesDropdown.selectedIndex = idx >= 0 ? idx : 0;
       startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
-    });
-
-    webex.cc.on('cc:featureEnablement', (payload) => {
-      console.info('FEATURE_ENABLEMENT received', payload);
-      if (payload?.interactionId) {
-        summaryFeatureMap.set(payload.interactionId, {
-          midCallEnabled: !!payload.midCallEnabled,
-          postCallEnabled: !!payload.postCallEnabled,
-        });
-      }
     });
 
         updateTaskList();

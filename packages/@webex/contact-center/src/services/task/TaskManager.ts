@@ -375,7 +375,7 @@ export default class TaskManager extends EventEmitter {
     }
 
     const featurePayload = payload as FeatureEnablementEventPayload;
-    const hasRegisteredTask = Object.values(this.taskCollection).some((task) => {
+    const matchingTask = Object.values(this.taskCollection).find((task) => {
       const correlation = this.getAISummaryCorrelationForTask(task, 'feature-presence-scan');
 
       return correlation?.interactionId === featurePayload.interactionId;
@@ -388,8 +388,12 @@ export default class TaskManager extends EventEmitter {
       midCallEnabled:
         featurePayload.midCallEnabled === undefined ? 'absent' : featurePayload.midCallEnabled,
     });
-    this.aiSummaryCoordinator.setFeatureEnablement(featurePayload, hasRegisteredTask);
+    this.aiSummaryCoordinator.setFeatureEnablement(featurePayload, matchingTask !== undefined);
     this.emit(AGENT_EVENTS.FEATURE_ENABLEMENT, featurePayload);
+
+    if (matchingTask) {
+      matchingTask.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featurePayload);
+    }
   }
 
   private validateFeatureEnablementPayload(payload: Record<string, unknown>): 'valid' | 'invalid' {
@@ -644,6 +648,20 @@ export default class TaskManager extends EventEmitter {
 
     if (correlation) {
       this.aiSummaryCoordinator.retainFeatureEnablementForTask(correlation.interactionId);
+    }
+  }
+
+  private deliverFeatureEnablementToTask(task: ITask): void {
+    const correlation = this.getAISummaryCorrelationForTask(task, 'feature-delivery');
+
+    if (correlation) {
+      const featurePayload = this.aiSummaryCoordinator.getFeatureEnablement(
+        correlation.interactionId
+      );
+
+      if (featurePayload) {
+        task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featurePayload);
+      }
     }
   }
 
@@ -1199,9 +1217,9 @@ export default class TaskManager extends EventEmitter {
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
       this.retainFeatureEnablementForTask(task);
+      this.deliverFeatureEnablementToTask(task);
     } else {
       task = this.updateTaskData(task, payload);
-      this.retainFeatureEnablementForTask(task);
     }
 
     return {task};
@@ -1241,6 +1259,7 @@ export default class TaskManager extends EventEmitter {
     this.setupTaskListeners(task);
     this.taskCollection[payload.interactionId] = task;
     this.retainFeatureEnablementForTask(task);
+    this.deliverFeatureEnablementToTask(task);
 
     return {task};
   }
@@ -1283,6 +1302,7 @@ export default class TaskManager extends EventEmitter {
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
       this.retainFeatureEnablementForTask(task);
+      this.deliverFeatureEnablementToTask(task);
     }
 
     return {task};
@@ -1447,6 +1467,7 @@ export default class TaskManager extends EventEmitter {
 
       this.setupTaskListeners(task);
       this.retainFeatureEnablementForTask(task);
+      this.deliverFeatureEnablementToTask(task);
     }
 
     if (task) {

@@ -705,6 +705,22 @@ export enum TASK_EVENTS {
    * Triggered when a mid-call summary is available for the receiving agent.
    */
   TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT = 'task:midCallSummaryForReceivingAgent',
+
+  /**
+   * Triggered on the task object when AI feature enablement flags arrive for that task's interaction.
+   * Fires immediately if the frame arrived after the task was registered, or at registration time
+   * if the frame arrived before the task (orphan retention). Consumers should use this event
+   * instead of the cc-level `FEATURE_ENABLEMENT` event so they do not need to maintain an
+   * interactionId → flags map manually.
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, (payload: FeatureEnablementEventPayload) => {
+   *   const { midCallEnabled, postCallEnabled } = payload;
+   *   // gate summary UI on these flags
+   * });
+   * ```
+   */
+  TASK_FEATURE_ENABLEMENT = 'task:featureEnablement',
 }
 
 /**

@@ -762,6 +762,63 @@ describe('TaskManager', () => {
     );
   });
 
+  it('should emit task:featureEnablement on the matching task when a feature frame arrives with the task registered', () => {
+    const taskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
+    const featurePayload = {
+      interactionId: taskId,
+      postCallEnabled: true,
+      midCallEnabled: false,
+      actionTimeStamp: 10,
+    };
+
+    taskManager.handleRealtimeWebsocketEvent(
+      JSON.stringify({
+        type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+        data: {data: featurePayload},
+      })
+    );
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featurePayload);
+  });
+
+  it('should emit task:featureEnablement on the task at registration when the feature frame arrived first (orphan path)', () => {
+    jest.useFakeTimers();
+    const newInteractionId = 'orphan-task-id';
+    const featurePayload = {
+      interactionId: newInteractionId,
+      postCallEnabled: true,
+      midCallEnabled: true,
+      actionTimeStamp: 5,
+    };
+
+    // Feature frame arrives before task registration — stored as orphan
+    taskManager.handleRealtimeWebsocketEvent(
+      JSON.stringify({
+        type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+        data: {data: featurePayload},
+      })
+    );
+
+    // Build and register the task, then spy before calling retain
+    const orphanTask = createStateMachineTask({
+      ...taskDataMock,
+      interactionId: newInteractionId,
+      mediaResourceId: newInteractionId,
+      interaction: {mediaType: 'telephony'},
+    });
+    const taskEmitSpy = jest.spyOn(orphanTask, 'emit');
+    taskManager.taskCollection[newInteractionId] = orphanTask;
+
+    // deliverFeatureEnablementToTask is called at task creation after retention
+    (taskManager as any).retainFeatureEnablementForTask(orphanTask);
+    (taskManager as any).deliverFeatureEnablementToTask(orphanTask);
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featurePayload);
+
+    taskManager.clearAISummaryState();
+    jest.useRealTimers();
+  });
+
   it('should not use a main interaction feature frame as fallback for a child task key', () => {
     jest.useFakeTimers();
     const coordinator = (taskManager as any).aiSummaryCoordinator;
@@ -2857,7 +2914,8 @@ describe('TaskManager', () => {
       }),
       undefined,
       undefined,
-      'test-agent-id'
+      'test-agent-id',
+      undefined
     );
   });
 

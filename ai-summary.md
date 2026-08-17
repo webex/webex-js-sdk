@@ -17,7 +17,8 @@ unaffected and are outside this SDK-only integration gate.
   - `task.requestMidCallSummary(actionType): Promise<MidCallSummaryEventPayload>`
   - `task.sendMidCallSummaryResponse(payload, actionType): Promise<void>`
 - Public discovery and delivery events:
-  - `cc:featureEnablement`
+  - `cc:featureEnablement` (cc-level; kept for backward compatibility)
+  - `task:featureEnablement` (task-level; preferred — fired on the task object so consumers do not need to maintain an interactionId → flags map)
   - `task:midCallSummaryForReceivingAgent`
 - Internal coordination for pending initiator requests, receiving-agent buffers,
   feature-enable snapshots, lifecycle cancellation, and bounded cleanup timers.
@@ -107,11 +108,18 @@ Task/API method constants added for the feature are:
 
 ### Feature Enablement
 
-Applications discover summary eligibility through `cc:featureEnablement`. The
-payload carries the top-level task `interactionId` plus independently optional
-`postCallEnabled` and `midCallEnabled` booleans and optional numeric
-`actionTimeStamp`. Absence stays `undefined`; the SDK does not coerce absent
-flags to `false`.
+Applications discover summary eligibility through `task:featureEnablement` on
+the task object (preferred) or `cc:featureEnablement` on the cc object
+(backward compatible). The payload carries the top-level task `interactionId`
+plus independently optional `postCallEnabled` and `midCallEnabled` booleans
+and optional numeric `actionTimeStamp`. Absence stays `undefined`; the SDK
+does not coerce absent flags to `false`.
+
+The SDK fires `task:featureEnablement` on the task immediately if the
+`FEATURE_ENABLEMENT` RTD frame arrives while the task is registered, or at
+task registration time if the frame arrived first (orphan retention). Consumers
+listening on the task object do not need to maintain an `interactionId → flags`
+map manually.
 
 Requests also require the organization profile flags:
 

@@ -51,9 +51,27 @@ If UUID is required, both the spec pseudocode and the implementation need updati
 
 ---
 
+## Issue 17 — Feature enablement delivered at cc level; consumers forced to maintain per-task map (wrong implementation — fixed)
+
+**Files:** `packages/@webex/contact-center/src/services/task/TaskManager.ts` · `types.ts` · `docs/samples/contact-center/app.js`
+
+**What happened:**
+The `FEATURE_ENABLEMENT` RTD frame was only re-emitted as `cc:featureEnablement` on the cc object. Consumers had to listen globally, extract the `interactionId` from the payload, and maintain their own `interactionId → flags` Map to gate summary UI per task.
+
+**Classification:** Wrong implementation — best practice is to deliver task-scoped events on the task object so consumers do not need to build secondary cross-task state.
+
+**Fix applied:**
+- Added `TASK_FEATURE_ENABLEMENT = 'task:featureEnablement'` to `TASK_EVENTS` in `types.ts`
+- `TaskManager.handleFeatureEnablementEvent`: switched from `.some()` to `.find()` to keep the task reference, then calls `task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featurePayload)` when the task is already registered
+- `TaskManager.retainFeatureEnablementForTask`: after clearing the orphan timeout, reads the stored payload via `coordinator.getFeatureEnablement(interactionId)` and emits `TASK_FEATURE_ENABLEMENT` on the task — covers the case where the frame arrived before `task:assigned`
+- `app.js`: removed the `cc:featureEnablement` global listener; added `task:featureEnablement` listener inside `wireSummaryListeners`; also persists flags to sessionStorage immediately on arrival
+
+---
+
 ## Summary
 
 | # | Area | Gap | Priority |
 |---|---|---|---|
 | 2 | Post-call — payload | `wrapUpCode` label vs. UUID — needs backend confirmation | Medium |
 | 16 | SDK API | Required callers to pass SDK-owned fields — **fixed** | ~~High~~ |
+| 17 | SDK event delivery | `cc:featureEnablement` forced consumers to maintain per-task map — **fixed** | ~~High~~ |

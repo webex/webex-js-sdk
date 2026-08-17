@@ -140,7 +140,7 @@ classDiagram
     }
 
     class TaskFactory {
-      + createTask(contact, webCallingService, data, configFlags, wrapupData, agentId) Task
+      + createTask(contact, webCallingService, data, configFlags, wrapupData, agentId, agentName) Task
     }
 
     Task <|-- Voice
@@ -361,8 +361,16 @@ this branch and must not be moved into AI summary routing.
 AI summary RTD routing is stricter:
 
 - `FEATURE_ENABLEMENT` is classified before payload validation; valid frames are
-  counted, stored by top-level `interactionId`, and forwarded on
-  `AGENT_EVENTS.FEATURE_ENABLEMENT`.
+  counted, stored by top-level `interactionId`, and forwarded on both
+  `AGENT_EVENTS.FEATURE_ENABLEMENT` (cc-level, kept for backward compatibility)
+  and `TASK_EVENTS.TASK_FEATURE_ENABLEMENT` on the matching task object when
+  the task is already registered. If the frame arrives before
+  `AGENT_CONTACT_RESERVED` creates the task (orphan), it is stored; at task
+  creation `retainFeatureEnablementForTask` clears the orphan timeout and
+  `deliverFeatureEnablementToTask` emits `task:featureEnablement` exactly
+  once on the newly created task. Delivery is called only from task creation
+  paths, not from `updateTaskData`, so consumers receive at most one emission
+  per task per enablement frame.
 - `POST_CALL_SUMMARY` and `MID_CALL_SUMMARY` require non-empty
   `conversationId` plus known optional fields and resolve a pending request by
   `conversationId` and inbound type.
