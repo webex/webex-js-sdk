@@ -952,6 +952,7 @@ type AISummaryMidCallResponseTransportPayload = (
     eventName:
       | typeof AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE
       | typeof AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE;
+    agentName: string;
   };
 
 export type AISummaryResponseTransportPayload =
