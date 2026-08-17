@@ -348,7 +348,7 @@ End consultation without transfer.
 
 ### Complete TASK_EVENTS inventory
 
-The public `TASK_EVENTS` enum contains 49 members; every member is listed below from `src/services/task/types.ts`.
+The public `TASK_EVENTS` enum contains 51 members; every member is listed below from `src/services/task/types.ts`.
 
 | Constant | Event string |
 |---|---|
@@ -401,6 +401,8 @@ The public `TASK_EVENTS` enum contains 49 members; every member is listed below 
 | `TASK_CAMPAIGN_PREVIEW_SKIP_FAILED` | `task:campaignPreviewSkipFailed` |
 | `TASK_CAMPAIGN_PREVIEW_REMOVE_FAILED` | `task:campaignPreviewRemoveFailed` |
 | `TASK_CAMPAIGN_CONTACT_UPDATED` | `task:campaignContactUpdated` |
+| `TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT` | `task:midCallSummaryForReceivingAgent` |
+| `TASK_FEATURE_ENABLEMENT` | `task:featureEnablement` |
 
 ## Requires (dependencies)
 - Services contact/dialer AQM factories
@@ -1000,7 +1002,7 @@ sequenceDiagram
 
 **API**
 
-- `createTask(contact, webCallingService, data, configFlags, wrapupData?, agentId?): Task`
+- `createTask(contact, webCallingService, data, configFlags, wrapupData?, agentId?, agentName?): Task`
 
 **Behavior**
 
@@ -1076,7 +1078,7 @@ classDiagram
     }
 
     class TaskFactory {
-      + createTask(contact, webCallingService, data, configFlags, wrapupData, agentId) Task
+      + createTask(contact, webCallingService, data, configFlags, wrapupData, agentId, agentName) Task
     }
 
     Task <|-- Voice
