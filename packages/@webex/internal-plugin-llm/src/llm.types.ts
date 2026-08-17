@@ -5,17 +5,26 @@ export enum DataChannelTokenType {
 
 type DataChannelTokenKey = DataChannelTokenType | string;
 
+/**
+ * Latencies (in milliseconds) captured during register + websocket connect.
+ */
+type RegisterAndConnectTiming = {
+  clientLLMDatachannelResponseTime?: number;
+  clientLLMWebSocketConnectTime?: number;
+};
+
 interface ILLMChannel {
   registerAndConnect: (
     locusUrl: string,
     datachannelUrl: string,
     datachannelToken?: string,
     sessionId?: string
-  ) => Promise<void>;
+  ) => Promise<RegisterAndConnectTiming | undefined>;
   isConnected: (sessionId?: string) => boolean;
   getBinding: (sessionId?: string) => string;
   getLocusUrl: (sessionId?: string) => string;
   getDatachannelUrl: (sessionId?: string) => string;
+  getWebSocketUrl: (sessionId?: string) => string | undefined;
   disconnectLLM: (
     options: {code: number; reason: string},
     sessionId?: string,
@@ -66,4 +75,4 @@ interface ILLMChannel {
 }
 
 // eslint-disable-next-line import/prefer-default-export
-export type {ILLMChannel, DataChannelTokenKey};
+export type {ILLMChannel, DataChannelTokenKey, RegisterAndConnectTiming};

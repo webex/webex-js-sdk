@@ -3,6 +3,7 @@ import sinon from 'sinon';
 import {cloneDeep, forEach} from 'lodash';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
+import {webexTrackingIdSequenceNumbers} from '@webex/webex-core';
 import testUtils from '../../../utils/testUtils';
 import Meetings from '@webex/plugin-meetings';
 import LocusInfo, {createLocusFromHashTreeMessage, findMeetingForHashTreeMessage} from '@webex/plugin-meetings/src/locus-info';
@@ -57,7 +58,7 @@ describe('plugin-meetings', () => {
 
     beforeEach(() => {
       mockMeeting = {};
-      locusInfo = new LocusInfo(updateMeeting, webex, meetingId);
+      locusInfo = new LocusInfo({updateMeeting}, webex, meetingId);
 
       locusInfo.init(locus);
 
@@ -149,7 +150,9 @@ describe('plugin-meetings', () => {
               visibleDataSets,
             },
             webexRequest: sinon.match.func,
-            locusInfoUpdateCallback: sinon.match.func,
+            callbacks: sinon.match({
+              locusInfoUpdateCallback: sinon.match.func,
+            }),
             debugId: sinon.match.string,
           })
         );
@@ -157,6 +160,39 @@ describe('plugin-meetings', () => {
         assert.notCalled(updateLocusCacheStub);
         assert.notCalled(updateLocusInfoStub);
         assert.isTrue(locusInfo.emitChange);
+      });
+
+      it('passes a generateTrackingId callback that reuses the tracking-id interceptor sequence', async () => {
+        webex.sessionId = 'test-session';
+        const hashTreeMessage = createHashTreeMessage(['dataset1']);
+
+        await locusInfo.initialSetup({trigger: 'locus-message', hashTreeMessage});
+
+        const {generateTrackingId} = HashTreeParserStub.firstCall.args[0].callbacks;
+
+        // The interceptor for this webex is present in the exposed map -> reuse its sequence.
+        const fakeInterceptor = {webex, sequence: 7};
+        webexTrackingIdSequenceNumbers.set(fakeInterceptor, 0);
+
+        try {
+          assert.equal(generateTrackingId(), 'test-session_7');
+        } finally {
+          webexTrackingIdSequenceNumbers.delete(fakeInterceptor);
+        }
+      });
+
+      it('passes a generateTrackingId callback that falls back to a uuid when no interceptor is registered', async () => {
+        webex.sessionId = 'test-session';
+        const hashTreeMessage = createHashTreeMessage(['dataset1']);
+
+        await locusInfo.initialSetup({trigger: 'locus-message', hashTreeMessage});
+
+        const {generateTrackingId} = HashTreeParserStub.firstCall.args[0].callbacks;
+
+        assert.match(
+          generateTrackingId(),
+          /^test-session_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+        );
       });
 
       it('should not initialize the hash tree when triggered from a non-hash tree locus message', async () => {
@@ -199,7 +235,9 @@ describe('plugin-meetings', () => {
             },
             metadata,
             webexRequest: sinon.match.func,
-            locusInfoUpdateCallback: sinon.match.func,
+            callbacks: sinon.match({
+              locusInfoUpdateCallback: sinon.match.func,
+            }),
             debugId: sinon.match.string,
           })
         );
@@ -280,7 +318,9 @@ describe('plugin-meetings', () => {
               dataSets: [],
             },
             webexRequest: sinon.match.func,
-            locusInfoUpdateCallback: sinon.match.func,
+            callbacks: sinon.match({
+              locusInfoUpdateCallback: sinon.match.func,
+            }),
             debugId: sinon.match.string,
             metadata: null,
           })
@@ -356,7 +396,7 @@ describe('plugin-meetings', () => {
             },
           });
 
-          locusInfoUpdateCallback = HashTreeParserStub.firstCall.args[0].locusInfoUpdateCallback;
+          locusInfoUpdateCallback = HashTreeParserStub.firstCall.args[0].callbacks.locusInfoUpdateCallback;
 
           assert.isDefined(locusInfoUpdateCallback);
 
@@ -2408,6 +2448,7 @@ describe('plugin-meetings', () => {
 
         selfWithLocalUnmuteRequired.controls.audio.muted = false;
         selfWithLocalUnmuteRequired.controls.audio.localAudioUnmuteRequired = true;
+        selfWithLocalUnmuteRequired.controls.audio.meta = {modifiedBy: 'host-uuid-123'};
 
         locusInfo.emitScoped = sinon.stub();
         locusInfo.updateSelf(selfWithLocalUnmuteRequired);
@@ -2422,6 +2463,33 @@ describe('plugin-meetings', () => {
           {
             muted: false,
             unmuteAllowed: true,
+            modifiedBy: 'host-uuid-123',
+          }
+        );
+      });
+
+      it('should set modifiedBy to null on LOCAL_UNMUTE_REQUIRED when it is unavailable', () => {
+        locusInfo.webex.internal.device.url = self.deviceUrl;
+        locusInfo.updateSelf(self);
+        const selfWithLocalUnmuteRequired = cloneDeep(self);
+
+        selfWithLocalUnmuteRequired.controls.audio.muted = false;
+        selfWithLocalUnmuteRequired.controls.audio.localAudioUnmuteRequired = true;
+
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateSelf(selfWithLocalUnmuteRequired);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUIRED,
+          {
+            muted: false,
+            unmuteAllowed: true,
+            modifiedBy: null,
           }
         );
       });

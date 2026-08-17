@@ -346,6 +346,9 @@ async function initCalling(e) {
     },
     serviceData,
     jwe: jwtTokenForDestElm.value,
+    iceGathering: {
+      reduceTimeoutForIceLite: true,
+    },
   };
 
   if (callingClientConfig.discovery.country === 'Country') {
@@ -359,7 +362,7 @@ async function initCalling(e) {
   const callingConfig = {
     clientConfig : clientConfig,
     callingClientConfig: callingClientConfig,
-    logger:loggerConfig
+    logger:loggerConfig,
   }
 
   calling = await Calling.init({webexConfig, callingConfig});

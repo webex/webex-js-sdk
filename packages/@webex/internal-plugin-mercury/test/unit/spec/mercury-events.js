@@ -298,6 +298,8 @@ describe('plugin-mercury', () => {
                 mercury._reconnect.restore();
               }
 
+              let expectedReconnectUrl;
+
               sinon.spy(mercury, 'connect');
 
               const offlineSpy = sinon.spy();
@@ -318,6 +320,12 @@ describe('plugin-mercury', () => {
                 .then(() => {
                   // Make sure mercury.connect has a call count of zero
                   mercury.connect.resetHistory();
+
+                  // Reconnection re-derives from the resolved URL
+                  // captured in _prepareAndOpenSocket, not the socket's actual
+                  // (possibly changed by interceptors) url.
+                  expectedReconnectUrl =
+                    mercury.sessionWebSocketUrls.get('mercury-default-session');
 
                   mockWebSocket.emit('close', {code, reason});
 
@@ -348,7 +356,7 @@ describe('plugin-mercury', () => {
                   assert.isFalse(mercury.connected, 'Mercury is not connected');
                   if (action === 'reconnect') {
                     assert.called(mercury.connect);
-                    assert.calledWith(mercury.connect, mockWebSocket.url);
+                    assert.calledWith(mercury.connect, expectedReconnectUrl);
                     assert.isTrue(mercury.connecting, 'Mercury is connecting');
 
                     // Block until reconnect completes so logs don't overlap

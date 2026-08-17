@@ -235,6 +235,27 @@ export type IceCandidateErrorEventPayload = {
 };
 
 /**
+ * Configuration controlling ICE candidate gathering behaviour during media negotiation.
+ */
+export interface IceGatheringConfig {
+  /**
+   * When `true`, the SDK uses a reduced ICE candidate gathering timeout if the remote peer
+   * advertises itself as an ICE-lite agent (`a=ice-lite`) in its ROAP offer. ICE-lite peers only
+   * offer host candidates and do not perform connectivity checks, so waiting the full
+   * `ICE_CANDIDATES_TIMEOUT` for local candidate gathering is unnecessary and only stalls media
+   * negotiation. This optimization is opt-in and defaults to `false`.
+   */
+  reduceTimeoutForIceLite?: boolean;
+
+  /**
+   * Optional override, in milliseconds, for the reduced ICE candidate gathering timeout applied
+   * when {@link reduceTimeoutForIceLite} is enabled and the remote offer is ICE-lite. When not
+   * provided, the SDK default (`ICE_LITE_CANDIDATES_TIMEOUT`) is used.
+   */
+  iceLiteTimeout?: number;
+}
+
+/**
  * Represents an interface for managing call-related operations.
  */
 export interface ICall extends Eventing<CallEventTypes> {

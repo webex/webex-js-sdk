@@ -11,7 +11,7 @@ import {
   VOICE_VARIANT,
 } from '../types';
 import {TaskContext, UIControlConfig} from './types';
-import {TaskState, MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE} from './constants';
+import {TaskState, MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE, INTERACTION_STATE} from './constants';
 import {
   getIsCustomerInCall,
   getConferenceParticipantsCount,
@@ -80,6 +80,23 @@ function hasConsultMediaInInteraction(
   return Boolean(media[consultMediaResourceId]);
 }
 
+/** True when this agent is actively initiating a consult, not a stale context flag alone (CAI-8329). */
+function isSelfActiveConsultInitiator(
+  consultInitiator: boolean,
+  selfAgentId: string | undefined,
+  selfParticipant: {consultState?: string} | null | undefined,
+  selfInConsultCall: boolean,
+  consultingAgentId?: string
+): boolean {
+  return (
+    consultInitiator &&
+    (selfParticipant?.consultState === 'consultInitiated' ||
+      selfParticipant?.consultState === 'consulting' ||
+      selfInConsultCall ||
+      (Boolean(consultingAgentId) && consultingAgentId === selfAgentId))
+  );
+}
+
 function computeVoiceInteractionUIControls(
   state: TaskState,
   context: TaskContext,
@@ -132,6 +149,7 @@ function computeVoiceInteractionUIControls(
     consultDestinationType,
     consultCallHeld,
     consultFromConference,
+    hideBlindTransferForEpDnPendingMerge,
   } = context;
   const {recordingControlsAvailable} = context;
 
@@ -168,12 +186,25 @@ function computeVoiceInteractionUIControls(
     interaction,
     taskData?.consultMediaResourceId
   );
+  const isSecondaryConsultRejectedWhileEpDnActive =
+    taskData?.type === 'AgentConsultFailed' && hideBlindTransferForEpDnPendingMerge;
+  const isSelfConsultCompleted =
+    selfParticipant?.consultState === 'consultCompleted' && taskData?.isConsulted === false;
   const isConsultEndedForSelf =
     taskData?.type === 'AgentConsultEnded' ||
-    taskData?.type === 'AgentConsultFailed' ||
-    (selfParticipant?.consultState === 'consultCompleted' &&
-      !hasConsultMedia &&
-      taskData?.isConsulted === false);
+    (taskData?.type === 'AgentConsultFailed' && !isSecondaryConsultRejectedWhileEpDnActive) ||
+    isSelfConsultCompleted;
+  // EP-DN consult merged to conference before destination joins main (CAI-8329).
+  // Context flag is set in actions.ts; treat as main-leg conference UI only here.
+  const isEpDnPendingConferenceMergeUi =
+    hideBlindTransferForEpDnPendingMerge &&
+    participantCount <= 1 &&
+    (isConferencing ||
+      conferenceFromBackend ||
+      interaction?.state === INTERACTION_STATE.POST_CALL) &&
+    !isConsultEndedForSelf;
+  const isEpDnPostCallCustomerLeft = isEpDnPendingConferenceMergeUi && !customerPresent;
+  const effectiveConsultInProgress = isEpDnPendingConferenceMergeUi ? false : consultInProgress;
   const effectiveConsultInitiator = isConsultEndedForSelf ? false : consultInitiator;
   const effectiveConsultCallHeld = isConsultEndedForSelf ? false : consultCallHeld;
   const effectiveConsultFromConference = isConsultEndedForSelf ? false : consultFromConference;
@@ -214,9 +245,14 @@ function computeVoiceInteractionUIControls(
   // Consulted agents have limited controls until they're in conference or wrapup
   // Use inConference (not isConferencing) so controls remain enabled after state downgrade
   const hasFullControls = !isConsulted || effectiveConsultInitiator || inConference || isWrappingUp;
-  const consultOwnedBySelf =
-    effectiveConsultInitiator ||
-    (Boolean(selfAgentId) && taskData?.consultingAgentId === selfAgentId);
+  const selfActiveConsultInitiator = isSelfActiveConsultInitiator(
+    effectiveConsultInitiator,
+    selfAgentId,
+    selfParticipant,
+    selfInConsultCall,
+    taskData?.consultingAgentId
+  );
+  const consultOwnedBySelf = !isEpDnPendingConferenceMergeUi && selfActiveConsultInitiator;
   const selfConsultPendingOnConsultMedia =
     selfParticipant?.consultState === 'consultInitiated' &&
     !taskData?.isConsulted &&
@@ -229,7 +265,7 @@ function computeVoiceInteractionUIControls(
       Object.values(interaction.participants).some((participant: any) => {
         if (!participant || participant.hasLeft) return false;
         if (participant.id === selfAgentId) return false;
-        if (participant.pType !== 'AGENT') return false;
+        if (String(participant.pType ?? '').toUpperCase() !== 'AGENT') return false;
 
         return (
           participant.consultState === 'consultInitiated' ||
@@ -246,11 +282,11 @@ function computeVoiceInteractionUIControls(
     consultOwnedBySelf &&
     !isConsulting &&
     !isConsulted &&
-    (consultInProgress || effectiveConsultCallHeld || hasConsultMedia);
+    (effectiveConsultInProgress || effectiveConsultCallHeld || hasConsultMedia);
   const activeLegForConferenceConsult = effectiveConsultCallHeld ? 'main' : 'consult';
   const isCurrentLegActive = currentLeg === activeLegForConferenceConsult;
   const isConferenceConsultTransferContext =
-    inConference && effectiveConsultInitiator && hasConsultMedia && isConsultDestinationReady;
+    inConference && selfActiveConsultInitiator && hasConsultMedia && isConsultDestinationReady;
   const consultLegOnHold = isConsulting && effectiveConsultCallHeld;
   const callProcessingDetails = interaction?.callProcessingDetails as
     | {conferenceHoldParticipant?: boolean | string}
@@ -284,11 +320,11 @@ function computeVoiceInteractionUIControls(
     (consultFromConference ||
       consultInitiator ||
       taskData?.type === 'AgentConsultCreated' ||
-      consultInProgress ||
+      effectiveConsultInProgress ||
       isConsulting);
   const hideExitConferenceDuringActiveConsultFromConference =
     inConference &&
-    consultInitiator &&
+    selfActiveConsultInitiator &&
     consultDestinationAgentJoined &&
     (isConsulting ||
       taskData?.type === 'AgentConsulting' ||
@@ -297,9 +333,9 @@ function computeVoiceInteractionUIControls(
     currentLeg === 'main' &&
     inConference &&
     consultFromConference &&
-    consultInitiator &&
+    selfActiveConsultInitiator &&
     (isConsulting ||
-      consultInProgress ||
+      effectiveConsultInProgress ||
       taskData?.type === 'AgentConsultCreated' ||
       taskData?.type === 'AgentConsulting' ||
       selfParticipant?.consultState === 'consultInitiated' ||
@@ -311,7 +347,7 @@ function computeVoiceInteractionUIControls(
     selfParticipant?.consultState === 'consulting' ||
     selfParticipant?.currentState === 'consulting';
   const showMainLegConferenceControlsDuringConsult =
-    currentLeg === 'main' && inConference && consultInProgress && !selfOnConsultLeg;
+    currentLeg === 'main' && inConference && effectiveConsultInProgress && !selfOnConsultLeg;
   const allowHeldMainLegControlsForNonInitiator =
     showMainLegConferenceControlsDuringConsult && !isHydratedConferenceConsultPending;
   const isConsultRequestedPhase =
@@ -331,6 +367,8 @@ function computeVoiceInteractionUIControls(
     (taskData?.type === 'AgentConsultFailed' ||
       taskData?.type === 'AgentConsultEnded' ||
       isConsultEndedForSelf);
+  // EP-DN consult merged to conference before a second agent joins main: hide blind transfer (CAI-8329).
+  const shouldHideBlindTransferForEpDnPendingConferenceMerge = isEpDnPendingConferenceMergeUi;
 
   if (isConsultUnansweredFailure) {
     const recordingControl =
@@ -348,11 +386,13 @@ function computeVoiceInteractionUIControls(
     };
   }
 
-  if (isConsultRequestedPhase) {
+  if (isConsultRequestedPhase && !isEpDnPendingConferenceMergeUi) {
     if (currentLeg === 'main') {
       return {
         ...getDefaultInteractionUIControls(),
-        transfer: VISIBLE_DISABLED,
+        transfer: shouldHideBlindTransferForEpDnPendingConferenceMerge
+          ? DISABLED
+          : VISIBLE_DISABLED,
         conference: VISIBLE_DISABLED,
         end: VISIBLE_DISABLED,
       };
@@ -388,6 +428,7 @@ function computeVoiceInteractionUIControls(
     // Hold: visible in connected/held/conference, disabled in conference/consulting
     hold: (() => {
       if (!hasFullControls) return DISABLED;
+      if (isEpDnPostCallCustomerLeft) return VISIBLE_DISABLED;
       if (forceHeldPostConsultControls) return VISIBLE_ENABLED;
       if (
         consultOwnedBySelf &&
@@ -410,6 +451,7 @@ function computeVoiceInteractionUIControls(
     mute: (() => {
       if (!isWebrtc) return DISABLED;
       if (isWrappingUp) return DISABLED;
+      if (isEpDnPostCallCustomerLeft && inConference) return VISIBLE_DISABLED;
       if (currentLeg === 'consult' && !selfInConsultCall) return DISABLED;
       // The consulted agent has no separate consult leg; their main leg is the active call, so
       // mute stays available while they consult (the heuristic below targets the initiator's
@@ -453,7 +495,7 @@ function computeVoiceInteractionUIControls(
         if (isConsulted) return DISABLED;
         if (forceHeldPostConsultControls) return VISIBLE_DISABLED;
 
-        if (consultInProgress) return VISIBLE_DISABLED;
+        if (effectiveConsultInProgress) return VISIBLE_DISABLED;
 
         return isWrappingUp ? VISIBLE_DISABLED : VISIBLE_ENABLED;
       }
@@ -472,6 +514,7 @@ function computeVoiceInteractionUIControls(
       if (inConference && isConsulting && consultInitiator) return DISABLED;
       if (hasParallelConsultLeg) {
         if (!customerPresent) return DISABLED;
+        if (shouldHideBlindTransferForEpDnPendingConferenceMerge) return DISABLED;
         if (state === TaskState.CONNECTED) return VISIBLE_ENABLED;
         if (state === TaskState.HELD) return VISIBLE_DISABLED;
       }
@@ -486,7 +529,17 @@ function computeVoiceInteractionUIControls(
       if (inConference) {
         // Real conference (multiple agents): transfer is hidden
         // Pending conference (only self agent): transfer remains available
-        return participantCount > 1 ? DISABLED : VISIBLE_ENABLED;
+        // EP-DN consult merged before destination joins: hide blind transfer on main
+        // (Agent 2 may still be ringing on the consult leg — blind transfer causes stuck ringing)
+        if (shouldHideBlindTransferForEpDnPendingConferenceMerge) {
+          return DISABLED;
+        }
+
+        if (participantCount > 1) {
+          return DISABLED;
+        }
+
+        return customerPresent ? VISIBLE_ENABLED : DISABLED;
       }
       if (state === TaskState.CONNECTED || state === TaskState.HELD) return VISIBLE_ENABLED;
 
@@ -523,7 +576,7 @@ function computeVoiceInteractionUIControls(
         const canFromConference =
           !maxParticipants &&
           customerPresent &&
-          !consultInProgress &&
+          !effectiveConsultInProgress &&
           !otherAgentConsultInProgress &&
           !isConsulting;
 
@@ -532,7 +585,7 @@ function computeVoiceInteractionUIControls(
 
       // Enabled conditions for connected/held
       const canFromConnected =
-        !maxParticipants && customerPresent && !consultInProgress && !isConsulted;
+        !maxParticipants && customerPresent && !effectiveConsultInProgress && !isConsulted;
 
       return {isVisible: true, isEnabled: canFromConnected};
     })(),
@@ -551,14 +604,16 @@ function computeVoiceInteractionUIControls(
       return {isVisible: true, isEnabled: consultInitiator || config.isEndConsultEnabled};
     })(),
 
-    // Recording: connected/held, hidden in real conference, visible in pending conference
+    // Recording: connected/held/conference when backend exposes recording controls
     recording: (() => {
       if (!recordingControlsAvailable || !config.isRecordingEnabled) return DISABLED;
       if (!hasFullControls || isConsulting) return DISABLED;
       if (inConference) {
-        // Real conference (multiple agents): recording hidden
-        // Pending conference (only self agent): recording available
-        return participantCount > 1 ? DISABLED : VISIBLE_ENABLED;
+        // Recording stays available in conference when backend exposes controls
+        // (including after EP-DN pending merge transitions to real conference — CAI-8329)
+        if (isEpDnPostCallCustomerLeft) return VISIBLE_DISABLED;
+
+        return VISIBLE_ENABLED;
       }
       if (hasParallelConsultLeg && !customerPresent) return DISABLED;
       if (state === TaskState.CONNECTED || state === TaskState.HELD) {
@@ -602,8 +657,9 @@ function computeVoiceInteractionUIControls(
       if (forceHeldPostConsultControls) return VISIBLE_DISABLED;
       if (isConsulted && !isConferencing) return DISABLED;
       if (!inConference) return DISABLED;
+      if (isEpDnPendingConferenceMergeUi) return VISIBLE_ENABLED;
       if (participantCount <= 1) return DISABLED;
-      if (consultInProgress) return VISIBLE_DISABLED;
+      if (effectiveConsultInProgress) return VISIBLE_DISABLED;
       const consultingFromConference = consultInitiator && isConsulting && conferenceFromBackend;
 
       return consultingFromConference ? VISIBLE_DISABLED : VISIBLE_ENABLED;
@@ -613,18 +669,18 @@ function computeVoiceInteractionUIControls(
     transferConference: (() => {
       if (isConferenceConsultTransferContext && !isCurrentLegActive) return VISIBLE_DISABLED;
       const consultLegTransferAvailable =
-        currentLeg === 'consult' && inConference && consultInitiator && hasConsultMedia;
+        currentLeg === 'consult' && inConference && selfActiveConsultInitiator && hasConsultMedia;
       const selfConsultingOnParticipantState = selfParticipant?.consultState === 'consulting';
       const conferenceTransferAvailable =
         consultLegTransferAvailable ||
         (inConference &&
-          consultInitiator &&
+          selfActiveConsultInitiator &&
           hasConsultMedia &&
-          (isConsulting || consultInProgress || selfConsultingOnParticipantState));
+          (isConsulting || effectiveConsultInProgress || selfConsultingOnParticipantState));
       if (consultLegOnHold) return DISABLED;
       if (hasParallelConsultLeg && !conferenceTransferAvailable) return DISABLED;
       if (!conferenceTransferAvailable && (!inConference || !isConsulting)) return DISABLED;
-      if (!consultInitiator || isConsulted) return DISABLED;
+      if (!selfActiveConsultInitiator || isConsulted) return DISABLED;
 
       return isConsultDestinationReady ? VISIBLE_ENABLED : VISIBLE_DISABLED;
     })(),
@@ -709,17 +765,38 @@ function getVoiceLegState(
   const interaction = taskData?.interaction;
   const mainCallId = interaction?.mainInteractionId || taskData?.interactionId;
   const selfAgentId = config.agentId ?? taskData?.agentId;
+
+  if (context.hideBlindTransferForEpDnPendingMerge && taskData) {
+    const conferenceFromBackend = getIsConferenceInProgress(taskData);
+    const participantCount =
+      interaction && mainCallId ? getConferenceParticipantsCount(interaction, mainCallId) : 0;
+
+    if (
+      participantCount <= 1 &&
+      (currentState === TaskState.CONFERENCING || conferenceFromBackend)
+    ) {
+      return {
+        hasConsultLeg: false,
+        activeLeg: 'main',
+        mainState: TaskState.CONFERENCING,
+        consultState: TaskState.CONSULTING,
+      };
+    }
+  }
+
   const selfParticipant = selfAgentId ? interaction?.participants?.[selfAgentId] : null;
   const hasConsultMedia = hasConsultMediaInInteraction(
     interaction,
     taskData?.consultMediaResourceId
   );
+  const isSecondaryConsultRejectedWhileEpDnActive =
+    taskData?.type === 'AgentConsultFailed' && context.hideBlindTransferForEpDnPendingMerge;
+  const isSelfConsultCompleted =
+    selfParticipant?.consultState === 'consultCompleted' && taskData?.isConsulted === false;
   const isConsultEndedForSelf =
     taskData?.type === 'AgentConsultEnded' ||
-    taskData?.type === 'AgentConsultFailed' ||
-    (selfParticipant?.consultState === 'consultCompleted' &&
-      !hasConsultMedia &&
-      taskData?.isConsulted === false);
+    (taskData?.type === 'AgentConsultFailed' && !isSecondaryConsultRejectedWhileEpDnActive) ||
+    isSelfConsultCompleted;
   const consultInProgress = getIsConsultInProgressForConferenceControls(
     interaction,
     mainCallId,
@@ -729,9 +806,21 @@ function getVoiceLegState(
     currentState === TaskState.CONSULTING ||
     currentState === TaskState.CONSULT_INITIATING ||
     currentState === TaskState.CONF_INITIATING;
+  const consultMedia = Object.values(interaction?.media ?? {}).find(
+    (media: any) =>
+      media?.mediaResourceId === taskData?.consultMediaResourceId || media?.mType === 'consult'
+  ) as {participants?: string[]} | undefined;
+  const selfInConsultCall =
+    Boolean(selfAgentId) && Boolean(consultMedia?.participants?.includes(selfAgentId as string));
+  const selfActiveConsultInitiator = isSelfActiveConsultInitiator(
+    context.consultInitiator,
+    selfAgentId,
+    selfParticipant,
+    selfInConsultCall,
+    taskData?.consultingAgentId
+  );
   const consultOwnedBySelf =
-    context.consultInitiator ||
-    (Boolean(selfAgentId) && taskData?.consultingAgentId === selfAgentId);
+    !context.hideBlindTransferForEpDnPendingMerge && selfActiveConsultInitiator;
   const selfConsultPendingOnConsultMedia =
     selfParticipant?.consultState === 'consultInitiated' &&
     !taskData?.isConsulted &&
@@ -739,9 +828,7 @@ function getVoiceLegState(
   const selfConsultingOnConsultMedia =
     selfParticipant?.consultState === 'consulting' && hasConsultMedia;
   const isConsultUnansweredFailure =
-    !taskData?.isConsulted &&
-    !hasConsultMedia &&
-    selfParticipant?.consultState === 'consultCompleted' &&
+    isSelfConsultCompleted &&
     Boolean(mainCallId && taskData?.interaction?.media?.[mainCallId]?.isHold === true) &&
     taskData?.interaction?.state !== 'conference' &&
     !getIsConferenceInProgress(taskData);
@@ -782,7 +869,14 @@ function getVoiceLegState(
   if (currentState === TaskState.CONFERENCING) {
     mainState = TaskState.CONFERENCING;
   } else if (context.consultCallHeld) {
-    mainState = TaskState.CONNECTED;
+    const mainMediaId = taskData?.interaction?.mainInteractionId || taskData?.interactionId;
+    const isMainHeld = Boolean(
+      mainMediaId && taskData?.interaction?.media?.[mainMediaId]?.isHold === true
+    );
+    mainState =
+      isMainHeld || taskData?.interaction?.state === 'hold' ? TaskState.HELD : TaskState.CONNECTED;
+  } else if (currentState === TaskState.CONNECTED || currentState === TaskState.HELD) {
+    mainState = currentState;
   }
 
   return {

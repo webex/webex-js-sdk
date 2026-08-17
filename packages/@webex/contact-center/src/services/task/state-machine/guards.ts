@@ -27,6 +27,7 @@ import {
   getConferenceParticipantsCount,
   getIsConferenceInProgress,
   isCampaignPreviewTask,
+  isEpDnConsultPendingConferenceMerge,
 } from '../TaskUtils';
 import {TaskEvent, INTERACTION_STATE, CONSULT_STATE, MEDIA_TYPE_CONSULT} from './constants';
 
@@ -169,6 +170,12 @@ export const guards = {
     }
 
     return false;
+  },
+
+  isEpDnPendingConferenceMergeHydrate: ({event, context}: GuardParams): boolean => {
+    const taskData = getTaskDataFromEvent(event);
+
+    return isEpDnConsultPendingConferenceMerge(taskData, getSelfAgentId(context, taskData));
   },
 
   isInteractionHeld: ({event}: GuardParams): boolean => {
@@ -386,6 +393,38 @@ export const guards = {
     }
 
     return false;
+  },
+
+  /**
+   * True when this agent initiated the conference transfer (widgets or desktop).
+   * Mirrors determineConsultInitiator: consultingAgentId === self only (not consultState).
+   */
+  isSelfConferenceTransferInitiator: ({context, event}: GuardParams): boolean => {
+    if (context.transferConferenceRequested === true) return true;
+
+    const taskData = getTaskDataFromEvent(event);
+    const selfAgentId = getSelfAgentId(context, taskData);
+    if (!selfAgentId || !taskData) return false;
+
+    return taskData.consultingAgentId === selfAgentId;
+  },
+
+  /**
+   * True when another agent performed conference transfer and this agent should
+   * only refresh task data (stay in the current state). False when this agent
+   * initiated the transfer (desktop or widgets) or has left the interaction.
+   */
+  isPassiveConferenceTransferObserver: ({context, event}: GuardParams): boolean => {
+    if (guards.isSelfConferenceTransferInitiator({context, event})) return false;
+
+    const taskData = getTaskDataFromEvent(event);
+    const selfAgentId = getSelfAgentId(context, taskData);
+    if (selfAgentId && taskData?.interaction?.participants) {
+      if (!(selfAgentId in taskData.interaction.participants)) return false;
+      if (taskData.interaction.participants[selfAgentId]?.hasLeft === true) return false;
+    }
+
+    return true;
   },
 
   isCampaignReservationAccept: ({event}: GuardParams): boolean => {

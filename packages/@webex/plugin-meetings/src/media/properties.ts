@@ -455,10 +455,14 @@ export default class MediaProperties {
    *
    * @param {string} issueType
    * @param {string} issueSubType
-   * @param {string} correlationId
+   * @param {Object} metadata
    * @returns {void}
    */
-  public sendMediaIssueMetric(issueType: string, issueSubType: string, correlationId) {
+  public sendMediaIssueMetric(
+    issueType: string,
+    issueSubType: string,
+    metadata: {correlationId: string; isMultistream: boolean}
+  ) {
     const key = `${issueType}_${issueSubType}`;
 
     const count = (this.mediaIssueCounters[key] || 0) + 1;
@@ -466,7 +470,7 @@ export default class MediaProperties {
     this.mediaIssueCounters[key] = count;
 
     this.throttledSendMediaIssueMetric({
-      correlationId,
+      ...metadata,
       ...this.mediaIssueCounters,
     });
   }
