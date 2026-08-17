@@ -198,6 +198,8 @@ describe('webex-core', () => {
     });
 
     describe('#initialize (waitForCatalogInit=true)', () => {
+      let clock;
+
       beforeEach(() => {
         services.webex.config = {
           ...(services.webex.config || {}),
@@ -208,6 +210,15 @@ describe('webex-core', () => {
         // true). We reset here so tests that call initialize() a second time
         // with the flag enabled observe the gated behavior from a clean state.
         services.ready = false;
+        // The gated path schedules a real 15s setTimeout via _makeInitTimeout()
+        // that is not cleared when the init race resolves. Fake only setTimeout/
+        // clearTimeout (leaving setImmediate real so waitForAsync still works)
+        // so restoring in afterEach clears the pending timer and Jest can exit.
+        clock = sinon.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
+      });
+
+      afterEach(() => {
+        clock.restore();
       });
 
       it('leaves services.ready=false after initialize (does not flip until finalize)', () => {
@@ -287,7 +298,6 @@ describe('webex-core', () => {
       });
 
       it('flips services.ready=true when init times out', async () => {
-        const clock = sinon.useFakeTimers();
         services.listenToOnce = sinon.stub();
         services.initServiceCatalogs = sinon.stub().returns(new Promise(() => {}));
         services.webex.credentials = {
@@ -300,7 +310,6 @@ describe('webex-core', () => {
         services.listenToOnce.getCall(1).args[2]();
 
         await clock.tickAsync(15_001);
-        clock.restore();
 
         assert.isTrue(services.initFailed);
         assert.isTrue(services.ready);
@@ -490,7 +499,6 @@ describe('webex-core', () => {
         services.initialize();
         services.listenToOnce.getCall(0).args[2]();
         services.listenToOnce.getCall(1).args[2]();
-        await waitForAsync();
 
         // Advance well past the configured init timeout; since no timeout was
         // scheduled in skip mode, no timeout error should ever be logged.
