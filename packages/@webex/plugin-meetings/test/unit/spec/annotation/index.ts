@@ -264,7 +264,7 @@ describe('live-annotation', () => {
         const sendObject = {
           id: sinon.match.string,
           type: 'publishRequest',
-          recipients: {route: undefined},
+          recipients: [{route: undefined}],
           headers: {to: '987ead98-6c93-4fcb-899d-517305c47503'},
           data: {
             eventType: 'relay.event',
@@ -310,7 +310,7 @@ describe('live-annotation', () => {
         assert.notCalled(annotationService.webex.internal.llm.socket.send);
 
         const sent = practiceSocket.send.getCall(0).args[0];
-        assert.equal(sent.recipients.route, 'practice-binding');
+        assert.equal(sent.recipients[0].route, 'practice-binding');
       });
 
       it('falls back to the default socket and binding when the practice-session socket exists but is not connected', () => {
@@ -331,7 +331,7 @@ describe('live-annotation', () => {
         assert.calledOnce(annotationService.webex.internal.llm.socket.send);
 
         const sent = annotationService.webex.internal.llm.socket.send.getCall(0).args[0];
-        assert.equal(sent.recipients.route, 'default-binding');
+        assert.equal(sent.recipients[0].route, 'default-binding');
       });
 
     });
