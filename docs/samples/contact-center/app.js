@@ -21,6 +21,8 @@ let outdialANIId; // Store outdial ANI ID from agent profile
 const taskCreationTimes = new Map(); // Track when tasks first appear (taskId -> timestamp)
 const summaryFeatureMap = new Map(); // interactionId -> { midCallEnabled, postCallEnabled }
 const summaryFieldMap = new Map(); // prefix -> [{ id, label }] for per-section mode, [] for flat
+const summaryOriginalPayload = new Map(); // prefix -> original payload (for read-only/delta)
+const SUMMARY_STORAGE_KEY = 'cc_summary_state';
 let incomingMidCallSummaryPayload = null; // buffered until task:assigned (mirrors desktop behaviour)
 
 let midCallSummary = {
@@ -808,6 +810,11 @@ function wireSummaryListeners(task) {
       postCallSummary.numberOfTimesViewed += 1;
       postCallSummary._viewCounted = true;
     }
+    if (Array.isArray(payload.suggestedWrapUpCodes) && payload.suggestedWrapUpCodes.length > 0) {
+      applySuggestedWrapUpCodes(payload.suggestedWrapUpCodes);
+    }
+    const taskInteractionId = task.data?.interactionId;
+    if (taskInteractionId) saveSummaryState(taskInteractionId);
   });
 
   task.on('task:midCallSummaryForReceivingAgent', (payload) => {
@@ -918,7 +925,40 @@ function renderSummarySection(prefix, payload) {
   const container = document.getElementById(`${prefix}-sections`);
   if (!container) return;
   container.innerHTML = '';
+  summaryOriginalPayload.set(prefix, payload);
+  summaryFieldMap.set(prefix, []); // empty until agent clicks Edit
 
+  const editBtn = document.createElement('button');
+  editBtn.type = 'button';
+  editBtn.textContent = 'Edit';
+  editBtn.style.cssText = 'margin-bottom: 6px;';
+  editBtn.onclick = () => {
+    container.innerHTML = '';
+    renderSummaryEditMode(prefix, payload, container);
+  };
+  container.appendChild(editBtn);
+
+  const fields = extractEditFields(payload);
+  if (fields.length > 0) {
+    fields.forEach((field) => {
+      const row = document.createElement('div');
+      const strong = document.createElement('strong');
+      strong.textContent = `${field.label}: `;
+      const span = document.createElement('span');
+      span.textContent = field.value || '—';
+      row.appendChild(strong);
+      row.appendChild(span);
+      container.appendChild(row);
+    });
+  } else {
+    const pre = document.createElement('pre');
+    pre.style.cssText = 'white-space: pre-wrap; margin: 4px 0;';
+    pre.textContent = payload ? renderSummaryText(payload) : '';
+    container.appendChild(pre);
+  }
+}
+
+function renderSummaryEditMode(prefix, payload, container) {
   const fields = extractEditFields(payload);
   if (fields.length > 0) {
     summaryFieldMap.set(prefix, fields.map((f) => ({ id: f.id, label: f.label })));
@@ -941,6 +981,71 @@ function renderSummarySection(prefix, payload) {
     ta.value = payload ? renderSummaryText(payload) : '';
     ta.placeholder = 'Summary will appear here.';
     container.appendChild(ta);
+  }
+}
+
+function applySuggestedWrapUpCodes(suggestedCodes) {
+  if (!wrapupCodesDropdownElm || !suggestedCodes.length) return;
+  for (const code of suggestedCodes) {
+    for (let i = 0; i < wrapupCodesDropdownElm.options.length; i++) {
+      const opt = wrapupCodesDropdownElm.options[i];
+      if (opt.value === code || opt.text === code) {
+        wrapupCodesDropdownElm.selectedIndex = i;
+        return;
+      }
+    }
+  }
+}
+
+function saveSummaryState(interactionId) {
+  try {
+    const state = JSON.parse(sessionStorage.getItem(SUMMARY_STORAGE_KEY) || '{}');
+    state[interactionId] = {
+      postCallSummary: {
+        payload: postCallSummary.payload,
+        numberOfTimesViewed: postCallSummary.numberOfTimesViewed,
+        numberOfTimesEdited: postCallSummary.numberOfTimesEdited,
+        numberOfTimesCopied: postCallSummary.numberOfTimesCopied,
+        feedback: postCallSummary.feedback,
+        requestFailed: postCallSummary.requestFailed,
+      },
+      featureFlags: summaryFeatureMap.get(interactionId) || {},
+    };
+    sessionStorage.setItem(SUMMARY_STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.warn('Failed to save summary state to sessionStorage', e);
+  }
+}
+
+function restoreSummaryState(interactionId) {
+  try {
+    const state = JSON.parse(sessionStorage.getItem(SUMMARY_STORAGE_KEY) || '{}');
+    const saved = state[interactionId];
+    if (!saved) return false;
+    if (saved.featureFlags) summaryFeatureMap.set(interactionId, saved.featureFlags);
+    if (saved.postCallSummary?.payload) {
+      Object.assign(postCallSummary, saved.postCallSummary);
+      postCallSummary._viewCounted = true;
+      renderSummarySection('postcall-summary', postCallSummary.payload);
+      const block = document.getElementById('postcall-summary-block');
+      if (block) block.style.display = '';
+      console.info('Post-call summary state restored from sessionStorage for', interactionId);
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.warn('Failed to restore summary state from sessionStorage', e);
+    return false;
+  }
+}
+
+function clearSummaryStorageState(interactionId) {
+  try {
+    const state = JSON.parse(sessionStorage.getItem(SUMMARY_STORAGE_KEY) || '{}');
+    delete state[interactionId];
+    sessionStorage.setItem(SUMMARY_STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    // ignore
   }
 }
 
@@ -989,11 +1094,14 @@ function getSummaryText(prefix) {
 
 function buildSummaryPayload(prefix) {
   const fields = summaryFieldMap.get(prefix) || [];
+  const original = summaryOriginalPayload.get(prefix);
   if (fields.length > 0) {
+    const originalFields = extractEditFields(original);
+    const origMap = Object.fromEntries(originalFields.map((f) => [f.id, f.value]));
     const sections = {};
     fields.forEach((f) => {
       const ta = document.getElementById(`${prefix}-${f.id}`);
-      if (ta) sections[f.id] = ta.value;
+      if (ta && ta.value !== (origMap[f.id] || '')) sections[f.id] = ta.value;
     });
     return sections;
   }
@@ -3528,10 +3636,10 @@ function handleTaskHydrate(task) {
   if (!currentTask || !currentTask.data || !currentTask.data.interaction) {
     console.error('task:hydrate --> No task data found.');
     alert('task:hydrate --> No task data found.');
-    
     return;
   }
 
+  restoreSummaryState(currentTask.data.interactionId);
   handleTaskSelect(currentTask);
   updateUnregisterButtonState();
 }
@@ -3977,6 +4085,7 @@ async function wrapupCall() {
         console.error('Failed to send post-call IGNORED response', e);
       }
     }
+    clearSummaryStorageState(wrapupInteractionId);
     const postcallBlock = document.getElementById('postcall-summary-block');
     if (postcallBlock) postcallBlock.style.display = 'none';
   } catch (error) {
