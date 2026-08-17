@@ -684,14 +684,6 @@ describe('webex.cc', () => {
         TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
         expect.any(Function)
       );
-      expect(mockTaskManager.off).toHaveBeenCalledWith(
-        AGENT_EVENTS.FEATURE_ENABLEMENT,
-        webex.cc['handleFeatureEnablement']
-      );
-      expect(mockTaskManager.on).toHaveBeenCalledWith(
-        AGENT_EVENTS.FEATURE_ENABLEMENT,
-        webex.cc['handleFeatureEnablement']
-      );
       expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
       expect(webex.cc.services.rtdWebSocketManager.initWebSocket).toHaveBeenCalledWith({
         body: {
@@ -736,35 +728,6 @@ describe('webex.cc', () => {
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
       ]);
-    });
-
-    it('restores public feature enablement forwarding after deregistration cleanup and register', async () => {
-      const profile = createFreshAgentProfile({
-        webRtcEnabled: false,
-        loginVoiceOptions: [LoginOption.EXTENSION],
-      });
-      const featurePayload = {
-        interactionId: 're-registered-interaction',
-        postCallEnabled: true,
-        midCallEnabled: false,
-      };
-      const triggerSpy = jest.spyOn(webex.cc, 'trigger');
-
-      webex.cc['runDeregisterCleanup']();
-      mockTaskManager.on.mockClear();
-      jest.spyOn(webex.cc, 'connectWebsocket').mockResolvedValue(profile);
-
-      await webex.cc.register();
-
-      const featureRegistrations = mockTaskManager.on.mock.calls.filter(
-        ([eventName]) => eventName === AGENT_EVENTS.FEATURE_ENABLEMENT
-      );
-      expect(featureRegistrations).toEqual([
-        [AGENT_EVENTS.FEATURE_ENABLEMENT, webex.cc['handleFeatureEnablement']],
-      ]);
-
-      featureRegistrations[0][1](featurePayload);
-      expect(triggerSpy).toHaveBeenCalledWith(AGENT_EVENTS.FEATURE_ENABLEMENT, featurePayload);
     });
 
     it('should not register when config is undefined', async () => {
@@ -1396,82 +1359,6 @@ describe('webex.cc', () => {
       jest.useRealTimers();
     });
 
-    it('forwards real FEATURE_ENABLEMENT frames through one surviving named listener', () => {
-      const harness = createSummaryHarness();
-      const triggerSpy = jest.spyOn(webex.cc, 'trigger');
-      const taskManagerOffSpy = jest.spyOn(harness.taskManager, 'off');
-      const taskManagerOnSpy = jest.spyOn(harness.taskManager, 'on');
-      const featurePayloads = [
-        {
-          interactionId: 'interaction-1',
-          postCallEnabled: true,
-          midCallEnabled: false,
-          actionTimeStamp: 1,
-        },
-        {
-          interactionId: 'interaction-2',
-          postCallEnabled: false,
-          midCallEnabled: true,
-          actionTimeStamp: 2,
-        },
-        {
-          interactionId: 'interaction-2',
-          postCallEnabled: false,
-          midCallEnabled: true,
-          actionTimeStamp: 2,
-        },
-      ];
-
-      attachRtdMessageListener(harness.rtdWebSocketManager);
-      webex.cc['refreshTaskManagerEventForwarders']();
-      webex.cc['refreshTaskManagerEventForwarders']();
-
-      const featureOffOrders = taskManagerOffSpy.mock.calls
-        .map(([eventName], index) =>
-          eventName === AGENT_EVENTS.FEATURE_ENABLEMENT
-            ? taskManagerOffSpy.mock.invocationCallOrder[index]
-            : undefined
-        )
-        .filter(Boolean);
-      const featureOnOrders = taskManagerOnSpy.mock.calls
-        .map(([eventName], index) =>
-          eventName === AGENT_EVENTS.FEATURE_ENABLEMENT
-            ? taskManagerOnSpy.mock.invocationCallOrder[index]
-            : undefined
-        )
-        .filter(Boolean);
-
-      expect(featureOffOrders).toHaveLength(2);
-      expect(featureOnOrders).toHaveLength(2);
-      featureOffOrders.forEach((offOrder, index) => {
-        expect(offOrder).toBeLessThan(featureOnOrders[index]);
-      });
-      expect(harness.taskManager.listenerCount(AGENT_EVENTS.FEATURE_ENABLEMENT)).toBe(1);
-
-      featurePayloads.forEach((payload) => emitFeatureEnablement(harness, payload));
-
-      expect(
-        triggerSpy.mock.calls.filter(([eventName]) => eventName === AGENT_EVENTS.FEATURE_ENABLEMENT)
-      ).toEqual(featurePayloads.map((payload) => [AGENT_EVENTS.FEATURE_ENABLEMENT, payload]));
-
-      triggerSpy.mockClear();
-
-      emitSentinelPostCallSummary(harness, 'unmatched-post-conversation');
-      emitSentinelMidCallSummary(harness, 'unmatched-mid-conversation');
-
-      expect(
-        triggerSpy.mock.calls.some(
-          ([eventName]) =>
-            eventName === AGENT_EVENTS.FEATURE_ENABLEMENT ||
-            eventName === CC_EVENTS.POST_CALL_SUMMARY ||
-            eventName === CC_EVENTS.MID_CALL_SUMMARY
-        )
-      ).toBe(false);
-      expectSentinelsNotObserved();
-      harness.taskManager.clearAISummaryState();
-      harness.expectSummaryStateCleared();
-    });
-
     it('keeps connection and RTD listeners single-subscribed across repeated register calls', async () => {
       const harness = createSummaryHarness();
       const triggerSpy = jest.spyOn(webex.cc, 'trigger');
@@ -1530,10 +1417,6 @@ describe('webex.cc', () => {
       const featureMetricCalls = mockMetricsManager.trackEvent.mock.calls.filter(
         ([eventName]) => eventName === METRIC_EVENT_NAMES.AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED
       );
-      const featureEventCalls = triggerSpy.mock.calls.filter(
-        ([eventName]) => eventName === AGENT_EVENTS.FEATURE_ENABLEMENT
-      );
-
       expect(dropMetricCalls).toHaveLength(1);
       expect(dropMetricCalls[0]).toEqual([
         METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
@@ -1554,7 +1437,6 @@ describe('webex.cc', () => {
         },
         ['operational'],
       ]);
-      expect(featureEventCalls).toEqual([[AGENT_EVENTS.FEATURE_ENABLEMENT, featurePayload]]);
     });
 
     it('forwards task-manager handlers through ContactCenter trigger and delegates RTD messages', () => {
@@ -1619,12 +1501,6 @@ describe('webex.cc', () => {
       expect(harness.rtdWebSocketManager.listenerCount('message')).toBe(1);
 
       dispatchFeatureEnablement(harness);
-      expect(triggerSpy).toHaveBeenLastCalledWith(AGENT_EVENTS.FEATURE_ENABLEMENT, {
-        interactionId: 'interaction-1',
-        postCallEnabled: true,
-        midCallEnabled: true,
-        actionTimeStamp: 1,
-      });
 
       dispatchFeatureEnablement(harness, {
         interactionId: 'orphan-before-reconnect',
@@ -1652,18 +1528,11 @@ describe('webex.cc', () => {
         midCallEnabled: true,
         actionTimeStamp: 5,
       });
-      expect(triggerSpy).toHaveBeenLastCalledWith(AGENT_EVENTS.FEATURE_ENABLEMENT, {
-        interactionId: 'interaction-1',
-        postCallEnabled: false,
-        midCallEnabled: true,
-        actionTimeStamp: 5,
-      });
 
       await webex.cc.deregister();
 
       harness.expectSummaryStateCleared();
       expect(jest.getTimerCount()).toBe(0);
-      expect(harness.taskManager.listenerCount(AGENT_EVENTS.FEATURE_ENABLEMENT)).toBe(0);
       expect(harness.rtdWebSocketManager.listenerCount('message')).toBe(0);
       triggerSpy.mockClear();
 
@@ -3265,10 +3134,6 @@ describe('webex.cc', () => {
         TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
         expect.any(Function)
       );
-      expect(mockTaskManager.off).toHaveBeenCalledWith(
-        AGENT_EVENTS.FEATURE_ENABLEMENT,
-        webex.cc['handleFeatureEnablement']
-      );
       expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
       expect(webex.cc.services.rtdWebSocketManager.off).toHaveBeenCalledWith(
         'message',
@@ -3397,33 +3262,6 @@ describe('webex.cc', () => {
       expect(webex.cc.agentConfig).toBeNull();
     });
 
-    it('removes feature enablement handler after earlier teardown rejection', async () => {
-      const mockError = new Error('Failed to remove task listener');
-
-      mockTaskManager.off.mockImplementation((eventName) => {
-        if (eventName === TASK_EVENTS.TASK_HYDRATE) {
-          throw mockError;
-        }
-      });
-
-      await expect(webex.cc.deregister()).rejects.toThrow('Failed to remove task listener');
-
-      expect(mockTaskManager.off).toHaveBeenCalledWith(
-        AGENT_EVENTS.FEATURE_ENABLEMENT,
-        webex.cc['handleFeatureEnablement']
-      );
-      expect(mockTaskManager.clearAISummaryState).toHaveBeenCalled();
-      expect(webex.cc.services.rtdWebSocketManager.off).toHaveBeenCalledWith(
-        'message',
-        webex.cc['handleRTDWebsocketMessage']
-      );
-      expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenCalledWith(
-        false,
-        'Unregistering the SDK'
-      );
-      expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenCalledTimes(1);
-    });
-
     it.each([
       {
         name: 'AI summary state clear',
@@ -3431,17 +3269,6 @@ describe('webex.cc', () => {
         fail: (error: Error) => {
           mockTaskManager.clearAISummaryState.mockImplementation(() => {
             throw error;
-          });
-        },
-      },
-      {
-        name: 'feature enablement listener removal',
-        message: 'Failed to remove feature listener',
-        fail: (error: Error) => {
-          mockTaskManager.off.mockImplementation((eventName) => {
-            if (eventName === AGENT_EVENTS.FEATURE_ENABLEMENT) {
-              throw error;
-            }
           });
         },
       },
@@ -3472,10 +3299,6 @@ describe('webex.cc', () => {
         await expect(webex.cc.deregister()).rejects.toThrow(testCase.message);
 
         expect(mockTaskManager.clearAISummaryState).toHaveBeenCalledTimes(1);
-        expect(mockTaskManager.off).toHaveBeenCalledWith(
-          AGENT_EVENTS.FEATURE_ENABLEMENT,
-          webex.cc['handleFeatureEnablement']
-        );
         expect(mockRTDWebSocketManager.off).toHaveBeenCalledWith(
           'message',
           webex.cc['handleRTDWebsocketMessage']
@@ -3509,7 +3332,6 @@ describe('webex.cc', () => {
       const primaryError = new Error('Failed to remove task listener');
       const cleanupErrors = {
         clear: new Error('Cleanup clear failed'),
-        featureOff: new Error('Cleanup feature off failed'),
         rtdOff: new Error('Cleanup RTD off failed'),
         rtdClose: new Error('Cleanup RTD close failed'),
       };
@@ -3520,9 +3342,6 @@ describe('webex.cc', () => {
       mockTaskManager.off.mockImplementation((eventName) => {
         if (eventName === TASK_EVENTS.TASK_HYDRATE) {
           throw primaryError;
-        }
-        if (eventName === AGENT_EVENTS.FEATURE_ENABLEMENT) {
-          throw cleanupErrors.featureOff;
         }
       });
       mockRTDWebSocketManager.off.mockImplementation(() => {
@@ -3536,10 +3355,6 @@ describe('webex.cc', () => {
         await expect(webex.cc.deregister()).rejects.toThrow(primaryError.message);
 
         expect(mockTaskManager.clearAISummaryState).toHaveBeenCalledTimes(1);
-        expect(mockTaskManager.off).toHaveBeenCalledWith(
-          AGENT_EVENTS.FEATURE_ENABLEMENT,
-          webex.cc['handleFeatureEnablement']
-        );
         expect(mockRTDWebSocketManager.off).toHaveBeenCalledWith(
           'message',
           webex.cc['handleRTDWebsocketMessage']

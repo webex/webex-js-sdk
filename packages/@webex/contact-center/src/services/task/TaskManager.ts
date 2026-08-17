@@ -42,7 +42,6 @@ import {ApiAIAssistant} from '../ApiAiAssistant';
 import AISummaryCoordinator from './AISummaryCoordinator';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
-import {AGENT_EVENTS} from '../agent/types';
 import {isNonEmptyString} from '../AISummaryUtils';
 
 const CC_EVENT_SET = new Set<CC_EVENTS>(Object.values(CC_EVENTS) as CC_EVENTS[]);
@@ -389,7 +388,6 @@ export default class TaskManager extends EventEmitter {
         featurePayload.midCallEnabled === undefined ? 'absent' : featurePayload.midCallEnabled,
     });
     this.aiSummaryCoordinator.setFeatureEnablement(featurePayload, matchingTask !== undefined);
-    this.emit(AGENT_EVENTS.FEATURE_ENABLEMENT, featurePayload);
 
     if (matchingTask) {
       matchingTask.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featurePayload);

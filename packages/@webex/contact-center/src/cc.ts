@@ -62,7 +62,6 @@ import {
   TaskResponse,
   DialerPayload,
   PreviewContactPayload,
-  FeatureEnablementEventPayload,
 } from './services/task/types';
 import MetricsManager from './metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from './metrics/constants';
@@ -483,16 +482,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.taskManager.handleRealtimeWebsocketEvent(event);
   };
 
-  /**
-   * Forwards AI summary feature enablement changes from TaskManager to SDK consumers.
-   * @private
-   * @param {FeatureEnablementEventPayload} payload The validated feature enablement payload.
-   */
-  private handleFeatureEnablement = (payload: FeatureEnablementEventPayload) => {
-    // @ts-expect-error trigger typing does not yet include cc:featureEnablement payloads.
-    this.trigger(AGENT_EVENTS.FEATURE_ENABLEMENT, payload);
-  };
-
   private static getDeregisterErrorMessage(error: unknown): string {
     if (error && typeof error === 'object' && 'message' in error) {
       const {message} = error as {message?: unknown};
@@ -509,7 +498,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     let capturedFailure: CapturedFailure = {captured: false};
     const cleanupSteps = [
       () => this.taskManager.clearAISummaryState(),
-      () => this.taskManager.off(AGENT_EVENTS.FEATURE_ENABLEMENT, this.handleFeatureEnablement),
       () => this.services.rtdWebSocketManager?.off('message', this.handleRTDWebsocketMessage),
       () => {
         if (
@@ -573,7 +561,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private refreshTaskManagerEventForwarders(): void {
     this.unregisterTaskManagerEventForwarders();
-    this.taskManager.off(AGENT_EVENTS.FEATURE_ENABLEMENT, this.handleFeatureEnablement);
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
     this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
     this.taskManager.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
@@ -582,7 +569,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
       this.handleCampaignPreviewReservation
     );
-    this.taskManager.on(AGENT_EVENTS.FEATURE_ENABLEMENT, this.handleFeatureEnablement);
   }
 
   /**

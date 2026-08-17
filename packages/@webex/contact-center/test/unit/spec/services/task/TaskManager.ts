@@ -18,7 +18,6 @@ import config from '../../../../../src/config';
 import {CC_TASK_EVENTS} from '../../../../../src/services/config/types';
 import TaskFactory from '../../../../../src/services/task/TaskFactory';
 import {METRIC_EVENT_NAMES} from '../../../../../src/metrics/constants';
-import {AGENT_EVENTS} from '../../../../../src/services/agent/types';
 import {
   AI_SUMMARY_RECEIVER_BUFFER_RETENTION_MS,
   AI_SUMMARY_REQUEST_CANCELLED,
@@ -706,9 +705,6 @@ describe('TaskManager', () => {
   });
 
   it('should store and forward valid feature enablement frames with raw flag metrics', () => {
-    const featureEnablementHandler = jest.fn();
-    taskManager.on(AGENT_EVENTS.FEATURE_ENABLEMENT, featureEnablementHandler);
-
     const payload = {
       type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
       data: {
@@ -735,8 +731,6 @@ describe('TaskManager', () => {
       })
     );
 
-    expect(featureEnablementHandler).toHaveBeenCalledTimes(2);
-    expect(featureEnablementHandler).toHaveBeenNthCalledWith(1, payload.data.data);
     expect((taskManager as any).aiSummaryCoordinator.getFeatureEnablement(taskId)).toEqual({
       interactionId: taskId,
       postCallEnabled: undefined,
@@ -857,9 +851,6 @@ describe('TaskManager', () => {
   });
 
   it('should metric classified invalid feature frames without storing or forwarding them', () => {
-    const featureEnablementHandler = jest.fn();
-    taskManager.on(AGENT_EVENTS.FEATURE_ENABLEMENT, featureEnablementHandler);
-
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
         type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
@@ -873,7 +864,6 @@ describe('TaskManager', () => {
       })
     );
 
-    expect(featureEnablementHandler).not.toHaveBeenCalled();
     expect((taskManager as any).aiSummaryCoordinator.getFeatureEnablement(taskId)).toBeUndefined();
     expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED,
@@ -893,9 +883,6 @@ describe('TaskManager', () => {
       {type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT, data: {data: ['invalid']}},
     ],
   ])('should count a classified feature frame with %s exactly once as invalid', (_label, frame) => {
-    const featureEnablementHandler = jest.fn();
-    taskManager.on(AGENT_EVENTS.FEATURE_ENABLEMENT, featureEnablementHandler);
-
     taskManager.handleRealtimeWebsocketEvent(JSON.stringify(frame));
 
     const featureMetricCalls = getMetricsTrackEvent().mock.calls.filter(
@@ -909,7 +896,6 @@ describe('TaskManager', () => {
         ['operational'],
       ],
     ]);
-    expect(featureEnablementHandler).not.toHaveBeenCalled();
     expect(getInboundDropMetricCalls()).toHaveLength(0);
   });
 
@@ -2191,7 +2177,6 @@ describe('TaskManager', () => {
 
     const taskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
     const taskManagerEmitSpy = jest.spyOn(taskManager, 'emit');
-    const featureEnablementHandler = jest.fn();
     const receiverSummaryHandler = jest.fn();
     const postClearFrames = [
       {
@@ -2234,12 +2219,7 @@ describe('TaskManager', () => {
       expect(jest.getTimerCount()).toBe(0);
     };
     const expectNoPublicAISummaryEmission = () => {
-      expect(featureEnablementHandler).not.toHaveBeenCalled();
       expect(receiverSummaryHandler).not.toHaveBeenCalled();
-      expect(taskManagerEmitSpy).not.toHaveBeenCalledWith(
-        AGENT_EVENTS.FEATURE_ENABLEMENT,
-        expect.anything()
-      );
       [CC_TASK_EVENTS.POST_CALL_SUMMARY, CC_TASK_EVENTS.MID_CALL_SUMMARY].forEach(
         (deprecatedInitiatorEvent) => {
           expect(taskEmitSpy).not.toHaveBeenCalledWith(deprecatedInitiatorEvent, expect.anything());
@@ -2255,7 +2235,6 @@ describe('TaskManager', () => {
       );
     };
 
-    taskManager.on(AGENT_EVENTS.FEATURE_ENABLEMENT, featureEnablementHandler);
     taskManager
       .getTask(taskId)
       .on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT, receiverSummaryHandler);
@@ -2653,42 +2632,6 @@ describe('TaskManager', () => {
       }
     );
     expectNoSensitiveDiagnostics('private buffered summary', 'private buffered listener failure');
-  });
-
-  it('should contain throwing feature listeners without unparseable inbound drops', () => {
-    const featurePayload = {
-      interactionId: taskId,
-      postCallEnabled: true,
-      midCallEnabled: true,
-    };
-    const featureHandler = jest.fn(() => {
-      throw new Error('private feature listener failure');
-    });
-
-    taskManager.on(AGENT_EVENTS.FEATURE_ENABLEMENT, featureHandler);
-
-    taskManager.handleRealtimeWebsocketEvent(
-      JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
-        data: {data: featurePayload},
-      })
-    );
-
-    expect(featureHandler).toHaveBeenCalledWith(featurePayload);
-    expect(getInboundDropMetricCalls()).toHaveLength(0);
-    expect(getLoggerProxy().warn).not.toHaveBeenCalled();
-    expect(getLoggerProxy().error).toHaveBeenCalledWith(
-      'Failed to dispatch RTD WebSocket message',
-      {
-        module: TASK_MANAGER_FILE,
-        method: METHODS.HANDLE_REAL_TIME_WEBSOCKET_EVENT,
-        data: {
-          reason: 'dispatch-error',
-          eventType: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
-        },
-      }
-    );
-    expectNoSensitiveDiagnostics('private feature listener failure');
   });
 
   it('should contain feature metric failures without unparseable inbound drops', () => {
