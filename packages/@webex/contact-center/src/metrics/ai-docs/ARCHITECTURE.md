@@ -230,18 +230,34 @@ fulfills because responses have no RTD result.
 
 ## Contract Boundary
 
-This architecture owns timing isolation and metric producer ownership. Exact
-AI-summary event names, bounded failure/drop codes, success conditions, and
-payload privacy rules are canonical in
-[Metrics And Privacy](../../../../../../ai-summary.md#metrics-and-privacy).
-All emitted identifiers must be declared in `metrics/constants.ts`.
+This architecture owns timing isolation and metric producer ownership. All
+emitted identifiers must be declared in `metrics/constants.ts`, which is the
+source of truth for the literals themselves.
+
+Exact AI-summary event names, owners, and success conditions are tabulated in
+[AGENTS.md — AI Summary Events](./AGENTS.md#ai-summary-events). In summary:
+
+- Task emits exactly one final success or failure event per public summary
+  operation — `AI_SUMMARY_GET_POST_CALL_*`, `AI_SUMMARY_GET_MID_CALL_*`,
+  `AI_SUMMARY_POST_CALL_RESPONSE_*`, and `AI_SUMMARY_MID_CALL_RESPONSE_*`.
+- TaskManager owns `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED` and
+  `AI_SUMMARY_INBOUND_EVENT_DROPPED`, the latter emitted once per terminal drop
+  path (unparseable, malformed envelope, unknown event, invalid payload,
+  late-or-uncorrelated, sdk-deregistered, ambiguous receiver, receiver-buffer
+  expired).
+- Failure metrics carry only a bounded `failureCode`.
 
 
 ## Privacy Boundary
 
 MetricsManager receives only upstream-sanitized, bounded AI-summary metadata.
-The complete allowed and forbidden field sets live in the canonical
-[Metrics And Privacy contract](../../../../../../ai-summary.md#metrics-and-privacy).
+
+**Allowed**: bounded operation and event names, safe identifiers, counters,
+state, feedback, action type, validation outcomes, and bounded error codes.
+
+**Forbidden**: summary text, human-authored section keys or values, Adaptive
+Card bodies, agent names, raw envelopes or payloads, original HTTP error
+messages, stacks, request options, response bodies, details, and causes.
 
 
 ## Error Handling Strategy

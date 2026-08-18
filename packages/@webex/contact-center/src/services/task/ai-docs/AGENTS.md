@@ -42,10 +42,15 @@ adapter plus the package-internal summary coordinator.
 
 ## AI Summary Implementation Rules
 
-The canonical [AI Summary SDK Contract](../../../../../../../ai-summary.md)
-owns public signatures, event and error literals, correlation, gating, response
-branches, timers, metrics, privacy, and verification commands. Keep this guide
-limited to task-layer implementation boundaries:
+Public signatures and literals live in code and are the source of truth:
+`services/task/types.ts` for the payload/response types and `TASK_EVENTS`,
+`constants.ts` for `AI_SUMMARY_ERROR_CODES` and the timeout constants,
+`services/config/types.ts` for `CC_AI_SUMMARY_EVENTS`. Correlation, gating,
+response branches, and timers are documented in
+[ARCHITECTURE.md — AI Summary](./ARCHITECTURE.md#ai-summary-flows); metrics and
+privacy in [metrics/ai-docs/AGENTS.md](../../../metrics/ai-docs/AGENTS.md#ai-summary-events).
+
+Keep this guide limited to task-layer implementation boundaries:
 
 - TaskManager injects `ApiAIAssistant`, `AISummaryRequestCoordinator`, and the
   current generated-summary flags accessor through `configureAISummary(...)`

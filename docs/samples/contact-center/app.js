@@ -794,6 +794,11 @@ function wireSummaryListeners(task) {
   });
 
   task.on('task:midCallSummaryForReceivingAgent', (payload) => {
+    if (!renderSummaryText(payload)) {
+      console.warn('[Receiving agent] Ignoring mid-call summary with no non-empty sections or summary text');
+      return;
+    }
+
     console.info('[Receiving agent] mid-call summary buffered, waiting for task:assigned', payload);
     incomingMidCallSummaryPayload = payload;
   });
@@ -2474,9 +2479,13 @@ function registerTaskListeners(task) {
     if (incomingMidCallSummaryPayload) {
       const block = document.getElementById('incoming-summary-block');
       const el = document.getElementById('incoming-summary-text');
-      if (block && el) {
-        el.textContent = renderSummaryText(incomingMidCallSummaryPayload) || '(No summary text available)';
+      const incomingSummaryText = renderSummaryText(incomingMidCallSummaryPayload);
+      if (block && el && incomingSummaryText) {
+        el.textContent = incomingSummaryText;
         block.style.display = '';
+      } else if (block && el) {
+        el.textContent = '';
+        block.style.display = 'none';
       }
       incomingMidCallSummaryPayload = null;
     }

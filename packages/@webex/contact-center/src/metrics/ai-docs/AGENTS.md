@@ -251,10 +251,26 @@ defined there.
 
 ### AI Summary Events
 
-AI-summary metric names and owner boundaries are canonical in
-[Metrics And Privacy](../../../../../../ai-summary.md#metrics-and-privacy).
-Every identifier must also exist in `metrics/constants.ts`; do not reproduce
-the full owner table in this implementation guide.
+Every identifier must also exist in `metrics/constants.ts`.
+
+| Metric | Owner | Emitted when |
+| --- | --- | --- |
+| `AI_SUMMARY_GET_POST_CALL_SUCCESS` / `_FAILED` | Task | Post-call request. Success once the HTTP acknowledgement and the matching RTD result both fulfill. |
+| `AI_SUMMARY_GET_MID_CALL_SUCCESS` / `_FAILED` | Task | Mid-call request. Success once the HTTP acknowledgement and the matching RTD result both fulfill. |
+| `AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS` / `_FAILED` | Task | Post-call response. Success on bounded HTTP acknowledgement. |
+| `AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS` / `_FAILED` | Task | Mid-call response. Success on bounded HTTP acknowledgement. |
+| `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED` | TaskManager | Feature-enablement frame received. |
+| `AI_SUMMARY_INBOUND_EVENT_DROPPED` | TaskManager | Terminal inbound drop. |
+
+`AI_SUMMARY_INBOUND_EVENT_DROPPED` is emitted exactly once for each of the
+unparseable, malformed-envelope, unknown-event, invalid-payload,
+late-or-uncorrelated, sdk-deregistered, ambiguous-receiver, and
+receiver-buffer-expired paths. TaskManager and the coordinator never emit
+duplicate Task-owned request-timeout operation metrics.
+
+Response failure metrics carry only a bounded `failureCode`: local validation,
+configuration, correlation, and base-URL codes plus the three package-internal
+transport codes.
 
 
 ## Behavioral Event Taxonomy
@@ -290,9 +306,12 @@ explicitly with `['operational']`.
   feedback, and action type. Never pass summary/card content, human-authored
   keys, agent names, raw payloads, or arbitrary exception details.
 
-The canonical [Metrics And Privacy contract](../../../../../../ai-summary.md#metrics-and-privacy)
-owns exact success conditions, event names, receive/drop outcomes, and the
-complete privacy allow/deny boundary.
+Privacy boundary — never log or tag summary text, human-authored section keys or
+values, Adaptive Card bodies, agent names, raw envelopes or payloads, original
+HTTP error messages, stacks, request options, response bodies, details, or
+causes. Safe diagnostics are bounded operation and event names, safe
+identifiers, counters, state, feedback, action type, validation outcomes, and
+bounded error codes.
 
 
 ## Error Handling

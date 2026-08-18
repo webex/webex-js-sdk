@@ -405,10 +405,156 @@ flowchart LR
   snapshots, receiving-agent buffers, and their timers.
 - `ApiAIAssistant` owns the bounded transport envelope and safe transport errors.
 
-The canonical [AI Summary SDK Contract](../../../../../../../ai-summary.md)
-defines exact correlation, overlap, response, timeout, cleanup, metric, and
-privacy rules. The root post-call, initiator, and receiver flow pages own the
-consumer-facing sequences; this architecture page owns only module handoffs.
+Correlation, overlap, response, timeout, and cleanup rules are implemented in
+`AISummaryCoordinator.ts` and `constants.ts`; metric and privacy rules are in
+[metrics/ai-docs/AGENTS.md](../../../metrics/ai-docs/AGENTS.md#ai-summary-events).
+The consumer-facing sequences are in [AI Summary Flows](#ai-summary-flows)
+below; this section owns only module handoffs.
+
+
+## AI Summary Flows
+
+Consumer-facing sequences for the three implemented summary paths. There is no
+public `task:postCallSummary` or initiator `task:midCallSummary` event in this
+SDK slice — the initiating consumer receives the summary through the returned
+Promise. Only the receiving-agent path is event-delivered.
+
+### Post-Call
+
+```mermaid
+sequenceDiagram
+  actor App
+  participant Task
+  participant Coord as AISummaryCoordinator
+  participant API as ApiAIAssistant
+  participant Backend
+  participant TM as TaskManager
+
+  App->>Task: requestPostCallSummary()
+  Task->>Task: read current org flags and feature snapshot
+  alt wrapUpSummariesEnabled !== true or postCallEnabled !== true
+    Task-->>App: reject POST_CALL_SUMMARY_DISABLED
+  else enabled
+    Task->>Task: capture {conversationId, interactionId}
+    Task->>Coord: register POST_CALL_SUMMARY
+    Coord-->>Task: {requestToken, result}
+    Task->>API: sendSummaryGetEvent(GET_POST_CALL_SUMMARY)
+    Task->>Task: Promise.all(result, acknowledgement)
+    API->>Backend: POST /event
+    Backend-->>API: 2xx acknowledgement
+    Backend->>TM: RTD POST_CALL_SUMMARY
+    TM->>Coord: resolve by conversationId + POST_CALL_SUMMARY
+    Coord-->>Task: summary payload
+    Task-->>App: resolve summary payload
+    App->>Task: wrapup(...)
+    Task-->>App: wrap-up completed
+    App->>Task: sendPostCallSummaryResponse(payload)
+    Task->>API: sendSummaryResponseEvent(POST_CALL_SUMMARY_RESPONSE)
+    API->>Backend: POST /event
+    Backend-->>API: 2xx acknowledgement
+    Task-->>App: resolve void
+  end
+```
+
+Wrap-up runs before the advisory summary response. A summary request rejection
+must not block wrap-up.
+
+**IGNORED branch** — when `postCallEnabled === true` but no summary was ever
+requested (for example the feature flag arrived after wrapup began), the
+application must send `sendPostCallSummaryResponse` with `state: 'IGNORED'`,
+`summary: ''`, all counters at zero, and the actual `wrapUpCode` before
+completing wrapup.
+
+### Mid-Call Initiator (consult / transfer)
+
+```mermaid
+sequenceDiagram
+  actor App
+  participant Task
+  participant Coord as AISummaryCoordinator
+  participant API as ApiAIAssistant
+  participant Backend
+  participant TM as TaskManager
+
+  App->>Task: requestMidCallSummary(CONSULT or TRANSFER)
+  Task->>Task: validate action and current flags
+  alt consultTransferSummariesEnabled !== true or midCallEnabled !== true
+    Task-->>App: reject MID_CALL_SUMMARY_DISABLED
+  else enabled
+    Task->>Coord: register MID_CALL_SUMMARY
+    Coord-->>Task: {requestToken, result}
+    Task->>API: sendSummaryGetEvent(action-specific GET)
+    Task->>Task: Promise.all(result, acknowledgement)
+    API->>Backend: POST /event
+    Backend-->>API: 2xx acknowledgement
+    Backend->>TM: RTD MID_CALL_SUMMARY
+    TM->>Coord: resolve by conversationId + MID_CALL_SUMMARY
+    Coord-->>Task: summary payload
+    Task-->>App: resolve summary payload
+    App->>Task: sendMidCallSummaryResponse(payload, actionType)
+    Task->>API: sendSummaryResponseEvent(action-specific response)
+    API->>Backend: POST /event
+    Backend-->>API: 2xx acknowledgement
+    Task-->>App: response attempt fulfilled
+    App->>Task: consult(...) or transfer(...)
+  end
+```
+
+Handoff sequencing is advisory from the SDK's perspective: the application
+attempts and awaits the summary response before independently invoking consult
+or transfer, records a response failure, and still continues the handoff. Unit
+tests prove event-name selection and bounded response settlement, not
+cross-call ordering between public APIs.
+
+**IGNORED branch** — when `midCallEnabled === true` but no summary was ever
+requested, the application must send `sendMidCallSummaryResponse` with
+`state: 'IGNORED'`, `summaryReceived: false`, `summary: ''`, and all counters at
+zero before invoking the handoff. The SDK accepts `IGNORED` in the unavailable
+branch (`summaryReceived: false`) alongside `NOT_RECEIVED` and
+`MID_CALL_CANCELLED`.
+
+### Mid-Call Receiver
+
+`MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT` is a realtime double-envelope
+frame. TaskManager validates it and forwards only the inner payload — the shared
+`conversationId`, optional card metadata, language/resolution metadata, optional
+`summaryText`, and optional timestamp — to the selected Task. This path has no
+public SDK request method and no outbound response: no counters, no feedback, no
+state, no `*_SUMMARY_RESPONSE` call.
+
+```mermaid
+flowchart LR
+  Backend[api-ai-assistant]
+  RTD[Realtime websocket]
+  TM[TaskManager]
+  Coord[AISummaryCoordinator]
+  Task[Receiving Task]
+  App[Consumer application]
+
+  Backend -->|push subsequent-agent frame| RTD
+  RTD --> TM
+  TM -->|validated payload + selected tasks| Coord
+  Coord -->|emit task:midCallSummaryForReceivingAgent| Task
+  Task --> App
+```
+
+1. TaskManager validates the realtime double envelope and derives candidate
+   conversation IDs with the shared correlation helper.
+2. The coordinator delivers to one unique receiving-task leaf, buffers a
+   zero-match payload on its original retention deadline, or drops an ambiguous
+   match.
+3. Task insertion, update, and removal re-evaluate buffered payloads; full SDK
+   cleanup deactivates handling and clears buffers and timers.
+4. Delivery emits `task:midCallSummaryForReceivingAgent`.
+
+```typescript
+task.on('task:midCallSummaryForReceivingAgent', (payload) => {
+  renderReadOnlySummary(payload.adaptiveCard ?? payload.summaryText);
+});
+```
+
+Treat `summaryText` as fallback display text and as sensitive content; it must
+not be logged.
 
 
 ## WebRTC Integration
@@ -579,9 +725,16 @@ overlap on the same task and metric names. They do not use `timeEvent(...)`.
 Classic call-control operations use MetricsManager's shared timing pattern.
 AI-summary public operations instead supply method-local durations so concurrent
 requests cannot share timer state. Task owns operation outcomes; TaskManager
-owns receive/drop outcomes. Exact success conditions, bounded failure fields,
-and sensitive-data exclusions are canonical in
-[Metrics And Privacy](../../../../../../../ai-summary.md#metrics-and-privacy).
+owns receive/drop outcomes.
+
+Request success is withheld until both the HTTP acknowledgement and the matching
+RTD result fulfill; response success is recorded on bounded HTTP acknowledgement
+alone, because responses have no RTD result. Failure metrics carry only a
+bounded `failureCode`. Never tag summary text, human-authored section keys or
+values, Adaptive Card bodies, agent names, raw envelopes or payloads, original
+HTTP error messages, stacks, request options, response bodies, details, or
+causes. Full event table and privacy boundary:
+[metrics/ai-docs/AGENTS.md](../../../metrics/ai-docs/AGENTS.md#ai-summary-events).
 
 
 ## Troubleshooting
@@ -663,7 +816,6 @@ later success, timeout, cancellation, or transport failure metric.
 - [state-machine/ai-docs/ARCHITECTURE.md](../state-machine/ai-docs/ARCHITECTURE.md) - State-machine architecture.
 - [metrics/ai-docs/AGENTS.md](../../../metrics/ai-docs/AGENTS.md) - Metrics usage rules, including the AI summary exception.
 - [metrics/ai-docs/ARCHITECTURE.md](../../../metrics/ai-docs/ARCHITECTURE.md) - Metrics architecture and ownership.
-- [AI summary overview](../../../../../../../ai-summary.md) - Summary feature overview.
-- [Post-call summary flow](../../../../../../../ai-summary-postcall-flow.md) - Post-call summary request/response sequence.
-- [Mid-call initiator flow](../../../../../../../ai-summary-initiator-flow.md) - Consult/transfer initiator sequence.
-- [Mid-call receiver flow](../../../../../../../ai-summary-receiver-flow.md) - Receiving-agent summary delivery.
+- [AI Summary Flows](#ai-summary-flows) - Post-call, mid-call initiator, and receiving-agent sequences.
+- [AISummaryCoordinator.ts](../AISummaryCoordinator.ts) - Request correlation, timers, receiver buffering, and feature snapshots.
+- [ApiAiAssistant.ts](../../ApiAiAssistant.ts) - Summary get/response transport envelope.
