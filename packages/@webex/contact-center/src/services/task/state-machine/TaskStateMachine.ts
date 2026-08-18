@@ -190,10 +190,17 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
           },
-          [TaskEvent.TASK_WRAPUP]: {
-            target: TaskState.TERMINATED,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
-          },
+          [TaskEvent.TASK_WRAPUP]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
+            },
+          ],
           [TaskEvent.CONTACT_ENDED]: {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
@@ -380,6 +387,17 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.WRAPPING_UP,
             actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
           },
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+            },
+          ],
           [TaskEvent.PAUSE_RECORDING]: {
             actions: ['updateTaskData', 'setRecordingState', 'emitTaskRecordingPaused'],
           },
@@ -1132,7 +1150,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.COMPLETED]: {
         type: 'final' as const,
-        entry: ['emitTaskWrappedup', 'cleanupResources'],
+        entry: ['cleanupResources', 'emitTaskWrappedup'],
       },
 
       [TaskState.TERMINATED]: {

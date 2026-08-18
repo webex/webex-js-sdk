@@ -33,7 +33,9 @@ import {
   acceptOnWebex as wxAcceptOnWebex,
   getCallingDeviceDetails,
   getWebexCallingCallId,
-  isWebexAppCallingOffer,
+  getWxAppLineOwnerId,
+  isWebexAppCallingOffer as wxIsWebexAppCallingOffer,
+  isWebexAppInboundCallingOffer as wxIsWebexAppInboundCallingOffer,
   mapWxAppVoiceError,
   rejectOnWebex as wxRejectOnWebex,
   toggleMuteOnWebex as wxToggleMuteOnWebex,
@@ -42,9 +44,14 @@ import {
 } from './wxAppVoiceMethods';
 
 export default class Voice extends Task implements IVoice {
+  private static readonly WXAPP_MUTE_SYNC_RETRY_DELAY_MS = 50;
+  private static readonly WXAPP_MUTE_SYNC_MAX_RETRIES = 3;
+
   private answerCallOnWebexService?: AnswerCallOnWebexService;
   private enableAnswerOnWebex = false;
   private wxAppMuted = false;
+  private wxAppAnswerPending = false;
+  private wxAppMuteSyncInFlight?: Promise<boolean | undefined>;
 
   constructor(
     contact: ReturnType<typeof routingContact>,
@@ -90,7 +97,17 @@ export default class Voice extends Task implements IVoice {
   }
 
   public isWebexAppCallingOffer(): boolean {
-    return isWebexAppCallingOffer(this.getWxAppVoiceDeps());
+    return wxIsWebexAppCallingOffer(this.getWxAppVoiceDeps());
+  }
+
+  public isWebexAppInboundCallingOffer(): boolean {
+    return wxIsWebexAppInboundCallingOffer(this.getWxAppVoiceDeps());
+  }
+
+  private setWxAppAnswerPending(pending: boolean): void {
+    this.wxAppAnswerPending = pending;
+    this.uiControlConfig = {...this.uiControlConfig, wxAppAnswerPending: pending};
+    this.updateUiControls(true);
   }
 
   public setEnableAnswerOnWebex(enabled: boolean): void {
@@ -113,35 +130,140 @@ export default class Voice extends Task implements IVoice {
     this.emit(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, {muted});
   }
 
-  public async syncWxAppMuteFromCallDetails(): Promise<void> {
-    if (!this.enableAnswerOnWebex || !this.answerCallOnWebexService) {
+  public getWxAppMuted(): boolean {
+    return this.wxAppMuted;
+  }
+
+  private static delay(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+  }
+
+  private canRetryWxAppMuteSync(): boolean {
+    if (!this.enableAnswerOnWebex) {
+      return false;
+    }
+
+    return (
+      Boolean(getCallingDeviceDetails(this.getWxAppVoiceDeps())?.deviceCallId) &&
+      !this.getWebexCallingCallId()
+    );
+  }
+
+  private static isWxAppCallNotFoundError(error: unknown): boolean {
+    const err = error as {status?: number | string; message?: string};
+    if (err?.status === 400 || err?.status === '400') {
+      return true;
+    }
+
+    const message = String(err?.message ?? error ?? '');
+
+    return message.includes('Call not found') || message.includes('101002');
+  }
+
+  private shouldSkipWxAppMuteSync(): boolean {
+    if (this.data?.interaction?.isTerminated) {
+      return true;
+    }
+
+    return this.isWebexAppCallingOffer() && !this.uiControlConfig?.wxAppAnswerPending;
+  }
+
+  private applyWxAppMuteFromBackfill(callId: string, muted: boolean): void {
+    if (!this.enableAnswerOnWebex || this.wxAppMuted === muted) {
       return;
     }
 
-    const callId = this.getWebexCallingCallId();
-    if (!callId) {
+    const activeCallId = this.getWebexCallingCallId();
+    if (activeCallId && !callId.endsWith(activeCallId) && !activeCallId.endsWith(callId)) {
       return;
+    }
+
+    this.wxAppMuted = muted;
+    this.emit(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, {muted});
+  }
+
+  public async syncWxAppMuteFromCallDetails(retryAttempt = 0): Promise<boolean | undefined> {
+    if (!this.enableAnswerOnWebex || !this.answerCallOnWebexService) {
+      return undefined;
+    }
+
+    if (retryAttempt === 0 && this.shouldSkipWxAppMuteSync()) {
+      return undefined;
+    }
+
+    if (retryAttempt === 0 && this.wxAppMuteSyncInFlight) {
+      return this.wxAppMuteSyncInFlight;
+    }
+
+    const syncPromise = this.performWxAppMuteSync(retryAttempt);
+
+    if (retryAttempt === 0) {
+      this.wxAppMuteSyncInFlight = syncPromise.finally(() => {
+        if (this.wxAppMuteSyncInFlight === syncPromise) {
+          this.wxAppMuteSyncInFlight = undefined;
+        }
+      });
+
+      return this.wxAppMuteSyncInFlight;
+    }
+
+    return syncPromise;
+  }
+
+  private async performWxAppMuteSync(retryAttempt: number): Promise<boolean | undefined> {
+    if (this.shouldSkipWxAppMuteSync()) {
+      return undefined;
+    }
+
+    let callId = this.getWebexCallingCallId();
+    if (!callId) {
+      if (retryAttempt < Voice.WXAPP_MUTE_SYNC_MAX_RETRIES && this.canRetryWxAppMuteSync()) {
+        await Voice.delay(Voice.WXAPP_MUTE_SYNC_RETRY_DELAY_MS);
+
+        return this.performWxAppMuteSync(retryAttempt + 1);
+      }
+
+      callId = getCallingDeviceDetails(this.getWxAppVoiceDeps())?.deviceCallId ?? null;
+      if (!callId) {
+        return undefined;
+      }
     }
 
     try {
-      const details = await this.answerCallOnWebexService.getCallDetails({callId});
+      const lineOwnerId = getWxAppLineOwnerId(this.getWxAppVoiceDeps());
+      const details = await this.answerCallOnWebexService.getCallDetails({callId, lineOwnerId});
       if (details.muted !== undefined) {
         this.applyWxAppMuteStateFromSync(callId, details.muted);
+        if (this.wxAppMuted !== details.muted) {
+          this.applyWxAppMuteFromBackfill(callId, details.muted);
+        }
+
+        return details.muted;
       }
+
+      return this.wxAppMuted;
     } catch (error) {
-      LoggerProxy.error(`Failed to sync wxApp mute from call details: ${error}`, {
-        module: CC_FILE,
-        method: METHODS.GET_CALL_DETAILS_ON_WEBEX,
-        interactionId: this.data?.interactionId,
-      });
+      if (!Voice.isWxAppCallNotFoundError(error)) {
+        LoggerProxy.error(`Failed to sync wxApp mute from call details: ${error}`, {
+          module: CC_FILE,
+          method: METHODS.GET_CALL_DETAILS_ON_WEBEX,
+          interactionId: this.data?.interactionId,
+        });
+      }
+
+      return undefined;
     }
   }
 
   protected onTaskAssigned(): void {
+    this.setWxAppAnswerPending(false);
     this.syncWxAppMuteFromCallDetails().catch(() => undefined);
   }
 
   protected onTaskHydrated(): void {
+    this.setWxAppAnswerPending(false);
     this.syncWxAppMuteFromCallDetails().catch(() => undefined);
   }
 
@@ -155,10 +277,12 @@ export default class Voice extends Task implements IVoice {
 
   public async acceptOnWebex(options?: {lineOwnerId?: string}): Promise<void> {
     try {
+      this.setWxAppAnswerPending(true);
       await wxAcceptOnWebex(this.getWxAppVoiceDeps(), options);
       this.wxAppMuted = false;
       await this.syncWxAppMuteFromCallDetails();
     } catch (error) {
+      this.setWxAppAnswerPending(false);
       mapWxAppVoiceError(error, METHODS.ACCEPT_ON_WEBEX, CC_FILE);
     }
   }
@@ -208,7 +332,52 @@ export default class Voice extends Task implements IVoice {
    * @throws Error
    */
   public async decline(): Promise<TaskResponse> {
-    super.unsupportedMethodError(METHODS.REJECT);
+    const isOutdial = this.data?.interaction?.outboundType === 'OUTDIAL';
+    if (!this.enableAnswerOnWebex || !isOutdial) {
+      super.unsupportedMethodError(METHODS.REJECT);
+    }
+
+    const interactionId = this.data.interactionId;
+    LoggerProxy.log(`Declining wxApp outdial task for taskId:${interactionId}`, {
+      module: CC_FILE,
+      method: METHODS.REJECT,
+      interactionId,
+    });
+
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
+      ]);
+
+      this.setWxAppAnswerPending(false);
+      const response = await this.contact.cancelTask({interactionId});
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
+        {
+          taskId: interactionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral']
+      );
+
+      return response;
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
+        {
+          taskId: interactionId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(
+            (error as any).details || {}
+          ),
+        },
+        ['operational', 'behavioral']
+      );
+      const {error: detailedError} = getErrorDetails(error, METHODS.REJECT, CC_FILE);
+      throw detailedError;
+    }
   }
 
   /**

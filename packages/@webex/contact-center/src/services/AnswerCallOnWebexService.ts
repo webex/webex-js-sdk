@@ -8,14 +8,24 @@ const ANSWER_CALL_ON_WEBEX_FILE = 'AnswerCallOnWebexService';
 export type WxAppTelephonyError = Error & {
   isWxAppTelephonyError: true;
   trackingId?: string;
+  status?: number | string;
 };
 
 const markWxAppTelephonyError = (error: Error, source: unknown): WxAppTelephonyError => {
   const marked = error as WxAppTelephonyError;
   marked.isWxAppTelephonyError = true;
-  const trackingId = (source as {details?: {trackingId?: string}})?.details?.trackingId;
+  const sourceObj = source as {
+    details?: {trackingId?: string; status?: number | string};
+    statusCode?: number;
+    status?: number | string;
+  };
+  const trackingId = sourceObj?.details?.trackingId;
   if (trackingId) {
     marked.trackingId = trackingId;
+  }
+  const status = sourceObj?.statusCode ?? sourceObj?.details?.status ?? sourceObj?.status;
+  if (status !== undefined) {
+    marked.status = status;
   }
 
   return marked;

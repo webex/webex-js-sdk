@@ -588,6 +588,10 @@ this.webSocketManager.on('message', (event) => {
 
 This keeps transcript and suggestion delivery aligned on the same per-task event surface.
 
+**wxApp outdial `ContactEnded` mapping:** Pre-accept Incoming Task decline maps to `CONTACT_ENDED` when `wxAppAnswerPending` is false and `agentsPendingWrapUp` is empty — even if the backend sends misleading `interaction.state: wrapUp`. Post-accept agent end remaps to `OUTBOUND_FAILED` / `AGENT_ENDS` when `wxAppAnswerPending`, `agentsPendingWrapUp`, or (with those signals present) `interaction.state === 'wrapUp'` indicates wrapup. See `TaskManager.isAgentTerminatedOutdialWrapup` and `task-state-machine-spec.md`.
+
+**wxApp mute backfill guard (`Voice.syncWxAppMuteFromCallDetails`):** Skips telephony `GET /calls/{callId}` when the interaction is terminated or the task is a pre-accept wxApp OFFERED offer (`wxAppAnswerPending` false). Post-accept OFFERED and engaged CONNECTED sync still run. Expected 400 / "Call not found" / `101002` responses are not logged as errors.
+
 For BROWSER login, TaskManager integrates with WebCalling:
 
 ```mermaid

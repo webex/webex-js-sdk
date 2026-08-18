@@ -2,8 +2,10 @@ import {expect} from '@jest/globals';
 import {
   getWebexCallingDeviceDetailsForAgent,
   isWebexCallingCallForAgent,
+  isWxAppEngagedForControls,
   decodedLineOwnerId,
 } from '../../../../../src/services/task/WebexCallingUtils';
+import {TaskState} from '../../../../../src/services/task/state-machine/constants';
 
 const WX_APP_PARTICIPANT = {
   id: 'agent-1',
@@ -90,6 +92,26 @@ describe('isWebexCallingCallForAgent', () => {
 
   it('returns false when agentId is undefined', () => {
     expect(isWebexCallingCallForAgent(undefined, participantsById)).toBe(false);
+  });
+});
+
+describe('isWxAppEngagedForControls', () => {
+  it('returns true when flag is on, wxApp participant exists, and state is CONNECTED', () => {
+    expect(
+      isWxAppEngagedForControls(true, 'agent-1', participantsById, TaskState.CONNECTED)
+    ).toBe(true);
+  });
+
+  it('returns false in OFFERED state', () => {
+    expect(isWxAppEngagedForControls(true, 'agent-1', participantsById, TaskState.OFFERED)).toBe(
+      false
+    );
+  });
+
+  it('returns false when enableAnswerOnWebex is false', () => {
+    expect(
+      isWxAppEngagedForControls(false, 'agent-1', participantsById, TaskState.CONNECTED)
+    ).toBe(false);
   });
 });
 

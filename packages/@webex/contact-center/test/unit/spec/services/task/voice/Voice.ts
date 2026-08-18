@@ -1,4 +1,5 @@
 import Voice from '../../../../../../src/services/task/voice/Voice';
+import LoggerProxy from '../../../../../../src/logger-proxy';
 import {
   TaskData,
   CONSULT_TRANSFER_DESTINATION_TYPE,
@@ -35,6 +36,7 @@ const dummyContact = {
   consult: jest.fn().mockResolvedValue('consulted'),
   consultConference: jest.fn().mockResolvedValue('conferenceStarted'),
   consultTransfer: jest.fn().mockResolvedValue('consultTransferred'),
+  cancelTask: jest.fn().mockResolvedValue(undefined),
 } as any;
 
 const createBaseData = (overrides: Partial<TaskData> = {}): TaskData =>
@@ -773,6 +775,45 @@ describe('Voice Task', () => {
       expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, {
         muted: true,
       });
+      expect(voice.getWxAppMuted()).toBe(true);
+    });
+
+    it('returns resolved mute state from syncWxAppMuteFromCallDetails', async () => {
+      const mockSvc = {
+        getCallDetails: jest.fn().mockResolvedValue({muted: true}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      const result = await voice.syncWxAppMuteFromCallDetails();
+
+      expect(result).toBe(true);
+      expect(voice.getWxAppMuted()).toBe(true);
+    });
+
+    it('seeds mute via participant deviceCallId when state machine is still IDLE', async () => {
+      const mockSvc = {
+        getCallDetails: jest.fn().mockResolvedValue({muted: true}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      const result = await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).toHaveBeenCalledWith({callId: 'call-id-1'});
+      expect(result).toBe(true);
+      expect(voice.getWxAppMuted()).toBe(true);
+      expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, {
+        muted: true,
+      });
     });
 
     it('no-ops when enableAnswerOnWebex is false', async () => {
@@ -821,12 +862,221 @@ describe('Voice Task', () => {
       const emitSpy = jest.spyOn(voice, 'emit');
 
       voice.onTaskHydrated();
-      await new Promise((resolve) => setImmediate(resolve));
+      await voice.syncWxAppMuteFromCallDetails();
 
       expect(mockSvc.getCallDetails).toHaveBeenCalledWith({callId: 'call-id-1'});
       expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, {
         muted: true,
       });
+    });
+
+    it('coalesces parallel syncWxAppMuteFromCallDetails into one getCallDetails', async () => {
+      let resolveGetCallDetails: (value: {muted: boolean}) => void;
+      const getCallDetailsPromise = new Promise<{muted: boolean}>((resolve) => {
+        resolveGetCallDetails = resolve;
+      });
+      const mockSvc = {
+        getCallDetails: jest.fn().mockReturnValue(getCallDetailsPromise),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      const sync1 = voice.syncWxAppMuteFromCallDetails();
+      const sync2 = voice.syncWxAppMuteFromCallDetails();
+
+      resolveGetCallDetails!({muted: true});
+      const [result1, result2] = await Promise.all([sync1, sync2]);
+
+      expect(result1).toBe(true);
+      expect(result2).toBe(true);
+      expect(mockSvc.getCallDetails).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips mute GET for terminated wxApp outdial with deviceCallId', async () => {
+      const mockSvc = {getCallDetails: jest.fn()};
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              deviceType: 'wxApp',
+              deviceId: 'device-id-1',
+              deviceCallId: 'callhalf-dead',
+            },
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).not.toHaveBeenCalled();
+    });
+
+    it('skips mute GET for pre-accept wxApp OFFERED offer', async () => {
+      const mockSvc = {getCallDetails: jest.fn()};
+      const wxAppParticipant = {
+        deviceType: 'wxApp',
+        deviceId: 'device-id-1',
+        deviceCallId: 'call-id-1',
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).not.toHaveBeenCalled();
+    });
+
+    it('still calls mute GET for post-accept OFFERED wxApp offer', async () => {
+      const mockSvc = {
+        answerCall: jest.fn().mockResolvedValue(undefined),
+        getCallDetails: jest.fn().mockResolvedValue({muted: false}),
+      };
+      const wxAppParticipant = {
+        deviceType: 'wxApp',
+        deviceId: 'device-id-1',
+        deviceCallId: 'call-id-1',
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+      await voice.acceptOnWebex();
+
+      await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).toHaveBeenCalledWith({callId: 'call-id-1'});
+    });
+
+    it('does not log error for expected wxApp call-not-found on mute sync', async () => {
+      const errorSpy = jest.spyOn(LoggerProxy, 'error');
+      const mockSvc = {
+        getCallDetails: jest.fn().mockRejectedValue({status: 400, message: 'Call not found'}),
+      };
+      const wxAppParticipant = {
+        deviceType: 'wxApp',
+        deviceId: 'device-id-1',
+        deviceCallId: 'call-id-1',
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).toHaveBeenCalled();
+      expect(errorSpy).not.toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+  });
+
+  describe('decline', () => {
+    const wxAppParticipant = {
+      deviceType: 'wxApp',
+      deviceId: 'device-id-1',
+      deviceCallId: 'call-id-1',
+    };
+
+    const makeWxAppOutdialTaskData = () =>
+      createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+
+    it('cancels wxApp outdial via contact.cancelTask', async () => {
+      const taskData = makeWxAppOutdialTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableAnswerOnWebex: true});
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      await voice.decline();
+
+      expect(dummyContact.cancelTask).toHaveBeenCalledWith({interactionId: 'int1'});
+    });
+
+    it('clears wxAppAnswerPending when declining outdial', async () => {
+      const mockSvc = {
+        answerCall: jest.fn().mockResolvedValue(undefined),
+        getCallDetails: jest.fn().mockResolvedValue({muted: false}),
+      };
+      const taskData = makeWxAppOutdialTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      await voice.acceptOnWebex();
+      expect(voice.uiControlConfig.wxAppAnswerPending).toBe(true);
+
+      await voice.decline();
+
+      expect(voice.uiControlConfig.wxAppAnswerPending).toBe(false);
+      expect(dummyContact.cancelTask).toHaveBeenCalledWith({interactionId: 'int1'});
+    });
+
+    it('throws unsupported for non-outdial voice tasks', async () => {
+      const taskData = createBaseData();
+      const voice = new Voice(dummyContact, taskData, {enableAnswerOnWebex: true});
+
+      await expect(voice.decline()).rejects.toThrow('Unsupported operation: decline');
+      expect(dummyContact.cancelTask).not.toHaveBeenCalled();
+    });
+
+    it('throws unsupported when enableAnswerOnWebex is false', async () => {
+      const taskData = makeWxAppOutdialTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableAnswerOnWebex: false});
+
+      await expect(voice.decline()).rejects.toThrow('Unsupported operation: decline');
+      expect(dummyContact.cancelTask).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,3 +1,5 @@
+import {TaskState} from './state-machine/constants';
+
 export type WebexCallingDeviceDetails = {
   deviceType: string;
   deviceId: string;
@@ -90,6 +92,26 @@ export function isWebexCallingCallForAgent(
   participants: unknown
 ): boolean {
   return Boolean(getWebexCallingDeviceDetailsForAgent(agentId, participants));
+}
+
+/** Matches wxAppVoiceMethods.getWebexCallingCallId engaged semantics for uiControls. */
+export function isWxAppEngagedForControls(
+  enableAnswerOnWebex: boolean,
+  agentId: string | undefined,
+  participants: unknown,
+  state: TaskState
+): boolean {
+  if (!enableAnswerOnWebex) {
+    return false;
+  }
+
+  if (!state || state === TaskState.OFFERED || state === TaskState.IDLE) {
+    return false;
+  }
+
+  const details = getWebexCallingDeviceDetailsForAgent(agentId, participants);
+
+  return details?.deviceType === 'wxApp';
 }
 
 export function decodedLineOwnerId(lineOwnerId?: string): string | undefined {

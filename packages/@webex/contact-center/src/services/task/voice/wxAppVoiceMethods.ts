@@ -32,19 +32,25 @@ const isWxAppParticipant = (participant: unknown): participant is WxAppParticipa
   typeof (participant as WxAppParticipant)?.deviceId === 'string' &&
   (participant as WxAppParticipant).deviceId.trim() !== '';
 
-export function isWebexAppCallingOffer(deps: WxAppVoiceDeps): boolean {
-  if (!deps.enableAnswerOnWebex) {
-    return false;
+const isOutdialTask = (deps: WxAppVoiceDeps): boolean =>
+  deps.getTaskData()?.interaction?.outboundType === 'OUTDIAL';
+
+function getWxAppAgentParticipant(deps: WxAppVoiceDeps): unknown {
+  const taskData = deps.getTaskData();
+  const participants = taskData.interaction?.participants;
+  const agentId = deps.agentId ?? taskData.agentId;
+
+  if (!participants || !agentId) {
+    return undefined;
   }
 
-  const state = deps.getTaskState();
-  if (state !== TaskState.OFFERED) {
-    return false;
+  if (participants[agentId]) {
+    return participants[agentId];
   }
 
-  const details = getCallingDeviceDetails(deps);
-
-  return Boolean(details);
+  return Object.values(participants).find(
+    (participant) => (participant as {id?: string})?.id === agentId
+  );
 }
 
 export function getCallingDeviceDetails(
@@ -63,6 +69,26 @@ export function getCallingDeviceDetails(
   );
 }
 
+export function isWebexAppCallingOffer(deps: WxAppVoiceDeps): boolean {
+  if (!deps.enableAnswerOnWebex) {
+    return false;
+  }
+
+  const state = deps.getTaskState();
+  if (state !== TaskState.OFFERED) {
+    return false;
+  }
+
+  const details = getCallingDeviceDetails(deps);
+
+  return Boolean(details);
+}
+
+/** Inbound wxApp offer only — outdial decline uses CC routing, not telephony reject. */
+export function isWebexAppInboundCallingOffer(deps: WxAppVoiceDeps): boolean {
+  return isWebexAppCallingOffer(deps) && !isOutdialTask(deps);
+}
+
 export function getWebexCallingCallId(deps: WxAppVoiceDeps): string | null {
   const state = deps.getTaskState();
   if (!state || state === TaskState.OFFERED || state === TaskState.IDLE) {
@@ -72,22 +98,11 @@ export function getWebexCallingCallId(deps: WxAppVoiceDeps): string | null {
   return getCallingDeviceDetails(deps)?.deviceCallId ?? null;
 }
 
-function getWxAppAgentParticipant(deps: WxAppVoiceDeps): unknown {
-  const taskData = deps.getTaskData();
-  const participants = taskData.interaction?.participants;
-  const agentId = deps.agentId ?? taskData.agentId;
+export function getWxAppLineOwnerId(deps: WxAppVoiceDeps): string | undefined {
+  const participant = getWxAppAgentParticipant(deps) as {lineOwnerId?: string} | undefined;
+  const lineOwnerId = participant?.lineOwnerId;
 
-  if (!participants || !agentId) {
-    return undefined;
-  }
-
-  if (participants[agentId]) {
-    return participants[agentId];
-  }
-
-  return Object.values(participants).find(
-    (participant) => (participant as {id?: string})?.id === agentId
-  );
+  return typeof lineOwnerId === 'string' && lineOwnerId.trim() !== '' ? lineOwnerId : undefined;
 }
 
 function assertWxAppEnabled(deps: WxAppVoiceDeps): void {
@@ -128,8 +143,8 @@ export async function rejectOnWebex(
 ): Promise<void> {
   assertWxAppEnabled(deps);
 
-  if (!isWebexAppCallingOffer(deps)) {
-    throw new Error('Task is not a wxApp calling offer');
+  if (!isWebexAppInboundCallingOffer(deps)) {
+    throw new Error('Task is not a wxApp inbound calling offer');
   }
 
   const details = getCallingDeviceDetails(deps);

@@ -112,6 +112,7 @@ describe('AnswerCallOnWebexService', () => {
 
     it('rejects and logs on request failure', async () => {
       const err = {
+        statusCode: 400,
         details: {
           trackingId: 'track-wxapp-1',
           data: {reason: 'TELEPHONY_ERROR'},
@@ -123,6 +124,7 @@ describe('AnswerCallOnWebexService', () => {
         isWxAppTelephonyError: true,
         message: 'TELEPHONY_ERROR',
         trackingId: 'track-wxapp-1',
+        status: 400,
       });
       expect(LoggerProxy.error).toHaveBeenCalled();
     });

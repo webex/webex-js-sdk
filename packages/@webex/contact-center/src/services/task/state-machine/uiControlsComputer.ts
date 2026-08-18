@@ -11,7 +11,10 @@ import {
   VOICE_VARIANT,
 } from '../types';
 import {TaskContext, UIControlConfig} from './types';
-import {getWebexCallingDeviceDetailsForAgent} from '../WebexCallingUtils';
+import {
+  getWebexCallingDeviceDetailsForAgent,
+  isWxAppEngagedForControls,
+} from '../WebexCallingUtils';
 import {TaskState, MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE, INTERACTION_STATE} from './constants';
 import {
   getIsCustomerInCall,
@@ -25,6 +28,32 @@ import {
 const DISABLED = {isVisible: false, isEnabled: false} as const;
 const VISIBLE_ENABLED = {isVisible: true, isEnabled: true} as const;
 const VISIBLE_DISABLED = {isVisible: true, isEnabled: false} as const;
+
+/** wxApp telephony controls live on the main leg only (mute/keypad via wxApp APIs). */
+function withWxAppTelephonyControls(
+  controls: InteractionUIControls,
+  isWxAppEngaged: boolean,
+  currentLeg: TaskUILeg,
+  isWrappingUp: boolean
+): InteractionUIControls {
+  if (!isWxAppEngaged || isWrappingUp) {
+    return controls;
+  }
+
+  if (currentLeg === 'main') {
+    return {
+      ...controls,
+      mute: VISIBLE_ENABLED,
+      keypad: VISIBLE_ENABLED,
+    };
+  }
+
+  return {
+    ...controls,
+    mute: DISABLED,
+    keypad: DISABLED,
+  };
+}
 
 function getDefaultInteractionUIControls(): InteractionUIControls {
   return {
@@ -143,8 +172,15 @@ function computeVoiceInteractionUIControls(
   const isWxAppParticipant = enableAnswerOnWebex && wxAppDeviceDetails?.deviceType === 'wxApp';
   const isWxAppOffer =
     isWxAppParticipant && Boolean(wxAppDeviceDetails) && state === TaskState.OFFERED;
-  const isWxAppEngaged =
-    isWxAppParticipant && Boolean(wxAppDeviceDetails) && state !== TaskState.OFFERED;
+  const isWxAppInboundOffer = isWxAppOffer && !isOutdial;
+  const isWxAppOutdialOffer = isWxAppOffer && isOutdial;
+  const wxAppAnswerPending = config.wxAppAnswerPending ?? false;
+  const isWxAppEngaged = isWxAppEngagedForControls(
+    enableAnswerOnWebex,
+    selfAgentId,
+    interaction?.participants,
+    state
+  );
   const consultInProgress = getIsConsultInProgressForConferenceControls(
     interaction,
     mainCallId,
@@ -387,37 +423,52 @@ function computeVoiceInteractionUIControls(
         ? VISIBLE_ENABLED
         : DISABLED;
 
-    return {
-      ...getDefaultInteractionUIControls(),
-      hold: VISIBLE_ENABLED,
-      transfer: VISIBLE_ENABLED,
-      consult: VISIBLE_ENABLED,
-      recording: recordingControl,
-      end: VISIBLE_DISABLED,
-    };
+    return withWxAppTelephonyControls(
+      {
+        ...getDefaultInteractionUIControls(),
+        hold: VISIBLE_ENABLED,
+        transfer: VISIBLE_ENABLED,
+        consult: VISIBLE_ENABLED,
+        recording: recordingControl,
+        end: VISIBLE_DISABLED,
+      },
+      isWxAppEngaged,
+      currentLeg,
+      isWrappingUp
+    );
   }
 
   if (isConsultRequestedPhase && !isEpDnPendingConferenceMergeUi) {
     if (currentLeg === 'main') {
-      return {
-        ...getDefaultInteractionUIControls(),
-        transfer: shouldHideBlindTransferForEpDnPendingConferenceMerge
-          ? DISABLED
-          : VISIBLE_DISABLED,
-        conference: VISIBLE_DISABLED,
-        end: VISIBLE_DISABLED,
-      };
+      return withWxAppTelephonyControls(
+        {
+          ...getDefaultInteractionUIControls(),
+          transfer: shouldHideBlindTransferForEpDnPendingConferenceMerge
+            ? DISABLED
+            : VISIBLE_DISABLED,
+          conference: VISIBLE_DISABLED,
+          end: VISIBLE_DISABLED,
+        },
+        isWxAppEngaged,
+        currentLeg,
+        isWrappingUp
+      );
     }
 
     if (currentLeg === 'consult') {
-      return {
-        ...getDefaultInteractionUIControls(),
-        endConsult: VISIBLE_ENABLED,
-        switch: VISIBLE_DISABLED,
-        transfer: VISIBLE_DISABLED,
-        transferConference: inConference ? VISIBLE_DISABLED : DISABLED,
-        mergeToConference: VISIBLE_DISABLED,
-      };
+      return withWxAppTelephonyControls(
+        {
+          ...getDefaultInteractionUIControls(),
+          endConsult: VISIBLE_ENABLED,
+          switch: VISIBLE_DISABLED,
+          transfer: VISIBLE_DISABLED,
+          transferConference: inConference ? VISIBLE_DISABLED : DISABLED,
+          mergeToConference: VISIBLE_DISABLED,
+        },
+        isWxAppEngaged,
+        currentLeg,
+        isWrappingUp
+      );
     }
   }
 
@@ -427,7 +478,10 @@ function computeVoiceInteractionUIControls(
     // Desktop/WebRTC + outdial: accept disabled (auto-answer handles it; Widgets show "Accept" disabled)
     // Extension mode (non-WebRTC): accept disabled (Widgets show "Ringing...")
     accept: (() => {
-      if (isWxAppOffer) return VISIBLE_ENABLED;
+      if (isWxAppInboundOffer) return VISIBLE_ENABLED;
+      if (isWxAppOutdialOffer) {
+        return wxAppAnswerPending ? VISIBLE_DISABLED : VISIBLE_ENABLED;
+      }
       if (state === TaskState.OFFERED && !interaction?.isTerminated) {
         return {isVisible: true, isEnabled: isWebrtc && !isOutdial};
       }
@@ -435,7 +489,8 @@ function computeVoiceInteractionUIControls(
       return DISABLED;
     })(),
     decline: (() => {
-      if (isWxAppOffer) return VISIBLE_ENABLED;
+      if (isWxAppInboundOffer) return VISIBLE_ENABLED;
+      if (isWxAppOutdialOffer) return VISIBLE_ENABLED;
       if (!isWebrtc || state !== TaskState.OFFERED || interaction?.isTerminated) return DISABLED;
 
       return isOutdial ? VISIBLE_DISABLED : VISIBLE_ENABLED;
@@ -465,7 +520,9 @@ function computeVoiceInteractionUIControls(
 
     // Mute: WebRTC or wxApp engaged calls; hidden entirely during wrapup
     mute: (() => {
-      if (isWxAppEngaged && !isWrappingUp) return VISIBLE_ENABLED;
+      if (isWxAppEngaged && !isWrappingUp) {
+        return currentLeg === 'main' ? VISIBLE_ENABLED : DISABLED;
+      }
       if (!isWebrtc) return DISABLED;
       if (isWrappingUp) return DISABLED;
       if (isEpDnPostCallCustomerLeft && inConference) return VISIBLE_DISABLED;
@@ -730,7 +787,13 @@ function computeVoiceInteractionUIControls(
       return DISABLED;
     })(),
 
-    keypad: isWxAppEngaged && !isWrappingUp ? VISIBLE_ENABLED : DISABLED,
+    keypad: (() => {
+      if (isWxAppEngaged && !isWrappingUp) {
+        return currentLeg === 'main' ? VISIBLE_ENABLED : DISABLED;
+      }
+
+      return DISABLED;
+    })(),
   };
 }
 

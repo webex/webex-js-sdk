@@ -45,6 +45,8 @@ export interface UIControlConfig {
   agentId?: string;
   /** Whether wxApp thick-client answer is enabled (WXCC-6026) */
   enableAnswerOnWebex?: boolean;
+  /** True while wxApp telephony answer is in flight (outdial Calling… label) */
+  wxAppAnswerPending?: boolean;
 }
 
 /**

@@ -193,12 +193,14 @@ export default class TaskManager extends EventEmitter {
    * @param ccEvent - The CC_EVENT type from WebSocket
    * @param payload - The event payload
    * @param agentId - Optional agent ID for state detection (needed for HYDRATE)
+   * @param task - Optional task instance for state-aware CONTACT_ENDED mapping
    * @returns TaskEventPayload for state machine or null if no mapping
    */
   private static mapEventToTaskStateMachineEvent(
     ccEvent: CC_EVENTS,
     payload: WebSocketPayload,
-    agentId?: string
+    agentId?: string,
+    task?: ITask
   ): TaskEventPayload | null {
     const mediaResourceId =
       payload.mediaResourceId ||
@@ -305,16 +307,31 @@ export default class TaskManager extends EventEmitter {
       case CC_EVENTS.AGENT_CONFERENCE_TRANSFER_FAILED:
         return {type: TaskEvent.TRANSFER_FAILED, taskData: payload};
 
-      case CC_EVENTS.CONTACT_ENDED:
+      case CC_EVENTS.CONTACT_ENDED: {
+        const wrapUpRequired = isCampaignPreviewTask(payload)
+          ? false
+          : payload.agentsPendingWrapUp?.includes(agentId || '') || false;
+
+        // Post-accept wxApp outdial agent-end delivers ContactEnded instead of
+        // AgentOutboundFailed. Normalize to OUTBOUND_FAILED so state machine
+        // enters WRAPPING_UP and emits TASK_OUTDIAL_FAILED (AGENT_ENDS).
+        // Pre-accept cancelTask decline stays CONTACT_ENDED → TERMINATED (no wrapup).
+        if (TaskManager.isAgentTerminatedOutdialWrapup(payload, wrapUpRequired, task)) {
+          return {
+            type: TaskEvent.OUTBOUND_FAILED,
+            reason: 'AGENT_ENDS',
+            taskData: {...payload, wrapUpRequired: true},
+          };
+        }
+
         return {
           type: TaskEvent.CONTACT_ENDED,
           taskData: {
             ...payload,
-            wrapUpRequired: isCampaignPreviewTask(payload)
-              ? false
-              : payload.agentsPendingWrapUp?.includes(agentId || '') || false,
+            wrapUpRequired,
           },
         };
+      }
 
       case CC_EVENTS.AGENT_INVITE_FAILED:
         return {type: TaskEvent.INVITE_FAILED, reason: payload.reason};
@@ -375,6 +392,36 @@ export default class TaskManager extends EventEmitter {
         // Not all events need state machine mapping
         return null;
     }
+  }
+
+  /**
+   * True when ContactEnded represents an agent-terminated outdial that should
+   * enter wrapup with an outdial-failed popup (legacy AgentOutboundFailed parity).
+   */
+  private static isAgentTerminatedOutdialWrapup(
+    payload: WebSocketPayload,
+    wrapUpRequired: boolean,
+    task?: ITask
+  ): boolean {
+    const isOutdial = payload.interaction?.outboundType === 'OUTDIAL';
+    const agentTerminated = payload.terminatingParty === 'Agent';
+
+    if (!isOutdial || !agentTerminated) {
+      return false;
+    }
+
+    const wxAppAnswerPending =
+      (task as {uiControlConfig?: {wxAppAnswerPending?: boolean}})?.uiControlConfig
+        ?.wxAppAnswerPending ?? false;
+
+    // Pre-accept decline: decline() clears wxAppAnswerPending; backend may still send state wrapUp.
+    if (!wxAppAnswerPending && !wrapUpRequired) {
+      return false;
+    }
+
+    const interactionWrapUp = payload.interaction?.state === 'wrapUp';
+
+    return wrapUpRequired || interactionWrapUp || wxAppAnswerPending;
   }
 
   /**
@@ -513,7 +560,8 @@ export default class TaskManager extends EventEmitter {
     const stateMachineEvent = TaskManager.mapEventToTaskStateMachineEvent(
       eventType,
       adjustedPayload,
-      this.agentId
+      this.agentId,
+      task
     );
 
     LoggerProxy.info(`Handling task event ${eventType}`, {
@@ -976,6 +1024,9 @@ export default class TaskManager extends EventEmitter {
 
     Object.values(this.taskCollection).forEach((task) => {
       task.setEnableAnswerOnWebex(enabled);
+      if (enabled) {
+        TaskManager.syncWxAppMuteFromCallDetailsForTask(task);
+      }
     });
   }
 
@@ -985,6 +1036,25 @@ export default class TaskManager extends EventEmitter {
   public applyWxAppMuteStateFromSync(callId: string, muted: boolean): void {
     Object.values(this.taskCollection).forEach((task) => {
       task.applyWxAppMuteStateFromSync(callId, muted);
+    });
+  }
+
+  /**
+   * Re-seeds wxApp mute state from GET telephony/calls/{callId} for one task.
+   */
+  public static syncWxAppMuteFromCallDetailsForTask(task: ITask): void {
+    const sync = task.syncWxAppMuteFromCallDetails?.bind(task);
+    if (typeof sync === 'function') {
+      sync().catch(() => undefined);
+    }
+  }
+
+  /**
+   * Re-seeds wxApp mute for all engaged voice tasks (reload / runtime enable backfill).
+   */
+  public syncWxAppMuteFromCallDetailsForAllTasks(): void {
+    Object.values(this.taskCollection).forEach((task) => {
+      TaskManager.syncWxAppMuteFromCallDetailsForTask(task);
     });
   }
 

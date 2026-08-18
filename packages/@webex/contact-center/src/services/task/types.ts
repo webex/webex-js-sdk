@@ -1705,6 +1705,16 @@ export interface ITask extends IEventEmitter {
   applyWxAppMuteStateFromSync(incomingCallId: string, muted: boolean): void;
 
   /**
+   * Current wxApp mute state for engaged telephony (Voice tasks only).
+   */
+  getWxAppMuted?(): boolean;
+
+  /**
+   * Re-seed wxApp mute from GET telephony/calls/{callId}. Resolves to muted state when known.
+   */
+  syncWxAppMuteFromCallDetails?(): Promise<boolean | undefined>;
+
+  /**
    * State machine instance for managing task state transitions and derived properties.
    * The state machine handles:
    * - State transitions (IDLE → OFFERED → CONNECTED → HELD, etc.)
@@ -2045,6 +2055,8 @@ export type WebSocketPayload = TaskData & {
   type: string;
   mediaResourceId?: string;
   reason?: string;
+  /** ContactEnded: party that ended the contact (e.g. 'Agent', 'Customer') */
+  terminatingParty?: string;
   /**
    * Optional real-time transcript chunk payload.
    * Present on REAL_TIME_TRANSCRIPTION notifications.

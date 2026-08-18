@@ -2819,4 +2819,92 @@ describe('uiControlsComputer wxApp thick-client answer (WXCC-6026)', () => {
       expect(controls.main.keypad).toEqual({isVisible: false, isEnabled: false});
     });
   });
+
+  describe('wxApp engaged through consult and hold phases', () => {
+    it('enables main mute and keypad during consult-requested phase on main leg', () => {
+      const ctx = createWxAppContext();
+      ctx.taskData = createTaskData({
+        agentId: 'agent-1',
+        consultMediaResourceId: 'consult-media',
+        interaction: {
+          interactionId: 'interaction-1',
+          mainInteractionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              consultState: 'consultInitiated',
+              ...WX_APP_DEVICE,
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer'},
+          } as any,
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              isHold: false,
+              participants: ['agent-1', 'customer-1'],
+            },
+            'consult-media': {
+              mediaResourceId: 'consult-media',
+              mType: 'consult',
+              participants: ['agent-1'],
+            },
+          } as any,
+        } as any,
+      });
+      ctx.consultInitiator = true;
+      ctx.consultDestinationAgentJoined = false;
+
+      const controls = computeUIControls(TaskState.CONNECTED, ctx, ctx.taskData);
+
+      expect(controls.main.mute).toEqual({isVisible: true, isEnabled: true});
+      expect(controls.main.keypad).toEqual({isVisible: true, isEnabled: true});
+    });
+
+    it('enables main mute and keypad while consulting with main leg held', () => {
+      const taskData = createConsultTaskData();
+      taskData.interaction!.participants!['agent-1'] = {
+        id: 'agent-1',
+        pType: 'AGENT',
+        hasLeft: false,
+        consultState: 'consulting',
+        ...WX_APP_DEVICE,
+      };
+      const ctx = createVoiceContext({
+        taskData,
+        uiControlConfig: {
+          ...createVoiceContext().uiControlConfig,
+          enableAnswerOnWebex: true,
+        },
+      });
+
+      const controls = computeUIControls(TaskState.CONSULTING, ctx, taskData);
+
+      expect(controls.main.mute).toEqual({isVisible: true, isEnabled: true});
+      expect(controls.main.keypad).toEqual({isVisible: true, isEnabled: true});
+      expect(controls.consult.mute).toEqual({isVisible: false, isEnabled: false});
+    });
+
+    it('keeps BROWSER consult mute enabled when enableAnswerOnWebex is true and wxApp is not engaged', () => {
+      const consultedTaskData = createConsultedAgentInconsistentTaskData();
+      const consultedContext = createVoiceContext({
+        consultInitiator: false,
+        taskData: consultedTaskData,
+        uiControlConfig: {
+          ...createVoiceContext().uiControlConfig,
+          agentId: 'agent-2',
+          voiceVariant: VOICE_VARIANT.WEBRTC,
+          enableAnswerOnWebex: true,
+        },
+      });
+
+      const controls = computeUIControls(
+        TaskState.CONNECTED,
+        consultedContext,
+        consultedTaskData
+      );
+
+      expect(controls.main.mute).toEqual({isVisible: true, isEnabled: true});
+    });
+  });
 });

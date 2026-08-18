@@ -693,6 +693,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       await this.publishAnswerOnWebexCrossClientState(false);
       this.webexCrossClientService.teardown();
       this.wxAppTelephonyMercurySync.unsubscribe();
+      this.resetEnableAnswerOnWebexConfig();
 
       LoggerProxy.log('Deregistered successfully', {
         module: CC_FILE,
@@ -1039,6 +1040,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       };
 
       this.webCallingService.setLoginOption(data.loginOption);
+      if (this.agentConfig) {
+        this.agentConfig.deviceType = data.loginOption;
+        if (
+          data.loginOption === LoginOption.AGENT_DN ||
+          data.loginOption === LoginOption.EXTENSION
+        ) {
+          this.agentConfig.defaultDn = data.dialNumber;
+          this.agentConfig.dn = data.dialNumber;
+        }
+      }
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
         {
@@ -1060,7 +1071,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       );
 
-      await this.ensureWxAppMercuryAndSubscribe();
+      await this.ensureWxAppPostStationLogin();
 
       return response;
     } catch (error) {
@@ -1133,6 +1144,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       await this.publishAnswerOnWebexCrossClientState(false);
       this.webexCrossClientService.teardown();
       this.wxAppTelephonyMercurySync.unsubscribe();
+      this.resetEnableAnswerOnWebexConfig();
 
       LoggerProxy.log(`Agent station logout completed successfully`, {
         module: CC_FILE,
@@ -1429,16 +1441,36 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
+   * Current station login option (Extension, Dial Number, or Browser/Desktop).
+   * Prefer webCallingService — updated on every stationLogin before wxApp hooks run.
+   * @private
+   */
+  private getCurrentStationLoginOption(): LoginOption | undefined {
+    return this.webCallingService?.loginOption ?? this.agentConfig?.deviceType;
+  }
+
+  /**
    * wxApp thick-client answer is supported for Extension and Dial Number station login only —
    * not Browser/Desktop (WebRTC) login.
    * @private
    */
   private assertWxAppStationLoginSupportedForEnable(): void {
-    if (this.agentConfig?.deviceType === LoginOption.BROWSER) {
+    if (this.getCurrentStationLoginOption() === LoginOption.BROWSER) {
       throw new Error(
         'setManageWebexCallingInWxcc is not supported for BROWSER (Desktop) login. Use EXTENSION or AGENT_DN.'
       );
     }
+  }
+
+  /**
+   * Clears runtime wxApp config after logout/deregister so stale flags do not apply on relogin.
+   * @private
+   */
+  private resetEnableAnswerOnWebexConfig(): void {
+    if (this.$config) {
+      this.$config.enableAnswerOnWebex = false;
+    }
+    this.taskManager.applyEnableAnswerOnWebex(false);
   }
 
   /**
@@ -1468,6 +1500,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       if (enabled) {
         await this.ensureWxAppMercuryAndSubscribe();
+        this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
       } else {
         this.wxAppTelephonyMercurySync.unsubscribe();
       }
@@ -1477,6 +1510,29 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
       this.taskManager.applyEnableAnswerOnWebex(previousEnabled);
       throw error;
+    }
+  }
+
+  private async ensureWxAppPostStationLogin(): Promise<void> {
+    if (this.getCurrentStationLoginOption() === LoginOption.BROWSER) {
+      return;
+    }
+
+    try {
+      if (this.isAnswerOnWebexEnabled()) {
+        await this.publishAnswerOnWebexCrossClientState(true);
+        await this.ensureWxAppMercuryAndSubscribe();
+        this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
+      } else {
+        await this.publishAnswerOnWebexCrossClientState(false, {force: true});
+        this.webexCrossClientService.teardown();
+        this.wxAppTelephonyMercurySync.unsubscribe();
+      }
+    } catch (error) {
+      LoggerProxy.error(`Failed to initialize wxApp post-station-login: ${error}`, {
+        module: CC_FILE,
+        method: METHODS.STATION_LOGIN,
+      });
     }
   }
 
@@ -1506,6 +1562,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return;
     }
 
+    if (this.getCurrentStationLoginOption() === LoginOption.BROWSER) {
+      return;
+    }
+
     const agentId = this.agentConfig?.agentId;
     if (!agentId) {
       LoggerProxy.error('Cannot subscribe wxApp mute sync: agentId unavailable', {
@@ -1529,12 +1589,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
-  private async publishAnswerOnWebexCrossClientState(enable: boolean): Promise<void> {
+  private async publishAnswerOnWebexCrossClientState(
+    enable: boolean,
+    options?: {force?: boolean}
+  ): Promise<void> {
     if (enable && !this.isAnswerOnWebexEnabled()) {
       return;
     }
 
-    if (!enable && !this.webexCrossClientService.isAnswerCallsStateActive()) {
+    if (!enable && !options?.force && !this.webexCrossClientService.isAnswerCallsStateActive()) {
       return;
     }
 
@@ -1649,6 +1712,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
       this.agentConfig.lastStateAuxCodeId = auxCodeId;
       this.agentConfig.isAgentLoggedIn = true;
+
+      await this.ensureWxAppPostStationLogin();
 
       LoggerProxy.log(
         `Silent relogin process completed successfully with login Option: ${reLoginResponse.data.deviceType} teamId: ${reLoginResponse.data.teamId}`,
