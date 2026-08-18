@@ -47,6 +47,7 @@ let postCallSummary = {
   requestFailed: false,
 };
 let postCallSummaryPending = null; // Promise from requestPostCallSummary, awaited by wrapupCall
+let wrapupResponsePending = null; // In-flight wrapupCall(), awaited before summaries are dismissed
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -743,20 +744,18 @@ async function retrySummary(type) {
 }
 
 
+function toSectionLabel(key) {
+  return key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trimStart();
+}
+
 function renderSummaryText(payload) {
   if (!payload) return '';
 
   // Path 1: sections map — keyed by section name, values are strings
-  const sections = payload.sections ?? payload.data?.sections;
-  if (sections && typeof sections === 'object') {
-    const parts = Object.entries(sections)
-      .filter(([, v]) => typeof v === 'string' && v.trim())
-      .map(([k, v]) => {
-        const label = k.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trimStart();
-        return `${label}:\n${v.trim()}`;
-      });
-    if (parts.length) return parts.join('\n\n');
-  }
+  const parts = extractSummarySections(payload)
+    .filter((section) => section.value)
+    .map((section) => `${section.label}:\n${section.value}`);
+  if (parts.length) return parts.join('\n\n');
 
   // Path 2: plain summaryText fallback
   const summaryText = payload.summaryText ?? payload.data?.summaryText;
@@ -884,29 +883,34 @@ function resetSummaryFeedbackUI(prefix) {
   if (down) down.setAttribute('aria-pressed', 'false');
 }
 
-function extractEditFields(payload) {
-  const editCard = payload?.editAdaptiveCard;
-  if (!editCard?.body) return [];
-  const fields = [];
-  function traverse(nodes) {
-    if (!Array.isArray(nodes)) return;
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i];
-      if (node.type === 'Input.Text' && node.id) {
-        const prev = nodes[i - 1];
-        const rawLabel = prev?.type === 'TextBlock' && prev.text ? String(prev.text) : '';
-        const label = (rawLabel && !isUnresolvedTemplate(rawLabel))
-          ? rawLabel.replace(/:$/, '').trim()
-          : node.id.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trimStart();
-        const value = node.value && !isUnresolvedTemplate(node.value) ? node.value : '';
-        fields.push({ id: node.id, label, value });
-      }
-      if (node.items) traverse(node.items);
-      if (node.columns) node.columns.forEach((c) => traverse(c.items || []));
-    }
-  }
-  traverse(editCard.body);
-  return fields;
+// Narrative display order: why the contact happened, then context, then what was done, then what
+// is left to do. The payload's own key order is not guaranteed, so pin it here. A payload is
+// either mid-call or post-call, so the two families can share one list. Keys not listed (new
+// sections added server-side) keep their payload order and render after the known ones.
+const SUMMARY_SECTION_ORDER = [
+  'reasonForTransferOrConsult', // mid-call
+  'initialContactReason', // post-call
+  'additionalContactReasons', // post-call
+  'additionalContext',
+  'keyActionsTaken',
+  'nextSteps',
+];
+
+// Section keys are the contract for edited summaries (`summary: Sections | string`),
+// so drive both the read-only view and the edit form straight off `sections`.
+function extractSummarySections(payload) {
+  const sections = payload?.sections ?? payload?.data?.sections;
+  if (!sections || typeof sections !== 'object') return [];
+  const rank = (id) => {
+    const i = SUMMARY_SECTION_ORDER.indexOf(id);
+
+    return i === -1 ? SUMMARY_SECTION_ORDER.length : i;
+  };
+
+  return Object.entries(sections)
+    .filter(([, value]) => typeof value === 'string')
+    .map(([id, value]) => ({ id, label: toSectionLabel(id), value: value.trim() }))
+    .sort((a, b) => rank(a.id) - rank(b.id));
 }
 
 function renderSummarySection(prefix, payload) {
@@ -926,7 +930,7 @@ function renderSummarySection(prefix, payload) {
   };
   container.appendChild(editBtn);
 
-  const fields = extractEditFields(payload);
+  const fields = extractSummarySections(payload);
   if (fields.length > 0) {
     fields.forEach((field) => {
       const row = document.createElement('div');
@@ -947,7 +951,7 @@ function renderSummarySection(prefix, payload) {
 }
 
 function renderSummaryEditMode(prefix, payload, container) {
-  const fields = extractEditFields(payload);
+  const fields = extractSummarySections(payload);
   if (fields.length > 0) {
     summaryFieldMap.set(prefix, fields.map((f) => ({ id: f.id, label: f.label })));
     fields.forEach((field) => {
@@ -1042,6 +1046,7 @@ function clearSummarySection(prefix) {
   if (!container) return;
   container.innerHTML = '';
   summaryFieldMap.set(prefix, []);
+  summaryOriginalPayload.delete(prefix);
 }
 
 function dismissAllSummaryUI() {
@@ -1084,7 +1089,7 @@ function buildSummaryPayload(prefix) {
   const fields = summaryFieldMap.get(prefix) || [];
   const original = summaryOriginalPayload.get(prefix);
   if (fields.length > 0) {
-    const originalFields = extractEditFields(original);
+    const originalFields = extractSummarySections(original);
     const origMap = Object.fromEntries(originalFields.map((f) => [f.id, f.value]));
     const sections = {};
     fields.forEach((f) => {
@@ -1100,7 +1105,7 @@ function buildSummaryPayload(prefix) {
 function isSummaryEdited(prefix, originalPayload) {
   const fields = summaryFieldMap.get(prefix) || [];
   if (fields.length > 0) {
-    const originalFields = extractEditFields(originalPayload);
+    const originalFields = extractSummarySections(originalPayload);
     const origMap = Object.fromEntries(originalFields.map((f) => [f.id, f.value]));
     return fields.some((f) => {
       const ta = document.getElementById(`${prefix}-${f.id}`);
@@ -2656,6 +2661,18 @@ function registerTaskListeners(task) {
   // task:wrappedup - Agent has completed wrapup, task is now COMPLETED
   task.on('task:wrappedup', (updatedTask) => {
     console.info('[task:wrappedup] Task wrapped up (COMPLETED) - updating UI');
+    // COMPLETED is a final state that emits only task:wrappedup — task:end never fires on the
+    // wrapUpRequired path, so summaries must be dismissed here too (covers auto-wrapup, which
+    // never goes through wrapupCall()). Wait out any in-flight wrapupCall first: it reads the
+    // edited fields out of the DOM and the flags out of summaryFeatureMap after wrapup() resolves.
+    const wrappedupInteractionId = task.data.interactionId;
+    const wrappedupIsCurrent = !currentTask || currentTask.data.interactionId === wrappedupInteractionId;
+    Promise.resolve(wrapupResponsePending).catch(() => {}).then(() => {
+      taskCreationTimes.delete(wrappedupInteractionId);
+      summaryFeatureMap.delete(wrappedupInteractionId);
+      clearSummaryStorageState(wrappedupInteractionId);
+      if (wrappedupIsCurrent) dismissAllSummaryUI();
+    });
     if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
       currentTask = updatedTask || task;
       updateCallControlUI(currentTask);
@@ -4003,7 +4020,16 @@ function endCall() {
   });
 }
 
-async function wrapupCall() {
+function wrapupCall() {
+  // Published so task:wrappedup can hold off dismissing summaries until the response is sent.
+  wrapupResponsePending = sendWrapupAndSummaryResponse().finally(() => {
+    wrapupResponsePending = null;
+  });
+
+  return wrapupResponsePending;
+}
+
+async function sendWrapupAndSummaryResponse() {
   // Button states will be updated by task.uiControls after operation completes
   const wrapupReason = wrapupCodesDropdownElm.options[wrapupCodesDropdownElm.selectedIndex].text;
   const auxCodeId = wrapupCodesDropdownElm.options[wrapupCodesDropdownElm.selectedIndex].value;
