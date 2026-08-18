@@ -115,6 +115,27 @@ describe('Mobius service discovery tests', () => {
 
     expect(filteredUris.backup.length).toBe(0);
   });
+
+  it('filterMobiusUris drops untrusted wss hosts', () => {
+    const defaultMobiusUrl = 'https://mobius.webex.com/api/v1/calling/web';
+    const discoveryResponse = getMobiusDiscoveryResponse();
+
+    discoveryResponse.primary.wss = [
+      'wss://mobius-dfw.webex.com/socket',
+      'wss://evil.example.com/socket',
+    ];
+    discoveryResponse.backup.wss = [
+      'wss://mobius-sjc.webex.com/socket',
+      'wss://attacker.example.org/socket',
+    ];
+
+    const filteredUris = filterMobiusUris(discoveryResponse, defaultMobiusUrl);
+
+    expect(filteredUris.primaryWss).toHaveLength(1);
+    expect(filteredUris.primaryWss[0]).toBe('wss://mobius-dfw.webex.com/socket');
+    expect(filteredUris.backupWss).toHaveLength(1);
+    expect(filteredUris.backupWss[0]).toBe('wss://mobius-sjc.webex.com/socket');
+  });
 });
 
 describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
@@ -1444,6 +1465,41 @@ describe('resolveContact tests', () => {
 
       expect(webexSpy).toBeCalledOnceWith(expect.objectContaining({uri: query}));
     });
+  });
+
+  it('resolveContact escapes SCIM filter injection in userExternalId', async () => {
+    const callingPartyInfo = {} as CallingPartyInfo;
+    const injectionPayload = 'x" or userName pr "';
+    const webexSpy = jest.spyOn(webex, 'request').mockResolvedValueOnce({
+      statusCode: 200,
+      body: getSampleScimResponse(),
+    });
+
+    callingPartyInfo.userExternalId = {$: injectionPayload};
+    await resolveContact(callingPartyInfo);
+
+    // After escaping: backslash → \\ then double-quote → \"
+    const escapedValue = injectionPayload.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const expectedQuery = scimUrl + encodeURIComponent(`id eq "${escapedValue}"`);
+
+    expect(webexSpy).toHaveBeenCalledWith(expect.objectContaining({uri: expectedQuery}));
+  });
+
+  it('legitimate externalId still resolves', async () => {
+    const callingPartyInfo = {} as CallingPartyInfo;
+    const legitimateId = '69fde5ad-fb8b-4a1b-9998-b0999e95719b';
+    const webexSpy = jest.spyOn(webex, 'request').mockResolvedValueOnce({
+      statusCode: 200,
+      body: getSampleScimResponse(),
+    });
+
+    callingPartyInfo.userExternalId = {$: legitimateId};
+    await resolveContact(callingPartyInfo);
+
+    // A UUID contains no SCIM metacharacters; the query string is unchanged
+    const expectedQuery = scimUrl + encodeURIComponent(`id eq "${legitimateId}"`);
+
+    expect(webexSpy).toHaveBeenCalledWith(expect.objectContaining({uri: expectedQuery}));
   });
 
   it('Resolve with minimal response from SCIM', () => {

@@ -31,7 +31,7 @@
     "prebuild": "rimraf dist",
     "build": "tsc",
     "build:src": "tsc",
-    "compile": "yarn workspaces foreach -tR --from @webex/calling run build:src",
+    "compile": "yarn workspaces foreach -tR --from @webex/legacy-tools run build:src && yarn workspaces foreach -tR --from @webex/calling run build:src",
     "test:unit": "jest --config=jest.config.js --runInBand",
     "test:style": "eslint 'src/**/*.ts'",
     "fix:lint": "eslint 'src/**/*.ts' --fix",

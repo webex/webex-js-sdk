@@ -128,6 +128,7 @@ import {
   WEBEX_API_PROD,
   WEBEX_API_BTS,
   BW_XSI_ENDPOINT_VERSION_WITH_SLASH,
+  MOBIUS_WSS_ALLOWED_DOMAINS,
 } from './constants';
 import {Model, WDMDevice, WebexSDK} from '../SDKConnector/types';
 import SDKConnector from '../SDKConnector';
@@ -135,6 +136,23 @@ import {CallSettingResponse} from '../CallSettings/types';
 import {ContactResponse} from '../Contacts/types';
 import {LineErrorEmitterCallback} from '../CallingClient/line/types';
 import {LineError, createLineError} from '../Errors/catalog/LineError';
+
+/**
+ * Returns true when the hostname of the given WSS URI ends with one of the
+ * trusted Mobius/Webex domain suffixes.  URIs with unparseable hostnames are
+ * dropped for safety.
+ */
+function isTrustedMobiusWssHost(wssUri: string): boolean {
+  try {
+    const host = new URL(wssUri).hostname;
+
+    return MOBIUS_WSS_ALLOWED_DOMAINS.some(
+      (domain) => host === domain || host.endsWith(`.${domain}`)
+    );
+  } catch {
+    return false;
+  }
+}
 
 export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl: string) {
   const logContext = {
@@ -157,7 +175,12 @@ export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl:
   if (mobiusServers?.primary?.wss) {
     log.info('Adding Primary wss uris', logContext);
     for (const wssUri of mobiusServers.primary.wss) {
-      wssArrayPrimary.push(wssUri);
+      /* Drop WSS URIs whose host is not in the trusted allowlist (AC-2) */
+      if (isTrustedMobiusWssHost(wssUri)) {
+        wssArrayPrimary.push(wssUri);
+      } else {
+        log.warn(`Dropping untrusted primary WSS URI: host not in allowed domains`, logContext);
+      }
     }
   }
 
@@ -171,7 +194,12 @@ export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl:
   if (mobiusServers?.backup?.wss) {
     log.info('Adding Backup wss uris', logContext);
     for (const wssUri of mobiusServers.backup.wss) {
-      wssArrayBackup.push(wssUri);
+      /* Drop WSS URIs whose host is not in the trusted allowlist (AC-2) */
+      if (isTrustedMobiusWssHost(wssUri)) {
+        wssArrayBackup.push(wssUri);
+      } else {
+        log.warn(`Dropping untrusted backup WSS URI: host not in allowed domains`, logContext);
+      }
     }
   }
 
@@ -1545,6 +1573,22 @@ export async function resolveCallerIdByName(name: string) {
 }
 
 /**
+ * Escapes SCIM filter-grammar metacharacters in an opaque identifier value.
+ *
+ * Prevents filter injection when a value is interpolated into `id eq "..."`.
+ * Only the backslash and double-quote characters are significant in SCIM
+ * quoted-string literals; all other characters are kept as-is so that
+ * legitimate identifiers (UUIDs, SIP addresses, etc.) resolve unchanged.
+ *
+ * @param value - The raw identifier value to escape.
+ * @returns The escaped value safe for use inside a SCIM quoted-string literal.
+ */
+export function escapeScimFilterValue(value: string): string {
+  // Escape backslash first (order matters: must precede quote escaping)
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+/**
  * Resolve the contact information.
  *
  * @param callingPartyInfo - Calling Party Info.
@@ -1553,8 +1597,10 @@ export async function resolveContact(
   callingPartyInfo: CallingPartyInfo
 ): Promise<DisplayInformation | null> {
   if (callingPartyInfo.userExternalId && callingPartyInfo.userExternalId.$) {
-    /* SCIM Search */
-    return resolveCallerIdDisplay(`id eq "${callingPartyInfo.userExternalId.$}"`);
+    /* SCIM Search — escape the value to prevent filter-grammar injection (AC-1 / U-02) */
+    return resolveCallerIdDisplay(
+      `id eq "${escapeScimFilterValue(callingPartyInfo.userExternalId.$)}"`
+    );
   }
   if (callingPartyInfo.name && callingPartyInfo.name.$) {
     /* People Search */

@@ -20,6 +20,7 @@ import {
   UnknownResponse,
 } from '../errors';
 import {MESSAGE_TYPES, SOCKET_READY_STATE} from './constants';
+import {MOBIUS_WSS_ALLOWED_DOMAINS} from '../../common/constants';
 import type {
   SocketCloseEvent,
   SocketLogger,
@@ -259,6 +260,22 @@ export default class Socket extends EventEmitter {
       const resolvedOptions = (options || {}) as SocketOpenOptions;
 
       checkRequired(['forceCloseDelay', 'token', 'trackingId', 'logger'], resolvedOptions);
+
+      /* Guard: reject before WebSocket creation if the target host is not trusted (AC-2 / U-03) */
+      const isHostTrusted = MOBIUS_WSS_ALLOWED_DOMAINS.some(
+        (domain) => this.domain === domain || this.domain.endsWith(`.${domain}`)
+      );
+
+      if (!isHostTrusted) {
+        reject(
+          new ConnectionError({
+            code: 4000,
+            reason: `Host ${this.domain} is not in the Mobius WSS trusted allowlist`,
+          })
+        );
+
+        return;
+      }
 
       Object.keys(resolvedOptions).forEach((key) => {
         Reflect.defineProperty(this, key, {
