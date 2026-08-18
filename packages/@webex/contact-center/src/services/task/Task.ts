@@ -11,6 +11,7 @@ import {
   DESTINATION_TYPE,
   TASK_EVENTS,
   TaskUIControls,
+  DropConferenceParticipantPayload,
   ConsultEndPayload,
   ConsultPayload,
   ConsultTransferPayLoad,
@@ -139,6 +140,15 @@ export default abstract class Task extends EventEmitter implements ITask {
 
   public async consultConference(): Promise<TaskResponse> {
     this.unsupportedMethodError('consultConference');
+  }
+
+  public async dropConferenceParticipant(
+    payload: DropConferenceParticipantPayload
+  ): Promise<TaskResponse> {
+    if (payload) {
+      // parameter intentionally unused
+    }
+    this.unsupportedMethodError(METHODS.DROP_CONFERENCE_PARTICIPANT);
   }
 
   public async exitConference(): Promise<TaskResponse> {

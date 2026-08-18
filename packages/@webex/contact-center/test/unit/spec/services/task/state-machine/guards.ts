@@ -339,7 +339,9 @@ describe('State Machine Guards', () => {
       const ctx = createContext({transferConferenceRequested: false, consultInitiator: false});
       const taskData = createTaskData({consultingAgentId: 'agent-123'});
       expect(
-        guards.isPassiveConferenceTransferObserver(createParams(ctx, createEventWithTaskData(taskData)))
+        guards.isPassiveConferenceTransferObserver(
+          createParams(ctx, createEventWithTaskData(taskData))
+        )
       ).toBe(false);
     });
 
@@ -361,7 +363,9 @@ describe('State Machine Guards', () => {
         },
       });
       expect(
-        guards.isPassiveConferenceTransferObserver(createParams(ctx, createEventWithTaskData(taskData)))
+        guards.isPassiveConferenceTransferObserver(
+          createParams(ctx, createEventWithTaskData(taskData))
+        )
       ).toBe(false);
     });
 
@@ -376,7 +380,9 @@ describe('State Machine Guards', () => {
         },
       });
       expect(
-        guards.isPassiveConferenceTransferObserver(createParams(ctx, createEventWithTaskData(taskData)))
+        guards.isPassiveConferenceTransferObserver(
+          createParams(ctx, createEventWithTaskData(taskData))
+        )
       ).toBe(false);
     });
 
@@ -392,7 +398,9 @@ describe('State Machine Guards', () => {
         },
       });
       expect(
-        guards.isPassiveConferenceTransferObserver(createParams(ctx, createEventWithTaskData(taskData)))
+        guards.isPassiveConferenceTransferObserver(
+          createParams(ctx, createEventWithTaskData(taskData))
+        )
       ).toBe(true);
     });
 
@@ -421,7 +429,9 @@ describe('State Machine Guards', () => {
         },
       });
       expect(
-        guards.isPassiveConferenceTransferObserver(createParams(ctx, createEventWithTaskData(taskData)))
+        guards.isPassiveConferenceTransferObserver(
+          createParams(ctx, createEventWithTaskData(taskData))
+        )
       ).toBe(false);
     });
   });
@@ -434,7 +444,9 @@ describe('State Machine Guards', () => {
         consultingAgentId: 'agent-123',
       });
       expect(
-        guards.isSelfConferenceTransferInitiator(createParams(ctx, createEventWithTaskData(taskData)))
+        guards.isSelfConferenceTransferInitiator(
+          createParams(ctx, createEventWithTaskData(taskData))
+        )
       ).toBe(true);
     });
 
@@ -463,7 +475,9 @@ describe('State Machine Guards', () => {
         },
       });
       expect(
-        guards.isSelfConferenceTransferInitiator(createParams(ctx, createEventWithTaskData(taskData)))
+        guards.isSelfConferenceTransferInitiator(
+          createParams(ctx, createEventWithTaskData(taskData))
+        )
       ).toBe(false);
     });
 
@@ -479,7 +493,9 @@ describe('State Machine Guards', () => {
         },
       });
       expect(
-        guards.isSelfConferenceTransferInitiator(createParams(ctx, createEventWithTaskData(taskData)))
+        guards.isSelfConferenceTransferInitiator(
+          createParams(ctx, createEventWithTaskData(taskData))
+        )
       ).toBe(false);
     });
   });
@@ -583,6 +599,119 @@ describe('State Machine Guards', () => {
       });
       expect(
         guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
+    });
+  });
+
+  describe('didCurrentAgentLeaveMainInteraction', () => {
+    const activeTaskData = createTaskData({
+      interaction: {
+        ...createTaskData().interaction,
+        participants: {
+          'agent-123': createParticipant('agent-123', 'Agent'),
+          'agent-456': createParticipant('agent-456', 'Agent'),
+        },
+        media: {
+          'non-interaction-main-key': {
+            mediaResourceId: INTERACTION_ID,
+            mediaType: 'telephony',
+            mediaMgr: 'media-mgr',
+            participants: ['agent-123', 'agent-456'],
+            mType: 'mainCall',
+            isHold: false,
+            holdTimestamp: null,
+          },
+        },
+      },
+    });
+
+    it('returns true when the lifecycle event explicitly names the current agent', () => {
+      const context = createContext({taskData: activeTaskData});
+      const event = {
+        ...createEventWithTaskData(activeTaskData),
+        participantId: 'agent-123',
+      } as TaskEventPayload;
+
+      expect(guards.didCurrentAgentLeaveMainInteraction(createParams(context, event))).toBe(true);
+    });
+
+    it('returns true when the current participant is marked as departed', () => {
+      const context = createContext({taskData: activeTaskData});
+      const updatedTaskData = createTaskData({
+        interaction: {
+          ...activeTaskData.interaction,
+          participants: {
+            ...activeTaskData.interaction.participants,
+            'agent-123': createParticipant('agent-123', 'Agent', true),
+          },
+        },
+      });
+
+      expect(
+        guards.didCurrentAgentLeaveMainInteraction(
+          createParams(context, createEventWithTaskData(updatedTaskData))
+        )
+      ).toBe(true);
+    });
+
+    it('finds mainCall by mType and returns true when current agent membership is removed', () => {
+      const context = createContext({taskData: activeTaskData});
+      const updatedTaskData = createTaskData({
+        interaction: {
+          ...activeTaskData.interaction,
+          participants: activeTaskData.interaction.participants,
+          media: {
+            'another-arbitrary-key': {
+              mediaResourceId: INTERACTION_ID,
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-456'],
+              mType: 'mainCall',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        },
+      });
+
+      expect(
+        guards.didCurrentAgentLeaveMainInteraction(
+          createParams(context, createEventWithTaskData(updatedTaskData))
+        )
+      ).toBe(true);
+    });
+
+    it('returns true when an active current participant disappears from the updated map', () => {
+      const context = createContext({taskData: activeTaskData});
+      const updatedTaskData = createTaskData({
+        interaction: {
+          ...activeTaskData.interaction,
+          participants: {'agent-456': createParticipant('agent-456', 'Agent')},
+          media: activeTaskData.interaction.media,
+        },
+      });
+
+      expect(
+        guards.didCurrentAgentLeaveMainInteraction(
+          createParams(context, createEventWithTaskData(updatedTaskData))
+        )
+      ).toBe(true);
+    });
+
+    it('does not infer departure from missing partial interaction membership', () => {
+      const context = createContext({taskData: activeTaskData});
+      const partialTaskData = createTaskData({
+        interaction: {
+          interactionId: INTERACTION_ID,
+          mainInteractionId: INTERACTION_ID,
+          state: 'conference',
+        } as TaskData['interaction'],
+      });
+
+      expect(
+        guards.didCurrentAgentLeaveMainInteraction(
+          createParams(context, createEventWithTaskData(partialTaskData))
+        )
       ).toBe(false);
     });
   });

@@ -2412,6 +2412,240 @@ describe('TaskManager', () => {
       expect(call.type).toBe(TaskEvent.PARTICIPANT_LEAVE);
     });
 
+    it('routes participant-left from a main interaction to a child-keyed task', () => {
+      const childTaskId = 'child-interaction-id';
+      const childTask = createMockTask({
+        ...taskDataMock,
+        interactionId: childTaskId,
+        isConsulted: true,
+        interaction: {
+          mediaType: 'telephony',
+          interactionId: childTaskId,
+          parentInteractionId: taskId,
+        },
+      });
+      delete taskManager.taskCollection[taskId];
+      taskManager.taskCollection[childTaskId] = childTask;
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+            interactionId: taskId,
+            participantId: 'test-agent-id',
+            interaction: {
+              mediaType: 'telephony',
+              interactionId: taskId,
+              mainInteractionId: taskId,
+            },
+          },
+        })
+      );
+
+      expect(childTask.sendStateMachineEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: TaskEvent.PARTICIPANT_LEAVE,
+          participantId: 'test-agent-id',
+        })
+      );
+      expect(taskManager.taskCollection[childTaskId]).toBeUndefined();
+      expect(taskManager.taskCollection[taskId]).toBe(childTask);
+      expect(
+        Object.values(taskManager.taskCollection).filter((entry) => entry === childTask)
+      ).toHaveLength(1);
+    });
+
+    it('routes consult-end from a main interaction to a child-keyed consulted task', () => {
+      const childTaskId = 'consult-child-interaction-id';
+      const childTask = createMockTask({
+        ...taskDataMock,
+        interactionId: childTaskId,
+        isConsulted: true,
+        interaction: {
+          mediaType: 'telephony',
+          interactionId: childTaskId,
+          callProcessingDetails: {parentInteractionId: taskId},
+        },
+      });
+      delete taskManager.taskCollection[taskId];
+      taskManager.taskCollection[childTaskId] = childTask;
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            type: CC_EVENTS.AGENT_CONSULT_ENDED,
+            interactionId: taskId,
+            interaction: {
+              mediaType: 'telephony',
+              interactionId: taskId,
+              mainInteractionId: taskId,
+            },
+          },
+        })
+      );
+
+      expect(childTask.sendStateMachineEvent).toHaveBeenCalledWith(
+        expect.objectContaining({type: TaskEvent.CONSULT_END})
+      );
+    });
+
+    it('deduplicates aliases of the same child task during related-interaction lookup', () => {
+      const childTaskId = 'aliased-child-interaction-id';
+      const childTask = createMockTask({
+        ...taskDataMock,
+        interactionId: childTaskId,
+        interaction: {
+          mediaType: 'telephony',
+          interactionId: childTaskId,
+          mainInteractionId: taskId,
+        },
+      });
+      delete taskManager.taskCollection[taskId];
+      taskManager.taskCollection[childTaskId] = childTask;
+      taskManager.taskCollection['child-task-alias'] = childTask;
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+            interactionId: taskId,
+            participantId: 'test-agent-id',
+          },
+        })
+      );
+
+      expect(childTask.sendStateMachineEvent).toHaveBeenCalledTimes(1);
+      expect(
+        Object.values(taskManager.taskCollection).filter((entry) => entry === childTask)
+      ).toHaveLength(1);
+    });
+
+    it('prefers an exact task match over a child task with the same main interaction', () => {
+      const childTaskId = 'child-interaction-id';
+      const childTask = createMockTask({
+        ...taskDataMock,
+        interactionId: childTaskId,
+        interaction: {
+          mediaType: 'telephony',
+          interactionId: childTaskId,
+          mainInteractionId: taskId,
+        },
+      });
+      taskManager.taskCollection[childTaskId] = childTask;
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+            interactionId: taskId,
+            participantId: 'another-agent',
+          },
+        })
+      );
+
+      expect(task.sendStateMachineEvent).toHaveBeenCalled();
+      expect(childTask.sendStateMachineEvent).not.toHaveBeenCalled();
+    });
+
+    it('does not route a main-interaction event when multiple unique child tasks match', () => {
+      delete taskManager.taskCollection[taskId];
+      const createChildTask = (interactionId: string) =>
+        createMockTask({
+          ...taskDataMock,
+          interactionId,
+          interaction: {
+            mediaType: 'telephony',
+            interactionId,
+            mainInteractionId: taskId,
+          },
+        });
+      const firstChildTask = createChildTask('child-1');
+      const secondChildTask = createChildTask('child-2');
+      taskManager.taskCollection['child-1'] = firstChildTask;
+      taskManager.taskCollection['child-2'] = secondChildTask;
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+            interactionId: taskId,
+          },
+        })
+      );
+
+      expect(firstChildTask.sendStateMachineEvent).not.toHaveBeenCalled();
+      expect(secondChildTask.sendStateMachineEvent).not.toHaveBeenCalled();
+    });
+
+    it('removes every collection alias for a task during terminal cleanup', () => {
+      taskManager.taskCollection['task-alias'] = task;
+
+      (taskManager as any).removeTaskFromCollection(task);
+
+      expect(taskManager.taskCollection[taskId]).toBeUndefined();
+      expect(taskManager.taskCollection['task-alias']).toBeUndefined();
+    });
+
+    it('replaces an EP-DN child task with a hydrated main task on CONTACT_MERGED', () => {
+      const childTaskId = 'ep-dn-child-interaction-id';
+      const childTask = createMockTask({
+        ...taskDataMock,
+        interactionId: childTaskId,
+        interaction: {
+          mediaType: 'telephony',
+          interactionId: childTaskId,
+          parentInteractionId: taskId,
+        },
+      });
+      const mergedHandler = jest.fn();
+      delete taskManager.taskCollection[taskId];
+      taskManager.taskCollection[childTaskId] = childTask;
+      taskManager.on(TASK_EVENTS.TASK_MERGED, mergedHandler);
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            type: CC_EVENTS.CONTACT_MERGED,
+            interactionId: taskId,
+            childInteractionId: childTaskId,
+            interaction: {
+              mediaType: 'telephony',
+              interactionId: taskId,
+              mainInteractionId: taskId,
+              state: 'conference',
+              owner: 'test-agent-id',
+              participants: {
+                'test-agent-id': {id: 'test-agent-id', pType: 'Agent', hasLeft: false},
+              },
+              media: {
+                [taskId]: {
+                  mediaResourceId: taskId,
+                  mediaType: 'telephony',
+                  mType: 'mainCall',
+                  participants: ['test-agent-id'],
+                },
+              },
+            },
+          },
+        })
+      );
+
+      const mainTask = taskManager.taskCollection[taskId];
+      expect(taskManager.taskCollection[childTaskId]).toBeUndefined();
+      expect(mainTask).toBeDefined();
+      expect(mainTask).not.toBe(childTask);
+      expect(mainTask.sendStateMachineEvent).toHaveBeenCalledWith(
+        expect.objectContaining({type: TaskEvent.HYDRATE})
+      );
+      expect(mergedHandler).toHaveBeenCalledWith(mainTask);
+    });
+
     it('handles AGENT_CONSULT_CONFERENCING event without errors', () => {
       const payload = {
         data: {type: CC_EVENTS.AGENT_CONSULT_CONFERENCING, interactionId: taskId},

@@ -58,6 +58,64 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
    *
    * (See TaskManager.mapEventToTaskStateMachineEvent for the full mapping table.)
    */
+  const currentAgentParticipantLeaveTransitions = () => [
+    {
+      guard: (params) =>
+        guards.didCurrentAgentLeaveMainInteraction(params) && guards.shouldWrapUp(params),
+      target: TaskState.WRAPPING_UP,
+      actions: [
+        'updateTaskData',
+        'handleParticipantLeft',
+        'markEnded',
+        'clearConsultState',
+        'emitTaskParticipantLeft',
+        'emitTaskWrapup',
+      ],
+    },
+    {
+      guard: guards.didCurrentAgentLeaveMainInteraction,
+      target: TaskState.TERMINATED,
+      actions: [
+        'updateTaskData',
+        'handleParticipantLeft',
+        'markEnded',
+        'clearConsultState',
+        'emitTaskParticipantLeft',
+        'emitTaskEnd',
+      ],
+    },
+  ];
+
+  const currentAgentConsultEndTransitions = () => [
+    {
+      guard: (params) =>
+        guards.didCurrentAgentLeaveMainInteraction(params) && guards.shouldWrapUp(params),
+      target: TaskState.WRAPPING_UP,
+      actions: [
+        'updateTaskData',
+        'markEnded',
+        'clearConsultState',
+        'emitTaskConsultEnd',
+        'emitTaskWrapup',
+      ],
+    },
+    {
+      guard: guards.didCurrentAgentLeaveMainInteraction,
+      target: TaskState.TERMINATED,
+      actions: [
+        'updateTaskData',
+        'markEnded',
+        'clearConsultState',
+        'emitTaskConsultEnd',
+        'emitTaskEnd',
+      ],
+    },
+  ];
+
+  const survivingParticipantLeaveTransition = {
+    actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft'],
+  };
+
   return {
     id: 'taskStateMachine',
     initial: TaskState.IDLE,
@@ -70,7 +128,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
         actions: ['updateTaskData', 'syncTaskDataFromEvent'],
       },
       [TaskEvent.CONTACT_OWNER_CHANGED]: {
-        actions: ['updateTaskData', 'syncTaskDataFromEvent'],
+        actions: ['updateTaskData', 'syncTaskDataFromEvent', 'emitTaskHydrate'],
       },
       // HYDRATE: Update task data from AgentContact event
       // Note: State restoration with transitions is handled in IDLE state.
@@ -334,6 +392,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           // AgentConsultEnded from Stable Prod while on connected leg (external end consult).
           [TaskEvent.CONSULT_END]: [
+            ...currentAgentConsultEndTransitions(),
             {
               guard: ({context, event}) => {
                 if (context.consultInitiator !== true) return false;
@@ -349,6 +408,10 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               guard: ({context}) => context.consultInitiator === true,
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
+          ],
+          [TaskEvent.PARTICIPANT_LEAVE]: [
+            ...currentAgentParticipantLeaveTransitions(),
+            survivingParticipantLeaveTransition,
           ],
           // AgentContactEnded Event
           [TaskEvent.CONTACT_ENDED]: [
@@ -401,6 +464,10 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.CONNECTED,
             actions: ['updateTaskData'],
           },
+          [TaskEvent.PARTICIPANT_LEAVE]: [
+            ...currentAgentParticipantLeaveTransitions(),
+            survivingParticipantLeaveTransition,
+          ],
         },
       },
 
@@ -487,9 +554,14 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             },
           ],
           // AgentConsultEnded from Stable Prod while main leg is held (external end consult).
-          [TaskEvent.CONSULT_END]: {
-            actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
-          },
+          [TaskEvent.CONSULT_END]: [
+            ...currentAgentConsultEndTransitions(),
+            {actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd']},
+          ],
+          [TaskEvent.PARTICIPANT_LEAVE]: [
+            ...currentAgentParticipantLeaveTransitions(),
+            survivingParticipantLeaveTransition,
+          ],
           // TODO: This may not be a valid transition, this needs to be checked as well
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.WRAPPING_UP,
@@ -507,6 +579,10 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.UNHOLD_FAILED]: {
             target: TaskState.HELD,
           },
+          [TaskEvent.PARTICIPANT_LEAVE]: [
+            ...currentAgentParticipantLeaveTransitions(),
+            survivingParticipantLeaveTransition,
+          ],
         },
       },
 
@@ -569,6 +645,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           ],
           // AgentConsultEnded from Stable Prod during consult initiation (external end consult).
           [TaskEvent.CONSULT_END]: [
+            ...currentAgentConsultEndTransitions(),
             {
               guard: guards.isPrimaryMediaOnHold,
               target: TaskState.HELD,
@@ -578,6 +655,10 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               target: TaskState.CONNECTED,
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
+          ],
+          [TaskEvent.PARTICIPANT_LEAVE]: [
+            ...currentAgentParticipantLeaveTransitions(),
+            survivingParticipantLeaveTransition,
           ],
         },
       },
@@ -619,6 +700,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
           // AgentConsultEnded
           [TaskEvent.CONSULT_END]: [
+            ...currentAgentConsultEndTransitions(),
             {
               // Initiator returning to conference only while conference is still active.
               guard: ({context, event}) =>
@@ -686,7 +768,13 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               // Consulted agent → TERMINATED
               target: TaskState.TERMINATED,
-              actions: ['updateTaskData'],
+              actions: [
+                'updateTaskData',
+                'markEnded',
+                'clearConsultState',
+                'emitTaskConsultEnd',
+                'emitTaskEnd',
+              ],
             },
           ],
 
@@ -705,35 +793,9 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
 
           [TaskEvent.PARTICIPANT_LEAVE]: [
+            ...currentAgentParticipantLeaveTransitions(),
             {
-              guard: (params) =>
-                guards.didCurrentAgentLeaveConference(params) && guards.shouldWrapUp(params),
-              target: TaskState.WRAPPING_UP,
-              actions: [
-                'updateTaskData',
-                'handleParticipantLeft',
-                'markEnded',
-                'clearConsultState',
-                'emitTaskParticipantLeft',
-                'emitTaskWrapup',
-              ],
-            },
-            {
-              guard: guards.didCurrentAgentLeaveConference,
-              target: TaskState.TERMINATED,
-              actions: [
-                'updateTaskData',
-                'handleParticipantLeft',
-                'markEnded',
-                'clearConsultState',
-                'emitTaskParticipantLeft',
-                'emitTaskEnd',
-              ],
-            },
-            {
-              guard: (params) =>
-                !guards.didCurrentAgentLeaveConference(params) &&
-                guards.shouldDowngradeConferenceToConnected(params),
+              guard: guards.shouldDowngradeConferenceToConnected,
               target: TaskState.CONNECTED,
               actions: [
                 'updateTaskData',
@@ -743,7 +805,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 'emitTaskConferenceEnded',
               ],
             },
-            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
+            survivingParticipantLeaveTransition,
           ],
 
           [TaskEvent.TRANSFER_SUCCESS]: [
@@ -860,6 +922,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           // AgentConsultEnded while conference is initiating (end call before conference completes)
           [TaskEvent.CONSULT_END]: [
+            ...currentAgentConsultEndTransitions(),
             {
               guard: ({event}) => {
                 const taskData = getTaskDataFromEvent(event);
@@ -873,6 +936,10 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               target: TaskState.CONNECTED,
               actions: ['updateTaskData', 'clearConsultState'],
             },
+          ],
+          [TaskEvent.PARTICIPANT_LEAVE]: [
+            ...currentAgentParticipantLeaveTransitions(),
+            survivingParticipantLeaveTransition,
           ],
         },
       },
@@ -901,6 +968,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
           // Needed as all agents in conference get this event, hence we need to clear the consult state
           [TaskEvent.CONSULT_END]: [
+            ...currentAgentConsultEndTransitions(),
             {
               guard: ({context, event}) => {
                 const taskData = getTaskDataFromEvent(event);
@@ -975,38 +1043,10 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
           // Participant leaves - handle conference downgrade scenarios
           [TaskEvent.PARTICIPANT_LEAVE]: [
-            {
-              // Only the leaving agent should wrap up → WRAPPING_UP
-              guard: (params) =>
-                guards.didCurrentAgentLeaveConference(params) && guards.shouldWrapUp(params),
-              target: TaskState.WRAPPING_UP,
-              actions: [
-                'updateTaskData',
-                'handleParticipantLeft',
-                'markEnded',
-                'clearConsultState',
-                'emitTaskParticipantLeft',
-                'emitTaskWrapup',
-              ],
-            },
-            {
-              // Only the leaving agent (no wrapup) → TERMINATED
-              guard: guards.didCurrentAgentLeaveConference,
-              target: TaskState.TERMINATED,
-              actions: [
-                'updateTaskData',
-                'handleParticipantLeft',
-                'markEnded',
-                'clearConsultState',
-                'emitTaskParticipantLeft',
-                'emitTaskEnd',
-              ],
-            },
+            ...currentAgentParticipantLeaveTransitions(),
             {
               // Conference downgraded, customer present → CONNECTED
-              guard: (params) =>
-                !guards.didCurrentAgentLeaveConference(params) &&
-                guards.shouldDowngradeConferenceToConnected(params),
+              guard: guards.shouldDowngradeConferenceToConnected,
               target: TaskState.CONNECTED,
               actions: [
                 'updateTaskData',
@@ -1016,7 +1056,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 'emitTaskConferenceEnded',
               ],
             },
-            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
+            survivingParticipantLeaveTransition,
           ],
 
           [TaskEvent.TRANSFER_CONFERENCE]: {

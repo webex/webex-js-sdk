@@ -51,7 +51,7 @@
       "canonical_spec": "ai-docs/contact-center-spec.md",
       "contracts": {
         "provides": [
-          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, exported user-preference request/response types, and preview-campaign methods acceptPreviewContact/skipPreviewContact/removePreviewContact"
+          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, exported user-preference request/response types, preview-campaign methods acceptPreviewContact/skipPreviewContact/removePreviewContact, and DropConferenceParticipantPayload/task.dropConferenceParticipant"
         ],
         "requires": [
           "Webex SDK host/plugin runtime; Contact Center REST and WebSocket services; internal Webex calling, metrics, support, authorization, logger, and mercury packages"
@@ -94,7 +94,7 @@
       "canonical_spec": "src/metrics/ai-docs/metrics-spec.md",
       "contracts": {
         "provides": [
-          "MetricsManager timing, behavioral/operational/business event submission, taxonomy, queues, and tracking-field helpers"
+          "MetricsManager timing, behavioral/operational/business event submission, taxonomy including task_conference_participant_drop, queues, and tracking-field helpers"
         ],
         "requires": [
           "Webex internal metrics service; Webex ready lifecycle; LoggerProxy; browser document visibility"
@@ -265,7 +265,7 @@
       "canonical_spec": "src/services/core/ai-docs/core-spec.md",
       "contracts": {
         "provides": [
-          "WebexRequest; WebSocketManager; ConnectionService; AqmReqs; shared error and request types/utilities"
+          "WebexRequest; WebSocketManager; ConnectionService; AqmReqs including opt-in sensitive failure/timeout log redaction; shared error and request types/utilities"
         ],
         "requires": [
           "Webex SDK authenticated service routing; browser WebSocket/Worker/network APIs; LoggerProxy; metrics/log-upload infrastructure"
@@ -308,7 +308,7 @@
       "canonical_spec": "src/services/task/ai-docs/task-spec.md",
       "contracts": {
         "provides": [
-          "Task/Voice/WebRTC/Digital lifecycle APIs; TaskManager; task events/types; call-control and dialer operations including acceptPreviewContact, skipPreviewContact, and removePreviewContact"
+          "Task/Voice/WebRTC/Digital lifecycle APIs including task.dropConferenceParticipant; TaskManager with exact/reservation/unique-main-interaction lifecycle correlation and alias-safe cleanup; task events/types; call-control and dialer operations including acceptPreviewContact, skipPreviewContact, and removePreviewContact"
         ],
         "requires": [
           "Contact/dialer AqmReqs; WebSocket managers; @webex/calling; MetricsManager; XState task-state module"
@@ -351,7 +351,7 @@
       "canonical_spec": "src/services/task/state-machine/ai-docs/task-state-machine-spec.md",
       "contracts": {
         "provides": [
-          "Task state-machine factory; TaskState/TaskEvent contracts; guards/actions; state-derived UI-control computation"
+          "Task state-machine factory; TaskState/TaskEvent contracts; guards/actions including owner-change hydrate emission and normal consulted-agent consult-end/task-end cleanup; state-derived UI-control computation"
         ],
         "requires": [
           "XState; TaskData/task event contracts; Task and TaskManager integration"

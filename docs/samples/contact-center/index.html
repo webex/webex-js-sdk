@@ -275,7 +275,20 @@
             <button onclick="answer()" disabled="" id="answer" class="btn--green">Answer</button>
             <button onclick="decline()" disabled="" id="decline" class="btn--red">Decline</button>
           </div>
-          <div id="participant-list"></div>
+          <section id="participant-list" class="conference-roster" aria-labelledby="participant-list-heading" hidden>
+            <h3 id="participant-list-heading">Conference participants</h3>
+            <p id="participant-drop-status" class="sr-only" aria-live="polite"></p>
+            <p id="participant-drop-error" class="conference-roster__error" role="alert" aria-live="assertive"></p>
+            <div id="participant-roster-content"></div>
+          </section>
+          <dialog id="customer-drop-dialog" aria-labelledby="customer-drop-dialog-heading" aria-describedby="customer-drop-dialog-description">
+            <h3 id="customer-drop-dialog-heading">Drop customer?</h3>
+            <p id="customer-drop-dialog-description">The customer will be removed from this conference.</p>
+            <div class="conference-roster__dialog-actions">
+              <button type="button" id="cancel-customer-drop">Cancel</button>
+              <button type="button" id="confirm-customer-drop" class="btn--red">Drop customer</button>
+            </div>
+          </dialog>
         </fieldset>
         <fieldset>
           <legend>Remote Audio</legend>

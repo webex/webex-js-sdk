@@ -12,6 +12,7 @@ import {
   ResumeRecordingPayload,
   TaskData,
   TaskResponse,
+  DropConferenceParticipantPayload,
   IVoice,
   VoiceUIControlOptions,
   TransferPayLoad,
@@ -824,6 +825,90 @@ export default class Voice extends Task implements IVoice {
       });
 
       throw detailedError;
+    }
+  }
+
+  /**
+   * Removes another participant from an active conference.
+   * Completion is correlated with ParticipantLeftConference by the AQM request layer.
+   * @param payload - Participant identifier to remove
+   * @returns Promise<TaskResponse>
+   */
+  public async dropConferenceParticipant(
+    payload: DropConferenceParticipantPayload
+  ): Promise<TaskResponse> {
+    const participantId = payload?.participantId;
+
+    if (typeof participantId !== 'string' || participantId.trim().length === 0) {
+      throw new Error('participantId must be a non-empty string');
+    }
+
+    const requestInteractionId =
+      this.data.interaction?.mainInteractionId || this.data.interactionId;
+
+    try {
+      LoggerProxy.info('Dropping conference participant', {
+        module: CC_FILE,
+        method: METHODS.DROP_CONFERENCE_PARTICIPANT,
+        interactionId: requestInteractionId,
+      });
+
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
+      ]);
+
+      const response = await this.contact.dropConferenceParticipant({
+        interactionId: requestInteractionId,
+        data: {participantId},
+      });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          requestInteractionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+          agentId: this.agentId,
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log('Successfully dropped conference participant', {
+        module: CC_FILE,
+        method: METHODS.DROP_CONFERENCE_PARTICIPANT,
+        trackingId: response?.trackingId,
+        interactionId: requestInteractionId,
+      });
+
+      return response;
+    } catch (error) {
+      const failureTrackingFields = MetricsManager.getCommonTrackingFieldForAQMResponseFailed(
+        error.details || {}
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
+        {
+          taskId: this.data.interactionId,
+          requestInteractionId,
+          agentId: this.agentId,
+          trackingId: failureTrackingFields.trackingId,
+          notifTrackingId: failureTrackingFields.notifTrackingId,
+          orgId: failureTrackingFields.orgId,
+          failureType: failureTrackingFields.failureType,
+          reasonCode: failureTrackingFields.reasonCode,
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.error('Failed to drop conference participant', {
+        module: CC_FILE,
+        method: METHODS.DROP_CONFERENCE_PARTICIPANT,
+        interactionId: requestInteractionId,
+      });
+
+      throw error;
     }
   }
 

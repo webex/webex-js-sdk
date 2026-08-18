@@ -515,12 +515,12 @@ export const actions: TaskActionsMap = {
   }),
   handleConferenceStarted: assign({consultInitiator: false}),
 
-  setConsultDestination: assign(({event}: TaskActionArgs) => {
+  setConsultDestination: assign(({context, event}: TaskActionArgs) => {
     if (!event || event.type !== TaskEvent.CONSULT) {
       return {};
     }
 
-    const taskData = getTaskDataFromEvent(event);
+    const taskData = getTaskDataFromEvent(event) ?? context.taskData;
     const consultDestinationType =
       'destinationType' in event ? event.destinationType ?? null : null;
     const consultDestinationAgentId =

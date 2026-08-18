@@ -362,13 +362,14 @@ export const guards = {
   },
 
   /**
-   * True if PARTICIPANT_LEAVE indicates that *this* agent left the conference.
+   * True when an updated lifecycle event shows that this agent left the main interaction.
    *
-   * Important: PARTICIPANT_LEAVE is broadcast to all agents in the conference.
-   * Only the agent whose id matches the leaving participant should transition to
-   * TERMINATED / WRAPPING_UP based on wrapup rules.
+   * Participant-left and consult-end events can be delivered for the parent interaction
+   * while an EP-DN secondary agent is consulting on another leg. Main-call membership is
+   * authoritative in that case, matching Agent Desktop behavior. Partial payloads are not
+   * treated as a departure unless they contain an explicit self-participant signal.
    */
-  didCurrentAgentLeaveConference: ({context, event}: GuardParams): boolean => {
+  didCurrentAgentLeaveMainInteraction: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
     const selfAgentId = getSelfAgentId(context, taskData);
     if (!selfAgentId) return false;
@@ -383,12 +384,34 @@ export const guards = {
       return true;
     }
 
-    //    For EP-DN agents the backend removes the leaving participant entirely
-    //    from the participants map (rather than setting hasLeft). If this task
-    //    is in CONFERENCING (implied by the guard being evaluated here) but the
-    //    agent is absent from the updated participants, they have left.
-    const participants = taskData?.interaction?.participants;
-    if (participants && !(selfAgentId in participants)) {
+    const currentParticipant = taskData?.interaction?.participants?.[selfAgentId];
+    if (currentParticipant?.hasLeft === true) {
+      return true;
+    }
+
+    const previousParticipants = context.taskData?.interaction?.participants;
+    const updatedParticipants = taskData?.interaction?.participants;
+    const wasPreviouslyActive = Boolean(
+      previousParticipants?.[selfAgentId] && previousParticipants[selfAgentId].hasLeft !== true
+    );
+    if (updatedParticipants && wasPreviouslyActive && !(selfAgentId in updatedParticipants)) {
+      return true;
+    }
+
+    const previousMainMedia = Object.values(context.taskData?.interaction?.media ?? {}).filter(
+      (media) => media?.mType === 'mainCall'
+    );
+    const updatedMainMedia = Object.values(taskData?.interaction?.media ?? {}).filter(
+      (media) => media?.mType === 'mainCall'
+    );
+    const wasPreviouslyInMainCall = previousMainMedia.some((media) =>
+      media.participants?.includes(selfAgentId)
+    );
+    const remainsInMainCall = updatedMainMedia.some((media) =>
+      media.participants?.includes(selfAgentId)
+    );
+
+    if (updatedMainMedia.length > 0 && wasPreviouslyInMainCall && !remainsInMainCall) {
       return true;
     }
 

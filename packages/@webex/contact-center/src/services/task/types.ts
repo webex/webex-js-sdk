@@ -1630,6 +1630,15 @@ export type ParticipantBooleanKey =
 export type TaskResponse = AgentContact | Error | void;
 
 /**
+ * Request payload for removing a supported participant from an active conference.
+ * @public
+ */
+export type DropConferenceParticipantPayload = {
+  /** Participant identifier supplied by the current task roster. */
+  participantId: string;
+};
+
+/**
  * Payload shape used by consult conference helper utilities.
  */
 export type consultConferencePayloadData = {
@@ -1874,6 +1883,18 @@ export interface ITask extends IEventEmitter {
    * ```
    */
   consultConference(): Promise<TaskResponse>;
+
+  /**
+   * Removes a supported participant from the active conference.
+   * Resolves after the correlated ParticipantLeftConference routing event.
+   * @param payload - Participant identifier to remove
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.dropConferenceParticipant({participantId: 'participant-id'});
+   * ```
+   */
+  dropConferenceParticipant(payload: DropConferenceParticipantPayload): Promise<TaskResponse>;
 
   /**
    * Exits from an ongoing conference.

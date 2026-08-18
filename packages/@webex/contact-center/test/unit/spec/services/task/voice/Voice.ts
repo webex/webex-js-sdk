@@ -8,6 +8,9 @@ import {TaskEvent, TaskState} from '../../../../../../src/services/task/state-ma
 import {computeUIControls} from '../../../../../../src/services/task/state-machine/uiControlsComputer';
 import * as Utils from '../../../../../../src/services/core/Utils';
 import {createTaskData} from '../taskTestUtils';
+import LoggerProxy from '../../../../../../src/logger-proxy';
+import MetricsManager from '../../../../../../src/metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../../../../../../src/metrics/constants';
 
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
@@ -33,6 +36,11 @@ const dummyContact = {
   resumeRecording: jest.fn().mockResolvedValue('resumedRecording'),
   consult: jest.fn().mockResolvedValue('consulted'),
   consultConference: jest.fn().mockResolvedValue('conferenceStarted'),
+  dropConferenceParticipant: jest.fn().mockResolvedValue({
+    type: 'RoutingMessage',
+    trackingId: 'drop-tracking-id',
+    data: {},
+  }),
   consultTransfer: jest.fn().mockResolvedValue('consultTransferred'),
 } as any;
 
@@ -644,6 +652,104 @@ describe('Voice Task', () => {
           to: 'derivedAgent',
         }),
       });
+    });
+  });
+
+  describe('dropConferenceParticipant()', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it.each([
+      ['missing payload', undefined],
+      ['missing participantId', {}],
+      ['non-string participantId', {participantId: 42}],
+      ['blank participantId', {participantId: '   '}],
+    ])('rejects %s before registering a request', async (_label, payload) => {
+      const taskData = createBaseData();
+      const voice = new Voice(dummyContact, taskData, {});
+      const timeEventSpy = jest.spyOn(MetricsManager.getInstance(), 'timeEvent');
+
+      await expect(voice.dropConferenceParticipant(payload as any)).rejects.toThrow(
+        'participantId must be a non-empty string'
+      );
+
+      expect(dummyContact.dropConferenceParticipant).not.toHaveBeenCalled();
+      expect(timeEventSpy).not.toHaveBeenCalled();
+    });
+
+    it('uses the latest main interaction ID and records PII-safe success telemetry', async () => {
+      const participantId = '+1/participant-secret';
+      const taskData = createBaseData({
+        interaction: {mainInteractionId: 'main-interaction-id'} as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'current-agent-id');
+      const metricsManager = MetricsManager.getInstance();
+      const timeEventSpy = jest.spyOn(metricsManager, 'timeEvent').mockImplementation();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent').mockImplementation();
+      const infoSpy = jest.spyOn(LoggerProxy, 'info').mockImplementation();
+      const logSpy = jest.spyOn(LoggerProxy, 'log').mockImplementation();
+
+      await voice.dropConferenceParticipant({participantId});
+
+      expect(dummyContact.dropConferenceParticipant).toHaveBeenCalledWith({
+        interactionId: 'main-interaction-id',
+        data: {participantId},
+      });
+      expect(timeEventSpy).toHaveBeenCalledWith([
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
+      ]);
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS,
+        expect.objectContaining({
+          taskId: 'int1',
+          requestInteractionId: 'main-interaction-id',
+          agentId: 'current-agent-id',
+        }),
+        ['operational', 'behavioral', 'business']
+      );
+
+      const telemetryAndLogs = JSON.stringify([
+        timeEventSpy.mock.calls,
+        trackEventSpy.mock.calls,
+        infoSpy.mock.calls,
+        logSpy.mock.calls,
+      ]);
+      expect(telemetryAndLogs).not.toContain(participantId);
+    });
+
+    it('records PII-safe failure telemetry and rethrows the AQM error', async () => {
+      const participantId = '+1/failure-secret';
+      const failure = {
+        details: {
+          type: 'ParticipantDropConferenceFailed',
+          trackingId: 'failure-tracking-id',
+          data: {reason: participantId},
+        },
+      };
+      dummyContact.dropConferenceParticipant.mockRejectedValueOnce(failure);
+      const taskData = createBaseData();
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'current-agent-id');
+      const metricsManager = MetricsManager.getInstance();
+      jest.spyOn(metricsManager, 'timeEvent').mockImplementation();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent').mockImplementation();
+      const errorSpy = jest.spyOn(LoggerProxy, 'error').mockImplementation();
+
+      await expect(voice.dropConferenceParticipant({participantId})).rejects.toBe(failure);
+
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
+        expect.objectContaining({
+          taskId: 'int1',
+          requestInteractionId: 'int1',
+          agentId: 'current-agent-id',
+        }),
+        ['operational', 'behavioral', 'business']
+      );
+      expect(JSON.stringify([trackEventSpy.mock.calls, errorSpy.mock.calls])).not.toContain(
+        participantId
+      );
     });
   });
 });

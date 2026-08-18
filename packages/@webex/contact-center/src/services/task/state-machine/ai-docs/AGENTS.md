@@ -266,14 +266,16 @@ shouldWrapUpOrIsInitiator(context, event) {
   return Boolean(event.taskData?.wrapUpRequired || context.consultInitiator);
 }
 
-// Check whether the leaving participant is the current agent
-didCurrentAgentLeaveConference(context, event) {
+// Check whether the current agent left the main interaction
+didCurrentAgentLeaveMainInteraction(context, event) {
   const selfAgentId = getSelfAgentId(context, event.taskData);
   if (!selfAgentId) return false;
 
   const participantIdFromEvent = 'participantId' in event ? event.participantId : undefined;
   const participantId = participantIdFromEvent ?? event.taskData?.participantId;
-  return Boolean(participantId) && participantId === selfAgentId;
+  if (Boolean(participantId) && participantId === selfAgentId) return true;
+  // Also compare explicit hasLeft / participant-map removal and previous-versus-updated
+  // media entries whose mType is mainCall. Missing partial membership alone is false.
 }
 ```
 
