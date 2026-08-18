@@ -265,7 +265,13 @@ describe('plugin-mercury', () => {
           },
           {
             code: 4000,
+            reason: 'Replaced',
             action: 'replace',
+          },
+          {
+            code: 4000,
+            reason: 'Unexpected close',
+            action: 'reconnect',
           },
           {
             action: 'close',
@@ -316,8 +322,7 @@ describe('plugin-mercury', () => {
                   // Reconnection re-derives from the resolved URL
                   // captured in _prepareAndOpenSocket, not the socket's actual
                   // (possibly changed by interceptors) url.
-                  expectedReconnectUrl =
-                    mercury.sessionWebSocketUrls.get('mercury-default-session');
+                  expectedReconnectUrl = mercury.resolvedWebSocketUrl;
 
                   mockWebSocket.emit('close', {code, reason});
 

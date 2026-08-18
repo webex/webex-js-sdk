@@ -1285,6 +1285,122 @@ describe('plugin-mercury', () => {
         });
       });
 
+      describe('#_onclose() with code 4000', () => {
+        let mockSocket, anotherSocket;
+
+        beforeEach(() => {
+          mockSocket = {
+            url: 'ws://active-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          anotherSocket = {
+            url: 'ws://old-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          mercury.socket = mockSocket;
+          mercury.resolvedWebSocketUrl = mockSocket.url;
+          mercury.connected = true;
+          sinon.stub(mercury, '_emit');
+          sinon.stub(mercury, '_reconnect');
+          sinon.stub(mercury, 'unset');
+          // Reset metrics stub before each test
+          webex.internal.metrics.submitClientMetrics.resetHistory();
+        });
+
+        afterEach(() => {
+          mercury._emit.restore();
+          mercury._reconnect.restore();
+          mercury.unset.restore();
+        });
+
+        it('should not reconnect when active socket is replaced', () => {
+          const closeEvent = {
+            code: 4000,
+            reason: 'Replaced',
+          };
+
+          mercury._onclose(closeEvent, mockSocket);
+
+          assert.calledOnceWithExactly(
+            webex.internal.metrics.submitClientMetrics,
+            'JS_SDK_MERCURY_CLOSE_4000',
+            {
+              fields: {
+                action: 'no_action',
+                close_code: 4000,
+                close_reason: 'Replaced',
+                is_active_socket: true,
+                message_type: 'replaced',
+              },
+              tags: {
+                action: 'no_action',
+                message_type: 'replaced',
+              },
+            }
+          );
+          assert.calledWith(mercury._emit, 'offline.replaced', closeEvent);
+          assert.notCalled(mercury._reconnect);
+        });
+
+        it('should reconnect active socket when 4000 has an unknown reason', () => {
+          const closeEvent = {
+            code: 4000,
+            reason: 'Unexpected close',
+          };
+
+          mercury._onclose(closeEvent, mockSocket);
+
+          assert.calledOnceWithExactly(
+            webex.internal.metrics.submitClientMetrics,
+            'JS_SDK_MERCURY_CLOSE_4000',
+            {
+              fields: {
+                action: 'reconnect',
+                close_code: 4000,
+                close_reason: 'Unexpected close',
+                is_active_socket: true,
+                message_type: 'other',
+              },
+              tags: {
+                action: 'reconnect',
+                message_type: 'other',
+              },
+            }
+          );
+          assert.calledWith(mercury._emit, 'offline.transient', closeEvent);
+          assert.calledWith(mercury._reconnect, mockSocket.url);
+        });
+
+        it('should not reconnect a non-active socket with an unknown 4000 reason', () => {
+          const closeEvent = {
+            code: 4000,
+            reason: 'Unexpected close',
+          };
+
+          mercury._onclose(closeEvent, anotherSocket);
+
+          assert.calledOnceWithExactly(
+            webex.internal.metrics.submitClientMetrics,
+            'JS_SDK_MERCURY_CLOSE_4000',
+            {
+              fields: {
+                action: 'ignore_non_active',
+                close_code: 4000,
+                close_reason: 'Unexpected close',
+                is_active_socket: false,
+                message_type: 'other',
+              },
+              tags: {
+                action: 'ignore_non_active',
+                message_type: 'other',
+              },
+            }
+          );
+          assert.notCalled(mercury._reconnect);
+          assert.isTrue(mercury.connected);
+        });
+      });
+
       describe('#_onclose() with code 4001 (shutdown replacement)', () => {
         let mockSocket, anotherSocket;
 
