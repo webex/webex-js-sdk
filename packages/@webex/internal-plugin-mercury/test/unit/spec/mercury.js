@@ -1348,6 +1348,7 @@ describe('plugin-mercury', () => {
           };
           mercury.socket = mockSocket;
           mercury.sockets.set(mercury.defaultSessionId, mockSocket);
+          mercury.sessionWebSocketUrls.set(mercury.defaultSessionId, mockSocket.url);
           mercury.connected = true;
           sinon.stub(mercury, '_emit');
           sinon.stub(mercury, '_reconnect');

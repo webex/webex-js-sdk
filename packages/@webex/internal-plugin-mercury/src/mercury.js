@@ -911,7 +911,7 @@ const Mercury = WebexPlugin.extend({
     /* eslint complexity: [0] */
 
     try {
-      const {reason} = event;
+      const reason = event.reason && event.reason.toLowerCase();
       const sessionSocket = this.sockets.get(sessionId);
       event.sessionId = sessionId;
 
@@ -962,7 +962,7 @@ const Mercury = WebexPlugin.extend({
           break;
         case 4000:
           // metric: disconnect
-          if (reason?.toLowerCase() === 'replaced') {
+          if (reason === 'replaced') {
             this._submitMercuryClose4000Metric(sessionId, event, {
               action: 'no_action',
               isActiveSocket,
