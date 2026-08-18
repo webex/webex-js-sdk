@@ -767,7 +767,7 @@ const Mercury = WebexPlugin.extend({
           if (isActiveSocket) this._emit('offline.permanent', event);
           break;
         case 4000:
-          // metric: disconnect
+          // metric: disconnect, check reason
           if (reason === 'replaced') {
             this._submitMercuryClose4000Metric(event, {
               action: 'no_action',
