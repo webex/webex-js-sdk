@@ -25,7 +25,7 @@ import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
-import {TaskState, TaskEvent, TaskActionArgs} from '../state-machine';
+import {TaskState, TaskEvent, TaskActionArgs, getTaskStateForUiControls} from '../state-machine';
 import {WrapupData} from '../../config/types';
 import {getConsultMediaResourceId, getIsConferenceInProgress} from '../TaskUtils';
 
@@ -57,6 +57,24 @@ export default class Voice extends Task implements IVoice {
 
   private getStateMachineSnapshot() {
     return this.stateMachineService?.getSnapshot?.();
+  }
+
+  /**
+   * Whether this agent has a live consult leg, and therefore whether `transfer()` must bridge
+   * that leg via consult transfer rather than blind transfer the main call.
+   *
+   * `interaction.state` reports the main call leg only, so it cannot be used on its own: when a
+   * conference downgrades to a 1:1 call while a consult is still active (another agent exits the
+   * conference mid-consult), the backend reports `connected`/`hold` even though this agent's
+   * consult leg is untouched. Derive the state the same way the UI controls do, so the transfer
+   * button and this method can never disagree about which kind of transfer they mean.
+   */
+  private hasActiveConsultLeg(): boolean {
+    if (this.getStateMachineSnapshot()?.matches(TaskState.CONSULTING)) {
+      return true;
+    }
+
+    return getTaskStateForUiControls(this.data, this.data?.agentId) === TaskState.CONSULTING;
   }
 
   /**
@@ -621,6 +639,8 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async transfer(payload: TransferPayLoad): Promise<TaskResponse> {
+    const isConsultTransfer = this.hasActiveConsultLeg();
+
     try {
       LoggerProxy.info(`Transferring task to ${payload.to}`, {
         module: CC_FILE,
@@ -633,7 +653,7 @@ export default class Voice extends Task implements IVoice {
       ]);
 
       // consult transfer path
-      if (this.data.interaction.state === 'consulting') {
+      if (isConsultTransfer) {
         const normalizedDestinationType =
           payload.destinationType === 'Agent' || payload.destinationType === 'Queue'
             ? (payload.destinationType.toLowerCase() as ConsultTransferPayLoad['destinationType'])
@@ -656,7 +676,7 @@ export default class Voice extends Task implements IVoice {
         }
 
         const result = await this.contact.consultTransfer({
-          interactionId: this.data.interactionId,
+          interactionId: this.data.interaction?.mainInteractionId || this.data.interactionId,
           data: consultPayload,
         });
         this.metricsManager.trackEvent(
@@ -693,7 +713,7 @@ export default class Voice extends Task implements IVoice {
           taskId: this.data.interactionId,
           destination: payload.to,
           destinationType: payload.destinationType,
-          isConsultTransfer: this.data.interaction.state === 'consulting',
+          isConsultTransfer,
           error: err.toString(),
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(err.details || {}),
         },

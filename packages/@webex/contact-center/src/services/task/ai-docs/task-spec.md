@@ -516,7 +516,7 @@ Returns an object of AQM request methods for outbound dialing.
 
 - `contact.vteamTransfer` / `contact.blindTransfer` in `transfer(...)`.
 
-- While in consulting state, `transfer(...)` internally routes through consult-transfer behavior.
+- While in consulting state, `transfer(...)` internally routes through consult-transfer behavior. "Consulting state" is the task's derived lifecycle state (state machine `CONSULTING`, else `getTaskStateForUiControls(...) === CONSULTING`), never the raw `interaction.state` string, which reports only the main call leg and flips to `connected`/`hold` when a conference downgrades while a consult is still live.
 
 - `contact.end` in `end()`.
 
