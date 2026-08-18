@@ -364,6 +364,23 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should build origin correctly when the meetings plugin is not available (before webex is ready)', () => {
+        // meetings plugin, geoHintInfo and meetingCollection are all absent before webex.ready
+        webex.meetings = undefined;
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.equal(res.clientInfo.clientType, 'TEAMS_CLIENT');
+        assert.equal(res.clientInfo.subClientType, 'WEB_APP');
+        assert.isUndefined(res.clientInfo.publicNetworkPrefix);
+        assert.isUndefined(res.clientInfo.localNetworkPrefix);
+        assert.equal(res.name, 'endpoint');
+      });
+
       it('builds origin correctly, when overriding clientVersion', () => {
         webex.meetings.config.metrics.clientVersion = '43.9.0.1234';
 
@@ -4526,6 +4543,30 @@ describe('internal-plugin-metrics', () => {
           fetchOptions.body.metrics[0].eventPayload.event.meetingJoinPhase,
           options.meetingJoinPhase
         );
+      });
+
+      it('builds request options before webex is ready (no meetings plugin or internal metrics config)', async () => {
+        // before webex.ready the meetings plugin and internal metrics config are not available
+        webex.meetings = undefined;
+        webex.internal.metrics = undefined;
+
+        const options = {
+          correlationId: 'myCorrelationId',
+          clientType: 'TEAMS_CLIENT',
+          subClientType: 'WEB_APP',
+        };
+
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        const eventPayload = fetchOptions.body.metrics[0].eventPayload;
+        assert.equal(eventPayload.event.name, 'client.exit.app');
+        assert.isUndefined(eventPayload.senderCountryCode);
+        assert.isUndefined(fetchOptions.waitForServiceTimeout);
+        assert.equal(fetchOptions.resource, 'clientmetrics');
       });
     });
 
