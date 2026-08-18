@@ -364,6 +364,23 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should build origin correctly when the meetings plugin is not available (before webex is ready)', () => {
+        // meetings plugin, geoHintInfo and meetingCollection are all absent before webex.ready
+        webex.meetings = undefined;
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.equal(res.clientInfo.clientType, 'TEAMS_CLIENT');
+        assert.equal(res.clientInfo.subClientType, 'WEB_APP');
+        assert.isUndefined(res.clientInfo.publicNetworkPrefix);
+        assert.isUndefined(res.clientInfo.localNetworkPrefix);
+        assert.equal(res.name, 'endpoint');
+      });
+
       it('builds origin correctly, when overriding clientVersion', () => {
         webex.meetings.config.metrics.clientVersion = '43.9.0.1234';
 
@@ -386,6 +403,64 @@ describe('internal-plugin-metrics', () => {
             os: getOSNameInternal(),
             osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
+          },
+          environment: 'meeting_evn',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      });
+
+      it('builds origin correctly with browser details provided by the host client', () => {
+        // host resolves wrapper browsers (WebOS, Electron) to the engine that determines capability
+        webex.meetings.config.metrics.browser = 'WebOS Browser';
+        webex.meetings.config.metrics.browserVersion = '108.0.0.0';
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.equal(res.clientInfo.browser, 'WebOS Browser');
+        assert.equal(res.clientInfo.browserVersion, '108.0.0.0');
+      });
+
+      it('falls back to SDK browser detection when the host provides nothing', () => {
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.equal(res.clientInfo.browser, getBrowserName());
+        assert.equal(res.clientInfo.browserVersion, getBrowserVersion());
+      });
+
+      it('builds origin correctly with the browser support flags from config', () => {
+        // `false` is the meaningful "unsupported family" signal, so it must survive a truthy check
+        webex.meetings.config.metrics.isSupportedBrowserFamily = false;
+        webex.meetings.config.metrics.isOutdatedBrowserVersion = true;
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.3.4.0',
+            localNetworkPrefix: '192.168.1.80',
+            os: getOSNameInternal(),
+            osVersion: getOSVersion() || 'unknown',
+            subClientType: 'WEB_APP',
+            isSupportedBrowserFamily: false,
+            isOutdatedBrowserVersion: true,
           },
           environment: 'meeting_evn',
           name: 'endpoint',
@@ -4468,6 +4543,30 @@ describe('internal-plugin-metrics', () => {
           fetchOptions.body.metrics[0].eventPayload.event.meetingJoinPhase,
           options.meetingJoinPhase
         );
+      });
+
+      it('builds request options before webex is ready (no meetings plugin or internal metrics config)', async () => {
+        // before webex.ready the meetings plugin and internal metrics config are not available
+        webex.meetings = undefined;
+        webex.internal.metrics = undefined;
+
+        const options = {
+          correlationId: 'myCorrelationId',
+          clientType: 'TEAMS_CLIENT',
+          subClientType: 'WEB_APP',
+        };
+
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        const eventPayload = fetchOptions.body.metrics[0].eventPayload;
+        assert.equal(eventPayload.event.name, 'client.exit.app');
+        assert.isUndefined(eventPayload.senderCountryCode);
+        assert.isUndefined(fetchOptions.waitForServiceTimeout);
+        assert.equal(fetchOptions.resource, 'clientmetrics');
       });
     });
 

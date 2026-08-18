@@ -88,6 +88,7 @@ describe('plugin-meetings', () => {
       webex = new MockWebex({});
       webex.internal.llm.on = sinon.stub();
       webex.internal.llm.isConnected = sinon.stub();
+      webex.internal.llm.getLocusUrl = sinon.stub().returns('newUrl');
       webex.internal.mercury.on = sinon.stub();
       breakouts = new Breakouts({}, {parent: webex});
       breakouts.groupId = 'groupId';
@@ -649,6 +650,15 @@ describe('plugin-meetings', () => {
         assert.notCalled(breakouts.listenTo);
       });
 
+      it('do not subscribe message if the connected llm does not belong to this meeting', () => {
+        webex.internal.llm.isConnected = sinon.stub().returns(true);
+        webex.internal.llm.getLocusUrl = sinon.stub().returns('anotherMeetingLocusUrl');
+        breakouts.listenTo = sinon.stub();
+        breakouts.locusUrlUpdate('newUrl');
+        assert.equal(breakouts.locusUrl, 'newUrl');
+        assert.notCalled(breakouts.listenTo);
+      });
+
       it('do not subscribe message if already done', () => {
         webex.internal.llm.isConnected = sinon.stub().returns(true);
         breakouts.hasSubscribedToMessage = true;
@@ -661,7 +671,9 @@ describe('plugin-meetings', () => {
       it('triggers message event when a message received', () => {
         webex.internal.llm.isConnected = sinon.stub().returns(true);
         breakouts.locusUrlUpdate('newUrl');
-        const call = webex.internal.llm.on.getCall(0);
+        const call = webex.internal.llm.on
+          .getCalls()
+          .find((c) => c.args[0] === 'event:breakout.message');
         const callback = call.args[1];
 
         assert.equal(call.args[0], 'event:breakout.message');
@@ -688,6 +700,25 @@ describe('plugin-meetings', () => {
           message: 'message',
           sessionId: 'sessionId',
         });
+      });
+
+      it('re-checks the subscription when the llm emits online', () => {
+        const onlineCall = webex.internal.llm.on
+          .getCalls()
+          .find((c) => c.args[0] === 'online');
+        assert.exists(onlineCall, 'expected an online listener to be registered');
+        const onlineHandler = onlineCall.args[1];
+
+        webex.internal.llm.isConnected = sinon.stub().returns(true);
+        webex.internal.llm.getLocusUrl = sinon.stub().returns(breakouts.locusUrl);
+
+        onlineHandler.call(breakouts);
+
+        const call = webex.internal.llm.on
+          .getCalls()
+          .find((c) => c.args[0] === 'event:breakout.message');
+        assert.exists(call, 'expected broadcast message subscription after online');
+        assert.isTrue(breakouts.hasSubscribedToMessage);
       });
     });
 
