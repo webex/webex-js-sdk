@@ -271,14 +271,14 @@
         <fieldset>
           <legend>Incoming Task</legend>
           <div class="u-mv">
-            <pre id="incoming-task"> No Incoming Tasks</pre>
+            <pre id="incoming-task" tabindex="-1"> No Incoming Tasks</pre>
             <button onclick="answer()" disabled="" id="answer" class="btn--green">Answer</button>
             <button onclick="decline()" disabled="" id="decline" class="btn--red">Decline</button>
           </div>
+          <p id="participant-drop-status" class="sr-only" aria-live="polite"></p>
+          <p id="participant-drop-error" class="conference-roster__error" role="alert" aria-live="assertive"></p>
           <section id="participant-list" class="conference-roster" aria-labelledby="participant-list-heading" hidden>
-            <h3 id="participant-list-heading">Conference participants</h3>
-            <p id="participant-drop-status" class="sr-only" aria-live="polite"></p>
-            <p id="participant-drop-error" class="conference-roster__error" role="alert" aria-live="assertive"></p>
+            <h3 id="participant-list-heading" tabindex="-1">Conference participants</h3>
             <div id="participant-roster-content"></div>
           </section>
           <dialog id="customer-drop-dialog" aria-labelledby="customer-drop-dialog-heading" aria-describedby="customer-drop-dialog-description">

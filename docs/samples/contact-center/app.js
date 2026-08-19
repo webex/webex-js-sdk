@@ -46,6 +46,7 @@ const updateTeamDropdownElm = document.querySelector('#updateTeamDropdown');
 const incomingCallListener = document.querySelector('#incomingsection');
 const incomingDetailsElm = document.querySelector('#incoming-task');
 const participantListElm = document.querySelector('#participant-list');
+const participantListHeadingElm = document.querySelector('#participant-list-heading');
 const participantRosterContentElm = document.querySelector('#participant-roster-content');
 const participantDropStatusElm = document.querySelector('#participant-drop-status');
 const participantDropErrorElm = document.querySelector('#participant-drop-error');
@@ -1314,16 +1315,9 @@ function getCurrentConsultMedia(task) {
 }
 
 function hasActiveNonHeldConsult(task) {
-  const consultControls = getTaskLegControls(task, 'consult');
-  const consultMedia = Object.values(task?.data?.interaction?.media || {}).find(
-    (media) => media?.mType?.toLowerCase() === 'consult'
-  );
-  const interactionState = task?.data?.interaction?.state?.toLowerCase();
-  const consultIsActive =
-    hasVisibleControls(consultControls) ||
-    ['consult', 'consulting'].includes(interactionState);
+  const consultMedia = getCurrentConsultMedia(task);
 
-  return Boolean(consultIsActive && consultMedia && consultMedia.isHold !== true);
+  return Boolean(consultMedia && consultMedia.isHold !== true);
 }
 
 function getCustomerNumber(interaction) {
@@ -1472,6 +1466,9 @@ function createParticipantRow(task, target) {
     dropButton.className = 'btn--red';
     dropButton.textContent = isSelectedPending ? 'Dropping…' : 'Drop';
     dropButton.setAttribute('aria-label', `Drop ${target.typeLabel.toLowerCase()} ${target.displayName}`);
+    if (target.requiresConfirmation) {
+      dropButton.dataset.participantDropTarget = 'customer';
+    }
     dropButton.disabled = Boolean(pendingParticipantDrop) || target.isDropDisabled;
     dropButton.addEventListener('click', () => {
       if (target.requiresConfirmation) {
@@ -1507,7 +1504,28 @@ function createParticipantSection(task, headingText, targets) {
   return section;
 }
 
-async function dropConferenceParticipant(task, target) {
+function restoreCustomerDropFocus() {
+  const customerDropButton = participantRosterContentElm.querySelector(
+    'button[data-participant-drop-target="customer"]'
+  );
+
+  if (customerDropButton && !customerDropButton.disabled) {
+    customerDropButton.focus();
+    return;
+  }
+
+  if (!participantListElm.hidden) {
+    participantListHeadingElm.focus();
+    return;
+  }
+
+  const fallbackControl = [holdResumeElm, consultTabBtn, endElm].find(
+    (control) => control && !control.disabled && !control.hidden && control.style.display !== 'none'
+  );
+  (fallbackControl || incomingDetailsElm).focus();
+}
+
+async function dropConferenceParticipant(task, target, {restoreFocus = false} = {}) {
   if (pendingParticipantDrop || currentTask?.data?.interactionId !== task.data.interactionId) {
     return;
   }
@@ -1519,6 +1537,9 @@ async function dropConferenceParticipant(task, target) {
 
   if (!currentTarget || currentTarget.isDropDisabled) {
     updateParticipantList(task);
+    if (restoreFocus) {
+      restoreCustomerDropFocus();
+    }
     return;
   }
 
@@ -1531,6 +1552,9 @@ async function dropConferenceParticipant(task, target) {
   participantDropStatusElm.textContent = '';
   participantDropErrorElm.textContent = '';
   updateParticipantList(task);
+  if (restoreFocus) {
+    participantListHeadingElm.focus();
+  }
 
   try {
     await task.dropConferenceParticipant({participantId: target.participantId});
@@ -1547,6 +1571,9 @@ async function dropConferenceParticipant(task, target) {
       pendingParticipantDrop = undefined;
       if (currentTask?.data?.interactionId === request.taskId) {
         updateParticipantList(currentTask);
+        if (restoreFocus) {
+          restoreCustomerDropFocus();
+        }
       }
     }
   }
@@ -1578,10 +1605,10 @@ function updateParticipantList(task) {
 confirmCustomerDropElm.addEventListener('click', () => {
   const target = customerDropTarget;
   const task = currentTask;
-  closeCustomerDropDialog();
+  closeCustomerDropDialog({restoreFocus: false});
 
   if (target && task) {
-    dropConferenceParticipant(task, target);
+    dropConferenceParticipant(task, target, {restoreFocus: true});
   }
 });
 
