@@ -195,13 +195,15 @@ describe('Queue', () => {
         desktopProfileFilter: true,
         provisioningView: false,
         singleObjectResponse: true,
+        agentView: true,
+        firstLevelView: true,
       };
 
       await queueAPI.getQueues(params);
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=25&filter=queueType%3D%3D%22INBOUND%22&attributes=id%2Cname%2CqueueType&search=support&sortBy=name&sortOrder=desc&desktopProfileFilter=true&provisioningView=false&singleObjectResponse=true',
+        resource: '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=25&filter=queueType%3D%3D%22INBOUND%22&attributes=id%2Cname%2CqueueType&search=support&sort=name%2CDESC&desktopProfileFilter=true&provisioningView=false&singleObjectResponse=true&agentView=true&firstLevelView=true',
         method: HTTP_METHODS.GET,
       });
 
@@ -213,6 +215,15 @@ describe('Queue', () => {
         }),
         ['behavioral', 'operational']
       );
+    });
+
+    it('should bypass cache for desktop-profile and agent-view requests', async () => {
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      await queueAPI.getQueues({desktopProfileFilter: true, agentView: true});
+      await queueAPI.getQueues({desktopProfileFilter: true, agentView: true});
+
+      expect(mockWebex.request).toHaveBeenCalledTimes(2);
     });
 
     it('should handle API errors and track metrics', async () => {

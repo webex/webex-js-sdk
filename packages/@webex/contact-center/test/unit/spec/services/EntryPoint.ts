@@ -99,7 +99,7 @@ describe('EntryPoint', () => {
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/entry-point?page=0&pageSize=100&sortOrder=asc',
+        resource: '/organization/test-org-id/v2/entry-point?page=0&pageSize=100&sort=name%2CASC',
         method: HTTP_METHODS.GET,
       });
 
@@ -122,7 +122,7 @@ describe('EntryPoint', () => {
         {module: 'EntryPoint', method: 'getEntryPoints'}
       );
       expect(LoggerProxy.log).toHaveBeenCalledWith(
-        `Making API request to fetch entry points - resource: /organization/test-org-id/v2/entry-point?page=0&pageSize=100&sortOrder=asc, service: wcc-api-gateway`,
+        `Making API request to fetch entry points - resource: /organization/test-org-id/v2/entry-point?page=0&pageSize=100&sort=name%2CASC, service: wcc-api-gateway`,
         {module: 'EntryPoint', method: 'getEntryPoints'}
       );
     });
@@ -144,7 +144,7 @@ describe('EntryPoint', () => {
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/entry-point?page=1&pageSize=25&sortOrder=desc&search=test&filter=type%3D%3D%22voice%22&attributes=id%2Cname&sortBy=name',
+        resource: '/organization/test-org-id/v2/entry-point?page=1&pageSize=25&search=test&filter=type%3D%3D%22voice%22&attributes=id%2Cname&sort=name%2CDESC',
         method: HTTP_METHODS.GET,
       });
 
@@ -165,14 +165,23 @@ describe('EntryPoint', () => {
     it('should append desktopProfileFilter query param when provided', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      await entryPointAPI.getEntryPoints({desktopProfileFilter: true});
+      await entryPointAPI.getEntryPoints({sortBy: 'name', desktopProfileFilter: true, agentView: true});
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
         resource:
-          '/organization/test-org-id/v2/entry-point?page=0&pageSize=100&sortOrder=asc&desktopProfileFilter=true',
+          '/organization/test-org-id/v2/entry-point?page=0&pageSize=100&sort=name%2CASC&desktopProfileFilter=true&agentView=true',
         method: HTTP_METHODS.GET,
       });
+    });
+
+    it('should bypass cache for desktop-profile and agent-view requests', async () => {
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      await entryPointAPI.getEntryPoints({desktopProfileFilter: true, agentView: true});
+      await entryPointAPI.getEntryPoints({desktopProfileFilter: true, agentView: true});
+
+      expect(mockWebex.request).toHaveBeenCalledTimes(2);
     });
 
     it('should handle API errors and track metrics', async () => {
@@ -182,7 +191,7 @@ describe('EntryPoint', () => {
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/entry-point?page=0&pageSize=100&sortOrder=asc',
+        resource: '/organization/test-org-id/v2/entry-point?page=0&pageSize=100&sort=name%2CASC',
         method: HTTP_METHODS.GET,
       });
 
@@ -260,11 +269,11 @@ describe('EntryPoint', () => {
       expect(result.meta.page).toBe(1);
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/entry-point?page=1&pageSize=100&sortOrder=asc',
+        resource: '/organization/test-org-id/v2/entry-point?page=1&pageSize=100&sort=name%2CASC',
         method: HTTP_METHODS.GET,
       });
       expect(LoggerProxy.log).toHaveBeenCalledWith(
-        `Making API request to fetch entry points - resource: /organization/test-org-id/v2/entry-point?page=1&pageSize=100&sortOrder=asc, service: wcc-api-gateway`,
+        `Making API request to fetch entry points - resource: /organization/test-org-id/v2/entry-point?page=1&pageSize=100&sort=name%2CASC, service: wcc-api-gateway`,
         {module: 'EntryPoint', method: 'getEntryPoints'}
       );
     });

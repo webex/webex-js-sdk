@@ -97,6 +97,16 @@ export interface CacheValidationParams {
   attributes?: string;
   /** Sort by parameter */
   sortBy?: string;
+  /** Desktop-profile filtering changes the returned result set */
+  desktopProfileFilter?: boolean;
+  /** Provisioning-view filtering changes the returned result set */
+  provisioningView?: boolean;
+  /** Single-object response mode changes the response shape */
+  singleObjectResponse?: boolean;
+  /** Agent-view filtering changes the returned result set */
+  agentView?: boolean;
+  /** First-level-view filtering changes the returned result set */
+  firstLevelView?: boolean;
 }
 
 /**
@@ -151,9 +161,29 @@ export class PageCache<T> {
    * @public
    */
   public canUseCache(params: CacheValidationParams): boolean {
-    const {search, filter, attributes, sortBy} = params;
+    const {
+      search,
+      filter,
+      attributes,
+      sortBy,
+      desktopProfileFilter,
+      provisioningView,
+      singleObjectResponse,
+      agentView,
+      firstLevelView,
+    } = params;
 
-    return !search && !filter && !attributes && !sortBy;
+    return (
+      !search &&
+      !filter &&
+      !attributes &&
+      !sortBy &&
+      desktopProfileFilter === undefined &&
+      provisioningView === undefined &&
+      singleObjectResponse === undefined &&
+      agentView === undefined &&
+      firstLevelView === undefined
+    );
   }
 
   /**

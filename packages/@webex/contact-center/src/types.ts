@@ -561,12 +561,16 @@ export type RequestBody =
  * const opts: BuddyAgents = { mediaType: 'telephony', state: 'Available' };
  * @ignore
  */
-export type BuddyAgents = {
+export type ConsultTransferAction = 'Consult' | 'Transfer';
+
+type BuddyAgentMediaType = 'telephony' | 'chat' | 'social' | 'email';
+
+type BuddyAgentsByState = {
   /**
    * The media type channel to filter buddy agents.
    * Determines which channel capability the returned agents must have.
    */
-  mediaType: 'telephony' | 'chat' | 'social' | 'email';
+  mediaType: BuddyAgentMediaType;
 
   /**
    * Optional filter for agent state.
@@ -574,7 +578,27 @@ export type BuddyAgents = {
    * If omitted, returns both available and idle agents.
    */
   state?: 'Available' | 'Idle';
+
+  /** Action-based filtering is mutually exclusive with an explicit state filter. */
+  action?: never;
 };
+
+type BuddyAgentsByAction = {
+  /**
+   * The media type channel to filter buddy agents. Defaults to telephony when omitted.
+   */
+  mediaType?: string;
+
+  /**
+   * Consult returns all eligible agents; Transfer returns only Available agents.
+   */
+  action: ConsultTransferAction;
+
+  /** Explicit state filtering is mutually exclusive with action-based filtering. */
+  state?: never;
+};
+
+export type BuddyAgents = BuddyAgentsByState | BuddyAgentsByAction;
 
 /**
  * Holds the configuration flags for the Agent.
@@ -693,6 +717,25 @@ export interface EntryPointRecord {
 export type EntryPointListResponse = PaginatedResponse<EntryPointRecord>;
 export interface EntryPointSearchParams extends BaseSearchParams {
   desktopProfileFilter?: boolean;
+  agentView?: boolean;
+}
+
+/** Pagination and search inputs for Agent Desktop consult/transfer lists. */
+export type ConsultTransferListSearchParams = Pick<
+  BaseSearchParams,
+  'page' | 'pageSize' | 'search'
+>;
+
+/** Inputs for an Agent Desktop consult/transfer queue list. */
+export interface ConsultTransferQueueSearchParams extends ConsultTransferListSearchParams {
+  /** Task media type; defaults to telephony when omitted. */
+  mediaType?: string;
+}
+
+/** Inputs for an Agent Desktop consult/transfer entry-point list. */
+export interface ConsultTransferEntryPointSearchParams extends ConsultTransferListSearchParams {
+  /** Task media type; defaults to telephony when omitted. */
+  mediaType?: string;
 }
 
 /**
@@ -831,6 +874,8 @@ export interface ContactServiceQueueSearchParams extends BaseSearchParams {
   desktopProfileFilter?: boolean;
   provisioningView?: boolean;
   singleObjectResponse?: boolean;
+  agentView?: boolean;
+  firstLevelView?: boolean;
 }
 
 /**
