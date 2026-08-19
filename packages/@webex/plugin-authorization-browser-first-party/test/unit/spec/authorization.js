@@ -14,7 +14,7 @@ import {base64, patterns} from '@webex/common';
 import {merge, times} from 'lodash';
 import CryptoJS from 'crypto-js';
 import Authorization from '@webex/plugin-authorization-browser-first-party';
-import {Events} from '../../../src';
+import {Events, InitialAuthorizationCodeGrantOutcomes} from '../../../src';
 
 // Necessary to require lodash this way in order to stub the method
 const lodash = require('lodash');
@@ -108,6 +108,35 @@ describe('plugin-authorization-browser-first-party', () => {
       sinon.restore();
     });
 
+    it('exposes the initial authorization code grant outcome as readonly', () => {
+      const webex = makeWebex();
+      const changeSpy = sinon.spy();
+
+      webex.authorization.on('change:initialAuthorizationCodeGrantOutcome', changeSpy);
+
+      assert.equal(
+        webex.authorization.initialAuthorizationCodeGrantOutcome,
+        InitialAuthorizationCodeGrantOutcomes.notAttempted
+      );
+      assert.throws(() => {
+        webex.authorization.initialAuthorizationCodeGrantOutcome =
+          InitialAuthorizationCodeGrantOutcomes.success;
+      }, /derived property, it can't be set directly/);
+
+      webex.authorization._initialAuthorizationCodeGrantOutcome =
+        InitialAuthorizationCodeGrantOutcomes.success;
+
+      assert.equal(
+        webex.authorization.initialAuthorizationCodeGrantOutcome,
+        InitialAuthorizationCodeGrantOutcomes.success
+      );
+      assert.calledOnceWithExactly(
+        changeSpy,
+        webex.authorization,
+        InitialAuthorizationCodeGrantOutcomes.success
+      );
+    });
+
     describe('#initialize()', () => {
       describe('when there is a code in the url', () => {
         it('exchanges it for an access token and sets ready', () => {
@@ -123,7 +152,23 @@ describe('plugin-authorization-browser-first-party', () => {
             assert.calledTwice(webex.request);
             assert.isTrue(webex.authorization.ready);
             assert.isTrue(webex.credentials.canAuthorize);
+            assert.equal(
+              webex.authorization.initialAuthorizationCodeGrantOutcome,
+              InitialAuthorizationCodeGrantOutcomes.success
+            );
           });
+        });
+
+        it('retains the initialization exchange outcome after logout', async () => {
+          const webex = makeWebex('http://example.com/?code=5');
+
+          await webex.authorization.when('change:ready');
+          webex.authorization.logout({noRedirect: true});
+
+          assert.equal(
+            webex.authorization.initialAuthorizationCodeGrantOutcome,
+            InitialAuthorizationCodeGrantOutcomes.success
+          );
         });
 
         it('validates the csrf token', () => {
@@ -268,7 +313,31 @@ describe('plugin-authorization-browser-first-party', () => {
               'authorization: failed initial authorization code grant request',
               error
             );
+            assert.equal(
+              webex.authorization.initialAuthorizationCodeGrantOutcome,
+              InitialAuthorizationCodeGrantOutcomes.failure
+            );
           });
+        });
+
+        it('retains failure when the automatic exchange promise rejects', async () => {
+          const error = new Error('exchange rejected');
+
+          sinon.stub(Authorization.prototype, 'requestAuthorizationCodeGrant').rejects(error);
+
+          const webex = makeWebex('http://example.com?code=5');
+
+          await webex.authorization.when('change:ready');
+
+          assert.equal(
+            webex.authorization.initialAuthorizationCodeGrantOutcome,
+            InitialAuthorizationCodeGrantOutcomes.failure
+          );
+          assert.calledOnceWithExactly(
+            webex.logger.warn,
+            'authorization: failed initial authorization code grant request',
+            error
+          );
         });
       });
       describe('when the url contains an error', () => {
@@ -291,6 +360,21 @@ describe('plugin-authorization-browser-first-party', () => {
 
           assert.isTrue(webex.authorization.ready);
           assert.isFalse(webex.credentials.canAuthorize);
+          assert.equal(
+            webex.authorization.initialAuthorizationCodeGrantOutcome,
+            InitialAuthorizationCodeGrantOutcomes.notAttempted
+          );
+        });
+
+        it('does not treat a later authorization-code grant as the initialization exchange', async () => {
+          const webex = makeWebex('http://example.com');
+
+          await webex.authorization.requestAuthorizationCodeGrant({code: 'later-code'});
+
+          assert.equal(
+            webex.authorization.initialAuthorizationCodeGrantOutcome,
+            InitialAuthorizationCodeGrantOutcomes.notAttempted
+          );
         });
       });
 

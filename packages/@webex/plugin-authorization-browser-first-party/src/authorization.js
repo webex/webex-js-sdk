@@ -36,6 +36,18 @@ export const Events = {
 };
 
 /**
+ * Terminal outcomes for the automatic authorization-code exchange performed
+ * during authorization plugin initialization.
+ *
+ * @enum {string}
+ */
+export const InitialAuthorizationCodeGrantOutcomes = {
+  failure: 'failure',
+  notAttempted: 'not_attempted',
+  success: 'success',
+};
+
+/**
  * Browser support for OAuth2 for first-party (Webex Web Client) usage.
  *
  * High-level flow handled by this module:
@@ -66,6 +78,37 @@ export const Events = {
 const Authorization = WebexPlugin.extend({
   derived: {
     /**
+     * Retains the terminal outcome of the automatic authorization-code exchange
+     * performed during this authorization plugin instance's initialization.
+     *
+     * This historical value does not represent current authorization state,
+     * credentials hydrated from storage, guest authentication, or
+     * authorization-code exchanges requested later on the same SDK instance. It
+     * is not reset by logout. OAuth redirect errors and CSRF validation failures
+     * occur before the exchange, so the value remains not_attempted; these errors
+     * can throw before ready becomes true.
+     *
+     * Calling logout({noRedirect: true}) does not cancel an initialization
+     * exchange already in flight. If that exchange later settles, it can still
+     * update credentials and this retained outcome.
+     *
+     * Interpret only after authorization readiness:
+     * - not_attempted: initialization did not invoke requestAuthorizationCodeGrant()
+     * - success: the initialization exchange fulfilled
+     * - failure: the initialization exchange threw or rejected
+     *
+     * @instance
+     * @memberof AuthorizationBrowserFirstParty
+     * @readonly
+     * @type {string}
+     */
+    initialAuthorizationCodeGrantOutcome: {
+      deps: ['_initialAuthorizationCodeGrantOutcome'],
+      fn() {
+        return this._initialAuthorizationCodeGrantOutcome;
+      },
+    },
+    /**
      * Alias of {@link AuthorizationBrowserFirstParty#isAuthorizing}
      * @instance
      * @memberof AuthorizationBrowserFirstParty
@@ -89,6 +132,14 @@ const Authorization = WebexPlugin.extend({
     isAuthorizing: {
       default: false,
       type: 'boolean',
+    },
+    /**
+     * Internal backing state for the initial authorization-code grant outcome.
+     * @private
+     */
+    _initialAuthorizationCodeGrantOutcome: {
+      default: InitialAuthorizationCodeGrantOutcomes.notAttempted,
+      type: 'string',
     },
     /**
      * Indicates that the plugin has finished any automatic startup
@@ -229,7 +280,13 @@ const Authorization = WebexPlugin.extend({
         .collectPreauthCatalog(preauthCatalogParams)
         .catch(() => Promise.resolve()) // Non-fatal if catalog collection fails
         .then(() => this.requestAuthorizationCodeGrant({code, codeVerifier}))
+        .then(() => {
+          this._initialAuthorizationCodeGrantOutcome =
+            InitialAuthorizationCodeGrantOutcomes.success;
+        })
         .catch((error) => {
+          this._initialAuthorizationCodeGrantOutcome =
+            InitialAuthorizationCodeGrantOutcomes.failure;
           this.logger.warn('authorization: failed initial authorization code grant request', error);
         })
         .then(() => {
@@ -420,7 +477,12 @@ const Authorization = WebexPlugin.extend({
     this._verifySecurityToken(location.query, {requireMatch: true});
     this._cleanUrl(location);
 
-    const {id_token: idToken, email, error, state: {csrf_token, ...state}} = location.query;
+    const {
+      id_token: idToken,
+      email,
+      error,
+      state: {csrf_token, ...state},
+    } = location.query;
 
     return {idToken, email, error, state};
   },

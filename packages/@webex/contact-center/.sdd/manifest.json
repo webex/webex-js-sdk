@@ -11,16 +11,22 @@
   },
   "topology": "Orchestrator-plus-components",
   "commands": {
+    "compile": {
+      "command": "yarn workspace @webex/contact-center compile",
+      "source_file": "packages/@webex/contact-center/package.json",
+      "verified_at": "2026-08-05T10:53:14Z"
+    },
     "build": {
       "command": "yarn workspace @webex/contact-center build:src",
       "source_file": "package.json"
     },
+    "unit-test": {
+      "command": "yarn workspace @webex/contact-center test:unit",
+      "source_file": "packages/@webex/contact-center/package.json",
+      "verified_at": "2026-08-05T10:53:14Z"
+    },
     "test": {
       "command": "yarn workspace @webex/contact-center test",
-      "source_file": "package.json"
-    },
-    "test:unit": {
-      "command": "yarn workspace @webex/contact-center test:unit",
       "source_file": "package.json"
     },
     "lint": {
