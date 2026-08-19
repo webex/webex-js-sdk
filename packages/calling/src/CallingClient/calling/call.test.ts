@@ -6,7 +6,11 @@ import {EffectEvent} from '@webex/media-helpers';
 import {ERROR_TYPE, ERROR_LAYER} from '../../Errors/types';
 import * as Utils from '../../common/Utils';
 import {CALL_EVENT_KEYS, CallEvent, RoapEvent, RoapMessage} from '../../Events/types';
-import {DEFAULT_SESSION_TIMER, ICE_CANDIDATES_TIMEOUT} from '../constants';
+import {
+  DEFAULT_SESSION_TIMER,
+  ICE_CANDIDATES_TIMEOUT,
+  ICE_LITE_CANDIDATES_TIMEOUT,
+} from '../constants';
 import {CallDirection, CallType, ServiceIndicator, WebexRequestPayload} from '../../common/types';
 import {
   METRIC_EVENT,
@@ -809,6 +813,94 @@ describe('Call Tests', () => {
     expect(call['connectPending']).toBe(false);
   });
 
+  const iceLiteOfferSdp =
+    'v=0\r\no=- 0 0 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\n' +
+    'a=ice-lite\r\nm=audio 19564 UDP/TLS/RTP/SAVPF 0\r\na=sendrecv\r\n';
+  const fullIceOfferSdp =
+    'v=0\r\no=- 0 0 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\n' +
+    'm=audio 19564 UDP/TLS/RTP/SAVPF 0\r\na=sendrecv\r\na=ice-ufrag:mLbW\r\n';
+
+  describe.each([
+    {
+      name: 'reduced timeout when the offer is ice-lite and reduceTimeoutForIceLite is enabled',
+      sdp: iceLiteOfferSdp,
+      iceGatheringConfig: {reduceTimeoutForIceLite: true},
+      expectedTimeout: ICE_LITE_CANDIDATES_TIMEOUT,
+    },
+    {
+      name: 'custom reduced timeout when the offer is ice-lite and iceLiteTimeout is overridden',
+      sdp: iceLiteOfferSdp,
+      iceGatheringConfig: {reduceTimeoutForIceLite: true, iceLiteTimeout: 750},
+      expectedTimeout: 750,
+    },
+    {
+      name: 'default timeout when the offer is ice-lite but reduceTimeoutForIceLite is disabled',
+      sdp: iceLiteOfferSdp,
+      iceGatheringConfig: {reduceTimeoutForIceLite: false},
+      expectedTimeout: ICE_CANDIDATES_TIMEOUT,
+    },
+    {
+      name: 'default timeout when the offer is ice-lite but no iceGathering config is provided',
+      sdp: iceLiteOfferSdp,
+      iceGatheringConfig: undefined,
+      expectedTimeout: ICE_CANDIDATES_TIMEOUT,
+    },
+    {
+      name: 'default timeout when reduceTimeoutForIceLite is enabled but the offer is not ice-lite',
+      sdp: fullIceOfferSdp,
+      iceGatheringConfig: {reduceTimeoutForIceLite: true},
+      expectedTimeout: ICE_CANDIDATES_TIMEOUT,
+    },
+  ])('ICE candidates timeout selection', ({name, sdp, iceGatheringConfig, expectedTimeout}) => {
+    it(`uses ${name}`, async () => {
+      const mockStream = {
+        outputStream: {
+          getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+        },
+        on: jest.fn(),
+        getEffectByKind: jest.fn().mockImplementation(() => mockEffect),
+      };
+
+      const localAudioStream =
+        mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+      const call = createCall(
+        activeUrl,
+        webex,
+        CallDirection.INBOUND,
+        deviceId,
+        mockLineId,
+        deleteCallFromCollection,
+        defaultServiceIndicator,
+        dest,
+        iceGatheringConfig
+      ) as Call;
+
+      webex.request.mockReturnValue({
+        statusCode: 200,
+        body: {
+          callId: 'mock-call-id',
+        },
+      } as WebexRequestPayload);
+
+      /* Buffer the remote offer before answering so it is available at media connection init. */
+      call.sendMediaStateMachineEvt({
+        type: 'E_RECV_ROAP_OFFER',
+        data: {seq: 1, messageType: 'OFFER', version: 1, sdp},
+      } as RoapEvent);
+
+      await call.answer(localAudioStream);
+
+      expect(mockInternalMediaCoreModule.RoapMediaConnection).toBeCalledOnceWith(
+        {...roapMediaConnectionConfig, iceCandidatesTimeout: expectedTimeout},
+        roapMediaConnectionOptions,
+        expect.any(String),
+        expect.any(Function),
+        expect.any(Function),
+        expect.any(Function)
+      );
+    });
+  });
+
   it('testing enabling/disabling the BNR on an active call', async () => {
     const mockStream = {
       outputStream: {
@@ -917,6 +1009,35 @@ describe('Call Tests', () => {
     );
     expect(offEffectSpy).toBeCalledWith(EffectEvent.Enabled, expect.any(Function));
     expect(offEffectSpy).toBeCalledWith(EffectEvent.Disabled, expect.any(Function));
+  });
+
+  it('does not register effect listeners when the added effect cannot be resolved', () => {
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+      on: jest.fn(),
+      getEffectByKind: jest.fn().mockReturnValue(undefined),
+    };
+
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+    const onStreamSpy = jest.spyOn(localAudioStream, 'on');
+    const onEffectSpy = jest.spyOn(mockEffect, 'on');
+    const call = createCall(
+      activeUrl,
+      webex,
+      CallDirection.OUTBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator,
+      dest
+    );
+
+    call.dial(localAudioStream);
+
+    expect(() => onStreamSpy.mock.calls[1][1](undefined as any)).not.toThrow();
+    expect(onEffectSpy).not.toHaveBeenCalled();
   });
 
   it('answer fails if localAudioTrack is empty', async () => {

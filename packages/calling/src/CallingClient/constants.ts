@@ -130,6 +130,8 @@ export const MOBIUS_EU_INT = 'mobius-eu-central-1.int.infra.webex.com';
 export const FAILOVER_CACHE_PREFIX = 'wxc-failover-state';
 export const ACTIVE_MOBIUS_STORAGE_KEY = 'wxc-active-mobius';
 export const ICE_CANDIDATES_TIMEOUT = 3000;
+// Reduced ICE candidates timeout used for ice-lite offers.
+export const ICE_LITE_CANDIDATES_TIMEOUT = 500;
 export const WCC_CALLING_RTMS_DOMAIN = 'wcc-calling-rtms-domain';
 
 // Define constants for method names

@@ -8494,7 +8494,8 @@ export default class Meeting extends StatelessWebexPlugin {
           return !member.isSelf && !member.isPairedWithSelf && !member.isAudioMuted;
         });
 
-        if (atLeastOneUnmutedOtherMember) {
+        // we also ignore any issues while we're waiting in the lobby, as we're not receiving any audio yet
+        if (atLeastOneUnmutedOtherMember && !this.isUserUnadmitted) {
           this.mediaProperties.sendMediaIssueMetric('inbound_audio', data.issueSubType, {
             correlationId: this.correlationId,
             isMultistream: this.isMultistream,

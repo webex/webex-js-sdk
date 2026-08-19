@@ -16,15 +16,20 @@
       "source_file": "package.json",
       "verified_at": "2026-07-06T10:46:38Z"
     },
+    "compile": {
+      "command": "yarn workspace @webex/calling compile",
+      "source_file": "packages/calling/package.json",
+      "verified_at": "2026-08-05T10:53:14Z"
+    },
     "build": {
       "command": "yarn workspace @webex/calling build:src",
       "source_file": "packages/calling/package.json",
       "verified_at": "2026-07-06T10:46:38Z"
     },
-    "test_unit": {
+    "unit-test": {
       "command": "yarn workspace @webex/calling test:unit",
       "source_file": "packages/calling/package.json",
-      "verified_at": "2026-07-06T10:46:38Z"
+      "verified_at": "2026-08-05T10:53:14Z"
     },
     "lint": {
       "command": "yarn workspace @webex/calling test:style",

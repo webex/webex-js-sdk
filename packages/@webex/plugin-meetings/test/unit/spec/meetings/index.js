@@ -3486,7 +3486,7 @@ describe('plugin-meetings', () => {
             loggerProxySpy,
             'Failed to fetch preferred site from user - no site will be set'
           );
-          assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), ['']);
+          assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), []);
         });
 
         it('should fall back to fetching the site from the user', async () => {
@@ -3504,7 +3504,6 @@ describe('plugin-meetings', () => {
 
           assert.equal(webex.meetings.preferredWebexSite, 'site.webex.com');
           assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), [
-            '',
             'site.webex.com',
           ]);
           assert.notCalled(loggerProxySpy);
@@ -3528,7 +3527,7 @@ describe('plugin-meetings', () => {
                 loggerProxySpy,
                 'Failed to fetch preferred site from user - no site will be set'
               );
-              assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), ['']);
+              assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), []);
             });
           }
         );
@@ -3545,7 +3544,7 @@ describe('plugin-meetings', () => {
             loggerProxySpy,
             'Failed to fetch preferred site from user - no site will be set'
           );
-          assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), ['']);
+          assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), []);
         });
 
         it('should fall back to fetching the site from the user', async () => {
@@ -3564,7 +3563,6 @@ describe('plugin-meetings', () => {
           assert.equal(webex.meetings.preferredWebexSite, 'site.webex.com');
           assert.notCalled(loggerProxySpy);
           assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), [
-            '',
             'site.webex.com',
           ]);
         });
@@ -3587,7 +3585,7 @@ describe('plugin-meetings', () => {
                 loggerProxySpy,
                 'Failed to fetch preferred site from user - no site will be set'
               );
-              assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), ['']);
+              assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), []);
             });
           }
         );
@@ -3604,7 +3602,7 @@ describe('plugin-meetings', () => {
             loggerProxySpy,
             'Failed to fetch preferred site from user - no site will be set'
           );
-          assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), ['']);
+          assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), []);
         });
       });
     });

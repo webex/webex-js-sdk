@@ -78,6 +78,32 @@ describe('internal-plugin-metrics', () => {
 
       assert.instanceOf(webex.internal.newMetrics.callDiagnosticLatencies, CallDiagnosticLatencies);
     });
+
+    it('checks callDiagnosticMetrics is defined before ready emit', () => {
+      const webex = mockWebex();
+
+      assert.isDefined(webex.internal.newMetrics.callDiagnosticMetrics);
+    });
+
+    it('can call buildClientEventFetchRequestOptions before ready', async () => {
+      const webex = mockWebex();
+      const stub = sinon.stub(
+        webex.internal.newMetrics.callDiagnosticMetrics,
+        'buildClientEventFetchRequestOptions'
+      ).resolves({url: 'https://metrics.example.com'});
+
+      const result = await webex.internal.newMetrics.buildClientEventFetchRequestOptions({
+        name: 'client.alert.displayed',
+        options: {correlationId: 'test-id'},
+      });
+
+      assert.calledOnceWithExactly(stub, {
+        name: 'client.alert.displayed',
+        payload: undefined,
+        options: {correlationId: 'test-id'},
+      });
+      assert.deepEqual(result, {url: 'https://metrics.example.com'});
+    });
   });
 
   describe('new-metrics', () => {

@@ -14,6 +14,8 @@ import {
   AuthInterceptor,
   config,
   Credentials,
+  Services,
+  ServicesV2,
   WebexHttpError,
   Token,
   serviceConstants,
@@ -377,6 +379,60 @@ describe('webex-core', () => {
               service: 'locus',
             })
             .then(() => assert.calledOnce(waitForService));
+        });
+      });
+
+      describe('#onRequest() against a real service catalog', () => {
+        // The cases above stub `isAllowedDomainUrl`, so they answer the
+        // allowed-domain question themselves and cannot show that the catalog
+        // matcher is reached by the code that attaches the token. These use a
+        // real catalog and real allowed-domain methods.
+        [
+          {name: 'Services', Constructor: Services},
+          {name: 'ServicesV2', Constructor: ServicesV2},
+        ].forEach(({name, Constructor}) => {
+          describe(name, () => {
+            let getUserToken;
+
+            beforeEach(() => {
+              const services = new Constructor(undefined, {parent: webex});
+
+              services._getCatalog().setAllowedDomains(['webex.com']);
+              // the catalog holds no services, so a url that is not covered by
+              // an allowed domain has nothing else to authorize it
+              services.waitForService = sinon.stub().rejects(new Error('no such service'));
+
+              webex.internal.services = services;
+              getUserToken = sinon.spy(webex.credentials, 'getUserToken');
+            });
+
+            afterEach(() => {
+              getUserToken.restore();
+              delete webex.internal.services;
+            });
+
+            it('adds the authorization header for a url under an allowed domain', () =>
+              interceptor
+                .onRequest({uri: 'https://api.webex.com/resource', headers: {}})
+                .then((options) => {
+                  assert.equal(
+                    options.headers.authorization,
+                    webex.credentials.supertoken.toString()
+                  );
+                  assert.calledOnce(getUserToken);
+                }));
+
+            [
+              'https://notwebex.com/resource',
+              'https://webex.com.unrelated.example/resource',
+            ].forEach((uri) => {
+              it(`does not add the authorization header for ${uri}`, () =>
+                interceptor.onRequest({uri, headers: {}}).then((options) => {
+                  assert.notProperty(options.headers, 'authorization');
+                  assert.notCalled(getUserToken);
+                }));
+            });
+          });
         });
       });
 
