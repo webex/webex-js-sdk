@@ -3,8 +3,6 @@ import type {
   ContactServiceQueue,
   ContactServiceQueuesResponse,
   ContactServiceQueueSearchParams,
-  ConsultTransferListOptions,
-  ConsultTransferListResponse,
 } from '../types';
 import LoggerProxy from '../logger-proxy';
 import WebexRequest from './core/WebexRequest';
@@ -13,7 +11,7 @@ import MetricsManager from '../metrics/MetricsManager';
 import {WCC_API_GATEWAY} from './constants';
 import {endPointMap} from './config/constants';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
-import {CONSULT_TRANSFER_LIST_ATTRIBUTES, getConsultTransferChannel, METHODS} from '../constants';
+import {METHODS} from '../constants';
 
 type QueueRequestParams = ContactServiceQueueSearchParams & {
   agentView?: boolean;
@@ -77,14 +75,16 @@ export class Queue {
   }
 
   /**
-   * Fetches contact service queues for the organization
-   * @param {ContactServiceQueueSearchParams} [params] - Search and pagination parameters
+   * Fetches contact service queues for the organization. By default, returns active inbound
+   * telephony queues in backend name-ascending order using the agent's desktop profile views.
+   * Existing filter, sort, and desktop-profile parameters override those defaults.
+   * @param {ContactServiceQueueSearchParams} [params] - Search, pagination, and override parameters
    * @returns {Promise<ContactServiceQueuesResponse>} Promise resolving to contact service queues
    * @throws {Error} If the API call fails
    * @public
    * @example
    * ```typescript
-   * // Get all queues with default pagination
+   * // Get Agent Desktop-compatible queues with default pagination
    * const response = await queueAPI.getQueues();
    *
    * // Get queues with specific pagination
@@ -103,43 +103,20 @@ export class Queue {
   public async getQueues(
     params: ContactServiceQueueSearchParams = {}
   ): Promise<ContactServiceQueuesResponse> {
-    return this.fetchQueues(params);
-  }
-
-  /**
-   * Fetches the Agent Desktop-compatible consult/transfer queue list.
-   * Consumers supply only list controls and task media; this service owns CMS policy.
-   * @internal
-   */
-  public async getConsultTransferQueues(
-    options: ConsultTransferListOptions = {}
-  ): Promise<ConsultTransferListResponse> {
-    const {mediaType = 'telephony', ...paginationAndSearch} = options;
-    const channelType = getConsultTransferChannel(mediaType);
+    const desktopProfileFilter = params.desktopProfileFilter ?? true;
 
     return this.fetchQueues({
-      ...paginationAndSearch,
-      filter: `queueType==INBOUND;channelType==${channelType};active==true`,
-      attributes: CONSULT_TRANSFER_LIST_ATTRIBUTES,
+      filter: 'queueType==INBOUND;channelType==TELEPHONY;active==true',
       sortBy: 'name',
       sortOrder: 'asc',
-      desktopProfileFilter: true,
-      agentView: true,
-      firstLevelView: true,
+      ...params,
+      desktopProfileFilter,
+      agentView: desktopProfileFilter,
+      firstLevelView: desktopProfileFilter,
     });
   }
 
-  private async fetchQueues(
-    params: QueueRequestParams & {attributes: typeof CONSULT_TRANSFER_LIST_ATTRIBUTES}
-  ): Promise<ConsultTransferListResponse>;
-
-  private async fetchQueues(
-    params: ContactServiceQueueSearchParams
-  ): Promise<ContactServiceQueuesResponse>;
-
-  private async fetchQueues(
-    params: QueueRequestParams
-  ): Promise<ContactServiceQueuesResponse | ConsultTransferListResponse> {
+  private async fetchQueues(params: QueueRequestParams): Promise<ContactServiceQueuesResponse> {
     const startTime = Date.now();
     const {
       page = PAGINATION_DEFAULTS.PAGE,

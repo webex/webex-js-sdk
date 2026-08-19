@@ -143,7 +143,8 @@ describe('Queue', () => {
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/contact-service-queue?page=0&pageSize=100',
+        resource:
+          '/organization/test-org-id/v2/contact-service-queue?page=0&pageSize=100&filter=queueType%3D%3DINBOUND%3BchannelType%3D%3DTELEPHONY%3Bactive%3D%3Dtrue&sort=name%2CASC&desktopProfileFilter=true&agentView=true&firstLevelView=true',
         method: HTTP_METHODS.GET,
       });
 
@@ -156,7 +157,7 @@ describe('Queue', () => {
           statusCode: 200,
           recordCount: 2,
           totalRecords: 2,
-          isSearchRequest: false,
+          isSearchRequest: true,
           isFirstPage: true,
         },
         ['behavioral', 'operational']
@@ -168,14 +169,15 @@ describe('Queue', () => {
           orgId: 'test-org-id',
           page: 0,
           pageSize: 100,
-          isSearchRequest: false,
+          isSearchRequest: true,
         }),
       });
       expect(LoggerProxy.log).toHaveBeenCalledWith('Making API request to fetch contact service queues', {
         module: 'Queue',
         method: 'getQueues',
         data: expect.objectContaining({
-          resource: '/organization/test-org-id/v2/contact-service-queue?page=0&pageSize=100',
+          resource:
+            '/organization/test-org-id/v2/contact-service-queue?page=0&pageSize=100&filter=queueType%3D%3DINBOUND%3BchannelType%3D%3DTELEPHONY%3Bactive%3D%3Dtrue&sort=name%2CASC&desktopProfileFilter=true&agentView=true&firstLevelView=true',
           service: 'wcc-api-gateway',
         }),
       });
@@ -201,7 +203,7 @@ describe('Queue', () => {
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=25&filter=queueType%3D%3D%22INBOUND%22&attributes=id%2Cname%2CqueueType&search=support&sort=name%2CDESC&desktopProfileFilter=true&provisioningView=false&singleObjectResponse=true',
+        resource: '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=25&filter=queueType%3D%3D%22INBOUND%22&attributes=id%2Cname%2CqueueType&search=support&sort=name%2CDESC&desktopProfileFilter=true&provisioningView=false&singleObjectResponse=true&agentView=true&firstLevelView=true',
         method: HTTP_METHODS.GET,
       });
 
@@ -225,35 +227,35 @@ describe('Queue', () => {
       expect(mockWebex.request).toHaveBeenLastCalledWith({
         service: 'wcc-api-gateway',
         resource:
-          '/organization/test-org-id/v2/contact-service-queue?page=0&pageSize=100&sort=name%2CDESC',
+          '/organization/test-org-id/v2/contact-service-queue?page=0&pageSize=100&filter=queueType%3D%3DINBOUND%3BchannelType%3D%3DTELEPHONY%3Bactive%3D%3Dtrue&sort=name%2CDESC&desktopProfileFilter=true&agentView=true&firstLevelView=true',
         method: HTTP_METHODS.GET,
       });
     });
 
-    it('should apply the complete consult/transfer queue policy inside the service', async () => {
+    it('should allow existing parameters to override the default queue policy', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      const result = await queueAPI.getConsultTransferQueues({
+      const result = await queueAPI.getQueues({
         page: 1,
         pageSize: 25,
         search: 'support',
-        mediaType: 'social',
+        filter: 'queueType==INBOUND;channelType==SOCIAL_CHANNEL;active==true',
       });
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
         resource:
-          '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=25&filter=queueType%3D%3DINBOUND%3BchannelType%3D%3DSOCIAL_CHANNEL%3Bactive%3D%3Dtrue&attributes=id%2Cname%2CdbId&search=support&sort=name%2CASC&desktopProfileFilter=true&agentView=true&firstLevelView=true',
+          '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=25&filter=queueType%3D%3DINBOUND%3BchannelType%3D%3DSOCIAL_CHANNEL%3Bactive%3D%3Dtrue&search=support&sort=name%2CASC&desktopProfileFilter=true&agentView=true&firstLevelView=true',
         method: HTTP_METHODS.GET,
       });
       expect(result).toBe(mockResponse.body);
     });
 
-    it('should default consult/transfer queues to telephony and bypass cache', async () => {
+    it('should bypass cache for the default queue policy', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      await queueAPI.getConsultTransferQueues();
-      await queueAPI.getConsultTransferQueues();
+      await queueAPI.getQueues();
+      await queueAPI.getQueues();
 
       expect(mockWebex.request).toHaveBeenCalledTimes(2);
       expect(mockWebex.request).toHaveBeenLastCalledWith(
@@ -263,21 +265,7 @@ describe('Queue', () => {
       );
     });
 
-    it.each(['voice', 'telephony;active==false', null])(
-      'should reject unsupported consult/transfer media before requesting queues: %p',
-      async (mediaType) => {
-        const jsCaller = queueAPI as unknown as {
-          getConsultTransferQueues: (options: {mediaType: unknown}) => Promise<unknown>;
-        };
-
-        await expect(jsCaller.getConsultTransferQueues({mediaType})).rejects.toThrow(
-          'Unsupported consult/transfer media type'
-        );
-        expect(mockWebex.request).not.toHaveBeenCalled();
-      }
-    );
-
-    it('should treat explicit false queue flags as cache-compatible', async () => {
+    it('should disable the internal agent views when desktop profile filtering is false', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
       await queueAPI.getQueues({
@@ -291,7 +279,13 @@ describe('Queue', () => {
         singleObjectResponse: false,
       });
 
-      expect(mockWebex.request).toHaveBeenCalledTimes(1);
+      expect(mockWebex.request).toHaveBeenCalledTimes(2);
+      expect(mockWebex.request).toHaveBeenLastCalledWith({
+        service: 'wcc-api-gateway',
+        resource:
+          '/organization/test-org-id/v2/contact-service-queue?page=0&pageSize=100&filter=queueType%3D%3DINBOUND%3BchannelType%3D%3DTELEPHONY%3Bactive%3D%3Dtrue&sort=name%2CASC&desktopProfileFilter=false&provisioningView=false&singleObjectResponse=false&agentView=false&firstLevelView=false',
+        method: HTTP_METHODS.GET,
+      });
     });
 
     it('should handle API errors and track metrics', async () => {
@@ -301,7 +295,8 @@ describe('Queue', () => {
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/contact-service-queue?page=0&pageSize=100',
+        resource:
+          '/organization/test-org-id/v2/contact-service-queue?page=0&pageSize=100&filter=queueType%3D%3DINBOUND%3BchannelType%3D%3DTELEPHONY%3Bactive%3D%3Dtrue&sort=name%2CASC&desktopProfileFilter=true&agentView=true&firstLevelView=true',
         method: HTTP_METHODS.GET,
       });
 
@@ -310,7 +305,7 @@ describe('Queue', () => {
         {
           orgId: 'test-org-id',
           error: 'Internal Server Error',
-          isSearchRequest: false,
+          isSearchRequest: true,
           page: 0,
           pageSize: 100,
         },
@@ -322,7 +317,7 @@ describe('Queue', () => {
         data: expect.objectContaining({
           orgId: 'test-org-id',
           error: 'Internal Server Error',
-          isSearchRequest: false,
+          isSearchRequest: true,
           page: 0,
           pageSize: 100,
         }),
@@ -332,13 +327,17 @@ describe('Queue', () => {
 
 
 
-    it('should not track metrics for subsequent pages in simple pagination', async () => {
+    it('should track metrics for subsequent pages under the default filtered policy', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
       const result = await queueAPI.getQueues({page: 2});
       expect(result).toEqual(mockResponse.body);
 
-      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.QUEUE_FETCH_SUCCESS,
+        expect.objectContaining({isSearchRequest: true, isFirstPage: false}),
+        ['behavioral', 'operational']
+      );
     });
 
     it('should track metrics for search requests on any page', async () => {
@@ -386,14 +385,16 @@ describe('Queue', () => {
       expect(result.meta.page).toBe(1);
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=100',
+        resource:
+          '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=100&filter=queueType%3D%3DINBOUND%3BchannelType%3D%3DTELEPHONY%3Bactive%3D%3Dtrue&sort=name%2CASC&desktopProfileFilter=true&agentView=true&firstLevelView=true',
         method: HTTP_METHODS.GET,
       });
       expect(LoggerProxy.log).toHaveBeenCalledWith('Making API request to fetch contact service queues', {
         module: 'Queue',
         method: 'getQueues',
         data: expect.objectContaining({
-          resource: '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=100',
+          resource:
+            '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=100&filter=queueType%3D%3DINBOUND%3BchannelType%3D%3DTELEPHONY%3Bactive%3D%3Dtrue&sort=name%2CASC&desktopProfileFilter=true&agentView=true&firstLevelView=true',
           service: 'wcc-api-gateway',
         }),
       });

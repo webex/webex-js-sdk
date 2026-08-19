@@ -1,11 +1,5 @@
 import {HTTP_METHODS, WebexSDK} from '../types';
-import type {
-  ConsultTransferListOptions,
-  ConsultTransferListResponse,
-  EntryPointRecord,
-  EntryPointListResponse,
-  EntryPointSearchParams,
-} from '../types';
+import type {EntryPointRecord, EntryPointListResponse, EntryPointSearchParams} from '../types';
 import LoggerProxy from '../logger-proxy';
 import WebexRequest from './core/WebexRequest';
 import PageCache, {PAGINATION_DEFAULTS} from '../utils/PageCache';
@@ -13,7 +7,8 @@ import MetricsManager from '../metrics/MetricsManager';
 import {WCC_API_GATEWAY} from './constants';
 import {endPointMap} from './config/constants';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
-import {CONSULT_TRANSFER_LIST_ATTRIBUTES, getConsultTransferChannel} from '../constants';
+
+const DEFAULT_ENTRY_POINT_FILTER = 'entryPointType==INBOUND;channelType==TELEPHONY;active==true';
 
 type EntryPointRequestParams = EntryPointSearchParams & {
   desktopProfileFilter?: boolean;
@@ -74,15 +69,16 @@ export class EntryPoint {
   }
 
   /**
-   * Fetches entry points for the organization with pagination support
-   * @param {EntryPointSearchParams} [params] - Search, pagination, and optional sort parameters.
-   * Sorting defaults to name ascending.
+   * Fetches entry points for the organization with pagination support. By default, returns active
+   * inbound telephony entry points in backend name-ascending order using the agent's desktop profile
+   * views. Existing filter, sort, and desktop-profile parameters override those defaults.
+   * @param {EntryPointSearchParams} [params] - Search, pagination, and override parameters.
    * @returns {Promise<EntryPointListResponse>} Promise resolving to paginated entry points
    * @throws {Error} If the API call fails
    * @public
    * @example
    * ```typescript
-   * // Get first page of entry points
+   * // Get the first page of Agent Desktop-compatible entry points
    * const response = await entryPointAPI.getEntryPoints();
    *
    * // Get specific page with custom page size
@@ -95,40 +91,19 @@ export class EntryPoint {
   public async getEntryPoints(
     params: EntryPointSearchParams = {}
   ): Promise<EntryPointListResponse> {
-    return this.fetchEntryPoints(params);
-  }
-
-  /**
-   * Fetches the Agent Desktop-compatible consult/transfer entry-point list.
-   * Consumers supply only list controls and task media; this service owns CMS policy.
-   * @internal
-   */
-  public async getConsultTransferEntryPoints(
-    options: ConsultTransferListOptions = {}
-  ): Promise<ConsultTransferListResponse> {
-    const {mediaType = 'telephony', ...paginationAndSearch} = options;
-    const channelType = getConsultTransferChannel(mediaType);
+    const desktopProfileFilter = params.desktopProfileFilter ?? true;
 
     return this.fetchEntryPoints({
-      ...paginationAndSearch,
-      filter: `entryPointType==INBOUND;channelType==${channelType};active==true`,
-      attributes: CONSULT_TRANSFER_LIST_ATTRIBUTES,
+      filter: DEFAULT_ENTRY_POINT_FILTER,
       sortBy: 'name',
       sortOrder: 'asc',
-      desktopProfileFilter: true,
-      agentView: true,
+      ...params,
+      desktopProfileFilter,
+      agentView: desktopProfileFilter,
     });
   }
 
-  private async fetchEntryPoints(
-    params: EntryPointRequestParams & {attributes: typeof CONSULT_TRANSFER_LIST_ATTRIBUTES}
-  ): Promise<ConsultTransferListResponse>;
-
-  private async fetchEntryPoints(params: EntryPointSearchParams): Promise<EntryPointListResponse>;
-
-  private async fetchEntryPoints(
-    params: EntryPointRequestParams
-  ): Promise<EntryPointListResponse | ConsultTransferListResponse> {
+  private async fetchEntryPoints(params: EntryPointRequestParams): Promise<EntryPointListResponse> {
     const startTime = Date.now();
     const {
       page = PAGINATION_DEFAULTS.PAGE,
@@ -150,6 +125,7 @@ export class EntryPoint {
       filter,
       attributes,
       sortBy: hasCustomSort ? sortBy : undefined,
+      desktopProfileFilter,
     });
 
     LoggerProxy.info(

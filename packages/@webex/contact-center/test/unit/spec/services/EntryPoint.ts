@@ -99,7 +99,8 @@ describe('EntryPoint', () => {
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/entry-point?page=0&pageSize=100&sort=name%2CASC',
+        resource:
+          '/organization/test-org-id/v2/entry-point?page=0&pageSize=100&filter=entryPointType%3D%3DINBOUND%3BchannelType%3D%3DTELEPHONY%3Bactive%3D%3Dtrue&sort=name%2CASC&desktopProfileFilter=true&agentView=true',
         method: HTTP_METHODS.GET,
       });
 
@@ -112,17 +113,17 @@ describe('EntryPoint', () => {
           statusCode: 200,
           recordCount: 2,
           totalRecords: 2,
-          isSearchRequest: false,
+          isSearchRequest: true,
           isFirstPage: true,
         },
         ['behavioral']
       );
       expect(LoggerProxy.info).toHaveBeenCalledWith(
-        'Fetching entry points - orgId: test-org-id, page: 0, pageSize: 100, isSearchRequest: false',
+        'Fetching entry points - orgId: test-org-id, page: 0, pageSize: 100, isSearchRequest: true',
         {module: 'EntryPoint', method: 'getEntryPoints'}
       );
       expect(LoggerProxy.log).toHaveBeenCalledWith(
-        `Making API request to fetch entry points - resource: /organization/test-org-id/v2/entry-point?page=0&pageSize=100&sort=name%2CASC, service: wcc-api-gateway`,
+        `Making API request to fetch entry points - resource: /organization/test-org-id/v2/entry-point?page=0&pageSize=100&filter=entryPointType%3D%3DINBOUND%3BchannelType%3D%3DTELEPHONY%3Bactive%3D%3Dtrue&sort=name%2CASC&desktopProfileFilter=true&agentView=true, service: wcc-api-gateway`,
         {module: 'EntryPoint', method: 'getEntryPoints'}
       );
     });
@@ -144,7 +145,7 @@ describe('EntryPoint', () => {
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/entry-point?page=1&pageSize=25&search=test&filter=type%3D%3D%22voice%22&attributes=id%2Cname&sort=name%2CDESC',
+        resource: '/organization/test-org-id/v2/entry-point?page=1&pageSize=25&search=test&filter=type%3D%3D%22voice%22&attributes=id%2Cname&sort=name%2CDESC&desktopProfileFilter=true&agentView=true',
         method: HTTP_METHODS.GET,
       });
 
@@ -162,30 +163,30 @@ describe('EntryPoint', () => {
       );
     });
 
-    it('should apply the complete consult/transfer entry-point policy inside the service', async () => {
+    it('should allow existing parameters to override the default entry-point policy', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      const result = await entryPointAPI.getConsultTransferEntryPoints({
+      const result = await entryPointAPI.getEntryPoints({
         page: 1,
         pageSize: 25,
         search: 'sales',
-        mediaType: 'chat',
+        filter: 'entryPointType==INBOUND;channelType==CHAT;active==true',
       });
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
         resource:
-          '/organization/test-org-id/v2/entry-point?page=1&pageSize=25&search=sales&filter=entryPointType%3D%3DINBOUND%3BchannelType%3D%3DCHAT%3Bactive%3D%3Dtrue&attributes=id%2Cname%2CdbId&sort=name%2CASC&desktopProfileFilter=true&agentView=true',
+          '/organization/test-org-id/v2/entry-point?page=1&pageSize=25&search=sales&filter=entryPointType%3D%3DINBOUND%3BchannelType%3D%3DCHAT%3Bactive%3D%3Dtrue&sort=name%2CASC&desktopProfileFilter=true&agentView=true',
         method: HTTP_METHODS.GET,
       });
       expect(result).toBe(mockResponse.body);
     });
 
-    it('should default consult/transfer entry points to telephony and bypass cache', async () => {
+    it('should bypass cache for the default entry-point policy', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      await entryPointAPI.getConsultTransferEntryPoints();
-      await entryPointAPI.getConsultTransferEntryPoints();
+      await entryPointAPI.getEntryPoints();
+      await entryPointAPI.getEntryPoints();
 
       expect(mockWebex.request).toHaveBeenCalledTimes(2);
       expect(mockWebex.request).toHaveBeenLastCalledWith(
@@ -195,20 +196,6 @@ describe('EntryPoint', () => {
       );
     });
 
-    it.each(['voice', 'telephony;active==false', null])(
-      'should reject unsupported consult/transfer media before requesting entry points: %p',
-      async (mediaType) => {
-        const jsCaller = entryPointAPI as unknown as {
-          getConsultTransferEntryPoints: (options: {mediaType: unknown}) => Promise<unknown>;
-        };
-
-        await expect(jsCaller.getConsultTransferEntryPoints({mediaType})).rejects.toThrow(
-          'Unsupported consult/transfer media type'
-        );
-        expect(mockWebex.request).not.toHaveBeenCalled();
-      }
-    );
-
     it('should handle API errors and track metrics', async () => {
       (mockWebex.request as jest.Mock).mockRejectedValue(new Error('Internal Server Error'));
 
@@ -216,7 +203,8 @@ describe('EntryPoint', () => {
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/entry-point?page=0&pageSize=100&sort=name%2CASC',
+        resource:
+          '/organization/test-org-id/v2/entry-point?page=0&pageSize=100&filter=entryPointType%3D%3DINBOUND%3BchannelType%3D%3DTELEPHONY%3Bactive%3D%3Dtrue&sort=name%2CASC&desktopProfileFilter=true&agentView=true',
         method: HTTP_METHODS.GET,
       });
 
@@ -225,7 +213,7 @@ describe('EntryPoint', () => {
         {
           orgId: 'test-org-id',
           error: 'Internal Server Error',
-          isSearchRequest: false,
+          isSearchRequest: true,
           page: 0,
           pageSize: 100,
         },
@@ -234,13 +222,17 @@ describe('EntryPoint', () => {
       expect(LoggerProxy.error).toHaveBeenCalled();
     });
 
-    it('should not track metrics for subsequent pages in simple pagination', async () => {
+    it('should track metrics for subsequent pages under the default filtered policy', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
       const result = await entryPointAPI.getEntryPoints({page: 2});
       expect(result).toEqual(mockResponse.body);
 
-      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_SUCCESS,
+        expect.objectContaining({isSearchRequest: true, isFirstPage: false}),
+        ['behavioral']
+      );
     });
 
     it('should track metrics for search requests on any page', async () => {
@@ -292,11 +284,12 @@ describe('EntryPoint', () => {
       expect(result.meta.page).toBe(1);
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/entry-point?page=1&pageSize=100&sort=name%2CASC',
+        resource:
+          '/organization/test-org-id/v2/entry-point?page=1&pageSize=100&filter=entryPointType%3D%3DINBOUND%3BchannelType%3D%3DTELEPHONY%3Bactive%3D%3Dtrue&sort=name%2CASC&desktopProfileFilter=true&agentView=true',
         method: HTTP_METHODS.GET,
       });
       expect(LoggerProxy.log).toHaveBeenCalledWith(
-        `Making API request to fetch entry points - resource: /organization/test-org-id/v2/entry-point?page=1&pageSize=100&sort=name%2CASC, service: wcc-api-gateway`,
+        `Making API request to fetch entry points - resource: /organization/test-org-id/v2/entry-point?page=1&pageSize=100&filter=entryPointType%3D%3DINBOUND%3BchannelType%3D%3DTELEPHONY%3Bactive%3D%3Dtrue&sort=name%2CASC&desktopProfileFilter=true&agentView=true, service: wcc-api-gateway`,
         {module: 'EntryPoint', method: 'getEntryPoints'}
       );
     });

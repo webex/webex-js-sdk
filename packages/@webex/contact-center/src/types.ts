@@ -707,6 +707,7 @@ export interface AddressBookEntrySearchParams extends BaseSearchParams {
  */
 export interface EntryPointRecord {
   id: string;
+  dbId?: string;
   name: string;
   description?: string;
   type: string;
@@ -718,26 +719,9 @@ export interface EntryPointRecord {
 }
 
 export type EntryPointListResponse = PaginatedResponse<EntryPointRecord>;
-export type EntryPointSearchParams = BaseSearchParams;
-
-/** Projected destination returned by the specialized consult/transfer list methods. @public */
-export interface ConsultTransferDestination {
-  /** Destination identifier used by consult/transfer operations. */
-  id: string;
-  /** Display name supplied by the backend. */
-  name: string;
-  /** Backend database identifier when included by the CMS response. */
-  dbId?: string;
+export interface EntryPointSearchParams extends BaseSearchParams {
+  desktopProfileFilter?: boolean;
 }
-
-/** Paginated response returned by specialized consult/transfer destination lookups. @public */
-export type ConsultTransferListResponse = PaginatedResponse<ConsultTransferDestination>;
-
-/** Minimal consumer options shared by consult/transfer destination lists. @public */
-export type ConsultTransferListOptions = Pick<BaseSearchParams, 'page' | 'pageSize' | 'search'> & {
-  /** Task media type; defaults to telephony when omitted. */
-  mediaType?: ConsultTransferMediaType;
-};
 
 /**
  * Queue types
@@ -784,6 +768,8 @@ export interface ContactServiceQueue {
   organizationId?: string;
   /** Unique identifier for the queue */
   id?: string;
+  /** Backend database identifier when included by the CMS response. */
+  dbId?: string;
   /** Version of the queue */
   version?: number;
   /** Name of the Contact Service Queue */

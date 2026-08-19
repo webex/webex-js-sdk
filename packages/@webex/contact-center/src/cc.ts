@@ -76,8 +76,6 @@ import type {
   EntryPointSearchParams,
   ContactServiceQueuesResponse,
   ContactServiceQueueSearchParams,
-  ConsultTransferListOptions,
-  ConsultTransferListResponse,
 } from './types';
 
 /**
@@ -2214,8 +2212,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Returns paginated entry points for the organization.
-   * Thin wrapper around internal EntryPoint instance.
+   * Returns paginated entry points using the EntryPoint service's Agent Desktop-compatible defaults.
+   * Existing request parameters can override those defaults.
    * @public
    */
   public async getEntryPoints(
@@ -2225,35 +2223,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Returns paginated contact service queues for the organization.
-   * Thin wrapper around internal Queue instance.
+   * Returns paginated contact service queues using the Queue service's Agent Desktop-compatible defaults.
+   * Existing request parameters can override those defaults.
    * @public
    */
   public async getQueues(
     params: ContactServiceQueueSearchParams = {}
   ): Promise<ContactServiceQueuesResponse> {
     return this.queue.getQueues(params);
-  }
-
-  /**
-   * Returns queues eligible for Agent Desktop consult/transfer flows.
-   * The SDK owns the backend filter, projection, ordering, and agent-profile view policy.
-   * @public
-   */
-  public async getConsultTransferQueues(
-    options: ConsultTransferListOptions = {}
-  ): Promise<ConsultTransferListResponse> {
-    return this.queue.getConsultTransferQueues(options);
-  }
-
-  /**
-   * Returns entry points eligible for Agent Desktop consult/transfer flows.
-   * The SDK owns the backend filter, projection, ordering, and agent-profile view policy.
-   * @public
-   */
-  public async getConsultTransferEntryPoints(
-    options: ConsultTransferListOptions = {}
-  ): Promise<ConsultTransferListResponse> {
-    return this.entryPoint.getConsultTransferEntryPoints(options);
   }
 }

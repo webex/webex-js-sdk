@@ -46,7 +46,7 @@
       "canonical_spec": "ai-docs/contact-center-spec.md",
       "contracts": {
         "provides": [
-          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task with ordered action-specific consult/transfer destination controls, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, typed consult/transfer list methods with one minimal options type and projected destination/media contracts, exported user-preference request/response types, and preview-campaign methods acceptPreviewContact/skipPreviewContact/removePreviewContact"
+          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task with ordered action-specific consult/transfer destination controls, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, existing getQueues/getEntryPoints methods with Agent Desktop-compatible defaults and full-record response contracts, exported user-preference request/response types, and preview-campaign methods acceptPreviewContact/skipPreviewContact/removePreviewContact"
         ],
         "requires": [
           "Webex SDK host/plugin runtime; Contact Center REST and WebSocket services; internal Webex calling, metrics, support, authorization, logger, and mercury packages"
@@ -133,7 +133,7 @@
       "canonical_spec": "src/services/ai-docs/services-spec.md",
       "contracts": {
         "provides": [
-          "Services composition root; agent/config/contact/dialer factories; AddressBook, EntryPoint, Queue, UserPreference, ApiAiAssistant, and WebCalling integration; internal Queue/EntryPoint consult-transfer request paths with SDK-owned policy and exact projected responses; cc.userPreference exposes user-preference CRUD"
+          "Services composition root; agent/config/contact/dialer factories; AddressBook, EntryPoint, Queue, UserPreference, ApiAiAssistant, and WebCalling integration; existing Queue/EntryPoint list methods with SDK-owned defaults, explicit existing-parameter overrides, and full-record responses; cc.userPreference exposes user-preference CRUD"
         ],
         "requires": [
           "Core HTTP/WebSocket/AQM infrastructure; WCC APIs; @webex/calling; MetricsManager; PageCache"

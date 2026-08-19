@@ -8,7 +8,7 @@ import {
 } from '../../../src/types';
 import ContactCenter from '../../../src/cc';
 import EntryPoint from '../../../src/services/EntryPoint';
-import type {ConsultTransferListResponse, EntryPointListResponse} from '../../../src/types';
+import type {EntryPointListResponse} from '../../../src/types';
 import AddressBook from '../../../src/services/AddressBook';
 import Queue from '../../../src/services/Queue';
 import type {ContactServiceQueuesResponse} from '../../../src/types';
@@ -1704,67 +1704,6 @@ describe('webex.cc', () => {
       jest.spyOn(webex.cc.queue, 'getQueues').mockRejectedValue(error);
 
       await expect(webex.cc.getQueues()).rejects.toThrow('Test error.');
-    });
-  });
-
-  describe('consult/transfer lists', () => {
-    it('delegates minimal queue-list options to the owning SDK service', async () => {
-      const mockQueuesResponse: ConsultTransferListResponse = {
-        data: [{id: 'queue-id', name: 'Support', dbId: 'queue-db-id'}],
-        meta: {page: 1, totalPages: 1},
-      };
-      const queueSpy = jest
-        .spyOn(webex.cc.queue, 'getConsultTransferQueues')
-        .mockResolvedValue(mockQueuesResponse);
-
-      const options = {
-        mediaType: 'social',
-        page: 1,
-        pageSize: 25,
-        search: 'support',
-      } as const;
-      const result = await webex.cc.getConsultTransferQueues(options);
-
-      expect(queueSpy).toHaveBeenCalledWith(options);
-      expect(result).toBe(mockQueuesResponse);
-      expect(result.data[0].dbId).toBe('queue-db-id');
-    });
-
-    it('delegates minimal entry-point-list options to the owning SDK service', async () => {
-      const mockEntryPointsResponse: ConsultTransferListResponse = {
-        data: [{id: 'entry-point-id', name: 'Sales', dbId: 'entry-point-db-id'}],
-        meta: {page: 0, totalPages: 1},
-      };
-      const entryPointSpy = jest
-        .spyOn(webex.cc.entryPoint, 'getConsultTransferEntryPoints')
-        .mockResolvedValue(mockEntryPointsResponse);
-
-      const options = {
-        page: 0,
-        pageSize: 25,
-        search: 'sales',
-        mediaType: 'telephony',
-      } as const;
-      const result = await webex.cc.getConsultTransferEntryPoints(options);
-
-      expect(entryPointSpy).toHaveBeenCalledWith(options);
-      expect(result).toBe(mockEntryPointsResponse);
-      expect(result.data[0].dbId).toBe('entry-point-db-id');
-    });
-
-    it('delegates omitted list options as an empty options object', async () => {
-      const queueSpy = jest
-        .spyOn(webex.cc.queue, 'getConsultTransferQueues')
-        .mockResolvedValue({data: [], meta: {}});
-      const entryPointSpy = jest
-        .spyOn(webex.cc.entryPoint, 'getConsultTransferEntryPoints')
-        .mockResolvedValue({data: [], meta: {}});
-
-      await webex.cc.getConsultTransferQueues();
-      await webex.cc.getConsultTransferEntryPoints();
-
-      expect(queueSpy).toHaveBeenCalledWith({});
-      expect(entryPointSpy).toHaveBeenCalledWith({});
     });
   });
 
