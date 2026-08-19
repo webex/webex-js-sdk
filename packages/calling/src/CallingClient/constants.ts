@@ -58,6 +58,7 @@ export const SUPPLEMENTARY_SERVICES_TIMEOUT = 10000;
 export const API_V1 = '/api/v1';
 export const URL_ENDPOINT = '/calling/web/';
 export const VALID_PHONE_REGEX = /[\d\s()*#+.-]+/;
+export const MAKE_CALL_PHONE_REGEX = /^[\d\s()*#+.-]+$/;
 export const WEB_AGENT = '(web)';
 export const WEBEX = 'webex';
 export const WEBEX_WEB_CLIENT = 'webex-web-client';

@@ -344,6 +344,50 @@ describe('Line Tests', () => {
       }
     });
 
+    it('makeCall rejects malformed/injection address', (done) => {
+      line.removeAllListeners(LINE_EVENTS.ERROR);
+      const createCallSpy = jest.spyOn(line.callManager, 'createCall');
+
+      line.on(LINE_EVENTS.ERROR, (error) => {
+        expect(error.message).toBe(
+          'An invalid phone number was detected. Check the number and try again.'
+        );
+        done();
+      });
+      try {
+        const call = line.makeCall({address: '+1(800)555-EVIL', type: CallType.URI});
+
+        expect(call).toBeUndefined();
+        expect(createCallSpy).not.toBeCalled();
+      } catch (error) {
+        done(error);
+      }
+    });
+
+    it('makeCall sanitizes a valid number to a clean tel: URI', () => {
+      const createCallSpy = jest.spyOn(line.callManager, 'createCall');
+      const call = line.makeCall({address: '+1(800)555-1234', type: CallType.URI});
+
+      expect(createCallSpy).toBeCalledOnceWith(CallDirection.OUTBOUND, undefined, line.lineId, {
+        address: 'tel:+18005551234',
+        type: 'uri',
+      });
+      expect(call).toBeTruthy();
+      call?.end();
+    });
+
+    it('makeCall preserves valid-number behavior', () => {
+      const createCallSpy = jest.spyOn(line.callManager, 'createCall');
+      const call = line.makeCall({address: '+15551234567', type: CallType.URI});
+
+      expect(createCallSpy).toBeCalledOnceWith(CallDirection.OUTBOUND, undefined, line.lineId, {
+        address: 'tel:+15551234567',
+        type: 'uri',
+      });
+      expect(call).toBeTruthy();
+      call?.end();
+    });
+
     it('attempt to create call with guest calling service indicator', () => {
       expect.assertions(2);
       const createCallSpy = jest.spyOn(line.callManager, 'createCall');
