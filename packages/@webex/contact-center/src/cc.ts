@@ -253,6 +253,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   private wxAppTelephonyMercurySync: WxAppTelephonyMercurySync;
 
+  /** True when wxApp mute sync opened Mercury (Extension/DN-only profiles). */
+  private wxAppMercuryConnectedByCc = false;
+
+  /** True when wxApp mute sync registered the Webex device. */
+  private wxAppDeviceRegisteredByCc = false;
+
   /**
    * Core service managers for Contact Center operations
    * Includes agent, connection, and configuration services
@@ -690,10 +696,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // Clear any cached agent configuration
       this.agentConfig = null;
 
-      await this.publishAnswerOnWebexCrossClientState(false);
-      this.webexCrossClientService.teardown();
-      this.wxAppTelephonyMercurySync.unsubscribe();
-      this.resetEnableAnswerOnWebexConfig();
+      await this.teardownWxAppLocalState({rethrowPublishError: true});
 
       LoggerProxy.log('Deregistered successfully', {
         module: CC_FILE,
@@ -1141,10 +1144,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.webCallingService.deregisterWebCallingLine();
       }
 
-      await this.publishAnswerOnWebexCrossClientState(false);
-      this.webexCrossClientService.teardown();
-      this.wxAppTelephonyMercurySync.unsubscribe();
-      this.resetEnableAnswerOnWebexConfig();
+      await this.teardownWxAppLocalState();
 
       LoggerProxy.log(`Agent station logout completed successfully`, {
         module: CC_FILE,
@@ -1455,9 +1455,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private assertWxAppStationLoginSupportedForEnable(): void {
-    if (this.getCurrentStationLoginOption() === LoginOption.BROWSER) {
+    const loginOption = this.getCurrentStationLoginOption();
+    if (loginOption !== LoginOption.EXTENSION && loginOption !== LoginOption.AGENT_DN) {
       throw new Error(
-        'setManageWebexCallingInWxcc is not supported for BROWSER (Desktop) login. Use EXTENSION or AGENT_DN.'
+        'setManageWebexCallingInWxcc requires EXTENSION or AGENT_DN station login. Complete station login before enabling.'
       );
     }
   }
@@ -1503,6 +1504,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
       } else {
         this.wxAppTelephonyMercurySync.unsubscribe();
+        await this.releaseWxAppMercuryResources();
       }
     } catch (error) {
       if (this.$config) {
@@ -1527,6 +1529,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         await this.publishAnswerOnWebexCrossClientState(false, {force: true});
         this.webexCrossClientService.teardown();
         this.wxAppTelephonyMercurySync.unsubscribe();
+        await this.releaseWxAppMercuryResources();
       }
     } catch (error) {
       LoggerProxy.error(`Failed to initialize wxApp post-station-login: ${error}`, {
@@ -1542,6 +1545,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     if (device && !device.registered && device.register) {
       await device.register();
+      this.wxAppDeviceRegisteredByCc = true;
       LoggerProxy.log('WxApp mute sync: device registered', {
         module: CC_FILE,
         method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
@@ -1550,10 +1554,86 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     if (mercury && !mercury.connected) {
       await mercury.connect();
+      this.wxAppMercuryConnectedByCc = true;
       LoggerProxy.log('WxApp mute sync: mercury connected', {
         module: CC_FILE,
         method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
       });
+    }
+  }
+
+  /**
+   * Disconnects Mercury and unregisters the device when wxApp mute sync opened them.
+   * @private
+   */
+  private async releaseWxAppMercuryResources(): Promise<void> {
+    const mercury = this.$webex.internal.mercury;
+    const device = this.$webex.internal.device;
+
+    if (this.wxAppMercuryConnectedByCc && mercury?.connected) {
+      try {
+        await mercury.disconnect();
+        LoggerProxy.log('WxApp mute sync: mercury disconnected', {
+          module: CC_FILE,
+          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+        });
+      } catch (error) {
+        LoggerProxy.error(`Failed to disconnect wxApp Mercury: ${error}`, {
+          module: CC_FILE,
+          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+        });
+      } finally {
+        this.wxAppMercuryConnectedByCc = false;
+      }
+    }
+
+    if (this.wxAppDeviceRegisteredByCc && device?.registered && device.unregister) {
+      try {
+        // @ts-ignore
+        await device.unregister();
+        LoggerProxy.log('WxApp mute sync: device unregistered', {
+          module: CC_FILE,
+          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+        });
+      } catch (error) {
+        LoggerProxy.error(`Failed to unregister wxApp device: ${error}`, {
+          module: CC_FILE,
+          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+        });
+      } finally {
+        this.wxAppDeviceRegisteredByCc = false;
+      }
+    }
+  }
+
+  /**
+   * Clears wxApp runtime state and feature-owned resources. Publish failures are logged;
+   * optional rethrow for deregister when callers need to surface usersub errors.
+   * @private
+   */
+  private async teardownWxAppLocalState(options?: {rethrowPublishError?: boolean}): Promise<void> {
+    let publishError: unknown;
+
+    try {
+      await this.publishAnswerOnWebexCrossClientState(false);
+    } catch (error) {
+      publishError = error;
+      LoggerProxy.error(
+        `Failed to publish answer-calls-on-wxcc false during wxApp teardown: ${error}`,
+        {
+          module: CC_FILE,
+          method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+        }
+      );
+    }
+
+    this.webexCrossClientService.teardown();
+    this.wxAppTelephonyMercurySync.unsubscribe();
+    await this.releaseWxAppMercuryResources();
+    this.resetEnableAnswerOnWebexConfig();
+
+    if (options?.rethrowPublishError && publishError) {
+      throw publishError;
     }
   }
 

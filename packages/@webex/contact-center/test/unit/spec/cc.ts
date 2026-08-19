@@ -1245,6 +1245,11 @@ describe('webex.cc', () => {
         url: 'https://wdm.example.com/devices/dev-1',
       };
       webex.request = jest.fn().mockResolvedValue({body: {}});
+      webex.cc['agentConfig'] = {
+        agentId: 'agent-123',
+        deviceType: LoginOption.EXTENSION,
+      } as Profile;
+      webex.cc.webCallingService.loginOption = LoginOption.EXTENSION;
 
       await webex.cc.setManageWebexCallingInWxcc(true);
 
@@ -1263,6 +1268,33 @@ describe('webex.cc', () => {
       expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
       expect(teardownSpy).toHaveBeenCalled();
       expect(unsubscribeSpy).toHaveBeenCalled();
+    });
+
+    it('should teardown wxApp state on logout even when usersub publish fails', async () => {
+      webex.internal.device = {userId: 'user-123'};
+      webex.cc['agentConfig'] = {
+        agentId: 'agent-123',
+        deviceType: LoginOption.EXTENSION,
+      } as Profile;
+      webex.cc.webCallingService.loginOption = LoginOption.EXTENSION;
+      webex.cc.$config = {...webex.cc.$config, enableAnswerOnWebex: true};
+      mockTaskManager.applyEnableAnswerOnWebex(true);
+
+      jest.spyOn(webex.cc.services.agent, 'logout').mockResolvedValue({
+        trackingId: 'track-1',
+      } as StationLogoutResponse);
+      jest
+        .spyOn(webex.cc as never, 'publishAnswerOnWebexCrossClientState' as never)
+        .mockRejectedValue(new Error('usersub publish failed'));
+      const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
+      const unsubscribeSpy = jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'unsubscribe');
+
+      const result = await webex.cc.stationLogout({logoutReason: 'Logout reason'});
+
+      expect(result).toEqual({trackingId: 'track-1'});
+      expect(teardownSpy).toHaveBeenCalled();
+      expect(unsubscribeSpy).toHaveBeenCalled();
+      expect(webex.cc.isAnswerOnWebexEnabled()).toBe(false);
     });
 
     it('should handle error during stationLogout', async () => {
@@ -2173,6 +2205,58 @@ describe('webex.cc', () => {
       expect(webex.cc.agentConfig).toBeNull();
     });
 
+    it('should teardown wxApp state on deregister even when usersub publish fails', async () => {
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        webRtcEnabled: false,
+        loginVoiceOptions: [LoginOption.EXTENSION],
+      };
+      webex.cc.$config = {...webex.cc.$config, enableAnswerOnWebex: true};
+      webex.cc['webexCrossClientService'].answerCallsState = true;
+      webex.internal.device = {
+        userId: 'user-123',
+        unregister: jest.fn().mockResolvedValue(undefined),
+      };
+
+      jest
+        .spyOn(webex.cc as never, 'publishAnswerOnWebexCrossClientState' as never)
+        .mockRejectedValue(new Error('usersub publish failed'));
+      const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
+      const unsubscribeSpy = jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'unsubscribe');
+
+      await expect(webex.cc.deregister()).rejects.toThrow('usersub publish failed');
+
+      expect(teardownSpy).toHaveBeenCalled();
+      expect(unsubscribeSpy).toHaveBeenCalled();
+      expect(webex.cc.isAnswerOnWebexEnabled()).toBe(false);
+    });
+
+    it('should release wxApp-owned Mercury and device on deregister', async () => {
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        webRtcEnabled: false,
+        loginVoiceOptions: [LoginOption.EXTENSION],
+      };
+      webex.cc['wxAppMercuryConnectedByCc'] = true;
+      webex.cc['wxAppDeviceRegisteredByCc'] = true;
+      webex.internal.mercury.connected = true;
+      webex.internal.device.registered = true;
+
+      const mercuryDisconnectSpy = jest
+        .spyOn(webex.internal.mercury, 'disconnect')
+        .mockResolvedValue(undefined);
+      const deviceUnregisterSpy = jest
+        .spyOn(webex.internal.device, 'unregister')
+        .mockResolvedValue(undefined);
+
+      await webex.cc.deregister();
+
+      expect(mercuryDisconnectSpy).toHaveBeenCalled();
+      expect(deviceUnregisterSpy).toHaveBeenCalled();
+      expect(webex.cc['wxAppMercuryConnectedByCc']).toBe(false);
+      expect(webex.cc['wxAppDeviceRegisteredByCc']).toBe(false);
+    });
+
     it('should handle errors during unregister and track metrics', async () => {
       const mockError = new Error('Failed to deregister device');
       webex.internal.device.unregister.mockRejectedValue(mockError);
@@ -3013,7 +3097,22 @@ describe('webex.cc', () => {
         .mockResolvedValue(undefined);
 
       await expect(webex.cc.setManageWebexCallingInWxcc(true)).rejects.toThrow(
-        'setManageWebexCallingInWxcc is not supported for BROWSER (Desktop) login'
+        'setManageWebexCallingInWxcc requires EXTENSION or AGENT_DN station login'
+      );
+      expect(webex.cc.isAnswerOnWebexEnabled()).toBe(false);
+      expect(mockTaskManager.applyEnableAnswerOnWebex).not.toHaveBeenCalled();
+      expect(publishSpy).not.toHaveBeenCalled();
+    });
+
+    it('should throw when enabling before station login', async () => {
+      webex.cc['agentConfig'] = undefined as unknown as Profile;
+      webex.cc.webCallingService.loginOption = undefined as unknown as LoginOption;
+      const publishSpy = jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+
+      await expect(webex.cc.setManageWebexCallingInWxcc(true)).rejects.toThrow(
+        'setManageWebexCallingInWxcc requires EXTENSION or AGENT_DN station login'
       );
       expect(webex.cc.isAnswerOnWebexEnabled()).toBe(false);
       expect(mockTaskManager.applyEnableAnswerOnWebex).not.toHaveBeenCalled();
@@ -3028,7 +3127,7 @@ describe('webex.cc', () => {
         .mockResolvedValue(undefined);
 
       await expect(webex.cc.setManageWebexCallingInWxcc(true)).rejects.toThrow(
-        'setManageWebexCallingInWxcc is not supported for BROWSER (Desktop) login'
+        'setManageWebexCallingInWxcc requires EXTENSION or AGENT_DN station login'
       );
       expect(publishSpy).not.toHaveBeenCalled();
     });

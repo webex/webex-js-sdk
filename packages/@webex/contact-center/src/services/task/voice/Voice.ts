@@ -278,7 +278,15 @@ export default class Voice extends Task implements IVoice {
   }
 
   protected onTaskHydrated(): void {
-    this.setWxAppAnswerPending(false);
+    const state = this.stateMachineService?.getSnapshot?.()?.value as TaskState | undefined;
+    const answerStillPending =
+      state === TaskState.OFFERED &&
+      (this.uiControlConfig?.wxAppAcceptInFlight || this.uiControlConfig?.wxAppAnswerPending);
+
+    if (!answerStillPending) {
+      this.setWxAppAnswerPending(false);
+    }
+
     this.syncWxAppMuteFromCallDetails().catch(() => undefined);
   }
 

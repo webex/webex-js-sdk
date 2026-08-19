@@ -892,6 +892,44 @@ describe('Voice Task', () => {
       });
     });
 
+    it('preserves wxAppAnswerPending on hydrate while OFFERED and answer is pending', async () => {
+      const mockSvc = {
+        answerCall: jest.fn().mockResolvedValue(undefined),
+        getCallDetails: jest.fn().mockResolvedValue({muted: false}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      await voice.accept();
+      expect(voice.uiControlConfig.wxAppAnswerPending).toBe(true);
+
+      voice.onTaskHydrated();
+
+      expect(voice.uiControlConfig.wxAppAnswerPending).toBe(true);
+    });
+
+    it('clears wxAppAnswerPending on hydrate when task is no longer OFFERED', async () => {
+      const mockSvc = {
+        getCallDetails: jest.fn().mockResolvedValue({muted: false}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+      voice.uiControlConfig = {...voice.uiControlConfig, wxAppAnswerPending: true};
+      primeConnectedState(voice, taskData);
+
+      voice.onTaskHydrated();
+
+      expect(voice.uiControlConfig.wxAppAnswerPending).toBe(false);
+    });
+
     it('coalesces parallel syncWxAppMuteFromCallDetails into one getCallDetails', async () => {
       let resolveGetCallDetails: (value: {muted: boolean}) => void;
       const getCallDetailsPromise = new Promise<{muted: boolean}>((resolve) => {
