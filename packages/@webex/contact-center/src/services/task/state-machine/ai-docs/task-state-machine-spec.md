@@ -1561,7 +1561,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 **Description**: Final wrapped-up terminal state.
 
-**Entry Actions**:
+**Entry Actions** (order matters — `emitTaskWrappedup` before `cleanupResources` so subscribers receive intact task data):
 
 - `emitTaskWrappedup`
 
@@ -1755,7 +1755,7 @@ Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 | `AGENT_INVITE_FAILED`              | `INVITE_FAILED`               | `OFFERED`                                            | `TERMINATED`                                                                  | Reject path                       |
 | `AGENT_CONTACT_ASSIGN_FAILED`      | `ASSIGN_FAILED`               | `OFFERED`                                            | `TERMINATED`                                                                  | Reject path                       |
 | `AGENT_CONTACT_OFFER_RONA`         | `RONA`                        | `OFFERED`                                            | `TERMINATED`                                                                  | Timeout path                      |
-| `AGENT_OUTBOUND_FAILED`            | `OUTBOUND_FAILED`             | `OFFERED` / `CONNECTED`                              | `WRAPPING_UP` or `TERMINATED`                                                 | Outbound failure; wrapup when `shouldWrapUp` |
+| `AGENT_OUTBOUND_FAILED`            | `OUTBOUND_FAILED`             | `OFFERED` / `CONNECTED`                              | `WRAPPING_UP` or `TERMINATED`                                                 | Outbound failure; wrapup when `shouldWrapUp`. Non-wxApp agent-terminated `AGENT_ENDS` sets `suppressOutdialFailedPopup` (wrapup without outdial-failed modal). |
 | `CONTACT_RECORDING_STARTED`        | `RECORDING_STARTED`           | any                                                  | same                                                                          | Recording state update            |
 | `CONTACT_RECORDING_PAUSED`         | `PAUSE_RECORDING`             | `CONNECTED`                                          | same                                                                          | Recording state update            |
 | `CONTACT_RECORDING_RESUMED`        | `RESUME_RECORDING`            | `CONNECTED`                                          | same                                                                          | Recording state update            |

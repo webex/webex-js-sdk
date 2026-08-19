@@ -97,6 +97,28 @@ describe('Voice Task', () => {
       expect(outdialFailedCall).toBeDefined();
       expect(outdialFailedCall![1]).toBe('CUSTOMER_BUSY');
     });
+
+    it('does not emit task:outdialFailed when suppressOutdialFailedPopup is set', () => {
+      const taskData = createBaseData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+        suppressOutdialFailedPopup: true,
+      });
+      const voice = new Voice(dummyContact, taskData, {});
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      voice.sendStateMachineEvent({
+        type: TaskEvent.OUTBOUND_FAILED,
+        taskData,
+        reason: 'AGENT_ENDS',
+      });
+
+      const outdialFailedCall = emitSpy.mock.calls.find(
+        (call) => call[0] === 'task:outdialFailed'
+      );
+      expect(outdialFailedCall).toBeUndefined();
+    });
   });
 
   it('hides end and endConsult when disabled', () => {
@@ -977,6 +999,7 @@ describe('Voice Task', () => {
       voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
       await voice.acceptOnWebex();
 
+      expect(voice.uiControlConfig.wxAppAcceptInFlight).toBe(false);
       await voice.syncWxAppMuteFromCallDetails();
 
       expect(mockSvc.getCallDetails).toHaveBeenCalledWith({callId: 'call-id-1'});
@@ -1056,6 +1079,7 @@ describe('Voice Task', () => {
 
       await voice.acceptOnWebex();
       expect(voice.uiControlConfig.wxAppAnswerPending).toBe(true);
+      expect(voice.uiControlConfig.wxAppAcceptInFlight).toBe(false);
 
       await voice.decline();
 

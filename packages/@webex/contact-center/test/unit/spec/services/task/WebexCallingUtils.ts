@@ -113,6 +113,18 @@ describe('isWxAppEngagedForControls', () => {
       isWxAppEngagedForControls(false, 'agent-1', participantsById, TaskState.CONNECTED)
     ).toBe(false);
   });
+
+  it('returns false in TERMINATED state', () => {
+    expect(
+      isWxAppEngagedForControls(true, 'agent-1', participantsById, TaskState.TERMINATED)
+    ).toBe(false);
+  });
+
+  it('returns false in COMPLETED state', () => {
+    expect(
+      isWxAppEngagedForControls(true, 'agent-1', participantsById, TaskState.COMPLETED)
+    ).toBe(false);
+  });
 });
 
 describe('decodedLineOwnerId', () => {

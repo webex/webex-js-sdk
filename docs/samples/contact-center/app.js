@@ -3229,8 +3229,12 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 
 async function decline() {
   try {
-    // WXCC-6026: use rejectOnWebex for wxApp thick-client calls when enabled
-    if (isAnswerOnWebexEnabled && currentTask.isWebexAppCallingOffer && currentTask.isWebexAppCallingOffer()) {
+    // WXCC-6026: inbound wxApp → rejectOnWebex; outdial wxApp + legacy → decline()/cancelTask
+    if (
+      isAnswerOnWebexEnabled &&
+      currentTask.isWebexAppInboundCallingOffer &&
+      currentTask.isWebexAppInboundCallingOffer()
+    ) {
       await currentTask.rejectOnWebex();
     } else {
       await currentTask.decline();

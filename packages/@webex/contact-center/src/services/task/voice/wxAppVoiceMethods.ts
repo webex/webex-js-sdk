@@ -91,7 +91,13 @@ export function isWebexAppInboundCallingOffer(deps: WxAppVoiceDeps): boolean {
 
 export function getWebexCallingCallId(deps: WxAppVoiceDeps): string | null {
   const state = deps.getTaskState();
-  if (!state || state === TaskState.OFFERED || state === TaskState.IDLE) {
+  if (
+    !state ||
+    state === TaskState.OFFERED ||
+    state === TaskState.IDLE ||
+    state === TaskState.TERMINATED ||
+    state === TaskState.COMPLETED
+  ) {
     return null;
   }
 

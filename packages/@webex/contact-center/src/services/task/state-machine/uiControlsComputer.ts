@@ -175,6 +175,7 @@ function computeVoiceInteractionUIControls(
   const isWxAppInboundOffer = isWxAppOffer && !isOutdial;
   const isWxAppOutdialOffer = isWxAppOffer && isOutdial;
   const wxAppAnswerPending = config.wxAppAnswerPending ?? false;
+  const wxAppAcceptInFlight = config.wxAppAcceptInFlight ?? false;
   const isWxAppEngaged = isWxAppEngagedForControls(
     enableAnswerOnWebex,
     selfAgentId,
@@ -480,7 +481,7 @@ function computeVoiceInteractionUIControls(
     accept: (() => {
       if (isWxAppInboundOffer) return VISIBLE_ENABLED;
       if (isWxAppOutdialOffer) {
-        return wxAppAnswerPending ? VISIBLE_DISABLED : VISIBLE_ENABLED;
+        return wxAppAcceptInFlight || wxAppAnswerPending ? VISIBLE_DISABLED : VISIBLE_ENABLED;
       }
       if (state === TaskState.OFFERED && !interaction?.isTerminated) {
         return {isVisible: true, isEnabled: isWebrtc && !isOutdial};
@@ -489,6 +490,8 @@ function computeVoiceInteractionUIControls(
       return DISABLED;
     })(),
     decline: (() => {
+      if (wxAppAcceptInFlight) return VISIBLE_DISABLED;
+      if (wxAppAnswerPending && isWxAppInboundOffer) return VISIBLE_DISABLED;
       if (isWxAppInboundOffer) return VISIBLE_ENABLED;
       if (isWxAppOutdialOffer) return VISIBLE_ENABLED;
       if (!isWebrtc || state !== TaskState.OFFERED || interaction?.isTerminated) return DISABLED;

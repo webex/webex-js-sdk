@@ -2672,7 +2672,13 @@ const WX_APP_DEVICE = {
   deviceCallId: 'call-id-1',
 };
 
-function createWxAppContext(overrides: Partial<{enableAnswerOnWebex: boolean}> = {}): TaskContext {
+function createWxAppContext(
+  overrides: Partial<{
+    enableAnswerOnWebex: boolean;
+    wxAppAnswerPending: boolean;
+    wxAppAcceptInFlight: boolean;
+  }> = {}
+): TaskContext {
   return {
     taskData: createTaskData({
       agentId: 'agent-1',
@@ -2706,6 +2712,8 @@ function createWxAppContext(overrides: Partial<{enableAnswerOnWebex: boolean}> =
       isRecordingEnabled: false,
       agentId: 'agent-1',
       enableAnswerOnWebex: overrides.enableAnswerOnWebex ?? true,
+      wxAppAnswerPending: overrides.wxAppAnswerPending,
+      wxAppAcceptInFlight: overrides.wxAppAcceptInFlight,
     },
     uiControls: getDefaultUIControls(),
   };
@@ -2722,6 +2730,29 @@ describe('uiControlsComputer wxApp thick-client answer (WXCC-6026)', () => {
 
     it('decline is visible and enabled in OFFERED state with wxApp participant', () => {
       const ctx = createWxAppContext();
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.decline).toEqual({isVisible: true, isEnabled: true});
+    });
+
+    it('decline is visible but disabled while wxAppAnswerPending on inbound offer', () => {
+      const ctx = createWxAppContext({wxAppAnswerPending: true});
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.decline).toEqual({isVisible: true, isEnabled: false});
+    });
+
+    it('decline is visible but disabled while wxAppAcceptInFlight on outdial offer', () => {
+      const ctx = createWxAppContext({wxAppAcceptInFlight: true, wxAppAnswerPending: true});
+      ctx.taskData.interaction.outboundType = 'OUTDIAL';
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.decline).toEqual({isVisible: true, isEnabled: false});
+    });
+
+    it('decline is visible and enabled while wxAppAnswerPending on outdial offer (Calling phase)', () => {
+      const ctx = createWxAppContext({wxAppAnswerPending: true});
+      ctx.taskData.interaction.outboundType = 'OUTDIAL';
       const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
 
       expect(controls.main.decline).toEqual({isVisible: true, isEnabled: true});

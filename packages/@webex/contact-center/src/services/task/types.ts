@@ -1139,6 +1139,8 @@ export type TaskData = {
   reservedAgentChannelId?: string;
   /** Indicates if wrap-up is required for this task */
   wrapUpRequired?: boolean;
+  /** SDK-internal: skip task:outdialFailed when non-wxApp agent-terminated outdial still needs wrapup */
+  suppressOutdialFailedPopup?: boolean;
 
   /**
    * Current consultation status derived from state machine

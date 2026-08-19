@@ -28,6 +28,7 @@ import {
 } from './TaskUtils';
 import TaskFactory from './TaskFactory';
 import AnswerCallOnWebexService from '../AnswerCallOnWebexService';
+import {getWebexCallingDeviceDetailsForAgent} from './WebexCallingUtils';
 import WebRTC from './voice/WebRTC';
 import {TaskEvent, type TaskEventPayload} from './state-machine';
 import {normalizeTaskData} from './taskDataNormalizer';
@@ -200,7 +201,8 @@ export default class TaskManager extends EventEmitter {
     ccEvent: CC_EVENTS,
     payload: WebSocketPayload,
     agentId?: string,
-    task?: ITask
+    task?: ITask,
+    enableAnswerOnWebex?: boolean
   ): TaskEventPayload | null {
     const mediaResourceId =
       payload.mediaResourceId ||
@@ -316,7 +318,15 @@ export default class TaskManager extends EventEmitter {
         // AgentOutboundFailed. Normalize to OUTBOUND_FAILED so state machine
         // enters WRAPPING_UP and emits TASK_OUTDIAL_FAILED (AGENT_ENDS).
         // Pre-accept cancelTask decline stays CONTACT_ENDED → TERMINATED (no wrapup).
-        if (TaskManager.isAgentTerminatedOutdialWrapup(payload, wrapUpRequired, task)) {
+        if (
+          TaskManager.isAgentTerminatedOutdialWrapup(
+            payload,
+            wrapUpRequired,
+            task,
+            agentId,
+            enableAnswerOnWebex
+          )
+        ) {
           return {
             type: TaskEvent.OUTBOUND_FAILED,
             reason: 'AGENT_ENDS',
@@ -342,8 +352,23 @@ export default class TaskManager extends EventEmitter {
       case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
         return {type: TaskEvent.RONA, taskData: payload, reason: payload.reason};
 
-      case CC_EVENTS.AGENT_OUTBOUND_FAILED:
-        return {type: TaskEvent.OUTBOUND_FAILED, taskData: payload, reason: payload.reason};
+      case CC_EVENTS.AGENT_OUTBOUND_FAILED: {
+        const isAgentTerminatedOutdial =
+          payload.interaction?.outboundType === 'OUTDIAL' &&
+          (payload.terminatingParty === 'Agent' || payload.reason === 'AGENT_ENDS');
+
+        const suppressOutdialFailedPopup =
+          isAgentTerminatedOutdial &&
+          !TaskManager.isWxAppManagedOutdialTask(agentId, payload, task, enableAnswerOnWebex);
+
+        return {
+          type: TaskEvent.OUTBOUND_FAILED,
+          taskData: suppressOutdialFailedPopup
+            ? {...payload, suppressOutdialFailedPopup: true}
+            : payload,
+          reason: payload.reason,
+        };
+      }
 
       case CC_EVENTS.CAMPAIGN_PREVIEW_ACCEPT_FAILED:
         return {type: TaskEvent.CAMPAIGN_PREVIEW_ACCEPT_FAILED, taskData: payload};
@@ -395,18 +420,50 @@ export default class TaskManager extends EventEmitter {
   }
 
   /**
-   * True when ContactEnded represents an agent-terminated outdial that should
+   * True when the current agent's task is a wxApp-managed outdial (thick-client telephony).
+   */
+  private static isWxAppManagedOutdialTask(
+    agentId: string | undefined,
+    payload: WebSocketPayload,
+    task: ITask | undefined,
+    enableAnswerOnWebex?: boolean
+  ): boolean {
+    const wxAppEnabled =
+      (task as {uiControlConfig?: {enableAnswerOnWebex?: boolean}})?.uiControlConfig
+        ?.enableAnswerOnWebex ??
+      enableAnswerOnWebex ??
+      false;
+
+    if (!wxAppEnabled) {
+      return false;
+    }
+
+    const effectiveAgentId = agentId ?? task?.data?.agentId;
+    const participants = payload.interaction?.participants ?? task?.data?.interaction?.participants;
+    const details = getWebexCallingDeviceDetailsForAgent(effectiveAgentId, participants);
+
+    return details?.deviceType === 'wxApp';
+  }
+
+  /**
+   * True when ContactEnded represents an agent-terminated wxApp outdial that should
    * enter wrapup with an outdial-failed popup (legacy AgentOutboundFailed parity).
    */
   private static isAgentTerminatedOutdialWrapup(
     payload: WebSocketPayload,
     wrapUpRequired: boolean,
-    task?: ITask
+    task?: ITask,
+    agentId?: string,
+    enableAnswerOnWebex?: boolean
   ): boolean {
     const isOutdial = payload.interaction?.outboundType === 'OUTDIAL';
     const agentTerminated = payload.terminatingParty === 'Agent';
 
     if (!isOutdial || !agentTerminated) {
+      return false;
+    }
+
+    if (!TaskManager.isWxAppManagedOutdialTask(agentId, payload, task, enableAnswerOnWebex)) {
       return false;
     }
 
@@ -561,7 +618,8 @@ export default class TaskManager extends EventEmitter {
       eventType,
       adjustedPayload,
       this.agentId,
-      task
+      task,
+      this.configFlags?.enableAnswerOnWebex
     );
 
     LoggerProxy.info(`Handling task event ${eventType}`, {

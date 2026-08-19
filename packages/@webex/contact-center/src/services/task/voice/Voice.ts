@@ -51,6 +51,7 @@ export default class Voice extends Task implements IVoice {
   private enableAnswerOnWebex = false;
   private wxAppMuted = false;
   private wxAppAnswerPending = false;
+  private wxAppAcceptInFlight = false;
   private wxAppMuteSyncInFlight?: Promise<boolean | undefined>;
 
   constructor(
@@ -107,6 +108,12 @@ export default class Voice extends Task implements IVoice {
   private setWxAppAnswerPending(pending: boolean): void {
     this.wxAppAnswerPending = pending;
     this.uiControlConfig = {...this.uiControlConfig, wxAppAnswerPending: pending};
+    this.updateUiControls(true);
+  }
+
+  private setWxAppAcceptInFlight(inFlight: boolean): void {
+    this.wxAppAcceptInFlight = inFlight;
+    this.uiControlConfig = {...this.uiControlConfig, wxAppAcceptInFlight: inFlight};
     this.updateUiControls(true);
   }
 
@@ -277,6 +284,7 @@ export default class Voice extends Task implements IVoice {
 
   public async acceptOnWebex(options?: {lineOwnerId?: string}): Promise<void> {
     try {
+      this.setWxAppAcceptInFlight(true);
       this.setWxAppAnswerPending(true);
       await wxAcceptOnWebex(this.getWxAppVoiceDeps(), options);
       this.wxAppMuted = false;
@@ -284,6 +292,8 @@ export default class Voice extends Task implements IVoice {
     } catch (error) {
       this.setWxAppAnswerPending(false);
       mapWxAppVoiceError(error, METHODS.ACCEPT_ON_WEBEX, CC_FILE);
+    } finally {
+      this.setWxAppAcceptInFlight(false);
     }
   }
 
@@ -1560,8 +1570,12 @@ export default class Voice extends Task implements IVoice {
         {updateTaskData: true}
       ),
       emitTaskOutdialFailed: ({event}: TaskActionArgs) => {
-        if (event && 'taskData' in event && event.taskData) {
-          this.updateTaskData(event.taskData as TaskData);
+        const taskData = (event as {taskData?: TaskData})?.taskData;
+        if (taskData) {
+          this.updateTaskData(taskData);
+        }
+        if (taskData?.suppressOutdialFailedPopup) {
+          return;
         }
         const reason = (event as {reason?: string})?.reason || 'Outdial failed';
         this.emit(TASK_EVENTS.TASK_OUTDIAL_FAILED, reason);

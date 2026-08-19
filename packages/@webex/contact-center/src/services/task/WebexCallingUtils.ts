@@ -105,7 +105,13 @@ export function isWxAppEngagedForControls(
     return false;
   }
 
-  if (!state || state === TaskState.OFFERED || state === TaskState.IDLE) {
+  if (
+    !state ||
+    state === TaskState.OFFERED ||
+    state === TaskState.IDLE ||
+    state === TaskState.TERMINATED ||
+    state === TaskState.COMPLETED
+  ) {
     return false;
   }
 

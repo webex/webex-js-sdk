@@ -1150,7 +1150,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.COMPLETED]: {
         type: 'final' as const,
-        entry: ['cleanupResources', 'emitTaskWrappedup'],
+        entry: ['emitTaskWrappedup', 'cleanupResources'],
       },
 
       [TaskState.TERMINATED]: {

@@ -180,6 +180,32 @@ describe('Task state machine', () => {
       service.send({type: TaskEvent.WRAPUP_COMPLETE});
       expect(service.getSnapshot().value).toBe(TaskState.COMPLETED);
     });
+
+    it('emits task wrappedup before cleanup on COMPLETED entry', () => {
+      const actionOrder: string[] = [];
+      const actor = createActor(
+        createTaskStateMachine(createConfig(), {
+          actions: {
+            emitTaskWrappedup: () => {
+              actionOrder.push('emitTaskWrappedup');
+            },
+            cleanupResources: () => {
+              actionOrder.push('cleanupResources');
+            },
+          },
+        })
+      );
+      actor.start();
+      const taskData = createTaskData();
+
+      actor.send({type: TaskEvent.TASK_INCOMING, taskData});
+      actor.send({type: TaskEvent.ASSIGN, taskData});
+      actor.send({type: TaskEvent.TASK_WRAPUP});
+      actor.send({type: TaskEvent.WRAPUP_COMPLETE});
+
+      expect(actor.getSnapshot().value).toBe(TaskState.COMPLETED);
+      expect(actionOrder).toEqual(['emitTaskWrappedup', 'cleanupResources']);
+    });
   });
 
   describe('consult and conference flows', () => {

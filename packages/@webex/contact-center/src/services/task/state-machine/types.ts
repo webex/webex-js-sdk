@@ -47,6 +47,8 @@ export interface UIControlConfig {
   enableAnswerOnWebex?: boolean;
   /** True while wxApp telephony answer is in flight (outdial Calling… label) */
   wxAppAnswerPending?: boolean;
+  /** True only during the acceptOnWebex REST call (decline disabled for inbound + outdial) */
+  wxAppAcceptInFlight?: boolean;
 }
 
 /**
