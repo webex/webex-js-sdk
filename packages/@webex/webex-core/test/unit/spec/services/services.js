@@ -505,7 +505,6 @@ describe('webex-core', () => {
         services.initialize();
         services.listenToOnce.getCall(0).args[2]();
         services.listenToOnce.getCall(1).args[2]();
-        await waitForAsync();
 
         // Advance well past the configured init timeout; since no timeout was
         // scheduled in skip mode, no timeout error should ever be logged.

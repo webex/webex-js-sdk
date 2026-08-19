@@ -1572,6 +1572,19 @@ const Services = WebexPlugin.extend({
       } else {
         const {email} = this.webex.config;
 
+        // Handle fresh login: 'loaded' fires before OAuth completes, so listen
+        // for `canAuthorize` flipping true and then collect the postauth catalog.
+        this.listenToOnce(this.webex, 'change:canAuthorize', () => {
+          if (this.webex.canAuthorize && !catalog.status.postauth.ready) {
+            // `initServiceCatalogs` marks the catalog ready internally.
+            this.initServiceCatalogs().catch((error) => {
+              this.logger.error(
+                `services: failed to init service catalogs after auth, ${error?.message}`
+              );
+            });
+          }
+        });
+
         if (this.webex.config?.services?.skipPreauthCatalogOnUnauthenticated === true) {
           // Skip the preauth catalog fetch (it will be collected manually
           // later), but still finalize `services.ready` so `webex.ready` is not
@@ -1594,19 +1607,6 @@ const Services = WebexPlugin.extend({
             })
             .finally(() => this._finalizeReady());
         }
-
-        // Handle fresh login: 'loaded' fires before OAuth completes, so listen
-        // for `canAuthorize` flipping true and then collect the postauth catalog.
-        this.listenToOnce(this.webex, 'change:canAuthorize', () => {
-          if (this.webex.canAuthorize && !catalog.status.postauth.ready) {
-            // `initServiceCatalogs` marks the catalog ready internally.
-            this.initServiceCatalogs().catch((error) => {
-              this.logger.error(
-                `services: failed to init service catalogs after auth, ${error?.message}`
-              );
-            });
-          }
-        });
       }
     });
   },
