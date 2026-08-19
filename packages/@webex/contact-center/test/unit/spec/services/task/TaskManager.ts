@@ -2582,6 +2582,20 @@ describe('TaskManager', () => {
       expect(secondChildTask.sendStateMachineEvent).not.toHaveBeenCalled();
     });
 
+    it('does not route a lifecycle event without a correlation identifier', () => {
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+            participantId: 'another-agent',
+          },
+        })
+      );
+
+      expect(task.sendStateMachineEvent).not.toHaveBeenCalled();
+    });
+
     it('removes every collection alias for a task during terminal cleanup', () => {
       taskManager.taskCollection['task-alias'] = task;
 

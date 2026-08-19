@@ -751,5 +751,49 @@ describe('Voice Task', () => {
         participantId
       );
     });
+
+    it.each([
+      ['null', null],
+      ['undefined', undefined],
+      ['string', 'primitive failure'],
+      ['number', 503],
+    ])('records failure telemetry and preserves a %s rejection', async (_label, failure) => {
+      dummyContact.dropConferenceParticipant.mockRejectedValueOnce(failure);
+      const voice = new Voice(
+        dummyContact,
+        createBaseData(),
+        {},
+        undefined,
+        'current-agent-id'
+      );
+      const metricsManager = MetricsManager.getInstance();
+      const failureFieldsSpy = jest.spyOn(
+        MetricsManager,
+        'getCommonTrackingFieldForAQMResponseFailed'
+      );
+      jest.spyOn(metricsManager, 'timeEvent').mockImplementation();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent').mockImplementation();
+      const errorSpy = jest.spyOn(LoggerProxy, 'error').mockImplementation();
+
+      await expect(
+        voice.dropConferenceParticipant({participantId: 'participant-id'})
+      ).rejects.toBe(failure);
+
+      expect(failureFieldsSpy).toHaveBeenCalledWith({});
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
+        expect.objectContaining({
+          taskId: 'int1',
+          requestInteractionId: 'int1',
+          agentId: 'current-agent-id',
+        }),
+        ['operational', 'behavioral', 'business']
+      );
+      expect(errorSpy).toHaveBeenCalledWith('Failed to drop conference participant', {
+        module: 'cc',
+        method: 'dropConferenceParticipant',
+        interactionId: 'int1',
+      });
+    });
   });
 });

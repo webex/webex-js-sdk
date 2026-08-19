@@ -475,6 +475,15 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 - `PARTICIPANT_LEAVE` -> stay `CONFERENCING` (default)
   - Guard: default
   - Actions: `updateTaskData`, `handleParticipantLeft`, `emitTaskParticipantLeft`
+
+`didCurrentAgentLeaveMainInteraction` treats an explicit self participant ID,
+self `hasLeft`, or removal from a previously active participant map as terminal.
+A `PARTICIPANT_LEAVE` event naming another participant does not infer departure
+from media membership. The previous-versus-updated `mainCall` comparison is
+restricted to from-conference `CONSULT_END` nested-consult cleanup when self
+remains active in the participant map and on the consult leg; partial ordinary CONNECTED/HELD
+snapshots remain non-terminal.
+
 - `CONFERENCE_END` -> `WRAPPING_UP`
   - Guard: `guards.shouldWrapUp`
   - Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup`

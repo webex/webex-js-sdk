@@ -107,6 +107,99 @@ describe('Task state machine', () => {
     });
   });
 
+  describe('partial lifecycle payloads', () => {
+    const createActiveMainCallTaskData = (isHold = false) =>
+      createTaskData({
+        agentId: 'agent-1',
+        interactionId: 'interaction-1',
+        mediaResourceId: 'main-media',
+        interaction: {
+          state: 'connected',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false},
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+          media: {
+            'main-media': {
+              mediaResourceId: 'main-media',
+              mType: 'mainCall',
+              participants: ['agent-1', 'customer-1'],
+              isHold,
+            },
+          },
+        } as any,
+      });
+
+    const createPartialMainCallTaskData = (isHold = false) =>
+      createTaskData({
+        agentId: 'agent-1',
+        interactionId: 'interaction-1',
+        mediaResourceId: 'main-media',
+        interaction: {
+          state: 'connected',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false},
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+          media: {
+            'main-media': {
+              mediaResourceId: 'main-media',
+              mType: 'mainCall',
+              participants: ['customer-1'],
+              isHold,
+            },
+          },
+        } as any,
+      });
+
+    const startMachineWithEndSpy = () => {
+      const emitTaskEnd = jest.fn();
+      const service = createActor(
+        createTaskStateMachine({...createConfig(), agentId: 'agent-1'}, {actions: {emitTaskEnd}})
+      );
+      service.start();
+
+      return {service, emitTaskEnd};
+    };
+
+    it('keeps CONNECTED when another participant leave event has a partial mainCall', () => {
+      const {service, emitTaskEnd} = startMachineWithEndSpy();
+      const taskData = createActiveMainCallTaskData();
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+
+      service.send({
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        participantId: 'agent-2',
+        taskData: createPartialMainCallTaskData(),
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+      expect(emitTaskEnd).not.toHaveBeenCalled();
+    });
+
+    it('keeps HELD when CONSULT_END has a partial mainCall', () => {
+      const {service, emitTaskEnd} = startMachineWithEndSpy();
+      const taskData = createActiveMainCallTaskData(true);
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId: 'main-media'});
+      service.send({type: TaskEvent.HOLD_SUCCESS, mediaResourceId: 'main-media'});
+      expect(service.getSnapshot().value).toBe(TaskState.HELD);
+
+      service.send({
+        type: TaskEvent.CONSULT_END,
+        taskData: createPartialMainCallTaskData(true),
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.HELD);
+      expect(emitTaskEnd).not.toHaveBeenCalled();
+    });
+  });
+
   describe('recording pause/resume events', () => {
     it('toggles recordingPaused flag based on events', () => {
       const service = startMachine();

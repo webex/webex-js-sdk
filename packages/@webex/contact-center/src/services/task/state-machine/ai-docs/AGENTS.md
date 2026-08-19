@@ -274,8 +274,10 @@ didCurrentAgentLeaveMainInteraction(context, event) {
   const participantIdFromEvent = 'participantId' in event ? event.participantId : undefined;
   const participantId = participantIdFromEvent ?? event.taskData?.participantId;
   if (Boolean(participantId) && participantId === selfAgentId) return true;
-  // Also compare explicit hasLeft / participant-map removal and previous-versus-updated
-  // media entries whose mType is mainCall. Missing partial membership alone is false.
+  // Explicit hasLeft or removal of a previously active self from the participant map is terminal.
+  // PARTICIPANT_LEAVE naming another participant does not infer self departure from media.
+  // Only a from-conference CONSULT_END may compare mainCall membership, and only when self
+  // remains active in the participant map and on the consult leg. Partial ordinary calls are false.
 }
 ```
 

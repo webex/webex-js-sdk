@@ -3,6 +3,7 @@ import {
   TaskContext,
   TaskEventPayload,
 } from '../../../../../../src/services/task/state-machine/types';
+import {TaskEvent} from '../../../../../../src/services/task/state-machine/constants';
 import {TaskData, InteractionParticipant} from '../../../../../../src/services/task/types';
 
 describe('State Machine Guards', () => {
@@ -654,8 +655,8 @@ describe('State Machine Guards', () => {
       ).toBe(true);
     });
 
-    it('finds mainCall by mType and returns true when current agent membership is removed', () => {
-      const context = createContext({taskData: activeTaskData});
+    it('uses mainCall membership for nested CONSULT_END cleanup', () => {
+      const context = createContext({taskData: activeTaskData, consultFromConference: true});
       const updatedTaskData = createTaskData({
         interaction: {
           ...activeTaskData.interaction,
@@ -670,16 +671,88 @@ describe('State Machine Guards', () => {
               isHold: false,
               holdTimestamp: null,
             },
+            'consult-media-key': {
+              mediaResourceId: 'consult-media-id',
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123', 'agent-789'],
+              mType: 'consult',
+              isHold: false,
+              holdTimestamp: null,
+            },
           },
         },
       });
+      const event = {
+        type: TaskEvent.CONSULT_END,
+        taskData: updatedTaskData,
+      } as TaskEventPayload;
 
       expect(
-        guards.didCurrentAgentLeaveMainInteraction(
-          createParams(context, createEventWithTaskData(updatedTaskData))
-        )
+        guards.didCurrentAgentLeaveMainInteraction(createParams(context, event))
       ).toBe(true);
     });
+
+    it('does not infer self departure when PARTICIPANT_LEAVE names another participant', () => {
+      const context = createContext({taskData: activeTaskData});
+      const partialTaskData = createTaskData({
+        interaction: {
+          ...activeTaskData.interaction,
+          participants: activeTaskData.interaction.participants,
+          media: {
+            'partial-main-key': {
+              mediaResourceId: INTERACTION_ID,
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-456'],
+              mType: 'mainCall',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        },
+      });
+      const event = {
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        participantId: 'agent-456',
+        taskData: partialTaskData,
+      } as TaskEventPayload;
+
+      expect(guards.didCurrentAgentLeaveMainInteraction(createParams(context, event))).toBe(false);
+    });
+
+    it.each(['connected', 'held'])(
+      'does not infer departure from a partial CONSULT_END snapshot while %s',
+      (state) => {
+        const previousTaskData = createTaskData({
+          ...activeTaskData,
+          interaction: {...activeTaskData.interaction, state},
+        });
+        const context = createContext({taskData: previousTaskData});
+        const partialTaskData = createTaskData({
+          interaction: {
+            ...previousTaskData.interaction,
+            participants: previousTaskData.interaction.participants,
+            media: {
+              'partial-main-key': {
+                mediaResourceId: INTERACTION_ID,
+                mediaType: 'telephony',
+                mediaMgr: 'media-mgr',
+                participants: ['agent-456'],
+                mType: 'mainCall',
+                isHold: state === 'held',
+                holdTimestamp: state === 'held' ? Date.now() : null,
+              },
+            },
+          },
+        });
+        const event = {type: TaskEvent.CONSULT_END, taskData: partialTaskData} as TaskEventPayload;
+
+        expect(guards.didCurrentAgentLeaveMainInteraction(createParams(context, event))).toBe(
+          false
+        );
+      }
+    );
 
     it('returns true when an active current participant disappears from the updated map', () => {
       const context = createContext({taskData: activeTaskData});

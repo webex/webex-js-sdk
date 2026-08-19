@@ -884,18 +884,24 @@ key, then the existing reservation fallback, and finally one unique task whose
 `callProcessingDetails.parentInteractionId` matches an identifier carried by the
 lifecycle event. Object aliases are deduplicated and all aliases are removed
 during terminal cleanup; ambiguous related-interaction matches are ignored
-without logging participant data. `ContactMerged` removes the EP-DN child task,
+without logging participant data. Events carrying none of those correlation
+identifiers are not routed. `ContactMerged` removes the EP-DN child task,
 hydrates the main-interaction task, and publishes the existing `task:merged`
 event so consumers can rebind to the surviving task object.
 
 Dropping an Agent while that Agent is consulting continues through the existing
 `PARTICIPANT_LEAVE` transition, which clears consult state and emits the normal
 participant-left and task-end lifecycle. This self-departure check applies in
-every active call-control state and uses explicit self departure plus previous
-versus updated `mainCall` membership (located by `mType`); missing partial
-membership alone is not terminal. A consulted Agent receiving
+every active call-control state and uses an explicit self participant ID,
+`hasLeft`, or removal of a previously active Agent from the participant map. A
+participant-left event naming somebody else never infers self-departure from a
+partial media roster. A consulted Agent receiving
 `AgentConsultEnded` continues through `CONSULT_END`; current-agent departure is
-evaluated before consult-initiator recovery. Accepted consultees emit
+evaluated before consult-initiator recovery. For the from-conference nested-consult
+ordering race only, the guard also compares `mainCall` membership (located by
+`mType`) when the Agent remains active in the participant map and is still present
+on the consult leg. Missing, contradictory, or ordinary CONNECTED/HELD media snapshots
+are non-terminal. Accepted consultees emit
 `task:consultEnd` and `task:end`, while an unaccepted OFFERED consultee retains
 the existing consult-end-only signal. A surviving consult initiator still
 returns to the main-call state selected by the existing guards. Starting a

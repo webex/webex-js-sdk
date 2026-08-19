@@ -884,7 +884,7 @@ export default class Voice extends Task implements IVoice {
       return response;
     } catch (error) {
       const failureTrackingFields = MetricsManager.getCommonTrackingFieldForAQMResponseFailed(
-        error.details || {}
+        error?.details || {}
       );
 
       this.metricsManager.trackEvent(

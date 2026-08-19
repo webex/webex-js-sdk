@@ -364,10 +364,10 @@ export const guards = {
   /**
    * True when an updated lifecycle event shows that this agent left the main interaction.
    *
-   * Participant-left and consult-end events can be delivered for the parent interaction
-   * while an EP-DN secondary agent is consulting on another leg. Main-call membership is
-   * authoritative in that case, matching Agent Desktop behavior. Partial payloads are not
-   * treated as a departure unless they contain an explicit self-participant signal.
+   * Explicit self-participant evidence is authoritative. Main-call membership is used only
+   * for the from-conference nested-consult race where CONSULT_END still represents the agent as
+   * active on the consult leg after removing them from the main leg. Partial or ordinary call
+   * snapshots are not treated as a departure.
    */
   didCurrentAgentLeaveMainInteraction: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
@@ -398,6 +398,16 @@ export const guards = {
       return true;
     }
 
+    // A participant-left event that explicitly identifies somebody else must not use a
+    // potentially partial media roster to infer that the current agent also departed.
+    if (
+      event?.type === TaskEvent.PARTICIPANT_LEAVE &&
+      Boolean(participantId) &&
+      participantId !== selfAgentId
+    ) {
+      return false;
+    }
+
     const previousMainMedia = Object.values(context.taskData?.interaction?.media ?? {}).filter(
       (media) => media?.mType === 'mainCall'
     );
@@ -410,8 +420,21 @@ export const guards = {
     const remainsInMainCall = updatedMainMedia.some((media) =>
       media.participants?.includes(selfAgentId)
     );
+    // A hasLeft participant returned above, so presence here means the updated map keeps self active.
+    const remainsActiveInParticipantMap = Boolean(currentParticipant);
+    const remainsOnConsultLeg = Object.values(taskData?.interaction?.media ?? {}).some(
+      (media) => media?.mType === MEDIA_TYPE_CONSULT && media.participants?.includes(selfAgentId)
+    );
 
-    if (updatedMainMedia.length > 0 && wasPreviouslyInMainCall && !remainsInMainCall) {
+    if (
+      event?.type === TaskEvent.CONSULT_END &&
+      context.consultFromConference === true &&
+      updatedMainMedia.length > 0 &&
+      wasPreviouslyInMainCall &&
+      !remainsInMainCall &&
+      remainsActiveInParticipantMap &&
+      remainsOnConsultLeg
+    ) {
       return true;
     }
 
