@@ -553,18 +553,14 @@ export type RequestBody =
   | CreateUserPreferenceRequest
   | UpdateUserPreferenceRequest;
 
-/** Consult or transfer action used to select the default buddy-agent eligibility policy. @public */
-export type ConsultTransferAction = 'Consult' | 'Transfer';
-
-/** Media types supported by consult/transfer destination lookups. @public */
-export type ConsultTransferMediaType = 'telephony' | 'chat' | 'social' | 'email';
+type BuddyAgentMediaType = 'telephony' | 'chat' | 'social' | 'email';
 
 type BuddyAgentsByState = {
   /**
    * The media type channel to filter buddy agents.
    * Determines which channel capability the returned agents must have.
    */
-  mediaType: ConsultTransferMediaType;
+  mediaType: BuddyAgentMediaType;
 
   /**
    * Optional filter for agent state.
@@ -581,12 +577,12 @@ type BuddyAgentsByAction = {
   /**
    * The media type channel to filter buddy agents. Defaults to telephony when omitted.
    */
-  mediaType?: ConsultTransferMediaType;
+  mediaType?: BuddyAgentMediaType;
 
   /**
    * Consult returns all eligible agents; Transfer returns only Available agents.
    */
-  action: ConsultTransferAction;
+  action: 'Consult' | 'Transfer';
 
   /** Explicit state filtering is mutually exclusive with action-based filtering. */
   state?: never;
@@ -707,7 +703,6 @@ export interface AddressBookEntrySearchParams extends BaseSearchParams {
  */
 export interface EntryPointRecord {
   id: string;
-  dbId?: string;
   name: string;
   description?: string;
   type: string;
@@ -768,8 +763,6 @@ export interface ContactServiceQueue {
   organizationId?: string;
   /** Unique identifier for the queue */
   id?: string;
-  /** Backend database identifier when included by the CMS response. */
-  dbId?: string;
   /** Version of the queue */
   version?: number;
   /** Name of the Contact Service Queue */

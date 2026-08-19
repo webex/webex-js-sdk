@@ -1,13 +1,13 @@
 ---
 type: Feature Spec
-title: Agent Desktop consult and transfer list policy
-description: Centralize Agent Desktop consult and transfer destination eligibility, request shaping, ordering, and cache policy in the Contact Center SDK.
+title: Consult and transfer list policy
+description: Centralize consult and transfer destination eligibility, request shaping, ordering, and cache policy in the Contact Center SDK.
 tags: [feature, specification, contact-center, consult-transfer]
 ---
 
-# Agent Desktop consult and transfer list policy
+# Consult and transfer list policy
 
-This document owns the reusable consult/transfer destination-list policy. The SDK applies Agent Desktop-compatible telephony eligibility, ordering, profile views, and cache safety through the existing list methods; consumers use existing parameters only when they need a different filter or sort.
+This document owns the reusable consult/transfer destination-list policy. The SDK applies default telephony eligibility, ordering, profile views, and cache safety through the existing list methods; consumers use existing parameters only when they need a different filter or sort.
 
 Related context: [package architecture](../../../ARCHITECTURE.md) · [specification index](../../../SPEC_INDEX.md) · [package instructions](../../../../AGENTS.md)
 
@@ -20,7 +20,7 @@ Related context: [package architecture](../../../ARCHITECTURE.md) · [specificat
 | Status | Approved and implemented; diff-scoped drift validation PASS; independent validation pending |
 | Work type | Defect |
 | Change class | Contract |
-| Source/intake | Developer-approved Agent Desktop parity review and current code/tests |
+| Source/intake | Developer-approved consult/transfer behavior review and current code/tests |
 | Last verified | 2026-08-19 in a working tree based on `78d9b379db` |
 
 ## Applicability
@@ -44,15 +44,15 @@ Related context: [package architecture](../../../ARCHITECTURE.md) · [specificat
 
 ## Problem and goal
 
-Consult/transfer list decisions were split across the SDK and widgets. Generic SDK query types exposed low-level request choices, while widgets always restricted buddy agents to Available, filtered queues after fetching them, rebuilt pagination metadata, and could independently affect presentation order. That diverged from the Agent Desktop behavior confirmed during the parity review.
+Consult/transfer list decisions were split across the SDK and widgets. Generic SDK query types exposed low-level request choices, while widgets always restricted buddy agents to Available, filtered queues after fetching them, rebuilt pagination metadata, and could independently affect presentation order. That produced inconsistent behavior between consumers.
 
-The goal is to make the SDK the single owner of the default Agent Desktop policy without adding parallel list methods or response signatures. Existing Queue and EntryPoint methods produce the default telephony eligibility queries and retain full-record responses, EntryPoint and AddressBook default their backend ordering to `name,ASC`, buddy-agent behavior is action-aware, CMS sort syntax is serialized correctly, and query variants that change results cannot reuse an incompatible cached page. Consumers render the response order and metadata without a second sort or filter.
+The goal is to make the SDK the single owner of the default consult/transfer policy without adding parallel list methods or response signatures. Existing Queue and EntryPoint methods produce the default telephony eligibility queries and retain full-record responses, EntryPoint and AddressBook default their backend ordering to `name,ASC`, buddy-agent behavior is action-aware, CMS sort syntax is serialized correctly, and query variants that change results cannot reuse an incompatible cached page. Consumers render the response order and metadata without a second sort or filter.
 
 ## Stakeholders and open questions
 
 | Stakeholder | Need or decision | Status |
 | --- | --- | --- |
-| Contact Center agents | Destination eligibility and order match Agent Desktop. | Decided |
+| Contact Center agents | Destination eligibility and order are consistent across consumers. | Decided |
 | SDK consumers | Reusable defaults without duplicating backend query knowledge. | Decided |
 | Widget maintainers | Thin calls that pass only UI/runtime context. | Decided in the paired widgets delta |
 | SDK maintainers | Existing list APIs remain the only queue and entry-point public methods; existing parameters provide overrides. | Decided |
@@ -63,7 +63,7 @@ There are no open product decisions for this delta.
 
 ### In scope
 
-- Put Agent Desktop-compatible defaults on the existing queue and entry-point list methods.
+- Put consult/transfer defaults on the existing queue and entry-point list methods.
 - Map Consult versus Transfer to the correct buddy-agent state behavior.
 - Default omitted buddy-agent, queue, and consult/transfer entry-point media context to telephony.
 - Retain the existing queue/entry-point parameter and response types, avoid field projection, and let explicit existing filter/sort/profile parameters override SDK defaults.
@@ -101,23 +101,23 @@ There are no open product decisions for this delta.
 
 | ID | WHAT | WHY | Source evidence | Test or example evidence | Assumptions or gaps | Confidence |
 | --- | --- | --- | --- | --- | --- | --- |
-| `SDK-LIST-R-001` | Existing `getQueues` must retain `ContactServiceQueueSearchParams` and `ContactServiceQueuesResponse`, default to inbound active telephony queues ordered by backend name ascending with desktop-profile/agent/first-level views, avoid field projection, and honor caller-supplied existing parameters as overrides. | Queue eligibility and ordering match Agent Desktop for ordinary calls without a new method or misleading projected/full-record type mismatch, while other consumers retain an explicit override path. | `src/cc.ts`, `src/services/Queue.ts`, `src/types.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/Queue.ts` | Backend honors the documented CMS query flags. | Present |
-| `SDK-LIST-R-002` | Existing `getEntryPoints` must retain `EntryPointSearchParams` and `EntryPointListResponse`, default to inbound active telephony entry points ordered by backend name ascending with desktop-profile and agent views, avoid field projection, and honor caller-supplied existing parameters as overrides. | Entry-point eligibility and ordering match Agent Desktop for ordinary calls without a parallel API or response type, while other consumers retain an explicit override path. | `src/cc.ts`, `src/services/EntryPoint.ts`, `src/types.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/EntryPoint.ts` | Backend honors the documented CMS query flags. | Present |
-| `SDK-LIST-R-003` | Buddy-agent requests using `Transfer` must add state `Available`; requests using `Consult` must omit the state filter; omitted action-based media defaults to telephony; both BuddyAgents branches reuse `ConsultTransferMediaType`. | Transfer and Consult have different eligible populations, and one media allowlist prevents action-based callers from issuing unsupported buddy requests. | `src/cc.ts`, `src/types.ts` | `test/unit/spec/cc.ts` | The backend determines the Consult-eligible states when state is omitted. | Present |
+| `SDK-LIST-R-001` | Existing `getQueues` must retain `ContactServiceQueueSearchParams` and `ContactServiceQueuesResponse`, default to inbound active telephony queues ordered by backend name ascending with desktop-profile/agent/first-level views, avoid field projection, and honor caller-supplied existing parameters as overrides. | Queue eligibility and ordering are consistent for ordinary calls without a new method or misleading projected/full-record type mismatch, while other consumers retain an explicit override path. | `src/cc.ts`, `src/services/Queue.ts`, `src/types.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/Queue.ts` | Backend honors the documented CMS query flags. | Present |
+| `SDK-LIST-R-002` | Existing `getEntryPoints` must retain `EntryPointSearchParams` and `EntryPointListResponse`, default to inbound active telephony entry points ordered by backend name ascending with desktop-profile and agent views, avoid field projection, and honor caller-supplied existing parameters as overrides. | Entry-point eligibility and ordering are consistent for ordinary calls without a parallel API or response type, while other consumers retain an explicit override path. | `src/cc.ts`, `src/services/EntryPoint.ts`, `src/types.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/EntryPoint.ts` | Backend honors the documented CMS query flags. | Present |
+| `SDK-LIST-R-003` | Buddy-agent requests using `Transfer` must add state `Available`; requests using `Consult` must omit the state filter; omitted action-based media defaults to telephony; both `BuddyAgents` branches reuse one private supported-media union. | Transfer and Consult have different eligible populations, and one media allowlist prevents action-based callers from issuing unsupported buddy requests without adding another public type. | `src/cc.ts`, `src/types.ts` | `test/unit/spec/cc.ts` | The backend determines the Consult-eligible states when state is omitted. | Present |
 | `SDK-LIST-R-004` | Explicit buddy-agent state requests and existing queue/entry-point/address-book parameters must remain supported; caller-supplied filters and sort values override service defaults. | Existing SDK consumers need specialized behavior without a second list API. | `src/cc.ts`, `src/types.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/services/AddressBook.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/services/AddressBook.ts` | Existing callers that pass explicit `state` continue to use that branch. | Present |
 | `SDK-LIST-R-005` | Queue, EntryPoint, and AddressBook services must serialize ordering as CMS `sort=<field>,<ORDER>`, not separate `sortBy`/`sortOrder` query keys; all three use `sort=name,ASC` when callers omit sorting, and a Queue `sortOrder` without `sortBy` uses `name`. | Correct wire syntax and SDK-owned defaults make backend ordering consistent and prevent a caller's explicit Queue direction from being silently ignored. | `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/services/AddressBook.ts` | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/services/AddressBook.ts` | None. | Present |
 | `SDK-LIST-R-006` | PageCache must reject cache use when search, filter, attributes, a non-default/effective sort, or an enabled desktop-profile/provisioning/single-object flag is present. This includes a Queue `sortOrder` supplied without `sortBy`. Default Queue and EntryPoint calls bypass simple-page caching because their eligibility filters and enabled profile views change the result set; AddressBook retains cache eligibility for its invariant default order. | The cache key does not encode result variants, so default policy requests and explicit query variants cannot safely share a page. | `src/utils/PageCache.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/services/AddressBook.ts` | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/services/AddressBook.ts` | Service-level behavior covers default and override cases. | Present |
 | `SDK-LIST-R-007` | The SDK must return service response arrays and pagination metadata without JavaScript-side sorting or reordering. | Backend-requested order is authoritative and must remain stable for every consumer. | `src/cc.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts` | `test/unit/spec/cc.ts` | The backend is the source of final row order. | Present |
-| `SDK-LIST-R-008` | Action-aware buddy-agent inputs and Task destination controls must be strongly typed and exported without `any`; queue and entry-point consumers continue to use the established request and full-record response types, with optional `dbId` declared on both record types. | Public consumers need truthful compile-time contracts without a one-off destination abstraction or a projected response masquerading as a full record. | `src/types.ts`, `src/index.ts`, `src/cc.ts` | `test/unit/spec/cc.ts`, `package.json` | Existing test-only casts are outside the public contract. | Present |
+| `SDK-LIST-R-008` | The existing `BuddyAgents` input and `TaskUIControls.consultTransferDestinations` field must carry action/media and ordered destination typing without exporting one-off aliases; queue and entry-point consumers continue to use the established request and full-record response types unchanged. | Public consumers need truthful compile-time contracts without extra public aliases, record fields, destination abstractions, or projected responses. | `src/types.ts`, `src/services/task/types.ts`, `src/index.ts`, `src/cc.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/state-machine/uiControlsComputer.ts`, `package.json` | Existing test-only casts are outside the public contract. | Present |
 | `SDK-LIST-R-009` | Buddy-agent, queue, and entry-point failures must preserve their existing measured/logged rejection semantics and must not return a synthetic successful list. | Callers need to distinguish a real empty result from a transport or backend failure. | `src/cc.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts` | Consumer UI fallback behavior remains outside the SDK. | Present |
-| `SDK-LIST-R-010` | AddressBook must request backend `name,ASC` ordering by default and must accept caller-supplied `sortBy`/`sortOrder` overrides without a consult-specific façade method. | Widgets and other ordinary consumers receive Agent Desktop-compatible dial-number ordering out of the box, while consumers with another requirement retain control. | `src/services/AddressBook.ts` | `test/unit/spec/services/AddressBook.ts` | Backend honors the documented CMS sort value. | Present |
+| `SDK-LIST-R-010` | AddressBook must request backend `name,ASC` ordering by default and must accept caller-supplied `sortBy`/`sortOrder` overrides without a consult-specific façade method. | Widgets and other ordinary consumers receive backend-ordered dial numbers out of the box, while consumers with another requirement retain control. | `src/services/AddressBook.ts` | `test/unit/spec/services/AddressBook.ts` | Backend honors the documented CMS sort value. | Present |
 | `SDK-LIST-R-011` | Non-default media eligibility must be supplied through the existing RSQL `filter` parameter; the SDK never interpolates an unvalidated media string into a filter. | Reusing the established filter contract avoids a second media-bearing signature and removes the prior filter-injection path. | `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/types.ts` | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts` | Consumers that construct RSQL filters remain responsible for supplying valid backend syntax. | Present |
-| `SDK-LIST-R-012` | Every Task must expose `uiControls.consultTransferDestinations` with ordered `consult` and `transfer` arrays. Order is Agent, Queue, Dial Number, Entry Point after gating: profile `NONE` removes agent/queue/entry point; voice Consult queue requires `allowConsultToQueue`; voice Transfer queue requires inbound direction or outbound plus `interaction.callProcessingDetails.outdialTransferToQueueEnabled === true`; unknown voice direction does not allow queue Transfer; digital exposes only allowed agent/queue categories. | All consumers need the same Agent Desktop decision out of the box, without reading raw profile flags, interpreting task payload paths, or calling another policy API. | `src/cc.ts`, `src/services/task/TaskFactory.ts`, `src/services/task/types.ts`, `src/services/task/state-machine/uiControlsComputer.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/TaskFactory.ts`, `test/unit/spec/services/task/state-machine/uiControlsComputer.ts` | Consumers may hide an SDK-allowed category for host UX, but cannot enable one the SDK omitted. | Present |
+| `SDK-LIST-R-012` | Every Task must expose `uiControls.consultTransferDestinations` with ordered `consult` and `transfer` arrays. Order is Agent, Queue, Dial Number, Entry Point after gating: profile `NONE` removes agent/queue/entry point; voice Consult queue requires `allowConsultToQueue`; voice Transfer queue requires inbound direction or outbound plus `interaction.callProcessingDetails.outdialTransferToQueueEnabled === true`; unknown voice direction does not allow queue Transfer; digital exposes only allowed agent/queue categories. | All consumers need the same destination decision out of the box, without reading raw profile flags, interpreting task payload paths, or calling another policy API. | `src/cc.ts`, `src/services/task/TaskFactory.ts`, `src/services/task/types.ts`, `src/services/task/state-machine/uiControlsComputer.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/TaskFactory.ts`, `test/unit/spec/services/task/state-machine/uiControlsComputer.ts` | Consumers may hide an SDK-allowed category for host UX, but cannot enable one the SDK omitted. | Present |
 
 ## Defect context (when applicable)
 
-- Observed versus expected behavior: widgets and SDK callers could construct different destination requests, the services serialized sort with keys the CMS list API does not consume, and cache eligibility ignored view/shape flags; expected behavior is one SDK-owned Agent Desktop policy and unchanged backend response order.
-- Reproduction and environment: issue Consult and Transfer destination requests for the same task media and compare query parameters and results with Agent Desktop.
+- Observed versus expected behavior: widgets and SDK callers could construct different destination requests, the services serialized sort with keys the CMS list API does not consume, and cache eligibility ignored view/shape flags; expected behavior is one SDK-owned default policy and unchanged backend response order.
+- Reproduction and environment: issue Consult and Transfer destination requests for the same task media and compare query parameters and results across SDK consumers.
 - Regression range or last known good state: unknown; the existing APIs and older query serialization predate the corrected defaults.
 - Severity, frequency, and workaround: user-visible whenever eligibility/order differs; consumers could manually duplicate flags, but that perpetuates the ownership defect.
 - Diagnostic evidence: `src/cc.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/utils/PageCache.ts`.
@@ -126,7 +126,7 @@ There are no open product decisions for this delta.
 
 ### MOD-001 — Contact Center façade policy (`CONTACT_CENTER-R-003`)
 
-- **WHAT**: Retain the existing `getQueues`, `getEntryPoints`, and `getBuddyAgents` method names. Buddy-agent behavior is action-aware; Queue and EntryPoint keep their existing parameter/full-record response signatures and own the default telephony filter, profile views, backend ordering, and cache policy. Optional `dbId` is declared on the existing record types.
+- **WHAT**: Retain the existing `getQueues`, `getEntryPoints`, and `getBuddyAgents` method names. Buddy-agent behavior is action-aware; Queue and EntryPoint keep their existing parameter, record, and full-response signatures and own the default telephony filter, profile views, backend ordering, and cache policy.
 - **WHY**: A stable public owner prevents every UI consumer from reconstructing eligibility and query details.
 - **Evidence:** `src/cc.ts`, `src/types.ts`, `src/index.ts`, `test/unit/spec/cc.ts`.
 - **Acceptance:** Façade tests cover Consult, Transfer, and unchanged existing-method delegation; service tests cover default policy, explicit existing-filter overrides, and exact responses.
@@ -163,7 +163,7 @@ There are no open product decisions for this delta.
 - [x] Queue `sortOrder` without `sortBy` serializes as `sort=name,<ORDER>` and bypasses the simple-page cache (`SDK-LIST-R-005`, `SDK-LIST-R-006`).
 - [x] Default Queue/EntryPoint policy and other view/filter/shape/custom-sort requests bypass PageCache, while default-sorted AddressBook pages remain cacheable (`MOD-004`, `SDK-LIST-R-006`).
 - [x] No SDK façade or service sorts returned arrays in JavaScript (`SDK-LIST-R-007`).
-- [x] Existing queue and entry-point methods retain full-record responses, declare optional `dbId` on those record types, and request no partial field projection (`SDK-LIST-R-008`).
+- [x] Existing queue and entry-point methods retain their record and full-response types and request no partial field projection (`SDK-LIST-R-008`).
 - [x] The package builds and the complete Contact Center unit and style suites pass (`SDK-LIST-R-008`).
 
 ## Scenarios and applicable change views
@@ -172,8 +172,8 @@ There are no open product decisions for this delta.
 | --- | --- | --- | --- | --- | --- |
 | Consult buddy agents | SDK consumer | `action=Consult` | Telephony defaults when absent; state is omitted; backend order is preserved. | Request rejection is measured/logged and rethrown. | `SDK-LIST-R-003`, `SDK-LIST-R-007` |
 | Transfer buddy agents | SDK consumer | `action=Transfer` | State `Available` is sent for the selected media. | Explicit state and action cannot be combined by the public type. | `SDK-LIST-R-003`, `SDK-LIST-R-008` |
-| Queue list | SDK consumer | Existing method called with page/search and optional filter override | SDK applies the Agent Desktop telephony defaults and returns full records unchanged; an explicit existing filter overrides eligibility. | HTTP failure is propagated without a synthetic page. | `SDK-LIST-R-001`, `SDK-LIST-R-007`, `SDK-LIST-R-011` |
-| Entry-point list | SDK consumer | Existing method called with page/search and optional filter override | SDK applies the Agent Desktop telephony defaults and returns full records unchanged; an explicit existing filter overrides eligibility. | HTTP failure is propagated without a synthetic page. | `SDK-LIST-R-002`, `SDK-LIST-R-009`, `SDK-LIST-R-011` |
+| Queue list | SDK consumer | Existing method called with page/search and optional filter override | SDK applies the default telephony policy and returns full records unchanged; an explicit existing filter overrides eligibility. | HTTP failure is propagated without a synthetic page. | `SDK-LIST-R-001`, `SDK-LIST-R-007`, `SDK-LIST-R-011` |
+| Entry-point list | SDK consumer | Existing method called with page/search and optional filter override | SDK applies the default telephony policy and returns full records unchanged; an explicit existing filter overrides eligibility. | HTTP failure is propagated without a synthetic page. | `SDK-LIST-R-002`, `SDK-LIST-R-009`, `SDK-LIST-R-011` |
 | Dial-number list | SDK consumer | AddressBook page/search supplied | AddressBook applies backend `name,ASC` by default and returns the response unchanged. | A custom sort overrides the default and bypasses the default-order cache. | `SDK-LIST-R-010` |
 | Specialized list consumer | SDK consumer | Uses an existing list method with explicit parameters | Explicit filter/sort/profile inputs override defaults. | No parallel consult/transfer method or projected response type is required. | `SDK-LIST-R-004`, `SDK-LIST-R-005` |
 
@@ -194,21 +194,17 @@ There are no open product decisions for this delta.
 | API or operation | Change | Consumer impact | Compatibility expectation | Canonical definition |
 | --- | --- | --- | --- | --- |
 | Buddy-agent input | Add discriminated `action` branch; retain explicit state branch. | Consumers may pass Consult/Transfer instead of choosing state. | Additive public type; explicit-state callers remain supported. | `src/types.ts` |
-| Existing queue list | Apply Agent Desktop telephony filter, profile views, and `name,ASC` by default. | Thin clients call `getQueues`; other consumers use existing parameters for overrides. | Intentional default correction; method and response signature unchanged. | `src/cc.ts`, `src/services/Queue.ts` |
-| Existing entry-point list | Apply Agent Desktop telephony filter, profile views, and `name,ASC` by default. | Thin clients call `getEntryPoints`; other consumers use existing parameters for overrides. | Intentional default correction; method and response signature unchanged. | `src/cc.ts`, `src/services/EntryPoint.ts` |
-| Queue/EntryPoint record types | Add optional `dbId` to the existing record interfaces and retain full responses. | Consumers use the established entity types directly. | Additive type field; no one-off destination type. | `src/types.ts`, `src/index.ts` |
-| Task destination controls | Add ordered `consultTransferDestinations.consult` and `.transfer` arrays to `TaskUIControls`. | Task consumers render availability directly; no separate policy call or raw profile injection is needed. | Additive public field and exported destination control/type aliases. | `src/services/task/types.ts`, `src/services/task/state-machine/uiControlsComputer.ts`, `src/index.ts` |
+| Existing queue list | Apply the telephony filter, profile views, and `name,ASC` by default. | Thin clients call `getQueues`; other consumers use existing parameters for overrides. | Intentional default correction; method and response signature unchanged. | `src/cc.ts`, `src/services/Queue.ts` |
+| Existing entry-point list | Apply the telephony filter, profile views, and `name,ASC` by default. | Thin clients call `getEntryPoints`; other consumers use existing parameters for overrides. | Intentional default correction; method and response signature unchanged. | `src/cc.ts`, `src/services/EntryPoint.ts` |
+| Task destination controls | Add ordered `consultTransferDestinations.consult` and `.transfer` arrays to `TaskUIControls`. | Task consumers render availability directly; no separate policy call or raw profile injection is needed. | Additive public field using the existing destination values; no new standalone public alias. | `src/services/task/types.ts`, `src/services/task/state-machine/uiControlsComputer.ts`, `src/index.ts` |
 
 ### Public API and semver impact
 
 | Export or entry point | Change | Affected consumers | Required version change | Deprecation or migration |
 | --- | --- | --- | --- | --- |
-| `ConsultTransferAction` | New exported type | UI/store consumers | Minor | None. |
-| `ConsultTransferMediaType` | New exported supported-media union | Consult/transfer consumers | Minor | Replace arbitrary strings with one of the supported values. |
-| Existing `ContactServiceQueue` / `EntryPointRecord` | Add optional `dbId` | Queue/entry-point list consumers | Minor | Continue using the existing full-record types. |
 | Existing `getQueues` / `getEntryPoints` | Default request behavior changes; signatures do not | Widgets and other SDK consumers | Behavioral semver review | Pass explicit existing filters/sorts/profile flags when different behavior is required. |
 | `BuddyAgents` | Add action-based alternative while retaining explicit state | Existing and new consumers | Minor | Existing explicit-state calls remain valid. |
-| `TaskUIControls`, `ConsultTransferDestinationControls`, `ConsultTransferDestinationType` | Add ordered, action-specific destination availability | Task UI consumers | Minor | Read the matching action array; first item is the default category. |
+| `TaskUIControls` | Add inline ordered, action-specific destination availability using existing destination values | Task UI consumers | Minor | Read the matching action array; first item is the default category. |
 
 ### Cross-package impact
 
@@ -220,7 +216,7 @@ There are no open product decisions for this delta.
 
 ## Contracts delta
 
-**Provides — MODIFIED:** The package keeps the existing queue, entry-point, and buddy-agent methods. Queue and EntryPoint retain established request/full-record response signatures and gain Agent Desktop-compatible telephony defaults plus optional `dbId` on existing record types; buddy agents accept action-aware input; `TaskUIControls` exposes ordered action-specific destination availability.
+**Provides — MODIFIED:** The package keeps the existing queue, entry-point, and buddy-agent methods. Queue and EntryPoint retain established request, record, and full-response signatures while gaining consult/transfer telephony defaults; buddy agents accept action-aware input through `BuddyAgents`; `TaskUIControls` exposes inline ordered action-specific destination availability.
 
 **Requires — MODIFIED:** Queue, EntryPoint, and AddressBook services require CMS list endpoints to honor the combined sort value; Queue and EntryPoint additionally require the applicable profile/agent view flags. The SDK continues to rely on host-authenticated Webex requests and backend response ordering.
 
@@ -230,7 +226,7 @@ No event contract changes.
 
 | Metric | Baseline | Target | Measurement source |
 | --- | --- | --- | --- |
-| Consumers that must recreate default Agent Desktop queue/entry-point policy | Widgets did | 0 for ordinary existing-method calls | `src/services/Queue.ts`, `src/services/EntryPoint.ts` |
+| Consumers that must recreate the default queue/entry-point policy | Widgets did | 0 for ordinary existing-method calls | `src/services/Queue.ts`, `src/services/EntryPoint.ts` |
 | JavaScript-side destination sorts in the changed SDK path | 0 | 0 | `src/cc.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts` |
 | Cache hits for view/filter/shape query variants | Possible | 0 | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts` |
 | Contact Center unit failures | Unknown before change | 0 | `test/unit/spec` |
@@ -242,9 +238,9 @@ No event contract changes.
 | --- | --- | --- | --- | --- |
 | Buddy-agent input | `action` plus optional `mediaType`, mutually exclusive with explicit `state` | Derive Consult/Transfer eligibility. | SDK public type | No credential or persistent data. |
 | Queue search input | Existing page, page size, search, filter, sort, and profile parameters | Consumer-controlled pagination plus optional default overrides. | Existing SDK public type | No second media-bearing request type. |
-| Queue backend query | Default inbound/active/telephony filter, name ascending, desktop-profile/agent/first-level views, no field projection | Agent Desktop-compatible full queue result. | Queue service | Fixed filter/views bypass simple-page caching. |
-| Entry-point backend query | Default inbound/active/telephony filter, name ascending, desktop-profile/agent views, no field projection | Agent Desktop-compatible full entry-point result. | EntryPoint service | Fixed filter/views bypass simple-page caching. |
-| AddressBook backend query | Existing caller-selected fields plus name ascending by default | Agent Desktop-compatible dial-number order without a specialized façade. | AddressBook service | A non-default sort bypasses the default-order cache. |
+| Queue backend query | Default inbound/active/telephony filter, name ascending, desktop-profile/agent/first-level views, no field projection | Full queue result using the default list policy. | Queue service | Fixed filter/views bypass simple-page caching. |
+| Entry-point backend query | Default inbound/active/telephony filter, name ascending, desktop-profile/agent views, no field projection | Full entry-point result using the default list policy. | EntryPoint service | Fixed filter/views bypass simple-page caching. |
+| AddressBook backend query | Existing caller-selected fields plus name ascending by default | Backend-ordered dial numbers without a specialized façade. | AddressBook service | A non-default sort bypasses the default-order cache. |
 
 ## Impacted domains
 
@@ -299,7 +295,7 @@ No event contract changes.
 - Compatibility: list method names/signatures remain unchanged; explicit buddy-agent state remains supported. Queue, EntryPoint, and AddressBook calls now request `name,ASC`, and Queue/EntryPoint apply telephony/profile defaults unless callers override existing parameters.
 - Data or consumer transition: thin consumers continue using `getQueues` and `getEntryPoints`; consumers needing different behavior pass existing query overrides.
 - Coexistence period: no parallel list surface exists.
-- Completion and rollback outcome: consumers no longer own Agent Desktop policy; rollback restores prior calls without data cleanup.
+- Completion and rollback outcome: consumers no longer own the default consult/transfer policy; rollback restores prior calls without data cleanup.
 
 ## Serviceability
 
@@ -319,8 +315,9 @@ No event contract changes.
 
 | Date | Decision or change | Rationale | Owner |
 | --- | --- | --- | --- |
+| 2026-08-19 | Kept action/media typing inside `BuddyAgents`, inlined the destination arrays on `TaskUIControls`, removed the new root aliases, and removed `dbId` additions from queue/entry-point records. | The established methods and types already express the required behavior; consumers do not need standalone aliases or an unused record field. | Developer + Codex |
 | 2026-08-19 | Approved this exact MODIFIED delta path. | Preserve protected canonical specs while maintaining spec-currency with the implementation. | Developer |
-| 2026-08-19 | Assigned all reusable eligibility, query, ordering, and cache decisions to the SDK. | Keep widgets thin and prevent Agent Desktop parity drift. | Developer + Codex |
+| 2026-08-19 | Assigned all reusable eligibility, query, ordering, and cache decisions to the SDK. | Keep widgets thin and prevent cross-consumer behavior drift. | Developer + Codex |
 | 2026-08-19 | Made backend response order authoritative and prohibited SDK-side JavaScript sorting. | One backend ordering decision must reach every consumer unchanged. | Developer + Codex |
 | 2026-08-19 | Moved EntryPoint and AddressBook `name,ASC` ordering to service defaults and removed the specialized dial-number façade. | Widgets must work without supplying SDK-owned decisions; other consumers can pass explicit sort overrides. | Developer + Codex |
 | 2026-08-19 | Removed the specialized queue/entry-point methods and destination response/options types; moved the telephony filter, views, and order defaults onto existing `getQueues`/`getEntryPoints` while retaining full records and existing overrides. | Consumers should keep established method signatures; a parallel list abstraction adds needless public surface and projection complexity. | Developer + Codex |

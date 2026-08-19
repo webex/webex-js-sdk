@@ -2620,7 +2620,7 @@ describe('uiControlsComputer consult/transfer destinations', () => {
   const DIAL_NUMBER = CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
   const ENTRY_POINT = CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
 
-  it('returns Agent Desktop order and applies the action-specific inbound voice queue rule', () => {
+  it('returns the default destination order and applies the action-specific inbound voice queue rule', () => {
     const taskData = createTaskData({
       interaction: {contactDirection: {type: 'INBOUND'}} as any,
     });

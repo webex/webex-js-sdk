@@ -35,8 +35,6 @@ export type {
   EntryPointRecord,
   EntryPointListResponse,
   EntryPointSearchParams,
-  ConsultTransferAction,
-  ConsultTransferMediaType,
   AddressBookEntry,
   AddressBookEntriesResponse,
   AddressBookEntrySearchParams,
@@ -145,8 +143,6 @@ export type {
   WrapupPayLoad,
   /** UI control types for task buttons */
   InteractionUIControls,
-  ConsultTransferDestinationControls,
-  ConsultTransferDestinationType,
   TaskUILeg,
   TaskUIControls,
   TaskUIControlState,

@@ -5,7 +5,6 @@
 import {
   CONSULT_TRANSFER_DESTINATION_TYPE,
   ConsultTransferDestinationConfig,
-  ConsultTransferDestinationControls,
   ConsultTransferDestinationType,
   InteractionUIControls,
   TASK_CHANNEL_TYPE,
@@ -24,6 +23,8 @@ import {
   getIsConsultedAgentForControls,
   getServerHoldStateForControls,
 } from '../TaskUtils';
+
+type DestinationControls = TaskUIControls['consultTransferDestinations'];
 
 const DISABLED = {isVisible: false, isEnabled: false} as const;
 const VISIBLE_ENABLED = {isVisible: true, isEnabled: true} as const;
@@ -54,7 +55,7 @@ function createTaskUIControls(
   main: InteractionUIControls,
   consult: InteractionUIControls,
   activeLeg: TaskUILeg,
-  consultTransferDestinations: ConsultTransferDestinationControls = {
+  consultTransferDestinations: DestinationControls = {
     consult: [],
     transfer: [],
   }
@@ -84,7 +85,7 @@ function isCollaborationAccessEnabled(
 function getConsultTransferDestinations(
   config: UIControlConfig,
   taskData?: TaskData | null
-): ConsultTransferDestinationControls {
+): DestinationControls {
   const destinationConfig = config.consultTransferConfig;
   if (!destinationConfig) {
     return {consult: [], transfer: []};

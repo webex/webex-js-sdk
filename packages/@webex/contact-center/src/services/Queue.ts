@@ -84,7 +84,7 @@ export class Queue {
    * @public
    * @example
    * ```typescript
-   * // Get Agent Desktop-compatible queues with default pagination
+   * // Get queues using the default list policy and pagination
    * const response = await queueAPI.getQueues();
    *
    * // Get queues with specific pagination

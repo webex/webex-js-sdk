@@ -78,7 +78,7 @@ export class EntryPoint {
    * @public
    * @example
    * ```typescript
-   * // Get the first page of Agent Desktop-compatible entry points
+   * // Get the first page using the default entry-point policy
    * const response = await entryPointAPI.getEntryPoints();
    *
    * // Get specific page with custom page size

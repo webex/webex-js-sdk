@@ -1237,16 +1237,6 @@ export type InteractionUIControls = {
 export type TaskUILeg = 'main' | 'consult';
 
 /**
- * Ordered destination categories available for each consult/transfer action.
- * The first category is the default category for consumers that render a destination picker.
- * @public
- */
-export type ConsultTransferDestinationControls = {
-  consult: ConsultTransferDestinationType[];
-  transfer: ConsultTransferDestinationType[];
-};
-
-/**
  * UI controls surfaced to task consumers.
  * Consumers should read controls from the per-leg surfaces and use `activeLeg`
  * to determine which one is currently interactive.
@@ -1255,7 +1245,14 @@ export type TaskUIControls = {
   main: InteractionUIControls;
   consult: InteractionUIControls;
   activeLeg: TaskUILeg;
-  consultTransferDestinations: ConsultTransferDestinationControls;
+  /**
+   * Ordered destination categories available for each action.
+   * The first category is the default for consumers that render a destination picker.
+   */
+  consultTransferDestinations: {
+    consult: ConsultTransferDestinationType[];
+    transfer: ConsultTransferDestinationType[];
+  };
 };
 
 /**

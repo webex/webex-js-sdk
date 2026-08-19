@@ -2212,7 +2212,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Returns paginated entry points using the EntryPoint service's Agent Desktop-compatible defaults.
+   * Returns paginated entry points using the EntryPoint service defaults.
    * Existing request parameters can override those defaults.
    * @public
    */
@@ -2223,7 +2223,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Returns paginated contact service queues using the Queue service's Agent Desktop-compatible defaults.
+   * Returns paginated contact service queues using the Queue service defaults.
    * Existing request parameters can override those defaults.
    * @public
    */
