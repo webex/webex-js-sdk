@@ -693,12 +693,12 @@ describe('State Machine Guards', () => {
       ).toBe(true);
     });
 
-    it('does not infer self departure when PARTICIPANT_LEAVE names another participant', () => {
+    it('does not infer self departure when another participant leaves and the map omits self', () => {
       const context = createContext({taskData: activeTaskData});
       const partialTaskData = createTaskData({
         interaction: {
           ...activeTaskData.interaction,
-          participants: activeTaskData.interaction.participants,
+          participants: {'agent-456': createParticipant('agent-456', 'Agent')},
           media: {
             'partial-main-key': {
               mediaResourceId: INTERACTION_ID,

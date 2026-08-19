@@ -130,17 +130,19 @@ describe('Task state machine', () => {
         } as any,
       });
 
-    const createPartialMainCallTaskData = (isHold = false) =>
+    const createPartialMainCallTaskData = (isHold = false, omitSelf = false) =>
       createTaskData({
         agentId: 'agent-1',
         interactionId: 'interaction-1',
         mediaResourceId: 'main-media',
         interaction: {
           state: 'connected',
-          participants: {
-            'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false},
-            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
-          },
+          participants: omitSelf
+            ? {'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false}}
+            : {
+                'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false},
+                'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+              },
           media: {
             'main-media': {
               mediaResourceId: 'main-media',
@@ -173,10 +175,30 @@ describe('Task state machine', () => {
       service.send({
         type: TaskEvent.PARTICIPANT_LEAVE,
         participantId: 'agent-2',
-        taskData: createPartialMainCallTaskData(),
+        taskData: createPartialMainCallTaskData(false, true),
       });
 
       expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+      expect(emitTaskEnd).not.toHaveBeenCalled();
+    });
+
+    it('keeps HELD when another participant leave event omits self from its roster', () => {
+      const {service, emitTaskEnd} = startMachineWithEndSpy();
+      const taskData = createActiveMainCallTaskData(true);
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId: 'main-media'});
+      service.send({type: TaskEvent.HOLD_SUCCESS, mediaResourceId: 'main-media'});
+      expect(service.getSnapshot().value).toBe(TaskState.HELD);
+
+      service.send({
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        participantId: 'agent-2',
+        taskData: createPartialMainCallTaskData(true, true),
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.HELD);
       expect(emitTaskEnd).not.toHaveBeenCalled();
     });
 

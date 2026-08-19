@@ -389,6 +389,16 @@ export const guards = {
       return true;
     }
 
+    // A participant-left event that explicitly identifies somebody else must not use a
+    // potentially partial participant or media roster to infer that self also departed.
+    if (
+      event?.type === TaskEvent.PARTICIPANT_LEAVE &&
+      Boolean(participantId) &&
+      participantId !== selfAgentId
+    ) {
+      return false;
+    }
+
     const previousParticipants = context.taskData?.interaction?.participants;
     const updatedParticipants = taskData?.interaction?.participants;
     const wasPreviouslyActive = Boolean(
@@ -396,16 +406,6 @@ export const guards = {
     );
     if (updatedParticipants && wasPreviouslyActive && !(selfAgentId in updatedParticipants)) {
       return true;
-    }
-
-    // A participant-left event that explicitly identifies somebody else must not use a
-    // potentially partial media roster to infer that the current agent also departed.
-    if (
-      event?.type === TaskEvent.PARTICIPANT_LEAVE &&
-      Boolean(participantId) &&
-      participantId !== selfAgentId
-    ) {
-      return false;
     }
 
     const previousMainMedia = Object.values(context.taskData?.interaction?.media ?? {}).filter(

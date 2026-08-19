@@ -143,11 +143,10 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   public async dropConferenceParticipant(
+    // The base task preserves the public signature; Voice provides the implementation.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     payload: DropConferenceParticipantPayload
   ): Promise<TaskResponse> {
-    if (payload) {
-      // parameter intentionally unused
-    }
     this.unsupportedMethodError(METHODS.DROP_CONFERENCE_PARTICIPANT);
   }
 
