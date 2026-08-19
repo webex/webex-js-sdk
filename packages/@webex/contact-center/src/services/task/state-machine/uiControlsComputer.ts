@@ -479,7 +479,9 @@ function computeVoiceInteractionUIControls(
     // Desktop/WebRTC + outdial: accept disabled (auto-answer handles it; Widgets show "Accept" disabled)
     // Extension mode (non-WebRTC): accept disabled (Widgets show "Ringing...")
     accept: (() => {
-      if (isWxAppInboundOffer) return VISIBLE_ENABLED;
+      if (isWxAppInboundOffer) {
+        return wxAppAcceptInFlight || wxAppAnswerPending ? VISIBLE_DISABLED : VISIBLE_ENABLED;
+      }
       if (isWxAppOutdialOffer) {
         return wxAppAcceptInFlight || wxAppAnswerPending ? VISIBLE_DISABLED : VISIBLE_ENABLED;
       }
@@ -828,6 +830,7 @@ function computeDigitalInteractionUIControls(
     transferConference: DISABLED,
     mergeToConference: DISABLED,
     switch: DISABLED,
+    keypad: DISABLED,
   };
 }
 

@@ -1754,6 +1754,11 @@ function pressKey(value) {
       console.warn('Invalid keypad input:', value);
       return;
     }
+  if (currentTask?.uiControls?.main?.keypad?.isEnabled) {
+    transmitInCallDtmf(value);
+
+    return;
+  }
   document.getElementById('outBoundDialNumber').value += value;
 }
 
@@ -3216,29 +3221,14 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 });
 
  async function answer() {
-  // WXCC-6026: use acceptOnWebex for wxApp thick-client calls when enabled
-  if (isAnswerOnWebexEnabled && currentTask.isWebexAppCallingOffer && currentTask.isWebexAppCallingOffer()) {
-    await currentTask.acceptOnWebex();
-  } else {
-    // Button states will be updated by task.uiControls after accept() completes
-    await currentTask.accept();
-  }
+  await currentTask.accept();
   updateTaskList();
   incomingDetailsElm.innerText = 'Task Accepted';
 }
 
 async function decline() {
   try {
-    // WXCC-6026: inbound wxApp → rejectOnWebex; outdial wxApp + legacy → decline()/cancelTask
-    if (
-      isAnswerOnWebexEnabled &&
-      currentTask.isWebexAppInboundCallingOffer &&
-      currentTask.isWebexAppInboundCallingOffer()
-    ) {
-      await currentTask.rejectOnWebex();
-    } else {
-      await currentTask.decline();
-    }
+    await currentTask.decline();
   } catch (e) {
     console.error('Decline failed', e);
   }
@@ -3246,14 +3236,13 @@ async function decline() {
   updateTaskList();
 }
 
-// WXCC-6026: wxApp DTMF transmit handler
-async function transmitWxAppDtmf(digit) {
-  if (!currentTask || !isAnswerOnWebexEnabled) return;
+async function transmitInCallDtmf(digit) {
+  if (!currentTask) return;
   try {
-    await currentTask.transmitDtmfOnWebex({dtmf: digit});
-    console.log('wxApp DTMF sent:', digit);
+    await currentTask.transmitDtmf({dtmf: digit});
+    console.log('DTMF sent:', digit);
   } catch (e) {
-    console.error('wxApp transmitDtmf failed', e);
+    console.error('transmitDtmf failed', e);
   }
 }
 
@@ -3349,13 +3338,13 @@ function muteUnmute() {
     const intendedMuted = !currentlyMuted;
 
     currentTask
-      .toggleMuteOnWebex({muted: intendedMuted})
+      .toggleMute({muted: intendedMuted})
       .then(() => {
         muteElm.innerText = intendedMuted ? 'Unmute' : 'Mute';
         console.info(intendedMuted ? 'Call is muted' : 'Call is unmuted');
       })
       .catch((error) => {
-        console.error('wxApp toggleMute failed', error);
+        console.error('toggleMute failed', error);
       });
 
     return;

@@ -14,6 +14,8 @@ import {
   TaskResponse,
   IVoice,
   VoiceUIControlOptions,
+  TaskToggleMuteOptions,
+  TaskTransmitDtmfOptions,
   TransferPayLoad,
   ConsultTransferPayLoad,
   consultConferencePayloadData,
@@ -30,17 +32,18 @@ import {WrapupData} from '../../config/types';
 import {getConsultMediaResourceId, getIsConferenceInProgress} from '../TaskUtils';
 import AnswerCallOnWebexService from '../../AnswerCallOnWebexService';
 import {
-  acceptOnWebex as wxAcceptOnWebex,
   getCallingDeviceDetails,
   getWebexCallingCallId,
   getWxAppLineOwnerId,
   isWebexAppCallingOffer as wxIsWebexAppCallingOffer,
   isWebexAppInboundCallingOffer as wxIsWebexAppInboundCallingOffer,
   mapWxAppVoiceError,
-  rejectOnWebex as wxRejectOnWebex,
-  toggleMuteOnWebex as wxToggleMuteOnWebex,
-  transmitDtmfOnWebex as wxTransmitDtmfOnWebex,
-  WxAppVoiceDeps,
+  runWxAppAccept,
+  runWxAppReject,
+  runWxAppToggleMute,
+  runWxAppTransmitDtmf,
+  WxAppVoiceDependencies,
+  WxAppVoiceLifecycle,
 } from './wxAppVoiceMethods';
 
 export default class Voice extends Task implements IVoice {
@@ -83,7 +86,7 @@ export default class Voice extends Task implements IVoice {
     this.answerCallOnWebexService = callOptions?.answerCallOnWebexService;
   }
 
-  private getWxAppVoiceDeps(): WxAppVoiceDeps {
+  private getWxAppVoiceDependencies(): WxAppVoiceDependencies {
     return {
       enableAnswerOnWebex: this.enableAnswerOnWebex,
       answerCallOnWebexService: this.answerCallOnWebexService,
@@ -95,6 +98,11 @@ export default class Voice extends Task implements IVoice {
         this.wxAppMuted = muted;
       },
     };
+  }
+
+  /** @deprecated Use {@link Voice.getWxAppVoiceDependencies} */
+  private getWxAppVoiceDeps(): WxAppVoiceDependencies {
+    return this.getWxAppVoiceDependencies();
   }
 
   public isWebexAppCallingOffer(): boolean {
@@ -282,43 +290,16 @@ export default class Voice extends Task implements IVoice {
     return getWebexCallingCallId(this.getWxAppVoiceDeps());
   }
 
-  public async acceptOnWebex(options?: {lineOwnerId?: string}): Promise<void> {
-    try {
-      this.setWxAppAcceptInFlight(true);
-      this.setWxAppAnswerPending(true);
-      await wxAcceptOnWebex(this.getWxAppVoiceDeps(), options);
-      this.wxAppMuted = false;
-      await this.syncWxAppMuteFromCallDetails();
-    } catch (error) {
-      this.setWxAppAnswerPending(false);
-      mapWxAppVoiceError(error, METHODS.ACCEPT_ON_WEBEX, CC_FILE);
-    } finally {
-      this.setWxAppAcceptInFlight(false);
-    }
-  }
-
-  public async rejectOnWebex(options?: {lineOwnerId?: string}): Promise<void> {
-    try {
-      await wxRejectOnWebex(this.getWxAppVoiceDeps(), options);
-    } catch (error) {
-      mapWxAppVoiceError(error, METHODS.REJECT_ON_WEBEX, CC_FILE);
-    }
-  }
-
-  public async toggleMuteOnWebex(options?: {lineOwnerId?: string; muted?: boolean}): Promise<void> {
-    try {
-      await wxToggleMuteOnWebex(this.getWxAppVoiceDeps(), options);
-    } catch (error) {
-      mapWxAppVoiceError(error, METHODS.TOGGLE_MUTE_ON_WEBEX, CC_FILE);
-    }
-  }
-
-  public async transmitDtmfOnWebex(options: {dtmf: string; lineOwnerId?: string}): Promise<void> {
-    try {
-      await wxTransmitDtmfOnWebex(this.getWxAppVoiceDeps(), options);
-    } catch (error) {
-      mapWxAppVoiceError(error, METHODS.TRANSMIT_DTMF_ON_WEBEX, CC_FILE);
-    }
+  private createWxAppLifecycle(): WxAppVoiceLifecycle {
+    return {
+      setWxAppAcceptInFlight: (inFlight) => this.setWxAppAcceptInFlight(inFlight),
+      setWxAppAnswerPending: (pending) => this.setWxAppAnswerPending(pending),
+      resetWxAppMuted: () => {
+        this.wxAppMuted = false;
+      },
+      syncWxAppMuteFromCallDetails: () => this.syncWxAppMuteFromCallDetails(),
+      mapWxAppVoiceError: (error, method) => mapWxAppVoiceError(error, method, CC_FILE),
+    };
   }
 
   private getStateMachineSnapshot() {
@@ -326,25 +307,31 @@ export default class Voice extends Task implements IVoice {
   }
 
   /**
-   * This method is used to accept the task.
-   * It is expected to be overridden by child classes.
-   * @returns Promise<TaskResponse>
-   * @throws Error
+   * Accepts the task. Routes to wxApp telephony answer when `enableAnswerOnWebex` and wxApp offer.
    */
   public async accept(): Promise<TaskResponse> {
-    super.unsupportedMethodError(METHODS.ACCEPT);
+    if (this.enableAnswerOnWebex && this.isWebexAppCallingOffer()) {
+      await runWxAppAccept(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle());
+
+      return Promise.resolve();
+    }
+
+    return super.unsupportedMethodError(METHODS.ACCEPT);
   }
 
   /**
-   * This method is used to decline the task.
-   * It is expected to be overridden by child classes.
-   * @returns Promise<TaskResponse>
-   * @throws Error
+   * Declines the task. Routes wxApp inbound to telephony reject; wxApp outdial offer to cancelTask.
    */
   public async decline(): Promise<TaskResponse> {
+    if (this.enableAnswerOnWebex && this.isWebexAppInboundCallingOffer()) {
+      await runWxAppReject(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle());
+
+      return Promise.resolve();
+    }
+
     const isOutdial = this.data?.interaction?.outboundType === 'OUTDIAL';
-    if (!this.enableAnswerOnWebex || !isOutdial) {
-      super.unsupportedMethodError(METHODS.REJECT);
+    if (!this.enableAnswerOnWebex || !isOutdial || !this.isWebexAppCallingOffer()) {
+      return super.unsupportedMethodError(METHODS.REJECT);
     }
 
     const interactionId = this.data.interactionId;
@@ -388,6 +375,40 @@ export default class Voice extends Task implements IVoice {
       const {error: detailedError} = getErrorDetails(error, METHODS.REJECT, CC_FILE);
       throw detailedError;
     }
+  }
+
+  /**
+   * Toggles mute for wxApp engaged telephony when `enableAnswerOnWebex` is active.
+   */
+  public async toggleMute(options?: TaskToggleMuteOptions): Promise<void> {
+    if (this.enableAnswerOnWebex && this.getWebexCallingCallId()) {
+      await runWxAppToggleMute(
+        this.getWxAppVoiceDependencies(),
+        this.createWxAppLifecycle(),
+        options
+      );
+
+      return;
+    }
+
+    super.unsupportedMethodError(METHODS.TOGGLE_MUTE);
+  }
+
+  /**
+   * Sends in-call DTMF for wxApp engaged telephony when `enableAnswerOnWebex` is active.
+   */
+  public async transmitDtmf(options: TaskTransmitDtmfOptions): Promise<void> {
+    if (this.enableAnswerOnWebex && this.getWebexCallingCallId()) {
+      await runWxAppTransmitDtmf(
+        this.getWxAppVoiceDependencies(),
+        this.createWxAppLifecycle(),
+        options
+      );
+
+      return;
+    }
+
+    super.unsupportedMethodError(METHODS.TRANSMIT_DTMF);
   }
 
   /**

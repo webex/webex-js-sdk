@@ -114,7 +114,7 @@ export default class AnswerCallOnWebexService {
         endpointId,
         ...(lineOwnerId ? {lineOwnerId} : {}),
       },
-      METHODS.ACCEPT_ON_WEBEX
+      METHODS.ACCEPT
     );
   }
 
@@ -125,7 +125,7 @@ export default class AnswerCallOnWebexService {
       '/reject',
       HTTP_METHODS.POST,
       {callId, ...(lineOwnerId ? {lineOwnerId} : {})},
-      METHODS.REJECT_ON_WEBEX
+      METHODS.REJECT
     );
   }
 
@@ -136,7 +136,7 @@ export default class AnswerCallOnWebexService {
       '/mute',
       HTTP_METHODS.POST,
       {callId, ...(lineOwnerId ? {lineOwnerId} : {})},
-      METHODS.TOGGLE_MUTE_ON_WEBEX
+      METHODS.TOGGLE_MUTE
     );
   }
 
@@ -147,7 +147,7 @@ export default class AnswerCallOnWebexService {
       '/unmute',
       HTTP_METHODS.POST,
       {callId, ...(lineOwnerId ? {lineOwnerId} : {})},
-      METHODS.TOGGLE_MUTE_ON_WEBEX
+      METHODS.TOGGLE_MUTE
     );
   }
 
@@ -158,7 +158,7 @@ export default class AnswerCallOnWebexService {
       '/transmitDtmf',
       HTTP_METHODS.POST,
       {callId, dtmf, ...(lineOwnerId ? {lineOwnerId} : {})},
-      METHODS.TRANSMIT_DTMF_ON_WEBEX
+      METHODS.TRANSMIT_DTMF
     );
   }
 

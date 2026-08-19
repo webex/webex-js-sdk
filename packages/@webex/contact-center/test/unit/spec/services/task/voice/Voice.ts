@@ -997,7 +997,7 @@ describe('Voice Task', () => {
         answerCallOnWebexService: mockSvc as any,
       });
       voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
-      await voice.acceptOnWebex();
+      await voice.accept();
 
       expect(voice.uiControlConfig.wxAppAcceptInFlight).toBe(false);
       await voice.syncWxAppMuteFromCallDetails();
@@ -1077,7 +1077,7 @@ describe('Voice Task', () => {
       });
       voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
 
-      await voice.acceptOnWebex();
+      await voice.accept();
       expect(voice.uiControlConfig.wxAppAnswerPending).toBe(true);
       expect(voice.uiControlConfig.wxAppAcceptInFlight).toBe(false);
 
@@ -1101,6 +1101,119 @@ describe('Voice Task', () => {
 
       await expect(voice.decline()).rejects.toThrow('Unsupported operation: decline');
       expect(dummyContact.cancelTask).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('unified task API routing (WXCC-6026)', () => {
+    const wxAppParticipant = {
+      deviceType: 'wxApp',
+      deviceId: 'device-id-1',
+      deviceCallId: 'call-id-1',
+    };
+
+    it('accept() routes wxApp inbound offer to telephony answerCall', async () => {
+      const mockSvc = {
+        answerCall: jest.fn().mockResolvedValue(undefined),
+        getCallDetails: jest.fn().mockResolvedValue({muted: false}),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      await voice.accept();
+
+      expect(mockSvc.answerCall).toHaveBeenCalledWith({
+        callId: 'call-id-1',
+        endpointId: 'device-id-1',
+        lineOwnerId: undefined,
+      });
+    });
+
+    it('decline() routes wxApp inbound offer to telephony rejectCall', async () => {
+      const mockSvc = {
+        rejectCall: jest.fn().mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      await voice.decline();
+
+      expect(mockSvc.rejectCall).toHaveBeenCalledWith({
+        callId: 'call-id-1',
+        lineOwnerId: undefined,
+      });
+      expect(dummyContact.cancelTask).not.toHaveBeenCalled();
+    });
+
+    it('toggleMute() routes wxApp engaged call to telephony muteCall', async () => {
+      const mockSvc = {
+        muteCall: jest.fn().mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      await voice.toggleMute({muted: true});
+
+      expect(mockSvc.muteCall).toHaveBeenCalledWith({callId: 'call-id-1', lineOwnerId: undefined});
+    });
+
+    it('transmitDtmf() routes wxApp engaged call to telephony transmitDtmf', async () => {
+      const mockSvc = {
+        transmitDtmf: jest.fn().mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableAnswerOnWebex: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      await voice.transmitDtmf({dtmf: '5'});
+
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledWith({
+        callId: 'call-id-1',
+        dtmf: '5',
+        lineOwnerId: undefined,
+      });
     });
   });
 });

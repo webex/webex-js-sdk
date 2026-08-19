@@ -2735,6 +2735,20 @@ describe('uiControlsComputer wxApp thick-client answer (WXCC-6026)', () => {
       expect(controls.main.decline).toEqual({isVisible: true, isEnabled: true});
     });
 
+    it('accept is visible but disabled while wxAppAcceptInFlight on inbound offer', () => {
+      const ctx = createWxAppContext({wxAppAcceptInFlight: true});
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.accept).toEqual({isVisible: true, isEnabled: false});
+    });
+
+    it('accept is visible but disabled while wxAppAnswerPending on inbound offer', () => {
+      const ctx = createWxAppContext({wxAppAnswerPending: true});
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.accept).toEqual({isVisible: true, isEnabled: false});
+    });
+
     it('decline is visible but disabled while wxAppAnswerPending on inbound offer', () => {
       const ctx = createWxAppContext({wxAppAnswerPending: true});
       const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);

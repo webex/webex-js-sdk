@@ -19,6 +19,8 @@ import {
   TASK_CHANNEL_TYPE,
   VOICE_VARIANT,
   CallId,
+  TaskToggleMuteOptions,
+  TaskTransmitDtmfOptions,
 } from './types';
 import {METHODS} from './constants';
 import {CC_FILE, TASK_FILE} from '../../constants';
@@ -153,8 +155,18 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.unsupportedMethodError('switchCall');
   }
 
-  public async toggleMute(): Promise<void> {
+  public async toggleMute(options?: TaskToggleMuteOptions): Promise<void> {
+    if (options) {
+      // parameter intentionally unused
+    }
     this.unsupportedMethodError('toggleMute');
+  }
+
+  public async transmitDtmf(options: TaskTransmitDtmfOptions): Promise<void> {
+    if (options) {
+      // parameter intentionally unused
+    }
+    this.unsupportedMethodError('transmitDtmf');
   }
 
   public unregisterWebCallListeners(): void {

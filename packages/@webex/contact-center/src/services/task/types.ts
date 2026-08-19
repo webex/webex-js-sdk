@@ -1222,7 +1222,19 @@ export type InteractionUIControls = {
   mergeToConference: TaskUIControlState;
   wrapup: TaskUIControlState;
   switch: TaskUIControlState;
-  keypad?: TaskUIControlState;
+  keypad: TaskUIControlState;
+};
+
+/** Options for {@link ITask.toggleMute} — wxApp engaged calls use `muted` for target state. */
+export type TaskToggleMuteOptions = {
+  muted?: boolean;
+  lineOwnerId?: string;
+};
+
+/** Options for {@link ITask.transmitDtmf} — wxApp engaged in-call DTMF. */
+export type TaskTransmitDtmfOptions = {
+  dtmf: string;
+  lineOwnerId?: string;
 };
 
 export type TaskUILeg = 'main' | 'consult';
@@ -1938,14 +1950,29 @@ export interface ITask extends IEventEmitter {
   switchCall(): Promise<TaskResponse>;
 
   /**
-   * Toggles mute/unmute for the local audio stream during a WebRTC task.
+   * Toggles mute/unmute for the active call.
+   * WebRTC tasks toggle the local stream; wxApp engaged tasks route to telephony mute REST when
+   * `enableAnswerOnWebex` is active.
+   * @param options - Optional target mute state (`muted`) for wxApp; ignored for WebRTC toggle.
    * @returns Promise<void>
    * @example
    * ```typescript
    * await task.toggleMute();
+   * await task.toggleMute({ muted: true });
    * ```
    */
-  toggleMute(): Promise<void>;
+  toggleMute(options?: TaskToggleMuteOptions): Promise<void>;
+
+  /**
+   * Sends in-call DTMF tones for wxApp engaged telephony tasks when `enableAnswerOnWebex` is active.
+   * @param options - DTMF digit(s) and optional shared-line owner id.
+   * @returns Promise<void>
+   * @example
+   * ```typescript
+   * await task.transmitDtmf({ dtmf: '5' });
+   * ```
+   */
+  transmitDtmf(options: TaskTransmitDtmfOptions): Promise<void>;
 }
 
 /**
@@ -1987,14 +2014,6 @@ export interface IVoice extends ITask {
   getCallingDeviceDetails(): import('./WebexCallingUtils').WebexCallingDeviceDetails | undefined;
   /** @see wxAppVoiceMethods — WXCC-6026 */
   getWebexCallingCallId(): string | null;
-  /** @see wxAppVoiceMethods — WXCC-6026 */
-  acceptOnWebex(options?: {lineOwnerId?: string}): Promise<void>;
-  /** @see wxAppVoiceMethods — WXCC-6026 */
-  rejectOnWebex(options?: {lineOwnerId?: string}): Promise<void>;
-  /** @see wxAppVoiceMethods — WXCC-6026 */
-  toggleMuteOnWebex(options?: {lineOwnerId?: string; muted?: boolean}): Promise<void>;
-  /** @see wxAppVoiceMethods — WXCC-6026 */
-  transmitDtmfOnWebex(options: {dtmf: string; lineOwnerId?: string}): Promise<void>;
 }
 
 /**
@@ -2032,7 +2051,7 @@ export interface IWebRTC extends IVoice {
    * task.toggleMute();
    * ```
    */
-  toggleMute(): Promise<void>;
+  toggleMute(options?: TaskToggleMuteOptions): Promise<void>;
   /**
    * Decline the incoming task for Browser Login
    *

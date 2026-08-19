@@ -7,9 +7,13 @@ import {
   rejectOnWebex,
   toggleMuteOnWebex,
   transmitDtmfOnWebex,
+  runWxAppAccept,
+  runWxAppReject,
   mapWxAppVoiceError,
   WxAppVoiceDeps,
+  WxAppVoiceLifecycle,
 } from '../../../../../../src/services/task/voice/wxAppVoiceMethods';
+import {METHODS} from '../../../../../../src/constants';
 import {TaskState} from '../../../../../../src/services/task/state-machine';
 import {TaskData} from '../../../../../../src/services/task/types';
 import AnswerCallOnWebexService from '../../../../../../src/services/AnswerCallOnWebexService';
@@ -62,6 +66,19 @@ function makeDeps(overrides: Partial<WxAppVoiceDeps> = {}): WxAppVoiceDeps {
     setWxAppMuted: (val) => {
       muted = val;
     },
+    ...overrides,
+  };
+}
+
+function makeLifecycle(overrides: Partial<WxAppVoiceLifecycle> = {}): WxAppVoiceLifecycle {
+  return {
+    setWxAppAcceptInFlight: jest.fn(),
+    setWxAppAnswerPending: jest.fn(),
+    resetWxAppMuted: jest.fn(),
+    syncWxAppMuteFromCallDetails: jest.fn().mockResolvedValue(undefined),
+    mapWxAppVoiceError: jest.fn((error: unknown) => {
+      throw error;
+    }),
     ...overrides,
   };
 }
@@ -361,6 +378,48 @@ describe('transmitDtmfOnWebex', () => {
   });
 });
 
+describe('runWxAppAccept', () => {
+  it('sets in-flight and pending flags, resets mute, and syncs after answer', async () => {
+    const deps = makeDeps();
+    const lifecycle = makeLifecycle();
+
+    await runWxAppAccept(deps, lifecycle);
+
+    expect(lifecycle.setWxAppAcceptInFlight).toHaveBeenNthCalledWith(1, true);
+    expect(lifecycle.setWxAppAnswerPending).toHaveBeenCalledWith(true);
+    expect(deps.answerCallOnWebexService!.answerCall).toHaveBeenCalled();
+    expect(lifecycle.resetWxAppMuted).toHaveBeenCalled();
+    expect(lifecycle.syncWxAppMuteFromCallDetails).toHaveBeenCalled();
+    expect(lifecycle.setWxAppAcceptInFlight).toHaveBeenLastCalledWith(false);
+  });
+
+  it('clears pending and maps error when answer fails', async () => {
+    const deps = makeDeps();
+    const error = new Error('answer failed');
+    deps.answerCallOnWebexService!.answerCall = jest.fn().mockRejectedValue(error);
+    const lifecycle = makeLifecycle();
+
+    await expect(runWxAppAccept(deps, lifecycle)).rejects.toThrow('answer failed');
+
+    expect(lifecycle.setWxAppAnswerPending).toHaveBeenCalledWith(false);
+    expect(lifecycle.mapWxAppVoiceError).toHaveBeenCalledWith(error, METHODS.ACCEPT);
+    expect(lifecycle.setWxAppAcceptInFlight).toHaveBeenLastCalledWith(false);
+  });
+});
+
+describe('runWxAppReject', () => {
+  it('maps error when reject fails', async () => {
+    const deps = makeDeps();
+    const error = new Error('reject failed');
+    deps.answerCallOnWebexService!.rejectCall = jest.fn().mockRejectedValue(error);
+    const lifecycle = makeLifecycle();
+
+    await expect(runWxAppReject(deps, lifecycle)).rejects.toThrow('reject failed');
+
+    expect(lifecycle.mapWxAppVoiceError).toHaveBeenCalledWith(error, METHODS.REJECT);
+  });
+});
+
 describe('mapWxAppVoiceError', () => {
   it('rethrows normalized wxApp telephony errors without remapping', () => {
     const normalized = Object.assign(new Error('TELEPHONY_ERROR'), {
@@ -368,6 +427,6 @@ describe('mapWxAppVoiceError', () => {
       trackingId: 'track-wxapp-1',
     });
 
-    expect(() => mapWxAppVoiceError(normalized, 'acceptOnWebex', 'cc')).toThrow(normalized);
+    expect(() => mapWxAppVoiceError(normalized, 'accept', 'cc')).toThrow(normalized);
   });
 });
