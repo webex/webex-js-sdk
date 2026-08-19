@@ -222,6 +222,7 @@ The `encryptContact()` method is called for **both** `CUSTOM` and `CLOUD` contac
 | CONTACTS-R-006 | Transparently encrypts and decrypts contact fields: `displayName`, `firstName`, `lastName`, `emails`, `phoneNumbers`, `sipAddresses`, `addressInfo`, `avatarURL`, `companyName`, `title`. | Field-level encryption prevents names, addresses, organization data, and contact routes from being stored as plaintext by the contacts service. | `src/Contacts/ContactsClient.ts` | `src/Contacts/ContactsClient.test.ts` | none identified | PRESENT |
 | CONTACTS-R-007 | Resolves CLOUD contacts via SCIM to fetch display names, phone numbers, SIP addresses, department, manager, and avatar information. Processes in batches of 50. | Batching SCIM resolution limits request size while enriching cloud contacts with directory-authoritative profile data. | `src/Contacts/ContactsClient.ts` | `src/Contacts/ContactsClient.test.ts` | none identified | PRESENT |
 | CONTACTS-R-008 | Automatically creates a default "Other contacts" group when no groups exist. | An automatic default group gives ungrouped contacts a valid service container and avoids special-case handling by consumers. | `src/Contacts/ContactsClient.ts` | `src/Contacts/ContactsClient.test.ts` | none identified | PRESENT |
+| CONTACTS-R-009 | Before encrypting or decrypting a contact, validates the contact's `encryptionKeyUrl` against the trusted `kms://` scheme. If the URL is missing, not a string, or does not start with `kms://`, the contact is returned unchanged without any KMS `encryptText`/`decryptText` call and an error is logged; only trusted `kms://` URLs are passed to Webex KMS. | Restricting KMS calls to trusted key URLs prevents a server-supplied `encryptionKeyUrl` from redirecting encrypt/decrypt operations to an attacker-controlled endpoint. | `src/Contacts/ContactsClient.ts` | `src/Contacts/ContactsClient.test.ts` | none identified | PRESENT |
 
 ### Key Capabilities
 
@@ -233,6 +234,7 @@ The `encryptContact()` method is called for **both** `CUSTOM` and `CLOUD` contac
 | **Create Contact Group** | Creates a new contact group with an encrypted display name. Auto-creates KMS Resource Object if no encryption key exists. Prevents duplicate group names. |
 | **Delete Contact Group** | Deletes a contact group by groupId and removes it from the local cache. |
 | **Encryption/Decryption** | Transparently encrypts and decrypts contact fields: `displayName`, `firstName`, `lastName`, `emails`, `phoneNumbers`, `sipAddresses`, `addressInfo`, `avatarURL`, `companyName`, `title`. |
+| **EncryptionKeyUrl Validation** | Validates each contact's `encryptionKeyUrl` against the trusted `kms://` scheme before any KMS call; untrusted URLs are logged and skipped, returning the contact unchanged. |
 | **CLOUD Contact Resolution** | Resolves CLOUD contacts via SCIM to fetch display names, phone numbers, SIP addresses, department, manager, and avatar information. Processes in batches of 50. |
 | **Default Group Management** | Automatically creates a default "Other contacts" group when no groups exist. |
 
@@ -689,6 +691,7 @@ ContactsClient owns in-memory contact/group maps, the selected contacts-service 
 - Resolve cloud contacts through SCIM in batches of 50.
 - Prevent duplicate group names and create the default Other contacts group when needed.
 - Update local maps only in step with successful remote mutations; do not log decrypted contact fields or encryption material. Evidence: `src/Contacts/ContactsClient.ts`, `src/Contacts/ContactsClient.test.ts`.
+- Only invoke Webex KMS `encryptText`/`decryptText` when a contact's `encryptionKeyUrl` uses the trusted `kms://` scheme; reject and log any other (e.g. `http://`, `https://`) URL and return the contact unchanged. Evidence: `src/Contacts/ContactsClient.ts`, `src/Contacts/ContactsClient.test.ts`.
 
 ## Concurrency & Reactive Flow
 
@@ -768,6 +771,7 @@ Unit tests are co-located under `src/Contacts/` and exercise positive, negative,
 | CONTACTS-R-006 | `src/Contacts/ContactsClient.test.ts` | Re-check negative/error edge coverage during independent validation |
 | CONTACTS-R-007 | `src/Contacts/ContactsClient.test.ts` | Re-check negative/error edge coverage during independent validation |
 | CONTACTS-R-008 | `src/Contacts/ContactsClient.test.ts` | Re-check negative/error edge coverage during independent validation |
+| CONTACTS-R-009 | `src/Contacts/ContactsClient.test.ts` | Re-check negative/error edge coverage during independent validation |
 
 ## Traceability
 

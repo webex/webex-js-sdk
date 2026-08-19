@@ -780,10 +780,9 @@ When the main thread receives `KEEPALIVE_FAILURE`:
 
 1. **Submit metrics** and run `handleRegistrationErrors` to classify the error (fatal vs. non-fatal vs. 429).
 2. **If abort (fatal) OR retryCount ≥ threshold** (`4` for contact-center, `5` otherwise):
-   - Set status to `INACTIVE`, terminate the keepalive worker
-   - Emit `LINE_EVENTS.UNREGISTERED` via `lineEmitter`
-   - If **non-fatal threshold exceeded** (not `abort`): call `reconnectOnFailure()` for full re-registration
-   - If **fatal + 404**: call `handle404KeepaliveFailure()` for a fresh registration attempt
+   - The failure-state mutations run **inside `this.mutex.runExclusive`** so they cannot race concurrent registration/failover flows that also hold the mutex: set `failoverImmediately` (to `isCCFlow`), set status to `INACTIVE`, terminate the keepalive worker (`clearKeepaliveTimer`), clear the failback timer, and emit `LINE_EVENTS.UNREGISTERED` via `lineEmitter`. The exclusive block records whether a reconnect (non-fatal threshold) or a 404 fresh-registration (fatal + 404) should follow.
+   - The follow-up recovery calls run **outside the mutex** (after `uploadLogs()`): if **non-fatal threshold exceeded** (not `abort`), call `reconnectOnFailure()` for full re-registration; if **fatal + 404**, call `handle404KeepaliveFailure()` for a fresh registration attempt. These are invoked outside the exclusive block because `reconnectOnFailure` → `restartRegistration` → `startFailoverTimer` itself acquires the same mutex, so calling them from inside would deadlock.
+   - The worker `onmessage` callback remains non-blocking with respect to the mutex apart from these serialized state mutations.
 3. **If below threshold** (non-fatal and retryCount < threshold): emit `LINE_EVENTS.RECONNECTING` via `lineEmitter` and wait for the next keepalive cycle
 
 ### reconnectOnFailure()

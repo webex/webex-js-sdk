@@ -43,9 +43,12 @@ const jestConfig = {
   },
   coverageDirectory: 'coverage',
   coverageReporters: ['clover', 'json', 'lcov'],
-  transformIgnorePatterns: ['/node_modules/(?!(@webex/internal-media-core)/)'],
+  transformIgnorePatterns: ['/node_modules/(?!(@webex/internal-media-core|@webex/media-helpers)/)'],
   testMatch: ['<rootDir>/src/**/*.test.[jt]s'],
-  moduleNameMapper: {'^uuid$': 'uuid'},
+  moduleNameMapper: {
+    '^uuid$': 'uuid',
+    '^@webex/internal-plugin-metrics$': '<rootDir>/src/__mocks__/internal-plugin-metrics.ts',
+  },
   reporters: [
     'default',
     [

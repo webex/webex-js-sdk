@@ -30,4 +30,6 @@ export const METHODS = {
   DELETE_CONTACT_GROUP: 'deleteContactGroup',
   CREATE_CONTACT: 'createContact',
   DELETE_CONTACT: 'deleteContact',
+  ENCRYPT_CONTACT: 'encryptContact',
+  DECRYPT_CONTACT: 'decryptContact',
 };

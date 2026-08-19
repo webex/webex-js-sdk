@@ -89,6 +89,14 @@ export class ContactsClient implements IContacts {
   }
 
   /**
+   * Validates that an encryptionKeyUrl uses the trusted kms:// scheme.
+   * Any other scheme (e.g. http://, https://) must not be passed to the KMS.
+   */
+  private isValidEncryptionKeyUrl(url: string): boolean {
+    return typeof url === 'string' && url.startsWith('kms://');
+  }
+
+  /**
    * Decrypt emails, phoneNumbers, sipAddresses.
    */
   private async decryptContactDetail(
@@ -138,6 +146,16 @@ export class ContactsClient implements IContacts {
    */
   private async encryptContact(contact: Contact): Promise<Contact> {
     const {encryptionKeyUrl} = contact;
+
+    if (!this.isValidEncryptionKeyUrl(encryptionKeyUrl)) {
+      log.error(`Untrusted encryptionKeyUrl rejected for encrypt: ${encryptionKeyUrl}`, {
+        file: CONTACTS_CLIENT,
+        method: METHODS.ENCRYPT_CONTACT,
+      });
+
+      return contact;
+    }
+
     const encryptedContact: Contact = {...contact};
 
     const encryptionPromises = Object.values(encryptedFields).map(async (field) => {
@@ -204,6 +222,16 @@ export class ContactsClient implements IContacts {
    */
   private async decryptContact(contact: Contact): Promise<Contact> {
     const {encryptionKeyUrl} = contact;
+
+    if (!this.isValidEncryptionKeyUrl(encryptionKeyUrl)) {
+      log.error(`Untrusted encryptionKeyUrl rejected for decrypt: ${encryptionKeyUrl}`, {
+        file: CONTACTS_CLIENT,
+        method: METHODS.DECRYPT_CONTACT,
+      });
+
+      return contact;
+    }
+
     const decryptedContact: Contact = {...contact};
 
     const decryptionPromises = Object.values(encryptedFields).map(async (field) => {

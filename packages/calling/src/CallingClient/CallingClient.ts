@@ -533,6 +533,14 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   }
 
   /**
+   * Validates that a Mobius cluster host belongs to the trusted infra.webex.com domain.
+   * Hosts outside this domain must not receive bearer-authenticated requests.
+   */
+  private isTrustedMobiusHost(host: string): boolean {
+    return typeof host === 'string' && host.endsWith('.infra.webex.com');
+  }
+
+  /**
    * Local method for finding the mobius servers.
    */
   private async getMobiusServers() {
@@ -586,6 +594,14 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
       for (const mobius of this.mobiusClusters) {
         if (mobius.host) {
+          if (!this.isTrustedMobiusHost(mobius.host)) {
+            log.warn(`Skipping untrusted Mobius cluster host: ${mobius.host}`, {
+              file: CALLING_CLIENT_FILE,
+              method: GET_MOBIUS_SERVERS_UTIL,
+            });
+            // eslint-disable-next-line no-continue
+            continue;
+          }
           this.mobiusHost = `https://${mobius.host}${API_V1}`;
         } else {
           this.mobiusHost = mobius as unknown as string;
@@ -687,8 +703,17 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           method: GET_MOBIUS_SERVERS_UTIL,
         }
       );
-      this.mobiusHost = `https://${this.mobiusClusters[0].host}${API_V1}`;
-      this.primaryMobiusUris = [`${this.mobiusHost}${URL_ENDPOINT}`];
+      const fallbackHost = this.mobiusClusters[0]?.host;
+
+      if (fallbackHost && this.isTrustedMobiusHost(fallbackHost)) {
+        this.mobiusHost = `https://${fallbackHost}${API_V1}`;
+        this.primaryMobiusUris = [`${this.mobiusHost}${URL_ENDPOINT}`];
+      } else {
+        log.warn(`Fallback Mobius cluster host is untrusted or unavailable: ${fallbackHost}`, {
+          file: CALLING_CLIENT_FILE,
+          method: GET_MOBIUS_SERVERS_UTIL,
+        });
+      }
     }
   }
 

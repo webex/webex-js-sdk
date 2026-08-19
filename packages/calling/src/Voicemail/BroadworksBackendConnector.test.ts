@@ -256,7 +256,9 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
       broadworksBackendConnector['bwtoken'] = 'bwtoken.eyJhbGciOiJIUzI1NiJ9';
       const response = await broadworksBackendConnector.init();
 
-      expect(response).toBeUndefined();
+      // A 2-segment token fails the 3-segment JWT structure check and returns 401
+      expect(response.statusCode).toBe(401);
+      expect(response.message).toBe(FAILURE_MESSAGE);
     });
 
     it('verify no change in xsi url received without ep version', async () => {
@@ -685,6 +687,54 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
       const response = await broadworksBackendConnector.getVoicemailSummary();
 
       expect(response).toBeNull();
+    });
+  });
+
+  describe('BroadworksBackendConnector getUserId', () => {
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('getUserId rejects unsigned/tampered bwtoken', async () => {
+      // Construct a 3-segment JWT with an expired exp (past timestamp → tampered/invalid)
+      const expiredPayload = {sub: 'attacker@evil.com', exp: 1}; // exp=1 is year 1970 → expired
+      const payloadEncoded = Buffer.from(JSON.stringify(expiredPayload)).toString('base64url');
+      const expiredToken = `eyJhbGciOiJIUzI1NiJ9.${payloadEncoded}.fake-signature`;
+
+      const expiredTokenResponse = {
+        body: {token: {bearer: expiredToken}},
+      };
+
+      webex.request.mockResolvedValueOnce(expiredTokenResponse);
+      webex.request.mockResolvedValueOnce(mockBWRKSData);
+
+      const response = await broadworksBackendConnector.init();
+
+      // With hardened getUserId, expired exp must route to 401
+      expect(response.statusCode).toBe(401);
+      expect(response.message).toBe(FAILURE_MESSAGE);
+      // The attacker-chosen sub must not be trusted
+      expect(broadworksBackendConnector.userId).not.toBe('attacker@evil.com');
+    });
+
+    it('getUserId returns sub for a validly signed bwtoken', async () => {
+      const expectedSub = 'testuser@broadworks.example.com';
+      const futureExp = 9999999999; // far in the future
+      const validPayload = {sub: expectedSub, exp: futureExp};
+      const payloadEncoded = Buffer.from(JSON.stringify(validPayload)).toString('base64url');
+      const validToken = `eyJhbGciOiJIUzI1NiJ9.${payloadEncoded}.fake-signature`;
+
+      const validTokenResponse = {
+        body: {token: {bearer: validToken}},
+      };
+
+      webex.request.mockResolvedValueOnce(validTokenResponse);
+      webex.request.mockResolvedValueOnce(mockBWRKSData);
+
+      await broadworksBackendConnector.init();
+
+      // With hardened getUserId, a valid token must return the correct sub
+      expect(broadworksBackendConnector.userId).toBe(expectedSub);
     });
   });
 });

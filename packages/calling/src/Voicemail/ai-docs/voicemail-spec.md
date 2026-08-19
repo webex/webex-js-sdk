@@ -282,8 +282,18 @@ WXC and UCM use `this.webex.request()`. Broadworks voicemail operations (`getVoi
 | Backend | Auth Mechanism | Notes |
 | ------- | -------------- | ----- |
 | WXC | FedRAMP: `Authorization` header via `getUserToken()`; otherwise: none | Auth headers cached at `init()` time |
-| Broadworks | BW token fetched from `broadworksIdpProxy` service, used as `Bearer {bwtoken}` | Token decoded to extract userId |
+| Broadworks | BW token fetched from `broadworksIdpProxy` service, used as `Bearer {bwtoken}` | Token validated then decoded to extract userId (see BroadWorks bwtoken validation) |
 | UCM | Implicit SDK auth | Adds `orgId`, `deviceUrl`, `mercuryHostname` headers for content requests |
+
+### BroadWorks bwtoken Validation
+
+The BroadWorks connector derives its `userId` from the fetched `bwtoken`, which is a JWT. Before the `sub` claim is trusted as the userId, the token is authenticated by structure and claims:
+
+- The token must have exactly three dot-separated JWT segments; otherwise the flow fails with `UNAUTHORIZED` (401).
+- The payload segment is base64url-decoded and JSON-parsed.
+- The `sub` claim must be a non-empty string, and the `exp` claim must be a number whose value is in the future (greater than the current time in seconds).
+
+If any of these checks fail, or the token is missing/malformed, `getUserId` throws and the error is normalized to the `UNAUTHORIZED` (401) response path via `serviceErrorCodeHandler`. Only a token that passes validation yields `userId = payload.sub`. This prevents an unverifiable or tampered token from supplying an attacker-controlled userId.
 
 ### WXC Pagination (Client-Side Caching)
 
@@ -606,6 +616,7 @@ The Voicemail facade owns one backend connector and MetricManager reference. WXC
 - Return null for documented unsupported summary/transcript/contact-resolution capabilities.
 - Keep cache pagination consistent with refresh and remote mutations.
 - BroadWorks bearer tokens, Webex user tokens, voicemail audio/transcripts, and caller identity are sensitive; never log or persist them outside the documented session cache/SDK path. Evidence: `src/Voicemail/` connector implementations.
+- Validate the BroadWorks bwtoken (three JWT segments, non-empty string `sub`, numeric non-expired `exp`) before using its `sub` claim as the userId; an unverifiable or tampered token routes to the `UNAUTHORIZED` (401) path and never yields an attacker-controlled userId. Evidence: `src/Voicemail/BroadworksBackendConnector.ts`.
 
 ## Concurrency & Reactive Flow
 
