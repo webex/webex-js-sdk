@@ -13,8 +13,7 @@ import MetricsManager from '../metrics/MetricsManager';
 import {WCC_API_GATEWAY} from './constants';
 import {endPointMap} from './config/constants';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
-import {CONSULT_TRANSFER_LIST_ATTRIBUTES, METHODS} from '../constants';
-import getConsultTransferChannel from './ConsultTransfer';
+import {CONSULT_TRANSFER_LIST_ATTRIBUTES, getConsultTransferChannel, METHODS} from '../constants';
 
 type QueueRequestParams = ContactServiceQueueSearchParams & {
   agentView?: boolean;

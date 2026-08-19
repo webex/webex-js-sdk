@@ -1,3 +1,5 @@
+import type {ConsultTransferMediaType} from './types';
+
 export const EVENT = 'event';
 export const READY = 'ready';
 export const TIMEOUT_DURATION = 20000; // 20 seconds timeout duration for webrtc registration
@@ -20,6 +22,30 @@ export const ATTRIBUTES = {};
 export const OUTDIAL_MEDIA_TYPE = 'telephony';
 export const OUTBOUND_TYPE = 'OUTDIAL';
 export const CONSULT_TRANSFER_LIST_ATTRIBUTES = 'id,name,dbId' as const;
+const CONSULT_TRANSFER_CHANNELS: Record<ConsultTransferMediaType, string> = {
+  telephony: 'TELEPHONY',
+  chat: 'CHAT',
+  social: 'SOCIAL_CHANNEL',
+  email: 'EMAIL',
+};
+
+const isConsultTransferMediaType = (value: string): value is ConsultTransferMediaType =>
+  Object.prototype.hasOwnProperty.call(CONSULT_TRANSFER_CHANNELS, value);
+
+/**
+ * Converts a public consult/transfer media type into the CMS channel token.
+ * Runtime validation protects JavaScript callers before an RSQL filter is built.
+ * @internal
+ */
+export const getConsultTransferChannel = (mediaType: unknown): string => {
+  const normalizedMediaType = typeof mediaType === 'string' ? mediaType.toLowerCase() : '';
+
+  if (!isConsultTransferMediaType(normalizedMediaType)) {
+    throw new TypeError('Unsupported consult/transfer media type');
+  }
+
+  return CONSULT_TRANSFER_CHANNELS[normalizedMediaType];
+};
 
 // Log related constants
 export const UNKNOWN_ERROR = 'Unknown error';
