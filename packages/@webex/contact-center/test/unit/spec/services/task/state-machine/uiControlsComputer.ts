@@ -1,8 +1,13 @@
-import {TASK_CHANNEL_TYPE, VOICE_VARIANT} from '../../../../../../src/services/task/types';
+import {
+  CONSULT_TRANSFER_DESTINATION_TYPE,
+  TASK_CHANNEL_TYPE,
+  VOICE_VARIANT,
+} from '../../../../../../src/services/task/types';
 import {TaskState} from '../../../../../../src/services/task/state-machine/constants';
 import {
   computeUIControls,
   getDefaultUIControls,
+  haveUIControlsChanged,
 } from '../../../../../../src/services/task/state-machine/uiControlsComputer';
 import {getTaskStateForUiControls} from '../../../../../../src/services/task/state-machine/actions';
 import {TaskContext} from '../../../../../../src/services/task/state-machine/types';
@@ -554,6 +559,27 @@ function createVoiceContext(overrides: Partial<TaskContext> = {}): TaskContext {
   };
 }
 
+function createConsultTransferContext(
+  taskData = createTaskData(),
+  overrides: Partial<NonNullable<TaskContext['uiControlConfig']['consultTransferConfig']>> = {}
+): TaskContext {
+  const context = createVoiceContext({taskData});
+
+  return {
+    ...context,
+    uiControlConfig: {
+      ...context.uiControlConfig,
+      consultTransferConfig: {
+        allowConsultToQueue: true,
+        accessQueue: 'ALL',
+        accessEntryPoint: 'ALL',
+        accessBuddyTeam: 'ALL',
+        ...overrides,
+      },
+    },
+  };
+}
+
 function createTaskData1LikeConferenceConsultTaskData() {
   return createTaskData({
     agentId: '058b3e7c-8fcf-45ee-b0c4-4ef546d360b9',
@@ -613,7 +639,10 @@ function createTaskData1LikeConferenceConsultTaskData() {
           mediaResourceId: '66cc5edd-8ac9-4f27-8f48-286edea460b2',
           mType: 'consult',
           isHold: false,
-          participants: ['747a2138-0a24-48fc-8d69-3a336d9b7158', '058b3e7c-8fcf-45ee-b0c4-4ef546d360b9'],
+          participants: [
+            '747a2138-0a24-48fc-8d69-3a336d9b7158',
+            '058b3e7c-8fcf-45ee-b0c4-4ef546d360b9',
+          ],
         },
       } as any,
       owner: 'e271075a-077d-42d0-9ae4-2a43cb847664',
@@ -1258,7 +1287,11 @@ describe('uiControlsComputer consult initiator controls', () => {
         agentId: 'agent-1',
       },
     });
-    const createdControls = computeUIControls(TaskState.CONSULTING, createdContext, createdTaskData);
+    const createdControls = computeUIControls(
+      TaskState.CONSULTING,
+      createdContext,
+      createdTaskData
+    );
 
     expect(createdControls.consult.transferConference).toEqual({isVisible: true, isEnabled: false});
 
@@ -1274,7 +1307,10 @@ describe('uiControlsComputer consult initiator controls', () => {
       consultingTaskData
     );
 
-    expect(consultingControls.consult.transferConference).toEqual({isVisible: true, isEnabled: true});
+    expect(consultingControls.consult.transferConference).toEqual({
+      isVisible: true,
+      isEnabled: true,
+    });
   });
 
   it('hides exitConference on main leg for consult initiator before destination joins', () => {
@@ -1919,7 +1955,6 @@ describe('uiControlsComputer consult initiator controls', () => {
     expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: true});
     expect(uiControls.consult.endConsult).toEqual({isVisible: false, isEnabled: false});
   });
-
 });
 
 describe('uiControlsComputer outdial accept/decline controls', () => {
@@ -2064,7 +2099,10 @@ describe('uiControlsComputer conference controls', () => {
     });
   }
 
-  function createConferenceContext(participantCount: number, overrides: Partial<TaskContext> = {}): TaskContext {
+  function createConferenceContext(
+    participantCount: number,
+    overrides: Partial<TaskContext> = {}
+  ): TaskContext {
     return {
       taskData: createConferenceTaskData(participantCount),
       consultInitiator: true,
@@ -2414,7 +2452,6 @@ describe('uiControlsComputer conference controls', () => {
     expect(uiControls.main.exitConference).toEqual({isVisible: true, isEnabled: true});
   });
 
-
   it('post_call after customer exit: only exitConference and end enabled during EP-DN pending merge (CAI-8329)', () => {
     const taskData = createTaskData({
       agentId: 'agent-1',
@@ -2574,6 +2611,115 @@ describe('uiControlsComputer conference controls', () => {
     const uiControls = computeUIControls(TaskState.CONFERENCING, context, context.taskData);
 
     expect(uiControls.main.hold).toEqual({isVisible: true, isEnabled: false});
+  });
+});
+
+describe('uiControlsComputer consult/transfer destinations', () => {
+  const AGENT = CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
+  const QUEUE = CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE;
+  const DIAL_NUMBER = CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
+  const ENTRY_POINT = CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
+
+  it('returns Agent Desktop order and applies the action-specific inbound voice queue rule', () => {
+    const taskData = createTaskData({
+      interaction: {contactDirection: {type: 'INBOUND'}} as any,
+    });
+    const context = createConsultTransferContext(taskData, {allowConsultToQueue: false});
+
+    const controls = computeUIControls(TaskState.CONNECTED, context, taskData);
+
+    expect(controls.consultTransferDestinations.consult).toEqual([AGENT, DIAL_NUMBER, ENTRY_POINT]);
+    expect(controls.consultTransferDestinations.transfer).toEqual([
+      AGENT,
+      QUEUE,
+      DIAL_NUMBER,
+      ENTRY_POINT,
+    ]);
+  });
+
+  it('reads the outbound queue-transfer flag from callProcessingDetails', () => {
+    const disabledTaskData = createTaskData({
+      interaction: {
+        contactDirection: {type: 'OUTBOUND'},
+        callProcessingDetails: {outdialTransferToQueueEnabled: false},
+      } as any,
+    });
+    const disabledContext = createConsultTransferContext(disabledTaskData);
+    const disabledControls = computeUIControls(
+      TaskState.CONNECTED,
+      disabledContext,
+      disabledTaskData
+    );
+
+    expect(disabledControls.consultTransferDestinations.transfer).toEqual([
+      AGENT,
+      DIAL_NUMBER,
+      ENTRY_POINT,
+    ]);
+
+    const enabledTaskData = createTaskData({
+      interaction: {
+        contactDirection: {type: 'OUTBOUND'},
+        callProcessingDetails: {outdialTransferToQueueEnabled: true},
+      } as any,
+    });
+    const enabledContext = createConsultTransferContext(enabledTaskData);
+    const enabledControls = computeUIControls(TaskState.CONNECTED, enabledContext, enabledTaskData);
+
+    expect(enabledControls.consultTransferDestinations.transfer).toEqual([
+      AGENT,
+      QUEUE,
+      DIAL_NUMBER,
+      ENTRY_POINT,
+    ]);
+    expect(haveUIControlsChanged(disabledControls, enabledControls)).toBe(true);
+  });
+
+  it('hides profile-disabled destinations and does not allow queue transfer for unknown voice direction', () => {
+    const taskData = createTaskData({
+      interaction: {contactDirection: {type: 'UNKNOWN'}} as any,
+    });
+    const context = createConsultTransferContext(taskData, {
+      accessQueue: 'NONE',
+      accessEntryPoint: 'NONE',
+      accessBuddyTeam: 'NONE',
+    });
+
+    const controls = computeUIControls(TaskState.CONNECTED, context, taskData);
+
+    expect(controls.consultTransferDestinations).toEqual({
+      consult: [DIAL_NUMBER],
+      transfer: [DIAL_NUMBER],
+    });
+  });
+
+  it('returns only agents and queues for digital tasks', () => {
+    const taskData = createTaskData({
+      interaction: {mediaType: 'chat'} as any,
+    });
+    const voiceContext = createConsultTransferContext(taskData, {allowConsultToQueue: false});
+    const context: TaskContext = {
+      ...voiceContext,
+      uiControlConfig: {
+        ...voiceContext.uiControlConfig,
+        channelType: TASK_CHANNEL_TYPE.DIGITAL,
+      },
+    };
+
+    const controls = computeUIControls(TaskState.CONNECTED, context, taskData);
+
+    expect(controls.consultTransferDestinations).toEqual({
+      consult: [AGENT, QUEUE],
+      transfer: [AGENT, QUEUE],
+    });
+  });
+
+  it('returns no destinations when no agent-profile policy was configured', () => {
+    const context = createVoiceContext();
+
+    const controls = computeUIControls(TaskState.CONNECTED, context, context.taskData);
+
+    expect(controls.consultTransferDestinations).toEqual({consult: [], transfer: []});
   });
 });
 

@@ -21,7 +21,7 @@ export default class TaskFactory {
     agentId?: string
   ): Task {
     const mediaType = data.interaction.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
-    const {isEndTaskEnabled, isEndConsultEnabled} = configFlags;
+    const {isEndTaskEnabled, isEndConsultEnabled, consultTransfer} = configFlags;
     const recordingEnabled = data?.interaction?.callProcessingDetails?.pauseResumeEnabled ?? true;
     const voiceControlOptions = {
       isEndTaskEnabled,
@@ -37,16 +37,17 @@ export default class TaskFactory {
             data,
             voiceControlOptions,
             wrapupData,
-            agentId
+            agentId,
+            consultTransfer
           );
         }
 
-        return new Voice(contact, data, voiceControlOptions, wrapupData, agentId);
+        return new Voice(contact, data, voiceControlOptions, wrapupData, agentId, consultTransfer);
 
       case MEDIA_CHANNEL.CHAT:
       case MEDIA_CHANNEL.EMAIL:
       case MEDIA_CHANNEL.SOCIAL:
-        return new Digital(contact, data, wrapupData, agentId);
+        return new Digital(contact, data, wrapupData, agentId, consultTransfer);
 
       default:
         throw new Error(`Unknown media type: ${mediaType}`);

@@ -817,6 +817,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webRtcEnabled: this.agentConfig.webRtcEnabled,
         autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
         aiFeature: this.agentConfig.aiFeature,
+        consultTransfer: {
+          allowConsultToQueue: this.agentConfig.allowConsultToQueue,
+          accessQueue: this.agentConfig.accessQueue,
+          accessEntryPoint: this.agentConfig.accessEntryPoint,
+          accessBuddyTeam: this.agentConfig.accessBuddyTeam,
+        },
       };
       this.taskManager.setConfigFlags(configFlags);
       // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere

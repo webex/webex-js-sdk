@@ -3,6 +3,10 @@
  */
 
 import {
+  CONSULT_TRANSFER_DESTINATION_TYPE,
+  ConsultTransferDestinationConfig,
+  ConsultTransferDestinationControls,
+  ConsultTransferDestinationType,
   InteractionUIControls,
   TASK_CHANNEL_TYPE,
   TaskData,
@@ -49,12 +53,17 @@ function getDefaultInteractionUIControls(): InteractionUIControls {
 function createTaskUIControls(
   main: InteractionUIControls,
   consult: InteractionUIControls,
-  activeLeg: TaskUILeg
+  activeLeg: TaskUILeg,
+  consultTransferDestinations: ConsultTransferDestinationControls = {
+    consult: [],
+    transfer: [],
+  }
 ): TaskUIControls {
   return {
     main,
     consult,
     activeLeg,
+    consultTransferDestinations,
   };
 }
 
@@ -64,6 +73,52 @@ export function getDefaultUIControls(): TaskUIControls {
     getDefaultInteractionUIControls(),
     'main'
   );
+}
+
+function isCollaborationAccessEnabled(
+  access: ConsultTransferDestinationConfig['accessQueue']
+): boolean {
+  return access?.toUpperCase() !== 'NONE';
+}
+
+function getConsultTransferDestinations(
+  config: UIControlConfig,
+  taskData?: TaskData | null
+): ConsultTransferDestinationControls {
+  const destinationConfig = config.consultTransferConfig;
+  if (!destinationConfig) {
+    return {consult: [], transfer: []};
+  }
+
+  const isVoice = config.channelType === TASK_CHANNEL_TYPE.VOICE;
+  const interaction = taskData?.interaction;
+  const direction = interaction?.contactDirection?.type?.toUpperCase();
+  const canTransferVoiceToQueue =
+    direction === 'INBOUND' ||
+    (direction === 'OUTBOUND' &&
+      interaction?.callProcessingDetails?.outdialTransferToQueueEnabled === true);
+  const canUseAgents = isCollaborationAccessEnabled(destinationConfig.accessBuddyTeam);
+  const canUseQueues = isCollaborationAccessEnabled(destinationConfig.accessQueue);
+  const canUseEntryPoints =
+    isVoice && isCollaborationAccessEnabled(destinationConfig.accessEntryPoint);
+
+  const buildDestinations = (canUseQueueForAction: boolean) => {
+    const destinations: ConsultTransferDestinationType[] = [];
+
+    if (canUseAgents) destinations.push(CONSULT_TRANSFER_DESTINATION_TYPE.AGENT);
+    if (canUseQueues && canUseQueueForAction) {
+      destinations.push(CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE);
+    }
+    if (isVoice) destinations.push(CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER);
+    if (canUseEntryPoints) destinations.push(CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT);
+
+    return destinations;
+  };
+
+  return {
+    consult: buildDestinations(!isVoice || destinationConfig.allowConsultToQueue),
+    transfer: buildDestinations(!isVoice || canTransferVoiceToQueue),
+  };
 }
 
 /** Consult media must exist on the interaction payload, not only as a stale resource id. */
@@ -922,13 +977,25 @@ export function computeUIControls(
           )
         : getDefaultInteractionUIControls();
 
-      return createTaskUIControls(mainControls, consultControls, activeLeg);
+      return createTaskUIControls(
+        mainControls,
+        consultControls,
+        activeLeg,
+        getConsultTransferDestinations(
+          context.uiControlConfig,
+          fallbackTaskData ?? context.taskData
+        )
+      );
     }
     case TASK_CHANNEL_TYPE.DIGITAL:
       return createTaskUIControls(
         computeDigitalInteractionUIControls(currentState, context, fallbackTaskData),
         getDefaultInteractionUIControls(),
-        'main'
+        'main',
+        getConsultTransferDestinations(
+          context.uiControlConfig,
+          fallbackTaskData ?? context.taskData
+        )
       );
     default:
       return getDefaultUIControls();
@@ -955,6 +1022,16 @@ export function haveUIControlsChanged(
 
   return (
     previous.activeLeg !== next.activeLeg ||
+    previous.consultTransferDestinations.consult.length !==
+      next.consultTransferDestinations.consult.length ||
+    previous.consultTransferDestinations.consult.some(
+      (destination, index) => destination !== next.consultTransferDestinations.consult[index]
+    ) ||
+    previous.consultTransferDestinations.transfer.length !==
+      next.consultTransferDestinations.transfer.length ||
+    previous.consultTransferDestinations.transfer.some(
+      (destination, index) => destination !== next.consultTransferDestinations.transfer[index]
+    ) ||
     haveInteractionUIControlsChanged(previous.main, next.main) ||
     haveInteractionUIControlsChanged(previous.consult, next.consult)
   );

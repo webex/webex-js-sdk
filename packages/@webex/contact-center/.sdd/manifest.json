@@ -46,7 +46,7 @@
       "canonical_spec": "ai-docs/contact-center-spec.md",
       "contracts": {
         "provides": [
-          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, typed consult/transfer list methods with one minimal options type and projected destination/media contracts, exported user-preference request/response types, and preview-campaign methods acceptPreviewContact/skipPreviewContact/removePreviewContact"
+          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task with ordered action-specific consult/transfer destination controls, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, typed consult/transfer list methods with one minimal options type and projected destination/media contracts, exported user-preference request/response types, and preview-campaign methods acceptPreviewContact/skipPreviewContact/removePreviewContact"
         ],
         "requires": [
           "Webex SDK host/plugin runtime; Contact Center REST and WebSocket services; internal Webex calling, metrics, support, authorization, logger, and mercury packages"
@@ -304,7 +304,7 @@
       "canonical_spec": "src/services/task/ai-docs/task-spec.md",
       "contracts": {
         "provides": [
-          "Task/Voice/WebRTC/Digital lifecycle APIs; TaskManager; task events/types; call-control and dialer operations including acceptPreviewContact, skipPreviewContact, and removePreviewContact"
+          "Task/Voice/WebRTC/Digital lifecycle APIs; TaskManager; task events/types; ordered action-specific consult/transfer destination controls; call-control and dialer operations including acceptPreviewContact, skipPreviewContact, and removePreviewContact"
         ],
         "requires": [
           "Contact/dialer AqmReqs; WebSocket managers; @webex/calling; MetricsManager; XState task-state module"
@@ -347,7 +347,7 @@
       "canonical_spec": "src/services/task/state-machine/ai-docs/task-state-machine-spec.md",
       "contracts": {
         "provides": [
-          "Task state-machine factory; TaskState/TaskEvent contracts; guards/actions; state-derived UI-control computation"
+          "Task state-machine factory; TaskState/TaskEvent contracts; guards/actions; state/profile/interaction-derived UI-control and ordered consult/transfer destination computation"
         ],
         "requires": [
           "XState; TaskData/task event contracts; Task and TaskManager integration"

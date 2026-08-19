@@ -612,6 +612,8 @@ export type ConfigFlags = {
   webRtcEnabled: boolean;
   autoWrapup: boolean;
   aiFeature?: AIFeatureFlags;
+  /** Agent-profile policy used to derive task consult/transfer destination controls. */
+  consultTransfer?: Contact.ConsultTransferDestinationConfig;
   /**
    * Optional toggle to globally enable/disable recording controls.
    * Falls back to backend hints when omitted.

@@ -16,6 +16,7 @@ import {
   VoiceUIControlOptions,
   TransferPayLoad,
   ConsultTransferPayLoad,
+  ConsultTransferDestinationConfig,
   consultConferencePayloadData,
   CONSULT_TRANSFER_DESTINATION_TYPE,
   TASK_EVENTS,
@@ -35,7 +36,8 @@ export default class Voice extends Task implements IVoice {
     data: TaskData,
     callOptions?: VoiceUIControlOptions,
     wrapupData?: WrapupData,
-    agentId?: string
+    agentId?: string,
+    consultTransferConfig?: ConsultTransferDestinationConfig
   ) {
     const resolvedOptions = {
       isEndTaskEnabled: callOptions?.isEndTaskEnabled ?? true,
@@ -49,6 +51,7 @@ export default class Voice extends Task implements IVoice {
       data,
       {
         ...resolvedOptions,
+        consultTransferConfig,
       },
       wrapupData,
       agentId

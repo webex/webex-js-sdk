@@ -6,7 +6,14 @@
  */
 
 import type {AnyStateNodeConfig, ActionFunctionMap, EventObject, ActionArgs} from 'xstate';
-import {DestinationType, TaskChannelType, TaskData, TaskUIControls, VoiceVariant} from '../types';
+import {
+  ConsultTransferDestinationConfig,
+  DestinationType,
+  TaskChannelType,
+  TaskData,
+  TaskUIControls,
+  VoiceVariant,
+} from '../types';
 import {TaskEvent, TaskState} from './constants';
 
 /**
@@ -43,6 +50,8 @@ export interface UIControlConfig {
   isRecordingEnabled: boolean;
   /** Current agent ID for ownership checks (transfer conference) */
   agentId?: string;
+  /** Agent-profile policy for ordered consult/transfer destinations */
+  consultTransferConfig?: ConsultTransferDestinationConfig;
 }
 
 /**

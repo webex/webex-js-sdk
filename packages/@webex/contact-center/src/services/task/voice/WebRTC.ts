@@ -8,6 +8,7 @@ import {
   TASK_EVENTS,
   IWebRTC,
   VoiceUIControlOptions,
+  ConsultTransferDestinationConfig,
   VOICE_VARIANT,
 } from '../types';
 import Voice from './Voice';
@@ -27,14 +28,15 @@ export default class WebRTC extends Voice implements IWebRTC {
     data: TaskData,
     callOptions?: VoiceUIControlOptions,
     wrapupData?: WrapupData,
-    agentId?: string
+    agentId?: string,
+    consultTransferConfig?: ConsultTransferDestinationConfig
   ) {
     const mergedCallOptions: VoiceUIControlOptions = {
       ...callOptions,
       voiceVariant: VOICE_VARIANT.WEBRTC,
     };
 
-    super(contact, data, mergedCallOptions, wrapupData, agentId);
+    super(contact, data, mergedCallOptions, wrapupData, agentId, consultTransferConfig);
     this.webCallingService = webCallingService;
     this.registerWebCallListeners();
   }

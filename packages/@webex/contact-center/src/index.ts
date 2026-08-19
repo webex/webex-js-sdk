@@ -148,6 +148,8 @@ export type {
   WrapupPayLoad,
   /** UI control types for task buttons */
   InteractionUIControls,
+  ConsultTransferDestinationControls,
+  ConsultTransferDestinationType,
   TaskUILeg,
   TaskUIControls,
   TaskUIControlState,

@@ -311,6 +311,9 @@ describe('webex.cc', () => {
       isEndConsultEnabled: false,
       agentDbId: '',
       allowConsultToQueue: false,
+      accessQueue: 'SPECIFIC',
+      accessEntryPoint: 'ALL',
+      accessBuddyTeam: 'ALL',
       agentPersonalStatsEnabled: false,
       isTimeoutDesktopInactivityEnabled: false,
       webRtcEnabled: true,
@@ -404,6 +407,12 @@ describe('webex.cc', () => {
         webRtcEnabled: mockAgentProfile.webRtcEnabled,
         autoWrapup: mockAgentProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
         aiFeature: mockAgentProfile.aiFeature,
+        consultTransfer: {
+          allowConsultToQueue: mockAgentProfile.allowConsultToQueue,
+          accessQueue: mockAgentProfile.accessQueue,
+          accessEntryPoint: mockAgentProfile.accessEntryPoint,
+          accessBuddyTeam: mockAgentProfile.accessBuddyTeam,
+        },
       });
       expect(reloadSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);

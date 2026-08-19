@@ -68,6 +68,23 @@ export const CONSULT_TRANSFER_DESTINATION_TYPE = {
 export type ConsultTransferDestinationType = Enum<typeof CONSULT_TRANSFER_DESTINATION_TYPE>;
 
 /**
+ * Desktop Profile access level for a consult/transfer destination category.
+ * @internal
+ */
+export type ConsultTransferCollaborationAccess = 'ALL' | 'SPECIFIC' | 'NONE';
+
+/**
+ * Agent-profile policy used by the task state machine to derive consult/transfer destinations.
+ * @internal
+ */
+export type ConsultTransferDestinationConfig = {
+  allowConsultToQueue: boolean;
+  accessQueue?: ConsultTransferCollaborationAccess;
+  accessEntryPoint?: ConsultTransferCollaborationAccess;
+  accessBuddyTeam?: ConsultTransferCollaborationAccess;
+};
+
+/**
  * Defines all supported media channel types for customer interactions
  * These represent the different ways customers can communicate with agents
  * @public
@@ -1220,6 +1237,16 @@ export type InteractionUIControls = {
 export type TaskUILeg = 'main' | 'consult';
 
 /**
+ * Ordered destination categories available for each consult/transfer action.
+ * The first category is the default category for consumers that render a destination picker.
+ * @public
+ */
+export type ConsultTransferDestinationControls = {
+  consult: ConsultTransferDestinationType[];
+  transfer: ConsultTransferDestinationType[];
+};
+
+/**
  * UI controls surfaced to task consumers.
  * Consumers should read controls from the per-leg surfaces and use `activeLeg`
  * to determine which one is currently interactive.
@@ -1228,6 +1255,7 @@ export type TaskUIControls = {
   main: InteractionUIControls;
   consult: InteractionUIControls;
   activeLeg: TaskUILeg;
+  consultTransferDestinations: ConsultTransferDestinationControls;
 };
 
 /**

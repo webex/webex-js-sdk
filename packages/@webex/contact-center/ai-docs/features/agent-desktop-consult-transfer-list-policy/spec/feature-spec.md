@@ -71,6 +71,7 @@ There are no open product decisions for this delta.
 - Serialize CMS ordering as `sort=<field>,<ORDER>`.
 - Bypass the base pagination cache for every filter/view/shape flag that changes a result.
 - Keep generic queue and entry-point methods available and preserve explicit buddy-agent state callers.
+- Compute ordered, action-specific destination availability once on each Task and expose it through `TaskUIControls`, using Desktop Profile access, media, direction, and outbound queue-transfer capability.
 
 ### Out of scope
 
@@ -79,6 +80,7 @@ There are no open product decisions for this delta.
 - Replacing the generic queue/entry-point APIs.
 - Changing generic queue ordering, address-book projection, events, authentication, retries, or metrics taxonomy.
 - Adding a feature flag, data migration, commit, publication, or push.
+- Adding a separate destination-policy fetch method that Task consumers must call before rendering.
 
 ## Prior work and evidence
 
@@ -93,6 +95,8 @@ There are no open product decisions for this delta.
 | `src/utils/PageCache.ts` | Cache eligibility must include every result- or shape-changing query option. | Used |
 | `test/unit/spec/cc.ts` | Action mapping and thin delegation of minimal list options are asserted. | Used |
 | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/services/AddressBook.ts` | Media validation, fixed policy, CMS sort serialization, view flags, and cache behavior are asserted. | Used |
+| `src/services/task/state-machine/uiControlsComputer.ts`, `src/services/task/types.ts` | Task UI controls are the existing SDK-owned decision surface and can carry ordered destination availability. | Used |
+| `test/unit/spec/services/task/state-machine/uiControlsComputer.ts`, `test/unit/spec/services/task/TaskFactory.ts` | Profile/media/direction gating, outbound flag path, ordering, and factory propagation are asserted. | Used |
 
 ## Requirements
 
@@ -109,6 +113,7 @@ There are no open product decisions for this delta.
 | `SDK-LIST-R-009` | Buddy-agent, queue, and entry-point failures must preserve their existing measured/logged rejection semantics and must not return a synthetic successful list. | Callers need to distinguish a real empty result from a transport or backend failure. | `src/cc.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts` | Consumer UI fallback behavior remains outside the SDK. | Present |
 | `SDK-LIST-R-010` | AddressBook must request backend `name,ASC` ordering by default and must accept caller-supplied `sortBy`/`sortOrder` overrides without a consult-specific façade method. | Widgets and other ordinary consumers receive Agent Desktop-compatible dial-number ordering out of the box, while consumers with another requirement retain control. | `src/services/AddressBook.ts` | `test/unit/spec/services/AddressBook.ts` | Backend honors the documented CMS sort value. | Present |
 | `SDK-LIST-R-011` | Consult/transfer media inputs must be limited to `telephony`, `chat`, `social`, or `email`; runtime callers that bypass TypeScript and supply another value must be rejected by the specialized service path before an RSQL filter is constructed or a request is sent. | Allowlisting prevents filter injection and makes typos/null inputs fail locally instead of changing backend query semantics. | `src/constants.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/types.ts` | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts` | Case-insensitive runtime forms of supported values normalize to the canonical channel token. | Present |
+| `SDK-LIST-R-012` | Every Task must expose `uiControls.consultTransferDestinations` with ordered `consult` and `transfer` arrays. Order is Agent, Queue, Dial Number, Entry Point after gating: profile `NONE` removes agent/queue/entry point; voice Consult queue requires `allowConsultToQueue`; voice Transfer queue requires inbound direction or outbound plus `interaction.callProcessingDetails.outdialTransferToQueueEnabled === true`; unknown voice direction does not allow queue Transfer; digital exposes only allowed agent/queue categories. | All consumers need the same Agent Desktop decision out of the box, without reading raw profile flags, interpreting task payload paths, or calling another policy API. | `src/cc.ts`, `src/services/task/TaskFactory.ts`, `src/services/task/types.ts`, `src/services/task/state-machine/uiControlsComputer.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/TaskFactory.ts`, `test/unit/spec/services/task/state-machine/uiControlsComputer.ts` | Consumers may hide an SDK-allowed category for host UX, but cannot enable one the SDK omitted. | Present |
 
 ## Defect context (when applicable)
 
@@ -195,6 +200,7 @@ There are no open product decisions for this delta.
 | Specialized entry-point list | Add public Agent Desktop consult/transfer method. | Thin clients pass pagination/search/media only. | Additive public method. | `src/cc.ts` |
 | EntryPoint/AddressBook ordering | Default omitted sort to `name,ASC`; honor explicit overrides. | Widgets pass no sort; other consumers pass a sort pair only when they need different behavior. | Intentional generic default correction. | `src/services/EntryPoint.ts`, `src/services/AddressBook.ts` |
 | Queue/EntryPoint specialized options | Add one minimal page/page-size/search/media type; keep view/filter/projection policy internal. | Generic callers retain ordinary APIs; specialized callers cannot alter Agent Desktop policy. | Additive specialized type and corrected/defaulted wire behavior. | `src/types.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/services/AddressBook.ts` |
+| Task destination controls | Add ordered `consultTransferDestinations.consult` and `.transfer` arrays to `TaskUIControls`. | Task consumers render availability directly; no separate policy call or raw profile injection is needed. | Additive public field and exported destination control/type aliases. | `src/services/task/types.ts`, `src/services/task/state-machine/uiControlsComputer.ts`, `src/index.ts` |
 
 ### Public API and semver impact
 
@@ -206,18 +212,19 @@ There are no open product decisions for this delta.
 | `ConsultTransferListOptions` | New exported shared minimal options type | Queue/entry-point list consumers | Minor | Pass only page, page size, search, and optional media; the SDK owns all other request policy. |
 | Specialized queue/entry-point façade methods | New public methods | Widgets and future Agent Desktop-compatible clients | Minor | Generic methods remain supported. |
 | `BuddyAgents` | Add action-based alternative while retaining explicit state | Existing and new consumers | Minor | Existing explicit-state calls remain valid. |
+| `TaskUIControls`, `ConsultTransferDestinationControls`, `ConsultTransferDestinationType` | Add ordered, action-specific destination availability | Task UI consumers | Minor | Read the matching action array; first item is the default category. |
 
 ### Cross-package impact
 
 | Package | Change | Dependency direction | Release sequencing | Owner |
 | --- | --- | --- | --- | --- |
-| `@webex/contact-center` | Owns action/default/filter/order/cache policy. | SDK → consumers | Build/release first. | SDK maintainers |
+| `@webex/contact-center` | Owns action/default/filter/order/cache policy and Task destination visibility/order decisions. | SDK → consumers | Build/release first. | SDK maintainers |
 | `@webex/cc-store` | Delegates to new specialized methods. | store → SDK | Consume a compatible SDK release. | Widgets maintainers |
 | `@webex/cc-task` and `@webex/cc-components` | Supply action and render results. | UI → store → SDK | Release after compatible store/SDK. | Widgets maintainers |
 
 ## Contracts delta
 
-**Provides — MODIFIED:** The package façade adds typed, specialized Agent Desktop consult/transfer queue and entry-point methods, one shared minimal options type, a projected destination response with optional `dbId`, a shared supported-media union, and an action-aware buddy-agent input. Generic methods and explicit state inputs remain available without consult/transfer-specific view controls.
+**Provides — MODIFIED:** The package façade adds typed, specialized Agent Desktop consult/transfer queue and entry-point methods, one shared minimal options type, a projected destination response with optional `dbId`, a shared supported-media union, an action-aware buddy-agent input, and ordered action-specific destination availability on `TaskUIControls`. Generic methods and explicit state inputs remain available without consult/transfer-specific view controls.
 
 **Requires — MODIFIED:** Queue, EntryPoint, and AddressBook services require CMS list endpoints to honor the combined sort value; Queue and EntryPoint additionally require the applicable profile/agent view flags. The SDK continues to rely on host-authenticated Webex requests and backend response ordering.
 
@@ -321,3 +328,4 @@ No event contract changes.
 | 2026-08-19 | Made backend response order authoritative and prohibited SDK-side JavaScript sorting. | One backend ordering decision must reach every consumer unchanged. | Developer + Codex |
 | 2026-08-19 | Moved EntryPoint and AddressBook `name,ASC` ordering to service defaults and removed the specialized dial-number façade. | Widgets must work without supplying SDK-owned decisions; other consumers can pass explicit sort overrides. | Developer + Codex |
 | 2026-08-19 | Collapsed queue and entry-point list inputs into one minimal `ConsultTransferListOptions` and moved media validation plus filter/projection/view/order construction into dedicated service paths. | Public consumers should request a list, not control Agent Desktop backend policy; generic list APIs should retain their established full-record contracts. | Developer + Codex |
+| 2026-08-19 | Put ordered Consult/Transfer destination availability directly on every Task's `uiControls` instead of adding `getConsultTransferDestinationPolicy`. | The Task already owns UI decisions and live interaction data, so consumers should not make a second request or reproduce profile/media/direction rules. | Developer + Codex |
