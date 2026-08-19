@@ -103,10 +103,6 @@ export interface CacheValidationParams {
   provisioningView?: boolean;
   /** Single-object response mode changes the response shape */
   singleObjectResponse?: boolean;
-  /** Agent-view filtering changes the returned result set */
-  agentView?: boolean;
-  /** First-level-view filtering changes the returned result set */
-  firstLevelView?: boolean;
 }
 
 /**
@@ -169,8 +165,6 @@ export class PageCache<T> {
       desktopProfileFilter,
       provisioningView,
       singleObjectResponse,
-      agentView,
-      firstLevelView,
     } = params;
 
     return (
@@ -178,11 +172,9 @@ export class PageCache<T> {
       !filter &&
       !attributes &&
       !sortBy &&
-      desktopProfileFilter === undefined &&
-      provisioningView === undefined &&
-      singleObjectResponse === undefined &&
-      agentView === undefined &&
-      firstLevelView === undefined
+      !desktopProfileFilter &&
+      !provisioningView &&
+      !singleObjectResponse
     );
   }
 

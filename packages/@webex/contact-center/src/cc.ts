@@ -76,17 +76,9 @@ import type {
   EntryPointSearchParams,
   ContactServiceQueuesResponse,
   ContactServiceQueueSearchParams,
-  ConsultTransferQueueSearchParams,
-  ConsultTransferEntryPointSearchParams,
+  ConsultTransferListOptions,
+  ConsultTransferListResponse,
 } from './types';
-
-const CONSULT_TRANSFER_LIST_ATTRIBUTES = 'id,name,dbId';
-const CONSULT_TRANSFER_QUEUE_CHANNELS: Record<string, string> = {
-  social: 'SOCIAL_CHANNEL',
-};
-
-const getConsultTransferQueueChannel = (mediaType: string): string =>
-  CONSULT_TRANSFER_QUEUE_CHANNELS[mediaType.toLowerCase()] ?? mediaType.toUpperCase();
 
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
@@ -2243,21 +2235,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @public
    */
   public async getConsultTransferQueues(
-    params: ConsultTransferQueueSearchParams = {}
-  ): Promise<ContactServiceQueuesResponse> {
-    const {mediaType = 'telephony', ...paginationAndSearch} = params;
-    const channelType = getConsultTransferQueueChannel(mediaType);
-
-    return this.queue.getQueues({
-      ...paginationAndSearch,
-      filter: `queueType==INBOUND;channelType==${channelType};active==true`,
-      attributes: CONSULT_TRANSFER_LIST_ATTRIBUTES,
-      sortBy: 'name',
-      sortOrder: 'asc',
-      desktopProfileFilter: true,
-      agentView: true,
-      firstLevelView: true,
-    });
+    options: ConsultTransferListOptions = {}
+  ): Promise<ConsultTransferListResponse> {
+    return this.queue.getConsultTransferQueues(options);
   }
 
   /**
@@ -2266,17 +2246,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @public
    */
   public async getConsultTransferEntryPoints(
-    params: ConsultTransferEntryPointSearchParams = {}
-  ): Promise<EntryPointListResponse> {
-    const {mediaType = 'telephony', ...paginationAndSearch} = params;
-    const channelType = getConsultTransferQueueChannel(mediaType);
-
-    return this.entryPoint.getEntryPoints({
-      ...paginationAndSearch,
-      filter: `entryPointType==INBOUND;channelType==${channelType};active==true`,
-      attributes: CONSULT_TRANSFER_LIST_ATTRIBUTES,
-      desktopProfileFilter: true,
-      agentView: true,
-    });
+    options: ConsultTransferListOptions = {}
+  ): Promise<ConsultTransferListResponse> {
+    return this.entryPoint.getConsultTransferEntryPoints(options);
   }
 }

@@ -1,5 +1,11 @@
 import {HTTP_METHODS, WebexSDK} from '../types';
-import type {EntryPointRecord, EntryPointListResponse, EntryPointSearchParams} from '../types';
+import type {
+  ConsultTransferListOptions,
+  ConsultTransferListResponse,
+  EntryPointRecord,
+  EntryPointListResponse,
+  EntryPointSearchParams,
+} from '../types';
 import LoggerProxy from '../logger-proxy';
 import WebexRequest from './core/WebexRequest';
 import PageCache, {PAGINATION_DEFAULTS} from '../utils/PageCache';
@@ -7,6 +13,13 @@ import MetricsManager from '../metrics/MetricsManager';
 import {WCC_API_GATEWAY} from './constants';
 import {endPointMap} from './config/constants';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
+import {CONSULT_TRANSFER_LIST_ATTRIBUTES} from '../constants';
+import getConsultTransferChannel from './ConsultTransfer';
+
+type EntryPointRequestParams = EntryPointSearchParams & {
+  desktopProfileFilter?: boolean;
+  agentView?: boolean;
+};
 
 /**
  * EntryPoint class for managing Webex Contact Center entry points.
@@ -83,6 +96,40 @@ export class EntryPoint {
   public async getEntryPoints(
     params: EntryPointSearchParams = {}
   ): Promise<EntryPointListResponse> {
+    return this.fetchEntryPoints(params);
+  }
+
+  /**
+   * Fetches the Agent Desktop-compatible consult/transfer entry-point list.
+   * Consumers supply only list controls and task media; this service owns CMS policy.
+   * @internal
+   */
+  public async getConsultTransferEntryPoints(
+    options: ConsultTransferListOptions = {}
+  ): Promise<ConsultTransferListResponse> {
+    const {mediaType = 'telephony', ...paginationAndSearch} = options;
+    const channelType = getConsultTransferChannel(mediaType);
+
+    return this.fetchEntryPoints({
+      ...paginationAndSearch,
+      filter: `entryPointType==INBOUND;channelType==${channelType};active==true`,
+      attributes: CONSULT_TRANSFER_LIST_ATTRIBUTES,
+      sortBy: 'name',
+      sortOrder: 'asc',
+      desktopProfileFilter: true,
+      agentView: true,
+    });
+  }
+
+  private async fetchEntryPoints(
+    params: EntryPointRequestParams & {attributes: typeof CONSULT_TRANSFER_LIST_ATTRIBUTES}
+  ): Promise<ConsultTransferListResponse>;
+
+  private async fetchEntryPoints(params: EntryPointSearchParams): Promise<EntryPointListResponse>;
+
+  private async fetchEntryPoints(
+    params: EntryPointRequestParams
+  ): Promise<EntryPointListResponse | ConsultTransferListResponse> {
     const startTime = Date.now();
     const {
       page = PAGINATION_DEFAULTS.PAGE,
@@ -104,8 +151,6 @@ export class EntryPoint {
       filter,
       attributes,
       sortBy: hasCustomSort ? sortBy : undefined,
-      desktopProfileFilter,
-      agentView,
     });
 
     LoggerProxy.info(

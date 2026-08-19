@@ -191,6 +191,7 @@ src/services/
 │       └── ARCHITECTURE.md
 │
 ├── AddressBook.ts              # Address book entries — getEntries() with pagination/cache
+├── ConsultTransfer.ts          # Shared consult/transfer media allowlist and channel mapping
 ├── EntryPoint.ts               # Entry points — getEntryPoints() with pagination/cache
 ├── Queue.ts                    # Queues — getQueues() with pagination/cache
 └── WebCallingService.ts        # WebRTC calling — register/deregister line, answer/mute/decline
@@ -218,6 +219,7 @@ Use [`constants.ts`](../constants.ts) as the canonical source for service-level 
 | `src/services/index.ts` | Authoritative Services implementation or contract source. |
 | `src/services/constants.ts` | Authoritative Services implementation or contract source. |
 | `src/services/AddressBook.ts` | Authoritative Services implementation or contract source. |
+| `src/services/ConsultTransfer.ts` | Shared runtime media validation and CMS channel mapping for specialized consult/transfer list paths. |
 | `src/services/EntryPoint.ts` | Authoritative Services implementation or contract source. |
 | `src/services/Queue.ts` | Authoritative Services implementation or contract source. |
 | `src/services/UserPreference.ts` | Direct REST user-preference CRUD exposed through `cc.userPreference`. |
@@ -261,6 +263,7 @@ ContactCenter READY callback
 | SERVICES-R-004 | Pass ApiAIAssistant, contact routing, WebCallingService, primary WebSocket, and RTD WebSocket into TaskManager. | Voice, task, transcript, and suggestion behavior depend on the complete collaborator set. | `src/cc.ts` | `test/unit/spec/services/task/TaskManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | SERVICES-R-005 | Inherit authenticated request identity from the host Webex SDK through Core/WebexRequest; Services must not store, parse, or refresh credentials. | One host-owned authentication boundary avoids duplicate token handling and credential leakage across composed services. | `src/services/index.ts`, `src/services/core/WebexRequest.ts` | `test/unit/spec/services/core/WebexRequest.ts` | None; authentication ownership is explicit. | PRESENT |
 | SERVICES-R-006 | Treat Services composition as unconditionally created by the ContactCenter READY callback; Services owns no rollout or feature-flag decision. | Capability flags belong to the consuming config/task/calling collaborators, so the composition root must not silently gate construction. | `src/services/index.ts`, `src/cc.ts` | `test/unit/spec/cc.ts` | None; rollout applicability is explicitly N/A for Services. | PRESENT |
+| SERVICES-R-007 | Queue and EntryPoint must expose internal consult/transfer paths that accept only `ConsultTransferListOptions`, validate media through the shared allowlist, construct the fixed Agent Desktop query policy, and return `ConsultTransferListResponse`. Their generic public methods retain full-record response types and do not expose consult/transfer view controls. Queue must also treat a generic `sortOrder` without `sortBy` as a name sort and bypass the simple-page cache. | Keeping policy behind dedicated service paths prevents public generic query bags and projection overloads from leaking backend decisions, while exact return types match the selected wire fields and an explicit generic direction is neither discarded nor served from an incompatible cached page. | `src/services/ConsultTransfer.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/types.ts` | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/cc.ts` | The backend honors the fixed projection, view flags, and combined CMS sort value. | PRESENT |
 
 ## Design Overview
 `Services` is a singleton composition root for transport-facing capabilities only. It constructs two `WebSocketManager` instances (primary Contact Center and RTD), creates `AqmReqs` on the primary manager, then creates config, agent, contact, dialer, and ConnectionService collaborators.
@@ -419,7 +422,8 @@ These three services share an identical pattern. Use any one as a reference when
 | **HTTP calls** | `this.webexRequest.request({service: WCC_API_GATEWAY, resource, method: HTTP_METHODS.GET})` |
 | **Endpoints** | Uses `endPointMap` functions from `config/constants.ts` to build URL paths |
 | **Pagination** | Query params with `page`, `pageSize`; uses `PageCache` for caching |
-| **Caching** | `PageCache<T>` — caches pages for simple pagination, bypasses cache for search/filter |
+| **Caching** | `PageCache<T>` — caches pages for simple pagination and bypasses cache for result/shape variants, including an effective Queue sort |
+| **Consult/transfer policy** | Dedicated internal Queue and EntryPoint paths accept the minimal public options, apply fixed filters/projection/views/order, and return `ConsultTransferListResponse`; generic methods retain full-record response types and ordinary query controls |
 | **Metrics** | `timeEvent` on API call start, `trackEvent` on success/failure |
 | **Logging** | `LoggerProxy` with `{module: 'ClassName', method: 'methodName'}` context |
 | **Error handling** | try/catch with `LoggerProxy.error` + `metricsManager.trackEvent` for failures, then re-throw so callers receive the error |
@@ -476,6 +480,7 @@ Unit tests mirror module paths under `test/unit/spec/services`. Preserve positiv
 | `SERVICES-R-004` | `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/cc.ts` | None. |
 | `SERVICES-R-005` | `test/unit/spec/services/core/WebexRequest.ts` | None. |
 | `SERVICES-R-006` | `test/unit/spec/cc.ts` | None. |
+| `SERVICES-R-007` | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/cc.ts` | None. |
 
 ## Traceability
 - Repo architecture: `../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../ai-docs/SPEC_INDEX.md`

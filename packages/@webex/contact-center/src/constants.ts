@@ -19,6 +19,7 @@ export const OUTDIAL_DIRECTION = 'OUTBOUND';
 export const ATTRIBUTES = {};
 export const OUTDIAL_MEDIA_TYPE = 'telephony';
 export const OUTBOUND_TYPE = 'OUTDIAL';
+export const CONSULT_TRANSFER_LIST_ATTRIBUTES = 'id,name,dbId' as const;
 
 // Log related constants
 export const UNKNOWN_ERROR = 'Unknown error';

@@ -162,27 +162,52 @@ describe('EntryPoint', () => {
       );
     });
 
-    it('should append desktopProfileFilter query param when provided', async () => {
+    it('should apply the complete consult/transfer entry-point policy inside the service', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      await entryPointAPI.getEntryPoints({sortBy: 'name', desktopProfileFilter: true, agentView: true});
+      const result = await entryPointAPI.getConsultTransferEntryPoints({
+        page: 1,
+        pageSize: 25,
+        search: 'sales',
+        mediaType: 'chat',
+      });
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
         resource:
-          '/organization/test-org-id/v2/entry-point?page=0&pageSize=100&sort=name%2CASC&desktopProfileFilter=true&agentView=true',
+          '/organization/test-org-id/v2/entry-point?page=1&pageSize=25&search=sales&filter=entryPointType%3D%3DINBOUND%3BchannelType%3D%3DCHAT%3Bactive%3D%3Dtrue&attributes=id%2Cname%2CdbId&sort=name%2CASC&desktopProfileFilter=true&agentView=true',
         method: HTTP_METHODS.GET,
       });
+      expect(result).toBe(mockResponse.body);
     });
 
-    it('should bypass cache for desktop-profile and agent-view requests', async () => {
+    it('should default consult/transfer entry points to telephony and bypass cache', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      await entryPointAPI.getEntryPoints({desktopProfileFilter: true, agentView: true});
-      await entryPointAPI.getEntryPoints({desktopProfileFilter: true, agentView: true});
+      await entryPointAPI.getConsultTransferEntryPoints();
+      await entryPointAPI.getConsultTransferEntryPoints();
 
       expect(mockWebex.request).toHaveBeenCalledTimes(2);
+      expect(mockWebex.request).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          resource: expect.stringContaining('channelType%3D%3DTELEPHONY'),
+        })
+      );
     });
+
+    it.each(['voice', 'telephony;active==false', null])(
+      'should reject unsupported consult/transfer media before requesting entry points: %p',
+      async (mediaType) => {
+        const jsCaller = entryPointAPI as unknown as {
+          getConsultTransferEntryPoints: (options: {mediaType: unknown}) => Promise<unknown>;
+        };
+
+        await expect(jsCaller.getConsultTransferEntryPoints({mediaType})).rejects.toThrow(
+          'Unsupported consult/transfer media type'
+        );
+        expect(mockWebex.request).not.toHaveBeenCalled();
+      }
+    );
 
     it('should handle API errors and track metrics', async () => {
       (mockWebex.request as jest.Mock).mockRejectedValue(new Error('Internal Server Error'));
@@ -208,8 +233,6 @@ describe('EntryPoint', () => {
       );
       expect(LoggerProxy.error).toHaveBeenCalled();
     });
-
-
 
     it('should not track metrics for subsequent pages in simple pagination', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);

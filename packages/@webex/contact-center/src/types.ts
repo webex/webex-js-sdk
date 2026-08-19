@@ -553,24 +553,18 @@ export type RequestBody =
   | CreateUserPreferenceRequest
   | UpdateUserPreferenceRequest;
 
-/**
- * Represents the options to fetch buddy agents for the logged in agent.
- * Buddy agents are other agents who can be consulted or transfered to.
- * @public
- * @example
- * const opts: BuddyAgents = { mediaType: 'telephony', state: 'Available' };
- * @ignore
- */
+/** Consult or transfer action used to select the default buddy-agent eligibility policy. @public */
 export type ConsultTransferAction = 'Consult' | 'Transfer';
 
-type BuddyAgentMediaType = 'telephony' | 'chat' | 'social' | 'email';
+/** Media types supported by consult/transfer destination lookups. @public */
+export type ConsultTransferMediaType = 'telephony' | 'chat' | 'social' | 'email';
 
 type BuddyAgentsByState = {
   /**
    * The media type channel to filter buddy agents.
    * Determines which channel capability the returned agents must have.
    */
-  mediaType: BuddyAgentMediaType;
+  mediaType: ConsultTransferMediaType;
 
   /**
    * Optional filter for agent state.
@@ -587,7 +581,7 @@ type BuddyAgentsByAction = {
   /**
    * The media type channel to filter buddy agents. Defaults to telephony when omitted.
    */
-  mediaType?: string;
+  mediaType?: ConsultTransferMediaType;
 
   /**
    * Consult returns all eligible agents; Transfer returns only Available agents.
@@ -598,6 +592,13 @@ type BuddyAgentsByAction = {
   state?: never;
 };
 
+/**
+ * Represents the options to fetch buddy agents for the logged in agent.
+ * Buddy agents are other agents who can be consulted or transferred to.
+ * @public
+ * @example
+ * const opts: BuddyAgents = { mediaType: 'telephony', state: 'Available' };
+ */
 export type BuddyAgents = BuddyAgentsByState | BuddyAgentsByAction;
 
 /**
@@ -715,28 +716,26 @@ export interface EntryPointRecord {
 }
 
 export type EntryPointListResponse = PaginatedResponse<EntryPointRecord>;
-export interface EntryPointSearchParams extends BaseSearchParams {
-  desktopProfileFilter?: boolean;
-  agentView?: boolean;
+export type EntryPointSearchParams = BaseSearchParams;
+
+/** Projected destination returned by the specialized consult/transfer list methods. @public */
+export interface ConsultTransferDestination {
+  /** Destination identifier used by consult/transfer operations. */
+  id: string;
+  /** Display name supplied by the backend. */
+  name: string;
+  /** Backend database identifier when included by the CMS response. */
+  dbId?: string;
 }
 
-/** Pagination and search inputs for Agent Desktop consult/transfer lists. */
-export type ConsultTransferListSearchParams = Pick<
-  BaseSearchParams,
-  'page' | 'pageSize' | 'search'
->;
+/** Paginated response returned by specialized consult/transfer destination lookups. @public */
+export type ConsultTransferListResponse = PaginatedResponse<ConsultTransferDestination>;
 
-/** Inputs for an Agent Desktop consult/transfer queue list. */
-export interface ConsultTransferQueueSearchParams extends ConsultTransferListSearchParams {
+/** Minimal consumer options shared by consult/transfer destination lists. @public */
+export type ConsultTransferListOptions = Pick<BaseSearchParams, 'page' | 'pageSize' | 'search'> & {
   /** Task media type; defaults to telephony when omitted. */
-  mediaType?: string;
-}
-
-/** Inputs for an Agent Desktop consult/transfer entry-point list. */
-export interface ConsultTransferEntryPointSearchParams extends ConsultTransferListSearchParams {
-  /** Task media type; defaults to telephony when omitted. */
-  mediaType?: string;
-}
+  mediaType?: ConsultTransferMediaType;
+};
 
 /**
  * Queue types
@@ -874,8 +873,6 @@ export interface ContactServiceQueueSearchParams extends BaseSearchParams {
   desktopProfileFilter?: boolean;
   provisioningView?: boolean;
   singleObjectResponse?: boolean;
-  agentView?: boolean;
-  firstLevelView?: boolean;
 }
 
 /**

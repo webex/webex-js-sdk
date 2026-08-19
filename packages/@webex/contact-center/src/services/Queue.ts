@@ -3,6 +3,8 @@ import type {
   ContactServiceQueue,
   ContactServiceQueuesResponse,
   ContactServiceQueueSearchParams,
+  ConsultTransferListOptions,
+  ConsultTransferListResponse,
 } from '../types';
 import LoggerProxy from '../logger-proxy';
 import WebexRequest from './core/WebexRequest';
@@ -11,7 +13,13 @@ import MetricsManager from '../metrics/MetricsManager';
 import {WCC_API_GATEWAY} from './constants';
 import {endPointMap} from './config/constants';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
-import {METHODS} from '../constants';
+import {CONSULT_TRANSFER_LIST_ATTRIBUTES, METHODS} from '../constants';
+import getConsultTransferChannel from './ConsultTransfer';
+
+type QueueRequestParams = ContactServiceQueueSearchParams & {
+  agentView?: boolean;
+  firstLevelView?: boolean;
+};
 
 /**
  * Queue API class for managing Webex Contact Center contact service queues.
@@ -96,6 +104,43 @@ export class Queue {
   public async getQueues(
     params: ContactServiceQueueSearchParams = {}
   ): Promise<ContactServiceQueuesResponse> {
+    return this.fetchQueues(params);
+  }
+
+  /**
+   * Fetches the Agent Desktop-compatible consult/transfer queue list.
+   * Consumers supply only list controls and task media; this service owns CMS policy.
+   * @internal
+   */
+  public async getConsultTransferQueues(
+    options: ConsultTransferListOptions = {}
+  ): Promise<ConsultTransferListResponse> {
+    const {mediaType = 'telephony', ...paginationAndSearch} = options;
+    const channelType = getConsultTransferChannel(mediaType);
+
+    return this.fetchQueues({
+      ...paginationAndSearch,
+      filter: `queueType==INBOUND;channelType==${channelType};active==true`,
+      attributes: CONSULT_TRANSFER_LIST_ATTRIBUTES,
+      sortBy: 'name',
+      sortOrder: 'asc',
+      desktopProfileFilter: true,
+      agentView: true,
+      firstLevelView: true,
+    });
+  }
+
+  private async fetchQueues(
+    params: QueueRequestParams & {attributes: typeof CONSULT_TRANSFER_LIST_ATTRIBUTES}
+  ): Promise<ConsultTransferListResponse>;
+
+  private async fetchQueues(
+    params: ContactServiceQueueSearchParams
+  ): Promise<ContactServiceQueuesResponse>;
+
+  private async fetchQueues(
+    params: QueueRequestParams
+  ): Promise<ContactServiceQueuesResponse | ConsultTransferListResponse> {
     const startTime = Date.now();
     const {
       page = PAGINATION_DEFAULTS.PAGE,
@@ -113,17 +158,16 @@ export class Queue {
     } = params;
 
     const orgId = this.webex.credentials.getOrgId();
-    const isSearchRequest = !!(search || filter || attributes || sortBy);
+    const effectiveSortBy = sortBy ?? (sortOrder ? 'name' : undefined);
+    const isSearchRequest = !!(search || filter || attributes || effectiveSortBy);
     const canUseCache = this.pageCache.canUseCache({
       search,
       filter,
       attributes,
-      sortBy,
+      sortBy: effectiveSortBy,
       desktopProfileFilter,
       provisioningView,
       singleObjectResponse,
-      agentView,
-      firstLevelView,
     });
 
     LoggerProxy.info('Fetching contact service queues', {
@@ -183,7 +227,8 @@ export class Queue {
       if (filter) queryParams.append('filter', filter);
       if (attributes) queryParams.append('attributes', attributes);
       if (search) queryParams.append('search', search);
-      if (sortBy) queryParams.append('sort', `${sortBy},${(sortOrder ?? 'asc').toUpperCase()}`);
+      if (effectiveSortBy)
+        queryParams.append('sort', `${effectiveSortBy},${(sortOrder ?? 'asc').toUpperCase()}`);
       if (desktopProfileFilter !== undefined)
         queryParams.append('desktopProfileFilter', desktopProfileFilter.toString());
       if (provisioningView !== undefined)

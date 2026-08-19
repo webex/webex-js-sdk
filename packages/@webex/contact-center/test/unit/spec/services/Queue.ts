@@ -195,15 +195,13 @@ describe('Queue', () => {
         desktopProfileFilter: true,
         provisioningView: false,
         singleObjectResponse: true,
-        agentView: true,
-        firstLevelView: true,
       };
 
       await queueAPI.getQueues(params);
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=25&filter=queueType%3D%3D%22INBOUND%22&attributes=id%2Cname%2CqueueType&search=support&sort=name%2CDESC&desktopProfileFilter=true&provisioningView=false&singleObjectResponse=true&agentView=true&firstLevelView=true',
+        resource: '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=25&filter=queueType%3D%3D%22INBOUND%22&attributes=id%2Cname%2CqueueType&search=support&sort=name%2CDESC&desktopProfileFilter=true&provisioningView=false&singleObjectResponse=true',
         method: HTTP_METHODS.GET,
       });
 
@@ -217,13 +215,83 @@ describe('Queue', () => {
       );
     });
 
-    it('should bypass cache for desktop-profile and agent-view requests', async () => {
+    it('should default sortOrder-only requests to name and bypass cache', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      await queueAPI.getQueues({desktopProfileFilter: true, agentView: true});
-      await queueAPI.getQueues({desktopProfileFilter: true, agentView: true});
+      await queueAPI.getQueues({sortOrder: 'desc'});
+      await queueAPI.getQueues({sortOrder: 'desc'});
 
       expect(mockWebex.request).toHaveBeenCalledTimes(2);
+      expect(mockWebex.request).toHaveBeenLastCalledWith({
+        service: 'wcc-api-gateway',
+        resource:
+          '/organization/test-org-id/v2/contact-service-queue?page=0&pageSize=100&sort=name%2CDESC',
+        method: HTTP_METHODS.GET,
+      });
+    });
+
+    it('should apply the complete consult/transfer queue policy inside the service', async () => {
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      const result = await queueAPI.getConsultTransferQueues({
+        page: 1,
+        pageSize: 25,
+        search: 'support',
+        mediaType: 'social',
+      });
+
+      expect(mockWebex.request).toHaveBeenCalledWith({
+        service: 'wcc-api-gateway',
+        resource:
+          '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=25&filter=queueType%3D%3DINBOUND%3BchannelType%3D%3DSOCIAL_CHANNEL%3Bactive%3D%3Dtrue&attributes=id%2Cname%2CdbId&search=support&sort=name%2CASC&desktopProfileFilter=true&agentView=true&firstLevelView=true',
+        method: HTTP_METHODS.GET,
+      });
+      expect(result).toBe(mockResponse.body);
+    });
+
+    it('should default consult/transfer queues to telephony and bypass cache', async () => {
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      await queueAPI.getConsultTransferQueues();
+      await queueAPI.getConsultTransferQueues();
+
+      expect(mockWebex.request).toHaveBeenCalledTimes(2);
+      expect(mockWebex.request).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          resource: expect.stringContaining('channelType%3D%3DTELEPHONY'),
+        })
+      );
+    });
+
+    it.each(['voice', 'telephony;active==false', null])(
+      'should reject unsupported consult/transfer media before requesting queues: %p',
+      async (mediaType) => {
+        const jsCaller = queueAPI as unknown as {
+          getConsultTransferQueues: (options: {mediaType: unknown}) => Promise<unknown>;
+        };
+
+        await expect(jsCaller.getConsultTransferQueues({mediaType})).rejects.toThrow(
+          'Unsupported consult/transfer media type'
+        );
+        expect(mockWebex.request).not.toHaveBeenCalled();
+      }
+    );
+
+    it('should treat explicit false queue flags as cache-compatible', async () => {
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      await queueAPI.getQueues({
+        desktopProfileFilter: false,
+        provisioningView: false,
+        singleObjectResponse: false,
+      });
+      await queueAPI.getQueues({
+        desktopProfileFilter: false,
+        provisioningView: false,
+        singleObjectResponse: false,
+      });
+
+      expect(mockWebex.request).toHaveBeenCalledTimes(1);
     });
 
     it('should handle API errors and track metrics', async () => {

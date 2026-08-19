@@ -42,10 +42,11 @@
       "path": "src",
       "coverage_status": "Partial",
       "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
+      "characterization_baseline": "test/unit/spec/cc.ts",
       "canonical_spec": "ai-docs/contact-center-spec.md",
       "contracts": {
         "provides": [
-          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, exported user-preference request/response types, and preview-campaign methods acceptPreviewContact/skipPreviewContact/removePreviewContact"
+          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, typed consult/transfer list methods with one minimal options type and projected destination/media contracts, exported user-preference request/response types, and preview-campaign methods acceptPreviewContact/skipPreviewContact/removePreviewContact"
         ],
         "requires": [
           "Webex SDK host/plugin runtime; Contact Center REST and WebSocket services; internal Webex calling, metrics, support, authorization, logger, and mercury packages"
@@ -128,10 +129,11 @@
       "path": "src/services",
       "coverage_status": "Partial",
       "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
+      "characterization_baseline": "test/unit/spec/services",
       "canonical_spec": "src/services/ai-docs/services-spec.md",
       "contracts": {
         "provides": [
-          "Services composition root; agent/config/contact/dialer factories; AddressBook, EntryPoint, Queue, UserPreference, ApiAiAssistant, and WebCalling integration; cc.userPreference exposes user-preference CRUD"
+          "Services composition root; agent/config/contact/dialer factories; AddressBook, EntryPoint, Queue, UserPreference, ApiAiAssistant, and WebCalling integration; internal Queue/EntryPoint consult-transfer request paths with SDK-owned policy and exact projected responses; cc.userPreference exposes user-preference CRUD"
         ],
         "requires": [
           "Core HTTP/WebSocket/AQM infrastructure; WCC APIs; @webex/calling; MetricsManager; PageCache"
