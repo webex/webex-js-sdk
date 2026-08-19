@@ -996,6 +996,68 @@ describe('ContactClient Tests', () => {
     });
   });
 
+  it('concurrent fetchEncryptionKeyUrl creates one key and one default group', async () => {
+    const successGroupResponsePayload = <WebexRequestPayload>{
+      statusCode: 201,
+      body: mockGroupResponse,
+    };
+
+    // No existing encryptionKeyUrl and empty groups — forces the key/group creation path
+    contactClient['groups'] = [];
+    contactClient['encryptionKeyUrl'] = '';
+
+    webex.internal.encryption.kms.createUnboundKeys.mockResolvedValue([mockKmsKey]);
+    webex.internal.encryption.kms.createResource.mockResolvedValue(mockKmsKey);
+    webex.internal.encryption.encryptText.mockResolvedValue('Encrypted group name');
+    webex.request.mockResolvedValue(successGroupResponsePayload);
+
+    // Two concurrent invocations before either resolves
+    const [result1, result2] = await Promise.all([
+      contactClient['fetchEncryptionKeyUrl'](),
+      contactClient['fetchEncryptionKeyUrl'](),
+    ]);
+
+    // Both callers must receive the same key URL
+    expect(result1).toBe(mockKmsKey.uri);
+    expect(result2).toBe(mockKmsKey.uri);
+
+    // Only one KMS key and one default group must be created
+    expect(webex.internal.encryption.kms.createUnboundKeys).toHaveBeenCalledTimes(1);
+    expect(webex.internal.encryption.kms.createUnboundKeys).toHaveBeenCalledWith({count: 1});
+    expect(webex.internal.encryption.kms.createResource).toHaveBeenCalledTimes(1);
+    expect(webex.request).toHaveBeenCalledTimes(1);
+  });
+
+  it('failed key resolution does not cache a rejected promise', async () => {
+    const successGroupResponsePayload = <WebexRequestPayload>{
+      statusCode: 201,
+      body: mockGroupResponse,
+    };
+
+    contactClient['groups'] = [];
+    contactClient['encryptionKeyUrl'] = '';
+
+    const kmsError = new Error('KMS unavailable');
+
+    // First resolution attempt rejects at the KMS step
+    webex.internal.encryption.kms.createUnboundKeys.mockRejectedValueOnce(kmsError);
+
+    await expect(contactClient['fetchEncryptionKeyUrl']()).rejects.toThrow('KMS unavailable');
+
+    // After rejection the in-flight promise must be cleared so a subsequent
+    // call retries resolution rather than returning the cached rejection
+    webex.internal.encryption.kms.createUnboundKeys.mockResolvedValue([mockKmsKey]);
+    webex.internal.encryption.kms.createResource.mockResolvedValue(mockKmsKey);
+    webex.internal.encryption.encryptText.mockResolvedValue('Encrypted group name');
+    webex.request.mockResolvedValue(successGroupResponsePayload);
+
+    const result = await contactClient['fetchEncryptionKeyUrl']();
+
+    expect(result).toBe(mockKmsKey.uri);
+    // createUnboundKeys called once for the failed attempt and once for the retry
+    expect(webex.internal.encryption.kms.createUnboundKeys).toHaveBeenCalledTimes(2);
+  });
+
   it('logs error for chunk when scimQuery API call fails in the loop for getContacts', async () => {
     const mockData = errorCodes[0];
     const respPayload = {
