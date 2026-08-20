@@ -259,6 +259,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /** True when wxApp mute sync registered the Webex device. */
   private wxAppDeviceRegisteredByCc = false;
 
+  private static readonly WXAPP_FALSE_PUBLISH_RETRY_DELAY_MS = 30_000;
+  private static readonly WXAPP_FALSE_PUBLISH_MAX_RETRIES = 3;
+  private wxAppFalsePublishRetryTimer?: ReturnType<typeof setTimeout>;
+
   /**
    * Core service managers for Contact Center operations
    * Includes agent, connection, and configuration services
@@ -1510,10 +1514,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     this.taskManager.applyEnableWxBetterTogether(enabled);
 
+    let publishedEnable = false;
+
     try {
       await this.publishAnswerOnWebexCrossClientState(enabled);
 
       if (enabled) {
+        publishedEnable = true;
         await this.ensureWxAppMercuryAndSubscribe();
         this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
       } else {
@@ -1521,6 +1528,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         await this.releaseWxAppMercuryResources();
       }
     } catch (error) {
+      if (publishedEnable) {
+        await this.revertWxAppCrossClientPublish();
+      }
+
       if (this.$config) {
         this.$config.enableWxBetterTogether = previousEnabled;
       }
@@ -1534,9 +1545,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return;
     }
 
+    let publishedEnable = false;
+
     try {
       if (this.isWxBetterTogetherEnabled()) {
         await this.publishAnswerOnWebexCrossClientState(true);
+        publishedEnable = true;
         await this.ensureWxAppMercuryAndSubscribe();
         this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
       } else {
@@ -1552,11 +1566,82 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       });
 
       if (this.isWxBetterTogetherEnabled()) {
-        this.wxAppTelephonyMercurySync.unsubscribe();
-        await this.releaseWxAppMercuryResources();
+        if (publishedEnable) {
+          await this.revertWxAppCrossClientPublish();
+        } else {
+          this.wxAppTelephonyMercurySync.unsubscribe();
+          await this.releaseWxAppMercuryResources();
+        }
         this.resetEnableWxBetterTogetherConfig();
+      } else {
+        this.scheduleForcedFalsePublishRetry();
       }
     }
+  }
+
+  private clearWxAppFalsePublishRetryTimer(): void {
+    if (this.wxAppFalsePublishRetryTimer) {
+      clearTimeout(this.wxAppFalsePublishRetryTimer);
+      this.wxAppFalsePublishRetryTimer = undefined;
+    }
+  }
+
+  private scheduleForcedFalsePublishRetry(retryAttempt = 0): void {
+    if (
+      retryAttempt >= ContactCenter.WXAPP_FALSE_PUBLISH_MAX_RETRIES ||
+      this.isWxBetterTogetherEnabled()
+    ) {
+      return;
+    }
+
+    this.clearWxAppFalsePublishRetryTimer();
+
+    this.wxAppFalsePublishRetryTimer = setTimeout(async () => {
+      this.wxAppFalsePublishRetryTimer = undefined;
+
+      if (this.isWxBetterTogetherEnabled()) {
+        return;
+      }
+
+      try {
+        await this.publishAnswerOnWebexCrossClientState(false, {force: true});
+        this.webexCrossClientService.teardown();
+        this.wxAppTelephonyMercurySync.unsubscribe();
+        await this.releaseWxAppMercuryResources();
+      } catch (retryError) {
+        LoggerProxy.error(
+          `Failed to retry forced answer-calls-on-wxcc false publish: ${retryError}`,
+          {
+            module: CC_FILE,
+            method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+          }
+        );
+        this.scheduleForcedFalsePublishRetry(retryAttempt + 1);
+      }
+    }, ContactCenter.WXAPP_FALSE_PUBLISH_RETRY_DELAY_MS);
+  }
+
+  /**
+   * Best-effort rollback when usersub true was published but wxApp setup did not complete.
+   * @private
+   */
+  private async revertWxAppCrossClientPublish(): Promise<void> {
+    try {
+      await this.publishAnswerOnWebexCrossClientState(false, {force: true});
+    } catch (error) {
+      LoggerProxy.error(
+        `Failed to publish compensating answer-calls-on-wxcc false during wxApp rollback: ${error}`,
+        {
+          module: CC_FILE,
+          method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+        }
+      );
+      this.scheduleForcedFalsePublishRetry();
+    }
+
+    this.webexCrossClientService.teardown();
+    this.wxAppTelephonyMercurySync.unsubscribe();
+    await this.releaseWxAppMercuryResources();
   }
 
   private async ensureWxAppMercuryConnected(): Promise<void> {
@@ -1632,6 +1717,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private async teardownWxAppLocalState(options?: {rethrowPublishError?: boolean}): Promise<void> {
+    this.clearWxAppFalsePublishRetryTimer();
     let publishError: unknown;
 
     try {
