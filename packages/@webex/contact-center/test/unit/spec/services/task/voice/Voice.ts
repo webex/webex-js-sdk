@@ -852,7 +852,29 @@ describe('Voice Task', () => {
       expect(mockSvc.getCallDetails).not.toHaveBeenCalled();
     });
 
-    it('syncs mute state after task assignment (onTaskAssigned)', async () => {
+    it('syncs mute state after task assignment once CONNECTED (onTaskAssigned)', async () => {
+      const mockSvc = {
+        getCallDetails: jest.fn().mockResolvedValue({muted: true}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+      expect(voice.getWxAppMuted()).toBe(false);
+      voice.stateMachineService?.send({type: TaskEvent.ASSIGN, taskData});
+
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(mockSvc.getCallDetails).toHaveBeenCalledWith({callId: 'call-id-1'});
+      expect(voice.getWxAppMuted()).toBe(true);
+    });
+
+    it('seeds mute on ASSIGN when wxApp offer was accepted on another session', async () => {
       const mockSvc = {
         getCallDetails: jest.fn().mockResolvedValue({muted: false}),
       };
@@ -861,14 +883,16 @@ describe('Voice Task', () => {
         enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
-      const syncSpy = jest.spyOn(voice, 'syncWxAppMuteFromCallDetails');
 
       voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+      expect(voice['uiControlConfig']?.wxAppAnswerPending).toBeFalsy();
       voice.stateMachineService?.send({type: TaskEvent.ASSIGN, taskData});
 
-      await Promise.resolve();
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
 
-      expect(syncSpy).toHaveBeenCalled();
+      expect(mockSvc.getCallDetails).toHaveBeenCalledWith({callId: 'call-id-1'});
     });
 
     it('syncs mute state after task hydrate (onTaskHydrated)', async () => {

@@ -1593,6 +1593,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (this.wxAppMercuryConnectedByCc && mercury?.connected) {
       try {
         await mercury.disconnect();
+        this.wxAppMercuryConnectedByCc = false;
         LoggerProxy.log('WxApp mute sync: mercury disconnected', {
           module: CC_FILE,
           method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
@@ -1602,8 +1603,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           module: CC_FILE,
           method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
         });
-      } finally {
-        this.wxAppMercuryConnectedByCc = false;
       }
     }
 
@@ -1611,6 +1610,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       try {
         // @ts-ignore
         await device.unregister();
+        this.wxAppDeviceRegisteredByCc = false;
         LoggerProxy.log('WxApp mute sync: device unregistered', {
           module: CC_FILE,
           method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
@@ -1620,8 +1620,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           module: CC_FILE,
           method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
         });
-      } finally {
-        this.wxAppDeviceRegisteredByCc = false;
       }
     } else if (this.wxAppDeviceRegisteredByCc) {
       this.wxAppDeviceRegisteredByCc = false;

@@ -2302,6 +2302,46 @@ describe('webex.cc', () => {
       expect(webex.cc['wxAppDeviceRegisteredByCc']).toBe(false);
     });
 
+    it('should retain wxApp Mercury ownership when disconnect fails and retry cleanup', async () => {
+      webex.cc['wxAppMercuryConnectedByCc'] = true;
+      webex.internal.mercury.connected = true;
+
+      const mercuryDisconnectSpy = jest
+        .spyOn(webex.internal.mercury, 'disconnect')
+        .mockRejectedValueOnce(new Error('disconnect failed'))
+        .mockResolvedValueOnce(undefined);
+
+      await webex.cc['releaseWxAppMercuryResources']();
+
+      expect(mercuryDisconnectSpy).toHaveBeenCalledTimes(1);
+      expect(webex.cc['wxAppMercuryConnectedByCc']).toBe(true);
+
+      await webex.cc['releaseWxAppMercuryResources']();
+
+      expect(mercuryDisconnectSpy).toHaveBeenCalledTimes(2);
+      expect(webex.cc['wxAppMercuryConnectedByCc']).toBe(false);
+    });
+
+    it('should retain wxApp device ownership when unregister fails and retry cleanup', async () => {
+      webex.cc['wxAppDeviceRegisteredByCc'] = true;
+      webex.internal.device.registered = true;
+
+      const deviceUnregisterSpy = jest
+        .spyOn(webex.internal.device, 'unregister')
+        .mockRejectedValueOnce(new Error('unregister failed'))
+        .mockResolvedValueOnce(undefined);
+
+      await webex.cc['releaseWxAppMercuryResources']();
+
+      expect(deviceUnregisterSpy).toHaveBeenCalledTimes(1);
+      expect(webex.cc['wxAppDeviceRegisteredByCc']).toBe(true);
+
+      await webex.cc['releaseWxAppMercuryResources']();
+
+      expect(deviceUnregisterSpy).toHaveBeenCalledTimes(2);
+      expect(webex.cc['wxAppDeviceRegisteredByCc']).toBe(false);
+    });
+
     it('should handle errors during unregister and track metrics', async () => {
       const mockError = new Error('Failed to deregister device');
       webex.internal.device.unregister.mockRejectedValue(mockError);

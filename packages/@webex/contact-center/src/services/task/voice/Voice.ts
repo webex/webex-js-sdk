@@ -278,7 +278,9 @@ export default class Voice extends Task implements IVoice {
 
   protected onTaskAssigned(): void {
     this.setWxAppAnswerPending(false);
-    this.syncWxAppMuteFromCallDetails().catch(() => undefined);
+    queueMicrotask(() => {
+      this.syncWxAppMuteFromCallDetails().catch(() => undefined);
+    });
   }
 
   protected onTaskHydrated(): void {
