@@ -700,7 +700,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // Clear any cached agent configuration
       this.agentConfig = null;
 
-      await this.teardownWxAppLocalState({rethrowPublishError: true});
+      await this.teardownWxAppLocalState({rethrowPublishError: true, clearInitFlag: true});
 
       LoggerProxy.log('Deregistered successfully', {
         module: CC_FILE,
@@ -1587,10 +1587,26 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   private scheduleForcedFalsePublishRetry(retryAttempt = 0): void {
-    if (
-      retryAttempt >= ContactCenter.WXAPP_FALSE_PUBLISH_MAX_RETRIES ||
-      this.isWxBetterTogetherEnabled()
-    ) {
+    this.scheduleFalsePublishRetry(retryAttempt, {requireDisabled: true});
+  }
+
+  /**
+   * Retries compensating false publish after rollback failure, regardless of enabled flag.
+   * @private
+   */
+  private scheduleCompensatingFalsePublishRetry(retryAttempt = 0): void {
+    this.scheduleFalsePublishRetry(retryAttempt);
+  }
+
+  private scheduleFalsePublishRetry(
+    retryAttempt = 0,
+    options: {requireDisabled?: boolean} = {}
+  ): void {
+    if (retryAttempt >= ContactCenter.WXAPP_FALSE_PUBLISH_MAX_RETRIES) {
+      return;
+    }
+
+    if (options?.requireDisabled && this.isWxBetterTogetherEnabled()) {
       return;
     }
 
@@ -1599,7 +1615,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.wxAppFalsePublishRetryTimer = setTimeout(async () => {
       this.wxAppFalsePublishRetryTimer = undefined;
 
-      if (this.isWxBetterTogetherEnabled()) {
+      if (options?.requireDisabled && this.isWxBetterTogetherEnabled()) {
         return;
       }
 
@@ -1616,7 +1632,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
           }
         );
-        this.scheduleForcedFalsePublishRetry(retryAttempt + 1);
+        this.scheduleFalsePublishRetry(retryAttempt + 1, options);
       }
     }, ContactCenter.WXAPP_FALSE_PUBLISH_RETRY_DELAY_MS);
   }
@@ -1636,7 +1652,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
         }
       );
-      this.scheduleForcedFalsePublishRetry();
+      this.scheduleCompensatingFalsePublishRetry();
     }
 
     this.webexCrossClientService.teardown();
@@ -1716,7 +1732,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * optional rethrow for deregister when callers need to surface usersub errors.
    * @private
    */
-  private async teardownWxAppLocalState(options?: {rethrowPublishError?: boolean}): Promise<void> {
+  private async teardownWxAppLocalState(options?: {
+    rethrowPublishError?: boolean;
+    clearInitFlag?: boolean;
+  }): Promise<void> {
     this.clearWxAppFalsePublishRetryTimer();
     let publishError: unknown;
 
@@ -1736,7 +1755,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.webexCrossClientService.teardown();
     this.wxAppTelephonyMercurySync.unsubscribe();
     await this.releaseWxAppMercuryResources();
-    this.resetEnableWxBetterTogetherConfig();
+
+    if (options?.clearInitFlag) {
+      this.resetEnableWxBetterTogetherConfig();
+    }
 
     if (options?.rethrowPublishError && publishError) {
       throw publishError;

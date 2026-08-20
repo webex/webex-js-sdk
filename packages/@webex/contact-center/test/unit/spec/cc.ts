@@ -1436,7 +1436,7 @@ describe('webex.cc', () => {
       expect(result).toEqual({trackingId: 'track-1'});
       expect(teardownSpy).toHaveBeenCalled();
       expect(unsubscribeSpy).toHaveBeenCalled();
-      expect(webex.cc.isWxBetterTogetherEnabled()).toBe(false);
+      expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
     });
 
     it('should handle error during stationLogout', async () => {
@@ -2689,6 +2689,54 @@ describe('webex.cc', () => {
       expect(result).toEqual(mockResp);
     });
 
+    it('should preserve enableWxBetterTogether init flag across profile update logout/login', async () => {
+      webex.cc.$config = {...webex.cc.$config, enableWxBetterTogether: true};
+      webex.internal.device = {userId: 'user-123', url: 'https://wdm.example.com/devices/dev-1'};
+      webex.cc.agentConfig = {
+        ...webex.cc.agentConfig,
+        agentId: 'agentId',
+        webRtcEnabled: false,
+        loginVoiceOptions: ['BROWSER', 'EXTENSION'],
+      } as Profile;
+      webex.cc.webCallingService.loginOption = LoginOption.BROWSER;
+      webex.cc.webCallingService.setLoginOption = jest.fn((loginOption: LoginOption) => {
+        webex.cc.webCallingService.loginOption = loginOption;
+      });
+      webex.cc['webexCrossClientService'].answerCallsState = true;
+
+      const publishSpy = jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+      jest
+        .spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe')
+        .mockImplementation(() => {});
+      jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
+
+      jest.spyOn(webex.cc.services.agent, 'logout').mockResolvedValue({
+        trackingId: 'track-logout',
+      } as StationLogoutResponse);
+      jest.spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue({
+        data: {
+          agentId: 'agentId',
+          teamId: 'teamId',
+          channelsMap: {chat: [], email: [], social: [], telephony: []},
+        },
+        trackingId: 'track-login',
+      } as StationLoginSuccess);
+
+      webex.internal.mercury.connected = true;
+
+      await webex.cc.updateAgentProfile({
+        teamId: 'teamId',
+        loginOption: LoginOption.EXTENSION,
+        dialNumber: '1001',
+      });
+
+      expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
+      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123'});
+    });
+
     it('should use provided teamId if passed in payload', async () => {
       const dataWithTeam = {
         teamId: 'newTeam',
@@ -3455,6 +3503,50 @@ describe('webex.cc', () => {
       expect(teardownSpy).toHaveBeenCalled();
       expect(unsubscribeSpy).toHaveBeenCalled();
       expect(releaseSpy).toHaveBeenCalled();
+    });
+
+    it('should schedule compensating false retry when rollback publish fails after Mercury error', async () => {
+      jest.useFakeTimers();
+      try {
+        webex.cc.$config = {...webex.cc.$config, enableWxBetterTogether: true};
+        webex.internal.device = {userId: 'user-123', url: 'https://wdm.example.com/devices/dev-1'};
+        webex.cc.agentConfig = {
+          agentId: 'agent-123',
+          deviceType: LoginOption.EXTENSION,
+        };
+        webex.cc.webCallingService.loginOption = LoginOption.EXTENSION;
+
+        const publishSpy = jest
+          .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+          .mockResolvedValueOnce(undefined)
+          .mockRejectedValueOnce(new Error('compensating false failed'))
+          .mockResolvedValue(undefined);
+        jest
+          .spyOn(webex.cc as any, 'ensureWxAppMercuryConnected')
+          .mockRejectedValue(new Error('mercury connect failed'));
+        jest
+          .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
+          .mockResolvedValue(undefined);
+        const scheduleRetrySpy = jest.spyOn(
+          webex.cc as any,
+          'scheduleCompensatingFalsePublishRetry'
+        );
+
+        await expect((webex.cc as any).setManageWebexCallingInWxcc(true)).rejects.toThrow(
+          'mercury connect failed'
+        );
+
+        expect(scheduleRetrySpy).toHaveBeenCalled();
+        expect(publishSpy).toHaveBeenCalledTimes(2);
+
+        jest.advanceTimersByTime(30_000);
+        await publishSpy.mock.results[2]?.value;
+
+        expect(publishSpy).toHaveBeenCalledTimes(3);
+        expect(publishSpy).toHaveBeenLastCalledWith(false, {userId: 'user-123'});
+      } finally {
+        jest.useRealTimers();
+      }
     });
   });
 });
