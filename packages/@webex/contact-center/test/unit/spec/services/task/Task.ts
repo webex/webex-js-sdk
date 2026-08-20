@@ -4,9 +4,11 @@ import {
   DESTINATION_TYPE,
   TASK_EVENTS,
   TASK_CHANNEL_TYPE,
+  TransferPayLoad,
   VOICE_VARIANT,
 } from '../../../../../src/services/task/types';
 import {TaskEvent} from '../../../../../src/services/task/state-machine';
+import {ENTRY_POINT_TRANSFER_DESTINATION_TYPE} from '../../../../../src/services/task/constants';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import {createTaskData} from './taskTestUtils';
 
@@ -395,6 +397,24 @@ describe('Task common methods', () => {
       interactionId: taskData.interactionId,
       data: payload,
     });
+    expect(result).toEqual({result: 'vt'});
+  });
+
+  it('transfer uses vteamTransfer with the backend destination type for entry-point destinations', async () => {
+    const payload: TransferPayLoad = {
+      to: 'entry-point-1',
+      destinationType: DESTINATION_TYPE.ENTRYPOINT,
+    };
+    const result = await task.transfer(payload);
+
+    expect(contact.vteamTransfer).toHaveBeenCalledWith({
+      interactionId: taskData.interactionId,
+      data: {
+        to: payload.to,
+        destinationType: ENTRY_POINT_TRANSFER_DESTINATION_TYPE,
+      },
+    });
+    expect(contact.blindTransfer).not.toHaveBeenCalled();
     expect(result).toEqual({result: 'vt'});
   });
 

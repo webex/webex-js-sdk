@@ -122,8 +122,18 @@ const DEFAULT_CACHE_TTL_MINUTES = 5;
  * // Create a cache instance for a specific data type
  * const cache = new PageCache<AddressBookEntry>('AddressBook');
  *
- * // Check if we can use cache (no search/filter parameters)
- * if (cache.canUseCache({ search, filter })) {
+ * // Check if we can use cache for the complete result/response-shape input set
+ * if (
+ *   cache.canUseCache({
+ *     search,
+ *     filter,
+ *     attributes,
+ *     sortBy,
+ *     desktopProfileFilter,
+ *     provisioningView,
+ *     singleObjectResponse,
+ *   })
+ * ) {
  *   const cacheKey = cache.buildCacheKey(orgId, page, pageSize);
  *   const cachedPage = cache.getCachedPage(cacheKey);
  *
@@ -151,7 +161,8 @@ export class PageCache<T> {
 
   /**
    * Checks if cache can be used for the given parameters.
-   * Cache is only used for simple pagination without search/filter/attributes/sort.
+   * Cache is only used for simple pagination without query variants or enabled
+   * result/response-shape flags.
    * @param {CacheValidationParams} params - Parameters to validate
    * @returns {boolean} True if cache can be used
    * @public

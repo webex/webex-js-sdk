@@ -33,7 +33,7 @@ export const DESTINATION_TYPE = {
   DIALNUMBER: 'dialNumber',
   /** Route task to a specific agent */
   AGENT: 'agent',
-  /** Route task to an entry point (supported only for consult operations) */
+  /** Route task to an entry point */
   ENTRYPOINT: 'entryPoint',
 };
 

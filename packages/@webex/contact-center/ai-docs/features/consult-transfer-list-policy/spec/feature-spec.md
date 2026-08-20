@@ -21,13 +21,13 @@ Related context: [package architecture](../../../ARCHITECTURE.md) · [specificat
 | Work type | Defect |
 | Change class | Contract |
 | Source/intake | Developer-approved consult/transfer behavior review and current code/tests |
-| Last verified | 2026-08-19 in a working tree based on `78d9b379db` |
+| Last verified | 2026-08-20 in a working tree based on `9f9c39f7a4` |
 
 ## Applicability
 
 | Condition ID | Status | Evidence or reason | Owned section |
 | --- | --- | --- | --- |
-| `feature.feature_nontrivial` | Applicable | `src/cc.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/services/AddressBook.ts` | Feasibility and risks |
+| `feature.feature_nontrivial` | Applicable | `src/cc.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/services/AddressBook.ts`, `src/services/task/Task.ts` | Feasibility and risks |
 | `feature.feature_interactions` | Applicable | `src/cc.ts` | Interaction and scenario matrix |
 | `feature.touches_data_shapes` | Applicable | `src/types.ts` | Requested data and fields |
 | `feature.backward_compat` | Applicable | `src/types.ts`, `src/index.ts` | Migration expectations |
@@ -37,7 +37,7 @@ Related context: [package architecture](../../../ARCHITECTURE.md) · [specificat
 | `feature.serviceability` | Applicable | `src/cc.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/services/AddressBook.ts` | Serviceability |
 | `feature.doc_obligations` | Applicable | `ai-docs/contact-center-spec.md` | Documentation obligations |
 | `feature.changes_ui` | N/A | The SDK has no user-visible screen or navigation ownership. | UI flow and design |
-| `feature.changes_api` | Applicable | `src/cc.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/services/AddressBook.ts` | API contract delta |
+| `feature.changes_api` | Applicable | `src/cc.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/services/AddressBook.ts`, `src/services/task/Task.ts` | API contract delta |
 | `feature.changes_events` | N/A | No event name, payload, producer, consumer, or delivery order changes. | Event contract delta |
 | `feature.changes_public_api` | Applicable | `src/index.ts`, `src/types.ts` | Public API and semver impact |
 | `feature.cross_package` | Applicable | `src/index.ts` | Cross-package impact |
@@ -72,6 +72,7 @@ There are no open product decisions for this delta.
 - Bypass the base pagination cache for every filter/view/shape flag that changes a result.
 - Keep the existing queue and entry-point method signatures and preserve explicit buddy-agent state callers.
 - Compute ordered, action-specific destination availability once on each Task and expose it through `TaskUIControls`, using Desktop Profile access, media, direction, and outbound queue-transfer capability.
+- Keep direct Entry Point available for eligible voice transfers and translate its public destination type to the backend EPDN value inside `Task.transfer()`.
 
 ### Out of scope
 
@@ -96,6 +97,7 @@ There are no open product decisions for this delta.
 | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/services/AddressBook.ts` | Default policy, existing-parameter overrides, CMS sort serialization, view flags, and cache behavior are asserted. | Used |
 | `src/services/task/state-machine/uiControlsComputer.ts`, `src/services/task/types.ts` | Task UI controls are the existing SDK-owned decision surface and can carry ordered destination availability. | Used |
 | `test/unit/spec/services/task/state-machine/uiControlsComputer.ts`, `test/unit/spec/services/task/TaskFactory.ts` | Profile/media/direction gating, outbound flag path, ordering, and factory propagation are asserted. | Used |
+| `src/services/task/Task.ts`, `src/services/task/constants.ts`, `test/unit/spec/services/task/Task.ts` | Direct entry-point transfer routing is translated to the backend EPDN value and sent through the vteam transfer path. | Used |
 
 ## Requirements
 
@@ -113,6 +115,7 @@ There are no open product decisions for this delta.
 | `SDK-LIST-R-010` | AddressBook must request backend `name,ASC` ordering by default and must accept caller-supplied `sortBy`/`sortOrder` overrides without a consult-specific façade method. | Widgets and other ordinary consumers receive backend-ordered dial numbers out of the box, while consumers with another requirement retain control. | `src/services/AddressBook.ts` | `test/unit/spec/services/AddressBook.ts` | Backend honors the documented CMS sort value. | Present |
 | `SDK-LIST-R-011` | Non-default media eligibility must be supplied through the existing RSQL `filter` parameter; the SDK never interpolates an unvalidated media string into a filter. | Reusing the established filter contract avoids a second media-bearing signature and removes the prior filter-injection path. | `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/types.ts` | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts` | Consumers that construct RSQL filters remain responsible for supplying valid backend syntax. | Present |
 | `SDK-LIST-R-012` | Every Task must expose `uiControls.consultTransferDestinations` with ordered `consult` and `transfer` arrays. Order is Agent, Queue, Dial Number, Entry Point after gating: profile `NONE` removes agent/queue/entry point; voice Consult queue requires `allowConsultToQueue`; voice Transfer queue requires inbound direction or outbound plus `interaction.callProcessingDetails.outdialTransferToQueueEnabled === true`; unknown voice direction does not allow queue Transfer; digital exposes only allowed agent/queue categories. | All consumers need the same destination decision out of the box, without reading raw profile flags, interpreting task payload paths, or calling another policy API. | `src/cc.ts`, `src/services/task/TaskFactory.ts`, `src/services/task/types.ts`, `src/services/task/state-machine/uiControlsComputer.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/TaskFactory.ts`, `test/unit/spec/services/task/state-machine/uiControlsComputer.ts` | Consumers may hide an SDK-allowed category for host UX, but cannot enable one the SDK omitted. | Present |
+| `SDK-LIST-R-013` | A direct `Task.transfer()` to the public `entryPoint` destination must remain available for eligible voice tasks, translate internally to backend destination type `entrypointDialNumber`, and use `vteamTransfer`; callers continue to pass the selected entry-point identifier and do not perform backend translation. | Entry-point transfer is a supported vteam operation, while sending the public value unchanged through `blindTransfer` selects the wrong backend operation and makes SDK-owned controls advertise a failing action. | `src/services/task/Task.ts`, `src/services/task/constants.ts`, `src/services/task/types.ts` | `test/unit/spec/services/task/Task.ts` | The existing entry-point identifier remains a valid fallback when no analyzer identifier is exposed, matching the established transfer policy. | Present |
 
 ## Defect context (when applicable)
 
@@ -152,6 +155,13 @@ There are no open product decisions for this delta.
 - **Evidence:** `src/utils/PageCache.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`.
 - **Acceptance:** Two identical view-filtered or custom-sort calls make two backend requests; repeated default-sorted pagination remains cache-eligible.
 
+### MOD-005 — Direct entry-point transfer routing (`TASK-R-003`, `TASK-R-008`)
+
+- **WHAT**: Keep Entry Point in eligible voice Transfer destination controls. When `Task.transfer()` receives the public `entryPoint` destination, translate it internally to `entrypointDialNumber` and invoke `contact.vteamTransfer`; Queue remains on `vteamTransfer`, while Agent and Dial Number remain on `blindTransfer`.
+- **WHY**: Consumers must be able to follow Task controls directly without knowing backend routing values, and supported entry-point transfers must use the same vteam operation as the established transfer policy.
+- **Evidence:** `src/services/task/Task.ts`, `src/services/task/constants.ts`, `src/services/task/types.ts`, `test/unit/spec/services/task/Task.ts`.
+- **Acceptance:** Task tests assert the exact EPDN vteam payload, no blind-transfer call, and unchanged Queue/Agent dispatch.
+
 ## Acceptance criteria
 
 - [x] Transfer buddy lookup sends state `Available`; Consult omits state; action-based media defaults to telephony (`MOD-003`, `SDK-LIST-R-003`).
@@ -164,6 +174,7 @@ There are no open product decisions for this delta.
 - [x] Default Queue/EntryPoint policy and other view/filter/shape/custom-sort requests bypass PageCache, while default-sorted AddressBook pages remain cacheable (`MOD-004`, `SDK-LIST-R-006`).
 - [x] No SDK façade or service sorts returned arrays in JavaScript (`SDK-LIST-R-007`).
 - [x] Existing queue and entry-point methods retain their record and full-response types and request no partial field projection (`SDK-LIST-R-008`).
+- [x] Direct entry-point transfer remains SDK-advertised for eligible voice tasks and is sent through `vteamTransfer` as `entrypointDialNumber`, with no widgets-side translation (`MOD-005`, `SDK-LIST-R-013`).
 - [x] The package builds and the complete Contact Center unit and style suites pass (`SDK-LIST-R-008`).
 
 ## Scenarios and applicable change views
@@ -176,6 +187,7 @@ There are no open product decisions for this delta.
 | Entry-point list | SDK consumer | Existing method called with page/search and optional filter override | SDK applies the default telephony policy and returns full records unchanged; an explicit existing filter overrides eligibility. | HTTP failure is propagated without a synthetic page. | `SDK-LIST-R-002`, `SDK-LIST-R-009`, `SDK-LIST-R-011` |
 | Dial-number list | SDK consumer | AddressBook page/search supplied | AddressBook applies backend `name,ASC` by default and returns the response unchanged. | A custom sort overrides the default and bypasses the default-order cache. | `SDK-LIST-R-010` |
 | Specialized list consumer | SDK consumer | Uses an existing list method with explicit parameters | Explicit filter/sort/profile inputs override defaults. | No parallel consult/transfer method or projected response type is required. | `SDK-LIST-R-004`, `SDK-LIST-R-005` |
+| Direct entry-point transfer | SDK consumer | Voice Task exposes Entry Point in the Transfer destination array | `Task.transfer({to, destinationType: 'entryPoint'})` sends `{to, destinationType: 'entrypointDialNumber'}` through `vteamTransfer`. | Vteam rejection is measured and rethrown; `blindTransfer` is not invoked. | `SDK-LIST-R-012`, `SDK-LIST-R-013` |
 
 ### Interaction and scenario matrix
 
@@ -188,6 +200,7 @@ There are no open product decisions for this delta.
 | Existing Queue, EntryPoint, or AddressBook | Sort omitted | Backend receives `sort=name,ASC` | Consumer must provide the default itself | `SDK-LIST-R-005`, `SDK-LIST-R-010` |
 | Existing Queue, EntryPoint, or AddressBook | Custom sort supplied | Backend receives the requested field/order | SDK overwrites the caller's explicit behavior | `SDK-LIST-R-004`, `SDK-LIST-R-010` |
 | Backend result | Response received | Array and metadata returned in backend order | JavaScript `.sort()` or consumer-specific reorder | `SDK-LIST-R-007` |
+| Voice Transfer + entry point | Destination selected | SDK maps `entryPoint` to backend `entrypointDialNumber` and calls `vteamTransfer` | Sending `entryPoint` through `blindTransfer` or hiding the supported category | `SDK-LIST-R-013` |
 
 ### API contract delta
 
@@ -197,6 +210,7 @@ There are no open product decisions for this delta.
 | Existing queue list | Apply the telephony filter, profile views, and `name,ASC` by default. | Thin clients call `getQueues`; other consumers use existing parameters for overrides. | Intentional default correction; method and response signature unchanged. | `src/cc.ts`, `src/services/Queue.ts` |
 | Existing entry-point list | Apply the telephony filter, profile views, and `name,ASC` by default. | Thin clients call `getEntryPoints`; other consumers use existing parameters for overrides. | Intentional default correction; method and response signature unchanged. | `src/cc.ts`, `src/services/EntryPoint.ts` |
 | Task destination controls | Add ordered `consultTransferDestinations.consult` and `.transfer` arrays to `TaskUIControls`. | Task consumers render availability directly; no separate policy call or raw profile injection is needed. | Additive public field using the existing destination values; no new standalone public alias. | `src/services/task/types.ts`, `src/services/task/state-machine/uiControlsComputer.ts`, `src/index.ts` |
+| Existing `Task.transfer` entry-point input | Correct internal transport and backend destination translation. | Consumers keep passing `{to, destinationType: 'entryPoint'}` from the Task control array. | Behavioral bug fix; no method or public payload signature change. | `src/services/task/Task.ts`, `src/services/task/constants.ts` |
 
 ### Public API and semver impact
 
@@ -205,6 +219,7 @@ There are no open product decisions for this delta.
 | Existing `getQueues` / `getEntryPoints` | Default request behavior changes; signatures do not | Widgets and other SDK consumers | Behavioral semver review | Pass explicit existing filters/sorts/profile flags when different behavior is required. |
 | `BuddyAgents` | Add action-based alternative while retaining explicit state | Existing and new consumers | Minor | Existing explicit-state calls remain valid. |
 | `TaskUIControls` | Add inline ordered, action-specific destination availability using existing destination values | Task UI consumers | Minor | Read the matching action array; first item is the default category. |
+| `Task.transfer` | Route the existing public `entryPoint` value through vteam transfer as backend `entrypointDialNumber` | Existing voice-task consumers | Patch/behavioral correction | No caller migration; backend translation is SDK-owned. |
 
 ### Cross-package impact
 
@@ -216,9 +231,9 @@ There are no open product decisions for this delta.
 
 ## Contracts delta
 
-**Provides — MODIFIED:** The package keeps the existing queue, entry-point, and buddy-agent methods. Queue and EntryPoint retain established request, record, and full-response signatures while gaining consult/transfer telephony defaults; buddy agents accept action-aware input through `BuddyAgents`; `TaskUIControls` exposes inline ordered action-specific destination availability.
+**Provides — MODIFIED:** The package keeps the existing queue, entry-point, buddy-agent, and Task transfer methods. Queue and EntryPoint retain established request, record, and full-response signatures while gaining consult/transfer telephony defaults; buddy agents accept action-aware input through `BuddyAgents`; `TaskUIControls` exposes inline ordered action-specific destination availability; direct entry-point transfer uses SDK-owned EPDN/vteam translation without changing the public payload.
 
-**Requires — MODIFIED:** Queue, EntryPoint, and AddressBook services require CMS list endpoints to honor the combined sort value; Queue and EntryPoint additionally require the applicable profile/agent view flags. The SDK continues to rely on host-authenticated Webex requests and backend response ordering.
+**Requires — MODIFIED:** Queue, EntryPoint, and AddressBook services require CMS list endpoints to honor the combined sort value; Queue and EntryPoint additionally require the applicable profile/agent view flags. Direct entry-point transfer requires the WCC vteam transfer operation to accept the established `entrypointDialNumber` destination and selected entry-point identifier. The SDK continues to rely on host-authenticated Webex requests and backend response ordering.
 
 No event contract changes.
 
@@ -240,6 +255,7 @@ No event contract changes.
 | Queue search input | Existing page, page size, search, filter, sort, and profile parameters | Consumer-controlled pagination plus optional default overrides. | Existing SDK public type | No second media-bearing request type. |
 | Queue backend query | Default inbound/active/telephony filter, name ascending, desktop-profile/agent/first-level views, no field projection | Full queue result using the default list policy. | Queue service | Fixed filter/views bypass simple-page caching. |
 | Entry-point backend query | Default inbound/active/telephony filter, name ascending, desktop-profile/agent views, no field projection | Full entry-point result using the default list policy. | EntryPoint service | Fixed filter/views bypass simple-page caching. |
+| Direct entry-point transfer payload | Caller-selected `to`; public `entryPoint` translated internally to `entrypointDialNumber` | Invoke the supported vteam transfer operation without consumer-side backend knowledge. | Task service | Translation is transport-only; metrics retain the caller-facing destination type and no new public field is required. |
 | AddressBook backend query | Existing caller-selected fields plus name ascending by default | Backend-ordered dial numbers without a specialized façade. | AddressBook service | A non-default sort bypasses the default-order cache. |
 
 ## Impacted domains
@@ -249,6 +265,7 @@ No event contract changes.
 | `src` | Public façade and exports | SDK maintainers |
 | `src/services` | Queue/EntryPoint/AddressBook wire query construction | SDK maintainers |
 | `src/services/agent` | Existing correlated buddy-agent operation receives façade-derived state | SDK maintainers |
+| `src/services/task` | Direct entry-point transfer dispatch and backend destination translation | SDK maintainers |
 | `src/utils` | Cache eligibility for query variants | SDK maintainers |
 | Webex widgets repository | Thin consumer of the new defaults | Widgets maintainers |
 
@@ -260,6 +277,7 @@ No event contract changes.
 | Simple cache returns a page created under a different view. | `src/utils/PageCache.ts` | Make every result/shape flag cache-disqualifying and retain repeated-call tests. |
 | New EntryPoint/AddressBook ordering defaults affect generic callers. | `src/services/EntryPoint.ts`, `src/services/AddressBook.ts` | Make the correction explicit, retain caller overrides, and test both default and custom order. |
 | A consumer re-sorts backend results. | `test/unit/spec/cc.ts` | Return the delegated response unchanged and document backend order as authoritative. |
+| Direct entry-point transfer is sent to the blind-transfer operation or with the public destination literal. | `src/services/task/Task.ts`, established transfer-policy behavior | Route through `vteamTransfer`, translate to `entrypointDialNumber`, and assert the exact payload. |
 
 ## Error Matrix
 
@@ -270,6 +288,7 @@ No event contract changes.
 | Entry-point HTTP rejection | Service metrics/logging remain active and the error propagates. | Promise rejects; no synthetic paginated result. | `src/services/EntryPoint.ts`, `test/unit/spec/services/EntryPoint.ts` |
 | Missing action-based media | Default to telephony. | Valid request with predictable channel. | `src/cc.ts`, `test/unit/spec/cc.ts` |
 | Non-default media eligibility | Consumer supplies a complete allowlisted RSQL value through the existing `filter` field; the SDK performs no media-string interpolation. | Existing method returns matching full records or propagates the backend error. | `src/services/Queue.ts`, `src/services/EntryPoint.ts`, service tests |
+| Direct entry-point vteam transfer rejection | Preserve existing Task transfer error normalization, failure metrics, and rethrow semantics. | `Task.transfer()` rejects; no fallback blind-transfer request is made. | `src/services/task/Task.ts`, `test/unit/spec/services/task/Task.ts` |
 
 ## Resilience
 
@@ -282,6 +301,7 @@ No event contract changes.
 
 - Existing buddy-agent success/failure metrics retain media and derived state context plus count, without logging agent identities.
 - Existing Queue and EntryPoint request/success/failure metrics continue to cover the default and overridden calls.
+- Existing Task transfer success/failure metrics continue to report the caller-facing entry-point destination while transport uses the backend EPDN value.
 - No new metric taxonomy, PII-bearing log, credential log, trace, or alert is introduced.
 
 ## Operations
@@ -308,6 +328,7 @@ No event contract changes.
 ## Documentation obligations
 
 - This approved delta modifies `CONTACT_CENTER-R-003`, `SERVICES-R-002`, `SERVICES-R-007`, `AGENT-R-003`, `UTILS-R-001`, and `UTILS-R-006` without overwriting protected canonical specs.
+- Direct entry-point routing additionally modifies `TASK-R-003` and `TASK-R-008` through this approved MODIFIED delta; the protected Task canonical spec remains unchanged until a future reconciliation/promotion.
 - The paired widgets feature spec must reference this SDK delta as the owner of default telephony eligibility, ordering, profile views, and cache policy; widgets may pass an existing filter for the active task's non-telephony channel.
 - A future canonical-spec promotion must fold this delta into the routed module specs and reconcile the delta path rather than duplicate the requirements.
 
@@ -315,6 +336,7 @@ No event contract changes.
 
 | Date | Decision or change | Rationale | Owner |
 | --- | --- | --- | --- |
+| 2026-08-20 | Kept Entry Point available for eligible voice transfers and corrected `Task.transfer()` to use vteam routing with internal `entrypointDialNumber` translation. | Agent Desktop and the backend transfer policy support direct entry-point transfer; hiding it would remove valid functionality, while consumers should not know the backend EPDN literal. | Developer + Codex |
 | 2026-08-19 | Kept action/media typing inside `BuddyAgents`, inlined the destination arrays on `TaskUIControls`, removed the new root aliases, and removed `dbId` additions from queue/entry-point records. | The established methods and types already express the required behavior; consumers do not need standalone aliases or an unused record field. | Developer + Codex |
 | 2026-08-19 | Approved this exact MODIFIED delta path. | Preserve protected canonical specs while maintaining spec-currency with the implementation. | Developer |
 | 2026-08-19 | Assigned all reusable eligibility, query, ordering, and cache decisions to the SDK. | Keep widgets thin and prevent cross-consumer behavior drift. | Developer + Codex |
