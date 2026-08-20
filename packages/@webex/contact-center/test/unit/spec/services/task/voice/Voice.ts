@@ -1306,6 +1306,35 @@ describe('Voice Task', () => {
       expect(voice.getWxAppMuted()).toBe(false);
     });
 
+    it('continues queued toggleMute after predecessor failure', async () => {
+      const mockSvc = {
+        muteCall: jest.fn().mockRejectedValue(new Error('mute failed')),
+        unmuteCall: jest.fn().mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      const firstToggle = voice.toggleMute({muted: true});
+      const secondToggle = voice.toggleMute({muted: false});
+
+      await expect(firstToggle).rejects.toThrow('mute failed');
+      await secondToggle;
+
+      expect(mockSvc.muteCall).toHaveBeenCalledTimes(1);
+      expect(mockSvc.unmuteCall).toHaveBeenCalledTimes(1);
+    });
+
     it('transmitDtmf() routes wxApp engaged call to telephony transmitDtmf', async () => {
       const mockSvc = {
         transmitDtmf: jest.fn().mockResolvedValue(undefined),

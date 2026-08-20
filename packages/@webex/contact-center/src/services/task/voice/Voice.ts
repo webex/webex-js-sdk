@@ -31,6 +31,7 @@ import {TaskState, TaskEvent, TaskActionArgs} from '../state-machine';
 import {WrapupData} from '../../config/types';
 import {getConsultMediaResourceId, getIsConferenceInProgress} from '../TaskUtils';
 import AnswerCallOnWebexService from '../../AnswerCallOnWebexService';
+import {isWxAppCallNotFoundError} from '../../wxAppTelephonyUtils';
 import {
   getCallingDeviceDetails,
   getWebexCallingCallId,
@@ -167,17 +168,6 @@ export default class Voice extends Task implements IVoice {
     );
   }
 
-  private static isWxAppCallNotFoundError(error: unknown): boolean {
-    const err = error as {status?: number | string; message?: string};
-    if (err?.status === 400 || err?.status === '400') {
-      return true;
-    }
-
-    const message = String(err?.message ?? error ?? '');
-
-    return message.includes('Call not found') || message.includes('101002');
-  }
-
   private shouldSkipWxAppMuteSync(): boolean {
     if (this.data?.interaction?.isTerminated) {
       return true;
@@ -264,7 +254,7 @@ export default class Voice extends Task implements IVoice {
 
       return this.wxAppMuted;
     } catch (error) {
-      if (!Voice.isWxAppCallNotFoundError(error)) {
+      if (!isWxAppCallNotFoundError(error)) {
         LoggerProxy.error(`Failed to sync wxApp mute from call details: ${error}`, {
           module: CC_FILE,
           method: METHODS.GET_CALL_DETAILS_ON_WEBEX,
@@ -397,7 +387,7 @@ export default class Voice extends Task implements IVoice {
   public async toggleMute(options?: TaskToggleMuteOptions): Promise<void> {
     if (this.enableWxBetterTogether && this.getWebexCallingCallId()) {
       if (this.wxAppMuteToggleInFlight) {
-        await this.wxAppMuteToggleInFlight;
+        await this.wxAppMuteToggleInFlight.catch(() => undefined);
       }
 
       const togglePromise = runWxAppToggleMute(

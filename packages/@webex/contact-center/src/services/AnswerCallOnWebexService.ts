@@ -2,6 +2,7 @@ import LoggerProxy from '../logger-proxy';
 import {CC_FILE, METHODS} from '../constants';
 import {HTTP_METHODS, IHttpResponse, WebexSDK} from '../types';
 import {getErrorDetails} from './core/Utils';
+import {isWxAppCallNotFoundError} from './wxAppTelephonyUtils';
 
 const ANSWER_CALL_ON_WEBEX_FILE = 'AnswerCallOnWebexService';
 
@@ -182,6 +183,14 @@ export default class AnswerCallOnWebexService {
 
       return (response.body ?? {}) as CallDetailsResponse;
     } catch (error) {
+      if (isWxAppCallNotFoundError(error)) {
+        const err =
+          error instanceof Error
+            ? error
+            : new Error(String((error as {message?: string})?.message ?? error));
+        throw markWxAppTelephonyError(err, error);
+      }
+
       LoggerProxy.error(`AnswerCallOnWebexService.getCallDetails failed: ${error}`, {
         module: ANSWER_CALL_ON_WEBEX_FILE,
         method: METHODS.GET_CALL_DETAILS_ON_WEBEX,

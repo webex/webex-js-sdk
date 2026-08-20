@@ -212,5 +212,12 @@ describe('AnswerCallOnWebexService', () => {
       await expect(service.getCallDetails({callId: 'c1'})).rejects.toBeDefined();
       expect(LoggerProxy.error).toHaveBeenCalled();
     });
+
+    it('rejects without error log for expected call-not-found during mute backfill race', async () => {
+      (webex.request as jest.Mock).mockRejectedValue({status: 400, message: 'Call not found'});
+
+      await expect(service.getCallDetails({callId: 'c1'})).rejects.toBeDefined();
+      expect(LoggerProxy.error).not.toHaveBeenCalled();
+    });
   });
 });
