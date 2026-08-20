@@ -1273,8 +1273,12 @@ export async function getXsiActionEndpoint(
   try {
     switch (callingBackend) {
       case CALLING_BACKEND.WXC: {
+        const hydraEndpoint =
+          webex.internal.services._serviceUrls?.hydra ||
+          webex.internal.services.get(webex.internal.services._activeServices.hydra);
+
         const userIdResponse = <WebexRequestPayload>await webex.request({
-          uri: `${webex.internal.services._serviceUrls.hydra}/${XSI_ACTION_ENDPOINT_ORG_URL_PARAM}`,
+          uri: `${hydraEndpoint}/${XSI_ACTION_ENDPOINT_ORG_URL_PARAM}`,
           method: HTTP_METHODS.GET,
         });
 

@@ -1,8 +1,12 @@
 import {assert} from '@webex/test-helper-chai';
-import {NewMetrics, CallDiagnosticLatencies} from '@webex/internal-plugin-metrics';
+import {
+  NewMetrics,
+  CallDiagnosticLatencies,
+  AutomatedUserUtils,
+  Utils,
+} from '@webex/internal-plugin-metrics';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import {Utils} from '@webex/internal-plugin-metrics';
 
 describe('internal-plugin-metrics', () => {
 
@@ -69,6 +73,32 @@ describe('internal-plugin-metrics', () => {
 
       assert.instanceOf(webex.internal.newMetrics.callDiagnosticLatencies, CallDiagnosticLatencies);
     });
+
+    it('checks callDiagnosticMetrics is defined before ready emit', () => {
+      const webex = mockWebex();
+
+      assert.isDefined(webex.internal.newMetrics.callDiagnosticMetrics);
+    });
+
+    it('can call buildClientEventFetchRequestOptions before ready', async () => {
+      const webex = mockWebex();
+      const stub = sinon.stub(
+        webex.internal.newMetrics.callDiagnosticMetrics,
+        'buildClientEventFetchRequestOptions'
+      ).resolves({url: 'https://metrics.example.com'});
+
+      const result = await webex.internal.newMetrics.buildClientEventFetchRequestOptions({
+        name: 'client.alert.displayed',
+        options: {correlationId: 'test-id'},
+      });
+
+      assert.calledOnceWithExactly(stub, {
+        name: 'client.alert.displayed',
+        payload: undefined,
+        options: {correlationId: 'test-id'},
+      });
+      assert.deepEqual(result, {url: 'https://metrics.example.com'});
+    });
   });
 
   describe('new-metrics', () => {
@@ -109,6 +139,13 @@ describe('internal-plugin-metrics', () => {
       webex.internal.newMetrics.isReadyToSubmitBusinessEvents();
       assert.isDefined(webex.internal.newMetrics.businessMetrics);
     })
+
+    it('returns the automated user classification', () => {
+      assert.strictEqual(
+        webex.internal.newMetrics.isAutomatedUser(),
+        AutomatedUserUtils.isAutomatedUser()
+      );
+    });
 
     it('passes the table through to the business metrics', () => {
       assert.isUndefined(webex.internal.newMetrics.businessMetrics)

@@ -1,3 +1,4 @@
+import {v4 as uuidv4} from 'uuid';
 import LoggerProxy from '../logger-proxy';
 import MetricsManager from '../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
@@ -6,10 +7,11 @@ import {
   HTTP_METHODS,
   WebexSDK,
   IHttpResponse,
-  TranscriptAction,
   AIAssistantEventType,
   AIAssistantEventName,
   HistoricTranscriptsResponse,
+  RealTimeAssistanceParams,
+  RealTimeAssistanceUserActionParams,
 } from '../types';
 import {getErrorDetails} from './core/Utils';
 import {
@@ -27,7 +29,7 @@ import {AIFeatureFlags} from './config/types';
 export class ApiAIAssistant {
   private webex: WebexSDK;
   private metricsManager: MetricsManager;
-  public aiFeature: AIFeatureFlags;
+  private aiFeature: AIFeatureFlags;
 
   constructor(webex: WebexSDK) {
     this.webex = webex;
@@ -76,20 +78,24 @@ export class ApiAIAssistant {
    * @param interactionId - interaction/conversation identifier
    * @param eventType - the type of event (e.g. 'CUSTOM_EVENT')
    * @param eventName - the name of the event (e.g. 'GET_TRANSCRIPTS')
-   * @param action - action within eventDetails (e.g. 'START' or 'STOP')
+   * @param eventMetaData - event-specific fields to include in eventDetails.data
+   * @param languageCode - language code within eventDetails.data
+   * @param trackingId - tracking identifier within eventDetails.data
    */
   public async sendEvent(
     agentId: string,
     interactionId: string,
     eventType: AIAssistantEventType,
     eventName: AIAssistantEventName,
-    action: TranscriptAction
+    eventMetaData?: Record<string, unknown>,
+    languageCode?: string,
+    trackingId?: string
   ): Promise<Record<string, unknown>> {
     LoggerProxy.info('Sending event', {
       module: CC_FILE,
       method: METHODS.SEND_EVENT,
       interactionId,
-      data: {eventType, eventName, action},
+      data: {eventType, eventName, eventMetaData},
     });
     this.metricsManager.timeEvent([
       METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_SUCCESS,
@@ -110,9 +116,11 @@ export class ApiAIAssistant {
           eventName,
           eventDetails: {
             data: {
+              ...eventMetaData,
               interactionId,
-              action,
               actionTimeStamp: String(Date.now()),
+              languageCode,
+              trackingId,
             },
           },
         },
@@ -120,7 +128,7 @@ export class ApiAIAssistant {
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_SUCCESS,
-        {agentId, orgId, interactionId, eventType, eventName, action},
+        {agentId, orgId, interactionId, eventType, eventName},
         ['operational']
       );
 
@@ -132,13 +140,199 @@ export class ApiAIAssistant {
           interactionId,
           eventType,
           eventName,
-          action,
           error: error instanceof Error ? error.message : String(error),
         },
         ['operational']
       );
 
       const {error: detailedError} = getErrorDetails(error, METHODS.SEND_EVENT, CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Requests real-time assistance for an interaction.
+   *
+   * @param params - Real-time assistance request parameters
+   * @returns HTTP response body from the AI Assistant event API
+   * @public
+   */
+  public async getRealTimeAssistance(params: RealTimeAssistanceParams) {
+    const {agentId, interactionId, context} = params;
+    const trimmedContext = context?.trim();
+    const languageCode = params.languageCode ?? 'en';
+    const trackingId = `WX_CC_SDK_${uuidv4()}`;
+    const eventName = trimmedContext
+      ? AIAssistantEventName.ADD_SUGGESTIONS_EXTRA_CONTEXT
+      : AIAssistantEventName.GET_SUGGESTIONS;
+
+    const loggerContext = {
+      module: CC_FILE,
+      method: METHODS.GET_REAL_TIME_ASSISTANCE,
+      interactionId,
+      trackingId,
+      data: {eventName},
+    };
+
+    LoggerProxy.info('Requesting real-time assistance', loggerContext);
+
+    this.metricsManager.timeEvent([
+      METRIC_EVENT_NAMES.AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_SUCCESS,
+      METRIC_EVENT_NAMES.AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_FAILED,
+    ]);
+
+    try {
+      if (!this.aiFeature?.suggestedResponses?.enable) {
+        const {error: detailedError} = getErrorDetails(
+          new Error('SUGGESTED_RESPONSES_NOT_ENABLED'),
+          METHODS.GET_REAL_TIME_ASSISTANCE,
+          CC_FILE
+        );
+        throw detailedError;
+      }
+
+      const orgId = this.webex.credentials.getOrgId();
+
+      const response = await this.sendEvent(
+        agentId,
+        interactionId,
+        AIAssistantEventType.CUSTOM_EVENT,
+        eventName,
+        trimmedContext !== undefined ? {context: trimmedContext} : undefined,
+        languageCode,
+        trackingId
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_SUCCESS,
+        {
+          agentId,
+          orgId,
+          interactionId,
+          eventName,
+          trackingId,
+          context,
+        },
+        ['operational']
+      );
+      LoggerProxy.log('Real-time assistance request succeeded', loggerContext);
+
+      return response;
+    } catch (error) {
+      LoggerProxy.error('Real-time assistance request failed', {...loggerContext, error});
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_FAILED,
+        {
+          agentId,
+          interactionId,
+          trackingId,
+          eventName,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        ['operational']
+      );
+
+      const {error: detailedError} = getErrorDetails(
+        error,
+        METHODS.GET_REAL_TIME_ASSISTANCE,
+        CC_FILE
+      );
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Sends user action feedback for a real-time assistance adaptive card.
+   *
+   * @param params - Real-time assistance user action parameters
+   * @returns HTTP response body from the AI Assistant event API
+   * @public
+   */
+  public async sendRealTimeAssistanceUserAction(
+    params: RealTimeAssistanceUserActionParams
+  ): Promise<Record<string, unknown>> {
+    const {agentId, interactionId, adaptiveCardId, actionId} = params;
+    const actionType = 'Action.Submit';
+    const languageCode = params.languageCode ?? 'en';
+    const trackingId = `WX_CC_SDK_${uuidv4()}`;
+
+    const loggerContext = {
+      module: CC_FILE,
+      method: METHODS.SEND_REAL_TIME_ASSISTANCE_USER_ACTION,
+      interactionId,
+      trackingId,
+      data: {actionId, adaptiveCardId},
+    };
+
+    LoggerProxy.info('Sending real-time assistance user action', loggerContext);
+
+    this.metricsManager.timeEvent([
+      METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_SUCCESS,
+      METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_FAILED,
+    ]);
+
+    try {
+      if (!this.aiFeature?.suggestedResponses?.enable) {
+        const {error: detailedError} = getErrorDetails(
+          new Error('SUGGESTED_RESPONSES_NOT_ENABLED'),
+          METHODS.SEND_REAL_TIME_ASSISTANCE_USER_ACTION,
+          CC_FILE
+        );
+        throw detailedError;
+      }
+
+      const orgId = this.webex.credentials.getOrgId();
+      const response = await this.sendEvent(
+        agentId,
+        interactionId,
+        AIAssistantEventType.CUSTOM_EVENT,
+        AIAssistantEventName.SUGGESTED_RESPONSES_USER_ACTION,
+        {
+          adaptiveCardId,
+          userAction: {
+            actionType,
+            actionId,
+          },
+        },
+        languageCode,
+        trackingId
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_SUCCESS,
+        {
+          agentId,
+          orgId,
+          interactionId,
+          adaptiveCardId,
+          actionId,
+          trackingId,
+        },
+        ['operational']
+      );
+      LoggerProxy.log('Real-time assistance user action sent', loggerContext);
+
+      return response;
+    } catch (error) {
+      LoggerProxy.error('Real-time assistance user action failed', {...loggerContext, error});
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_FAILED,
+        {
+          agentId,
+          interactionId,
+          adaptiveCardId,
+          actionId,
+          trackingId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        ['operational']
+      );
+
+      const {error: detailedError} = getErrorDetails(
+        error,
+        METHODS.SEND_REAL_TIME_ASSISTANCE_USER_ACTION,
+        CC_FILE
+      );
       throw detailedError;
     }
   }
@@ -201,6 +395,7 @@ export class ApiAIAssistant {
         },
         ['operational']
       );
+
       if (error instanceof Error) {
         throw error;
       }

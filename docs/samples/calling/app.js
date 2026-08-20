@@ -17,6 +17,8 @@ let callingClient;
 let correlationId;
 let callHistory;
 let voicemail;
+let voicemailInitPromise;
+let callRecording;
 let contacts;
 let callSettings;
 let line;
@@ -64,6 +66,10 @@ const transferTarget = document.getElementById('transfer_target');
 const holdResumeElm = document.getElementById('hold_button');
 const callHistoryElm = document.querySelector('#Call-history');
 const voicemailElm = document.querySelector('#Voice-mail');
+const callRecordingElm = document.querySelector('#Call-recording');
+const recordingDataElm = document.querySelector('#recording-data');
+const recordingSessionDataElm = document.querySelector('#recording-session-data');
+const recordingEventsElm = document.querySelector('#recording-events');
 const registrationForm = document.querySelector('#auth-registration');
 const serviceIndicator = document.querySelector('#ServiceIndicator');
 const serviceDomain = document.querySelector('#ServiceDomain');
@@ -122,6 +128,17 @@ const getOptionValue = (select) => {
 
   return selected ? selected.value : undefined;
 };
+
+async function ensureVoicemailInitialized() {
+  if (!voicemailInitPromise) {
+    voicemailInitPromise = Promise.resolve(voicemail.init()).catch((err) => {
+      voicemailInitPromise = undefined;
+      throw err;
+    });
+  }
+
+  return voicemailInitPromise;
+}
 
 async function uploadLogs() {
     try {
@@ -298,6 +315,7 @@ async function initCalling(e) {
     callHistory: true,
     callSettings: true,
     voicemail: true,
+    callRecording: true,
   }
 
   const loggerConfig = {
@@ -328,6 +346,9 @@ async function initCalling(e) {
     },
     serviceData,
     jwe: jwtTokenForDestElm.value,
+    iceGathering: {
+      reduceTimeoutForIceLite: true,
+    },
   };
 
   if (callingClientConfig.discovery.country === 'Country') {
@@ -341,7 +362,7 @@ async function initCalling(e) {
   const callingConfig = {
     clientConfig : clientConfig,
     callingClientConfig: callingClientConfig,
-    logger:loggerConfig
+    logger:loggerConfig,
   }
 
   calling = await Calling.init({webexConfig, callingConfig});
@@ -350,9 +371,11 @@ async function initCalling(e) {
     console.log('Authentication :: Calling Ready');
     callHistoryElm.disabled = false;
     voicemailElm.disabled = false;
+    callRecordingElm.disabled = false;
     authStatusElm.innerText = 'Saved access token!';
     callHistoryElm.classList.add('btn--green');
     voicemailElm.classList.add('btn--green');
+    callRecordingElm.classList.add('btn--green');
     dndButton.classList.add('btn--red');
     dndButton.innerHTML = 'Fetching DND Status';
     dndButton.disabled = true;
@@ -384,6 +407,11 @@ async function initCalling(e) {
 
       if (window.voicemail === undefined) {
         voicemail = window.voicemail = calling.voicemailClient;
+      }
+
+      if (window.callRecording === undefined && calling.callRecordingClient !== undefined) {
+        callRecording = window.callRecording = calling.callRecordingClient;
+        registerCallRecordingListeners();
       }
 
       if(callingClient) fetchLines();
@@ -971,7 +999,7 @@ function answer() {
 function renderContacts(contacts, groupIdDisplayNameMap) {
   contactsTable.innerHTML = contacts.reduce((acc, contact,i) => {
     const parentGroups = [];
-    contact.groups.forEach(groupId => parentGroups.push(groupIdDisplayNameMap[groupId]));
+    contact.groups?.forEach(groupId => parentGroups.push(groupIdDisplayNameMap[groupId]));
 
     const phoneNumbers = contact.phoneNumbers?.reduce((acc, currValue)=> acc + `<p>${currValue.type}:${currValue.value}</p>`, '');
     return acc +
@@ -1082,10 +1110,166 @@ async function createCallHistory() {
 }
 
 /**
+ * Render the list of recordings into the Call Recording table.
+ *
+ * @param {Array} recordings - Array of recording objects.
+ */
+function renderRecordingsTable(recordings) {
+  const recordingTable = document.getElementById('callRecordingTableId');
+  const recordingHeader = document.getElementById('callRecordingHeaderId');
+
+  recordingHeader.innerHTML = `<tr>
+    <th>#</th>
+    <th>Recording Id</th>
+    <th>Topic</th>
+    <th>Status</th>
+    <th>Call Session ID</th>
+    <th>Service Type</th>
+    <th>Created</th>
+    <th>Duration (s)</th>
+  </tr>`;
+  recordingTable.innerHTML = '';
+
+  (recordings || []).forEach((recording, index) => {
+    recordingTable.innerHTML += `<tr>
+      <td>${index + 1}</td>
+      <td>${recording.id ?? 'NA'}</td>
+      <td>${recording.topic ?? 'NA'}</td>
+      <td>${recording.status ?? 'NA'}</td>
+      <td>${recording.serviceData?.callSessionId ?? 'NA'}</td>
+      <td>${recording.serviceType ?? 'NA'}</td>
+      <td>${recording.createTime ?? 'NA'}</td>
+      <td>${recording.durationSeconds ?? 'NA'}</td>
+    </tr>`;
+  });
+}
+
+/**
+ * Subscribe to typed Call Recording events and log them in the events panel.
+ */
+function registerCallRecordingListeners() {
+  if (!callRecording) {
+    return;
+  }
+
+  const logEvent = (label) => (event) => {
+    console.log(`Call Recording event :: ${label}`, event);
+    recordingEventsElm.innerText = `${label}: ${JSON.stringify(event, null, 2)}\n${recordingEventsElm.innerText}`;
+  };
+
+  callRecording.on('callRecording:created', logEvent('callRecording:created'));
+  callRecording.on('callRecording:updated', logEvent('callRecording:updated'));
+  callRecording.on('callRecording:deleted', logEvent('callRecording:deleted'));
+}
+
+/**
+ * Fetch the list of recordings for the logged-in user.
+ */
+async function fetchRecordings() {
+  try {
+    callRecordingElm.disabled = true;
+    const response = await callRecording.getCallRecording({type: 'list'});
+
+    console.log('Call Recording list response ', response);
+    renderRecordingsTable(response.data?.recordings);
+  } catch (err) {
+    console.log(`Call Recording list error response ${err}`);
+  } finally {
+    callRecordingElm.disabled = false;
+  }
+}
+
+/**
+ * Fetch a single recording by its UUID.
+ */
+async function fetchRecording() {
+  const recordingId = document.getElementById('recordingId').value;
+
+  try {
+    const response = await callRecording.getCallRecording({type: 'detail', recordingId});
+
+    console.log('Call Recording get response ', response);
+    recordingDataElm.innerText = JSON.stringify(response.data?.recording ?? response.data, null, 2);
+  } catch (err) {
+    console.log(`Call Recording get error response ${err}`);
+    recordingDataElm.innerText = `${err}`;
+  }
+}
+
+/**
+ * Fetch metadata for a single recording by its UUID.
+ */
+async function fetchRecordingMetadata() {
+  const recordingId = document.getElementById('recordingId').value;
+
+  try {
+    const response = await callRecording.getCallRecording({type: 'metadata', recordingId});
+
+    console.log('Call Recording metadata response ', response);
+    recordingDataElm.innerText = JSON.stringify(response.data?.metadata ?? response.data, null, 2);
+  } catch (err) {
+    console.log(`Call Recording metadata error response ${err}`);
+    recordingDataElm.innerText = `${err}`;
+  }
+}
+
+/**
+ * Permanently delete a single recording by its id. Per the API this cannot be undone.
+ */
+async function removeRecording() {
+  const recordingId = document.getElementById('recordingId').value;
+
+  if (!recordingId) {
+    recordingDataElm.innerText = 'Please enter a recording id to delete.';
+
+    return;
+  }
+
+  // eslint-disable-next-line no-alert
+  if (!window.confirm(`Permanently delete recording ${recordingId}? This cannot be undone.`)) {
+    return;
+  }
+
+  try {
+    const response = await callRecording.deleteRecording(recordingId);
+
+    console.log('Call Recording delete response ', response);
+    recordingDataElm.innerText = JSON.stringify(response, null, 2);
+
+    // Refresh the list so the deleted recording drops out of the table.
+    await fetchRecordings();
+  } catch (err) {
+    console.log(`Call Recording delete error response ${err}`);
+    recordingDataElm.innerText = `${err}`;
+  }
+}
+
+/**
+ * Fetch all recordings that belong to a given call session id.
+ */
+async function fetchRecordingsBySession() {
+  const callSessionId = document.getElementById('callSessionId').value;
+
+  try {
+    const response = await callRecording.getCallRecording({type: 'byCallSession', callSessionId});
+
+    console.log('Call Recording by session response ', response);
+    recordingSessionDataElm.innerText = JSON.stringify(response.data, null, 2);
+  } catch (err) {
+    console.log(`Call Recording by session error response ${err}`);
+    recordingSessionDataElm.innerText = `${err}`;
+  }
+}
+
+/**
  * Function to use Voice Mail API's.
  */
-async function createVoiceMail() {
-  await voicemail.init();
+async function createVoiceMail(
+  offset = voicemailOffset,
+  offsetLimit = voicemailOffsetLimit,
+  runDemoActions = true
+) {
+  await ensureVoicemailInitialized();
   const backendConnector = calling.webex.internal.device.callingBehavior;
 
   if (backendConnector === 'NATIVE_SIP_CALL_TO_UCM') {
@@ -1093,8 +1277,8 @@ async function createVoiceMail() {
 
     try {
       const getVoicemailListResponse = await voicemail.getVoicemailList(
-        voicemailOffset,
-        voicemailOffsetLimit,
+        offset,
+        offsetLimit,
         voicemailSort,
         true
       );
@@ -1195,12 +1379,11 @@ async function createVoiceMail() {
     }
   } else {
     voicemailElm.disabled = true;
-    const logger = {level: 'info'};
 
     try {
       const getVoicemailListResponse = await voicemail.getVoicemailList(
-        voicemailOffset,
-        voicemailOffsetLimit,
+        offset,
+        offsetLimit,
         voicemailSort,
         true
       );
@@ -1208,7 +1391,7 @@ async function createVoiceMail() {
       const voicemailList = getVoicemailListResponse.data.voicemailList;
 
       console.log('Voice mail list response', getVoicemailListResponse.data.voicemailList);
-      const vmLength = voicemailList.voicemailList.length;
+      const vmLength = voicemailList.length;
 
       const voicemailTable = document.getElementById('voicemailTable');
 
@@ -1245,7 +1428,7 @@ async function createVoiceMail() {
         const tbody = document.createElement('tbody');
 
         for (let index = 0; index < vmLength; index += 1) {
-          const vm = voiceMailList[index];
+          const vm = voicemailList[index];
           const tr = document.createElement('tr');
           let td = document.createElement('td');
 
@@ -1281,7 +1464,7 @@ async function createVoiceMail() {
           table.appendChild(tbody);
         }
         for (let index = 0; index < vmLength; index += 1) {
-          const vm = voiceMailList[index];
+          const vm = voicemailList[index];
 
           if (vm.read === 'true') {
             this.markAsRead(index);
@@ -1295,7 +1478,7 @@ async function createVoiceMail() {
 
       voicemailElm.disabled = false;
 
-      if (getVoicemailListResponse?.data.voicemailList.length) {
+      if (runDemoActions && getVoicemailListResponse?.data.voicemailList.length) {
         const messageId = getVoicemailListResponse.data.voicemailList[0].messageId.$;
 
         const getVoicemailContentResponse = await voicemail.getVoicemailContent(messageId);
@@ -1474,20 +1657,18 @@ async function resolveContactInfo() {
   return null;
 }
 
-function fetchVoicemailList() {
+async function fetchVoicemailList() {
   const offset = document.getElementById('offset').value;
   const offsetLength = document.getElementById('offsetLength').value;
 
   // eslint-disable-next-line prefer-template
   console.log('Fetching voicemails with offset and offsetLength ', offset, offsetLength);
 
-  const response = voicemail.getVoicemailList(
+  await createVoiceMail(
     parseInt(offset, 10),
     parseInt(offsetLength, 10),
-    voicemailSort
+    false
   );
-
-  console.log(response);
 }
 
 /**
@@ -1510,8 +1691,9 @@ async function fetchVoicemailSummary() {
   // eslint-disable-next-line prefer-template
   if (window.voicemail === undefined) {
     voicemail = window.voicemail = CreateVoicemailClient(webex, logger);
-    voicemail.init();
   }
+
+  await ensureVoicemailInitialized();
 
   const summary = await voicemail.getVoicemailSummary();
   const summaryStr =JSON.stringify(summary.data.voicemailSummary, undefined, 2);

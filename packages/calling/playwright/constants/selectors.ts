@@ -60,6 +60,14 @@ export const CALLING_SELECTORS = {
   CALL_HISTORY_HEADER: '#callHistoryHeaderId',
   CALL_HISTORY_TABLE_BODY: '#callHistoryTableId',
 
+  // Voicemail list
+  VOICEMAIL_BTN: '#Voice-mail',
+  VOICEMAIL_TABLE: '#voicemailTable',
+  VOICEMAIL_TABLE_ROWS: '#voicemailTable tbody tr',
+  VOICEMAIL_OFFSET_INPUT: '#offset',
+  VOICEMAIL_OFFSET_LIMIT_INPUT: '#offsetLength',
+  VOICEMAIL_FETCH_LIST_BTN: '#fetchVoicemailListButton',
+
   END_BTN: '#end',
 
   // Call Settings
