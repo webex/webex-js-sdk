@@ -326,10 +326,12 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
     const data = {
       id: `${this.seqNum}`,
       type: 'publishRequest',
-      recipients: {
-        // @ts-ignore
-        route: binding,
-      },
+      recipients: [
+        {
+          // @ts-ignore
+          route: binding,
+        },
+      ],
       headers: {
         to: strokeData.toUserId,
       },
