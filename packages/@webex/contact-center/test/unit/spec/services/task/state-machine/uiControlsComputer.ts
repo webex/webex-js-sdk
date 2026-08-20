@@ -2674,7 +2674,7 @@ const WX_APP_DEVICE = {
 
 function createWxAppContext(
   overrides: Partial<{
-    enableAnswerOnWebex: boolean;
+    enableWxBetterTogether: boolean;
     wxAppAnswerPending: boolean;
     wxAppAcceptInFlight: boolean;
   }> = {}
@@ -2711,7 +2711,7 @@ function createWxAppContext(
       channelType: TASK_CHANNEL_TYPE.VOICE,
       isRecordingEnabled: false,
       agentId: 'agent-1',
-      enableAnswerOnWebex: overrides.enableAnswerOnWebex ?? true,
+      enableWxBetterTogether: overrides.enableWxBetterTogether ?? true,
       wxAppAnswerPending: overrides.wxAppAnswerPending,
       wxAppAcceptInFlight: overrides.wxAppAcceptInFlight,
     },
@@ -2720,7 +2720,7 @@ function createWxAppContext(
 }
 
 describe('uiControlsComputer wxApp thick-client answer (WXCC-6026)', () => {
-  describe('accept and decline when wxApp offer and enableAnswerOnWebex=true', () => {
+  describe('accept and decline when wxApp offer and enableWxBetterTogether=true', () => {
     it('accept is visible and enabled in OFFERED state with wxApp participant', () => {
       const ctx = createWxAppContext();
       const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
@@ -2810,9 +2810,9 @@ describe('uiControlsComputer wxApp thick-client answer (WXCC-6026)', () => {
     });
   });
 
-  describe('when enableAnswerOnWebex=false', () => {
+  describe('when enableWxBetterTogether=false', () => {
     it('accept falls back to standard WebRTC logic (disabled for non-WebRTC)', () => {
-      const ctx = createWxAppContext({enableAnswerOnWebex: false});
+      const ctx = createWxAppContext({enableWxBetterTogether: false});
       const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
 
       // Without WebRTC variant, accept should be visible but disabled per existing logic
@@ -2821,15 +2821,15 @@ describe('uiControlsComputer wxApp thick-client answer (WXCC-6026)', () => {
       expect(controls.main.accept.isEnabled).toBe(false);
     });
 
-    it('keypad is always disabled when enableAnswerOnWebex=false', () => {
-      const ctx = createWxAppContext({enableAnswerOnWebex: false});
+    it('keypad is always disabled when enableWxBetterTogether=false', () => {
+      const ctx = createWxAppContext({enableWxBetterTogether: false});
       const controls = computeUIControls(TaskState.CONNECTED, ctx, ctx.taskData);
 
       expect(controls.main.keypad).toEqual({isVisible: false, isEnabled: false});
     });
 
-    it('mute is disabled for non-WebRTC when enableAnswerOnWebex=false', () => {
-      const ctx = createWxAppContext({enableAnswerOnWebex: false});
+    it('mute is disabled for non-WebRTC when enableWxBetterTogether=false', () => {
+      const ctx = createWxAppContext({enableWxBetterTogether: false});
       const controls = computeUIControls(TaskState.CONNECTED, ctx, ctx.taskData);
 
       expect(controls.main.mute).toEqual({isVisible: false, isEnabled: false});
@@ -2919,7 +2919,7 @@ describe('uiControlsComputer wxApp thick-client answer (WXCC-6026)', () => {
         taskData,
         uiControlConfig: {
           ...createVoiceContext().uiControlConfig,
-          enableAnswerOnWebex: true,
+          enableWxBetterTogether: true,
         },
       });
 
@@ -2930,7 +2930,7 @@ describe('uiControlsComputer wxApp thick-client answer (WXCC-6026)', () => {
       expect(controls.consult.mute).toEqual({isVisible: false, isEnabled: false});
     });
 
-    it('keeps BROWSER consult mute enabled when enableAnswerOnWebex is true and wxApp is not engaged', () => {
+    it('keeps BROWSER consult mute enabled when enableWxBetterTogether is true and wxApp is not engaged', () => {
       const consultedTaskData = createConsultedAgentInconsistentTaskData();
       const consultedContext = createVoiceContext({
         consultInitiator: false,
@@ -2939,7 +2939,7 @@ describe('uiControlsComputer wxApp thick-client answer (WXCC-6026)', () => {
           ...createVoiceContext().uiControlConfig,
           agentId: 'agent-2',
           voiceVariant: VOICE_VARIANT.WEBRTC,
-          enableAnswerOnWebex: true,
+          enableWxBetterTogether: true,
         },
       });
 

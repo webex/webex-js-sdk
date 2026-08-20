@@ -5,6 +5,7 @@ import {getErrorDetails} from '../../core/Utils';
 import {TaskData, TaskToggleMuteOptions, TaskTransmitDtmfOptions} from '../types';
 import {TaskState} from '../state-machine';
 import {
+  decodedLineOwnerId,
   getWebexCallingDeviceDetailsForAgent,
   WebexCallingDeviceDetails,
 } from '../WebexCallingUtils';
@@ -16,7 +17,7 @@ type WxAppParticipant = {
 };
 
 export type WxAppVoiceDependencies = {
-  enableAnswerOnWebex: boolean;
+  enableWxBetterTogether: boolean;
   answerCallOnWebexService?: AnswerCallOnWebexService;
   agentId?: string;
   getTaskData: () => TaskData;
@@ -81,7 +82,7 @@ export function getCallingDeviceDetails(
 }
 
 export function isWebexAppCallingOffer(deps: WxAppVoiceDependencies): boolean {
-  if (!deps.enableAnswerOnWebex) {
+  if (!deps.enableWxBetterTogether) {
     return false;
   }
 
@@ -122,9 +123,20 @@ export function getWxAppLineOwnerId(deps: WxAppVoiceDependencies): string | unde
   return typeof lineOwnerId === 'string' && lineOwnerId.trim() !== '' ? lineOwnerId : undefined;
 }
 
+export function resolveWxAppLineOwnerId(
+  deps: WxAppVoiceDependencies,
+  override?: string
+): string | undefined {
+  if (typeof override === 'string' && override.trim() !== '') {
+    return override;
+  }
+
+  return decodedLineOwnerId(getWxAppLineOwnerId(deps));
+}
+
 function assertWxAppEnabled(deps: WxAppVoiceDependencies): void {
-  if (!deps.enableAnswerOnWebex) {
-    throw new Error('enableAnswerOnWebex is disabled');
+  if (!deps.enableWxBetterTogether) {
+    throw new Error('enableWxBetterTogether is disabled');
   }
 
   if (!deps.answerCallOnWebexService) {
@@ -150,7 +162,7 @@ export async function acceptOnWebex(
   await deps.answerCallOnWebexService.answerCall({
     callId: details.deviceCallId,
     endpointId: details.deviceId,
-    lineOwnerId: options?.lineOwnerId,
+    lineOwnerId: resolveWxAppLineOwnerId(deps, options?.lineOwnerId),
   });
 }
 
@@ -171,7 +183,7 @@ export async function rejectOnWebex(
 
   await deps.answerCallOnWebexService.rejectCall({
     callId: details.deviceCallId,
-    lineOwnerId: options?.lineOwnerId,
+    lineOwnerId: resolveWxAppLineOwnerId(deps, options?.lineOwnerId),
   });
 }
 
@@ -191,7 +203,10 @@ export async function toggleMuteOnWebex(
     ? deps.answerCallOnWebexService.muteCall.bind(deps.answerCallOnWebexService)
     : deps.answerCallOnWebexService.unmuteCall.bind(deps.answerCallOnWebexService);
 
-  await request({callId, lineOwnerId: options?.lineOwnerId});
+  await request({
+    callId,
+    lineOwnerId: resolveWxAppLineOwnerId(deps, options?.lineOwnerId),
+  });
   deps.setWxAppMuted(targetMuted);
 }
 
@@ -219,7 +234,7 @@ export async function transmitDtmfOnWebex(
   await deps.answerCallOnWebexService.transmitDtmf({
     callId,
     dtmf: options.dtmf,
-    lineOwnerId: options.lineOwnerId,
+    lineOwnerId: resolveWxAppLineOwnerId(deps, options.lineOwnerId),
   });
 }
 

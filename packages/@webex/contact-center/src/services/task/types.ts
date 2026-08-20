@@ -1222,7 +1222,7 @@ export type InteractionUIControls = {
   mergeToConference: TaskUIControlState;
   wrapup: TaskUIControlState;
   switch: TaskUIControlState;
-  keypad: TaskUIControlState;
+  keypad?: TaskUIControlState;
 };
 
 /** Options for {@link ITask.toggleMute} — wxApp engaged calls use `muted` for target state. */
@@ -1710,11 +1710,13 @@ export interface ITask extends IEventEmitter {
   /**
    * Update wxApp thick-client answer flag at runtime.
    * Voice tasks override to refresh uiControls; other channel types no-op.
+   * @internal
    */
-  setEnableAnswerOnWebex(enabled: boolean): void;
+  setEnableWxBetterTogether(enabled: boolean): void;
 
   /**
    * Apply wxApp mute state from Mercury sync or call-details fetch.
+   * @internal
    */
   applyWxAppMuteStateFromSync(incomingCallId: string, muted: boolean): void;
 
@@ -1952,7 +1954,7 @@ export interface ITask extends IEventEmitter {
   /**
    * Toggles mute/unmute for the active call.
    * WebRTC tasks toggle the local stream; wxApp engaged tasks route to telephony mute REST when
-   * `enableAnswerOnWebex` is active.
+   * `enableWxBetterTogether` is active.
    * @param options - Optional target mute state (`muted`) for wxApp; ignored for WebRTC toggle.
    * @returns Promise<void>
    * @example
@@ -1964,7 +1966,7 @@ export interface ITask extends IEventEmitter {
   toggleMute(options?: TaskToggleMuteOptions): Promise<void>;
 
   /**
-   * Sends in-call DTMF tones for wxApp engaged telephony tasks when `enableAnswerOnWebex` is active.
+   * Sends in-call DTMF tones for wxApp engaged telephony tasks when `enableWxBetterTogether` is active.
    * @param options - DTMF digit(s) and optional shared-line owner id.
    * @returns Promise<void>
    * @example
@@ -2024,7 +2026,7 @@ export type VoiceUIControlOptions = {
   isEndConsultEnabled?: boolean;
   voiceVariant?: VoiceVariant;
   isRecordingEnabled?: boolean;
-  enableAnswerOnWebex?: boolean;
+  enableWxBetterTogether?: boolean;
   answerCallOnWebexService?: import('../AnswerCallOnWebexService').default;
 };
 

@@ -57,7 +57,7 @@ function makeDeps(overrides: Partial<WxAppVoiceDeps> = {}): WxAppVoiceDeps {
   let muted = false;
 
   return {
-    enableAnswerOnWebex: true,
+    enableWxBetterTogether: true,
     answerCallOnWebexService: makeMockService(),
     agentId: 'agent-1',
     getTaskData: () => makeTaskData(),
@@ -84,12 +84,12 @@ function makeLifecycle(overrides: Partial<WxAppVoiceLifecycle> = {}): WxAppVoice
 }
 
 describe('isWebexAppCallingOffer', () => {
-  it('returns true when enableAnswerOnWebex is true, state is OFFERED, and wxApp device details exist', () => {
+  it('returns true when enableWxBetterTogether is true, state is OFFERED, and wxApp device details exist', () => {
     expect(isWebexAppCallingOffer(makeDeps())).toBe(true);
   });
 
-  it('returns false when enableAnswerOnWebex is false', () => {
-    expect(isWebexAppCallingOffer(makeDeps({enableAnswerOnWebex: false}))).toBe(false);
+  it('returns false when enableWxBetterTogether is false', () => {
+    expect(isWebexAppCallingOffer(makeDeps({enableWxBetterTogether: false}))).toBe(false);
   });
 
   it('returns false when task state is not OFFERED', () => {
@@ -198,8 +198,31 @@ describe('acceptOnWebex', () => {
     );
   });
 
-  it('throws when enableAnswerOnWebex is false', async () => {
-    const deps = makeDeps({enableAnswerOnWebex: false});
+  it('defaults lineOwnerId from encoded participant owner when not provided', async () => {
+    const encodedOwner = Buffer.from('people/lo-decoded').toString('base64');
+    const mockSvc = makeMockService();
+    const deps = makeDeps({
+      answerCallOnWebexService: mockSvc,
+      getTaskData: () =>
+        makeTaskData({
+          interaction: {
+            participants: {
+              'agent-1': {id: 'agent-1', ...WX_APP_DEVICE, lineOwnerId: encodedOwner},
+              'customer-1': {id: 'customer-1', pType: 'Customer'},
+            },
+          } as any,
+        }),
+    });
+
+    await acceptOnWebex(deps);
+
+    expect(mockSvc.answerCall).toHaveBeenCalledWith(
+      expect.objectContaining({lineOwnerId: 'lo-decoded'})
+    );
+  });
+
+  it('throws when enableWxBetterTogether is false', async () => {
+    const deps = makeDeps({enableWxBetterTogether: false});
 
     await expect(acceptOnWebex(deps)).rejects.toThrow();
   });
@@ -243,8 +266,8 @@ describe('rejectOnWebex', () => {
     await expect(rejectOnWebex(deps)).rejects.toThrow();
   });
 
-  it('throws when enableAnswerOnWebex is false', async () => {
-    const deps = makeDeps({enableAnswerOnWebex: false});
+  it('throws when enableWxBetterTogether is false', async () => {
+    const deps = makeDeps({enableWxBetterTogether: false});
 
     await expect(rejectOnWebex(deps)).rejects.toThrow();
   });
@@ -293,8 +316,8 @@ describe('toggleMuteOnWebex', () => {
     await expect(toggleMuteOnWebex(deps)).rejects.toThrow('WxApp call ID is unavailable');
   });
 
-  it('throws when enableAnswerOnWebex is false', async () => {
-    const deps = makeDeps({enableAnswerOnWebex: false, getTaskState: () => TaskState.CONNECTED});
+  it('throws when enableWxBetterTogether is false', async () => {
+    const deps = makeDeps({enableWxBetterTogether: false, getTaskState: () => TaskState.CONNECTED});
 
     await expect(toggleMuteOnWebex(deps)).rejects.toThrow();
   });

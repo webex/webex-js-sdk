@@ -52,7 +52,7 @@
       "contracts": {
         "provides": [
           "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, exported user-preference request/response types, and preview-campaign methods acceptPreviewContact/skipPreviewContact/removePreviewContact",
-          "WXCC-6026 wxApp thick-client answer: enableAnswerOnWebex config, setManageWebexCallingInWxcc runtime toggle, Task acceptOnWebex/rejectOnWebex/toggleMuteOnWebex/transmitDtmfOnWebex helpers, TASK_WXAPP_MUTE_STATE_UPDATED event, main.keypad uiControl"
+          "WXCC-6026 wxApp Better Together: enableWxBetterTogether config, setManageWebexCallingInWxcc runtime toggle, unified task telephony (task.accept/decline/toggleMute/transmitDtmf), TASK_WXAPP_MUTE_STATE_UPDATED event, optional main.keypad uiControl, multi-login supported"
         ],
         "requires": [
           "Webex SDK host/plugin runtime; Contact Center REST and WebSocket services; internal Webex calling, metrics, support, authorization, logger, and mercury packages"

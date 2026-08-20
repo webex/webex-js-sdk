@@ -202,7 +202,7 @@ export default class TaskManager extends EventEmitter {
     payload: WebSocketPayload,
     agentId?: string,
     task?: ITask,
-    enableAnswerOnWebex?: boolean
+    enableWxBetterTogether?: boolean
   ): TaskEventPayload | null {
     const mediaResourceId =
       payload.mediaResourceId ||
@@ -324,7 +324,7 @@ export default class TaskManager extends EventEmitter {
             wrapUpRequired,
             task,
             agentId,
-            enableAnswerOnWebex
+            enableWxBetterTogether
           )
         ) {
           return {
@@ -359,7 +359,7 @@ export default class TaskManager extends EventEmitter {
 
         const suppressOutdialFailedPopup =
           isAgentTerminatedOutdial &&
-          !TaskManager.isWxAppManagedOutdialTask(agentId, payload, task, enableAnswerOnWebex);
+          !TaskManager.isWxAppManagedOutdialTask(agentId, payload, task, enableWxBetterTogether);
 
         return {
           type: TaskEvent.OUTBOUND_FAILED,
@@ -426,12 +426,12 @@ export default class TaskManager extends EventEmitter {
     agentId: string | undefined,
     payload: WebSocketPayload,
     task: ITask | undefined,
-    enableAnswerOnWebex?: boolean
+    enableWxBetterTogether?: boolean
   ): boolean {
     const wxAppEnabled =
-      (task as {uiControlConfig?: {enableAnswerOnWebex?: boolean}})?.uiControlConfig
-        ?.enableAnswerOnWebex ??
-      enableAnswerOnWebex ??
+      (task as {uiControlConfig?: {enableWxBetterTogether?: boolean}})?.uiControlConfig
+        ?.enableWxBetterTogether ??
+      enableWxBetterTogether ??
       false;
 
     if (!wxAppEnabled) {
@@ -454,7 +454,7 @@ export default class TaskManager extends EventEmitter {
     wrapUpRequired: boolean,
     task?: ITask,
     agentId?: string,
-    enableAnswerOnWebex?: boolean
+    enableWxBetterTogether?: boolean
   ): boolean {
     const isOutdial = payload.interaction?.outboundType === 'OUTDIAL';
     const agentTerminated = payload.terminatingParty === 'Agent';
@@ -463,7 +463,7 @@ export default class TaskManager extends EventEmitter {
       return false;
     }
 
-    if (!TaskManager.isWxAppManagedOutdialTask(agentId, payload, task, enableAnswerOnWebex)) {
+    if (!TaskManager.isWxAppManagedOutdialTask(agentId, payload, task, enableWxBetterTogether)) {
       return false;
     }
 
@@ -619,7 +619,7 @@ export default class TaskManager extends EventEmitter {
       adjustedPayload,
       this.agentId,
       task,
-      this.configFlags?.enableAnswerOnWebex
+      this.configFlags?.enableWxBetterTogether
     );
 
     LoggerProxy.info(`Handling task event ${eventType}`, {
@@ -1073,15 +1073,15 @@ export default class TaskManager extends EventEmitter {
   }
 
   /**
-   * Propagate runtime enableAnswerOnWebex changes to config flags and active tasks.
+   * Propagate runtime enableWxBetterTogether changes to config flags and active tasks.
    */
-  public applyEnableAnswerOnWebex(enabled: boolean): void {
+  public applyEnableWxBetterTogether(enabled: boolean): void {
     if (this.configFlags) {
-      this.configFlags = {...this.configFlags, enableAnswerOnWebex: enabled};
+      this.configFlags = {...this.configFlags, enableWxBetterTogether: enabled};
     }
 
     Object.values(this.taskCollection).forEach((task) => {
-      task.setEnableAnswerOnWebex(enabled);
+      task.setEnableWxBetterTogether(enabled);
       if (enabled) {
         TaskManager.syncWxAppMuteFromCallDetailsForTask(task);
       }

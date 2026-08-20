@@ -34,7 +34,7 @@ import AnswerCallOnWebexService from '../../AnswerCallOnWebexService';
 import {
   getCallingDeviceDetails,
   getWebexCallingCallId,
-  getWxAppLineOwnerId,
+  resolveWxAppLineOwnerId,
   isWebexAppCallingOffer as wxIsWebexAppCallingOffer,
   isWebexAppInboundCallingOffer as wxIsWebexAppInboundCallingOffer,
   mapWxAppVoiceError,
@@ -51,7 +51,7 @@ export default class Voice extends Task implements IVoice {
   private static readonly WXAPP_MUTE_SYNC_MAX_RETRIES = 3;
 
   private answerCallOnWebexService?: AnswerCallOnWebexService;
-  private enableAnswerOnWebex = false;
+  private enableWxBetterTogether = false;
   private wxAppMuted = false;
   private wxAppAnswerPending = false;
   private wxAppAcceptInFlight = false;
@@ -69,7 +69,7 @@ export default class Voice extends Task implements IVoice {
       isEndConsultEnabled: callOptions?.isEndConsultEnabled ?? true,
       voiceVariant: callOptions?.voiceVariant ?? VOICE_VARIANT.PSTN,
       isRecordingEnabled: callOptions?.isRecordingEnabled ?? true,
-      enableAnswerOnWebex: callOptions?.enableAnswerOnWebex ?? false,
+      enableWxBetterTogether: callOptions?.enableWxBetterTogether ?? false,
     };
 
     super(
@@ -82,13 +82,13 @@ export default class Voice extends Task implements IVoice {
       agentId
     );
 
-    this.enableAnswerOnWebex = resolvedOptions.enableAnswerOnWebex;
+    this.enableWxBetterTogether = resolvedOptions.enableWxBetterTogether;
     this.answerCallOnWebexService = callOptions?.answerCallOnWebexService;
   }
 
   private getWxAppVoiceDependencies(): WxAppVoiceDependencies {
     return {
-      enableAnswerOnWebex: this.enableAnswerOnWebex,
+      enableWxBetterTogether: this.enableWxBetterTogether,
       answerCallOnWebexService: this.answerCallOnWebexService,
       agentId: this.agentId,
       getTaskData: () => this.data,
@@ -125,14 +125,14 @@ export default class Voice extends Task implements IVoice {
     this.updateUiControls(true);
   }
 
-  public setEnableAnswerOnWebex(enabled: boolean): void {
-    this.enableAnswerOnWebex = enabled;
-    this.uiControlConfig = {...this.uiControlConfig, enableAnswerOnWebex: enabled};
+  public setEnableWxBetterTogether(enabled: boolean): void {
+    this.enableWxBetterTogether = enabled;
+    this.uiControlConfig = {...this.uiControlConfig, enableWxBetterTogether: enabled};
     this.updateUiControls(true);
   }
 
   public applyWxAppMuteStateFromSync(incomingCallId: string, muted: boolean): void {
-    if (!this.enableAnswerOnWebex) {
+    if (!this.enableWxBetterTogether) {
       return;
     }
 
@@ -156,7 +156,7 @@ export default class Voice extends Task implements IVoice {
   }
 
   private canRetryWxAppMuteSync(): boolean {
-    if (!this.enableAnswerOnWebex) {
+    if (!this.enableWxBetterTogether) {
       return false;
     }
 
@@ -186,7 +186,7 @@ export default class Voice extends Task implements IVoice {
   }
 
   private applyWxAppMuteFromBackfill(callId: string, muted: boolean): void {
-    if (!this.enableAnswerOnWebex || this.wxAppMuted === muted) {
+    if (!this.enableWxBetterTogether || this.wxAppMuted === muted) {
       return;
     }
 
@@ -200,7 +200,7 @@ export default class Voice extends Task implements IVoice {
   }
 
   public async syncWxAppMuteFromCallDetails(retryAttempt = 0): Promise<boolean | undefined> {
-    if (!this.enableAnswerOnWebex || !this.answerCallOnWebexService) {
+    if (!this.enableWxBetterTogether || !this.answerCallOnWebexService) {
       return undefined;
     }
 
@@ -215,13 +215,16 @@ export default class Voice extends Task implements IVoice {
     const syncPromise = this.performWxAppMuteSync(retryAttempt);
 
     if (retryAttempt === 0) {
-      this.wxAppMuteSyncInFlight = syncPromise.finally(() => {
-        if (this.wxAppMuteSyncInFlight === syncPromise) {
-          this.wxAppMuteSyncInFlight = undefined;
-        }
-      });
+      this.wxAppMuteSyncInFlight = syncPromise;
+      syncPromise
+        .finally(() => {
+          if (this.wxAppMuteSyncInFlight === syncPromise) {
+            this.wxAppMuteSyncInFlight = undefined;
+          }
+        })
+        .catch(() => undefined);
 
-      return this.wxAppMuteSyncInFlight;
+      return syncPromise;
     }
 
     return syncPromise;
@@ -247,7 +250,7 @@ export default class Voice extends Task implements IVoice {
     }
 
     try {
-      const lineOwnerId = getWxAppLineOwnerId(this.getWxAppVoiceDeps());
+      const lineOwnerId = resolveWxAppLineOwnerId(this.getWxAppVoiceDeps());
       const details = await this.answerCallOnWebexService.getCallDetails({callId, lineOwnerId});
       if (details.muted !== undefined) {
         this.applyWxAppMuteStateFromSync(callId, details.muted);
@@ -315,10 +318,10 @@ export default class Voice extends Task implements IVoice {
   }
 
   /**
-   * Accepts the task. Routes to wxApp telephony answer when `enableAnswerOnWebex` and wxApp offer.
+   * Accepts the task. Routes to wxApp telephony answer when `enableWxBetterTogether` and wxApp offer.
    */
   public async accept(): Promise<TaskResponse> {
-    if (this.enableAnswerOnWebex && this.isWebexAppCallingOffer()) {
+    if (this.enableWxBetterTogether && this.isWebexAppCallingOffer()) {
       await runWxAppAccept(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle());
 
       return Promise.resolve();
@@ -331,14 +334,14 @@ export default class Voice extends Task implements IVoice {
    * Declines the task. Routes wxApp inbound to telephony reject; wxApp outdial offer to cancelTask.
    */
   public async decline(): Promise<TaskResponse> {
-    if (this.enableAnswerOnWebex && this.isWebexAppInboundCallingOffer()) {
+    if (this.enableWxBetterTogether && this.isWebexAppInboundCallingOffer()) {
       await runWxAppReject(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle());
 
       return Promise.resolve();
     }
 
     const isOutdial = this.data?.interaction?.outboundType === 'OUTDIAL';
-    if (!this.enableAnswerOnWebex || !isOutdial || !this.isWebexAppCallingOffer()) {
+    if (!this.enableWxBetterTogether || !isOutdial || !this.isWebexAppCallingOffer()) {
       return super.unsupportedMethodError(METHODS.REJECT);
     }
 
@@ -386,10 +389,10 @@ export default class Voice extends Task implements IVoice {
   }
 
   /**
-   * Toggles mute for wxApp engaged telephony when `enableAnswerOnWebex` is active.
+   * Toggles mute for wxApp engaged telephony when `enableWxBetterTogether` is active.
    */
   public async toggleMute(options?: TaskToggleMuteOptions): Promise<void> {
-    if (this.enableAnswerOnWebex && this.getWebexCallingCallId()) {
+    if (this.enableWxBetterTogether && this.getWebexCallingCallId()) {
       await runWxAppToggleMute(
         this.getWxAppVoiceDependencies(),
         this.createWxAppLifecycle(),
@@ -403,10 +406,10 @@ export default class Voice extends Task implements IVoice {
   }
 
   /**
-   * Sends in-call DTMF for wxApp engaged telephony when `enableAnswerOnWebex` is active.
+   * Sends in-call DTMF for wxApp engaged telephony when `enableWxBetterTogether` is active.
    */
   public async transmitDtmf(options: TaskTransmitDtmfOptions): Promise<void> {
-    if (this.enableAnswerOnWebex && this.getWebexCallingCallId()) {
+    if (this.enableWxBetterTogether && this.getWebexCallingCallId()) {
       await runWxAppTransmitDtmf(
         this.getWxAppVoiceDependencies(),
         this.createWxAppLifecycle(),

@@ -109,7 +109,7 @@ const aiAssistantRawOutputPanelElm = document.querySelector('#assistant-raw-outp
 const aiAssistantRawOutputContentElm = document.querySelector('#assistant-raw-output-content');
 const multiLoginCheckbox = document.querySelector('#multiLoginFlag');
 const disableWebRTCRegistrationCheckbox = document.querySelector('#disableWebRTCRegistrationFlag');
-const enableAnswerOnWebexCheckbox = document.querySelector('#enableAnswerOnWebexFlag');
+const enableWxBetterTogetherCheckbox = document.querySelector('#enableWxBetterTogetherFlag');
 deregisterBtn.style.backgroundColor = 'red';
 let enableProd = true;
 
@@ -129,9 +129,9 @@ if (disableWebRTCRegistrationCheckbox) {
   disableWebRTCRegistrationCheckbox.checked = isWebRTCRegistrationDisabled;
 }
 
-let isAnswerOnWebexEnabled = localStorage.getItem('isAnswerOnWebexEnabled') === 'true';
-if (enableAnswerOnWebexCheckbox) {
-  enableAnswerOnWebexCheckbox.checked = isAnswerOnWebexEnabled;
+let isWxBetterTogetherEnabled = localStorage.getItem('isWxBetterTogetherEnabled') === 'true';
+if (enableWxBetterTogetherCheckbox) {
+  enableWxBetterTogetherCheckbox.checked = isWxBetterTogetherEnabled;
 }
 
 function toggleMultiLogin() {
@@ -144,17 +144,17 @@ function toggleWebRTCRegistration() {
   localStorage.setItem('isWebRTCRegistrationDisabled', String(isWebRTCRegistrationDisabled));
 }
 
-function toggleAnswerOnWebex() {
-  isAnswerOnWebexEnabled = enableAnswerOnWebexCheckbox.checked;
-  localStorage.setItem('isAnswerOnWebexEnabled', String(isAnswerOnWebexEnabled));
+function toggleWxBetterTogether() {
+  isWxBetterTogetherEnabled = enableWxBetterTogetherCheckbox.checked;
+  localStorage.setItem('isWxBetterTogetherEnabled', String(isWxBetterTogetherEnabled));
 
   if (webex?.cc?.agentConfig?.isAgentLoggedIn) {
-    webex.cc.setManageWebexCallingInWxcc(isAnswerOnWebexEnabled).catch((error) => {
+    webex.cc.setManageWebexCallingInWxcc(isWxBetterTogetherEnabled).catch((error) => {
       console.error('setManageWebexCallingInWxcc failed', error);
-      isAnswerOnWebexEnabled = !isAnswerOnWebexEnabled;
-      localStorage.setItem('isAnswerOnWebexEnabled', String(isAnswerOnWebexEnabled));
-      if (enableAnswerOnWebexCheckbox) {
-        enableAnswerOnWebexCheckbox.checked = isAnswerOnWebexEnabled;
+      isWxBetterTogetherEnabled = !isWxBetterTogetherEnabled;
+      localStorage.setItem('isWxBetterTogetherEnabled', String(isWxBetterTogetherEnabled));
+      if (enableWxBetterTogetherCheckbox) {
+        enableWxBetterTogetherCheckbox.checked = isWxBetterTogetherEnabled;
       }
     });
   }
@@ -1887,6 +1887,12 @@ function registerTaskListeners(task) {
     }
   });
 
+  task.on('task:wxapp-mute-state-updated', () => {
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      applyWxAppMuteLabel(task);
+    }
+  });
+
   // Consult flows - update both task list AND call controls UI
   // Each handler receives the updated task and explicitly updates the UI
   task.on('task:consultCreated', (updatedTask) => {
@@ -2526,6 +2532,22 @@ function applyAllControlsFromUIControls(uiControls) {
   }
 }
 
+function isWxAppTask(task) {
+  return (
+    isWxBetterTogetherEnabled &&
+    task?.getWebexCallingCallId &&
+    task.getWebexCallingCallId()
+  );
+}
+
+function applyWxAppMuteLabel(task) {
+  if (!muteElm || !task || !isWxAppTask(task) || typeof task.getWxAppMuted !== 'function') {
+    return;
+  }
+
+  muteElm.innerText = task.getWxAppMuted() ? 'Unmute' : 'Mute';
+}
+
 /**
  * Update button labels/text based on task state
  * Only updates text, NOT visibility or enabled state
@@ -2563,6 +2585,8 @@ function updateButtonLabels(task, callProcessingDetails) {
       mergeConferenceBtn.innerText = onMainLeg ? 'Conference' : 'Merge';
     }
   }
+
+  applyWxAppMuteLabel(task);
 }
 
 /**
@@ -2625,7 +2649,7 @@ function generateWebexConfig({credentials}) {
     cc: {
       allowMultiLogin: isMultiLoginEnabled,
       disableWebRTCRegistration: isWebRTCRegistrationDisabled,
-      enableAnswerOnWebex: false,
+      enableWxBetterTogether: isWxBetterTogetherEnabled,
     },
     credentials,
   };
@@ -2886,6 +2910,12 @@ function register() {
         dialNumber.disabled = false;
         dialNumber.value = data.dn || '';
       }
+
+      if (isWxBetterTogetherEnabled) {
+        webex.cc.setManageWebexCallingInWxcc(true).catch((error) => {
+          console.error('setManageWebexCallingInWxcc failed on relogin', error);
+        });
+      }
     });
 
     webex.cc.on('agent:stationLoginSuccess', (data) => {
@@ -2910,7 +2940,7 @@ function register() {
       idleCodesDropdown.selectedIndex = idx >= 0 ? idx : 0;
       startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
 
-      if (isAnswerOnWebexEnabled) {
+      if (isWxBetterTogetherEnabled) {
         webex.cc.setManageWebexCallingInWxcc(true).catch((error) => {
           console.error('setManageWebexCallingInWxcc failed on station login', error);
         });
@@ -3329,19 +3359,18 @@ function muteUnmute() {
   }
 
   const wxAppCallId =
-    isAnswerOnWebexEnabled &&
+    isWxBetterTogetherEnabled &&
     currentTask.getWebexCallingCallId &&
     currentTask.getWebexCallingCallId();
 
   if (wxAppCallId) {
-    const currentlyMuted = muteElm.innerText === 'Unmute';
-    const intendedMuted = !currentlyMuted;
-
     currentTask
-      .toggleMute({muted: intendedMuted})
+      .toggleMute()
       .then(() => {
-        muteElm.innerText = intendedMuted ? 'Unmute' : 'Mute';
-        console.info(intendedMuted ? 'Call is muted' : 'Call is unmuted');
+        applyWxAppMuteLabel(currentTask);
+        const muted =
+          typeof currentTask.getWxAppMuted === 'function' && currentTask.getWxAppMuted();
+        console.info(muted ? 'Call is muted' : 'Call is unmuted');
       })
       .catch((error) => {
         console.error('toggleMute failed', error);

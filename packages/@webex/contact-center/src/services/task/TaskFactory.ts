@@ -29,7 +29,7 @@ export default class TaskFactory {
       isEndTaskEnabled,
       isEndConsultEnabled,
       isRecordingEnabled: recordingEnabled,
-      enableAnswerOnWebex: configFlags.enableAnswerOnWebex ?? false,
+      enableWxBetterTogether: configFlags.enableWxBetterTogether ?? false,
       answerCallOnWebexService,
     };
     switch (mediaType) {

@@ -96,12 +96,12 @@ export function isWebexCallingCallForAgent(
 
 /** Matches wxAppVoiceMethods.getWebexCallingCallId engaged semantics for uiControls. */
 export function isWxAppEngagedForControls(
-  enableAnswerOnWebex: boolean,
+  enableWxBetterTogether: boolean,
   agentId: string | undefined,
   participants: unknown,
   state: TaskState
 ): boolean {
-  if (!enableAnswerOnWebex) {
+  if (!enableWxBetterTogether) {
     return false;
   }
 

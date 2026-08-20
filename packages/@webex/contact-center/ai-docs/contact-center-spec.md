@@ -99,6 +99,18 @@ Direct data/configuration and user-preference operations return authenticated RE
 
 Durable agent, task, and configuration records remain remote-system owned. The package owns only in-memory profile/task/listener/cache/connection state.
 
+### wxApp Better Together (WXCC-6026)
+
+Contract id: `contact-center.wxapp-answer` ([CONTRACTS.md](./CONTRACTS.md)). Task telephony routing, UI controls, and mute events are specified in [task-spec.md](../src/services/task/ai-docs/task-spec.md). Service collaborators: [services-spec.md](../src/services/ai-docs/services-spec.md).
+
+- **Init flag:** `webex.init({ cc: { enableWxBetterTogether: boolean } })` — default `false`. When `true`, ContactCenter enables wxApp telephony routing on tasks after supported station login. **Compatible with `allowMultiLogin: true`** (multiple SDK sessions may receive offers; wxApp telephony is routed per active task instance).
+- **Runtime toggle:** `cc.setManageWebexCallingInWxcc(enabled)` updates config, TaskManager flags, usersub cross-client publish (`answer-calls-on-wxcc`), and Mercury mute sync. `setManageWebexCallingInWxcc(true)` requires **EXTENSION** or **AGENT_DN** station login; **BROWSER** is rejected.
+- **Post-login hooks:** `ensureWxAppPostStationLogin()` runs after successful `stationLogin()` and after `silentRelogin()` on socket reconnect. When the init/runtime flag is ON, it publishes usersub `true`, connects Mercury/device for mute sync, and backfills mute state on active tasks. Failures roll back wxApp config and release partial Mercury/device resources without failing station login. When OFF, it force-publishes usersub `false` (clears stale suppression after page refresh) and tears down wxApp Mercury resources.
+- **Teardown:** `deregister()`, station logout, and wxApp teardown paths call `teardownWxAppLocalState()` — publish usersub `false`, unsubscribe Mercury, release CC-owned device/Mercury connections, and reset runtime config so stale flags do not apply on relogin. Local cleanup runs even when usersub publish fails.
+- **Host telephony surface:** Hosts call unified `task.accept()`, `task.decline()`, `task.toggleMute({ muted? })`, and `task.transmitDtmf({ dtmf })`; SDK `Voice` routes wxApp legs internally when the flag is active. Shared-line `lineOwnerId` defaults from the wxApp agent participant when omitted.
+
+Evidence: `src/cc.ts`, `src/config.ts`, `src/services/WebexCrossClientService.ts`, `src/services/WxAppTelephonyMercurySync.ts`, `test/unit/spec/cc.ts`.
+
 ## Data Flow
 ```mermaid
 flowchart TD

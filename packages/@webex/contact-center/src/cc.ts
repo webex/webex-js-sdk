@@ -841,7 +841,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webRtcEnabled: this.agentConfig.webRtcEnabled,
         autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
         aiFeature: this.agentConfig.aiFeature,
-        enableAnswerOnWebex: this.isAnswerOnWebexEnabled(),
+        enableWxBetterTogether: this.isWxBetterTogetherEnabled(),
       };
       this.taskManager.setConfigFlags(configFlags);
       // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
@@ -1423,21 +1423,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         'Invalid Contact Center configuration: disableWebRTCRegistration cannot be true when allowMultiLogin is false. Enable allowMultiLogin or allow WebRTC registration so an SDK instance can receive Mobius/WebRTC task events.'
       );
     }
-
-    if (this.$config?.enableAnswerOnWebex === true && this.$config?.allowMultiLogin === true) {
-      LoggerProxy.warn(
-        'enableAnswerOnWebex with allowMultiLogin is not supported — wxApp answer is single-consumer',
-        {module: CC_FILE, method: METHODS.IS_ANSWER_ON_WEBEX_ENABLED}
-      );
-    }
   }
 
   /**
    * Whether wxApp thick-client answer is enabled for this SDK instance.
    * @public
    */
-  public isAnswerOnWebexEnabled(): boolean {
-    return this.$config?.enableAnswerOnWebex === true;
+  public isWxBetterTogetherEnabled(): boolean {
+    return this.$config?.enableWxBetterTogether === true;
   }
 
   /**
@@ -1467,11 +1460,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Clears runtime wxApp config after logout/deregister so stale flags do not apply on relogin.
    * @private
    */
-  private resetEnableAnswerOnWebexConfig(): void {
+  private resetEnableWxBetterTogetherConfig(): void {
     if (this.$config) {
-      this.$config.enableAnswerOnWebex = false;
+      this.$config.enableWxBetterTogether = false;
     }
-    this.taskManager.applyEnableAnswerOnWebex(false);
+    this.taskManager.applyEnableWxBetterTogether(false);
   }
 
   /**
@@ -1488,13 +1481,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.assertWxAppStationLoginSupportedForEnable();
     }
 
-    const previousEnabled = this.isAnswerOnWebexEnabled();
+    const previousEnabled = this.isWxBetterTogetherEnabled();
 
     if (this.$config) {
-      this.$config.enableAnswerOnWebex = enabled;
+      this.$config.enableWxBetterTogether = enabled;
     }
 
-    this.taskManager.applyEnableAnswerOnWebex(enabled);
+    this.taskManager.applyEnableWxBetterTogether(enabled);
 
     try {
       await this.publishAnswerOnWebexCrossClientState(enabled);
@@ -1508,9 +1501,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
     } catch (error) {
       if (this.$config) {
-        this.$config.enableAnswerOnWebex = previousEnabled;
+        this.$config.enableWxBetterTogether = previousEnabled;
       }
-      this.taskManager.applyEnableAnswerOnWebex(previousEnabled);
+      this.taskManager.applyEnableWxBetterTogether(previousEnabled);
       throw error;
     }
   }
@@ -1521,7 +1514,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
 
     try {
-      if (this.isAnswerOnWebexEnabled()) {
+      if (this.isWxBetterTogetherEnabled()) {
         await this.publishAnswerOnWebexCrossClientState(true);
         await this.ensureWxAppMercuryAndSubscribe();
         this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
@@ -1536,6 +1529,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         module: CC_FILE,
         method: METHODS.STATION_LOGIN,
       });
+
+      if (this.isWxBetterTogetherEnabled()) {
+        this.wxAppTelephonyMercurySync.unsubscribe();
+        await this.releaseWxAppMercuryResources();
+        this.resetEnableWxBetterTogetherConfig();
+      }
     }
   }
 
@@ -1630,7 +1629,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.webexCrossClientService.teardown();
     this.wxAppTelephonyMercurySync.unsubscribe();
     await this.releaseWxAppMercuryResources();
-    this.resetEnableAnswerOnWebexConfig();
+    this.resetEnableWxBetterTogetherConfig();
 
     if (options?.rethrowPublishError && publishError) {
       throw publishError;
@@ -1638,7 +1637,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   private async ensureWxAppMercuryAndSubscribe(): Promise<void> {
-    if (!this.isAnswerOnWebexEnabled()) {
+    if (!this.isWxBetterTogetherEnabled()) {
       return;
     }
 
@@ -1673,7 +1672,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     enable: boolean,
     options?: {force?: boolean}
   ): Promise<void> {
-    if (enable && !this.isAnswerOnWebexEnabled()) {
+    if (enable && !this.isWxBetterTogetherEnabled()) {
       return;
     }
 

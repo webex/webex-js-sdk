@@ -672,15 +672,15 @@ describe('Voice Task', () => {
     });
   });
 
-  describe('setEnableAnswerOnWebex', () => {
+  describe('setEnableWxBetterTogether', () => {
     it('updates runtime flag, uiControlConfig, and emits ui control updates', () => {
-      const voice = new Voice(dummyContact, createBaseData(), {enableAnswerOnWebex: true});
+      const voice = new Voice(dummyContact, createBaseData(), {enableWxBetterTogether: true});
       const emitSpy = jest.spyOn(voice, 'emit');
 
-      voice.setEnableAnswerOnWebex(false);
+      voice.setEnableWxBetterTogether(false);
 
-      expect(voice['enableAnswerOnWebex']).toBe(false);
-      expect(voice['uiControlConfig'].enableAnswerOnWebex).toBe(false);
+      expect(voice['enableWxBetterTogether']).toBe(false);
+      expect(voice['uiControlConfig'].enableWxBetterTogether).toBe(false);
       expect(emitSpy).toHaveBeenCalledWith(
         TASK_EVENTS.TASK_UI_CONTROLS_UPDATED,
         expect.any(Object)
@@ -707,7 +707,7 @@ describe('Voice Task', () => {
 
     it('emits TASK_WXAPP_MUTE_STATE_UPDATED when callId matches via endsWith', () => {
       const taskData = makeWxAppTaskData();
-      const voice = new Voice(dummyContact, taskData, {enableAnswerOnWebex: true});
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
       primeConnectedState(voice, taskData);
       const emitSpy = jest.spyOn(voice, 'emit');
 
@@ -718,7 +718,7 @@ describe('Voice Task', () => {
 
     it('no-ops when callId does not match active call', () => {
       const taskData = makeWxAppTaskData();
-      const voice = new Voice(dummyContact, taskData, {enableAnswerOnWebex: true});
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
       primeConnectedState(voice, taskData);
       const emitSpy = jest.spyOn(voice, 'emit');
 
@@ -730,9 +730,9 @@ describe('Voice Task', () => {
       );
     });
 
-    it('no-ops when enableAnswerOnWebex is false', () => {
+    it('no-ops when enableWxBetterTogether is false', () => {
       const taskData = makeWxAppTaskData();
-      const voice = new Voice(dummyContact, taskData, {enableAnswerOnWebex: false});
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: false});
       primeConnectedState(voice, taskData);
       const emitSpy = jest.spyOn(voice, 'emit');
 
@@ -746,7 +746,7 @@ describe('Voice Task', () => {
 
     it('no-ops when muted state is unchanged', () => {
       const taskData = makeWxAppTaskData();
-      const voice = new Voice(dummyContact, taskData, {enableAnswerOnWebex: true});
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
       primeConnectedState(voice, taskData);
       const emitSpy = jest.spyOn(voice, 'emit');
 
@@ -785,7 +785,7 @@ describe('Voice Task', () => {
       };
       const taskData = makeWxAppTaskData();
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       primeConnectedState(voice, taskData);
@@ -806,7 +806,7 @@ describe('Voice Task', () => {
       };
       const taskData = makeWxAppTaskData();
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       primeConnectedState(voice, taskData);
@@ -823,7 +823,7 @@ describe('Voice Task', () => {
       };
       const taskData = makeWxAppTaskData();
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       const emitSpy = jest.spyOn(voice, 'emit');
@@ -838,11 +838,11 @@ describe('Voice Task', () => {
       });
     });
 
-    it('no-ops when enableAnswerOnWebex is false', async () => {
+    it('no-ops when enableWxBetterTogether is false', async () => {
       const mockSvc = {getCallDetails: jest.fn()};
       const taskData = makeWxAppTaskData();
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: false,
+        enableWxBetterTogether: false,
         answerCallOnWebexService: mockSvc as any,
       });
       primeConnectedState(voice, taskData);
@@ -858,7 +858,7 @@ describe('Voice Task', () => {
       };
       const taskData = makeWxAppTaskData();
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       const syncSpy = jest.spyOn(voice, 'syncWxAppMuteFromCallDetails');
@@ -877,7 +877,7 @@ describe('Voice Task', () => {
       };
       const taskData = makeWxAppTaskData();
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       primeConnectedState(voice, taskData);
@@ -899,7 +899,7 @@ describe('Voice Task', () => {
       };
       const taskData = makeWxAppTaskData();
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
@@ -918,7 +918,7 @@ describe('Voice Task', () => {
       };
       const taskData = makeWxAppTaskData();
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
@@ -940,7 +940,7 @@ describe('Voice Task', () => {
       };
       const taskData = makeWxAppTaskData();
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       primeConnectedState(voice, taskData);
@@ -954,6 +954,26 @@ describe('Voice Task', () => {
       expect(result1).toBe(true);
       expect(result2).toBe(true);
       expect(mockSvc.getCallDetails).toHaveBeenCalledTimes(1);
+    });
+
+    it('issues a new getCallDetails on sequential syncWxAppMuteFromCallDetails after the first completes', async () => {
+      const mockSvc = {
+        getCallDetails: jest
+          .fn()
+          .mockResolvedValueOnce({muted: false})
+          .mockResolvedValueOnce({muted: true}),
+      };
+      const taskData = makeWxAppTaskData();
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      await voice.syncWxAppMuteFromCallDetails();
+      await voice.syncWxAppMuteFromCallDetails();
+
+      expect(mockSvc.getCallDetails).toHaveBeenCalledTimes(2);
     });
 
     it('skips mute GET for terminated wxApp outdial with deviceCallId', async () => {
@@ -974,7 +994,7 @@ describe('Voice Task', () => {
         } as any,
       });
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
@@ -1001,7 +1021,7 @@ describe('Voice Task', () => {
         } as any,
       });
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
@@ -1031,7 +1051,7 @@ describe('Voice Task', () => {
         } as any,
       });
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
@@ -1062,7 +1082,7 @@ describe('Voice Task', () => {
         } as any,
       });
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       primeConnectedState(voice, taskData);
@@ -1095,7 +1115,7 @@ describe('Voice Task', () => {
 
     it('cancels wxApp outdial via contact.cancelTask', async () => {
       const taskData = makeWxAppOutdialTaskData();
-      const voice = new Voice(dummyContact, taskData, {enableAnswerOnWebex: true});
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
       voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
 
       await voice.decline();
@@ -1110,7 +1130,7 @@ describe('Voice Task', () => {
       };
       const taskData = makeWxAppOutdialTaskData();
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
@@ -1127,15 +1147,15 @@ describe('Voice Task', () => {
 
     it('throws unsupported for non-outdial voice tasks', async () => {
       const taskData = createBaseData();
-      const voice = new Voice(dummyContact, taskData, {enableAnswerOnWebex: true});
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
 
       await expect(voice.decline()).rejects.toThrow('Unsupported operation: decline');
       expect(dummyContact.cancelTask).not.toHaveBeenCalled();
     });
 
-    it('throws unsupported when enableAnswerOnWebex is false', async () => {
+    it('throws unsupported when enableWxBetterTogether is false', async () => {
       const taskData = makeWxAppOutdialTaskData();
-      const voice = new Voice(dummyContact, taskData, {enableAnswerOnWebex: false});
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: false});
 
       await expect(voice.decline()).rejects.toThrow('Unsupported operation: decline');
       expect(dummyContact.cancelTask).not.toHaveBeenCalled();
@@ -1163,7 +1183,7 @@ describe('Voice Task', () => {
         } as any,
       });
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
@@ -1190,7 +1210,7 @@ describe('Voice Task', () => {
         } as any,
       });
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
@@ -1217,7 +1237,7 @@ describe('Voice Task', () => {
         } as any,
       });
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       primeConnectedState(voice, taskData);
@@ -1240,7 +1260,7 @@ describe('Voice Task', () => {
         } as any,
       });
       const voice = new Voice(dummyContact, taskData, {
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
         answerCallOnWebexService: mockSvc as any,
       });
       primeConnectedState(voice, taskData);

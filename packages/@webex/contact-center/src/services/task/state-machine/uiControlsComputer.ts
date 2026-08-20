@@ -165,11 +165,11 @@ function computeVoiceInteractionUIControls(
     interaction && mainCallId ? getConferenceParticipantsCount(interaction, mainCallId) : 0;
   const maxParticipants = participantCount >= MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE;
   const selfAgentId = config.agentId ?? taskData?.agentId;
-  const enableAnswerOnWebex = config.enableAnswerOnWebex ?? false;
-  const wxAppDeviceDetails = enableAnswerOnWebex
+  const enableWxBetterTogether = config.enableWxBetterTogether ?? false;
+  const wxAppDeviceDetails = enableWxBetterTogether
     ? getWebexCallingDeviceDetailsForAgent(selfAgentId, interaction?.participants)
     : undefined;
-  const isWxAppParticipant = enableAnswerOnWebex && wxAppDeviceDetails?.deviceType === 'wxApp';
+  const isWxAppParticipant = enableWxBetterTogether && wxAppDeviceDetails?.deviceType === 'wxApp';
   const isWxAppOffer =
     isWxAppParticipant && Boolean(wxAppDeviceDetails) && state === TaskState.OFFERED;
   const isWxAppInboundOffer = isWxAppOffer && !isOutdial;
@@ -177,7 +177,7 @@ function computeVoiceInteractionUIControls(
   const wxAppAnswerPending = config.wxAppAnswerPending ?? false;
   const wxAppAcceptInFlight = config.wxAppAcceptInFlight ?? false;
   const isWxAppEngaged = isWxAppEngagedForControls(
-    enableAnswerOnWebex,
+    enableWxBetterTogether,
     selfAgentId,
     interaction?.participants,
     state

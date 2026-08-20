@@ -1532,7 +1532,7 @@ describe('TaskManager', () => {
 
   it('should map wxApp agent-terminated OUTDIAL AgentOutboundFailed to OUTBOUND_FAILED with AGENT_ENDS', () => {
     const task = taskManager.getTask(taskId);
-    task.uiControlConfig = {enableAnswerOnWebex: true};
+    task.uiControlConfig = {enableWxBetterTogether: true};
     task.data = {
       ...task.data,
       agentId: 'test-agent-id',
@@ -1589,7 +1589,7 @@ describe('TaskManager', () => {
 
   it('should map wxApp agent-terminated OUTDIAL ContactEnded to OUTBOUND_FAILED with AGENT_ENDS', () => {
     const task = taskManager.getTask(taskId);
-    task.uiControlConfig = {enableAnswerOnWebex: true};
+    task.uiControlConfig = {enableWxBetterTogether: true};
     task.data = {
       ...task.data,
       agentId: 'test-agent-id',
@@ -1649,7 +1649,7 @@ describe('TaskManager', () => {
     task.stateMachineService = {
       getSnapshot: () => ({value: 'OFFERED'}),
     };
-    task.uiControlConfig = {enableAnswerOnWebex: true, wxAppAnswerPending: false};
+    task.uiControlConfig = {enableWxBetterTogether: true, wxAppAnswerPending: false};
     task.data = {
       ...task.data,
       agentId: 'test-agent-id',
@@ -1696,7 +1696,7 @@ describe('TaskManager', () => {
     task.stateMachineService = {
       getSnapshot: () => ({value: 'OFFERED'}),
     };
-    task.uiControlConfig = {enableAnswerOnWebex: true, wxAppAnswerPending: true};
+    task.uiControlConfig = {enableWxBetterTogether: true, wxAppAnswerPending: true};
     task.data = {
       ...task.data,
       agentId: 'test-agent-id',
@@ -1754,7 +1754,7 @@ describe('TaskManager', () => {
     task.stateMachineService = {
       getSnapshot: () => ({value: 'CONNECTED'}),
     };
-    task.uiControlConfig = {enableAnswerOnWebex: true};
+    task.uiControlConfig = {enableWxBetterTogether: true};
     task.data = {
       ...task.data,
       agentId: 'test-agent-id',
@@ -2843,26 +2843,26 @@ describe('TaskManager', () => {
     });
   });
 
-  describe('applyEnableAnswerOnWebex', () => {
+  describe('applyEnableWxBetterTogether', () => {
     it('updates config flags and propagates to active tasks', () => {
-      const taskOne = {setEnableAnswerOnWebex: jest.fn()};
-      const taskTwo = {setEnableAnswerOnWebex: jest.fn()};
+      const taskOne = {setEnableWxBetterTogether: jest.fn()};
+      const taskTwo = {setEnableWxBetterTogether: jest.fn()};
 
       taskManager.setConfigFlags({
         isEndTaskEnabled: true,
         isEndConsultEnabled: true,
-        enableAnswerOnWebex: true,
+        enableWxBetterTogether: true,
       });
       taskManager['taskCollection'] = {
         [taskId]: taskOne,
         'task-2': taskTwo,
       };
 
-      taskManager.applyEnableAnswerOnWebex(false);
+      taskManager.applyEnableWxBetterTogether(false);
 
-      expect(taskManager['configFlags']?.enableAnswerOnWebex).toBe(false);
-      expect(taskOne.setEnableAnswerOnWebex).toHaveBeenCalledWith(false);
-      expect(taskTwo.setEnableAnswerOnWebex).toHaveBeenCalledWith(false);
+      expect(taskManager['configFlags']?.enableWxBetterTogether).toBe(false);
+      expect(taskOne.setEnableWxBetterTogether).toHaveBeenCalledWith(false);
+      expect(taskTwo.setEnableWxBetterTogether).toHaveBeenCalledWith(false);
     });
   });
 

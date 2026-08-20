@@ -108,7 +108,7 @@ describe('isWxAppEngagedForControls', () => {
     );
   });
 
-  it('returns false when enableAnswerOnWebex is false', () => {
+  it('returns false when enableWxBetterTogether is false', () => {
     expect(
       isWxAppEngagedForControls(false, 'agent-1', participantsById, TaskState.CONNECTED)
     ).toBe(false);

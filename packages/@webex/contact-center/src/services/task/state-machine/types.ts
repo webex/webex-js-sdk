@@ -44,7 +44,7 @@ export interface UIControlConfig {
   /** Current agent ID for ownership checks (transfer conference) */
   agentId?: string;
   /** Whether wxApp thick-client answer is enabled (WXCC-6026) */
-  enableAnswerOnWebex?: boolean;
+  enableWxBetterTogether?: boolean;
   /** True while wxApp telephony answer is in flight (outdial Calling… label) */
   wxAppAnswerPending?: boolean;
   /** True only during the wxApp accept REST call (decline disabled for inbound + outdial) */

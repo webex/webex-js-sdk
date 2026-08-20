@@ -284,7 +284,7 @@ export default abstract class Task extends EventEmitter implements ITask {
    * Update wxApp thick-client answer flag at runtime (Voice overrides).
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public setEnableAnswerOnWebex(_enabled: boolean): void {
+  public setEnableWxBetterTogether(_enabled: boolean): void {
     // no-op for non-voice tasks
   }
 
