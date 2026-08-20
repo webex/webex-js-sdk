@@ -669,7 +669,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.rtdWebSocketManager.off('message', this.handleRTDWebsocketMessage);
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
 
-      await this.teardownWxAppLocalState({rethrowPublishError: true, clearInitFlag: true});
+      const {publishError: wxAppPublishError} = await this.teardownWxAppLocalState({
+        clearInitFlag: true,
+      });
 
       if (
         this.agentConfig.webRtcEnabled &&
@@ -701,6 +703,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       // Clear any cached agent configuration
       this.agentConfig = null;
+
+      if (wxAppPublishError) {
+        throw wxAppPublishError;
+      }
 
       LoggerProxy.log('Deregistered successfully', {
         module: CC_FILE,
@@ -1517,19 +1523,22 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     let publishedEnable = false;
 
     try {
-      await this.publishAnswerOnWebexCrossClientState(enabled);
-
       if (enabled) {
-        publishedEnable = true;
         await this.ensureWxAppMercuryAndSubscribe();
+        await this.publishAnswerOnWebexCrossClientState(true);
+        publishedEnable = true;
         this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
       } else {
+        await this.publishAnswerOnWebexCrossClientState(false);
         this.wxAppTelephonyMercurySync.unsubscribe();
         await this.releaseWxAppMercuryResources();
       }
     } catch (error) {
       if (publishedEnable) {
         await this.revertWxAppCrossClientPublish();
+      } else if (enabled) {
+        this.wxAppTelephonyMercurySync.unsubscribe();
+        await this.releaseWxAppMercuryResources();
       }
 
       if (this.$config) {
@@ -1549,9 +1558,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     try {
       if (this.isWxBetterTogetherEnabled()) {
+        await this.ensureWxAppMercuryAndSubscribe();
         await this.publishAnswerOnWebexCrossClientState(true);
         publishedEnable = true;
-        await this.ensureWxAppMercuryAndSubscribe();
         this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
       } else {
         await this.publishAnswerOnWebexCrossClientState(false, {force: true});
@@ -1743,7 +1752,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private async teardownWxAppLocalState(options?: {
     rethrowPublishError?: boolean;
     clearInitFlag?: boolean;
-  }): Promise<void> {
+  }): Promise<{publishError?: unknown}> {
     this.clearWxAppFalsePublishRetryTimer();
     let publishError: unknown;
 
@@ -1775,6 +1784,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (options?.rethrowPublishError && publishError) {
       throw publishError;
     }
+
+    return {publishError: publishError ?? undefined};
   }
 
   private async ensureWxAppMercuryAndSubscribe(): Promise<void> {
