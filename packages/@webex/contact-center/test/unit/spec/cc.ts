@@ -1428,6 +1428,10 @@ describe('webex.cc', () => {
       jest
         .spyOn(webex.cc as never, 'publishAnswerOnWebexCrossClientState' as never)
         .mockRejectedValue(new Error('usersub publish failed'));
+      const scheduleRetrySpy = jest.spyOn(
+        webex.cc as any,
+        'scheduleCompensatingFalsePublishRetry'
+      );
       const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
       const unsubscribeSpy = jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'unsubscribe');
 
@@ -1436,7 +1440,56 @@ describe('webex.cc', () => {
       expect(result).toEqual({trackingId: 'track-1'});
       expect(teardownSpy).toHaveBeenCalled();
       expect(unsubscribeSpy).toHaveBeenCalled();
+      expect(scheduleRetrySpy).toHaveBeenCalled();
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
+    });
+
+    it('should retry compensating false publish when teardown usersub publish fails on logout', async () => {
+      jest.useFakeTimers();
+      try {
+        webex.internal.device = {
+          userId: 'user-123',
+          url: 'https://wdm.example.com/devices/dev-1',
+        };
+        webex.cc['agentConfig'] = {
+          agentId: 'agent-123',
+          deviceType: LoginOption.EXTENSION,
+        } as Profile;
+        webex.cc.webCallingService.loginOption = LoginOption.EXTENSION;
+        webex.cc.$config = {...webex.cc.$config, enableWxBetterTogether: true};
+        mockTaskManager.applyEnableWxBetterTogether(true);
+        webex.cc['webexCrossClientService'].answerCallsState = true;
+
+        jest.spyOn(webex.cc.services.agent, 'logout').mockResolvedValue({
+          trackingId: 'track-1',
+        } as StationLogoutResponse);
+
+        const publishSpy = jest
+          .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+          .mockRejectedValueOnce(new Error('usersub publish failed'))
+          .mockResolvedValue(undefined);
+        const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
+        const unsubscribeSpy = jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'unsubscribe');
+        jest
+          .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
+          .mockResolvedValue(undefined);
+
+        const result = await webex.cc.stationLogout({logoutReason: 'Logout reason'});
+
+        expect(result).toEqual({trackingId: 'track-1'});
+        expect(publishSpy).toHaveBeenCalledTimes(1);
+        expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
+        expect(teardownSpy).toHaveBeenCalled();
+        expect(unsubscribeSpy).toHaveBeenCalled();
+
+        jest.advanceTimersByTime(30_000);
+        await publishSpy.mock.results[1]?.value;
+
+        expect(publishSpy).toHaveBeenCalledTimes(2);
+        expect(publishSpy).toHaveBeenLastCalledWith(false, {userId: 'user-123'});
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('should handle error during stationLogout', async () => {

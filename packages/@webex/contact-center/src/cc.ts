@@ -1760,6 +1760,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.resetEnableWxBetterTogetherConfig();
     }
 
+    if (publishError) {
+      this.scheduleCompensatingFalsePublishRetry();
+    }
+
     if (options?.rethrowPublishError && publishError) {
       throw publishError;
     }
