@@ -1563,6 +1563,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         publishedEnable = true;
         this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
       } else {
+        await this.ensureWxAppDeviceRegistered();
         await this.publishAnswerOnWebexCrossClientState(false, {force: true});
         this.webexCrossClientService.teardown();
         this.wxAppTelephonyMercurySync.unsubscribe();
@@ -1637,6 +1638,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
 
       try {
+        await this.ensureWxAppDeviceRegistered();
         await this.publishAnswerOnWebexCrossClientState(false, {force: true});
         this.webexCrossClientService.teardown();
         this.wxAppTelephonyMercurySync.unsubscribe();
@@ -1677,18 +1679,23 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     await this.releaseWxAppMercuryResources();
   }
 
-  private async ensureWxAppMercuryConnected(): Promise<void> {
+  private async ensureWxAppDeviceRegistered(): Promise<void> {
     const device = this.$webex.internal.device;
-    const mercury = this.$webex.internal.mercury;
 
     if (device && !device.registered && device.register) {
       await device.register();
       this.wxAppDeviceRegisteredByCc = true;
-      LoggerProxy.log('WxApp mute sync: device registered', {
+      LoggerProxy.log('WxApp: device registered for cross-client publish', {
         module: CC_FILE,
         method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
       });
     }
+  }
+
+  private async ensureWxAppMercuryConnected(): Promise<void> {
+    const mercury = this.$webex.internal.mercury;
+
+    await this.ensureWxAppDeviceRegistered();
 
     if (mercury && !mercury.connected) {
       await mercury.connect();
@@ -1757,7 +1764,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     let publishError: unknown;
 
     try {
-      await this.publishAnswerOnWebexCrossClientState(false);
+      const shouldForceFalsePublish =
+        this.isWxBetterTogetherEnabled() || this.webexCrossClientService.isAnswerCallsStateActive();
+
+      await this.publishAnswerOnWebexCrossClientState(false, {
+        force: shouldForceFalsePublish,
+      });
     } catch (error) {
       publishError = error;
       LoggerProxy.error(

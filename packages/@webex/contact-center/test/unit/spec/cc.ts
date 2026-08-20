@@ -1210,6 +1210,69 @@ describe('webex.cc', () => {
       expect(callOrder).toEqual(['device.register', 'publish:true']);
     });
 
+    it('should register device before publishing forced usersub false when wxApp is disabled at station login', async () => {
+      webex.cc.$config = {...webex.cc.$config, enableWxBetterTogether: false};
+      webex.internal.device = {
+        userId: 'user-123',
+        registered: false,
+        register: jest.fn().mockImplementation(async function (this: {
+          url?: string;
+          registered?: boolean;
+        }) {
+          this.url = 'https://wdm.example.com/devices/dev-1';
+          this.registered = true;
+        }),
+      };
+      webex.internal.mercury = {
+        connected: false,
+        connect: jest.fn().mockResolvedValue(undefined),
+      };
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        webRtcEnabled: false,
+        loginVoiceOptions: ['EXTENSION'],
+      };
+      webex.cc.webCallingService.loginOption = LoginOption.EXTENSION;
+      jest
+        .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
+        .mockResolvedValue(undefined);
+
+      const callOrder: string[] = [];
+      jest.spyOn(webex.internal.device, 'register').mockImplementation(async function (this: {
+        url?: string;
+        registered?: boolean;
+      }) {
+        callOrder.push('device.register');
+        this.url = 'https://wdm.example.com/devices/dev-1';
+        this.registered = true;
+      });
+      jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockImplementation(async (enable: boolean) => {
+          if (!webex.internal.device.url) {
+            throw new Error('Device URL is unavailable for cross-client publish');
+          }
+          callOrder.push(enable ? 'publish:true' : 'publish:false');
+        });
+
+      jest.spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue({
+        data: {
+          agentId: 'agentId',
+          teamId: 'teamId',
+          channelsMap: {chat: [], email: [], social: [], telephony: []},
+        },
+        trackingId: 'track-1',
+      } as StationLoginSuccess);
+
+      await webex.cc.stationLogin({
+        teamId: 'teamId',
+        loginOption: LoginOption.EXTENSION,
+        dialNumber: '1001',
+      });
+
+      expect(callOrder).toEqual(['device.register', 'publish:false']);
+    });
+
     it('should retry forced false publish when wxApp is disabled at station login', async () => {
       jest.useFakeTimers();
       try {
@@ -2587,6 +2650,41 @@ describe('webex.cc', () => {
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(false);
       expect(mockWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
       expect(webex.cc.agentConfig).toBeNull();
+    });
+
+    it('should publish forced false during teardown when enable publish is still in flight', async () => {
+      webex.cc.$config = {...webex.cc.$config, enableWxBetterTogether: true};
+      webex.internal.device = {
+        userId: 'user-123',
+        url: 'https://wdm.example.com/devices/dev-1',
+      };
+
+      let resolveEnable: () => void = () => {};
+      const enableGate = new Promise<void>((resolve) => {
+        resolveEnable = resolve;
+      });
+
+      const publishSpy = jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockImplementation(async (enable: boolean) => {
+          if (enable) {
+            await enableGate;
+          }
+        });
+      jest
+        .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
+        .mockResolvedValue(undefined);
+
+      expect(webex.cc['webexCrossClientService'].answerCallsState).toBe(false);
+
+      const enableInFlight = (webex.cc as any).publishAnswerOnWebexCrossClientState(true);
+
+      await (webex.cc as any).teardownWxAppLocalState();
+
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
+
+      resolveEnable();
+      await enableInFlight;
     });
 
     it('should release wxApp-owned Mercury and device on deregister', async () => {
