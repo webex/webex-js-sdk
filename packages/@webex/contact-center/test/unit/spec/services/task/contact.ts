@@ -219,7 +219,7 @@ describe("Routing contacts", () => {
     fakeAqm.pendingRequests = {};
     const req = contact.dropConferenceParticipant({
       interactionId: 'test-interaction-drop-123',
-      data: {participantId: '+1/participant 42'},
+      participantId: '+1/participant 42',
     }) as any;
 
     expect(req).toEqual({

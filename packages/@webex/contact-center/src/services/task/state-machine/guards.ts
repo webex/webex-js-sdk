@@ -384,6 +384,8 @@ export const guards = {
       return true;
     }
 
+    // Routing represents self-departure either by naming the participant or by retaining the
+    // participant entry with hasLeft set. Agent Desktop treats both representations as terminal.
     const currentParticipant = taskData?.interaction?.participants?.[selfAgentId];
     if (currentParticipant?.hasLeft === true) {
       return true;
@@ -404,6 +406,8 @@ export const guards = {
     const wasPreviouslyActive = Boolean(
       previousParticipants?.[selfAgentId] && previousParticipants[selfAgentId].hasLeft !== true
     );
+    // Some EP-DN lifecycle payloads remove the participant entry instead of setting hasLeft.
+    // Requiring a previously active entry prevents an incomplete initial snapshot from ending a task.
     if (updatedParticipants && wasPreviouslyActive && !(selfAgentId in updatedParticipants)) {
       return true;
     }
@@ -426,6 +430,9 @@ export const guards = {
       (media) => media?.mType === MEDIA_TYPE_CONSULT && media.participants?.includes(selfAgentId)
     );
 
+    // Agent Desktop uses mainCall membership for AgentConsultEnded cleanup. Restrict that fallback
+    // to a consult that originated from conference and require corroborating active-map and
+    // consult-leg membership so ordinary partial CONNECTED/HELD payloads cannot terminate a task.
     if (
       event?.type === TaskEvent.CONSULT_END &&
       context.consultFromConference === true &&

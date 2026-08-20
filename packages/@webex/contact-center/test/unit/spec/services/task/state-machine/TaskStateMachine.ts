@@ -164,6 +164,23 @@ describe('Task state machine', () => {
       return {service, emitTaskEnd};
     };
 
+    const enterTransientHoldState = (
+      service: ReturnType<typeof startMachine>,
+      state: TaskState.HOLD_INITIATING | TaskState.RESUME_INITIATING,
+      taskData: ReturnType<typeof createActiveMainCallTaskData>
+    ) => {
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId: 'main-media'});
+
+      if (state === TaskState.RESUME_INITIATING) {
+        service.send({type: TaskEvent.HOLD_SUCCESS, mediaResourceId: 'main-media'});
+        service.send({type: TaskEvent.UNHOLD_INITIATED, mediaResourceId: 'main-media'});
+      }
+
+      expect(service.getSnapshot().value).toBe(state);
+    };
+
     it('keeps CONNECTED when another participant leave event has a partial mainCall', () => {
       const {service, emitTaskEnd} = startMachineWithEndSpy();
       const taskData = createActiveMainCallTaskData();
@@ -181,6 +198,66 @@ describe('Task state machine', () => {
       expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
       expect(emitTaskEnd).not.toHaveBeenCalled();
     });
+
+    it('terminates CONNECTED when an out-of-order participant leave identifies the current agent', () => {
+      const {service, emitTaskEnd} = startMachineWithEndSpy();
+      const taskData = createActiveMainCallTaskData();
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+
+      service.send({
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        participantId: 'agent-1',
+        taskData: createPartialMainCallTaskData(false, true),
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+      expect(emitTaskEnd).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([TaskState.HOLD_INITIATING, TaskState.RESUME_INITIATING])(
+      'terminates %s when a remote Drop identifies the current agent',
+      (state) => {
+        const {service, emitTaskEnd} = startMachineWithEndSpy();
+        const taskData = createActiveMainCallTaskData(state === TaskState.RESUME_INITIATING);
+
+        enterTransientHoldState(service, state, taskData);
+        service.send({
+          type: TaskEvent.PARTICIPANT_LEAVE,
+          participantId: 'agent-1',
+          taskData: createPartialMainCallTaskData(
+            state === TaskState.RESUME_INITIATING,
+            true
+          ),
+        });
+
+        expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+        expect(emitTaskEnd).toHaveBeenCalledTimes(1);
+      }
+    );
+
+    it.each([TaskState.HOLD_INITIATING, TaskState.RESUME_INITIATING])(
+      'keeps %s when ParticipantLeftConference identifies another participant',
+      (state) => {
+        const {service, emitTaskEnd} = startMachineWithEndSpy();
+        const taskData = createActiveMainCallTaskData(state === TaskState.RESUME_INITIATING);
+
+        enterTransientHoldState(service, state, taskData);
+        service.send({
+          type: TaskEvent.PARTICIPANT_LEAVE,
+          participantId: 'agent-2',
+          taskData: createPartialMainCallTaskData(
+            state === TaskState.RESUME_INITIATING,
+            true
+          ),
+        });
+
+        expect(service.getSnapshot().value).toBe(state);
+        expect(emitTaskEnd).not.toHaveBeenCalled();
+      }
+    );
 
     it('keeps HELD when another participant leave event omits self from its roster', () => {
       const {service, emitTaskEnd} = startMachineWithEndSpy();
@@ -1800,6 +1877,47 @@ describe('Task state machine', () => {
       expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
     });
 
+    it('downgrades to CONNECTED on PARTICIPANT_LEAVE when the current agent remains', () => {
+      const service = startMachine();
+      const conferenceTaskData = createSingleAgentConferenceTaskData('conference');
+      const connectedTaskData = createSingleAgentConferenceTaskData('connected');
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: conferenceTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      service.send({
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        participantId: 'agent-2',
+        taskData: connectedTaskData,
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+    });
+
+    it('terminates instead of downgrading when PARTICIPANT_LEAVE identifies the current agent', () => {
+      const service = startMachine();
+      const conferenceTaskData = createSingleAgentConferenceTaskData('conference');
+      const connectedTaskData = {
+        ...createSingleAgentConferenceTaskData('connected'),
+        wrapUpRequired: false,
+      };
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: conferenceTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      service.send({
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        participantId: 'agent-1',
+        taskData: connectedTaskData,
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+    });
+
     it('returns to CONNECTED when CTQ cancel arrives before queue connects', () => {
       const service = startMachine();
       const taskData = createTaskData();
@@ -2873,6 +2991,10 @@ describe('Task state machine', () => {
       service.send({type: TaskEvent.CONFERENCE_START, taskData: conferenceTaskData});
       service.send({type: TaskEvent.CONSULT, destination: 'agent-3', destinationType: 'agent'});
       expect(service.getSnapshot().value).toBe(TaskState.CONSULT_INITIATING);
+      expect(service.getSnapshot().context.taskData.interaction).toBe(
+        conferenceTaskData.interaction
+      );
+      expect(service.getSnapshot().context.taskData.destAgentId).toBe('agent-3');
 
       const participantLeaveEvent = {
         type: TaskEvent.PARTICIPANT_LEAVE,

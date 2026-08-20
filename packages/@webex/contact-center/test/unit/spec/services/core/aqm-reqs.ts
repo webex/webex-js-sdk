@@ -601,6 +601,11 @@ describe('AqmReqs', () => {
       );
 
       await expect(promise).rejects.toBeDefined();
+      expect(LoggerProxy.log).toHaveBeenCalledTimes(1);
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        'Routing request failed (sensitive details redacted)',
+        expect.objectContaining({module: AQM_REQS_FILE})
+      );
       expect(JSON.stringify((LoggerProxy.log as jest.Mock).mock.calls)).not.toContain(participantId);
       expect(aqm['pendingRequests']).toEqual({});
     });

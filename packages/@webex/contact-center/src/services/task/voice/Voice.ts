@@ -837,7 +837,13 @@ export default class Voice extends Task implements IVoice {
   public async dropConferenceParticipant(
     payload: DropConferenceParticipantPayload
   ): Promise<TaskResponse> {
-    const participantId = payload?.participantId;
+    // The TypeScript contract requires payload, but the published SDK is also callable from
+    // untyped JavaScript. Keep an explicit runtime boundary check before direct property access.
+    if (!payload) {
+      throw new Error('participantId must be a non-empty string');
+    }
+
+    const {participantId} = payload;
 
     if (typeof participantId !== 'string' || participantId.trim().length === 0) {
       throw new Error('participantId must be a non-empty string');
@@ -845,14 +851,16 @@ export default class Voice extends Task implements IVoice {
 
     const requestInteractionId =
       this.data.interaction?.mainInteractionId || this.data.interactionId;
+    // taskId identifies the SDK task instance, which can remain child-interaction keyed after
+    // consult/EP-DN flows. requestInteractionId identifies the main interaction sent to AQM.
+
+    LoggerProxy.info('Dropping conference participant', {
+      module: CC_FILE,
+      method: METHODS.DROP_CONFERENCE_PARTICIPANT,
+      interactionId: requestInteractionId,
+    });
 
     try {
-      LoggerProxy.info('Dropping conference participant', {
-        module: CC_FILE,
-        method: METHODS.DROP_CONFERENCE_PARTICIPANT,
-        interactionId: requestInteractionId,
-      });
-
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS,
         METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED,
@@ -860,7 +868,7 @@ export default class Voice extends Task implements IVoice {
 
       const response = await this.contact.dropConferenceParticipant({
         interactionId: requestInteractionId,
-        data: {participantId},
+        participantId,
       });
 
       this.metricsManager.trackEvent(
@@ -905,6 +913,7 @@ export default class Voice extends Task implements IVoice {
       LoggerProxy.error('Failed to drop conference participant', {
         module: CC_FILE,
         method: METHODS.DROP_CONFERENCE_PARTICIPANT,
+        trackingId: failureTrackingFields.trackingId,
         interactionId: requestInteractionId,
       });
 

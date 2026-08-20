@@ -76,6 +76,8 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
   },
   mode: env && env.NODE_ENV === 'development' ? 'development' : 'production',
   output: {
+    // Sample pages load bundles from /samples/*.min.js. Align webpack-dev-server's
+    // in-memory output with that URL while preserving the existing production paths.
     path: path.resolve(__dirname, env && env.WEBPACK_SERVE ? 'docs/samples' : ''),
     ...(env && env.WEBPACK_SERVE ? {publicPath: '/samples/'} : {}),
     filename: (pathData) => {
@@ -95,12 +97,6 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
     https: true,
     port: process.env.PORT || 8000,
     static: './docs',
-    client: {
-      overlay: {
-        errors: true,
-        warnings: false,
-      },
-    },
   },
   resolve: {
     fallback: {

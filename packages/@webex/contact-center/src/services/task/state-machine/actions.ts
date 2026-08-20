@@ -520,7 +520,10 @@ export const actions: TaskActionsMap = {
       return {};
     }
 
-    const taskData = getTaskDataFromEvent(event) ?? context.taskData;
+    // CONSULT is a user action and does not carry taskData. Preserve the current interaction
+    // snapshot while recording the destination; replacing it with only destAgentId would remove
+    // the main-leg membership needed to correlate an immediately following lifecycle event.
+    const taskData = context.taskData;
     const consultDestinationType =
       'destinationType' in event ? event.destinationType ?? null : null;
     const consultDestinationAgentId =

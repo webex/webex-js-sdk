@@ -117,6 +117,8 @@ export default class AqmReqs {
             clear();
             const notifFail = c.notifFail!;
             if ('errId' in notifFail) {
+              const error = new Err.Details(notifFail.errId, msg as any);
+
               if (c.redactSensitiveLogs) {
                 LoggerProxy.log('Routing request failed (sensitive details redacted)', {
                   module: AQM_REQS_FILE,
@@ -127,15 +129,12 @@ export default class AqmReqs {
                   module: AQM_REQS_FILE,
                   method: METHODS.CREATE_PROMISE,
                 });
-              }
-              const eerr = new Err.Details(notifFail.errId, msg as any);
-              if (!c.redactSensitiveLogs) {
-                LoggerProxy.log(`Routing request failed: ${eerr}`, {
+                LoggerProxy.log(`Routing request failed: ${error}`, {
                   module: AQM_REQS_FILE,
                   method: METHODS.CREATE_PROMISE,
                 });
               }
-              reject(eerr);
+              reject(error);
             } else {
               reject(notifFail.err(msg as any));
             }

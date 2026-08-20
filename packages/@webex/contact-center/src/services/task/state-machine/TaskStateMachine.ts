@@ -52,12 +52,16 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
    * AgentContactHeld          -> TaskEvent.HOLD_SUCCESS
    * AgentContactUnheld        -> TaskEvent.UNHOLD_SUCCESS
    * AgentConsultEnded         -> TaskEvent.CONSULT_END
+   * ParticipantLeftConference -> TaskEvent.PARTICIPANT_LEAVE
    * AgentContactEnded         -> TaskEvent.CONTACT_ENDED
    * AgentWrapup               -> TaskEvent.TASK_WRAPUP (wrapUpRequired)
    * AgentWrappedup            -> TaskEvent.WRAPUP_COMPLETE
    *
    * (See TaskManager.mapEventToTaskStateMachineEvent for the full mapping table.)
    */
+  // XState evaluates these guarded transition arrays in order. Each returned entry is a
+  // complete transition with its own target and actions; sharing them keeps lifecycle-event
+  // handling consistent across active states where ParticipantLeftConference can arrive.
   const currentAgentParticipantLeaveTransitions = () => [
     {
       guard: (params) =>
@@ -111,10 +115,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
       ],
     },
   ];
-
-  const survivingParticipantLeaveTransition = {
-    actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft'],
-  };
 
   return {
     id: 'taskStateMachine',
@@ -409,9 +409,13 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
           ],
+          // Routing lifecycle events can arrive out of order in child-task/EP-DN flows. The
+          // local actor may still be CONNECTED when ParticipantLeftConference reports that this
+          // agent left the main interaction. Handle that self-departure race; for another
+          // participant, the action-only fallback updates data while preserving CONNECTED.
           [TaskEvent.PARTICIPANT_LEAVE]: [
             ...currentAgentParticipantLeaveTransitions(),
-            survivingParticipantLeaveTransition,
+            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
           ],
           // AgentContactEnded Event
           [TaskEvent.CONTACT_ENDED]: [
@@ -464,9 +468,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.CONNECTED,
             actions: ['updateTaskData'],
           },
+          // Another agent can remove this agent while the local hold request is awaiting its
+          // routing acknowledgement. Process that backend lifecycle event independently of
+          // whether Drop was initiated from this task; another-participant event preserves state.
           [TaskEvent.PARTICIPANT_LEAVE]: [
             ...currentAgentParticipantLeaveTransitions(),
-            survivingParticipantLeaveTransition,
+            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
           ],
         },
       },
@@ -560,7 +567,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           ],
           [TaskEvent.PARTICIPANT_LEAVE]: [
             ...currentAgentParticipantLeaveTransitions(),
-            survivingParticipantLeaveTransition,
+            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
           ],
           // TODO: This may not be a valid transition, this needs to be checked as well
           [TaskEvent.TASK_WRAPUP]: {
@@ -579,9 +586,10 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.UNHOLD_FAILED]: {
             target: TaskState.HELD,
           },
+          // The same remote-removal race can occur while an unhold request is in flight.
           [TaskEvent.PARTICIPANT_LEAVE]: [
             ...currentAgentParticipantLeaveTransitions(),
-            survivingParticipantLeaveTransition,
+            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
           ],
         },
       },
@@ -658,7 +666,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           ],
           [TaskEvent.PARTICIPANT_LEAVE]: [
             ...currentAgentParticipantLeaveTransitions(),
-            survivingParticipantLeaveTransition,
+            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
           ],
         },
       },
@@ -795,7 +803,9 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.PARTICIPANT_LEAVE]: [
             ...currentAgentParticipantLeaveTransitions(),
             {
-              guard: guards.shouldDowngradeConferenceToConnected,
+              guard: (params) =>
+                !guards.didCurrentAgentLeaveMainInteraction(params) &&
+                guards.shouldDowngradeConferenceToConnected(params),
               target: TaskState.CONNECTED,
               actions: [
                 'updateTaskData',
@@ -805,7 +815,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 'emitTaskConferenceEnded',
               ],
             },
-            survivingParticipantLeaveTransition,
+            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
           ],
 
           [TaskEvent.TRANSFER_SUCCESS]: [
@@ -939,7 +949,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           ],
           [TaskEvent.PARTICIPANT_LEAVE]: [
             ...currentAgentParticipantLeaveTransitions(),
-            survivingParticipantLeaveTransition,
+            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
           ],
         },
       },
@@ -1046,7 +1056,9 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             ...currentAgentParticipantLeaveTransitions(),
             {
               // Conference downgraded, customer present → CONNECTED
-              guard: guards.shouldDowngradeConferenceToConnected,
+              guard: (params) =>
+                !guards.didCurrentAgentLeaveMainInteraction(params) &&
+                guards.shouldDowngradeConferenceToConnected(params),
               target: TaskState.CONNECTED,
               actions: [
                 'updateTaskData',
@@ -1056,7 +1068,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 'emitTaskConferenceEnded',
               ],
             },
-            survivingParticipantLeaveTransition,
+            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
           ],
 
           [TaskEvent.TRANSFER_CONFERENCE]: {
