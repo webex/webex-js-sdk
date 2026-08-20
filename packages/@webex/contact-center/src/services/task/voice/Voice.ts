@@ -56,6 +56,7 @@ export default class Voice extends Task implements IVoice {
   private wxAppAnswerPending = false;
   private wxAppAcceptInFlight = false;
   private wxAppMuteSyncInFlight?: Promise<boolean | undefined>;
+  private wxAppMuteToggleInFlight?: Promise<void>;
 
   constructor(
     contact: ReturnType<typeof routingContact>,
@@ -393,11 +394,26 @@ export default class Voice extends Task implements IVoice {
    */
   public async toggleMute(options?: TaskToggleMuteOptions): Promise<void> {
     if (this.enableWxBetterTogether && this.getWebexCallingCallId()) {
-      await runWxAppToggleMute(
+      if (this.wxAppMuteToggleInFlight) {
+        await this.wxAppMuteToggleInFlight;
+      }
+
+      const togglePromise = runWxAppToggleMute(
         this.getWxAppVoiceDependencies(),
         this.createWxAppLifecycle(),
         options
       );
+
+      this.wxAppMuteToggleInFlight = togglePromise;
+      togglePromise
+        .finally(() => {
+          if (this.wxAppMuteToggleInFlight === togglePromise) {
+            this.wxAppMuteToggleInFlight = undefined;
+          }
+        })
+        .catch(() => undefined);
+
+      await togglePromise;
 
       return;
     }

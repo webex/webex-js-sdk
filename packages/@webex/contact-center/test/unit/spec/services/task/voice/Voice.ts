@@ -1247,6 +1247,41 @@ describe('Voice Task', () => {
       expect(mockSvc.muteCall).toHaveBeenCalledWith({callId: 'call-id-1', lineOwnerId: undefined});
     });
 
+    it('serializes concurrent no-arg toggleMute() so mute then unmute', async () => {
+      let resolveMute: () => void;
+      const muteGate = new Promise<void>((resolve) => {
+        resolveMute = resolve;
+      });
+      const mockSvc = {
+        muteCall: jest.fn().mockImplementation(() => muteGate),
+        unmuteCall: jest.fn().mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+      expect(voice.getWxAppMuted()).toBe(false);
+
+      const firstToggle = voice.toggleMute();
+      const secondToggle = voice.toggleMute();
+
+      resolveMute!();
+      await Promise.all([firstToggle, secondToggle]);
+
+      expect(mockSvc.muteCall).toHaveBeenCalledTimes(1);
+      expect(mockSvc.unmuteCall).toHaveBeenCalledTimes(1);
+      expect(voice.getWxAppMuted()).toBe(false);
+    });
+
     it('transmitDtmf() routes wxApp engaged call to telephony transmitDtmf', async () => {
       const mockSvc = {
         transmitDtmf: jest.fn().mockResolvedValue(undefined),

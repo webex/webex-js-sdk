@@ -7,6 +7,8 @@ const DEFAULT_CROSS_CLIENT_STATE_TTL = 900;
 const EXPIRATION_OFFSET_MS = 60_000;
 /** Must match Agent Desktop usersub publish — Webex App reads `wxcc` cross-client state. */
 const DEFAULT_APP_NAME = 'wxcc';
+const REFRESH_RETRY_DELAY_MS = 30_000;
+const MAX_REFRESH_RETRIES = 3;
 
 type RefreshTimer = ReturnType<typeof setTimeout>;
 
@@ -16,6 +18,7 @@ type RefreshTimer = ReturnType<typeof setTimeout>;
 export default class WebexCrossClientService {
   private webex: WebexSDK;
   private refreshTimer?: RefreshTimer;
+  private refreshRetryTimer?: RefreshTimer;
   private answerCallsState = false;
   private appName = DEFAULT_APP_NAME;
   /** Incremented on teardown/disable to ignore stale refresh timer callbacks. */
@@ -40,6 +43,42 @@ export default class WebexCrossClientService {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = undefined;
     }
+
+    if (this.refreshRetryTimer) {
+      clearTimeout(this.refreshRetryTimer);
+      this.refreshRetryTimer = undefined;
+    }
+  }
+
+  private scheduleRefreshRetry(
+    userId: string,
+    ttl: number,
+    scheduledGeneration: number,
+    retryAttempt: number
+  ): void {
+    if (
+      retryAttempt >= MAX_REFRESH_RETRIES ||
+      scheduledGeneration !== this.refreshGeneration ||
+      !this.answerCallsState
+    ) {
+      return;
+    }
+
+    this.refreshRetryTimer = setTimeout(async () => {
+      if (scheduledGeneration !== this.refreshGeneration || !this.answerCallsState) {
+        return;
+      }
+
+      try {
+        await this.setManageWebexCallingInWxcc(true, {userId, ttl, appName: this.appName});
+      } catch (error) {
+        LoggerProxy.error(`WebexCrossClientService refresh retry failed: ${error}`, {
+          module: WEBEX_CROSS_CLIENT_FILE,
+          method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+        });
+        this.scheduleRefreshRetry(userId, ttl, scheduledGeneration, retryAttempt + 1);
+      }
+    }, REFRESH_RETRY_DELAY_MS);
   }
 
   private startRefreshTimer(userId: string, ttl: number): void {
@@ -51,19 +90,20 @@ export default class WebexCrossClientService {
 
     const refreshTime = ttl * 1000 - EXPIRATION_OFFSET_MS;
     const scheduledGeneration = this.refreshGeneration;
-    this.refreshTimer = setTimeout(() => {
+    this.refreshTimer = setTimeout(async () => {
       if (scheduledGeneration !== this.refreshGeneration || !this.answerCallsState) {
         return;
       }
 
-      this.setManageWebexCallingInWxcc(true, {userId, ttl, appName: this.appName}).catch(
-        (error) => {
-          LoggerProxy.error(`WebexCrossClientService refresh failed: ${error}`, {
-            module: WEBEX_CROSS_CLIENT_FILE,
-            method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
-          });
-        }
-      );
+      try {
+        await this.setManageWebexCallingInWxcc(true, {userId, ttl, appName: this.appName});
+      } catch (error) {
+        LoggerProxy.error(`WebexCrossClientService refresh failed: ${error}`, {
+          module: WEBEX_CROSS_CLIENT_FILE,
+          method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+        });
+        this.scheduleRefreshRetry(userId, ttl, scheduledGeneration, 0);
+      }
     }, refreshTime);
   }
 

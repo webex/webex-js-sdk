@@ -3342,8 +3342,9 @@ function muteUnmute() {
     currentTask.getWebexCallingCallId();
 
   if (wxAppCallId) {
+    const nextMuted = !(currentTask.getWxAppMuted?.() ?? false);
     currentTask
-      .toggleMute()
+      .toggleMute({muted: nextMuted})
       .then(() => {
         applyWxAppMuteLabel(currentTask);
         const muted =

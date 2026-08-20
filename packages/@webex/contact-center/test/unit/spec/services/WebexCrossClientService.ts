@@ -147,6 +147,77 @@ describe('WebexCrossClientService', () => {
     }
   });
 
+  it('retries failed refresh publish before ttl expiry', async () => {
+    jest.useFakeTimers();
+    try {
+      const setManageSpy = jest.spyOn(service, 'setManageWebexCallingInWxcc');
+      webex.request = jest
+        .fn()
+        .mockResolvedValueOnce({body: {}})
+        .mockRejectedValueOnce(new Error('refresh failed'))
+        .mockResolvedValueOnce({body: {}});
+
+      await service.setManageWebexCallingInWxcc(true, {ttl: 900});
+      expect(webex.request).toHaveBeenCalledTimes(1);
+
+      jest.advanceTimersByTime(840_000);
+      await expect(setManageSpy.mock.results[1].value).rejects.toThrow('refresh failed');
+      expect(webex.request).toHaveBeenCalledTimes(2);
+
+      jest.advanceTimersByTime(30_000);
+      await setManageSpy.mock.results[2].value;
+
+      expect(webex.request).toHaveBeenCalledTimes(3);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('schedules bounded retry when scheduled refresh publish fails', async () => {
+    jest.useFakeTimers();
+    try {
+      const setManageSpy = jest.spyOn(service, 'setManageWebexCallingInWxcc');
+      webex.request = jest
+        .fn()
+        .mockResolvedValueOnce({body: {}})
+        .mockRejectedValueOnce(new Error('refresh failed'));
+
+      await service.setManageWebexCallingInWxcc(true, {ttl: 900});
+      const scheduleRefreshRetrySpy = jest.spyOn(service as any, 'scheduleRefreshRetry');
+
+      jest.advanceTimersByTime(840_000);
+      await expect(setManageSpy.mock.results[1].value).rejects.toThrow('refresh failed');
+      expect(scheduleRefreshRetrySpy).toHaveBeenCalledWith(userId, 900, 0, 0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('does not retry refresh after teardown bumps generation', async () => {
+    jest.useFakeTimers();
+    try {
+      const setManageSpy = jest.spyOn(service, 'setManageWebexCallingInWxcc');
+      webex.request = jest
+        .fn()
+        .mockResolvedValueOnce({body: {}})
+        .mockRejectedValueOnce(new Error('refresh failed'));
+
+      await service.setManageWebexCallingInWxcc(true, {ttl: 900});
+
+      jest.advanceTimersByTime(840_000);
+      await expect(setManageSpy.mock.results[1].value).rejects.toThrow('refresh failed');
+
+      service.teardown();
+
+      jest.advanceTimersByTime(30_000);
+      await Promise.resolve();
+
+      expect(webex.request).toHaveBeenCalledTimes(2);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('teardown clears refresh timer so publish is not repeated', async () => {
     jest.useFakeTimers();
     try {

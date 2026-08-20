@@ -419,6 +419,17 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.CONNECTED,
             actions: ['updateTaskData'],
           },
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+            },
+          ],
         },
       },
 
@@ -536,6 +547,17 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.UNHOLD_FAILED]: {
             target: TaskState.HELD,
           },
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+            },
+          ],
         },
       },
 
@@ -606,6 +628,17 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               target: TaskState.CONNECTED,
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+          ],
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
             },
           ],
         },
@@ -912,6 +945,17 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               target: TaskState.CONNECTED,
               actions: ['updateTaskData', 'clearConsultState'],
+            },
+          ],
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
             },
           ],
         },
