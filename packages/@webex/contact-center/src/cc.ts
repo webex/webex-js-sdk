@@ -669,6 +669,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.rtdWebSocketManager.off('message', this.handleRTDWebsocketMessage);
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
 
+      await this.teardownWxAppLocalState({rethrowPublishError: true, clearInitFlag: true});
+
       if (
         this.agentConfig.webRtcEnabled &&
         this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
@@ -699,8 +701,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       // Clear any cached agent configuration
       this.agentConfig = null;
-
-      await this.teardownWxAppLocalState({rethrowPublishError: true, clearInitFlag: true});
 
       LoggerProxy.log('Deregistered successfully', {
         module: CC_FILE,
@@ -1619,6 +1619,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         return;
       }
 
+      if (
+        !options?.requireDisabled &&
+        this.isWxBetterTogetherEnabled() &&
+        this.webexCrossClientService.isAnswerCallsStateActive()
+      ) {
+        return;
+      }
+
       try {
         await this.publishAnswerOnWebexCrossClientState(false, {force: true});
         this.webexCrossClientService.teardown();
@@ -1822,6 +1830,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
 
     await this.webexCrossClientService.setManageWebexCallingInWxcc(enable, {userId});
+
+    if (enable) {
+      this.clearWxAppFalsePublishRetryTimer();
+    }
   }
 
   /**

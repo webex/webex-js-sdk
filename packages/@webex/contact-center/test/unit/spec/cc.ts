@@ -1492,6 +1492,75 @@ describe('webex.cc', () => {
       }
     });
 
+    it('should cancel compensating retry when station login succeeds before retry fires', async () => {
+      jest.useFakeTimers();
+      try {
+        webex.internal.device = {
+          userId: 'user-123',
+          url: 'https://wdm.example.com/devices/dev-1',
+          registered: false,
+          register: jest.fn().mockResolvedValue(undefined),
+          unregister: jest.fn().mockResolvedValue(undefined),
+        };
+        webex.internal.mercury = {
+          connected: false,
+          connect: jest.fn().mockResolvedValue(undefined),
+          disconnect: jest.fn().mockResolvedValue(undefined),
+        };
+        jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe').mockImplementation(() => {});
+        webex.cc['agentConfig'] = {
+          agentId: 'agent-123',
+          deviceType: LoginOption.EXTENSION,
+          webRtcEnabled: false,
+          loginVoiceOptions: ['EXTENSION'],
+        } as Profile;
+        webex.cc.webCallingService.loginOption = LoginOption.EXTENSION;
+        webex.cc.$config = {...webex.cc.$config, enableWxBetterTogether: true};
+        mockTaskManager.applyEnableWxBetterTogether(true);
+        webex.cc['webexCrossClientService'].answerCallsState = true;
+
+        jest.spyOn(webex.cc.services.agent, 'logout').mockResolvedValue({
+          trackingId: 'track-1',
+        } as StationLogoutResponse);
+        jest.spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue({
+          data: {
+            agentId: 'agent-123',
+            teamId: 'team-123',
+            channelsMap: {chat: [], email: [], social: [], telephony: []},
+          },
+          trackingId: 'track-2',
+        } as StationLoginSuccess);
+
+        const publishSpy = jest
+          .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+          .mockRejectedValueOnce(new Error('usersub publish failed'))
+          .mockResolvedValue(undefined);
+        const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
+        jest
+          .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
+          .mockResolvedValue(undefined);
+
+        await webex.cc.stationLogout({logoutReason: 'Logout reason'});
+        await webex.cc.stationLogin({
+          teamId: 'team-123',
+          loginOption: LoginOption.EXTENSION,
+          dialNumber: '1001',
+        });
+
+        expect(publishSpy).toHaveBeenCalledTimes(2);
+        expect(publishSpy).toHaveBeenNthCalledWith(1, false, {userId: 'user-123'});
+        expect(publishSpy).toHaveBeenNthCalledWith(2, true, {userId: 'user-123'});
+        expect(teardownSpy).toHaveBeenCalledTimes(1);
+
+        jest.advanceTimersByTime(30_000);
+
+        expect(publishSpy).toHaveBeenCalledTimes(2);
+        expect(teardownSpy).toHaveBeenCalledTimes(1);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
     it('should handle error during stationLogout', async () => {
       const data = {logoutReason: 'Logout reason'};
       const error = {
@@ -2351,6 +2420,35 @@ describe('webex.cc', () => {
       expect(publishSpy).not.toHaveBeenCalled();
       expect(teardownSpy).toHaveBeenCalled();
       expect(unsubscribeSpy).toHaveBeenCalled();
+    });
+
+    it('should publish usersub false before device unregister when wxApp is active on deregister', async () => {
+      webex.cc.$config = {...webex.cc.$config, enableWxBetterTogether: true};
+      webex.cc['webexCrossClientService'].answerCallsState = true;
+      webex.internal.device = {
+        userId: 'user-123',
+        url: 'https://wdm.example.com/devices/dev-1',
+        unregister: jest.fn().mockResolvedValue(undefined),
+      };
+      deviceUnregisterSpy = jest.spyOn(webex.internal.device, 'unregister');
+
+      const callOrder: string[] = [];
+      jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockImplementation(async (enable: boolean) => {
+          if (enable === false && !webex.internal.device.url) {
+            throw new Error('Device URL is unavailable for cross-client publish');
+          }
+          callOrder.push(enable ? 'publish:true' : 'publish:false');
+        });
+      deviceUnregisterSpy.mockImplementation(async () => {
+        callOrder.push('device.unregister');
+        webex.internal.device.url = undefined;
+      });
+
+      await webex.cc.deregister();
+
+      expect(callOrder).toEqual(['publish:false', 'device.unregister']);
     });
 
     it('should skip webCallingService and internal cleanup when webrtc is disabled', async () => {
