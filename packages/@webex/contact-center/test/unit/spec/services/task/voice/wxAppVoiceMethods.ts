@@ -152,6 +152,10 @@ describe('getWebexCallingCallId', () => {
     expect(getWebexCallingCallId(makeDeps({getTaskState: () => TaskState.COMPLETED}))).toBeNull();
   });
 
+  it('returns null when state is WRAPPING_UP', () => {
+    expect(getWebexCallingCallId(makeDeps({getTaskState: () => TaskState.WRAPPING_UP}))).toBeNull();
+  });
+
   it('returns the deviceCallId when state is CONNECTED', () => {
     expect(getWebexCallingCallId(makeDeps({getTaskState: () => TaskState.CONNECTED}))).toBe(
       'call-id-1'

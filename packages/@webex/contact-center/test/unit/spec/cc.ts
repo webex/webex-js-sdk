@@ -1279,7 +1279,16 @@ describe('webex.cc', () => {
       webex.internal.device = {
         userId: 'user-123',
         url: 'https://wdm.example.com/devices/dev-1',
+        registered: false,
+        register: jest.fn().mockResolvedValue(undefined),
+        unregister: jest.fn().mockResolvedValue(undefined),
       };
+      webex.internal.mercury = {
+        connected: false,
+        connect: jest.fn().mockResolvedValue(undefined),
+        disconnect: jest.fn().mockResolvedValue(undefined),
+      };
+      jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe').mockImplementation(() => {});
       webex.request = jest.fn().mockResolvedValue({body: {}});
       webex.cc['agentConfig'] = {
         agentId: 'agent-123',
@@ -1287,7 +1296,7 @@ describe('webex.cc', () => {
       } as Profile;
       webex.cc.webCallingService.loginOption = LoginOption.EXTENSION;
 
-      await webex.cc.setManageWebexCallingInWxcc(true);
+      await (webex.cc as any).setManageWebexCallingInWxcc(true);
 
       const publishSpy = jest
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
@@ -3056,9 +3065,20 @@ describe('webex.cc', () => {
     });
   });
 
-  describe('setManageWebexCallingInWxcc', () => {
+  describe('private setManageWebexCallingInWxcc (runtime toggle impl)', () => {
     beforeEach(() => {
-      webex.internal.device = {userId: 'user-123'};
+      webex.internal.device = {
+        userId: 'user-123',
+        registered: false,
+        register: jest.fn().mockResolvedValue(undefined),
+        unregister: jest.fn().mockResolvedValue(undefined),
+      };
+      webex.internal.mercury = {
+        connected: false,
+        connect: jest.fn().mockResolvedValue(undefined),
+        disconnect: jest.fn().mockResolvedValue(undefined),
+      };
+      jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe').mockImplementation(() => {});
       webex.cc.$config = {...webex.cc.$config, enableWxBetterTogether: false};
       webex.cc['agentConfig'] = {
         agentId: 'agent-123',
@@ -3070,12 +3090,16 @@ describe('webex.cc', () => {
       });
     });
 
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     it('should update config, task manager, and publish usersub when enabled', async () => {
       const publishSpy = jest
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockResolvedValue(undefined);
 
-      await webex.cc.setManageWebexCallingInWxcc(true);
+      await (webex.cc as any).setManageWebexCallingInWxcc(true);
 
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
       expect(mockTaskManager.applyEnableWxBetterTogether).toHaveBeenCalledWith(true);
@@ -3089,13 +3113,13 @@ describe('webex.cc', () => {
       };
       webex.request = jest.fn().mockResolvedValue({body: {}});
 
-      await webex.cc.setManageWebexCallingInWxcc(true);
+      await (webex.cc as any).setManageWebexCallingInWxcc(true);
 
       const publishSpy = jest
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockResolvedValue(undefined);
 
-      await webex.cc.setManageWebexCallingInWxcc(false);
+      await (webex.cc as any).setManageWebexCallingInWxcc(false);
 
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(false);
       expect(mockTaskManager.applyEnableWxBetterTogether).toHaveBeenCalledWith(false);
@@ -3108,7 +3132,7 @@ describe('webex.cc', () => {
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockResolvedValue(undefined);
 
-      await webex.cc.setManageWebexCallingInWxcc(false);
+      await (webex.cc as any).setManageWebexCallingInWxcc(false);
 
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(false);
       expect(mockTaskManager.applyEnableWxBetterTogether).toHaveBeenCalledWith(false);
@@ -3118,7 +3142,7 @@ describe('webex.cc', () => {
     it('should throw when enabling before login', async () => {
       webex.internal.device = undefined;
 
-      await expect(webex.cc.setManageWebexCallingInWxcc(true)).rejects.toThrow(
+      await expect((webex.cc as any).setManageWebexCallingInWxcc(true)).rejects.toThrow(
         'Cannot publish answer-calls-on-wxcc: user is not logged in'
       );
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(false);
@@ -3132,7 +3156,7 @@ describe('webex.cc', () => {
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockResolvedValue(undefined);
 
-      await expect(webex.cc.setManageWebexCallingInWxcc(true)).rejects.toThrow(
+      await expect((webex.cc as any).setManageWebexCallingInWxcc(true)).rejects.toThrow(
         'setManageWebexCallingInWxcc requires EXTENSION or AGENT_DN station login'
       );
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(false);
@@ -3147,7 +3171,7 @@ describe('webex.cc', () => {
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockResolvedValue(undefined);
 
-      await expect(webex.cc.setManageWebexCallingInWxcc(true)).rejects.toThrow(
+      await expect((webex.cc as any).setManageWebexCallingInWxcc(true)).rejects.toThrow(
         'setManageWebexCallingInWxcc requires EXTENSION or AGENT_DN station login'
       );
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(false);
@@ -3162,7 +3186,7 @@ describe('webex.cc', () => {
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockResolvedValue(undefined);
 
-      await expect(webex.cc.setManageWebexCallingInWxcc(true)).rejects.toThrow(
+      await expect((webex.cc as any).setManageWebexCallingInWxcc(true)).rejects.toThrow(
         'setManageWebexCallingInWxcc requires EXTENSION or AGENT_DN station login'
       );
       expect(publishSpy).not.toHaveBeenCalled();
@@ -3177,7 +3201,7 @@ describe('webex.cc', () => {
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockResolvedValue(undefined);
 
-      await webex.cc.setManageWebexCallingInWxcc(true);
+      await (webex.cc as any).setManageWebexCallingInWxcc(true);
 
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
       expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123'});
@@ -3189,7 +3213,7 @@ describe('webex.cc', () => {
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockResolvedValue(undefined);
 
-      await webex.cc.setManageWebexCallingInWxcc(false);
+      await (webex.cc as any).setManageWebexCallingInWxcc(false);
 
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(false);
       expect(mockTaskManager.applyEnableWxBetterTogether).toHaveBeenCalledWith(false);
@@ -3212,7 +3236,7 @@ describe('webex.cc', () => {
         .spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe')
         .mockImplementation(() => {});
 
-      await webex.cc.setManageWebexCallingInWxcc(true);
+      await (webex.cc as any).setManageWebexCallingInWxcc(true);
 
       expect(subscribeSpy).toHaveBeenCalledWith('agent-123', expect.any(Function));
     });
@@ -3226,7 +3250,7 @@ describe('webex.cc', () => {
         .spyOn(webex.cc['wxAppTelephonyMercurySync'], 'unsubscribe')
         .mockImplementation(() => {});
 
-      await webex.cc.setManageWebexCallingInWxcc(false);
+      await (webex.cc as any).setManageWebexCallingInWxcc(false);
 
       expect(unsubscribeSpy).toHaveBeenCalled();
     });
@@ -3249,7 +3273,7 @@ describe('webex.cc', () => {
         .spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe')
         .mockImplementation(() => {});
 
-      await webex.cc.setManageWebexCallingInWxcc(true);
+      await (webex.cc as any).setManageWebexCallingInWxcc(true);
 
       expect(webex.internal.device.register).toHaveBeenCalled();
       expect(webex.internal.mercury.connect).toHaveBeenCalled();
@@ -3262,11 +3286,34 @@ describe('webex.cc', () => {
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockRejectedValue(new Error('usersub failed'));
 
-      await expect(webex.cc.setManageWebexCallingInWxcc(true)).rejects.toThrow('usersub failed');
+      await expect((webex.cc as any).setManageWebexCallingInWxcc(true)).rejects.toThrow('usersub failed');
 
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(false);
       expect(mockTaskManager.applyEnableWxBetterTogether).toHaveBeenCalledWith(true);
       expect(mockTaskManager.applyEnableWxBetterTogether).toHaveBeenLastCalledWith(false);
+    });
+
+    it('should rollback config and release Mercury resources when Mercury connect fails', async () => {
+      webex.cc.$config = {...webex.cc.$config, enableWxBetterTogether: false};
+      jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+      jest
+        .spyOn(webex.cc as any, 'ensureWxAppMercuryConnected')
+        .mockRejectedValue(new Error('mercury connect failed'));
+      const releaseSpy = jest
+        .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
+        .mockResolvedValue(undefined);
+      const unsubscribeSpy = jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'unsubscribe');
+
+      await expect((webex.cc as any).setManageWebexCallingInWxcc(true)).rejects.toThrow(
+        'mercury connect failed'
+      );
+
+      expect(webex.cc.isWxBetterTogetherEnabled()).toBe(false);
+      expect(mockTaskManager.applyEnableWxBetterTogether).toHaveBeenLastCalledWith(false);
+      expect(unsubscribeSpy).toHaveBeenCalled();
+      expect(releaseSpy).toHaveBeenCalled();
     });
   });
 });

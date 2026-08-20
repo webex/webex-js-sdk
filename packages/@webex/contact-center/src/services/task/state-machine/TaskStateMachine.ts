@@ -513,6 +513,17 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.WRAPPING_UP,
             actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
           },
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+            },
+          ],
         },
       },
 
@@ -843,6 +854,17 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.WRAPPING_UP,
             actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
           },
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+            },
+          ],
           [TaskEvent.MERGE_TO_CONFERENCE]: {
             target: TaskState.CONF_INITIATING,
           },
@@ -1133,6 +1155,17 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.WRAPPING_UP,
             actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
           },
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+            },
+          ],
         },
       },
 

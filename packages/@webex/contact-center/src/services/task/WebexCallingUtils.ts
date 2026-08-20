@@ -109,6 +109,7 @@ export function isWxAppEngagedForControls(
     !state ||
     state === TaskState.OFFERED ||
     state === TaskState.IDLE ||
+    state === TaskState.WRAPPING_UP ||
     state === TaskState.TERMINATED ||
     state === TaskState.COMPLETED
   ) {

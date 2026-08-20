@@ -147,17 +147,7 @@ function toggleWebRTCRegistration() {
 function toggleWxBetterTogether() {
   isWxBetterTogetherEnabled = enableWxBetterTogetherCheckbox.checked;
   localStorage.setItem('isWxBetterTogetherEnabled', String(isWxBetterTogetherEnabled));
-
-  if (webex?.cc?.agentConfig?.isAgentLoggedIn) {
-    webex.cc.setManageWebexCallingInWxcc(isWxBetterTogetherEnabled).catch((error) => {
-      console.error('setManageWebexCallingInWxcc failed', error);
-      isWxBetterTogetherEnabled = !isWxBetterTogetherEnabled;
-      localStorage.setItem('isWxBetterTogetherEnabled', String(isWxBetterTogetherEnabled));
-      if (enableWxBetterTogetherCheckbox) {
-        enableWxBetterTogetherCheckbox.checked = isWxBetterTogetherEnabled;
-      }
-    });
-  }
+  // Phase 1: init-only — applied via webexConfig.cc.enableWxBetterTogether before webex.init(); re-init to apply changes.
 }
 
 const transcriptEntries = [];
@@ -2910,12 +2900,6 @@ function register() {
         dialNumber.disabled = false;
         dialNumber.value = data.dn || '';
       }
-
-      if (isWxBetterTogetherEnabled) {
-        webex.cc.setManageWebexCallingInWxcc(true).catch((error) => {
-          console.error('setManageWebexCallingInWxcc failed on relogin', error);
-        });
-      }
     });
 
     webex.cc.on('agent:stationLoginSuccess', (data) => {
@@ -2939,12 +2923,6 @@ function register() {
       const idx    = [...idleCodesDropdown.options].findIndex(o => o.value === auxId);
       idleCodesDropdown.selectedIndex = idx >= 0 ? idx : 0;
       startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
-
-      if (isWxBetterTogetherEnabled) {
-        webex.cc.setManageWebexCallingInWxcc(true).catch((error) => {
-          console.error('setManageWebexCallingInWxcc failed on station login', error);
-        });
-      }
     });
         updateTaskList();
     }).catch((error) => {

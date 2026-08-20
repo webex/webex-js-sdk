@@ -2262,6 +2262,87 @@ describe('Task state machine', () => {
       service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'AGENT_ENDS'});
       expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
     });
+
+    it('transitions from HELD to WRAPPING_UP on OUTBOUND_FAILED when wrapup is required', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId});
+      service.send({type: TaskEvent.HOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId});
+      expect(service.getSnapshot().value).toBe(TaskState.HELD);
+
+      const failedTaskData = createTaskData({
+        agentId: 'agent-1',
+        agentsPendingWrapUp: ['agent-1'],
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+        } as any,
+      });
+      service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'AGENT_ENDS'});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
+    it('transitions from CONSULTING to WRAPPING_UP on OUTBOUND_FAILED when wrapup is required', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.CONSULT, destination: 'agent-42', destinationType: 'agent'});
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
+
+      const failedTaskData = createTaskData({
+        agentId: 'agent-1',
+        agentsPendingWrapUp: ['agent-1'],
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+        } as any,
+      });
+      service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'AGENT_ENDS'});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
+    it('transitions from CONFERENCING to WRAPPING_UP on OUTBOUND_FAILED when wrapup is required', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        consultingAgentId: 'agent-1',
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.CONSULT, destination: 'agent-42', destinationType: 'agent'});
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+      service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      service.send({type: TaskEvent.CONFERENCE_START});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      const failedTaskData = createTaskData({
+        agentId: 'agent-1',
+        agentsPendingWrapUp: ['agent-1'],
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+        } as any,
+      });
+      service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'AGENT_ENDS'});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
   });
 
   describe('CONSULTING state TRANSFER_CONFERENCE_SUCCESS desktop-initiated (CAI-8329)', () => {

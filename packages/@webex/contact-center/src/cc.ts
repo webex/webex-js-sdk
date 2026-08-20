@@ -1468,11 +1468,32 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Runtime toggle for wxApp thick-client answer and cross-client toast suppression.
-   * Updates config, publishes usersub state, and refreshes uiControls on active tasks.
-   * @public
+   * Runtime enable/disable for wxApp Better Together (toast suppression + Mercury mute sync).
+   *
+   * **Phase 1 (WXCC-6026 / MMT): NOT part of the public host contract.**
+   * Hosts must set `webexConfig.cc.enableWxBetterTogether` before `webex.init()` / `cc.register()`.
+   * To change the flag after the SDK is initialized, re-init the SDK with the updated config.
+   *
+   * **Supported public read API:** {@link isWxBetterTogetherEnabled}.
+   * **Supported telephony API:** unified `task.accept()`, `task.decline()`, `task.toggleMute()`,
+   * `task.transmitDtmf()` — SDK routes wxApp calls internally when the init flag is active.
+   *
+   * **Production lifecycle does not call this method.** Station login, silent relogin, logout,
+   * and deregister use {@link ensureWxAppPostStationLogin} and {@link teardownWxAppLocalState}
+   * (usersub publish + Mercury subscribe/unsubscribe based on the init flag).
+   *
+   * This setter remains as a **private implementation** for Phase 2 runtime toggle and unit tests.
+   * It updates `$config.enableWxBetterTogether`, TaskManager flags, cross-client usersub
+   * (`answer-calls-on-wxcc`), and Mercury mute sync; rolls back config on publish/connect failure.
+   *
+   * @param enabled - `true` to enable wxApp answer + usersub suppression; `false` to disable and tear down.
+   * @throws When enabling without login, on unsupported BROWSER station login, or when usersub/Mercury init fails.
+   * @internal
+   * @see enableWxBetterTogether (CCPluginConfig init flag)
+   * @see ensureWxAppPostStationLogin
+   * @see teardownWxAppLocalState
    */
-  public async setManageWebexCallingInWxcc(enabled: boolean): Promise<void> {
+  private async setManageWebexCallingInWxcc(enabled: boolean): Promise<void> {
     if (enabled && !this.$webex.internal.device?.userId) {
       throw new Error('Cannot publish answer-calls-on-wxcc: user is not logged in');
     }
@@ -1602,6 +1623,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       } finally {
         this.wxAppDeviceRegisteredByCc = false;
       }
+    } else if (this.wxAppDeviceRegisteredByCc) {
+      this.wxAppDeviceRegisteredByCc = false;
     }
   }
 
@@ -1665,6 +1688,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         module: CC_FILE,
         method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
       });
+      this.wxAppTelephonyMercurySync.unsubscribe();
+      await this.releaseWxAppMercuryResources();
+      throw error;
     }
   }
 
