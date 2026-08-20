@@ -3516,6 +3516,13 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 });
 
  async function answer() {
+  const acceptControl = getTaskLegControls(currentTask, 'main')?.accept;
+  if (!acceptControl?.isEnabled) {
+    console.warn('Accept operation is not available for the selected task');
+    updateTaskList();
+    return;
+  }
+
   // Button states will be updated by task.uiControls after accept() completes
   await currentTask.accept();
   updateTaskList();
@@ -3818,20 +3825,25 @@ function renderTaskList(taskList) {
     const callerDisplay = task.data.interaction.callAssociatedDetails?.ani;
     // Determine task properties
     const isNew = isIncomingTask(task, agentId); 
-    const isTelephony = task.data.interaction.mediaType === 'telephony';
-    const isBrowserPhone = agentDeviceType === 'BROWSER';
     const isAutoAnswering = task.data.isAutoAnswering || false;
+    const taskControls = getTaskLegControls(task, 'main') || {};
+    const acceptControl = taskControls.accept || {};
+    const declineControl = taskControls.decline || {};
 
-    // Determine which buttons to show
-    const showAcceptButton = isNew && (isBrowserPhone || !isTelephony);
-    const showDeclineButton = isNew && isTelephony && isBrowserPhone;
+    // Task controls are authoritative for this SDK instance. In a multi-login session the
+    // profile device type can describe another browser session, while this task is an endpoint
+    // Voice task whose accept/decline methods are intentionally unsupported.
+    const showAcceptButton = isNew && acceptControl.isVisible;
+    const showDeclineButton = isNew && declineControl.isVisible;
+    const disableAcceptButton = isAutoAnswering || !acceptControl.isEnabled;
+    const disableDeclineButton = isAutoAnswering || !declineControl.isEnabled;
 
     // Build the task element
     taskElement.innerHTML = `
         <div class="task-item-content">
             <p>${callerDisplay}</p>
-            ${showAcceptButton ? `<button class="accept-task" data-task-id="${taskId}" ${isAutoAnswering ? 'disabled' : ''}>Accept</button>` : ''}
-            ${showDeclineButton ? `<button class="decline-task" data-task-id="${taskId}" ${isAutoAnswering ? 'disabled' : ''}>Decline</button>` : ''}
+            ${showAcceptButton ? `<button class="accept-task" data-task-id="${taskId}" ${disableAcceptButton ? 'disabled' : ''}>Accept</button>` : ''}
+            ${showDeclineButton ? `<button class="decline-task" data-task-id="${taskId}" ${disableDeclineButton ? 'disabled' : ''}>Decline</button>` : ''}
         </div>
         <hr class="task-separator">
     `;
