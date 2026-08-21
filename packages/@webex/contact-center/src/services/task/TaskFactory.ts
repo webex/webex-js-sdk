@@ -1,5 +1,6 @@
 import routingContact from './contact';
 import WebCallingService from '../WebCallingService';
+import AnswerCallOnWebexService from '../AnswerCallOnWebexService';
 import Task from './Task';
 import Voice from './voice/Voice';
 import WebRTC from './voice/WebRTC';
@@ -18,7 +19,8 @@ export default class TaskFactory {
     data: TaskData,
     configFlags: ConfigFlags,
     wrapupData?: WrapupData,
-    agentId?: string
+    agentId?: string,
+    answerCallOnWebexService?: AnswerCallOnWebexService
   ): Task {
     const mediaType = data.interaction.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
     const {isEndTaskEnabled, isEndConsultEnabled, consultTransfer} = configFlags;
@@ -27,6 +29,8 @@ export default class TaskFactory {
       isEndTaskEnabled,
       isEndConsultEnabled,
       isRecordingEnabled: recordingEnabled,
+      enableWxBetterTogether: configFlags.enableWxBetterTogether ?? false,
+      answerCallOnWebexService,
     };
     switch (mediaType) {
       case MEDIA_CHANNEL.TELEPHONY:

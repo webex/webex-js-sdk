@@ -94,11 +94,18 @@ export type WebexRequestPayload = {
 type Listener = (e: string, data?: unknown) => void;
 
 /**
+ * Mercury event handler callback.
+ * @internal
+ * @ignore
+ */
+type MercuryEventHandler = (data?: unknown) => void;
+
+/**
  * Event listener removal function type.
  * @internal
  * @ignore
  */
-type ListenerOff = (e: string) => void;
+type ListenerOff = (e: string, handler?: MercuryEventHandler) => void;
 
 /**
  * Service host configuration.
@@ -163,6 +170,8 @@ export interface CCPluginConfig {
   callingClientConfig: CallingClientConfig;
   /** Whether to skip Mobius/WebRTC registration for browser login flows */
   disableWebRTCRegistration?: boolean;
+  /** Whether wxApp Better Together (telephony REST + usersub) is enabled at init (WXCC-6026) */
+  enableWxBetterTogether?: boolean;
 }
 
 /**
@@ -293,6 +302,12 @@ interface IWebexInternal {
     version: string;
     /** Calling behavior configuration */
     callingBehavior: string;
+    /** Whether the device is registered with WDM */
+    registered?: boolean;
+    /** Register the device with WDM */
+    register?: () => Promise<void>;
+    /** Unregister the device from WDM */
+    unregister?: () => Promise<void>;
   };
   /** Presence service */
   presence: unknown;
@@ -615,6 +630,8 @@ export type ConfigFlags = {
    * Falls back to backend hints when omitted.
    */
   isRecordingEnabled?: boolean;
+  /** Whether wxApp thick-client answer controls/APIs are enabled (WXCC-6026) */
+  enableWxBetterTogether?: boolean;
 };
 
 /**

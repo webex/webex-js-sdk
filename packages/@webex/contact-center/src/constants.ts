@@ -19,6 +19,7 @@ export const OUTDIAL_DIRECTION = 'OUTBOUND';
 export const ATTRIBUTES = {};
 export const OUTDIAL_MEDIA_TYPE = 'telephony';
 export const OUTBOUND_TYPE = 'OUTDIAL';
+
 // Log related constants
 export const UNKNOWN_ERROR = 'Unknown error';
 export const MERCURY_DISCONNECTED_SUCCESS = 'Mercury disconnected successfully';
@@ -58,6 +59,7 @@ export const METHODS = {
   EXIT_CONFERENCE: 'exitConference',
   TRANSFER_CONFERENCE: 'transferConference',
   TOGGLE_MUTE: 'toggleMute',
+  TRANSMIT_DTMF: 'transmitDtmf',
   COMPLETE_TRANSFER: 'completeTransfer',
   GET_OUTDIAL_ANI_ENTRIES: 'getOutdialAniEntries',
   ACCEPT_PREVIEW_CONTACT: 'acceptPreviewContact',
@@ -68,4 +70,9 @@ export const METHODS = {
   GET_REAL_TIME_ASSISTANCE: 'getRealTimeAssistance',
   SEND_REAL_TIME_ASSISTANCE_USER_ACTION: 'sendRealTimeAssistanceUserAction',
   FETCH_HISTORIC_TRANSCRIPTS: 'fetchHistoricTranscripts',
+  SET_MANAGE_WEBEX_CALLING_IN_WXCC: 'setManageWebexCallingInWxcc',
+  IS_WX_BETTER_TOGETHER_ENABLED: 'isWxBetterTogetherEnabled',
+  SYNC_WXAPP_MUTE_FROM_MERCURY: 'syncWxAppMuteFromMercury',
+  GET_CALL_DETAILS_ON_WEBEX: 'getCallDetailsOnWebex',
+  ENSURE_WXAPP_MERCURY_CONNECTED: 'ensureWxAppMercuryConnected',
 };

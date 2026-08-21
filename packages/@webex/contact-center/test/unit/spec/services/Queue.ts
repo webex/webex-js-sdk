@@ -251,6 +251,37 @@ describe('Queue', () => {
       expect(result).toBe(mockResponse.body);
     });
 
+    it('should preserve defaults when optional overrides are undefined', async () => {
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      await queueAPI.getQueues({
+        filter: undefined,
+        sortBy: undefined,
+        sortOrder: undefined,
+        desktopProfileFilter: undefined,
+      });
+
+      expect(mockWebex.request).toHaveBeenCalledWith({
+        service: 'wcc-api-gateway',
+        resource:
+          '/organization/test-org-id/v2/contact-service-queue?page=0&pageSize=100&filter=queueType%3D%3DINBOUND%3BchannelType%3D%3DTELEPHONY%3Bactive%3D%3Dtrue&sort=name%2CASC&desktopProfileFilter=true&agentView=true&firstLevelView=true',
+        method: HTTP_METHODS.GET,
+      });
+    });
+
+    it('should preserve an explicit empty filter override', async () => {
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      await queueAPI.getQueues({filter: ''});
+
+      expect(mockWebex.request).toHaveBeenCalledWith({
+        service: 'wcc-api-gateway',
+        resource:
+          '/organization/test-org-id/v2/contact-service-queue?page=0&pageSize=100&sort=name%2CASC&desktopProfileFilter=true&agentView=true&firstLevelView=true',
+        method: HTTP_METHODS.GET,
+      });
+    });
+
     it('should bypass cache for the default queue policy', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 

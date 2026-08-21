@@ -2807,3 +2807,295 @@ describe('uiControlsComputer post-call consult controls (customer left)', () => 
     expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: false});
   });
 });
+
+// ---------------------------------------------------------------------------
+// WXCC-6026: wxApp thick-client answer UI controls
+// ---------------------------------------------------------------------------
+
+const WX_APP_DEVICE = {
+  deviceType: 'wxApp',
+  deviceId: 'device-id-1',
+  deviceCallId: 'call-id-1',
+};
+
+function createWxAppContext(
+  overrides: Partial<{
+    enableWxBetterTogether: boolean;
+    wxAppAnswerPending: boolean;
+    wxAppAcceptInFlight: boolean;
+  }> = {}
+): TaskContext {
+  return {
+    taskData: createTaskData({
+      agentId: 'agent-1',
+      mediaResourceId: 'interaction-1',
+      interaction: {
+        interactionId: 'interaction-1',
+        participants: {
+          'agent-1': {id: 'agent-1', pType: 'Agent', ...WX_APP_DEVICE},
+          'customer-1': {id: 'customer-1', pType: 'Customer'},
+        } as any,
+        media: {
+          'interaction-1': {mediaResourceId: 'interaction-1', isHold: false},
+        } as any,
+      } as any,
+    }),
+    consultInitiator: false,
+    exitingConference: false,
+    consultFromConference: false,
+    transferConferenceRequested: false,
+    consultDestinationType: null,
+    consultDestinationAgentId: null,
+    consultDestinationAgentJoined: false,
+    consultCallHeld: false,
+    hideBlindTransferForEpDnPendingMerge: false,
+    recordingControlsAvailable: false,
+    recordingInProgress: false,
+    uiControlConfig: {
+      isEndTaskEnabled: true,
+      isEndConsultEnabled: false,
+      channelType: TASK_CHANNEL_TYPE.VOICE,
+      isRecordingEnabled: false,
+      agentId: 'agent-1',
+      enableWxBetterTogether: overrides.enableWxBetterTogether ?? true,
+      wxAppAnswerPending: overrides.wxAppAnswerPending,
+      wxAppAcceptInFlight: overrides.wxAppAcceptInFlight,
+    },
+    uiControls: getDefaultUIControls(),
+  };
+}
+
+describe('uiControlsComputer wxApp thick-client answer (WXCC-6026)', () => {
+  describe('accept and decline when wxApp offer and enableWxBetterTogether=true', () => {
+    it('accept is visible and enabled in OFFERED state with wxApp participant', () => {
+      const ctx = createWxAppContext();
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.accept).toEqual({isVisible: true, isEnabled: true});
+    });
+
+    it('decline is visible and enabled in OFFERED state with wxApp participant', () => {
+      const ctx = createWxAppContext();
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.decline).toEqual({isVisible: true, isEnabled: true});
+    });
+
+    it('accept is visible but disabled while wxAppAcceptInFlight on inbound offer', () => {
+      const ctx = createWxAppContext({wxAppAcceptInFlight: true});
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.accept).toEqual({isVisible: true, isEnabled: false});
+    });
+
+    it('accept is visible but disabled while wxAppAnswerPending on inbound offer', () => {
+      const ctx = createWxAppContext({wxAppAnswerPending: true});
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.accept).toEqual({isVisible: true, isEnabled: false});
+    });
+
+    it('decline is visible but disabled while wxAppAnswerPending on inbound offer', () => {
+      const ctx = createWxAppContext({wxAppAnswerPending: true});
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.decline).toEqual({isVisible: true, isEnabled: false});
+    });
+
+    it('decline is visible but disabled while wxAppAcceptInFlight on outdial offer', () => {
+      const ctx = createWxAppContext({wxAppAcceptInFlight: true, wxAppAnswerPending: true});
+      ctx.taskData.interaction.outboundType = 'OUTDIAL';
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.decline).toEqual({isVisible: true, isEnabled: false});
+    });
+
+    it('decline is visible and enabled while wxAppAnswerPending on outdial offer (Calling phase)', () => {
+      const ctx = createWxAppContext({wxAppAnswerPending: true});
+      ctx.taskData.interaction.outboundType = 'OUTDIAL';
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.decline).toEqual({isVisible: true, isEnabled: true});
+    });
+
+    it('keypad is disabled in OFFERED state (not yet engaged)', () => {
+      const ctx = createWxAppContext();
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      expect(controls.main.keypad).toEqual({isVisible: false, isEnabled: false});
+    });
+  });
+
+  describe('mute and keypad when wxApp engaged (CONNECTED state)', () => {
+    it('mute is visible and enabled in CONNECTED state', () => {
+      const ctx = createWxAppContext();
+      const controls = computeUIControls(TaskState.CONNECTED, ctx, ctx.taskData);
+
+      expect(controls.main.mute).toEqual({isVisible: true, isEnabled: true});
+    });
+
+    it('keypad is visible and enabled in CONNECTED state', () => {
+      const ctx = createWxAppContext();
+      const controls = computeUIControls(TaskState.CONNECTED, ctx, ctx.taskData);
+
+      expect(controls.main.keypad).toEqual({isVisible: true, isEnabled: true});
+    });
+
+    it('keypad is disabled in WRAPPING_UP state', () => {
+      const ctx = createWxAppContext();
+      const controls = computeUIControls(TaskState.WRAPPING_UP, ctx, ctx.taskData);
+
+      expect(controls.main.keypad).toEqual({isVisible: false, isEnabled: false});
+    });
+
+    it('mute is disabled in WRAPPING_UP state', () => {
+      const ctx = createWxAppContext();
+      const controls = computeUIControls(TaskState.WRAPPING_UP, ctx, ctx.taskData);
+
+      expect(controls.main.mute).toEqual({isVisible: false, isEnabled: false});
+    });
+  });
+
+  describe('when enableWxBetterTogether=false', () => {
+    it('accept falls back to standard WebRTC logic (disabled for non-WebRTC)', () => {
+      const ctx = createWxAppContext({enableWxBetterTogether: false});
+      const controls = computeUIControls(TaskState.OFFERED, ctx, ctx.taskData);
+
+      // Without WebRTC variant, accept should be visible but disabled per existing logic
+      expect(controls.main.accept.isVisible).toBe(true);
+      // isEnabled is false without webRTC variant
+      expect(controls.main.accept.isEnabled).toBe(false);
+    });
+
+    it('keypad is always disabled when enableWxBetterTogether=false', () => {
+      const ctx = createWxAppContext({enableWxBetterTogether: false});
+      const controls = computeUIControls(TaskState.CONNECTED, ctx, ctx.taskData);
+
+      expect(controls.main.keypad).toEqual({isVisible: false, isEnabled: false});
+    });
+
+    it('mute is disabled for non-WebRTC when enableWxBetterTogether=false', () => {
+      const ctx = createWxAppContext({enableWxBetterTogether: false});
+      const controls = computeUIControls(TaskState.CONNECTED, ctx, ctx.taskData);
+
+      expect(controls.main.mute).toEqual({isVisible: false, isEnabled: false});
+    });
+  });
+
+  describe('default keypad state without wxApp', () => {
+    it('keypad is disabled for standard non-wxApp tasks', () => {
+      const ctx: TaskContext = {
+        taskData: createTaskData(),
+        consultInitiator: false,
+        exitingConference: false,
+        consultFromConference: false,
+        transferConferenceRequested: false,
+        consultDestinationType: null,
+        consultDestinationAgentId: null,
+        consultDestinationAgentJoined: false,
+        consultCallHeld: false,
+        hideBlindTransferForEpDnPendingMerge: false,
+        recordingControlsAvailable: false,
+        recordingInProgress: false,
+        uiControlConfig: {
+          isEndTaskEnabled: true,
+          isEndConsultEnabled: false,
+          channelType: TASK_CHANNEL_TYPE.VOICE,
+          isRecordingEnabled: false,
+        },
+        uiControls: getDefaultUIControls(),
+      };
+      const controls = computeUIControls(TaskState.CONNECTED, ctx, ctx.taskData);
+
+      expect(controls.main.keypad).toEqual({isVisible: false, isEnabled: false});
+    });
+  });
+
+  describe('wxApp engaged through consult and hold phases', () => {
+    it('enables main mute and keypad during consult-requested phase on main leg', () => {
+      const ctx = createWxAppContext();
+      ctx.taskData = createTaskData({
+        agentId: 'agent-1',
+        consultMediaResourceId: 'consult-media',
+        interaction: {
+          interactionId: 'interaction-1',
+          mainInteractionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              consultState: 'consultInitiated',
+              ...WX_APP_DEVICE,
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer'},
+          } as any,
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              isHold: false,
+              participants: ['agent-1', 'customer-1'],
+            },
+            'consult-media': {
+              mediaResourceId: 'consult-media',
+              mType: 'consult',
+              participants: ['agent-1'],
+            },
+          } as any,
+        } as any,
+      });
+      ctx.consultInitiator = true;
+      ctx.consultDestinationAgentJoined = false;
+
+      const controls = computeUIControls(TaskState.CONNECTED, ctx, ctx.taskData);
+
+      expect(controls.main.mute).toEqual({isVisible: true, isEnabled: true});
+      expect(controls.main.keypad).toEqual({isVisible: true, isEnabled: true});
+    });
+
+    it('enables main mute and keypad while consulting with main leg held', () => {
+      const taskData = createConsultTaskData();
+      taskData.interaction!.participants!['agent-1'] = {
+        id: 'agent-1',
+        pType: 'AGENT',
+        hasLeft: false,
+        consultState: 'consulting',
+        ...WX_APP_DEVICE,
+      };
+      const ctx = createVoiceContext({
+        taskData,
+        uiControlConfig: {
+          ...createVoiceContext().uiControlConfig,
+          enableWxBetterTogether: true,
+        },
+      });
+
+      const controls = computeUIControls(TaskState.CONSULTING, ctx, taskData);
+
+      expect(controls.main.mute).toEqual({isVisible: true, isEnabled: true});
+      expect(controls.main.keypad).toEqual({isVisible: true, isEnabled: true});
+      expect(controls.consult.mute).toEqual({isVisible: false, isEnabled: false});
+    });
+
+    it('keeps BROWSER consult mute enabled when enableWxBetterTogether is true and wxApp is not engaged', () => {
+      const consultedTaskData = createConsultedAgentInconsistentTaskData();
+      const consultedContext = createVoiceContext({
+        consultInitiator: false,
+        taskData: consultedTaskData,
+        uiControlConfig: {
+          ...createVoiceContext().uiControlConfig,
+          agentId: 'agent-2',
+          voiceVariant: VOICE_VARIANT.WEBRTC,
+          enableWxBetterTogether: true,
+        },
+      });
+
+      const controls = computeUIControls(
+        TaskState.CONNECTED,
+        consultedContext,
+        consultedTaskData
+      );
+
+      expect(controls.main.mute).toEqual({isVisible: true, isEnabled: true});
+    });
+  });
+});

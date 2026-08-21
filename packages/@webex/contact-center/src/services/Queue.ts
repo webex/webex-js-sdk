@@ -103,13 +103,19 @@ export class Queue {
   public async getQueues(
     params: ContactServiceQueueSearchParams = {}
   ): Promise<ContactServiceQueuesResponse> {
-    const desktopProfileFilter = params.desktopProfileFilter ?? true;
+    const {
+      filter = 'queueType==INBOUND;channelType==TELEPHONY;active==true',
+      sortBy = 'name',
+      sortOrder = 'asc',
+      desktopProfileFilter = true,
+      ...remainingParams
+    } = params;
 
     return this.fetchQueues({
-      filter: 'queueType==INBOUND;channelType==TELEPHONY;active==true',
-      sortBy: 'name',
-      sortOrder: 'asc',
-      ...params,
+      ...remainingParams,
+      filter,
+      sortBy,
+      sortOrder,
       desktopProfileFilter,
       agentView: desktopProfileFilter,
       firstLevelView: desktopProfileFilter,

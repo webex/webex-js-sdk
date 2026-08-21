@@ -235,7 +235,6 @@ Current consumers of `PageCache` and defaults:
 | Consumer                | File                                                       | Usage                                                        |
 | ----------------------- | ---------------------------------------------------------- | ------------------------------------------------------------ |
 | `AddressBook`           | [`../services/AddressBook.ts`](../services/AddressBook.ts) | Caches paged address-book responses                          |
-| `EntryPoint`            | [`../services/EntryPoint.ts`](../services/EntryPoint.ts)   | Caches paged entry-point responses                           |
 | `Queue`                 | [`../services/Queue.ts`](../services/Queue.ts)             | Caches paged queue responses                                 |
 | `Public type contracts` | [`../types.ts`](../types.ts)                               | Re-exports pagination/search contracts into SDK-facing types |
 
@@ -280,7 +279,7 @@ flowchart TD
 - [ ] `canUseCache()` bypass conditions are unchanged or intentionally updated
 - [ ] `totalRecords`/`totalItems` mapping behavior is preserved
 - [ ] Logging still uses `LoggerProxy` with `module` and `method`
-- [ ] AddressBook/EntryPoint/Queue integration behavior remains correct
+- [ ] AddressBook/Queue cache integration remains correct; EntryPoint remains explicitly uncached
 
 ---
 

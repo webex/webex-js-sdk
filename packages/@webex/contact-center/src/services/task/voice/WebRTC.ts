@@ -10,6 +10,7 @@ import {
   VoiceUIControlOptions,
   ConsultTransferDestinationConfig,
   VOICE_VARIANT,
+  TaskToggleMuteOptions,
 } from '../types';
 import Voice from './Voice';
 import WebCallingService from '../../WebCallingService';
@@ -172,7 +173,10 @@ export default class WebRTC extends Voice implements IWebRTC {
    * task.toggleMute().then(()=>{}).catch(()=>{})
    * ```
    */
-  public async toggleMute() {
+  public async toggleMute(options?: TaskToggleMuteOptions) {
+    if (options) {
+      // parameter intentionally unused — WebRTC toggles from local stream state
+    }
     LoggerProxy.log(`Toggling mute WebRTC task for taskId:${this.data.interactionId}`, {
       module: 'WebRTC',
       method: 'toggleMute',
