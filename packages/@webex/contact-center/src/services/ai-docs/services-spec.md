@@ -54,6 +54,7 @@ The `src/services/` directory is the service layer of the `@webex/contact-center
 | **User Preferences** | [`UserPreference.ts`](../UserPreference.ts) | Direct REST CRUD service exposed as `cc.userPreference`; it resolves the default user from agent configuration and does not use PageCache |
 | **Utilities** | [`src/utils/PageCache.ts`](../../utils/PageCache.ts) | Shared `PageCache<T>` generic class for pagination caching, plus `BaseSearchParams`, `PaginatedResponse`, and `PaginationMeta` types used by all data services |
 | **WebRTC Calling** | [`WebCallingService.ts`](../WebCallingService.ts) | Browser-based voice calling via `@webex/calling`, line registration, call answer/mute/decline |
+| **WxApp Better Together** | [`WebexCrossClientService.ts`](../WebexCrossClientService.ts), [`AnswerCallOnWebexService.ts`](../AnswerCallOnWebexService.ts), [`WxAppTelephonyMercurySync.ts`](../WxAppTelephonyMercurySync.ts) | usersub cross-client publish (`answer-calls-on-wxcc`), Hydra telephony REST (answer/reject/mute/DTMF/GET call), Mercury mute sync — orchestrated from `cc.ts` when `enableWxBetterTogether` is active |
 
 Each service folder contains its own `ai-docs/` with detailed documentation. **Always load the relevant service docs before making changes.**
 

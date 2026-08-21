@@ -864,9 +864,15 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Actions: `updateTaskData`, `setConsultAgentJoined`, `emitTaskConsultAccepted`, `emitTaskConsulting`
 
+- `TASK_WRAPUP` -> `WRAPPING_UP`
+
+- Guard: `guards.shouldWrapUp`
+
+- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
+
 - `TASK_WRAPUP` -> `TERMINATED`
 
-- Guard: none
+- Guard: default (when wrap-up is not required)
 
 - Actions: `updateTaskData`, `markEnded`, `emitTaskEnd`
 
@@ -1574,7 +1580,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 **Description**: Final wrapped-up terminal state.
 
-**Entry Actions**:
+**Entry Actions** (order matters — `emitTaskWrappedup` before `cleanupResources` so subscribers receive intact task data):
 
 - `emitTaskWrappedup`
 
@@ -1759,16 +1765,16 @@ Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 | `AGENT_BLIND_TRANSFERRED`          | `TRANSFER_SUCCESS`            | `CONNECTED` / `HELD` / `CONSULTING`                  | `WRAPPING_UP` / `CONNECTED`                                                   | `shouldWrapUpOrIsInitiator`       |
 | `AGENT_CONSULT_TRANSFERRED`        | `TRANSFER_SUCCESS`            | `CONNECTED` / `HELD` / `CONSULTING`                  | `WRAPPING_UP` / `CONNECTED`                                                   | Same path                         |
 | `AGENT_VTEAM_TRANSFERRED`          | `TRANSFER_SUCCESS`            | `CONNECTED` / `HELD` / `CONSULTING`                  | `WRAPPING_UP` / `CONNECTED`                                                   | Same path                         |
-| `AGENT_WRAPUP`                     | `TASK_WRAPUP`                 | `OFFERED` / `CONNECTED` / `HELD` / `CONSULTING`      | `TERMINATED` / `WRAPPING_UP`                                                  | `OFFERED` terminates; others wrap |
+| `AGENT_WRAPUP`                     | `TASK_WRAPUP`                 | `OFFERED` / `CONNECTED` / `HELD` / `CONSULTING`      | `WRAPPING_UP` / `TERMINATED`                                                  | `shouldWrapUp` selects wrap-up; default terminates (wxApp outdial pre-accept agent end may wrap while still `OFFERED`) |
 | `AGENT_BLIND_TRANSFER_FAILED`      | `TRANSFER_FAILED`             | `CONNECTED` / `HELD` / `CONSULTING`                  | same                                                                          | Context update                    |
 | `AGENT_VTEAM_TRANSFER_FAILED`      | `TRANSFER_FAILED`             | `CONNECTED` / `HELD` / `CONSULTING`                  | same                                                                          | Context update                    |
 | `AGENT_CONSULT_TRANSFER_FAILED`    | `TRANSFER_FAILED`             | `CONNECTED` / `HELD` / `CONSULTING`                  | same                                                                          | Context update                    |
 | `AGENT_CONFERENCE_TRANSFER_FAILED` | `TRANSFER_FAILED`             | `CONNECTED` / `HELD` / `CONSULTING`                  | same                                                                          | Context update                    |
-| `CONTACT_ENDED`                    | `CONTACT_ENDED`               | `CONNECTED` / `HELD` / `CONSULTING` / `CONFERENCING` | `CONFERENCING` / `WRAPPING_UP` / `TERMINATED` / same                          | Guard-driven branch               |
+| `CONTACT_ENDED`                    | `CONTACT_ENDED` or `OUTBOUND_FAILED` | `OFFERED` / `CONNECTED` / `HELD` / `CONSULTING` / `CONFERENCING` | `WRAPPING_UP` / `TERMINATED` / etc.                          | wxApp outdial pre-accept decline → `CONTACT_ENDED` → `TERMINATED` (no wrapup) when `wxAppAnswerPending` is false and `agentsPendingWrapUp` is empty (backend may still send `interaction.state: wrapUp`). Post-accept agent end remaps to `OUTBOUND_FAILED` (`AGENT_ENDS`) when `wxAppAnswerPending` or wrapup pending — including while SM is still `OFFERED` before `ASSIGN`. |
 | `AGENT_INVITE_FAILED`              | `INVITE_FAILED`               | `OFFERED`                                            | `TERMINATED`                                                                  | Reject path                       |
 | `AGENT_CONTACT_ASSIGN_FAILED`      | `ASSIGN_FAILED`               | `OFFERED`                                            | `TERMINATED`                                                                  | Reject path                       |
 | `AGENT_CONTACT_OFFER_RONA`         | `RONA`                        | `OFFERED`                                            | `TERMINATED`                                                                  | Timeout path                      |
-| `AGENT_OUTBOUND_FAILED`            | `OUTBOUND_FAILED`             | `OFFERED`                                            | `TERMINATED`                                                                  | Outbound failure                  |
+| `AGENT_OUTBOUND_FAILED`            | `OUTBOUND_FAILED`             | `IDLE` / `OFFERED` / `CONNECTED` / `HOLD_INITIATING` / `HELD` / `RESUME_INITIATING` / `CONSULT_INITIATING` / `CONSULTING` / `CONF_INITIATING` / `CONFERENCING` | `WRAPPING_UP` or `TERMINATED`                                                 | Outbound failure; wrapup when `shouldWrapUp`. Non-wxApp agent-terminated `AGENT_ENDS` sets `suppressOutdialFailedPopup` (wrapup without outdial-failed modal). `IDLE` handles race before `TASK_INCOMING`. |
 | `CONTACT_RECORDING_STARTED`        | `RECORDING_STARTED`           | any                                                  | same                                                                          | Recording state update            |
 | `CONTACT_RECORDING_PAUSED`         | `PAUSE_RECORDING`             | `CONNECTED`                                          | same                                                                          | Recording state update            |
 | `CONTACT_RECORDING_RESUMED`        | `RESUME_RECORDING`            | `CONNECTED`                                          | same                                                                          | Recording state update            |
@@ -1861,6 +1867,7 @@ stateDiagram-v2
     OFFERED --> TERMINATED: AGENT_CONTACT_ASSIGN_FAILED (CC Event) -> ASSIGN_FAILED (State Machine Event)
     OFFERED --> TERMINATED: AGENT_INVITE_FAILED (CC Event) -> INVITE_FAILED (State Machine Event)
     OFFERED --> TERMINATED: AGENT_OUTBOUND_FAILED (CC Event) -> OUTBOUND_FAILED (State Machine Event)
+    OFFERED --> WRAPPING_UP: AGENT_WRAPUP (CC Event) -> TASK_WRAPUP (State Machine Event) [shouldWrapUp]
     OFFERED --> TERMINATED: AGENT_WRAPUP (CC Event) -> TASK_WRAPUP (State Machine Event)
 
     %% CONNECTED
@@ -1944,7 +1951,9 @@ stateDiagram-v2
     OFFERED --> OFFERED: AGENT_CONTACT_OFFER -> TASK_OFFERED
     OFFERED --> OFFERED: AGENT_CONSULT_OFFER -> OFFER_CONSULT
     OFFERED --> CONNECTED: AGENT_CONTACT_ASSIGNED -> ASSIGN
-    OFFERED --> TERMINATED: AGENT_CONTACT_OFFER_RONA/AGENT_CONTACT_ASSIGN_FAILED/AGENT_INVITE_FAILED/AGENT_OUTBOUND_FAILED/AGENT_WRAPUP -> RONA/ASSIGN_FAILED/INVITE_FAILED/OUTBOUND_FAILED/TASK_WRAPUP
+    OFFERED --> TERMINATED: AGENT_CONTACT_OFFER_RONA/AGENT_CONTACT_ASSIGN_FAILED/AGENT_INVITE_FAILED/AGENT_OUTBOUND_FAILED -> RONA/ASSIGN_FAILED/INVITE_FAILED/OUTBOUND_FAILED
+    OFFERED --> WRAPPING_UP: AGENT_WRAPUP -> TASK_WRAPUP [shouldWrapUp]
+    OFFERED --> TERMINATED: AGENT_WRAPUP -> TASK_WRAPUP
 
     CONNECTED --> HOLD_INITIATING: task.hold() -> HOLD_INITIATED
     CONNECTED --> CONSULT_INITIATING: task.consult() -> CONSULT

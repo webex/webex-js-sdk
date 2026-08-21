@@ -32,6 +32,13 @@ export default {
      */
     disableWebRTCRegistration: false,
     /**
+     * Whether wxApp Better Together is enabled at SDK init.
+     * Must be set before SDK init. Default false (WXCC-6026).
+     * @type {boolean}
+     * @default false
+     */
+    enableWxBetterTogether: false,
+    /**
      * The type of client making the connection.
      * @type {string}
      * @default 'WebexCCSDK'
