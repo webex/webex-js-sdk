@@ -21,6 +21,7 @@ import {
 } from './errors';
 
 const normalReconnectReasons = ['idle', 'done (forced)', 'pong not received', 'pong mismatch'];
+const MERCURY_CLOSE_4000_METRIC = 'JS_SDK_MERCURY_CLOSE_4000';
 
 const Mercury = WebexPlugin.extend({
   namespace: 'Mercury',
@@ -882,6 +883,29 @@ const Mercury = WebexPlugin.extend({
     return handlers;
   },
 
+  _submitMercuryClose4000Metric(sessionId, event, options) {
+    const {action, isActiveSocket, messageType} = options;
+
+    try {
+      this.webex.internal.metrics.submitClientMetrics(MERCURY_CLOSE_4000_METRIC, {
+        fields: {
+          action,
+          close_code: event.code,
+          close_reason: event.reason || '',
+          is_active_socket: isActiveSocket,
+          message_type: messageType,
+          session_id: sessionId,
+        },
+        tags: {
+          action,
+          message_type: messageType,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(`${this.namespace}: failed to submit Mercury 4000 close metric`, error);
+    }
+  },
+
   _onclose(sessionId, event, sourceSocket) {
     // I don't see any way to avoid the complexity or statement count in here.
     /* eslint complexity: [0] */
@@ -938,9 +962,28 @@ const Mercury = WebexPlugin.extend({
           break;
         case 4000:
           // metric: disconnect
-          this.logger.info(`${this.namespace}: socket ${sessionId} replaced; will not reconnect`);
-          if (isActiveSocket) this._emit(sessionId, 'offline.replaced', event);
-          // If not active, nothing to do
+          if (reason === 'replaced') {
+            this._submitMercuryClose4000Metric(sessionId, event, {
+              action: 'no_action',
+              isActiveSocket,
+              messageType: 'replaced',
+            });
+            this.logger.info(`${this.namespace}: socket ${sessionId} replaced; will not reconnect`);
+            if (isActiveSocket) this._emit(sessionId, 'offline.replaced', event);
+          } else {
+            this._submitMercuryClose4000Metric(sessionId, event, {
+              action: isActiveSocket ? 'reconnect' : 'ignore_non_active',
+              isActiveSocket,
+              messageType: 'other',
+            });
+            this.logger.info(
+              `${this.namespace}: socket ${sessionId} disconnected with 4000: ${event.reason}; reconnecting`
+            );
+            if (isActiveSocket) {
+              this._emit(sessionId, 'offline.transient', event);
+              this._reconnect(socketUrl, sessionId);
+            }
+          }
           break;
         case 4001:
           // replaced during shutdown

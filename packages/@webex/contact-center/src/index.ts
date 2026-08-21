@@ -133,6 +133,8 @@ export type {
   TaskData,
   /** Task response */
   TaskResponse,
+  /** Conference participant drop request */
+  DropConferenceParticipantPayload,
   ConsultPayload,
   ConsultEndPayload,
   ConsultTransferPayLoad,
