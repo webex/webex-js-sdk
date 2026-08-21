@@ -4,8 +4,6 @@
 
 import {
   CONSULT_TRANSFER_DESTINATION_TYPE,
-  ConsultTransferDestinationConfig,
-  ConsultTransferDestinationType,
   InteractionUIControls,
   TASK_CHANNEL_TYPE,
   TaskData,
@@ -107,12 +105,6 @@ export function getDefaultUIControls(): TaskUIControls {
   );
 }
 
-function isCollaborationAccessEnabled(
-  access: ConsultTransferDestinationConfig['accessQueue']
-): boolean {
-  return access?.toUpperCase() !== 'NONE';
-}
-
 function getConsultTransferDestinations(
   config: UIControlConfig,
   taskData?: TaskData | null
@@ -125,32 +117,39 @@ function getConsultTransferDestinations(
   const isVoice = config.channelType === TASK_CHANNEL_TYPE.VOICE;
   const interaction = taskData?.interaction;
   const direction = interaction?.contactDirection?.type?.toUpperCase();
-  const canTransferVoiceToQueue =
-    direction === 'INBOUND' ||
-    (direction === 'OUTBOUND' &&
-      interaction?.callProcessingDetails?.outdialTransferToQueueEnabled === true);
-  const canUseAgents = isCollaborationAccessEnabled(destinationConfig.accessBuddyTeam);
-  const canUseQueues = isCollaborationAccessEnabled(destinationConfig.accessQueue);
-  const canUseEntryPoints =
-    isVoice && isCollaborationAccessEnabled(destinationConfig.accessEntryPoint);
+  const destinations: DestinationControls = {
+    consult: [],
+    transfer: [],
+  };
 
-  const buildDestinations = (canUseQueueForAction: boolean) => {
-    const destinations: ConsultTransferDestinationType[] = [];
+  if (destinationConfig.accessBuddyTeam?.toUpperCase() !== 'NONE') {
+    destinations.consult.push(CONSULT_TRANSFER_DESTINATION_TYPE.AGENT);
+    destinations.transfer.push(CONSULT_TRANSFER_DESTINATION_TYPE.AGENT);
+  }
 
-    if (canUseAgents) destinations.push(CONSULT_TRANSFER_DESTINATION_TYPE.AGENT);
-    if (canUseQueues && canUseQueueForAction) {
-      destinations.push(CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE);
+  if (destinationConfig.accessQueue?.toUpperCase() !== 'NONE') {
+    const canConsultQueue = !isVoice || destinationConfig.allowConsultToQueue;
+    const canTransferQueue =
+      !isVoice ||
+      direction === 'INBOUND' ||
+      (direction === 'OUTBOUND' &&
+        interaction?.callProcessingDetails?.outdialTransferToQueueEnabled === true);
+
+    if (canConsultQueue) destinations.consult.push(CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE);
+    if (canTransferQueue) destinations.transfer.push(CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE);
+  }
+
+  if (isVoice) {
+    destinations.consult.push(CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER);
+    destinations.transfer.push(CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER);
+
+    if (destinationConfig.accessEntryPoint?.toUpperCase() !== 'NONE') {
+      destinations.consult.push(CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT);
+      destinations.transfer.push(CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT);
     }
-    if (isVoice) destinations.push(CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER);
-    if (canUseEntryPoints) destinations.push(CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT);
+  }
 
-    return destinations;
-  };
-
-  return {
-    consult: buildDestinations(!isVoice || destinationConfig.allowConsultToQueue),
-    transfer: buildDestinations(!isVoice || canTransferVoiceToQueue),
-  };
+  return destinations;
 }
 
 /** Consult media must exist on the interaction payload, not only as a stale resource id. */
@@ -1040,6 +1039,11 @@ export function computeUIControls(
     return getDefaultUIControls();
   }
 
+  const consultTransferDestinations = getConsultTransferDestinations(
+    context.uiControlConfig,
+    fallbackTaskData ?? context.taskData
+  );
+
   switch (context.uiControlConfig.channelType) {
     case TASK_CHANNEL_TYPE.VOICE: {
       const {hasConsultLeg, activeLeg, mainState, consultState} = getVoiceLegState(
@@ -1070,10 +1074,7 @@ export function computeUIControls(
         mainControls,
         consultControls,
         activeLeg,
-        getConsultTransferDestinations(
-          context.uiControlConfig,
-          fallbackTaskData ?? context.taskData
-        )
+        consultTransferDestinations
       );
     }
     case TASK_CHANNEL_TYPE.DIGITAL:
@@ -1081,10 +1082,7 @@ export function computeUIControls(
         computeDigitalInteractionUIControls(currentState, context, fallbackTaskData),
         getDefaultInteractionUIControls(),
         'main',
-        getConsultTransferDestinations(
-          context.uiControlConfig,
-          fallbackTaskData ?? context.taskData
-        )
+        consultTransferDestinations
       );
     default:
       return getDefaultUIControls();
@@ -1103,6 +1101,16 @@ function haveInteractionUIControlsChanged(
   });
 }
 
+function haveDestinationListChanged(
+  previous: DestinationControls['consult'],
+  next: DestinationControls['consult']
+): boolean {
+  return (
+    previous.length !== next.length ||
+    previous.some((destination, index) => destination !== next[index])
+  );
+}
+
 export function haveUIControlsChanged(
   previous: TaskUIControls | undefined,
   next: TaskUIControls
@@ -1111,15 +1119,13 @@ export function haveUIControlsChanged(
 
   return (
     previous.activeLeg !== next.activeLeg ||
-    previous.consultTransferDestinations.consult.length !==
-      next.consultTransferDestinations.consult.length ||
-    previous.consultTransferDestinations.consult.some(
-      (destination, index) => destination !== next.consultTransferDestinations.consult[index]
+    haveDestinationListChanged(
+      previous.consultTransferDestinations.consult,
+      next.consultTransferDestinations.consult
     ) ||
-    previous.consultTransferDestinations.transfer.length !==
-      next.consultTransferDestinations.transfer.length ||
-    previous.consultTransferDestinations.transfer.some(
-      (destination, index) => destination !== next.consultTransferDestinations.transfer[index]
+    haveDestinationListChanged(
+      previous.consultTransferDestinations.transfer,
+      next.consultTransferDestinations.transfer
     ) ||
     haveInteractionUIControlsChanged(previous.main, next.main) ||
     haveInteractionUIControlsChanged(previous.consult, next.consult)
