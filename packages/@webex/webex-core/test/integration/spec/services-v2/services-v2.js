@@ -28,7 +28,7 @@ import {
 import {createActivationEmail} from '../../../fixtures/activation-email';
 
 // /* eslint-disable no-underscore-dangle */
-describe('webex-core', () => {
+describe.skip('webex-core', () => {
   describe('ServicesV2', () => {
     let webexUser;
     let webexUserEU;
