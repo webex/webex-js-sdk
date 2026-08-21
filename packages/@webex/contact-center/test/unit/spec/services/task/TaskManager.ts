@@ -86,7 +86,9 @@ describe('TaskManager', () => {
         ) {
           task.emit(mappedEvent, event.reason ?? event.taskData?.reason);
         } else if (event.type === TaskEvent.OUTBOUND_FAILED) {
-          task.emit(mappedEvent, event.reason);
+          if (!event.taskData?.suppressOutdialFailedPopup) {
+            task.emit(mappedEvent, event.reason);
+          }
         } else {
           task.emit(mappedEvent, task);
         }
@@ -1468,6 +1470,368 @@ describe('TaskManager', () => {
     expect(removeTaskSpy).toHaveBeenCalled();
   });
 
+  it('should map non-wxApp agent-terminated OUTDIAL ContactEnded to CONTACT_ENDED (not OUTBOUND_FAILED)', () => {
+    const task = taskManager.getTask(taskId);
+    const sendStateMachineEventSpy = jest.spyOn(task, 'sendStateMachineEvent');
+    const outdialFailedSpy = jest.fn();
+    task.on(TASK_EVENTS.TASK_OUTDIAL_FAILED, outdialFailedSpy);
+
+    const payload = {
+      data: {
+        type: CC_EVENTS.CONTACT_ENDED,
+        interactionId: taskId,
+        terminatingParty: 'Agent',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          state: 'wrapUp',
+          mediaType: 'telephony',
+        },
+        agentsPendingWrapUp: ['test-agent-id'],
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    expectLastStateMachineEvent(sendStateMachineEventSpy, TaskEvent.CONTACT_ENDED);
+    expect(outdialFailedSpy).not.toHaveBeenCalled();
+    sendStateMachineEventSpy.mockRestore();
+  });
+
+  it('should map non-wxApp agent-terminated OUTDIAL AgentOutboundFailed to OUTBOUND_FAILED with popup suppressed', () => {
+    const task = taskManager.getTask(taskId);
+    const sendStateMachineEventSpy = jest.spyOn(task, 'sendStateMachineEvent');
+    const outdialFailedSpy = jest.fn();
+    task.on(TASK_EVENTS.TASK_OUTDIAL_FAILED, outdialFailedSpy);
+
+    const payload = {
+      data: {
+        type: CC_EVENTS.AGENT_OUTBOUND_FAILED,
+        interactionId: taskId,
+        terminatingParty: 'Agent',
+        reason: 'AGENT_ENDS',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          state: 'wrapUp',
+          mediaType: 'telephony',
+        },
+        agentsPendingWrapUp: ['test-agent-id'],
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    const stateMachineEvent = expectLastStateMachineEvent(
+      sendStateMachineEventSpy,
+      TaskEvent.OUTBOUND_FAILED
+    );
+    expect(stateMachineEvent?.reason).toBe('AGENT_ENDS');
+    expect(stateMachineEvent?.taskData?.suppressOutdialFailedPopup).toBe(true);
+    expect(outdialFailedSpy).not.toHaveBeenCalled();
+    sendStateMachineEventSpy.mockRestore();
+  });
+
+  it('should map wxApp agent-terminated OUTDIAL AgentOutboundFailed to OUTBOUND_FAILED with AGENT_ENDS', () => {
+    const task = taskManager.getTask(taskId);
+    task.uiControlConfig = {enableWxBetterTogether: true};
+    task.data = {
+      ...task.data,
+      agentId: 'test-agent-id',
+      interaction: {
+        ...task.data.interaction,
+        outboundType: 'OUTDIAL',
+        participants: {
+          'test-agent-id': {
+            id: 'test-agent-id',
+            deviceType: 'wxApp',
+            deviceId: 'device-1',
+            deviceCallId: 'call-1',
+          },
+        },
+      },
+    };
+    const sendStateMachineEventSpy = jest.spyOn(task, 'sendStateMachineEvent');
+    const outdialFailedSpy = jest.fn();
+    task.on(TASK_EVENTS.TASK_OUTDIAL_FAILED, outdialFailedSpy);
+
+    const payload = {
+      data: {
+        type: CC_EVENTS.AGENT_OUTBOUND_FAILED,
+        interactionId: taskId,
+        terminatingParty: 'Agent',
+        reason: 'AGENT_ENDS',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          state: 'wrapUp',
+          mediaType: 'telephony',
+          participants: {
+            'test-agent-id': {
+              id: 'test-agent-id',
+              deviceType: 'wxApp',
+              deviceId: 'device-1',
+              deviceCallId: 'call-1',
+            },
+          },
+        },
+        agentsPendingWrapUp: ['test-agent-id'],
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    const stateMachineEvent = expectLastStateMachineEvent(
+      sendStateMachineEventSpy,
+      TaskEvent.OUTBOUND_FAILED
+    );
+    expect(stateMachineEvent?.reason).toBe('AGENT_ENDS');
+    expect(outdialFailedSpy).toHaveBeenCalledWith('AGENT_ENDS');
+    sendStateMachineEventSpy.mockRestore();
+  });
+
+  it('should map wxApp agent-terminated OUTDIAL ContactEnded to OUTBOUND_FAILED with AGENT_ENDS', () => {
+    const task = taskManager.getTask(taskId);
+    task.uiControlConfig = {enableWxBetterTogether: true};
+    task.data = {
+      ...task.data,
+      agentId: 'test-agent-id',
+      interaction: {
+        ...task.data.interaction,
+        outboundType: 'OUTDIAL',
+        participants: {
+          'test-agent-id': {
+            id: 'test-agent-id',
+            deviceType: 'wxApp',
+            deviceId: 'device-1',
+            deviceCallId: 'call-1',
+          },
+        },
+      },
+    };
+    const sendStateMachineEventSpy = jest.spyOn(task, 'sendStateMachineEvent');
+    const outdialFailedSpy = jest.fn();
+    task.on(TASK_EVENTS.TASK_OUTDIAL_FAILED, outdialFailedSpy);
+
+    const payload = {
+      data: {
+        type: CC_EVENTS.CONTACT_ENDED,
+        interactionId: taskId,
+        terminatingParty: 'Agent',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          state: 'wrapUp',
+          mediaType: 'telephony',
+          participants: {
+            'test-agent-id': {
+              id: 'test-agent-id',
+              deviceType: 'wxApp',
+              deviceId: 'device-1',
+              deviceCallId: 'call-1',
+            },
+          },
+        },
+        agentsPendingWrapUp: ['test-agent-id'],
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    const stateMachineEvent = expectLastStateMachineEvent(
+      sendStateMachineEventSpy,
+      TaskEvent.OUTBOUND_FAILED
+    );
+    expect(stateMachineEvent?.reason).toBe('AGENT_ENDS');
+    expect(stateMachineEvent?.taskData?.wrapUpRequired).toBe(true);
+    expect(outdialFailedSpy).toHaveBeenCalledWith('AGENT_ENDS');
+    sendStateMachineEventSpy.mockRestore();
+  });
+
+  it('should map offer-stage OUTDIAL decline ContactEnded to CONTACT_ENDED (not wrapup)', () => {
+    const task = taskManager.getTask(taskId);
+    task.stateMachineService = {
+      getSnapshot: () => ({value: 'OFFERED'}),
+    };
+    task.uiControlConfig = {enableWxBetterTogether: true, wxAppAnswerPending: false};
+    task.data = {
+      ...task.data,
+      agentId: 'test-agent-id',
+      interaction: {
+        ...task.data.interaction,
+        outboundType: 'OUTDIAL',
+        participants: {
+          'test-agent-id': {
+            id: 'test-agent-id',
+            deviceType: 'wxApp',
+            deviceId: 'device-1',
+            deviceCallId: 'call-1',
+          },
+        },
+      },
+    };
+    const sendStateMachineEventSpy = jest.spyOn(task, 'sendStateMachineEvent');
+    const outdialFailedSpy = jest.fn();
+    task.on(TASK_EVENTS.TASK_OUTDIAL_FAILED, outdialFailedSpy);
+
+    const payload = {
+      data: {
+        type: CC_EVENTS.CONTACT_ENDED,
+        interactionId: taskId,
+        terminatingParty: 'Agent',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          state: 'wrapUp',
+          mediaType: 'telephony',
+        },
+        agentsPendingWrapUp: [],
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    expectLastStateMachineEvent(sendStateMachineEventSpy, TaskEvent.CONTACT_ENDED);
+    expect(outdialFailedSpy).not.toHaveBeenCalled();
+    sendStateMachineEventSpy.mockRestore();
+  });
+
+  it('should map post-accept OUTDIAL ContactEnded to OUTBOUND_FAILED when still OFFERED with wxAppAnswerPending', () => {
+    const task = taskManager.getTask(taskId);
+    task.stateMachineService = {
+      getSnapshot: () => ({value: 'OFFERED'}),
+    };
+    task.uiControlConfig = {enableWxBetterTogether: true, wxAppAnswerPending: true};
+    task.data = {
+      ...task.data,
+      agentId: 'test-agent-id',
+      interaction: {
+        ...task.data.interaction,
+        outboundType: 'OUTDIAL',
+        participants: {
+          'test-agent-id': {
+            id: 'test-agent-id',
+            deviceType: 'wxApp',
+            deviceId: 'device-1',
+            deviceCallId: 'call-1',
+          },
+        },
+      },
+    };
+    const sendStateMachineEventSpy = jest.spyOn(task, 'sendStateMachineEvent');
+    const outdialFailedSpy = jest.fn();
+    task.on(TASK_EVENTS.TASK_OUTDIAL_FAILED, outdialFailedSpy);
+
+    const payload = {
+      data: {
+        type: CC_EVENTS.CONTACT_ENDED,
+        interactionId: taskId,
+        terminatingParty: 'Agent',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          state: 'offered',
+          mediaType: 'telephony',
+          participants: {
+            'test-agent-id': {
+              id: 'test-agent-id',
+              deviceType: 'wxApp',
+              deviceId: 'device-1',
+              deviceCallId: 'call-1',
+            },
+          },
+        },
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    const stateMachineEvent = expectLastStateMachineEvent(
+      sendStateMachineEventSpy,
+      TaskEvent.OUTBOUND_FAILED
+    );
+    expect(stateMachineEvent?.reason).toBe('AGENT_ENDS');
+    expect(outdialFailedSpy).toHaveBeenCalledWith('AGENT_ENDS');
+    sendStateMachineEventSpy.mockRestore();
+  });
+
+  it('should map post-accept agent-terminated OUTDIAL ContactEnded to OUTBOUND_FAILED when CONNECTED', () => {
+    const task = taskManager.getTask(taskId);
+    task.stateMachineService = {
+      getSnapshot: () => ({value: 'CONNECTED'}),
+    };
+    task.uiControlConfig = {enableWxBetterTogether: true};
+    task.data = {
+      ...task.data,
+      agentId: 'test-agent-id',
+      interaction: {
+        ...task.data.interaction,
+        outboundType: 'OUTDIAL',
+        participants: {
+          'test-agent-id': {
+            id: 'test-agent-id',
+            deviceType: 'wxApp',
+            deviceId: 'device-1',
+            deviceCallId: 'call-1',
+          },
+        },
+      },
+    };
+    const sendStateMachineEventSpy = jest.spyOn(task, 'sendStateMachineEvent');
+    const outdialFailedSpy = jest.fn();
+    task.on(TASK_EVENTS.TASK_OUTDIAL_FAILED, outdialFailedSpy);
+
+    const payload = {
+      data: {
+        type: CC_EVENTS.CONTACT_ENDED,
+        interactionId: taskId,
+        terminatingParty: 'Agent',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          state: 'wrapUp',
+          mediaType: 'telephony',
+          participants: {
+            'test-agent-id': {
+              id: 'test-agent-id',
+              deviceType: 'wxApp',
+              deviceId: 'device-1',
+              deviceCallId: 'call-1',
+            },
+          },
+        },
+        agentsPendingWrapUp: ['test-agent-id'],
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    const stateMachineEvent = expectLastStateMachineEvent(
+      sendStateMachineEventSpy,
+      TaskEvent.OUTBOUND_FAILED
+    );
+    expect(stateMachineEvent?.reason).toBe('AGENT_ENDS');
+    expect(outdialFailedSpy).toHaveBeenCalledWith('AGENT_ENDS');
+    sendStateMachineEventSpy.mockRestore();
+  });
+
+  it('should map customer-terminated OUTDIAL ContactEnded to CONTACT_ENDED (no AGENT_ENDS remap)', () => {
+    const task = taskManager.getTask(taskId);
+    const sendStateMachineEventSpy = jest.spyOn(task, 'sendStateMachineEvent');
+
+    const payload = {
+      data: {
+        type: CC_EVENTS.CONTACT_ENDED,
+        interactionId: taskId,
+        terminatingParty: 'Customer',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          state: 'new',
+          mediaType: 'telephony',
+        },
+        agentsPendingWrapUp: ['test-agent-id'],
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    expectLastStateMachineEvent(sendStateMachineEventSpy, TaskEvent.CONTACT_ENDED);
+    sendStateMachineEventSpy.mockRestore();
+  });
+
   it('should handle CONTACT_ENDED gracefully when task is undefined', () => {
     const payload = {
       data: {
@@ -2476,6 +2840,46 @@ describe('TaskManager', () => {
       });
 
       sendStateMachineEventSpy.mockRestore();
+    });
+  });
+
+  describe('applyEnableWxBetterTogether', () => {
+    it('updates config flags and propagates to active tasks', () => {
+      const taskOne = {setEnableWxBetterTogether: jest.fn()};
+      const taskTwo = {setEnableWxBetterTogether: jest.fn()};
+
+      taskManager.setConfigFlags({
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+        enableWxBetterTogether: true,
+      });
+      taskManager['taskCollection'] = {
+        [taskId]: taskOne,
+        'task-2': taskTwo,
+      };
+
+      taskManager.applyEnableWxBetterTogether(false);
+
+      expect(taskManager['configFlags']?.enableWxBetterTogether).toBe(false);
+      expect(taskOne.setEnableWxBetterTogether).toHaveBeenCalledWith(false);
+      expect(taskTwo.setEnableWxBetterTogether).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe('applyWxAppMuteStateFromSync', () => {
+    it('propagates mute state to all tasks', () => {
+      const taskOne = {applyWxAppMuteStateFromSync: jest.fn()};
+      const taskTwo = {applyWxAppMuteStateFromSync: jest.fn()};
+
+      taskManager['taskCollection'] = {
+        [taskId]: taskOne,
+        'task-2': taskTwo,
+      };
+
+      taskManager.applyWxAppMuteStateFromSync('call-1', true);
+
+      expect(taskOne.applyWxAppMuteStateFromSync).toHaveBeenCalledWith('call-1', true);
+      expect(taskTwo.applyWxAppMuteStateFromSync).toHaveBeenCalledWith('call-1', true);
     });
   });
 });
