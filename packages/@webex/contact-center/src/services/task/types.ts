@@ -2052,6 +2052,7 @@ export type VoiceUIControlOptions = {
   voiceVariant?: VoiceVariant;
   isRecordingEnabled?: boolean;
   enableWxBetterTogether?: boolean;
+  consultTransferConfig?: ConsultTransferDestinationConfig;
   answerCallOnWebexService?: import('../AnswerCallOnWebexService').default;
 };
 

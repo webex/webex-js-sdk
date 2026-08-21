@@ -18,7 +18,6 @@ import {
   TaskTransmitDtmfOptions,
   TransferPayLoad,
   ConsultTransferPayLoad,
-  ConsultTransferDestinationConfig,
   consultConferencePayloadData,
   CONSULT_TRANSFER_DESTINATION_TYPE,
   TASK_EVENTS,
@@ -48,10 +47,6 @@ import {
   WxAppVoiceLifecycle,
 } from './wxAppVoiceMethods';
 
-type VoiceTaskOptions = VoiceUIControlOptions & {
-  consultTransferConfig?: ConsultTransferDestinationConfig;
-};
-
 export default class Voice extends Task implements IVoice {
   private static readonly WXAPP_MUTE_SYNC_RETRY_DELAY_MS = 50;
   private static readonly WXAPP_MUTE_SYNC_MAX_RETRIES = 3;
@@ -67,7 +62,7 @@ export default class Voice extends Task implements IVoice {
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
-    callOptions?: VoiceTaskOptions,
+    callOptions?: VoiceUIControlOptions,
     wrapupData?: WrapupData,
     agentId?: string
   ) {
