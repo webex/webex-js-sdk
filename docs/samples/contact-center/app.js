@@ -46,6 +46,18 @@ const updateTeamDropdownElm = document.querySelector('#updateTeamDropdown');
 const incomingCallListener = document.querySelector('#incomingsection');
 const incomingDetailsElm = document.querySelector('#incoming-task');
 const participantListElm = document.querySelector('#participant-list');
+const participantListHeadingElm = document.querySelector('#participant-list-heading');
+const participantRosterContentElm = document.querySelector('#participant-roster-content');
+const participantDropStatusElm = document.querySelector('#participant-drop-status');
+const participantDropErrorElm = document.querySelector('#participant-drop-error');
+const customerDropDialogElm = document.querySelector('#customer-drop-dialog');
+const confirmCustomerDropElm = document.querySelector('#confirm-customer-drop');
+const cancelCustomerDropElm = document.querySelector('#cancel-customer-drop');
+
+let participantDropTaskId;
+let pendingParticipantDrop;
+let customerDropTarget;
+let customerDropTrigger;
 
 const answerElm = document.querySelector('#answer');
 const declineElm = document.querySelector('#decline');
@@ -1193,109 +1205,430 @@ function getActiveAgentCount(task) {
   return agentCount;
 }
 
-// MPC: Update participant list display
-// Shows ALL other agents in the conference by iterating over interaction.participants
-// This ensures we display all agents regardless of which media entry they appear in
-function updateParticipantList(task) {
-  if (!task || !task.data || !task.data.interaction) {
-    participantListElm.style.display = 'none';
-    return;
+// Participant Drop roster helpers. Rows are derived only from the main-call media leg.
+function setParticipantRosterVisibility(isVisible) {
+  participantListElm.hidden = !isVisible;
+  participantListElm.style.display = isVisible ? 'block' : 'none';
+}
+
+function closeCustomerDropDialog({restoreFocus = true} = {}) {
+  if (customerDropDialogElm.open) {
+    customerDropDialogElm.close();
   }
-  
-  const { participants, owner } = task.data.interaction;
-  
-  // Count all active agents (not just from media participants)
-  const activeAgentCount = getActiveAgentCount(task);
-  
-  // Debug logging to help troubleshoot participant list issues
-  console.log('[updateParticipantList] Debug:', {
-    interactionId: task.data.interactionId,
-    mainInteractionId: task.data.interaction.mainInteractionId,
-    activeAgentCount,
-    allParticipants: Object.keys(participants || {}),
-    allParticipantsDetails: Object.entries(participants || {}).map(([id, p]) => ({
-      id: id.substring(0, 8),
-      pType: p.pType,
-      name: p.name,
-      hasLeft: p.hasLeft,
-      hasJoined: p.hasJoined
-    })),
-    mediaKeys: Object.keys(task.data.interaction.media || {})
-  });
-  
-  // Only show participant list during actual conference (not consulting)
-  // exitConference is only visible in CONFERENCING state
-  const isConferenceActive = 
-    task.uiControls?.exitConference?.isVisible || 
-    task.uiControls?.exitConference?.isEnabled;
-    
-  if (isConferenceActive) {
-    let participantHtml = '<strong>📋 Conference Participants:</strong><br/>';
-    
-    // Show conference info
-    participantHtml += `<small>Agents: ${activeAgentCount}/7`;
-    if (owner) {
-      const ownerParticipant = participants[owner];
-      const ownerName = ownerParticipant?.name || owner.substring(0, 8);
-      participantHtml += ` | Owner: ${ownerName}`;
-      
-      // Show if current agent is the primary owner
-      if (owner === agentId) {
-        participantHtml += ' (You)';
-      }
-    }
-    participantHtml += '</small><br/><br/>';
-    
-    // Iterate over ALL participants in interaction.participants
-    // This ensures we show all agents regardless of media entry
-    Object.entries(participants).forEach(([participantId, participant]) => {
-      if (!participant) return;
-      
-      // Don't show the current agent in the list (they know they're in the call)
-      if (participantId === agentId) return;
-      
-      // Only show agents (exclude Customer, Supervisor, VVA)
-      if (
-        participant.pType === 'Customer' ||
-        participant.pType === 'Supervisor' ||
-        participant.pType === 'VVA'
-      ) {
-        return;
-      }
-      
-      // Don't show participants who have left
-      if (participant.hasLeft) return;
-      
-      const role = participant.pType || 'Agent';
-      const name = participant.name || participantId.substring(0, 8);
-      const status = participant.hasJoined !== false ? '✅' : '⏳';
-      const isOwner = participantId === owner ? ' 👑' : '';
-  
-      participantHtml += `${status} ${role}: ${name}${isOwner}<br/>`;
-    });
-    
-    participantListElm.innerHTML = participantHtml;
-    participantListElm.style.display = 'block';
-  } else {
-    participantListElm.style.display = 'none';
+
+  const trigger = customerDropTrigger;
+  customerDropTarget = undefined;
+  customerDropTrigger = undefined;
+
+  if (restoreFocus && trigger?.isConnected) {
+    trigger.focus();
   }
 }
 
-/**
- * Gets the count of active agent participants in the conference
- * Iterates over ALL participants in interaction.participants (not just media participants)
- * to ensure we count all agents regardless of which media entry they appear in.
- * 
- * Note: mainCallId parameter is kept for backward compatibility but is no longer used.
- * 
- * @param {Object} task - The task object containing interaction details
- * @param {string} mainCallId - (deprecated) The main call interaction ID - no longer used
- * @returns {number} Number of active agent participants
- */
-function getActiveAgentCountFromMainCall(task, mainCallId) {
-  // Delegate to the unified getActiveAgentCount function
-  return getActiveAgentCount(task);
+function resetParticipantDropState({clearMessages = true} = {}) {
+  pendingParticipantDrop = undefined;
+  closeCustomerDropDialog();
+
+  if (clearMessages) {
+    participantDropStatusElm.textContent = '';
+    participantDropErrorElm.textContent = '';
+  }
 }
+
+function syncParticipantDropTask(task) {
+  const nextTaskId = task?.data?.interactionId;
+
+  if (participantDropTaskId !== nextTaskId) {
+    resetParticipantDropState();
+    participantDropTaskId = nextTaskId;
+  }
+}
+
+function getMainCallMedia(task) {
+  const interaction = task?.data?.interaction;
+  const mediaEntries = Object.entries(interaction?.media || {});
+  const mainInteractionId = interaction?.mainInteractionId || task?.data?.interactionId;
+
+  return (
+    mediaEntries.find(([mediaId]) => mediaId === mainInteractionId)?.[1] ||
+    mediaEntries.find(([, media]) => ['maincall', 'main'].includes(media?.mType?.toLowerCase()))?.[1]
+  );
+}
+
+function normalizeParticipantType(participant) {
+  return String(participant?.pType || participant?.type || '')
+    .trim()
+    .toUpperCase()
+    .replaceAll('_', '-');
+}
+
+function getActiveMainLegParticipants(task, mainMedia) {
+  const participants = task?.data?.interaction?.participants || {};
+  return (mainMedia?.participants || []).flatMap((participantId) => {
+    const participant = participants[participantId];
+
+    if (!participant || participant.hasLeft || participant.hasJoined === false) {
+      return [];
+    }
+
+    return [{participantId, participant}];
+  });
+}
+
+function isViewingAgentParticipant(entry, viewingAgentId) {
+  return Boolean(
+    viewingAgentId &&
+      (entry.participantId === viewingAgentId || entry.participant.id === viewingAgentId)
+  );
+}
+
+function isViewingAgentActiveOnMainLeg(task, mainMedia, viewingAgentId) {
+  return getActiveMainLegParticipants(task, mainMedia).some((entry) =>
+    isViewingAgentParticipant(entry, viewingAgentId)
+  );
+}
+
+function isActiveConference(task, mainMedia, viewingAgentId) {
+  const interaction = task?.data?.interaction;
+  const state = interaction?.state?.toLowerCase();
+  const isTerminated = Boolean(
+    interaction?.isTerminated || ['ended', 'disconnected', 'terminated'].includes(state)
+  );
+
+  return (
+    interaction?.mediaType?.toLowerCase() === 'telephony' &&
+    Boolean(mainMedia) &&
+    !isTerminated &&
+    isViewingAgentActiveOnMainLeg(task, mainMedia, viewingAgentId)
+  );
+}
+
+function getCurrentConsultMedia(task) {
+  const interaction = task?.data?.interaction;
+  const media = interaction?.media || {};
+  const consultIsActive =
+    hasVisibleControls(getTaskLegControls(task, 'consult')) ||
+    ['consult', 'consulting'].includes(interaction?.state?.toLowerCase());
+
+  if (!consultIsActive) {
+    return undefined;
+  }
+
+  const configuredConsultMediaId = task?.data?.consultMediaResourceId;
+  const configuredConsultMedia = configuredConsultMediaId ? media[configuredConsultMediaId] : undefined;
+
+  if (configuredConsultMedia?.mType?.toLowerCase() === 'consult') {
+    return configuredConsultMedia;
+  }
+
+  return Object.values(media)
+    .filter((entry) => entry?.mType?.toLowerCase() === 'consult')
+    .at(-1);
+}
+
+function hasActiveNonHeldConsult(task) {
+  const consultMedia = getCurrentConsultMedia(task);
+
+  return Boolean(consultMedia && consultMedia.isHold !== true);
+}
+
+function getCustomerNumber(interaction) {
+  const direction = interaction?.contactDirection?.type?.toLowerCase();
+  const callDetails = interaction?.callAssociatedDetails || {};
+  const processingDetails = interaction?.callProcessingDetails || {};
+
+  if (direction === 'inbound') {
+    return callDetails.ani || processingDetails.ani || '';
+  }
+
+  if (direction === 'outbound') {
+    return callDetails.dnis || processingDetails.dnis || '';
+  }
+
+  return '';
+}
+
+function deriveConferenceRoster(task) {
+  const interaction = task?.data?.interaction;
+  const mainMedia = getMainCallMedia(task);
+
+  if (!interaction || !isActiveConference(task, mainMedia, agentId)) {
+    return null;
+  }
+
+  const participants = interaction.participants || {};
+  const mainParticipantIds = new Set(mainMedia.participants || []);
+  const isOwner = interaction.owner === agentId;
+  const isDropDisabled = hasActiveNonHeldConsult(task);
+  const participantRows = [];
+  const includedParticipantIds = new Set();
+  let hasActiveCustomer = false;
+
+  mainParticipantIds.forEach((participantId) => {
+    const participant = participants[participantId];
+
+    if (!participant || participant.hasLeft || participant.hasJoined === false) {
+      return;
+    }
+
+    const resolvedParticipantId = participant.id || participantId;
+    const participantType = normalizeParticipantType(participant);
+
+    if (participantType === 'CUSTOMER') {
+      hasActiveCustomer = true;
+      return;
+    }
+
+    if (participantId === agentId || resolvedParticipantId === agentId || participantType === 'VVA') {
+      return;
+    }
+
+    const isSupervisor = participantType === 'SUPERVISOR';
+    const isEpDn = ['EP-DN', 'EPDN', 'DN'].includes(participantType);
+
+    if (!isSupervisor && participantType !== 'AGENT' && !isEpDn) {
+      return;
+    }
+
+    const typeLabel = isSupervisor ? 'Supervisor' : isEpDn ? 'EP-DN' : 'Agent';
+    const displayName = isEpDn
+      ? participant.dn || resolvedParticipantId || participantId
+      : participant.name || resolvedParticipantId || typeLabel;
+
+    participantRows.push({
+      participantId: resolvedParticipantId,
+      displayName: String(displayName),
+      typeLabel,
+      isPrimary: resolvedParticipantId === interaction.owner || participantId === interaction.owner,
+      canDrop: isOwner && !isSupervisor,
+      isDropDisabled,
+    });
+    includedParticipantIds.add(resolvedParticipantId);
+  });
+
+  const currentConsultMedia = getCurrentConsultMedia(task);
+  (currentConsultMedia?.participants || []).forEach((participantId) => {
+    const participant = participants[participantId];
+    const participantType = normalizeParticipantType(participant);
+    const isEpDn = ['EP-DN', 'EPDN', 'DN'].includes(participantType);
+
+    if (!participant || participant.hasLeft || !isEpDn) {
+      return;
+    }
+
+    const resolvedParticipantId = participant.id || participantId;
+    if (mainParticipantIds.has(participantId) || includedParticipantIds.has(resolvedParticipantId)) {
+      return;
+    }
+
+    participantRows.push({
+      participantId: resolvedParticipantId,
+      displayName: String(participant.dn || resolvedParticipantId || participantId),
+      typeLabel: 'EP-DN',
+      isPrimary: false,
+      canDrop: isOwner,
+      isDropDisabled: true,
+      isPendingConsult: true,
+    });
+    includedParticipantIds.add(resolvedParticipantId);
+  });
+
+  const customerNumber = hasActiveCustomer ? getCustomerNumber(interaction) : '';
+  const customer = customerNumber
+    ? {
+        participantId: customerNumber,
+        displayName: customerNumber,
+        typeLabel: 'Customer',
+        isPrimary: false,
+        canDrop: isOwner,
+        isDropDisabled,
+        requiresConfirmation: true,
+      }
+    : null;
+
+  // Customer-only calls use the original 1-to-1 UI. A single Agent, EP-DN,
+  // or Supervisor keeps the roster available after the Customer leaves.
+  if (participantRows.length === 0) {
+    return null;
+  }
+
+  return {customer, participants: participantRows};
+}
+
+function createParticipantRow(task, target) {
+  const row = document.createElement('li');
+  row.className = 'conference-roster__row';
+
+  const identity = document.createElement('span');
+  identity.className = 'conference-roster__identity';
+
+  const name = document.createElement('span');
+  name.className = 'conference-roster__name';
+  name.textContent = `${target.displayName}${target.isPrimary ? ' (Primary)' : ''}`;
+
+  identity.appendChild(name);
+  row.appendChild(identity);
+
+  if (target.canDrop) {
+    const isSelectedPending =
+      pendingParticipantDrop?.taskId === task.data.interactionId &&
+      pendingParticipantDrop?.participantId === target.participantId;
+    const dropButton = document.createElement('button');
+    dropButton.type = 'button';
+    dropButton.className = 'btn--red';
+    dropButton.textContent = isSelectedPending ? 'Dropping…' : 'Drop';
+    dropButton.setAttribute('aria-label', `Drop ${target.typeLabel.toLowerCase()} ${target.displayName}`);
+    if (target.requiresConfirmation) {
+      dropButton.dataset.participantDropTarget = 'customer';
+    }
+    dropButton.disabled = Boolean(pendingParticipantDrop) || target.isDropDisabled;
+    dropButton.addEventListener('click', () => {
+      if (target.requiresConfirmation) {
+        customerDropTarget = target;
+        customerDropTrigger = dropButton;
+        customerDropDialogElm.showModal();
+        confirmCustomerDropElm.focus();
+        return;
+      }
+
+      dropConferenceParticipant(task, target);
+    });
+    row.appendChild(dropButton);
+  }
+
+  return row;
+}
+
+function createParticipantSection(task, headingText, targets) {
+  const section = document.createElement('section');
+  section.className = 'conference-roster__section';
+
+  const heading = document.createElement('h4');
+  heading.className = 'conference-roster__heading';
+  heading.textContent = headingText;
+  section.appendChild(heading);
+
+  const list = document.createElement('ul');
+  list.className = 'conference-roster__list';
+  targets.forEach((target) => list.appendChild(createParticipantRow(task, target)));
+  section.appendChild(list);
+
+  return section;
+}
+
+function restoreCustomerDropFocus() {
+  const customerDropButton = participantRosterContentElm.querySelector(
+    'button[data-participant-drop-target="customer"]'
+  );
+
+  if (customerDropButton && !customerDropButton.disabled) {
+    customerDropButton.focus();
+    return;
+  }
+
+  if (!participantListElm.hidden) {
+    participantListHeadingElm.focus();
+    return;
+  }
+
+  const fallbackControl = [holdResumeElm, consultTabBtn, endElm].find(
+    (control) => control && !control.disabled && !control.hidden && control.style.display !== 'none'
+  );
+  (fallbackControl || incomingDetailsElm).focus();
+}
+
+async function dropConferenceParticipant(task, target, {restoreFocus = false} = {}) {
+  if (pendingParticipantDrop || currentTask?.data?.interactionId !== task.data.interactionId) {
+    return;
+  }
+
+  const latestRoster = deriveConferenceRoster(task);
+  const currentTarget = [latestRoster?.customer, ...(latestRoster?.participants || [])].find(
+    (entry) => entry?.participantId === target.participantId && entry.canDrop
+  );
+
+  if (!currentTarget || currentTarget.isDropDisabled) {
+    updateParticipantList(task);
+    if (restoreFocus) {
+      restoreCustomerDropFocus();
+    }
+    return;
+  }
+
+  const request = {
+    token: Symbol('participant-drop-request'),
+    taskId: task.data.interactionId,
+    participantId: target.participantId,
+  };
+  pendingParticipantDrop = request;
+  participantDropStatusElm.textContent = '';
+  participantDropErrorElm.textContent = '';
+  updateParticipantList(task);
+  if (restoreFocus) {
+    participantListHeadingElm.focus();
+  }
+
+  try {
+    await task.dropConferenceParticipant({participantId: target.participantId});
+
+    if (pendingParticipantDrop === request && currentTask?.data?.interactionId === request.taskId) {
+      participantDropStatusElm.textContent = 'Participant removed from the conference.';
+    }
+  } catch {
+    if (pendingParticipantDrop === request && currentTask?.data?.interactionId === request.taskId) {
+      participantDropErrorElm.textContent = 'Unable to drop participant from the call. Try again.';
+    }
+  } finally {
+    if (pendingParticipantDrop === request) {
+      pendingParticipantDrop = undefined;
+      if (currentTask?.data?.interactionId === request.taskId) {
+        updateParticipantList(currentTask);
+        if (restoreFocus) {
+          restoreCustomerDropFocus();
+        }
+      }
+    }
+  }
+}
+
+function updateParticipantList(task) {
+  syncParticipantDropTask(task);
+  const roster = deriveConferenceRoster(task);
+  participantRosterContentElm.replaceChildren();
+
+  if (!roster) {
+    setParticipantRosterVisibility(false);
+    return;
+  }
+
+  if (roster.customer) {
+    participantRosterContentElm.appendChild(createParticipantSection(task, 'Customer', [roster.customer]));
+  }
+
+  if (roster.participants.length > 0) {
+    participantRosterContentElm.appendChild(
+      createParticipantSection(task, 'Participants', roster.participants)
+    );
+  }
+
+  setParticipantRosterVisibility(true);
+}
+
+confirmCustomerDropElm.addEventListener('click', () => {
+  const target = customerDropTarget;
+  const task = currentTask;
+  closeCustomerDropDialog({restoreFocus: false});
+
+  if (target && task) {
+    dropConferenceParticipant(task, target, {restoreFocus: true});
+  }
+});
+
+cancelCustomerDropElm.addEventListener('click', () => closeCustomerDropDialog());
+customerDropDialogElm.addEventListener('cancel', (event) => {
+  event.preventDefault();
+  closeCustomerDropDialog();
+});
 
 /**
  * Merge consultation into conference
@@ -1949,9 +2282,10 @@ function registerTaskListeners(task) {
       } else {
         // If no uiControls available, clear all (task likely terminated)
         applyAllControlsFromUIControls(null);
-        participantListElm.style.display = 'none';
+        setParticipantRosterVisibility(false);
         incomingDetailsElm.innerText = 'No Incoming Tasks';
         currentTask = undefined;
+        syncParticipantDropTask(undefined);
       }
     }
     updateTaskList();
@@ -1986,7 +2320,8 @@ function registerTaskListeners(task) {
     if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
       currentTask = updatedTask || task;
       // Hide participant list since call has ended
-      participantListElm.style.display = 'none';
+      setParticipantRosterVisibility(false);
+      resetParticipantDropState();
       // Use setTimeout to let state machine settle, then update UI
       // This ensures uiControls reflects the WRAPPING_UP state
       setTimeout(() => {
@@ -2020,11 +2355,12 @@ function registerTaskListeners(task) {
     if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
       // Task ended - ALWAYS clear all controls (don't rely on uiControls)
       applyAllControlsFromUIControls(null);
-      participantListElm.style.display = 'none';
+      setParticipantRosterVisibility(false);
       incomingDetailsElm.innerText = 'No Incoming Tasks';
 
       // Clear currentTask since task has ended
       currentTask = undefined;
+      syncParticipantDropTask(undefined);
       if (aiAssistantContentElm) aiAssistantContentElm.innerHTML = '';
       resetAssistantRawOutput();
     }
@@ -2051,17 +2387,6 @@ function registerTaskListeners(task) {
       currentTask = updatedTask;
       updateCallControlUI(currentTask);
       updateParticipantList(currentTask);
-      
-      // Check if conference has ended (only 1 agent left)
-      const mainCallId = updatedTask.data.interaction?.mainInteractionId || updatedTask.data.interactionId;
-      const activeAgentCount = getActiveAgentCountFromMainCall(updatedTask, mainCallId);
-      console.info(`[task:participantLeft] Active agents remaining: ${activeAgentCount}`);
-      
-      // If only 1 agent remains, update UI to regular call state
-      if (activeAgentCount <= 1) {
-        console.info('📞 Conference ended - only 1 agent remaining, switching to regular call UI');
-        participantListElm.style.display = 'none';
-      }
     }
     updateTaskList();
   });
@@ -2121,9 +2446,13 @@ function registerTaskListeners(task) {
       if (currentTask.uiControls) {
         updateCallControlUI(currentTask);
       }
-      
-      // Hide participant list since conference ended
-      participantListElm.style.display = 'none';
+
+      // Re-derive from the authoritative main-leg roster. A customer departure
+      // may clear conference flags while multiple participants continue talking.
+      updateParticipantList(currentTask);
+      if (!deriveConferenceRoster(currentTask)) {
+        resetParticipantDropState();
+      }
     }
     updateTaskList();
   });
@@ -3229,6 +3558,14 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 });
 
  async function answer() {
+  const acceptControl = getTaskLegControls(currentTask, 'main')?.accept;
+  if (!acceptControl?.isEnabled) {
+    console.warn('Accept operation is not available for the selected task');
+    updateTaskList();
+    return;
+  }
+
+  // Button states will be updated by task.uiControls after accept() completes
   await currentTask.accept();
   updateTaskList();
   incomingDetailsElm.innerText = 'Task Accepted';
@@ -3461,7 +3798,8 @@ function renderTaskList(taskList) {
     taskListContainer.innerHTML = '<p>No tasks available</p>';
     engageElm.innerHTML = ``;
     currentTask = undefined;
-    participantListElm.style.display = 'none';
+    syncParticipantDropTask(undefined);
+    setParticipantRosterVisibility(false);
     return;
   }
 
@@ -3522,7 +3860,8 @@ function renderTaskList(taskList) {
     taskListContainer.innerHTML = '<p>No tasks available</p>';
     engageElm.innerHTML = ``;
     currentTask = undefined;
-    participantListElm.style.display = 'none';
+    syncParticipantDropTask(undefined);
+    setParticipantRosterVisibility(false);
     return;
   }
 
@@ -3539,9 +3878,10 @@ function renderTaskList(taskList) {
       console.info('📋 Current task removed from list - clearing UI controls');
       applyAllControlsFromUIControls(null);
       renderTaskControlsSections(null);
-      participantListElm.style.display = 'none';
+      setParticipantRosterVisibility(false);
       incomingDetailsElm.innerText = 'No Incoming Tasks';
       currentTask = undefined;
+      syncParticipantDropTask(undefined);
     }
   }
 
@@ -3563,20 +3903,25 @@ function renderTaskList(taskList) {
     const callerDisplay = task.data.interaction.callAssociatedDetails?.ani;
     // Determine task properties
     const isNew = isIncomingTask(task, agentId); 
-    const isTelephony = task.data.interaction.mediaType === 'telephony';
-    const isBrowserPhone = agentDeviceType === 'BROWSER';
     const isAutoAnswering = task.data.isAutoAnswering || false;
+    const taskControls = getTaskLegControls(task, 'main') || {};
+    const acceptControl = taskControls.accept || {};
+    const declineControl = taskControls.decline || {};
 
-    // Determine which buttons to show
-    const showAcceptButton = isNew && (isBrowserPhone || !isTelephony);
-    const showDeclineButton = isNew && isTelephony && isBrowserPhone;
+    // Task controls are authoritative for this SDK instance. In a multi-login session the
+    // profile device type can describe another browser session, while this task is an endpoint
+    // Voice task whose accept/decline methods are intentionally unsupported.
+    const showAcceptButton = isNew && acceptControl.isVisible;
+    const showDeclineButton = isNew && declineControl.isVisible;
+    const disableAcceptButton = isAutoAnswering || !acceptControl.isEnabled;
+    const disableDeclineButton = isAutoAnswering || !declineControl.isEnabled;
 
     // Build the task element
     taskElement.innerHTML = `
         <div class="task-item-content">
             <p>${callerDisplay}</p>
-            ${showAcceptButton ? `<button class="accept-task" data-task-id="${taskId}" ${isAutoAnswering ? 'disabled' : ''}>Accept</button>` : ''}
-            ${showDeclineButton ? `<button class="decline-task" data-task-id="${taskId}" ${isAutoAnswering ? 'disabled' : ''}>Decline</button>` : ''}
+            ${showAcceptButton ? `<button class="accept-task" data-task-id="${taskId}" ${disableAcceptButton ? 'disabled' : ''}>Accept</button>` : ''}
+            ${showDeclineButton ? `<button class="decline-task" data-task-id="${taskId}" ${disableDeclineButton ? 'disabled' : ''}>Decline</button>` : ''}
         </div>
         <hr class="task-separator">
     `;

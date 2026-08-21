@@ -56,6 +56,7 @@ export const METHODS = {
   TRANSFER_CALL: 'transfer',
   CONSULT_TRANSFER: 'consultTransfer',
   CONSULT_CONFERENCE: 'consultConference',
+  DROP_CONFERENCE_PARTICIPANT: 'dropConferenceParticipant',
   EXIT_CONFERENCE: 'exitConference',
   TRANSFER_CONFERENCE: 'transferConference',
   TOGGLE_MUTE: 'toggleMute',

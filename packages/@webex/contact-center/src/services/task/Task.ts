@@ -11,6 +11,7 @@ import {
   DESTINATION_TYPE,
   TASK_EVENTS,
   TaskUIControls,
+  DropConferenceParticipantPayload,
   ConsultEndPayload,
   ConsultPayload,
   ConsultTransferPayLoad,
@@ -141,6 +142,14 @@ export default abstract class Task extends EventEmitter implements ITask {
 
   public async consultConference(): Promise<TaskResponse> {
     this.unsupportedMethodError('consultConference');
+  }
+
+  public async dropConferenceParticipant(
+    // The base task preserves the public signature; Voice provides the implementation.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    payload: DropConferenceParticipantPayload
+  ): Promise<TaskResponse> {
+    this.unsupportedMethodError(METHODS.DROP_CONFERENCE_PARTICIPANT);
   }
 
   public async exitConference(): Promise<TaskResponse> {

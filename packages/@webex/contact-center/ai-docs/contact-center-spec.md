@@ -66,7 +66,7 @@ src/
 | `src/config.ts` | Authoritative Contact Center implementation or contract source. |
 | `src/services/UserPreference.ts` | User-preference CRUD implementation exposed through `cc.userPreference`. |
 | `src/services/task/dialer.ts` | Preview-campaign AQM request implementations. |
-| `src/services/task/types.ts` | `PreviewContactPayload`, `TaskResponse`, and task contract types. |
+| `src/services/task/types.ts` | `PreviewContactPayload`, `DropConferenceParticipantPayload`, `TaskResponse`, and task contract types. |
 
 ## Public Surface
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
@@ -74,6 +74,7 @@ src/
 | `contact-center.surface` | SDK / event / internal API | Published `@webex/contact-center` exports and the `ContactCenter` (`cc`) WebexPlugin API. | Stable module consumption boundary. | Additive changes by default; breaking package exports require a major-version transition. | `src/index.ts` | `CONTRACTS.md` |
 | `contact-center.user-preference` | SDK data API | Exported `UserPreference`, `cc.userPreference`, and user-preference request/response types. | Read and mutate user preferences through authenticated REST operations. | Additive public API; removals or signature changes are breaking. | `src/services/UserPreference.ts`, `src/services/config/types.ts` | `CONTRACTS.md` |
 | `contact-center.preview-campaign` | SDK task API | `acceptPreviewContact`, `skipPreviewContact`, `removePreviewContact`. | Resolve campaign preview reservations through typed AQM operations. | Additive public API; removals or signature changes are breaking. | `src/cc.ts`, `src/services/task/dialer.ts`, `src/services/task/types.ts` | `CONTRACTS.md` |
+| `contact-center.conference-participant-drop` | SDK task API | Exported `DropConferenceParticipantPayload` and `ITask.dropConferenceParticipant`. | Remove a conference participant through the media-specific task implementation and correlated AQM completion. | Additive public API; removals or signature changes are breaking. | `src/index.ts`, `src/services/task/types.ts`, `src/services/task/voice/Voice.ts` | `CONTRACTS.md` |
 
 Compatibility notes:
 - Do not remove or reinterpret exported symbols/events without a documented consumer migration.
