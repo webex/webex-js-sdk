@@ -1,0 +1,230 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/plugin-meetings",
+    "purpose": "A Webex JavaScript SDK plugin that manages meeting discovery, lifecycle, realtime state, participants, media, and in-meeting capabilities.",
+    "category": "cat2-legacy",
+    "primary_languages": ["typescript", "javascript"]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "install": {"command": "yarn install", "source_file": "package.json", "role": "install", "verified_at": "2026-08-18T15:33:39Z"},
+    "build": {"command": "yarn workspace @webex/plugin-meetings build:src", "source_file": "packages/@webex/plugin-meetings/package.json", "role": "package", "verified_at": "2026-08-18T15:33:39Z"},
+    "unit-test": {"command": "yarn workspace @webex/plugin-meetings test:unit", "source_file": "packages/@webex/plugin-meetings/package.json", "role": "unit-test", "verified_at": "2026-08-18T15:33:39Z"},
+    "browser-test": {"command": "yarn workspace @webex/plugin-meetings test:browser", "source_file": "packages/@webex/plugin-meetings/package.json", "role": "integration-test", "verified_at": "2026-08-18T15:33:39Z"},
+    "lint": {"command": "yarn workspace @webex/plugin-meetings test:style", "source_file": "packages/@webex/plugin-meetings/package.json", "role": "lint", "verified_at": "2026-08-18T15:33:39Z"}
+  },
+  "toolchain": [
+    {"name": "node", "version": "22.14", "origin": "repo-config", "source_file": "AGENTS.md"},
+    {"name": "yarn", "version": "3.4.1", "origin": "repo-config", "source_file": "package.json"}
+  ],
+  "tests": {
+    "unit": {"command_ref": "unit-test", "dir": "test/unit/spec", "framework": "mocha"},
+    "integration": {"command_ref": "browser-test", "dir": "test/integration/spec", "framework": "karma/mocha", "external_deps": ["Webex test users and remote Webex services"]}
+  },
+  "quality_gates": {
+    "code_coverage": {"origin": "none", "declared_by": "repository user via bootstrap questionnaire"}
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% — spec is authoritative",
+    "partial": "40-80% specced — spec is a hint, cross-check code",
+    "untracked": "<40% specced — code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "migrate-existing",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "repository user",
+    "disposition_decided_at": "2026-08-18T15:33:39Z",
+    "decided_by": "repository user",
+    "decided_at": "2026-08-18T15:33:39Z",
+    "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+  },
+  "spec_sources": [
+    {"path": "AGENTS.md", "scope": "repo", "role": "source-material", "canonical": true, "use_by_agents": "source-for-migration", "canonical_target": "AGENTS.md", "post_migration_action": "retain", "deletion_status": "not-applicable", "notes": "Host-attested canonical overlap; migrate in place from the frozen checkpoint and retain."},
+    {"path": "README.md", "scope": "repo", "role": "source-material", "canonical": false, "use_by_agents": "source-for-migration", "canonical_target": "ai-docs/CONTRACTS.md", "post_migration_action": "retain", "deletion_status": "not-applicable", "notes": "Consumer APIs, events, flows, and caveats are routed by meaning across contracts, service state, getting-started, and owning module specs; source remains unchanged."},
+    {"path": "UPGRADING.md", "scope": "module", "module": "src/meeting/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-migration", "canonical_target": "src/meeting/ai-docs/meeting-spec.md", "post_migration_action": "retain", "deletion_status": "not-applicable", "notes": "Phone-to-meetings staged lifecycle and event behavior migrate to the Meeting spec; source remains unchanged."},
+    {"path": "internal-README.md", "scope": "repo", "role": "source-material", "canonical": false, "use_by_agents": "source-for-migration", "canonical_target": "ai-docs/GETTING_STARTED.md", "post_migration_action": "retain", "deletion_status": "not-applicable", "notes": "Contributor instructions migrate with current config corrections; source remains unchanged."},
+    {"path": "src/aiEnableRequest/README.md", "scope": "module", "module": "src/aiEnableRequest/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-migration", "canonical_target": "src/aiEnableRequest/ai-docs/ai-enable-request-spec.md", "post_migration_action": "retain", "deletion_status": "not-applicable", "notes": "AI approval workflow source; retained after migration."},
+    {"path": "src/breakouts/README.md", "scope": "module", "module": "src/breakouts/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-migration", "canonical_target": "src/breakouts/ai-docs/breakouts-spec.md", "post_migration_action": "retain", "deletion_status": "not-applicable", "notes": "Breakout workflow source; statements contradicted by current code are marked corrected or stale."},
+    {"path": "src/interpretation/README.md", "scope": "module", "module": "src/interpretation/", "role": "source-material", "canonical": false, "use_by_agents": "source-for-migration", "canonical_target": "src/interpretation/ai-docs/interpretation-spec.md", "post_migration_action": "retain", "deletion_status": "not-applicable", "notes": "Simultaneous-interpretation workflow source; retained after migration."}
+  ],
+  "modules": [
+    {
+      "path": "src/meetings/", "coverage_status": "Partial", "coverage_evidence": "Existing consumer documentation covers creation, registration, synchronization, and collection behavior; generated spec remains a hint until coverage and independent validation pass.", "canonical_spec": "src/meetings/ai-docs/meetings-spec.md",
+      "contracts": {"provides": ["Registered webex.meetings plugin", "Meeting creation, lookup, registration, and collection synchronization"], "requires": ["Webex core plugin host", "Device, Mercury, Locus, and meeting-info services"]},
+      "characterization_baseline": "test/unit/spec/meetings/index.js", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": true, "stateful_transitions": true, "exposes_wire_protocol": false, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": true, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"},
+      "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/meeting/", "coverage_status": "Partial", "coverage_evidence": "README and upgrade guidance cover the principal staged lifecycle, media, controls, and events; code must be cross-checked until validation.", "canonical_spec": "src/meeting/ai-docs/meeting-spec.md",
+      "contracts": {"provides": ["Meeting lifecycle, join/leave, media, participant, recording, sharing, and event APIs"], "requires": ["Locus, media, ROAP, members, reachability, reconnection, and Webex services"]},
+      "characterization_baseline": "test/unit/spec/meeting/index.js", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": true, "stateful_transitions": true, "exposes_wire_protocol": true, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": true, "published_package": false, "embedded_in_host": true, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"},
+      "source_policy": {"mode": "migrate-existing", "existing_sources": ["UPGRADING.md"], "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/meeting-info/", "coverage_status": "Untracked", "coverage_evidence": "No routed module specification existed; current code and mirrored tests remain authoritative.", "canonical_spec": "src/meeting-info/ai-docs/meeting-info-spec.md",
+      "contracts": {"provides": ["Meeting destination resolution and validated metadata"], "requires": ["Webex meeting, conversation, people, and webinar services"]}, "characterization_baseline": "test/unit/spec/meeting-info/index.js", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": false, "stateful_transitions": false, "exposes_wire_protocol": false, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/locus-info/", "coverage_status": "Untracked", "coverage_evidence": "No routed module specification existed; current Locus parsers, callbacks, and tests remain authoritative.", "canonical_spec": "src/locus-info/ai-docs/locus-info-spec.md",
+      "contracts": {"provides": ["Normalized Locus state and change callbacks"], "requires": ["Locus full/delta/hash-tree payloads and Webex request access"]}, "characterization_baseline": "test/unit/spec/locus-info/index.js", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": false, "stateful_transitions": true, "exposes_wire_protocol": true, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/hashTree/", "coverage_status": "Untracked", "coverage_evidence": "No routed module specification existed; hash-tree code and tests are authoritative.", "canonical_spec": "src/hashTree/ai-docs/hash-tree-spec.md",
+      "contracts": {"provides": ["Incremental Locus dataset synchronization and typed update callbacks"], "requires": ["Hash-tree messages, dataset fetch requests, and Locus callbacks"]}, "characterization_baseline": "test/unit/spec/hashTree/hashTreeParser.ts", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": true, "stateful_transitions": true, "exposes_wire_protocol": true, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/member/", "coverage_status": "Partial", "coverage_evidence": "Consumer README documents participant properties; internal transformation behavior still requires code cross-checking.", "canonical_spec": "src/member/ai-docs/member-spec.md",
+      "contracts": {"provides": ["Individual meeting participant model and normalized media/role properties"], "requires": ["Locus participant payloads"]}, "characterization_baseline": "test/unit/spec/member/index.js", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": false, "enforces_domain_rules": true, "is_concurrent_async": false, "owns_persistence": false, "returns_caller_errors": false, "has_design_tradeoff": false, "stateful_transitions": false, "exposes_wire_protocol": false, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/members/", "coverage_status": "Partial", "coverage_evidence": "Consumer README documents roster properties, operations, and events; code remains authoritative for update semantics.", "canonical_spec": "src/members/ai-docs/members-spec.md",
+      "contracts": {"provides": ["Roster collection, participant mutations, and members events"], "requires": ["Locus roster payloads and meeting mutation endpoints"]}, "characterization_baseline": "test/unit/spec/members/index.js", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": false, "stateful_transitions": true, "exposes_wire_protocol": false, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/media/", "coverage_status": "Partial", "coverage_evidence": "Consumer docs describe media acquisition and attachment; connection implementation and failure behavior require code cross-checking.", "canonical_spec": "src/media/ai-docs/media-spec.md",
+      "contracts": {"provides": ["Media connection creation, properties, and readiness awaiting"], "requires": ["internal-media-core, browser WebRTC, and Webex media services"]}, "characterization_baseline": "test/unit/spec/media/index.ts", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": true, "stateful_transitions": true, "exposes_wire_protocol": true, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/multistream/", "coverage_status": "Untracked", "coverage_evidence": "No routed specification existed; current remote-media and slot-manager code/tests remain authoritative.", "canonical_spec": "src/multistream/ai-docs/multistream-spec.md",
+      "contracts": {"provides": ["Remote-media objects, layouts, receive/send slots, and media-request arbitration"], "requires": ["internal-media-core multistream connections and member CSI mapping"]}, "characterization_baseline": "test/unit/spec/multistream/remoteMediaManager.ts", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": true, "stateful_transitions": true, "exposes_wire_protocol": true, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/roap/", "coverage_status": "Untracked", "coverage_evidence": "No routed specification existed; ROAP and TURN discovery code/tests remain authoritative.", "canonical_spec": "src/roap/ai-docs/roap-spec.md",
+      "contracts": {"provides": ["ROAP offer/answer processing and TURN discovery"], "requires": ["Locus media requests, SDP, and Webex TURN services"]}, "characterization_baseline": "test/unit/spec/roap/index.ts", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": true, "stateful_transitions": true, "exposes_wire_protocol": true, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/reachability/", "coverage_status": "Untracked", "coverage_evidence": "No routed specification existed; reachability source and tests remain authoritative.", "canonical_spec": "src/reachability/ai-docs/reachability-spec.md",
+      "contracts": {"provides": ["Cluster/protocol reachability results, NAT type, and backend reports"], "requires": ["Webex cluster discovery, STUN/TURN, and browser peer connections"]}, "characterization_baseline": "test/unit/spec/reachability/index.ts", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": true, "stateful_transitions": true, "exposes_wire_protocol": true, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/reconnection-manager/", "coverage_status": "Untracked", "coverage_evidence": "No routed specification existed; reconnection code and tests remain authoritative.", "canonical_spec": "src/reconnection-manager/ai-docs/reconnection-manager-spec.md",
+      "contracts": {"provides": ["Bounded media retry, recovery, and rejoin orchestration"], "requires": ["Meeting, media, and network-state callbacks"]}, "characterization_baseline": "test/unit/spec/reconnection-manager/index.js", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": false, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": true, "stateful_transitions": true, "exposes_wire_protocol": false, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/breakouts/", "coverage_status": "Partial", "coverage_evidence": "A detailed retained feature guide covers participant and host workflows; current code corrects stale implementation notes.", "canonical_spec": "src/breakouts/ai-docs/breakouts-spec.md",
+      "contracts": {"provides": ["Breakout collection/session state, attendee and host operations, and breakout events"], "requires": ["Locus breakout controls, roster service, and meeting state"]}, "characterization_baseline": "test/unit/spec/breakouts/index.ts", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": true, "stateful_transitions": true, "exposes_wire_protocol": false, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": true, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"},
+      "source_policy": {"mode": "migrate-existing", "existing_sources": ["src/breakouts/README.md"], "conflict_status": "resolved", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/interpretation/", "coverage_status": "Partial", "coverage_evidence": "A retained feature guide covers language, host, and interpreter operations; code remains authoritative for exact behavior.", "canonical_spec": "src/interpretation/ai-docs/interpretation-spec.md",
+      "contracts": {"provides": ["Language subscriptions, interpreter management, direction, and handoff APIs"], "requires": ["Locus interpretation controls and approval endpoints"]}, "characterization_baseline": "test/unit/spec/interpretation/index.ts", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": false, "stateful_transitions": true, "exposes_wire_protocol": false, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": true, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"},
+      "source_policy": {"mode": "migrate-existing", "existing_sources": ["src/interpretation/README.md"], "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/annotation/", "coverage_status": "Untracked", "coverage_evidence": "No routed specification existed; annotation channel source and tests remain authoritative.", "canonical_spec": "src/annotation/ai-docs/annotation-spec.md",
+      "contracts": {"provides": ["Live annotation start/stop, command relay, and annotation event APIs"], "requires": ["Locus annotation controls and data-channel relay"]}, "characterization_baseline": "test/unit/spec/annotation/index.ts", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": false, "stateful_transitions": true, "exposes_wire_protocol": true, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/aiEnableRequest/", "coverage_status": "Partial", "coverage_evidence": "A retained feature guide covers requester and approver flows; code/tests verify exact events and requests.", "canonical_spec": "src/aiEnableRequest/ai-docs/ai-enable-request-spec.md",
+      "contracts": {"provides": ["AI assistant enablement request, accept, decline, and approval events"], "requires": ["Meeting participants, approval URLs, and Webex request service"]}, "characterization_baseline": "test/unit/spec/aiEnableRequest/index.ts", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": false, "stateful_transitions": true, "exposes_wire_protocol": false, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": true, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"},
+      "source_policy": {"mode": "migrate-existing", "existing_sources": ["src/aiEnableRequest/README.md"], "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/webinar/", "coverage_status": "Untracked", "coverage_evidence": "No routed specification existed; webinar source and tests remain authoritative.", "canonical_spec": "src/webinar/ai-docs/webinar-spec.md",
+      "contracts": {"provides": ["Webinar catalog, panelist, attendee, and session operations"], "requires": ["Webex webinar service and meeting identity"]}, "characterization_baseline": "test/unit/spec/webinar/index.ts", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": false, "stateful_transitions": true, "exposes_wire_protocol": false, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/recording-controller/", "coverage_status": "Partial", "coverage_evidence": "Consumer docs cover recording lifecycle operations; controller request behavior requires code cross-checking.", "canonical_spec": "src/recording-controller/ai-docs/recording-controller-spec.md",
+      "contracts": {"provides": ["Start, stop, pause, and resume recording actions"], "requires": ["Locus controls and recording status"]}, "characterization_baseline": "test/unit/spec/recording-controller/index.js", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": false, "stateful_transitions": true, "exposes_wire_protocol": false, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/controls-options-manager/", "coverage_status": "Untracked", "coverage_evidence": "No routed specification existed; control derivation source and tests remain authoritative.", "canonical_spec": "src/controls-options-manager/ai-docs/controls-options-manager-spec.md",
+      "contracts": {"provides": ["Derived availability and properties for in-meeting controls"], "requires": ["Locus controls, policies, and meeting requests"]}, "characterization_baseline": "test/unit/spec/controls-options-manager/index.js", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": false, "stateful_transitions": true, "exposes_wire_protocol": false, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/personal-meeting-room/", "coverage_status": "Partial", "coverage_evidence": "Consumer docs cover PMR get and claim operations; request and cache behavior require code cross-checking.", "canonical_spec": "src/personal-meeting-room/ai-docs/personal-meeting-room-spec.md",
+      "contracts": {"provides": ["Personal meeting room retrieval and claim APIs"], "requires": ["Webex PMR service and local plugin state"]}, "characterization_baseline": "test/unit/spec/personal-meeting-room/personal-meeting-room.js", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": false, "stateful_transitions": true, "exposes_wire_protocol": false, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": true, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/reactions/", "coverage_status": "Untracked", "coverage_evidence": "No routed specification or dedicated characterization test was found; code is authoritative and a baseline is required before risky modification.", "canonical_spec": "src/reactions/ai-docs/reactions-spec.md",
+      "contracts": {"provides": ["Exported reaction types/constants and relay-event normalization"], "requires": ["Meeting relay event payloads"]}, "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": false, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": false, "has_design_tradeoff": false, "stateful_transitions": false, "exposes_wire_protocol": true, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": false, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/interceptors/", "coverage_status": "Untracked", "coverage_evidence": "No routed specification existed; interceptor source and tests remain authoritative.", "canonical_spec": "src/interceptors/ai-docs/interceptors-spec.md",
+      "contracts": {"provides": ["Locus retry, route-token, and data-channel auth-token interceptors"], "requires": ["Webex HTTP interceptor pipeline, JWTs, and service responses"]}, "characterization_baseline": "test/unit/spec/interceptors/dataChannelAuthToken.ts", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": true, "has_design_tradeoff": false, "stateful_transitions": false, "exposes_wire_protocol": true, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": true, "holds_client_state": false, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    },
+    {
+      "path": "src/metrics/", "coverage_status": "Untracked", "coverage_evidence": "No routed specification existed; metrics implementation and tests remain authoritative.", "canonical_spec": "src/metrics/ai-docs/metrics-spec.md",
+      "contracts": {"provides": ["Meeting telemetry helper methods and event submission"], "requires": ["Webex internal metrics plugin and event dictionary"]}, "characterization_baseline": "test/unit/spec/metrics/index.js", "last_assessed": "2026-08-18",
+      "section_profile": {"has_ui": false, "crosses_service_boundaries": true, "enforces_domain_rules": true, "is_concurrent_async": true, "owns_persistence": false, "returns_caller_errors": false, "has_design_tradeoff": false, "stateful_transitions": false, "exposes_wire_protocol": false, "ui_multi_screen": false, "large_data_model": false, "has_tiers": false, "module_specific_conventions": false, "published_package": false, "embedded_in_host": false, "holds_client_state": false, "has_submodules": false, "resolved_by": "codex questionnaire + scripts/module_tree.py", "resolved_at": "2026-08-18T15:33:39Z"}, "source_policy": {"mode": "keep-separate", "conflict_status": "none", "decision_record": ".generated/sdd/spec-source-policy/decision.md"}
+    }
+  ],
+  "spec_policy": {
+    "delta_grammar": {"added": "## ADDED Requirements", "modified": "## MODIFIED Requirements", "removed": "## REMOVED Requirements"},
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/meetings/ai-docs/meetings-spec.md", "src/meeting/ai-docs/meeting-spec.md", "src/meeting-info/ai-docs/meeting-info-spec.md", "src/locus-info/ai-docs/locus-info-spec.md", "src/hashTree/ai-docs/hash-tree-spec.md", "src/member/ai-docs/member-spec.md", "src/members/ai-docs/members-spec.md", "src/media/ai-docs/media-spec.md", "src/multistream/ai-docs/multistream-spec.md", "src/roap/ai-docs/roap-spec.md", "src/reachability/ai-docs/reachability-spec.md", "src/reconnection-manager/ai-docs/reconnection-manager-spec.md", "src/breakouts/ai-docs/breakouts-spec.md", "src/interpretation/ai-docs/interpretation-spec.md", "src/annotation/ai-docs/annotation-spec.md", "src/aiEnableRequest/ai-docs/ai-enable-request-spec.md", "src/webinar/ai-docs/webinar-spec.md", "src/recording-controller/ai-docs/recording-controller-spec.md", "src/controls-options-manager/ai-docs/controls-options-manager-spec.md", "src/personal-meeting-room/ai-docs/personal-meeting-room-spec.md", "src/reactions/ai-docs/reactions-spec.md", "src/interceptors/ai-docs/interceptors-spec.md", "src/metrics/ai-docs/metrics-spec.md"
+    ],
+    "required_sections_by_change_class": {
+      "core_always": ["Intent (WHAT)", "Rationale (WHY)", "Scope/Out-of-scope", "Acceptance criteria", "Contracts delta"],
+      "security_or_contract_or_perf_critical": ["Data", "Error Matrix", "Resilience", "Observability", "Operations"]
+    }
+  },
+  "validation": {
+    "generator_runtime": "codex",
+    "generator_runtime_source": "invocation-input",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": ["Blocking"],
+    "generator_run_id": "plugin-meetings-bootstrap-20260818T153339Z",
+    "source_commit": "f9a29f61cf5d0b0311c729bceaeb41ae648cf862",
+    "base_ref": "main",
+    "head_ref": "repo-annotation"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "ai-docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "ai-docs",
+    "spec_index_path": "ai-docs/SPEC_INDEX.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_folder_name": "ai-docs",
+    "template_profile": "sdd-legacy",
+    "template_roots": {"canonical": ".sdd/templates", "extensions": [".sdd/templates/extensions"]},
+    "contracts_strategy": "root-index-module-detail"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_repo": "https://github.com/WebexServices/agent-skills/tree/main/skills/repo-annotation",
+      "source_ref": "a662b7346d3408f253e4d893694e71d9a5ec2349",
+      "source_branch": "main",
+      "install_mode": "copy",
+      "installed_at": "2026-08-18T15:33:39Z",
+      "plugins": ["repo-annotation@1.0.5+codex.20260818094939"]
+    }
+  },
+  "coverage_ratchet": {"enabled": true, "waivers": []},
+  "substrate": {
+    "source": "webex-js-sdk repository standards and the packages/calling SDD layout precedent",
+    "consumed": ["AGENTS.md", "package.json", "packages/@webex/plugin-meetings/package.json", "packages/@webex/plugin-meetings/jest.config.js", ".eslintrc.js", ".prettierrc", ".github/workflows/pull-request.yml"],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {"owns_datastore": false, "holds_client_state": true, "components_interact": true, "domain_data_across_components": true, "caches_data": true, "observability_convention": true, "deploys_to_infra": true, "shared_base_libs": true, "is_monorepo": true, "multi_platform": false, "published_package": true, "embedded_in_host": true, "cross_repo_deps_material": true, "security_arch_warranted": true},
+    "resolved_by": "codex (bootstrap questionnaire)",
+    "resolved_at": "2026-08-18T15:33:39Z"
+  }
+}
