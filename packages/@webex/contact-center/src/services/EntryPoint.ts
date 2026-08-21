@@ -2,18 +2,45 @@ import {HTTP_METHODS, WebexSDK} from '../types';
 import type {EntryPointRecord, EntryPointListResponse, EntryPointSearchParams} from '../types';
 import LoggerProxy from '../logger-proxy';
 import WebexRequest from './core/WebexRequest';
-import PageCache, {PAGINATION_DEFAULTS} from '../utils/PageCache';
+import {PAGINATION_DEFAULTS} from '../utils/PageCache';
 import MetricsManager from '../metrics/MetricsManager';
 import {WCC_API_GATEWAY} from './constants';
 import {endPointMap} from './config/constants';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
 
-const DEFAULT_ENTRY_POINT_FILTER = 'entryPointType==INBOUND;channelType==TELEPHONY;active==true';
+const DEFAULT_ENTRY_POINT_ATTRIBUTES = 'id,dialledNumber,entryPointId,entryPointName';
+const DEFAULT_ENTRY_POINT_SORT_FIELD = 'entryPointName';
 
-type EntryPointRequestParams = EntryPointSearchParams & {
-  desktopProfileFilter?: boolean;
-  agentView?: boolean;
+type DialNumberEntryPointRecord = {
+  id: string;
+  dialledNumber?: string;
+  entryPointId: string;
+  entryPointName: string;
 };
+
+const escapeCmsSearchFilterValue = (value: string): string =>
+  value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/;/g, '\\;');
+
+const buildEntryPointSearchFilter = (search: string): string =>
+  `fields=in=("entryPointName","dialledNumber");value=="${escapeCmsSearchFilterValue(search)}"`;
+
+const mergeEntryPointAttributes = (attributes?: string): string => {
+  const mergedAttributes = new Set(DEFAULT_ENTRY_POINT_ATTRIBUTES.split(','));
+
+  attributes
+    ?.split(',')
+    .map((attribute) => attribute.trim())
+    .filter(Boolean)
+    .forEach((attribute) => mergedAttributes.add(attribute));
+
+  return Array.from(mergedAttributes).join(',');
+};
+
+const mapDialNumberEntryPoint = (item: DialNumberEntryPointRecord): EntryPointRecord => ({
+  id: item.entryPointId,
+  name: item.entryPointName,
+  ...(item.dialledNumber ? {number: item.dialledNumber} : {}),
+});
 
 /**
  * EntryPoint class for managing Webex Contact Center entry points.
@@ -42,7 +69,7 @@ type EntryPointRequestParams = EntryPointSearchParams & {
  * });
  *
  * // Search for specific entry points
- * const searchResults = await entryPointAPI.searchEntryPoints({
+ * const searchResults = await entryPointAPI.getEntryPoints({
  *   search: 'support',
  *   filter: 'type=="voice"'
  * });
@@ -53,9 +80,6 @@ export class EntryPoint {
   private webex: WebexSDK;
   private metricsManager: MetricsManager;
 
-  // Page cache using the common utility
-  private pageCache: PageCache<EntryPointRecord>;
-
   /**
    * Creates an instance of EntryPoint
    * @param {WebexSDK} webex - The Webex SDK instance
@@ -64,15 +88,15 @@ export class EntryPoint {
   constructor(webex: WebexSDK) {
     this.webex = webex;
     this.webexRequest = WebexRequest.getInstance({webex});
-    this.pageCache = new PageCache<EntryPointRecord>('EntryPoint');
     this.metricsManager = MetricsManager.getInstance({webex});
   }
 
   /**
-   * Fetches entry points for the organization with pagination support. By default, returns active
-   * inbound telephony entry points in backend name-ascending order using the agent's desktop profile
-   * views. Existing filter, sort, and desktop-profile parameters override those defaults.
-   * @param {EntryPointSearchParams} [params] - Search, pagination, and override parameters.
+   * Fetches entry-point dial-number mappings for the organization with pagination support. By
+   * default, returns the agent's desktop-profile-filtered mappings in backend entry-point-name order.
+   * Search, filter, attribute, and sort parameters can customize the request while desktop-profile
+   * scoping and required mapping fields remain SDK-owned.
+   * @param {EntryPointSearchParams} [params] - Search, pagination, and compatible override parameters.
    * @returns {Promise<EntryPointListResponse>} Promise resolving to paginated entry points
    * @throws {Error} If the API call fails
    * @public
@@ -91,19 +115,6 @@ export class EntryPoint {
   public async getEntryPoints(
     params: EntryPointSearchParams = {}
   ): Promise<EntryPointListResponse> {
-    const desktopProfileFilter = params.desktopProfileFilter ?? true;
-
-    return this.fetchEntryPoints({
-      filter: DEFAULT_ENTRY_POINT_FILTER,
-      sortBy: 'name',
-      sortOrder: 'asc',
-      ...params,
-      desktopProfileFilter,
-      agentView: desktopProfileFilter,
-    });
-  }
-
-  private async fetchEntryPoints(params: EntryPointRequestParams): Promise<EntryPointListResponse> {
     const startTime = Date.now();
     const {
       page = PAGINATION_DEFAULTS.PAGE,
@@ -113,20 +124,12 @@ export class EntryPoint {
       attributes,
       sortBy = 'name',
       sortOrder = 'asc',
-      desktopProfileFilter,
-      agentView,
     } = params;
 
     const orgId = this.webex.credentials.getOrgId();
     const hasCustomSort = sortBy !== 'name' || sortOrder !== 'asc';
     const isSearchRequest = !!(search || filter || attributes || hasCustomSort);
-    const canUseCache = this.pageCache.canUseCache({
-      search,
-      filter,
-      attributes,
-      sortBy: hasCustomSort ? sortBy : undefined,
-      desktopProfileFilter,
-    });
+    const effectiveSortBy = sortBy === 'name' ? DEFAULT_ENTRY_POINT_SORT_FIELD : sortBy;
 
     LoggerProxy.info(
       `Fetching entry points - orgId: ${orgId}, page: ${page}, pageSize: ${pageSize}, isSearchRequest: ${isSearchRequest}`,
@@ -136,54 +139,24 @@ export class EntryPoint {
       }
     );
 
-    // Default name-ascending pagination is cache-compatible; result-changing overrides are not.
-    if (canUseCache) {
-      const cacheKey = this.pageCache.buildCacheKey(orgId, page, pageSize);
-      const cachedPage = this.pageCache.getCachedPage(cacheKey);
-
-      if (cachedPage) {
-        const duration = Date.now() - startTime;
-
-        LoggerProxy.log(
-          `Returning page ${page} from cache - cacheHit: true, duration: ${duration}ms, recordCount: ${cachedPage.data.length}, pageSize: ${pageSize}`,
-          {
-            module: 'EntryPoint',
-            method: 'getEntryPoints',
-          }
-        );
-
-        return {
-          data: cachedPage.data,
-          meta: {
-            page,
-            pageSize,
-            totalPages: cachedPage.totalMeta?.totalPages,
-            totalRecords: cachedPage.totalMeta?.totalRecords,
-          },
-        };
-      }
-    }
-
-    // Start timing only for actual API calls (not cache hits)
     this.metricsManager.timeEvent(METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_SUCCESS);
 
     try {
-      // Build query parameters
       const queryParams = new URLSearchParams({
         page: page.toString(),
         pageSize: pageSize.toString(),
+        attributes: mergeEntryPointAttributes(attributes),
       });
 
-      if (search) queryParams.append('search', search);
+      if (search) queryParams.append('search', buildEntryPointSearchFilter(search));
       if (filter) queryParams.append('filter', filter);
-      if (attributes) queryParams.append('attributes', attributes);
-      if (sortBy) queryParams.append('sort', `${sortBy},${sortOrder.toUpperCase()}`);
-      if (desktopProfileFilter !== undefined) {
-        queryParams.append('desktopProfileFilter', desktopProfileFilter.toString());
+      if (effectiveSortBy) {
+        queryParams.append('sort', `${effectiveSortBy},${sortOrder.toUpperCase()}`);
       }
-      if (agentView !== undefined) queryParams.append('agentView', agentView.toString());
+      queryParams.append('desktopProfileFilter', 'true');
+      queryParams.append('includeEntryPointName', 'true');
 
-      const resource = endPointMap.entryPointList(orgId, queryParams.toString());
+      const resource = endPointMap.entryPointDialNumberList(orgId, queryParams.toString());
 
       LoggerProxy.log(
         `Making API request to fetch entry points - resource: ${resource}, service: ${WCC_API_GATEWAY}`,
@@ -197,12 +170,21 @@ export class EntryPoint {
         service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.GET,
+        headers: {
+          'X-ORGANIZATION-ID': orgId,
+          'x-ignore-internal-data': 'false',
+        },
       });
+
+      const responseBody: EntryPointListResponse = {
+        ...response.body,
+        data: (response.body?.data ?? []).map(mapDialNumberEntryPoint),
+      };
 
       const duration = Date.now() - startTime;
 
-      const recordCount = response.body?.data?.length || 0;
-      const totalRecords = response.body?.meta?.totalRecords;
+      const recordCount = responseBody.data.length;
+      const totalRecords = responseBody.meta?.totalRecords;
 
       LoggerProxy.log(`Successfully retrieved ${recordCount} entry points`, {
         module: 'EntryPoint',
@@ -234,19 +216,7 @@ export class EntryPoint {
         );
       }
 
-      // Cache only the invariant default-order pagination shape.
-      if (canUseCache && response.body?.data) {
-        const cacheKey = this.pageCache.buildCacheKey(orgId, page, pageSize);
-        this.pageCache.cachePage(cacheKey, response.body.data, response.body.meta);
-
-        LoggerProxy.log('Cached entry points data for future requests', {
-          module: 'EntryPoint',
-          method: 'getEntryPoints',
-          data: {cacheKey, recordCount},
-        });
-      }
-
-      return response.body;
+      return responseBody;
     } catch (error) {
       const errorData = {
         orgId,

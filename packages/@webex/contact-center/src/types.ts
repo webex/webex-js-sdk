@@ -704,19 +704,19 @@ export interface AddressBookEntrySearchParams extends BaseSearchParams {
 export interface EntryPointRecord {
   id: string;
   name: string;
+  /** Dialled number mapped to this entry point when included in the list response. */
+  number?: string;
   description?: string;
-  type: string;
-  isActive: boolean;
-  orgId: string;
+  type?: string;
+  isActive?: boolean;
+  orgId?: string;
   createdAt?: string;
   updatedAt?: string;
   settings?: Record<string, any>;
 }
 
 export type EntryPointListResponse = PaginatedResponse<EntryPointRecord>;
-export interface EntryPointSearchParams extends BaseSearchParams {
-  desktopProfileFilter?: boolean;
-}
+export type EntryPointSearchParams = BaseSearchParams;
 
 /**
  * Queue types

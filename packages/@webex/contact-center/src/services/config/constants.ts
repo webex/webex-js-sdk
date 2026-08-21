@@ -258,17 +258,14 @@ export const endPointMap = {
   queueList: (orgId: string, queryParams: string) =>
     `/organization/${orgId}/v2/contact-service-queue?${queryParams}`,
   /**
-   * Gets the endpoint for entry points list with custom query parameters.
+   * Gets the desktop-profile-filtered dial-number mappings used by entry-point destination lists.
    * @param orgId - Organization ID.
    * @param queryParams - Query parameters string.
    * @returns The endpoint URL string.
-   * @public
-   * @example
-   * const url = endPointMap.entryPointList('org123', 'page=0&pageSize=10');
    * @ignore
    */
-  entryPointList: (orgId: string, queryParams: string) =>
-    `/organization/${orgId}/v2/entry-point?${queryParams}`,
+  entryPointDialNumberList: (orgId: string, queryParams: string) =>
+    `/organization/${orgId}/v3/dial-number?${queryParams}`,
   /**
    * Gets the endpoint for address book entries with custom query parameters.
    * @param orgId - Organization ID.

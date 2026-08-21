@@ -588,13 +588,6 @@ function initOauth() {
   });
 }
 
-function toggleIfQueueConsultEnabled () {
-  document.querySelectorAll('option[value="queue"]').forEach(item => {
-    if(webex && !webex.cc.agentConfig.allowConsultToQueue) item.style.display = 'none';
-    else item.style.display = 'block';
-  });
-}
-
 const taskEvents = new CustomEvent('task:incoming', {
   detail: {
     task: currentTask,
@@ -611,7 +604,31 @@ function updateButtonsPostEndCall() {
   }
 }
 
-function showInitiateConsultDialog() {
+const destinationTypeLabels = {
+  agent: 'Agent',
+  queue: 'Queue',
+  dialNumber: 'Dial Number',
+  entryPoint: 'Entry Point',
+};
+
+function applyTaskDestinationTypes(dropdown, action) {
+  const destinations = currentTask?.uiControls?.consultTransferDestinations?.[action];
+  if (!Array.isArray(destinations) || destinations.length === 0) return;
+
+  const currentSelection = dropdown.value;
+  dropdown.innerHTML = '';
+  destinations.forEach((destination) => {
+    const option = document.createElement('option');
+    option.value = destination;
+    option.text = destinationTypeLabels[destination] || destination;
+    dropdown.appendChild(option);
+  });
+  dropdown.value = destinations.includes(currentSelection) ? currentSelection : destinations[0];
+}
+
+async function showInitiateConsultDialog() {
+  applyTaskDestinationTypes(destinationTypeDropdown, 'consult');
+  await onConsultTypeSelectionChanged();
   initiateConsultDialog.showModal();
 }
 
@@ -621,12 +638,8 @@ function closeConsultDialog() {
 
 async function getQueueListForTelephonyChannel() {
   try {
-    // Need to access via data as that is the list of queues
     const queueResponse = await webex.cc.getQueues();
-    let queueList = queueResponse.data;
-    queueList = queueList.filter(queue => queue.channelType === 'TELEPHONY');
-  
-    return queueList;
+    return queueResponse.data || [];
   } catch (error) {
     console.log('Failed to fetch queue list', error);
   }
@@ -665,7 +678,7 @@ async function onConsultTypeSelectionChanged(){
 
     async function refreshBuddyAgentsForConsult() {
       consultDestinationInput.innerHTML = '';
-      const agentNodeList = await fetchBuddyAgentsNodeList();
+      const agentNodeList = await fetchBuddyAgentsNodeList('Consult');
       agentNodeList.forEach( n => { consultDestinationInput.appendChild(n) });
     }
 
@@ -765,7 +778,7 @@ async function onConsultTypeSelectionChanged(){
         entryPoints.forEach((ep) => {
           const option = document.createElement('option');
           option.value = ep.id;
-          option.text = `${ep.name} (${ep.id})`;
+          option.text = ep.number ? `${ep.name} (${ep.number})` : ep.name;
           consultDestinationInput.appendChild(option);
         });
       } else {
@@ -811,7 +824,7 @@ async function onTransferTypeSelectionChanged() {
 
     async function refreshBuddyAgentsForTransfer() {
       transferDestinationInput.innerHTML = '';
-      const agentNodeList = await fetchBuddyAgentsNodeList();
+      const agentNodeList = await fetchBuddyAgentsNodeList('Transfer');
       agentNodeList.forEach(n => { transferDestinationInput.appendChild(n) });
     }
 
@@ -921,7 +934,7 @@ async function onTransferTypeSelectionChanged() {
       entryPoints.forEach((ep) => {
         const option = document.createElement('option');
         option.value = ep.id;
-        option.label = ep.name;
+        option.label = ep.number ? `${ep.name} (${ep.number})` : ep.name;
         dataList.appendChild(option);
       });
       transferDestinationInput.setAttribute('list', dataListId);
@@ -1122,8 +1135,9 @@ async function toggleTransferOptions() {
   // Regular flow (normal consulted/general transfer): show transfer popover
   const transferOptions = document.getElementById('transfer-options');
   if (transferOptions.style.display === 'none') {
+    applyTaskDestinationTypes(document.querySelector('#transfer-destination-type'), 'transfer');
     transferOptions.style.display = 'block';
-    onTransferTypeSelectionChanged();
+    await onTransferTypeSelectionChanged();
   } else {
     transferOptions.style.display = 'none';
   }
@@ -3137,10 +3151,10 @@ async function renderBuddyAgents() {
   buddyAgentsDropdownNodes.forEach( n => { buddyAgentsDropdownElm.appendChild(n) });
 }
 
-async function fetchBuddyAgentsNodeList() {
+async function fetchBuddyAgentsNodeList(action = 'Consult') {
   const nodeList = [];
   try {
-    const buddyAgentsResponse = await webex.cc.getBuddyAgents({mediaType: 'telephony'});
+    const buddyAgentsResponse = await webex.cc.getBuddyAgents({action, mediaType: 'telephony'});
 
     if (!buddyAgentsResponse || !buddyAgentsResponse.data) {
       console.error('Failed to fetch buddy agents');
