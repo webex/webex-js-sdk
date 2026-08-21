@@ -4,7 +4,7 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-18T15:33:39Z
+updated_at: 2026-08-21T06:10:05Z
 validation_status: not-run
 -->
 # REACTIONS — SPEC
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/reactions/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 86% assessed 2026-08-18; 12/14 mandatory fields present; all critical fields present, two noncritical detail gaps remain |
+| Coverage score | 93% assessed 2026-08-21; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-18T15:33:39Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -37,7 +37,7 @@ Requirements cite current source and mirrored tests. Current code wins over reta
 
 ## Overview
 
-For orientation, start at `src/reactions/reactions.ts`; supporting files under `src/reactions/` separate request, parsing, collection, type, or utility concerns from parent orchestration. The module is composed by `Meeting`, `Meetings`, or the package entry as applicable. Remote Webex services/Locus remain authoritative, and all local state is scoped to the SDK, plugin, meeting, or operation lifetime.
+`src/reactions/` contains 3 direct source/reference file(s) and has 0 mirrored unit-test file(s). This spec separates its public operations, runtime data movement, component ownership, state applicability, and verification boundary.
 
 ## Purpose / Responsibility
 
@@ -51,8 +51,9 @@ TypeScript/JavaScript in the Node 22.14 Yarn workspace; Webex core/plugin abstra
 
 ```text
 src/reactions/
-├── reactions.ts — primary behavior/entry point
-├── reactions.type.ts — supporting request, type, utility, or constant behavior
+├── constants.ts — module constants and wire values
+├── reactions.ts — reactions implementation responsibility
+├── reactions.type.ts — reactions.type implementation responsibility
 └── ai-docs/reactions-spec.md — canonical module specification
 ```
 
@@ -60,9 +61,10 @@ src/reactions/
 
 | File | Holds |
 |---|---|
-| `src/reactions/reactions.ts` | Primary lifecycle and module surface |
-| `src/reactions/reactions.type.ts` | Supporting transport, types, constants, or normalization |
-| `test/unit/spec/meeting/request.js` | Mirrored behavioral tests |
+| `src/reactions/constants.ts` | module constants and wire values |
+| `src/reactions/reactions.ts` | reactions implementation responsibility |
+| `src/reactions/reactions.type.ts` | reactions.type implementation responsibility |
+| no source-local mirrored test directory | explicit characterization gap |
 
 ## Public Surface
 
@@ -73,7 +75,7 @@ src/reactions/
 | `reactions.3` | SDK / in-process | normalize reaction values used by meeting requests/events | Focused operation group owned by this module | Preserve methods/events/wire values reachable from package objects | `src/reactions/reactions.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
 
 Compatibility notes:
-- Prefer additive fields/options and preserve current rejection/event/cleanup semantics. Internal helpers are not public merely because they are exported within the source directory.
+- Prefer additive fields/options and preserve current return and rejection semantics. Internal helpers are not public merely because they are exported within the source directory.
 
 ## Requires (dependencies)
 
@@ -85,55 +87,54 @@ Reaction constants/types and Meeting reaction request/event paths.
 |---|---|---|---|---|---|---|
 | `REACTIONS-R-001` | export supported reaction and skin-tone catalogs. | Defines the supported reaction and skin-tone catalogs plus typed normalization between consumer reaction data and server relay values. | `src/reactions/reactions.ts` | `test/unit/spec/meeting/request.js` | none | PRESENT |
 | `REACTIONS-R-002` | type reaction, sender, and relay payloads. | Consumers need deterministic behavior across meeting and remote updates. | `src/reactions/reactions.ts`, `src/reactions/reactions.type.ts` | `test/unit/spec/meeting/request.js` | inspect sibling tests for operation-specific cases | PRESENT |
-| `REACTIONS-R-003` | Invalid, rejected, or terminal operations preserve the established failure signal and release module-owned transient resources. | Hidden failure or leaked state corrupts later meeting behavior. | `src/reactions/reactions.ts` | `test/unit/spec/meeting/request.js` | verify every early exit during focused changes | PRESENT |
+| `REACTIONS-R-003` | The catalogs perform no fallible I/O; unsupported values are prevented by declared constants/types or handled by the owning request path. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/reactions/` | `test/unit/spec/meeting/request.js` | none | PRESENT |
 
 ## Design Overview
 
-The primary controller/data module owns normalization and observable state while supporting files isolate request, type, constant, collection, or utility concerns. Capability and remote response data are checked before state changes. Async completion emits/returns one established outcome; cleanup handles listeners, timers, locks, channels, or transient requests owned by the module.
+`reactions.ts` and `constants.ts` export static reaction/skin-tone values, while `reactions.type.ts` supplies compile-time payload shapes. The module has no runtime transport or lifecycle state.
 
 ## Data Flow
 
 ```mermaid
 flowchart LR
-  Caller[Meeting/Meetings/consumer] --> Entry[src/reactions/reactions.ts]
-  Entry --> Support[src/reactions/reactions.type.ts]
-  Support --> Boundary[Webex service, Locus, or channel]
-  Boundary --> Normalize[validate and normalize]
-  Normalize --> State[in-memory module state]
-  State --> Output[result / scoped event]
-  Boundary -. rejection .-> Error[established error]
-  Error --> Cleanup[release transient resources]
+  Consumer[Meeting/request/event code] --> Catalog[reactions.ts]
+  Constants[constants.ts wire values] --> Catalog
+  Types[reactions.type.ts payload types] --> Consumer
+  Catalog --> Payload[reaction + skin-tone value]
 ```
 
 ## Sequence Diagram(s)
 
 Sequence coverage:
 
-The operation groups below share the same caller → module → supporting dependency → Webex/input ordering and the same rejection/cleanup contract, so one combined diagram covers their common sequence; operation-specific state and guards are stated in the requirements and use cases.
-
-| Operation group | Diagram | Failure / recovery coverage |
+| Operation group | Diagram | Failure coverage |
 |---|---|---|
-| export supported reaction and skin-tone catalogs | Read/derive or initialize | invalid/capability rejection |
-| type reaction, sender, and relay payloads | Mutate or react | remote rejection/timeout and cleanup |
+| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
+| UC-2 — secondary/change operation | Secondary operation and failure sequence | consumer supplies a value outside the exported catalog or an owning request rejects it |
+
+### Primary operation sequence
 
 ```mermaid
 sequenceDiagram
-  participant C as Caller
-  participant M as Reactions
-  participant D as Dependency
-  participant W as Webex or input source
-  C->>M: invoke or deliver update
-  M->>D: validate/prepare
-  D->>W: request or consume input
-  alt accepted
-    W-->>D: payload
-    D-->>M: normalized result
-    M-->>C: result or scoped event
-  else invalid, rejected, or timed out
-    W--xD: failure
-    D--xM: established error
-    M->>M: idempotent cleanup
-    M--xC: rejection/error event
+  participant C as Meeting feature code
+  participant R as Reactions catalog
+  C->>R: select reaction and skin tone
+  R-->>C: declared wire values
+  C->>C: place values in request/event payload
+```
+
+### Secondary operation and failure sequence
+
+```mermaid
+sequenceDiagram
+  participant C as Caller / current input owner
+  participant M as ReactionsCatalog
+  C->>M: invoke the UC-2 operation
+  M->>M: apply the current guard and ownership rules
+  alt accepted current input
+    M-->>C: documented result, state update, or scoped event
+  else consumer supplies a value outside the exported catalog or an owning request rejects it
+    M--xC: documented R-003 rejection, ignore, or cleanup outcome
   end
 ```
 
@@ -141,29 +142,27 @@ sequenceDiagram
 
 ```mermaid
 classDiagram
-  class Caller
-  class Reactions
-  class SupportingDependency
-  class WebexBoundary
-  Caller --> Reactions
-  Reactions --> SupportingDependency
-  SupportingDependency --> WebexBoundary
+  class Consumer
+  class Catalog
+  class Constants
+  class Types
+  class Payload
+  Consumer --> Catalog
+  Constants --> Catalog
+  Types --> Consumer
+  Catalog --> Payload
 ```
 
-The module owns its projection/controller and composes supporting requests, types, constants, collections, or utilities. The Webex boundary remains authoritative.
+The arrows identify ownership and delegation inside `src/reactions/`; files that only declare types or constants are not presented as transports.
 
 ## Use Cases
 
-- **UC-1 Primary:** the parent/consumer requests export supported reaction and skin-tone catalogs; the module validates or derives data and returns/emits the normalized outcome. Evidence: `src/reactions/reactions.ts`, `test/unit/spec/meeting/request.js`.
-- **UC-2 Change:** the parent/consumer triggers type reaction, sender, and relay payloads; capability/current state is checked, the dependency is invoked, and accepted state is exposed once. Evidence: `src/reactions/reactions.ts`, `src/reactions/reactions.type.ts`.
+- **UC-1:** Expose the supported reaction and skin-tone catalogs to package consumers. Evidence: `src/reactions/`.
+- **UC-2:** Type reaction relay/sender payloads used by owning meeting request and event code. Evidence: `src/reactions/`.
 
 ## Business Rules & Invariants
 
 - Consumer/server reaction and skin-tone values use declared enums/catalogs; participant sender data follows package privacy rules. Enforced under `src/reactions/`.
-
-## Concurrency & Reactive Flow
-
-- Remote/event/promise/timer callbacks may interleave. Preserve current identity/sequence guards, allow only the intended in-flight operation, and make listener/timer/channel cleanup idempotent.
 
 ## Protocol / Wire Format
 
@@ -176,13 +175,13 @@ The module owns its projection/controller and composes supporting requests, type
 
 ## Test-Case Strategy (module)
 
-Start with the mirrored suite and sibling files in the same test directory. Cover successful derivation/mutation plus invalid capability/input, remote rejection, stale event, and cleanup. Use Sinon, `calledOnceWithExactly`, and fake timers for retry/lock/token/channel timing.
+No mirrored module test directory exists. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
 | `REACTIONS-R-001` | `test/unit/spec/meeting/request.js` | inspect sibling tests for full operation matrix |
-| `REACTIONS-R-002` | `test/unit/spec/meeting/request.js` | verify rejected and role/capability-change branches |
-| `REACTIONS-R-003` | `test/unit/spec/meeting/request.js` | verify cleanup on all early exits |
+| `REACTIONS-R-002` | `test/unit/spec/meeting/request.js` | verify the operation-specific invalid-input and rejection branches |
+| `REACTIONS-R-003` | `test/unit/spec/meeting/request.js` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
 
 ## Traceability
 

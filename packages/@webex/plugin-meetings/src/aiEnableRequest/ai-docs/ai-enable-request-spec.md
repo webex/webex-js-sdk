@@ -4,7 +4,7 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-18T15:33:39Z
+updated_at: 2026-08-21T06:10:05Z
 validation_status: not-run
 -->
 # AI ENABLE REQUEST — SPEC
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/aiEnableRequest/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 86% assessed 2026-08-18; 12/14 mandatory fields present; all critical fields present, two noncritical detail gaps remain |
+| Coverage score | 86% assessed 2026-08-21; 12/14 mandatory fields present; all critical fields present; one Important outcome-detail gap and one polish gap remain |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-18T15:33:39Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -37,7 +37,7 @@ Requirements cite current source and mirrored tests. Current code wins over reta
 
 ## Overview
 
-For orientation, start at `src/aiEnableRequest/index.ts`; supporting files under `src/aiEnableRequest/` separate request, parsing, collection, type, or utility concerns from parent orchestration. The module is composed by `Meeting`, `Meetings`, or the package entry as applicable. Remote Webex services/Locus remain authoritative, and all local state is scoped to the SDK, plugin, meeting, or operation lifetime.
+`src/aiEnableRequest/` contains 3 direct source/reference file(s) and has 2 mirrored unit-test file(s). This spec separates its public operations, runtime data movement, component ownership, state applicability, and verification boundary.
 
 ## Purpose / Responsibility
 
@@ -51,8 +51,9 @@ TypeScript/JavaScript in the Node 22.14 Yarn workspace; Webex core/plugin abstra
 
 ```text
 src/aiEnableRequest/
-├── index.ts — primary behavior/entry point
-├── utils.ts — supporting request, type, utility, or constant behavior
+├── README.md — retained legacy reference input
+├── index.ts — module facade/controller or primary exports
+├── utils.ts — normalization/helper functions
 └── ai-docs/ai-enable-request-spec.md — canonical module specification
 ```
 
@@ -60,9 +61,10 @@ src/aiEnableRequest/
 
 | File | Holds |
 |---|---|
-| `src/aiEnableRequest/index.ts` | Primary lifecycle and module surface |
-| `src/aiEnableRequest/utils.ts` | Supporting transport, types, constants, or normalization |
-| `test/unit/spec/aiEnableRequest/index.ts` | Mirrored behavioral tests |
+| `src/aiEnableRequest/README.md` | retained legacy reference input |
+| `src/aiEnableRequest/index.ts` | module facade/controller or primary exports |
+| `src/aiEnableRequest/utils.ts` | normalization/helper functions |
+| `test/unit/spec/aiEnableRequest/index.ts` and 1 sibling test file(s) | mirrored characterization/unit coverage |
 
 ## Public Surface
 
@@ -85,55 +87,62 @@ Meeting self/host/cohost identity and policy, Locus/approval URLs, request acces
 |---|---|---|---|---|---|---|
 | `AI-ENABLE-REQUEST-R-001` | select the eligible AI-enablement approver. | Owns the meeting-scoped approval workflow used when a participant requests host approval to enable AI Assistant. | `src/aiEnableRequest/index.ts` | `test/unit/spec/aiEnableRequest/index.ts` | none | PRESENT |
 | `AI-ENABLE-REQUEST-R-002` | request AI Assistant enablement approval. | Consumers need deterministic behavior across meeting and remote updates. | `src/aiEnableRequest/index.ts`, `src/aiEnableRequest/utils.ts` | `test/unit/spec/aiEnableRequest/index.ts` | inspect sibling tests for operation-specific cases | PRESENT |
-| `AI-ENABLE-REQUEST-R-003` | Invalid, rejected, or terminal operations preserve the established failure signal and release module-owned transient resources. | Hidden failure or leaked state corrupts later meeting behavior. | `src/aiEnableRequest/index.ts` | `test/unit/spec/aiEnableRequest/index.ts` | verify every early exit during focused changes | PRESENT |
+| `AI-ENABLE-REQUEST-R-003` | HTTP rejections propagate through the returned promise, while unrelated Mercury approval events are ignored and the single listener is installed only once. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/aiEnableRequest/` | `test/unit/spec/aiEnableRequest/index.ts` | none | PRESENT |
 
 ## Design Overview
 
-The primary controller/data module owns normalization and observable state while supporting files isolate request, type, constant, collection, or utility concerns. Capability and remote response data are checked before state changes. Async completion emits/returns one established outcome; cleanup handles listeners, timers, locks, channels, or transient requests owned by the module.
+AIEnableRequest owns one Mercury approval listener and the HTTP writes to the current Locus approval URL. `utils.ts` only selects an eligible approver from roster data; it is not a transport.
 
 ## Data Flow
 
 ```mermaid
 flowchart LR
-  Caller[Meeting/Meetings/consumer] --> Entry[src/aiEnableRequest/index.ts]
-  Entry --> Support[src/aiEnableRequest/utils.ts]
-  Support --> Boundary[Webex service, Locus, or channel]
-  Boundary --> Normalize[validate and normalize]
-  Normalize --> State[in-memory module state]
-  State --> Output[result / scoped event]
-  Boundary -. rejection .-> Error[established error]
-  Error --> Cleanup[release transient resources]
+  Roster[Meeting roster] --> Selector[utils.ts: approver selection]
+  Caller[Meeting / consumer] --> Controller[index.ts: approval workflow]
+  Selector --> Controller
+  Mercury[Mercury approval events] --> Controller
+  Controller --> Approval[HTTP request to approvalUrl]
+  Controller --> Event[APPROVAL_REQUEST_ARRIVED]
 ```
 
 ## Sequence Diagram(s)
 
 Sequence coverage:
 
-The operation groups below share the same caller → module → supporting dependency → Webex/input ordering and the same rejection/cleanup contract, so one combined diagram covers their common sequence; operation-specific state and guards are stated in the requirements and use cases.
-
-| Operation group | Diagram | Failure / recovery coverage |
+| Operation group | Diagram | Failure coverage |
 |---|---|---|
-| select the eligible AI-enablement approver | Read/derive or initialize | invalid/capability rejection |
-| request AI Assistant enablement approval | Mutate or react | remote rejection/timeout and cleanup |
+| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
+| UC-2 — secondary/change operation | Secondary operation and failure sequence | missing approval URL/participant context, HTTP rejection, or a Mercury event for another Locus |
+
+### Primary operation sequence
 
 ```mermaid
 sequenceDiagram
-  participant C as Caller
-  participant M as AI Enable Request
-  participant D as Dependency
-  participant W as Webex or input source
-  C->>M: invoke or deliver update
-  M->>D: validate/prepare
-  D->>W: request or consume input
-  alt accepted
-    W-->>D: payload
-    D-->>M: normalized result
-    M-->>C: result or scoped event
-  else invalid, rejected, or timed out
-    W--xD: failure
-    D--xM: established error
-    M->>M: idempotent cleanup
-    M--xC: rejection/error event
+  participant C as Meeting / consumer
+  participant A as AIEnableRequest index.ts
+  participant M as Mercury
+  participant H as approvalUrl
+  M-->>A: approval-request event
+  A->>A: filter resourceType, locusUrl, and participant ids
+  A-->>C: APPROVAL_REQUEST_ARRIVED when relevant
+  C->>A: request / accept / decline
+  A->>H: POST or PUT action payload
+  H-->>A: response or rejection
+  A-->>C: settle the request promise
+```
+
+### Secondary operation and failure sequence
+
+```mermaid
+sequenceDiagram
+  participant C as Caller / current input owner
+  participant M as AIEnableRequest
+  C->>M: invoke the UC-2 operation
+  M->>M: apply the current guard and ownership rules
+  alt accepted current input
+    M-->>C: documented result, state update, or scoped event
+  else missing approval URL/participant context, HTTP rejection, or a Mercury event for another Locus
+    M--xC: documented R-003 rejection, ignore, or cleanup outcome
   end
 ```
 
@@ -141,21 +150,27 @@ sequenceDiagram
 
 ```mermaid
 classDiagram
+  class Roster
+  class Selector
   class Caller
-  class AIEnableRequest
-  class SupportingDependency
-  class WebexBoundary
-  Caller --> AIEnableRequest
-  AIEnableRequest --> SupportingDependency
-  SupportingDependency --> WebexBoundary
+  class Controller
+  class Mercury
+  class Approval
+  class Event
+  Roster --> Selector
+  Caller --> Controller
+  Selector --> Controller
+  Mercury --> Controller
+  Controller --> Approval
+  Controller --> Event
 ```
 
-The module owns its projection/controller and composes supporting requests, types, constants, collections, or utilities. The Webex boundary remains authoritative.
+The arrows identify ownership and delegation inside `src/aiEnableRequest/`; files that only declare types or constants are not presented as transports.
 
 ## Use Cases
 
-- **UC-1 Primary:** the parent/consumer requests select the eligible AI-enablement approver; the module validates or derives data and returns/emits the normalized outcome. Evidence: `src/aiEnableRequest/index.ts`, `test/unit/spec/aiEnableRequest/index.ts`.
-- **UC-2 Change:** the parent/consumer triggers request AI Assistant enablement approval; capability/current state is checked, the dependency is invoked, and accepted state is exposed once. Evidence: `src/aiEnableRequest/index.ts`, `src/aiEnableRequest/utils.ts`.
+- **UC-1:** Select a host or cohost from the current roster with `getAIEnablementApprover`, excluding the requesting participant. Evidence: `src/aiEnableRequest/`.
+- **UC-2:** Filter Mercury approval events to this Locus and expose only requests relevant to the initiator, approver, or `DECLINED_ALL` observers. Evidence: `src/aiEnableRequest/`.
 
 ## State Model
 
@@ -167,32 +182,14 @@ Approval and Locus URLs, self participant id, listener registrations, and active
 
 ## Concurrency & Reactive Flow
 
-- Remote/event/promise/timer callbacks may interleave. Preserve current identity/sequence guards, allow only the intended in-flight operation, and make listener/timer/channel cleanup idempotent.
-
-## State Machine
-
-```mermaid
-stateDiagram-v2
-  [*] --> Idle
-  Idle --> Active: initialize or accepted input
-  Active --> Active: valid update
-  Active --> Pending: async mutation or approval
-  Pending --> Active: accepted
-  Pending --> Failed: rejected or timed out
-  Active --> Closed: cleanup
-  Failed --> Closed: cleanup
-  Closed --> [*]
-```
-
-Exact state values/guards remain in `src/aiEnableRequest/index.ts`; this diagram groups the externally meaningful lifecycle.
+- Async work owned by `AIEnableRequest` may complete after a newer caller or remote input. Preserve the identity, sequence, and resource-owner guards in `src/aiEnableRequest/`; a late completion must not replay UC-2 for superseded state.
 
 ## Error Handling & Failure Modes
 
 | Condition | Signal | Caller recovery |
 |---|---|---|
-| missing capability, identity, URL, or invalid options | validation/established rejection | refresh state or correct input; do not retry unchanged |
-| service/channel/request rejection | propagated request or module error | branch on error; retry only through existing bounded policy |
-| timeout, role change, or teardown race | rejected/ignored stale result with cleanup | re-read current meeting state and invoke again only if still eligible |
+| missing approval URL/participant context, HTTP rejection, or a Mercury event for another Locus | Follow the concrete rejection, ignore, state, or cleanup behavior in the module's R-003 requirement. | Resolve the named condition; retry only when another requirement defines a bound. |
+| UC-1 succeeds | Return, update, callback, or scoped event identified by the Public Surface and primary sequence. | Continue from the owning module's accepted state. |
 
 ## Pitfalls
 
@@ -201,18 +198,18 @@ Exact state values/guards remain in `src/aiEnableRequest/index.ts`; this diagram
 
 ## Module Do's / Don'ts
 
-- DO preserve the module's current role/capability/state gate and mirrored tests.
-- DON'T bypass the owning request, collection, event scope, lock, or cleanup helper.
+- DO preserve this boundary: Select a host or cohost from the current roster with `getAIEnablementApprover`, excluding the requesting participant.
+- DON'T move remote I/O or lifecycle ownership into a passive type, constant, catalog, or normalization file.
 
 ## Test-Case Strategy (module)
 
-Start with the mirrored suite and sibling files in the same test directory. Cover successful derivation/mutation plus invalid capability/input, remote rejection, stale event, and cleanup. Use Sinon, `calledOnceWithExactly`, and fake timers for retry/lock/token/channel timing.
+Use the current mirrored suites: `test/unit/spec/aiEnableRequest/index.ts`, `test/unit/spec/aiEnableRequest/utils.ts`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
 | `AI-ENABLE-REQUEST-R-001` | `test/unit/spec/aiEnableRequest/index.ts` | inspect sibling tests for full operation matrix |
-| `AI-ENABLE-REQUEST-R-002` | `test/unit/spec/aiEnableRequest/index.ts` | verify rejected and role/capability-change branches |
-| `AI-ENABLE-REQUEST-R-003` | `test/unit/spec/aiEnableRequest/index.ts` | verify cleanup on all early exits |
+| `AI-ENABLE-REQUEST-R-002` | `test/unit/spec/aiEnableRequest/index.ts` | verify the operation-specific invalid-input and rejection branches |
+| `AI-ENABLE-REQUEST-R-003` | `test/unit/spec/aiEnableRequest/index.ts` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
 
 ## Traceability
 

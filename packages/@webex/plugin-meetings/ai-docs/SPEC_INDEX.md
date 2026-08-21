@@ -4,7 +4,7 @@ generated_from: spec-index@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-18T15:33:39Z
+updated_at: 2026-08-21T06:10:05Z
 validation_status: not-run
 -->
 # Spec Index — @webex/plugin-meetings
@@ -32,10 +32,10 @@ validation_status: not-run
 | `src/annotation/` | Annotation data-channel state and commands | Untracked | [`src/annotation/ai-docs/annotation-spec.md`](../src/annotation/ai-docs/annotation-spec.md) |
 | `src/aiEnableRequest/` | Host approval workflow for enabling AI Assistant | Partial | [`src/aiEnableRequest/ai-docs/ai-enable-request-spec.md`](../src/aiEnableRequest/ai-docs/ai-enable-request-spec.md) |
 | `src/webinar/` | Webinar practice-session and webcast controls | Untracked | [`src/webinar/ai-docs/webinar-spec.md`](../src/webinar/ai-docs/webinar-spec.md) |
-| `src/recording-controller/` | Meeting recording action orchestration | Untracked | [`src/recording-controller/ai-docs/recording-controller-spec.md`](../src/recording-controller/ai-docs/recording-controller-spec.md) |
+| `src/recording-controller/` | Meeting recording action orchestration | Partial | [`src/recording-controller/ai-docs/recording-controller-spec.md`](../src/recording-controller/ai-docs/recording-controller-spec.md) |
 | `src/controls-options-manager/` | Derivation and mutation of meeting control capabilities | Untracked | [`src/controls-options-manager/ai-docs/controls-options-manager-spec.md`](../src/controls-options-manager/ai-docs/controls-options-manager-spec.md) |
 | `src/personal-meeting-room/` | Personal Meeting Room lookup and claim | Partial | [`src/personal-meeting-room/ai-docs/personal-meeting-room-spec.md`](../src/personal-meeting-room/ai-docs/personal-meeting-room-spec.md) |
-| `src/reactions/` | Reaction catalogs, wire values, and normalized reaction data | Partial | [`src/reactions/ai-docs/reactions-spec.md`](../src/reactions/ai-docs/reactions-spec.md) |
+| `src/reactions/` | Reaction catalogs, wire values, and normalized reaction data | Untracked | [`src/reactions/ai-docs/reactions-spec.md`](../src/reactions/ai-docs/reactions-spec.md) |
 | `src/interceptors/` | Locus routing/retry and data-channel authentication middleware | Untracked | [`src/interceptors/ai-docs/interceptors-spec.md`](../src/interceptors/ai-docs/interceptors-spec.md) |
 | `src/metrics/` | Behavioral metric normalization and submission | Untracked | [`src/metrics/ai-docs/metrics-spec.md`](../src/metrics/ai-docs/metrics-spec.md) |
 
@@ -76,7 +76,7 @@ No package-local incident or RCA index was found. Commit and PR history are inte
 | Data model | `DATA_MODEL.md` | Client-side object and collection ownership |
 | Service state | `SERVICE_STATE.md` | Current services, events, flags, and metrics |
 | Security | `SECURITY.md` | Trust boundaries and sensitive-data rules |
-| Rules | `RULES.md` and `rules/` | Enforceable package constraints |
+| Rules | `RULES.md` | Enforceable package constraints |
 | Patterns | `patterns/` | Code-grounded implementation conventions |
 | Tests | `TEST_INDEX.md` | Source-to-test routing and quality gates |
 | Getting started | `GETTING_STARTED.md` | Toolchain and focused development loop |

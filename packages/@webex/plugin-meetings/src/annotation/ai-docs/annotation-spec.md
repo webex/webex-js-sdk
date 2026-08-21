@@ -4,7 +4,7 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-18T15:33:39Z
+updated_at: 2026-08-21T06:10:05Z
 validation_status: not-run
 -->
 # ANNOTATION — SPEC
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/annotation/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 86% assessed 2026-08-18; 12/14 mandatory fields present; all critical fields present, two noncritical detail gaps remain |
+| Coverage score | 86% assessed 2026-08-21; 12/14 mandatory fields present; all critical fields present; one Important outcome-detail gap and one polish gap remain |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-18T15:33:39Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -37,7 +37,7 @@ Requirements cite current source and mirrored tests. Current code wins over reta
 
 ## Overview
 
-For orientation, start at `src/annotation/index.ts`; supporting files under `src/annotation/` separate request, parsing, collection, type, or utility concerns from parent orchestration. The module is composed by `Meeting`, `Meetings`, or the package entry as applicable. Remote Webex services/Locus remain authoritative, and all local state is scoped to the SDK, plugin, meeting, or operation lifetime.
+`src/annotation/` contains 3 direct source/reference file(s) and has 1 mirrored unit-test file(s). This spec separates its public operations, runtime data movement, component ownership, state applicability, and verification boundary.
 
 ## Purpose / Responsibility
 
@@ -51,8 +51,9 @@ TypeScript/JavaScript in the Node 22.14 Yarn workspace; Webex core/plugin abstra
 
 ```text
 src/annotation/
-├── index.ts — primary behavior/entry point
-├── annotation.types.ts — supporting request, type, utility, or constant behavior
+├── annotation.types.ts — module type declarations
+├── constants.ts — module constants and wire values
+├── index.ts — module facade/controller or primary exports
 └── ai-docs/annotation-spec.md — canonical module specification
 ```
 
@@ -60,9 +61,10 @@ src/annotation/
 
 | File | Holds |
 |---|---|
-| `src/annotation/index.ts` | Primary lifecycle and module surface |
-| `src/annotation/annotation.types.ts` | Supporting transport, types, constants, or normalization |
-| `test/unit/spec/annotation/index.ts` | Mirrored behavioral tests |
+| `src/annotation/annotation.types.ts` | module type declarations |
+| `src/annotation/constants.ts` | module constants and wire values |
+| `src/annotation/index.ts` | module facade/controller or primary exports |
+| `test/unit/spec/annotation/index.ts` | mirrored characterization/unit coverage |
 
 ## Public Surface
 
@@ -85,55 +87,64 @@ Meeting/Locus policy and sharing state, data channel, annotation constants/types
 |---|---|---|---|---|---|---|
 | `ANNOTATION-R-001` | derive annotation availability and role policy. | Owns annotation capability state and the meeting data-channel commands/events used to start, stop, clear, and relay shared-content annotations. | `src/annotation/index.ts` | `test/unit/spec/annotation/index.ts` | none | PRESENT |
 | `ANNOTATION-R-002` | send typed annotation commands over the meeting channel. | Consumers need deterministic behavior across meeting and remote updates. | `src/annotation/index.ts`, `src/annotation/annotation.types.ts` | `test/unit/spec/annotation/index.ts` | inspect sibling tests for operation-specific cases | PRESENT |
-| `ANNOTATION-R-003` | Invalid, rejected, or terminal operations preserve the established failure signal and release module-owned transient resources. | Hidden failure or leaked state corrupts later meeting behavior. | `src/annotation/index.ts` | `test/unit/spec/annotation/index.ts` | verify every early exit during focused changes | PRESENT |
+| `ANNOTATION-R-003` | Approval and encryption failures reject their promises; disconnected LLM sends are skipped, and deregistration removes the Mercury and LLM callbacks installed by the controller. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/annotation/` | `test/unit/spec/annotation/index.ts` | none | PRESENT |
 
 ## Design Overview
 
-The primary controller/data module owns normalization and observable state while supporting files isolate request, type, constant, collection, or utility concerns. Capability and remote response data are checked before state changes. Async completion emits/returns one established outcome; cleanup handles listeners, timers, locks, channels, or transient requests owned by the module.
+The controller derives annotation policy from Locus, subscribes directly to Mercury and LLM relay events, performs approval HTTP operations, and encrypts/decrypts relay content before exposing typed annotation events.
 
 ## Data Flow
 
 ```mermaid
 flowchart LR
-  Caller[Meeting/Meetings/consumer] --> Entry[src/annotation/index.ts]
-  Entry --> Support[src/annotation/annotation.types.ts]
-  Support --> Boundary[Webex service, Locus, or channel]
-  Boundary --> Normalize[validate and normalize]
-  Normalize --> State[in-memory module state]
-  State --> Output[result / scoped event]
-  Boundary -. rejection .-> Error[established error]
-  Error --> Cleanup[release transient resources]
+  Locus[Locus controls / approval events] --> Controller[index.ts]
+  Caller[Meeting / annotation consumer] --> Controller
+  Controller --> Approval[HTTP approvalUrl]
+  Controller --> Crypto[Webex encryption]
+  Crypto --> LLM[LLM relay WebSocket]
+  LLM --> Controller
+  Controller --> Events[annotation command / stroke events]
 ```
 
 ## Sequence Diagram(s)
 
 Sequence coverage:
 
-The operation groups below share the same caller → module → supporting dependency → Webex/input ordering and the same rejection/cleanup contract, so one combined diagram covers their common sequence; operation-specific state and guards are stated in the requirements and use cases.
-
-| Operation group | Diagram | Failure / recovery coverage |
+| Operation group | Diagram | Failure coverage |
 |---|---|---|
-| derive annotation availability and role policy | Read/derive or initialize | invalid/capability rejection |
-| send typed annotation commands over the meeting channel | Mutate or react | remote rejection/timeout and cleanup |
+| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
+| UC-2 — secondary/change operation | Secondary operation and failure sequence | unsupported policy/share state, disconnected relay socket, encryption failure, or approval request rejection |
+
+### Primary operation sequence
 
 ```mermaid
 sequenceDiagram
-  participant C as Caller
+  participant C as Annotation consumer
+  participant A as Annotation index.ts
+  participant E as Encryption
+  participant L as LLM relay socket
+  C->>A: send command or stroke data
+  A->>E: encrypt relay payload
+  E-->>A: encrypted content
+  A->>L: socket.send relay event
+  L-->>A: relay event
+  A->>E: decrypt content
+  E-->>A: annotation payload
+  A-->>C: scoped annotation event
+```
+
+### Secondary operation and failure sequence
+
+```mermaid
+sequenceDiagram
+  participant C as Caller / current input owner
   participant M as Annotation
-  participant D as Dependency
-  participant W as Webex or input source
-  C->>M: invoke or deliver update
-  M->>D: validate/prepare
-  D->>W: request or consume input
-  alt accepted
-    W-->>D: payload
-    D-->>M: normalized result
-    M-->>C: result or scoped event
-  else invalid, rejected, or timed out
-    W--xD: failure
-    D--xM: established error
-    M->>M: idempotent cleanup
-    M--xC: rejection/error event
+  C->>M: invoke the UC-2 operation
+  M->>M: apply the current guard and ownership rules
+  alt accepted current input
+    M-->>C: documented result, state update, or scoped event
+  else unsupported policy/share state, disconnected relay socket, encryption failure, or approval request rejection
+    M--xC: documented R-003 rejection, ignore, or cleanup outcome
   end
 ```
 
@@ -141,21 +152,28 @@ sequenceDiagram
 
 ```mermaid
 classDiagram
+  class Locus
+  class Controller
   class Caller
-  class Annotation
-  class SupportingDependency
-  class WebexBoundary
-  Caller --> Annotation
-  Annotation --> SupportingDependency
-  SupportingDependency --> WebexBoundary
+  class Approval
+  class Crypto
+  class LLM
+  class Events
+  Locus --> Controller
+  Caller --> Controller
+  Controller --> Approval
+  Controller --> Crypto
+  Crypto --> LLM
+  LLM --> Controller
+  Controller --> Events
 ```
 
-The module owns its projection/controller and composes supporting requests, types, constants, collections, or utilities. The Webex boundary remains authoritative.
+The arrows identify ownership and delegation inside `src/annotation/`; files that only declare types or constants are not presented as transports.
 
 ## Use Cases
 
-- **UC-1 Primary:** the parent/consumer requests derive annotation availability and role policy; the module validates or derives data and returns/emits the normalized outcome. Evidence: `src/annotation/index.ts`, `test/unit/spec/annotation/index.ts`.
-- **UC-2 Change:** the parent/consumer triggers send typed annotation commands over the meeting channel; capability/current state is checked, the dependency is invoked, and accepted state is exposed once. Evidence: `src/annotation/index.ts`, `src/annotation/annotation.types.ts`.
+- **UC-1:** Register Mercury and LLM relay listeners when annotation becomes active, and remove those exact listeners when deregistered. Evidence: `src/annotation/`.
+- **UC-2:** Send approval actions to `approvalUrl` and relay encrypted commands/strokes only while the LLM channel is connected. Evidence: `src/annotation/`.
 
 ## State Model
 
@@ -167,24 +185,19 @@ Current annotation status, channel/listener state, sharing resource context, pol
 
 ## Concurrency & Reactive Flow
 
-- Remote/event/promise/timer callbacks may interleave. Preserve current identity/sequence guards, allow only the intended in-flight operation, and make listener/timer/channel cleanup idempotent.
+- Async work owned by `Annotation` may complete after a newer caller or remote input. Preserve the identity, sequence, and resource-owner guards in `src/annotation/`; a late completion must not replay UC-2 for superseded state.
 
 ## State Machine
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Idle
-  Idle --> Active: initialize or accepted input
-  Active --> Active: valid update
-  Active --> Pending: async mutation or approval
-  Pending --> Active: accepted
-  Pending --> Failed: rejected or timed out
-  Active --> Closed: cleanup
-  Failed --> Closed: cleanup
-  Closed --> [*]
+  [*] --> NO_ANNOTATION
+  NO_ANNOTATION --> RUNNING_ANNOTATION: supported share becomes annotatable
+  RUNNING_ANNOTATION --> RUNNING_ANNOTATION: command or stroke relay
+  RUNNING_ANNOTATION --> NO_ANNOTATION: stop / share ends / deregister
 ```
 
-Exact state values/guards remain in `src/annotation/index.ts`; this diagram groups the externally meaningful lifecycle.
+The diagram uses `NO_ANNOTATION` and `RUNNING_ANNOTATION` from `src/annotation/constants.ts`.
 
 ## Protocol / Wire Format
 
@@ -194,9 +207,8 @@ Exact state values/guards remain in `src/annotation/index.ts`; this diagram grou
 
 | Condition | Signal | Caller recovery |
 |---|---|---|
-| missing capability, identity, URL, or invalid options | validation/established rejection | refresh state or correct input; do not retry unchanged |
-| service/channel/request rejection | propagated request or module error | branch on error; retry only through existing bounded policy |
-| timeout, role change, or teardown race | rejected/ignored stale result with cleanup | re-read current meeting state and invoke again only if still eligible |
+| unsupported policy/share state, disconnected relay socket, encryption failure, or approval request rejection | Follow the concrete rejection, ignore, state, or cleanup behavior in the module's R-003 requirement. | Resolve the named condition; retry only when another requirement defines a bound. |
+| UC-1 succeeds | Return, update, callback, or scoped event identified by the Public Surface and primary sequence. | Continue from the owning module's accepted state. |
 
 ## Pitfalls
 
@@ -205,13 +217,13 @@ Exact state values/guards remain in `src/annotation/index.ts`; this diagram grou
 
 ## Test-Case Strategy (module)
 
-Start with the mirrored suite and sibling files in the same test directory. Cover successful derivation/mutation plus invalid capability/input, remote rejection, stale event, and cleanup. Use Sinon, `calledOnceWithExactly`, and fake timers for retry/lock/token/channel timing.
+Use the current mirrored suites: `test/unit/spec/annotation/index.ts`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
 | `ANNOTATION-R-001` | `test/unit/spec/annotation/index.ts` | inspect sibling tests for full operation matrix |
-| `ANNOTATION-R-002` | `test/unit/spec/annotation/index.ts` | verify rejected and role/capability-change branches |
-| `ANNOTATION-R-003` | `test/unit/spec/annotation/index.ts` | verify cleanup on all early exits |
+| `ANNOTATION-R-002` | `test/unit/spec/annotation/index.ts` | verify the operation-specific invalid-input and rejection branches |
+| `ANNOTATION-R-003` | `test/unit/spec/annotation/index.ts` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
 
 ## Traceability
 

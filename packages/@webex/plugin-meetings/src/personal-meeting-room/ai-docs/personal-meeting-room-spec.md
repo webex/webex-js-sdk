@@ -4,7 +4,7 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-18T15:33:39Z
+updated_at: 2026-08-21T06:10:05Z
 validation_status: not-run
 -->
 # PERSONAL MEETING ROOM — SPEC
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/personal-meeting-room/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 86% assessed 2026-08-18; 12/14 mandatory fields present; all critical fields present, two noncritical detail gaps remain |
+| Coverage score | 93% assessed 2026-08-21; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-18T15:33:39Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -37,7 +37,7 @@ Requirements cite current source and mirrored tests. Current code wins over reta
 
 ## Overview
 
-For orientation, start at `src/personal-meeting-room/index.ts`; supporting files under `src/personal-meeting-room/` separate request, parsing, collection, type, or utility concerns from parent orchestration. The module is composed by `Meeting`, `Meetings`, or the package entry as applicable. Remote Webex services/Locus remain authoritative, and all local state is scoped to the SDK, plugin, meeting, or operation lifetime.
+`src/personal-meeting-room/` contains 3 direct source/reference file(s) and has 1 mirrored unit-test file(s). This spec separates its public operations, runtime data movement, component ownership, state applicability, and verification boundary.
 
 ## Purpose / Responsibility
 
@@ -51,8 +51,9 @@ TypeScript/JavaScript in the Node 22.14 Yarn workspace; Webex core/plugin abstra
 
 ```text
 src/personal-meeting-room/
-├── index.ts — primary behavior/entry point
-├── request.ts — supporting request, type, utility, or constant behavior
+├── index.ts — module facade/controller or primary exports
+├── request.ts — HTTP request boundary
+├── util.ts — normalization/helper functions
 └── ai-docs/personal-meeting-room-spec.md — canonical module specification
 ```
 
@@ -60,9 +61,10 @@ src/personal-meeting-room/
 
 | File | Holds |
 |---|---|
-| `src/personal-meeting-room/index.ts` | Primary lifecycle and module surface |
-| `src/personal-meeting-room/request.ts` | Supporting transport, types, constants, or normalization |
-| `test/unit/spec/personal-meeting-room/personal-meeting-room.js` | Mirrored behavioral tests |
+| `src/personal-meeting-room/index.ts` | module facade/controller or primary exports |
+| `src/personal-meeting-room/request.ts` | HTTP request boundary |
+| `src/personal-meeting-room/util.ts` | normalization/helper functions |
+| `test/unit/spec/personal-meeting-room/personal-meeting-room.js` | mirrored characterization/unit coverage |
 
 ## Public Surface
 
@@ -73,7 +75,7 @@ src/personal-meeting-room/
 | `personal-meeting-room.3` | SDK / in-process / remote | claim the PMR using current identity/request context | Focused operation group owned by this module | Preserve methods/events/wire values reachable from package objects | `src/personal-meeting-room/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
 
 Compatibility notes:
-- Prefer additive fields/options and preserve current rejection/event/cleanup semantics. Internal helpers are not public merely because they are exported within the source directory.
+- Prefer additive fields/options and preserve current return and rejection semantics. Internal helpers are not public merely because they are exported within the source directory.
 
 ## Requires (dependencies)
 
@@ -85,55 +87,62 @@ Webex host/request access, user/device identity, PMR service discovery, meeting-
 |---|---|---|---|---|---|---|
 | `PERSONAL-MEETING-ROOM-R-001` | fetch the current user's Personal Meeting Room. | Retrieves a user's Personal Meeting Room information and performs the claim operation through the Webex service boundary. | `src/personal-meeting-room/index.ts` | `test/unit/spec/personal-meeting-room/personal-meeting-room.js` | none | PRESENT |
 | `PERSONAL-MEETING-ROOM-R-002` | normalize PMR meeting information. | Consumers need deterministic behavior across meeting and remote updates. | `src/personal-meeting-room/index.ts`, `src/personal-meeting-room/request.ts` | `test/unit/spec/personal-meeting-room/personal-meeting-room.js` | inspect sibling tests for operation-specific cases | PRESENT |
-| `PERSONAL-MEETING-ROOM-R-003` | Invalid, rejected, or terminal operations preserve the established failure signal and release module-owned transient resources. | Hidden failure or leaked state corrupts later meeting behavior. | `src/personal-meeting-room/index.ts` | `test/unit/spec/personal-meeting-room/personal-meeting-room.js` | verify every early exit during focused changes | PRESENT |
+| `PERSONAL-MEETING-ROOM-R-003` | Parameter and service errors reject the returned promise; this stateless request facade owns no listener, timer, lock, or event cleanup. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/personal-meeting-room/` | `test/unit/spec/personal-meeting-room/personal-meeting-room.js` | none | PRESENT |
 
 ## Design Overview
 
-The primary controller/data module owns normalization and observable state while supporting files isolate request, type, constant, collection, or utility concerns. Capability and remote response data are checked before state changes. Async completion emits/returns one established outcome; cleanup handles listeners, timers, locks, channels, or transient requests owned by the module.
+`PersonalMeetingRoom` is a small request facade. `request.ts` performs PMR lookup/claim operations and `util.ts` derives/normalizes PMR data; it has no listeners, timers, or event-emission lifecycle.
 
 ## Data Flow
 
 ```mermaid
 flowchart LR
-  Caller[Meeting/Meetings/consumer] --> Entry[src/personal-meeting-room/index.ts]
-  Entry --> Support[src/personal-meeting-room/request.ts]
-  Support --> Boundary[Webex service, Locus, or channel]
-  Boundary --> Normalize[validate and normalize]
-  Normalize --> State[in-memory module state]
-  State --> Output[result / scoped event]
-  Boundary -. rejection .-> Error[established error]
-  Error --> Cleanup[release transient resources]
+  Caller[Meetings / consumer] --> PMR[index.ts]
+  PMR --> Util[util.ts normalize destination/response]
+  PMR --> Request[request.ts]
+  Request --> Service[PMR service URL]
+  Service --> Request
+  Request --> PMR
+  PMR --> Caller
 ```
 
 ## Sequence Diagram(s)
 
 Sequence coverage:
 
-The operation groups below share the same caller → module → supporting dependency → Webex/input ordering and the same rejection/cleanup contract, so one combined diagram covers their common sequence; operation-specific state and guards are stated in the requirements and use cases.
-
-| Operation group | Diagram | Failure / recovery coverage |
+| Operation group | Diagram | Failure coverage |
 |---|---|---|
-| fetch the current user's Personal Meeting Room | Read/derive or initialize | invalid/capability rejection |
-| normalize PMR meeting information | Mutate or react | remote rejection/timeout and cleanup |
+| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
+| UC-2 — secondary/change operation | Secondary operation and failure sequence | missing identity/site input, unavailable PMR, claim rejection, or request failure |
+
+### Primary operation sequence
 
 ```mermaid
 sequenceDiagram
-  participant C as Caller
-  participant M as Personal Meeting Room
-  participant D as Dependency
-  participant W as Webex or input source
-  C->>M: invoke or deliver update
-  M->>D: validate/prepare
-  D->>W: request or consume input
-  alt accepted
-    W-->>D: payload
-    D-->>M: normalized result
-    M-->>C: result or scoped event
-  else invalid, rejected, or timed out
-    W--xD: failure
-    D--xM: established error
-    M->>M: idempotent cleanup
-    M--xC: rejection/error event
+  participant C as Meetings / consumer
+  participant P as PersonalMeetingRoom
+  participant R as request.ts
+  participant S as PMR service
+  C->>P: get or claim PMR
+  P->>R: request with normalized identity/site data
+  R->>S: HTTP operation
+  S-->>R: PMR body or rejection
+  R-->>P: response
+  P-->>C: normalized PMR result
+```
+
+### Secondary operation and failure sequence
+
+```mermaid
+sequenceDiagram
+  participant C as Caller / current input owner
+  participant M as PersonalMeetingRoom
+  C->>M: invoke the UC-2 operation
+  M->>M: apply the current guard and ownership rules
+  alt accepted current input
+    M-->>C: documented result, state update, or scoped event
+  else missing identity/site input, unavailable PMR, claim rejection, or request failure
+    M--xC: documented R-003 rejection, ignore, or cleanup outcome
   end
 ```
 
@@ -142,20 +151,25 @@ sequenceDiagram
 ```mermaid
 classDiagram
   class Caller
-  class PersonalMeetingRoom
-  class SupportingDependency
-  class WebexBoundary
-  Caller --> PersonalMeetingRoom
-  PersonalMeetingRoom --> SupportingDependency
-  SupportingDependency --> WebexBoundary
+  class PMR
+  class Util
+  class Request
+  class Service
+  Caller --> PMR
+  PMR --> Util
+  PMR --> Request
+  Request --> Service
+  Service --> Request
+  Request --> PMR
+  PMR --> Caller
 ```
 
-The module owns its projection/controller and composes supporting requests, types, constants, collections, or utilities. The Webex boundary remains authoritative.
+The arrows identify ownership and delegation inside `src/personal-meeting-room/`; files that only declare types or constants are not presented as transports.
 
 ## Use Cases
 
-- **UC-1 Primary:** the parent/consumer requests fetch the current user's Personal Meeting Room; the module validates or derives data and returns/emits the normalized outcome. Evidence: `src/personal-meeting-room/index.ts`, `test/unit/spec/personal-meeting-room/personal-meeting-room.js`.
-- **UC-2 Change:** the parent/consumer triggers normalize PMR meeting information; capability/current state is checked, the dependency is invoked, and accepted state is exposed once. Evidence: `src/personal-meeting-room/index.ts`, `src/personal-meeting-room/request.ts`.
+- **UC-1:** Fetch personal-room information through the PMR request helper. Evidence: `src/personal-meeting-room/`.
+- **UC-2:** Claim a PMR using the current request contract and return the normalized server result. Evidence: `src/personal-meeting-room/`.
 
 ## State Model
 
@@ -167,32 +181,14 @@ The plugin retains current PMR information and request helper state for the owni
 
 ## Concurrency & Reactive Flow
 
-- Remote/event/promise/timer callbacks may interleave. Preserve current identity/sequence guards, allow only the intended in-flight operation, and make listener/timer/channel cleanup idempotent.
-
-## State Machine
-
-```mermaid
-stateDiagram-v2
-  [*] --> Idle
-  Idle --> Active: initialize or accepted input
-  Active --> Active: valid update
-  Active --> Pending: async mutation or approval
-  Pending --> Active: accepted
-  Pending --> Failed: rejected or timed out
-  Active --> Closed: cleanup
-  Failed --> Closed: cleanup
-  Closed --> [*]
-```
-
-Exact state values/guards remain in `src/personal-meeting-room/index.ts`; this diagram groups the externally meaningful lifecycle.
+- Async work owned by `PersonalMeetingRoom` may complete after a newer caller or remote input. Preserve the identity, sequence, and resource-owner guards in `src/personal-meeting-room/`; a late completion must not replay UC-2 for superseded state.
 
 ## Error Handling & Failure Modes
 
 | Condition | Signal | Caller recovery |
 |---|---|---|
-| missing capability, identity, URL, or invalid options | validation/established rejection | refresh state or correct input; do not retry unchanged |
-| service/channel/request rejection | propagated request or module error | branch on error; retry only through existing bounded policy |
-| timeout, role change, or teardown race | rejected/ignored stale result with cleanup | re-read current meeting state and invoke again only if still eligible |
+| missing identity/site input, unavailable PMR, claim rejection, or request failure | Follow the concrete rejection, ignore, state, or cleanup behavior in the module's R-003 requirement. | Resolve the named condition; retry only when another requirement defines a bound. |
+| UC-1 succeeds | Return, update, callback, or scoped event identified by the Public Surface and primary sequence. | Continue from the owning module's accepted state. |
 
 ## Pitfalls
 
@@ -201,13 +197,13 @@ Exact state values/guards remain in `src/personal-meeting-room/index.ts`; this d
 
 ## Test-Case Strategy (module)
 
-Start with the mirrored suite and sibling files in the same test directory. Cover successful derivation/mutation plus invalid capability/input, remote rejection, stale event, and cleanup. Use Sinon, `calledOnceWithExactly`, and fake timers for retry/lock/token/channel timing.
+Use the current mirrored suites: `test/unit/spec/personal-meeting-room/personal-meeting-room.js`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
 | `PERSONAL-MEETING-ROOM-R-001` | `test/unit/spec/personal-meeting-room/personal-meeting-room.js` | inspect sibling tests for full operation matrix |
-| `PERSONAL-MEETING-ROOM-R-002` | `test/unit/spec/personal-meeting-room/personal-meeting-room.js` | verify rejected and role/capability-change branches |
-| `PERSONAL-MEETING-ROOM-R-003` | `test/unit/spec/personal-meeting-room/personal-meeting-room.js` | verify cleanup on all early exits |
+| `PERSONAL-MEETING-ROOM-R-002` | `test/unit/spec/personal-meeting-room/personal-meeting-room.js` | verify the operation-specific invalid-input and rejection branches |
+| `PERSONAL-MEETING-ROOM-R-003` | `test/unit/spec/personal-meeting-room/personal-meeting-room.js` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
 
 ## Traceability
 

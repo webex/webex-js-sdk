@@ -4,7 +4,7 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-18T15:33:39Z
+updated_at: 2026-08-21T06:10:05Z
 validation_status: not-run
 -->
 # RECORDING CONTROLLER — SPEC
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/recording-controller/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 86% assessed 2026-08-18; 12/14 mandatory fields present; all critical fields present, two noncritical detail gaps remain |
+| Coverage score | 93% assessed 2026-08-21; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-18T15:33:39Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -37,7 +37,7 @@ Requirements cite current source and mirrored tests. Current code wins over reta
 
 ## Overview
 
-For orientation, start at `src/recording-controller/index.ts`; supporting files under `src/recording-controller/` separate request, parsing, collection, type, or utility concerns from parent orchestration. The module is composed by `Meeting`, `Meetings`, or the package entry as applicable. Remote Webex services/Locus remain authoritative, and all local state is scoped to the SDK, plugin, meeting, or operation lifetime.
+`src/recording-controller/` contains 3 direct source/reference file(s) and has 2 mirrored unit-test file(s). This spec separates its public operations, runtime data movement, component ownership, state applicability, and verification boundary.
 
 ## Purpose / Responsibility
 
@@ -51,8 +51,9 @@ TypeScript/JavaScript in the Node 22.14 Yarn workspace; Webex core/plugin abstra
 
 ```text
 src/recording-controller/
-├── index.ts — primary behavior/entry point
-├── util.ts — supporting request, type, utility, or constant behavior
+├── enums.ts — declared action/control enum values
+├── index.ts — module facade/controller or primary exports
+├── util.ts — normalization/helper functions
 └── ai-docs/recording-controller-spec.md — canonical module specification
 ```
 
@@ -60,9 +61,10 @@ src/recording-controller/
 
 | File | Holds |
 |---|---|
-| `src/recording-controller/index.ts` | Primary lifecycle and module surface |
-| `src/recording-controller/util.ts` | Supporting transport, types, constants, or normalization |
-| `test/unit/spec/recording-controller/index.js` | Mirrored behavioral tests |
+| `src/recording-controller/enums.ts` | declared action/control enum values |
+| `src/recording-controller/index.ts` | module facade/controller or primary exports |
+| `src/recording-controller/util.ts` | normalization/helper functions |
+| `test/unit/spec/recording-controller/index.js` and 1 sibling test file(s) | mirrored characterization/unit coverage |
 
 ## Public Surface
 
@@ -73,7 +75,7 @@ src/recording-controller/
 | `recording-controller.3` | SDK / in-process / remote | propagate request outcome and refreshed Locus state | Focused operation group owned by this module | Preserve methods/events/wire values reachable from package objects | `src/recording-controller/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
 
 Compatibility notes:
-- Prefer additive fields/options and preserve current rejection/event/cleanup semantics. Internal helpers are not public merely because they are exported within the source directory.
+- Prefer additive fields/options and preserve current return and rejection semantics. Internal helpers are not public merely because they are exported within the source directory.
 
 ## Requires (dependencies)
 
@@ -85,55 +87,63 @@ Meeting request access, Locus URL/state, recording action/type enums, capability
 |---|---|---|---|---|---|---|
 | `RECORDING-CONTROLLER-R-001` | start, pause, resume, or stop recording. | Converts consumer recording actions into validated meeting requests and applies the returned recording state. | `src/recording-controller/index.ts` | `test/unit/spec/recording-controller/index.js` | none | PRESENT |
 | `RECORDING-CONTROLLER-R-002` | select recording type/action payload. | Consumers need deterministic behavior across meeting and remote updates. | `src/recording-controller/index.ts`, `src/recording-controller/util.ts` | `test/unit/spec/recording-controller/index.js` | inspect sibling tests for operation-specific cases | PRESENT |
-| `RECORDING-CONTROLLER-R-003` | Invalid, rejected, or terminal operations preserve the established failure signal and release module-owned transient resources. | Hidden failure or leaked state corrupts later meeting behavior. | `src/recording-controller/index.ts` | `test/unit/spec/recording-controller/index.js` | verify every early exit during focused changes | PRESENT |
+| `RECORDING-CONTROLLER-R-003` | Invalid action/type/capability inputs or request failures reject the returned promise; this controller allocates no independent listener, lock, or timer. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/recording-controller/` | `test/unit/spec/recording-controller/index.js` | none | PRESENT |
 
 ## Design Overview
 
-The primary controller/data module owns normalization and observable state while supporting files isolate request, type, constant, collection, or utility concerns. Capability and remote response data are checked before state changes. Async completion emits/returns one established outcome; cleanup handles listeners, timers, locks, channels, or transient requests owned by the module.
+`RecordingController` validates an action/type against `enums.ts`, uses `util.ts` to build the recording payload, delegates the HTTP operation to its Meeting request owner, and applies only the returned/Locus recording state. It owns no listeners or timers.
 
 ## Data Flow
 
 ```mermaid
 flowchart LR
-  Caller[Meeting/Meetings/consumer] --> Entry[src/recording-controller/index.ts]
-  Entry --> Support[src/recording-controller/util.ts]
-  Support --> Boundary[Webex service, Locus, or channel]
-  Boundary --> Normalize[validate and normalize]
-  Normalize --> State[in-memory module state]
-  State --> Output[result / scoped event]
-  Boundary -. rejection .-> Error[established error]
-  Error --> Cleanup[release transient resources]
+  Consumer[Meeting recording API] --> Controller[index.ts]
+  Enums[enums.ts action/type values] --> Controller
+  Controller --> Util[util.ts payload builder]
+  Util --> Meeting[owning Meeting request method]
+  Meeting --> Locus[Locus recording operation]
+  Locus --> Controller
+  Controller --> State[meeting recording projection]
 ```
 
 ## Sequence Diagram(s)
 
 Sequence coverage:
 
-The operation groups below share the same caller → module → supporting dependency → Webex/input ordering and the same rejection/cleanup contract, so one combined diagram covers their common sequence; operation-specific state and guards are stated in the requirements and use cases.
-
-| Operation group | Diagram | Failure / recovery coverage |
+| Operation group | Diagram | Failure coverage |
 |---|---|---|
-| start, pause, resume, or stop recording | Read/derive or initialize | invalid/capability rejection |
-| select recording type/action payload | Mutate or react | remote rejection/timeout and cleanup |
+| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
+| UC-2 — secondary/change operation | Secondary operation and failure sequence | unsupported action/type combination, missing recording capability, or recording request rejection |
+
+### Primary operation sequence
 
 ```mermaid
 sequenceDiagram
-  participant C as Caller
-  participant M as Recording Controller
-  participant D as Dependency
-  participant W as Webex or input source
-  C->>M: invoke or deliver update
-  M->>D: validate/prepare
-  D->>W: request or consume input
-  alt accepted
-    W-->>D: payload
-    D-->>M: normalized result
-    M-->>C: result or scoped event
-  else invalid, rejected, or timed out
-    W--xD: failure
-    D--xM: established error
-    M->>M: idempotent cleanup
-    M--xC: rejection/error event
+  participant C as Meeting consumer
+  participant R as RecordingController
+  participant U as util.ts
+  participant M as Meeting request owner
+  C->>R: start / pause / resume / stop
+  R->>R: validate action, type, and capability
+  R->>U: build request body
+  U-->>R: typed action payload
+  R->>M: send recording request
+  M-->>R: accepted Locus state or rejection
+  R-->>C: updated state/result
+```
+
+### Secondary operation and failure sequence
+
+```mermaid
+sequenceDiagram
+  participant C as Caller / current input owner
+  participant M as RecordingController
+  C->>M: invoke the UC-2 operation
+  M->>M: apply the current guard and ownership rules
+  alt accepted current input
+    M-->>C: documented result, state update, or scoped event
+  else unsupported action/type combination, missing recording capability, or recording request rejection
+    M--xC: documented R-003 rejection, ignore, or cleanup outcome
   end
 ```
 
@@ -141,21 +151,28 @@ sequenceDiagram
 
 ```mermaid
 classDiagram
-  class Caller
-  class RecordingController
-  class SupportingDependency
-  class WebexBoundary
-  Caller --> RecordingController
-  RecordingController --> SupportingDependency
-  SupportingDependency --> WebexBoundary
+  class Consumer
+  class Controller
+  class Enums
+  class Util
+  class Meeting
+  class Locus
+  class State
+  Consumer --> Controller
+  Enums --> Controller
+  Controller --> Util
+  Util --> Meeting
+  Meeting --> Locus
+  Locus --> Controller
+  Controller --> State
 ```
 
-The module owns its projection/controller and composes supporting requests, types, constants, collections, or utilities. The Webex boundary remains authoritative.
+The arrows identify ownership and delegation inside `src/recording-controller/`; files that only declare types or constants are not presented as transports.
 
 ## Use Cases
 
-- **UC-1 Primary:** the parent/consumer requests start, pause, resume, or stop recording; the module validates or derives data and returns/emits the normalized outcome. Evidence: `src/recording-controller/index.ts`, `test/unit/spec/recording-controller/index.js`.
-- **UC-2 Change:** the parent/consumer triggers select recording type/action payload; capability/current state is checked, the dependency is invoked, and accepted state is exposed once. Evidence: `src/recording-controller/index.ts`, `src/recording-controller/util.ts`.
+- **UC-1:** Map start, pause, resume, and stop to the declared recording action/type payload. Evidence: `src/recording-controller/`.
+- **UC-2:** Propagate the owning Meeting request result and update state only from accepted server/Locus data. Evidence: `src/recording-controller/`.
 
 ## State Model
 
@@ -167,32 +184,14 @@ The controller references its meeting and derives current recording/capability s
 
 ## Concurrency & Reactive Flow
 
-- Remote/event/promise/timer callbacks may interleave. Preserve current identity/sequence guards, allow only the intended in-flight operation, and make listener/timer/channel cleanup idempotent.
-
-## State Machine
-
-```mermaid
-stateDiagram-v2
-  [*] --> Idle
-  Idle --> Active: initialize or accepted input
-  Active --> Active: valid update
-  Active --> Pending: async mutation or approval
-  Pending --> Active: accepted
-  Pending --> Failed: rejected or timed out
-  Active --> Closed: cleanup
-  Failed --> Closed: cleanup
-  Closed --> [*]
-```
-
-Exact state values/guards remain in `src/recording-controller/index.ts`; this diagram groups the externally meaningful lifecycle.
+- Async work owned by `RecordingController` may complete after a newer caller or remote input. Preserve the identity, sequence, and resource-owner guards in `src/recording-controller/`; a late completion must not replay UC-2 for superseded state.
 
 ## Error Handling & Failure Modes
 
 | Condition | Signal | Caller recovery |
 |---|---|---|
-| missing capability, identity, URL, or invalid options | validation/established rejection | refresh state or correct input; do not retry unchanged |
-| service/channel/request rejection | propagated request or module error | branch on error; retry only through existing bounded policy |
-| timeout, role change, or teardown race | rejected/ignored stale result with cleanup | re-read current meeting state and invoke again only if still eligible |
+| unsupported action/type combination, missing recording capability, or recording request rejection | Follow the concrete rejection, ignore, state, or cleanup behavior in the module's R-003 requirement. | Resolve the named condition; retry only when another requirement defines a bound. |
+| UC-1 succeeds | Return, update, callback, or scoped event identified by the Public Surface and primary sequence. | Continue from the owning module's accepted state. |
 
 ## Pitfalls
 
@@ -201,13 +200,13 @@ Exact state values/guards remain in `src/recording-controller/index.ts`; this di
 
 ## Test-Case Strategy (module)
 
-Start with the mirrored suite and sibling files in the same test directory. Cover successful derivation/mutation plus invalid capability/input, remote rejection, stale event, and cleanup. Use Sinon, `calledOnceWithExactly`, and fake timers for retry/lock/token/channel timing.
+Use the current mirrored suites: `test/unit/spec/recording-controller/index.js`, `test/unit/spec/recording-controller/util.js`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
 | `RECORDING-CONTROLLER-R-001` | `test/unit/spec/recording-controller/index.js` | inspect sibling tests for full operation matrix |
-| `RECORDING-CONTROLLER-R-002` | `test/unit/spec/recording-controller/index.js` | verify rejected and role/capability-change branches |
-| `RECORDING-CONTROLLER-R-003` | `test/unit/spec/recording-controller/index.js` | verify cleanup on all early exits |
+| `RECORDING-CONTROLLER-R-002` | `test/unit/spec/recording-controller/index.js` | verify the operation-specific invalid-input and rejection branches |
+| `RECORDING-CONTROLLER-R-003` | `test/unit/spec/recording-controller/index.js` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
 
 ## Traceability
 

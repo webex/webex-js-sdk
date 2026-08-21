@@ -4,7 +4,7 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-18T15:33:39Z
+updated_at: 2026-08-21T06:10:05Z
 validation_status: not-run
 -->
 # MULTISTREAM — SPEC
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/multistream/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 93% assessed 2026-08-18; 13/14 mandatory fields present; all critical fields present, one noncritical detail gap remains |
+| Coverage score | 93% assessed 2026-08-21; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-18T15:33:39Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -37,7 +37,7 @@ Requirements cite current implementation and mirrored unit-test paths. Current c
 
 ## Overview
 
-For orientation, start at `src/multistream/remoteMediaManager.ts`; supporting files under `src/multistream/` separate request, parsing, collection, type, or utility concerns from parent orchestration. The module is composed by `Meeting`, `Meetings`, or the package entry as applicable. Remote Webex services/Locus remain authoritative, and all local state is scoped to the SDK, plugin, meeting, or operation lifetime.
+`src/multistream/` contains 7 direct source/reference file(s) and has 7 mirrored unit-test file(s). This spec separates its public operations, runtime data movement, component ownership, state applicability, and verification boundary.
 
 ## Purpose / Responsibility
 
@@ -51,8 +51,13 @@ TypeScript/JavaScript in the Node 22.14 Yarn workspace; Webex core/plugin abstra
 
 ```text
 src/multistream/
-├── remoteMediaManager.ts — primary behavior/entry point
-├── receiveSlotManager.ts — request, parser, utility, or supporting behavior
+├── mediaRequestManager.ts — request coordination or payload types
+├── receiveSlot.ts — receiveSlot implementation responsibility
+├── receiveSlotManager.ts — receiveSlotManager implementation responsibility
+├── remoteMedia.ts — remoteMedia implementation responsibility
+├── remoteMediaGroup.ts — remoteMediaGroup implementation responsibility
+├── remoteMediaManager.ts — remoteMediaManager implementation responsibility
+├── sendSlotManager.ts — sendSlotManager implementation responsibility
 └── ai-docs/multistream-spec.md — canonical module specification
 ```
 
@@ -60,10 +65,14 @@ src/multistream/
 
 | File | Holds |
 |---|---|
-| `src/multistream/remoteMediaManager.ts` | Primary lifecycle and public/internal surface |
-| `src/multistream/receiveSlotManager.ts` | Supporting transport, parser, or state behavior |
-| `test/unit/spec/multistream/remoteMediaManager.ts` | Mirrored behavioral tests |
-| `src/constants.ts` | Shared meeting/event/wire constants where consumed |
+| `src/multistream/mediaRequestManager.ts` | request coordination or payload types |
+| `src/multistream/receiveSlot.ts` | receiveSlot implementation responsibility |
+| `src/multistream/receiveSlotManager.ts` | receiveSlotManager implementation responsibility |
+| `src/multistream/remoteMedia.ts` | remoteMedia implementation responsibility |
+| `src/multistream/remoteMediaGroup.ts` | remoteMediaGroup implementation responsibility |
+| `src/multistream/remoteMediaManager.ts` | remoteMediaManager implementation responsibility |
+| `src/multistream/sendSlotManager.ts` | sendSlotManager implementation responsibility |
+| `test/unit/spec/multistream/mediaRequestManager.ts` and 6 sibling test file(s) | mirrored characterization/unit coverage |
 
 ## Public Surface
 
@@ -86,58 +95,67 @@ internal-media-core multistream connection, member CSI data, codecs, event callb
 |---|---|---|---|---|---|---|
 | `MULTISTREAM-R-001` | manage receive slots and remote-media groups. | Maps multistream media-core slots to stable remote-media objects/groups and arbitrates send/receive requests. | `src/multistream/remoteMediaManager.ts` | `test/unit/spec/multistream/remoteMediaManager.ts` | none | PRESENT |
 | `MULTISTREAM-R-002` | map member/CSI/layout requests to media-core. | Callers need deterministic observable behavior across async Webex inputs. | `src/multistream/remoteMediaManager.ts`, `src/multistream/receiveSlotManager.ts` | `test/unit/spec/multistream/remoteMediaManager.ts` | additional edge cases may live in sibling tests | PRESENT |
-| `MULTISTREAM-R-003` | Failures reject/emit the established signal and release module-owned listeners, timers, or transient objects. | Hidden failure or leaked state causes later meeting operations to behave incorrectly. | `src/multistream/remoteMediaManager.ts` | `test/unit/spec/multistream/remoteMediaManager.ts` | verify sibling test files for operation-specific cleanup | PRESENT |
+| `MULTISTREAM-R-003` | Media-request failures reject through the request manager; slot/group removal detaches the owned associations and event subscriptions before reuse. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/multistream/` | `test/unit/spec/multistream/remoteMediaManager.ts` | none | PRESENT |
 | `MULTISTREAM-R-004` | RemoteMedia identity remains stable while tracks/receive slots and member CSI mappings change. | Consumers keep references to remote media across layout and transport updates. | `src/multistream/remoteMedia.ts`, `src/multistream/remoteMediaManager.ts` | `test/unit/spec/multistream/remoteMedia.ts`, `test/unit/spec/multistream/remoteMediaManager.ts` | none | PRESENT |
 | `MULTISTREAM-R-005` | Receive-slot allocation/release maintains one active mapping and detaches old listeners/tracks. | Slot reuse must not deliver another participant's media through a stale object. | `src/multistream/receiveSlot.ts`, `src/multistream/receiveSlotManager.ts` | `test/unit/spec/multistream/receiveSlot.ts`, `test/unit/spec/multistream/receiveSlotManager.ts` | none | PRESENT |
 | `MULTISTREAM-R-006` | Media request arbitration and send-slot management preserve the latest supported layout/send intent. | Concurrent layout/member changes should not apply obsolete stream requests. | `src/multistream/mediaRequestManager.ts`, `src/multistream/sendSlotManager.ts` | `test/unit/spec/multistream/mediaRequestManager.ts`, `test/unit/spec/multistream/sendSlotManager.ts` | none | PRESENT |
 
 ## Design Overview
 
-The primary entry point coordinates domain state and delegates transport/parsing to supporting files so those boundaries remain testable. Inputs are normalized before client state or events change. Async results preserve the established error signal, while teardown owns every listener, timer, or transient object allocated by this module.
+The module is a set of cooperating media managers rather than one entry controller: receive slots project remote sources, remote-media groups expose them, the media-request manager batches receive requests, and the send-slot manager applies source-state overrides.
 
 ## Data Flow
 
 ```mermaid
 flowchart LR
-  Caller[Meeting/Meetings/consumer] --> Entry[src/multistream/remoteMediaManager.ts]
-  Entry --> Support[src/multistream/receiveSlotManager.ts]
-  Support --> Remote[Webex host/service/event input]
-  Remote --> Normalize[validate and normalize]
-  Normalize --> State[in-memory module state]
-  State --> Output[result / scoped event / callback]
-  Remote -. failure .-> Error[reject or established error event]
-  Error --> Cleanup[release transient resources]
+  MediaCore[internal-media-core slots/events] --> Slot[receiveSlot.ts]
+  Slot --> SlotManager[receiveSlotManager.ts]
+  SlotManager --> Remote[remoteMedia.ts]
+  Remote --> Group[remoteMediaGroup.ts]
+  Group --> RemoteManager[remoteMediaManager.ts]
+  SlotManager --> RequestManager[mediaRequestManager.ts]
+  SendCore[send slots] --> SendManager[sendSlotManager.ts]
+  RequestManager --> Meeting[Meeting media request owner]
 ```
 
 ## Sequence Diagram(s)
 
 Sequence coverage:
 
-The operation groups below share the same caller → module → supporting dependency → Webex/input ordering and the same rejection/cleanup contract, so one combined diagram covers their common sequence; operation-specific state and guards are stated in the requirements and use cases.
-
-| Operation group | Diagram | Failure / recovery coverage |
+| Operation group | Diagram | Failure coverage |
 |---|---|---|
-| manage receive slots and remote-media groups | Primary operation | validation/service rejection and cleanup branch |
-| map member/CSI/layout requests to media-core | Async update | stale/error input is rejected or ignored according to current code |
+| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
+| UC-2 — secondary/change operation | Secondary operation and failure sequence | unknown slot/CSI, removed remote source, media-request rejection, or conflicting slot assignment |
+
+### Primary operation sequence
 
 ```mermaid
 sequenceDiagram
-  participant C as Caller
-  participant M as Multistream
-  participant D as Supporting dependency
-  participant W as Webex/input source
-  C->>M: invoke operation
-  M->>D: validate/prepare
-  D->>W: request or consume event
-  alt accepted response/update
-    W-->>D: payload
-    D-->>M: normalized result
-    M-->>C: result or scoped event
-  else rejected, timeout, or invalid input
-    W--xD: error/invalid payload
-    D--xM: established failure
-    M->>M: cleanup transient state
-    M--xC: rejection/error event
+  participant C as Media core
+  participant S as ReceiveSlot
+  participant M as ReceiveSlotManager
+  participant R as RemoteMediaManager
+  participant Q as MediaRequestManager
+  C-->>S: source state / CSI / track event
+  S-->>M: slot update
+  M->>R: map slot to RemoteMedia/group
+  M->>Q: request changed receive constraints
+  Q-->>M: batched request completion
+  R-->>C: remote-media event to consumer
+```
+
+### Secondary operation and failure sequence
+
+```mermaid
+sequenceDiagram
+  participant C as Caller / current input owner
+  participant M as MultistreamManagers
+  C->>M: invoke the UC-2 operation
+  M->>M: apply the current guard and ownership rules
+  alt accepted current input
+    M-->>C: documented result, state update, or scoped event
+  else unknown slot/CSI, removed remote source, media-request rejection, or conflicting slot assignment
+    M--xC: documented R-003 rejection, ignore, or cleanup outcome
   end
 ```
 
@@ -145,21 +163,32 @@ sequenceDiagram
 
 ```mermaid
 classDiagram
-  class Caller
-  class Multistream
-  class SupportingDependency
-  class WebexHost
-  Caller --> Multistream
-  Multistream --> SupportingDependency
-  SupportingDependency --> WebexHost
+  class MediaCore
+  class Slot
+  class SlotManager
+  class Remote
+  class Group
+  class RemoteManager
+  class RequestManager
+  class SendCore
+  class SendManager
+  class Meeting
+  MediaCore --> Slot
+  Slot --> SlotManager
+  SlotManager --> Remote
+  Remote --> Group
+  Group --> RemoteManager
+  SlotManager --> RequestManager
+  SendCore --> SendManager
+  RequestManager --> Meeting
 ```
 
-The primary module object owns its client state and composes/invokes supporting request, parser, collection, or utility code. The Webex host/service remains the authority for remote state.
+The arrows identify ownership and delegation inside `src/multistream/`; files that only declare types or constants are not presented as transports.
 
 ## Use Cases
 
-- **UC-1 Primary operation:** a consumer or parent module invokes manage receive slots and remote-media groups; the module validates/delegates, normalizes the result, updates state where applicable, and returns or emits the established outcome. Evidence: `src/multistream/remoteMediaManager.ts`, `test/unit/spec/multistream/remoteMediaManager.ts`.
-- **UC-2 Async/change operation:** the parent or remote input triggers map member/CSI/layout requests to media-core; the module reconciles it with current state and exposes one scoped result. Evidence: `src/multistream/remoteMediaManager.ts`, `src/multistream/receiveSlotManager.ts`.
+- **UC-1:** Map receive-slot source and track changes into stable `RemoteMedia` objects and groups. Evidence: `src/multistream/`.
+- **UC-2:** Batch receive constraints and propagate send-source overrides without duplicating slot ownership. Evidence: `src/multistream/`.
 
 ## State Model
 
@@ -171,25 +200,19 @@ Receive/send slots, remote-media objects/groups, requested layouts, CSI mappings
 
 ## Concurrency & Reactive Flow
 
-- Promise, event, media, and timer callbacks can interleave. Preserve existing sequence guards, make cleanup idempotent, and never start an unbounded retry/listener loop.
-- Do not assume remote events are globally ordered unless the current parser/state code enforces ordering.
+- Async work owned by `MultistreamManagers` may complete after a newer caller or remote input. Preserve the identity, sequence, and resource-owner guards in `src/multistream/`; a late completion must not replay UC-2 for superseded state.
 
 ## State Machine
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Idle
-  Idle --> Active: initialize or accepted operation
-  Active --> Active: valid update
-  Active --> Recovering: transient failure where supported
-  Recovering --> Active: recovery succeeds
-  Recovering --> Failed: retry/guard exhausted
-  Active --> Closed: cleanup or parent teardown
-  Failed --> Closed: cleanup
-  Closed --> [*]
+  [*] --> no_source
+  no_source --> live: slot reports a live source
+  live --> no_source: source removed or slot released
+  live --> live: CSI/track/source-state update
 ```
 
-State labels summarize the module lifecycle; exact guards and values remain in `src/multistream/remoteMediaManager.ts`.
+The diagram records the initialized `no source` value and the `live` source path consumed by current multistream code and tests.
 
 ## Protocol / Wire Format
 
@@ -199,9 +222,8 @@ State labels summarize the module lifecycle; exact guards and values remain in `
 
 | Condition | Signal | Caller recovery |
 |---|---|---|
-| invalid options or unsupported state | established validation/error rejection | correct input/state; do not retry unchanged |
-| Webex/service/media rejection | propagated typed/request/media error | branch on the established error; retry only where module policy is bounded |
-| timeout, stale update, or teardown race | timeout/rejection/ignored stale update per current path | re-read current meeting state; allow cleanup/recovery manager to finish |
+| unknown slot/CSI, removed remote source, media-request rejection, or conflicting slot assignment | Follow the concrete rejection, ignore, state, or cleanup behavior in the module's R-003 requirement. | Resolve the named condition; retry only when another requirement defines a bound. |
+| UC-1 succeeds | Return, update, callback, or scoped event identified by the Public Surface and primary sequence. | Continue from the owning module's accepted state. |
 
 ## Pitfalls
 
@@ -214,13 +236,13 @@ State labels summarize the module lifecycle; exact guards and values remain in `
 
 ## Test-Case Strategy (module)
 
-Use the mirrored suite as the first characterization boundary. Cover each public operation with a successful result/state/event and a rejected/invalid branch; use fake timers for timeout/retry logic; assert listener/resource cleanup for async modules; keep request/parser fixtures representative without secrets.
+Use the current mirrored suites: `test/unit/spec/multistream/mediaRequestManager.ts`, `test/unit/spec/multistream/receiveSlot.ts`, `test/unit/spec/multistream/receiveSlotManager.ts`, `test/unit/spec/multistream/remoteMedia.ts`, `test/unit/spec/multistream/remoteMediaGroup.ts`, `test/unit/spec/multistream/remoteMediaManager.ts`, `test/unit/spec/multistream/sendSlotManager.ts`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
-| `MULTISTREAM-R-001` | `test/unit/spec/multistream/remoteMediaManager.ts` | confirm sibling operation tests during focused changes |
-| `MULTISTREAM-R-002` | `test/unit/spec/multistream/remoteMediaManager.ts` | verify out-of-order/rejection edge where applicable |
-| `MULTISTREAM-R-003` | `test/unit/spec/multistream/remoteMediaManager.ts` | verify cleanup on every early-exit path |
+| `MULTISTREAM-R-001` | `test/unit/spec/multistream/remoteMediaManager.ts` | confirm the named operation against its owning sibling suite |
+| `MULTISTREAM-R-002` | `test/unit/spec/multistream/remoteMediaManager.ts` | verify the code-grounded rejection or stale-input branch |
+| `MULTISTREAM-R-003` | `test/unit/spec/multistream/remoteMediaManager.ts` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
 | `MULTISTREAM-R-004` | `test/unit/spec/multistream/remoteMedia.ts`, `test/unit/spec/multistream/remoteMediaManager.ts` | none |
 | `MULTISTREAM-R-005` | `test/unit/spec/multistream/receiveSlot.ts`, `test/unit/spec/multistream/receiveSlotManager.ts` | verify rapid slot reuse |
 | `MULTISTREAM-R-006` | `test/unit/spec/multistream/mediaRequestManager.ts`, `test/unit/spec/multistream/sendSlotManager.ts` | verify stale request suppression |

@@ -4,7 +4,7 @@ generated_from: architecture@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-18T15:33:39Z
+updated_at: 2026-08-21T06:10:05Z
 validation_status: not-run
 -->
 # ARCHITECTURE — @webex/plugin-meetings
@@ -200,7 +200,7 @@ The application/SDK host owns authentication and supplies credentialed request a
 |---|---|---|
 | Migration decision | `adr/0001-migrate-existing-docs-into-sdd.md` | Why legacy docs are retained while canonical specs are generated |
 | Repo patterns | `patterns/` | Before adding requests, event emitters, constants, or tests |
-| Enforceable rules | `RULES.md` and `rules/` | Before any code or contract change |
+| Enforceable rules | `RULES.md` | Before any code or contract change |
 
 ## WS6 References
 

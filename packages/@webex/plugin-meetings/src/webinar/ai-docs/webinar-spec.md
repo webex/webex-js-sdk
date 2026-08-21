@@ -4,7 +4,7 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-18T15:33:39Z
+updated_at: 2026-08-21T06:10:05Z
 validation_status: not-run
 -->
 # WEBINAR — SPEC
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/webinar/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 93% assessed 2026-08-18; 13/14 mandatory fields present; all critical fields present, one noncritical detail gap remains |
+| Coverage score | 93% assessed 2026-08-21; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-18T15:33:39Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -37,7 +37,7 @@ Requirements cite current source and mirrored tests. Current code wins over reta
 
 ## Overview
 
-For orientation, start at `src/webinar/index.ts`; supporting files under `src/webinar/` separate request, parsing, collection, type, or utility concerns from parent orchestration. The module is composed by `Meeting`, `Meetings`, or the package entry as applicable. Remote Webex services/Locus remain authoritative, and all local state is scoped to the SDK, plugin, meeting, or operation lifetime.
+`src/webinar/` contains 3 direct source/reference file(s) and has 3 mirrored unit-test file(s). This spec separates its public operations, runtime data movement, component ownership, state applicability, and verification boundary.
 
 ## Purpose / Responsibility
 
@@ -51,8 +51,9 @@ TypeScript/JavaScript in the Node 22.14 Yarn workspace; Webex core/plugin abstra
 
 ```text
 src/webinar/
-├── index.ts — primary behavior/entry point
-├── utils.ts — supporting request, type, utility, or constant behavior
+├── collection.ts — module-owned collection
+├── index.ts — module facade/controller or primary exports
+├── utils.ts — normalization/helper functions
 └── ai-docs/webinar-spec.md — canonical module specification
 ```
 
@@ -60,9 +61,10 @@ src/webinar/
 
 | File | Holds |
 |---|---|
-| `src/webinar/index.ts` | Primary lifecycle and module surface |
-| `src/webinar/utils.ts` | Supporting transport, types, constants, or normalization |
-| `test/unit/spec/webinar/index.ts` | Mirrored behavioral tests |
+| `src/webinar/collection.ts` | module-owned collection |
+| `src/webinar/index.ts` | module facade/controller or primary exports |
+| `src/webinar/utils.ts` | normalization/helper functions |
+| `test/unit/spec/webinar/collection.ts` and 2 sibling test file(s) | mirrored characterization/unit coverage |
 
 ## Public Surface
 
@@ -85,58 +87,66 @@ Parent Meeting/Locus state, webinar service URLs, data-channel tokens/media, rol
 |---|---|---|---|---|---|---|
 | `WEBINAR-R-001` | derive webinar role, practice-session, and webcast state. | Owns webinar practice-session data-channel lifecycle, role/status projection, and host webcast controls including layout and attendee operations. | `src/webinar/index.ts` | `test/unit/spec/webinar/index.ts` | none | PRESENT |
 | `WEBINAR-R-002` | start/stop practice-session data channel and webcast. | Consumers need deterministic behavior across meeting and remote updates. | `src/webinar/index.ts`, `src/webinar/utils.ts` | `test/unit/spec/webinar/index.ts` | inspect sibling tests for operation-specific cases | PRESENT |
-| `WEBINAR-R-003` | Invalid, rejected, or terminal operations preserve the established failure signal and release module-owned transient resources. | Hidden failure or leaked state corrupts later meeting behavior. | `src/webinar/index.ts` | `test/unit/spec/webinar/index.ts` | verify every early exit during focused changes | PRESENT |
+| `WEBINAR-R-003` | Invalid inputs and HTTP/channel failures remain visible; practice-session cleanup removes the relay listener/token ownership only for the meeting that owns the channel. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/webinar/` | `test/unit/spec/webinar/index.ts` | none | PRESENT |
 | `WEBINAR-R-004` | Practice-session data-channel token/connection state is created, replaced, and cleaned independently from the public meeting channel. | Practice participants must not receive or retain events on the wrong session transport. | `src/webinar/index.ts` | `test/unit/spec/webinar/index.ts` | none | PRESENT |
-| `WEBINAR-R-005` | Webcast start/stop/layout and attendee search/view/expel operations require a validated webinar meeting and current management capability. | Large-webinar mutations are host-sensitive remote operations and server rejection must remain visible. | `src/webinar/index.ts`, `src/webinar/utils.ts` | `test/unit/spec/webinar/index.ts`, `test/unit/spec/webinar/utils.ts` | none | PRESENT |
+| `WEBINAR-R-005` | Webcast start/stop/layout and attendee search/view/expel operations validate their required URL/input and send the request with the user token. `canManageWebcast` is stored but is not read as a client-side authorization gate. | This describes current observable enforcement without implying a capability check that the implementation does not perform. | `src/webinar/index.ts`, `src/webinar/utils.ts` | `test/unit/spec/webinar/index.ts`, `test/unit/spec/webinar/utils.ts` | Possible product authorization defect: confirm whether these operations should reject locally when `canManageWebcast` is false. | PRESENT |
 | `WEBINAR-R-006` | Role and practice/webcast status updates refresh the controller before exposing the new state. | Consumer controls must follow the latest Locus role/status projection rather than stale local intent. | `src/webinar/index.ts`, `src/webinar/collection.ts` | `test/unit/spec/webinar/index.ts`, `test/unit/spec/webinar/collection.ts` | none | PRESENT |
 
 ## Design Overview
 
-The primary controller/data module owns normalization and observable state while supporting files isolate request, type, constant, collection, or utility concerns. Capability and remote response data are checked before state changes. Async completion emits/returns one established outcome; cleanup handles listeners, timers, locks, channels, or transient requests owned by the module.
+`Webinar` projects Locus role/practice/webcast data, owns the practice-session LLM data-channel token/listener lifecycle, and calls webcast/layout/attendee URLs directly. `collection.ts` stores attendee results and `utils.ts` sanitizes query parameters.
 
 ## Data Flow
 
 ```mermaid
 flowchart LR
-  Caller[Meeting/Meetings/consumer] --> Entry[src/webinar/index.ts]
-  Entry --> Support[src/webinar/utils.ts]
-  Support --> Boundary[Webex service, Locus, or channel]
-  Boundary --> Normalize[validate and normalize]
-  Normalize --> State[in-memory module state]
-  State --> Output[result / scoped event]
-  Boundary -. rejection .-> Error[established error]
-  Error --> Cleanup[release transient resources]
+  Locus[Locus webinar role/status/URLs] --> Controller[index.ts]
+  Caller[Meeting / webinar consumer] --> Controller
+  Controller --> LLM[practice-session LLM data channel]
+  Controller --> Service[webcast/layout/attendee HTTP URLs]
+  Service --> Collection[collection.ts attendees]
+  Utils[utils.ts query sanitization] --> Service
+  Controller --> Caller
 ```
 
 ## Sequence Diagram(s)
 
 Sequence coverage:
 
-The operation groups below share the same caller → module → supporting dependency → Webex/input ordering and the same rejection/cleanup contract, so one combined diagram covers their common sequence; operation-specific state and guards are stated in the requirements and use cases.
-
-| Operation group | Diagram | Failure / recovery coverage |
+| Operation group | Diagram | Failure coverage |
 |---|---|---|
-| derive webinar role, practice-session, and webcast state | Read/derive or initialize | invalid/capability rejection |
-| start/stop practice-session data channel and webcast | Mutate or react | remote rejection/timeout and cleanup |
+| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
+| UC-2 — secondary/change operation | Secondary operation and failure sequence | missing webinar/service URL, invalid layout/search input, practice-channel ownership conflict, token refresh failure, or HTTP rejection |
+
+### Primary operation sequence
 
 ```mermaid
 sequenceDiagram
-  participant C as Caller
+  participant C as Webinar consumer
+  participant W as Webinar index.ts
+  participant U as utils.ts
+  participant S as Webcast service URL
+  C->>W: start/stop webcast, layout, or attendee operation
+  W->>W: validate required meeting/URL/input
+  Note over W: canManageWebcast is stored but not read as a client-side gate
+  W->>U: sanitize query parameters when applicable
+  W->>S: HTTP operation with user token
+  S-->>W: response or rejection
+  W-->>C: result
+```
+
+### Secondary operation and failure sequence
+
+```mermaid
+sequenceDiagram
+  participant C as Caller / current input owner
   participant M as Webinar
-  participant D as Dependency
-  participant W as Webex or input source
-  C->>M: invoke or deliver update
-  M->>D: validate/prepare
-  D->>W: request or consume input
-  alt accepted
-    W-->>D: payload
-    D-->>M: normalized result
-    M-->>C: result or scoped event
-  else invalid, rejected, or timed out
-    W--xD: failure
-    D--xM: established error
-    M->>M: idempotent cleanup
-    M--xC: rejection/error event
+  C->>M: invoke the UC-2 operation
+  M->>M: apply the current guard and ownership rules
+  alt accepted current input
+    M-->>C: documented result, state update, or scoped event
+  else missing webinar/service URL, invalid layout/search input, practice-channel ownership conflict, token refresh failure, or HTTP rejection
+    M--xC: documented R-003 rejection, ignore, or cleanup outcome
   end
 ```
 
@@ -144,21 +154,28 @@ sequenceDiagram
 
 ```mermaid
 classDiagram
+  class Locus
+  class Controller
   class Caller
-  class Webinar
-  class SupportingDependency
-  class WebexBoundary
-  Caller --> Webinar
-  Webinar --> SupportingDependency
-  SupportingDependency --> WebexBoundary
+  class LLM
+  class Service
+  class Collection
+  class Utils
+  Locus --> Controller
+  Caller --> Controller
+  Controller --> LLM
+  Controller --> Service
+  Service --> Collection
+  Utils --> Service
+  Controller --> Caller
 ```
 
-The module owns its projection/controller and composes supporting requests, types, constants, collections, or utilities. The Webex boundary remains authoritative.
+The arrows identify ownership and delegation inside `src/webinar/`; files that only declare types or constants are not presented as transports.
 
 ## Use Cases
 
-- **UC-1 Primary:** the parent/consumer requests derive webinar role, practice-session, and webcast state; the module validates or derives data and returns/emits the normalized outcome. Evidence: `src/webinar/index.ts`, `test/unit/spec/webinar/index.ts`.
-- **UC-2 Change:** the parent/consumer triggers start/stop practice-session data channel and webcast; capability/current state is checked, the dependency is invoked, and accepted state is exposed once. Evidence: `src/webinar/index.ts`, `src/webinar/utils.ts`.
+- **UC-1:** Connect or disconnect the practice-session LLM channel only for the owning meeting and remove its relay listener during cleanup. Evidence: `src/webinar/`.
+- **UC-2:** Execute webcast, layout, and attendee operations after current input/URL checks; current code does not enforce `canManageWebcast` before these calls. Evidence: `src/webinar/`.
 
 ## State Model
 
@@ -166,36 +183,31 @@ Webcast URL, management capability, role transition, practice-session status/cha
 
 ## Business Rules & Invariants
 
-- Webcast/practice operations require a validated webinar meeting and capability; data-channel replacement closes the prior channel; query parameters are sanitized. Enforced under `src/webinar/`.
+- Practice-channel replacement is meeting-owner scoped and query parameters are sanitized. Webcast operations currently rely on URL/input validation and server authorization; they do not consult `canManageWebcast`. Evidence: `src/webinar/index.ts`, `src/webinar/utils.ts`.
 
 ## Concurrency & Reactive Flow
 
-- Remote/event/promise/timer callbacks may interleave. Preserve current identity/sequence guards, allow only the intended in-flight operation, and make listener/timer/channel cleanup idempotent.
+- Async work owned by `Webinar` may complete after a newer caller or remote input. Preserve the identity, sequence, and resource-owner guards in `src/webinar/`; a late completion must not replay UC-2 for superseded state.
 
 ## State Machine
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Idle
-  Idle --> Active: initialize or accepted input
-  Active --> Active: valid update
-  Active --> Pending: async mutation or approval
-  Pending --> Active: accepted
-  Pending --> Failed: rejected or timed out
-  Active --> Closed: cleanup
-  Failed --> Closed: cleanup
-  Closed --> [*]
+  [*] --> practice_disabled
+  practice_disabled --> practice_enabled: Locus practiceSession enabled
+  practice_enabled --> channel_connected: eligible panelist connects owned LLM channel
+  channel_connected --> practice_disabled: practice stops / cleanup
+  practice_enabled --> practice_disabled: Locus disables practice session
 ```
 
-Exact state values/guards remain in `src/webinar/index.ts`; this diagram groups the externally meaningful lifecycle.
+These transitions combine the stored `practiceSessionEnabled` projection with the explicitly owned practice-session LLM connection lifecycle in `src/webinar/index.ts`.
 
 ## Error Handling & Failure Modes
 
 | Condition | Signal | Caller recovery |
 |---|---|---|
-| missing capability, identity, URL, or invalid options | validation/established rejection | refresh state or correct input; do not retry unchanged |
-| service/channel/request rejection | propagated request or module error | branch on error; retry only through existing bounded policy |
-| timeout, role change, or teardown race | rejected/ignored stale result with cleanup | re-read current meeting state and invoke again only if still eligible |
+| missing webinar/service URL, invalid layout/search input, practice-channel ownership conflict, token refresh failure, or HTTP rejection | Follow the concrete rejection, ignore, state, or cleanup behavior in the module's R-003 requirement. | Resolve the named condition; retry only when another requirement defines a bound. |
+| UC-1 succeeds | Return, update, callback, or scoped event identified by the Public Surface and primary sequence. | Continue from the owning module's accepted state. |
 
 ## Pitfalls
 
@@ -204,15 +216,15 @@ Exact state values/guards remain in `src/webinar/index.ts`; this diagram groups 
 
 ## Test-Case Strategy (module)
 
-Start with the mirrored suite and sibling files in the same test directory. Cover successful derivation/mutation plus invalid capability/input, remote rejection, stale event, and cleanup. Use Sinon, `calledOnceWithExactly`, and fake timers for retry/lock/token/channel timing.
+Use the current mirrored suites: `test/unit/spec/webinar/collection.ts`, `test/unit/spec/webinar/index.ts`, `test/unit/spec/webinar/utils.ts`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
 | `WEBINAR-R-001` | `test/unit/spec/webinar/index.ts` | inspect sibling tests for full operation matrix |
-| `WEBINAR-R-002` | `test/unit/spec/webinar/index.ts` | verify rejected and role/capability-change branches |
-| `WEBINAR-R-003` | `test/unit/spec/webinar/index.ts` | verify cleanup on all early exits |
+| `WEBINAR-R-002` | `test/unit/spec/webinar/index.ts` | verify the operation-specific invalid-input and rejection branches |
+| `WEBINAR-R-003` | `test/unit/spec/webinar/index.ts` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
 | `WEBINAR-R-004` | `test/unit/spec/webinar/index.ts` | verify token/channel replacement cleanup |
-| `WEBINAR-R-005` | `test/unit/spec/webinar/index.ts`, `test/unit/spec/webinar/utils.ts` | verify role/capability rejection |
+| `WEBINAR-R-005` | `test/unit/spec/webinar/index.ts`, `test/unit/spec/webinar/utils.ts` | characterize current no-client-gate behavior; capability enforcement remains a product-decision gap |
 | `WEBINAR-R-006` | `test/unit/spec/webinar/index.ts`, `test/unit/spec/webinar/collection.ts` | none |
 
 ## Traceability

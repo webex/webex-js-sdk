@@ -4,7 +4,7 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-18T15:33:39Z
+updated_at: 2026-08-21T06:10:05Z
 validation_status: not-run
 -->
 # INTERCEPTORS — SPEC
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/interceptors/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 93% assessed 2026-08-18; 13/14 mandatory fields present; all critical fields present, one noncritical detail gap remains |
+| Coverage score | 93% assessed 2026-08-21; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-18T15:33:39Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -37,7 +37,7 @@ Requirements cite current source and mirrored tests. Current code wins over reta
 
 ## Overview
 
-For orientation, start at `src/interceptors/index.ts`; supporting files under `src/interceptors/` separate request, parsing, collection, type, or utility concerns from parent orchestration. The module is composed by `Meeting`, `Meetings`, or the package entry as applicable. Remote Webex services/Locus remain authoritative, and all local state is scoped to the SDK, plugin, meeting, or operation lifetime.
+`src/interceptors/` contains 6 direct source/reference file(s) and has 4 mirrored unit-test file(s). This spec separates its public operations, runtime data movement, component ownership, state applicability, and verification boundary.
 
 ## Purpose / Responsibility
 
@@ -51,8 +51,12 @@ TypeScript/JavaScript in the Node 22.14 Yarn workspace; Webex core/plugin abstra
 
 ```text
 src/interceptors/
-├── index.ts — primary behavior/entry point
-├── dataChannelAuthToken.ts — supporting request, type, utility, or constant behavior
+├── constant.ts — interceptor constants
+├── dataChannelAuthToken.ts — dataChannelAuthToken implementation responsibility
+├── index.ts — module facade/controller or primary exports
+├── locusRetry.ts — locusRetry implementation responsibility
+├── locusRouteToken.ts — locusRouteToken implementation responsibility
+├── utils.ts — normalization/helper functions
 └── ai-docs/interceptors-spec.md — canonical module specification
 ```
 
@@ -60,9 +64,13 @@ src/interceptors/
 
 | File | Holds |
 |---|---|
-| `src/interceptors/index.ts` | Primary lifecycle and module surface |
-| `src/interceptors/dataChannelAuthToken.ts` | Supporting transport, types, constants, or normalization |
-| `test/unit/spec/interceptors/dataChannelAuthToken.ts` | Mirrored behavioral tests |
+| `src/interceptors/constant.ts` | interceptor constants |
+| `src/interceptors/dataChannelAuthToken.ts` | dataChannelAuthToken implementation responsibility |
+| `src/interceptors/index.ts` | module facade/controller or primary exports |
+| `src/interceptors/locusRetry.ts` | locusRetry implementation responsibility |
+| `src/interceptors/locusRouteToken.ts` | locusRouteToken implementation responsibility |
+| `src/interceptors/utils.ts` | normalization/helper functions |
+| `test/unit/spec/interceptors/dataChannelAuthToken.ts` and 3 sibling test file(s) | mirrored characterization/unit coverage |
 
 ## Public Surface
 
@@ -73,7 +81,7 @@ src/interceptors/
 | `interceptors.3` | SDK / in-process / remote | attach, refresh, and bounded-retry data-channel authorization tokens | Focused operation group owned by this module | Preserve methods/events/wire values reachable from package objects | `src/interceptors/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
 
 Compatibility notes:
-- Prefer additive fields/options and preserve current rejection/event/cleanup semantics. Internal helpers are not public merely because they are exported within the source directory.
+- Prefer additive fields/options and preserve current return and rejection semantics. Internal helpers are not public merely because they are exported within the source directory.
 
 ## Requires (dependencies)
 
@@ -85,58 +93,67 @@ Webex core Interceptor/request pipeline, JWT decoding/verification helpers, Meet
 |---|---|---|---|---|---|---|
 | `INTERCEPTORS-R-001` | retry eligible Locus failures using server delay/status rules. | Provides Webex-core request middleware for bounded Locus retries, Locus route-token propagation, and data-channel auth-token refresh. | `src/interceptors/index.ts` | `test/unit/spec/interceptors/dataChannelAuthToken.ts` | none | PRESENT |
 | `INTERCEPTORS-R-002` | capture and attach route tokens keyed by Locus id. | Consumers need deterministic behavior across meeting and remote updates. | `src/interceptors/index.ts`, `src/interceptors/dataChannelAuthToken.ts` | `test/unit/spec/interceptors/dataChannelAuthToken.ts` | inspect sibling tests for operation-specific cases | PRESENT |
-| `INTERCEPTORS-R-003` | Invalid, rejected, or terminal operations preserve the established failure signal and release module-owned transient resources. | Hidden failure or leaked state corrupts later meeting behavior. | `src/interceptors/index.ts` | `test/unit/spec/interceptors/dataChannelAuthToken.ts` | verify every early exit during focused changes | PRESENT |
+| `INTERCEPTORS-R-003` | Non-eligible failures are propagated unchanged; retry counters and token-refresh retries are bounded by each interceptor rather than by shared listener or timer cleanup. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/interceptors/` | `test/unit/spec/interceptors/dataChannelAuthToken.ts` | none | PRESENT |
 | `INTERCEPTORS-R-004` | Locus retry handles only eligible response failures, uses the server retry delay/status policy, and stops at the configured bound. | Global request middleware must not retry terminal failures or loop indefinitely. | `src/interceptors/locusRetry.ts`, `src/interceptors/constant.ts` | `test/unit/spec/interceptors/locusRetry.ts` | none | PRESENT |
 | `INTERCEPTORS-R-005` | Route tokens are extracted from supported Locus responses, keyed by Locus id, and attached only to matching requests. | Loose routing could omit a required token or leak it to an unrelated request. | `src/interceptors/locusRouteToken.ts` | `test/unit/spec/interceptors/locusRouteToken.ts` | none | PRESENT |
 | `INTERCEPTORS-R-006` | Data-channel tokens are checked with an expiry buffer, refreshed when needed, and retried only through the bounded interceptor policy. | Expired credentials must recover without exposing tokens or creating an authentication retry storm. | `src/interceptors/dataChannelAuthToken.ts`, `src/interceptors/utils.ts` | `test/unit/spec/interceptors/dataChannelAuthToken.ts`, `test/unit/spec/interceptors/utils.ts` | none | PRESENT |
 
 ## Design Overview
 
-The primary controller/data module owns normalization and observable state while supporting files isolate request, type, constant, collection, or utility concerns. Capability and remote response data are checked before state changes. Async completion emits/returns one established outcome; cleanup handles listeners, timers, locks, channels, or transient requests owned by the module.
+`index.ts` only exports three independent Webex-core interceptors. `locusRetry.ts` bounds eligible retries, `locusRouteToken.ts` stores/attaches tokens by Locus id, and `dataChannelAuthToken.ts` refreshes expiring channel credentials; none is a controller for the others.
 
 ## Data Flow
 
 ```mermaid
 flowchart LR
-  Caller[Meeting/Meetings/consumer] --> Entry[src/interceptors/index.ts]
-  Entry --> Support[src/interceptors/dataChannelAuthToken.ts]
-  Support --> Boundary[Webex service, Locus, or channel]
-  Boundary --> Normalize[validate and normalize]
-  Normalize --> State[in-memory module state]
-  State --> Output[result / scoped event]
-  Boundary -. rejection .-> Error[established error]
-  Error --> Cleanup[release transient resources]
+  Request[Webex-core request] --> Retry[locusRetry.ts]
+  Request --> Route[locusRouteToken.ts]
+  Request --> Auth[dataChannelAuthToken.ts]
+  Retry --> Continue[retry or propagate response]
+  Route --> Continue
+  Auth --> Refresh[data-channel token refresh]
+  Refresh --> Continue
+  Constants[constant.ts / utils.ts] --> Retry
 ```
 
 ## Sequence Diagram(s)
 
 Sequence coverage:
 
-The operation groups below share the same caller → module → supporting dependency → Webex/input ordering and the same rejection/cleanup contract, so one combined diagram covers their common sequence; operation-specific state and guards are stated in the requirements and use cases.
-
-| Operation group | Diagram | Failure / recovery coverage |
+| Operation group | Diagram | Failure coverage |
 |---|---|---|
-| retry eligible Locus failures using server delay/status rules | Read/derive or initialize | invalid/capability rejection |
-| capture and attach route tokens keyed by Locus id | Mutate or react | remote rejection/timeout and cleanup |
+| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
+| UC-2 — secondary/change operation | Secondary operation and failure sequence | non-retryable status, exhausted retry count, missing Locus-token match, or failed data-channel token refresh |
+
+### Primary operation sequence
 
 ```mermaid
 sequenceDiagram
-  participant C as Caller
-  participant M as Interceptors
-  participant D as Dependency
-  participant W as Webex or input source
-  C->>M: invoke or deliver update
-  M->>D: validate/prepare
-  D->>W: request or consume input
-  alt accepted
-    W-->>D: payload
-    D-->>M: normalized result
-    M-->>C: result or scoped event
-  else invalid, rejected, or timed out
-    W--xD: failure
-    D--xM: established error
-    M->>M: idempotent cleanup
-    M--xC: rejection/error event
+  participant W as Webex core
+  participant I as Selected interceptor
+  participant N as next()
+  W->>I: request or response context
+  I->>I: evaluate only its retry/token rule
+  alt rule applies
+    I->>N: amended request or bounded retry
+  else rule does not apply
+    I->>N: unchanged context / propagated error
+  end
+  N-->>W: response or rejection
+```
+
+### Secondary operation and failure sequence
+
+```mermaid
+sequenceDiagram
+  participant C as Caller / current input owner
+  participant M as MeetingInterceptors
+  C->>M: invoke the UC-2 operation
+  M->>M: apply the current guard and ownership rules
+  alt accepted current input
+    M-->>C: documented result, state update, or scoped event
+  else non-retryable status, exhausted retry count, missing Locus-token match, or failed data-channel token refresh
+    M--xC: documented R-003 rejection, ignore, or cleanup outcome
   end
 ```
 
@@ -144,21 +161,29 @@ sequenceDiagram
 
 ```mermaid
 classDiagram
-  class Caller
-  class Interceptors
-  class SupportingDependency
-  class WebexBoundary
-  Caller --> Interceptors
-  Interceptors --> SupportingDependency
-  SupportingDependency --> WebexBoundary
+  class Request
+  class Retry
+  class Route
+  class Auth
+  class Continue
+  class Refresh
+  class Constants
+  Request --> Retry
+  Request --> Route
+  Request --> Auth
+  Retry --> Continue
+  Route --> Continue
+  Auth --> Refresh
+  Refresh --> Continue
+  Constants --> Retry
 ```
 
-The module owns its projection/controller and composes supporting requests, types, constants, collections, or utilities. The Webex boundary remains authoritative.
+The arrows identify ownership and delegation inside `src/interceptors/`; files that only declare types or constants are not presented as transports.
 
 ## Use Cases
 
-- **UC-1 Primary:** the parent/consumer requests retry eligible Locus failures using server delay/status rules; the module validates or derives data and returns/emits the normalized outcome. Evidence: `src/interceptors/index.ts`, `test/unit/spec/interceptors/dataChannelAuthToken.ts`.
-- **UC-2 Change:** the parent/consumer triggers capture and attach route tokens keyed by Locus id; capability/current state is checked, the dependency is invoked, and accepted state is exposed once. Evidence: `src/interceptors/index.ts`, `src/interceptors/dataChannelAuthToken.ts`.
+- **UC-1:** Retry only eligible Locus response failures using the configured bound and server delay. Evidence: `src/interceptors/`.
+- **UC-2:** Attach a route token only to its matching Locus request, and refresh a data-channel token only when the expiry buffer requires it. Evidence: `src/interceptors/`.
 
 ## Business Rules & Invariants
 
@@ -166,7 +191,7 @@ The module owns its projection/controller and composes supporting requests, type
 
 ## Concurrency & Reactive Flow
 
-- Remote/event/promise/timer callbacks may interleave. Preserve current identity/sequence guards, allow only the intended in-flight operation, and make listener/timer/channel cleanup idempotent.
+- Async work owned by `MeetingInterceptors` may complete after a newer caller or remote input. Preserve the identity, sequence, and resource-owner guards in `src/interceptors/`; a late completion must not replay UC-2 for superseded state.
 
 ## Protocol / Wire Format
 
@@ -176,9 +201,8 @@ The module owns its projection/controller and composes supporting requests, type
 
 | Condition | Signal | Caller recovery |
 |---|---|---|
-| missing capability, identity, URL, or invalid options | validation/established rejection | refresh state or correct input; do not retry unchanged |
-| service/channel/request rejection | propagated request or module error | branch on error; retry only through existing bounded policy |
-| timeout, role change, or teardown race | rejected/ignored stale result with cleanup | re-read current meeting state and invoke again only if still eligible |
+| non-retryable status, exhausted retry count, missing Locus-token match, or failed data-channel token refresh | Follow the concrete rejection, ignore, state, or cleanup behavior in the module's R-003 requirement. | Resolve the named condition; retry only when another requirement defines a bound. |
+| UC-1 succeeds | Return, update, callback, or scoped event identified by the Public Surface and primary sequence. | Continue from the owning module's accepted state. |
 
 ## Pitfalls
 
@@ -191,13 +215,13 @@ The Webex SDK host provides request, identity, event, and media capabilities and
 
 ## Test-Case Strategy (module)
 
-Start with the mirrored suite and sibling files in the same test directory. Cover successful derivation/mutation plus invalid capability/input, remote rejection, stale event, and cleanup. Use Sinon, `calledOnceWithExactly`, and fake timers for retry/lock/token/channel timing.
+Use the current mirrored suites: `test/unit/spec/interceptors/dataChannelAuthToken.ts`, `test/unit/spec/interceptors/locusRetry.ts`, `test/unit/spec/interceptors/locusRouteToken.ts`, `test/unit/spec/interceptors/utils.ts`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
 | `INTERCEPTORS-R-001` | `test/unit/spec/interceptors/dataChannelAuthToken.ts` | inspect sibling tests for full operation matrix |
-| `INTERCEPTORS-R-002` | `test/unit/spec/interceptors/dataChannelAuthToken.ts` | verify rejected and role/capability-change branches |
-| `INTERCEPTORS-R-003` | `test/unit/spec/interceptors/dataChannelAuthToken.ts` | verify cleanup on all early exits |
+| `INTERCEPTORS-R-002` | `test/unit/spec/interceptors/dataChannelAuthToken.ts` | verify the operation-specific invalid-input and rejection branches |
+| `INTERCEPTORS-R-003` | `test/unit/spec/interceptors/dataChannelAuthToken.ts` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
 | `INTERCEPTORS-R-004` | `test/unit/spec/interceptors/locusRetry.ts` | verify terminal status and retry exhaustion |
 | `INTERCEPTORS-R-005` | `test/unit/spec/interceptors/locusRouteToken.ts` | verify unrelated URL never receives token |
 | `INTERCEPTORS-R-006` | `test/unit/spec/interceptors/dataChannelAuthToken.ts`, `test/unit/spec/interceptors/utils.ts` | verify malformed/near-expiry tokens and retry exhaustion |

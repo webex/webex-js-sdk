@@ -4,7 +4,7 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-18T15:33:39Z
+updated_at: 2026-08-21T06:10:05Z
 validation_status: not-run
 -->
 # REACHABILITY — SPEC
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/reachability/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 93% assessed 2026-08-18; 13/14 mandatory fields present; all critical fields present, one noncritical detail gap remains |
+| Coverage score | 93% assessed 2026-08-21; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-18T15:33:39Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -37,7 +37,7 @@ Requirements cite current implementation and mirrored unit-test paths. Current c
 
 ## Overview
 
-For orientation, start at `src/reachability/index.ts`; supporting files under `src/reachability/` separate request, parsing, collection, type, or utility concerns from parent orchestration. The module is composed by `Meeting`, `Meetings`, or the package entry as applicable. Remote Webex services/Locus remain authoritative, and all local state is scoped to the SDK, plugin, meeting, or operation lifetime.
+`src/reachability/` contains 6 direct source/reference file(s) and has 4 mirrored unit-test file(s). This spec separates its public operations, runtime data movement, component ownership, state applicability, and verification boundary.
 
 ## Purpose / Responsibility
 
@@ -51,8 +51,12 @@ TypeScript/JavaScript in the Node 22.14 Yarn workspace; Webex core/plugin abstra
 
 ```text
 src/reachability/
-├── index.ts — primary behavior/entry point
-├── clusterReachability.ts — request, parser, utility, or supporting behavior
+├── clusterReachability.ts — clusterReachability implementation responsibility
+├── index.ts — module facade/controller or primary exports
+├── reachability.types.ts — module type declarations
+├── reachabilityPeerConnection.ts — reachabilityPeerConnection implementation responsibility
+├── request.ts — HTTP request boundary
+├── util.ts — normalization/helper functions
 └── ai-docs/reachability-spec.md — canonical module specification
 ```
 
@@ -60,17 +64,20 @@ src/reachability/
 
 | File | Holds |
 |---|---|
-| `src/reachability/index.ts` | Primary lifecycle and public/internal surface |
-| `src/reachability/clusterReachability.ts` | Supporting transport, parser, or state behavior |
-| `test/unit/spec/reachability/index.ts` | Mirrored behavioral tests |
-| `src/constants.ts` | Shared meeting/event/wire constants where consumed |
+| `src/reachability/clusterReachability.ts` | clusterReachability implementation responsibility |
+| `src/reachability/index.ts` | module facade/controller or primary exports |
+| `src/reachability/reachability.types.ts` | module type declarations |
+| `src/reachability/reachabilityPeerConnection.ts` | reachabilityPeerConnection implementation responsibility |
+| `src/reachability/request.ts` | HTTP request boundary |
+| `src/reachability/util.ts` | normalization/helper functions |
+| `test/unit/spec/reachability/clusterReachability.ts` and 3 sibling test file(s) | mirrored characterization/unit coverage |
 
 ## Public Surface
 
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
 | `reachability.1` | SDK / in-process / remote | fetch and normalize candidate clusters | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/reachability/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `reachability.2` | SDK / in-process / remote | run UDP/TCP/TLS reachability probes | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/reachability/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `reachability.2` | SDK / in-process / remote | run `udp` / `tcp` / `xtls` reachability probes | Preserve the code-level protocol and metric field names | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/reachability/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
 | `reachability.3` | SDK / in-process / remote | return/report reachability and NAT results | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/reachability/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
 
 Compatibility notes:
@@ -85,58 +92,70 @@ Webex reachability services, browser RTCPeerConnection, STUN/TURN candidates, ti
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
 | `REACHABILITY-R-001` | fetch and normalize candidate clusters. | Discovers media clusters, probes protocol reachability with peer connections, determines NAT characteristics, and reports results. | `src/reachability/index.ts` | `test/unit/spec/reachability/index.ts` | none | PRESENT |
-| `REACHABILITY-R-002` | run UDP/TCP/TLS reachability probes. | Callers need deterministic observable behavior across async Webex inputs. | `src/reachability/index.ts`, `src/reachability/clusterReachability.ts` | `test/unit/spec/reachability/index.ts` | additional edge cases may live in sibling tests | PRESENT |
-| `REACHABILITY-R-003` | Failures reject/emit the established signal and release module-owned listeners, timers, or transient objects. | Hidden failure or leaked state causes later meeting operations to behave incorrectly. | `src/reachability/index.ts` | `test/unit/spec/reachability/index.ts` | verify sibling test files for operation-specific cleanup | PRESENT |
+| `REACHABILITY-R-002` | Run the `udp`, `tcp`, and `xtls` reachability probes used by code and metric keys. | Callers and telemetry consumers need the exact wire/field name rather than an ambiguous prose-only TLS label. | `src/reachability/index.ts`, `src/reachability/clusterReachability.ts`, `src/reachability/reachability.types.ts` | `test/unit/spec/reachability/index.ts` | none | PRESENT |
+| `REACHABILITY-R-003` | Discovery/report failures reject their requests; each probe resolves unreachable or rejects per current path and always closes its peer connection and timeout. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/reachability/` | `test/unit/spec/reachability/index.ts` | none | PRESENT |
 | `REACHABILITY-R-004` | Each cluster/protocol probe settles once, closes its peer connection/timer, and contributes an explicit reachable/unreachable result. | ICE events and timeouts race; deterministic cleanup and aggregation prevent false success and leaks. | `src/reachability/clusterReachability.ts`, `src/reachability/reachabilityPeerConnection.ts` | `test/unit/spec/reachability/clusterReachability.ts` | none | PRESENT |
 | `REACHABILITY-R-005` | The aggregate report preserves IP version, NAT/protocol/cluster outcomes, previous-report context, and trigger. | The backend and media selection need comparable current results rather than a single boolean. | `src/reachability/index.ts`, `src/reachability/reachability.types.ts`, `src/reachability/request.ts` | `test/unit/spec/reachability/index.ts`, `test/unit/spec/reachability/request.js` | none | PRESENT |
 
 ## Design Overview
 
-The primary entry point coordinates domain state and delegates transport/parsing to supporting files so those boundaries remain testable. Inputs are normalized before client state or events change. Async results preserve the established error signal, while teardown owns every listener, timer, or transient object allocated by this module.
+`Reachability` fetches media clusters with `request.ts`, builds a `ClusterReachability` aggregate per cluster, and runs UDP/TCP/`xtls` probes through `ReachabilityPeerConnection`; each probe owns and closes its peer connection and timeout.
 
 ## Data Flow
 
 ```mermaid
 flowchart LR
-  Caller[Meeting/Meetings/consumer] --> Entry[src/reachability/index.ts]
-  Entry --> Support[src/reachability/clusterReachability.ts]
-  Support --> Remote[Webex host/service/event input]
-  Remote --> Normalize[validate and normalize]
-  Normalize --> State[in-memory module state]
-  State --> Output[result / scoped event / callback]
-  Remote -. failure .-> Error[reject or established error event]
-  Error --> Cleanup[release transient resources]
+  Caller[Meetings registration / diagnostics] --> Reach[index.ts]
+  Reach --> Request[request.ts cluster discovery/report]
+  Request --> Service[reachability service]
+  Reach --> Cluster[clusterReachability.ts]
+  Cluster --> Probe[reachabilityPeerConnection.ts]
+  Probe --> ICE[WebRTC ICE candidate gathering]
+  Probe --> Cluster
+  Cluster --> Reach
+  Reach --> Request
 ```
 
 ## Sequence Diagram(s)
 
 Sequence coverage:
 
-The operation groups below share the same caller → module → supporting dependency → Webex/input ordering and the same rejection/cleanup contract, so one combined diagram covers their common sequence; operation-specific state and guards are stated in the requirements and use cases.
-
-| Operation group | Diagram | Failure / recovery coverage |
+| Operation group | Diagram | Failure coverage |
 |---|---|---|
-| fetch and normalize candidate clusters | Primary operation | validation/service rejection and cleanup branch |
-| run UDP/TCP/TLS reachability probes | Async update | stale/error input is rejected or ignored according to current code |
+| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
+| UC-2 — secondary/change operation | Secondary operation and failure sequence | cluster discovery failure, ICE timeout, peer-connection failure, unsupported protocol, or report submission failure |
+
+### Primary operation sequence
 
 ```mermaid
 sequenceDiagram
   participant C as Caller
+  participant R as Reachability index.ts
+  participant Q as request.ts
+  participant P as ReachabilityPeerConnection
+  C->>R: gatherReachability()
+  R->>Q: fetch clusters
+  Q-->>R: candidate cluster list
+  loop UDP, TCP, xtls per cluster
+    R->>P: start probe
+    P-->>R: reachable/unreachable after ICE or timeout
+  end
+  R->>Q: submit aggregate report
+  R-->>C: normalized reachability result
+```
+
+### Secondary operation and failure sequence
+
+```mermaid
+sequenceDiagram
+  participant C as Caller / current input owner
   participant M as Reachability
-  participant D as Supporting dependency
-  participant W as Webex/input source
-  C->>M: invoke operation
-  M->>D: validate/prepare
-  D->>W: request or consume event
-  alt accepted response/update
-    W-->>D: payload
-    D-->>M: normalized result
-    M-->>C: result or scoped event
-  else rejected, timeout, or invalid input
-    W--xD: error/invalid payload
-    D--xM: established failure
-    M->>M: cleanup transient state
-    M--xC: rejection/error event
+  C->>M: invoke the UC-2 operation
+  M->>M: apply the current guard and ownership rules
+  alt accepted current input
+    M-->>C: documented result, state update, or scoped event
+  else cluster discovery failure, ICE timeout, peer-connection failure, unsupported protocol, or report submission failure
+    M--xC: documented R-003 rejection, ignore, or cleanup outcome
   end
 ```
 
@@ -145,20 +164,29 @@ sequenceDiagram
 ```mermaid
 classDiagram
   class Caller
-  class Reachability
-  class SupportingDependency
-  class WebexHost
-  Caller --> Reachability
-  Reachability --> SupportingDependency
-  SupportingDependency --> WebexHost
+  class Reach
+  class Request
+  class Service
+  class Cluster
+  class Probe
+  class ICE
+  Caller --> Reach
+  Reach --> Request
+  Request --> Service
+  Reach --> Cluster
+  Cluster --> Probe
+  Probe --> ICE
+  Probe --> Cluster
+  Cluster --> Reach
+  Reach --> Request
 ```
 
-The primary module object owns its client state and composes/invokes supporting request, parser, collection, or utility code. The Webex host/service remains the authority for remote state.
+The arrows identify ownership and delegation inside `src/reachability/`; files that only declare types or constants are not presented as transports.
 
 ## Use Cases
 
-- **UC-1 Primary operation:** a consumer or parent module invokes fetch and normalize candidate clusters; the module validates/delegates, normalizes the result, updates state where applicable, and returns or emits the established outcome. Evidence: `src/reachability/index.ts`, `test/unit/spec/reachability/index.ts`.
-- **UC-2 Async/change operation:** the parent or remote input triggers run UDP/TCP/TLS reachability probes; the module reconciles it with current state and exposes one scoped result. Evidence: `src/reachability/index.ts`, `src/reachability/clusterReachability.ts`.
+- **UC-1:** Probe each discovered cluster over the code-level transport names `udp`, `tcp`, and `xtls`. Evidence: `src/reachability/`.
+- **UC-2:** Settle every probe exactly once and aggregate protocol, NAT, IP-version, previous-report, and trigger context. Evidence: `src/reachability/`.
 
 ## State Model
 
@@ -170,25 +198,7 @@ Cluster/protocol probe state, peer connections, timers, partial results, and cac
 
 ## Concurrency & Reactive Flow
 
-- Promise, event, media, and timer callbacks can interleave. Preserve existing sequence guards, make cleanup idempotent, and never start an unbounded retry/listener loop.
-- Do not assume remote events are globally ordered unless the current parser/state code enforces ordering.
-
-## State Machine
-
-```mermaid
-stateDiagram-v2
-  [*] --> Idle
-  Idle --> Active: initialize or accepted operation
-  Active --> Active: valid update
-  Active --> Recovering: transient failure where supported
-  Recovering --> Active: recovery succeeds
-  Recovering --> Failed: retry/guard exhausted
-  Active --> Closed: cleanup or parent teardown
-  Failed --> Closed: cleanup
-  Closed --> [*]
-```
-
-State labels summarize the module lifecycle; exact guards and values remain in `src/reachability/index.ts`.
+- Async work owned by `Reachability` may complete after a newer caller or remote input. Preserve the identity, sequence, and resource-owner guards in `src/reachability/`; a late completion must not replay UC-2 for superseded state.
 
 ## Protocol / Wire Format
 
@@ -198,9 +208,8 @@ State labels summarize the module lifecycle; exact guards and values remain in `
 
 | Condition | Signal | Caller recovery |
 |---|---|---|
-| invalid options or unsupported state | established validation/error rejection | correct input/state; do not retry unchanged |
-| Webex/service/media rejection | propagated typed/request/media error | branch on the established error; retry only where module policy is bounded |
-| timeout, stale update, or teardown race | timeout/rejection/ignored stale update per current path | re-read current meeting state; allow cleanup/recovery manager to finish |
+| cluster discovery failure, ICE timeout, peer-connection failure, unsupported protocol, or report submission failure | Follow the concrete rejection, ignore, state, or cleanup behavior in the module's R-003 requirement. | Resolve the named condition; retry only when another requirement defines a bound. |
+| UC-1 succeeds | Return, update, callback, or scoped event identified by the Public Surface and primary sequence. | Continue from the owning module's accepted state. |
 
 ## Pitfalls
 
@@ -213,13 +222,13 @@ State labels summarize the module lifecycle; exact guards and values remain in `
 
 ## Test-Case Strategy (module)
 
-Use the mirrored suite as the first characterization boundary. Cover each public operation with a successful result/state/event and a rejected/invalid branch; use fake timers for timeout/retry logic; assert listener/resource cleanup for async modules; keep request/parser fixtures representative without secrets.
+Use the current mirrored suites: `test/unit/spec/reachability/clusterReachability.ts`, `test/unit/spec/reachability/index.ts`, `test/unit/spec/reachability/request.js`, `test/unit/spec/reachability/util.ts`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
-| `REACHABILITY-R-001` | `test/unit/spec/reachability/index.ts` | confirm sibling operation tests during focused changes |
-| `REACHABILITY-R-002` | `test/unit/spec/reachability/index.ts` | verify out-of-order/rejection edge where applicable |
-| `REACHABILITY-R-003` | `test/unit/spec/reachability/index.ts` | verify cleanup on every early-exit path |
+| `REACHABILITY-R-001` | `test/unit/spec/reachability/index.ts` | confirm the named operation against its owning sibling suite |
+| `REACHABILITY-R-002` | `test/unit/spec/reachability/index.ts` | verify the code-grounded rejection or stale-input branch |
+| `REACHABILITY-R-003` | `test/unit/spec/reachability/index.ts` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
 | `REACHABILITY-R-004` | `test/unit/spec/reachability/clusterReachability.ts` | verify callback/timeout races |
 | `REACHABILITY-R-005` | `test/unit/spec/reachability/index.ts`, `test/unit/spec/reachability/request.js` | verify partial/mixed protocol reports |
 

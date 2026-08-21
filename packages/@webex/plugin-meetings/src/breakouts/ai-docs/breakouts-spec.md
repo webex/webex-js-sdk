@@ -4,7 +4,7 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-18T15:33:39Z
+updated_at: 2026-08-21T06:10:05Z
 validation_status: not-run
 -->
 # BREAKOUTS — SPEC
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/breakouts/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 93% assessed 2026-08-18; 13/14 mandatory fields present; all critical fields present, one noncritical detail gap remains |
+| Coverage score | 93% assessed 2026-08-21; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-18T15:33:39Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -37,7 +37,7 @@ Requirements cite current source and mirrored tests. Current code wins over reta
 
 ## Overview
 
-For orientation, start at `src/breakouts/index.ts`; supporting files under `src/breakouts/` separate request, parsing, collection, type, or utility concerns from parent orchestration. The module is composed by `Meeting`, `Meetings`, or the package entry as applicable. Remote Webex services/Locus remain authoritative, and all local state is scoped to the SDK, plugin, meeting, or operation lifetime.
+`src/breakouts/` contains 8 direct source/reference file(s) and has 7 mirrored unit-test file(s). This spec separates its public operations, runtime data movement, component ownership, state applicability, and verification boundary.
 
 ## Purpose / Responsibility
 
@@ -51,8 +51,14 @@ TypeScript/JavaScript in the Node 22.14 Yarn workspace; Webex core/plugin abstra
 
 ```text
 src/breakouts/
-├── index.ts — primary behavior/entry point
-├── request.ts — supporting request, type, utility, or constant behavior
+├── README.md — retained legacy reference input
+├── breakout.ts — breakout implementation responsibility
+├── collection.ts — module-owned collection
+├── edit-lock-error.ts — module-specific error type
+├── events.ts — event names and emission helpers
+├── index.ts — module facade/controller or primary exports
+├── request.ts — HTTP request boundary
+├── utils.ts — normalization/helper functions
 └── ai-docs/breakouts-spec.md — canonical module specification
 ```
 
@@ -60,9 +66,15 @@ src/breakouts/
 
 | File | Holds |
 |---|---|
-| `src/breakouts/index.ts` | Primary lifecycle and module surface |
-| `src/breakouts/request.ts` | Supporting transport, types, constants, or normalization |
-| `test/unit/spec/breakouts/index.ts` | Mirrored behavioral tests |
+| `src/breakouts/README.md` | retained legacy reference input |
+| `src/breakouts/breakout.ts` | breakout implementation responsibility |
+| `src/breakouts/collection.ts` | module-owned collection |
+| `src/breakouts/edit-lock-error.ts` | module-specific error type |
+| `src/breakouts/events.ts` | event names and emission helpers |
+| `src/breakouts/index.ts` | module facade/controller or primary exports |
+| `src/breakouts/request.ts` | HTTP request boundary |
+| `src/breakouts/utils.ts` | normalization/helper functions |
+| `test/unit/spec/breakouts/breakout.ts` and 6 sibling test file(s) | mirrored characterization/unit coverage |
 
 ## Public Surface
 
@@ -85,58 +97,68 @@ Parent Meeting/Locus state, breakout service URL, request helper, breakout/membe
 |---|---|---|---|---|---|---|
 | `BREAKOUTS-R-001` | initialize/query breakout session and roster state. | Owns breakout-session projections, participant and host workflows, roster/broadcast/help events, edit-lock lifecycle, and server mutations. | `src/breakouts/index.ts` | `test/unit/spec/breakouts/index.ts` | none | PRESENT |
 | `BREAKOUTS-R-002` | attendee join, leave, help, broadcast, and return-to-main flows. | Consumers need deterministic behavior across meeting and remote updates. | `src/breakouts/index.ts`, `src/breakouts/request.ts` | `test/unit/spec/breakouts/index.ts` | inspect sibling tests for operation-specific cases | PRESENT |
-| `BREAKOUTS-R-003` | Invalid, rejected, or terminal operations preserve the established failure signal and release module-owned transient resources. | Hidden failure or leaked state corrupts later meeting behavior. | `src/breakouts/index.ts` | `test/unit/spec/breakouts/index.ts` | verify every early exit during focused changes | PRESENT |
+| `BREAKOUTS-R-003` | Request failures remain caller-visible; edit-lock conflicts are mapped explicitly, and lock/listener cleanup cancels the keepalive rather than leaving a stale editor. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/breakouts/` | `test/unit/spec/breakouts/index.ts` | none | PRESENT |
 | `BREAKOUTS-R-004` | Roster, session type, broadcasts, help requests, and return-to-main updates reconcile into meeting-scoped breakout/session/member projections and events. | Attendees need current session membership and host messages without consuming raw Locus/service payloads. | `src/breakouts/index.ts`, `src/breakouts/breakout.ts`, `src/breakouts/collection.ts` | `test/unit/spec/breakouts/index.ts`, `test/unit/spec/breakouts/breakout.ts`, `test/unit/spec/breakouts/collection.ts` | none | PRESENT |
 | `BREAKOUTS-R-005` | Host create/start/end/update/assign/move/remove operations use current management capability, session ids, and request contracts. | These operations mutate shared server state and must not be exposed as optimistic local collection edits. | `src/breakouts/index.ts`, `src/breakouts/request.ts` | `test/unit/spec/breakouts/index.ts`, `test/unit/spec/breakouts/request.ts` | none | PRESENT |
 | `BREAKOUTS-R-006` | Edit-lock acquire/keepalive/unlock is coordinated around host configuration and maps lock conflicts to `BreakoutEditLockedError`. | Multiple hosts can edit breakout configuration; a stale lock must fail explicitly and release its timer. | `src/breakouts/index.ts`, `src/breakouts/edit-lock-error.ts`, `src/breakouts/utils.ts` | `test/unit/spec/breakouts/edit-lock-error.ts`, `test/unit/spec/breakouts/utils.js` | none | PRESENT |
 
 ## Design Overview
 
-The primary controller/data module owns normalization and observable state while supporting files isolate request, type, constant, collection, or utility concerns. Capability and remote response data are checked before state changes. Async completion emits/returns one established outcome; cleanup handles listeners, timers, locks, channels, or transient requests owned by the module.
+Breakouts projects Locus breakout state into `Breakout` objects and a collection, delegates server mutations to `BreakoutRequest`, emits feature events from `events.ts`, and owns the edit-lock keepalive timer.
 
 ## Data Flow
 
 ```mermaid
 flowchart LR
-  Caller[Meeting/Meetings/consumer] --> Entry[src/breakouts/index.ts]
-  Entry --> Support[src/breakouts/request.ts]
-  Support --> Boundary[Webex service, Locus, or channel]
-  Boundary --> Normalize[validate and normalize]
-  Normalize --> State[in-memory module state]
-  State --> Output[result / scoped event]
-  Boundary -. rejection .-> Error[established error]
-  Error --> Cleanup[release transient resources]
+  Locus[Locus breakout projection] --> Controller[index.ts]
+  Controller --> Collection[collection.ts]
+  Collection --> Session[breakout.ts]
+  Caller[Meeting / host / attendee] --> Controller
+  Controller --> Request[request.ts]
+  Request --> Service[Breakout service URLs]
+  Controller --> Events[events.ts]
+  Controller --> Lock[edit lock token + keepalive]
 ```
 
 ## Sequence Diagram(s)
 
 Sequence coverage:
 
-The operation groups below share the same caller → module → supporting dependency → Webex/input ordering and the same rejection/cleanup contract, so one combined diagram covers their common sequence; operation-specific state and guards are stated in the requirements and use cases.
-
-| Operation group | Diagram | Failure / recovery coverage |
+| Operation group | Diagram | Failure coverage |
 |---|---|---|
-| initialize/query breakout session and roster state | Read/derive or initialize | invalid/capability rejection |
-| attendee join, leave, help, broadcast, and return-to-main flows | Mutate or react | remote rejection/timeout and cleanup |
+| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
+| UC-2 — secondary/change operation | Secondary operation and failure sequence | missing management capability, invalid session/lock context, edit-lock conflict, or breakout service rejection |
+
+### Primary operation sequence
 
 ```mermaid
 sequenceDiagram
-  participant C as Caller
+  participant C as Host or attendee
+  participant B as Breakouts index.ts
+  participant R as BreakoutRequest
+  participant S as Breakout service
+  C->>B: join / leave / host mutation
+  B->>B: check session, capability, and edit lock
+  B->>R: operation with current URL and ids
+  R->>S: HTTP request
+  S-->>R: accepted state or error
+  R-->>B: response
+  B->>B: reconcile collection and lock timer
+  B-->>C: result and scoped breakout event
+```
+
+### Secondary operation and failure sequence
+
+```mermaid
+sequenceDiagram
+  participant C as Caller / current input owner
   participant M as Breakouts
-  participant D as Dependency
-  participant W as Webex or input source
-  C->>M: invoke or deliver update
-  M->>D: validate/prepare
-  D->>W: request or consume input
-  alt accepted
-    W-->>D: payload
-    D-->>M: normalized result
-    M-->>C: result or scoped event
-  else invalid, rejected, or timed out
-    W--xD: failure
-    D--xM: established error
-    M->>M: idempotent cleanup
-    M--xC: rejection/error event
+  C->>M: invoke the UC-2 operation
+  M->>M: apply the current guard and ownership rules
+  alt accepted current input
+    M-->>C: documented result, state update, or scoped event
+  else missing management capability, invalid session/lock context, edit-lock conflict, or breakout service rejection
+    M--xC: documented R-003 rejection, ignore, or cleanup outcome
   end
 ```
 
@@ -144,21 +166,31 @@ sequenceDiagram
 
 ```mermaid
 classDiagram
+  class Locus
+  class Controller
+  class Collection
+  class Session
   class Caller
-  class Breakouts
-  class SupportingDependency
-  class WebexBoundary
-  Caller --> Breakouts
-  Breakouts --> SupportingDependency
-  SupportingDependency --> WebexBoundary
+  class Request
+  class Service
+  class Events
+  class Lock
+  Locus --> Controller
+  Controller --> Collection
+  Collection --> Session
+  Caller --> Controller
+  Controller --> Request
+  Request --> Service
+  Controller --> Events
+  Controller --> Lock
 ```
 
-The module owns its projection/controller and composes supporting requests, types, constants, collections, or utilities. The Webex boundary remains authoritative.
+The arrows identify ownership and delegation inside `src/breakouts/`; files that only declare types or constants are not presented as transports.
 
 ## Use Cases
 
-- **UC-1 Primary:** the parent/consumer requests initialize/query breakout session and roster state; the module validates or derives data and returns/emits the normalized outcome. Evidence: `src/breakouts/index.ts`, `test/unit/spec/breakouts/index.ts`.
-- **UC-2 Change:** the parent/consumer triggers attendee join, leave, help, broadcast, and return-to-main flows; capability/current state is checked, the dependency is invoked, and accepted state is exposed once. Evidence: `src/breakouts/index.ts`, `src/breakouts/request.ts`.
+- **UC-1:** Reconcile session, roster, help, broadcast, and return-to-main changes into the meeting-scoped collection. Evidence: `src/breakouts/`.
+- **UC-2:** Acquire and refresh an edit lock before protected host configuration mutations, mapping lock conflicts to `BreakoutEditLockedError`. Evidence: `src/breakouts/`.
 
 ## State Model
 
@@ -170,32 +202,28 @@ Breakout collection, current/main session ids, management capability, edit-lock 
 
 ## Concurrency & Reactive Flow
 
-- Remote/event/promise/timer callbacks may interleave. Preserve current identity/sequence guards, allow only the intended in-flight operation, and make listener/timer/channel cleanup idempotent.
+- Async work owned by `Breakouts` may complete after a newer caller or remote input. Preserve the identity, sequence, and resource-owner guards in `src/breakouts/`; a late completion must not replay UC-2 for superseded state.
 
 ## State Machine
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Idle
-  Idle --> Active: initialize or accepted input
-  Active --> Active: valid update
-  Active --> Pending: async mutation or approval
-  Pending --> Active: accepted
-  Pending --> Failed: rejected or timed out
-  Active --> Closed: cleanup
-  Failed --> Closed: cleanup
-  Closed --> [*]
+  [*] --> CLOSED
+  CLOSED --> PENDING: host prepares sessions
+  PENDING --> OPEN: start
+  OPEN --> CLOSING: close requested
+  CLOSING --> CLOSED: sessions close
+  OPEN --> OPEN: roster / help / broadcast update
 ```
 
-Exact state values/guards remain in `src/breakouts/index.ts`; this diagram groups the externally meaningful lifecycle.
+The diagram uses the breakout `CLOSED`, `PENDING`, `OPEN`, and `CLOSING` values declared in `src/constants.ts`.
 
 ## Error Handling & Failure Modes
 
 | Condition | Signal | Caller recovery |
 |---|---|---|
-| missing capability, identity, URL, or invalid options | validation/established rejection | refresh state or correct input; do not retry unchanged |
-| service/channel/request rejection | propagated request or module error | branch on error; retry only through existing bounded policy |
-| timeout, role change, or teardown race | rejected/ignored stale result with cleanup | re-read current meeting state and invoke again only if still eligible |
+| missing management capability, invalid session/lock context, edit-lock conflict, or breakout service rejection | Follow the concrete rejection, ignore, state, or cleanup behavior in the module's R-003 requirement. | Resolve the named condition; retry only when another requirement defines a bound. |
+| UC-1 succeeds | Return, update, callback, or scoped event identified by the Public Surface and primary sequence. | Continue from the owning module's accepted state. |
 
 ## Pitfalls
 
@@ -204,8 +232,8 @@ Exact state values/guards remain in `src/breakouts/index.ts`; this diagram group
 
 ## Module Do's / Don'ts
 
-- DO preserve the module's current role/capability/state gate and mirrored tests.
-- DON'T bypass the owning request, collection, event scope, lock, or cleanup helper.
+- DO preserve this boundary: Reconcile session, roster, help, broadcast, and return-to-main changes into the meeting-scoped collection.
+- DON'T move remote I/O or lifecycle ownership into a passive type, constant, catalog, or normalization file.
 
 ## Key Design Trade-off
 
@@ -213,13 +241,13 @@ Exact state values/guards remain in `src/breakouts/index.ts`; this diagram group
 
 ## Test-Case Strategy (module)
 
-Start with the mirrored suite and sibling files in the same test directory. Cover successful derivation/mutation plus invalid capability/input, remote rejection, stale event, and cleanup. Use Sinon, `calledOnceWithExactly`, and fake timers for retry/lock/token/channel timing.
+Use the current mirrored suites: `test/unit/spec/breakouts/breakout.ts`, `test/unit/spec/breakouts/collection.ts`, `test/unit/spec/breakouts/edit-lock-error.ts`, `test/unit/spec/breakouts/events.ts`, `test/unit/spec/breakouts/index.ts`, `test/unit/spec/breakouts/request.ts`, `test/unit/spec/breakouts/utils.js`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
 | `BREAKOUTS-R-001` | `test/unit/spec/breakouts/index.ts` | inspect sibling tests for full operation matrix |
-| `BREAKOUTS-R-002` | `test/unit/spec/breakouts/index.ts` | verify rejected and role/capability-change branches |
-| `BREAKOUTS-R-003` | `test/unit/spec/breakouts/index.ts` | verify cleanup on all early exits |
+| `BREAKOUTS-R-002` | `test/unit/spec/breakouts/index.ts` | verify the operation-specific invalid-input and rejection branches |
+| `BREAKOUTS-R-003` | `test/unit/spec/breakouts/index.ts` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
 | `BREAKOUTS-R-004` | `test/unit/spec/breakouts/index.ts`, `test/unit/spec/breakouts/breakout.ts` | verify duplicate/out-of-order roster updates |
 | `BREAKOUTS-R-005` | `test/unit/spec/breakouts/request.ts` | verify management-capability rejection |
 | `BREAKOUTS-R-006` | `test/unit/spec/breakouts/edit-lock-error.ts`, `test/unit/spec/breakouts/utils.js` | verify keepalive/unlock cleanup on failure |

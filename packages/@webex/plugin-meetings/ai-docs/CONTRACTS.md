@@ -4,7 +4,7 @@ generated_from: contracts@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-18T15:33:39Z
+updated_at: 2026-08-21T06:10:05Z
 validation_status: not-run
 -->
 # CONTRACTS — @webex/plugin-meetings
@@ -23,6 +23,7 @@ validation_status: not-run
 | `package.constants` | `CONSTANTS`, `REACTIONS`, selected enums/types | stable consumer values and payload typing | never silently change wire values |
 | `package.errors` | join, captcha, password, permission, reclaim-host, SDP timeout errors | actionable consumer failure branches | preserve class identity and relevant fields |
 | `package.utilities` | `MeetingInfoUtil`, `TriggerProxy`, `getAIEnablementApprover` | selected advanced integration helpers | semver-sensitive |
+| `meetings.site-preferences` | `Meetings.fetchSitePreferencesMeViaSite(options?)` | fetch the selected preference sections from a site's `/wbxappapi/v1/users/me/preference` resource, using an explicit site or the preferred site established during registration | semver-sensitive method, option, and response shape |
 
 The retained `README.md` contains extensive usage examples for registration, creating/finding meetings, joining, media, PMR, members, and events. Those examples are migration source material; validate them against current source before copying into new consumer code.
 
@@ -58,7 +59,6 @@ Event caveat retained from consumer guidance: do not assume every event is globa
 | `media:ready` | local or remote media became available; payload contains media `type` and `stream` |
 | `media:stopped` | local or remote media was torn down; payload identifies media `type` |
 | `meeting:media:local:start` / `meeting:media:remote:start` | local bytes began sending or remote bytes began arriving |
-| `meeting:alerted` | Locus was notified of the incoming meeting; no payload |
 | `meeting:ringing` / `meeting:ringingStop` | ringing starts/stops; payload identifies meeting/type and remote answer/decline state |
 | `meeting:startedSharingLocal` / `meeting:stoppedSharingLocal` | local share lifecycle; no payload |
 | `meeting:startedSharingRemote` / `meeting:stoppedSharingRemote` | remote share lifecycle |

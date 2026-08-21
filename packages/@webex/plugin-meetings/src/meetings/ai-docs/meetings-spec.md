@@ -4,7 +4,7 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-18T15:33:39Z
+updated_at: 2026-08-21T06:10:05Z
 validation_status: not-run
 -->
 # MEETINGS — SPEC
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/meetings/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 93% assessed 2026-08-18; 13/14 mandatory fields present; all critical fields present, one noncritical detail gap remains |
+| Coverage score | 93% assessed 2026-08-21; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-18T15:33:39Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -37,7 +37,7 @@ Requirements cite current implementation and mirrored unit-test paths. Current c
 
 ## Overview
 
-For orientation, start at `src/meetings/index.ts`; supporting files under `src/meetings/` separate request, parsing, collection, type, or utility concerns from parent orchestration. The module is composed by `Meeting`, `Meetings`, or the package entry as applicable. Remote Webex services/Locus remain authoritative, and all local state is scoped to the SDK, plugin, meeting, or operation lifetime.
+`src/meetings/` contains 5 direct source/reference file(s) and has 4 mirrored unit-test file(s). This spec separates its public operations, runtime data movement, component ownership, state applicability, and verification boundary.
 
 ## Purpose / Responsibility
 
@@ -51,8 +51,11 @@ TypeScript/JavaScript in the Node 22.14 Yarn workspace; Webex core/plugin abstra
 
 ```text
 src/meetings/
-├── index.ts — primary behavior/entry point
-├── request.ts — request, parser, utility, or supporting behavior
+├── collection.ts — module-owned collection
+├── index.ts — module facade/controller or primary exports
+├── meetings.types.ts — module type declarations
+├── request.ts — HTTP request boundary
+├── util.ts — normalization/helper functions
 └── ai-docs/meetings-spec.md — canonical module specification
 ```
 
@@ -60,10 +63,12 @@ src/meetings/
 
 | File | Holds |
 |---|---|
-| `src/meetings/index.ts` | Primary lifecycle and public/internal surface |
-| `src/meetings/request.ts` | Supporting transport, parser, or state behavior |
-| `test/unit/spec/meetings/index.js` | Mirrored behavioral tests |
-| `src/constants.ts` | Shared meeting/event/wire constants where consumed |
+| `src/meetings/collection.ts` | module-owned collection |
+| `src/meetings/index.ts` | module facade/controller or primary exports |
+| `src/meetings/meetings.types.ts` | module type declarations |
+| `src/meetings/request.ts` | HTTP request boundary |
+| `src/meetings/util.ts` | normalization/helper functions |
+| `test/unit/spec/meetings/collection.js` and 3 sibling test file(s) | mirrored characterization/unit coverage |
 
 ## Public Surface
 
@@ -86,58 +91,71 @@ Webex core host, device and Mercury plugins, meeting-info services, Meeting cons
 |---|---|---|---|---|---|---|
 | `MEETINGS-R-001` | create/get meeting and collection lookup. | Owns the registered plugin lifecycle, meeting discovery, registration, realtime routing, and the top-level meeting collection. | `src/meetings/index.ts` | `test/unit/spec/meetings/index.js` | none | PRESENT |
 | `MEETINGS-R-002` | register/unregister device and Mercury lifecycle. | Callers need deterministic observable behavior across async Webex inputs. | `src/meetings/index.ts`, `src/meetings/request.ts` | `test/unit/spec/meetings/index.js` | additional edge cases may live in sibling tests | PRESENT |
-| `MEETINGS-R-003` | Failures reject/emit the established signal and release module-owned listeners, timers, or transient objects. | Hidden failure or leaked state causes later meeting operations to behave incorrectly. | `src/meetings/index.ts` | `test/unit/spec/meetings/index.js` | verify sibling test files for operation-specific cleanup | PRESENT |
-| `MEETINGS-R-004` | Registration executes device, Mercury, reachability/site, and synchronization steps with separately observable status. | A caller must distinguish the failing prerequisite and must not treat partial registration as ready. | `src/meetings/index.ts`, `src/meetings/meetings.types.ts` | `test/unit/spec/meetings/index.js` | none | PRESENT |
+| `MEETINGS-R-003` | Registration step failures update the tracked step status and reject; unregister removes Mercury listeners and device state, while sync request failures remain separate from register completion. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/meetings/` | `test/unit/spec/meetings/index.js` | none | PRESENT |
+| `MEETINGS-R-004` | `register()` executes site, geo, reachability, device-registration, Mercury-connect, and H.264 steps with separately observable status. `syncMeetings()` runs later from the Mercury `ONLINE` handler installed by `listenForEvents()`. | Registration readiness and active-meeting synchronization are distinct phases; merging them hides which prerequisite failed and misstates when collection reconciliation occurs. | `src/meetings/index.ts`, `src/meetings/meetings.types.ts` | `test/unit/spec/meetings/index.js` | none | PRESENT |
 | `MEETINGS-R-005` | Mercury/Locus events resolve an existing meeting by supported keys before creating or routing a new object. | Stable meeting identity prevents duplicate Meeting objects and misrouted realtime updates. | `src/meetings/index.ts`, `src/meetings/collection.ts` | `test/unit/spec/meetings/index.js`, `test/unit/spec/meetings/collection.js` | none | PRESENT |
 | `MEETINGS-R-006` | Reachability, geo hints, site preferences, PMR, and active-meeting queries delegate to their current request/controller boundaries. | Central plugin access must preserve host credentials, service discovery, and established response/error behavior. | `src/meetings/index.ts`, `src/meetings/request.ts` | `test/unit/spec/meetings/request.js` | none | PRESENT |
 
 ## Design Overview
 
-The primary entry point coordinates domain state and delegates transport/parsing to supporting files so those boundaries remain testable. Inputs are normalized before client state or events change. Async results preserve the established error signal, while teardown owns every listener, timer, or transient object allocated by this module.
+`Meetings` is the registered plugin facade and collection owner. `register()` executes site/geo/reachability/device/Mercury/H.264 steps and then installs event listeners; synchronization is a separate `syncMeetings()` call triggered by the Mercury `ONLINE` handler.
 
 ## Data Flow
 
 ```mermaid
 flowchart LR
-  Caller[Meeting/Meetings/consumer] --> Entry[src/meetings/index.ts]
-  Entry --> Support[src/meetings/request.ts]
-  Support --> Remote[Webex host/service/event input]
-  Remote --> Normalize[validate and normalize]
-  Normalize --> State[in-memory module state]
-  State --> Output[result / scoped event / callback]
-  Remote -. failure .-> Error[reject or established error event]
-  Error --> Cleanup[release transient resources]
+  Consumer[webex.meetings consumer] --> Plugin[index.ts]
+  Plugin --> Request[request.ts]
+  Plugin --> Info[src/meeting-info]
+  Plugin --> Collection[collection.ts]
+  Plugin --> Device[Webex device registration]
+  Plugin --> Mercury[Mercury connection and events]
+  Mercury --> Sync[syncMeetings]
+  Sync --> Request
+  Collection --> Meeting[src/meeting]
 ```
 
 ## Sequence Diagram(s)
 
 Sequence coverage:
 
-The operation groups below share the same caller → module → supporting dependency → Webex/input ordering and the same rejection/cleanup contract, so one combined diagram covers their common sequence; operation-specific state and guards are stated in the requirements and use cases.
-
-| Operation group | Diagram | Failure / recovery coverage |
+| Operation group | Diagram | Failure coverage |
 |---|---|---|
-| create/get meeting and collection lookup | Primary operation | validation/service rejection and cleanup branch |
-| register/unregister device and Mercury lifecycle | Async update | stale/error input is rejected or ignored according to current code |
+| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
+| UC-2 — secondary/change operation | Secondary operation and failure sequence | registration-step rejection, Mercury/device failure, unsupported destination, site-preference parameter error, or meeting-sync request failure |
+
+### Primary operation sequence
 
 ```mermaid
 sequenceDiagram
-  participant C as Caller
+  participant C as Consumer
   participant M as Meetings
-  participant D as Supporting dependency
-  participant W as Webex/input source
-  C->>M: invoke operation
-  M->>D: validate/prepare
-  D->>W: request or consume event
-  alt accepted response/update
-    W-->>D: payload
-    D-->>M: normalized result
-    M-->>C: result or scoped event
-  else rejected, timeout, or invalid input
-    W--xD: error/invalid payload
-    D--xM: established failure
-    M->>M: cleanup transient state
-    M--xC: rejection/error event
+  participant D as Device
+  participant Q as Mercury
+  participant R as MeetingRequest
+  C->>M: register(options)
+  M->>M: site, geo, reachability, and H.264 steps
+  M->>D: register device
+  M->>Q: connect and install listeners
+  M-->>C: registration result
+  Q-->>M: ONLINE
+  M->>R: syncMeetings({keepOnlyLocusMeetings:false})
+  R-->>M: active meetings
+  M->>M: reconcile MeetingCollection
+```
+
+### Secondary operation and failure sequence
+
+```mermaid
+sequenceDiagram
+  participant C as Caller / current input owner
+  participant M as Meetings
+  C->>M: invoke the UC-2 operation
+  M->>M: apply the current guard and ownership rules
+  alt accepted current input
+    M-->>C: documented result, state update, or scoped event
+  else registration-step rejection, Mercury/device failure, unsupported destination, site-preference parameter error, or meeting-sync request failure
+    M--xC: documented R-003 rejection, ignore, or cleanup outcome
   end
 ```
 
@@ -145,21 +163,32 @@ sequenceDiagram
 
 ```mermaid
 classDiagram
-  class Caller
-  class Meetings
-  class SupportingDependency
-  class WebexHost
-  Caller --> Meetings
-  Meetings --> SupportingDependency
-  SupportingDependency --> WebexHost
+  class Consumer
+  class Plugin
+  class Request
+  class Info
+  class Collection
+  class Device
+  class Mercury
+  class Sync
+  class Meeting
+  Consumer --> Plugin
+  Plugin --> Request
+  Plugin --> Info
+  Plugin --> Collection
+  Plugin --> Device
+  Plugin --> Mercury
+  Mercury --> Sync
+  Sync --> Request
+  Collection --> Meeting
 ```
 
-The primary module object owns its client state and composes/invokes supporting request, parser, collection, or utility code. The Webex host/service remains the authority for remote state.
+The arrows identify ownership and delegation inside `src/meetings/`; files that only declare types or constants are not presented as transports.
 
 ## Use Cases
 
-- **UC-1 Primary operation:** a consumer or parent module invokes create/get meeting and collection lookup; the module validates/delegates, normalizes the result, updates state where applicable, and returns or emits the established outcome. Evidence: `src/meetings/index.ts`, `test/unit/spec/meetings/index.js`.
-- **UC-2 Async/change operation:** the parent or remote input triggers register/unregister device and Mercury lifecycle; the module reconciles it with current state and exposes one scoped result. Evidence: `src/meetings/index.ts`, `src/meetings/request.ts`.
+- **UC-1:** Register device and Mercury through tracked registration steps without treating meeting synchronization as part of `register()` itself. Evidence: `src/meetings/`.
+- **UC-2:** On Mercury `ONLINE`, fetch active meetings and reconcile the collection; create/find operations use meeting-info and collection helpers. Evidence: `src/meetings/`.
 
 ## State Model
 
@@ -171,33 +200,29 @@ Registration progress, meeting collection entries, sync state, and listener hand
 
 ## Concurrency & Reactive Flow
 
-- Promise, event, media, and timer callbacks can interleave. Preserve existing sequence guards, make cleanup idempotent, and never start an unbounded retry/listener loop.
-- Do not assume remote events are globally ordered unless the current parser/state code enforces ordering.
+- Async work owned by `Meetings` may complete after a newer caller or remote input. Preserve the identity, sequence, and resource-owner guards in `src/meetings/`; a late completion must not replay UC-2 for superseded state.
 
 ## State Machine
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Idle
-  Idle --> Active: initialize or accepted operation
-  Active --> Active: valid update
-  Active --> Recovering: transient failure where supported
-  Recovering --> Active: recovery succeeds
-  Recovering --> Failed: retry/guard exhausted
-  Active --> Closed: cleanup or parent teardown
-  Failed --> Closed: cleanup
-  Closed --> [*]
+  [*] --> unregistered
+  unregistered --> registering: register()
+  registering --> registered: required steps succeed
+  registering --> unregistered: step fails and status resets
+  registered --> syncing: Mercury ONLINE
+  syncing --> registered: collection reconciled or sync settles
+  registered --> unregistered: unregister()
 ```
 
-State labels summarize the module lifecycle; exact guards and values remain in `src/meetings/index.ts`.
+These labels summarize the concrete `registered`, registration-promise, registration-step, and Mercury-`ONLINE` transitions in `src/meetings/index.ts`.
 
 ## Error Handling & Failure Modes
 
 | Condition | Signal | Caller recovery |
 |---|---|---|
-| invalid options or unsupported state | established validation/error rejection | correct input/state; do not retry unchanged |
-| Webex/service/media rejection | propagated typed/request/media error | branch on the established error; retry only where module policy is bounded |
-| timeout, stale update, or teardown race | timeout/rejection/ignored stale update per current path | re-read current meeting state; allow cleanup/recovery manager to finish |
+| registration-step rejection, Mercury/device failure, unsupported destination, site-preference parameter error, or meeting-sync request failure | Follow the concrete rejection, ignore, state, or cleanup behavior in the module's R-003 requirement. | Resolve the named condition; retry only when another requirement defines a bound. |
+| UC-1 succeeds | Return, update, callback, or scoped event identified by the Public Surface and primary sequence. | Continue from the owning module's accepted state. |
 
 ## Pitfalls
 
@@ -214,13 +239,13 @@ The Webex SDK host supplies initialized request/device/Mercury/media capabilitie
 
 ## Test-Case Strategy (module)
 
-Use the mirrored suite as the first characterization boundary. Cover each public operation with a successful result/state/event and a rejected/invalid branch; use fake timers for timeout/retry logic; assert listener/resource cleanup for async modules; keep request/parser fixtures representative without secrets.
+Use the current mirrored suites: `test/unit/spec/meetings/collection.js`, `test/unit/spec/meetings/index.js`, `test/unit/spec/meetings/request.js`, `test/unit/spec/meetings/utils.js`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
-| `MEETINGS-R-001` | `test/unit/spec/meetings/index.js` | confirm sibling operation tests during focused changes |
-| `MEETINGS-R-002` | `test/unit/spec/meetings/index.js` | verify out-of-order/rejection edge where applicable |
-| `MEETINGS-R-003` | `test/unit/spec/meetings/index.js` | verify cleanup on every early-exit path |
+| `MEETINGS-R-001` | `test/unit/spec/meetings/index.js` | confirm the named operation against its owning sibling suite |
+| `MEETINGS-R-002` | `test/unit/spec/meetings/index.js` | verify the code-grounded rejection or stale-input branch |
+| `MEETINGS-R-003` | `test/unit/spec/meetings/index.js` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
 | `MEETINGS-R-004` | `test/unit/spec/meetings/index.js` | verify each registration-step rejection |
 | `MEETINGS-R-005` | `test/unit/spec/meetings/index.js`, `test/unit/spec/meetings/collection.js` | verify alternate-key collision cases |
 | `MEETINGS-R-006` | `test/unit/spec/meetings/request.js` | none |
