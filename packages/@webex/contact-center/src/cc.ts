@@ -56,6 +56,9 @@ import {
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
+import AnswerCallOnWebexService from './services/AnswerCallOnWebexService';
+import WebexCrossClientService from './services/WebexCrossClientService';
+import WxAppTelephonyMercurySync from './services/WxAppTelephonyMercurySync';
 import {
   ITask,
   TASK_EVENTS,
@@ -233,6 +236,34 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private webCallingService: WebCallingService;
 
   /**
+   * REST telephony for wxApp thick-client answer (WXCC-6026)
+   * @private
+   */
+  private answerCallOnWebexService: AnswerCallOnWebexService;
+
+  /**
+   * usersub cross-client state for Webex App toast suppression
+   * @private
+   */
+  private webexCrossClientService: WebexCrossClientService;
+
+  /**
+   * Mercury telephony mute sync for wxApp thick-client answer
+   * @private
+   */
+  private wxAppTelephonyMercurySync: WxAppTelephonyMercurySync;
+
+  /** True when wxApp mute sync opened Mercury (Extension/DN-only profiles). */
+  private wxAppMercuryConnectedByCc = false;
+
+  /** True when wxApp mute sync registered the Webex device. */
+  private wxAppDeviceRegisteredByCc = false;
+
+  private static readonly WXAPP_FALSE_PUBLISH_RETRY_DELAY_MS = 30_000;
+  private static readonly WXAPP_FALSE_PUBLISH_MAX_RETRIES = 3;
+  private wxAppFalsePublishRetryTimer?: ReturnType<typeof setTimeout>;
+
+  /**
    * Core service managers for Contact Center operations
    * Includes agent, connection, and configuration services
    * @type {Services}
@@ -405,6 +436,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       });
 
       this.webCallingService = new WebCallingService(this.$webex);
+      this.answerCallOnWebexService = new AnswerCallOnWebexService(this.$webex);
+      this.webexCrossClientService = new WebexCrossClientService(this.$webex);
+      this.wxAppTelephonyMercurySync = new WxAppTelephonyMercurySync(this.$webex);
       this.apiAIAssistant = new ApiAIAssistant(this.$webex);
       this.metricsManager = MetricsManager.getInstance({webex: this.$webex});
       this.taskManager = TaskManager.getTaskManager(
@@ -414,6 +448,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.services.webSocketManager,
         this.services.rtdWebSocketManager
       );
+      this.taskManager.setAnswerCallOnWebexService(this.answerCallOnWebexService);
       this.incomingTaskListener();
 
       // Initialize API instances
@@ -634,6 +669,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.rtdWebSocketManager.off('message', this.handleRTDWebsocketMessage);
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
 
+      const {publishError: wxAppPublishError} = await this.teardownWxAppLocalState({
+        clearInitFlag: true,
+      });
+
       if (
         this.agentConfig.webRtcEnabled &&
         this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
@@ -664,6 +703,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       // Clear any cached agent configuration
       this.agentConfig = null;
+
+      if (wxAppPublishError) {
+        throw wxAppPublishError;
+      }
 
       LoggerProxy.log('Deregistered successfully', {
         module: CC_FILE,
@@ -808,6 +851,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webRtcEnabled: this.agentConfig.webRtcEnabled,
         autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
         aiFeature: this.agentConfig.aiFeature,
+        enableWxBetterTogether: this.isWxBetterTogetherEnabled(),
       };
       this.taskManager.setConfigFlags(configFlags);
       // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
@@ -1009,6 +1053,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       };
 
       this.webCallingService.setLoginOption(data.loginOption);
+      if (this.agentConfig) {
+        this.agentConfig.deviceType = data.loginOption;
+        if (
+          data.loginOption === LoginOption.AGENT_DN ||
+          data.loginOption === LoginOption.EXTENSION
+        ) {
+          this.agentConfig.defaultDn = data.dialNumber;
+          this.agentConfig.dn = data.dialNumber;
+        }
+      }
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
         {
@@ -1029,6 +1083,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           trackingId: resp.trackingId,
         }
       );
+
+      await this.ensureWxAppPostStationLogin();
 
       return response;
     } catch (error) {
@@ -1097,6 +1153,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (this.webCallingService) {
         this.webCallingService.deregisterWebCallingLine();
       }
+
+      await this.teardownWxAppLocalState();
 
       LoggerProxy.log(`Agent station logout completed successfully`, {
         module: CC_FILE,
@@ -1378,6 +1436,430 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
+   * Whether wxApp thick-client answer is enabled for this SDK instance.
+   * @public
+   */
+  public isWxBetterTogetherEnabled(): boolean {
+    return this.$config?.enableWxBetterTogether === true;
+  }
+
+  /**
+   * Current station login option (Extension, Dial Number, or Browser/Desktop).
+   * Prefer webCallingService — updated on every stationLogin before wxApp hooks run.
+   * @private
+   */
+  private getCurrentStationLoginOption(): LoginOption | undefined {
+    return this.webCallingService?.loginOption ?? this.agentConfig?.deviceType;
+  }
+
+  /**
+   * wxApp thick-client answer is supported for Extension and Dial Number station login only —
+   * not Browser/Desktop (WebRTC) login.
+   * @private
+   */
+  private assertWxAppStationLoginSupportedForEnable(): void {
+    const loginOption = this.getCurrentStationLoginOption();
+    if (loginOption !== LoginOption.EXTENSION && loginOption !== LoginOption.AGENT_DN) {
+      throw new Error(
+        'setManageWebexCallingInWxcc requires EXTENSION or AGENT_DN station login. Complete station login before enabling.'
+      );
+    }
+  }
+
+  /**
+   * Clears runtime wxApp config after logout/deregister so stale flags do not apply on relogin.
+   * @private
+   */
+  private resetEnableWxBetterTogetherConfig(): void {
+    if (this.$config) {
+      this.$config.enableWxBetterTogether = false;
+    }
+    this.taskManager.applyEnableWxBetterTogether(false);
+  }
+
+  /**
+   * Runtime enable/disable for wxApp Better Together (toast suppression + Mercury mute sync).
+   *
+   * **Phase 1 (WXCC-6026 / MMT): NOT part of the public host contract.**
+   * Hosts must set `webexConfig.cc.enableWxBetterTogether` before `webex.init()` / `cc.register()`.
+   * To change the flag after the SDK is initialized, re-init the SDK with the updated config.
+   *
+   * **Supported public read API:** {@link isWxBetterTogetherEnabled}.
+   * **Supported telephony API:** unified `task.accept()`, `task.decline()`, `task.toggleMute()`,
+   * `task.transmitDtmf()` — SDK routes wxApp calls internally when the init flag is active.
+   *
+   * **Production lifecycle does not call this method.** Station login, silent relogin, logout,
+   * and deregister use {@link ensureWxAppPostStationLogin} and {@link teardownWxAppLocalState}
+   * (usersub publish + Mercury subscribe/unsubscribe based on the init flag).
+   *
+   * This setter remains as a **private implementation** for Phase 2 runtime toggle and unit tests.
+   * It updates `$config.enableWxBetterTogether`, TaskManager flags, cross-client usersub
+   * (`answer-calls-on-wxcc`), and Mercury mute sync; rolls back config on publish/connect failure.
+   *
+   * @param enabled - `true` to enable wxApp answer + usersub suppression; `false` to disable and tear down.
+   * @throws When enabling without login, on unsupported BROWSER station login, or when usersub/Mercury init fails.
+   * @internal
+   * @see enableWxBetterTogether (CCPluginConfig init flag)
+   * @see ensureWxAppPostStationLogin
+   * @see teardownWxAppLocalState
+   */
+  private async setManageWebexCallingInWxcc(enabled: boolean): Promise<void> {
+    if (enabled && !this.$webex.internal.device?.userId) {
+      throw new Error('Cannot publish answer-calls-on-wxcc: user is not logged in');
+    }
+
+    if (enabled) {
+      this.assertWxAppStationLoginSupportedForEnable();
+    }
+
+    const previousEnabled = this.isWxBetterTogetherEnabled();
+
+    if (this.$config) {
+      this.$config.enableWxBetterTogether = enabled;
+    }
+
+    this.taskManager.applyEnableWxBetterTogether(enabled);
+
+    let publishedEnable = false;
+
+    try {
+      if (enabled) {
+        await this.ensureWxAppMercuryAndSubscribe();
+        await this.publishAnswerOnWebexCrossClientState(true);
+        publishedEnable = true;
+        this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
+      } else {
+        await this.publishAnswerOnWebexCrossClientState(false);
+        this.wxAppTelephonyMercurySync.unsubscribe();
+        await this.releaseWxAppMercuryResources();
+      }
+    } catch (error) {
+      if (publishedEnable) {
+        await this.revertWxAppCrossClientPublish();
+      } else if (enabled) {
+        this.wxAppTelephonyMercurySync.unsubscribe();
+        await this.releaseWxAppMercuryResources();
+      }
+
+      if (this.$config) {
+        this.$config.enableWxBetterTogether = previousEnabled;
+      }
+      this.taskManager.applyEnableWxBetterTogether(previousEnabled);
+      throw error;
+    }
+  }
+
+  private async ensureWxAppPostStationLogin(): Promise<void> {
+    if (this.getCurrentStationLoginOption() === LoginOption.BROWSER) {
+      return;
+    }
+
+    let publishedEnable = false;
+
+    try {
+      if (this.isWxBetterTogetherEnabled()) {
+        await this.ensureWxAppMercuryAndSubscribe();
+        await this.publishAnswerOnWebexCrossClientState(true);
+        publishedEnable = true;
+        this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
+      } else {
+        await this.ensureWxAppDeviceRegistered();
+        await this.publishAnswerOnWebexCrossClientState(false, {force: true});
+        this.webexCrossClientService.teardown();
+        this.wxAppTelephonyMercurySync.unsubscribe();
+        await this.releaseWxAppMercuryResources();
+      }
+    } catch (error) {
+      LoggerProxy.error(`Failed to initialize wxApp post-station-login: ${error}`, {
+        module: CC_FILE,
+        method: METHODS.STATION_LOGIN,
+      });
+
+      if (this.isWxBetterTogetherEnabled()) {
+        if (publishedEnable) {
+          await this.revertWxAppCrossClientPublish();
+        } else {
+          this.wxAppTelephonyMercurySync.unsubscribe();
+          await this.releaseWxAppMercuryResources();
+        }
+        this.resetEnableWxBetterTogetherConfig();
+      } else {
+        this.scheduleForcedFalsePublishRetry();
+      }
+    }
+  }
+
+  private clearWxAppFalsePublishRetryTimer(): void {
+    if (this.wxAppFalsePublishRetryTimer) {
+      clearTimeout(this.wxAppFalsePublishRetryTimer);
+      this.wxAppFalsePublishRetryTimer = undefined;
+    }
+  }
+
+  private scheduleForcedFalsePublishRetry(retryAttempt = 0): void {
+    this.scheduleFalsePublishRetry(retryAttempt, {requireDisabled: true});
+  }
+
+  /**
+   * Retries compensating false publish after rollback failure, regardless of enabled flag.
+   * @private
+   */
+  private scheduleCompensatingFalsePublishRetry(retryAttempt = 0): void {
+    this.scheduleFalsePublishRetry(retryAttempt);
+  }
+
+  private scheduleFalsePublishRetry(
+    retryAttempt = 0,
+    options: {requireDisabled?: boolean} = {}
+  ): void {
+    if (retryAttempt >= ContactCenter.WXAPP_FALSE_PUBLISH_MAX_RETRIES) {
+      return;
+    }
+
+    if (options?.requireDisabled && this.isWxBetterTogetherEnabled()) {
+      return;
+    }
+
+    this.clearWxAppFalsePublishRetryTimer();
+
+    this.wxAppFalsePublishRetryTimer = setTimeout(async () => {
+      this.wxAppFalsePublishRetryTimer = undefined;
+
+      if (options?.requireDisabled && this.isWxBetterTogetherEnabled()) {
+        return;
+      }
+
+      if (
+        !options?.requireDisabled &&
+        this.isWxBetterTogetherEnabled() &&
+        this.webexCrossClientService.isAnswerCallsStateActive()
+      ) {
+        return;
+      }
+
+      try {
+        await this.ensureWxAppDeviceRegistered();
+        await this.publishAnswerOnWebexCrossClientState(false, {force: true});
+        this.webexCrossClientService.teardown();
+        this.wxAppTelephonyMercurySync.unsubscribe();
+        await this.releaseWxAppMercuryResources();
+      } catch (retryError) {
+        LoggerProxy.error(
+          `Failed to retry forced answer-calls-on-wxcc false publish: ${retryError}`,
+          {
+            module: CC_FILE,
+            method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+          }
+        );
+        this.scheduleFalsePublishRetry(retryAttempt + 1, options);
+      }
+    }, ContactCenter.WXAPP_FALSE_PUBLISH_RETRY_DELAY_MS);
+  }
+
+  /**
+   * Best-effort rollback when usersub true was published but wxApp setup did not complete.
+   * @private
+   */
+  private async revertWxAppCrossClientPublish(): Promise<void> {
+    try {
+      await this.publishAnswerOnWebexCrossClientState(false, {force: true});
+    } catch (error) {
+      LoggerProxy.error(
+        `Failed to publish compensating answer-calls-on-wxcc false during wxApp rollback: ${error}`,
+        {
+          module: CC_FILE,
+          method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+        }
+      );
+      this.scheduleCompensatingFalsePublishRetry();
+    }
+
+    this.webexCrossClientService.teardown();
+    this.wxAppTelephonyMercurySync.unsubscribe();
+    await this.releaseWxAppMercuryResources();
+  }
+
+  private async ensureWxAppDeviceRegistered(): Promise<void> {
+    const device = this.$webex.internal.device;
+
+    if (device && !device.registered && device.register) {
+      await device.register();
+      this.wxAppDeviceRegisteredByCc = true;
+      LoggerProxy.log('WxApp: device registered for cross-client publish', {
+        module: CC_FILE,
+        method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+      });
+    }
+  }
+
+  private async ensureWxAppMercuryConnected(): Promise<void> {
+    const mercury = this.$webex.internal.mercury;
+
+    await this.ensureWxAppDeviceRegistered();
+
+    if (mercury && !mercury.connected) {
+      await mercury.connect();
+      this.wxAppMercuryConnectedByCc = true;
+      LoggerProxy.log('WxApp mute sync: mercury connected', {
+        module: CC_FILE,
+        method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+      });
+    }
+  }
+
+  /**
+   * Disconnects Mercury and unregisters the device when wxApp mute sync opened them.
+   * @private
+   */
+  private async releaseWxAppMercuryResources(): Promise<void> {
+    const mercury = this.$webex.internal.mercury;
+    const device = this.$webex.internal.device;
+
+    if (this.wxAppMercuryConnectedByCc && mercury?.connected) {
+      try {
+        await mercury.disconnect();
+        this.wxAppMercuryConnectedByCc = false;
+        LoggerProxy.log('WxApp mute sync: mercury disconnected', {
+          module: CC_FILE,
+          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+        });
+      } catch (error) {
+        LoggerProxy.error(`Failed to disconnect wxApp Mercury: ${error}`, {
+          module: CC_FILE,
+          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+        });
+      }
+    }
+
+    if (this.wxAppDeviceRegisteredByCc && device?.registered && device.unregister) {
+      try {
+        // @ts-ignore
+        await device.unregister();
+        this.wxAppDeviceRegisteredByCc = false;
+        LoggerProxy.log('WxApp mute sync: device unregistered', {
+          module: CC_FILE,
+          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+        });
+      } catch (error) {
+        LoggerProxy.error(`Failed to unregister wxApp device: ${error}`, {
+          module: CC_FILE,
+          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+        });
+      }
+    } else if (this.wxAppDeviceRegisteredByCc) {
+      this.wxAppDeviceRegisteredByCc = false;
+    }
+  }
+
+  /**
+   * Clears wxApp runtime state and feature-owned resources. Publish failures are logged;
+   * optional rethrow for deregister when callers need to surface usersub errors.
+   * @private
+   */
+  private async teardownWxAppLocalState(options?: {
+    rethrowPublishError?: boolean;
+    clearInitFlag?: boolean;
+  }): Promise<{publishError?: unknown}> {
+    this.clearWxAppFalsePublishRetryTimer();
+    let publishError: unknown;
+
+    try {
+      const shouldForceFalsePublish =
+        this.isWxBetterTogetherEnabled() || this.webexCrossClientService.isAnswerCallsStateActive();
+
+      await this.publishAnswerOnWebexCrossClientState(false, {
+        force: shouldForceFalsePublish,
+      });
+    } catch (error) {
+      publishError = error;
+      LoggerProxy.error(
+        `Failed to publish answer-calls-on-wxcc false during wxApp teardown: ${error}`,
+        {
+          module: CC_FILE,
+          method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+        }
+      );
+    }
+
+    this.webexCrossClientService.teardown();
+    this.wxAppTelephonyMercurySync.unsubscribe();
+    await this.releaseWxAppMercuryResources();
+
+    if (options?.clearInitFlag) {
+      this.resetEnableWxBetterTogetherConfig();
+    }
+
+    if (publishError) {
+      this.scheduleCompensatingFalsePublishRetry();
+    }
+
+    if (options?.rethrowPublishError && publishError) {
+      throw publishError;
+    }
+
+    return {publishError: publishError ?? undefined};
+  }
+
+  private async ensureWxAppMercuryAndSubscribe(): Promise<void> {
+    if (!this.isWxBetterTogetherEnabled()) {
+      return;
+    }
+
+    if (this.getCurrentStationLoginOption() === LoginOption.BROWSER) {
+      return;
+    }
+
+    const agentId = this.agentConfig?.agentId;
+    if (!agentId) {
+      LoggerProxy.error('Cannot subscribe wxApp mute sync: agentId unavailable', {
+        module: CC_FILE,
+        method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
+      });
+
+      return;
+    }
+
+    try {
+      await this.ensureWxAppMercuryConnected();
+      this.wxAppTelephonyMercurySync.subscribe(agentId, (callId, muted) => {
+        this.taskManager.applyWxAppMuteStateFromSync(callId, muted);
+      });
+    } catch (error) {
+      LoggerProxy.error(`Failed to ensure wxApp Mercury mute sync: ${error}`, {
+        module: CC_FILE,
+        method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
+      });
+      this.wxAppTelephonyMercurySync.unsubscribe();
+      await this.releaseWxAppMercuryResources();
+      throw error;
+    }
+  }
+
+  private async publishAnswerOnWebexCrossClientState(
+    enable: boolean,
+    options?: {force?: boolean}
+  ): Promise<void> {
+    if (enable && !this.isWxBetterTogetherEnabled()) {
+      return;
+    }
+
+    if (!enable && !options?.force && !this.webexCrossClientService.isAnswerCallsStateActive()) {
+      return;
+    }
+
+    const userId = this.$webex.internal.device?.userId;
+    if (!userId) {
+      return;
+    }
+
+    await this.webexCrossClientService.setManageWebexCallingInWxcc(enable, {userId});
+
+    if (enable) {
+      this.clearWxAppFalsePublishRetryTimer();
+    }
+  }
+
+  /**
    * Initializes event listeners for the Contact Center service
    * Sets up handlers for connection state changes and other core events
    * @private
@@ -1480,6 +1962,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
       this.agentConfig.lastStateAuxCodeId = auxCodeId;
       this.agentConfig.isAgentLoggedIn = true;
+
+      await this.ensureWxAppPostStationLogin();
 
       LoggerProxy.log(
         `Silent relogin process completed successfully with login Option: ${reLoginResponse.data.deviceType} teamId: ${reLoginResponse.data.teamId}`,

@@ -57,6 +57,8 @@ export const CC_TASK_EVENTS = {
   PARTICIPANT_LEFT_CONFERENCE: 'ParticipantLeftConference',
   /** Event emitted when participant leaving conference fails */
   PARTICIPANT_LEFT_CONFERENCE_FAILED: 'ParticipantLeftConferenceFailed',
+  /** Event emitted when dropping another conference participant fails */
+  PARTICIPANT_DROP_CONFERENCE_FAILED: 'ParticipantDropConferenceFailed',
   /** Event emitted when consultation conference end fails */
   AGENT_CONSULT_CONFERENCE_END_FAILED: 'AgentConsultConferenceEndFailed',
   /** Event emitted when conference is successfully transferred */

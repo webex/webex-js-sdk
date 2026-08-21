@@ -266,14 +266,18 @@ shouldWrapUpOrIsInitiator(context, event) {
   return Boolean(event.taskData?.wrapUpRequired || context.consultInitiator);
 }
 
-// Check whether the leaving participant is the current agent
-didCurrentAgentLeaveConference(context, event) {
+// Check whether the current agent left the main interaction
+didCurrentAgentLeaveMainInteraction(context, event) {
   const selfAgentId = getSelfAgentId(context, event.taskData);
   if (!selfAgentId) return false;
 
   const participantIdFromEvent = 'participantId' in event ? event.participantId : undefined;
   const participantId = participantIdFromEvent ?? event.taskData?.participantId;
-  return Boolean(participantId) && participantId === selfAgentId;
+  if (Boolean(participantId) && participantId === selfAgentId) return true;
+  // Explicit hasLeft or removal of a previously active self from the participant map is terminal.
+  // PARTICIPANT_LEAVE naming another participant does not infer self departure from media.
+  // Only a from-conference CONSULT_END may compare mainCall membership, and only when self
+  // remains active in the participant map and on the consult leg. Partial ordinary calls are false.
 }
 ```
 
