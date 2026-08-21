@@ -48,6 +48,10 @@ import {
   WxAppVoiceLifecycle,
 } from './wxAppVoiceMethods';
 
+type VoiceTaskOptions = VoiceUIControlOptions & {
+  consultTransferConfig?: ConsultTransferDestinationConfig;
+};
+
 export default class Voice extends Task implements IVoice {
   private static readonly WXAPP_MUTE_SYNC_RETRY_DELAY_MS = 50;
   private static readonly WXAPP_MUTE_SYNC_MAX_RETRIES = 3;
@@ -63,10 +67,9 @@ export default class Voice extends Task implements IVoice {
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
-    callOptions?: VoiceUIControlOptions,
+    callOptions?: VoiceTaskOptions,
     wrapupData?: WrapupData,
-    agentId?: string,
-    consultTransferConfig?: ConsultTransferDestinationConfig
+    agentId?: string
   ) {
     const resolvedOptions = {
       isEndTaskEnabled: callOptions?.isEndTaskEnabled ?? true,
@@ -81,7 +84,7 @@ export default class Voice extends Task implements IVoice {
       data,
       {
         ...resolvedOptions,
-        consultTransferConfig,
+        consultTransferConfig: callOptions?.consultTransferConfig,
       },
       wrapupData,
       agentId

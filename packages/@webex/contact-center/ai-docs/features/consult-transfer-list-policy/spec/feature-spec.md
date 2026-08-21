@@ -146,7 +146,7 @@ There are no open product decisions for this delta.
 
 ### MOD-003 — Buddy-agent request contract (`AGENT-R-003`)
 
-- **WHAT**: Preserve the correlated buddy-agent request/response contract while allowing the façade to derive optional state from `Consult` or `Transfer`.
+- **WHAT**: Preserve the existing `BuddyAgents` options object and correlated request/response contract while allowing its optional `action` field to derive state from `Consult` or `Transfer`. `mediaType` defaults to telephony, and an explicit `state` takes precedence over the action default.
 - **WHY**: Eligibility changes must not alter AQM settlement or invent UI-side filtering.
 - **Evidence:** `src/cc.ts`, `src/services/agent/index.ts`, `test/unit/spec/cc.ts`, `test/unit/spec/services/agent/index.ts`.
 - **Acceptance:** Transfer sends `Available`; Consult sends no state; explicit state callers remain typed and supported.
@@ -215,7 +215,7 @@ There are no open product decisions for this delta.
 
 | API or operation | Change | Consumer impact | Compatibility expectation | Canonical definition |
 | --- | --- | --- | --- | --- |
-| Buddy-agent input | Add discriminated `action` branch; retain explicit state branch. | Consumers may pass Consult/Transfer instead of choosing state. | Additive public type; explicit-state callers remain supported. | `src/types.ts` |
+| Buddy-agent input | Add optional `action` to the existing options object and make `mediaType` optional with a telephony default. | Consumers may pass Consult/Transfer instead of choosing state. | Additive public option; explicit-state callers remain supported and take precedence. | `src/types.ts` |
 | Existing queue list | Apply the telephony filter, profile views, and `name,ASC` by default. | Thin clients call `getQueues`; other consumers use existing parameters for overrides. | Intentional default correction; method and response signature unchanged. | `src/cc.ts`, `src/services/Queue.ts` |
 | Existing entry-point list | Fetch desktop-profile `/v3/dial-number` mappings with the required organization/internal-data headers, request entry-point names, map fields row-for-row, and use `entryPointName,ASC` by default. | Thin clients call `getEntryPoints` and receive the displayed number without joining another endpoint. | Intentional default correction; method and response wrapper unchanged. | `src/cc.ts`, `src/services/EntryPoint.ts`, `src/services/config/constants.ts`, `src/services/core/WebexRequest.ts` |
 | `EntryPointRecord` | Add optional mapped `number`; make configuration-only `type`, `isActive`, and `orgId` optional for truthful mapped-list typing. | Consumers can render the dialled number without a cast and cannot assume absent configuration fields. | Additive field with a type-correctness adjustment; no new response wrapper. | `src/types.ts` |
@@ -227,7 +227,7 @@ There are no open product decisions for this delta.
 | Export or entry point | Change | Affected consumers | Required version change | Deprecation or migration |
 | --- | --- | --- | --- | --- |
 | Existing `getQueues` / `getEntryPoints` | Default request behavior changes; signatures do not | Widgets and other SDK consumers | Behavioral semver review | Pass compatible existing filters/sorts when different behavior is required; entry-point profile scoping remains SDK-owned. |
-| `BuddyAgents` | Add action-based alternative while retaining explicit state | Existing and new consumers | Minor | Existing explicit-state calls remain valid. |
+| `BuddyAgents` | Add optional action-based defaults to the existing options object while retaining explicit state | Existing and new consumers | Minor | Existing explicit-state calls remain valid and override action defaults. |
 | `TaskUIControls` | Add inline ordered, action-specific destination availability using existing destination values | Task UI consumers | Minor | Read the matching action array; first item is the default category. |
 | `Task.transfer` | Route the existing public `entryPoint` value through vteam transfer as backend `entrypointDialNumber` | Existing voice-task consumers | Patch/behavioral correction | No caller migration; backend translation is SDK-owned. |
 | `EntryPointRecord` | Add optional mapped `number`; configuration-only fields become optional | Entry-point list consumers | Behavioral/type-contract review | Render `number` when present and handle configuration-only fields as optional. |
@@ -262,7 +262,7 @@ No event contract changes.
 
 | Entity or payload | Requested field or shape | Purpose | Ownership | Privacy, retention, or compatibility constraint |
 | --- | --- | --- | --- | --- |
-| Buddy-agent input | `action` plus optional `mediaType`, mutually exclusive with explicit `state` | Derive Consult/Transfer eligibility. | SDK public type | No credential or persistent data. |
+| Buddy-agent input | Existing options object with optional `action`, `mediaType`, and explicit `state`; explicit state takes precedence | Derive Consult/Transfer eligibility without a parallel public input type. | SDK public type | No credential or persistent data. |
 | Queue search input | Existing page, page size, search, filter, sort, and profile parameters | Consumer-controlled pagination plus optional default overrides. | Existing SDK public type | No second media-bearing request type. |
 | Queue backend query | Default inbound/active/telephony filter, name ascending, desktop-profile/agent/first-level views, no field projection | Full queue result using the default list policy. | Queue service | Fixed filter/views bypass simple-page caching. |
 | Entry-point backend query | `/v3/dial-number`, `X-ORGANIZATION-ID`, `x-ignore-internal-data=false`, `desktopProfileFilter=true`, `includeEntryPointName=true`, required mapping attributes, and `entryPointName,ASC` | Return profile-scoped EP-DN rows with the visible dialled number. | EntryPoint service and shared WebexRequest wrapper | The service does not use PageCache for these profile-scoped requests; caller search is escaped before CMS expression construction. |

@@ -568,14 +568,18 @@ export type RequestBody =
   | CreateUserPreferenceRequest
   | UpdateUserPreferenceRequest;
 
-type BuddyAgentMediaType = 'telephony' | 'chat' | 'social' | 'email';
-
-type BuddyAgentsByState = {
+/**
+ * Represents the options to fetch buddy agents for the logged in agent.
+ * Buddy agents are other agents who can be consulted or transferred to.
+ * @public
+ * @example
+ * const opts: BuddyAgents = { mediaType: 'telephony', state: 'Available' };
+ */
+export type BuddyAgents = {
   /**
-   * The media type channel to filter buddy agents.
-   * Determines which channel capability the returned agents must have.
+   * The media type channel to filter buddy agents. Defaults to telephony when omitted.
    */
-  mediaType: BuddyAgentMediaType;
+  mediaType?: 'telephony' | 'chat' | 'social' | 'email';
 
   /**
    * Optional filter for agent state.
@@ -584,33 +588,11 @@ type BuddyAgentsByState = {
    */
   state?: 'Available' | 'Idle';
 
-  /** Action-based filtering is mutually exclusive with an explicit state filter. */
-  action?: never;
-};
-
-type BuddyAgentsByAction = {
   /**
-   * The media type channel to filter buddy agents. Defaults to telephony when omitted.
+   * Applies the default state policy for the operation. An explicit state takes precedence.
    */
-  mediaType?: BuddyAgentMediaType;
-
-  /**
-   * Consult returns all eligible agents; Transfer returns only Available agents.
-   */
-  action: 'Consult' | 'Transfer';
-
-  /** Explicit state filtering is mutually exclusive with action-based filtering. */
-  state?: never;
+  action?: 'Consult' | 'Transfer';
 };
-
-/**
- * Represents the options to fetch buddy agents for the logged in agent.
- * Buddy agents are other agents who can be consulted or transferred to.
- * @public
- * @example
- * const opts: BuddyAgents = { mediaType: 'telephony', state: 'Available' };
- */
-export type BuddyAgents = BuddyAgentsByState | BuddyAgentsByAction;
 
 /**
  * Holds the configuration flags for the Agent.

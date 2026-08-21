@@ -644,7 +644,7 @@ function applyTaskDestinationTypes(dropdown, action) {
 
 async function showInitiateConsultDialog() {
   applyTaskDestinationTypes(destinationTypeDropdown, 'consult');
-  await onConsultTypeSelectionChanged();
+  if (!destinationTypeDropdown.disabled) await onConsultTypeSelectionChanged();
   initiateConsultDialog.showModal();
 }
 
@@ -1151,9 +1151,10 @@ async function toggleTransferOptions() {
   // Regular flow (normal consulted/general transfer): show transfer popover
   const transferOptions = document.getElementById('transfer-options');
   if (transferOptions.style.display === 'none') {
-    applyTaskDestinationTypes(document.querySelector('#transfer-destination-type'), 'transfer');
+    const transferDestinationType = document.querySelector('#transfer-destination-type');
+    applyTaskDestinationTypes(transferDestinationType, 'transfer');
     transferOptions.style.display = 'block';
-    await onTransferTypeSelectionChanged();
+    if (!transferDestinationType.disabled) await onTransferTypeSelectionChanged();
   } else {
     transferOptions.style.display = 'none';
   }

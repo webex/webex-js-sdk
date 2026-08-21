@@ -13,11 +13,6 @@ import {endPointMap} from './config/constants';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
 import {METHODS} from '../constants';
 
-type QueueRequestParams = ContactServiceQueueSearchParams & {
-  agentView?: boolean;
-  firstLevelView?: boolean;
-};
-
 /**
  * Queue API class for managing Webex Contact Center contact service queues.
  * Provides functionality to fetch contact service queues using the queue API.
@@ -103,41 +98,21 @@ export class Queue {
   public async getQueues(
     params: ContactServiceQueueSearchParams = {}
   ): Promise<ContactServiceQueuesResponse> {
-    const {
-      filter = 'queueType==INBOUND;channelType==TELEPHONY;active==true',
-      sortBy = 'name',
-      sortOrder = 'asc',
-      desktopProfileFilter = true,
-      ...remainingParams
-    } = params;
-
-    return this.fetchQueues({
-      ...remainingParams,
-      filter,
-      sortBy,
-      sortOrder,
-      desktopProfileFilter,
-      agentView: desktopProfileFilter,
-      firstLevelView: desktopProfileFilter,
-    });
-  }
-
-  private async fetchQueues(params: QueueRequestParams): Promise<ContactServiceQueuesResponse> {
     const startTime = Date.now();
     const {
       page = PAGINATION_DEFAULTS.PAGE,
       pageSize = PAGINATION_DEFAULTS.PAGE_SIZE,
       search,
-      filter,
+      filter = 'queueType==INBOUND;channelType==TELEPHONY;active==true',
       attributes,
-      sortBy,
-      sortOrder,
-      desktopProfileFilter,
+      sortBy = 'name',
+      sortOrder = 'asc',
+      desktopProfileFilter = true,
       provisioningView,
       singleObjectResponse,
-      agentView,
-      firstLevelView,
     } = params;
+    const agentView = desktopProfileFilter;
+    const firstLevelView = desktopProfileFilter;
 
     const orgId = this.webex.credentials.getOrgId();
     const effectiveSortBy = sortBy ?? (sortOrder ? 'name' : undefined);

@@ -31,6 +31,7 @@ export default class TaskFactory {
       isRecordingEnabled: recordingEnabled,
       enableWxBetterTogether: configFlags.enableWxBetterTogether ?? false,
       answerCallOnWebexService,
+      consultTransferConfig: consultTransfer,
     };
     switch (mediaType) {
       case MEDIA_CHANNEL.TELEPHONY:
@@ -41,12 +42,11 @@ export default class TaskFactory {
             data,
             voiceControlOptions,
             wrapupData,
-            agentId,
-            consultTransfer
+            agentId
           );
         }
 
-        return new Voice(contact, data, voiceControlOptions, wrapupData, agentId, consultTransfer);
+        return new Voice(contact, data, voiceControlOptions, wrapupData, agentId);
 
       case MEDIA_CHANNEL.CHAT:
       case MEDIA_CHANNEL.EMAIL:
