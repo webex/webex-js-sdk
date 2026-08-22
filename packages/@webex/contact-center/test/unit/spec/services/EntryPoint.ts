@@ -156,7 +156,7 @@ describe('EntryPoint', () => {
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
         resource:
-          '/organization/test-org-id/v3/dial-number?page=1&pageSize=25&attributes=id%2CdialledNumber%2CentryPointId%2CentryPointName%2Cname&search=fields%3Din%3D%28%22entryPointName%22%2C%22dialledNumber%22%29%3Bvalue%3D%3D%22test%22&filter=entryPointId%3D%3D%22entry1%22&sort=entryPointName%2CDESC&desktopProfileFilter=true&includeEntryPointName=true',
+          '/organization/test-org-id/v3/dial-number?page=1&pageSize=25&attributes=id%2CdialledNumber%2CentryPointId%2CentryPointName%2Cname&search=test&filter=entryPointId%3D%3D%22entry1%22&sort=entryPointName%2CDESC&desktopProfileFilter=true&includeEntryPointName=true',
         method: HTTP_METHODS.GET,
         body: undefined,
         headers: requestHeaders,
@@ -189,7 +189,7 @@ describe('EntryPoint', () => {
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
         resource:
-          '/organization/test-org-id/v3/dial-number?page=1&pageSize=25&attributes=id%2CdialledNumber%2CentryPointId%2CentryPointName&search=fields%3Din%3D%28%22entryPointName%22%2C%22dialledNumber%22%29%3Bvalue%3D%3D%22sales%22&filter=entryPointId%3D%3Dentry1&sort=entryPointName%2CASC&desktopProfileFilter=true&includeEntryPointName=true',
+          '/organization/test-org-id/v3/dial-number?page=1&pageSize=25&attributes=id%2CdialledNumber%2CentryPointId%2CentryPointName&search=sales&filter=entryPointId%3D%3Dentry1&sort=entryPointName%2CASC&desktopProfileFilter=true&includeEntryPointName=true',
         method: HTTP_METHODS.GET,
         body: undefined,
         headers: requestHeaders,
@@ -268,19 +268,6 @@ describe('EntryPoint', () => {
           isFirstPage: false,
         },
         ['behavioral']
-      );
-    });
-
-    it('should escape search values before building the CMS filter', async () => {
-      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
-
-      await entryPointAPI.getEntryPoints({search: 'Sales";active==false'});
-
-      const resource = (mockWebex.request as jest.Mock).mock.calls[0][0].resource as string;
-      const query = new URLSearchParams(resource.split('?')[1]);
-
-      expect(query.get('search')).toBe(
-        'fields=in=("entryPointName","dialledNumber");value=="Sales\\"\\;active==false"'
       );
     });
 

@@ -18,12 +18,6 @@ type DialNumberEntryPointRecord = {
   entryPointName: string;
 };
 
-const escapeCmsSearchFilterValue = (value: string): string =>
-  value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/;/g, '\\;');
-
-const buildEntryPointSearchFilter = (search: string): string =>
-  `fields=in=("entryPointName","dialledNumber");value=="${escapeCmsSearchFilterValue(search)}"`;
-
 const mergeEntryPointAttributes = (attributes?: string): string => {
   const mergedAttributes = new Set(DEFAULT_ENTRY_POINT_ATTRIBUTES.split(','));
 
@@ -148,7 +142,7 @@ export class EntryPoint {
         attributes: mergeEntryPointAttributes(attributes),
       });
 
-      if (search) queryParams.append('search', buildEntryPointSearchFilter(search));
+      if (search) queryParams.append('search', search);
       if (filter) queryParams.append('filter', filter);
       if (effectiveSortBy) {
         queryParams.append('sort', `${effectiveSortBy},${sortOrder.toUpperCase()}`);
