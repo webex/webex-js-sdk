@@ -25,6 +25,8 @@ import {
   getIsConsultedAgentForControls,
   getServerHoldStateForControls,
 } from '../TaskUtils';
+import {INBOUND_DIRECTION, OUTDIAL_DIRECTION} from '../../../constants';
+import {COLLABORATION_ACCESS} from '../../config/constants';
 
 type DestinationControls = TaskUIControls['consultTransferDestinations'];
 
@@ -122,17 +124,17 @@ function getConsultTransferDestinations(
     transfer: [],
   };
 
-  if (destinationConfig.accessBuddyTeam?.toUpperCase() !== 'NONE') {
+  if (destinationConfig.accessBuddyTeam?.toUpperCase() !== COLLABORATION_ACCESS.NONE) {
     destinations.consult.push(CONSULT_TRANSFER_DESTINATION_TYPE.AGENT);
     destinations.transfer.push(CONSULT_TRANSFER_DESTINATION_TYPE.AGENT);
   }
 
-  if (destinationConfig.accessQueue?.toUpperCase() !== 'NONE') {
+  if (destinationConfig.accessQueue?.toUpperCase() !== COLLABORATION_ACCESS.NONE) {
     const canConsultQueue = !isVoice || destinationConfig.allowConsultToQueue;
     const canTransferQueue =
       !isVoice ||
-      direction === 'INBOUND' ||
-      (direction === 'OUTBOUND' &&
+      direction === INBOUND_DIRECTION ||
+      (direction === OUTDIAL_DIRECTION &&
         interaction?.callProcessingDetails?.outdialTransferToQueueEnabled === true);
 
     if (canConsultQueue) destinations.consult.push(CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE);
@@ -143,7 +145,7 @@ function getConsultTransferDestinations(
     destinations.consult.push(CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER);
     destinations.transfer.push(CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER);
 
-    if (destinationConfig.accessEntryPoint?.toUpperCase() !== 'NONE') {
+    if (destinationConfig.accessEntryPoint?.toUpperCase() !== COLLABORATION_ACCESS.NONE) {
       destinations.consult.push(CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT);
       destinations.transfer.push(CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT);
     }

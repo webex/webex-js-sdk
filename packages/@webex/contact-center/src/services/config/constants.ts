@@ -1,6 +1,13 @@
 // making query params configurable for List Teams and List Aux Codes API
 export const DEFAULT_PAGE = 0;
 
+/** Desktop Profile access levels for collaboration destination categories. */
+export const COLLABORATION_ACCESS = {
+  ALL: 'ALL',
+  SPECIFIC: 'SPECIFIC',
+  NONE: 'NONE',
+} as const;
+
 /**
  * Default page size for paginated API requests.
  * @type {number}

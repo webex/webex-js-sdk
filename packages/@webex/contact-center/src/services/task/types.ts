@@ -3,6 +3,7 @@ import type {AnyActorRef} from 'xstate';
 import {TaskEventPayload} from './state-machine';
 import {Msg} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
+import type {CollaborationAccess} from '../config/types';
 
 /**
  * Unique identifier for a task in the contact center system
@@ -68,20 +69,14 @@ export const CONSULT_TRANSFER_DESTINATION_TYPE = {
 export type ConsultTransferDestinationType = Enum<typeof CONSULT_TRANSFER_DESTINATION_TYPE>;
 
 /**
- * Desktop Profile access level for a consult/transfer destination category.
- * @internal
- */
-export type ConsultTransferCollaborationAccess = 'ALL' | 'SPECIFIC' | 'NONE';
-
-/**
  * Agent-profile policy used by the task state machine to derive consult/transfer destinations.
  * @internal
  */
 export type ConsultTransferDestinationConfig = {
   allowConsultToQueue: boolean;
-  accessQueue?: ConsultTransferCollaborationAccess;
-  accessEntryPoint?: ConsultTransferCollaborationAccess;
-  accessBuddyTeam?: ConsultTransferCollaborationAccess;
+  accessQueue?: CollaborationAccess;
+  accessEntryPoint?: CollaborationAccess;
+  accessBuddyTeam?: CollaborationAccess;
 };
 
 /**
