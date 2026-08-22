@@ -266,8 +266,8 @@
     },
     {
       "path": "src/meeting-info/",
-      "coverage_status": "Untracked",
-      "coverage_evidence": "No routed module specification existed; current code and mirrored tests remain authoritative.",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
       "canonical_spec": "src/meeting-info/ai-docs/meeting-info-spec.md",
       "contracts": {
         "provides": [
@@ -278,7 +278,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/meeting-info/index.js",
-      "last_assessed": "2026-08-18",
+      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -308,8 +308,8 @@
     },
     {
       "path": "src/locus-info/",
-      "coverage_status": "Untracked",
-      "coverage_evidence": "No routed module specification existed; current Locus parsers, callbacks, and tests remain authoritative.",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
       "canonical_spec": "src/locus-info/ai-docs/locus-info-spec.md",
       "contracts": {
         "provides": [
@@ -320,7 +320,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/locus-info/index.js",
-      "last_assessed": "2026-08-18",
+      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -350,8 +350,8 @@
     },
     {
       "path": "src/hashTree/",
-      "coverage_status": "Untracked",
-      "coverage_evidence": "No routed module specification existed; hash-tree code and tests are authoritative.",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
       "canonical_spec": "src/hashTree/ai-docs/hash-tree-spec.md",
       "contracts": {
         "provides": [
@@ -362,7 +362,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/hashTree/hashTreeParser.ts",
-      "last_assessed": "2026-08-18",
+      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -518,8 +518,8 @@
     },
     {
       "path": "src/multistream/",
-      "coverage_status": "Untracked",
-      "coverage_evidence": "No routed specification existed; current remote-media and slot-manager code/tests remain authoritative.",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
       "canonical_spec": "src/multistream/ai-docs/multistream-spec.md",
       "contracts": {
         "provides": [
@@ -530,7 +530,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/multistream/remoteMediaManager.ts",
-      "last_assessed": "2026-08-18",
+      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -560,8 +560,8 @@
     },
     {
       "path": "src/roap/",
-      "coverage_status": "Untracked",
-      "coverage_evidence": "No routed specification existed; ROAP and TURN discovery code/tests remain authoritative.",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; one Minor sequence-arity defect over 58 checked claims (1.7% drift). Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
       "canonical_spec": "src/roap/ai-docs/roap-spec.md",
       "contracts": {
         "provides": [
@@ -572,7 +572,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/roap/index.ts",
-      "last_assessed": "2026-08-18",
+      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -602,8 +602,8 @@
     },
     {
       "path": "src/reachability/",
-      "coverage_status": "Untracked",
-      "coverage_evidence": "No routed specification existed; reachability source and tests remain authoritative.",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
       "canonical_spec": "src/reachability/ai-docs/reachability-spec.md",
       "contracts": {
         "provides": [
@@ -614,7 +614,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/reachability/index.ts",
-      "last_assessed": "2026-08-18",
+      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -644,8 +644,8 @@
     },
     {
       "path": "src/reconnection-manager/",
-      "coverage_status": "Untracked",
-      "coverage_evidence": "No routed specification existed; reconnection code and tests remain authoritative.",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; one Important stale class-diagram edge and two Minor citation/label defects over 66 checked claims (4.5% drift). Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
       "canonical_spec": "src/reconnection-manager/ai-docs/reconnection-manager-spec.md",
       "contracts": {
         "provides": [
@@ -656,7 +656,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/reconnection-manager/index.js",
-      "last_assessed": "2026-08-18",
+      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": false,
@@ -776,8 +776,8 @@
     },
     {
       "path": "src/annotation/",
-      "coverage_status": "Untracked",
-      "coverage_evidence": "No routed specification existed; annotation channel source and tests remain authoritative.",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
       "canonical_spec": "src/annotation/ai-docs/annotation-spec.md",
       "contracts": {
         "provides": [
@@ -788,7 +788,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/annotation/index.ts",
-      "last_assessed": "2026-08-18",
+      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -797,7 +797,7 @@
         "owns_persistence": false,
         "returns_caller_errors": true,
         "has_design_tradeoff": false,
-        "stateful_transitions": true,
+        "stateful_transitions": false,
         "exposes_wire_protocol": true,
         "ui_multi_screen": false,
         "large_data_model": false,
@@ -863,8 +863,8 @@
     },
     {
       "path": "src/webinar/",
-      "coverage_status": "Untracked",
-      "coverage_evidence": "No routed specification existed; webinar source and tests remain authoritative.",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; one Minor traceability-citation defect over 58 checked claims (1.7% drift). Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
       "canonical_spec": "src/webinar/ai-docs/webinar-spec.md",
       "contracts": {
         "provides": [
@@ -875,7 +875,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/webinar/index.ts",
-      "last_assessed": "2026-08-18",
+      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -947,8 +947,8 @@
     },
     {
       "path": "src/controls-options-manager/",
-      "coverage_status": "Untracked",
-      "coverage_evidence": "No routed specification existed; control derivation source and tests remain authoritative.",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
       "canonical_spec": "src/controls-options-manager/ai-docs/controls-options-manager-spec.md",
       "contracts": {
         "provides": [
@@ -959,7 +959,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/controls-options-manager/index.js",
-      "last_assessed": "2026-08-18",
+      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -1031,8 +1031,8 @@
     },
     {
       "path": "src/reactions/",
-      "coverage_status": "Untracked",
-      "coverage_evidence": "No routed specification or dedicated characterization test was found; code is authoritative and a baseline is required before risky modification.",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
       "canonical_spec": "src/reactions/ai-docs/reactions-spec.md",
       "contracts": {
         "provides": [
@@ -1042,7 +1042,7 @@
           "Meeting relay event payloads"
         ]
       },
-      "last_assessed": "2026-08-18",
+      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": false,
@@ -1072,8 +1072,8 @@
     },
     {
       "path": "src/interceptors/",
-      "coverage_status": "Untracked",
-      "coverage_evidence": "No routed specification existed; interceptor source and tests remain authoritative.",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
       "canonical_spec": "src/interceptors/ai-docs/interceptors-spec.md",
       "contracts": {
         "provides": [
@@ -1084,7 +1084,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/interceptors/dataChannelAuthToken.ts",
-      "last_assessed": "2026-08-18",
+      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -1114,8 +1114,8 @@
     },
     {
       "path": "src/metrics/",
-      "coverage_status": "Untracked",
-      "coverage_evidence": "No routed specification existed; metrics implementation and tests remain authoritative.",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec validated against current code and tests by an independent different-runtime validator on 2026-08-22 with zero Blocking findings; 92.9% field completeness with all critical and Important fields present; event-surface, Mermaid, evidence-binding and failure-semantics gates pass with published coverage denominators; no findings in this module. Specced withheld: the last-five-PR MODIFIED-requirement check requires commit history, which was excluded by instruction.",
       "canonical_spec": "src/metrics/ai-docs/metrics-spec.md",
       "contracts": {
         "provides": [
@@ -1126,7 +1126,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/metrics/index.js",
-      "last_assessed": "2026-08-18",
+      "last_assessed": "2026-08-22",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -1215,7 +1215,11 @@
     "generator_run_id": "plugin-meetings-bootstrap-20260818T153339Z",
     "source_commit": "f9a29f61cf5d0b0311c729bceaeb41ae648cf862",
     "base_ref": "main",
-    "head_ref": "repo-annotation"
+    "head_ref": "repo-annotation",
+    "validator_runtime": "runtime-b",
+    "validator_runtime_source": "invocation-input",
+    "validator_run_id": "plugin-meetings-participant-role-validation-20260822",
+    "runtime_fallback_tier": "different-runtime"
   },
   "layout": {
     "sdd_root": ".sdd",

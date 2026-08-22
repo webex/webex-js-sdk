@@ -4,8 +4,8 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-21T06:10:05Z
-validation_status: not-run
+updated_at: 2026-08-22T15:21:29Z
+validation_status: pass-with-warnings
 -->
 # MEETINGS — SPEC
 
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/meetings/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 93% assessed 2026-08-21; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains |
+| Coverage score | 93% assessed 2026-08-22; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains; pending independent validation of the participant-role repair |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-22T15:21:29Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -74,9 +74,29 @@ src/meetings/
 
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
-| `meetings.1` | SDK / in-process / remote | create/get meeting and collection lookup | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/meetings/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `meetings.2` | SDK / in-process / remote | register/unregister device and Mercury lifecycle | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/meetings/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `meetings.3` | SDK / in-process / remote | reachability, preferences, PMR, and active-meeting synchronization | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/meetings/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `meetings.1` | SDK collection | `MeetingCollection.set()`, `getByKey()`, `getActiveBreakoutLocus()`, and `getActiveWebrtcMeeting()` | Store Meeting models and resolve current normal/breakout active meetings. | Preserve collection key aliases and active-meeting selection. | `src/meetings/collection.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `meetings.2` | SDK / registration | `executeRegistrationStep()`, `register()`, and `unregister()` | Coordinate device registration and Meetings-owned Mercury/Locus/ROAP listener lifecycle. | Preserve tracked step results and the exact listeners each lifecycle method adds/removes. | `src/meetings/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `meetings.3` | SDK / diagnostics/media effects | `uploadLogs()`, `getReachability()`, `startReachability()`, `getGeoHint()`, `createNoiseReductionEffect()`, and `createVirtualBackgroundEffect()` | Expose logs, reachability/geo diagnostics, and configured media-effect creation. | `startReachability()` returns the gather promise directly. Only the separate registration callback absorbs its rejection. Preserve that boundary, other request outcomes, and effect construction inputs. | `src/meetings/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `meetings.4` | SDK / preferences | `fetchUserPreferredWebexSite()`, `getPersonalMeetingRoom()`, `fetchSitePreferencesMeViaSite()`, and `getBasicMeetingInformation()` | Fetch account/site preferences, PMR, and lightweight meeting information. | Preserve parallel independent request behavior; do not claim a strict ordering across site/geo/reachability/H264 setup. | `src/meetings/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `meetings.5` | SDK / static links | `fetchStaticMeetingLink()`, `enableStaticMeetingLink()`, and `disableStaticMeetingLink()` | Delegate static meeting-link lookup and mutation to meeting-info V2. | Preserve typed meeting-info errors and direct service outcomes. | `src/meetings/index.ts`, `src/meeting-info/meeting-info-v2.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `meetings.6` | SDK / meeting lookup | `create()`, `getMeetingByType()`, `getAllMeetings()`, and `getActiveWebrtcMeeting()` | Create/find/list Meeting models from destination information and collection keys. | Preserve model reuse/collection identity and lookup-type behavior. | `src/meetings/index.ts`, `src/meetings/collection.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `meetings.7` | SDK / synchronization | `syncMeetings()`, `sortLocusArrayToUpdate()`, `checkHandleBreakoutLocus()`, and `getCorrespondingMeetingByLocus()` | Reconcile active Loci into the collection, including breakout/main relationships. | All four methods are defined on `Meetings` in `index.ts`; Online Mercury handling invokes this sync, while `register()` itself does not. | `src/meetings/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `meetings.8` | request/types | `MeetingRequest.getActiveMeetings()`, `fetchGeoHint()`, `getMeetingPreferences()`, `fetchSitePreferencesMeViaSite()`, and `determineRedirections()` plus `LocusEvent`, `BasicMeetingInformation`, `INoiseReductionEffect`, `IVirtualBackgroundEffect`, `MEETING_KEY`, `MeetingRegistrationStatus`, `SitePreferenceSelectOption`, `FetchSitePreferencesMeViaSiteOptions`, `DEFAULT_SITE_PREFERENCE_SELECT_OPTIONS`, and `SitePreferencesResponse` | Provide direct service requests and the exact collection/configuration vocabulary consumed by Meetings. | Preserve request result shapes, enum/raw option values, and default site-selection options. | `src/meetings/request.ts`, `src/meetings/meetings.types.ts`, `src/meetings/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `meetings.9` | SDK / diagnostics | `getLogger()` | Return the logger used by Meetings and child meeting operations. | Preserve logger identity and existing call sites. | `src/meetings/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+
+### Emitted events
+
+Current source emits or forwards these observable literals for this operation boundary. Preserve literal values, scope, payload shape, and emission timing; a constant name alone is not a substitute for the consumer-visible value.
+
+| Event literal | Constant / expression | Emission evidence |
+|---|---|---|
+| `meeting:added` | `EVENT_TRIGGERS.MEETING_ADDED` | `src/meetings/index.ts` |
+| `meeting:logUpload:failure` | `EVENT_TRIGGERS.MEETING_LOG_UPLOAD_FAILURE` | `src/meetings/index.ts` |
+| `meeting:logUpload:success` | `EVENT_TRIGGERS.MEETING_LOG_UPLOAD_SUCCESS` | `src/meetings/index.ts` |
+| `meeting:removed` | `EVENT_TRIGGERS.MEETING_REMOVED` | `src/meetings/index.ts` |
+| `meetings:ready` | `EVENT_TRIGGERS.MEETINGS_READY` | `src/meetings/index.ts` |
+| `meetings:registered` | `EVENT_TRIGGERS.MEETINGS_REGISTERED` | `src/meetings/index.ts` |
+| `meetings:unregistered` | `EVENT_TRIGGERS.MEETINGS_UNREGISTERED` | `src/meetings/index.ts` |
 
 Compatibility notes:
 - Prefer additive options and payload fields. Preserve method/event names, rejection semantics, and cleanup timing; route public changes through `src/index.ts` or the documented owning object.
@@ -90,15 +110,15 @@ Webex core host, device and Mercury plugins, meeting-info services, Meeting cons
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
 | `MEETINGS-R-001` | create/get meeting and collection lookup. | Owns the registered plugin lifecycle, meeting discovery, registration, realtime routing, and the top-level meeting collection. | `src/meetings/index.ts` | `test/unit/spec/meetings/index.js` | none | PRESENT |
-| `MEETINGS-R-002` | register/unregister device and Mercury lifecycle. | Callers need deterministic observable behavior across async Webex inputs. | `src/meetings/index.ts`, `src/meetings/request.ts` | `test/unit/spec/meetings/index.js` | additional edge cases may live in sibling tests | PRESENT |
-| `MEETINGS-R-003` | Registration step failures update the tracked step status and reject; unregister removes Mercury listeners and device state, while sync request failures remain separate from register completion. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/meetings/` | `test/unit/spec/meetings/index.js` | none | PRESENT |
-| `MEETINGS-R-004` | `register()` executes site, geo, reachability, device-registration, Mercury-connect, and H.264 steps with separately observable status. `syncMeetings()` runs later from the Mercury `ONLINE` handler installed by `listenForEvents()`. | Registration readiness and active-meeting synchronization are distinct phases; merging them hides which prerequisite failed and misstates when collection reconciliation occurs. | `src/meetings/index.ts`, `src/meetings/meetings.types.ts` | `test/unit/spec/meetings/index.js` | none | PRESENT |
+| `MEETINGS-R-002` | register/unregister device and Mercury lifecycle. | Registration owns device/listener readiness; active-meeting synchronization is a separate online-event flow. | `src/meetings/index.ts`, `src/meetings/request.ts` | `test/unit/spec/meetings/index.js` | unregister does not remove the OFFLINE listener; retain as a targeted teardown gap | PRESENT |
+| `MEETINGS-R-003` | `executeRegistrationStep()` marks a step `true` whenever its supplied promise resolves and rethrows a rejection without resetting other flags. `fetchUserPreferredWebexSite()` catches its own failures and resolves, while the `startReachability` registration callback catches that gather rejection and resolves; those two steps are therefore marked successful even when their underlying work failed. `unregister()` removes Locus, ROAP, and `ONLINE` Mercury listeners plus device state, but leaves the `OFFLINE` listener installed. | Registration status records wrapper settlement, not necessarily underlying site/reachability success; other rejected steps preserve partial progress until the next `register()` reset, and the residual `OFFLINE` listener must stay visible as a teardown gap. | `src/meetings/index.ts` | `test/unit/spec/meetings/index.js` | characterize absorbed site/reachability failures, partial status after a non-absorbed rejection, and the surviving `OFFLINE` callback | PRESENT |
+| `MEETINGS-R-004` | `register()` starts site, geo, reachability, device-registration, and H.264 work together through `Promise.all`; Mercury connect is chained after device registration. Each wrapper-resolved step updates its own status, including the failure-absorbing site and reachability wrappers. `syncMeetings()` runs later from the Mercury `ONLINE` handler installed by `listenForEvents()`. | Registration readiness and active-meeting synchronization are distinct phases, and preserving wrapper-level settlement and actual concurrency prevents callers from depending on a nonexistent success definition or serial order. | `src/meetings/index.ts`, `src/meetings/meetings.types.ts` | `test/unit/spec/meetings/index.js` | none | PRESENT |
 | `MEETINGS-R-005` | Mercury/Locus events resolve an existing meeting by supported keys before creating or routing a new object. | Stable meeting identity prevents duplicate Meeting objects and misrouted realtime updates. | `src/meetings/index.ts`, `src/meetings/collection.ts` | `test/unit/spec/meetings/index.js`, `test/unit/spec/meetings/collection.js` | none | PRESENT |
 | `MEETINGS-R-006` | Reachability, geo hints, site preferences, PMR, and active-meeting queries delegate to their current request/controller boundaries. | Central plugin access must preserve host credentials, service discovery, and established response/error behavior. | `src/meetings/index.ts`, `src/meetings/request.ts` | `test/unit/spec/meetings/request.js` | none | PRESENT |
 
 ## Design Overview
 
-`Meetings` is the registered plugin facade and collection owner. `register()` executes site/geo/reachability/device/Mercury/H.264 steps and then installs event listeners; synchronization is a separate `syncMeetings()` call triggered by the Mercury `ONLINE` handler.
+`Meetings` is the registered plugin facade and collection owner. `register()` starts site, geo, reachability, device-registration, and H.264 steps concurrently in `Promise.all`; Mercury connection follows successful device registration, and listeners are installed only after the aggregate succeeds. Site-preference fetching absorbs its own failures, and the registration callback absorbs a reachability rejection, so both wrappers can resolve and be marked successful without completing their underlying work. Synchronization is a separate `syncMeetings()` call triggered by the Mercury `ONLINE` handler.
 
 ## Data Flow
 
@@ -121,10 +141,10 @@ Sequence coverage:
 
 | Operation group | Diagram | Failure coverage |
 |---|---|---|
-| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
-| UC-2 — secondary/change operation | Secondary operation and failure sequence | registration-step rejection, Mercury/device failure, unsupported destination, site-preference parameter error, or meeting-sync request failure |
+| UC-1…UC-5 — Meetings registration and synchronization operation groups | Meetings registration and synchronization primary sequence | registration-step failure, independent setup requests, online sync rejection, and listener teardown |
+| UC-1…UC-5 — Meetings registration and synchronization alternate/failure paths | Meetings registration and synchronization alternate/failure sequence | registration-step rejection, Mercury/device failure, unsupported destination, site-preference parameter error, or meeting-sync request failure |
 
-### Primary operation sequence
+### Meetings registration and synchronization primary sequence
 
 ```mermaid
 sequenceDiagram
@@ -134,28 +154,38 @@ sequenceDiagram
   participant Q as Mercury
   participant R as MeetingRequest
   C->>M: register(options)
-  M->>M: site, geo, reachability, and H.264 steps
-  M->>D: register device
-  M->>Q: connect and install listeners
+  par independent registration work
+    M->>M: site, geo, reachability, and H.264 steps
+  and device path
+    M->>D: register device
+    D-->>M: device registration succeeds
+    M->>Q: connect Mercury
+  end
+  M->>M: install listeners after Promise.all succeeds
   M-->>C: registration result
   Q-->>M: ONLINE
-  M->>R: syncMeetings({keepOnlyLocusMeetings:false})
-  R-->>M: active meetings
+  M->>M: syncMeetings({keepOnlyLocusMeetings:false})
+  M->>R: getActiveMeetings()
+  R-->>M: active Loci
   M->>M: reconcile MeetingCollection
 ```
 
-### Secondary operation and failure sequence
+### Meetings registration and synchronization alternate/failure sequence
 
 ```mermaid
 sequenceDiagram
-  participant C as Caller / current input owner
+  participant C as SDK consumer
   participant M as Meetings
-  C->>M: invoke the UC-2 operation
-  M->>M: apply the current guard and ownership rules
-  alt accepted current input
-    M-->>C: documented result, state update, or scoped event
-  else registration-step rejection, Mercury/device failure, unsupported destination, site-preference parameter error, or meeting-sync request failure
-    M--xC: documented R-003 rejection, ignore, or cleanup outcome
+  participant W as Webex registration dependencies
+  C->>M: register or unregister
+  alt registration
+    M->>W: run the configured steps; site/geo/reachability/H.264 setup may run in parallel
+    W-->>M: step result, absorbed site/reachability failure, or propagated rejection
+    M-->>C: registration result; absorbed steps are marked true and completed flags remain set on propagated rejection
+  else unregistration
+    M->>W: remove Mercury/device registration state
+    W-->>M: cleanup result
+    M-->>C: unregistration result
   end
 ```
 
@@ -187,8 +217,11 @@ The arrows identify ownership and delegation inside `src/meetings/`; files that 
 
 ## Use Cases
 
-- **UC-1:** Register device and Mercury through tracked registration steps without treating meeting synchronization as part of `register()` itself. Evidence: `src/meetings/`.
-- **UC-2:** On Mercury `ONLINE`, fetch active meetings and reconcile the collection; create/find operations use meeting-info and collection helpers. Evidence: `src/meetings/`.
+- **UC-1:** Register device and Meetings-owned listeners through tracked registration steps without treating active-meeting synchronization as part of `register()` itself. Evidence: `src/meetings/index.ts`.
+- **UC-2:** On Mercury `ONLINE`, `Meetings.syncMeetings()` fetches active Loci through `MeetingRequest.getActiveMeetings()` and reconciles corresponding main/breakout Meeting models into the collection. Evidence: `src/meetings/index.ts`, `src/meetings/request.ts`.
+- **UC-3:** Create or retrieve a Meeting by destination/type while reusing collection identity when a matching model exists. Evidence: `src/meetings/index.ts`, `src/meetings/collection.ts`.
+- **UC-4:** Start/read reachability, fetch geo/site preferences, PMR, or basic meeting information through their independent request paths. Evidence: `src/meetings/index.ts`, `src/meetings/request.ts`.
+- **UC-5:** Fetch, enable, or disable a static meeting link through the meeting-info V2 facade and preserve its typed outcomes. Evidence: `src/meetings/index.ts`, `src/meeting-info/meeting-info-v2.ts`.
 
 ## State Model
 
@@ -196,11 +229,11 @@ Registration progress, meeting collection entries, sync state, and listener hand
 
 ## Business Rules & Invariants
 
-- A realtime event is routed to its corresponding meeting before a new meeting is created; unregister removes host listeners and registration state. Enforced by `src/meetings/index.ts` and supporting code under `src/meetings/`.
+- A realtime event is routed to its corresponding meeting before a new meeting is created; unregister removes Locus/ROAP/`ONLINE` listeners and registration state but currently leaves the `OFFLINE` listener installed. Enforced by `src/meetings/index.ts`.
 
 ## Concurrency & Reactive Flow
 
-- Async work owned by `Meetings` may complete after a newer caller or remote input. Preserve the identity, sequence, and resource-owner guards in `src/meetings/`; a late completion must not replay UC-2 for superseded state.
+- Registration steps run through one `Promise.all` aggregate, with Mercury connection chained behind device registration. `executeRegistrationStep()` sets a flag after its callback resolves. Site-preference fetching and the registration reachability callback absorb their own failures and therefore still set their flags; a rejection from another step propagates without clearing flags already set. Unregistration removes the Mercury/device registration owned by the plugin; individual meeting synchronization requests remain separate returned promises rather than silently changing registration success.
 
 ## State Machine
 
@@ -209,7 +242,7 @@ stateDiagram-v2
   [*] --> unregistered
   unregistered --> registering: register()
   registering --> registered: required steps succeed
-  registering --> unregistered: step fails and status resets
+  registering --> unregistered: aggregate rejects; completed step flags remain until next register()
   registered --> syncing: Mercury ONLINE
   syncing --> registered: collection reconciled or sync settles
   registered --> unregistered: unregister()
@@ -221,8 +254,11 @@ These labels summarize the concrete `registered`, registration-promise, registra
 
 | Condition | Signal | Caller recovery |
 |---|---|---|
-| registration-step rejection, Mercury/device failure, unsupported destination, site-preference parameter error, or meeting-sync request failure | Follow the concrete rejection, ignore, state, or cleanup behavior in the module's R-003 requirement. | Resolve the named condition; retry only when another requirement defines a bound. |
-| UC-1 succeeds | Return, update, callback, or scoped event identified by the Public Surface and primary sequence. | Continue from the owning module's accepted state. |
+| Site-preference fetching or the registration reachability call fails | The inner catch logs/absorbs the failure, `executeRegistrationStep()` observes resolution, and `fetchWebexSite` or `startReachability` is marked `true`; that failure alone does not reject registration. | Treat those flags as wrapper-completion indicators and inspect diagnostics/current data before assuming the underlying work succeeded. |
+| Another registration step or Mercury/device registration rejects | The returned registration promise rejects. The failing step is not marked successful, and flags already set by concurrently completed steps are not reset until the next `register()` initializes registration status. | Correct the failing dependency and treat the next registration call as the status reset boundary. |
+| `fetchSitePreferencesMeViaSite()` has neither `options.siteUrl` nor `preferredWebexSite` | `MeetingRequest.fetchSitePreferencesMeViaSite()` throws `ParameterError` synchronously before returning a promise; the non-`async` facade returns that direct call, so `.catch()` on a nonexistent result cannot observe the error. | Supply either site URL and wrap the call boundary in synchronous error handling when inputs may be absent. |
+| Another destination or preference request rejects | Its returned request promise preserves the implemented rejection. | Supply supported input or handle the returned rejection for that specific operation. |
+| Meeting synchronization request rejects | That sync request rejects independently of plugin registration state. | Handle or repeat synchronization under the owning meeting workflow. |
 
 ## Pitfalls
 
@@ -239,14 +275,14 @@ The Webex SDK host supplies initialized request/device/Mercury/media capabilitie
 
 ## Test-Case Strategy (module)
 
-Use the current mirrored suites: `test/unit/spec/meetings/collection.js`, `test/unit/spec/meetings/index.js`, `test/unit/spec/meetings/request.js`, `test/unit/spec/meetings/utils.js`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
+Use the current mirrored suites: `test/unit/spec/meetings/collection.js`, `test/unit/spec/meetings/index.js`, `test/unit/spec/meetings/request.js`, `test/unit/spec/meetings/utils.js`. Characterize the meetings-specific use cases above and each listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
-| `MEETINGS-R-001` | `test/unit/spec/meetings/index.js` | confirm the named operation against its owning sibling suite |
-| `MEETINGS-R-002` | `test/unit/spec/meetings/index.js` | verify the code-grounded rejection or stale-input branch |
-| `MEETINGS-R-003` | `test/unit/spec/meetings/index.js` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
-| `MEETINGS-R-004` | `test/unit/spec/meetings/index.js` | verify each registration-step rejection |
+| `MEETINGS-R-001` | `test/unit/spec/meetings/index.js` | cover registration, online sync, create/lookup, preferences, reachability, and static-link groups |
+| `MEETINGS-R-002` | `test/unit/spec/meetings/index.js` | unregister does not remove the OFFLINE listener; retain as a targeted teardown gap |
+| `MEETINGS-R-003` | `test/unit/spec/meetings/index.js` | assert absorbed site/reachability failures mark their wrapper steps true, plus exact listener removal and the surviving `OFFLINE` listener |
+| `MEETINGS-R-004` | `test/unit/spec/meetings/index.js` | verify `Promise.all` concurrency, device-before-Mercury ordering, wrapper-settlement flags, and non-absorbed rejection without a failure reset |
 | `MEETINGS-R-005` | `test/unit/spec/meetings/index.js`, `test/unit/spec/meetings/collection.js` | verify alternate-key collision cases |
 | `MEETINGS-R-006` | `test/unit/spec/meetings/request.js` | none |
 

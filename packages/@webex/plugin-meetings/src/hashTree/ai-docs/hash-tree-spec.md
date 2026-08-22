@@ -4,8 +4,8 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-21T06:10:05Z
-validation_status: not-run
+updated_at: 2026-08-22T15:21:29Z
+validation_status: pass-with-warnings
 -->
 # HASH TREE — SPEC
 
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/hashTree/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 86% assessed 2026-08-21; 12/14 mandatory fields present; all critical fields present; one Important outcome-detail gap and one polish gap remain |
+| Coverage score | 93% assessed 2026-08-22; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains; pending independent validation of the participant-role repair |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-22T15:21:29Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -74,9 +74,14 @@ src/hashTree/
 
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
-| `hashTree.1` | SDK / in-process / remote | parse hash-tree messages and objects | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/hashTree/hashTree.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `hashTree.2` | SDK / in-process / remote | compare dataset versions and fetch missing data | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/hashTree/hashTree.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `hashTree.3` | SDK / in-process / remote | apply dataset updates through callbacks | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/hashTree/hashTree.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `hashTree.1` | in-memory structure | `HashTree.putItem()`, `putItems()`, `removeItem()`, `removeItems()`, and `updateItems()` | Apply version-aware leaf mutations to the pure hash-tree data structure. | Older/equal item versions do not replace newer data; preserve leaf-bucket semantics. | `src/hashTree/hashTree.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `hashTree.2` | in-memory structure | `computeLeafHash()`, `computeTreeHashes()`, `getHashes()`, `getRootHash()`, `getLeafCount()`, `getTotalItemCount()`, `getLeafData()`, and `getItemVersion()` | Compute and inspect dataset hashes and stored item/version information. | Hash ordering and result shapes are synchronization contracts. | `src/hashTree/hashTree.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `hashTree.3` | in-memory structure | `HashTree.resize()` and `diffHashes()` | Resize the leaf layout and locate differing hash ranges during synchronization. | Preserve deterministic redistribution and diff-index semantics. | `src/hashTree/hashTree.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `hashTree.4` | parser initialization | `HashTreeParser.initializeFromMessage()` and `initializeFromGetLociResponse()` | Seed dataset state from Mercury hash-tree metadata or a get-loci response before applying deltas. | Preserve dataset initialization priority and callback timing. | `src/hashTree/hashTreeParser.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `hashTree.5` | parser updates | `handleMetadataUpdate()`, `handleLocusUpdate()`, and `handleMessage()` | Apply message items, emit the resulting callback, and schedule any root-hash reconciliation required for the dataset. | Preserve the implemented ordering: `parseMessage()` mutates item state, `handleMessage()` invokes the callback, and the delayed sync algorithm checks the resulting root hash separately. | `src/hashTree/hashTreeParser.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `hashTree.6` | parser synchronization | `syncAllDatasets()`, `resumeFromMessage()`, and `resumeFromApiResponse()` | Fetch/replace missing datasets and resume queued processing from the synchronized view. | Preserve ended/not-found sentinel handling and stopped-parser guards. | `src/hashTree/hashTreeParser.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `hashTree.7` | parser lifecycle | `stop()` and `cleanUp()` | Stop future mutation and release queued/parser-owned state. | Work completed after stop must not mutate the stopped parser. | `src/hashTree/hashTreeParser.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `hashTree.8` | exported contracts/helpers | `EMPTY_HASH`, `DataSetNames`, `DATA_SET_INIT_PRIORITY`, `LLM_DATASET_NAMES`, `LeafDataItem`, `SyncAllBackoffType`, `DataSet`, `RootHashMessage`, `HashTreeMessage`, `VisibleDataSetInfo`, `LocusInfoUpdateType`, `LocusInfoUpdate`, `LocusInfoUpdateCallback`, `SyncLatencyTracker`, `HashTreeParserCallbacks`, `MeetingEndedError`, `LocusNotFoundError`, `ObjectType`, `ObjectTypeToLocusKeyMap`, `HtMeta`, `HashTreeObject`, `isSelf()`, `isMetadata()`, `deleteNestedObjectsWithHtMeta()`, `sortByInitPriority()`, and `sleep()` | Share the exact dataset protocol vocabulary, sentinel errors, and normalization helpers used by Locus integration. | Preserve dataset names, error identity, ordering, and raw message fields. | `src/hashTree/hashTree.ts`, `src/hashTree/hashTreeParser.ts`, `src/hashTree/types.ts`, `src/hashTree/constants.ts`, `src/hashTree/utils.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
 
 Compatibility notes:
 - Prefer additive options and payload fields. Preserve method/event names, rejection semantics, and cleanup timing; route public changes through `src/index.ts` or the documented owning object.
@@ -89,9 +94,9 @@ Hash-tree wire messages, dataset request function, Locus identifiers, checksum u
 
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| `HASH-TREE-R-001` | parse hash-tree messages and objects. | Tracks incremental Locus dataset versions, detects gaps, fetches missing datasets, and emits typed update callbacks. | `src/hashTree/hashTree.ts` | `test/unit/spec/hashTree/hashTreeParser.ts` | none | PRESENT |
-| `HASH-TREE-R-002` | compare dataset versions and fetch missing data. | Callers need deterministic observable behavior across async Webex inputs. | `src/hashTree/hashTree.ts`, `src/hashTree/hashTreeParser.ts` | `test/unit/spec/hashTree/hashTreeParser.ts` | additional edge cases may live in sibling tests | PRESENT |
-| `HASH-TREE-R-003` | Dataset request failures reject or invoke the established ended/not-found path; stopping the parser prevents later queued work from being applied. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/hashTree/` | `test/unit/spec/hashTree/hashTreeParser.ts` | none | PRESENT |
+| `HASH-TREE-R-001` | `HashTreeParser` parses hash-tree messages, tracks dataset versions, detects gaps, fetches datasets, and emits typed update callbacks; `HashTree` stores leaf items and computes leaf/tree hashes. | Parser synchronization behavior and the hash data structure have different ownership and must not be attributed to the same file. | `src/hashTree/hashTreeParser.ts`, `src/hashTree/hashTree.ts` | `test/unit/spec/hashTree/hashTreeParser.ts`, `test/unit/spec/hashTree/hashTree.ts` | none | PRESENT |
+| `HASH-TREE-R-002` | `HashTreeParser.parseMessage()` updates dataset metadata and applies message items; `handleMessage()` then invokes the object-update callback. `runSyncAlgorithm()` performs the root-hash comparison later after the configured idle/backoff delay and queues synchronization on mismatch. | Callers need the real callback-versus-reconciliation ordering and must not assume the callback waits for the deferred root-hash check. | `src/hashTree/hashTreeParser.ts`, `src/hashTree/hashTree.ts`, `src/hashTree/utils.ts` | `test/unit/spec/hashTree/hashTreeParser.ts`, `test/unit/spec/hashTree/hashTree.ts`, `test/unit/spec/hashTree/utils.ts` | none | PRESENT |
+| `HASH-TREE-R-003` | `performSync()` converts meeting-ended/not-found responses into their sentinel callback paths, catches and logs other synchronization failures, and prevents stopped-parser work from being applied. | Sentinel dataset outcomes, logged sync failure, and stopped work must remain distinct so no failed fetch is misreported as a caller-visible rejection or current state. | `src/hashTree/hashTreeParser.ts` | `test/unit/spec/hashTree/hashTreeParser.ts` | non-sentinel failure recovery after logging needs explicit queue coverage | PRESENT |
 
 ## Design Overview
 
@@ -116,10 +121,10 @@ Sequence coverage:
 
 | Operation group | Diagram | Failure coverage |
 |---|---|---|
-| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
-| UC-2 — secondary/change operation | Secondary operation and failure sequence | out-of-order sequence, hash mismatch, dataset 404, or a stopped parser receiving queued work |
+| UC-1…UC-5 — hash-tree mutation and synchronization operation groups | Hash-tree mutation and synchronization primary sequence | stale/gapped metadata, ended/not-found datasets, logged sync failure, and stopped-parser suppression |
+| UC-1…UC-5 — hash-tree mutation and synchronization alternate/failure paths | Hash-tree mutation and synchronization alternate/failure sequence | out-of-order sequence, hash mismatch, dataset 404, or a stopped parser receiving queued work |
 
-### Primary operation sequence
+### Hash-tree mutation and synchronization primary sequence
 
 ```mermaid
 sequenceDiagram
@@ -127,30 +132,41 @@ sequenceDiagram
   participant P as HashTreeParser
   participant H as HashTree dataset state
   participant W as webexRequest
+  participant O as Injected owner callback
   M-->>P: state-elements message
-  P->>H: compare sequence and hashes
-  alt contiguous update
-    P->>H: apply leaves
-  else gap or mismatch
+  P->>H: update dataset metadata and apply message leaves
+  P-->>O: invoke injected owner callback with applied objects
+  P->>P: after idle/backoff, compare computed and received root hashes
+  opt deferred root mismatch
     P->>W: fetch missing/visible dataset
     W-->>P: dataset or 404
     P->>H: replace synchronized dataset
   end
-  P-->>M: invoke owning callback
 ```
 
-### Secondary operation and failure sequence
+### Hash-tree mutation and synchronization alternate/failure sequence
 
 ```mermaid
 sequenceDiagram
-  participant C as Caller / current input owner
-  participant M as HashTreeParser
-  C->>M: invoke the UC-2 operation
-  M->>M: apply the current guard and ownership rules
-  alt accepted current input
-    M-->>C: documented result, state update, or scoped event
-  else out-of-order sequence, hash mismatch, dataset 404, or a stopped parser receiving queued work
-    M--xC: documented R-003 rejection, ignore, or cleanup outcome
+  participant Q as Queued state-elements message
+  participant P as HashTreeParser
+  participant W as Injected webexRequest
+  participant C as Owning callback
+  Q->>P: next sequence and hash-tree elements
+  P->>P: apply message items and schedule root-hash check
+  P-->>C: object update callback
+  alt later root check or visible-dataset change requires synchronization
+    P->>W: fetch dataset URL
+    W-->>P: dataset, sentinel error, or non-sentinel rejection
+    alt dataset succeeds
+      P-->>C: synchronized object update callback
+    else ended or not-found sentinel
+      P-->>C: ended or not-found callback
+    else non-sentinel rejection
+      P->>P: log failure; invoke no owner callback
+    end
+  else parser has been stopped
+    P->>P: discard queued work without applying it
   end
 ```
 
@@ -159,27 +175,31 @@ sequenceDiagram
 ```mermaid
 classDiagram
   class Mercury
+  class OwnerCallback
   class Parser
   class Compare
   class Tree
   class Request
   class Dataset
-  class Callback
   Mercury --> Parser
   Parser --> Compare
   Compare --> Tree
   Parser --> Request
   Request --> Dataset
   Dataset --> Parser
-  Parser --> Callback
+  OwnerCallback --> Parser : injected at construction
+  Parser --> OwnerCallback : invokes updates
 ```
 
 The arrows identify ownership and delegation inside `src/hashTree/`; files that only declare types or constants are not presented as transports.
 
 ## Use Cases
 
-- **UC-1:** Apply contiguous dataset updates and invoke callbacks only after hash/sequence validation. Evidence: `src/hashTree/`.
-- **UC-2:** Queue synchronization when a gap is detected; convert ended or missing Locus responses into the dedicated internal errors/callbacks. Evidence: `src/hashTree/`.
+- **UC-1:** Insert, update, remove, resize, and diff versioned items in the pure `HashTree` without invoking remote synchronization. Evidence: `src/hashTree/hashTree.ts`.
+- **UC-2:** Initialize parser datasets from a Mercury message or get-loci response in declared dataset priority. Evidence: `src/hashTree/hashTreeParser.ts`, `src/hashTree/constants.ts`.
+- **UC-3:** Apply message items in `parseMessage()` and invoke the normalized Locus callback from `handleMessage()` before the delayed root-hash reconciliation runs. Evidence: `src/hashTree/hashTreeParser.ts`.
+- **UC-4:** Queue and synchronize missing datasets when a gap/hash mismatch is detected, mapping ended/not-found sentinels to their callback paths. Evidence: `src/hashTree/hashTreeParser.ts`.
+- **UC-5:** Stop and clean up a parser so queued or later-completing work cannot mutate its state. Evidence: `src/hashTree/hashTreeParser.ts`.
 
 ## State Model
 
@@ -187,11 +207,11 @@ Per-dataset sequence/hash metadata, pending synchronization work, and last appli
 
 ## Business Rules & Invariants
 
-- A dataset update is applied only in a valid sequence; gaps or mismatches trigger synchronization rather than speculative state. Enforced by `src/hashTree/hashTree.ts` and supporting code under `src/hashTree/`.
+- `HashTreeParser` applies only newer item versions and emits the applied-object callback for the received message. Root-hash mismatch detection is a later idle/backoff task that can enqueue synchronization; it is not a precondition for the first callback. Enforced by `src/hashTree/hashTreeParser.ts` and `src/hashTree/hashTree.ts`.
 
 ## Concurrency & Reactive Flow
 
-- Async work owned by `HashTreeParser` may complete after a newer caller or remote input. Preserve the identity, sequence, and resource-owner guards in `src/hashTree/`; a late completion must not replay UC-2 for superseded state.
+- State-elements work applies through `parseMessage()` and callbacks synchronously within `handleMessage()`, while root-hash reconciliation is deferred by dataset timers. `stop()` prevents queued or subsequently completed dataset work from mutating the stopped parser.
 
 ## State Machine
 
@@ -213,8 +233,9 @@ The parser stores only `active` or `stopped` in `src/hashTree/hashTreeParser.ts`
 
 | Condition | Signal | Caller recovery |
 |---|---|---|
-| out-of-order sequence, hash mismatch, dataset 404, or a stopped parser receiving queued work | Follow the concrete rejection, ignore, state, or cleanup behavior in the module's R-003 requirement. | Resolve the named condition; retry only when another requirement defines a bound. |
-| UC-1 succeeds | Return, update, callback, or scoped event identified by the Public Surface and primary sequence. | Continue from the owning module's accepted state. |
+| Sequence or hash comparison requires a missing/visible dataset | `hashTreeParser.ts` fetches the dataset through the injected request function before replacing the synchronized dataset. | Let the synchronization request settle; do not apply the incomplete delta directly. |
+| Dataset fetch returns 404 or the dataset has ended | The parser invokes its established not-found/ended callback path. | The owner decides whether to stop or establish a new dataset. |
+| Dataset fetch fails outside the ended/not-found sentinels, or queued work reaches a stopped parser | `performSync()` catches/logs the fetch failure; stopped-parser work is not applied. | Observe parser diagnostics and establish a new synchronization trigger if the owner still needs current state. |
 
 ## Pitfalls
 
@@ -227,13 +248,13 @@ The parser stores only `active` or `stopped` in `src/hashTree/hashTreeParser.ts`
 
 ## Test-Case Strategy (module)
 
-Use the current mirrored suites: `test/unit/spec/hashTree/hashTree.ts`, `test/unit/spec/hashTree/hashTreeParser.ts`, `test/unit/spec/hashTree/utils.ts`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
+Use the current mirrored suites: `test/unit/spec/hashTree/hashTree.ts`, `test/unit/spec/hashTree/hashTreeParser.ts`, `test/unit/spec/hashTree/utils.ts`. Characterize the hashTree-specific use cases above and each listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
-| `HASH-TREE-R-001` | `test/unit/spec/hashTree/hashTreeParser.ts` | confirm the named operation against its owning sibling suite |
-| `HASH-TREE-R-002` | `test/unit/spec/hashTree/hashTreeParser.ts` | verify the code-grounded rejection or stale-input branch |
-| `HASH-TREE-R-003` | `test/unit/spec/hashTree/hashTreeParser.ts` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
+| `HASH-TREE-R-001` | `test/unit/spec/hashTree/hashTreeParser.ts` | cover versioned put/remove/resize/diff separately from parser synchronization |
+| `HASH-TREE-R-002` | `test/unit/spec/hashTree/hashTreeParser.ts` | non-sentinel synchronization failures are logged internally; verify queue behavior after that failure |
+| `HASH-TREE-R-003` | `test/unit/spec/hashTree/hashTreeParser.ts` | separate sentinel callback handling, logged non-sentinel sync failure, and stopped-parser suppression cases |
 
 ## Traceability
 

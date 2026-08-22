@@ -4,8 +4,8 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-21T06:10:05Z
-validation_status: not-run
+updated_at: 2026-08-22T15:21:29Z
+validation_status: pass-with-warnings
 -->
 # BREAKOUTS — SPEC
 
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/breakouts/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 93% assessed 2026-08-21; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains |
+| Coverage score | 93% assessed 2026-08-22; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains; pending independent validation of the participant-role repair |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-22T15:21:29Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -55,9 +55,9 @@ src/breakouts/
 ├── breakout.ts — breakout implementation responsibility
 ├── collection.ts — module-owned collection
 ├── edit-lock-error.ts — module-specific error type
-├── events.ts — event names and emission helpers
+├── events.ts — breakout Call Analyzer metric helper
 ├── index.ts — module facade/controller or primary exports
-├── request.ts — HTTP request boundary
+├── request.ts — broadcast-specific request helper
 ├── utils.ts — normalization/helper functions
 └── ai-docs/breakouts-spec.md — canonical module specification
 ```
@@ -70,9 +70,9 @@ src/breakouts/
 | `src/breakouts/breakout.ts` | breakout implementation responsibility |
 | `src/breakouts/collection.ts` | module-owned collection |
 | `src/breakouts/edit-lock-error.ts` | module-specific error type |
-| `src/breakouts/events.ts` | event names and emission helpers |
+| `src/breakouts/events.ts` | `breakoutEvent` Call Analyzer metric construction/submission helper; feature events are emitted by `index.ts` |
 | `src/breakouts/index.ts` | module facade/controller or primary exports |
-| `src/breakouts/request.ts` | HTTP request boundary |
+| `src/breakouts/request.ts` | broadcast-specific request helper |
 | `src/breakouts/utils.ts` | normalization/helper functions |
 | `test/unit/spec/breakouts/breakout.ts` and 6 sibling test file(s) | mirrored characterization/unit coverage |
 
@@ -80,9 +80,35 @@ src/breakouts/
 
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
-| `breakouts.1` | SDK / in-process / remote | initialize/query breakout session and roster state | Focused operation group owned by this module | Preserve methods/events/wire values reachable from package objects | `src/breakouts/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `breakouts.2` | SDK / in-process / remote | attendee join, leave, help, broadcast, and return-to-main flows | Focused operation group owned by this module | Preserve methods/events/wire values reachable from package objects | `src/breakouts/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `breakouts.3` | SDK / in-process / remote | host create, start, end, update, assign, lock, and roster operations | Focused operation group owned by this module | Preserve methods/events/wire values reachable from package objects | `src/breakouts/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `breakouts.1` | SDK / lifecycle | `initialize()`, `cleanUp()`, `locusUrlUpdate()`, `updateCanManageBreakouts()`, `breakoutServiceUrlUpdate()`, `handleRosterUpdate()`, `listenToCurrentSessionTypeChange()`, `listenToBroadcastMessages()`, `listenToBreakoutRosters()`, `listenToBreakoutHelp()`, `handleLLMBreakoutJoinResponseMetric()`, `submitLLMBreakoutJoinResponseMetric()`, `updateBreakoutSessions()`, and `clearBreakouts()` | Reconcile meeting-scoped breakout state and owned event subscriptions/metrics from Locus/service updates. | Preserve session/member ids, listener topics, metric fields, and scoped emitted events. | `src/breakouts/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `breakouts.2` | SDK / query | `queryRosters()`, `isBreakoutInProgress()`, `isBreakoutIClosing()`, `getMainSession()`, `getBreakout()`, and collection/session update helpers | Query and project current breakout sessions, main-session identity, roster, and close state. | Preserve collection identity and current enum/value semantics. | `src/breakouts/index.ts`, `src/breakouts/collection.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `breakouts.3` | attendee session object | `Breakout.initialize()`, `join()`, `leave()`, `askForHelp()`, `initMembers()`, `isNeedHandleRoster()`, `parseRoster()`, and `broadcast()` | Let an attendee act on one breakout and maintain its session-local roster. | These methods are owned by `breakout.ts`, not delegated through the controller index. | `src/breakouts/breakout.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `breakouts.4` | SDK / remote | controller `askAllToReturn()`, `broadcast()`, and `triggerReturnToMainEvent()` | Send host return/broadcast actions and expose the corresponding scoped meeting event. | Preserve broadcast roles/content and return-to-main event payload. | `src/breakouts/index.ts`, `src/breakouts/request.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `breakouts.5` | SDK / host remote | `enableBreakouts()`, `toggleBreakout()`, `doToggleBreakout()`, `create()`, `clearSessions()`, `start()`, `end()`, and `update()` | Create and transition the remote breakout configuration and sessions. | Preserve request sequencing, state values, and service rejection mapping. | `src/breakouts/index.ts`, `src/breakouts/request.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `breakouts.6` | SDK / assignment remote | `assign()`, `queryPreAssignments()`, `dynamicAssign()`, `moveToLobby()`, and `removeFromBreakout()` | Manage pre/dynamic participant assignment and movement between lobby/session contexts. | Preserve participant/session ids and per-operation request bodies. | `src/breakouts/index.ts`, `src/breakouts/request.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `breakouts.7` | SDK / edit lock | `enableAndLockBreakout()`, `hasBreakoutLocked()`, `lockBreakout()`, `keepEditLockAlive()`, and `unLockEditBreakout()` | Acquire, refresh, inspect, and release the edit token used by protected host mutations. | Service lock conflicts map to `BreakoutEditLockedError`, while a locally held lock rejects with a plain `Error`; keepalive ownership is explicit. | `src/breakouts/index.ts`, `src/breakouts/edit-lock-error.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `breakouts.8` | exported adapter/helpers | `BreakoutRequest.broadcast()`, `BreakoutEditLockedError`, `getBroadcastRoles()`, `boServiceErrorHandler()`, and `isSessionTypeChangedFromSessionToMain()` | Provide the direct broadcast adapter, lock error, role selection, service-error mapping, and session-transition predicate. | Preserve error identity, role ordering, and transition logic. | `src/breakouts/request.ts`, `src/breakouts/edit-lock-error.ts`, `src/breakouts/utils.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+
+### Emitted events
+
+Current source emits or forwards these observable literals for this operation boundary. Preserve literal values, scope, payload shape, and emission timing; a constant name alone is not a substitute for the consumer-visible value.
+
+| Event literal | Constant / expression | Emission evidence |
+|---|---|---|
+| `ASK_FOR_HELP` | `BREAKOUTS.EVENTS.ASK_FOR_HELP` | `src/breakouts/index.ts` |
+| `ASK_RETURN_TO_MAIN` | `BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN` | `src/breakouts/index.ts` |
+| `BREAKOUTS_CLOSING` | `BREAKOUTS.EVENTS.BREAKOUTS_CLOSING` | `src/breakouts/index.ts` |
+| `LEAVE_BREAKOUT` | `BREAKOUTS.EVENTS.LEAVE_BREAKOUT` | `src/breakouts/index.ts` |
+| `meeting:breakouts:askForHelp` | `EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_FOR_HELP` | `src/meeting/index.ts` |
+| `meeting:breakouts:askReturnToMain` | `EVENT_TRIGGERS.MEETING_BREAKOUTS_ASK_RETURN_TO_MAIN` | `src/meeting/index.ts` |
+| `meeting:breakouts:closing` | `EVENT_TRIGGERS.MEETING_BREAKOUTS_CLOSING` | `src/meeting/index.ts` |
+| `meeting:breakouts:leave` | `EVENT_TRIGGERS.MEETING_BREAKOUTS_LEAVE` | `src/meeting/index.ts` |
+| `meeting:breakouts:message` | `EVENT_TRIGGERS.MEETING_BREAKOUTS_MESSAGE` | `src/meeting/index.ts` |
+| `meeting:breakouts:preAssignmentsUpdate` | `EVENT_TRIGGERS.MEETING_BREAKOUTS_PRE_ASSIGNMENTS_UPDATE` | `src/meeting/index.ts` |
+| `meeting:breakouts:update` | `EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE` | `src/meeting/index.ts` |
+| `MEMBERS_UPDATE` | `BREAKOUTS.EVENTS.MEMBERS_UPDATE` | `src/breakouts/index.ts` |
+| `MESSAGE` | `BREAKOUTS.EVENTS.MESSAGE` | `src/breakouts/index.ts` |
+| `PRE_ASSIGNMENTS_UPDATE` | `BREAKOUTS.EVENTS.PRE_ASSIGNMENTS_UPDATE` | `src/breakouts/index.ts` |
 
 Compatibility notes:
 - Prefer additive fields/options and preserve current rejection/event/cleanup semantics. Internal helpers are not public merely because they are exported within the source directory.
@@ -96,15 +122,15 @@ Parent Meeting/Locus state, breakout service URL, request helper, breakout/membe
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
 | `BREAKOUTS-R-001` | initialize/query breakout session and roster state. | Owns breakout-session projections, participant and host workflows, roster/broadcast/help events, edit-lock lifecycle, and server mutations. | `src/breakouts/index.ts` | `test/unit/spec/breakouts/index.ts` | none | PRESENT |
-| `BREAKOUTS-R-002` | attendee join, leave, help, broadcast, and return-to-main flows. | Consumers need deterministic behavior across meeting and remote updates. | `src/breakouts/index.ts`, `src/breakouts/request.ts` | `test/unit/spec/breakouts/index.ts` | inspect sibling tests for operation-specific cases | PRESENT |
-| `BREAKOUTS-R-003` | Request failures remain caller-visible; edit-lock conflicts are mapped explicitly, and lock/listener cleanup cancels the keepalive rather than leaving a stale editor. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/breakouts/` | `test/unit/spec/breakouts/index.ts` | none | PRESENT |
+| `BREAKOUTS-R-002` | Attendee `join()`, `leave()`, and `askForHelp()` execute on the per-session object in `breakout.ts`; controller broadcasts delegate to `BreakoutRequest.broadcast()`. | The session object and controller have distinct request ownership, so attributing every attendee operation to `index.ts` hides the actual call boundary. | `src/breakouts/breakout.ts`, `src/breakouts/index.ts`, `src/breakouts/request.ts` | `test/unit/spec/breakouts/breakout.ts`, `test/unit/spec/breakouts/index.ts`, `test/unit/spec/breakouts/request.ts` | none | PRESENT |
+| `BREAKOUTS-R-003` | Request failures remain caller-visible and edit-lock conflicts are mapped explicitly. `unLockEditBreakout()` clears the keepalive, but `cleanUp()` only stops listeners/resets message subscription and does not clear the edit-lock timer. | The timer ownership gap must remain visible so cleanup is not relied on to release an editor that current code leaves active. | `src/breakouts/index.ts`, `src/breakouts/edit-lock-error.ts` | `test/unit/spec/breakouts/index.ts`, `test/unit/spec/breakouts/edit-lock-error.ts` | cleanup does not clear the edit-lock keepalive timer | PRESENT |
 | `BREAKOUTS-R-004` | Roster, session type, broadcasts, help requests, and return-to-main updates reconcile into meeting-scoped breakout/session/member projections and events. | Attendees need current session membership and host messages without consuming raw Locus/service payloads. | `src/breakouts/index.ts`, `src/breakouts/breakout.ts`, `src/breakouts/collection.ts` | `test/unit/spec/breakouts/index.ts`, `test/unit/spec/breakouts/breakout.ts`, `test/unit/spec/breakouts/collection.ts` | none | PRESENT |
-| `BREAKOUTS-R-005` | Host create/start/end/update/assign/move/remove operations use current management capability, session ids, and request contracts. | These operations mutate shared server state and must not be exposed as optimistic local collection edits. | `src/breakouts/index.ts`, `src/breakouts/request.ts` | `test/unit/spec/breakouts/index.ts`, `test/unit/spec/breakouts/request.ts` | none | PRESENT |
-| `BREAKOUTS-R-006` | Edit-lock acquire/keepalive/unlock is coordinated around host configuration and maps lock conflicts to `BreakoutEditLockedError`. | Multiple hosts can edit breakout configuration; a stale lock must fail explicitly and release its timer. | `src/breakouts/index.ts`, `src/breakouts/edit-lock-error.ts`, `src/breakouts/utils.ts` | `test/unit/spec/breakouts/edit-lock-error.ts`, `test/unit/spec/breakouts/utils.js` | none | PRESENT |
+| `BREAKOUTS-R-005` | Host create/start/end/update/assign/move/remove operations use current session ids/URLs and direct request calls owned by `index.ts`; `canManageBreakouts` is stored but does not gate these methods. | These operations mutate shared server state, and the current absence of a local capability guard must not be replaced with an invented authorization guarantee. | `src/breakouts/index.ts` | `test/unit/spec/breakouts/index.ts` | stored management capability is not enforced by host mutation methods | PRESENT |
+| `BREAKOUTS-R-006` | Edit-lock acquire/keepalive/unlock is coordinated around host configuration and maps lock conflicts to `BreakoutEditLockedError`; explicit unlock clears the timer. | Multiple hosts can edit breakout configuration, so conflict identity and explicit unlock behavior must remain stable even though general cleanup has a timer gap. | `src/breakouts/index.ts`, `src/breakouts/edit-lock-error.ts`, `src/breakouts/utils.ts` | `test/unit/spec/breakouts/edit-lock-error.ts`, `test/unit/spec/breakouts/utils.js` | general cleanup does not clear the timer | PRESENT |
 
 ## Design Overview
 
-Breakouts projects Locus breakout state into `Breakout` objects and a collection, delegates server mutations to `BreakoutRequest`, emits feature events from `events.ts`, and owns the edit-lock keepalive timer.
+Breakouts projects Locus breakout state into `Breakout` objects and a collection, performs most server mutations directly from `index.ts`, delegates only broadcast delivery to `BreakoutRequest`, emits feature events from `index.ts`, uses `events.ts` for breakout Call Analyzer metrics, and owns the edit-lock keepalive timer.
 
 ## Data Flow
 
@@ -114,9 +140,13 @@ flowchart LR
   Controller --> Collection[collection.ts]
   Collection --> Session[breakout.ts]
   Caller[Meeting / host / attendee] --> Controller
-  Controller --> Request[request.ts]
-  Request --> Service[Breakout service URLs]
-  Controller --> Events[events.ts]
+  Caller --> Session
+  Controller --> Direct[index.ts request / webex.request]
+  Direct --> Service[Breakout service URLs]
+  Controller --> Request[request.ts broadcast helper]
+  Request --> Service
+  Controller --> FeatureEvents[index.ts scoped feature events]
+  Controller --> Metrics[events.ts Call Analyzer metrics]
   Controller --> Lock[edit lock token + keepalive]
 ```
 
@@ -126,39 +156,68 @@ Sequence coverage:
 
 | Operation group | Diagram | Failure coverage |
 |---|---|---|
-| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
-| UC-2 — secondary/change operation | Secondary operation and failure sequence | missing management capability, invalid session/lock context, edit-lock conflict, or breakout service rejection |
+| UC-1…UC-5 — breakout session and edit-lock operation groups | Breakout session and edit-lock primary sequence | invalid session context, edit-lock conflict, request rejection, and listener/session cleanup |
+| UC-1…UC-5 — breakout session and edit-lock alternate/failure paths | Breakout session and edit-lock alternate/failure sequence | invalid session/lock context, edit-lock conflict, breakout service rejection, or absent local capability enforcement |
 
-### Primary operation sequence
+### Breakout session and edit-lock primary sequence
 
 ```mermaid
 sequenceDiagram
   participant C as Host or attendee
   participant B as Breakouts index.ts
-  participant R as BreakoutRequest
+  participant O as Breakout breakout.ts
+  participant R as index.ts request boundary
+  participant BR as BreakoutRequest
   participant S as Breakout service
-  C->>B: join / leave / host mutation
-  B->>B: check session, capability, and edit lock
-  B->>R: operation with current URL and ids
-  R->>S: HTTP request
-  S-->>R: accepted state or error
-  R-->>B: response
-  B->>B: reconcile collection and lock timer
+  C->>B: host mutation or controller broadcast
+  C->>O: attendee join / leave / help
+  B->>B: resolve session/URL and edit lock where required; no canManageBreakouts guard
+  alt attendee session operation
+    O->>S: direct session request
+    S-->>O: response or error
+    O-->>C: response, rejection, or synchronous leave guard throw
+  else broadcast
+    B->>BR: broadcast(current URL, group, roles)
+    BR->>S: POST message
+    S-->>BR: accepted response or error
+    BR-->>B: response
+  else host operation
+    B->>R: direct request with current URL and ids
+    R->>S: HTTP request
+    S-->>R: accepted state or error
+    R-->>B: response
+  end
+  B->>B: reconcile collection and lock timer when applicable
   B-->>C: result and scoped breakout event
 ```
 
-### Secondary operation and failure sequence
+### Breakout session and edit-lock alternate/failure sequence
 
 ```mermaid
 sequenceDiagram
-  participant C as Caller / current input owner
-  participant M as Breakouts
-  C->>M: invoke the UC-2 operation
-  M->>M: apply the current guard and ownership rules
-  alt accepted current input
-    M-->>C: documented result, state update, or scoped event
-  else missing management capability, invalid session/lock context, edit-lock conflict, or breakout service rejection
-    M--xC: documented R-003 rejection, ignore, or cleanup outcome
+  participant H as Host / attendee
+  participant B as Breakouts
+  participant O as Breakout breakout.ts
+  participant S as Breakout service
+  alt attendee join, leave, or help operation
+    H->>O: perform attendee session operation
+    opt leave operation
+      O->>O: reject main-session leave or a missing main session
+    end
+    O->>S: direct session request
+    S-->>O: response or rejection
+    O-->>H: response or returned rejection; leave guard may throw synchronously
+  else valid host operation
+    H->>B: acquire lock or perform host operation
+    B->>B: validate session URL, ids, and edit-lock state where required; do not check canManageBreakouts
+    B->>S: direct request or broadcast helper request
+    S-->>B: response
+    B-->>H: request result and reconciled breakout projection
+  else local edit lock is already held
+    B--xH: lockBreakout() returned rejection carrying a plain Error, not BreakoutEditLockedError
+  else breakout service conflict or request rejection
+    S--xB: BreakoutEditLockedError or service rejection through the returned promise
+    B--xH: returned rejection
   end
 ```
 
@@ -171,6 +230,7 @@ classDiagram
   class Collection
   class Session
   class Caller
+  class Direct
   class Request
   class Service
   class Events
@@ -179,6 +239,8 @@ classDiagram
   Controller --> Collection
   Collection --> Session
   Caller --> Controller
+  Controller --> Direct
+  Direct --> Service
   Controller --> Request
   Request --> Service
   Controller --> Events
@@ -189,8 +251,11 @@ The arrows identify ownership and delegation inside `src/breakouts/`; files that
 
 ## Use Cases
 
-- **UC-1:** Reconcile session, roster, help, broadcast, and return-to-main changes into the meeting-scoped collection. Evidence: `src/breakouts/`.
-- **UC-2:** Acquire and refresh an edit lock before protected host configuration mutations, mapping lock conflicts to `BreakoutEditLockedError`. Evidence: `src/breakouts/`.
+- **UC-1:** Reconcile session, roster, help, broadcast, and return-to-main changes into the meeting-scoped controller collection. Evidence: `src/breakouts/index.ts`, `src/breakouts/collection.ts`.
+- **UC-2:** Join, leave, request help, or receive broadcast on an individual `Breakout` object and maintain that session's member roster. Evidence: `src/breakouts/breakout.ts`.
+- **UC-3:** Create, clear, start, end, or update breakout sessions through the host controller request path. Evidence: `src/breakouts/index.ts`, `src/breakouts/request.ts`.
+- **UC-4:** Query preassignments, dynamically assign participants, move them to lobby, or remove them from a breakout. Evidence: `src/breakouts/index.ts`, `src/breakouts/request.ts`.
+- **UC-5:** Acquire and refresh an edit lock before protected host mutations, mapping service conflicts to `BreakoutEditLockedError`. Evidence: `src/breakouts/index.ts`, `src/breakouts/edit-lock-error.ts`.
 
 ## State Model
 
@@ -198,11 +263,11 @@ Breakout collection, current/main session ids, management capability, edit-lock 
 
 ## Business Rules & Invariants
 
-- Host mutations require management capability and a valid edit lock where applicable; collection/session ids remain consistent; cleanup releases subscriptions and lock keepalive. Enforced under `src/breakouts/`.
+- Host mutations use current session/service context and a valid edit lock where applicable; current code stores `canManageBreakouts` but does not enforce it. Collection/session ids remain consistent; `cleanUp()` releases subscriptions but not the edit-lock keepalive. Enforced under `src/breakouts/`.
 
 ## Concurrency & Reactive Flow
 
-- Async work owned by `Breakouts` may complete after a newer caller or remote input. Preserve the identity, sequence, and resource-owner guards in `src/breakouts/`; a late completion must not replay UC-2 for superseded state.
+- The active edit-lock token and its keepalive timer belong to one host edit session. `unLockEditBreakout()` clears that timer, while `cleanUp()` does not; roster and session updates reconcile by their current session/member ids before scoped breakout events are emitted.
 
 ## State Machine
 
@@ -222,8 +287,9 @@ The diagram uses the breakout `CLOSED`, `PENDING`, `OPEN`, and `CLOSING` values 
 
 | Condition | Signal | Caller recovery |
 |---|---|---|
-| missing management capability, invalid session/lock context, edit-lock conflict, or breakout service rejection | Follow the concrete rejection, ignore, state, or cleanup behavior in the module's R-003 requirement. | Resolve the named condition; retry only when another requirement defines a bound. |
-| UC-1 succeeds | Return, update, callback, or scoped event identified by the Public Surface and primary sequence. | Continue from the owning module's accepted state. |
+| Required session/main-session context is absent | Guards such as `Breakout.leave()`, controller `getMainSession()`, and controller broadcast throw synchronously; other async methods return rejected promises for their own missing URL/id checks. Stored management capability is not a local guard. | Distinguish a direct throw from an async rejection and refresh current breakout state before retrying. |
+| Another editor owns the breakout lock | A service lock conflict is mapped to `BreakoutEditLockedError` by `boServiceErrorHandler()`; a lock already held locally instead rejects with a plain `Error('Breakout already locked')` from the `async` `lockBreakout()`. | Wait for the lock owner to release it before retrying, and do not assume every lock failure is a `BreakoutEditLockedError`. |
+| A breakout request rejects or the controller is cleaned up | The returned request promise remains rejected; cleanup removes owned listeners but does not cancel the edit-lock keepalive timer. | Handle the asynchronous rejection and explicitly unlock before discarding an edit session. |
 
 ## Pitfalls
 
@@ -241,15 +307,15 @@ The diagram uses the breakout `CLOSED`, `PENDING`, `OPEN`, and `CLOSING` values 
 
 ## Test-Case Strategy (module)
 
-Use the current mirrored suites: `test/unit/spec/breakouts/breakout.ts`, `test/unit/spec/breakouts/collection.ts`, `test/unit/spec/breakouts/edit-lock-error.ts`, `test/unit/spec/breakouts/events.ts`, `test/unit/spec/breakouts/index.ts`, `test/unit/spec/breakouts/request.ts`, `test/unit/spec/breakouts/utils.js`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
+Use the current mirrored suites: `test/unit/spec/breakouts/breakout.ts`, `test/unit/spec/breakouts/collection.ts`, `test/unit/spec/breakouts/edit-lock-error.ts`, `test/unit/spec/breakouts/events.ts`, `test/unit/spec/breakouts/index.ts`, `test/unit/spec/breakouts/request.ts`, `test/unit/spec/breakouts/utils.js`. Characterize the breakouts-specific use cases above and each listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
-| `BREAKOUTS-R-001` | `test/unit/spec/breakouts/index.ts` | inspect sibling tests for full operation matrix |
-| `BREAKOUTS-R-002` | `test/unit/spec/breakouts/index.ts` | verify the operation-specific invalid-input and rejection branches |
-| `BREAKOUTS-R-003` | `test/unit/spec/breakouts/index.ts` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
+| `BREAKOUTS-R-001` | `test/unit/spec/breakouts/index.ts` | cover controller reconciliation separately from per-session `Breakout` operations |
+| `BREAKOUTS-R-002` | `test/unit/spec/breakouts/index.ts` | cover each create/start/end/update/assignment body and its required URL/session context |
+| `BREAKOUTS-R-003` | `test/unit/spec/breakouts/index.ts`, `test/unit/spec/breakouts/breakout.ts` | characterize lock conflict, session-object join/leave/help failures, and listener cleanup as separate outcomes |
 | `BREAKOUTS-R-004` | `test/unit/spec/breakouts/index.ts`, `test/unit/spec/breakouts/breakout.ts` | verify duplicate/out-of-order roster updates |
-| `BREAKOUTS-R-005` | `test/unit/spec/breakouts/request.ts` | verify management-capability rejection |
+| `BREAKOUTS-R-005` | `test/unit/spec/breakouts/index.ts` | characterize that host mutations proceed without a local `canManageBreakouts` rejection and leave authorization to the service |
 | `BREAKOUTS-R-006` | `test/unit/spec/breakouts/edit-lock-error.ts`, `test/unit/spec/breakouts/utils.js` | verify keepalive/unlock cleanup on failure |
 
 ## Traceability

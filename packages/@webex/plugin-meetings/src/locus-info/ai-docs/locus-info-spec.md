@@ -4,8 +4,8 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-21T06:10:05Z
-validation_status: not-run
+updated_at: 2026-08-22T15:21:29Z
+validation_status: pass-with-warnings
 -->
 # LOCUS INFO — SPEC
 
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/locus-info/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 93% assessed 2026-08-21; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains |
+| Coverage score | 93% assessed 2026-08-22; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains; pending independent validation of the participant-role repair |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-22T15:21:29Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -84,9 +84,15 @@ src/locus-info/
 
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
-| `locus-info.1` | SDK / in-process / remote | initialize/parse/update Locus state | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/locus-info/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `locus-info.2` | SDK / in-process / remote | apply full, delta, API, and hash-tree updates | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/locus-info/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `locus-info.3` | SDK / in-process / remote | emit scoped meeting/member/control/share callbacks | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/locus-info/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `locus-info.1` | SDK / initialization | `init()`, `initialSetup()`, `handleLocusAPIResponse()`, and `applyLocusDeltaData()` / `handleLocusDelta()` | Establish the Locus projection and serialize API/Mercury delta entry paths. | Preserve initialization order and single-event mutation discipline. | `src/locus-info/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `locus-info.2` | SDK / hash-tree | `updateLocusFromHashTreeObject()`, `sendClassicVsHashTreeMismatchMetric()`, and `syncAllHashTreeDatasets()` | Convert synchronized hash-tree objects into the same Locus projection and emit the existing metric when the update arrives in the unexpected transport shape. | Preserve parser callback ownership, metric trigger conditions, and dataset synchronization boundaries. | `src/locus-info/index.ts`, `src/hashTree/hashTreeParser.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `locus-info.3` | SDK / parsing/event | `parse()`, `emitScoped()`, `onFullLocus()`, `onDeltaLocus()`, and `handleOneOnOneEvent()` | Parse full/delta payloads and notify composed Meeting controllers through scoped callbacks. | Preserve callback names/payloads and one-on-one handling. | `src/locus-info/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `locus-info.4` | SDK / projection | `updateLocusInfo()`, `getLocusPartner()`, `isMeetingActive()`, `suspendDestroyMeeting()`, `compareAndUpdate()`, and `compareSelfAndHost()` | Reconcile core meeting activity, partner, self, and host changes without duplicating remote transport. | Preserve comparison semantics and destroy-suspension behavior. | `src/locus-info/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `locus-info.5` | SDK / projection | `updateParticipants()`, `updateControls()`, `updateConversationUrl()`, `updateCreated()`, `updateLinks()`, `updateFullState()`, `updateHostInfo()`, `updateMeetingInfo()`, `updateEmbeddedApps()`, `updateMediaShares()`, `updateReplaces()`, `updateSelf()`, `ensureSelfParticipantExists()`, and `mergeParticipants()` | Project the complete set of Locus subdocuments into Meeting, Members, controls, media shares, and related state. | Preserve per-subdocument comparison and callback routing. | `src/locus-info/index.ts`, `src/locus-info/controlsUtils.ts`, `src/locus-info/embeddedAppsUtils.ts`, `src/locus-info/mediaSharesUtils.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `locus-info.6` | SDK / identity/cache | `updateLocusUrl()`, `updateAclUrl()`, `updateBasequence()`, `updateSequence()`, `updateLocusCache()`, `getTheLocusToUpdate()`, `updateMainSessionLocusCache()`, `clearMainSessionLocusCache()`, and `cleanUp()` | Maintain the current/main Locus identity and cached payload used for subsequent comparison. | Preserve main-session separation and cleanup of owned parser/cache state. | `src/locus-info/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `locus-info.7` | parser comparison | `locus2string()`, `checkSequenceOverlap()`, `checkUnequalRanges()`, `checkForUniqueEntries()`, `checkIfOutOfSync()`, `compare()`, `compareFullDtoSequence()`, `isNewFullLocus()`, `compareSequence()`, `compareToAction()`, `extractComparisonState()`, `getMetaData()`, `getUniqueSequences()`, `getNumbersOutOfRange()`, `isValidLocus()`, `isSequenceEmpty()`, and `isLoci()` | Determine whether a delta is contiguous, duplicate, missing, or requires a full sync. | Preserve concrete `IDLE`, `PAUSED`, `WORKING`, and `BLOCKED` parser-state transitions. | `src/locus-info/parser.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `locus-info.8` | parser queue/lifecycle | `nextEvent()`, `onDeltaAction()`, `onDeltaEvent()`, `packComparisonResult()`, `pause()`, `processDeltaEvent()`, `resume()`, and `getDebugMessage()` | Serialize queued deltas and expose/debug the parser's current blocking/working state. | Pause/resume and queue ordering are observable through applied callback order. | `src/locus-info/parser.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `locus-info.9` | exported helpers/contracts | `findMeetingForHashTreeMessage()`, `createLocusFromHashTreeMessage()`, `LocusLLMEvent`, `LocusApiResponseBody`, `HashTreeParserEntry`, `LocusInfoCallbacks`, `DisplayHintSection`, `EndMeetingReason`, `LocusFullState`, `Links`, `LocusDTO`, `ReplacesInfo`, and `LocusErrorCodes` | Share the exact Locus/hash-tree integration vocabulary used by Meetings and composed controllers. | Add fields compatibly; raw error/status/link shapes remain cross-module contracts. | `src/locus-info/index.ts`, `src/locus-info/types.ts`, `src/locus-info/fullState.ts`, `src/locus-info/infoUtils.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
 
 Compatibility notes:
 - Prefer additive options and payload fields. Preserve method/event names, rejection semantics, and cleanup timing; route public changes through `src/index.ts` or the documented owning object.
@@ -100,10 +106,10 @@ Locus payloads and fetch access, hash-tree parser, event scope utilities, member
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
 | `LOCUS-INFO-R-001` | initialize/parse/update Locus state. | Normalizes Locus full-state, delta, API-response, and hash-tree inputs into one meeting-state projection and scoped callbacks. | `src/locus-info/index.ts` | `test/unit/spec/locus-info/index.js` | none | PRESENT |
-| `LOCUS-INFO-R-002` | apply full, delta, API, and hash-tree updates. | Callers need deterministic observable behavior across async Webex inputs. | `src/locus-info/index.ts`, `src/locus-info/parser.ts` | `test/unit/spec/locus-info/index.js` | additional edge cases may live in sibling tests | PRESENT |
-| `LOCUS-INFO-R-003` | Malformed or stale deltas follow parser comparison rules; sync failures reject through the owning request path without inventing a projection. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/locus-info/` | `test/unit/spec/locus-info/index.js` | none | PRESENT |
+| `LOCUS-INFO-R-002` | apply full, delta, API, and hash-tree updates. | Full, delta, API, and hash-tree inputs must converge on one ordered Locus projection without applying gaps. | `src/locus-info/index.ts`, `src/locus-info/parser.ts` | `test/unit/spec/locus-info/index.js` | internal full-sync failure while parser is blocked needs explicit recovery coverage | PRESENT |
+| `LOCUS-INFO-R-003` | Malformed or stale deltas follow parser comparison rules. `doLocusSync()` returns `undefined`, intentionally ignores the request chain, falls back from delta to full sync when allowed, logs/destroys on terminal failure, and resumes the parser in `finally` when the meeting survives. | Parser recovery is internal and must not be documented as a caller-visible rejected promise when no such promise is returned. | `src/locus-info/index.ts`, `src/locus-info/parser.ts` | `test/unit/spec/locus-info/index.js`, `test/unit/spec/locus-info/parser.js` | terminal sync/destroy and parser-resume ordering need explicit coverage | PRESENT |
 | `LOCUS-INFO-R-004` | Full-state, delta, API-response, and hash-tree inputs converge through parsers into the same current Locus projection. | Alternate synchronization transports must not expose divergent meeting state. | `src/locus-info/index.ts`, `src/locus-info/parser.ts` | `test/unit/spec/locus-info/index.js`, `test/unit/spec/locus-info/parser.js` | none | PRESENT |
-| `LOCUS-INFO-R-005` | Sequence/dataset mismatches trigger metric/reporting and synchronization rather than speculative application. | Applying stale or incomplete remote state can produce false meeting/member/control events. | `src/locus-info/index.ts`, `src/hashTree/hashTreeParser.ts` | `test/unit/spec/locus-info/index.js`, `test/unit/spec/hashTree/hashTreeParser.ts` | none | PRESENT |
+| `LOCUS-INFO-R-005` | Sequence/dataset gaps trigger synchronization rather than speculative application. `sendClassicVsHashTreeMismatchMetric()` reports an unexpected classic-Locus transport shape while hash-tree mode is enabled; it does not compare classic and hash-tree state values. | Applying stale or incomplete remote state can produce false meeting/member/control events, while the metric contract must not imply a state-diff computation that does not exist. | `src/locus-info/index.ts`, `src/hashTree/hashTreeParser.ts` | `test/unit/spec/locus-info/index.js`, `test/unit/spec/hashTree/hashTreeParser.ts` | none | PRESENT |
 | `LOCUS-INFO-R-006` | Normalized changes invoke the correct scoped callback/event for members, self, controls, media shares, host, embedded apps, and meeting lifecycle. | Parent Meeting and consumers need domain-specific deltas, not an undifferentiated Locus payload. | `src/locus-info/index.ts`, `src/locus-info/controlsUtils.ts`, `src/locus-info/selfUtils.ts` | `test/unit/spec/locus-info/index.js`, `test/unit/spec/locus-info/controlsUtils.js`, `test/unit/spec/locus-info/selfUtils.js` | none | PRESENT |
 
 ## Design Overview
@@ -129,10 +135,10 @@ Sequence coverage:
 
 | Operation group | Diagram | Failure coverage |
 |---|---|---|
-| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
-| UC-2 — secondary/change operation | Secondary operation and failure sequence | out-of-order delta, missing sequence range, invalid Locus shape, or full-sync request rejection |
+| UC-1…UC-6 — Locus projection and recovery operation groups | Locus projection and recovery primary sequence | duplicate/out-of-order delta, blocked parser, internal sync failure, and cache cleanup |
+| UC-1…UC-6 — Locus projection and recovery alternate/failure paths | Locus projection and recovery alternate/failure sequence | out-of-order delta, missing sequence range, invalid Locus shape, or full-sync request rejection |
 
-### Primary operation sequence
+### Locus projection and recovery primary sequence
 
 ```mermaid
 sequenceDiagram
@@ -141,28 +147,52 @@ sequenceDiagram
   participant P as parser.ts
   participant R as meetingRequest
   E-->>L: full DTO or delta
-  L->>P: compare and enqueue
-  alt contiguous delta
-    P->>P: apply utility comparisons
-  else missing/out-of-order delta
-    P->>R: getLocusDTO()
-    R-->>P: synchronized Locus DTO
+  alt full DTO
+    L->>L: onFullLocus applies the authoritative projection
+  else delta
+    L->>L: handleLocusDelta(response)
+    L->>P: onDeltaEvent queues and compares the delta
+    alt contiguous delta
+      P->>P: apply utility comparisons
+    else missing/out-of-order delta
+      P->>L: request full synchronization
+      L->>R: getLocusDTO()
+      R-->>L: synchronized Locus response
+      alt response contains a delta
+        L->>L: handleLocusDelta(response)
+        L->>P: onDeltaEvent(response)
+      else response contains a full DTO
+        L->>L: onFullLocus applies the synchronized DTO
+      end
+    end
   end
-  P-->>L: normalized state and change flags
+  L->>L: expose normalized state and change flags
 ```
 
-### Secondary operation and failure sequence
+### Locus projection and recovery alternate/failure sequence
 
 ```mermaid
 sequenceDiagram
-  participant C as Caller / current input owner
-  participant M as LocusInfo
-  C->>M: invoke the UC-2 operation
-  M->>M: apply the current guard and ownership rules
-  alt accepted current input
-    M-->>C: documented result, state update, or scoped event
-  else out-of-order delta, missing sequence range, invalid Locus shape, or full-sync request rejection
-    M--xC: documented R-003 rejection, ignore, or cleanup outcome
+  participant E as Locus delta input
+  participant L as LocusInfo
+  participant P as parser.ts sequencer
+  participant R as meetingRequest.getLocusDTO
+  E-->>L: delta with sequence range
+  L->>P: enqueue and compare against current sequence
+  alt gap or mismatch requires full synchronization
+    P->>L: request synchronization
+    L->>R: getLocusDTO()
+    alt synchronization succeeds
+      R-->>L: full DTO
+      L->>L: onFullLocus applies the full DTO directly
+      L->>P: resume queued deltas after handling settles
+    else terminal synchronization rejects
+      R--xL: rejected request
+      L->>L: log and destroy meeting
+      L->>P: do not resume destroyed meeting parser
+    end
+  else stale or applicable delta
+    P->>P: ignore stale input or apply current delta
   end
 ```
 
@@ -190,8 +220,12 @@ The arrows identify ownership and delegation inside `src/locus-info/`; files tha
 
 ## Use Cases
 
-- **UC-1:** Serialize Locus deltas so only one event mutates the projection at a time. Evidence: `src/locus-info/`.
-- **UC-2:** Pause/block and perform a full Locus sync when sequence comparison shows missing or out-of-order state. Evidence: `src/locus-info/`.
+- **UC-1:** Initialize from a full Locus API response and project self, host, participants, controls, links, meeting info, shares, embedded apps, and replacement state. Evidence: `src/locus-info/index.ts`.
+- **UC-2:** Serialize incoming Locus deltas so only one queued event mutates the projection at a time. Evidence: `src/locus-info/parser.ts`, `src/locus-info/index.ts`.
+- **UC-3:** Pause/block parsing and initiate the internal full-sync path when sequence comparison finds missing or out-of-order state. Evidence: `src/locus-info/parser.ts`, `src/locus-info/index.ts`.
+- **UC-4:** Convert hash-tree messages/API responses into Locus updates and emit the existing diagnostic when a classic-Locus-shaped update arrives while hash-tree mode is enabled; no classic-vs-hash-tree value comparison is performed. Evidence: `src/locus-info/index.ts`, `src/hashTree/hashTreeParser.ts`.
+- **UC-5:** Emit scoped callbacks only for the Locus subdocuments that changed, preserving Meeting/Members/controller ownership. Evidence: `src/locus-info/index.ts`, `src/locus-info/controlsUtils.ts`, `src/locus-info/embeddedAppsUtils.ts`, `src/locus-info/mediaSharesUtils.ts`.
+- **UC-6:** Maintain and clear distinct current/main-session Locus caches as breakout session context changes. Evidence: `src/locus-info/index.ts`.
 
 ## State Model
 
@@ -203,7 +237,7 @@ Normalized Locus, sequence/dataset state, meeting activity, partner/self/member 
 
 ## Concurrency & Reactive Flow
 
-- Async work owned by `LocusInfo` may complete after a newer caller or remote input. Preserve the identity, sequence, and resource-owner guards in `src/locus-info/`; a late completion must not replay UC-2 for superseded state.
+- Delta inputs are ordered by the parser's sequence state. A gap/mismatch enters the parser's synchronization path and the returned full DTO is parsed before later changes are exposed; stale inputs follow the comparison result instead of being applied speculatively.
 
 ## State Machine
 
@@ -228,8 +262,9 @@ The diagram uses the parser's `IDLE`, `WORKING`, `BLOCKED`, and `PAUSED` values 
 
 | Condition | Signal | Caller recovery |
 |---|---|---|
-| out-of-order delta, missing sequence range, invalid Locus shape, or full-sync request rejection | Follow the concrete rejection, ignore, state, or cleanup behavior in the module's R-003 requirement. | Resolve the named condition; retry only when another requirement defines a bound. |
-| UC-1 succeeds | Return, update, callback, or scoped event identified by the Public Surface and primary sequence. | Continue from the owning module's accepted state. |
+| Delta sequence is stale, out of order, or has a missing range | `parser.ts` follows its sequence comparison result: stale input is not speculatively applied, and a gap requests full synchronization. | Wait for the synchronized DTO before consuming later projected changes. |
+| `getLocusDTO()` rejects during `doLocusSync()` | The private method's internal promise chain handles the failure by logging and, on the terminal path, destroying the meeting; `doLocusSync()` itself returns `undefined`, so no rejection is propagated to a caller. Its `finally` resumes the parser when the meeting survives. | Observe the owning meeting/parser lifecycle rather than awaiting a nonexistent synchronization promise. |
+| Full/API/hash-tree input is accepted | `LocusInfo` updates its normalized projection and invokes only the callbacks for changed member, self, control, share, host, app, or lifecycle fields. | Consume the scoped change callback rather than the raw Locus payload. |
 
 ## Pitfalls
 
@@ -238,15 +273,15 @@ The diagram uses the parser's `IDLE`, `WORKING`, `BLOCKED`, and `PAUSED` values 
 
 ## Test-Case Strategy (module)
 
-Use the current mirrored suites: `test/unit/spec/locus-info/controlsUtils.js`, `test/unit/spec/locus-info/embeddedAppsUtils.js`, `test/unit/spec/locus-info/index.js`, `test/unit/spec/locus-info/infoUtils.js`, `test/unit/spec/locus-info/lib/BasicSeqCmp.json`, `test/unit/spec/locus-info/lib/SeqCmp.json`, `test/unit/spec/locus-info/mediaSharesUtils.ts`, `test/unit/spec/locus-info/parser.js`, `test/unit/spec/locus-info/selfConstant.js`, `test/unit/spec/locus-info/selfUtils.js`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
+Use the current mirrored suites: `test/unit/spec/locus-info/controlsUtils.js`, `test/unit/spec/locus-info/embeddedAppsUtils.js`, `test/unit/spec/locus-info/index.js`, `test/unit/spec/locus-info/infoUtils.js`, `test/unit/spec/locus-info/lib/BasicSeqCmp.json`, `test/unit/spec/locus-info/lib/SeqCmp.json`, `test/unit/spec/locus-info/mediaSharesUtils.ts`, `test/unit/spec/locus-info/parser.js`, `test/unit/spec/locus-info/selfConstant.js`, `test/unit/spec/locus-info/selfUtils.js`. Characterize the locus-info-specific use cases above and each listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
-| `LOCUS-INFO-R-001` | `test/unit/spec/locus-info/index.js` | confirm the named operation against its owning sibling suite |
-| `LOCUS-INFO-R-002` | `test/unit/spec/locus-info/index.js` | verify the code-grounded rejection or stale-input branch |
-| `LOCUS-INFO-R-003` | `test/unit/spec/locus-info/index.js` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
+| `LOCUS-INFO-R-001` | `test/unit/spec/locus-info/index.js` | cover full/API/delta/hash-tree entry paths and every changed-subdocument callback family |
+| `LOCUS-INFO-R-002` | `test/unit/spec/locus-info/index.js` | internal full-sync failure while parser is blocked needs explicit recovery coverage |
+| `LOCUS-INFO-R-003` | `test/unit/spec/locus-info/index.js`, `test/unit/spec/locus-info/parser.js` | characterize internal sync failure handling, blocked-queue resume, and cleanup without implying caller rejection |
 | `LOCUS-INFO-R-004` | `test/unit/spec/locus-info/index.js`, `test/unit/spec/locus-info/parser.js` | none |
-| `LOCUS-INFO-R-005` | `test/unit/spec/locus-info/index.js`, `test/unit/spec/hashTree/hashTreeParser.ts` | verify all mismatch recovery outcomes |
+| `LOCUS-INFO-R-005` | `test/unit/spec/locus-info/index.js`, `test/unit/spec/hashTree/hashTreeParser.ts` | verify sequence/dataset recovery separately from the unexpected-transport-shape metric trigger |
 | `LOCUS-INFO-R-006` | `test/unit/spec/locus-info/controlsUtils.js`, `test/unit/spec/locus-info/selfUtils.js` | verify every callback family during focused changes |
 
 ## Traceability

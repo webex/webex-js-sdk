@@ -4,8 +4,8 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-21T06:10:05Z
-validation_status: not-run
+updated_at: 2026-08-22T15:21:29Z
+validation_status: pass-with-warnings
 -->
 # CONTROLS OPTIONS MANAGER — SPEC
 
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/controls-options-manager/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 93% assessed 2026-08-21; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains |
+| Coverage score | 93% assessed 2026-08-22; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains; pending independent validation of the participant-role repair |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-22T15:21:29Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -41,7 +41,7 @@ Requirements cite current source and mirrored tests. Current code wins over reta
 
 ## Purpose / Responsibility
 
-Derives typed control availability/current settings from Locus controls and builds valid mutations for audio, hand, reactions, sharing, video, annotation, remote desktop, and polling/QA.
+Validates requested meeting-control mutations against display hints, builds the declared control bodies, and sends them through the owning Meeting request object.
 
 ## Stack
 
@@ -74,9 +74,37 @@ src/controls-options-manager/
 
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
-| `controls-options-manager.1` | SDK / in-process / remote | normalize Locus control options into typed properties | Focused operation group owned by this module | Preserve methods/events/wire values reachable from package objects | `src/controls-options-manager/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `controls-options-manager.2` | SDK / in-process / remote | query whether a control can be set/unset and its enabled state | Focused operation group owned by this module | Preserve methods/events/wire values reachable from package objects | `src/controls-options-manager/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `controls-options-manager.3` | SDK / in-process / remote | build/apply valid control-setting request bodies | Focused operation group owned by this module | Preserve methods/events/wire values reachable from package objects | `src/controls-options-manager/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `controls-options-manager.1` | SDK / configuration | `set()`, `setLocusUrl()`, `setDisplayHints()`, `getLocusUrl()`, and `getDisplayHints()` | Hold current/main Locus URLs and display hints used to authorize later control mutations. | Preserve current setter/getter semantics; no normalized query projection is exposed. | `src/controls-options-manager/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `controls-options-manager.2` | SDK / remote | `update(ControlConfig[])` | Validate each scoped mutation with `Utils.canUpdate()` and send the generated requests sequentially. | Unknown scopes and denied capabilities both throw synchronously while the batch is mapped; preserve request ordering and the returned request promise. | `src/controls-options-manager/index.ts`, `src/controls-options-manager/util.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `controls-options-manager.3` | SDK / remote | `setMuteOnEntry()`, `setDisallowUnmute()`, and `setMuteAll()` | Build the audio-control bodies permitted by current display hints and route them to main/breakout Locus context. | Preserve body keys, capability checks, and breakout authorization selection. | `src/controls-options-manager/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `controls-options-manager.4` | exported predicates | `Utils.canSetMuteOnEntry()`, `canUnsetMuteOnEntry()`, `canSetDisallowUnmute()`, `canUnsetDisallowUnmute()`, `canSetMuted()`, `canUnsetMuted()`, `hasHints()`, `hasPolicies()`, `canUpdateAudio()`, `canUpdateRaiseHand()`, `canUpdateReactions()`, `canUpdateShareControl()`, `canUpdateViewTheParticipantsList()`, `canUpdateVideo()`, `canUpdateAnnotation()`, `canUpdateRemoteDesktopControl()`, and `canUpdatePollingQA()` | Centralize capability interpretation for every supported control family. | These are static utilities, not manager instance query APIs. | `src/controls-options-manager/util.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `controls-options-manager.5` | exported routing utilities | `Utils.canUpdate()`, `isAudioControl()`, `isBreakoutLocusUrl()`, and `getControlsRequestParams()` | Select the permitted control family, request URL, and request body for each mutation. | Preserve scope matching and main-versus-breakout routing rules. | `src/controls-options-manager/util.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `controls-options-manager.6` | exported class/constants/types | `ControlsOptionsManager`, `ENABLED`, `CAN_SET`, `CAN_UNSET`, `AUDIO_CONTROL_BODY_KEYS`, `Control`, `Setting`, `ControlProperties`, `AudioProperties`, `RaiseHandProperties`, `ReactionsProperties`, `ShareControlProperties`, `VideoProperties`, `ViewTheParticipantListProperties`, `AnnotationProperties`, `RemoteDesktopControlProperties`, `PollingQAProperties`, `Properties`, and `ControlConfig` | Share the exact configuration vocabulary accepted by `update()`. | Raw control/setting/body-key values and discriminated property shapes are compatibility-sensitive. | `src/controls-options-manager/index.ts`, `src/controls-options-manager/constants.ts`, `src/controls-options-manager/enums.ts`, `src/controls-options-manager/types.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+
+### Emitted events
+
+Current source emits or forwards these observable literals for this operation boundary. Preserve literal values, scope, payload shape, and emission timing; a constant name alone is not a substitute for the consumer-visible value.
+
+| Event literal | Constant / expression | Emission evidence |
+|---|---|---|
+| `meeting:actionsUpdate` | `EVENT_TRIGGERS.MEETING_ACTIONS_UPDATE` | `src/meeting/index.ts` |
+| `meeting:controls:ai-summary-notification:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_AI_SUMMARY_NOTIFICATION_UPDATED` | `src/meeting/index.ts` |
+| `meeting:controls:annotation:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_ANNOTATION_UPDATED` | `src/meeting/index.ts` |
+| `meeting:controls:auto-end-meeting-warning:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_AUTO_END_MEETING_WARNING_UPDATED` | `src/meeting/index.ts` |
+| `meeting:controls:disallow-unmute:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_DISALLOW_UNMUTE_UPDATED` | `src/meeting/index.ts` |
+| `meeting:controls:meeting-full:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_MEETING_FULL_UPDATED` | `src/meeting/index.ts` |
+| `meeting:controls:mute-on-entry:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_MUTE_ON_ENTRY_UPDATED` | `src/meeting/index.ts` |
+| `meeting:controls:polling-qa:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_POLLING_QA_UPDATED` | `src/meeting/index.ts` |
+| `meeting:controls:practice-session-status:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_PRACTICE_SESSION_STATUS_UPDATED` | `src/meeting/index.ts` |
+| `meeting:controls:raise-hand:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_RAISE_HAND_UPDATED` | `src/meeting/index.ts` |
+| `meeting:controls:reactions:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_REACTIONS_UPDATED` | `src/meeting/index.ts` |
+| `meeting:controls:remote-desktop-control:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_REMOTE_DESKTOP_CONTROL_UPDATED` | `src/meeting/index.ts` |
+| `meeting:controls:share-control:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_SHARE_CONTROL_UPDATED` | `src/meeting/index.ts` |
+| `meeting:controls:stage-view:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_STAGE_VIEW_UPDATED` | `src/meeting/index.ts` |
+| `meeting:controls:video:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_VIDEO_UPDATED` | `src/meeting/index.ts` |
+| `meeting:controls:view-the-participants-list:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_VIEW_THE_PARTICIPANTS_LIST_UPDATED` | `src/meeting/index.ts` |
+| `meeting:controls:webcast:updated` | `EVENT_TRIGGERS.MEETING_CONTROLS_WEBCAST_UPDATED` | `src/meeting/index.ts` |
+| `meeting:layout:update` | `EVENT_TRIGGERS.MEETING_CONTROLS_LAYOUT_UPDATE` | `src/meeting/index.ts` |
 
 Compatibility notes:
 - Prefer additive fields/options and preserve current return and rejection semantics. Internal helpers are not public merely because they are exported within the source directory.
@@ -89,24 +117,25 @@ Locus controls, control/setting enums, constants, utility normalization, parent 
 
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| `CONTROLS-OPTIONS-MANAGER-R-001` | normalize Locus control options into typed properties. | Derives typed control availability/current settings from Locus controls and builds valid mutations for audio, hand, reactions, sharing, video, annotation, remote desktop, and polling/QA. | `src/controls-options-manager/index.ts` | `test/unit/spec/controls-options-manager/index.js` | none | PRESENT |
-| `CONTROLS-OPTIONS-MANAGER-R-002` | query whether a control can be set/unset and its enabled state. | Consumers need deterministic behavior across meeting and remote updates. | `src/controls-options-manager/index.ts`, `src/controls-options-manager/util.ts` | `test/unit/spec/controls-options-manager/index.js` | inspect sibling tests for operation-specific cases | PRESENT |
-| `CONTROLS-OPTIONS-MANAGER-R-003` | Invalid or unsupported control inputs return the module's current false/undefined/error result; the module allocates no async resource that requires cleanup. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/controls-options-manager/` | `test/unit/spec/controls-options-manager/index.js` | none | PRESENT |
+| `CONTROLS-OPTIONS-MANAGER-R-001` | `update` validates each `ControlConfig` scope and display-hint capability, builds one request body per control, and sends them sequentially. | Invalid or unauthorized shared-control mutations must fail before they reach Locus, and accepted mutations must preserve caller order. | `src/controls-options-manager/index.ts`, `src/controls-options-manager/util.ts` | `test/unit/spec/controls-options-manager/index.js` | none | PRESENT |
+| `CONTROLS-OPTIONS-MANAGER-R-002` | `ControlsOptionsManager` exposes URL/hint accessors and mutation methods; `canSet*`, `canUnset*`, and `canUpdate*` predicates are static methods on `util.ts`, not instance query APIs or normalized properties. | Consumers must not depend on an availability/current-value surface the manager does not implement. | `src/controls-options-manager/index.ts`, `src/controls-options-manager/util.ts` | `test/unit/spec/controls-options-manager/index.js`, `test/unit/spec/controls-options-manager/util.js` | none | PRESENT |
+| `CONTROLS-OPTIONS-MANAGER-R-003` | Missing `locusUrl` returns a rejected promise, an unknown scope or failed `canUpdate` check throws synchronously in `update`, and legacy audio setters reject unauthorized values; the module allocates no listener or timer. | Callers must distinguish validation throws from returned request rejections and must not expect cleanup behavior the module does not own. | `src/controls-options-manager/` | `test/unit/spec/controls-options-manager/index.js` | none | PRESENT |
 
 ## Design Overview
 
-This is an in-memory adapter: `util.ts` interprets raw Locus controls with the enums/constants/types, and `index.ts` exposes normalized properties plus request-body builders. It performs no network I/O and owns no listeners or timers.
+`index.ts` stores request context, validates mutations using static predicates from `util.ts`, builds control request bodies, and sends them through `request` or `locusDeltaRequest`. It exposes no normalized-control property or enabled-state query surface and owns no listeners or timers.
 
 ## Data Flow
 
 ```mermaid
 flowchart LR
-  Locus[Raw Locus controls] --> Util[util.ts normalization]
-  Util --> Manager[index.ts]
-  Types[constants.ts / enums.ts / types.ts] --> Util
-  Manager --> Query[availability and enabled-state queries]
-  Manager --> Body[control-setting request body]
+  Caller[Meeting / consumer] --> Manager[index.ts mutation methods]
+  Hints[display hints + current controls callback] --> Manager
+  Types[constants.ts / enums.ts / types.ts] --> Util[util.ts capability and request helpers]
+  Manager --> Util
+  Util --> Body[control-setting request params]
   Body --> Parent[Meeting request owner]
+  Parent --> Locus[Locus controls endpoint]
 ```
 
 ## Sequence Diagram(s)
@@ -115,35 +144,39 @@ Sequence coverage:
 
 | Operation group | Diagram | Failure coverage |
 |---|---|---|
-| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
-| UC-2 — secondary/change operation | Secondary operation and failure sequence | unknown control/setting, absent capability, or malformed Locus control data |
+| UC-1…UC-4 — control mutation operation groups | Control mutation primary sequence | unknown scope, denied display hint, missing Locus URL, and request rejection |
+| UC-1…UC-4 — control mutation alternate/failure paths | Control mutation alternate/failure sequence | unknown control/setting, absent capability, or malformed Locus control data |
 
-### Primary operation sequence
+### Control mutation primary sequence
 
 ```mermaid
 sequenceDiagram
   participant P as Meeting parent
   participant M as ControlsOptionsManager
   participant U as util.ts
-  P->>M: update raw controls
-  M->>U: normalize by control and setting maps
-  U-->>M: typed control properties
-  P->>M: query or build mutation
-  M-->>P: boolean/current value or request body
+  P->>M: update(...ControlConfig)
+  M->>U: canUpdate(control, displayHints)
+  U-->>M: allowed or denied
+  M->>U: getControlsRequestParams(body, locus URLs)
+  U-->>M: PATCH request params
+  M->>P: request/locusDeltaRequest(params)
+  P-->>M: request outcome
+  M-->>P: sequential update promise outcome
 ```
 
-### Secondary operation and failure sequence
+### Control mutation alternate/failure sequence
 
 ```mermaid
 sequenceDiagram
   participant C as Caller / current input owner
   participant M as ControlsOptionsManager
-  C->>M: invoke the UC-2 operation
-  M->>M: apply the current guard and ownership rules
-  alt accepted current input
-    M-->>C: documented result, state update, or scoped event
-  else unknown control/setting, absent capability, or malformed Locus control data
-    M--xC: documented R-003 rejection, ignore, or cleanup outcome
+  C->>M: request control mutation
+  alt locusUrl missing
+    M--xC: rejected promise
+  else scope unknown or capability denied by update
+    M--xC: synchronous Error / PermissionError
+  else accepted
+    M-->>C: owning request promise outcome
   end
 ```
 
@@ -155,27 +188,27 @@ classDiagram
   class Util
   class Manager
   class Types
-  class Query
   class Body
   class Parent
-  Locus --> Util
-  Util --> Manager
+  Manager --> Util
   Types --> Util
-  Manager --> Query
   Manager --> Body
   Body --> Parent
+  Parent --> Locus
 ```
 
 The arrows identify ownership and delegation inside `src/controls-options-manager/`; files that only declare types or constants are not presented as transports.
 
 ## Use Cases
 
-- **UC-1:** Translate raw Locus controls into typed availability and current-value properties. Evidence: `src/controls-options-manager/`.
-- **UC-2:** Build only the control-setting fields supported by the current control capability map; the parent meeting owns transmission. Evidence: `src/controls-options-manager/`.
+- **UC-1:** Refresh current/main Locus URLs and display hints, then read those raw values without expecting a normalized control projection. Evidence: `src/controls-options-manager/index.ts`.
+- **UC-2:** Validate and sequentially send a batch of scoped `ControlConfig` mutations using `Utils.canUpdate()` and `getControlsRequestParams()`. Evidence: `src/controls-options-manager/index.ts`, `src/controls-options-manager/util.ts`.
+- **UC-3:** Build mute-on-entry and disallow-unmute bodies only when the matching set/unset display hints permit the requested value. Evidence: `src/controls-options-manager/index.ts`, `src/controls-options-manager/util.ts`.
+- **UC-4:** Route mute-all to the appropriate main or breakout Locus authorization context and preserve permission/request failures. Evidence: `src/controls-options-manager/index.ts`, `src/controls-options-manager/util.ts`.
 
 ## State Model
 
-Normalized control configuration/properties are refreshed from the current Locus projection.
+The manager stores current/main Locus URLs, display hints, and callbacks for current controls/webinar status. It does not maintain a normalized control projection.
 
 ## Business Rules & Invariants
 
@@ -185,23 +218,24 @@ Normalized control configuration/properties are refreshed from the current Locus
 
 | Condition | Signal | Caller recovery |
 |---|---|---|
-| unknown control/setting, absent capability, or malformed Locus control data | Follow the concrete rejection, ignore, state, or cleanup behavior in the module's R-003 requirement. | Resolve the named condition; retry only when another requirement defines a bound. |
-| UC-1 succeeds | Return, update, callback, or scoped event identified by the Public Surface and primary sequence. | Continue from the owning module's accepted state. |
+| `locusUrl` is absent | Rejected `ParameterError` promise. | Set the current Locus URL before retrying. |
+| Scope is unknown or `Util.canUpdate` denies it | Synchronous `Error` or `PermissionError` from `update`. | Correct the scope/properties or wait for matching display hints. |
+| Request dependency rejects | Returned update/audio-control promise rejects. | Preserve the dependency error; retry only under caller policy. |
 
 ## Pitfalls
 
-- Enabled state and can-set/can-unset are independent. Treating enabled as permission exposes invalid toggles.
+- The static `Util.canSet*`/`canUnset*`/`canUpdate*` predicates are implementation helpers, not instance query methods on `ControlsOptionsManager`.
 - Verify both typed constants/enums and raw wire values before changing a logical condition in this legacy package.
 
 ## Test-Case Strategy (module)
 
-Use the current mirrored suites: `test/unit/spec/controls-options-manager/index.js`, `test/unit/spec/controls-options-manager/util.js`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
+Use the current mirrored suites: `test/unit/spec/controls-options-manager/index.js`, `test/unit/spec/controls-options-manager/util.js`. Characterize the controls-options-manager-specific use cases above and each listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
-| `CONTROLS-OPTIONS-MANAGER-R-001` | `test/unit/spec/controls-options-manager/index.js` | inspect sibling tests for full operation matrix |
-| `CONTROLS-OPTIONS-MANAGER-R-002` | `test/unit/spec/controls-options-manager/index.js` | verify the operation-specific invalid-input and rejection branches |
-| `CONTROLS-OPTIONS-MANAGER-R-003` | `test/unit/spec/controls-options-manager/index.js` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
+| `CONTROLS-OPTIONS-MANAGER-R-001` | `test/unit/spec/controls-options-manager/index.js` | cover every `Control`/`Setting` capability predicate and route |
+| `CONTROLS-OPTIONS-MANAGER-R-002` | `test/unit/spec/controls-options-manager/index.js` | cover mixed-control batches and prove request order plus main/breakout URL selection |
+| `CONTROLS-OPTIONS-MANAGER-R-003` | `test/unit/spec/controls-options-manager/index.js` | distinguish synchronous unknown-scope and permission errors from missing-URL and dependency promise rejections |
 
 ## Traceability
 

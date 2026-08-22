@@ -4,8 +4,8 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-21T06:10:05Z
-validation_status: not-run
+updated_at: 2026-08-22T15:21:29Z
+validation_status: pass-with-warnings
 -->
 # MEMBER — SPEC
 
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/member/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 86% assessed 2026-08-21; 12/14 mandatory fields present; all critical fields present; one Important outcome-detail gap and one polish gap remain |
+| Coverage score | 93% assessed 2026-08-22; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains; pending independent validation of the participant-role repair |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-22T15:21:29Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -70,9 +70,10 @@ src/member/
 
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
-| `member.1` | SDK / in-process | construct a member from participant data | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/member/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `member.2` | SDK / in-process | update identity, roles, controls, status, and media properties | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/member/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `member.3` | SDK / in-process | expose normalized participant fields to roster consumers | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/member/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `member.1` | SDK model | `Member` construction/update from `Participant` | Normalize participant person/device, roles, controls, status, media, and identifiers into the roster model. | Preserve the observable member fields consumed by `MembersCollection` and Meeting. | `src/member/index.ts`, `src/member/types.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `member.2` | SDK mutation | `processPairedDevice()`, `setIsHost()`, and `setIsSelf()` | Derive paired-device and local host/self flags from authoritative participant context. | Preserve each processor's synchronous throw-or-sentinel behavior; do not generalize all missing inputs into `ParameterError` or a remote rejection. | `src/member/index.ts`, `src/member/util.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `member.3` | SDK mutation | `setIsContentSharing()`, `processIsContentSharing()`, and `processIsRecording()` | Project current share and recording state onto the member without owning their transport. | Preserve boolean projection rules and synchronous updates. | `src/member/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `member.4` | exported participant contracts | `MemberId`, `IExternalRoles`, `ServerRoles`, `ServerRoleShape`, `MediaStatus`, `IMediaStatus`, `Csi`, `Direction`, `ParticipantUrl`, `MediaSession`, `Intent`, `ParticipantDevice`, `ParticipantPerson`, `ParticipantMediaStatus`, `ParticipantControls`, and `Participant` | Share the exact participant input vocabulary used by Locus parsing and roster reconciliation. | Add fields compatibly; role, direction, and media raw values remain package contracts. | `src/member/types.ts`, `src/member/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
 
 Compatibility notes:
 - Prefer additive options and payload fields. Preserve method/event names, rejection semantics, and cleanup timing; route public changes through `src/index.ts` or the documented owning object.
@@ -86,8 +87,8 @@ Locus participant payloads, member normalization utilities, and shared constants
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
 | `MEMBER-R-001` | construct a member from participant data. | Builds and updates the normalized client projection for one Locus participant. | `src/member/index.ts` | `test/unit/spec/member/index.js` | none | PRESENT |
-| `MEMBER-R-002` | update identity, roles, controls, status, and media properties. | Callers need deterministic observable behavior across async Webex inputs. | `src/member/index.ts`, `src/member/util.ts` | `test/unit/spec/member/index.js` | additional edge cases may live in sibling tests | PRESENT |
-| `MEMBER-R-003` | Missing or partial fields follow the existing normalizer defaults; the module has no asynchronous resource, listener, or timer to release. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/member/` | `test/unit/spec/member/index.js` | none | PRESENT |
+| `MEMBER-R-002` | update identity, roles, controls, status, and media properties. | Roster consumers rely on stable synchronous participant projections even as Locus fields arrive incrementally. | `src/member/index.ts`, `src/member/util.ts` | `test/unit/spec/member/index.js` | malformed paired-device/role inputs need synchronous error coverage | PRESENT |
+| `MEMBER-R-003` | Missing participant input has processor-specific synchronous outcomes: validation-heavy helpers such as audio/video/hand/feature/recording/media-status processing and `canReclaimHost()` throw `ParameterError`; `canApproveAIEnablement()` and only the helpers whose implementations explicitly default a present participant's policy value return `false`; identity/name/recording-member extractors may return `null`; `extractStatus()` returns `_NOT_IN_MEETING_`. The module owns no asynchronous resource, listener, or timer. | Callers must preserve each helper's implemented sentinel or exception instead of treating all malformed or partial participant data as one failure contract. | `src/member/` | `test/unit/spec/member/index.js`, `test/unit/spec/member/util.js` | none | PRESENT |
 
 ## Design Overview
 
@@ -109,10 +110,10 @@ Sequence coverage:
 
 | Operation group | Diagram | Failure coverage |
 |---|---|---|
-| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
-| UC-2 — secondary/change operation | Secondary operation and failure sequence | partial/malformed participant data or absent optional person/device fields |
+| UC-1…UC-3 — member projection operation groups | Member projection primary sequence | malformed participant input and synchronous projection updates without transport cleanup |
+| UC-1…UC-3 — member projection alternate/failure paths | Member projection alternate/failure sequence | partial/malformed participant data or absent optional person/device fields |
 
-### Primary operation sequence
+### Member projection primary sequence
 
 ```mermaid
 sequenceDiagram
@@ -125,18 +126,21 @@ sequenceDiagram
   M-->>P: current participant projection
 ```
 
-### Secondary operation and failure sequence
+### Member projection alternate/failure sequence
 
 ```mermaid
 sequenceDiagram
-  participant C as Caller / current input owner
-  participant M as Member
-  C->>M: invoke the UC-2 operation
-  M->>M: apply the current guard and ownership rules
-  alt accepted current input
-    M-->>C: documented result, state update, or scoped event
-  else partial/malformed participant data or absent optional person/device fields
-    M--xC: documented R-003 rejection, ignore, or cleanup outcome
+  participant P as Locus participant input
+  participant U as member/util.ts
+  participant M as Member model
+  P->>U: participant and current model fields
+  alt processor requires participant and input is absent
+    U--xM: synchronous ParameterError
+  else sentinel-returning processor receives absent/partial input
+    U-->>M: false, null, or _NOT_IN_MEETING_
+  else participant is present
+    U->>U: derive identity, roles, controls, status, and media fields
+    U-->>M: normalized values and optional-field defaults
   end
 ```
 
@@ -159,8 +163,9 @@ The arrows identify ownership and delegation inside `src/member/`; files that on
 
 ## Use Cases
 
-- **UC-1:** Normalize participant, person, device, controls, and status data into one local member projection. Evidence: `src/member/`.
-- **UC-2:** Update an existing Member without performing I/O; roster transport and events remain owned by `src/members/`. Evidence: `src/member/`.
+- **UC-1:** Normalize a `Participant` with person, device, role, controls, status, and media data into one local `Member` projection. Evidence: `src/member/index.ts`.
+- **UC-2:** Recompute host/self/paired-device flags when authoritative Locus context changes, preserving the selected processor's synchronous `ParameterError`, `false`, `null`, or `_NOT_IN_MEETING_` outcome for absent/partial input. Evidence: `src/member/index.ts`, `src/member/util.ts`.
+- **UC-3:** Update content-sharing and recording projections without performing I/O; roster requests and update events remain owned by `src/members/`. Evidence: `src/member/index.ts`, `src/members/index.ts`.
 
 ## State Model
 
@@ -177,13 +182,13 @@ One in-memory participant projection is updated in place as Locus/member data ch
 
 ## Test-Case Strategy (module)
 
-Use the current mirrored suites: `test/unit/spec/member/index.js`, `test/unit/spec/member/util.js`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
+Use the current mirrored suites: `test/unit/spec/member/index.js`, `test/unit/spec/member/util.js`. Characterize the member-specific use cases above and each listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
-| `MEMBER-R-001` | `test/unit/spec/member/index.js` | confirm the named operation against its owning sibling suite |
-| `MEMBER-R-002` | `test/unit/spec/member/index.js` | verify the code-grounded rejection or stale-input branch |
-| `MEMBER-R-003` | `test/unit/spec/member/index.js` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
+| `MEMBER-R-001` | `test/unit/spec/member/index.js` | cover participant construction plus each synchronous projection processor |
+| `MEMBER-R-002` | `test/unit/spec/member/index.js` | malformed paired-device/role inputs need synchronous error coverage |
+| `MEMBER-R-003` | `test/unit/spec/member/index.js`, `test/unit/spec/member/util.js` | assert the per-helper `ParameterError`, `false`, `null`, and `_NOT_IN_MEETING_` matrix without inventing transport rejection or cleanup |
 
 ## Traceability
 

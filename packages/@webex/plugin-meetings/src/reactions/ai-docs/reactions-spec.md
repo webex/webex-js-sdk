@@ -4,8 +4,8 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-21T06:10:05Z
-validation_status: not-run
+updated_at: 2026-08-22T15:21:29Z
+validation_status: pass-with-warnings
 -->
 # REACTIONS — SPEC
 
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/reactions/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 93% assessed 2026-08-21; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains |
+| Coverage score | 93% assessed 2026-08-22; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains; pending independent validation of the participant-role repair |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-22T15:21:29Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -41,7 +41,7 @@ Requirements cite current source and mirrored tests. Current code wins over reta
 
 ## Purpose / Responsibility
 
-Defines the supported reaction and skin-tone catalogs plus typed normalization between consumer reaction data and server relay values.
+Defines static reaction and skin-tone catalogs plus TypeScript shapes for reaction, sender, and relay payloads; owning Meeting code performs runtime lookup and fallback.
 
 ## Stack
 
@@ -70,9 +70,16 @@ src/reactions/
 
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
-| `reactions.1` | SDK / in-process | export supported reaction and skin-tone catalogs | Focused operation group owned by this module | Preserve methods/events/wire values reachable from package objects | `src/reactions/reactions.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `reactions.2` | SDK / in-process | type reaction, sender, and relay payloads | Focused operation group owned by this module | Preserve methods/events/wire values reachable from package objects | `src/reactions/reactions.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `reactions.3` | SDK / in-process | normalize reaction values used by meeting requests/events | Focused operation group owned by this module | Preserve methods/events/wire values reachable from package objects | `src/reactions/reactions.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `reactions.1` | exported catalogs | `REACTION_RELAY_TYPES`, `Reactions`, and `SkinTones` | Define the supported relay, reaction, and skin-tone values consumed by Meeting request/event code. | Preserve existing raw values; add new catalog members compatibly. | `src/reactions/constants.ts`, `src/reactions/reactions.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `reactions.2` | exported types | `EmoticonData`, `SkinTone`, `Reaction`, `ReactionServerType`, `SkinToneType`, `Sender`, `ProcessedReaction`, and `RelayEvent` | Type the sender, relay, server, and normalized reaction payloads crossing the Meeting boundary. | Type changes must remain compatible with existing relay and sender shapes. | `src/reactions/reactions.type.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+
+### Emitted events
+
+Current source emits or forwards these observable literals for this operation boundary. Preserve literal values, scope, payload shape, and emission timing; a constant name alone is not a substitute for the consumer-visible value.
+
+| Event literal | Constant / expression | Emission evidence |
+|---|---|---|
+| `meeting:receiveReactions` | `EVENT_TRIGGERS.MEETING_RECEIVE_REACTIONS` | `src/meeting/index.ts` |
 
 Compatibility notes:
 - Prefer additive fields/options and preserve current return and rejection semantics. Internal helpers are not public merely because they are exported within the source directory.
@@ -85,9 +92,9 @@ Reaction constants/types and Meeting reaction request/event paths.
 
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| `REACTIONS-R-001` | export supported reaction and skin-tone catalogs. | Defines the supported reaction and skin-tone catalogs plus typed normalization between consumer reaction data and server relay values. | `src/reactions/reactions.ts` | `test/unit/spec/meeting/request.js` | none | PRESENT |
-| `REACTIONS-R-002` | type reaction, sender, and relay payloads. | Consumers need deterministic behavior across meeting and remote updates. | `src/reactions/reactions.ts`, `src/reactions/reactions.type.ts` | `test/unit/spec/meeting/request.js` | inspect sibling tests for operation-specific cases | PRESENT |
-| `REACTIONS-R-003` | The catalogs perform no fallible I/O; unsupported values are prevented by declared constants/types or handled by the owning request path. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/reactions/` | `test/unit/spec/meeting/request.js` | none | PRESENT |
+| `REACTIONS-R-001` | Export the supported `Reactions` and `SkinTones` record values without executable normalization or transport behavior. | Owning Meeting code needs one stable catalog of server type/codepoint/shortcode values while retaining responsibility for selection and fallback. | `src/reactions/reactions.ts` | `test/unit/spec/meeting/index.js`, `test/unit/spec/meeting/request.js` | no source-local mirrored test exists | PRESENT |
+| `REACTIONS-R-002` | type reaction, sender, and relay payloads. | Meeting serialization depends on the exact reaction, skin-tone, sender, and relay type vocabulary. | `src/reactions/reactions.ts`, `src/reactions/reactions.type.ts` | `test/unit/spec/meeting/request.js` | catalog values need an exhaustive serializer compatibility matrix in the owning Meeting tests | PRESENT |
+| `REACTIONS-R-003` | The catalogs are plain records and perform no validation, parsing, serialization, or fallible I/O; `Meeting.sendReaction` passes an unknown reaction type through and falls back to the normal skin tone for an unknown tone. | The spec must not turn static data declarations into a runtime normalization API or rejection contract. | `src/reactions/`, `src/meeting/index.ts` | `test/unit/spec/meeting/index.js`, `test/unit/spec/meeting/request.js` | none | PRESENT |
 
 ## Design Overview
 
@@ -109,10 +116,10 @@ Sequence coverage:
 
 | Operation group | Diagram | Failure coverage |
 |---|---|---|
-| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
-| UC-2 — secondary/change operation | Secondary operation and failure sequence | consumer supplies a value outside the exported catalog or an owning request rejects it |
+| UC-1…UC-2 — reaction catalog and payload operation groups | Reaction catalog and payload primary sequence | catalog/type-only behavior and owning Meeting serialization/request failure |
+| UC-1…UC-2 — reaction catalog and payload alternate/failure paths | Reaction catalog and payload alternate/failure sequence | consumer supplies a value outside the exported catalog or an owning request rejects it |
 
-### Primary operation sequence
+### Reaction catalog and payload primary sequence
 
 ```mermaid
 sequenceDiagram
@@ -123,19 +130,21 @@ sequenceDiagram
   C->>C: place values in request/event payload
 ```
 
-### Secondary operation and failure sequence
+### Reaction catalog and payload alternate/failure sequence
 
 ```mermaid
 sequenceDiagram
   participant C as Caller / current input owner
-  participant M as ReactionsCatalog
-  C->>M: invoke the UC-2 operation
-  M->>M: apply the current guard and ownership rules
-  alt accepted current input
-    M-->>C: documented result, state update, or scoped event
-  else consumer supplies a value outside the exported catalog or an owning request rejects it
-    M--xC: documented R-003 rejection, ignore, or cleanup outcome
+  participant M as Meeting.sendReaction
+  participant R as Reactions/SkinTones records
+  C->>M: sendReaction(reactionType, skinToneType)
+  M->>R: look up catalog entries
+  alt known reaction/tone
+    R-->>M: declared catalog values
+  else unknown value
+    M->>M: pass through custom reaction type; use normal tone fallback
   end
+  M-->>C: request promise, or plain Error rejection when reactionChannelUrl is absent
 ```
 
 ## Class / Component Relationships
@@ -157,8 +166,8 @@ The arrows identify ownership and delegation inside `src/reactions/`; files that
 
 ## Use Cases
 
-- **UC-1:** Expose the supported reaction and skin-tone catalogs to package consumers. Evidence: `src/reactions/`.
-- **UC-2:** Type reaction relay/sender payloads used by owning meeting request and event code. Evidence: `src/reactions/`.
+- **UC-1:** Resolve consumer reaction and skin-tone choices from the exported `Reactions` and `SkinTones` catalogs before `Meeting.sendReaction()` serializes them. Evidence: `src/reactions/reactions.ts`, `src/meeting/index.ts`.
+- **UC-2:** Carry sender identity and relay payloads through the exported reaction types while leaving parsing, validation, and transport to Meeting. Evidence: `src/reactions/reactions.type.ts`, `src/meeting/index.ts`.
 
 ## Business Rules & Invariants
 
@@ -166,7 +175,7 @@ The arrows identify ownership and delegation inside `src/reactions/`; files that
 
 ## Protocol / Wire Format
 
-- Existing request/event/channel types and constants under `src/reactions/` own serialization and parsing. Preserve field names, enum/raw values, identity/routing fields, and compatibility; normalized client properties are not a replacement wire schema.
+- `src/reactions/` declares catalog values and TypeScript payload shapes used by owning request/event code. Preserve type names, enum/raw values, sender identity fields, and relay structure; parsing and serialization occur outside this module.
 
 ## Pitfalls
 
@@ -175,13 +184,13 @@ The arrows identify ownership and delegation inside `src/reactions/`; files that
 
 ## Test-Case Strategy (module)
 
-No mirrored module test directory exists. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
+No mirrored module test directory exists. Characterize the reactions-specific use cases above and each listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
-| `REACTIONS-R-001` | `test/unit/spec/meeting/request.js` | inspect sibling tests for full operation matrix |
-| `REACTIONS-R-002` | `test/unit/spec/meeting/request.js` | verify the operation-specific invalid-input and rejection branches |
-| `REACTIONS-R-003` | `test/unit/spec/meeting/request.js` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
+| `REACTIONS-R-001` | `test/unit/spec/meeting/request.js` | cover every exported catalog value and payload shape through owning Meeting serialization tests |
+| `REACTIONS-R-002` | `test/unit/spec/meeting/request.js` | keep serializer coverage tied to every exported reaction and skin-tone raw value |
+| `REACTIONS-R-003` | `test/unit/spec/meeting/request.js` | add a boundary case showing transport failure belongs to Meeting rather than this catalog/type module |
 
 ## Traceability
 

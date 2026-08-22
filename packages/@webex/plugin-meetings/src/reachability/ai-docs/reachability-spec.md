@@ -4,8 +4,8 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-21T06:10:05Z
-validation_status: not-run
+updated_at: 2026-08-22T15:21:29Z
+validation_status: pass-with-warnings
 -->
 # REACHABILITY — SPEC
 
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/reachability/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 93% assessed 2026-08-21; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains |
+| Coverage score | 93% assessed 2026-08-22; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains; pending independent validation of the participant-role repair |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-22T15:21:29Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -76,9 +76,24 @@ src/reachability/
 
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
-| `reachability.1` | SDK / in-process / remote | fetch and normalize candidate clusters | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/reachability/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `reachability.2` | SDK / in-process / remote | run `udp` / `tcp` / `xtls` reachability probes | Preserve the code-level protocol and metric field names | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/reachability/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `reachability.3` | SDK / in-process / remote | return/report reachability and NAT results | Preserve the module responsibility through a focused operation group | Consumer-visible methods/events are semver-sensitive when reachable from package objects | `src/reachability/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `reachability.1` | SDK / remote | `Reachability.getClusters()` and `gatherReachability()` | Fetch cluster discovery data, cache the join cookie, and start a configured reachability run. | Disabled reachability rejects before the catch boundary; missing WebRTC capability or caught discovery/probe failure returns `{}`; a started successful run resolves its defer promise with `undefined` after storing results. | `src/reachability/index.ts`, `src/reachability/request.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `reachability.2` | SDK / async | `ClusterReachability.getResult()`, `start()`, `abort()` and `ReachabilityPeerConnection.getResult()`, `start()`, `abort()` | Run and settle per-cluster/per-protocol WebRTC probes with owned timers and peer connections. | Preserve the `udp`, `tcp`, and `xtls` protocol names and one-settlement cleanup. | `src/reachability/clusterReachability.ts`, `src/reachability/reachabilityPeerConnection.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `reachability.3` | SDK / lifecycle | `gatherReachabilityFallback()` and `stopReachability()` | Restart with fallback discovery when the minimum cluster target is missed, or abort an active run. | Both paths absorb their documented internal failures; stop emits `reachability:stopped` only for an active timer. | `src/reachability/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `reachability.4` | SDK / query | `isSubnetReachable()`, `isAnyPublicClusterReachable()`, `isWebexMediaBackendUnreachable()`, and `isAnyClusterReachableViaProtocol()` | Answer media-selection questions from the latest in-memory cluster results. | Preserve boolean/null semantics and current public/video-mesh distinctions. | `src/reachability/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `reachability.5` | SDK / report | `getJoinCookie()`, `getReachabilityReport()`, `getReachabilityMetrics()`, `getReachabilityResults()`, `getClientMediaPreferences()`, and `getReachabilityReportToAttachToRoap()` | Read cached/in-memory results and format local metrics, media preferences, or ROAP attachment data. | These methods construct/return data; they do not submit a reachability report to the service. | `src/reachability/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `reachability.6` | exported utilities | `resolveReachabilityProtocols()`, `isReachabilityEnabled()`, `convertStunUrlToTurn()`, and `convertStunUrlToTurnTls()` | Resolve configured protocol sets and transform validated STUN URLs for probe setup. | Invalid STUN input throws; preserve `xtls` and URL conversion behavior. | `src/reachability/util.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `reachability.7` | exported events/types | `Events`, `ResultEventData`, `ClientMediaIpsUpdatedEventData`, `NatTypeUpdatedEventData`, `Protocol`, `ResolvedReachabilityProtocols`, `ReachabilityProtocolConfig`, `EnableReachabilityChecksConfig`, `ReachabilityPeerConnectionEvents`, `TransportResult`, `NatType`, `ClusterReachabilityResult`, `ReachabilityMetrics`, `TransportResultForBackend`, `ReachabilityResultForBackend`, `ReachabilityResultsForBackend`, `ReachabilityResults`, `ReachabilityReportV0`, `ReachabilityReportV1`, `ClientMediaPreferences`, `GetClustersTrigger`, `ClusterNode`, and `ClusterList` | Share the exact probe/result vocabulary with Meetings, metrics, and ROAP code. | Add fields compatibly and preserve raw result/protocol/NAT values. | `src/reachability/clusterReachability.ts`, `src/reachability/reachability.types.ts`, `src/reachability/request.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `reachability.8` | dormant request helper | `ReachabilityRequest.remoteSDPForClusters()` | POST local SDP offers to the reachability resource and return remote SDP bodies when called directly. | No current package code invokes this exported helper; do not present it as part of `gatherReachability()`. | `src/reachability/request.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+
+### Emitted events
+
+Current source emits these observable literals from the `Reachability` controller. Preserve literal values and the current terminal/progress timing.
+
+| Event literal | Constant / expression | Emission evidence |
+|---|---|---|
+| `reachability:done` | inline literal | `src/reachability/index.ts` |
+| `reachability:firstResultAvailable` | inline literal | `src/reachability/index.ts` |
+| `reachability:stopped` | inline literal | `src/reachability/index.ts` |
 
 Compatibility notes:
 - Prefer additive options and payload fields. Preserve method/event names, rejection semantics, and cleanup timing; route public changes through `src/index.ts` or the documented owning object.
@@ -93,7 +108,7 @@ Webex reachability services, browser RTCPeerConnection, STUN/TURN candidates, ti
 |---|---|---|---|---|---|---|
 | `REACHABILITY-R-001` | fetch and normalize candidate clusters. | Discovers media clusters, probes protocol reachability with peer connections, determines NAT characteristics, and reports results. | `src/reachability/index.ts` | `test/unit/spec/reachability/index.ts` | none | PRESENT |
 | `REACHABILITY-R-002` | Run the `udp`, `tcp`, and `xtls` reachability probes used by code and metric keys. | Callers and telemetry consumers need the exact wire/field name rather than an ambiguous prose-only TLS label. | `src/reachability/index.ts`, `src/reachability/clusterReachability.ts`, `src/reachability/reachability.types.ts` | `test/unit/spec/reachability/index.ts` | none | PRESENT |
-| `REACHABILITY-R-003` | Discovery/report failures reject their requests; each probe resolves unreachable or rejects per current path and always closes its peer connection and timeout. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/reachability/` | `test/unit/spec/reachability/index.ts` | none | PRESENT |
+| `REACHABILITY-R-003` | `gatherReachability()` throws from its `async` body when reachability is disabled before entering its `try`, so the returned promise rejects; it returns `{}` when WebRTC is unavailable or when discovery/probe setup fails inside the `try`. A started successful run returns the defer promise, which resolves with `undefined` after results are stored. `getClusters()` retries once and can reject its direct caller on the second failure; fallback catches and logs its own failures. | Callers must distinguish the disabled-config rejection, empty-object skip/failure sentinel, and successful void settlement instead of treating every gather outcome as `{}` or a rejection. | `src/reachability/index.ts`, `src/reachability/clusterReachability.ts`, `src/reachability/reachabilityPeerConnection.ts` | `test/unit/spec/reachability/index.ts`, `test/unit/spec/reachability/clusterReachability.ts` | none | PRESENT |
 | `REACHABILITY-R-004` | Each cluster/protocol probe settles once, closes its peer connection/timer, and contributes an explicit reachable/unreachable result. | ICE events and timeouts race; deterministic cleanup and aggregation prevent false success and leaks. | `src/reachability/clusterReachability.ts`, `src/reachability/reachabilityPeerConnection.ts` | `test/unit/spec/reachability/clusterReachability.ts` | none | PRESENT |
 | `REACHABILITY-R-005` | The aggregate report preserves IP version, NAT/protocol/cluster outcomes, previous-report context, and trigger. | The backend and media selection need comparable current results rather than a single boolean. | `src/reachability/index.ts`, `src/reachability/reachability.types.ts`, `src/reachability/request.ts` | `test/unit/spec/reachability/index.ts`, `test/unit/spec/reachability/request.js` | none | PRESENT |
 
@@ -106,14 +121,14 @@ Webex reachability services, browser RTCPeerConnection, STUN/TURN candidates, ti
 ```mermaid
 flowchart LR
   Caller[Meetings registration / diagnostics] --> Reach[index.ts]
-  Reach --> Request[request.ts cluster discovery/report]
+  Reach --> Request[request.ts cluster discovery]
   Request --> Service[reachability service]
   Reach --> Cluster[clusterReachability.ts]
   Cluster --> Probe[reachabilityPeerConnection.ts]
   Probe --> ICE[WebRTC ICE candidate gathering]
   Probe --> Cluster
   Cluster --> Reach
-  Reach --> Request
+  Reach --> Local[local report / metrics / ROAP attachment]
 ```
 
 ## Sequence Diagram(s)
@@ -122,10 +137,10 @@ Sequence coverage:
 
 | Operation group | Diagram | Failure coverage |
 |---|---|---|
-| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
-| UC-2 — secondary/change operation | Secondary operation and failure sequence | cluster discovery failure, ICE timeout, peer-connection failure, unsupported protocol, or report submission failure |
+| UC-1…UC-5 — reachability discovery and probe operation groups | Reachability discovery and probe primary sequence | second discovery failure, absorbed gather failure, probe timeout/abort, and peer cleanup |
+| UC-1…UC-5 — reachability discovery and probe alternate/failure paths | Reachability discovery and probe alternate/failure sequence | cluster discovery failure, ICE timeout, peer-connection failure, unsupported protocol, or explicit stop |
 
-### Primary operation sequence
+### Reachability discovery and probe primary sequence
 
 ```mermaid
 sequenceDiagram
@@ -140,22 +155,25 @@ sequenceDiagram
     R->>P: start probe
     P-->>R: reachable/unreachable after ICE or timeout
   end
-  R->>Q: submit aggregate report
-  R-->>C: normalized reachability result
+  R->>R: build in-memory results/report data
+  R-->>C: defer settles undefined; disabled rejects; skipped/caught failure returns empty object
 ```
 
-### Secondary operation and failure sequence
+### Reachability discovery and probe alternate/failure sequence
 
 ```mermaid
 sequenceDiagram
-  participant C as Caller / current input owner
-  participant M as Reachability
-  C->>M: invoke the UC-2 operation
-  M->>M: apply the current guard and ownership rules
-  alt accepted current input
-    M-->>C: documented result, state update, or scoped event
-  else cluster discovery failure, ICE timeout, peer-connection failure, unsupported protocol, or report submission failure
-    M--xC: documented R-003 rejection, ignore, or cleanup outcome
+  participant R as Reachability
+  participant P as Protocol probe
+  participant W as RTCPeerConnection
+  R->>P: probe cluster with udp, tcp, or xtls
+  P->>W: gather ICE candidates
+  alt candidate proves reachable
+    W-->>P: matching candidate
+    P-->>R: reachable result; close connection/timer
+  else timeout or terminal probe error
+    W--xP: timeout/error
+    P-->>R: unreachable result or rejection; close connection/timer
   end
 ```
 
@@ -185,8 +203,11 @@ The arrows identify ownership and delegation inside `src/reachability/`; files t
 
 ## Use Cases
 
-- **UC-1:** Probe each discovered cluster over the code-level transport names `udp`, `tcp`, and `xtls`. Evidence: `src/reachability/`.
-- **UC-2:** Settle every probe exactly once and aggregate protocol, NAT, IP-version, previous-report, and trigger context. Evidence: `src/reachability/`.
+- **UC-1:** Fetch clusters with one retry, store the returned join cookie, and start enabled `udp`, `tcp`, and `xtls` probes. Evidence: `src/reachability/index.ts`, `src/reachability/request.ts`.
+- **UC-2:** Settle each cluster/protocol probe once and close its timer and peer connection on success, failure, timeout, or abort. Evidence: `src/reachability/clusterReachability.ts`, `src/reachability/reachabilityPeerConnection.ts`.
+- **UC-3:** Reject before probing when reachability is disabled, return `{}` when WebRTC is unavailable or a discovery/probe setup failure is caught, and otherwise resolve the run's defer with `undefined` after storing results. Evidence: `src/reachability/index.ts`.
+- **UC-4:** Trigger fallback discovery when the minimum reachable-cluster threshold is missed, aborting the previous run before probing the replacement list. Evidence: `src/reachability/index.ts`.
+- **UC-5:** Read results as metrics, client media preferences, or a ROAP attachment without calling the dormant `ReachabilityRequest.remoteSDPForClusters()` helper. Evidence: `src/reachability/index.ts`, `src/reachability/request.ts`.
 
 ## State Model
 
@@ -198,7 +219,7 @@ Cluster/protocol probe state, peer connections, timers, partial results, and cac
 
 ## Concurrency & Reactive Flow
 
-- Async work owned by `Reachability` may complete after a newer caller or remote input. Preserve the identity, sequence, and resource-owner guards in `src/reachability/`; a late completion must not replay UC-2 for superseded state.
+- Each cluster/protocol probe owns one peer connection and timeout, settles once from its ICE/error/timeout path, and closes both resources before contributing to the aggregate. Cluster discovery is requested remotely; report/metric/ROAP shapes are constructed locally. Only failures inside `gatherReachability()`'s `try` are absorbed as `{}`; disabled configuration rejects before that boundary.
 
 ## Protocol / Wire Format
 
@@ -208,8 +229,10 @@ Cluster/protocol probe state, peer connections, timers, partial results, and cac
 
 | Condition | Signal | Caller recovery |
 |---|---|---|
-| cluster discovery failure, ICE timeout, peer-connection failure, unsupported protocol, or report submission failure | Follow the concrete rejection, ignore, state, or cleanup behavior in the module's R-003 requirement. | Resolve the named condition; retry only when another requirement defines a bound. |
-| UC-1 succeeds | Return, update, callback, or scoped event identified by the Public Surface and primary sequence. | Continue from the owning module's accepted state. |
+| Reachability is disabled in configuration | `gatherReachability()` throws `enableReachabilityChecks is disabled in config` from its `async` body before entering the catch block, which rejects the returned promise. | Enable the configured checks or handle the rejection; do not expect `{}` for this path. |
+| Cluster discovery still fails after `getClusters()` retries once | A direct `getClusters()` caller receives the rejection; `gatherReachability()` and fallback callers catch it and resolve with their documented empty/void outcome. | Distinguish direct discovery from the failure-absorbing gather APIs. |
+| ICE timeout or supported probe cannot establish reachability | The probe settles on its current unreachable/rejection path and closes its peer connection and timeout. | Record the explicit unreachable result; do not retain the probe connection. |
+| All `udp`, `tcp`, and `xtls` probes settle | The module stores aggregate protocol/cluster/NAT/IP-version results, emits completion, and resolves the gather defer with `undefined`; no report-submission call is made. | Read the stored/local report through the query/report helpers rather than expecting the gather promise to carry the result object. |
 
 ## Pitfalls
 
@@ -222,13 +245,13 @@ Cluster/protocol probe state, peer connections, timers, partial results, and cac
 
 ## Test-Case Strategy (module)
 
-Use the current mirrored suites: `test/unit/spec/reachability/clusterReachability.ts`, `test/unit/spec/reachability/index.ts`, `test/unit/spec/reachability/request.js`, `test/unit/spec/reachability/util.ts`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
+Use the current mirrored suites: `test/unit/spec/reachability/clusterReachability.ts`, `test/unit/spec/reachability/index.ts`, `test/unit/spec/reachability/request.js`, `test/unit/spec/reachability/util.ts`. Characterize the reachability-specific use cases above and each listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
-| `REACHABILITY-R-001` | `test/unit/spec/reachability/index.ts` | confirm the named operation against its owning sibling suite |
-| `REACHABILITY-R-002` | `test/unit/spec/reachability/index.ts` | verify the code-grounded rejection or stale-input branch |
-| `REACHABILITY-R-003` | `test/unit/spec/reachability/index.ts` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
+| `REACHABILITY-R-001` | `test/unit/spec/reachability/index.ts` | cover discovery, probe, fallback, stop, query, and report-format groups |
+| `REACHABILITY-R-002` | `test/unit/spec/reachability/index.ts` | second discovery failure versus absorbed gather failure needs paired assertions |
+| `REACHABILITY-R-003` | `test/unit/spec/reachability/index.ts` | keep paired assertions for disabled-config rejection, WebRTC/caught-failure `{}`, successful `undefined` defer settlement, and no `remoteSDPForClusters()` invocation |
 | `REACHABILITY-R-004` | `test/unit/spec/reachability/clusterReachability.ts` | verify callback/timeout races |
 | `REACHABILITY-R-005` | `test/unit/spec/reachability/index.ts`, `test/unit/spec/reachability/request.js` | verify partial/mixed protocol reports |
 

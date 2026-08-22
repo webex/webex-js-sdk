@@ -4,8 +4,8 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-21T06:10:05Z
-validation_status: not-run
+updated_at: 2026-08-22T15:21:29Z
+validation_status: pass-with-warnings
 -->
 # METRICS — SPEC
 
@@ -19,9 +19,9 @@ validation_status: not-run
 | Source path(s) | `src/metrics/` |
 | Parent spec | — |
 | Doc kind | Module spec |
-| Coverage score | 93% assessed 2026-08-21; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains |
+| Coverage score | 93% assessed 2026-08-22; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains; pending independent validation of the participant-role repair |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-21T06:10:05Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-08-22T15:21:29Z |
 | Validation status | not-run |
 
 ## Evidence Rules
@@ -68,9 +68,9 @@ src/metrics/
 
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
-| `metrics.1` | SDK / in-process / remote | initialize the metrics host once | Focused operation group owned by this module | Preserve methods/events/wire values reachable from package objects | `src/metrics/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `metrics.2` | SDK / in-process / remote | prepare/flatten bounded metric fields | Focused operation group owned by this module | Preserve methods/events/wire values reachable from package objects | `src/metrics/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
-| `metrics.3` | SDK / in-process / remote | send named behavioral metrics with fields and tags | Focused operation group owned by this module | Preserve methods/events/wire values reachable from package objects | `src/metrics/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `metrics.1` | singleton setup | default singleton `initialSetup(webex)` | Store the Webex host used by later behavioral submissions. | Repeated setup replaces the host; there is no one-time guard or readiness check. | `src/metrics/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `metrics.2` | pure normalization | `prepareMetricFields(payload, prefix)` | Flatten nested objects/arrays and wrap root literals for clients that reject nested metric fields. | Preserve underscore path construction, array indices, and `{value}` root-literal behavior. | `src/metrics/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
+| `metrics.3` | remote side effect | `sendBehavioralMetric(metricName, metricFields, metricTags)` | Forward the metric name, configured metrics type, fields, and tags to `submitClientMetrics()`. | The method returns `void` and does not expose an operational-metric API or promise. | `src/metrics/index.ts` | [CONTRACTS](../../../ai-docs/CONTRACTS.md) |
 
 Compatibility notes:
 - Prefer additive fields/options and preserve current return and rejection semantics. Internal helpers are not public merely because they are exported within the source directory.
@@ -83,13 +83,13 @@ Webex metrics plugin/host, behavioral metric constants, logging/error handling, 
 
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| `METRICS-R-001` | initialize the metrics host once. | Initializes meeting behavioral telemetry, flattens metric fields, and submits established metric names/tags through the Webex metrics host. | `src/metrics/index.ts` | `test/unit/spec/metrics/index.js` | none | PRESENT |
-| `METRICS-R-002` | prepare/flatten bounded metric fields. | Consumers need deterministic behavior across meeting and remote updates. | `src/metrics/index.ts`, `src/metrics/constants.ts` | `test/unit/spec/metrics/index.js` | inspect sibling tests for operation-specific cases | PRESENT |
-| `METRICS-R-003` | Submission errors follow the current metrics-client return/logging path; the static facade allocates no listener, lock, or timer. | Callers must receive the actual module failure outcome without false cleanup or event guarantees. | `src/metrics/` | `test/unit/spec/metrics/index.js` | none | PRESENT |
+| `METRICS-R-001` | `initialSetup(webex)` replaces the singleton's stored Webex host on every call. | Later behavioral submissions must use the host supplied by the owning SDK instance without implying an idempotence guard the implementation does not have. | `src/metrics/index.ts` | `test/unit/spec/metrics/index.js` | repeat setup is not covered explicitly | PRESENT |
+| `METRICS-R-002` | `prepareMetricFields` recursively flattens objects and arrays into underscore-delimited keys and wraps a top-level literal as `{value}`. | The behavioral metrics client cannot accept nested field objects, so callers need a deterministic flattening helper. | `src/metrics/index.ts` | `test/unit/spec/metrics/index.js` | no cycle or size bound is implemented | PRESENT |
+| `METRICS-R-003` | `sendBehavioralMetric` calls `webex.internal.metrics.submitClientMetrics` with the configured metric type, supplied fields, and tags; the method returns no independent result. | The facade must preserve the actual behavioral-metrics boundary without inventing an operational-metrics API or lifecycle guarantee. | `src/metrics/index.ts` | `test/unit/spec/metrics/index.js` | thrown dependency errors propagate synchronously | PRESENT |
 
 ## Design Overview
 
-`src/metrics/index.ts` is a static normalization/submission facade over the SDK metrics clients. `constants.ts` defines field and event names. The module owns no lifecycle state, listener, timer, or remote controller.
+`src/metrics/index.ts` is a singleton facade that stores the current Webex host, flattens caller-supplied fields, and forwards behavioral metrics to `submitClientMetrics`. `constants.ts` defines meeting metric names and fields. The module owns no listener, timer, or remote controller.
 
 ## Data Flow
 
@@ -97,9 +97,8 @@ Webex metrics plugin/host, behavioral metric constants, logging/error handling, 
 flowchart LR
   Owner[Meeting feature owner] --> Metrics[index.ts]
   Constants[constants.ts] --> Metrics
-  Metrics --> Normalize[metric payload and identifiers]
-  Normalize --> Behavioral[webex.internal.metrics.submitClientMetrics]
-  Normalize --> Operational[webex.internal.metrics.submitOperationalMetric]
+  Metrics --> Flatten[prepareMetricFields recursive flattening]
+  Metrics --> Behavioral[sendBehavioralMetric to submitClientMetrics]
 ```
 
 ## Sequence Diagram(s)
@@ -108,35 +107,34 @@ Sequence coverage:
 
 | Operation group | Diagram | Failure coverage |
 |---|---|---|
-| UC-1 — primary operation | Primary operation sequence | accepted and rejected dependency outcomes |
-| UC-2 — secondary/change operation | Secondary operation and failure sequence | missing metric context, invalid metric name/payload, or underlying metrics-client rejection |
+| UC-1…UC-2 — behavioral metrics operation groups | Behavioral metrics primary sequence | uninitialized host submission failure and nested/array/literal field normalization |
+| UC-2 — field preparation | Behavioral metrics alternate/failure sequence | literal, array, object, and optional-prefix branches |
 
-### Primary operation sequence
+### Behavioral metrics primary sequence
 
 ```mermaid
 sequenceDiagram
   participant O as Meeting feature owner
   participant M as Metrics
   participant W as Webex metrics client
-  O->>M: send behavioral or operational metric
-  M->>M: normalize fields and meeting identifiers
-  M->>W: submit metric
-  W-->>M: completion or rejection
-  M-->>O: returned promise/result where applicable
+  O->>M: sendBehavioralMetric(name, fields, tags)
+  M->>W: submitClientMetrics(name, type, fields, tags)
+  W-->>M: synchronous return or throw
+  M-->>O: undefined, unless the dependency throws
 ```
 
-### Secondary operation and failure sequence
+### Behavioral metrics alternate/failure sequence
 
 ```mermaid
 sequenceDiagram
   participant C as Caller / current input owner
   participant M as Metrics
-  C->>M: invoke the UC-2 operation
-  M->>M: apply the current guard and ownership rules
-  alt accepted current input
-    M-->>C: documented result, state update, or scoped event
-  else missing metric context, invalid metric name/payload, or underlying metrics-client rejection
-    M--xC: documented R-003 rejection, ignore, or cleanup outcome
+  C->>M: prepareMetricFields(value, optional prefix)
+  M->>M: recursively visit objects and arrays
+  alt nested value
+    M-->>C: flattened underscore-delimited object
+  else top-level literal or null
+    M-->>C: value wrapped as {value}
   end
 ```
 
@@ -147,26 +145,24 @@ classDiagram
   class Owner
   class Metrics
   class Constants
-  class Normalize
+  class Flatten
   class Behavioral
-  class Operational
   Owner --> Metrics
   Constants --> Metrics
-  Metrics --> Normalize
-  Normalize --> Behavioral
-  Normalize --> Operational
+  Metrics --> Flatten
+  Metrics --> Behavioral
 ```
 
 The arrows identify ownership and delegation inside `src/metrics/`; files that only declare types or constants are not presented as transports.
 
 ## Use Cases
 
-- **UC-1:** Normalize shared identifiers and event-specific fields before behavioral submission. Evidence: `src/metrics/`.
-- **UC-2:** Forward operational measurements through the SDK metrics client without maintaining module state. Evidence: `src/metrics/`.
+- **UC-1:** Initialize the singleton with a Webex host and forward a named behavioral metric with configured type plus caller-supplied fields/tags. Evidence: `src/metrics/index.ts`.
+- **UC-2:** Flatten nested objects, arrays, prefixed values, null, and root literals into the exact field shape accepted by the metrics client. Evidence: `src/metrics/index.ts`.
 
 ## Business Rules & Invariants
 
-- Metrics are sent only after setup; names use the declared catalog; sensitive tokens/content/PII are excluded; flattening is deterministic. Enforced under `src/metrics/`.
+- Behavioral submission requires `initialSetup` to have assigned a Webex host; the facade does not validate metric names or remove sensitive fields. Flattening is deterministic but unbounded, so callers remain responsible for bounded, non-sensitive input. Enforced under `src/metrics/`.
 
 ## Pitfalls
 
@@ -175,13 +171,13 @@ The arrows identify ownership and delegation inside `src/metrics/`; files that o
 
 ## Test-Case Strategy (module)
 
-Use the current mirrored suites: `test/unit/spec/metrics/index.js`. Characterize the two code-grounded use cases above and the listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
+Use the current mirrored suites: `test/unit/spec/metrics/index.js`. Characterize the metrics-specific use cases above and each listed failure condition; add cleanup or transition cases only for resources and state this module actually owns.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
-| `METRICS-R-001` | `test/unit/spec/metrics/index.js` | inspect sibling tests for full operation matrix |
-| `METRICS-R-002` | `test/unit/spec/metrics/index.js` | verify the operation-specific invalid-input and rejection branches |
-| `METRICS-R-003` | `test/unit/spec/metrics/index.js` | verify the concrete R-003 rejection, ignore, or cleanup outcome |
+| `METRICS-R-001` | `test/unit/spec/metrics/index.js` | cover singleton setup, submission, and recursive flattening branches |
+| `METRICS-R-002` | `test/unit/spec/metrics/index.js` | extend the flattening matrix for nested arrays, prefixed primitives, and null values |
+| `METRICS-R-003` | `test/unit/spec/metrics/index.js` | assert the exact `submitClientMetrics` call and the method's `undefined` return |
 
 ## Traceability
 
