@@ -11,7 +11,7 @@
 | Doc kind | Module spec |
 | Coverage score | Partial (manifest-authoritative); 15/15 required document fields present |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved follow-up review remediation / 2026-07-21 |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved follow-up review remediation / 2026-08-21 |
 | Validation status | Follow-up validation passed (independent Claude fallback, 2026-07-21); 1 existing test-coverage gap; coverage remains Partial |
 
 ## Evidence Rules
@@ -36,6 +36,8 @@ The `@webex/contact-center` package is a Webex SDK plugin that provides a TypeSc
 - **Browser-based Calling**: WebRTC integration for browser softphone
 
 - **Metrics & Diagnostics**: Built-in telemetry and log upload
+
+- **Answer on Webex**: Accept, Decline, Mute, and DTMF for voice offers when the agent uses Webex App desktop calling (`enableWxBetterTogether`).
 
 ## Purpose / Responsibility
 Own the published Webex Contact Center SDK plugin surface, registration lifecycle, public method delegation, and application-facing event routing.
@@ -66,7 +68,7 @@ src/
 | `src/config.ts` | Authoritative Contact Center implementation or contract source. |
 | `src/services/UserPreference.ts` | User-preference CRUD implementation exposed through `cc.userPreference`. |
 | `src/services/task/dialer.ts` | Preview-campaign AQM request implementations. |
-| `src/services/task/types.ts` | `PreviewContactPayload`, `TaskResponse`, and task contract types. |
+| `src/services/task/types.ts` | `PreviewContactPayload`, `DropConferenceParticipantPayload`, `TaskResponse`, and task contract types. |
 
 ## Public Surface
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
@@ -76,6 +78,7 @@ src/
 | `contact-center.consult-transfer-controls` | SDK task control API | Ordered `TaskUIControls.consultTransferDestinations` arrays using the existing destination values. | Give all Task consumers the same ordered, action-specific destination visibility without a second policy call. | Additive public field; consumers may hide SDK-allowed categories but must not enable omitted categories. | `src/cc.ts`, `src/services/task/types.ts`, `src/services/task/state-machine/uiControlsComputer.ts`, `src/index.ts` | `CONTRACTS.md` |
 | `contact-center.user-preference` | SDK data API | Exported `UserPreference`, `cc.userPreference`, and user-preference request/response types. | Read and mutate user preferences through authenticated REST operations. | Additive public API; removals or signature changes are breaking. | `src/services/UserPreference.ts`, `src/services/config/types.ts` | `CONTRACTS.md` |
 | `contact-center.preview-campaign` | SDK task API | `acceptPreviewContact`, `skipPreviewContact`, `removePreviewContact`. | Resolve campaign preview reservations through typed AQM operations. | Additive public API; removals or signature changes are breaking. | `src/cc.ts`, `src/services/task/dialer.ts`, `src/services/task/types.ts` | `CONTRACTS.md` |
+| `contact-center.conference-participant-drop` | SDK task API | Exported `DropConferenceParticipantPayload` and `ITask.dropConferenceParticipant`. | Remove a conference participant through the media-specific task implementation and correlated AQM completion. | Additive public API; removals or signature changes are breaking. | `src/index.ts`, `src/services/task/types.ts`, `src/services/task/voice/Voice.ts` | `CONTRACTS.md` |
 
 Compatibility notes:
 - Do not remove or reinterpret exported symbols/events without a documented consumer migration.

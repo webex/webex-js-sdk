@@ -158,7 +158,7 @@ There are no open product decisions for this delta.
 - **Evidence:** `src/utils/PageCache.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`.
 - **Acceptance:** Two identical Queue view-filtered or custom-sort calls make two backend requests; EntryPoint always makes the requested backend call; repeated default-sorted AddressBook pagination remains cache-eligible.
 
-### MOD-005 — Direct entry-point transfer routing (`TASK-R-003`, `TASK-R-008`)
+### MOD-005 — Direct entry-point transfer routing (`TASK-R-003`, `TASK-R-009`)
 
 - **WHAT**: Keep Entry Point in eligible voice Transfer destination controls. When `Task.transfer()` receives the public `entryPoint` destination, translate it internally to `entrypointDialNumber` and invoke `contact.vteamTransfer`; Queue remains on `vteamTransfer`, while Agent and Dial Number remain on `blindTransfer`.
 - **WHY**: Consumers must be able to follow Task controls directly without knowing backend routing values, and supported entry-point transfers must use the same vteam operation as the established transfer policy.
@@ -343,7 +343,7 @@ No event contract changes.
 ## Documentation obligations
 
 - This approved delta modifies `CONTACT_CENTER-R-003`, `SERVICES-R-002`, `SERVICES-R-007`, `AGENT-R-003`, `UTILS-R-001`, and `UTILS-R-006` without overwriting protected canonical specs.
-- Direct entry-point routing additionally modifies `TASK-R-003` and `TASK-R-008` through this approved MODIFIED delta; the protected Task canonical spec remains unchanged until a future reconciliation/promotion.
+- Direct entry-point routing additionally modifies `TASK-R-003` and `TASK-R-009` through this approved MODIFIED delta; the protected Task canonical spec remains unchanged until a future reconciliation/promotion.
 - The paired widgets feature spec must reference this SDK delta as the owner of queue eligibility/order/profile views and entry-point dial-number mapping/order; widgets delegate entry points without media filtering and may pass a queue filter for an active non-telephony task.
 - A future canonical-spec promotion must fold this delta into the routed module specs and reconcile the delta path rather than duplicate the requirements.
 

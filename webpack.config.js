@@ -76,13 +76,20 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
   },
   mode: env && env.NODE_ENV === 'development' ? 'development' : 'production',
   output: {
-    path: path.resolve(__dirname),
+    // Sample pages load bundles from /samples/*.min.js. Align webpack-dev-server's
+    // in-memory output with that URL while preserving the existing production paths.
+    path: path.resolve(__dirname, env && env.WEBPACK_SERVE ? 'docs/samples' : ''),
+    ...(env && env.WEBPACK_SERVE ? {publicPath: '/samples/'} : {}),
     filename: (pathData) => {
       if (pathData.chunk.name === 'contact-center' && env && env.umd) {
         return 'packages/@webex/contact-center/umd/[name].min.js';
       }
 
-      return env && env.umd ? 'packages/webex/umd/[name].min.js' : 'docs/samples/[name].min.js';
+      if (env && env.umd) {
+        return 'packages/webex/umd/[name].min.js';
+      }
+
+      return env && env.WEBPACK_SERVE ? '[name].min.js' : 'docs/samples/[name].min.js';
     },
   },
   devtool: env && env.NODE_ENV === 'development' ? 'eval-cheap-module-source-map' : 'source-map',
