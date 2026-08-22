@@ -108,10 +108,23 @@ export class Queue {
       desktopProfileFilter,
       provisioningView,
       singleObjectResponse,
+      agentView,
+      firstLevelView,
     } = params;
 
     const orgId = this.webex.credentials.getOrgId();
     const isSearchRequest = !!(search || filter || attributes || sortBy);
+    const canUseCache = this.pageCache.canUseCache({
+      search,
+      filter,
+      attributes,
+      sortBy,
+      desktopProfileFilter,
+      provisioningView,
+      singleObjectResponse,
+      agentView,
+      firstLevelView,
+    });
 
     LoggerProxy.info('Fetching contact service queues', {
       module: 'Queue',
@@ -125,7 +138,7 @@ export class Queue {
     });
 
     // Check if we can use cache for simple pagination (no search/filter/attributes/sort)
-    if (this.pageCache.canUseCache({search, filter, attributes, sortBy})) {
+    if (canUseCache) {
       const cacheKey = this.pageCache.buildCacheKey(orgId, page, pageSize);
       const cachedPage = this.pageCache.getCachedPage(cacheKey);
 
@@ -170,14 +183,16 @@ export class Queue {
       if (filter) queryParams.append('filter', filter);
       if (attributes) queryParams.append('attributes', attributes);
       if (search) queryParams.append('search', search);
-      if (sortBy) queryParams.append('sortBy', sortBy);
-      if (sortOrder) queryParams.append('sortOrder', sortOrder);
+      if (sortBy) queryParams.append('sort', `${sortBy},${(sortOrder ?? 'asc').toUpperCase()}`);
       if (desktopProfileFilter !== undefined)
         queryParams.append('desktopProfileFilter', desktopProfileFilter.toString());
       if (provisioningView !== undefined)
         queryParams.append('provisioningView', provisioningView.toString());
       if (singleObjectResponse !== undefined)
         queryParams.append('singleObjectResponse', singleObjectResponse.toString());
+      if (agentView !== undefined) queryParams.append('agentView', agentView.toString());
+      if (firstLevelView !== undefined)
+        queryParams.append('firstLevelView', firstLevelView.toString());
 
       const resource = endPointMap.queueList(orgId, queryParams.toString());
 
@@ -232,7 +247,7 @@ export class Queue {
       }
 
       // Cache the page data for simple pagination (no search/filter/attributes/sort)
-      if (this.pageCache.canUseCache({search, filter, attributes, sortBy}) && response.body?.data) {
+      if (canUseCache && response.body?.data) {
         const cacheKey = this.pageCache.buildCacheKey(orgId, page, pageSize);
         this.pageCache.cachePage(cacheKey, response.body.data, response.body.meta);
 

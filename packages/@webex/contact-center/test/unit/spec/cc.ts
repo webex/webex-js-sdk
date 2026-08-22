@@ -1902,6 +1902,41 @@ describe('webex.cc', () => {
       ]);
     });
 
+    it('should map Transfer action to an Available backend state filter', async () => {
+      webex.cc.agentConfig = {agentProfileID: 'test-agent-profile-id'};
+      const buddyAgentsResponse = {data: {agentList: []}};
+      const buddyAgentsSpy = jest
+        .spyOn(webex.cc.services.agent, 'buddyAgents')
+        .mockResolvedValue(buddyAgentsResponse);
+
+      await webex.cc.getBuddyAgents({action: 'Transfer', mediaType: 'chat'});
+
+      expect(buddyAgentsSpy).toHaveBeenCalledWith({
+        data: {
+          agentProfileId: 'test-agent-profile-id',
+          mediaType: 'chat',
+          state: 'Available',
+        },
+      });
+    });
+
+    it('should omit the backend state filter for Consult and default media type to telephony', async () => {
+      webex.cc.agentConfig = {agentProfileID: 'test-agent-profile-id'};
+      const buddyAgentsResponse = {data: {agentList: []}};
+      const buddyAgentsSpy = jest
+        .spyOn(webex.cc.services.agent, 'buddyAgents')
+        .mockResolvedValue(buddyAgentsResponse);
+
+      await webex.cc.getBuddyAgents({action: 'Consult'});
+
+      expect(buddyAgentsSpy).toHaveBeenCalledWith({
+        data: {
+          agentProfileId: 'test-agent-profile-id',
+          mediaType: 'telephony',
+        },
+      });
+    });
+
     it('should handle error', async () => {
       const data: BuddyAgents = {state: 'Available', mediaType: 'telephony'};
       webex.cc.agentConfig = {
@@ -2362,6 +2397,90 @@ describe('webex.cc', () => {
 
       await expect(webex.cc.getQueues()).rejects.toThrow('Test error.');
     });
+  });
+
+  describe('consult/transfer lists', () => {
+    it('applies the Agent Desktop queue policy in the SDK facade', async () => {
+      const mockQueuesResponse = {data: [], meta: {page: 1, totalPages: 0}};
+      const queueSpy = jest
+        .spyOn(webex.cc.queue, 'getQueues')
+        .mockResolvedValue(mockQueuesResponse as any);
+
+      const result = await webex.cc.getConsultTransferQueues({
+        mediaType: 'social',
+        page: 1,
+        pageSize: 25,
+        search: 'support',
+      });
+
+      expect(queueSpy).toHaveBeenCalledWith({
+        page: 1,
+        pageSize: 25,
+        search: 'support',
+        filter: 'queueType==INBOUND;channelType==SOCIAL_CHANNEL;active==true',
+        attributes: 'id,name,dbId',
+        sortBy: 'name',
+        sortOrder: 'asc',
+        desktopProfileFilter: true,
+        agentView: true,
+        firstLevelView: true,
+      });
+      expect(result).toBe(mockQueuesResponse);
+    });
+
+    it('defaults consult/transfer queues to the telephony channel', async () => {
+      const queueSpy = jest
+        .spyOn(webex.cc.queue, 'getQueues')
+        .mockResolvedValue({data: [], meta: {}} as any);
+
+      await webex.cc.getConsultTransferQueues();
+
+      expect(queueSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filter: 'queueType==INBOUND;channelType==TELEPHONY;active==true',
+        })
+      );
+    });
+
+    it('applies the Agent Desktop entry-point policy in the SDK facade', async () => {
+      const mockEntryPointsResponse = {data: [], meta: {page: 0, totalPages: 0}};
+      const entryPointSpy = jest
+        .spyOn(webex.cc.entryPoint, 'getEntryPoints')
+        .mockResolvedValue(mockEntryPointsResponse as any);
+
+      const result = await webex.cc.getConsultTransferEntryPoints({
+        page: 0,
+        pageSize: 25,
+        search: 'sales',
+        mediaType: 'telephony',
+      });
+
+      expect(entryPointSpy).toHaveBeenCalledWith({
+        page: 0,
+        pageSize: 25,
+        search: 'sales',
+        filter: 'entryPointType==INBOUND;channelType==TELEPHONY;active==true',
+        attributes: 'id,name,dbId',
+        desktopProfileFilter: true,
+        agentView: true,
+      });
+      expect(result).toBe(mockEntryPointsResponse);
+    });
+
+    it('defaults consult/transfer entry points to the telephony channel', async () => {
+      const entryPointSpy = jest
+        .spyOn(webex.cc.entryPoint, 'getEntryPoints')
+        .mockResolvedValue({data: [], meta: {}} as any);
+
+      await webex.cc.getConsultTransferEntryPoints();
+
+      expect(entryPointSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filter: 'entryPointType==INBOUND;channelType==TELEPHONY;active==true',
+        })
+      );
+    });
+
   });
 
   describe('uploadLogs', () => {

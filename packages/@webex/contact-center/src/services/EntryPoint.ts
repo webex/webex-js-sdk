@@ -63,7 +63,8 @@ export class EntryPoint {
 
   /**
    * Fetches entry points for the organization with pagination support
-   * @param {EntryPointSearchParams} [params] - Search and pagination parameters
+   * @param {EntryPointSearchParams} [params] - Search, pagination, and optional sort parameters.
+   * Sorting defaults to name ascending.
    * @returns {Promise<EntryPointListResponse>} Promise resolving to paginated entry points
    * @throws {Error} If the API call fails
    * @public
@@ -89,12 +90,23 @@ export class EntryPoint {
       search,
       filter,
       attributes,
-      sortBy,
+      sortBy = 'name',
       sortOrder = 'asc',
+      desktopProfileFilter,
+      agentView,
     } = params;
 
     const orgId = this.webex.credentials.getOrgId();
-    const isSearchRequest = !!(search || filter || attributes || sortBy);
+    const hasCustomSort = sortBy !== 'name' || sortOrder !== 'asc';
+    const isSearchRequest = !!(search || filter || attributes || hasCustomSort);
+    const canUseCache = this.pageCache.canUseCache({
+      search,
+      filter,
+      attributes,
+      sortBy: hasCustomSort ? sortBy : undefined,
+      desktopProfileFilter,
+      agentView,
+    });
 
     LoggerProxy.info(
       `Fetching entry points - orgId: ${orgId}, page: ${page}, pageSize: ${pageSize}, isSearchRequest: ${isSearchRequest}`,
@@ -104,8 +116,8 @@ export class EntryPoint {
       }
     );
 
-    // Check if we can use cache for simple pagination (no search/filter/attributes/sort)
-    if (this.pageCache.canUseCache({search, filter, attributes, sortBy})) {
+    // Default name-ascending pagination is cache-compatible; result-changing overrides are not.
+    if (canUseCache) {
       const cacheKey = this.pageCache.buildCacheKey(orgId, page, pageSize);
       const cachedPage = this.pageCache.getCachedPage(cacheKey);
 
@@ -140,13 +152,16 @@ export class EntryPoint {
       const queryParams = new URLSearchParams({
         page: page.toString(),
         pageSize: pageSize.toString(),
-        sortOrder,
       });
 
       if (search) queryParams.append('search', search);
       if (filter) queryParams.append('filter', filter);
       if (attributes) queryParams.append('attributes', attributes);
-      if (sortBy) queryParams.append('sortBy', sortBy);
+      if (sortBy) queryParams.append('sort', `${sortBy},${sortOrder.toUpperCase()}`);
+      if (desktopProfileFilter !== undefined) {
+        queryParams.append('desktopProfileFilter', desktopProfileFilter.toString());
+      }
+      if (agentView !== undefined) queryParams.append('agentView', agentView.toString());
 
       const resource = endPointMap.entryPointList(orgId, queryParams.toString());
 
@@ -199,8 +214,8 @@ export class EntryPoint {
         );
       }
 
-      // Cache the page data for simple pagination (no search/filter/attributes/sort)
-      if (this.pageCache.canUseCache({search, filter, attributes, sortBy}) && response.body?.data) {
+      // Cache only the invariant default-order pagination shape.
+      if (canUseCache && response.body?.data) {
         const cacheKey = this.pageCache.buildCacheKey(orgId, page, pageSize);
         this.pageCache.cachePage(cacheKey, response.body.data, response.body.meta);
 

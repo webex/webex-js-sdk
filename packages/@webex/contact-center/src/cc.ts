@@ -79,7 +79,17 @@ import type {
   EntryPointSearchParams,
   ContactServiceQueuesResponse,
   ContactServiceQueueSearchParams,
+  ConsultTransferQueueSearchParams,
+  ConsultTransferEntryPointSearchParams,
 } from './types';
+
+const CONSULT_TRANSFER_LIST_ATTRIBUTES = 'id,name,dbId';
+const CONSULT_TRANSFER_QUEUE_CHANNELS: Record<string, string> = {
+  social: 'SOCIAL_CHANNEL',
+};
+
+const getConsultTransferQueueChannel = (mediaType: string): string =>
+  CONSULT_TRANSFER_QUEUE_CHANNELS[mediaType.toLowerCase()] ?? mediaType.toUpperCase();
 
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
@@ -770,6 +780,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse> {
+    const {action, state, mediaType = 'telephony'} = data;
+    const buddyAgentState = state ?? (action === 'Transfer' ? AGENT_STATE_AVAILABLE : undefined);
+
     LoggerProxy.info('Fetching buddy agents', {
       module: CC_FILE,
       method: METHODS.GET_BUDDY_AGENTS,
@@ -780,15 +793,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_FAILED,
       ]);
       const resp = await this.services.agent.buddyAgents({
-        data: {agentProfileId: this.agentConfig.agentProfileID, ...data},
+        data: {
+          agentProfileId: this.agentConfig.agentProfileID,
+          mediaType,
+          ...(buddyAgentState ? {state: buddyAgentState} : {}),
+        },
       });
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_SUCCESS,
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
-          mediaType: data.mediaType,
-          buddyAgentState: data.state,
+          mediaType,
+          buddyAgentState,
           buddyAgentCount: resp.data.agentList.length,
         },
         ['operational']
@@ -808,8 +825,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_FAILED,
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failureResp),
-          mediaType: data.mediaType,
-          buddyAgentState: data.state,
+          mediaType,
+          buddyAgentState,
         },
         ['operational']
       );
@@ -2702,5 +2719,48 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     params: ContactServiceQueueSearchParams = {}
   ): Promise<ContactServiceQueuesResponse> {
     return this.queue.getQueues(params);
+  }
+
+  /**
+   * Returns queues eligible for Agent Desktop consult/transfer flows.
+   * The SDK owns the backend filter, projection, ordering, and agent-profile view policy.
+   * @public
+   */
+  public async getConsultTransferQueues(
+    params: ConsultTransferQueueSearchParams = {}
+  ): Promise<ContactServiceQueuesResponse> {
+    const {mediaType = 'telephony', ...paginationAndSearch} = params;
+    const channelType = getConsultTransferQueueChannel(mediaType);
+
+    return this.queue.getQueues({
+      ...paginationAndSearch,
+      filter: `queueType==INBOUND;channelType==${channelType};active==true`,
+      attributes: CONSULT_TRANSFER_LIST_ATTRIBUTES,
+      sortBy: 'name',
+      sortOrder: 'asc',
+      desktopProfileFilter: true,
+      agentView: true,
+      firstLevelView: true,
+    });
+  }
+
+  /**
+   * Returns entry points eligible for Agent Desktop consult/transfer flows.
+   * The SDK owns the backend filter, projection, ordering, and agent-profile view policy.
+   * @public
+   */
+  public async getConsultTransferEntryPoints(
+    params: ConsultTransferEntryPointSearchParams = {}
+  ): Promise<EntryPointListResponse> {
+    const {mediaType = 'telephony', ...paginationAndSearch} = params;
+    const channelType = getConsultTransferQueueChannel(mediaType);
+
+    return this.entryPoint.getEntryPoints({
+      ...paginationAndSearch,
+      filter: `entryPointType==INBOUND;channelType==${channelType};active==true`,
+      attributes: CONSULT_TRANSFER_LIST_ATTRIBUTES,
+      desktopProfileFilter: true,
+      agentView: true,
+    });
   }
 }
