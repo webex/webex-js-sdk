@@ -570,18 +570,16 @@ export type RequestBody =
 
 /**
  * Represents the options to fetch buddy agents for the logged in agent.
- * Buddy agents are other agents who can be consulted or transfered to.
+ * Buddy agents are other agents who can be consulted or transferred to.
  * @public
  * @example
  * const opts: BuddyAgents = { mediaType: 'telephony', state: 'Available' };
- * @ignore
  */
 export type BuddyAgents = {
   /**
-   * The media type channel to filter buddy agents.
-   * Determines which channel capability the returned agents must have.
+   * The media type channel to filter buddy agents. Defaults to telephony when omitted.
    */
-  mediaType: 'telephony' | 'chat' | 'social' | 'email';
+  mediaType?: 'telephony' | 'chat' | 'social' | 'email';
 
   /**
    * Optional filter for agent state.
@@ -589,6 +587,11 @@ export type BuddyAgents = {
    * If omitted, returns both available and idle agents.
    */
   state?: 'Available' | 'Idle';
+
+  /**
+   * Applies the default state policy for the operation. An explicit state takes precedence.
+   */
+  action?: 'Consult' | 'Transfer';
 };
 
 /**
@@ -602,6 +605,8 @@ export type ConfigFlags = {
   webRtcEnabled: boolean;
   autoWrapup: boolean;
   aiFeature?: AIFeatureFlags;
+  /** Agent-profile policy used to derive task consult/transfer destination controls. */
+  consultTransfer?: Contact.ConsultTransferDestinationConfig;
   /**
    * Optional toggle to globally enable/disable recording controls.
    * Falls back to backend hints when omitted.
@@ -698,10 +703,12 @@ export interface AddressBookEntrySearchParams extends BaseSearchParams {
 export interface EntryPointRecord {
   id: string;
   name: string;
+  /** Dialled number mapped to this entry point when included in the list response. */
+  number?: string;
   description?: string;
-  type: string;
-  isActive: boolean;
-  orgId: string;
+  type?: string;
+  isActive?: boolean;
+  orgId?: string;
   createdAt?: string;
   updatedAt?: string;
   settings?: Record<string, any>;

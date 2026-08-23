@@ -80,6 +80,7 @@ export default class Voice extends Task implements IVoice {
       data,
       {
         ...resolvedOptions,
+        consultTransferConfig: callOptions?.consultTransferConfig,
       },
       wrapupData,
       agentId

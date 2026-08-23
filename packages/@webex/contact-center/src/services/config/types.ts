@@ -1,10 +1,14 @@
 import * as Agent from '../agent/types';
+import {COLLABORATION_ACCESS} from './constants';
 
 /**
  * Generic type for converting a const enum object into a union type of its values
  * @internal
  */
 type Enum<T extends Record<string, unknown>> = T[keyof T];
+
+/** Desktop Profile access level for a collaboration destination category. */
+export type CollaborationAccess = Enum<typeof COLLABORATION_ACCESS>;
 
 /**
  * Events emitted on task objects
@@ -406,9 +410,9 @@ export type DesktopProfileResponse = {
   allowAutoWrapUpExtension: boolean;
 
   /**
-   * Access control for queues assigned to the agent (ALL or SPECIFIC).
+   * Access control for queues assigned to the agent (ALL, SPECIFIC, or NONE).
    */
-  accessQueue: string;
+  accessQueue: CollaborationAccess;
 
   /**
    * Queue identifiers available to the agent when access is SPECIFIC.
@@ -418,7 +422,7 @@ export type DesktopProfileResponse = {
   /**
    * Access control for entry points assigned to the agent.
    */
-  accessEntryPoint: string;
+  accessEntryPoint: CollaborationAccess;
 
   /**
    * Entry point identifiers available to the agent when access is SPECIFIC.
@@ -428,7 +432,7 @@ export type DesktopProfileResponse = {
   /**
    * Access control for buddy teams assigned to the agent.
    */
-  accessBuddyTeam: string;
+  accessBuddyTeam: CollaborationAccess;
 
   /**
    * Buddy team identifiers available to the agent when access is SPECIFIC.
@@ -1171,6 +1175,12 @@ export type Profile = {
   agentAnalyzerId?: string;
   /** Whether consult to queue is allowed */
   allowConsultToQueue: boolean;
+  /** Access control for queues on Desktop Profile Collaboration tab */
+  accessQueue?: CollaborationAccess;
+  /** Access control for entry points on Desktop Profile Collaboration tab */
+  accessEntryPoint?: CollaborationAccess;
+  /** Access control for buddy teams on Desktop Profile Collaboration tab */
+  accessBuddyTeam?: CollaborationAccess;
   /** Additional campaign manager information */
   campaignManagerAdditionalInfo?: string;
   /** Whether personal statistics are enabled */
