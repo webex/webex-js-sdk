@@ -18,7 +18,6 @@ export enum LINE_EVENTS {
   RECONNECTING = 'reconnecting',
   REGISTERED = 'registered',
   UNREGISTERED = 'unregistered',
-  SESSION_SUPERSEDED = 'session_superseded',
   INCOMING_CALL = 'line:incoming_call',
 }
 

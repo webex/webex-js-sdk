@@ -212,7 +212,6 @@ describe('Line Tests', () => {
           method: 'triggerRegistration',
         },
         expect.anything(),
-        expect.anything(),
         expect.any(Number)
       );
     });
@@ -248,16 +247,19 @@ describe('Line Tests', () => {
       line.removeAllListeners();
     });
 
-    it.each([LINE_EVENTS.ERROR, LINE_EVENTS.SESSION_SUPERSEDED])(
+    const supersededError = () =>
+      createLineError(
+        'session superseded',
+        {file: REGISTRATION_FILE, method: 'startKeepaliveTimer'},
+        ERROR_TYPE.SESSION_SUPERSEDED,
+        RegistrationStatus.INACTIVE
+      );
+
+    it.each([LINE_EVENTS.ERROR, LINE_EVENTS.UNREGISTERED])(
       're-emits %s with the line error to the consumer',
       (event) => {
         const listener = jest.fn();
-        const lineError = createLineError(
-          'session superseded',
-          {file: REGISTRATION_FILE, method: 'handle409KeepaliveFailure'},
-          ERROR_TYPE.SESSION_SUPERSEDED,
-          RegistrationStatus.INACTIVE
-        );
+        const lineError = supersededError();
 
         line.on(event, listener);
         line.lineEmitter(event, undefined, lineError);
@@ -266,17 +268,23 @@ describe('Line Tests', () => {
       }
     );
 
-    it.each([LINE_EVENTS.ERROR, LINE_EVENTS.SESSION_SUPERSEDED])(
-      'does not emit %s when no line error is provided',
-      (event) => {
-        const listener = jest.fn();
+    it('emits unregistered without a reason when no line error is provided', () => {
+      const listener = jest.fn();
 
-        line.on(event, listener);
-        line.lineEmitter(event);
+      line.on(LINE_EVENTS.UNREGISTERED, listener);
+      line.lineEmitter(LINE_EVENTS.UNREGISTERED);
 
-        expect(listener).not.toBeCalled();
-      }
-    );
+      expect(listener).toBeCalledOnceWith(undefined);
+    });
+
+    it('does not emit error when no line error is provided', () => {
+      const listener = jest.fn();
+
+      line.on(LINE_EVENTS.ERROR, listener);
+      line.lineEmitter(LINE_EVENTS.ERROR);
+
+      expect(listener).not.toBeCalled();
+    });
   });
 
   describe('Line calling tests', () => {

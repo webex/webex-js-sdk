@@ -34,7 +34,7 @@ registration/
 | Failover (primary → backup) | `startFailoverTimer()` with exponential backoff |
 | Failback (backup → primary) | `initiateFailback()` → `executeFailback()` |
 | 429 handling | `Retry-After` header with retry budget |
-| 409 handling on keepalive | `handle409KeepaliveFailure()` → hard stop, no re-registration |
+| 409 handling on keepalive | `handleRegistrationErrors()` → `sessionSupersededCb` → `handle409KeepaliveFailure()` → hard stop, no re-registration |
 | Reconnection | `handleConnectionRestoration()` / `reconnectOnFailure()` |
 | Deregistration | `DELETE /devices/{id}` + worker termination |
 | Mobius WSS connect/disconnect (when `apiRequest.isSocketEnabled()`) | Per-server `apiRequest.connectToMobiusSocket(wssNormalizedUrl)` inside `attemptRegistrationWithServers`; `apiRequest.disconnectFromMobiusSocket({code: 3050, reason: 'done (permanent)'})` on failover, failback, registration-down, restore-previous-registration, and deregister-with-`closeMobiusWss=true`. |
@@ -489,7 +489,7 @@ When `apiRequest.isSocketEnabled()` is true (driven by `isMobiusWssEnabled(webex
 | `startFailoverTimer` switching primary → backup | disconnect primary WSS before backup re-registration | `register.ts ~ L508–L520` |
 | `executeFailback` primary recovered + no active calls | disconnect backup WSS before primary re-registration | `register.ts ~ L713–L725` |
 | `deregister(closeMobiusWss = true)` | disconnect WSS after DELETE returns | `register.ts ~ L1264–L1270` |
-| `performHardStopCleanup` (after Mobius async `registration.down`, or a keepalive `409 Conflict`) | disconnect WSS as final cleanup step | `register.ts` — `performHardStopCleanup` |
+| `registrationCleanup` (after Mobius async `registration.down`, or a keepalive `409 Conflict`) | disconnect WSS as final cleanup step | `register.ts` — `registrationCleanup` |
 
 ### Constants Used
 
@@ -516,7 +516,7 @@ sequenceDiagram
     CC->>Reg: line.registration.handleRegistrationDownEvent(event)
 
     Reg->>CM: getActiveCalls() → end first active call
-    Reg->>Reg: performHardStopCleanup(REGISTRATION_DOWN)
+    Reg->>Reg: registrationCleanup(REGISTRATION_DOWN)
 
     Reg->>Reg: mutex.runExclusive(...)
     Reg->>Reg: clearFailbackTimer + clearKeepaliveTimer
@@ -539,30 +539,32 @@ sequenceDiagram
 sequenceDiagram
     participant WW as Keepalive Worker
     participant Reg as Registration
+    participant HRE as handleRegistrationErrors
     participant MM as MetricManager
     participant API as APIRequest
     participant MS as MobiusSocket
     participant Line as Line
 
     WW-->>Reg: KEEPALIVE_FAILURE {err.statusCode: 409, keepAliveRetryCount}
-    Note over Reg: statusCode === ERROR_CODE.CONFLICT<br/>→ short-circuit before handleRegistrationErrors
-    Reg->>Reg: handle409KeepaliveFailure(err, serverType, retryCount)
+    Reg->>HRE: handleRegistrationErrors(err, emitterCb, ctx,<br/>{retry429Cb, sessionSupersededCb})
+    Note over HRE: case ERROR_CODE.CONFLICT → LineError with<br/>SESSION_SUPERSEDED_MESSAGE, ERROR_TYPE.SESSION_SUPERSEDED, INACTIVE
+    HRE->>Reg: sessionSupersededCb(lineError) → handle409KeepaliveFailure
     Reg->>WW: clearKeepaliveTimer() → CLEAR_KEEPALIVE + terminate()
-    Reg->>Reg: createLineError(SESSION_SUPERSEDED_MESSAGE,<br/>ERROR_TYPE.SESSION_SUPERSEDED, INACTIVE)
     Reg->>MM: submitRegistrationMetric(KEEPALIVE_ERROR, KEEPALIVE_FAILURE, ...)
-    Reg->>Reg: performHardStopCleanup(SESSION_SUPERSEDED)
+    Reg->>Reg: registrationCleanup(SESSION_SUPERSEDED)
 
     opt apiRequest.isSocketEnabled()
         Reg->>API: disconnectFromMobiusSocket({code:3050, reason:'done (permanent)'})
         API->>MS: disconnect
     end
 
-    Reg->>Line: lineEmitter(LINE_EVENTS.UNREGISTERED)
-    Reg->>Line: lineEmitter(LINE_EVENTS.SESSION_SUPERSEDED, undefined, lineError)
+    Reg->>Line: lineEmitter(LINE_EVENTS.UNREGISTERED, undefined, lineError)
     Reg->>Reg: uploadLogs()
+    HRE-->>Reg: {finalError: true, handledByCallback: true}
+    Note over Reg: handledByCallback → skip the generic keepalive failure handling
 ```
 
-The 409 short-circuit is scoped to the keepalive worker's `KEEPALIVE_FAILURE` branch. Registration, restoration, failover, and failback still route `409` through `handleRegistrationErrors`, and keepalive `404` / `429` / `5xx` handling is unchanged.
+Status-code classification stays in `handleRegistrationErrors`; the hard stop is scoped to keepalive because only that flow passes `sessionSupersededCb`. Registration, restoration, failover, and failback keep treating `409` as an unknown error, and keepalive `404` / `429` / `5xx` handling is unchanged.
 
 ---
 

@@ -200,12 +200,15 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
         }
         break;
       case LINE_EVENTS.UNREGISTERED:
+        /* lineError is present only when the SDK knows why the registration ended and
+         * will not re-establish it, for example a session superseded by another tab. */
+        this.emit(event, lineError);
+        break;
       case LINE_EVENTS.RECONNECTED:
       case LINE_EVENTS.RECONNECTING:
         this.emit(event);
         break;
       case LINE_EVENTS.ERROR:
-      case LINE_EVENTS.SESSION_SUPERSEDED:
         if (lineError) {
           this.emit(event, lineError);
         }

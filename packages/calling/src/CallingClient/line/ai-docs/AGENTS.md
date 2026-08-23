@@ -97,8 +97,7 @@ constructor(
 |-------|------|---------|---------|
 | `connecting` | `LINE_EVENTS.CONNECTING` | _(none)_ | `register()` called |
 | `registered` | `LINE_EVENTS.REGISTERED` | `ILine` | Device registration succeeded |
-| `unregistered` | `LINE_EVENTS.UNREGISTERED` | _(none)_ | Device deregistered, registration down, or session superseded |
-| `session_superseded` | `LINE_EVENTS.SESSION_SUPERSEDED` | `LineError` | Mobius answered a keepalive with `409 Conflict` — this registration was superseded by another registration for the same user. No re-registration follows |
+| `unregistered` | `LINE_EVENTS.UNREGISTERED` | `LineError` (optional) | Device deregistered, registration down, or session superseded. The `LineError` is present only when the SDK will not re-register — currently a `409 Conflict` on keepalive, reported as `ERROR_TYPE.SESSION_SUPERSEDED` |
 | `reconnecting` | `LINE_EVENTS.RECONNECTING` | _(none)_ | Keepalive failure, attempting recovery |
 | `reconnected` | `LINE_EVENTS.RECONNECTED` | _(none)_ | Recovery succeeded |
 | `error` | `LINE_EVENTS.ERROR` | `LineError` | Registration or line error |
@@ -208,7 +207,6 @@ export enum LINE_EVENTS {
   RECONNECTING = 'reconnecting',
   REGISTERED = 'registered',
   UNREGISTERED = 'unregistered',
-  SESSION_SUPERSEDED = 'session_superseded',
   INCOMING_CALL = 'line:incoming_call',
 }
 ```

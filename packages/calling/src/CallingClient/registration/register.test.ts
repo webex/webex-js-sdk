@@ -1871,11 +1871,11 @@ describe('Registration Tests', () => {
       };
 
       const getSupersededError = (): LineError => {
-        const supersededCall = lineEmitter.mock.calls.find(
-          ([event]) => event === LINE_EVENTS.SESSION_SUPERSEDED
+        const unregisteredCall = lineEmitter.mock.calls.find(
+          ([event]) => event === LINE_EVENTS.UNREGISTERED
         );
 
-        return supersededCall?.[2];
+        return unregisteredCall?.[2];
       };
 
       it.each([
@@ -1891,8 +1891,19 @@ describe('Registration Tests', () => {
 
         await sendKeepaliveFailure(conflictError, keepAliveRetryCount);
 
+        // The 409 is classified by the common registration error handler.
+        expect(handleErrorSpy).toHaveBeenCalledWith(
+          conflictError,
+          expect.anything(),
+          {file: REGISTRATION_FILE, method: KEEPALIVE_UTIL},
+          expect.objectContaining({sessionSupersededCb: expect.any(Function)})
+        );
         expect(warnSpy).toBeCalledWith(
-          `Keepalive received 409 Conflict, registration superseded by another device for this user. Stopping keepalive without re-registration - keepaliveRetryCount: ${keepAliveRetryCount}`,
+          '409 Conflict: session superseded by another device for this user',
+          {file: REGISTRATION_FILE, method: KEEPALIVE_UTIL}
+        );
+        expect(warnSpy).toBeCalledWith(
+          `Stopping keepalive without re-registration, session superseded by another device for this user - keepaliveRetryCount: ${keepAliveRetryCount}`,
           {file: REGISTRATION_FILE, method: METHODS.HANDLE_409_KEEPALIVE_FAILURE}
         );
 
@@ -1903,7 +1914,6 @@ describe('Registration Tests', () => {
         expect(reg.failbackTimer).toStrictEqual(undefined);
 
         // No re-registration of any kind is attempted.
-        expect(handleErrorSpy).not.toHaveBeenCalled();
         expect(reconnectSpy).not.toHaveBeenCalled();
         expect(restoreSpy).not.toHaveBeenCalled();
         expect(restartSpy).not.toHaveBeenCalled();
@@ -1913,22 +1923,18 @@ describe('Registration Tests', () => {
         expect(reg.reconnectPending).toStrictEqual(false);
       });
 
-      it('notifies the consumer with UNREGISTERED followed by SESSION_SUPERSEDED', async () => {
+      it('notifies the consumer with a single UNREGISTERED carrying the superseded reason', async () => {
         await beforeEachSetupForKeepalive();
         lineEmitter.mockClear();
 
         await sendKeepaliveFailure(conflictError, 1);
 
         expect(
-          lineEmitter.mock.calls
-            .map(([event]) => event)
-            .filter((event) =>
-              [LINE_EVENTS.UNREGISTERED, LINE_EVENTS.SESSION_SUPERSEDED].includes(event)
-            )
-        ).toStrictEqual([LINE_EVENTS.UNREGISTERED, LINE_EVENTS.SESSION_SUPERSEDED]);
+          lineEmitter.mock.calls.filter(([event]) => event === LINE_EVENTS.UNREGISTERED)
+        ).toHaveLength(1);
         expect(lineEmitter).not.toHaveBeenCalledWith(LINE_EVENTS.RECONNECTING);
         expect(lineEmitter).toHaveBeenLastCalledWith(
-          LINE_EVENTS.SESSION_SUPERSEDED,
+          LINE_EVENTS.UNREGISTERED,
           undefined,
           expect.any(LineError)
         );
@@ -1939,7 +1945,7 @@ describe('Registration Tests', () => {
           message: SESSION_SUPERSEDED_MESSAGE,
           type: ERROR_TYPE.SESSION_SUPERSEDED,
           status: RegistrationStatus.INACTIVE,
-          context: {file: REGISTRATION_FILE, method: METHODS.HANDLE_409_KEEPALIVE_FAILURE},
+          context: {file: REGISTRATION_FILE, method: KEEPALIVE_UTIL},
         });
       });
 
@@ -1980,7 +1986,7 @@ describe('Registration Tests', () => {
           reason: 'done (permanent)',
         });
         expect(lineEmitter).toHaveBeenLastCalledWith(
-          LINE_EVENTS.SESSION_SUPERSEDED,
+          LINE_EVENTS.UNREGISTERED,
           undefined,
           expect.any(LineError)
         );
@@ -2003,7 +2009,7 @@ describe('Registration Tests', () => {
         );
         expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
         expect(lineEmitter).toHaveBeenLastCalledWith(
-          LINE_EVENTS.SESSION_SUPERSEDED,
+          LINE_EVENTS.UNREGISTERED,
           undefined,
           expect.any(LineError)
         );
@@ -2029,7 +2035,7 @@ describe('Registration Tests', () => {
           expect.anything()
         );
         expect(lineEmitter).not.toHaveBeenCalledWith(
-          LINE_EVENTS.SESSION_SUPERSEDED,
+          LINE_EVENTS.UNREGISTERED,
           undefined,
           expect.anything()
         );
@@ -2120,12 +2126,8 @@ describe('Registration Tests', () => {
       expect(reg.retryAfter).toBeUndefined();
       expect(reg.registerRetry).toBe(false);
       expect(disconnectSocketSpy).not.toHaveBeenCalled();
-      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
-      expect(lineEmitter).not.toHaveBeenCalledWith(
-        LINE_EVENTS.SESSION_SUPERSEDED,
-        undefined,
-        expect.anything()
-      );
+      /* A registration-down stop has no reason to report to the consumer. */
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED, undefined, undefined);
     });
 
     it('ends the active call and still runs cleanup when an active call is present', async () => {
@@ -2144,7 +2146,7 @@ describe('Registration Tests', () => {
       expect(clearKeepaliveSpy).toHaveBeenCalled();
       expect(setStatusSpy).toHaveBeenCalledWith(RegistrationStatus.INACTIVE);
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
-      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED, undefined, undefined);
     });
 
     it('runs cleanup without calling end when no active call is present on re-invocation', async () => {
@@ -2164,7 +2166,7 @@ describe('Registration Tests', () => {
       expect(clearKeepaliveSpy).toHaveBeenCalled();
       expect(setStatusSpy).toHaveBeenCalledWith(RegistrationStatus.INACTIVE);
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
-      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED, undefined, undefined);
     });
 
     it('disconnects the Mobius WebSocket when socket is enabled', async () => {
@@ -2184,7 +2186,7 @@ describe('Registration Tests', () => {
         reason: 'done (permanent)',
       });
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
-      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED, undefined, undefined);
     });
 
     it('still emits UNREGISTERED when socket disconnect fails', async () => {
@@ -2204,7 +2206,7 @@ describe('Registration Tests', () => {
         {file: REGISTRATION_FILE, method: METHODS.HANDLE_REGISTRATION_DOWN_EVENT}
       );
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
-      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED, undefined, undefined);
     });
   });
 
