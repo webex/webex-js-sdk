@@ -36,6 +36,11 @@ import {ApiAIAssistant} from '../ApiAiAssistant';
 
 const CC_EVENT_SET = new Set<CC_EVENTS>(Object.values(CC_EVENTS) as CC_EVENTS[]);
 
+const MAIN_INTERACTION_CORRELATED_EVENTS = new Set<CC_EVENTS>([
+  CC_EVENTS.AGENT_CONSULT_ENDED,
+  CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+]);
+
 const isCcEvent = (value: string): value is CC_EVENTS => CC_EVENT_SET.has(value as CC_EVENTS);
 
 /** @internal */
@@ -592,6 +597,10 @@ export default class TaskManager extends EventEmitter {
       }
     }
 
+    if (!task && MAIN_INTERACTION_CORRELATED_EVENTS.has(eventType)) {
+      task = this.findUniqueTaskByRelatedInteraction(message.data);
+    }
+
     const wasConsultedTask = Boolean(task?.data?.isConsulted);
     const computeWrapUpRequired = () => {
       if (message.data.wrapUpRequired !== undefined) {
@@ -634,6 +643,62 @@ export default class TaskManager extends EventEmitter {
       task,
       stateMachineEvent,
     };
+  }
+
+  /**
+   * Resolve lifecycle events that are emitted for the main interaction while the
+   * local task can still be indexed by a child consult interaction. Exact task
+   * keys are handled before this fallback. Multiple aliases of the same task are
+   * treated as one candidate; genuinely ambiguous matches are intentionally ignored.
+   */
+  private findUniqueTaskByRelatedInteraction(payload: WebSocketPayload): ITask | undefined {
+    const payloadInteractionIds = new Set(
+      [
+        payload.interactionId,
+        payload.interaction?.interactionId,
+        payload.interaction?.mainInteractionId,
+        payload.interaction?.parentInteractionId,
+        payload.interaction?.callProcessingDetails?.parentInteractionId,
+      ].filter((interactionId): interactionId is string => Boolean(interactionId))
+    );
+    if (payloadInteractionIds.size === 0) return undefined;
+
+    const candidates = [
+      ...new Set(
+        Object.values(this.taskCollection).filter((candidate) => {
+          const taskInteraction = candidate?.data?.interaction;
+          const candidateInteractionIds = [
+            candidate?.data?.interactionId,
+            taskInteraction?.interactionId,
+            taskInteraction?.mainInteractionId,
+            taskInteraction?.parentInteractionId,
+            taskInteraction?.callProcessingDetails?.parentInteractionId,
+          ];
+
+          return candidateInteractionIds.some(
+            (interactionId) => Boolean(interactionId) && payloadInteractionIds.has(interactionId)
+          );
+        })
+      ),
+    ];
+
+    if (candidates.length === 1) {
+      return candidates[0];
+    }
+
+    if (candidates.length > 1) {
+      LoggerProxy.warn('Unable to correlate task event to a unique main interaction task', {
+        module: TASK_MANAGER_FILE,
+        method: 'findUniqueTaskByRelatedInteraction',
+        interactionId:
+          payload.interaction?.mainInteractionId ||
+          payload.interaction?.parentInteractionId ||
+          payload.interaction?.callProcessingDetails?.parentInteractionId ||
+          payload.interactionId,
+      });
+    }
+
+    return undefined;
   }
 
   /**
@@ -868,6 +933,14 @@ export default class TaskManager extends EventEmitter {
       : taskData;
 
     task.updateTaskData(updateTaskData);
+
+    // A main-interaction lifecycle event can re-key a child consult task. Remove
+    // any aliases first so consumers never observe duplicate task entries.
+    Object.entries(this.taskCollection).forEach(([taskId, candidate]) => {
+      if (candidate === task && taskId !== taskData.interactionId) {
+        delete this.taskCollection[taskId];
+      }
+    });
     this.taskCollection[taskData.interactionId] = task;
 
     return task;
@@ -913,8 +986,10 @@ export default class TaskManager extends EventEmitter {
     task.on(TASK_EVENTS.TASK_CLEANUP, (t: ITask, options?: {removeFromCollection?: boolean}) => {
       this.handleTaskCleanup(t);
       if (options?.removeFromCollection) {
-        const interactionId = t?.data?.interactionId;
-        if (interactionId && this.taskCollection[interactionId]) {
+        const taskIsStillCollected = Object.values(this.taskCollection).some(
+          (candidate) => candidate === t
+        );
+        if (taskIsStillCollected) {
           this.removeTaskFromCollection(t);
         }
       }
@@ -926,7 +1001,11 @@ export default class TaskManager extends EventEmitter {
       task.cancelAutoWrapupTimer();
     }
     if (task?.data?.interactionId) {
-      delete this.taskCollection[task.data.interactionId];
+      Object.entries(this.taskCollection).forEach(([taskId, candidate]) => {
+        if (candidate === task) {
+          delete this.taskCollection[taskId];
+        }
+      });
       LoggerProxy.info(`Task removed from collection`, {
         module: TASK_MANAGER_FILE,
         method: METHODS.REMOVE_TASK_FROM_COLLECTION,

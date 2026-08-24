@@ -314,6 +314,9 @@ describe('webex.cc', () => {
       isEndConsultEnabled: false,
       agentDbId: '',
       allowConsultToQueue: false,
+      accessQueue: 'SPECIFIC',
+      accessEntryPoint: 'ALL',
+      accessBuddyTeam: 'ALL',
       agentPersonalStatsEnabled: false,
       isTimeoutDesktopInactivityEnabled: false,
       webRtcEnabled: true,
@@ -407,6 +410,12 @@ describe('webex.cc', () => {
         webRtcEnabled: mockAgentProfile.webRtcEnabled,
         autoWrapup: mockAgentProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
         aiFeature: mockAgentProfile.aiFeature,
+        consultTransfer: {
+          allowConsultToQueue: mockAgentProfile.allowConsultToQueue,
+          accessQueue: mockAgentProfile.accessQueue,
+          accessEntryPoint: mockAgentProfile.accessEntryPoint,
+          accessBuddyTeam: mockAgentProfile.accessBuddyTeam,
+        },
         enableWxBetterTogether: false,
       });
       expect(reloadSpy).toHaveBeenCalled();
@@ -1900,6 +1909,41 @@ describe('webex.cc', () => {
         METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_SUCCESS,
         METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_FAILED,
       ]);
+    });
+
+    it('should map Transfer action to an Available backend state filter', async () => {
+      webex.cc.agentConfig = {agentProfileID: 'test-agent-profile-id'};
+      const buddyAgentsResponse = {data: {agentList: []}};
+      const buddyAgentsSpy = jest
+        .spyOn(webex.cc.services.agent, 'buddyAgents')
+        .mockResolvedValue(buddyAgentsResponse);
+
+      await webex.cc.getBuddyAgents({action: 'Transfer', mediaType: 'chat'});
+
+      expect(buddyAgentsSpy).toHaveBeenCalledWith({
+        data: {
+          agentProfileId: 'test-agent-profile-id',
+          mediaType: 'chat',
+          state: 'Available',
+        },
+      });
+    });
+
+    it('should omit the backend state filter for Consult and default media type to telephony', async () => {
+      webex.cc.agentConfig = {agentProfileID: 'test-agent-profile-id'};
+      const buddyAgentsResponse = {data: {agentList: []}};
+      const buddyAgentsSpy = jest
+        .spyOn(webex.cc.services.agent, 'buddyAgents')
+        .mockResolvedValue(buddyAgentsResponse);
+
+      await webex.cc.getBuddyAgents({action: 'Consult'});
+
+      expect(buddyAgentsSpy).toHaveBeenCalledWith({
+        data: {
+          agentProfileId: 'test-agent-profile-id',
+          mediaType: 'telephony',
+        },
+      });
     });
 
     it('should handle error', async () => {

@@ -11,6 +11,7 @@ import {
   DESTINATION_TYPE,
   TASK_EVENTS,
   TaskUIControls,
+  DropConferenceParticipantPayload,
   ConsultEndPayload,
   ConsultPayload,
   ConsultTransferPayLoad,
@@ -22,7 +23,7 @@ import {
   TaskToggleMuteOptions,
   TaskTransmitDtmfOptions,
 } from './types';
-import {METHODS} from './constants';
+import {ENTRY_POINT_TRANSFER_DESTINATION_TYPE, METHODS} from './constants';
 import {CC_FILE, TASK_FILE} from '../../constants';
 import {getErrorDetails} from '../core/Utils';
 import routingContact from './contact';
@@ -141,6 +142,14 @@ export default abstract class Task extends EventEmitter implements ITask {
 
   public async consultConference(): Promise<TaskResponse> {
     this.unsupportedMethodError('consultConference');
+  }
+
+  public async dropConferenceParticipant(
+    // The base task preserves the public signature; Voice provides the implementation.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    payload: DropConferenceParticipantPayload
+  ): Promise<TaskResponse> {
+    this.unsupportedMethodError(METHODS.DROP_CONFERENCE_PARTICIPANT);
   }
 
   public async exitConference(): Promise<TaskResponse> {
@@ -726,10 +735,18 @@ export default abstract class Task extends EventEmitter implements ITask {
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
       ]);
       let result: TaskResponse;
-      if (transferPayload.destinationType === DESTINATION_TYPE.QUEUE) {
+      const isQueueTransfer = transferPayload.destinationType === DESTINATION_TYPE.QUEUE;
+      const isEntryPointTransfer = transferPayload.destinationType === DESTINATION_TYPE.ENTRYPOINT;
+
+      if (isQueueTransfer || isEntryPointTransfer) {
         result = await this.contact.vteamTransfer({
           interactionId: this.data.interactionId,
-          data: transferPayload,
+          data: {
+            ...transferPayload,
+            destinationType: isEntryPointTransfer
+              ? ENTRY_POINT_TRANSFER_DESTINATION_TYPE
+              : DESTINATION_TYPE.QUEUE,
+          },
         });
       } else {
         result = await this.contact.blindTransfer({

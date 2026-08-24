@@ -158,6 +158,12 @@ The AgentProfile is defined as the [`Profile`](../types.ts) type. This is not an
 | `dialPlan` | [`DialPlan`](../types.ts) | Number transformation rules |
 | `isOutboundEnabledForAgent` | boolean | Outbound calling allowed |
 | `outDialEp` | string | Outbound entry point ID |
+| `allowConsultToQueue` | boolean | Whether consult-to-queue is enabled on the Desktop Profile |
+| `accessQueue` | `'ALL' \| 'SPECIFIC' \| 'NONE'` | Collaboration tab queue access scope from Desktop Profile |
+| `accessEntryPoint` | `'ALL' \| 'SPECIFIC' \| 'NONE'` | Collaboration tab entry-point access scope from Desktop Profile |
+| `accessBuddyTeam` | `'ALL' \| 'SPECIFIC' \| 'NONE'` | Collaboration tab buddy-team access scope from Desktop Profile |
+
+`parseAgentConfigs()` maps the three `access*` fields from `DesktopProfileResponse` onto the public `Profile` returned by `cc.register()`.
 
 The following diagram shows how `getAgentConfig` orchestrates multiple API calls and combines their results into the AgentProfile via `parseAgentConfigs()`:
 

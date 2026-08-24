@@ -770,6 +770,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse> {
+    const {action, state, mediaType = 'telephony'} = data;
+    const buddyAgentState = state ?? (action === 'Transfer' ? AGENT_STATE_AVAILABLE : undefined);
+
     LoggerProxy.info('Fetching buddy agents', {
       module: CC_FILE,
       method: METHODS.GET_BUDDY_AGENTS,
@@ -780,15 +783,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_FAILED,
       ]);
       const resp = await this.services.agent.buddyAgents({
-        data: {agentProfileId: this.agentConfig.agentProfileID, ...data},
+        data: {
+          agentProfileId: this.agentConfig.agentProfileID,
+          mediaType,
+          ...(buddyAgentState ? {state: buddyAgentState} : {}),
+        },
       });
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_SUCCESS,
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
-          mediaType: data.mediaType,
-          buddyAgentState: data.state,
+          mediaType,
+          buddyAgentState,
           buddyAgentCount: resp.data.agentList.length,
         },
         ['operational']
@@ -808,8 +815,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_FAILED,
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failureResp),
-          mediaType: data.mediaType,
-          buddyAgentState: data.state,
+          mediaType,
+          buddyAgentState,
         },
         ['operational']
       );
@@ -851,6 +858,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webRtcEnabled: this.agentConfig.webRtcEnabled,
         autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
         aiFeature: this.agentConfig.aiFeature,
+        consultTransfer: {
+          allowConsultToQueue: this.agentConfig.allowConsultToQueue,
+          accessQueue: this.agentConfig.accessQueue,
+          accessEntryPoint: this.agentConfig.accessEntryPoint,
+          accessBuddyTeam: this.agentConfig.accessBuddyTeam,
+        },
         enableWxBetterTogether: this.isWxBetterTogetherEnabled(),
       };
       this.taskManager.setConfigFlags(configFlags);
@@ -2683,8 +2696,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Returns paginated entry points for the organization.
-   * Thin wrapper around internal EntryPoint instance.
+   * Returns paginated entry points using the EntryPoint service defaults.
+   * Existing request parameters can override those defaults.
    * @public
    */
   public async getEntryPoints(
@@ -2694,8 +2707,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Returns paginated contact service queues for the organization.
-   * Thin wrapper around internal Queue instance.
+   * Returns paginated contact service queues using the Queue service defaults.
+   * Existing request parameters can override those defaults.
    * @public
    */
   public async getQueues(

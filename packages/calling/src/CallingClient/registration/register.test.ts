@@ -34,10 +34,11 @@ import {
   SEC_TO_MSEC_MFACTOR,
   RECONNECT_ON_FAILURE_UTIL,
   METHODS,
+  SESSION_SUPERSEDED_MESSAGE,
 } from '../constants';
 import {ICall} from '../calling/types';
 import {LINE_EVENTS} from '../line/types';
-import {createLineError} from '../../Errors/catalog/LineError';
+import {createLineError, LineError} from '../../Errors/catalog/LineError';
 import {IRegistration} from './types';
 import {METRIC_EVENT, REG_ACTION, METRIC_TYPE} from '../../Metrics/types';
 import {APIRequest} from '../utils/request';
@@ -1853,6 +1854,193 @@ describe('Registration Tests', () => {
       expect(retry429Spy).toBeCalledOnceWith(20, RECONNECT_ON_FAILURE_UTIL);
       expect(reg.retryAfter).toEqual(undefined); // Clear retryAfter after 429 retry
     });
+
+    describe('409 Conflict on keepalive (session superseded)', () => {
+      const conflictError = {statusCode: 409, headers: {trackingid: 'tid-409'}};
+
+      const sendKeepaliveFailure = async (err, keepAliveRetryCount) => {
+        reg.webWorker.onmessage({
+          data: {
+            type: WorkerMessageType.KEEPALIVE_FAILURE,
+            err,
+            keepAliveRetryCount,
+          },
+        } as MessageEvent);
+
+        await flushPromises();
+      };
+
+      const getSupersededError = (): LineError => {
+        const unregisteredCall = lineEmitter.mock.calls.find(
+          ([event]) => event === LINE_EVENTS.UNREGISTERED
+        );
+
+        return unregisteredCall?.[2];
+      };
+
+      it.each([
+        {description: 'on the very first keepalive failure', keepAliveRetryCount: 1},
+        {description: 'when the retry count already reached the threshold', keepAliveRetryCount: 5},
+      ])('stops keepalive without re-registration $description', async ({keepAliveRetryCount}) => {
+        await beforeEachSetupForKeepalive();
+        const clearTimerSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
+        const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
+        const registerSpy = jest.spyOn(reg, 'attemptRegistrationWithServers');
+        const handle404Spy = jest.spyOn(reg, 'handle404KeepaliveFailure');
+        lineEmitter.mockClear();
+
+        await sendKeepaliveFailure(conflictError, keepAliveRetryCount);
+
+        // The 409 is classified by the common registration error handler.
+        expect(handleErrorSpy).toHaveBeenCalledWith(
+          conflictError,
+          expect.anything(),
+          {file: REGISTRATION_FILE, method: KEEPALIVE_UTIL},
+          expect.objectContaining({sessionSupersededCb: expect.any(Function)})
+        );
+        expect(warnSpy).toBeCalledWith(
+          '409 Conflict: session superseded by another device for this user',
+          {file: REGISTRATION_FILE, method: KEEPALIVE_UTIL}
+        );
+        expect(warnSpy).toBeCalledWith(
+          `Stopping keepalive without re-registration, session superseded by another device for this user - keepaliveRetryCount: ${keepAliveRetryCount}`,
+          {file: REGISTRATION_FILE, method: METHODS.HANDLE_409_KEEPALIVE_FAILURE}
+        );
+
+        // Keepalive is stopped and no further keepalive can be sent.
+        expect(clearTimerSpy).toHaveBeenCalled();
+        expect(reg.webWorker).toBeUndefined();
+        expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+        expect(reg.failbackTimer).toStrictEqual(undefined);
+
+        // No re-registration of any kind is attempted.
+        expect(reconnectSpy).not.toHaveBeenCalled();
+        expect(restoreSpy).not.toHaveBeenCalled();
+        expect(restartSpy).not.toHaveBeenCalled();
+        expect(failoverSpy).not.toHaveBeenCalled();
+        expect(registerSpy).not.toHaveBeenCalled();
+        expect(handle404Spy).not.toHaveBeenCalled();
+        expect(reg.reconnectPending).toStrictEqual(false);
+      });
+
+      it('notifies the consumer with a single UNREGISTERED carrying the superseded reason', async () => {
+        await beforeEachSetupForKeepalive();
+        lineEmitter.mockClear();
+
+        await sendKeepaliveFailure(conflictError, 1);
+
+        expect(
+          lineEmitter.mock.calls.filter(([event]) => event === LINE_EVENTS.UNREGISTERED)
+        ).toHaveLength(1);
+        expect(lineEmitter).not.toHaveBeenCalledWith(LINE_EVENTS.RECONNECTING);
+        expect(lineEmitter).toHaveBeenLastCalledWith(
+          LINE_EVENTS.UNREGISTERED,
+          undefined,
+          expect.any(LineError)
+        );
+
+        const supersededError = getSupersededError();
+
+        expect(supersededError.getError()).toStrictEqual({
+          message: SESSION_SUPERSEDED_MESSAGE,
+          type: ERROR_TYPE.SESSION_SUPERSEDED,
+          status: RegistrationStatus.INACTIVE,
+          context: {file: REGISTRATION_FILE, method: KEEPALIVE_UTIL},
+        });
+      });
+
+      it('submits the keepalive failure metric and uploads logs', async () => {
+        await beforeEachSetupForKeepalive();
+        const uploadLogsSpy = jest.spyOn(utils, 'uploadLogs');
+        lineEmitter.mockClear();
+        metricSpy.mockClear();
+
+        await sendKeepaliveFailure(conflictError, 2);
+
+        expect(metricSpy).toBeCalledOnceWith(
+          METRIC_EVENT.KEEPALIVE_ERROR,
+          REG_ACTION.KEEPALIVE_FAILURE,
+          METRIC_TYPE.BEHAVIORAL,
+          METHODS.HANDLE_409_KEEPALIVE_FAILURE,
+          'PRIMARY',
+          conflictError.headers.trackingid,
+          2,
+          getSupersededError()
+        );
+        expect(uploadLogsSpy).toHaveBeenCalled();
+      });
+
+      it('closes the Mobius WebSocket when the socket transport is enabled', async () => {
+        await beforeEachSetupForKeepalive();
+        const apiRequest = APIRequest.getInstance({webex});
+        jest.spyOn(apiRequest, 'isSocketEnabled').mockReturnValue(true);
+        const disconnectSocketSpy = jest
+          .spyOn(apiRequest, 'disconnectFromMobiusSocket')
+          .mockResolvedValue();
+        lineEmitter.mockClear();
+
+        await sendKeepaliveFailure(conflictError, 1);
+
+        expect(disconnectSocketSpy).toBeCalledOnceWith({
+          code: 3050,
+          reason: 'done (permanent)',
+        });
+        expect(lineEmitter).toHaveBeenLastCalledWith(
+          LINE_EVENTS.UNREGISTERED,
+          undefined,
+          expect.any(LineError)
+        );
+      });
+
+      it('still notifies the consumer when the Mobius WebSocket teardown fails', async () => {
+        await beforeEachSetupForKeepalive();
+        const apiRequest = APIRequest.getInstance({webex});
+        jest.spyOn(apiRequest, 'isSocketEnabled').mockReturnValue(true);
+        jest
+          .spyOn(apiRequest, 'disconnectFromMobiusSocket')
+          .mockRejectedValue(new Error('socket teardown failed'));
+        lineEmitter.mockClear();
+
+        await sendKeepaliveFailure(conflictError, 1);
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Mobius socket disconnect failed after session-superseded'),
+          {file: REGISTRATION_FILE, method: METHODS.HANDLE_409_KEEPALIVE_FAILURE}
+        );
+        expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+        expect(lineEmitter).toHaveBeenLastCalledWith(
+          LINE_EVENTS.UNREGISTERED,
+          undefined,
+          expect.any(LineError)
+        );
+      });
+
+      it.each([
+        {description: '404 device not found', err: {statusCode: 404}},
+        {description: '429 too many requests', err: {statusCode: 429, headers: {'retry-after': 5}}},
+        {description: '503 service unavailable', err: {statusCode: 503}},
+      ])('leaves the existing handling of $description untouched', async ({err}) => {
+        await beforeEachSetupForKeepalive();
+        const handle409Spy = jest.spyOn(reg, 'handle409KeepaliveFailure');
+        lineEmitter.mockClear();
+        handleErrorSpy.mockClear();
+
+        await sendKeepaliveFailure(err, 1);
+
+        expect(handle409Spy).not.toHaveBeenCalled();
+        expect(handleErrorSpy).toHaveBeenCalledWith(
+          err,
+          expect.anything(),
+          {file: REGISTRATION_FILE, method: KEEPALIVE_UTIL},
+          expect.anything()
+        );
+        expect(lineEmitter).not.toHaveBeenCalledWith(
+          LINE_EVENTS.UNREGISTERED,
+          undefined,
+          expect.anything()
+        );
+      });
+    });
   });
 
   describe('Primary server status checks', () => {
@@ -1938,7 +2126,8 @@ describe('Registration Tests', () => {
       expect(reg.retryAfter).toBeUndefined();
       expect(reg.registerRetry).toBe(false);
       expect(disconnectSocketSpy).not.toHaveBeenCalled();
-      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      /* A registration-down stop has no reason to report to the consumer. */
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED, undefined, undefined);
     });
 
     it('ends the active call and still runs cleanup when an active call is present', async () => {
@@ -1957,7 +2146,7 @@ describe('Registration Tests', () => {
       expect(clearKeepaliveSpy).toHaveBeenCalled();
       expect(setStatusSpy).toHaveBeenCalledWith(RegistrationStatus.INACTIVE);
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
-      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED, undefined, undefined);
     });
 
     it('runs cleanup without calling end when no active call is present on re-invocation', async () => {
@@ -1977,7 +2166,7 @@ describe('Registration Tests', () => {
       expect(clearKeepaliveSpy).toHaveBeenCalled();
       expect(setStatusSpy).toHaveBeenCalledWith(RegistrationStatus.INACTIVE);
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
-      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED, undefined, undefined);
     });
 
     it('disconnects the Mobius WebSocket when socket is enabled', async () => {
@@ -1997,7 +2186,7 @@ describe('Registration Tests', () => {
         reason: 'done (permanent)',
       });
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
-      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED, undefined, undefined);
     });
 
     it('still emits UNREGISTERED when socket disconnect fails', async () => {
@@ -2017,7 +2206,7 @@ describe('Registration Tests', () => {
         {file: REGISTRATION_FILE, method: METHODS.HANDLE_REGISTRATION_DOWN_EVENT}
       );
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
-      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED, undefined, undefined);
     });
   });
 
