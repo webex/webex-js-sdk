@@ -784,7 +784,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe.skip('#fetchClientRegionInfo()', () => {
+    describe('#fetchClientRegionInfo()', () => {
       it('returns client region info', () =>
         services.fetchClientRegionInfo().then((r) => {
           assert.isDefined(r.regionCode);
@@ -792,7 +792,7 @@ describe('webex-core', () => {
         }));
     });
 
-    describe.skip('#validateUser()', () => {
+    describe('#validateUser()', () => {
       const unauthWebex = new WebexCore();
       const unauthServices = unauthWebex.internal.services;
       let sandbox = null;
@@ -987,7 +987,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe.skip('#waitForService()', () => {
+    describe('#waitForService()', () => {
       let name;
       let url;
 
@@ -1122,7 +1122,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe.skip('#collectPreauthCatalog()', () => {
+    describe('#collectPreauthCatalog()', () => {
       const unauthWebex = new WebexCore({config: {credentials: {federation: true}}});
       const unauthServices = unauthWebex.internal.services;
       const forceRefresh = true;
@@ -1166,7 +1166,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe.skip('#collectSigninCatalog()', () => {
+    describe('#collectSigninCatalog()', () => {
       const unauthWebex = new WebexCore({config: {credentials: {federation: true}}});
       const unauthServices = unauthWebex.internal.services;
 
