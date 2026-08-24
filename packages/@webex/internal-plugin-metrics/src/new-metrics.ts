@@ -19,18 +19,19 @@ import {
   ClientEvent,
   FeatureEvent,
   EventPayload,
-  OperationalEvent,
   MediaQualityEvent,
   InternalEvent,
   SubmitClientEventOptions,
   Table,
   DelayedClientEvent,
   DelayedClientFeatureEvent,
+  PrivacyAndSecurityPermission,
 } from './metrics.types';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 import {setMetricTimings} from './call-diagnostic/call-diagnostic-metrics.util';
 import {generateCommonErrorMetadata} from './utils';
 import {isAutomatedUser as detectAutomatedUser} from './automated-user';
+import PrivacyAndSecurityPermissionEnricher from './privacy-and-security-permission-enricher';
 
 /**
  * Metrics plugin to centralize all types of metrics.
@@ -68,6 +69,8 @@ class Metrics extends WebexPlugin {
 
   delayedClientFeatureEventsOverrides: Partial<DelayedClientFeatureEvent['options']> = {};
 
+  private privacyAndSecurityPermissionEnricher: PrivacyAndSecurityPermissionEnricher;
+
   /**
    * Constructor
    * @param args
@@ -78,6 +81,15 @@ class Metrics extends WebexPlugin {
   constructor(...args) {
     super(...args);
 
+    this.privacyAndSecurityPermissionEnricher = new PrivacyAndSecurityPermissionEnricher(
+      (error) => {
+        // @ts-ignore
+        this.webex.logger.error(
+          'NewMetrics: @submitClientEvent. Privacy and security permission enrichment failed.',
+          error
+        );
+      }
+    );
     // @ts-ignore
     this.callDiagnosticLatencies = new CallDiagnosticLatencies({}, {parent: this.webex});
     // @ts-ignore
@@ -381,12 +393,39 @@ class Metrics extends WebexPlugin {
       options: {meetingId: options?.meetingId},
     });
 
-    return this.callDiagnosticMetrics.submitClientEvent({
+    const enrichedPayload = this.privacyAndSecurityPermissionEnricher.enrich({
       name,
       payload,
+      scope: this.getPermissionScope(options),
+    });
+
+    return this.callDiagnosticMetrics.submitClientEvent({
+      name,
+      payload: enrichedPayload,
       options,
       delaySubmitEvent: this.delaySubmitClientEvents,
     });
+  }
+
+  /**
+   * Stores the latest browser permission state supplied by the client.
+   * @param permission latest normalized permission snapshot
+   */
+  public setPrivacyAndSecurityPermission(permission: PrivacyAndSecurityPermission): void {
+    this.privacyAndSecurityPermissionEnricher.setPermission(permission);
+  }
+
+  /**
+   * Resolves event options to the call identity used by Call Diagnostic where possible.
+   * @param options client event options
+   * @returns the permission history scope
+   */
+  private getPermissionScope(options?: SubmitClientEventOptions): string {
+    const meeting = options?.meetingId
+      ? (this as any).webex.meetings?.getBasicMeetingInformation?.(options.meetingId)
+      : undefined;
+
+    return options?.correlationId ?? meeting?.correlationId ?? 'default';
   }
 
   /**
