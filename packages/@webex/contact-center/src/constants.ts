@@ -15,6 +15,7 @@ export const WEBEX_REQUEST_FILE = 'WebexRequest';
 export const TASK_MANAGER_FILE = 'TaskManager';
 export const TASK_FILE = 'Task';
 // AGENT OUTDIAL CONSTANTS
+export const INBOUND_DIRECTION = 'INBOUND';
 export const OUTDIAL_DIRECTION = 'OUTBOUND';
 export const ATTRIBUTES = {};
 export const OUTDIAL_MEDIA_TYPE = 'telephony';
