@@ -23,7 +23,7 @@ import sinon from 'sinon';
 import {createActivationEmail} from '../../../fixtures/activation-email';
 
 /* eslint-disable no-underscore-dangle */
-describe.skip('webex-core', () => {
+describe('webex-core', () => {
   describe('Services', () => {
     let webexUser;
     let webexUserEU;
