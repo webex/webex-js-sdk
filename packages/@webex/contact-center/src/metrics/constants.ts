@@ -131,6 +131,8 @@ export const METRIC_EVENT_NAMES = {
   TASK_CONFERENCE_TRANSFER_FAILED: 'Task Conference Transfer Failed',
   TASK_CONFERENCE_EXIT_SUCCESS: 'Task Conference Exit Success',
   TASK_CONFERENCE_EXIT_FAILED: 'Task Conference Exit Failed',
+  TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS: 'Task Conference Participant Drop Success',
+  TASK_CONFERENCE_PARTICIPANT_DROP_FAILED: 'Task Conference Participant Drop Failed',
   TASK_SWITCH_CALL_SUCCESS: 'Task Switch Call Success',
   TASK_SWITCH_CALL_FAILED: 'Task Switch Call Failed',
 

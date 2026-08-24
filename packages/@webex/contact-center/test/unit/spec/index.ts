@@ -50,6 +50,7 @@ const EXPECTED_ROOT_EXPORTS = Object.freeze([
   'DialPlan',
   'DialPlanEntity',
   'DialerPayload',
+  'DropConferenceParticipantPayload',
   'Entity',
   'EntryPointListResponse',
   'EntryPointRecord',

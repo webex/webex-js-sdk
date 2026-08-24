@@ -35,12 +35,15 @@ Core methods:
 - Unsupported voice-specific defaults throw through `unsupportedMethodError(...)`:
   `decline`, `pauseRecording`, `resumeRecording`, `consult`, `endConsult`,
   `consultTransfer`, `consultConference`, `exitConference`,
-  `transferConference`, `switchCall`, `toggleMute`, `hold`, `resume`, and
-  `holdResume`.
+  `transferConference`, `switchCall`, `toggleMute`, `transmitDtmf`, `hold`,
+  `resume`, and `holdResume`.
 - Shared AQM operations are implemented in the base class: `transfer`, `end`,
   and `wrapup`.
 - State integration is exposed through `sendStateMachineEvent(...)`,
   `updateTaskData(...)`, and the `uiControls` getter.
+- `uiControls` includes ordered, action-specific `consultTransferDestinations`
+  computed from profile configuration and live interaction data.
+- Web-call listener cleanup is exposed through `unregisterWebCallListeners()`.
 - Timer cleanup is exposed through `cancelAutoWrapupTimer()`.
 - AI summary APIs are additive: `requestPostCallSummary`,
   `sendPostCallSummaryResponse`, `requestMidCallSummary`, and

@@ -14,6 +14,8 @@ export const CONSULT = '/consult';
 export const CONSULT_ACCEPT = '/consult/accept';
 export const CONSULT_END = '/consult/end';
 export const TRANSFER = '/transfer';
+/** Backend destination value for direct entry-point transfers through the vteam endpoint. */
+export const ENTRY_POINT_TRANSFER_DESTINATION_TYPE = 'entrypointDialNumber';
 export const CONSULT_TRANSFER = '/consult/transfer';
 export const PAUSE = '/record/pause';
 export const RESUME = '/record/resume';
@@ -78,6 +80,7 @@ export const METHODS = {
   TRANSFER: 'transfer',
   CONSULT_TRANSFER: 'consultTransfer',
   CONSULT_CONFERENCE: 'consultConference',
+  DROP_CONFERENCE_PARTICIPANT: 'dropConferenceParticipant',
   EXIT_CONFERENCE: 'exitConference',
   TRANSFER_CONFERENCE: 'transferConference',
   UPDATE_TASK_DATA: 'updateTaskData',

@@ -1,6 +1,13 @@
 // making query params configurable for List Teams and List Aux Codes API
 export const DEFAULT_PAGE = 0;
 
+/** Desktop Profile access levels for collaboration destination categories. */
+export const COLLABORATION_ACCESS = {
+  ALL: 'ALL',
+  SPECIFIC: 'SPECIFIC',
+  NONE: 'NONE',
+} as const;
+
 /**
  * Default page size for paginated API requests.
  * @type {number}
@@ -258,13 +265,19 @@ export const endPointMap = {
   queueList: (orgId: string, queryParams: string) =>
     `/organization/${orgId}/v2/contact-service-queue?${queryParams}`,
   /**
-   * Gets the endpoint for entry points list with custom query parameters.
+   * Gets the desktop-profile-filtered dial-number mappings used by entry-point destination lists.
    * @param orgId - Organization ID.
    * @param queryParams - Query parameters string.
    * @returns The endpoint URL string.
-   * @public
-   * @example
-   * const url = endPointMap.entryPointList('org123', 'page=0&pageSize=10');
+   * @ignore
+   */
+  entryPointDialNumberList: (orgId: string, queryParams: string) =>
+    `/organization/${orgId}/v3/dial-number?${queryParams}`,
+  /**
+   * Gets the legacy entry-point list endpoint.
+   * @param orgId - Organization ID.
+   * @param queryParams - Query parameters string.
+   * @returns The endpoint URL string.
    * @ignore
    */
   entryPointList: (orgId: string, queryParams: string) =>

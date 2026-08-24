@@ -5,6 +5,7 @@ import {
   TaskState,
 } from '../../../../../../src/services/task/state-machine';
 import {createTaskData} from '../taskTestUtils';
+import {guards} from '../../../../../../src/services/task/state-machine/guards';
 
 const createConfig = () => ({
   channelType: 'voice' as const,
@@ -106,6 +107,198 @@ describe('Task state machine', () => {
     });
   });
 
+  describe('partial lifecycle payloads', () => {
+    const createActiveMainCallTaskData = (isHold = false) =>
+      createTaskData({
+        agentId: 'agent-1',
+        interactionId: 'interaction-1',
+        mediaResourceId: 'main-media',
+        interaction: {
+          state: 'connected',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false},
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+          media: {
+            'main-media': {
+              mediaResourceId: 'main-media',
+              mType: 'mainCall',
+              participants: ['agent-1', 'customer-1'],
+              isHold,
+            },
+          },
+        } as any,
+      });
+
+    const createPartialMainCallTaskData = (isHold = false, omitSelf = false) =>
+      createTaskData({
+        agentId: 'agent-1',
+        interactionId: 'interaction-1',
+        mediaResourceId: 'main-media',
+        interaction: {
+          state: 'connected',
+          participants: omitSelf
+            ? {'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false}}
+            : {
+                'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false},
+                'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+              },
+          media: {
+            'main-media': {
+              mediaResourceId: 'main-media',
+              mType: 'mainCall',
+              participants: ['customer-1'],
+              isHold,
+            },
+          },
+        } as any,
+      });
+
+    const startMachineWithEndSpy = () => {
+      const emitTaskEnd = jest.fn();
+      const service = createActor(
+        createTaskStateMachine({...createConfig(), agentId: 'agent-1'}, {actions: {emitTaskEnd}})
+      );
+      service.start();
+
+      return {service, emitTaskEnd};
+    };
+
+    const enterTransientHoldState = (
+      service: ReturnType<typeof startMachine>,
+      state: TaskState.HOLD_INITIATING | TaskState.RESUME_INITIATING,
+      taskData: ReturnType<typeof createActiveMainCallTaskData>
+    ) => {
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId: 'main-media'});
+
+      if (state === TaskState.RESUME_INITIATING) {
+        service.send({type: TaskEvent.HOLD_SUCCESS, mediaResourceId: 'main-media'});
+        service.send({type: TaskEvent.UNHOLD_INITIATED, mediaResourceId: 'main-media'});
+      }
+
+      expect(service.getSnapshot().value).toBe(state);
+    };
+
+    it('keeps CONNECTED when another participant leave event has a partial mainCall', () => {
+      const {service, emitTaskEnd} = startMachineWithEndSpy();
+      const taskData = createActiveMainCallTaskData();
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+
+      service.send({
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        participantId: 'agent-2',
+        taskData: createPartialMainCallTaskData(false, true),
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+      expect(emitTaskEnd).not.toHaveBeenCalled();
+    });
+
+    it('terminates CONNECTED when an out-of-order participant leave identifies the current agent', () => {
+      const {service, emitTaskEnd} = startMachineWithEndSpy();
+      const taskData = createActiveMainCallTaskData();
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+
+      service.send({
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        participantId: 'agent-1',
+        taskData: createPartialMainCallTaskData(false, true),
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+      expect(emitTaskEnd).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([TaskState.HOLD_INITIATING, TaskState.RESUME_INITIATING])(
+      'terminates %s when a remote Drop identifies the current agent',
+      (state) => {
+        const {service, emitTaskEnd} = startMachineWithEndSpy();
+        const taskData = createActiveMainCallTaskData(state === TaskState.RESUME_INITIATING);
+
+        enterTransientHoldState(service, state, taskData);
+        service.send({
+          type: TaskEvent.PARTICIPANT_LEAVE,
+          participantId: 'agent-1',
+          taskData: createPartialMainCallTaskData(
+            state === TaskState.RESUME_INITIATING,
+            true
+          ),
+        });
+
+        expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+        expect(emitTaskEnd).toHaveBeenCalledTimes(1);
+      }
+    );
+
+    it.each([TaskState.HOLD_INITIATING, TaskState.RESUME_INITIATING])(
+      'keeps %s when ParticipantLeftConference identifies another participant',
+      (state) => {
+        const {service, emitTaskEnd} = startMachineWithEndSpy();
+        const taskData = createActiveMainCallTaskData(state === TaskState.RESUME_INITIATING);
+
+        enterTransientHoldState(service, state, taskData);
+        service.send({
+          type: TaskEvent.PARTICIPANT_LEAVE,
+          participantId: 'agent-2',
+          taskData: createPartialMainCallTaskData(
+            state === TaskState.RESUME_INITIATING,
+            true
+          ),
+        });
+
+        expect(service.getSnapshot().value).toBe(state);
+        expect(emitTaskEnd).not.toHaveBeenCalled();
+      }
+    );
+
+    it('keeps HELD when another participant leave event omits self from its roster', () => {
+      const {service, emitTaskEnd} = startMachineWithEndSpy();
+      const taskData = createActiveMainCallTaskData(true);
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId: 'main-media'});
+      service.send({type: TaskEvent.HOLD_SUCCESS, mediaResourceId: 'main-media'});
+      expect(service.getSnapshot().value).toBe(TaskState.HELD);
+
+      service.send({
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        participantId: 'agent-2',
+        taskData: createPartialMainCallTaskData(true, true),
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.HELD);
+      expect(emitTaskEnd).not.toHaveBeenCalled();
+    });
+
+    it('keeps HELD when CONSULT_END has a partial mainCall', () => {
+      const {service, emitTaskEnd} = startMachineWithEndSpy();
+      const taskData = createActiveMainCallTaskData(true);
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId: 'main-media'});
+      service.send({type: TaskEvent.HOLD_SUCCESS, mediaResourceId: 'main-media'});
+      expect(service.getSnapshot().value).toBe(TaskState.HELD);
+
+      service.send({
+        type: TaskEvent.CONSULT_END,
+        taskData: createPartialMainCallTaskData(true),
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.HELD);
+      expect(emitTaskEnd).not.toHaveBeenCalled();
+    });
+  });
+
   describe('recording pause/resume events', () => {
     it('toggles recordingPaused flag based on events', () => {
       const service = startMachine();
@@ -179,6 +372,32 @@ describe('Task state machine', () => {
 
       service.send({type: TaskEvent.WRAPUP_COMPLETE});
       expect(service.getSnapshot().value).toBe(TaskState.COMPLETED);
+    });
+
+    it('emits task wrappedup before cleanup on COMPLETED entry', () => {
+      const actionOrder: string[] = [];
+      const actor = createActor(
+        createTaskStateMachine(createConfig(), {
+          actions: {
+            emitTaskWrappedup: () => {
+              actionOrder.push('emitTaskWrappedup');
+            },
+            cleanupResources: () => {
+              actionOrder.push('cleanupResources');
+            },
+          },
+        })
+      );
+      actor.start();
+      const taskData = createTaskData();
+
+      actor.send({type: TaskEvent.TASK_INCOMING, taskData});
+      actor.send({type: TaskEvent.ASSIGN, taskData});
+      actor.send({type: TaskEvent.TASK_WRAPUP});
+      actor.send({type: TaskEvent.WRAPUP_COMPLETE});
+
+      expect(actor.getSnapshot().value).toBe(TaskState.COMPLETED);
+      expect(actionOrder).toEqual(['emitTaskWrappedup', 'cleanupResources']);
     });
   });
 
@@ -343,53 +562,53 @@ describe('Task state machine', () => {
       expect(snapshot.context.consultFromConference).toBe(true);
     });
 
-  it('hydrates consulted agent to CONSULTING when self consultState is consulting and main leg is held', () => {
-    const service = startMachine();
-    const taskData = createTaskData({
-      agentId: 'agent-2',
-      isConsulted: true,
-      interaction: {
-        state: 'conference',
-        mainInteractionId: 'interaction-1',
-        interactionId: 'interaction-1',
-        participants: {
-          'agent-1': {
-            id: 'agent-1',
-            pType: 'Agent',
-            hasLeft: false,
-            consultState: 'consulting',
-            isConsulted: false,
+    it('hydrates consulted agent to CONSULTING when self consultState is consulting and main leg is held', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        agentId: 'agent-2',
+        isConsulted: true,
+        interaction: {
+          state: 'conference',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasLeft: false,
+              consultState: 'consulting',
+              isConsulted: false,
+            },
+            'agent-2': {
+              id: 'agent-2',
+              pType: 'Agent',
+              hasLeft: false,
+              consultState: 'consulting',
+              isConsulted: true,
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
           },
-          'agent-2': {
-            id: 'agent-2',
-            pType: 'Agent',
-            hasLeft: false,
-            consultState: 'consulting',
-            isConsulted: true,
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['agent-1', 'customer-1'],
+              isHold: true,
+            },
+            'consult-media-1': {
+              mediaResourceId: 'consult-media-1',
+              mType: 'consult',
+              participants: ['agent-1', 'agent-2'],
+              isHold: false,
+            },
           },
-          'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
-        },
-        media: {
-          'interaction-1': {
-            mediaResourceId: 'interaction-1',
-            mType: 'mainCall',
-            participants: ['agent-1', 'customer-1'],
-            isHold: true,
-          },
-          'consult-media-1': {
-            mediaResourceId: 'consult-media-1',
-            mType: 'consult',
-            participants: ['agent-1', 'agent-2'],
-            isHold: false,
-          },
-        },
-      } as any,
+        } as any,
+      });
+
+      service.send({type: TaskEvent.HYDRATE, taskData});
+
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
     });
-
-    service.send({type: TaskEvent.HYDRATE, taskData});
-
-    expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
-  });
 
     it('hydrates to CONSULTING when consult is pending (self consultState is consultInitiated)', () => {
       const service = startMachine();
@@ -1684,6 +1903,47 @@ describe('Task state machine', () => {
       expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
     });
 
+    it('downgrades to CONNECTED on PARTICIPANT_LEAVE when the current agent remains', () => {
+      const service = startMachine();
+      const conferenceTaskData = createSingleAgentConferenceTaskData('conference');
+      const connectedTaskData = createSingleAgentConferenceTaskData('connected');
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: conferenceTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      service.send({
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        participantId: 'agent-2',
+        taskData: connectedTaskData,
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+    });
+
+    it('terminates instead of downgrading when PARTICIPANT_LEAVE identifies the current agent', () => {
+      const service = startMachine();
+      const conferenceTaskData = createSingleAgentConferenceTaskData('conference');
+      const connectedTaskData = {
+        ...createSingleAgentConferenceTaskData('connected'),
+        wrapUpRequired: false,
+      };
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: conferenceTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      service.send({
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        participantId: 'agent-1',
+        taskData: connectedTaskData,
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+    });
+
     it('returns to CONNECTED when CTQ cancel arrives before queue connects', () => {
       const service = startMachine();
       const taskData = createTaskData();
@@ -1820,9 +2080,7 @@ describe('Task state machine', () => {
       service.send({type: TaskEvent.CONSULT_END, taskData});
       expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
     });
-
   });
-
 
   describe('CONFERENCING state CONSULT_FAILED ANOTHER_CONSULT_IN_PROGRESS (CAI-8329)', () => {
     it('keeps hideBlindTransfer flag and hides transfer after secondary consult rejected from Agent Desktop', () => {
@@ -1848,7 +2106,12 @@ describe('Task state machine', () => {
               consultState: 'conferencing',
             },
             '+13159998059': {id: '+13159998059', pType: 'EP-DN', hasLeft: false},
-            '+14696762938': {id: '+14696762938', pType: 'Customer', hasJoined: true, hasLeft: false},
+            '+14696762938': {
+              id: '+14696762938',
+              pType: 'Customer',
+              hasJoined: true,
+              hasLeft: false,
+            },
           },
           media: {
             'interaction-1': {
@@ -1902,7 +2165,12 @@ describe('Task state machine', () => {
               consultState: 'conferencing',
             },
             '+13159998059': {id: '+13159998059', pType: 'EP-DN', hasLeft: false},
-            '+14696762938': {id: '+14696762938', pType: 'Customer', hasJoined: true, hasLeft: false},
+            '+14696762938': {
+              id: '+14696762938',
+              pType: 'Customer',
+              hasJoined: true,
+              hasLeft: false,
+            },
           },
           media: {
             'interaction-1': {
@@ -1920,12 +2188,19 @@ describe('Task state machine', () => {
           },
         } as any,
       });
-      service.send({type: TaskEvent.CONSULT_FAILED, taskData: consultFailedTaskData, reason: 'ANOTHER_CONSULT_IN_PROGRESS'});
+      service.send({
+        type: TaskEvent.CONSULT_FAILED,
+        taskData: consultFailedTaskData,
+        reason: 'ANOTHER_CONSULT_IN_PROGRESS',
+      });
 
       const snapshot = service.getSnapshot();
       expect(snapshot.value).toBe(TaskState.CONFERENCING);
       expect(snapshot.context.hideBlindTransferForEpDnPendingMerge).toBe(true);
-      expect(snapshot.context.uiControls.main.transfer).toEqual({isVisible: false, isEnabled: false});
+      expect(snapshot.context.uiControls.main.transfer).toEqual({
+        isVisible: false,
+        isEnabled: false,
+      });
       expect(snapshot.context.uiControls.main.consult).toEqual({isVisible: true, isEnabled: false});
     });
   });
@@ -2126,6 +2401,50 @@ describe('Task state machine', () => {
       service.send({type: TaskEvent.CONSULT_FAILED, taskData});
       expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
     });
+
+    it('emits only consult-end when an unaccepted consulted offer is ended', () => {
+      const emitTaskConsultEnd = jest.fn();
+      const emitTaskEnd = jest.fn();
+      const service = createActor(
+        createTaskStateMachine(createConfig(), {
+          actions: {emitTaskConsultEnd, emitTaskEnd},
+        })
+      );
+      service.start();
+      const taskData = createTaskData({isConsulted: true, consultingAgentId: 'agent-1'});
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.CONSULT_END, taskData});
+
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+      expect(emitTaskConsultEnd).toHaveBeenCalledTimes(1);
+      expect(emitTaskEnd).not.toHaveBeenCalled();
+    });
+
+    it('transitions to WRAPPING_UP on TASK_WRAPUP when wrapup is required', () => {
+      const service = startMachine();
+      const offerTaskData = createTaskData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: offerTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.OFFERED);
+
+      const wrapupTaskData = createTaskData({
+        agentId: 'agent-1',
+        agentsPendingWrapUp: ['agent-1'],
+        wrapUpRequired: true,
+        interaction: {
+          outboundType: 'OUTDIAL',
+          state: 'wrapUp',
+          isTerminated: true,
+        } as any,
+      });
+      service.send({type: TaskEvent.TASK_WRAPUP, taskData: wrapupTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
   });
 
   describe('OUTBOUND_FAILED handling', () => {
@@ -2161,7 +2480,11 @@ describe('Task state machine', () => {
           isTerminated: true,
         } as any,
       });
-      service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'CUSTOMER_BUSY'});
+      service.send({
+        type: TaskEvent.OUTBOUND_FAILED,
+        taskData: failedTaskData,
+        reason: 'CUSTOMER_BUSY',
+      });
       expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
     });
 
@@ -2184,16 +2507,228 @@ describe('Task state machine', () => {
           isTerminated: true,
         } as any,
       });
-      service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'CUSTOMER_BUSY'});
+      service.send({
+        type: TaskEvent.OUTBOUND_FAILED,
+        taskData: failedTaskData,
+        reason: 'CUSTOMER_BUSY',
+      });
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
+    it('transitions from CONNECTED to WRAPPING_UP on OUTBOUND_FAILED when wrapup is required', () => {
+      const service = startMachine();
+      const offerTaskData = createTaskData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: offerTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: offerTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+
+      const failedTaskData = createTaskData({
+        agentId: 'agent-1',
+        agentsPendingWrapUp: ['agent-1'],
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+        } as any,
+      });
+      service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'AGENT_ENDS'});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
+    it('transitions from HELD to WRAPPING_UP on OUTBOUND_FAILED when wrapup is required', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId});
+      service.send({type: TaskEvent.HOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId});
+      expect(service.getSnapshot().value).toBe(TaskState.HELD);
+
+      const failedTaskData = createTaskData({
+        agentId: 'agent-1',
+        agentsPendingWrapUp: ['agent-1'],
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+        } as any,
+      });
+      service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'AGENT_ENDS'});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
+    it('transitions from CONSULTING to WRAPPING_UP on OUTBOUND_FAILED when wrapup is required', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.CONSULT, destination: 'agent-42', destinationType: 'agent'});
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
+
+      const failedTaskData = createTaskData({
+        agentId: 'agent-1',
+        agentsPendingWrapUp: ['agent-1'],
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+        } as any,
+      });
+      service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'AGENT_ENDS'});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
+    it('transitions from CONFERENCING to WRAPPING_UP on OUTBOUND_FAILED when wrapup is required', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        consultingAgentId: 'agent-1',
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.CONSULT, destination: 'agent-42', destinationType: 'agent'});
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+      service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      service.send({type: TaskEvent.CONFERENCE_START});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      const failedTaskData = createTaskData({
+        agentId: 'agent-1',
+        agentsPendingWrapUp: ['agent-1'],
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+        } as any,
+      });
+      service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'AGENT_ENDS'});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
+    it('transitions from HOLD_INITIATING to WRAPPING_UP on OUTBOUND_FAILED when wrapup is required', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId});
+      expect(service.getSnapshot().value).toBe(TaskState.HOLD_INITIATING);
+
+      const failedTaskData = createTaskData({
+        agentId: 'agent-1',
+        agentsPendingWrapUp: ['agent-1'],
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+        } as any,
+      });
+      service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'AGENT_ENDS'});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
+    it('transitions from RESUME_INITIATING to WRAPPING_UP on OUTBOUND_FAILED when wrapup is required', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId});
+      service.send({type: TaskEvent.HOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId});
+      service.send({type: TaskEvent.UNHOLD_INITIATED, mediaResourceId: taskData.mediaResourceId});
+      expect(service.getSnapshot().value).toBe(TaskState.RESUME_INITIATING);
+
+      const failedTaskData = createTaskData({
+        agentId: 'agent-1',
+        agentsPendingWrapUp: ['agent-1'],
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+        } as any,
+      });
+      service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'AGENT_ENDS'});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
+    it('transitions from CONSULT_INITIATING to WRAPPING_UP on OUTBOUND_FAILED when wrapup is required', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.CONSULT, destination: 'agent-42', destinationType: 'agent'});
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULT_INITIATING);
+
+      const failedTaskData = createTaskData({
+        agentId: 'agent-1',
+        agentsPendingWrapUp: ['agent-1'],
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+        } as any,
+      });
+      service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'AGENT_ENDS'});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
+    it('transitions from CONF_INITIATING to WRAPPING_UP on OUTBOUND_FAILED when wrapup is required', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        consultingAgentId: 'agent-1',
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.CONSULT, destination: 'agent-42', destinationType: 'agent'});
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+      service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      expect(service.getSnapshot().value).toBe(TaskState.CONF_INITIATING);
+
+      const failedTaskData = createTaskData({
+        agentId: 'agent-1',
+        agentsPendingWrapUp: ['agent-1'],
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+        } as any,
+      });
+      service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'AGENT_ENDS'});
       expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
     });
   });
 
   describe('CONSULTING state TRANSFER_CONFERENCE_SUCCESS desktop-initiated (CAI-8329)', () => {
     const startAgent2Machine = () => {
-      const actor = createActor(
-        createTaskStateMachine({...createConfig(), agentId: 'agent-2'})
-      );
+      const actor = createActor(createTaskStateMachine({...createConfig(), agentId: 'agent-2'}));
       actor.start();
 
       return actor;
@@ -2292,7 +2827,54 @@ describe('Task state machine', () => {
         } as any,
       });
 
-    const setupSecondaryAgentConsultingFromConference = (service: ReturnType<typeof startAgent2Machine>) => {
+    const createSecondaryAgentRemovedTaskData = () =>
+      createTaskData({
+        agentId: 'agent-2',
+        isConsulted: true,
+        interactionId: 'interaction-1',
+        mediaResourceId: 'interaction-1',
+        consultMediaResourceId: 'consult-media-1',
+        interaction: {
+          state: 'conference',
+          owner: 'agent-1',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasLeft: false,
+              consultState: 'conferencing',
+            },
+            'agent-3': {
+              id: 'agent-3',
+              pType: 'Agent',
+              hasLeft: false,
+              isConsulted: true,
+              consultState: 'consulting',
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+          media: {
+            'arbitrary-main-media-key': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['agent-1', 'customer-1'],
+              isHold: false,
+            },
+            'consult-media-1': {
+              mediaResourceId: 'consult-media-1',
+              mType: 'consult',
+              participants: ['agent-2', 'agent-3'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+    const setupSecondaryAgentConsultingFromConference = (
+      service: ReturnType<typeof startAgent2Machine>
+    ) => {
       const conferenceTaskData = createSecondaryAgentConferenceBaseTaskData();
       const consultingTaskData = createSecondaryAgentConsultingTaskData();
 
@@ -2339,7 +2921,10 @@ describe('Task state machine', () => {
       setupSecondaryAgentDesktopConsultingFromConference(service);
 
       const transferSuccessTaskData = createSecondaryAgentConsultingTaskData();
-      service.send({type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS, taskData: transferSuccessTaskData});
+      service.send({
+        type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS,
+        taskData: transferSuccessTaskData,
+      });
 
       expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
     });
@@ -2349,7 +2934,10 @@ describe('Task state machine', () => {
       setupSecondaryAgentConsultingFromConference(service);
 
       const transferSuccessTaskData = createSecondaryAgentConsultingTaskData();
-      service.send({type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS, taskData: transferSuccessTaskData});
+      service.send({
+        type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS,
+        taskData: transferSuccessTaskData,
+      });
 
       const snapshot = service.getSnapshot();
       expect(snapshot.value).toBe(TaskState.TERMINATED);
@@ -2359,9 +2947,7 @@ describe('Task state machine', () => {
 
     it('moves consultee to CONFERENCING when primary agent conference-transfers', () => {
       const startAgent3Machine = () => {
-        const actor = createActor(
-          createTaskStateMachine({...createConfig(), agentId: 'agent-3'})
-        );
+        const actor = createActor(createTaskStateMachine({...createConfig(), agentId: 'agent-3'}));
         actor.start();
 
         return actor;
@@ -2524,7 +3110,10 @@ describe('Task state machine', () => {
       expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
       expect(service.getSnapshot().context.consultInitiator).toBe(false);
 
-      service.send({type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS, taskData: transferSuccessTaskData});
+      service.send({
+        type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS,
+        taskData: transferSuccessTaskData,
+      });
       expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
     });
 
@@ -2582,7 +3171,10 @@ describe('Task state machine', () => {
       expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
       expect(service.getSnapshot().context.consultInitiator).toBe(false);
 
-      service.send({type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS, taskData: transferSuccessTaskData});
+      service.send({
+        type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS,
+        taskData: transferSuccessTaskData,
+      });
       expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
     });
 
@@ -2592,7 +3184,10 @@ describe('Task state machine', () => {
 
       const transferSuccessTaskData = createSecondaryAgentConsultingTaskData();
       service.send({type: TaskEvent.TRANSFER_CONFERENCE});
-      service.send({type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS, taskData: transferSuccessTaskData});
+      service.send({
+        type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS,
+        taskData: transferSuccessTaskData,
+      });
 
       expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
     });
@@ -2646,6 +3241,193 @@ describe('Task state machine', () => {
       });
 
       expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+    });
+
+    it('terminates secondary agent on PARTICIPANT_LEAVE while consult is initiating', () => {
+      const service = startAgent2Machine();
+      const conferenceTaskData = createSecondaryAgentConferenceBaseTaskData();
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.CONSULT, destination: 'agent-3', destinationType: 'agent'});
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULT_INITIATING);
+      expect(service.getSnapshot().context.taskData.interaction).toBe(
+        conferenceTaskData.interaction
+      );
+      expect(service.getSnapshot().context.taskData.destAgentId).toBe('agent-3');
+
+      const participantLeaveEvent = {
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        taskData: createSecondaryAgentRemovedTaskData(),
+      } as const;
+      expect(
+        guards.didCurrentAgentLeaveMainInteraction({
+          context: service.getSnapshot().context,
+          event: participantLeaveEvent,
+        })
+      ).toBe(true);
+
+      service.send(participantLeaveEvent);
+
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+    });
+
+    it('terminates secondary agent on CONSULT_END while consult is initiating', () => {
+      const service = startAgent2Machine();
+      const conferenceTaskData = createSecondaryAgentConferenceBaseTaskData();
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.CONSULT, destination: 'agent-3', destinationType: 'agent'});
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULT_INITIATING);
+
+      const consultEndEvent = {
+        type: TaskEvent.CONSULT_END,
+        taskData: createSecondaryAgentRemovedTaskData(),
+      } as const;
+      expect(
+        guards.didCurrentAgentLeaveMainInteraction({
+          context: service.getSnapshot().context,
+          event: consultEndEvent,
+        })
+      ).toBe(true);
+
+      service.send(consultEndEvent);
+
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+    });
+
+    it('terminates a consulting secondary initiator when CONSULT_END removes it from mainCall', () => {
+      const service = startAgent2Machine();
+      setupSecondaryAgentConsultingFromConference(service);
+
+      service.send({
+        type: TaskEvent.CONSULT_END,
+        taskData: createSecondaryAgentRemovedTaskData(),
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+      expect(service.getSnapshot().context.consultInitiator).toBe(false);
+      expect(service.getSnapshot().context.consultDestinationAgentJoined).toBe(false);
+    });
+
+    it('does not infer departure from a partial CONSULT_END payload', () => {
+      const service = startAgent2Machine();
+      setupSecondaryAgentConsultingFromConference(service);
+      const partialTaskData = {
+        ...createTaskData({agentId: 'agent-2', interactionId: 'interaction-1'}),
+        interaction: {
+          state: 'conference',
+          interactionId: 'interaction-1',
+          mainInteractionId: 'interaction-1',
+        },
+      } as any;
+
+      const consultEndEvent = {type: TaskEvent.CONSULT_END, taskData: partialTaskData} as const;
+      expect(service.getSnapshot().context.consultInitiator).toBe(true);
+      expect(
+        guards.didCurrentAgentLeaveMainInteraction({
+          context: service.getSnapshot().context,
+          event: consultEndEvent,
+        })
+      ).toBe(false);
+
+      service.send(consultEndEvent);
+
+      expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+    });
+
+    it('emits consult-end and task-end when AgentConsultEnded terminates the consulted agent', () => {
+      const emitTaskConsultEnd = jest.fn();
+      const emitTaskEnd = jest.fn();
+      const cleanupResources = jest.fn();
+      const service = createActor(
+        createTaskStateMachine(
+          {...createConfig(), agentId: 'agent-3'},
+          {
+            actions: {emitTaskConsultEnd, emitTaskEnd, cleanupResources},
+          }
+        )
+      );
+      service.start();
+
+      const consultingTaskData = createTaskData({
+        agentId: 'agent-3',
+        isConsulted: true,
+        interactionId: 'consult-child',
+        interaction: {
+          state: 'consulting',
+          owner: 'agent-1',
+          interactionId: 'consult-child',
+          mainInteractionId: 'interaction-1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false},
+            'agent-2': {
+              id: 'agent-2',
+              pType: 'Agent',
+              hasLeft: false,
+              consultState: 'consulting',
+            },
+            'agent-3': {
+              id: 'agent-3',
+              pType: 'Agent',
+              hasLeft: false,
+              isConsulted: true,
+              consultState: 'consulting',
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['agent-1', 'agent-2', 'customer-1'],
+              isHold: true,
+            },
+            'consult-child': {
+              mediaResourceId: 'consult-child',
+              mType: 'consult',
+              participants: ['agent-2', 'agent-3'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+      service.send({type: TaskEvent.HYDRATE, taskData: consultingTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
+
+      const consultEndedTaskData = createTaskData({
+        ...consultingTaskData,
+        type: 'AgentConsultEnded' as any,
+        interaction: {
+          ...consultingTaskData.interaction,
+          state: 'conference',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false},
+            'agent-2': {id: 'agent-2', pType: 'Agent', hasLeft: false},
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['agent-1', 'agent-2', 'customer-1'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+      service.send({type: TaskEvent.CONSULT_END, taskData: consultEndedTaskData});
+
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+      expect(emitTaskConsultEnd).toHaveBeenCalledTimes(1);
+      expect(emitTaskEnd).toHaveBeenCalledTimes(1);
+      expect(cleanupResources).toHaveBeenCalledTimes(1);
+      expect(service.getSnapshot().context.consultDestinationAgentJoined).toBe(false);
+      expect(service.getSnapshot().context.consultInitiator).toBe(false);
     });
   });
 });

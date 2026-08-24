@@ -215,6 +215,39 @@ describe("Routing contacts", () => {
     expect(req).toBeDefined();
   });
 
+  it('dropConferenceParticipant', () => {
+    fakeAqm.pendingRequests = {};
+    const req = contact.dropConferenceParticipant({
+      interactionId: 'test-interaction-drop-123',
+      participantId: '+1/participant 42',
+    }) as any;
+
+    expect(req).toEqual({
+      url: '/v1/tasks/test-interaction-drop-123/conference/participants/%2B1%2Fparticipant%2042/drop',
+      data: {},
+      host: 'wcc-api-gateway',
+      err: expect.any(Function),
+      redactSensitiveLogs: true,
+      notifSuccess: {
+        bind: {
+          type: 'RoutingMessage',
+          data: {
+            type: 'ParticipantLeftConference',
+            interactionId: 'test-interaction-drop-123',
+          },
+        },
+        msg: {},
+      },
+      notifFail: {
+        bind: {
+          type: 'RoutingMessage',
+          data: {type: 'ParticipantDropConferenceFailed'},
+        },
+        errId: 'Service.aqm.task.dropConferenceParticipant',
+      },
+    });
+  });
+
   it("exitConference", () => {
     fakeAqm.pendingRequests = {};
     const req = contact.exitConference({

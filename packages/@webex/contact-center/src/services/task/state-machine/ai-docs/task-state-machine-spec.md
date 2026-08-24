@@ -74,10 +74,11 @@ See root `CONTRACTS.md` for the package-level state-control export.
 | TASK_STATE_MACHINE-R-001 | Map typed Task events through the XState graph and preserve guards/actions for offer, assignment, consult, conference, transfer, wrapup, termination, and hydration. | A deterministic event vocabulary isolates lifecycle policy from transport payloads. | `src/services/task/state-machine/TaskStateMachine.ts` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | TASK_STATE_MACHINE-R-002 | Keep `handleConferenceFailed`, `handleSwitchToMainCall`, and `handleSwitchToConsult` wired where the graph invokes them; retain `forceConsultInitiator` as defined-but-currently-unwired. | Incorrect absence/wiring claims cause maintainers to duplicate or remove real actions. | `src/services/task/state-machine/actions.ts` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | TASK_STATE_MACHINE-R-003 | Treat `syncTaskDataFromEvent` as a Task-supplied machine implementation, not a default action in `actions.ts`. | The reusable graph declares the action name while Task owns integration-specific data synchronization. | `src/services/task/Task.ts` | `test/unit/spec/services/task/Task.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
-| TASK_STATE_MACHINE-R-004 | Compute UI controls through the real private voice/digital helper names and preserve the public `getDefaultUIControls` shape. | Applications depend on stable control state while implementation helpers remain private. | `src/services/task/state-machine/uiControlsComputer.ts` | `test/unit/spec/services/task/state-machine/uiControlsComputer.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| TASK_STATE_MACHINE-R-004 | Compute per-leg action controls and ordered `consultTransferDestinations.consult`/`.transfer` arrays through `uiControlsComputer`, preserving the public `getDefaultUIControls` shape with empty destination arrays. Voice queue rules use Consult profile enablement or Transfer direction plus `callProcessingDetails.outdialTransferToQueueEnabled`; digital supports agent/queue only; profile `NONE` removes the matching category. | Applications depend on one deterministic Task control surface, the default order (`agent`, `queue`, `dialNumber`, `entryPoint`), and correct action/media/profile gating. | `src/services/task/state-machine/uiControlsComputer.ts` | `test/unit/spec/services/task/state-machine/uiControlsComputer.ts` | Consumers may further hide allowed categories but must not infer or enable omitted categories. | PRESENT |
 | TASK_STATE_MACHINE-R-005 | Keep authentication and credentials outside the state-machine layer; it receives typed Task data/events and never invokes authenticated transport. | Pure transition logic remains reusable and cannot leak or mutate host authentication state. | `src/services/task/state-machine/TaskStateMachine.ts`, `src/services/task/state-machine/types.ts` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | None; security/auth applicability is explicitly N/A. | PRESENT |
 | TASK_STATE_MACHINE-R-006 | Treat `UIControlConfig` values as Task-supplied capability configuration, not rollout flags evaluated or owned by the state machine. | Rollout and profile policy must be resolved before actor construction so transitions remain deterministic. | `src/services/task/state-machine/types.ts`, `src/services/task/Task.ts` | `test/unit/spec/services/task/Task.ts` | None; rollout ownership is explicit. | PRESENT |
 | TASK_STATE_MACHINE-R-007 | Keep logging and metrics in Task/TaskManager integration; the state-machine implementation has no LoggerProxy or MetricsManager dependency. | Separating observability side effects from guards/actions preserves deterministic transition tests. | `src/services/task/state-machine/TaskStateMachine.ts`, `src/services/task/Task.ts` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts`, `test/unit/spec/services/task/Task.ts` | None; observability ownership is explicit. | PRESENT |
+| TASK_STATE_MACHINE-R-008 | `CONTACT_OWNER_CHANGED` must synchronize task/context data and emit `task:hydrate` without transitioning state; participant Drop must rely on the existing `ParticipantLeftConference` mapping rather than adding an initiating state event. From every active call-control state, `PARTICIPANT_LEAVE` terminates or wraps the current Agent only when the event names that Agent, marks that Agent `hasLeft`, or removes a previously active Agent from the participant map; an event naming another participant cannot infer self-departure from a partial media roster. `CONSULT_END` evaluates the same explicit evidence before initiator recovery and additionally supports the narrow from-conference nested-consult race where a previously main-leg Agent is absent from the updated `mainCall` but remains active in the participant map and present on the consult leg. Removed accepted Agents emit `task:consultEnd` plus `task:end`, surviving initiators recover to their main call, and an unaccepted OFFERED consultee emits only `task:consultEnd`. Missing, partial, contradictory, or ordinary CONNECTED/HELD media membership is non-terminal, and starting Consult must preserve the prior task snapshot used by the guard. | Owner-sensitive consumers must rerender promptly while participant and consult removal remain backend-authoritative, state-independent, and compatible with existing incoming-task callback behavior. | `src/services/task/state-machine/TaskStateMachine.ts`, `src/services/task/state-machine/actions.ts`, `src/services/task/state-machine/guards.ts`, `src/services/task/TaskManager.ts` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/services/task/state-machine/TaskStateMachine.ts`, `test/unit/spec/services/task/state-machine/guards.ts` | Backend ownership-successor selection and event delivery are outside this module. | PRESENT |
 
 ## Design Overview
 TaskManager maps Contact Center notifications to `TaskEvent` values. Each Task sends those events to its XState actor built by `createTaskStateMachine()`. The configuration applies guards and named actions, updates `TaskContext`, and computes UI controls. Task supplies the integration-specific `syncTaskDataFromEvent` implementation through machine options; it is not a default action in `actions.ts`.
@@ -507,14 +508,18 @@ shouldWrapUpOrIsInitiator(context, event) {
   return Boolean(event.taskData?.wrapUpRequired || context.consultInitiator);
 }
 
-// Check whether the leaving participant is the current agent
-didCurrentAgentLeaveConference(context, event) {
+// Check whether the current agent left the main interaction
+didCurrentAgentLeaveMainInteraction(context, event) {
   const selfAgentId = getSelfAgentId(context, event.taskData);
   if (!selfAgentId) return false;
 
   const participantIdFromEvent = 'participantId' in event ? event.participantId : undefined;
   const participantId = participantIdFromEvent ?? event.taskData?.participantId;
-  return Boolean(participantId) && participantId === selfAgentId;
+  if (Boolean(participantId) && participantId === selfAgentId) return true;
+  // Explicit hasLeft or removal of a previously active self from the participant map is terminal.
+  // PARTICIPANT_LEAVE naming another participant does not infer self departure from media.
+  // Only a from-conference CONSULT_END may compare mainCall membership, and only when self
+  // remains active in the participant map and on the consult leg. Partial ordinary calls are false.
 }
 
 // True when this agent initiated the conference transfer (widgets or desktop).
@@ -859,9 +864,15 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Actions: `updateTaskData`, `setConsultAgentJoined`, `emitTaskConsultAccepted`, `emitTaskConsulting`
 
+- `TASK_WRAPUP` -> `WRAPPING_UP`
+
+- Guard: `guards.shouldWrapUp`
+
+- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
+
 - `TASK_WRAPUP` -> `TERMINATED`
 
-- Guard: none
+- Guard: default (when wrap-up is not required)
 
 - Actions: `updateTaskData`, `markEnded`, `emitTaskEnd`
 
@@ -1311,19 +1322,19 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - `PARTICIPANT_LEAVE` -> `WRAPPING_UP`
 
-- Guard: `guards.didCurrentAgentLeaveConference && guards.shouldWrapUp`
+- Guard: `guards.didCurrentAgentLeaveMainInteraction && guards.shouldWrapUp`
 
 - Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft`, `emitTaskWrapup`
 
 - `PARTICIPANT_LEAVE` -> `TERMINATED`
 
-- Guard: `guards.didCurrentAgentLeaveConference`
+- Guard: `guards.didCurrentAgentLeaveMainInteraction`
 
 - Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft`, `emitTaskEnd`
 
 - `PARTICIPANT_LEAVE` -> `CONNECTED`
 
-- Guard: `!guards.didCurrentAgentLeaveConference && guards.shouldDowngradeConferenceToConnected`
+- Guard: `guards.shouldDowngradeConferenceToConnected` (after current-agent departure guards)
 
 - Actions: `updateTaskData`, `handleParticipantLeft`, `clearConsultState`, `emitTaskParticipantLeft`, `emitTaskConferenceEnded`
 
@@ -1491,13 +1502,13 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - `PARTICIPANT_LEAVE` -> `WRAPPING_UP`
 
-- Guard: `guards.didCurrentAgentLeaveConference && guards.shouldWrapUp`
+- Guard: `guards.didCurrentAgentLeaveMainInteraction && guards.shouldWrapUp`
 
 - Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft`, `emitTaskWrapup`
 
 - `PARTICIPANT_LEAVE` -> `TERMINATED`
 
-- Guard: `guards.didCurrentAgentLeaveConference`
+- Guard: `guards.didCurrentAgentLeaveMainInteraction`
 
 - Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft`, `emitTaskEnd`
 
@@ -1512,6 +1523,14 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 - Guard: default
 
 - Actions: `updateTaskData`, `handleParticipantLeft`, `emitTaskParticipantLeft`
+
+  Customer hangup and agent-initiated customer Drop share this backend event.
+  When two or more active conference participants survive on the main leg, the
+  customer is removed from the authoritative snapshot while the task remains
+  `CONFERENCING`; no `task:conferenceEnded` event is emitted. When another
+  agent/endpoint leaves, the same rule preserves the remaining conference, and
+  the guarded `CONNECTED` branch is used only after the conference participant
+  count falls below two while the customer remains.
 
 - `CONFERENCE_END` -> `WRAPPING_UP`
 
@@ -1561,7 +1580,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 **Description**: Final wrapped-up terminal state.
 
-**Entry Actions**:
+**Entry Actions** (order matters — `emitTaskWrappedup` before `cleanupResources` so subscribers receive intact task data):
 
 - `emitTaskWrappedup`
 
@@ -1731,7 +1750,7 @@ Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 | `AGENT_OFFER_CONTACT`              | `TASK_OFFERED`                | `OFFERED`                                            | `OFFERED`                                                                     | Offer payload refresh             |
 | `AGENT_CONTACT`                    | `HYDRATE`                     | `IDLE`                                               | `WRAPPING_UP` / `CONSULTING` / `HELD` / `CONNECTED` / `CONFERENCING` / `IDLE` | Guard-based restore               |
 | `CONTACT_UPDATED`                  | `CONTACT_UPDATED`             | any                                                  | same                                                                          | Context sync                      |
-| `CONTACT_OWNER_CHANGED`            | `CONTACT_OWNER_CHANGED`       | any                                                  | same                                                                          | Context sync                      |
+| `CONTACT_OWNER_CHANGED`            | `CONTACT_OWNER_CHANGED`       | any                                                  | same                                                                          | Context/data sync + `task:hydrate` |
 | `AGENT_OFFER_CONSULT`              | `OFFER_CONSULT`               | `OFFERED`                                            | `OFFERED`                                                                     | Receiver-side consult offer       |
 | `AGENT_CONTACT_ASSIGNED`           | `ASSIGN`                      | `OFFERED` / `CONNECTED` / `CONSULTING`               | `CONNECTED`                                                                   | Assign/reassign                   |
 | `AGENT_CONTACT_HELD`               | `HOLD_SUCCESS`                | `HOLD_INITIATING`                                    | `HELD`                                                                        | Includes `mediaResourceId`        |
@@ -1746,16 +1765,16 @@ Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 | `AGENT_BLIND_TRANSFERRED`          | `TRANSFER_SUCCESS`            | `CONNECTED` / `HELD` / `CONSULTING`                  | `WRAPPING_UP` / `CONNECTED`                                                   | `shouldWrapUpOrIsInitiator`       |
 | `AGENT_CONSULT_TRANSFERRED`        | `TRANSFER_SUCCESS`            | `CONNECTED` / `HELD` / `CONSULTING`                  | `WRAPPING_UP` / `CONNECTED`                                                   | Same path                         |
 | `AGENT_VTEAM_TRANSFERRED`          | `TRANSFER_SUCCESS`            | `CONNECTED` / `HELD` / `CONSULTING`                  | `WRAPPING_UP` / `CONNECTED`                                                   | Same path                         |
-| `AGENT_WRAPUP`                     | `TASK_WRAPUP`                 | `OFFERED` / `CONNECTED` / `HELD` / `CONSULTING`      | `TERMINATED` / `WRAPPING_UP`                                                  | `OFFERED` terminates; others wrap |
+| `AGENT_WRAPUP`                     | `TASK_WRAPUP`                 | `OFFERED` / `CONNECTED` / `HELD` / `CONSULTING`      | `WRAPPING_UP` / `TERMINATED`                                                  | `shouldWrapUp` selects wrap-up; default terminates (wxApp outdial pre-accept agent end may wrap while still `OFFERED`) |
 | `AGENT_BLIND_TRANSFER_FAILED`      | `TRANSFER_FAILED`             | `CONNECTED` / `HELD` / `CONSULTING`                  | same                                                                          | Context update                    |
 | `AGENT_VTEAM_TRANSFER_FAILED`      | `TRANSFER_FAILED`             | `CONNECTED` / `HELD` / `CONSULTING`                  | same                                                                          | Context update                    |
 | `AGENT_CONSULT_TRANSFER_FAILED`    | `TRANSFER_FAILED`             | `CONNECTED` / `HELD` / `CONSULTING`                  | same                                                                          | Context update                    |
 | `AGENT_CONFERENCE_TRANSFER_FAILED` | `TRANSFER_FAILED`             | `CONNECTED` / `HELD` / `CONSULTING`                  | same                                                                          | Context update                    |
-| `CONTACT_ENDED`                    | `CONTACT_ENDED`               | `CONNECTED` / `HELD` / `CONSULTING` / `CONFERENCING` | `CONFERENCING` / `WRAPPING_UP` / `TERMINATED` / same                          | Guard-driven branch               |
+| `CONTACT_ENDED`                    | `CONTACT_ENDED` or `OUTBOUND_FAILED` | `OFFERED` / `CONNECTED` / `HELD` / `CONSULTING` / `CONFERENCING` | `WRAPPING_UP` / `TERMINATED` / etc.                          | wxApp outdial pre-accept decline → `CONTACT_ENDED` → `TERMINATED` (no wrapup) when `wxAppAnswerPending` is false and `agentsPendingWrapUp` is empty (backend may still send `interaction.state: wrapUp`). Post-accept agent end remaps to `OUTBOUND_FAILED` (`AGENT_ENDS`) when `wxAppAnswerPending` or wrapup pending — including while SM is still `OFFERED` before `ASSIGN`. |
 | `AGENT_INVITE_FAILED`              | `INVITE_FAILED`               | `OFFERED`                                            | `TERMINATED`                                                                  | Reject path                       |
 | `AGENT_CONTACT_ASSIGN_FAILED`      | `ASSIGN_FAILED`               | `OFFERED`                                            | `TERMINATED`                                                                  | Reject path                       |
 | `AGENT_CONTACT_OFFER_RONA`         | `RONA`                        | `OFFERED`                                            | `TERMINATED`                                                                  | Timeout path                      |
-| `AGENT_OUTBOUND_FAILED`            | `OUTBOUND_FAILED`             | `OFFERED`                                            | `TERMINATED`                                                                  | Outbound failure                  |
+| `AGENT_OUTBOUND_FAILED`            | `OUTBOUND_FAILED`             | `IDLE` / `OFFERED` / `CONNECTED` / `HOLD_INITIATING` / `HELD` / `RESUME_INITIATING` / `CONSULT_INITIATING` / `CONSULTING` / `CONF_INITIATING` / `CONFERENCING` | `WRAPPING_UP` or `TERMINATED`                                                 | Outbound failure; wrapup when `shouldWrapUp`. Non-wxApp agent-terminated `AGENT_ENDS` sets `suppressOutdialFailedPopup` (wrapup without outdial-failed modal). `IDLE` handles race before `TASK_INCOMING`. |
 | `CONTACT_RECORDING_STARTED`        | `RECORDING_STARTED`           | any                                                  | same                                                                          | Recording state update            |
 | `CONTACT_RECORDING_PAUSED`         | `PAUSE_RECORDING`             | `CONNECTED`                                          | same                                                                          | Recording state update            |
 | `CONTACT_RECORDING_RESUMED`        | `RESUME_RECORDING`            | `CONNECTED`                                          | same                                                                          | Recording state update            |
@@ -1776,7 +1795,7 @@ Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 | `AgentContact`           | `HYDRATE`               | Various                                                       | State restoration                              |
 | `AgentContactAssigned`   | `ASSIGN`                | OFFERED → CONNECTED (also CONNECTED/CONSULTING refresh paths) | Task accepted/reassigned                       |
 | `ContactUpdated`         | `CONTACT_UPDATED`       | No change                                                     | Data update only                               |
-| `ContactOwnerChanged`    | `CONTACT_OWNER_CHANGED` | No change                                                     | Owner update only                              |
+| `ContactOwnerChanged`    | `CONTACT_OWNER_CHANGED` | No change                                                     | Owner update plus `task:hydrate` emission      |
 | `ContactEnded`           | `CONTACT_ENDED`         | Guard-based branch                                            | CONFERENCING / WRAPPING_UP / TERMINATED / stay |
 | `AgentContactUnassigned` | None                    | N/A                                                           | Handled by other events                        |
 
@@ -1810,9 +1829,10 @@ Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 | Backend Event / API              | TaskEvent                     | State Transition                                           | Context Update                                                                                |
 |---|---|---|---|
 | API `task.consultConference()`   | `MERGE_TO_CONFERENCE`         | CONSULTING → CONF_INITIATING                               | Starts merge flow                                                                             |
+| API `task.dropConferenceParticipant()` | None                    | No direct state transition                                 | AQM waits for backend `ParticipantLeftConference`; that event follows the existing `PARTICIPANT_LEAVE` path |
 | `AgentConsultConferenced`        | `CONFERENCE_START`            | CONSULTING/CONF_INITIATING → CONFERENCING                  | `handleConferenceStarted` path                                                                |
 | `ParticipantJoinedConference`    | `CONFERENCE_START`            | CONFERENCING → CONFERENCING                                | Refresh + emit conference started                                                             |
-| `ParticipantLeftConference`      | `PARTICIPANT_LEAVE`           | CONSULTING / CONFERENCING → WRAPPING_UP / TERMINATED / CONNECTED / stay | Uses `didCurrentAgentLeaveConference`, `shouldWrapUp`, `shouldDowngradeConferenceToConnected` |
+| `ParticipantLeftConference`      | `PARTICIPANT_LEAVE`           | Any active call-control state → WRAPPING_UP / TERMINATED / CONNECTED / stay | Uses `didCurrentAgentLeaveMainInteraction`, `shouldWrapUp`, `shouldDowngradeConferenceToConnected` |
 | `AgentConsultConferenceEnded`    | `CONFERENCE_END`              | CONFERENCING → WRAPPING_UP / CONNECTED / TERMINATED        | Guard-based branch                                                                            |
 | `AgentConsultConferenceFailed`   | `CONFERENCE_FAILED`           | CONF_INITIATING → CONSULTING                               | Merge failed fallback                                                                         |
 | `AgentConferenceTransferred`     | `TRANSFER_CONFERENCE_SUCCESS` | CONSULTING/CONFERENCING branch logic                       | Initiator/receiver dependent                                                                  |
@@ -1847,6 +1867,7 @@ stateDiagram-v2
     OFFERED --> TERMINATED: AGENT_CONTACT_ASSIGN_FAILED (CC Event) -> ASSIGN_FAILED (State Machine Event)
     OFFERED --> TERMINATED: AGENT_INVITE_FAILED (CC Event) -> INVITE_FAILED (State Machine Event)
     OFFERED --> TERMINATED: AGENT_OUTBOUND_FAILED (CC Event) -> OUTBOUND_FAILED (State Machine Event)
+    OFFERED --> WRAPPING_UP: AGENT_WRAPUP (CC Event) -> TASK_WRAPUP (State Machine Event) [shouldWrapUp]
     OFFERED --> TERMINATED: AGENT_WRAPUP (CC Event) -> TASK_WRAPUP (State Machine Event)
 
     %% CONNECTED
@@ -1907,8 +1928,8 @@ stateDiagram-v2
 
     %% CONFERENCING
     CONFERENCING --> CONSULT_INITIATING: CONSULT (State Machine Event)
-    CONFERENCING --> WRAPPING_UP: PARTICIPANT_LEAVE (CC Event) -> PARTICIPANT_LEAVE (State Machine Event) [didCurrentAgentLeaveConference && shouldWrapUp]
-    CONFERENCING --> TERMINATED: PARTICIPANT_LEAVE (CC Event) -> PARTICIPANT_LEAVE (State Machine Event) [didCurrentAgentLeaveConference]
+    CONFERENCING --> WRAPPING_UP: PARTICIPANT_LEAVE (CC Event) -> PARTICIPANT_LEAVE (State Machine Event) [didCurrentAgentLeaveMainInteraction && shouldWrapUp]
+    CONFERENCING --> TERMINATED: PARTICIPANT_LEAVE (CC Event) -> PARTICIPANT_LEAVE (State Machine Event) [didCurrentAgentLeaveMainInteraction]
     CONFERENCING --> CONNECTED: PARTICIPANT_LEAVE (CC Event) -> PARTICIPANT_LEAVE (State Machine Event) [shouldDowngradeConferenceToConnected]
     CONFERENCING --> WRAPPING_UP: CONFERENCE_END (CC Event) -> CONFERENCE_END (State Machine Event) [shouldWrapUp]
     CONFERENCING --> CONNECTED: CONFERENCE_END (CC Event) -> CONFERENCE_END (State Machine Event) [customerInCall]
@@ -1930,7 +1951,9 @@ stateDiagram-v2
     OFFERED --> OFFERED: AGENT_CONTACT_OFFER -> TASK_OFFERED
     OFFERED --> OFFERED: AGENT_CONSULT_OFFER -> OFFER_CONSULT
     OFFERED --> CONNECTED: AGENT_CONTACT_ASSIGNED -> ASSIGN
-    OFFERED --> TERMINATED: AGENT_CONTACT_OFFER_RONA/AGENT_CONTACT_ASSIGN_FAILED/AGENT_INVITE_FAILED/AGENT_OUTBOUND_FAILED/AGENT_WRAPUP -> RONA/ASSIGN_FAILED/INVITE_FAILED/OUTBOUND_FAILED/TASK_WRAPUP
+    OFFERED --> TERMINATED: AGENT_CONTACT_OFFER_RONA/AGENT_CONTACT_ASSIGN_FAILED/AGENT_INVITE_FAILED/AGENT_OUTBOUND_FAILED -> RONA/ASSIGN_FAILED/INVITE_FAILED/OUTBOUND_FAILED
+    OFFERED --> WRAPPING_UP: AGENT_WRAPUP -> TASK_WRAPUP [shouldWrapUp]
+    OFFERED --> TERMINATED: AGENT_WRAPUP -> TASK_WRAPUP
 
     CONNECTED --> HOLD_INITIATING: task.hold() -> HOLD_INITIATED
     CONNECTED --> CONSULT_INITIATING: task.consult() -> CONSULT
@@ -2012,8 +2035,8 @@ stateDiagram-v2
     CONFERENCING --> CONFERENCING: AGENT_CONFERENCE_TRANSFERRED -> TRANSFER_CONFERENCE_SUCCESS
     CONFERENCING --> CONFERENCING: AGENT_CONFERENCE_TRANSFER_FAILED-> TRANSFER_CONFERENCE_FAILED
 
-    CONFERENCING --> WRAPPING_UP: PARTICIPANT_LEFT_CONFERENCE -> PARTICIPANT_LEAVE [didCurrentAgentLeaveConference && shouldWrapUp]
-    CONFERENCING --> TERMINATED: PARTICIPANT_LEFT_CONFERENCE -> PARTICIPANT_LEAVE [didCurrentAgentLeaveConference]
+    CONFERENCING --> WRAPPING_UP: PARTICIPANT_LEFT_CONFERENCE -> PARTICIPANT_LEAVE [didCurrentAgentLeaveMainInteraction && shouldWrapUp]
+    CONFERENCING --> TERMINATED: PARTICIPANT_LEFT_CONFERENCE -> PARTICIPANT_LEAVE [didCurrentAgentLeaveMainInteraction]
     CONFERENCING --> CONNECTED: PARTICIPANT_LEFT_CONFERENCE -> PARTICIPANT_LEAVE [shouldDowngradeConferenceToConnected]
     CONFERENCING --> WRAPPING_UP: AGENT_CONSULT_CONFERENCE_ENDED -> CONFERENCE_END [shouldWrapUp]
     CONFERENCING --> CONNECTED: AGENT_CONSULT_CONFERENCE_ENDED -> CONFERENCE_END [customerInCall]
@@ -2139,6 +2162,7 @@ Use `test/unit/spec/services/task/state-machine/TaskStateMachine.ts`, `guards.ts
 | `TASK_STATE_MACHINE-R-005` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | Transport/auth absence is also verified from imports. |
 | `TASK_STATE_MACHINE-R-006` | `test/unit/spec/services/task/Task.ts` | None. |
 | `TASK_STATE_MACHINE-R-007` | `test/unit/spec/services/task/state-machine/TaskStateMachine.ts`, `test/unit/spec/services/task/Task.ts` | Observability absence is also verified from imports. |
+| `TASK_STATE_MACHINE-R-008` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/TaskManager.ts` | None. |
 
 ## Traceability
 - Repo architecture: `../../../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../../../ai-docs/SPEC_INDEX.md`

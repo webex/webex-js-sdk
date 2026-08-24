@@ -3,7 +3,7 @@ import type {AnyActorRef} from 'xstate';
 import {TaskEventPayload} from './state-machine';
 import {Msg} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
-import type {AIFeatureFlags} from '../config/types';
+import type {AIFeatureFlags, CollaborationAccess} from '../config/types';
 
 /**
  * Unique identifier for a task in the contact center system
@@ -34,7 +34,7 @@ export const DESTINATION_TYPE = {
   DIALNUMBER: 'dialNumber',
   /** Route task to a specific agent */
   AGENT: 'agent',
-  /** Route task to an entry point (supported only for consult operations) */
+  /** Route task to an entry point */
   ENTRYPOINT: 'entryPoint',
 };
 
@@ -67,6 +67,17 @@ export const CONSULT_TRANSFER_DESTINATION_TYPE = {
  * @public
  */
 export type ConsultTransferDestinationType = Enum<typeof CONSULT_TRANSFER_DESTINATION_TYPE>;
+
+/**
+ * Agent-profile policy used by the task state machine to derive consult/transfer destinations.
+ * @internal
+ */
+export type ConsultTransferDestinationConfig = {
+  allowConsultToQueue: boolean;
+  accessQueue?: CollaborationAccess;
+  accessEntryPoint?: CollaborationAccess;
+  accessBuddyTeam?: CollaborationAccess;
+};
 
 /**
  * Defines all supported media channel types for customer interactions
@@ -234,6 +245,11 @@ export enum TASK_EVENTS {
    * Triggered whenever task UI controls are recalculated
    */
   TASK_UI_CONTROLS_UPDATED = 'task:ui-controls-updated',
+
+  /**
+   * Triggered when wxApp mute state changes from Webex App (Mercury sync or call details).
+   */
+  TASK_WXAPP_MUTE_STATE_UPDATED = 'task:wxapp-mute-state-updated',
 
   /**
    * Triggered when a consultation request is accepted
@@ -1156,6 +1172,8 @@ export type TaskData = {
   reservedAgentChannelId?: string;
   /** Indicates if wrap-up is required for this task */
   wrapUpRequired?: boolean;
+  /** SDK-internal: skip task:outdialFailed when non-wxApp agent-terminated outdial still needs wrapup */
+  suppressOutdialFailedPopup?: boolean;
 
   /**
    * Current consultation status derived from state machine
@@ -1237,6 +1255,19 @@ export type InteractionUIControls = {
   mergeToConference: TaskUIControlState;
   wrapup: TaskUIControlState;
   switch: TaskUIControlState;
+  keypad?: TaskUIControlState;
+};
+
+/** Options for {@link ITask.toggleMute} — wxApp engaged calls use `muted` for target state. */
+export type TaskToggleMuteOptions = {
+  muted?: boolean;
+  lineOwnerId?: string;
+};
+
+/** Options for {@link ITask.transmitDtmf} — wxApp engaged in-call DTMF. */
+export type TaskTransmitDtmfOptions = {
+  dtmf: string;
+  lineOwnerId?: string;
 };
 
 export type TaskUILeg = 'main' | 'consult';
@@ -1250,6 +1281,14 @@ export type TaskUIControls = {
   main: InteractionUIControls;
   consult: InteractionUIControls;
   activeLeg: TaskUILeg;
+  /**
+   * Ordered destination categories available for each action.
+   * The first category is the default for consumers that render a destination picker.
+   */
+  consultTransferDestinations: {
+    consult: ConsultTransferDestinationType[];
+    transfer: ConsultTransferDestinationType[];
+  };
 };
 
 /**
@@ -1833,6 +1872,15 @@ export interface AISummaryRequestCoordinator {
 }
 
 /**
+ * Request payload for removing a supported participant from an active conference.
+ * @public
+ */
+export type DropConferenceParticipantPayload = {
+  /** Participant identifier supplied by the current task roster. */
+  participantId: string;
+};
+
+/**
  * Payload shape used by consult conference helper utilities.
  */
 export type consultConferencePayloadData = {
@@ -1889,6 +1937,29 @@ export interface ITask extends IEventEmitter {
    * Subscribe to {@link TASK_EVENTS.TASK_UI_CONTROLS_UPDATED} for change notifications.
    */
   readonly uiControls: TaskUIControls;
+
+  /**
+   * Update wxApp thick-client answer flag at runtime.
+   * Voice tasks override to refresh uiControls; other channel types no-op.
+   * @internal
+   */
+  setEnableWxBetterTogether(enabled: boolean): void;
+
+  /**
+   * Apply wxApp mute state from Mercury sync or call-details fetch.
+   * @internal
+   */
+  applyWxAppMuteStateFromSync(incomingCallId: string, muted: boolean): void;
+
+  /**
+   * Current wxApp mute state for engaged telephony (Voice tasks only).
+   */
+  getWxAppMuted?(): boolean;
+
+  /**
+   * Re-seed wxApp mute from GET telephony/calls/{callId}. Resolves to muted state when known.
+   */
+  syncWxAppMuteFromCallDetails?(): Promise<boolean | undefined>;
 
   /**
    * State machine instance for managing task state transitions and derived properties.
@@ -2110,6 +2181,18 @@ export interface ITask extends IEventEmitter {
   consultConference(): Promise<TaskResponse>;
 
   /**
+   * Removes a supported participant from the active conference.
+   * Resolves after the correlated ParticipantLeftConference routing event.
+   * @param payload - Participant identifier to remove
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.dropConferenceParticipant({participantId: 'participant-id'});
+   * ```
+   */
+  dropConferenceParticipant(payload: DropConferenceParticipantPayload): Promise<TaskResponse>;
+
+  /**
    * Exits from an ongoing conference.
    * @returns Promise<TaskResponse>
    * @example
@@ -2143,14 +2226,29 @@ export interface ITask extends IEventEmitter {
   switchCall(): Promise<TaskResponse>;
 
   /**
-   * Toggles mute/unmute for the local audio stream during a WebRTC task.
+   * Toggles mute/unmute for the active call.
+   * WebRTC tasks toggle the local stream; wxApp engaged tasks route to telephony mute REST when
+   * `enableWxBetterTogether` is active.
+   * @param options - Optional target mute state (`muted`) for wxApp; ignored for WebRTC toggle.
    * @returns Promise<void>
    * @example
    * ```typescript
    * await task.toggleMute();
+   * await task.toggleMute({ muted: true });
    * ```
    */
-  toggleMute(): Promise<void>;
+  toggleMute(options?: TaskToggleMuteOptions): Promise<void>;
+
+  /**
+   * Sends in-call DTMF tones for wxApp engaged telephony tasks when `enableWxBetterTogether` is active.
+   * @param options - DTMF digit(s) and optional shared-line owner id.
+   * @returns Promise<void>
+   * @example
+   * ```typescript
+   * await task.transmitDtmf({ dtmf: '5' });
+   * ```
+   */
+  transmitDtmf(options: TaskTransmitDtmfOptions): Promise<void>;
 }
 
 /**
@@ -2186,6 +2284,12 @@ export interface IVoice extends ITask {
    * ```
    */
   holdResume(): Promise<TaskResponse>;
+  /** @see wxAppVoiceMethods — WXCC-6026 */
+  isWebexAppCallingOffer(): boolean;
+  /** @see wxAppVoiceMethods — WXCC-6026 */
+  getCallingDeviceDetails(): import('./WebexCallingUtils').WebexCallingDeviceDetails | undefined;
+  /** @see wxAppVoiceMethods — WXCC-6026 */
+  getWebexCallingCallId(): string | null;
 }
 
 /**
@@ -2196,6 +2300,9 @@ export type VoiceUIControlOptions = {
   isEndConsultEnabled?: boolean;
   voiceVariant?: VoiceVariant;
   isRecordingEnabled?: boolean;
+  enableWxBetterTogether?: boolean;
+  consultTransferConfig?: ConsultTransferDestinationConfig;
+  answerCallOnWebexService?: import('../AnswerCallOnWebexService').default;
 };
 
 /**
@@ -2221,7 +2328,7 @@ export interface IWebRTC extends IVoice {
    * task.toggleMute();
    * ```
    */
-  toggleMute(): Promise<void>;
+  toggleMute(options?: TaskToggleMuteOptions): Promise<void>;
   /**
    * Decline the incoming task for Browser Login
    *
@@ -2246,6 +2353,8 @@ export type WebSocketPayload = TaskData & {
   type: string;
   mediaResourceId?: string;
   reason?: string;
+  /** ContactEnded: party that ended the contact (e.g. 'Agent', 'Customer') */
+  terminatingParty?: string;
   /**
    * Optional real-time transcript chunk payload.
    * Present on REAL_TIME_TRANSCRIPTION notifications.
