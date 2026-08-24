@@ -90,7 +90,7 @@ const Flag = WebexCore.WebexPlugin.extend({
       const activity = flag['flag-item'];
       const match = convoUrlRegex.exec(activity);
 
-      if (match) {
+      if (match && this.webex.internal.services.getServiceFromUrl(match[1])) {
         const url = match[1];
         let activities = mapUrlActivities.get(url);
 
@@ -100,7 +100,9 @@ const Flag = WebexCore.WebexPlugin.extend({
         }
         activities.push(activity);
       } else {
-        this.logger.warn(`The activity URL has a strange format (${activity}). Ignoring it.`);
+        this.logger.warn(
+          `The activity URL has a strange format or an unrecognized host (${activity}). Ignoring it.`
+        );
       }
     }
 
