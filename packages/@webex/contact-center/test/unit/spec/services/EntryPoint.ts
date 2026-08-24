@@ -1,5 +1,5 @@
 import EntryPoint from '../../../../src/services/EntryPoint';
-import {HTTP_METHODS, WebexSDK, IHttpResponse} from '../../../../src/types';
+import {HTTP_METHODS, WebexSDK, IHttpResponse, EntryPointRecord} from '../../../../src/types';
 import {METRIC_EVENT_NAMES} from '../../../../src/metrics/constants';
 import WebexRequest from '../../../../src/services/core/WebexRequest';
 import MetricsManager from '../../../../src/metrics/MetricsManager';
@@ -50,30 +50,38 @@ describe('EntryPoint', () => {
   });
 
   describe('getEntryPoints', () => {
-    const mockEntryPoints = [
+    const mockDialNumberMappings = [
       {
-        id: 'entry1',
-        name: 'Test Entry Point 1',
-        type: 'voice',
-        isActive: true,
-        orgId: 'test-org-id',
+        id: 'dial-number-1',
+        dialledNumber: '+1-555-0101',
+        entryPointId: 'entry1',
+        entryPointName: 'Test Entry Point 1',
       },
       {
-        id: 'entry2',
-        name: 'Test Entry Point 2',
-        type: 'chat',
-        isActive: true,
-        orgId: 'test-org-id',
+        id: 'dial-number-2',
+        dialledNumber: '+1-555-0102',
+        entryPointId: 'entry2',
+        entryPointName: 'Test Entry Point 2',
       },
     ];
+    const expectedEntryPoints: EntryPointRecord[] = [
+      {id: 'entry1', name: 'Test Entry Point 1', number: '+1-555-0101'},
+      {id: 'entry2', name: 'Test Entry Point 2', number: '+1-555-0102'},
+    ];
+    const defaultResource =
+      '/organization/test-org-id/v3/dial-number?page=0&pageSize=100&attributes=id%2CdialledNumber%2CentryPointId%2CentryPointName&sort=entryPointName%2CASC&desktopProfileFilter=true&includeEntryPointName=true';
+    const requestHeaders = {
+      'X-ORGANIZATION-ID': 'test-org-id',
+      'x-ignore-internal-data': 'false',
+    };
 
     const mockResponse: IHttpResponse = {
       statusCode: 200,
       method: 'GET',
-      url: '/organization/test-org-id/v2/entry-point',
+      url: '/organization/test-org-id/v3/dial-number',
       headers: {} as any,
       body: {
-        data: mockEntryPoints,
+        data: mockDialNumberMappings,
         meta: {
           page: 0,
           pageSize: 100,
@@ -99,11 +107,14 @@ describe('EntryPoint', () => {
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/entry-point?page=0&pageSize=100&sortOrder=asc',
+        resource: defaultResource,
         method: HTTP_METHODS.GET,
+        body: undefined,
+        headers: requestHeaders,
       });
 
-      expect(result).toEqual(mockResponse.body);
+      expect(result).toEqual({...mockResponse.body, data: expectedEntryPoints});
+      expect(result.data[0].number).toBe('+1-555-0101');
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith(METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_SUCCESS);
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_SUCCESS,
@@ -122,7 +133,7 @@ describe('EntryPoint', () => {
         {module: 'EntryPoint', method: 'getEntryPoints'}
       );
       expect(LoggerProxy.log).toHaveBeenCalledWith(
-        `Making API request to fetch entry points - resource: /organization/test-org-id/v2/entry-point?page=0&pageSize=100&sortOrder=asc, service: wcc-api-gateway`,
+        `Making API request to fetch entry points - resource: ${defaultResource}, service: wcc-api-gateway`,
         {module: 'EntryPoint', method: 'getEntryPoints'}
       );
     });
@@ -134,7 +145,7 @@ describe('EntryPoint', () => {
         page: 1,
         pageSize: 25,
         search: 'test',
-        filter: 'type=="voice"',
+        filter: 'entryPointId=="entry1"',
         attributes: 'id,name',
         sortBy: 'name',
         sortOrder: 'desc' as const,
@@ -144,8 +155,11 @@ describe('EntryPoint', () => {
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/entry-point?page=1&pageSize=25&sortOrder=desc&search=test&filter=type%3D%3D%22voice%22&attributes=id%2Cname&sortBy=name',
+        resource:
+          '/organization/test-org-id/v3/dial-number?page=1&pageSize=25&attributes=id%2CdialledNumber%2CentryPointId%2CentryPointName%2Cname&search=test&filter=entryPointId%3D%3D%22entry1%22&sort=entryPointName%2CDESC&desktopProfileFilter=true&includeEntryPointName=true',
         method: HTTP_METHODS.GET,
+        body: undefined,
+        headers: requestHeaders,
       });
 
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
@@ -162,6 +176,41 @@ describe('EntryPoint', () => {
       );
     });
 
+    it('should allow existing parameters to override the default entry-point mapping policy', async () => {
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      const result = await entryPointAPI.getEntryPoints({
+        page: 1,
+        pageSize: 25,
+        search: 'sales',
+        filter: 'entryPointId==entry1',
+      });
+
+      expect(mockWebex.request).toHaveBeenCalledWith({
+        service: 'wcc-api-gateway',
+        resource:
+          '/organization/test-org-id/v3/dial-number?page=1&pageSize=25&attributes=id%2CdialledNumber%2CentryPointId%2CentryPointName&search=sales&filter=entryPointId%3D%3Dentry1&sort=entryPointName%2CASC&desktopProfileFilter=true&includeEntryPointName=true',
+        method: HTTP_METHODS.GET,
+        body: undefined,
+        headers: requestHeaders,
+      });
+      expect(result).toEqual({...mockResponse.body, data: expectedEntryPoints});
+    });
+
+    it('should issue every profile-scoped request directly', async () => {
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      await entryPointAPI.getEntryPoints();
+      await entryPointAPI.getEntryPoints();
+
+      expect(mockWebex.request).toHaveBeenCalledTimes(2);
+      expect(mockWebex.request).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          resource: expect.stringContaining('desktopProfileFilter=true'),
+        })
+      );
+    });
+
     it('should handle API errors and track metrics', async () => {
       (mockWebex.request as jest.Mock).mockRejectedValue(new Error('Internal Server Error'));
 
@@ -169,8 +218,10 @@ describe('EntryPoint', () => {
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/entry-point?page=0&pageSize=100&sortOrder=asc',
+        resource: defaultResource,
         method: HTTP_METHODS.GET,
+        body: undefined,
+        headers: requestHeaders,
       });
 
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
@@ -187,22 +238,24 @@ describe('EntryPoint', () => {
       expect(LoggerProxy.error).toHaveBeenCalled();
     });
 
-
-
-    it('should not track metrics for subsequent pages in simple pagination', async () => {
+    it('should not track success metrics for subsequent pages under the default mapping policy', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
       const result = await entryPointAPI.getEntryPoints({page: 2});
-      expect(result).toEqual(mockResponse.body);
+      expect(result).toEqual({...mockResponse.body, data: expectedEntryPoints});
 
-      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
+      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_SUCCESS,
+        expect.anything(),
+        expect.anything()
+      );
     });
 
     it('should track metrics for search requests on any page', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
       const result2 = await entryPointAPI.getEntryPoints({page: 2, search: 'test'});
-      expect(result2).toEqual(mockResponse.body);
+      expect(result2).toEqual({...mockResponse.body, data: expectedEntryPoints});
 
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_SUCCESS,
@@ -218,15 +271,11 @@ describe('EntryPoint', () => {
       );
     });
 
-    it('should call API when requested page is not cached (cache miss)', async () => {
-      (mockWebex.request as jest.Mock).mockResolvedValueOnce(mockResponse);
-
-      await entryPointAPI.getEntryPoints({page: 0});
-
-      (mockWebex.request as jest.Mock).mockResolvedValueOnce({
+    it('should request the specified page', async () => {
+      (mockWebex.request as jest.Mock).mockResolvedValue({
         ...mockResponse,
         body: {
-          data: mockEntryPoints,
+          data: mockDialNumberMappings,
           meta: {
             page: 1,
             pageSize: 100,
@@ -237,21 +286,19 @@ describe('EntryPoint', () => {
         },
       });
 
-      const callsBefore = (mockWebex.request as jest.Mock).mock.calls.length;
-      (LoggerProxy.log as jest.Mock).mockClear();
-
       const result = await entryPointAPI.getEntryPoints({page: 1});
-      const callsAfter = (mockWebex.request as jest.Mock).mock.calls.length;
 
-      expect(callsAfter).toBe(callsBefore + 1);
       expect(result.meta.page).toBe(1);
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
-        resource: '/organization/test-org-id/v2/entry-point?page=1&pageSize=100&sortOrder=asc',
+        resource:
+          '/organization/test-org-id/v3/dial-number?page=1&pageSize=100&attributes=id%2CdialledNumber%2CentryPointId%2CentryPointName&sort=entryPointName%2CASC&desktopProfileFilter=true&includeEntryPointName=true',
         method: HTTP_METHODS.GET,
+        body: undefined,
+        headers: requestHeaders,
       });
       expect(LoggerProxy.log).toHaveBeenCalledWith(
-        `Making API request to fetch entry points - resource: /organization/test-org-id/v2/entry-point?page=1&pageSize=100&sortOrder=asc, service: wcc-api-gateway`,
+        `Making API request to fetch entry points - resource: /organization/test-org-id/v3/dial-number?page=1&pageSize=100&attributes=id%2CdialledNumber%2CentryPointId%2CentryPointName&sort=entryPointName%2CASC&desktopProfileFilter=true&includeEntryPointName=true, service: wcc-api-gateway`,
         {module: 'EntryPoint', method: 'getEntryPoints'}
       );
     });

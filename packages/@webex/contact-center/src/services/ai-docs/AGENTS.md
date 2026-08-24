@@ -109,12 +109,12 @@ src/services/
 │       └── ARCHITECTURE.md
 │
 ├── AddressBook.ts              # Address book entries — getEntries() with pagination/cache
-├── EntryPoint.ts               # Entry points — getEntryPoints() with pagination/cache
+├── EntryPoint.ts               # Profile-scoped entry-point dial-number mappings (uncached)
 ├── Queue.ts                    # Queues — getQueues() with pagination/cache
 └── WebCallingService.ts        # WebRTC calling — register/deregister line, answer/mute/decline
 ```
 
-Note: The `src/utils/` folder (sibling to `src/services/`) contains shared utilities like [`PageCache.ts`](../../utils/PageCache.ts) which provides generic pagination caching with `BaseSearchParams`, `PaginatedResponse`, and `PaginationMeta` types used by all data services.
+Note: The `src/utils/` folder (sibling to `src/services/`) contains [`PageCache.ts`](../../utils/PageCache.ts), which provides pagination contracts/defaults shared by data-service types and optional page caching used by AddressBook and Queue. EntryPoint deliberately bypasses PageCache because every request is profile-scoped.
 
 ### Shared Constants (`src/services/constants.ts`)
 
@@ -137,8 +137,8 @@ Use [`constants.ts`](../constants.ts) as the canonical source for service-level 
 | **Task Management** | [`task/`](../task/TaskManager.ts) | Task lifecycle (accept, hold, transfer, conference, wrapup), Task state machine, contact operations, outbound dialing |
 | **Configuration** | [`config/`](../config/index.ts) | Agent profile aggregation from 8+ API endpoints, org settings, teams, aux codes, dial plans |
 | **Core Infrastructure** | [`core/`](../core/WebexRequest.ts) | HTTP requests (`WebexRequest`), WebSocket management (`WebSocketManager`), connection lifecycle (`ConnectionService`), AQM request/response correlation (`AqmReqs`), error handling (`Utils`, `Err`) |
-| **Data Services** | [`AddressBook.ts`](../AddressBook.ts), [`Queue.ts`](../Queue.ts), [`EntryPoint.ts`](../EntryPoint.ts) | Standalone REST-based data services with pagination and caching for address books, queues, and entry points |
-| **Utilities** | [`src/utils/PageCache.ts`](../../utils/PageCache.ts) | Shared `PageCache<T>` generic class for pagination caching, plus `BaseSearchParams`, `PaginatedResponse`, and `PaginationMeta` types used by all data services |
+| **Data Services** | [`AddressBook.ts`](../AddressBook.ts), [`Queue.ts`](../Queue.ts), [`EntryPoint.ts`](../EntryPoint.ts) | Standalone REST-based paginated services; AddressBook and Queue optionally cache eligible pages, while profile-scoped EntryPoint requests are always fetched |
+| **Utilities** | [`src/utils/PageCache.ts`](../../utils/PageCache.ts) | Shared pagination contracts/defaults plus optional `PageCache<T>` reuse for AddressBook and Queue |
 | **WebRTC Calling** | [`WebCallingService.ts`](../WebCallingService.ts) | Browser-based voice calling via `@webex/calling`, line registration, call answer/mute/decline |
 
 ---
@@ -156,7 +156,7 @@ Each service folder contains its own `ai-docs/` with detailed documentation. **A
 
 > **Note**: The task state machine (`task/state-machine/`) is part of the Task service, not a separate service. Its dedicated docs live at [`task/state-machine/ai-docs/AGENTS.md`](../task/state-machine/ai-docs/AGENTS.md) and [`ARCHITECTURE.md`](../task/state-machine/ai-docs/ARCHITECTURE.md). Load these when working on state transitions, guards, or actions.
 
-**Data services** (AddressBook, Queue, EntryPoint) do not have dedicated ai-docs. Read their source files directly — they follow shared REST/pagination/caching patterns documented in [`ai-docs/patterns/typescript-patterns.md`](../../../ai-docs/patterns/typescript-patterns.md).
+**Data services** (AddressBook, Queue, EntryPoint) do not have dedicated ai-docs. Read their source files directly. They share direct REST, pagination, logging, metrics, and error propagation, but cache policy is service-owned: AddressBook/Queue use PageCache when eligible and EntryPoint always fetches its profile-scoped mapping.
 
 **WebCallingService** also has no dedicated ai-docs, but it follows a different pattern: EventEmitter-based call lifecycle orchestration around `@webex/calling` (`createClient`, line registration/deregistration, `ICall` events), `callTaskMap` tracking, and async registration flows with timeout handling. Read [`WebCallingService.ts`](../WebCallingService.ts) directly when changing browser calling behavior.
 
@@ -271,16 +271,16 @@ const services = Services.getInstance({
 
 ## Data Services Pattern (AddressBook, Queue, EntryPoint)
 
-These three services share an identical pattern. Use any one as a reference when creating similar services:
+These services share the direct REST and pagination pattern, with service-specific request mapping and cache policy:
 
 | Aspect | Pattern |
 |---|---|
-| **Class structure** | Standalone class with `WebexRequest`, `WebexSDK`, `MetricsManager`, `PageCache` |
+| **Class structure** | Standalone class with `WebexRequest`, `WebexSDK`, and `MetricsManager`; cache-enabled services additionally own `PageCache` |
 | **Constructor** | `constructor(webex: WebexSDK)` — gets singletons via `.getInstance()` |
 | **HTTP calls** | `this.webexRequest.request({service: WCC_API_GATEWAY, resource, method: HTTP_METHODS.GET})` |
 | **Endpoints** | Uses `endPointMap` functions from `config/constants.ts` to build URL paths |
-| **Pagination** | Query params with `page`, `pageSize`; uses `PageCache` for caching |
-| **Caching** | `PageCache<T>` — caches pages for simple pagination, bypasses cache for search/filter |
+| **Pagination** | Query params with `page` and `pageSize` |
+| **Caching** | AddressBook/Queue may use `PageCache<T>` for eligible pages; EntryPoint always fetches because its request is desktop-profile scoped |
 | **Metrics** | `timeEvent` on API call start, `trackEvent` on success/failure |
 | **Logging** | `LoggerProxy` with `{module: 'ClassName', method: 'methodName'}` context |
 | **Error handling** | try/catch with `LoggerProxy.error` + `metricsManager.trackEvent` for failures, then re-throw so callers receive the error |
@@ -288,7 +288,7 @@ These three services share an identical pattern. Use any one as a reference when
 Reference files:
 - [`AddressBook.ts`](../AddressBook.ts) — includes `addressBookId` parameter
 - [`Queue.ts`](../Queue.ts) — includes additional query params (sortBy, sortOrder, etc.)
-- [`EntryPoint.ts`](../EntryPoint.ts) — simplest example
+- [`EntryPoint.ts`](../EntryPoint.ts) — profile-scoped dial-number mapping without PageCache
 
 ---
 
