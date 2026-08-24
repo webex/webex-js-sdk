@@ -3,7 +3,6 @@
 import {ERROR_CODE} from '../Errors/types';
 import SDKConnector from '../SDKConnector';
 import {
-  BASE64,
   BEARER,
   BINARY,
   SUCCESS_MESSAGE,
@@ -132,17 +131,29 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
     try {
       await this.getBwToken();
       /* istanbul ignore else */
-      if (this.bwtoken && this.bwtoken.split('.').length > 1) {
-        const decodedString = Buffer.from(this.bwtoken.split('.')[1], BASE64).toString(BINARY);
+      if (this.bwtoken && this.bwtoken.split('.').length === 3) {
+        const decodedString = Buffer.from(this.bwtoken.split('.')[1], 'base64url').toString(BINARY);
+        const payload = JSON.parse(decodedString);
+        const nowInSeconds = Math.floor(Date.now() / 1000);
 
-        this.userId = JSON.parse(decodedString).sub;
+        /* Validate sub (non-empty string) and exp (must be in the future) */
+        if (
+          typeof payload.sub !== 'string' ||
+          !payload.sub ||
+          typeof payload.exp !== 'number' ||
+          payload.exp <= nowInSeconds
+        ) {
+          throw new Error(`${ERROR_CODE.UNAUTHORIZED}`);
+        }
+
+        this.userId = payload.sub;
 
         return this.userId;
       }
 
       const error = ERROR_CODE.UNAUTHORIZED;
 
-      /* If the token is not valid, throw 401 and stop the execution */
+      /* If the token does not have exactly 3 JWT segments, throw 401 */
       throw new Error(`${error}`);
     } catch (err: unknown) {
       /* Catch the 401 error from try block, return the error object to user */

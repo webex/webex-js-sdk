@@ -1034,4 +1034,65 @@ describe('ContactClient Tests', () => {
       method: METHODS.GET_CONTACTS,
     });
   });
+
+  describe('ContactsClient encryption', () => {
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('decrypt rejects untrusted encryptionKeyUrl', async () => {
+      const errorSpy = jest.spyOn(log, 'error');
+
+      const untrustedContact = {
+        contactId: 'untrusted-id',
+        contactType: 'CUSTOM',
+        encryptionKeyUrl: 'http://evil.com/keys/fake-key',
+        displayName: 'EncryptedValue',
+        schemas: 'urn:cisco:codev:identity:contact:core:1.0',
+      };
+
+      webex.request.mockResolvedValueOnce({
+        statusCode: 200,
+        body: {
+          contacts: [untrustedContact],
+          groups: [],
+        },
+      });
+
+      await contactClient.getContacts();
+
+      // KMS must NOT be called for an untrusted encryptionKeyUrl
+      expect(webex.internal.encryption.decryptText).not.toHaveBeenCalled();
+      // An error must be logged for the untrusted URL
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Untrusted'),
+        expect.anything()
+      );
+    });
+
+    it('decrypt/encrypt proceed for allowlisted encryptionKeyUrl', async () => {
+      const trustedContact = {
+        contactId: 'trusted-id',
+        contactType: 'CUSTOM',
+        encryptionKeyUrl: mockKmsKey.uri, // kms:// URL → trusted
+        displayName: 'EncryptedDisplayName',
+        schemas: 'urn:cisco:codev:identity:contact:core:1.0',
+      };
+
+      webex.request.mockResolvedValueOnce({
+        statusCode: 200,
+        body: {
+          contacts: [trustedContact],
+          groups: [],
+        },
+      });
+
+      webex.internal.encryption.decryptText.mockResolvedValue('DecryptedValue');
+
+      await contactClient.getContacts();
+
+      // KMS must be called for a trusted kms:// encryptionKeyUrl
+      expect(webex.internal.encryption.decryptText).toHaveBeenCalled();
+    });
+  });
 });

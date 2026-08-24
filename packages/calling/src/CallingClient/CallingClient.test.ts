@@ -35,6 +35,7 @@ import {
   CISCO_DEVICE_URL,
   SPARK_USER_AGENT,
   URL_ENDPOINT,
+  API_V1,
 } from './constants';
 import {MOCK_MULTIPLE_SESSIONS_EVENT, MOCK_SESSION_EVENT} from './callRecordFixtures';
 import {ILine} from './line/types';
@@ -388,6 +389,58 @@ describe('CallingClient Tests', () => {
       });
 
       expect(handleErrorSpy).not.toHaveBeenCalled();
+    });
+
+    describe('CallingClient getMobiusServers', () => {
+      afterEach(() => {
+        // Restore trusted clusters for subsequent tests
+        webex.internal.services.getMobiusClusters = jest.fn().mockReturnValue(mockUSServiceHosts);
+        webex.internal.services['_hostCatalog'] = mockCatalogUS;
+      });
+
+      it('getMobiusServers rejects untrusted cluster host', async () => {
+        const untrustedHosts = [
+          {
+            host: 'evil.com',
+            ttl: -1,
+            priority: 5,
+            id: 'urn:TEAM:test:mobius',
+          },
+        ];
+
+        // Override mock to return untrusted hosts for this test
+        webex.internal.services.getMobiusClusters = jest.fn().mockReturnValue(untrustedHosts);
+        webex.internal.services['_hostCatalog'] = {'evil.com': untrustedHosts};
+
+        // Provide region payload so discovery is attempted
+        webex.request.mockResolvedValueOnce(regionPayload);
+
+        callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+        // Bearer-authed request must NOT be sent to the untrusted host
+        expect(webex.request).not.toHaveBeenCalledWith(
+          expect.objectContaining({
+            uri: expect.stringContaining('evil.com'),
+          })
+        );
+      });
+
+      it('getMobiusServers proceeds for trusted host', async () => {
+        // Default mocked clusters are all .prod.infra.webex.com (trusted)
+        webex.request.mockResolvedValueOnce(regionPayload).mockResolvedValueOnce(discoveryPayload);
+
+        callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+        // A bearer-authed request should be sent to the trusted host
+        expect(webex.request).toHaveBeenCalledWith(
+          expect.objectContaining({
+            uri: expect.stringContaining(
+              `https://${mockUSServiceHosts[0].host}${API_V1}${URL_ENDPOINT}`
+            ),
+          })
+        );
+        expect(callingClient.primaryMobiusUris).toEqual([primaryUrl]);
+      });
     });
   });
 

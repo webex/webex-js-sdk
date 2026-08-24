@@ -1853,6 +1853,57 @@ describe('Registration Tests', () => {
       expect(retry429Spy).toBeCalledOnceWith(20, RECONNECT_ON_FAILURE_UTIL);
       expect(reg.retryAfter).toEqual(undefined); // Clear retryAfter after 429 retry
     });
+
+    it('keepalive failure state changes run under mutex', async () => {
+      await beforeEachSetupForKeepalive();
+
+      // Spy on mutex.runExclusive AFTER setup so we only track new calls from the failure handler
+      const mutexSpy = jest.spyOn((reg as any).mutex, 'runExclusive');
+      lineEmitter.mockClear();
+
+      const RETRY_COUNT_THRESHOLD = reg.isCCFlow ? 4 : 5;
+      const failureEvent = {
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: {statusCode: 503},
+          keepAliveRetryCount: RETRY_COUNT_THRESHOLD,
+        },
+      };
+
+      reg.webWorker.onmessage(failureEvent as MessageEvent);
+      await flushPromises();
+
+      // State mutations (setStatus, clearTimers, lineEmitter) must run inside a mutex-guarded section
+      expect(mutexSpy).toHaveBeenCalled();
+      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+    });
+
+    it('keepalive non-final failure re-attempts registration serialized', async () => {
+      await beforeEachSetupForKeepalive();
+
+      // Spy on mutex.runExclusive AFTER setup to track only failure-handler calls
+      const mutexSpy = jest.spyOn((reg as any).mutex, 'runExclusive');
+      const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
+      lineEmitter.mockClear();
+
+      const RETRY_COUNT_THRESHOLD = reg.isCCFlow ? 4 : 5;
+      const failureEvent = {
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: {statusCode: 503},
+          keepAliveRetryCount: RETRY_COUNT_THRESHOLD,
+        },
+      };
+
+      reg.webWorker.onmessage(failureEvent as MessageEvent);
+      await flushPromises();
+
+      // mutex is released before reconnect (non-final 503 error path)
+      expect(mutexSpy).toHaveBeenCalled();
+      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(reconnectSpy).toHaveBeenCalledWith(RECONNECT_ON_FAILURE_UTIL);
+    });
   });
 
   describe('Primary server status checks', () => {

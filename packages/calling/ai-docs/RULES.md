@@ -789,6 +789,18 @@ Before marking work complete:
 
 - Validate inputs at SDK boundaries, keep Webex credentials inside SDK/transport adapters, preserve KMS handling for contact data, and follow `SECURITY.md`.
 
+### Trust-Boundary Rules (CAI-8462)
+
+Four explicit trust boundaries enforced in this package:
+
+1. **JWT structure and expiry (BroadworksBackendConnector)** — `getUserId()` requires exactly 3 JWT segments, decodes with `base64url`, and rejects tokens where `exp <= now` or `sub` is absent/empty. Tokens failing these checks return HTTP 401 and never populate `this.userId`.
+
+2. **Keepalive-failure mutex serialization (register.ts)** — State mutations triggered by `KEEPALIVE_FAILURE` (`failoverImmediately`, `setStatus`, `clearKeepaliveTimer`, `clearFailbackTimer`, `lineEmitter(UNREGISTERED)`) run inside `this.mutex.runExclusive(...)`. `reconnectOnFailure` and `uploadLogs` are called *outside* the mutex to avoid the deadlock chain `reconnectOnFailure → restartRegistration → startFailoverTimer → runExclusive`.
+
+3. **KMS encryptionKeyUrl allowlist (ContactsClient)** — `encryptContact` and `decryptContact` call `isValidEncryptionKeyUrl()` before any KMS operation. Only URLs starting with `kms://` are trusted. Any other scheme causes an error log and an early return of the unmodified contact.
+
+4. **Mobius cluster host domain validation (CallingClient)** — `getMobiusServers()` calls `isTrustedMobiusHost()` before constructing a bearer-authenticated URL for any cluster entry. Only hosts ending with `.infra.webex.com` are trusted. Untrusted hosts are skipped (loop) or block the fallback URL assignment, with a warning log.
+
 ### No Hardcoded Credentials
 
 Never commit:

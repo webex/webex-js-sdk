@@ -248,7 +248,7 @@ interface CallingClientConfig {
 
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| CALLINGCLIEN-R-001 | Performs region-based Mobius server discovery to select optimal primary and backup endpoints for registration, calls, and media. | Regional primary/backup discovery minimizes signaling distance and supplies failover endpoints when the preferred Mobius cluster is unavailable. | `src/CallingClient/CallingClient.ts` | `src/CallingClient/CallingClient.test.ts` | none identified | PRESENT |
+| CALLINGCLIEN-R-001 | Performs region-based Mobius server discovery to select optimal primary and backup endpoints for registration, calls, and media. Before a cluster-supplied host is assigned as `mobiusHost` or issued a bearer-authenticated `webex.request`, it is validated against the trusted Mobius domain (`.infra.webex.com`); an untrusted host is skipped in both the discovery loop and the default/fallback assignment (a warning is logged and no bearer-authed request is sent to it), while trusted hosts proceed unchanged. | Regional primary/backup discovery minimizes signaling distance and supplies failover endpoints when the preferred Mobius cluster is unavailable; host validation prevents cluster-supplied values from redirecting authenticated requests to untrusted endpoints (SSRF). | `src/CallingClient/CallingClient.ts` | `src/CallingClient/CallingClient.test.ts` | none identified | PRESENT |
 | CALLINGCLIEN-R-002 | Creates and registers Lines with Mobius, establishing signaling sessions, subscribing for events, and managing registration/status. Includes Line keepalives and failover routines. | A Line boundary keeps registration, device identity, and call routing scoped to the provisioned line instead of mixing state across devices. | `src/CallingClient/CallingClient.ts` | `src/CallingClient/CallingClient.test.ts` | none identified | PRESENT |
 | CALLINGCLIEN-R-003 | Initializes and configures the `@webex/internal-media-core` engine to negotiate, establish, and manage WebRTC media streams for audio and video calls. | Using the shared media engine centralizes ROAP/WebRTC negotiation and keeps media lifecycle behavior consistent with the rest of the SDK. | `src/CallingClient/CallingClient.ts` | `src/CallingClient/CallingClient.test.ts` | none identified | PRESENT |
 | CALLINGCLIEN-R-004 | Periodically sends keepalive messages for both Lines and active Calls, ensuring session continuity and timely detection of network or signaling issues. | Keepalives detect stale device and call sessions early enough to trigger recovery before the application assumes an unusable session is healthy. | `src/CallingClient/CallingClient.ts` | `src/CallingClient/CallingClient.test.ts` | none identified | PRESENT |
@@ -264,7 +264,7 @@ interface CallingClientConfig {
 
 | Capability | Description  |
 | ----------- | ----------- |
-| **Mobius Discovery**         | Performs region-based Mobius server discovery to select optimal primary and backup endpoints for registration, calls, and media.                                 |
+| **Mobius Discovery**         | Performs region-based Mobius server discovery to select optimal primary and backup endpoints for registration, calls, and media. Each cluster-supplied host is validated against the trusted `.infra.webex.com` domain before it is assigned as `mobiusHost` or used for a bearer-authenticated request; untrusted hosts are skipped during discovery and in the default/fallback path.                                 |
 | **Line Registration**        | Creates and registers Lines with Mobius, establishing signaling sessions, subscribing for events, and managing registration/status. Includes Line keepalives and failover routines. |
 | **Media Engine Management**  | Initializes and configures the `@webex/internal-media-core` engine to negotiate, establish, and manage WebRTC media streams for audio and video calls.           |
 | **Call Keepalive**           | Periodically sends keepalive messages for both Lines and active Calls, ensuring session continuity and timely detection of network or signaling issues.           |
@@ -848,6 +848,7 @@ const devices = await callingClient.getDevices();
 ## Business Rules & Invariants
 
 - Client initialization validates the Webex SDK before discovery or listener registration.
+- A cluster-supplied Mobius host is used as `mobiusHost` or issued a bearer-authenticated request only when it belongs to the trusted `.infra.webex.com` domain; untrusted hosts are skipped in both the discovery loop and the default/fallback path.
 - Mobius WSS is enabled only by the WDM developer flag or the allow-listed local override; absence of a WSS URL falls back to HTTP.
 - Async `registration.down` events go to Registration; other Mobius async events go to CallManager.
 - Active calls defer disruptive re-registration until calls clear. Evidence: `src/CallingClient/CallingClient.ts`, `src/CallingClient/utils/wsFeatureFlag.ts`, `src/CallingClient/utils/request.ts`.

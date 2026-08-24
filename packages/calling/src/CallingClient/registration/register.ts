@@ -1217,17 +1217,29 @@ export class Registration implements IRegistration {
               );
 
               if (abort || event.data.keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
-                this.failoverImmediately = this.isCCFlow;
-                this.setStatus(RegistrationStatus.INACTIVE);
-                this.clearKeepaliveTimer();
-                this.clearFailbackTimer();
-                this.lineEmitter(LINE_EVENTS.UNREGISTERED);
+                /* Serialize state mutations under the mutex to prevent races.
+                 * reconnectOnFailure and uploadLogs are called OUTSIDE the mutex
+                 * because reconnectOnFailure → restartRegistration → startFailoverTimer
+                 * itself acquires the mutex, which would deadlock if called from inside. */
+                let shouldReconnect = false;
+                let shouldHandle404 = false;
+
+                await this.mutex.runExclusive(async () => {
+                  this.failoverImmediately = this.isCCFlow;
+                  this.setStatus(RegistrationStatus.INACTIVE);
+                  this.clearKeepaliveTimer();
+                  this.clearFailbackTimer();
+                  this.lineEmitter(LINE_EVENTS.UNREGISTERED);
+                  shouldReconnect = !abort;
+                  shouldHandle404 = !!abort && error.statusCode === 404;
+                });
+
                 await uploadLogs();
 
-                if (!abort) {
+                if (shouldReconnect) {
                   /* In case of non-final error, re-attempt registration */
                   await this.reconnectOnFailure(RECONNECT_ON_FAILURE_UTIL);
-                } else if (error.statusCode === 404) {
+                } else if (shouldHandle404) {
                   this.handle404KeepaliveFailure(KEEPALIVE_UTIL);
                 }
               } else {
