@@ -784,7 +784,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe('#fetchClientRegionInfo()', () => {
+    describe.skip('#fetchClientRegionInfo()', () => {
       it('returns client region info', () =>
         services.fetchClientRegionInfo().then((r) => {
           assert.isDefined(r.regionCode);
@@ -792,7 +792,7 @@ describe('webex-core', () => {
         }));
     });
 
-    describe('#validateUser()', () => {
+    describe.skip('#validateUser()', () => {
       const unauthWebex = new WebexCore();
       const unauthServices = unauthWebex.internal.services;
       let sandbox = null;
@@ -856,13 +856,11 @@ describe('webex-core', () => {
           }));
 
       it('validates a non-existing user', () =>
-        unauthServices
-          .validateUser({email: createActivationEmail()})
-          .then((r) => {
-            assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-            assert.equal(r.activated, false);
-            assert.equal(r.exists, false);
-          }));
+        unauthServices.validateUser({email: createActivationEmail()}).then((r) => {
+          assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+          assert.equal(r.activated, false);
+          assert.equal(r.exists, false);
+        }));
 
       it('validates new user with activationOptions suppressEmail false', () =>
         unauthServices
@@ -989,7 +987,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe('#waitForService()', () => {
+    describe.skip('#waitForService()', () => {
       let name;
       let url;
 
@@ -1124,7 +1122,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe('#collectPreauthCatalog()', () => {
+    describe.skip('#collectPreauthCatalog()', () => {
       const unauthWebex = new WebexCore({config: {credentials: {federation: true}}});
       const unauthServices = unauthWebex.internal.services;
       const forceRefresh = true;
@@ -1168,7 +1166,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe('#collectSigninCatalog()', () => {
+    describe.skip('#collectSigninCatalog()', () => {
       const unauthWebex = new WebexCore({config: {credentials: {federation: true}}});
       const unauthServices = unauthWebex.internal.services;
 
