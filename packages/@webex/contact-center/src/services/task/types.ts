@@ -3,6 +3,7 @@ import type {AnyActorRef} from 'xstate';
 import {TaskEventPayload} from './state-machine';
 import {Msg} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
+import type {CollaborationAccess} from '../config/types';
 
 /**
  * Unique identifier for a task in the contact center system
@@ -33,7 +34,7 @@ export const DESTINATION_TYPE = {
   DIALNUMBER: 'dialNumber',
   /** Route task to a specific agent */
   AGENT: 'agent',
-  /** Route task to an entry point (supported only for consult operations) */
+  /** Route task to an entry point */
   ENTRYPOINT: 'entryPoint',
 };
 
@@ -66,6 +67,17 @@ export const CONSULT_TRANSFER_DESTINATION_TYPE = {
  * @public
  */
 export type ConsultTransferDestinationType = Enum<typeof CONSULT_TRANSFER_DESTINATION_TYPE>;
+
+/**
+ * Agent-profile policy used by the task state machine to derive consult/transfer destinations.
+ * @internal
+ */
+export type ConsultTransferDestinationConfig = {
+  allowConsultToQueue: boolean;
+  accessQueue?: CollaborationAccess;
+  accessEntryPoint?: CollaborationAccess;
+  accessBuddyTeam?: CollaborationAccess;
+};
 
 /**
  * Defines all supported media channel types for customer interactions
@@ -1248,6 +1260,14 @@ export type TaskUIControls = {
   main: InteractionUIControls;
   consult: InteractionUIControls;
   activeLeg: TaskUILeg;
+  /**
+   * Ordered destination categories available for each action.
+   * The first category is the default for consumers that render a destination picker.
+   */
+  consultTransferDestinations: {
+    consult: ConsultTransferDestinationType[];
+    transfer: ConsultTransferDestinationType[];
+  };
 };
 
 /**
@@ -2048,6 +2068,7 @@ export type VoiceUIControlOptions = {
   voiceVariant?: VoiceVariant;
   isRecordingEnabled?: boolean;
   enableWxBetterTogether?: boolean;
+  consultTransferConfig?: ConsultTransferDestinationConfig;
   answerCallOnWebexService?: import('../AnswerCallOnWebexService').default;
 };
 

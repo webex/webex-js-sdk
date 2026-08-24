@@ -30,7 +30,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 2. `createActor(machine).start()`
 3. `TaskManager` and task APIs map external signals to `TaskEvent`
 4. Actor transitions update context and execute action overrides
-5. `Task` recomputes UI controls and emits task-level events
+5. `Task` recomputes per-leg controls plus ordered Consult/Transfer destination availability and emits task-level events when either changes
 
 ---
 
