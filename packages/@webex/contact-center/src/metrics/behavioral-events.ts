@@ -313,6 +313,98 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     target: 'task_outdial',
     verb: 'fail',
   },
+  [METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'wxapp_task_mute',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'wxapp_task_mute',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'wxapp_task_dtmf',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'wxapp_task_dtmf',
+    verb: 'fail',
+  },
+
+  // WxApp Better Together
+  [METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'wxapp_task_accept',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'wxapp_task_accept',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'wxapp_task_decline',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'wxapp_task_decline',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'wxapp_session_init',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'wxapp_session_init',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_SESSION_SKIPPED]: {
+    product,
+    agent: 'user',
+    target: 'wxapp_session_init',
+    verb: 'ignore',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'wxapp_usersub_publish',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'wxapp_usersub_publish',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'wxapp_mercury_subscribe',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'wxapp_mercury_subscribe',
+    verb: 'fail',
+  },
 
   // Conference Tasks
   [METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS]: {

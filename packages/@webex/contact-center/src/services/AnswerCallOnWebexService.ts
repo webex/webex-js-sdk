@@ -73,6 +73,12 @@ export default class AnswerCallOnWebexService {
     return `${hydraUrl.replace(/\/$/, '')}/telephony/calls`;
   }
 
+  private extractTrackingId(source: unknown): string | undefined {
+    const sourceObj = source as {details?: {trackingId?: string}};
+
+    return sourceObj?.details?.trackingId;
+  }
+
   private async telephonyRequest(
     resource: string,
     method: HTTP_METHODS,
@@ -88,16 +94,31 @@ export default class AnswerCallOnWebexService {
         data: {uri, bodyKeys: Object.keys(body)},
       });
 
-      return (await this.webex.request({
+      const response = (await this.webex.request({
         uri,
         method,
         body,
         addAuthHeader: true,
       })) as IHttpResponse;
+
+      LoggerProxy.info(`AnswerCallOnWebexService.${logMethod} success`, {
+        module: ANSWER_CALL_ON_WEBEX_FILE,
+        method: logMethod,
+        data: {statusCode: response.statusCode},
+      });
+
+      return response;
     } catch (error) {
+      const trackingId = this.extractTrackingId(error);
       LoggerProxy.error(`AnswerCallOnWebexService.${logMethod} failed: ${error}`, {
         module: ANSWER_CALL_ON_WEBEX_FILE,
         method: logMethod,
+        data: {
+          trackingId,
+          status:
+            (error as {statusCode?: number; status?: number | string})?.statusCode ??
+            (error as {status?: number | string})?.status,
+        },
       });
       const {error: detailedError} = getErrorDetails(error, logMethod, CC_FILE);
       throw markWxAppTelephonyError(detailedError, error);
@@ -191,9 +212,11 @@ export default class AnswerCallOnWebexService {
         throw markWxAppTelephonyError(err, error);
       }
 
+      const trackingId = this.extractTrackingId(error);
       LoggerProxy.error(`AnswerCallOnWebexService.getCallDetails failed: ${error}`, {
         module: ANSWER_CALL_ON_WEBEX_FILE,
         method: METHODS.GET_CALL_DETAILS_ON_WEBEX,
+        data: {trackingId},
       });
       const {error: detailedError} = getErrorDetails(
         error,

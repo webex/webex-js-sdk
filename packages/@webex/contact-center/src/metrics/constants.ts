@@ -139,6 +139,24 @@ export const METRIC_EVENT_NAMES = {
   TASK_OUTDIAL_SUCCESS: 'Task Outdial Success',
   TASK_OUTDIAL_FAILED: 'Task Outdial Failed',
 
+  WXAPP_TASK_MUTE_SUCCESS: 'WxApp Task Mute Success',
+  WXAPP_TASK_MUTE_FAILED: 'WxApp Task Mute Failed',
+  WXAPP_TASK_DTMF_SUCCESS: 'WxApp Task Dtmf Success',
+  WXAPP_TASK_DTMF_FAILED: 'WxApp Task Dtmf Failed',
+
+  // WxApp Better Together
+  WXAPP_TASK_ACCEPT_SUCCESS: 'WxApp Task Accept Success',
+  WXAPP_TASK_ACCEPT_FAILED: 'WxApp Task Accept Failed',
+  WXAPP_TASK_DECLINE_SUCCESS: 'WxApp Task Decline Success',
+  WXAPP_TASK_DECLINE_FAILED: 'WxApp Task Decline Failed',
+  WXAPP_SESSION_INIT_SUCCESS: 'WxApp Session Init Success',
+  WXAPP_SESSION_INIT_FAILED: 'WxApp Session Init Failed',
+  WXAPP_SESSION_SKIPPED: 'WxApp Session Skipped',
+  WXAPP_USERSUB_PUBLISH_SUCCESS: 'WxApp Usersub Publish Success',
+  WXAPP_USERSUB_PUBLISH_FAILED: 'WxApp Usersub Publish Failed',
+  WXAPP_MERCURY_SUBSCRIBE_SUCCESS: 'WxApp Mercury Subscribe Success',
+  WXAPP_MERCURY_SUBSCRIBE_FAILED: 'WxApp Mercury Subscribe Failed',
+
   UPLOAD_LOGS_SUCCESS: 'Upload Logs Success',
   UPLOAD_LOGS_FAILED: 'Upload Logs Failed',
   WEBSOCKET_DEREGISTER_SUCCESS: 'Websocket Deregister Success',

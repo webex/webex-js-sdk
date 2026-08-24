@@ -1,6 +1,8 @@
 import LoggerProxy from '../logger-proxy';
 import {METHODS} from '../constants';
 import {WebexSDK} from '../types';
+import MetricsManager from '../metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../metrics/constants';
 
 const WEBEX_CROSS_CLIENT_FILE = 'WebexCrossClientService';
 const DEFAULT_CROSS_CLIENT_STATE_TTL = 900;
@@ -144,12 +146,13 @@ export default class WebexCrossClientService {
 
   public async setManageWebexCallingInWxcc(
     enable: boolean,
-    options?: {userId?: string; ttl?: number; appName?: string}
+    options?: {userId?: string; ttl?: number; appName?: string; trackPublishMetrics?: boolean}
   ): Promise<void> {
     const operationGeneration = this.refreshGeneration;
     const userId = options?.userId ?? this.webex.internal.device?.userId;
     const ttl = options?.ttl ?? DEFAULT_CROSS_CLIENT_STATE_TTL;
     const appName = options?.appName ?? DEFAULT_APP_NAME;
+    const trackPublishMetrics = options?.trackPublishMetrics ?? false;
     this.appName = appName;
 
     if (!userId) {
@@ -173,7 +176,31 @@ export default class WebexCrossClientService {
       ],
     };
 
-    await this.publishCrossClientState([userId], ttl, composition, 'setManageWebexCallingInWxcc');
+    const metricsManager = MetricsManager.getInstance();
+
+    if (trackPublishMetrics) {
+      metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS,
+        METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+      ]);
+    }
+
+    try {
+      await this.publishCrossClientState([userId], ttl, composition, 'setManageWebexCallingInWxcc');
+    } catch (error) {
+      if (trackPublishMetrics) {
+        metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+          {
+            enableWxBetterTogether: enable,
+            error: error instanceof Error ? error.toString() : String(error),
+          },
+          ['operational', 'behavioral']
+        );
+      }
+
+      throw error;
+    }
 
     if (operationGeneration !== this.refreshGeneration) {
       return;
@@ -186,6 +213,14 @@ export default class WebexCrossClientService {
     } else {
       this.refreshGeneration += 1;
       this.clearRefreshTimer();
+    }
+
+    if (trackPublishMetrics) {
+      metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS,
+        {enableWxBetterTogether: enable},
+        ['operational', 'behavioral']
+      );
     }
 
     LoggerProxy.info(`Cross-client answer-calls-on-wxcc set to ${enable}`, {

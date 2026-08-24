@@ -1,6 +1,9 @@
 import LoggerProxy from '../logger-proxy';
 import {METHODS} from '../constants';
 import {WebexSDK} from '../types';
+import MetricsManager from '../metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../metrics/constants';
+import {callIdSuffix, logWxAppMercuryMuteSync} from './wxAppDiagnosticLogging';
 
 const WXAPP_TELEPHONY_MERCURY_SYNC_FILE = 'WxAppTelephonyMercurySync';
 
@@ -42,6 +45,11 @@ export default class WxAppTelephonyMercurySync {
   private handleMuteStateEvent = (agentId: string, event: UpdatedCallMuteStateEvent): void => {
     const {actorId, callId, muted} = event?.data ?? {};
     if (!actorId || !callId || muted === undefined) {
+      logWxAppMercuryMuteSync({
+        phase: 'dropped',
+        dropReason: 'missing_mercury_event_fields',
+      });
+
       return;
     }
 
@@ -49,13 +57,20 @@ export default class WxAppTelephonyMercurySync {
     const decodedCallId = this.decodeBase64(callId);
 
     if (!decodedActorId.endsWith(agentId)) {
+      logWxAppMercuryMuteSync({
+        phase: 'dropped',
+        muted,
+        callIdSuffix: callIdSuffix(decodedCallId),
+        dropReason: 'actor_id_mismatch',
+      });
+
       return;
     }
 
-    LoggerProxy.info('WxApp telephony mute state sync received', {
-      module: WXAPP_TELEPHONY_MERCURY_SYNC_FILE,
-      method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
-      data: {muted},
+    logWxAppMercuryMuteSync({
+      phase: 'received',
+      muted,
+      callIdSuffix: callIdSuffix(decodedCallId),
     });
 
     this.muteChangeHandler?.(decodedCallId, muted);
@@ -70,6 +85,12 @@ export default class WxAppTelephonyMercurySync {
         module: WXAPP_TELEPHONY_MERCURY_SYNC_FILE,
         method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
       });
+
+      MetricsManager.getInstance().trackEvent(
+        METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED,
+        {error: 'Mercury is unavailable for wxApp mute sync'},
+        ['operational', 'behavioral']
+      );
 
       return;
     }
@@ -86,6 +107,12 @@ export default class WxAppTelephonyMercurySync {
 
     mercury.on(TELEPHONY_CALL_MUTED, this.boundMuteHandler);
     mercury.on(TELEPHONY_CALL_UNMUTED, this.boundUnmuteHandler);
+
+    MetricsManager.getInstance().trackEvent(
+      METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_SUCCESS,
+      {},
+      ['operational', 'behavioral']
+    );
 
     LoggerProxy.info('Subscribed to wxApp telephony Mercury mute sync', {
       module: WXAPP_TELEPHONY_MERCURY_SYNC_FILE,

@@ -2,15 +2,28 @@ import WxAppTelephonyMercurySync, {
   TELEPHONY_CALL_MUTED,
   TELEPHONY_CALL_UNMUTED,
 } from '../../../../src/services/WxAppTelephonyMercurySync';
+import MetricsManager from '../../../../src/metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../../../../src/metrics/constants';
+
+jest.mock('../../../../src/metrics/MetricsManager', () => ({
+  __esModule: true,
+  default: {
+    getInstance: jest.fn(),
+  },
+}));
 
 describe('WxAppTelephonyMercurySync', () => {
   const agentId = 'agent-123';
+  const trackEvent = jest.fn();
   let mercury: {on: jest.Mock; off: jest.Mock};
   let webex: {internal: {mercury?: typeof mercury}};
   let sync: WxAppTelephonyMercurySync;
   let onMuteChange: jest.Mock;
 
   beforeEach(() => {
+    trackEvent.mockClear();
+    (MetricsManager.getInstance as jest.Mock).mockReturnValue({trackEvent});
+
     mercury = {on: jest.fn(), off: jest.fn()};
     webex = {internal: {mercury}};
     sync = new WxAppTelephonyMercurySync(webex as never);
@@ -27,6 +40,11 @@ describe('WxAppTelephonyMercurySync', () => {
     expect(mercury.on).toHaveBeenCalledWith(TELEPHONY_CALL_MUTED, expect.any(Function));
     expect(mercury.on).toHaveBeenCalledWith(TELEPHONY_CALL_UNMUTED, expect.any(Function));
     expect(sync.isSubscribed()).toBe(true);
+    expect(trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_SUCCESS,
+      {},
+      ['operational', 'behavioral']
+    );
   });
 
   it('invokes callback with decoded callId and muted when actorId matches agent', () => {
@@ -77,6 +95,11 @@ describe('WxAppTelephonyMercurySync', () => {
 
     expect(sync.isSubscribed()).toBe(false);
     expect(onMuteChange).not.toHaveBeenCalled();
+    expect(trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED,
+      expect.objectContaining({error: expect.stringContaining('Mercury is unavailable')}),
+      ['operational', 'behavioral']
+    );
   });
 
   it('invokes callback with muted false on unmuted Mercury event', () => {

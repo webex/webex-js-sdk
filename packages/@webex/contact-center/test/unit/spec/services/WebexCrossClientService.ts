@@ -1,13 +1,28 @@
 import WebexCrossClientService from '../../../../src/services/WebexCrossClientService';
+import MetricsManager from '../../../../src/metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../../../../src/metrics/constants';
+
+jest.mock('../../../../src/metrics/MetricsManager', () => ({
+  __esModule: true,
+  default: {
+    getInstance: jest.fn(),
+  },
+}));
 
 describe('WebexCrossClientService', () => {
   const userId = 'user-123';
   const deviceUrl = 'https://wdm.example.com/devices/device-abc';
+  const trackEvent = jest.fn();
+  const timeEvent = jest.fn();
 
   let webex: {request: jest.Mock; internal: {device: {userId: string; url: string}}};
   let service: WebexCrossClientService;
 
   beforeEach(() => {
+    trackEvent.mockClear();
+    timeEvent.mockClear();
+    (MetricsManager.getInstance as jest.Mock).mockReturnValue({trackEvent, timeEvent});
+
     webex = {
       request: jest.fn().mockResolvedValue({body: {}}),
       internal: {
@@ -97,7 +112,36 @@ describe('WebexCrossClientService', () => {
     const err = new Error('usersub failed');
     webex.request = jest.fn().mockRejectedValue(err);
 
-    await expect(service.setManageWebexCallingInWxcc(true)).rejects.toThrow('usersub failed');
+    await expect(
+      service.setManageWebexCallingInWxcc(true, {trackPublishMetrics: true})
+    ).rejects.toThrow('usersub failed');
+
+    expect(trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+      expect.objectContaining({enableWxBetterTogether: true}),
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('tracks usersub publish success when trackPublishMetrics is enabled', async () => {
+    await service.setManageWebexCallingInWxcc(true, {trackPublishMetrics: true});
+
+    expect(timeEvent).toHaveBeenCalledWith([
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS,
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+    ]);
+    expect(trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS,
+      {enableWxBetterTogether: true},
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('does not track usersub metrics by default', async () => {
+    await service.setManageWebexCallingInWxcc(true);
+
+    expect(trackEvent).not.toHaveBeenCalled();
+    expect(timeEvent).not.toHaveBeenCalled();
   });
 
   it('uses custom ttl from options', async () => {
