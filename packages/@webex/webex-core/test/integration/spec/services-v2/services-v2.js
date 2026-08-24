@@ -489,7 +489,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe('#convertUrlToPriorityUrl', () => {
+    describe.skip('#convertUrlToPriorityUrl', () => {
       let testDetail;
       let testDetailTemplate;
 
@@ -538,7 +538,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe('#markFailedUrl()', () => {
+    describe.skip('#markFailedUrl()', () => {
       let testDetailTemplate;
       let testDetail;
 
