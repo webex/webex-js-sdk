@@ -343,7 +343,7 @@ export type LineErrorEmitterCallback = (err: LineError, finalError?: boolean) =>
 
 ### handleRegistrationErrors
 
-Handles registration and keepalive error flows by mapping HTTP status codes to `LineError` and deciding whether to emit a final error, trigger a retry, restore registration, or hard stop a superseded session. Used by `Registration` for both initial registration failures and keepalive failures received from the web worker. See `src/common/Utils.ts`.
+Handles registration and keepalive error flows by mapping HTTP status codes to `LineError` and deciding whether to emit a final error, trigger a retry, restore registration, or run registration cleanup. Used by `Registration` for both initial registration failures and keepalive failures received from the web worker. See `src/common/Utils.ts`.
 
 Signature: `handleRegistrationErrors(err, emitterCb, loggerContext, handlers?, serverCount?): Promise<RegistrationErrorResult>`
 
@@ -393,7 +393,7 @@ Key behaviors by status code:
 - **401 Unauthorized** — final error, emits token error
 - **403 Forbidden** — inspects `errorCode` in body for device-limit-exceeded (triggers `restoreRegCb`), device-creation-disabled (final error), or device-creation-failed (non-final)
 - **404 Device Not Found** — final error; on keepalive, triggers `handle404KeepaliveFailure` which re-attempts registration
-- **409 Conflict** — final error when the caller passed `sessionSupersededCb`: the handler owns the hard stop and `handledByCallback` is returned, so no event is emitted from here. Callers without that handler keep the unknown-error treatment
+- **409 Conflict (keepalive only)** — final error, because only the keepalive flow passes `sessionSupersededCb`: that handler owns the hard stop and `handledByCallback` is returned, so no event is emitted from here. Registration, restoration, failover, and failback do not pass the handler and keep the unknown-error treatment for `409`
 - **429 Too Many Requests** — non-final, invokes `retry429Cb` with the `Retry-After` header value
 - **500 / 503** — non-final, emits error and allows retry
 

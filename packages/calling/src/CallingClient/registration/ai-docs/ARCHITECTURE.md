@@ -533,41 +533,6 @@ sequenceDiagram
 
 > **Note:** The synthetic `MOBIUS_SOCKET_4001_EVENT` envelope emitted when the server closes the socket with code `4001` carries `eventType: 'registration.down'` and therefore drives the **same** cleanup path as a server-pushed async `registration.down`. See [`mobius-socket/ai-docs/ARCHITECTURE.md`](../../../mobius-socket/ai-docs/ARCHITECTURE.md) for the close-code matrix.
 
-### Keepalive `409 Conflict` — Session Superseded
-
-```mermaid
-sequenceDiagram
-    participant WW as Keepalive Worker
-    participant Reg as Registration
-    participant HRE as handleRegistrationErrors
-    participant MM as MetricManager
-    participant API as APIRequest
-    participant MS as MobiusSocket
-    participant Line as Line
-
-    WW-->>Reg: KEEPALIVE_FAILURE {err.statusCode: 409, keepAliveRetryCount}
-    Reg->>HRE: handleRegistrationErrors(err, emitterCb, ctx,<br/>{retry429Cb, sessionSupersededCb})
-    Note over HRE: case ERROR_CODE.CONFLICT → LineError with<br/>SESSION_SUPERSEDED_MESSAGE, ERROR_TYPE.SESSION_SUPERSEDED, INACTIVE
-    HRE->>Reg: sessionSupersededCb(lineError) → handle409KeepaliveFailure
-    Reg->>WW: clearKeepaliveTimer() → CLEAR_KEEPALIVE + terminate()
-    Reg->>MM: submitRegistrationMetric(KEEPALIVE_ERROR, KEEPALIVE_FAILURE, ...)
-    Reg->>Reg: registrationCleanup(SESSION_SUPERSEDED)
-
-    opt apiRequest.isSocketEnabled()
-        Reg->>API: disconnectFromMobiusSocket({code:3050, reason:'done (permanent)'})
-        API->>MS: disconnect
-    end
-
-    Reg->>Line: lineEmitter(LINE_EVENTS.UNREGISTERED, undefined, lineError)
-    Reg->>Reg: uploadLogs()
-    HRE-->>Reg: {finalError: true, handledByCallback: true}
-    Note over Reg: handledByCallback → skip the generic keepalive failure handling
-```
-
-Status-code classification stays in `handleRegistrationErrors`; the hard stop is scoped to keepalive because only that flow passes `sessionSupersededCb`. Registration, restoration, failover, and failback keep treating `409` as an unknown error, and keepalive `404` / `429` / `5xx` handling is unchanged.
-
----
-
 ---
 
 ## Related Documentation
