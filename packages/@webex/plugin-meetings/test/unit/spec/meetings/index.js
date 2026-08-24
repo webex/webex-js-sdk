@@ -2715,7 +2715,11 @@ describe('plugin-meetings', () => {
                 undefined,
                 undefined,
                 extraParams,
-                {meetingId: meeting.id, sendCAevents}
+                {
+                  meetingId: meeting.id,
+                  sendCAevents,
+                  correlationId: meeting.correlationId,
+                }
               );
             }
 

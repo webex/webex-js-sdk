@@ -2090,7 +2090,7 @@ export default class Meeting extends StatelessWebexPlugin {
         this.config.installedOrgID,
         this.locusId,
         extraParams,
-        {meetingId: this.id, sendCAevents},
+        {meetingId: this.id, sendCAevents, correlationId: this.correlationId},
         registrationId,
         null,
         classificationId
