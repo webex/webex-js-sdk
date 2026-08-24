@@ -156,7 +156,7 @@ Additionally, the following endpoints are defined in `constants.ts` `endPointMap
 | Endpoint | Used By | Description |
 |----------|---------|-------------|
 | `queueList` | [`Queue.ts`](../../Queue.ts) | Fetch contact service queues |
-| `entryPointList` | [`EntryPoint.ts`](../../EntryPoint.ts) | Fetch entry points |
+| `entryPointDialNumberList` | [`EntryPoint.ts`](../../EntryPoint.ts) | Fetch profile-scoped entry-point dial-number mappings |
 | `addressBookEntries` | [`AddressBook.ts`](../../AddressBook.ts) | Fetch address book entries |
 
 ---

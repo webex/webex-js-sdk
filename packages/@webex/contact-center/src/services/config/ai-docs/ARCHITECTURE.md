@@ -132,8 +132,8 @@ export const endPointMap = {
   queueList: (orgId: string, queryParams: string) =>
     `/organization/${orgId}/v2/contact-service-queue?${queryParams}`,
 
-  entryPointList: (orgId: string, queryParams: string) =>
-    `/organization/${orgId}/v2/entry-point?${queryParams}`,
+  entryPointDialNumberList: (orgId: string, queryParams: string) =>
+    `/organization/${orgId}/v3/dial-number?${queryParams}`,
 
   addressBookEntries: (orgId: string, addressBookId: string, queryParams: string) =>
     `/organization/${orgId}/v2/address-book/${addressBookId}/entry?${queryParams}`,
