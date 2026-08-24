@@ -100,7 +100,7 @@ describe('webex-core', () => {
       catalogEU = servicesEU._getCatalog();
     });
 
-    describe.skip('#_getCatalog()', () => {
+    describe('#_getCatalog()', () => {
       it('returns a catalog', () => {
         const localCatalog = services._getCatalog();
 
@@ -108,7 +108,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe.skip('#get()', () => {
+    describe('#get()', () => {
       let testDetailTemplate;
       let testDetail;
 
@@ -147,7 +147,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe.skip('#getClusterId()', () => {
+    describe('#getClusterId()', () => {
       let testDetailTemplate;
       let testDetail;
 
@@ -177,7 +177,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe.skip('#getServiceFromClusterId()', () => {
+    describe('#getServiceFromClusterId()', () => {
       let testDetailTemplate;
       let testDetail;
 
@@ -220,7 +220,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe.skip('#getServiceFromUrl()', () => {
+    describe('#getServiceFromUrl()', () => {
       let testDetailTemplate;
       let testDetail;
 
@@ -252,7 +252,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe.skip('#initConfig()', () => {
+    describe('#initConfig()', () => {
       it('should set the discovery catalog based on the provided links', () => {
         const key = 'test';
         const url = 'http://www.test.com/';
@@ -305,7 +305,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe.skip('#initialize()', () => {
+    describe('#initialize()', () => {
       it('should create a catalog', () =>
         assert.instanceOf(services._getCatalog(), ServiceCatalogV2));
 
@@ -385,7 +385,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe.skip('#initServiceCatalogs()', () => {
+    describe('#initServiceCatalogs()', () => {
       it('should reject if a OrgId cannot be retrieved', () => {
         webex.credentials.getOrgId = sinon.stub().throws();
 
@@ -467,7 +467,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe.skip('#isAllowedDomainUrl()', () => {
+    describe('#isAllowedDomainUrl()', () => {
       let list;
 
       beforeEach(() => {
