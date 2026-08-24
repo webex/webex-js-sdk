@@ -345,7 +345,7 @@ describe('webex-core', () => {
         }, 2000);
       });
 
-      it.skip('blocks webex.ready until services.ready flips when waitForCatalogInit is enabled', async () => {
+      it('blocks webex.ready until services.ready flips when waitForCatalogInit is enabled', async () => {
         const gatedWebex = new WebexCore({
           credentials: {supertoken: webexUser.token},
           config: {services: {waitForCatalogInit: true}},
