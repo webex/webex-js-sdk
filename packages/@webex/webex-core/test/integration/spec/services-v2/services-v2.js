@@ -538,7 +538,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe.skip('#markFailedUrl()', () => {
+    describe('#markFailedUrl()', () => {
       let testDetailTemplate;
       let testDetail;
 
