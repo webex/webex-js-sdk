@@ -15,7 +15,10 @@ import uuid from 'uuid';
 
 import KMSBatcher, {TIMEOUT_SYMBOL} from './kms-batcher';
 import validateKMS, {KMSError} from './kms-certificate-validation';
-import {KMS_KEY_REDIRECT_ERROR_CODE} from './constants';
+import {
+  JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED,
+  KMS_KEY_REDIRECT_ERROR_CODE,
+} from './constants';
 
 const contexts = new WeakMap();
 const kmsDetails = new WeakMap();
@@ -781,6 +784,31 @@ const KMS = WebexPlugin.extend({
   },
 
   /**
+   * Validates the KMS static public key against the configured CA roots. When
+   * `kmsCertificateValidationReportOnly` is set, validation failures are
+   * reported as a metric and the key is used regardless.
+   * @private
+   * @param {Object} kmsStaticPubKey
+   * @returns {Promise<Object>} the KMS static public key
+   */
+  _validateKMSStaticPubKey(kmsStaticPubKey) {
+    return validateKMS(this.config.caroots)(kmsStaticPubKey).catch((reason) => {
+      if (!this.config.kmsCertificateValidationReportOnly) {
+        return Promise.reject(reason);
+      }
+
+      this.logger.warn('kms: certificate validation failed (report only)', reason);
+
+      this.webex.internal.metrics.submitClientMetrics(JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED, {
+        fields: {success: false},
+        tags: {reason: reason.message, kid: kmsStaticPubKey && kmsStaticPubKey.kid},
+      });
+
+      return kmsStaticPubKey;
+    });
+  },
+
+  /**
    * @private
    * @returns {Promise<Object>}
    */
@@ -789,7 +817,9 @@ const KMS = WebexPlugin.extend({
     const context = new Context();
 
     return Promise.all([
-      this._getKMSStaticPubKey().then(validateKMS(this.config.caroots)),
+      this._getKMSStaticPubKey().then((kmsStaticPubKey) =>
+        this._validateKMSStaticPubKey(kmsStaticPubKey)
+      ),
       this._getAuthorization(),
     ])
       .then(([kmsStaticPubKey, authorization]) => {

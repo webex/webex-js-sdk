@@ -241,6 +241,45 @@ describe('internal-plugin-encryption', () => {
       });
     });
 
+    describe('_validateKMSStaticPubKey', () => {
+      const invalidKey = {kty: 'NOT_RSA', kid: 'kms://kms.example.com'};
+
+      beforeEach(() => {
+        webex.internal.metrics = {submitClientMetrics: sinon.stub()};
+        webex.internal.encryption.config.caroots = ['caroot'];
+      });
+
+      it('rejects when validation fails and report only is disabled', async () => {
+        webex.internal.encryption.config.kmsCertificateValidationReportOnly = false;
+
+        await assert.isRejected(
+          webex.internal.encryption.kms._validateKMSStaticPubKey(invalidKey),
+          /INVALID KMS/
+        );
+
+        assert.notCalled(webex.internal.metrics.submitClientMetrics);
+      });
+
+      it('resolves and submits a metric when report only is enabled', async () => {
+        webex.internal.encryption.config.kmsCertificateValidationReportOnly = true;
+
+        const result = await webex.internal.encryption.kms._validateKMSStaticPubKey(invalidKey);
+
+        assert.equal(result, invalidKey);
+        assert.calledOnceWithExactly(
+          webex.internal.metrics.submitClientMetrics,
+          'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED',
+          {
+            fields: {success: false},
+            tags: {
+              reason: "INVALID KMS: 'kty' header must be 'RSA'",
+              kid: 'kms://kms.example.com',
+            },
+          }
+        );
+      });
+    });
+
     describe('KMS error', () => {
       it('KMSError', async () => {
         const error = new KmsError({

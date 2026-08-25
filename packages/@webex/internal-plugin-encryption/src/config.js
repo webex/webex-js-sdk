@@ -46,5 +46,13 @@ export default {
      * @type {Number}
      */
     batcherMaxWait: 150,
+
+    /**
+     * When true, a failure to validate the KMS certificates against `caroots`
+     * is reported as a metric instead of failing the ECDH negotiation. Allows
+     * a new CA root bundle to be trialled without risking total failure.
+     * @type {Boolean}
+     */
+    kmsCertificateValidationReportOnly: false,
   },
 };
