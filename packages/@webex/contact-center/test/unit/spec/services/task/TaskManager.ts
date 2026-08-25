@@ -51,6 +51,7 @@ describe('TaskManager', () => {
       [TaskEvent.TASK_OFFERED]: TASK_EVENTS.TASK_OFFER_CONTACT,
       [TaskEvent.OFFER_CONSULT]: TASK_EVENTS.TASK_OFFER_CONSULT,
       [TaskEvent.HYDRATE]: TASK_EVENTS.TASK_HYDRATE,
+      [TaskEvent.CONTACT_OWNER_CHANGED]: TASK_EVENTS.TASK_HYDRATE,
       [TaskEvent.ASSIGN]: TASK_EVENTS.TASK_ASSIGNED,
       [TaskEvent.HOLD_SUCCESS]: TASK_EVENTS.TASK_HOLD,
       [TaskEvent.UNHOLD_SUCCESS]: TASK_EVENTS.TASK_RESUME,
@@ -2720,6 +2721,365 @@ describe('TaskManager', () => {
           expect(sendStateMachineEventSpy).not.toHaveBeenCalled();
         }
       });
+    });
+  });
+
+  describe('Contact owner propagation', () => {
+    const currentAgentId = 'test-agent-id';
+    const previousOwnerId = 'previous-owner-id';
+    const promotedOwnerId = 'promoted-owner-id';
+
+    const createConferenceTaskData = (
+      interactionId: string,
+      owner: string,
+      mainInteractionId = taskId
+    ) => ({
+      ...taskDataMock,
+      agentId: currentAgentId,
+      interactionId,
+      owner,
+      interaction: {
+        mediaType: 'telephony',
+        interactionId,
+        mainInteractionId,
+        owner,
+        participants: {
+          [currentAgentId]: {
+            id: currentAgentId,
+            pType: 'Agent',
+            hasJoined: true,
+            hasLeft: false,
+          },
+          [previousOwnerId]: {
+            id: previousOwnerId,
+            pType: 'Agent',
+            hasJoined: true,
+            hasLeft: false,
+          },
+          [promotedOwnerId]: {
+            id: promotedOwnerId,
+            pType: 'Agent',
+            hasJoined: true,
+            hasLeft: false,
+          },
+        },
+        media: {
+          [mainInteractionId]: {
+            mediaResourceId: mainInteractionId,
+            mediaType: 'telephony',
+            mType: 'mainCall',
+            participants: [currentAgentId, previousOwnerId, promotedOwnerId],
+          },
+        },
+      },
+    });
+
+    const installTask = (data) => {
+      const task = createMockTask(data);
+      taskManager.taskCollection = {[data.interactionId]: task};
+      (taskManager as any).setupTaskListeners(task);
+
+      return task;
+    };
+
+    it('emits one hydrate when ContactUpdated changes interaction.owner', () => {
+      const task = installTask(createConferenceTaskData(taskId, previousOwnerId));
+      const hydrateHandler = jest.fn();
+      taskManager.on(TASK_EVENTS.TASK_HYDRATE, hydrateHandler);
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            ...createConferenceTaskData(taskId, promotedOwnerId),
+            type: CC_EVENTS.CONTACT_UPDATED,
+          },
+        })
+      );
+
+      expectLastStateMachineEvent(task.sendStateMachineEvent, TaskEvent.CONTACT_OWNER_CHANGED);
+      expect(task.data.interaction.owner).toBe(promotedOwnerId);
+      expect(hydrateHandler).toHaveBeenCalledTimes(1);
+      expect(hydrateHandler).toHaveBeenCalledWith(task);
+    });
+
+    it.each([
+      ['the same owner', previousOwnerId],
+      ['no owner', undefined],
+      ['a blank owner', '   '],
+    ])('keeps ContactUpdated data-only when it carries %s', (_description, owner) => {
+      const task = installTask(createConferenceTaskData(taskId, previousOwnerId));
+      const hydrateHandler = jest.fn();
+      taskManager.on(TASK_EVENTS.TASK_HYDRATE, hydrateHandler);
+      const interaction = createConferenceTaskData(taskId, previousOwnerId).interaction;
+      if (owner === undefined) {
+        delete interaction.owner;
+      } else {
+        interaction.owner = owner;
+      }
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            ...createConferenceTaskData(taskId, previousOwnerId),
+            type: CC_EVENTS.CONTACT_UPDATED,
+            interaction,
+          },
+        })
+      );
+
+      expectLastStateMachineEvent(task.sendStateMachineEvent, TaskEvent.CONTACT_UPDATED);
+      expect(hydrateHandler).not.toHaveBeenCalled();
+    });
+
+    it('correlates child-keyed ContactOwnerChanged and keeps the main task identity', () => {
+      const childTaskId = 'surviving-child-id';
+      const promotedChildId = 'promoted-child-id';
+      const task = installTask(
+        createConferenceTaskData(childTaskId, previousOwnerId, taskId)
+      );
+      const hydrateHandler = jest.fn();
+      taskManager.on(TASK_EVENTS.TASK_HYDRATE, hydrateHandler);
+
+      const ownerChangeData = createConferenceTaskData(
+        promotedChildId,
+        promotedOwnerId,
+        taskId
+      );
+      ownerChangeData.interaction.interactionId = taskId;
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {...ownerChangeData, type: CC_EVENTS.CONTACT_OWNER_CHANGED},
+        })
+      );
+
+      expectLastStateMachineEvent(task.sendStateMachineEvent, TaskEvent.CONTACT_OWNER_CHANGED);
+      expect(task.data.interactionId).toBe(taskId);
+      expect(task.data.interaction.owner).toBe(promotedOwnerId);
+      expect(taskManager.taskCollection[childTaskId]).toBeUndefined();
+      expect(taskManager.taskCollection[promotedChildId]).toBeUndefined();
+      expect(taskManager.taskCollection[taskId]).toBe(task);
+      expect(Object.values(taskManager.taskCollection).filter((entry) => entry === task)).toHaveLength(
+        1
+      );
+      expect(hydrateHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('prefers the exact task for ContactOwnerChanged over related child tasks', () => {
+      const exactTask = installTask(createConferenceTaskData(taskId, previousOwnerId));
+      const childTaskId = 'related-child-id';
+      const childTask = createMockTask(
+        createConferenceTaskData(childTaskId, previousOwnerId, taskId)
+      );
+      taskManager.taskCollection[childTaskId] = childTask;
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            ...createConferenceTaskData(taskId, promotedOwnerId),
+            type: CC_EVENTS.CONTACT_OWNER_CHANGED,
+          },
+        })
+      );
+
+      expectLastStateMachineEvent(exactTask.sendStateMachineEvent, TaskEvent.CONTACT_OWNER_CHANGED);
+      expect(childTask.sendStateMachineEvent).not.toHaveBeenCalled();
+    });
+
+    it('ignores a related ContactOwnerChanged task whose current agent is consult-only', () => {
+      const childTaskId = 'consult-only-child-id';
+      const data = createConferenceTaskData(childTaskId, previousOwnerId, taskId);
+      data.interaction.media[taskId].participants = [previousOwnerId, promotedOwnerId];
+      data.interaction.media[childTaskId] = {
+        mediaResourceId: childTaskId,
+        mediaType: 'telephony',
+        mType: 'consult',
+        participants: [currentAgentId, promotedOwnerId],
+      };
+      const task = installTask(data);
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            ...createConferenceTaskData('unmatched-child-id', promotedOwnerId, taskId),
+            type: CC_EVENTS.CONTACT_OWNER_CHANGED,
+          },
+        })
+      );
+
+      expect(task.sendStateMachineEvent).not.toHaveBeenCalled();
+    });
+
+    it('ignores ambiguous active main-call matches for ContactOwnerChanged', () => {
+      const firstTask = createMockTask(
+        createConferenceTaskData('first-child-id', previousOwnerId, taskId)
+      );
+      const secondTask = createMockTask(
+        createConferenceTaskData('second-child-id', previousOwnerId, taskId)
+      );
+      taskManager.taskCollection = {
+        'first-child-id': firstTask,
+        'second-child-id': secondTask,
+      };
+
+      const ownerChangeData = createConferenceTaskData(
+        'unmatched-child-id',
+        promotedOwnerId,
+        taskId
+      );
+      ownerChangeData.interaction.interactionId = 'unmatched-child-id';
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {...ownerChangeData, type: CC_EVENTS.CONTACT_OWNER_CHANGED},
+        })
+      );
+
+      expect(firstTask.sendStateMachineEvent).not.toHaveBeenCalled();
+      expect(secondTask.sendStateMachineEvent).not.toHaveBeenCalled();
+    });
+
+    it('ignores ContactOwnerChanged when different direct nested IDs match active tasks', () => {
+      const firstTaskId = 'direct-main-id';
+      const secondTaskId = 'direct-parent-id';
+      const firstTask = createMockTask(
+        createConferenceTaskData(firstTaskId, previousOwnerId, firstTaskId)
+      );
+      const secondTask = createMockTask(
+        createConferenceTaskData(secondTaskId, previousOwnerId, secondTaskId)
+      );
+      taskManager.taskCollection = {
+        [firstTaskId]: firstTask,
+        [secondTaskId]: secondTask,
+      };
+
+      const ownerChangeData = createConferenceTaskData(
+        'unmatched-child-id',
+        promotedOwnerId,
+        firstTaskId
+      );
+      ownerChangeData.interaction.interactionId = secondTaskId;
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {...ownerChangeData, type: CC_EVENTS.CONTACT_OWNER_CHANGED},
+        })
+      );
+
+      expect(firstTask.sendStateMachineEvent).not.toHaveBeenCalled();
+      expect(secondTask.sendStateMachineEvent).not.toHaveBeenCalled();
+    });
+
+    it('ignores ContactOwnerChanged without an interaction correlation identifier', () => {
+      const task = installTask(createConferenceTaskData(taskId, previousOwnerId));
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            type: CC_EVENTS.CONTACT_OWNER_CHANGED,
+            interaction: {owner: promotedOwnerId},
+          },
+        })
+      );
+
+      expect(task.sendStateMachineEvent).not.toHaveBeenCalled();
+    });
+
+    it('does not let a late ParticipantLeftConference restore a departed owner', () => {
+      const task = installTask(createConferenceTaskData(taskId, previousOwnerId));
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            ...createConferenceTaskData(taskId, promotedOwnerId),
+            type: CC_EVENTS.CONTACT_UPDATED,
+          },
+        })
+      );
+
+      const participantLeftData = createConferenceTaskData(taskId, previousOwnerId);
+      participantLeftData.participantId = previousOwnerId;
+      participantLeftData.interaction.participants[previousOwnerId].hasLeft = true;
+      participantLeftData.interaction.media[taskId].participants = [
+        currentAgentId,
+        promotedOwnerId,
+      ];
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {...participantLeftData, type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE},
+        })
+      );
+
+      const participantLeaveEvent = expectLastStateMachineEvent(
+        task.sendStateMachineEvent,
+        TaskEvent.PARTICIPANT_LEAVE
+      );
+      expect(participantLeaveEvent.taskData.interaction.owner).toBe(promotedOwnerId);
+      expect(task.data.interaction.owner).toBe(promotedOwnerId);
+    });
+
+    it('does not infer that an incoming owner departed from a partial main-call roster', () => {
+      const task = installTask(createConferenceTaskData(taskId, promotedOwnerId));
+      const partialParticipantLeftData = createConferenceTaskData(taskId, previousOwnerId);
+      partialParticipantLeftData.participantId = 'another-agent-id';
+      partialParticipantLeftData.interaction.media[taskId].participants = [
+        currentAgentId,
+        promotedOwnerId,
+      ];
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            ...partialParticipantLeftData,
+            type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+          },
+        })
+      );
+
+      const participantLeaveEvent = expectLastStateMachineEvent(
+        task.sendStateMachineEvent,
+        TaskEvent.PARTICIPANT_LEAVE
+      );
+      expect(participantLeaveEvent.taskData.interaction.owner).toBe(previousOwnerId);
+      expect(task.data.interaction.owner).toBe(previousOwnerId);
+    });
+
+    it('applies the promoted owner when ParticipantLeftConference arrives first', () => {
+      const task = installTask(createConferenceTaskData(taskId, previousOwnerId));
+      const participantLeftData = createConferenceTaskData(taskId, previousOwnerId);
+      participantLeftData.participantId = previousOwnerId;
+      participantLeftData.interaction.participants[previousOwnerId].hasLeft = true;
+      participantLeftData.interaction.media[taskId].participants = [
+        currentAgentId,
+        promotedOwnerId,
+      ];
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {...participantLeftData, type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE},
+        })
+      );
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            ...createConferenceTaskData(taskId, promotedOwnerId),
+            type: CC_EVENTS.CONTACT_UPDATED,
+          },
+        })
+      );
+
+      expect(task.data.interaction.owner).toBe(promotedOwnerId);
+      expectLastStateMachineEvent(task.sendStateMachineEvent, TaskEvent.CONTACT_OWNER_CHANGED);
     });
   });
 
