@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>web-extension-bridge sample</title>
+  <link rel="stylesheet" href="./popup.css">
+</head>
+
+<body>
+  <header class="head">
+    <h1>web-extension-bridge</h1>
+    <p id="status" class="pill pill--waiting" role="status" aria-live="polite">Loading…</p>
+  </header>
+
+  <section class="panel" aria-labelledby="connections-heading">
+    <div class="panel__head">
+      <h2 id="connections-heading">Connected tabs</h2>
+      <button id="refresh" type="button" class="button">Refresh</button>
+    </div>
+    <ul id="connections" class="list"></ul>
+  </section>
+
+  <section class="panel" aria-labelledby="request-heading">
+    <h2 id="request-heading">Pull from the page</h2>
+    <div class="grid">
+      <label for="topic">Topic</label>
+      <select id="topic">
+        <option value="snapshot">snapshot — reads the page's shared value</option>
+        <option value="echo">echo — round-trips the payload below</option>
+        <option value="boom">boom — handler throws (HANDLER_ERROR)</option>
+        <option value="slow">slow — never answers (TIMEOUT)</option>
+        <option value="missing">missing — no handler (NO_HANDLER)</option>
+      </select>
+
+      <label for="payload">Payload</label>
+      <input id="payload" type="text" value="{&quot;ping&quot;:1}" autocomplete="off">
+
+      <label for="timeout">Timeout (ms)</label>
+      <input id="timeout" type="number" value="5000" min="100" max="30000" step="100">
+    </div>
+    <div class="row">
+      <button id="send" type="button" class="button button--primary">Send request</button>
+      <button id="abort" type="button" class="button" disabled>Abort</button>
+    </div>
+    <pre id="result" class="result" aria-live="polite"></pre>
+  </section>
+
+  <section class="panel" aria-labelledby="buffered-heading">
+    <div class="panel__head">
+      <h2 id="buffered-heading">Pushes</h2>
+      <button id="load-buffered" type="button" class="button">Load buffered</button>
+    </div>
+    <ul id="pushes" class="list list--log"></ul>
+  </section>
+
+  <section class="panel" aria-labelledby="counters-heading">
+    <div class="panel__head">
+      <h2 id="counters-heading">Counters</h2>
+      <button id="load-counters" type="button" class="button">Load</button>
+    </div>
+    <dl id="counters" class="counters"></dl>
+  </section>
+
+  <p class="foot">Local testing only. Origins come from the generated manifest.</p>
+
+  <script src="./vendor/web-extension-bridge-client.js"></script>
+  <script src="./popup.js"></script>
+</body>
+
+</html>
