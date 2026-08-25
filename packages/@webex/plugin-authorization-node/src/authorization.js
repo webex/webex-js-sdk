@@ -50,6 +50,7 @@ const Authorization = WebexPlugin.extend({
     this.webex.request({
       method: 'POST',
       uri: this.config.logoutUrl,
+      allowNonCatalogUrl: true,
       body: {
         token: options.token,
         cisService: this.config.service,
@@ -78,6 +79,7 @@ const Authorization = WebexPlugin.extend({
       .request({
         method: 'POST',
         uri: this.config.tokenUrl,
+        allowNonCatalogUrl: true,
         form: {
           grant_type: 'authorization_code',
           redirect_uri: this.config.redirect_uri,

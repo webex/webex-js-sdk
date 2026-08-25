@@ -285,6 +285,7 @@ const Token = WebexPlugin.extend({
         method: 'POST',
         uri: this.config.tokenUrl,
         addAuthHeader: false,
+        allowNonCatalogUrl: true,
         form: {
           grant_type: 'urn:cisco:oauth:grant-type:scope-reduction',
           token: this.access_token,
@@ -362,6 +363,7 @@ const Token = WebexPlugin.extend({
         .request({
           method: 'POST',
           uri: this.config.tokenUrl,
+          allowNonCatalogUrl: true,
           form: {
             grant_type: 'refresh_token',
             redirect_uri: this.config.redirect_uri,
@@ -454,6 +456,7 @@ const Token = WebexPlugin.extend({
       .request({
         method: 'POST',
         uri: this.config.revokeUrl,
+        allowNonCatalogUrl: true,
         form: {
           token: this.access_token,
           token_type_hint: 'access_token',

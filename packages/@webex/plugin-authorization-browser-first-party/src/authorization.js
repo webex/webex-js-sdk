@@ -552,6 +552,7 @@ const Authorization = WebexPlugin.extend({
       .request({
         method: 'POST',
         uri: this.config.tokenUrl,
+        allowNonCatalogUrl: true,
         form,
         auth: {
           user: this.config.client_id,
