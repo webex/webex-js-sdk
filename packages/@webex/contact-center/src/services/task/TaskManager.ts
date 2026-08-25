@@ -31,6 +31,7 @@ import AnswerCallOnWebexService from '../AnswerCallOnWebexService';
 import {getWebexCallingDeviceDetailsForAgent} from './WebexCallingUtils';
 import WebRTC from './voice/WebRTC';
 import {TaskEvent, type TaskEventPayload} from './state-machine';
+import {MEDIA_TYPE_MAIN_CALL} from './state-machine/constants';
 import {normalizeTaskData} from './taskDataNormalizer';
 import {ApiAIAssistant} from '../ApiAiAssistant';
 
@@ -241,6 +242,15 @@ export default class TaskManager extends EventEmitter {
         return {type: TaskEvent.HYDRATE, taskData: payload, agentId};
 
       case CC_EVENTS.CONTACT_UPDATED:
+        if (
+          task &&
+          typeof payload.interaction?.owner === 'string' &&
+          payload.interaction.owner.trim().length > 0 &&
+          payload.interaction.owner !== task.data?.interaction?.owner
+        ) {
+          return {type: TaskEvent.CONTACT_OWNER_CHANGED, taskData: payload};
+        }
+
         return {type: TaskEvent.CONTACT_UPDATED, taskData: payload};
       case CC_EVENTS.CONTACT_OWNER_CHANGED:
         return {type: TaskEvent.CONTACT_OWNER_CHANGED, taskData: payload};
@@ -597,6 +607,10 @@ export default class TaskManager extends EventEmitter {
       }
     }
 
+    if (!task && eventType === CC_EVENTS.CONTACT_OWNER_CHANGED) {
+      task = this.findTaskForContactOwnerChange(message.data);
+    }
+
     if (!task && MAIN_INTERACTION_CORRELATED_EVENTS.has(eventType)) {
       task = this.findUniqueTaskByRelatedInteraction(message.data);
     }
@@ -613,7 +627,7 @@ export default class TaskManager extends EventEmitter {
       return !wasConsultedTask;
     };
 
-    const adjustedPayload =
+    let adjustedPayload: WebSocketPayload =
       eventType === CC_EVENTS.AGENT_CONSULT_TRANSFERRED ||
       eventType === CC_EVENTS.AGENT_BLIND_TRANSFERRED ||
       eventType === CC_EVENTS.AGENT_VTEAM_TRANSFERRED
@@ -622,6 +636,14 @@ export default class TaskManager extends EventEmitter {
             wrapUpRequired: computeWrapUpRequired(),
           }
         : message.data;
+
+    if (task && eventType === CC_EVENTS.CONTACT_OWNER_CHANGED) {
+      adjustedPayload = TaskManager.preserveMainTaskIdentity(task, adjustedPayload);
+    }
+
+    if (task && eventType === CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE) {
+      adjustedPayload = TaskManager.preserveConfirmedOwner(task, adjustedPayload);
+    }
 
     const stateMachineEvent = TaskManager.mapEventToTaskStateMachineEvent(
       eventType,
@@ -646,41 +668,172 @@ export default class TaskManager extends EventEmitter {
   }
 
   /**
+   * ContactOwnerChanged can identify the promoted agent's child interaction while
+   * the surviving task is stored under the main interaction. Accept one related
+   * task when its existing snapshot or the authoritative incoming promotion proves
+   * current-agent main-call membership, while excluding non-promoted and ambiguous matches.
+   */
+  private findTaskForContactOwnerChange(payload: WebSocketPayload): ITask | undefined {
+    const relatedCandidates = this.findRelatedTasks(payload, {
+      includeCollectionKeys: true,
+      includeMainCallMediaKeys: true,
+    });
+    const incomingShowsCurrentAgentPromotion =
+      this.isCurrentAgentPromotedOnIncomingMainCall(payload);
+    const eligibleCandidates = relatedCandidates.filter(
+      (candidate) =>
+        this.isCurrentAgentActiveOnMainInteraction(candidate.data) ||
+        incomingShowsCurrentAgentPromotion
+    );
+
+    if (eligibleCandidates.length === 1) {
+      return eligibleCandidates[0];
+    }
+
+    if (eligibleCandidates.length > 1) {
+      LoggerProxy.warn('Unable to correlate task event to a unique main interaction task', {
+        module: TASK_MANAGER_FILE,
+        method: 'findTaskForContactOwnerChange',
+        interactionId:
+          payload.interaction?.mainInteractionId ||
+          payload.interaction?.parentInteractionId ||
+          payload.interaction?.callProcessingDetails?.parentInteractionId ||
+          payload.interactionId,
+      });
+
+      return undefined;
+    }
+
+    return undefined;
+  }
+
+  private isCurrentAgentActiveOnMainInteraction(taskData: TaskData | undefined): boolean {
+    const currentAgentId = this.agentId || taskData?.agentId;
+    if (!currentAgentId) return false;
+
+    return TaskManager.isParticipantActiveOnMainInteraction(taskData, currentAgentId);
+  }
+
+  private static isParticipantActiveOnMainInteraction(
+    taskData: TaskData | WebSocketPayload | undefined,
+    participantId: string
+  ): boolean {
+    const interaction = taskData?.interaction;
+    const participant = interaction?.participants?.[participantId];
+    if (!participant || participant.hasLeft === true) return false;
+
+    return Object.values(interaction?.media ?? {}).some(
+      (media) =>
+        media?.mType === MEDIA_TYPE_MAIN_CALL && media.participants?.includes(participantId)
+    );
+  }
+
+  private isCurrentAgentPromotedOnIncomingMainCall(payload: WebSocketPayload): boolean {
+    return Boolean(
+      this.agentId &&
+        payload.interaction?.owner === this.agentId &&
+        TaskManager.isParticipantActiveOnMainInteraction(payload, this.agentId)
+    );
+  }
+
+  private static getMainCallMediaId(
+    interaction: TaskData['interaction'] | undefined
+  ): string | undefined {
+    return Object.entries(interaction?.media ?? {}).find(
+      ([, media]) => media?.mType === MEDIA_TYPE_MAIN_CALL
+    )?.[0];
+  }
+
+  private static getStableMainInteractionId(payload: WebSocketPayload): string | undefined {
+    return (
+      payload.interaction?.mainInteractionId ||
+      TaskManager.getMainCallMediaId(payload.interaction) ||
+      payload.interaction?.interactionId ||
+      payload.interactionId
+    );
+  }
+
+  private canRecoverTaskFromContactOwnerChanged(payload: WebSocketPayload): boolean {
+    const interaction = payload.interaction;
+    const stableInteractionId = TaskManager.getStableMainInteractionId(payload);
+
+    return Boolean(
+      this.agentId &&
+        stableInteractionId &&
+        interaction?.mediaType === MEDIA_CHANNEL.TELEPHONY &&
+        interaction.isTerminated !== true &&
+        interaction.owner === this.agentId &&
+        TaskManager.isParticipantActiveOnMainInteraction(payload, this.agentId)
+    );
+  }
+
+  /** Keep a related owner-change event from re-keying the surviving main task to a child ID. */
+  private static preserveMainTaskIdentity(
+    task: ITask,
+    payload: WebSocketPayload
+  ): WebSocketPayload {
+    const currentMainInteractionId = task.data?.interaction?.mainInteractionId;
+    const payloadMainInteractionId = payload.interaction?.mainInteractionId;
+    const currentMainMediaId = TaskManager.getMainCallMediaId(task.data?.interaction);
+    const payloadMainMediaId = TaskManager.getMainCallMediaId(payload.interaction);
+    const stableInteractionId =
+      currentMainInteractionId ||
+      payloadMainInteractionId ||
+      currentMainMediaId ||
+      payloadMainMediaId ||
+      payload.interaction?.interactionId ||
+      task.data?.interaction?.interactionId ||
+      task.data?.interactionId;
+
+    if (!stableInteractionId || stableInteractionId === payload.interactionId) {
+      return payload;
+    }
+
+    return {...payload, interactionId: stableInteractionId};
+  }
+
+  /**
+   * ParticipantLeftConference may arrive after an owner update while still carrying
+   * the departed owner. Keep the confirmed owner only when the new roster proves that
+   * owner is active on mainCall and identifies the incoming owner as departed.
+   */
+  private static preserveConfirmedOwner(task: ITask, payload: WebSocketPayload): WebSocketPayload {
+    const confirmedOwner = task.data?.interaction?.owner;
+    const incomingOwner = payload.interaction?.owner;
+    if (!confirmedOwner || !incomingOwner || confirmedOwner === incomingOwner) {
+      return payload;
+    }
+
+    const confirmedOwnerIsActive = TaskManager.isParticipantActiveOnMainInteraction(
+      payload,
+      confirmedOwner
+    );
+    const incomingOwnerIsExplicitlyDeparted =
+      payload.participantId === incomingOwner ||
+      payload.interaction?.participants?.[incomingOwner]?.hasLeft === true;
+
+    if (!confirmedOwnerIsActive || !incomingOwnerIsExplicitlyDeparted) {
+      return payload;
+    }
+
+    return {
+      ...payload,
+      owner: confirmedOwner,
+      interaction: {...payload.interaction, owner: confirmedOwner},
+    };
+  }
+
+  /**
    * Resolve lifecycle events that are emitted for the main interaction while the
    * local task can still be indexed by a child consult interaction. Exact task
    * keys are handled before this fallback. Multiple aliases of the same task are
    * treated as one candidate; genuinely ambiguous matches are intentionally ignored.
    */
-  private findUniqueTaskByRelatedInteraction(payload: WebSocketPayload): ITask | undefined {
-    const payloadInteractionIds = new Set(
-      [
-        payload.interactionId,
-        payload.interaction?.interactionId,
-        payload.interaction?.mainInteractionId,
-        payload.interaction?.parentInteractionId,
-        payload.interaction?.callProcessingDetails?.parentInteractionId,
-      ].filter((interactionId): interactionId is string => Boolean(interactionId))
-    );
-    if (payloadInteractionIds.size === 0) return undefined;
-
-    const candidates = [
-      ...new Set(
-        Object.values(this.taskCollection).filter((candidate) => {
-          const taskInteraction = candidate?.data?.interaction;
-          const candidateInteractionIds = [
-            candidate?.data?.interactionId,
-            taskInteraction?.interactionId,
-            taskInteraction?.mainInteractionId,
-            taskInteraction?.parentInteractionId,
-            taskInteraction?.callProcessingDetails?.parentInteractionId,
-          ];
-
-          return candidateInteractionIds.some(
-            (interactionId) => Boolean(interactionId) && payloadInteractionIds.has(interactionId)
-          );
-        })
-      ),
-    ];
+  private findUniqueTaskByRelatedInteraction(
+    payload: WebSocketPayload,
+    candidateFilter: (task: ITask) => boolean = () => true
+  ): ITask | undefined {
+    const candidates = this.findRelatedTasks(payload).filter(candidateFilter);
 
     if (candidates.length === 1) {
       return candidates[0];
@@ -699,6 +852,49 @@ export default class TaskManager extends EventEmitter {
     }
 
     return undefined;
+  }
+
+  private findRelatedTasks(
+    payload: WebSocketPayload,
+    options: {includeCollectionKeys?: boolean; includeMainCallMediaKeys?: boolean} = {}
+  ): ITask[] {
+    const {includeCollectionKeys = false, includeMainCallMediaKeys = false} = options;
+    const payloadInteractionIds = new Set(
+      [
+        payload.interactionId,
+        payload.interaction?.interactionId,
+        payload.interaction?.mainInteractionId,
+        payload.interaction?.parentInteractionId,
+        payload.interaction?.callProcessingDetails?.parentInteractionId,
+        ...(includeMainCallMediaKeys ? [TaskManager.getMainCallMediaId(payload.interaction)] : []),
+      ].filter((interactionId): interactionId is string => Boolean(interactionId))
+    );
+    if (payloadInteractionIds.size === 0) return [];
+
+    return [
+      ...new Set(
+        Object.entries(this.taskCollection)
+          .filter(([taskId, candidate]) => {
+            const taskInteraction = candidate?.data?.interaction;
+            const candidateInteractionIds = [
+              ...(includeCollectionKeys ? [taskId] : []),
+              candidate?.data?.interactionId,
+              taskInteraction?.interactionId,
+              taskInteraction?.mainInteractionId,
+              taskInteraction?.parentInteractionId,
+              taskInteraction?.callProcessingDetails?.parentInteractionId,
+              ...(includeMainCallMediaKeys
+                ? [TaskManager.getMainCallMediaId(taskInteraction)]
+                : []),
+            ];
+
+            return candidateInteractionIds.some(
+              (interactionId) => Boolean(interactionId) && payloadInteractionIds.has(interactionId)
+            );
+          })
+          .map(([, candidate]) => candidate)
+      ),
+    ];
   }
 
   /**
@@ -726,6 +922,9 @@ export default class TaskManager extends EventEmitter {
       case CC_EVENTS.CONTACT_MERGED:
         return this.handleContactMergedEvent(context);
 
+      case CC_EVENTS.CONTACT_OWNER_CHANGED:
+        return this.handleContactOwnerChanged(context);
+
       case CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION:
         return this.handleCampaignPreviewReservation(context);
 
@@ -735,6 +934,74 @@ export default class TaskManager extends EventEmitter {
       default:
         return {task: context.task};
     }
+  }
+
+  /**
+   * Recover the promoted agent's active voice task when local task state was lost.
+   * Existing related tasks are never replaced: an unresolved or ambiguous relation
+   * is safer to ignore than to create a duplicate task.
+   */
+  private handleContactOwnerChanged(context: EventContext): TaskEventActions {
+    if (context.task) {
+      return {task: context.task};
+    }
+
+    const {payload} = context;
+    if (
+      this.findRelatedTasks(payload, {
+        includeCollectionKeys: true,
+        includeMainCallMediaKeys: true,
+      }).length > 0 ||
+      !this.canRecoverTaskFromContactOwnerChanged(payload)
+    ) {
+      return {};
+    }
+
+    const stableInteractionId = TaskManager.getStableMainInteractionId(payload);
+    if (!stableInteractionId || this.taskCollection[stableInteractionId]) {
+      return {};
+    }
+
+    const normalizedPayload: WebSocketPayload =
+      payload.interactionId === stableInteractionId
+        ? payload
+        : {...payload, interactionId: stableInteractionId};
+    const taskData: TaskData = {
+      ...normalizedPayload,
+      owner: normalizedPayload.interaction.owner,
+      wrapUpRequired: normalizedPayload.interaction.participants?.[this.agentId]?.isWrapUp || false,
+      isConferenceInProgress: getIsConferenceInProgress(normalizedPayload),
+      isConsulted: false,
+      isAutoAnswering: false,
+    };
+    const task = TaskFactory.createTask(
+      this.contact,
+      this.webCallingService,
+      taskData,
+      this.configFlags,
+      this.wrapupData,
+      this.agentId,
+      this.answerCallOnWebexService
+    );
+
+    this.taskCollection[stableInteractionId] = task;
+
+    // Restore the actor before installing listeners so the internal hydrate does
+    // not leak as a second public hydrate or as an incoming-task notification.
+    task.sendStateMachineEvent({
+      type: TaskEvent.HYDRATE,
+      taskData,
+      agentId: this.agentId,
+    } as TaskEventPayload);
+
+    this.setupTaskListeners(task);
+    context.payload = taskData;
+    context.stateMachineEvent = {
+      type: TaskEvent.CONTACT_OWNER_CHANGED,
+      taskData,
+    };
+
+    return {task};
   }
 
   private handleCampaignContactUpdated(context: EventContext) {
