@@ -309,7 +309,7 @@
       "canonical_spec": "src/services/task/ai-docs/task-spec.md",
       "contracts": {
         "provides": [
-          "Task/Voice/WebRTC/Digital lifecycle APIs; TaskManager; task events/types; ordered action-specific consult/transfer destination controls; call-control and dialer operations including acceptPreviewContact, skipPreviewContact, and removePreviewContact"
+          "Task/Voice/WebRTC/Digital lifecycle APIs; TaskManager lifecycle correlation, narrowly scoped backend-authoritative ContactOwnerChanged recovery, and task-event publication, including routing owner-changing ContactUpdated through the existing task:hydrate event; task events/types; ordered action-specific consult/transfer destination controls; call-control and dialer operations including acceptPreviewContact, skipPreviewContact, and removePreviewContact"
         ],
         "requires": [
           "Contact/dialer AqmReqs; WebSocket managers; @webex/calling; MetricsManager; XState task-state module"
