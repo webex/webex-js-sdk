@@ -3931,6 +3931,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@noble/hashes@npm:1.4.0":
+  version: 1.4.0
+  resolution: "@noble/hashes@npm:1.4.0"
+  checksum: 8ba816ae26c90764b8c42493eea383716396096c5f7ba6bea559993194f49d80a73c081f315f4c367e51bd2d5891700bcdfa816b421d24ab45b41cb03e4f3342
+  languageName: node
+  linkType: hard
+
 "@noble/hashes@npm:^1.1.5":
   version: 1.8.0
   resolution: "@noble/hashes@npm:1.8.0"
@@ -8084,7 +8091,7 @@ __metadata:
     node-jose: ^2.2.0
     node-kms: ^0.4.1
     node-scr: ^0.3.0
-    pkijs: ^2.1.84
+    pkijs: ^3.4.0
     prettier: ^2.7.1
     safe-buffer: ^5.2.0
     sinon: ^9.2.4
@@ -10901,7 +10908,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"asn1js@npm:^3.0.3, asn1js@npm:^3.0.5, asn1js@npm:^3.0.6":
+"asn1js@npm:^3.0.5, asn1js@npm:^3.0.6":
   version: 3.0.7
   resolution: "asn1js@npm:3.0.7"
   dependencies:
@@ -12424,10 +12431,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bytestreamjs@npm:^1.0.29":
-  version: 1.1.3
-  resolution: "bytestreamjs@npm:1.1.3"
-  checksum: 3f8482f25d7104c44aed94036113e5007a13f2400291c9b4709932d30491a13fc2a7f1b38b4b02e22dbe8a07da98c9c3d5c61123fa9db47e5cfa307c5f747b8b
+"bytestreamjs@npm:^2.0.1":
+  version: 2.0.1
+  resolution: "bytestreamjs@npm:2.0.1"
+  checksum: db4cb039794675a0ec1f097d228e4897378cdf5f794dca04fc3bff63efb466524fcfac95e59e89e928822a80fad7574734c02b8eace9e841d8599da43c82768a
   languageName: node
   linkType: hard
 
@@ -27513,14 +27520,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pkijs@npm:^2.1.84":
-  version: 2.4.0
-  resolution: "pkijs@npm:2.4.0"
+"pkijs@npm:^3.4.0":
+  version: 3.4.0
+  resolution: "pkijs@npm:3.4.0"
   dependencies:
-    asn1js: ^3.0.3
-    bytestreamjs: ^1.0.29
+    "@noble/hashes": 1.4.0
+    asn1js: ^3.0.6
+    bytestreamjs: ^2.0.1
+    pvtsutils: ^1.3.6
     pvutils: ^1.1.3
-  checksum: 0534d3ff4eb50ebe93818cc93a5190d78d4702ba55c0ffd270e10fddc58659b75f5d52b17ac0b100ad65757d595e5cc2985e646db4b295a09fb0c37eed58cae3
+    tslib: ^2.8.1
+  checksum: 9e146816ff7d8c8cf98bf3f75f4fe06a206b0fbec992fd6a8d799a8e99d4c7647b10702e565ba1b48eac004f87098f989e941a119662e3a03133b012fc2705f7
   languageName: node
   linkType: hard
 
