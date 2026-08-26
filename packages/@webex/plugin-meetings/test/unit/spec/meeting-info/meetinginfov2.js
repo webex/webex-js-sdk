@@ -1409,5 +1409,87 @@ describe('plugin-meetings', () => {
         });
       });
     });
+
+    describe('#fetchMeetingDetailInfo', () => {
+      const meetingUrl = 'https://example.webex.com/example/j.php?MTID=abc';
+      const requestResponse = {
+        statusCode: 200,
+        body: {meetingKey: '1234323'},
+      };
+
+      it('POSTs to /wbxappapi/v1/meetingInfo/uniqueQuery on the host derived from meetingUrl', async () => {
+        webex.request.resolves(requestResponse);
+
+        const result = await meetingInfo.fetchMeetingDetailInfo(meetingUrl);
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri: 'https://example.webex.com/wbxappapi/v1/meetingInfo/uniqueQuery',
+          body: {meetingUrl},
+        });
+        assert.deepEqual(result, requestResponse);
+        assert.calledWith(
+          Metrics.sendBehavioralMetric,
+          BEHAVIORAL_METRICS.FETCH_MEETING_DETAIL_INFO_SUCCESS
+        );
+      });
+
+      it('throws and reports a failure metric when meetingUrl is missing', async () => {
+        try {
+          await meetingInfo.fetchMeetingDetailInfo(undefined);
+          assert.fail('fetchMeetingDetailInfo did not throw');
+        } catch (err) {
+          assert.equal(err.message, 'meetingUrl is required to fetch meeting detail info');
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.FETCH_MEETING_DETAIL_INFO_FAILURE,
+            {reason: err.message}
+          );
+          assert.notCalled(webex.request);
+        }
+      });
+
+      it('throws and reports a failure metric when meetingUrl is unparseable', async () => {
+        try {
+          await meetingInfo.fetchMeetingDetailInfo('not a url');
+          assert.fail('fetchMeetingDetailInfo did not throw');
+        } catch (err) {
+          assert.equal(err.message, 'Invalid meetingUrl: not a url');
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.FETCH_MEETING_DETAIL_INFO_FAILURE,
+            {reason: err.message}
+          );
+          assert.notCalled(webex.request);
+        }
+      });
+
+      it('rethrows the request error verbatim and reports a failure metric', async () => {
+        const rawErr = {
+          statusCode: 500,
+          body: {code: 500001, message: 'a message'},
+          message: 'a message',
+          stack: 'stack-trace',
+        };
+        webex.request = sinon.stub().rejects(rawErr);
+
+        try {
+          await meetingInfo.fetchMeetingDetailInfo(meetingUrl);
+          assert.fail('expected the original error to be re-thrown');
+        } catch (err) {
+          assert.equal(err, rawErr);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.FETCH_MEETING_DETAIL_INFO_FAILURE,
+            {
+              reason: 'a message',
+              statusCode: 500,
+              code: 500001,
+              stack: 'stack-trace',
+            }
+          );
+        }
+      });
+    });
   });
 });
