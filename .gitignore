@@ -1,6 +1,8 @@
 # Documentation
 packages/**/docs/
 
+/**/.generated/
+
 ~*
 *.tmp
 .tmp_uploads
