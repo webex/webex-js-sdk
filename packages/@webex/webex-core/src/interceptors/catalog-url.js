@@ -48,18 +48,26 @@ export default class CatalogUrlInterceptor extends Interceptor {
       return Promise.resolve(options);
     }
 
-    // Check if URL is in service catalog
-    const service = this.webex.internal.services.getServiceFromUrl(url);
+    const {services} = this.webex.internal;
 
-    if (service) {
-      // URL is in catalog - allow
+    // Check if URL is in service catalog
+    if (services.getServiceFromUrl(url)) {
       return Promise.resolve(options);
     }
 
-    // URL not in catalog - block the request
+    // Honor allowedDomains (same policy as auth interceptor)
+    if (
+      services.validateDomains &&
+      services.hasAllowedDomains() &&
+      services.isAllowedDomainUrl(url)
+    ) {
+      return Promise.resolve(options);
+    }
+
+    // URL not in catalog or allowed domains - block the request
     return Promise.reject(
       new Error(
-        `Request blocked: URL not in service catalog: ${url}. ` +
+        `Request blocked: URL not in service catalog or allowed domains: ${url}. ` +
           'Use {allowNonCatalogUrl: true} to bypass validation.'
       )
     );

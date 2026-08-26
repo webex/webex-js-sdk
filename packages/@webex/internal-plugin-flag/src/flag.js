@@ -83,6 +83,11 @@ const Flag = WebexCore.WebexPlugin.extend({
    * TODO: this should be implemented as a batched request when migrating to the modular sdk
    */
   async mapToActivities(flags) {
+    // Wait for the postauth catalog to be ready before validating URLs.
+    // Without this, calls immediately after webex.ready would see an empty
+    // catalog and incorrectly filter all flags as unrecognized.
+    await this.webex.internal.services.waitForCatalog('postauth');
+
     const mapUrlActivities = new Map();
 
     for (const flag of flags) {

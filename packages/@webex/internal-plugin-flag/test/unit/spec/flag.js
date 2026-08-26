@@ -26,11 +26,14 @@ describe('plugin-flag', () => {
 
     describe('#mapToActivities()', () => {
       let getServiceFromUrlStub;
+      let waitForCatalogStub;
 
       beforeEach(() => {
         getServiceFromUrlStub = sinon.stub();
+        waitForCatalogStub = sinon.stub().resolves();
         webex.internal.services = {
           getServiceFromUrl: getServiceFromUrlStub,
+          waitForCatalog: waitForCatalogStub,
         };
         // Reset the request stub that MockWebex already created
         webex.request.resetHistory();

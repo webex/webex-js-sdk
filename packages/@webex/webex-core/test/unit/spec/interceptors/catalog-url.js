@@ -153,6 +153,70 @@ describe('webex-core', () => {
             await assert.isRejected(interceptor.onRequest(options), /Request blocked/);
           });
         });
+
+        describe('allowedDomains support', () => {
+          beforeEach(() => {
+            // Add allowedDomains methods to mock
+            webex.internal.services.validateDomains = true;
+            webex.internal.services.hasAllowedDomains = sinon.stub();
+            webex.internal.services.isAllowedDomainUrl = sinon.stub();
+          });
+
+          it('allows URLs in allowedDomains when not in catalog', async () => {
+            const options = {uri: 'https://cdn.example.com/files/encrypted-attachment.bin'};
+            webex.internal.services.getServiceFromUrl.returns(undefined);
+            webex.internal.services.hasAllowedDomains.returns(true);
+            webex.internal.services.isAllowedDomainUrl.returns(true);
+
+            const result = await interceptor.onRequest(options);
+
+            assert.deepEqual(result, options);
+            assert.calledOnceWithExactly(webex.internal.services.isAllowedDomainUrl, options.uri);
+          });
+
+          it('blocks URLs not in catalog and not in allowedDomains', async () => {
+            const options = {uri: 'https://attacker.com/steal'};
+            webex.internal.services.getServiceFromUrl.returns(undefined);
+            webex.internal.services.hasAllowedDomains.returns(true);
+            webex.internal.services.isAllowedDomainUrl.returns(false);
+
+            await assert.isRejected(
+              interceptor.onRequest(options),
+              /Request blocked: URL not in service catalog or allowed domains/
+            );
+          });
+
+          it('blocks when validateDomains is false', async () => {
+            const options = {uri: 'https://cdn.example.com/files/attachment.bin'};
+            webex.internal.services.validateDomains = false;
+            webex.internal.services.getServiceFromUrl.returns(undefined);
+            webex.internal.services.hasAllowedDomains.returns(true);
+            webex.internal.services.isAllowedDomainUrl.returns(true);
+
+            await assert.isRejected(interceptor.onRequest(options), /Request blocked/);
+            assert.notCalled(webex.internal.services.isAllowedDomainUrl);
+          });
+
+          it('blocks when no allowedDomains configured', async () => {
+            const options = {uri: 'https://cdn.example.com/files/attachment.bin'};
+            webex.internal.services.getServiceFromUrl.returns(undefined);
+            webex.internal.services.hasAllowedDomains.returns(false);
+
+            await assert.isRejected(interceptor.onRequest(options), /Request blocked/);
+            assert.notCalled(webex.internal.services.isAllowedDomainUrl);
+          });
+
+          it('skips allowedDomains check when URL is in catalog', async () => {
+            const options = {uri: 'https://conv-a.wbx2.com/conversation/api/v1/messages'};
+            webex.internal.services.getServiceFromUrl.returns({name: 'conversation'});
+
+            const result = await interceptor.onRequest(options);
+
+            assert.deepEqual(result, options);
+            assert.notCalled(webex.internal.services.hasAllowedDomains);
+            assert.notCalled(webex.internal.services.isAllowedDomainUrl);
+          });
+        });
       });
     });
   });
