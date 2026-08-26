@@ -2208,6 +2208,37 @@ describe('Task AI summary APIs', () => {
     );
   });
 
+  it('does not retain correlation when a post-call summary request fails', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const {adapter} = createSummaryMocks(task);
+    const requestError = createAISummaryError(
+      AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE
+    );
+
+    adapter.sendSummaryGetEvent.mockRejectedValueOnce(requestError);
+
+    await expect(task.requestPostCallSummary()).rejects.toBe(requestError);
+
+    task.updateTaskData(
+      createAISummaryTaskData({
+        interactionId: 'current-interaction',
+        interaction: {mainInteractionId: 'current-conversation'} as any,
+      }),
+      true
+    );
+
+    await expect(
+      task.sendPostCallSummaryResponse(createPostCallResponsePayload())
+    ).resolves.toBeUndefined();
+    expect(adapter.sendSummaryResponseEvent).toHaveBeenCalledWith(
+      'agent-1',
+      expect.objectContaining({
+        interactionId: 'current-interaction',
+        conversationId: 'current-conversation',
+      })
+    );
+  });
+
   it.each([
     {
       label: 'post-call',

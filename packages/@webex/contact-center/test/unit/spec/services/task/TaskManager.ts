@@ -5838,10 +5838,12 @@ describe('TaskManager', () => {
         undefined,
         undefined,
         currentAgentId,
+        undefined,
         undefined
       );
 
       const recoveredTask = (TaskFactory.createTask as jest.Mock).mock.results[0].value;
+      expectTaskConfiguredForAISummary(recoveredTask);
       expect(recoveredTask.sendStateMachineEvent).toHaveBeenCalledTimes(2);
       expect(recoveredTask.sendStateMachineEvent).toHaveBeenNthCalledWith(
         1,

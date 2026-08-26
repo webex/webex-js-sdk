@@ -1542,9 +1542,11 @@ export default class TaskManager extends EventEmitter {
       this.configFlags,
       this.wrapupData,
       this.agentId,
+      this.agentName,
       this.answerCallOnWebexService
     );
 
+    this.configureTaskAISummary(task);
     this.taskCollection[stableInteractionId] = task;
 
     // Restore the actor before installing listeners so the internal hydrate does
@@ -1556,6 +1558,8 @@ export default class TaskManager extends EventEmitter {
     } as TaskEventPayload);
 
     this.setupTaskListeners(task);
+    this.retainFeatureEnablementForTask(task);
+    this.deliverFeatureEnablementToTask(task);
     context.payload = taskData;
     context.stateMachineEvent = {
       type: TaskEvent.CONTACT_OWNER_CHANGED,

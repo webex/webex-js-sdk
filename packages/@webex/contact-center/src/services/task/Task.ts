@@ -498,7 +498,6 @@ export default abstract class Task extends EventEmitter implements ITask {
         throw createAISummaryError(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED);
       }
 
-      this.postCallSummaryResponseContext = {conversationId, interactionId};
       const result = await this.requestAISummary(
         runtime,
         'POST_CALL_SUMMARY',
@@ -507,6 +506,8 @@ export default abstract class Task extends EventEmitter implements ITask {
         interactionId,
         AIAssistantEventName.GET_POST_CALL_SUMMARY
       );
+
+      this.postCallSummaryResponseContext = {conversationId, interactionId};
 
       this.trackAISummaryOperation(
         POST_CALL_REQUEST_METRIC.success,
