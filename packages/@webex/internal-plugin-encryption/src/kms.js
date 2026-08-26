@@ -784,27 +784,36 @@ const KMS = WebexPlugin.extend({
   },
 
   /**
-   * Validates the KMS static public key against the configured CA roots. When
-   * `kmsCertificateValidationReportOnly` is set, validation failures are
-   * reported as a metric and the key is used regardless.
+   * Validates the KMS static public key against the configured CA roots. The
+   * enforced `caroots` bundle rejects on failure. When a `carootsReportOnly`
+   * bundle is also configured, it is validated in addition to `caroots`, but a
+   * failure against it is only reported as a metric so a new bundle can be
+   * trialled without risking failure.
    * @private
    * @param {Object} kmsStaticPubKey
    * @returns {Promise<Object>} the KMS static public key
    */
   _validateKMSStaticPubKey(kmsStaticPubKey) {
-    return validateKMS(this.config.caroots)(kmsStaticPubKey).catch((reason) => {
-      if (!this.config.kmsCertificateValidationReportOnly) {
-        return Promise.reject(reason);
+    const {caroots, carootsReportOnly} = this.config;
+
+    return validateKMS(caroots)(kmsStaticPubKey).then((jwt) => {
+      if (!carootsReportOnly) {
+        return jwt;
       }
 
-      this.logger.warn('kms: certificate validation failed (report only)', reason);
+      return validateKMS(carootsReportOnly)(kmsStaticPubKey)
+        .catch((reason) => {
+          this.logger.warn('kms: report-only certificate validation failed', reason);
 
-      this.webex.internal.metrics.submitClientMetrics(JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED, {
-        fields: {success: false},
-        tags: {reason: reason.message, kid: kmsStaticPubKey && kmsStaticPubKey.kid},
-      });
-
-      return kmsStaticPubKey;
+          this.webex.internal.metrics.submitClientMetrics(
+            JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED,
+            {
+              fields: {success: false},
+              tags: {reason: reason.message, kid: kmsStaticPubKey && kmsStaticPubKey.kid},
+            }
+          );
+        })
+        .then(() => jwt);
     });
   },
 
