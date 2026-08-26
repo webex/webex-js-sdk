@@ -1284,7 +1284,7 @@ describe('webex.cc', () => {
         interactionId: 'interaction-1',
         postCallEnabled: true,
         midCallEnabled: true,
-        actionTimeStamp: 1,
+        actionTimestamp: 1,
       }
     ) => {
       harness.emitRtdFrame(CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT, payload);
@@ -1296,7 +1296,7 @@ describe('webex.cc', () => {
         interactionId: 'interaction-1',
         postCallEnabled: true,
         midCallEnabled: true,
-        actionTimeStamp: 1,
+        actionTimestamp: 1,
       }
     ) => {
       harness.dispatchRtdFrame(CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT, payload);
@@ -1401,7 +1401,7 @@ describe('webex.cc', () => {
         interactionId: 'interaction-1',
         postCallEnabled: true,
         midCallEnabled: true,
-        actionTimeStamp: 7,
+        actionTimestamp: 7,
       };
 
       webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
@@ -1506,7 +1506,7 @@ describe('webex.cc', () => {
         interactionId: 'orphan-before-register',
         postCallEnabled: true,
         midCallEnabled: true,
-        actionTimeStamp: 3,
+        actionTimestamp: 3,
       });
       harness.dispatchRtdFrame(CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT, {
         conversationId: 'queued-before-register',
@@ -1527,7 +1527,7 @@ describe('webex.cc', () => {
         interactionId: 'orphan-before-reconnect',
         postCallEnabled: true,
         midCallEnabled: true,
-        actionTimeStamp: 4,
+        actionTimestamp: 4,
       });
       harness.dispatchRtdFrame(CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT, {
         conversationId: 'queued-before-reconnect',
@@ -1547,7 +1547,7 @@ describe('webex.cc', () => {
         interactionId: 'interaction-1',
         postCallEnabled: false,
         midCallEnabled: true,
-        actionTimeStamp: 5,
+        actionTimestamp: 5,
       });
 
       await webex.cc.deregister();
@@ -1715,7 +1715,7 @@ describe('webex.cc', () => {
         interactionId,
         postCallEnabled: true,
         midCallEnabled: true,
-        actionTimeStamp: 9,
+        actionTimestamp: 9,
       });
 
       const postCallRequest = retainedTask.requestPostCallSummary();

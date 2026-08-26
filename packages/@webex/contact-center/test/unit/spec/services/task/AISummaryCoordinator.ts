@@ -624,7 +624,7 @@ describe('AISummaryCoordinator', () => {
     expect(JSON.stringify(onReceiverDrop.mock.calls)).not.toContain('private-agent');
 
     onReceiverDrop.mockClear();
-    coordinator.routeReceivingSummary({conversationId: 'conversation-2'}, []);
+    coordinator.routeReceivingSummary({conversationId: 'conversation-2', summaryText: 'summary'}, []);
     jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS);
 
     expect(onReceiverDrop).toHaveBeenCalledWith({
@@ -637,7 +637,7 @@ describe('AISummaryCoordinator', () => {
   it('should clear receiver buffers, feature snapshots, and timers during full cleanup', () => {
     const coordinator = new AISummaryCoordinator();
 
-    coordinator.routeReceivingSummary({conversationId: 'conversation-1'}, []);
+    coordinator.routeReceivingSummary({conversationId: 'conversation-1', summaryText: 'summary'}, []);
     coordinator.setFeatureEnablement({interactionId: 'interaction-1', postCallEnabled: true}, false);
     expect(jest.getTimerCount()).toBe(2);
 

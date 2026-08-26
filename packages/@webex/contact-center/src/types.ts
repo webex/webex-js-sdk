@@ -982,16 +982,12 @@ export const AIAssistantEventName = {
   GET_SUGGESTIONS: 'GET_SUGGESTIONS',
   /** Add extra context to refine a suggested response */
   ADD_SUGGESTIONS_EXTRA_CONTEXT: 'ADD_SUGGESTIONS_EXTRA_CONTEXT',
-  /** @deprecated Use GET_MID_CALL_CONSULT_SUMMARY for CONSULT or GET_MID_CALL_TRANSFER_SUMMARY for TRANSFER. */
-  GET_MID_CALL_SUMMARY: 'GET_MID_CALL_SUMMARY',
   /** Request post-call summary generation */
   GET_POST_CALL_SUMMARY: 'GET_POST_CALL_SUMMARY',
   /** Request consult mid-call summary generation */
   GET_MID_CALL_CONSULT_SUMMARY: 'GET_MID_CALL_CONSULT_SUMMARY',
   /** Request transfer mid-call summary generation */
   GET_MID_CALL_TRANSFER_SUMMARY: 'GET_MID_CALL_TRANSFER_SUMMARY',
-  /** @deprecated Use MID_CALL_CONSULT_SUMMARY_RESPONSE for CONSULT or MID_CALL_TRANSFER_SUMMARY_RESPONSE for TRANSFER. */
-  MID_CALL_SUMMARY_RESPONSE: 'MID_CALL_SUMMARY_RESPONSE',
   /** Post-call summary response event */
   POST_CALL_SUMMARY_RESPONSE: 'POST_CALL_SUMMARY_RESPONSE',
   /** Consult mid-call summary response event */

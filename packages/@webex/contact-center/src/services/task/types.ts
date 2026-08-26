@@ -1758,7 +1758,7 @@ export type MidCallSummaryReceivingAgentPayload = {
   adaptiveCardId?: string;
   languageCode?: string;
   resolution?: string;
-  summaryText?: string;
+  summaryText: string;
   timestamp?: number;
   [key: string]: unknown;
 };
@@ -1767,7 +1767,7 @@ export type FeatureEnablementEventPayload = {
   interactionId: string;
   midCallEnabled?: boolean;
   postCallEnabled?: boolean;
-  actionTimeStamp?: number;
+  actionTimestamp?: number;
   [key: string]: unknown;
 };
 

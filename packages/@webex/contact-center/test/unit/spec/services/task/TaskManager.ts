@@ -713,7 +713,7 @@ describe('TaskManager', () => {
           interactionId: taskId,
           postCallEnabled: true,
           midCallEnabled: false,
-          actionTimeStamp: 10,
+          actionTimestamp: 10,
         },
       },
     };
@@ -763,7 +763,7 @@ describe('TaskManager', () => {
       interactionId: taskId,
       postCallEnabled: true,
       midCallEnabled: false,
-      actionTimeStamp: 10,
+      actionTimestamp: 10,
     };
 
     taskManager.handleRealtimeWebsocketEvent(
@@ -783,7 +783,7 @@ describe('TaskManager', () => {
       interactionId: newInteractionId,
       postCallEnabled: true,
       midCallEnabled: true,
-      actionTimeStamp: 5,
+      actionTimestamp: 5,
     };
 
     // Feature frame arrives before task registration — stored as orphan
@@ -831,7 +831,7 @@ describe('TaskManager', () => {
       interactionId: conversationId,
       postCallEnabled: true,
       midCallEnabled: true,
-      actionTimeStamp: 10,
+      actionTimestamp: 10,
     };
 
     taskManager.taskCollection = {
@@ -1689,6 +1689,11 @@ describe('TaskManager', () => {
       postCallEnabled: true,
       midCallEnabled: true,
     };
+    const assignedFeaturePayload = {
+      interactionId: assignedInteractionId,
+      postCallEnabled: false,
+      midCallEnabled: true,
+    };
     const receivingPayload = {
       conversationId,
       summaryText: 'buffered reservation rekey summary',
@@ -1713,6 +1718,8 @@ describe('TaskManager', () => {
 
     const reservationTask = taskManager.getTask(reservationInteractionId);
     reservationTask.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT, receiverHandler);
+    const featureHandler = jest.fn();
+    reservationTask.on(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featureHandler);
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
@@ -1726,12 +1733,22 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
+        type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+        data: {data: assignedFeaturePayload},
+      })
+    );
+
+    expect(coordinator.getFeatureEnablement(assignedInteractionId)).toEqual(assignedFeaturePayload);
+    expect(jest.getTimerCount()).toBe(1);
+
+    taskManager.handleRealtimeWebsocketEvent(
+      JSON.stringify({
         type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         data: {data: receivingPayload},
       })
     );
 
-    expect(jest.getTimerCount()).toBe(1);
+    expect(jest.getTimerCount()).toBe(2);
 
     webSocketManagerMock.emit(
       'message',
@@ -1754,6 +1771,7 @@ describe('TaskManager', () => {
     expect(taskManager.getTask(assignedInteractionId)).toBe(reservationTask);
     expect(taskManager.getTask(reservationInteractionId)).toBeUndefined();
     expect(coordinator.getFeatureEnablement(reservationInteractionId)).toBeUndefined();
+    expect(featureHandler).toHaveBeenCalledWith(assignedFeaturePayload);
     expect(receiverHandler).toHaveBeenCalledTimes(1);
     expect(receiverHandler).toHaveBeenCalledWith(receivingPayload);
     expect(getInboundDropMetricCalls()).toHaveLength(0);
@@ -2156,7 +2174,7 @@ describe('TaskManager', () => {
     );
 
     coordinator.setFeatureEnablement({interactionId: taskId, postCallEnabled: true}, false);
-    coordinator.routeReceivingSummary({conversationId: 'conversation-1'}, []);
+    coordinator.routeReceivingSummary({conversationId: 'conversation-1', summaryText: 'summary'}, []);
     expect(jest.getTimerCount()).toBe(4);
 
     taskManager.clearAISummaryState();
@@ -2186,7 +2204,7 @@ describe('TaskManager', () => {
           interactionId: taskId,
           postCallEnabled: true,
           midCallEnabled: false,
-          actionTimeStamp: 1773807297475,
+          actionTimestamp: 1773807297475,
         },
       },
       {
@@ -2471,6 +2489,29 @@ describe('TaskManager', () => {
     });
     expectNoSensitiveDiagnostics('private-summary');
   });
+
+  it.each([undefined, ''])(
+    'drops receiving-agent summaries with summaryText %p',
+    (summaryText) => {
+      taskManager.taskCollection = {};
+
+      taskManager.handleRealtimeWebsocketEvent(
+        JSON.stringify({
+          type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+          data: {data: {conversationId: 'conversation-1', summaryText}},
+        })
+      );
+
+      expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
+        {
+          eventType: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+          dropReason: 'invalid-payload',
+        },
+        ['operational']
+      );
+    }
+  );
 
   it('should keep a pending request operational after unparseable, malformed, and unknown frames', async () => {
     const coordinator = (taskManager as any).aiSummaryCoordinator;

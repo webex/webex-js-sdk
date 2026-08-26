@@ -404,16 +404,16 @@ export default class TaskManager extends EventEmitter {
   }
 
   private validateFeatureEnablementPayload(payload: Record<string, unknown>): 'valid' | 'invalid' {
-    const actionTimeStamp = payload.actionTimeStamp;
+    const actionTimestamp = payload.actionTimestamp;
     const hasInvalidPostCall =
       payload.postCallEnabled !== undefined && typeof payload.postCallEnabled !== 'boolean';
     const hasInvalidMidCall =
       payload.midCallEnabled !== undefined && typeof payload.midCallEnabled !== 'boolean';
     const hasInvalidTimestamp =
-      actionTimeStamp !== undefined &&
-      (typeof actionTimeStamp !== 'number' ||
-        !Number.isFinite(actionTimeStamp) ||
-        actionTimeStamp < 0);
+      actionTimestamp !== undefined &&
+      (typeof actionTimestamp !== 'number' ||
+        !Number.isFinite(actionTimestamp) ||
+        actionTimestamp < 0);
 
     if (
       !isNonEmptyString(payload.interactionId) ||
@@ -496,7 +496,7 @@ export default class TaskManager extends EventEmitter {
   }
 
   private handleReceivingAgentSummaryEvent(payload: Record<string, unknown>): void {
-    if (!isNonEmptyString(payload.conversationId)) {
+    if (!isNonEmptyString(payload.conversationId) || !isNonEmptyString(payload.summaryText)) {
       this.trackAISummaryInboundDrop(
         'invalid-payload',
         CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT
@@ -1787,6 +1787,7 @@ export default class TaskManager extends EventEmitter {
     });
     this.taskCollection[taskData.interactionId] = task;
     this.retainFeatureEnablementForTask(task);
+    this.deliverFeatureEnablementToTask(task);
 
     return task;
   }

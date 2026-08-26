@@ -868,7 +868,7 @@ describe('ApiAIAssistant', () => {
       ['agentId', '', 'interaction-1', 'conversation-1', AIAssistantEventName.GET_POST_CALL_SUMMARY],
       ['interactionId', 'test-agent-id', '', 'conversation-1', AIAssistantEventName.GET_POST_CALL_SUMMARY],
       ['conversationId', 'test-agent-id', 'interaction-1', '', AIAssistantEventName.GET_POST_CALL_SUMMARY],
-      ['eventName', 'test-agent-id', 'interaction-1', 'conversation-1', AIAssistantEventName.GET_MID_CALL_SUMMARY],
+      ['eventName', 'test-agent-id', 'interaction-1', 'conversation-1', 'INVALID_EVENT_NAME'],
       [
         'response eventName',
         'test-agent-id',
