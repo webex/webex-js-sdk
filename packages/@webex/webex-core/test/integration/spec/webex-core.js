@@ -21,6 +21,7 @@ describe('webex-core', function () {
         webex
           .request({
             uri: makeLocalUrl('/'),
+            allowNonCatalogUrl: true,
             headers: {
               authorization: false,
             },
@@ -39,6 +40,7 @@ describe('webex-core', function () {
         webex
           .request({
             uri: makeLocalUrl('/'),
+            allowNonCatalogUrl: true,
             headers: {
               authorization: false,
             },
@@ -52,6 +54,7 @@ describe('webex-core', function () {
           .isRejected(
             webex.request({
               uri: makeLocalUrl('/not-a-route'),
+              allowNonCatalogUrl: true,
               headers: {
                 authorization: false,
               },
