@@ -11,16 +11,22 @@
   },
   "topology": "Orchestrator-plus-components",
   "commands": {
+    "compile": {
+      "command": "yarn workspace @webex/contact-center compile",
+      "source_file": "packages/@webex/contact-center/package.json",
+      "verified_at": "2026-08-05T10:53:14Z"
+    },
     "build": {
       "command": "yarn workspace @webex/contact-center build:src",
       "source_file": "package.json"
     },
+    "unit-test": {
+      "command": "yarn workspace @webex/contact-center test:unit",
+      "source_file": "packages/@webex/contact-center/package.json",
+      "verified_at": "2026-08-05T10:53:14Z"
+    },
     "test": {
       "command": "yarn workspace @webex/contact-center test",
-      "source_file": "package.json"
-    },
-    "test:unit": {
-      "command": "yarn workspace @webex/contact-center test:unit",
       "source_file": "package.json"
     },
     "lint": {
@@ -45,7 +51,8 @@
       "canonical_spec": "ai-docs/contact-center-spec.md",
       "contracts": {
         "provides": [
-          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, exported user-preference request/response types, and preview-campaign methods acceptPreviewContact/skipPreviewContact/removePreviewContact"
+          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task with ordered action-specific consult/transfer destination controls, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, existing getQueues/getEntryPoints methods with consult/transfer defaults, full Queue records, and mapped EntryPoint records with optional numbers, exported user-preference request/response types, and preview-campaign methods acceptPreviewContact/skipPreviewContact/removePreviewContact",
+          "WXCC-6026 wxApp Better Together: enableWxBetterTogether init config, isWxBetterTogetherEnabled read API, unified task telephony (task.accept/decline/toggleMute/transmitDtmf), TASK_WXAPP_MUTE_STATE_UPDATED event, optional main.keypad uiControl, multi-login supported; runtime toggle deferred to Phase 2 (private)"
         ],
         "requires": [
           "Webex SDK host/plugin runtime; Contact Center REST and WebSocket services; internal Webex calling, metrics, support, authorization, logger, and mercury packages"
@@ -131,7 +138,7 @@
       "canonical_spec": "src/services/ai-docs/services-spec.md",
       "contracts": {
         "provides": [
-          "Services composition root; agent/config/contact/dialer factories; AddressBook, EntryPoint, Queue, UserPreference, ApiAiAssistant, and WebCalling integration; cc.userPreference exposes user-preference CRUD"
+          "Services composition root; agent/config/contact/dialer factories; AddressBook, EntryPoint, Queue, UserPreference, ApiAiAssistant, and WebCalling integration; existing Queue/EntryPoint list methods with SDK-owned defaults and compatible existing-parameter overrides; Queue returns full records and EntryPoint maps profile-scoped dial-number rows to typed records with optional numbers; cc.userPreference exposes user-preference CRUD"
         ],
         "requires": [
           "Core HTTP/WebSocket/AQM infrastructure; WCC APIs; @webex/calling; MetricsManager; PageCache"
@@ -302,7 +309,7 @@
       "canonical_spec": "src/services/task/ai-docs/task-spec.md",
       "contracts": {
         "provides": [
-          "Task/Voice/WebRTC/Digital lifecycle APIs; TaskManager; task events/types; call-control and dialer operations including acceptPreviewContact, skipPreviewContact, and removePreviewContact"
+          "Task/Voice/WebRTC/Digital lifecycle APIs; TaskManager lifecycle correlation, narrowly scoped backend-authoritative ContactOwnerChanged recovery, and task-event publication, including routing owner-changing ContactUpdated through the existing task:hydrate event; task events/types; ordered action-specific consult/transfer destination controls; call-control and dialer operations including acceptPreviewContact, skipPreviewContact, and removePreviewContact"
         ],
         "requires": [
           "Contact/dialer AqmReqs; WebSocket managers; @webex/calling; MetricsManager; XState task-state module"
@@ -345,7 +352,7 @@
       "canonical_spec": "src/services/task/state-machine/ai-docs/task-state-machine-spec.md",
       "contracts": {
         "provides": [
-          "Task state-machine factory; TaskState/TaskEvent contracts; guards/actions; state-derived UI-control computation"
+          "Task state-machine factory; TaskState/TaskEvent contracts; guards/actions; state/profile/interaction-derived UI-control and ordered consult/transfer destination computation"
         ],
         "requires": [
           "XState; TaskData/task event contracts; Task and TaskManager integration"

@@ -459,6 +459,36 @@ export default function routingContact(aqm: AqmReqs) {
     ),
 
     /*
+     * Drop another participant from an active conference
+     */
+    dropConferenceParticipant: aqm.req((p: {interactionId: string; participantId: string}) => ({
+      url: `${TASK_API}${p.interactionId}/conference/participants/${encodeURIComponent(
+        p.participantId
+      )}/drop`,
+      data: {},
+      host: WCC_API_GATEWAY,
+      err,
+      redactSensitiveLogs: true,
+      notifSuccess: {
+        bind: {
+          type: TASK_MESSAGE_TYPE,
+          data: {
+            type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+            interactionId: p.interactionId,
+          },
+        },
+        msg: {} as Contact.AgentContact,
+      },
+      notifFail: {
+        bind: {
+          type: TASK_MESSAGE_TYPE,
+          data: {type: CC_EVENTS.PARTICIPANT_DROP_CONFERENCE_FAILED},
+        },
+        errId: 'Service.aqm.task.dropConferenceParticipant',
+      },
+    })),
+
+    /*
      * Exit conference
      */
     exitConference: aqm.req((p: {interactionId: string}) => ({

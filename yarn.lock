@@ -7707,6 +7707,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@webex/event-dictionary-ts@npm:^1.0.2220":
+  version: 1.0.2220
+  resolution: "@webex/event-dictionary-ts@npm:1.0.2220"
+  dependencies:
+    amf-client-js: ^5.2.6
+    json-schema-to-typescript: ^15.0.4
+    minimist: ^1.2.8
+    shelljs: ^0.8.5
+    webapi-parser: ^0.5.0
+  checksum: 63078dff6261a170db655f06615ad53d7bf7c049b39e442743a42f74db6df9f32b4be77c1cbf6fcf17c13739979411d30ad90ba80000ce2254c44ccef7022f58
+  languageName: node
+  linkType: hard
+
 "@webex/helper-html@workspace:*, @webex/helper-html@workspace:packages/@webex/helper-html":
   version: 0.0.0-use.local
   resolution: "@webex/helper-html@workspace:packages/@webex/helper-html"
@@ -8243,7 +8256,7 @@ __metadata:
     "@webex/common": "workspace:*"
     "@webex/common-timers": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/event-dictionary-ts": ^1.0.2215
+    "@webex/event-dictionary-ts": ^1.0.2220
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -8919,7 +8932,7 @@ __metadata:
     "@webex/test-helper-retry": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
     "@webex/ts-sdp": ^1.8.1
-    "@webex/web-capabilities": ^1.12.0
+    "@webex/web-capabilities": ^1.13.0
     "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
     bowser: ^2.11.0
@@ -9621,6 +9634,15 @@ __metadata:
   dependencies:
     bowser: ^2.11.0
   checksum: 70e6d564b0082b5f83030561b94cb9711faa49ea6a01a639cc9fc116f8b7c7bdad7e6beeb816fd9d6bfcc9bce9b80ff31873db6c388ed41641116474d4d1c2f5
+  languageName: node
+  linkType: hard
+
+"@webex/web-capabilities@npm:^1.13.0":
+  version: 1.13.0
+  resolution: "@webex/web-capabilities@npm:1.13.0"
+  dependencies:
+    bowser: ^2.11.0
+  checksum: 52d6a0ef4659f57c89654c38e0edd2e90b70e13da598455b017bc562841be79df28d1f4d7d443e1ff6e21ec5f3254e58287c91c303bf4611612aad363db6854c
   languageName: node
   linkType: hard
 
