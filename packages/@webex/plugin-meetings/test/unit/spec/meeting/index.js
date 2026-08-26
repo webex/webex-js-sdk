@@ -5887,6 +5887,52 @@ describe('plugin-meetings', () => {
             });
           });
 
+          describe('handles AUDIO_TRAITS_REPORT event for audio metric reports', () => {
+            it('AUDIO_TRAITS_REPORT sends a metric for a single report item', async () => {
+              webex.internal.newMetrics.submitClientEvent.resetHistory();
+
+              const audioTraits = [
+                {
+                  audioLevelAvg: 42,
+                  ssrc: 12345,
+                },
+              ];
+
+              statsAnalyzerStub.emit(
+                {file: 'test', function: 'test'},
+                StatsAnalyzerEventNames.AUDIO_TRAITS_REPORT,
+                audioTraits
+              );
+
+              assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+                name: 'client.media.render.stop',
+                payload: {
+                  mediaType: 'main',
+                  audioLevelAvg: 42,
+                  ssrc: 12345,
+                },
+                options: {
+                  meetingId: meeting.id,
+                },
+              });
+            });
+
+            it('AUDIO_TRAITS_REPORT does not send any metrics when the report array is empty', async () => {
+              webex.internal.newMetrics.submitClientEvent.resetHistory();
+
+              statsAnalyzerStub.emit(
+                {file: 'test', function: 'test'},
+                StatsAnalyzerEventNames.AUDIO_TRAITS_REPORT,
+                []
+              );
+
+              assert.neverCalledWith(
+                webex.internal.newMetrics.submitClientEvent,
+                sinon.match.has('name', 'client.media.render.stop')
+              );
+            });
+          });
+
           describe('handles STATS_UPDATE event for SRTP cipher detection', () => {
             it('emits MEETING_SRTP_CIPHER_UPDATED event when srtpCipher is found in transport stats', async () => {
               const fakeStats = new Map([
