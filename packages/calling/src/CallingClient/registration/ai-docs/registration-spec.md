@@ -224,8 +224,8 @@ sequenceDiagram
 
     Reg->>Line: lineEmitter(LINE_EVENTS.UNREGISTERED, undefined, lineError)
     Reg->>Reg: uploadLogs()
-    HRE-->>Reg: {finalError: true, handledByCallback: true}
-    Note over Reg: handledByCallback → skip the generic keepalive failure handling
+    HRE-->>Reg: {finalError: true}
+    Note over Reg: finalError + status 409 → skip the generic keepalive failure handling
 ```
 
 Status-code classification stays in `handleRegistrationErrors`; the hard stop is scoped to keepalive because only that flow passes `sessionSupersededCb`. Registration, restoration, failover, and failback keep treating `409` as an unknown error, and keepalive `404` / `429` / `5xx` handling is unchanged.
@@ -442,7 +442,8 @@ A dedicated Web Worker manages keepalive requests to ensure a responsive and rel
 
 - Worker posts `KEEPALIVE_SUCCESS` **only when recovering** from a previous failure (`retryCount > 0` before the success). Normal successes silently reset the counter.
 - On **429**: `handle429Retry` clears the current worker and schedules a new keepalive timer after the `Retry-After` delay.
-- On **409**: `handleRegistrationErrors` invokes the keepalive-only `sessionSupersededCb`, so `handle409KeepaliveFailure` treats the failure as a hard stop on the very first occurrence — the retry count is ignored, the worker is terminated, no registration is attempted, and the consumer receives `UNREGISTERED` carrying the superseded reason. The returned `handledByCallback` makes the keepalive branch skip its generic failure handling.
+- On **409**: `handleRegistrationErrors` invokes the keepalive-only `sessionSupersededCb`, so `handle409KeepaliveFailure` treats the failure as a hard stop on the very first occurrence — the retry count is ignored, the worker is terminated, no registration is attempted, and the consumer receives `UNREGISTERED` carrying the superseded reason. A terminal `409` makes the keepalive branch return before its generic failure handling, and latches `sessionSuperseded` so that no automatic recovery path (network flap, calls cleared) re-registers the session; only an explicit `triggerRegistration()` clears it.
+- A keepalive whose result arrives after its worker was replaced (failback, connection restoration) is discarded, so a stale `409` cannot tear down the registration that replaced it.
 - On **fatal error** (abort) or **retries exceeded** (retryCount >= threshold, 4 for CC / 5 otherwise): the worker is terminated and the main thread either calls `reconnectOnFailure` (non-fatal threshold) or attempts fresh registration (404).
 - On **non-fatal error below threshold**: only `LINE_EVENTS.RECONNECTING` is emitted; the worker keeps running.
 

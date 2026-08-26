@@ -2040,6 +2040,105 @@ describe('Registration Tests', () => {
           expect.anything()
         );
       });
+
+      it('stays terminal when the network recovers after a superseded session', async () => {
+        await beforeEachSetupForKeepalive();
+        lineEmitter.mockClear();
+
+        await sendKeepaliveFailure(conflictError, 1);
+
+        expect(reg.sessionSuperseded).toStrictEqual(true);
+        restoreSpy.mockClear();
+        restartSpy.mockClear();
+
+        const retry = await reg.handleConnectionRestoration(true);
+
+        expect(retry).toStrictEqual(false);
+        expect(warnSpy).toHaveBeenCalledWith(
+          'Session superseded, skipping registration restoration',
+          {
+            file: REGISTRATION_FILE,
+            method: METHODS.HANDLE_CONNECTION_RESTORATION,
+          }
+        );
+        expect(restoreSpy).not.toHaveBeenCalled();
+        expect(restartSpy).not.toHaveBeenCalled();
+        expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      });
+
+      it('stays terminal when all calls are cleared after a superseded session', async () => {
+        await beforeEachSetupForKeepalive();
+        lineEmitter.mockClear();
+
+        await sendKeepaliveFailure(conflictError, 1);
+
+        restoreSpy.mockClear();
+        restartSpy.mockClear();
+
+        await reg.reconnectOnFailure(CALLS_CLEARED_HANDLER_UTIL);
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          `Session superseded, skipping reconnect - caller: ${CALLS_CLEARED_HANDLER_UTIL}`,
+          {file: REGISTRATION_FILE, method: METHODS.RECONNECT_ON_FAILURE}
+        );
+        expect(restoreSpy).not.toHaveBeenCalled();
+        expect(restartSpy).not.toHaveBeenCalled();
+        expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      });
+
+      it('lets an explicit registration by the consumer clear the superseded state', async () => {
+        await beforeEachSetupForKeepalive();
+        lineEmitter.mockClear();
+
+        await sendKeepaliveFailure(conflictError, 1);
+
+        expect(reg.sessionSuperseded).toStrictEqual(true);
+
+        postRegistrationSpy.mockResolvedValueOnce(successPayload);
+        await reg.triggerRegistration();
+
+        expect(reg.sessionSuperseded).toStrictEqual(false);
+        expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
+      });
+
+      it('discards a 409 delivered by a keepalive worker that has been replaced', async () => {
+        await beforeEachSetupForKeepalive();
+        const staleWorker = reg.webWorker;
+        const staleWorkerPostSpy = jest.spyOn(staleWorker, 'postMessage');
+        const handle409Spy = jest.spyOn(reg, 'handle409KeepaliveFailure');
+        let failKeepalive;
+
+        jest.spyOn(reg, 'postKeepAlive').mockReturnValue(
+          new Promise((_, reject) => {
+            failKeepalive = reject;
+          })
+        );
+        lineEmitter.mockClear();
+
+        const inFlight = staleWorker.onmessage({
+          data: {type: WorkerMessageType.SEND_KEEPALIVE},
+        } as MessageEvent);
+
+        /* A re-registration (failback, connection restoration) swaps the worker while the
+         * keepalive of the previous registration is still in flight. */
+        const currentWorker = {postMessage: jest.fn(), terminate: jest.fn(), onmessage: null};
+        reg.webWorker = currentWorker;
+
+        failKeepalive(conflictError);
+        await inFlight;
+        await flushPromises();
+
+        expect(staleWorkerPostSpy).not.toHaveBeenCalledWith(
+          expect.objectContaining({type: WorkerMessageType.KEEPALIVE_RESULT})
+        );
+        expect(currentWorker.postMessage).not.toHaveBeenCalled();
+        expect(handle409Spy).not.toHaveBeenCalled();
+        expect(lineEmitter).not.toHaveBeenCalledWith(
+          LINE_EVENTS.UNREGISTERED,
+          undefined,
+          expect.anything()
+        );
+      });
     });
   });
 

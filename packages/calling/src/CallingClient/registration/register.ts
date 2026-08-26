@@ -59,6 +59,7 @@ import {
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
+import {ERROR_CODE} from '../../Errors/types';
 import {APIRequest} from '../utils/request';
 
 /**
@@ -95,6 +96,13 @@ export class Registration implements IRegistration {
   private retryAfter: number | undefined;
   private scheduled429Retry = false;
   private webWorker: Worker | undefined;
+  /**
+   * Set once Mobius reports this session as superseded by another registration for the
+   * same user. It survives cleanup so that no automatic recovery path re-registers this
+   * device, which would restart the registration ping-pong between the two sessions.
+   * Only an explicit `triggerRegistration()` from the consumer clears it.
+   */
+  private sessionSuperseded = false;
   private apiRequest: APIRequest;
 
   /**
@@ -895,6 +903,16 @@ export class Registration implements IRegistration {
       method: METHODS.HANDLE_CONNECTION_RESTORATION,
       file: REGISTRATION_FILE,
     });
+
+    if (this.sessionSuperseded) {
+      log.warn('Session superseded, skipping registration restoration', {
+        method: METHODS.HANDLE_CONNECTION_RESTORATION,
+        file: REGISTRATION_FILE,
+      });
+
+      return false;
+    }
+
     await this.mutex.runExclusive(async () => {
       /* Check retry once again to see if another timer thread has not finished the job already. */
       if (retry) {
@@ -978,6 +996,10 @@ export class Registration implements IRegistration {
     };
 
     log.info(METHOD_START_MESSAGE, loggerContext);
+
+    /* An explicit registration from the consumer is the only way out of a superseded
+     * session, so the terminal state is lifted here. */
+    this.sessionSuperseded = false;
 
     if (await this.resumeFailover()) {
       log.info('Registration trigger handled by resumeFailover path', loggerContext);
@@ -1198,25 +1220,48 @@ export class Registration implements IRegistration {
         if (!this.webWorker) {
           const blob = new Blob([webWorkerStr], {type: 'application/javascript'});
           const blobUrl = URL.createObjectURL(blob);
-          this.webWorker = new Worker(blobUrl);
+          const worker = new Worker(blobUrl);
+          this.webWorker = worker;
           URL.revokeObjectURL(blobUrl);
 
-          this.webWorker.postMessage({
+          worker.postMessage({
             type: WorkerMessageType.START_KEEPALIVE,
             interval,
             retryCountThreshold: RETRY_COUNT_THRESHOLD,
           });
 
-          this.webWorker.onmessage = async (event: MessageEvent) => {
+          /*
+           * A keepalive is in flight across an `await`, so this worker can be replaced
+           * meanwhile - on failback, connection restoration or any re-registration. Its
+           * result then belongs to a device that is no longer the registered one and must
+           * not reach the current worker, whose retry count and failure handling (including
+           * the 409 hard stop) would otherwise act on a stale registration.
+           */
+          const isCurrentWorker = () => this.webWorker === worker;
+
+          worker.onmessage = async (event: MessageEvent) => {
             const logContext = {
               file: REGISTRATION_FILE,
               method: KEEPALIVE_UTIL,
             };
+
+            if (!isCurrentWorker()) {
+              log.info('Ignoring message from a replaced keepalive worker', logContext);
+
+              return;
+            }
+
             if (event.data.type === WorkerMessageType.SEND_KEEPALIVE) {
               try {
                 const res = await this.postKeepAlive(String(this.webex.internal.device.url), url);
 
-                this.webWorker?.postMessage({
+                if (!isCurrentWorker()) {
+                  log.info('Discarding keepalive result of a replaced worker', logContext);
+
+                  return;
+                }
+
+                worker.postMessage({
                   type: WorkerMessageType.KEEPALIVE_RESULT,
                   statusCode: res.statusCode,
                 });
@@ -1231,7 +1276,16 @@ export class Registration implements IRegistration {
                   type: err.type,
                 };
 
-                this.webWorker?.postMessage({
+                if (!isCurrentWorker()) {
+                  log.info(
+                    `Discarding keepalive failure of a replaced worker, status -> ${error.statusCode}`,
+                    logContext
+                  );
+
+                  return;
+                }
+
+                worker.postMessage({
                   type: WorkerMessageType.KEEPALIVE_RESULT,
                   err: error,
                 });
@@ -1250,7 +1304,7 @@ export class Registration implements IRegistration {
                 logContext
               );
 
-              const {finalError: abort, handledByCallback} = await handleRegistrationErrors(
+              const {finalError: abort} = await handleRegistrationErrors(
                 error,
                 (clientError, finalError) => {
                   if (finalError) {
@@ -1282,9 +1336,9 @@ export class Registration implements IRegistration {
                 }
               );
 
-              if (handledByCallback) {
-                /* The error was terminal and its handler already ran cleanup and notified
-                 * the consumer, so the generic keepalive failure handling must be skipped. */
+              if (abort && Number(error.statusCode) === ERROR_CODE.CONFLICT) {
+                /* handle409KeepaliveFailure already ran cleanup and notified the consumer,
+                 * so the generic keepalive failure handling must be skipped. */
                 return;
               }
 
@@ -1420,6 +1474,16 @@ export class Registration implements IRegistration {
   public async reconnectOnFailure(caller: string) {
     log.info(METHOD_START_MESSAGE, {method: METHODS.RECONNECT_ON_FAILURE, file: REGISTRATION_FILE});
     this.reconnectPending = false;
+
+    if (this.sessionSuperseded) {
+      log.warn(`Session superseded, skipping reconnect - caller: ${caller}`, {
+        method: METHODS.RECONNECT_ON_FAILURE,
+        file: REGISTRATION_FILE,
+      });
+
+      return;
+    }
+
     if (!this.isDeviceRegistered()) {
       if (Object.keys(this.callManager.getActiveCalls()).length === 0) {
         const abort = await this.restorePreviousRegistration(caller);
@@ -1496,6 +1560,12 @@ export class Registration implements IRegistration {
       this.failoverImmediately = false;
       this.retryAfter = undefined;
       this.registerRetry = false;
+
+      if (hardStop.reason === HARD_STOP_REASON.SESSION_SUPERSEDED) {
+        /* Latch the terminal state so that a later network flap, calls-cleared event or
+         * any other recovery path does not silently re-register this session. */
+        this.sessionSuperseded = true;
+      }
 
       this.clearFailoverState();
       this.setStatus(RegistrationStatus.INACTIVE);
