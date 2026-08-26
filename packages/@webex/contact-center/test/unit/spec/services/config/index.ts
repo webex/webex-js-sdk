@@ -52,9 +52,9 @@ describe('AgentConfigService', () => {
   });
 
   describe('AI summary event contracts', () => {
-    it('derives shared AI summary wire names from CC_TASK_EVENTS and preserves raw discriminators', () => {
-      expect(CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY).toBe(CC_TASK_EVENTS.POST_CALL_SUMMARY);
-      expect(CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY).toBe(CC_TASK_EVENTS.MID_CALL_SUMMARY);
+    it('preserves AI summary wire discriminators', () => {
+      expect(CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY).toBe('POST_CALL_SUMMARY');
+      expect(CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY).toBe('MID_CALL_SUMMARY');
       expect(CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT).toBe('FEATURE_ENABLEMENT');
       expect(CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT).toBe(
         'MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT'
@@ -71,6 +71,8 @@ describe('AgentConfigService', () => {
         taskKeys
       );
       expect(ccEventKeys.slice(agentKeys.length + taskKeys.length)).toEqual([
+        'POST_CALL_SUMMARY',
+        'MID_CALL_SUMMARY',
         'FEATURE_ENABLEMENT',
         'MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT',
       ]);
@@ -132,9 +134,6 @@ describe('AgentConfigService', () => {
       );
       expect(endPointMap.queueList('org', 'page=0&pageSize=10')).toBe(
         '/organization/org/v2/contact-service-queue?page=0&pageSize=10'
-      );
-      expect(endPointMap.entryPointList('org', 'page=0&pageSize=10')).toBe(
-        '/organization/org/v2/entry-point?page=0&pageSize=10'
       );
       expect(endPointMap.addressBookEntries('org', 'book', 'page=0&pageSize=10')).toBe(
         '/organization/org/v2/address-book/book/entry?page=0&pageSize=10'

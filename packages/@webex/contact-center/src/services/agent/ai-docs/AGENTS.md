@@ -34,28 +34,6 @@ Absent `aiFeature` or absent `generatedSummaries` must not throw during
 registration. Existing realtime transcript and suggested-response workflows
 continue to operate independently.
 
-## Feature Enablement Event
-
-`AGENT_EVENTS.FEATURE_ENABLEMENT` is emitted to consumers as:
-
-```typescript
-cc.on('cc:featureEnablement', (payload) => {
-  // payload.interactionId
-  // payload.postCallEnabled
-  // payload.midCallEnabled
-  // payload.actionTimeStamp
-});
-```
-
-`postCallEnabled` and `midCallEnabled` are independently optional booleans.
-Absence remains `undefined`. Consumers may use this event as a discovery signal,
-but an unchecked Task request is still safe: it rejects disabled locally without
-creating backend work.
-
-`incomingTaskListener()` removes the named feature handler before adding it, so
-repeated listener setup remains single-subscribed. Distinct inbound frames,
-including identical repeats, are still forwarded once each.
-
 ## Lifecycle Cleanup
 
 `ContactCenter.register()`, connection re-establishment, and
@@ -134,7 +112,6 @@ Web Calling setup performed by `ContactCenter`.
 | `agent:multiLogin` | Another active agent session was detected |
 | `agent:reloginSuccess` | Silent relogin completed |
 | `agent:dnRegistered` | Dial-number registration completed |
-| `cc:featureEnablement` | Valid AI-summary feature flags were received |
 
 Consumers should treat `AgentState` as extensible. Known values include Available, Idle, RONA, and
 LoggedOut, but organizations can expose additional backend-defined values through auxiliary codes.

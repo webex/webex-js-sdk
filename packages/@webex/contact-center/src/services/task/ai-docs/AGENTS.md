@@ -120,8 +120,7 @@ events directly in production code or composed lifecycle tests.
 
 The `cc` object publishes `task:incoming`, `task:hydrate`, and `task:merged`. Individual tasks publish
 the detailed lifecycle surface, including `task:featureEnablement` (AI summary feature flags for this
-task — preferred over the cc-level `cc:featureEnablement` so consumers do not need an interactionId
-→ flags map), and:
+task), and:
 
 - assignment, media, unassignment, offer-contact, and offer-consult events;
 - hold, resume, end, rejection, wrap-up, and wrapped-up events;

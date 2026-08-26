@@ -51,26 +51,6 @@ one summary feature through the strict leaf checks. Transcript and suggested
 response predicates remain separate. A profile with both summary flags disabled
 must still allow existing non-summary workflows to operate.
 
-## Feature Event Forwarding
-
-```mermaid
-sequenceDiagram
-  participant RTD
-  participant TM as TaskManager
-  participant CC as ContactCenter
-  participant App
-
-  RTD->>TM: FEATURE_ENABLEMENT
-  TM->>TM: validate and store feature snapshot
-  TM->>CC: emit AGENT_EVENTS.FEATURE_ENABLEMENT
-  CC->>App: trigger cc:featureEnablement
-```
-
-TaskManager does not import ContactCenter. ContactCenter subscribes to the
-TaskManager event and re-triggers `cc:featureEnablement` for SDK consumers.
-Listener setup is idempotent because the same named handler is removed before it
-is added.
-
 ## Register, Reconnect, Deregister
 
 At session boundaries, ContactCenter delegates summary cleanup to TaskManager:

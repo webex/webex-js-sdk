@@ -15,7 +15,6 @@ import {TaskEvent} from '../../../../../src/services/task/state-machine';
 import WebRTC from '../../../../../src/services/task/voice/WebRTC';
 import WebCallingService from '../../../../../src/services/WebCallingService';
 import config from '../../../../../src/config';
-import {CC_TASK_EVENTS} from '../../../../../src/services/config/types';
 import TaskFactory from '../../../../../src/services/task/TaskFactory';
 import {METRIC_EVENT_NAMES} from '../../../../../src/metrics/constants';
 import {
@@ -979,10 +978,10 @@ describe('TaskManager', () => {
         ([eventName]) => eventName
       );
 
-      [CC_TASK_EVENTS.POST_CALL_SUMMARY, CC_TASK_EVENTS.MID_CALL_SUMMARY].forEach(
-        (deprecatedInitiatorEvent) => {
-          expect(taskEmittedEvents).not.toContain(deprecatedInitiatorEvent);
-          expect(taskManagerEmittedEvents).not.toContain(deprecatedInitiatorEvent);
+      [CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY, CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY].forEach(
+        (summaryInboundEvent) => {
+          expect(taskEmittedEvents).not.toContain(summaryInboundEvent);
+          expect(taskManagerEmittedEvents).not.toContain(summaryInboundEvent);
         }
       );
     }
@@ -1047,14 +1046,14 @@ describe('TaskManager', () => {
     expect(postResolved).not.toHaveBeenCalled();
     expect(postRejected).not.toHaveBeenCalled();
     expect(getInboundDropMetricCalls()).toHaveLength(0);
-    [CC_TASK_EVENTS.POST_CALL_SUMMARY, CC_TASK_EVENTS.MID_CALL_SUMMARY].forEach(
-      (deprecatedInitiatorEvent) => {
+    [CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY, CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY].forEach(
+      (summaryInboundEvent) => {
         expect(initiatorTaskEmitSpy).not.toHaveBeenCalledWith(
-          deprecatedInitiatorEvent,
+          summaryInboundEvent,
           expect.anything()
         );
         expect(taskManagerEmitSpy).not.toHaveBeenCalledWith(
-          deprecatedInitiatorEvent,
+          summaryInboundEvent,
           expect.anything()
         );
       }
@@ -2223,11 +2222,11 @@ describe('TaskManager', () => {
     };
     const expectNoPublicAISummaryEmission = () => {
       expect(receiverSummaryHandler).not.toHaveBeenCalled();
-      [CC_TASK_EVENTS.POST_CALL_SUMMARY, CC_TASK_EVENTS.MID_CALL_SUMMARY].forEach(
-        (deprecatedInitiatorEvent) => {
-          expect(taskEmitSpy).not.toHaveBeenCalledWith(deprecatedInitiatorEvent, expect.anything());
+      [CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY, CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY].forEach(
+        (summaryInboundEvent) => {
+          expect(taskEmitSpy).not.toHaveBeenCalledWith(summaryInboundEvent, expect.anything());
           expect(taskManagerEmitSpy).not.toHaveBeenCalledWith(
-            deprecatedInitiatorEvent,
+            summaryInboundEvent,
             expect.anything()
           );
         }

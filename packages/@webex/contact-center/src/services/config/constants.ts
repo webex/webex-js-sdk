@@ -274,15 +274,6 @@ export const endPointMap = {
   entryPointDialNumberList: (orgId: string, queryParams: string) =>
     `/organization/${orgId}/v3/dial-number?${queryParams}`,
   /**
-   * Gets the legacy entry-point list endpoint.
-   * @param orgId - Organization ID.
-   * @param queryParams - Query parameters string.
-   * @returns The endpoint URL string.
-   * @ignore
-   */
-  entryPointList: (orgId: string, queryParams: string) =>
-    `/organization/${orgId}/v2/entry-point?${queryParams}`,
-  /**
    * Gets the endpoint for address book entries with custom query parameters.
    * @param orgId - Organization ID.
    * @param addressBookId - Address book ID.

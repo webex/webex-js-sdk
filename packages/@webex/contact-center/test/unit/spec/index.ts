@@ -189,7 +189,6 @@ import {
   AI_SUMMARY_ERROR_CODES,
   CC_AI_SUMMARY_EVENTS,
   TASK_EVENTS,
-  AGENT_EVENTS,
 } from '../../../src';
 import type {
   AIAssistantEventName,
@@ -341,7 +340,6 @@ const outboundGet: AIAssistantEventName = AIAssistantEventNames.GET_MID_CALL_CON
 const outboundResponse: AIAssistantEventName = AIAssistantEventNames.MID_CALL_TRANSFER_SUMMARY_RESPONSE;
 const inboundPost = CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY;
 const receivingEvent = TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT;
-const ccEvent = AGENT_EVENTS.FEATURE_ENABLEMENT;
 const disabledCode = AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED;
 void action;
 void transferAction;
@@ -363,7 +361,6 @@ void outboundGet;
 void outboundResponse;
 void inboundPost;
 void receivingEvent;
-void ccEvent;
 void disabledCode;
 `;
 
@@ -589,25 +586,6 @@ void unrelatedBindingAlias;
 void GET_MID_CALL_SUMMARY;
 void unrelatedShorthandObject;
 `;
-
-const DUPLICATE_LITERAL_CC_AI_SUMMARY_EVENTS_FIXTURE = `
-export const CC_TASK_EVENTS = {
-  POST_CALL_SUMMARY: 'POST_CALL_SUMMARY',
-  MID_CALL_SUMMARY: 'MID_CALL_SUMMARY',
-} as const;
-
-export const CC_AI_SUMMARY_EVENTS = {
-  POST_CALL_SUMMARY: 'POST_CALL_SUMMARY',
-  MID_CALL_SUMMARY: 'MID_CALL_SUMMARY',
-  FEATURE_ENABLEMENT: 'FEATURE_ENABLEMENT',
-  MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT: 'MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT',
-} as const;
-`;
-
-const REQUIRED_CC_AI_SUMMARY_EVENT_DERIVATIONS = Object.freeze({
-  POST_CALL_SUMMARY: 'POST_CALL_SUMMARY',
-  MID_CALL_SUMMARY: 'MID_CALL_SUMMARY',
-});
 
 const createProgram = (virtualSources: Record<string, string> = {}) => {
   const configPath = path.join(CONTACT_CENTER_ROOT, 'tsconfig.json');
@@ -1070,59 +1048,6 @@ const formatLegacyOutboundSummaryViolations = (
       `${path.relative(CONTACT_CENTER_ROOT, violation.fileName)}:${violation.line}:${violation.name}`
   );
 
-type CCAISummaryEventDerivationViolation = {
-  propertyName: string;
-  expectedInitializer: string;
-  actualInitializer: string;
-};
-
-const findCCAISummaryEventDerivationViolations = (program: ts.Program) => {
-  const typesSource = program.getSourceFile(CONFIG_TYPES_PATH);
-  if (!typesSource) {
-    throw new Error(`Missing source file ${CONFIG_TYPES_PATH}`);
-  }
-
-  const ccAISummaryEvents = getObjectLiteralVariableInitializer(
-    typesSource,
-    'CC_AI_SUMMARY_EVENTS'
-  );
-
-  return Object.entries(REQUIRED_CC_AI_SUMMARY_EVENT_DERIVATIONS).reduce<
-    CCAISummaryEventDerivationViolation[]
-  >((violations, [propertyName, sourcePropertyName]) => {
-    const property = getObjectLiteralPropertyAssignment(
-      ccAISummaryEvents,
-      propertyName,
-      'CC_AI_SUMMARY_EVENTS'
-    );
-    const expectedInitializer = `CC_TASK_EVENTS.${sourcePropertyName}`;
-    const {initializer} = property;
-    const derivesFromTaskEvent =
-      ts.isPropertyAccessExpression(initializer) &&
-      ts.isIdentifier(initializer.expression) &&
-      initializer.expression.text === 'CC_TASK_EVENTS' &&
-      initializer.name.text === sourcePropertyName;
-
-    if (!derivesFromTaskEvent) {
-      violations.push({
-        propertyName,
-        expectedInitializer,
-        actualInitializer: initializer.getText(typesSource),
-      });
-    }
-
-    return violations;
-  }, []);
-};
-
-const formatCCAISummaryEventDerivationViolations = (
-  violations: CCAISummaryEventDerivationViolation[]
-) =>
-  violations.map(
-    (violation) =>
-      `CC_AI_SUMMARY_EVENTS.${violation.propertyName} expected ${violation.expectedInitializer} but found ${violation.actualInitializer}`
-  );
-
 const findLegacyOutboundSummaryProductionViolations = (program: ts.Program) => {
   const checker = program.getTypeChecker();
   const legacyDeclarations = getLegacyOutboundSummaryDeclarations(program);
@@ -1250,31 +1175,6 @@ describe('contact-center root public contract', () => {
       AIAssistantEventName: aiAssistantEventNameLiterals,
       CC_AI_SUMMARY_EVENTS: ccAISummaryEventLiterals,
     }).toEqual(EXPECTED_AI_SUMMARY_WIRE_LITERALS);
-  });
-
-  it('requires shared AI summary events to derive from CC_TASK_EVENTS properties', () => {
-    const program = createProgram();
-
-    expect(
-      formatCCAISummaryEventDerivationViolations(
-        findCCAISummaryEventDerivationViolations(program)
-      )
-    ).toEqual([]);
-
-    const duplicateLiteralProgram = createProgram({
-      [CONFIG_TYPES_PATH]: DUPLICATE_LITERAL_CC_AI_SUMMARY_EVENTS_FIXTURE,
-    });
-
-    expect(
-      formatCCAISummaryEventDerivationViolations(
-        findCCAISummaryEventDerivationViolations(duplicateLiteralProgram)
-      ).sort()
-    ).toEqual(
-      [
-        "CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY expected CC_TASK_EVENTS.MID_CALL_SUMMARY but found 'MID_CALL_SUMMARY'",
-        "CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY expected CC_TASK_EVENTS.POST_CALL_SUMMARY but found 'POST_CALL_SUMMARY'",
-      ].sort()
-    );
   });
 
   it('keeps legacy outbound mid-call summary names deprecated and unused in production', () => {

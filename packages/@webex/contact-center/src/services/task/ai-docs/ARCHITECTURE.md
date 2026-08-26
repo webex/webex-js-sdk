@@ -364,10 +364,9 @@ this branch and must not be moved into AI summary routing.
 AI summary RTD routing is stricter:
 
 - `FEATURE_ENABLEMENT` is classified before payload validation; valid frames are
-  counted, stored by top-level `interactionId`, and forwarded on both
-  `AGENT_EVENTS.FEATURE_ENABLEMENT` (cc-level, kept for backward compatibility)
-  and `TASK_EVENTS.TASK_FEATURE_ENABLEMENT` on the matching task object when
-  the task is already registered. If the frame arrives before
+  counted, stored by top-level `interactionId`, and emitted through
+  `TASK_EVENTS.TASK_FEATURE_ENABLEMENT` on the matching task object when the
+  task is already registered. If the frame arrives before
   `AGENT_CONTACT_RESERVED` creates the task (orphan), it is stored; at task
   creation `retainFeatureEnablementForTask` clears the orphan timeout and
   `deliverFeatureEnablementToTask` emits `task:featureEnablement` exactly
