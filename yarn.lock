@@ -7637,7 +7637,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/env-config-legacy@workspace:packages/legacy/env"
   dependencies:
-    dotenv: ^16.0.3
+    dotenv: ^17.4.2
     find-yarn-workspace-root: ^2.0.0
   languageName: unknown
   linkType: soft
@@ -8939,7 +8939,7 @@ __metadata:
     btoa: ^1.2.1
     chai: ^4.3.4
     chai-as-promised: ^7.1.1
-    dotenv: ^4.0.0
+    dotenv: ^17.4.2
     eslint: ^8.24.0
     global: ^4.4.0
     ip-anonymize: ^0.1.0
@@ -12383,7 +12383,7 @@ __metadata:
     "@types/supertest": ^6.0.2
     "@webex/byods": "workspace:*"
     cookie-parser: ^1.4.7
-    dotenv: ^16.4.5
+    dotenv: ^17.4.2
     eslint: ^9.12.0
     eslint-plugin-n: ^17.11.1
     express: ^4.21.1
@@ -15543,17 +15543,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dotenv@npm:^16.0.3, dotenv@npm:^16.4.5":
-  version: 16.6.1
-  resolution: "dotenv@npm:16.6.1"
-  checksum: e8bd63c9a37f57934f7938a9cf35de698097fadf980cb6edb61d33b3e424ceccfe4d10f37130b904a973b9038627c2646a3365a904b4406514ea94d7f1816b69
-  languageName: node
-  linkType: hard
-
-"dotenv@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "dotenv@npm:4.0.0"
-  checksum: 558b099798d73504eb354f9d71435d102744cf5e04d400dee5afc62179997abaeb3e30198cffa3a9c5c757bb3d863d6fd0ae9924c5f55c8b99326e1a7874796b
+"dotenv@npm:^17.4.2":
+  version: 17.4.2
+  resolution: "dotenv@npm:17.4.2"
+  checksum: 217bf2c4696ca40acc13ad063341e9c77cedfdd75e56e4919f4cf2c6333e4f7b38a4b4067e49d006125502a61060cbe85c7eecb0644e4d99ff014693eb7e62c4
   languageName: node
   linkType: hard
 
@@ -33939,7 +33932,7 @@ __metadata:
     detective: ^5.2.1
     documentation: ^14.0.1
     documentation-theme-utils: ^3.0.0
-    dotenv: ^4.0.0
+    dotenv: ^17.4.2
     envify: ^4.1.0
     eslint: ^8.24.0
     eslint-config-airbnb-base: ^15.0.0
