@@ -1021,10 +1021,6 @@ const Services = WebexPlugin.extend({
   convertUrlToPriorityHostUrl(url = '' as string): string {
     const data = this.getServiceFromUrl(url);
 
-    if (!data) {
-      throw Error(`No service associated with url: [${url}]`);
-    }
-
     return url.replace(data.defaultUrl, data.priorityUrl);
   },
 
@@ -1257,6 +1253,9 @@ const Services = WebexPlugin.extend({
       requestObject.headers = {authorization: token};
     }
 
+    // eslint-disable-next-line no-console
+    console.log('Fetching new service hostmap from U2C with request:', requestObject);
+
     return this.webex.internal.newMetrics.callDiagnosticLatencies
       .measureLatency(() => this.request(requestObject), 'internal.get.u2c.time')
       .then(({body}) => this._formatReceivedHostmap(body || {}));
@@ -1362,6 +1361,9 @@ const Services = WebexPlugin.extend({
           // Return a resolved promise for consistent return value.
           return Promise.resolve();
         })
+        .then(() => {
+          this.logger.info('services: completed initializing initial service catalogs');
+        })
     );
   },
 
@@ -1417,6 +1419,7 @@ const Services = WebexPlugin.extend({
    * @memberof Services
    * @returns {Services}
    */
+
   initialize(): typeof Services {
     const catalog = new ServiceCatalog();
     this._catalogs.set(this.webex, catalog);
@@ -1574,6 +1577,7 @@ const Services = WebexPlugin.extend({
     });
   },
 });
+
 /* eslint-enable no-underscore-dangle */
 
 export default Services;
