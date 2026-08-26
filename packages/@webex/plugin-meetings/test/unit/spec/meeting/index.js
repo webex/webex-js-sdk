@@ -9072,7 +9072,11 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           meeting.locusId = 'locus-id';
           meeting.id = 'meeting-id';
-          FAKE_OPTIONS = {meetingId: meeting.id, sendCAevents: true};
+          FAKE_OPTIONS = {
+            meetingId: meeting.id,
+            sendCAevents: true,
+            correlationId: meeting.correlationId,
+          };
         });
 
         it('calls meetingInfoProvider with all the right parameters and parses the result', async () => {
@@ -9157,7 +9161,11 @@ describe('plugin-meetings', () => {
             undefined,
             meeting.locusId,
             {},
-            {meetingId: meeting.id, sendCAevents: false}
+            {
+              meetingId: meeting.id,
+              sendCAevents: false,
+              correlationId: meeting.correlationId,
+            }
           );
 
           // parseMeeting info
@@ -9243,7 +9251,11 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id, sendCAevents: true}
+            {
+              meetingId: meeting.id,
+              sendCAevents: true,
+              correlationId: meeting.correlationId,
+            }
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -9279,7 +9291,11 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id, sendCAevents: true}
+            {
+              meetingId: meeting.id,
+              sendCAevents: true,
+              correlationId: meeting.correlationId,
+            }
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -9308,7 +9324,11 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id, sendCAevents: true}
+            {
+              meetingId: meeting.id,
+              sendCAevents: true,
+              correlationId: meeting.correlationId,
+            }
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -9343,7 +9363,11 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id, sendCAevents: true}
+            {
+              meetingId: meeting.id,
+              sendCAevents: true,
+              correlationId: meeting.correlationId,
+            }
           );
 
           assert.deepEqual(meeting.meetingInfo, {});
@@ -9389,7 +9413,11 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id, sendCAevents: true}
+            {
+              meetingId: meeting.id,
+              sendCAevents: true,
+              correlationId: meeting.correlationId,
+            }
           );
 
           assert.deepEqual(meeting.meetingInfo, {});
@@ -9423,7 +9451,11 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id, sendCAevents: true}
+            {
+              meetingId: meeting.id,
+              sendCAevents: true,
+              correlationId: meeting.correlationId,
+            }
           );
 
           assert.deepEqual(meeting.meetingInfo, {
@@ -9476,7 +9508,11 @@ describe('plugin-meetings', () => {
             undefined,
             'locus-id',
             {},
-            {meetingId: meeting.id, sendCAevents: true}
+            {
+              meetingId: meeting.id,
+              sendCAevents: true,
+              correlationId: meeting.correlationId,
+            }
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
@@ -9765,7 +9801,11 @@ describe('plugin-meetings', () => {
             'fake-installed-org-id',
             'locus-id',
             {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
-            {meetingId: meeting.id, sendCAevents: true},
+            {
+              meetingId: meeting.id,
+              sendCAevents: true,
+              correlationId: meeting.correlationId,
+            },
             null,
             null,
             null
@@ -9813,7 +9853,11 @@ describe('plugin-meetings', () => {
             'fake-installed-org-id',
             'locus-id',
             {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
-            {meetingId: meeting.id, sendCAevents: true},
+            {
+              meetingId: meeting.id,
+              sendCAevents: true,
+              correlationId: meeting.correlationId,
+            },
             null,
             null,
             null
@@ -9870,7 +9914,11 @@ describe('plugin-meetings', () => {
               extraParam1: 'value1',
               permissionToken: FAKE_PERMISSION_TOKEN,
             },
-            {meetingId: meeting.id, sendCAevents: true},
+            {
+              meetingId: meeting.id,
+              sendCAevents: true,
+              correlationId: meeting.correlationId,
+            },
             null,
             null,
             null
