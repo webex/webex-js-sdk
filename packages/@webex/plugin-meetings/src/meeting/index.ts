@@ -729,6 +729,7 @@ export default class Meeting extends StatelessWebexPlugin {
   allowMediaInLobby: boolean;
   localShareInstanceId: string;
   remoteShareInstanceId: string;
+  acceptedContentHandoffPreviousShare: any;
   shareCAEventSentStatus: {
     transmitStart: boolean;
     transmitStop: boolean;
@@ -1583,6 +1584,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.remoteShareInstanceId = null;
+    this.acceptedContentHandoffPreviousShare = null;
 
     /**
      * Status used for ensuring we do not oversend metrics
@@ -3384,19 +3386,49 @@ export default class Meeting extends StatelessWebexPlugin {
           newShareStatus = SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
         }
       }
-      // or if content share is either released or null and whiteboard share is either released or null, no one is sharing
+      // Preserve active content sharing while another participant's content floor is only ACCEPTED.
+      // The final GRANTED update must still see the previous active share status so steal handling
+      // can unpublish local streams or update the remote presenter without emitting a stop event.
       else if (
-        ((previousContentShare && contentShare.disposition === FLOOR_ACTION.RELEASED) ||
-          contentShare.disposition === null) &&
-        ((previousWhiteboardShare && whiteboardShare.disposition === FLOOR_ACTION.RELEASED) ||
-          whiteboardShare.disposition === null)
+        (this.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE ||
+          this.shareStatus === SHARE_STATUS.REMOTE_SHARE_ACTIVE) &&
+        previousContentShare?.disposition === FLOOR_ACTION.GRANTED &&
+        contentShare.disposition === FLOOR_ACTION.ACCEPTED
       ) {
+        this.acceptedContentHandoffPreviousShare = previousContentShare;
+        newShareStatus = this.shareStatus;
+      }
+      // Otherwise, neither content nor whiteboard floor is GRANTED (covers
+      // RELEASED, null, and intermediate dispositions such as ACCEPTED), so no
+      // one is currently sharing. Active content shares are preserved above until
+      // another participant receives the final GRANTED floor update.
+      else {
         newShareStatus = SHARE_STATUS.NO_SHARE;
       }
 
       LoggerProxy.logger.info(
         `Meeting:index#setUpLocusMediaSharesListener --> this.shareStatus=${this.shareStatus} newShareStatus=${newShareStatus}`
       );
+
+      let mediaSharesUpdatePayload = payload;
+
+      if (
+        this.acceptedContentHandoffPreviousShare &&
+        contentShare.disposition === FLOOR_ACTION.GRANTED &&
+        payload.previous?.content?.disposition === FLOOR_ACTION.ACCEPTED
+      ) {
+        mediaSharesUpdatePayload = {
+          ...payload,
+          previous: {
+            ...payload.previous,
+            content: this.acceptedContentHandoffPreviousShare,
+          },
+        };
+      }
+
+      if (contentShare.disposition !== FLOOR_ACTION.ACCEPTED) {
+        this.acceptedContentHandoffPreviousShare = null;
+      }
 
       if (newShareStatus !== this.shareStatus) {
         const oldShareStatus = this.shareStatus;
@@ -3571,8 +3603,11 @@ export default class Meeting extends StatelessWebexPlugin {
             break;
         }
 
-        this.members.locusMediaSharesUpdate(payload);
-      } else if (newShareStatus === SHARE_STATUS.REMOTE_SHARE_ACTIVE) {
+        this.members.locusMediaSharesUpdate(mediaSharesUpdatePayload);
+      } else if (
+        newShareStatus === SHARE_STATUS.REMOTE_SHARE_ACTIVE &&
+        contentShare.disposition !== FLOOR_ACTION.ACCEPTED
+      ) {
         // if we got here, then some remote participant has stolen
         // the presentation from another remote participant
         this.remoteShareInstanceId = contentShare.shareInstanceId;
@@ -3594,7 +3629,7 @@ export default class Meeting extends StatelessWebexPlugin {
             resourceType: contentShare.resourceType,
           }
         );
-        this.members.locusMediaSharesUpdate(payload);
+        this.members.locusMediaSharesUpdate(mediaSharesUpdatePayload);
       } else if (newShareStatus === SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE) {
         // if we got here, then some remote participant has stolen
         // the presentation from another remote participant
@@ -3620,7 +3655,7 @@ export default class Meeting extends StatelessWebexPlugin {
             meetingId: this.id,
           },
         });
-        this.members.locusMediaSharesUpdate(payload);
+        this.members.locusMediaSharesUpdate(mediaSharesUpdatePayload);
       }
     });
   }
