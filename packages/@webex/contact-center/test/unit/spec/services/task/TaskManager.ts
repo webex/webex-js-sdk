@@ -18,9 +18,8 @@ import config from '../../../../../src/config';
 import TaskFactory from '../../../../../src/services/task/TaskFactory';
 import {METRIC_EVENT_NAMES} from '../../../../../src/metrics/constants';
 import {
-  AI_SUMMARY_RECEIVER_BUFFER_RETENTION_MS,
+  AI_SUMMARY_DURATION_MS,
   AI_SUMMARY_REQUEST_CANCELLED,
-  AI_SUMMARY_REQUEST_TIMEOUT_MS,
   METHODS,
 } from '../../../../../src/services/task/constants';
 import {AI_SUMMARY_ERROR_CODES, TASK_MANAGER_FILE} from '../../../../../src/constants';
@@ -1098,7 +1097,7 @@ describe('TaskManager', () => {
     );
     const rejection = registration.result.catch((error) => error);
 
-    jest.advanceTimersByTime(AI_SUMMARY_REQUEST_TIMEOUT_MS);
+    jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS);
 
     const timeoutError = await rejection;
 
@@ -1791,7 +1790,7 @@ describe('TaskManager', () => {
     );
     expect(jest.getTimerCount()).toBe(1);
 
-    jest.advanceTimersByTime(AI_SUMMARY_RECEIVER_BUFFER_RETENTION_MS - 1);
+    jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS - 1);
     expect(getInboundDropMetricCalls()).toHaveLength(0);
 
     jest.advanceTimersByTime(1);
@@ -2060,7 +2059,7 @@ describe('TaskManager', () => {
     );
     const deliveredCancellation = deliveredRegistration.result.catch((error) => error);
     const retainedCancellation = retainedRegistration.result.catch((error) => error);
-    const elapsedMs = AI_SUMMARY_RECEIVER_BUFFER_RETENTION_MS / 2;
+    const elapsedMs = AI_SUMMARY_DURATION_MS / 2;
 
     expect(jest.getTimerCount()).toBe(4);
     jest.advanceTimersByTime(elapsedMs);
@@ -2099,7 +2098,7 @@ describe('TaskManager', () => {
     );
     expect(jest.getTimerCount()).toBe(1);
 
-    jest.advanceTimersByTime(AI_SUMMARY_RECEIVER_BUFFER_RETENTION_MS - elapsedMs - 1);
+    jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS - elapsedMs - 1);
     expect(getMetricsTrackEvent()).not.toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
       {
@@ -2278,7 +2277,7 @@ describe('TaskManager', () => {
       interactionId: taskId,
       postCallEnabled: true,
     });
-    jest.advanceTimersByTime(AI_SUMMARY_REQUEST_TIMEOUT_MS);
+    jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS);
     jest.useRealTimers();
   });
 

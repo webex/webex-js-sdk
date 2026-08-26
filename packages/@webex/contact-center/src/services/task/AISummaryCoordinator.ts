@@ -1,11 +1,6 @@
 import {AI_SUMMARY_ERROR_CODES} from '../../constants';
 import {CC_AI_SUMMARY_EVENTS} from '../config/types';
-import {
-  AI_SUMMARY_FEATURE_ORPHAN_RETENTION_MS,
-  AI_SUMMARY_RECEIVER_BUFFER_RETENTION_MS,
-  AI_SUMMARY_REQUEST_CANCELLED,
-  AI_SUMMARY_REQUEST_TIMEOUT_MS,
-} from './constants';
+import {AI_SUMMARY_DURATION_MS, AI_SUMMARY_REQUEST_CANCELLED} from './constants';
 import {
   AISummaryInboundType,
   AISummaryPayloadByInboundType,
@@ -172,7 +167,7 @@ export default class AISummaryCoordinator implements AISummaryRequestCoordinator
       this.removeTimedEntry(entries, conversationId, (currentEntry) => {
         currentEntry.reject(createAISummaryError(timeoutCode));
       });
-    }, AI_SUMMARY_REQUEST_TIMEOUT_MS);
+    }, AI_SUMMARY_DURATION_MS);
     entries.set(conversationId, entry);
 
     return {requestToken, result};
@@ -207,7 +202,7 @@ export default class AISummaryCoordinator implements AISummaryRequestCoordinator
     if (!hasRegisteredTask) {
       entry.timeoutId = setTimeout(() => {
         this.removeTimedEntry(this.interactionFeatureEnablement, interactionId);
-      }, AI_SUMMARY_FEATURE_ORPHAN_RETENTION_MS);
+      }, AI_SUMMARY_DURATION_MS);
     }
 
     this.interactionFeatureEnablement.set(interactionId, entry);
@@ -262,7 +257,7 @@ export default class AISummaryCoordinator implements AISummaryRequestCoordinator
         if (removed) {
           this.reportReceiverDrop('receiver-buffer-expired', conversationId);
         }
-      }, AI_SUMMARY_RECEIVER_BUFFER_RETENTION_MS);
+      }, AI_SUMMARY_DURATION_MS);
       this.receivingSummaryBuffer.set(conversationId, entry);
 
       return 'buffered';

@@ -19,8 +19,8 @@ import {AI_SUMMARY_ERROR_CODES} from '../../../../../src/constants';
 import {METRIC_EVENT_NAMES} from '../../../../../src/metrics/constants';
 import AISummaryCoordinator from '../../../../../src/services/task/AISummaryCoordinator';
 import {
+  AI_SUMMARY_DURATION_MS,
   AI_SUMMARY_REQUEST_CANCELLED,
-  AI_SUMMARY_REQUEST_TIMEOUT_MS,
   METHODS,
 } from '../../../../../src/services/task/constants';
 import {getAISummaryCorrelation} from '../../../../../src/services/task/TaskUtils';
@@ -1914,7 +1914,7 @@ describe('Task AI summary APIs', () => {
       latePayload: createMidCallSummaryPayload(),
     },
   ])(
-    'rejects $label public requests at AI_SUMMARY_REQUEST_TIMEOUT_MS and drops late events',
+    'rejects $label public requests at AI_SUMMARY_DURATION_MS and drops late events',
     async ({invoke, inboundType, timeoutCode, failureMetric, operation, actionType, latePayload}) => {
       jest.useFakeTimers();
       const task = new DummyTask(dummyContact, createAISummaryTaskData());
@@ -1937,7 +1937,7 @@ describe('Task AI summary APIs', () => {
         await Promise.resolve();
         expect(adapter.sendSummaryGetEvent).toHaveBeenCalledTimes(1);
 
-        jest.advanceTimersByTime(AI_SUMMARY_REQUEST_TIMEOUT_MS - 1);
+        jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS - 1);
         await Promise.resolve();
         expect(settled).toBe(false);
         expect(metrics.trackEvent).not.toHaveBeenCalled();
@@ -1977,7 +1977,7 @@ describe('Task AI summary APIs', () => {
     }
   );
 
-  it('AI_SUMMARY_REQUEST_TIMEOUT_MS rejection without a consumer handler', async () => {
+  it('AI_SUMMARY_DURATION_MS rejection without a consumer handler', async () => {
     jest.useFakeTimers();
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
     const {adapter, coordinator} = createRealSummaryMocks(task);
@@ -1993,7 +1993,7 @@ describe('Task AI summary APIs', () => {
       await Promise.resolve();
       expect(adapter.sendSummaryGetEvent).toHaveBeenCalledTimes(1);
 
-      jest.advanceTimersByTime(AI_SUMMARY_REQUEST_TIMEOUT_MS);
+      jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS);
       jest.useRealTimers();
       await flushEventLoopTurn();
 

@@ -31,9 +31,6 @@ export const CAMPAIGN_PREVIEW_REMOVE = '/remove';
 /** 80-second timeout for accepting preview contact (outbound call setup takes longer than default 20s) */
 export const TIMEOUT_PREVIEW_ACCEPT = 80000;
 export const AI_SUMMARY_DURATION_MS = 15_000;
-export const AI_SUMMARY_REQUEST_TIMEOUT_MS = AI_SUMMARY_DURATION_MS;
-export const AI_SUMMARY_RECEIVER_BUFFER_RETENTION_MS = AI_SUMMARY_DURATION_MS;
-export const AI_SUMMARY_FEATURE_ORPHAN_RETENTION_MS = AI_SUMMARY_DURATION_MS;
 export const AI_SUMMARY_REQUEST_CANCELLED = 'AI_SUMMARY_REQUEST_CANCELLED' as const;
 export const TASK_MANAGER_FILE = 'taskManager';
 export const TASK_FILE = 'task';

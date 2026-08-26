@@ -1,10 +1,7 @@
 import AISummaryCoordinator from '../../../../../src/services/task/AISummaryCoordinator';
 import {
   AI_SUMMARY_DURATION_MS,
-  AI_SUMMARY_FEATURE_ORPHAN_RETENTION_MS,
-  AI_SUMMARY_RECEIVER_BUFFER_RETENTION_MS,
   AI_SUMMARY_REQUEST_CANCELLED,
-  AI_SUMMARY_REQUEST_TIMEOUT_MS,
 } from '../../../../../src/services/task/constants';
 import {
   AISummaryInboundType,
@@ -91,10 +88,8 @@ describe('AISummaryCoordinator', () => {
     jest.clearAllMocks();
   });
 
-  it('should expose semantic timeout aliases backed by the shared duration', () => {
-    expect(AI_SUMMARY_REQUEST_TIMEOUT_MS).toBe(AI_SUMMARY_DURATION_MS);
-    expect(AI_SUMMARY_RECEIVER_BUFFER_RETENTION_MS).toBe(AI_SUMMARY_DURATION_MS);
-    expect(AI_SUMMARY_FEATURE_ORPHAN_RETENTION_MS).toBe(AI_SUMMARY_DURATION_MS);
+  it('uses the shared AI summary duration', () => {
+    expect(AI_SUMMARY_DURATION_MS).toBe(15_000);
   });
 
   it('should infer and resolve exact post-call and mid-call pending payloads', async () => {
@@ -226,7 +221,7 @@ describe('AISummaryCoordinator', () => {
       throw error;
     });
 
-    jest.advanceTimersByTime(AI_SUMMARY_REQUEST_TIMEOUT_MS);
+    jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS);
 
     await expect(rejection).rejects.toEqual(
       createErrorExpectation(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_TIMEOUT)
@@ -445,7 +440,7 @@ describe('AISummaryCoordinator', () => {
     expect(jest.getTimerCount()).toBe(0);
 
     coordinator.setFeatureEnablement({interactionId: 'interaction-2', midCallEnabled: true}, false);
-    jest.advanceTimersByTime(AI_SUMMARY_FEATURE_ORPHAN_RETENTION_MS);
+    jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS);
     expect(coordinator.getFeatureEnablement('interaction-2')).toBeUndefined();
   });
 
@@ -536,7 +531,7 @@ describe('AISummaryCoordinator', () => {
   it('should retain zero-candidate receiver flushes on the original buffer deadline', () => {
     const onReceiverDrop = jest.fn();
     const coordinator = new AISummaryCoordinator(onReceiverDrop);
-    const retainedElapsedMs = AI_SUMMARY_RECEIVER_BUFFER_RETENTION_MS / 2;
+    const retainedElapsedMs = AI_SUMMARY_DURATION_MS / 2;
 
     expect(
       coordinator.routeReceivingSummary(
@@ -552,7 +547,7 @@ describe('AISummaryCoordinator', () => {
     expect(jest.getTimerCount()).toBe(1);
     expect(onReceiverDrop).not.toHaveBeenCalled();
 
-    jest.advanceTimersByTime(AI_SUMMARY_RECEIVER_BUFFER_RETENTION_MS - retainedElapsedMs - 1);
+    jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS - retainedElapsedMs - 1);
     expect(onReceiverDrop).not.toHaveBeenCalled();
 
     jest.advanceTimersByTime(1);
@@ -630,7 +625,7 @@ describe('AISummaryCoordinator', () => {
 
     onReceiverDrop.mockClear();
     coordinator.routeReceivingSummary({conversationId: 'conversation-2'}, []);
-    jest.advanceTimersByTime(AI_SUMMARY_RECEIVER_BUFFER_RETENTION_MS);
+    jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS);
 
     expect(onReceiverDrop).toHaveBeenCalledWith({
       eventType: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
