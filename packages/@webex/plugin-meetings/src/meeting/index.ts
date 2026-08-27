@@ -986,6 +986,16 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore
     this.webinar = new Webinar({meetingId: this.id}, {parent: this.webex});
     /**
+     * VoiceaChannel for transcription/captions. Created without llmChannel;
+     * switchLLMChannel() is called in updateLLMConnection() when LLM connects.
+     * @instance
+     * @type {VoiceaChannel}
+     * @public
+     * @memberof Meeting
+     */
+    // @ts-ignore - Fix type
+    this.voiceaChannel = this.webex.internal.voicea.createChannel();
+    /**
      * helper class for managing receive slots (for multistream media connections)
      */
     this.receiveSlotManager = new ReceiveSlotManager(
@@ -6670,8 +6680,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.llmChannel?.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
     this.llmChannel?.off('online', this.handleLLMOnline);
     this.breakouts?.unregisterLLMChannel();
-    this.voiceaChannel?.deregisterEvents();
-    this.voiceaChannel = undefined;
+    // voiceaChannel persists across LLM reconnects; switchLLMChannel() handles re-subscribing
     this.clearLLMHealthCheckTimer();
   }
 
@@ -6901,13 +6910,21 @@ export default class Meeting extends StatelessWebexPlugin {
         // Register breakouts channel
         this.breakouts.registerLLMChannel(this.llmChannel);
 
-        // Create VoiceaChannel for this meeting
-        // @ts-ignore - Fix type
-        this.voiceaChannel = this.webex.internal.voicea.createChannel(this.llmChannel);
         LoggerProxy.logger.info(
           'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
         );
         this.startLLMHealthCheckTimer();
+
+        // Switch voiceaChannel to use the new LLM channel (preserves transcription state)
+        // Fire-and-forget: caption restoration shouldn't block LLM connection result
+        if (this.voiceaChannel) {
+          this.voiceaChannel.switchLLMChannel(this.llmChannel).catch((error) => {
+            LoggerProxy.logger.warn(
+              'Meeting:index#updateLLMConnection --> failed to switch voicea channel:',
+              error
+            );
+          });
+        }
 
         if (registerAndConnectResult) {
           if (isInitialJoinPhase) {

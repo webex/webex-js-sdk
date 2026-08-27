@@ -315,6 +315,7 @@ describe('plugin-meetings', () => {
       deregisterEvents: sinon.stub(),
       getIsCaptionBoxOn: sinon.stub().returns(false),
       updateSubchannelSubscriptions: sinon.stub(),
+      switchLLMChannel: sinon.stub().resolves(),
     }));
     webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
       {},
@@ -573,6 +574,11 @@ describe('plugin-meetings', () => {
           localWebex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(false);
           localWebex.internal.llm.on = sinon.stub();
           localWebex.internal.voicea.announce = sinon.stub();
+          localWebex.internal.voicea.createChannel = sinon.stub().returns({
+            on: sinon.stub(),
+            off: sinon.stub(),
+            switchLLMChannel: sinon.stub().resolves(),
+          });
           localWebex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
             {},
             {parent: localWebex}
@@ -15075,10 +15081,14 @@ describe('plugin-meetings', () => {
             deregisterEvents: sinon.stub(),
             getIsCaptionBoxOn: sinon.stub().returns(false),
             updateSubchannelSubscriptions: sinon.stub(),
+            switchLLMChannel: sinon.stub().resolves(),
           };
 
           webex.internal.llm.createChannel = sinon.stub().returns(mockChannel);
           webex.internal.voicea.createChannel = sinon.stub().returns(mockVoiceaChannel);
+
+          // voiceaChannel is created in the Meeting constructor
+          meeting.voiceaChannel = mockVoiceaChannel;
 
           meeting.processRelayEvent = sinon.stub();
           meeting.processLocusLLMEvent = sinon.stub();
@@ -15361,6 +15371,47 @@ describe('plugin-meetings', () => {
           await meeting.updateLLMConnection();
 
           assert.calledOnce(meeting.startLLMHealthCheckTimer);
+        });
+
+        it('calls switchLLMChannel on voiceaChannel after successful connection', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          await meeting.updateLLMConnection();
+
+          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockChannel);
+        });
+
+        it('does not call switchLLMChannel when voiceaChannel is undefined', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.voiceaChannel = undefined;
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          // Should not throw
+          await meeting.updateLLMConnection();
+        });
+
+        it('logs warning when switchLLMChannel fails', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          mockVoiceaChannel.switchLLMChannel.rejects(new Error('switch failed'));
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          // Should not throw - fire-and-forget behavior
+          const result = await meeting.updateLLMConnection();
+
+          assert.equal(result, 'something');
         });
 
         it('registers annotation channel when not in practice session', async () => {

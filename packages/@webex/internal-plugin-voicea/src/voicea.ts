@@ -31,7 +31,7 @@ import {millisToMinutesAndSeconds} from './utils';
  */
 export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
   private request: (options: {method: string; url: string; body?: object}) => Promise<any>;
-  private llmChannel: LLMChannel;
+  private llmChannel?: LLMChannel;
 
   private seqNum: number;
   private areCaptionsEnabled: boolean;
@@ -48,12 +48,13 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
   private currentCaptionLanguage?: string;
 
   /**
-   * Creates a VoiceaChannel bound to the given LLMChannel
-   * @param {LLMChannel} llmChannel - The LLM channel to use
+   * Creates a VoiceaChannel, optionally bound to an LLMChannel.
+   * If no llmChannel is provided, call switchLLMChannel() later to attach one.
+   * @param {LLMChannel} [llmChannel] - The LLM channel to use (optional)
    * @param {Function} request - The request function for making API calls (typically webex.request bound to webex)
    */
   constructor(
-    llmChannel: LLMChannel,
+    llmChannel: LLMChannel | undefined,
     request: (options: {method: string; url: string; body?: object}) => Promise<any>
   ) {
     super();
@@ -70,9 +71,25 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
     this.currentCaptionLanguage = undefined;
     this.keepTranscriptionSubscribed = false;
 
-    // Subscribe to relay events from the LLM channel
-    this.llmChannel.on('event:relay.event', this.eventProcessor);
-    this.hasSubscribedToEvents = true;
+    // Subscribe to relay events from the LLM channel if provided
+    if (this.llmChannel) {
+      this.llmChannel.on('event:relay.event', this.eventProcessor);
+      this.hasSubscribedToEvents = true;
+    }
+  }
+
+  /**
+   * Returns the LLM channel, throwing if not available.
+   * @private
+   * @returns {LLMChannel}
+   * @throws {Error} If LLM channel is not available
+   */
+  private requireLLMChannel(): LLMChannel {
+    if (!this.llmChannel) {
+      throw new Error('VoiceaChannel: LLM channel not available');
+    }
+
+    return this.llmChannel;
   }
 
   /**
@@ -116,7 +133,7 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
     this.keepTranscriptionSubscribed = false;
     this.captionServiceId = undefined;
 
-    if (this.hasSubscribedToEvents) {
+    if (this.hasSubscribedToEvents && this.llmChannel) {
       this.llmChannel.off('event:relay.event', this.eventProcessor);
       this.hasSubscribedToEvents = false;
     }
@@ -290,7 +307,7 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
    * Indicates whether the LLM channel is connected.
    * @returns {boolean}
    */
-  public isLLMConnected = (): boolean => this.llmChannel.isConnected();
+  public isLLMConnected = (): boolean => this.llmChannel?.isConnected() ?? false;
 
   public getKeepTranscriptionSubscribed = (): boolean => this.keepTranscriptionSubscribed;
 
@@ -299,9 +316,10 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
    * @returns {void}
    */
   public sendAnnouncement = (): void => {
+    const llm = this.requireLLMChannel();
     this.announceStatus = ANNOUNCE_STATUS.JOINING;
-    const socket = this.llmChannel.getSocket();
-    const binding = this.llmChannel.getBinding();
+    const socket = llm.getSocket();
+    const binding = llm.getBinding();
 
     const payload = {
       id: `${this.seqNum}`,
@@ -338,7 +356,7 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
   ): Promise<void> =>
     this.request({
       method: 'PUT',
-      url: `${this.llmChannel.getLocusUrl()}/controls/`,
+      url: `${this.requireLLMChannel().getLocusUrl()}/controls/`,
       body: {
         transcribe: {
           spokenLanguage: languageCode,
@@ -359,8 +377,9 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
       return;
     }
 
-    const socket = this.llmChannel.getSocket();
-    const binding = this.llmChannel.getBinding();
+    const llm = this.requireLLMChannel();
+    const socket = llm.getSocket();
+    const binding = llm.getBinding();
 
     socket.send({
       id: `${this.seqNum}`,
@@ -405,8 +424,9 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
       return;
     }
 
-    const socket = this.llmChannel.getSocket();
-    const binding = this.llmChannel.getBinding();
+    const llm = this.requireLLMChannel();
+    const socket = llm.getSocket();
+    const binding = llm.getBinding();
 
     socket?.send({
       id: `${this.seqNum}`,
@@ -449,7 +469,7 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
   private requestTurnOnCaptions = (languageCode?: string): undefined | Promise<void> => {
     this.captionStatus = TURN_ON_CAPTION_STATUS.SENDING;
 
-    const locusUrl = this.llmChannel.getLocusUrl();
+    const locusUrl = this.requireLLMChannel().getLocusUrl();
 
     const body = {
       transcribe: {caption: true},
@@ -536,7 +556,7 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
   ): undefined | Promise<void> => {
     return this.request({
       method: 'PUT',
-      url: `${this.llmChannel.getLocusUrl()}/controls/`,
+      url: `${this.requireLLMChannel().getLocusUrl()}/controls/`,
       body: {
         transcribe: {
           transcribing: activate,
@@ -564,7 +584,7 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
 
     return this.request({
       method: 'PUT',
-      url: `${this.llmChannel.getLocusUrl()}/controls/`,
+      url: `${this.requireLLMChannel().getLocusUrl()}/controls/`,
       body: {
         manualCaption: {
           enable,
@@ -638,11 +658,12 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
   } = {}): Promise<void> => {
     if (!this.isLLMConnected()) return;
 
-    const isDataChannelTokenEnabled = await this.llmChannel.isDataChannelTokenEnabled();
+    const llm = this.requireLLMChannel();
+    const isDataChannelTokenEnabled = await llm.isDataChannelTokenEnabled();
     if (!isDataChannelTokenEnabled) return;
 
-    const socket = this.llmChannel.getSocket();
-    const datachannelUrl = this.llmChannel.getDatachannelUrl();
+    const socket = llm.getSocket();
+    const datachannelUrl = llm.getDatachannelUrl();
 
     socket.send({
       id: `${this.seqNum}`,

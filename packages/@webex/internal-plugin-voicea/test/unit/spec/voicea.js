@@ -65,8 +65,14 @@ describe('plugin-voicea', () => {
         assert.equal(voiceaChannel.getCaptionStatus(), 'idle');
       });
 
-      it('should subscribe to relay events', () => {
+      it('should subscribe to relay events when llmChannel is provided', () => {
         assert.calledWith(mockLLMChannel.on, 'event:relay.event', sinon.match.func);
+      });
+
+      it('should not subscribe to events when llmChannel is undefined', () => {
+        const channelWithoutLLM = new VoiceaChannel(undefined, requestStub);
+        // No llmChannel means no subscription, just verify it doesn't throw
+        assert.equal(channelWithoutLLM.getAnnounceStatus(), 'idle');
       });
     });
 
@@ -193,9 +199,20 @@ describe('plugin-voicea', () => {
     });
 
     describe('#deregisterEvents', () => {
-
       beforeEach(async () => {
         voiceaChannel.keepTranscriptionSubscribed = true;
+      });
+
+      it('works when llmChannel is undefined', () => {
+        const channelWithoutLLM = new VoiceaChannel(undefined, requestStub);
+        channelWithoutLLM.areCaptionsEnabled = true;
+        channelWithoutLLM.keepTranscriptionSubscribed = true;
+
+        // Should not throw
+        channelWithoutLLM.deregisterEvents();
+
+        assert.equal(channelWithoutLLM.areCaptionsEnabled, false);
+        assert.equal(channelWithoutLLM.keepTranscriptionSubscribed, false);
       });
 
       it('deregisters voicea channel and resets state', () => {
@@ -321,6 +338,11 @@ describe('plugin-voicea', () => {
       it('returns false when the LLM channel is not connected', () => {
         mockLLMChannel.isConnected.returns(false);
         assert.equal(voiceaChannel.isLLMConnected(), false);
+      });
+
+      it('returns false when the LLM channel is undefined', () => {
+        const channelWithoutLLM = new VoiceaChannel(undefined, requestStub);
+        assert.equal(channelWithoutLLM.isLLMConnected(), false);
       });
     });
 
@@ -1010,6 +1032,37 @@ describe('plugin-voicea', () => {
 
         // Should have subscribed to new channel
         assert.calledWith(newMockLLMChannel.on, 'event:relay.event', sinon.match.func);
+      });
+
+      it('switches from undefined llmChannel to a valid one', async () => {
+        // Create a channel without llmChannel
+        const channelWithoutLLM = new VoiceaChannel(undefined, requestStub);
+
+        const newMockLLMChannel = createMockLLMChannel({locusUrl: 'newLocusUrl'});
+
+        await channelWithoutLLM.switchLLMChannel(newMockLLMChannel);
+
+        // Should have subscribed to new channel
+        assert.calledWith(newMockLLMChannel.on, 'event:relay.event', sinon.match.func);
+
+        // isLLMConnected should now return true
+        assert.equal(channelWithoutLLM.isLLMConnected(), true);
+      });
+    });
+
+    describe('#requireLLMChannel', () => {
+      it('throws when llmChannel is undefined', () => {
+        const channelWithoutLLM = new VoiceaChannel(undefined, requestStub);
+
+        assert.throws(
+          () => channelWithoutLLM.sendAnnouncement(),
+          'VoiceaChannel: LLM channel not available'
+        );
+      });
+
+      it('does not throw when llmChannel is defined', () => {
+        // voiceaChannel has a mockLLMChannel, so this should not throw
+        assert.doesNotThrow(() => voiceaChannel.sendAnnouncement());
       });
     });
   });
