@@ -6745,6 +6745,10 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     } finally {
       this.stopListeningForLLMEvents();
+      // Permanent cleanup: deregister voiceaChannel since meeting is being destroyed
+      // (transient reconnects preserve voiceaChannel via switchLLMChannel instead)
+      this.voiceaChannel?.deregisterEvents();
+      this.voiceaChannel = undefined;
       this.llmChannel = undefined;
     }
   };
