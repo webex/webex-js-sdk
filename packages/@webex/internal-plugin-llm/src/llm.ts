@@ -268,6 +268,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.datachannelUrl = undefined;
     this.datachannelToken = undefined;
     this.refreshHandler = undefined;
+    this.connectingPromise = undefined;
 
     await super.disconnect(options);
   }

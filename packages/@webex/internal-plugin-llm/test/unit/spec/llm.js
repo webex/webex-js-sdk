@@ -355,6 +355,7 @@ describe('plugin-llm', () => {
         assert.equal(llmChannel.getDatachannelUrl(), undefined);
         assert.equal(llmChannel.getBinding(), undefined);
         assert.equal(llmChannel.getDatachannelToken(), undefined);
+        assert.equal(llmChannel.isConnecting(), false);
       });
 
       it('works without options', async () => {
@@ -404,6 +405,7 @@ describe('plugin-llm', () => {
             datachannelUrl: llmChannel.getDatachannelUrl(),
             binding: llmChannel.getBinding(),
             datachannelToken: llmChannel.getDatachannelToken(),
+            isConnecting: llmChannel.isConnecting(),
           };
         });
 
@@ -415,6 +417,7 @@ describe('plugin-llm', () => {
           datachannelUrl: undefined,
           binding: undefined,
           datachannelToken: undefined,
+          isConnecting: false,
         });
       });
     });
