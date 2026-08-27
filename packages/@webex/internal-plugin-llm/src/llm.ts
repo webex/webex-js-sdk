@@ -253,17 +253,23 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   /**
    * Disconnects the WebSocket and clears all connection state.
    * Overrides Mercury's disconnect to also clear LLM-specific state.
+   * State is cleared BEFORE calling super.disconnect() so that when the
+   * 'disconnected' event fires, handlers see clean state and can safely
+   * call registerAndConnect() without risk of the resumed disconnect()
+   * erasing the new connection's URLs.
    * @param {object} [options]
    * @returns {Promise<void>}
    */
   public async disconnect(options?: {code: number; reason: string}): Promise<void> {
-    await super.disconnect(options);
+    // Clear LLM-specific state first, before Mercury emits 'disconnected'
     this.webSocketUrl = undefined;
     this.binding = undefined;
     this.locusUrl = undefined;
     this.datachannelUrl = undefined;
     this.datachannelToken = undefined;
     this.refreshHandler = undefined;
+
+    await super.disconnect(options);
   }
 
   /**

@@ -390,6 +390,33 @@ describe('plugin-llm', () => {
 
         sinon.assert.calledOnce(disconnectedSpy);
       });
+
+      it('clears state before disconnected event fires', async () => {
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+        llmChannel.setDatachannelToken('token123');
+
+        let stateAtEventTime;
+
+        llmChannel.on('disconnected', () => {
+          // Capture state when event fires - should already be cleared
+          stateAtEventTime = {
+            locusUrl: llmChannel.getLocusUrl(),
+            datachannelUrl: llmChannel.getDatachannelUrl(),
+            binding: llmChannel.getBinding(),
+            datachannelToken: llmChannel.getDatachannelToken(),
+          };
+        });
+
+        await llmChannel.disconnect({code: 1000, reason: 'test'});
+
+        // State should have been undefined when the event fired
+        assert.deepEqual(stateAtEventTime, {
+          locusUrl: undefined,
+          datachannelUrl: undefined,
+          binding: undefined,
+          datachannelToken: undefined,
+        });
+      });
     });
 
     describe('#setRefreshHandler', () => {
