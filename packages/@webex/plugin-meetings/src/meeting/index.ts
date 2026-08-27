@@ -8199,10 +8199,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.media.audio.metrics',
         payload: {
           mediaType: 'main', // Audio slides not supported yet
-          data: data.map((audioTrait) => ({
-            audioLevelAvg: audioTrait.audioLevelAvg,
-            ssrc: audioTrait.ssrc,
-          })),
+          data,
         },
         options: {
           meetingId: this.id,
