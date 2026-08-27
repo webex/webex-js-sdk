@@ -420,6 +420,71 @@ describe('plugin-llm', () => {
           isConnecting: false,
         });
       });
+
+      it('waits for in-flight connection to settle before clearing state', async () => {
+        let resolveRequest;
+        llmChannel.request = sinon.stub().returns(
+          new Promise((resolve) => {
+            resolveRequest = resolve;
+          })
+        );
+
+        // Start connection but don't await - request is pending
+        const connectPromise = llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+
+        assert.equal(llmChannel.isConnecting(), true);
+
+        // Start disconnect while connection is in-flight
+        const disconnectPromise = llmChannel.disconnect({code: 1000, reason: 'test'});
+
+        // Disconnect should be blocked waiting for connection to settle
+        // Resolve the pending request
+        resolveRequest({
+          headers: {},
+          body: {binding: 'binding', webSocketUrl: 'wss://example.com/socket'},
+        });
+
+        // Now both should complete
+        await connectPromise;
+        await disconnectPromise;
+
+        // State should be cleared after disconnect completes
+        assert.equal(llmChannel.getLocusUrl(), undefined);
+        assert.equal(llmChannel.getBinding(), undefined);
+        assert.equal(llmChannel.isConnecting(), false);
+      });
+
+      it('waits for in-flight connection that fails before clearing state', async () => {
+        let rejectRequest;
+        llmChannel.request = sinon.stub().returns(
+          new Promise((resolve, reject) => {
+            rejectRequest = reject;
+          })
+        );
+
+        // Start connection but don't await - request is pending
+        const connectPromise = llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+
+        // Start disconnect while connection is in-flight
+        const disconnectPromise = llmChannel.disconnect({code: 1000, reason: 'test'});
+
+        // Reject the pending request
+        rejectRequest(new Error('Network error'));
+
+        // Connect promise should reject
+        try {
+          await connectPromise;
+        } catch {
+          // expected
+        }
+
+        // Disconnect should still complete successfully
+        await disconnectPromise;
+
+        // State should be cleared
+        assert.equal(llmChannel.getLocusUrl(), undefined);
+        assert.equal(llmChannel.isConnecting(), false);
+      });
     });
 
     describe('#setRefreshHandler', () => {
