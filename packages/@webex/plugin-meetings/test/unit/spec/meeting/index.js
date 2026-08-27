@@ -5887,29 +5887,42 @@ describe('plugin-meetings', () => {
             });
           });
 
-          describe('handles AUDIO_TRAITS_REPORT event for audio metric reports', () => {
-            it('AUDIO_TRAITS_REPORT sends a metric for a single report item', async () => {
+          describe('handles AUDIO_METRICS_REPORT event for audio metric reports', () => {
+            it('AUDIO_METRICS_REPORT sends a single batched metric with every report item', async () => {
               webex.internal.newMetrics.submitClientEvent.resetHistory();
 
-              const audioTraits = [
+              const audioMetrics = [
                 {
                   audioLevelAvg: 42,
                   ssrc: 12345,
+                },
+                {
+                  audioLevelAvg: 67,
+                  ssrc: 67890,
                 },
               ];
 
               statsAnalyzerStub.emit(
                 {file: 'test', function: 'test'},
-                StatsAnalyzerEventNames.AUDIO_TRAITS_REPORT,
-                audioTraits
+                StatsAnalyzerEventNames.AUDIO_METRICS_REPORT,
+                audioMetrics
               );
 
+              assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
               assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-                name: 'client.media.render.stop',
+                name: 'client.media.audio.metrics',
                 payload: {
                   mediaType: 'main',
-                  audioLevelAvg: 42,
-                  ssrc: 12345,
+                  data: [
+                    {
+                      audioLevelAvg: 42,
+                      ssrc: 12345,
+                    },
+                    {
+                      audioLevelAvg: 67,
+                      ssrc: 67890,
+                    },
+                  ],
                 },
                 options: {
                   meetingId: meeting.id,
@@ -5917,18 +5930,18 @@ describe('plugin-meetings', () => {
               });
             });
 
-            it('AUDIO_TRAITS_REPORT does not send any metrics when the report array is empty', async () => {
+            it('AUDIO_METRICS_REPORT does not send any metrics when the report array is empty', async () => {
               webex.internal.newMetrics.submitClientEvent.resetHistory();
 
               statsAnalyzerStub.emit(
                 {file: 'test', function: 'test'},
-                StatsAnalyzerEventNames.AUDIO_TRAITS_REPORT,
+                StatsAnalyzerEventNames.AUDIO_METRICS_REPORT,
                 []
               );
 
               assert.neverCalledWith(
                 webex.internal.newMetrics.submitClientEvent,
-                sinon.match.has('name', 'client.media.render.stop')
+                sinon.match.has('name', 'client.media.audio.metrics')
               );
             });
           });

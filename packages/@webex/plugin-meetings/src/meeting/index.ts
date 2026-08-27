@@ -8185,28 +8185,28 @@ export default class Meeting extends StatelessWebexPlugin {
         );
       }
     });
-    this.statsAnalyzer.on(StatsAnalyzerEventNames.AUDIO_TRAITS_REPORT, (data) => {
+    this.statsAnalyzer.on(StatsAnalyzerEventNames.AUDIO_METRICS_REPORT, (data) => {
       if (data.length === 0) {
         return;
       }
 
       LoggerProxy.logger.info(
-        `Meeting:index#setupStatsAnalyzerEventHandlers --> audio traits report received for ${data.length} tracks`
+        `Meeting:index#setupStatsAnalyzerEventHandlers --> audio metrics report received for ${data.length} tracks`
       );
 
-      data.forEach((audioTrait) => {
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.media.render.stop',
-          payload: {
-            mediaType: 'main', // Audio slides not supported yet
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.media.audio.metrics',
+        payload: {
+          mediaType: 'main', // Audio slides not supported yet
+          data: data.map((audioTrait) => ({
             audioLevelAvg: audioTrait.audioLevelAvg,
             ssrc: audioTrait.ssrc,
-          },
-          options: {
-            meetingId: this.id,
-          },
-        });
+          })),
+        },
+        options: {
+          meetingId: this.id,
+        },
       });
     });
   };
