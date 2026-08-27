@@ -26,7 +26,7 @@ import {
   DESTINATION_TYPE,
   MEETING_REMOVED_REASON,
   LOCUSINFO,
-  ICE_AND_DTLS_CONNECTION_TIMEOUT,
+  ICE_CONNECTION_TIMEOUT,
   DISPLAY_HINTS,
   SELF_POLICY,
   IP_VERSION,
@@ -4416,7 +4416,7 @@ describe('plugin-meetings', () => {
             mediaSettings: {},
           });
 
-          await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT);
+          await clock.tickAsync(ICE_CONNECTION_TIMEOUT);
           await testUtils.flushPromises();
 
           assert.exists(media);
