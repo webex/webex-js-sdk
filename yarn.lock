@@ -7816,6 +7816,26 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@webex/internal-media-core@npm:2.29.2":
+  version: 2.29.2
+  resolution: "@webex/internal-media-core@npm:2.29.2"
+  dependencies:
+    "@babel/runtime": ^7.18.9
+    "@babel/runtime-corejs2": ^7.25.0
+    "@webex/rtcstats": ^1.5.5
+    "@webex/ts-sdp": 1.8.2
+    "@webex/web-capabilities": ^1.10.0
+    "@webex/web-client-media-engine": 3.43.1
+    events: ^3.3.0
+    ip-anonymize: ^0.1.0
+    typed-emitter: ^2.1.0
+    uuid: ^8.3.2
+    webrtc-adapter: ^8.1.2
+    xstate: ^4.30.6
+  checksum: c1a68cdfcc6ee706f583269941a7e053c3a02dd00be2b0835494a3454e0b40d72c26e020070995bd62bac992621fa9c7463147ab0fbcb199cce9d1ba99cf4d32
+  languageName: node
+  linkType: hard
+
 "@webex/internal-plugin-ai-assistant@workspace:packages/@webex/internal-plugin-ai-assistant":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-ai-assistant@workspace:packages/@webex/internal-plugin-ai-assistant"
@@ -8912,7 +8932,7 @@ __metadata:
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/event-dictionary-ts": ^1.0.2215
-    "@webex/internal-media-core": 2.29.1
+    "@webex/internal-media-core": 2.29.2
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-llm": "workspace:*"
