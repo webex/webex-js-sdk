@@ -10,6 +10,16 @@ import BEHAVIORAL_METRICS from '../metrics/constants';
 
 import MeetingInfoUtil from './utilv2';
 
+type MeetingInfoProviderOptions = {
+  meetingId?: string;
+  correlationId?: string;
+  sessionCorrelationId?: string;
+  loginType?: string;
+  joinFlowVersion?: string;
+  sendCAevents?: boolean;
+  requestType?: 'meetingInfo' | 'preJoin';
+};
+
 const PASSWORD_ERROR_DEFAULT_MESSAGE =
   'Password required. Call fetchMeetingInfo() with password argument';
 const CAPTCHA_ERROR_DEFAULT_MESSAGE =
@@ -649,12 +659,24 @@ export default class MeetingInfoV2 {
     installedOrgID = null,
     locusId = null,
     extraParams: object = {},
-    options: {meetingId?: string; sendCAevents?: boolean} = {},
+    options: MeetingInfoProviderOptions = {},
     registrationId: string = null,
     fullSiteUrl: string = null,
     classificationId: string = null
   ) {
-    const {meetingId, sendCAevents} = options;
+    const {
+      meetingId,
+      correlationId,
+      sessionCorrelationId,
+      loginType,
+      joinFlowVersion,
+      sendCAevents,
+      requestType = 'meetingInfo',
+    } = options;
+
+    if (requestType !== 'meetingInfo' && requestType !== 'preJoin') {
+      throw new Error(`Unsupported meeting info request type: ${requestType}`);
+    }
 
     const destinationType = await MeetingInfoUtil.getDestinationType({
       destination,
@@ -706,34 +728,68 @@ export default class MeetingInfoV2 {
       body,
     };
 
+    if (requestType === 'preJoin') {
+      const requestCorrelationId = correlationId || requestOptions.body.correlationId;
+
+      delete requestOptions.body.correlationId;
+
+      if (requestCorrelationId) {
+        requestOptions.headers = {correlationId: requestCorrelationId};
+      }
+    }
+
     const directURI = await MeetingInfoUtil.getDirectMeetingInfoURI(destinationType);
 
     if (fullSiteUrl) {
-      requestOptions.uri = `https://${fullSiteUrl}/wbxappapi/v1/meetingInfo`;
+      requestOptions.uri = `https://${fullSiteUrl}/wbxappapi/v1/${requestType}`;
     } else if (directURI) {
-      requestOptions.uri = directURI;
+      requestOptions.uri =
+        requestType === 'preJoin' ? directURI.replace(/\/meetingInfo$/, '/preJoin') : directURI;
     } else {
       requestOptions.service = WBXAPPAPI_SERVICE;
-      requestOptions.resource = 'meetingInfo';
+      requestOptions.resource = requestType;
     }
 
-    if (meetingId && sendCAevents) {
+    const metricOptions = meetingId
+      ? {meetingId}
+      : {
+          correlationId,
+          sessionCorrelationId,
+          joinFlowVersion,
+          meetingJoinPhase: 'pre-join' as const,
+        };
+    const shouldSendCAEvents = sendCAevents && (meetingId || correlationId);
+    const metricPayload = loginType ? {loginType} : undefined;
+
+    if (shouldSendCAEvents) {
       this.webex.internal.newMetrics.submitInternalEvent({
         name: 'internal.client.meetinginfo.request',
       });
 
-      this.webex.internal.newMetrics.submitClientEvent({
+      const clientEvent = {
         name: 'client.meetinginfo.request',
-        options: {
-          meetingId,
-        },
-      });
+        options: metricOptions,
+      } as const;
+
+      this.webex.internal.newMetrics.submitClientEvent(
+        metricPayload ? {...clientEvent, payload: metricPayload} : clientEvent
+      );
     }
 
     return this.webex
       .request(requestOptions)
       .then((response) => {
-        if (meetingId && sendCAevents) {
+        let normalizedResponse = response;
+
+        if (requestType === 'preJoin') {
+          if (!response?.body?.meetingInfo) {
+            throw new Error('PreJoin response did not include meetingInfo');
+          }
+
+          normalizedResponse = {...response, body: response.body.meetingInfo};
+        }
+
+        if (shouldSendCAEvents) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
           });
@@ -742,22 +798,28 @@ export default class MeetingInfoV2 {
             name: 'client.meetinginfo.response',
             payload: {
               identifiers: {
-                meetingLookupUrl: response?.url,
+                meetingLookupUrl: normalizedResponse?.url,
               },
+              ...metricPayload,
             },
             options: {
-              meetingId,
-              webexConferenceIdStr: response?.body?.confIdStr || response?.body?.confID,
-              globalMeetingId: response?.body?.meetingId,
+              ...metricOptions,
+              webexConferenceIdStr:
+                normalizedResponse?.body?.confIdStr || normalizedResponse?.body?.confID,
+              globalMeetingId: normalizedResponse?.body?.meetingId,
             },
           });
         }
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS);
 
-        return response;
+        return normalizedResponse;
       })
       .catch((err) => {
-        if (meetingId && sendCAevents) {
+        if (requestType === 'preJoin' && err?.body?.meetingInfo && !err.body.data?.meetingInfo) {
+          err.body.data = {...err.body.data, meetingInfo: err.body.meetingInfo};
+        }
+
+        if (shouldSendCAEvents) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
           });
@@ -768,9 +830,10 @@ export default class MeetingInfoV2 {
               identifiers: {
                 meetingLookupUrl: err?.url,
               },
+              ...metricPayload,
             },
             options: {
-              meetingId,
+              ...metricOptions,
               rawError: err,
             },
           });

@@ -16,6 +16,7 @@ import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import ParameterError from '@webex/plugin-meetings/src/common/errors/parameter';
 import Meeting, {CallStateForMetrics} from '@webex/plugin-meetings/src/meeting';
+import MeetingInfoV2 from '@webex/plugin-meetings/src/meeting-info/meeting-info-v2';
 import {Services} from '@webex/webex-core';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import Meetings from '@webex/plugin-meetings/src/meetings';
@@ -1386,12 +1387,9 @@ describe('plugin-meetings', () => {
             const result = await webex.meetings.fetchSitePreferencesMeViaSite();
 
             assert.deepEqual(result, sitePreferencesResponse);
-            assert.calledOnceWithExactly(
-              webex.meetings.request.fetchSitePreferencesMeViaSite,
-              {
-                siteUrl: 'go.webex.com',
-              }
-            );
+            assert.calledOnceWithExactly(webex.meetings.request.fetchSitePreferencesMeViaSite, {
+              siteUrl: 'go.webex.com',
+            });
           });
 
           it('uses the provided Webex site instead of the preferred Webex site', async () => {
@@ -1399,12 +1397,9 @@ describe('plugin-meetings', () => {
 
             await webex.meetings.fetchSitePreferencesMeViaSite({siteUrl: 'go.webex.com'});
 
-            assert.calledOnceWithExactly(
-              webex.meetings.request.fetchSitePreferencesMeViaSite,
-              {
-                siteUrl: 'go.webex.com',
-              }
-            );
+            assert.calledOnceWithExactly(webex.meetings.request.fetchSitePreferencesMeViaSite, {
+              siteUrl: 'go.webex.com',
+            });
           });
 
           it('forwards custom site name and preference sections to the request helper', async () => {
@@ -1415,14 +1410,11 @@ describe('plugin-meetings', () => {
               selectOptions: [SitePreferenceSelectOption.SCHEDULING],
             });
 
-            assert.calledOnceWithExactly(
-              webex.meetings.request.fetchSitePreferencesMeViaSite,
-              {
-                siteUrl: 'go.webex.com',
-                siteName: 'custom-site',
-                selectOptions: [SitePreferenceSelectOption.SCHEDULING],
-              }
-            );
+            assert.calledOnceWithExactly(webex.meetings.request.fetchSitePreferencesMeViaSite, {
+              siteUrl: 'go.webex.com',
+              siteName: 'custom-site',
+              selectOptions: [SitePreferenceSelectOption.SCHEDULING],
+            });
           });
 
           it('throws when no Webex site is available', () => {
@@ -1570,13 +1562,17 @@ describe('plugin-meetings', () => {
                 },
                 'LOCUS_ID'
               );
-              assert.calledWith(initialSetup, {
-                trigger: 'get-loci-response',
-                locus: {
-                  url: url1,
+              assert.calledWith(
+                initialSetup,
+                {
+                  trigger: 'get-loci-response',
+                  locus: {
+                    url: url1,
+                  },
+                  hashTreeMessage: undefined,
                 },
-                hashTreeMessage: undefined,
-              }, sinon.match.func);
+                sinon.match.func
+              );
             });
           });
           describe('when destroying meeting is needed', () => {
@@ -1729,7 +1725,10 @@ describe('plugin-meetings', () => {
               meeting1: {locusInfo: mockLocusInfo},
             });
 
-            await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: true});
+            await webex.meetings.syncMeetings({
+              keepOnlyLocusMeetings: false,
+              skipHashTreeSync: true,
+            });
 
             assert.calledOnce(webex.meetings.request.getActiveMeetings);
             assert.notCalled(mockLocusInfo.syncAllHashTreeDatasets);
@@ -1745,7 +1744,10 @@ describe('plugin-meetings', () => {
               meeting1: {locusInfo: mockLocusInfo},
             });
 
-            await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: false});
+            await webex.meetings.syncMeetings({
+              keepOnlyLocusMeetings: false,
+              skipHashTreeSync: false,
+            });
 
             assert.calledOnce(webex.meetings.request.getActiveMeetings);
             assert.calledOnce(mockLocusInfo.syncAllHashTreeDatasets);
@@ -1780,7 +1782,9 @@ describe('plugin-meetings', () => {
               syncAllHashTreeDatasets: sinon.stub().resolves(),
             };
 
-            webex.meetings.request.getActiveMeetings = sinon.stub().rejects(new Error('network error'));
+            webex.meetings.request.getActiveMeetings = sinon
+              .stub()
+              .rejects(new Error('network error'));
             webex.meetings.meetingCollection.getAll = sinon.stub().returns({
               meeting1: {locusInfo: mockLocusInfo},
             });
@@ -1857,6 +1861,77 @@ describe('plugin-meetings', () => {
           return webex.meetings.disableStaticMeetingLink(conversationUrl).then(() => {
             assert.calledWith(webex.meetings.meetingInfo.disableStaticMeetingLink, conversationUrl);
           });
+        });
+      });
+      describe('#prefetchMeetingInfo', () => {
+        it('starts a reusable preJoin request without creating a Meeting', async () => {
+          const response = {body: {meetingJoinUrl: 'meeting-join-url'}};
+          const callStateForMetrics = {
+            correlationId: 'correlation-id',
+            sessionCorrelationId: 'session-correlation-id',
+            loginType: 'reuse-ci-token',
+            joinFlowVersion: 'NewFTE',
+          };
+
+          webex.meetings.meetingInfo.fetchMeetingInfo = sinon.stub().resolves(response);
+          const createMeeting = sinon.stub(webex.meetings, 'createMeeting');
+
+          const prefetchedMeetingInfo = webex.meetings.prefetchMeetingInfo({
+            destination: 'test destination',
+            type: DESTINATION_TYPE.MEETING_ID,
+            extraParams: {joinTXId: 'join-transaction-id'},
+            callStateForMetrics,
+            classificationId: 'classification-id',
+          });
+
+          assert.calledOnceWithExactly(
+            webex.meetings.meetingInfo.fetchMeetingInfo,
+            'test destination',
+            DESTINATION_TYPE.MEETING_ID,
+            null,
+            null,
+            undefined,
+            null,
+            {joinTXId: 'join-transaction-id'},
+            {
+              ...callStateForMetrics,
+              sendCAevents: true,
+              requestType: 'preJoin',
+            },
+            null,
+            null,
+            'classification-id'
+          );
+          assert.deepEqual(await prefetchedMeetingInfo.request, response);
+          assert.deepEqual(prefetchedMeetingInfo, {
+            request: prefetchedMeetingInfo.request,
+            provider: webex.meetings.meetingInfo,
+            extraParams: {joinTXId: 'join-transaction-id'},
+            classificationId: 'classification-id',
+            sendCAevents: true,
+          });
+          assert.notCalled(createMeeting);
+        });
+
+        it('uses AppAPI for preJoin when unified meetings is not enabled yet', async () => {
+          const response = {body: {meetingJoinUrl: 'meeting-join-url'}};
+          const legacyFetchMeetingInfo = sinon.stub().resolves(response);
+          const appApiFetchMeetingInfo = sinon
+            .stub(MeetingInfoV2.prototype, 'fetchMeetingInfo')
+            .resolves(response);
+
+          webex.meetings.meetingInfo = {fetchMeetingInfo: legacyFetchMeetingInfo};
+
+          const prefetchedMeetingInfo = webex.meetings.prefetchMeetingInfo({
+            destination: 'test destination',
+            type: DESTINATION_TYPE.MEETING_ID,
+            callStateForMetrics: {correlationId: 'correlation-id'},
+          });
+
+          assert.deepEqual(await prefetchedMeetingInfo.request, response);
+          assert.instanceOf(prefetchedMeetingInfo.provider, MeetingInfoV2);
+          assert.notCalled(legacyFetchMeetingInfo);
+          assert.calledOnce(appApiFetchMeetingInfo);
         });
       });
       describe('#create', () => {
@@ -2024,6 +2099,79 @@ describe('plugin-meetings', () => {
             correlationId,
             sessionCorrelationId,
           });
+        });
+
+        it('consumes a prefetched request for an existing meeting without meeting info', async () => {
+          const prefetchedMeetingInfo = {
+            request: Promise.resolve({body: {meetingJoinUrl: 'meeting-join-url'}}),
+            provider: webex.meetings.meetingInfo,
+            extraParams: {},
+            sendCAevents: true,
+          };
+          const fakeMeeting = {
+            meetingInfo: {},
+            updateCallStateForMetrics: sinon.stub(),
+            consumePrefetchedMeetingInfo: sinon.stub().resolves(),
+          };
+
+          webex.meetings.meetingCollection.getByKey = sinon.stub().returns(fakeMeeting);
+
+          const meeting = await webex.meetings.create(
+            test1,
+            test2,
+            FAKE_USE_RANDOM_DELAY,
+            {},
+            correlationId,
+            true,
+            callStateForMetrics,
+            undefined,
+            undefined,
+            sessionCorrelationId,
+            classificationId,
+            prefetchedMeetingInfo
+          );
+
+          assert.equal(meeting, fakeMeeting);
+          assert.calledOnceWithExactly(
+            fakeMeeting.consumePrefetchedMeetingInfo,
+            prefetchedMeetingInfo
+          );
+          assert.notCalled(webex.meetings.createMeeting);
+        });
+
+        it('keeps an existing populated meeting instead of applying a prefetched response', async () => {
+          const prefetchedMeetingInfo = {
+            request: Promise.resolve({body: {meetingJoinUrl: 'meeting-join-url'}}),
+            provider: webex.meetings.meetingInfo,
+            extraParams: {},
+            sendCAevents: true,
+          };
+          const fakeMeeting = {
+            meetingInfo: {meetingJoinUrl: 'existing-meeting-join-url'},
+            updateCallStateForMetrics: sinon.stub(),
+            consumePrefetchedMeetingInfo: sinon.stub(),
+          };
+
+          webex.meetings.meetingCollection.getByKey = sinon.stub().returns(fakeMeeting);
+
+          const meeting = await webex.meetings.create(
+            test1,
+            test2,
+            FAKE_USE_RANDOM_DELAY,
+            {},
+            correlationId,
+            true,
+            callStateForMetrics,
+            undefined,
+            undefined,
+            sessionCorrelationId,
+            classificationId,
+            prefetchedMeetingInfo
+          );
+
+          assert.equal(meeting, fakeMeeting);
+          assert.notCalled(fakeMeeting.consumePrefetchedMeetingInfo);
+          assert.notCalled(webex.meetings.createMeeting);
         });
 
         const checkCallCreateMeeting = async (createParameters, createMeetingParameters) => {
@@ -2338,27 +2486,31 @@ describe('plugin-meetings', () => {
               webExMeetingId
             );
             assert.calledOnce(initialSetup);
-            assert.calledWith(initialSetup, {
-              trigger: 'locus-message',
-              locus: {
-                id: uuid1,
-                replaces: [
-                  {
-                    locusUrl: 'http:locusUrl',
+            assert.calledWith(
+              initialSetup,
+              {
+                trigger: 'locus-message',
+                locus: {
+                  id: uuid1,
+                  replaces: [
+                    {
+                      locusUrl: 'http:locusUrl',
+                    },
+                  ],
+                  self: {
+                    callBackInfo: {
+                      callbackAddress: uri1,
+                    },
+                    devices: [],
                   },
-                ],
-                self: {
-                  callBackInfo: {
-                    callbackAddress: uri1,
+                  info: {
+                    webExMeetingId,
                   },
-                  devices: [],
                 },
-                info: {
-                  webExMeetingId,
-                },
+                hashTreeMessage: undefined,
               },
-              hashTreeMessage: undefined,
-            }, sinon.match.func);
+              sinon.match.func
+            );
           });
           it('should setup the meeting from a hash tree event', async () => {
             const selfData = {};
@@ -2383,16 +2535,20 @@ describe('plugin-meetings', () => {
             });
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
             assert.calledOnce(initialSetup);
-            assert.calledWith(initialSetup, {
-              trigger: 'locus-message',
-              locus: {
-                participants: [],
-                url: url1,
-                self: selfData,
-                info: infoData,
+            assert.calledWith(
+              initialSetup,
+              {
+                trigger: 'locus-message',
+                locus: {
+                  participants: [],
+                  url: url1,
+                  self: selfData,
+                  info: infoData,
+                },
+                hashTreeMessage,
               },
-              hashTreeMessage,
-            }, sinon.match.func);
+              sinon.match.func
+            );
           });
 
           it('should ignore hash tree event when created locus has INACTIVE fullState', async () => {
@@ -2457,22 +2613,26 @@ describe('plugin-meetings', () => {
               webExMeetingId
             );
             assert.calledOnce(initialSetup);
-            assert.calledWith(initialSetup, {
-              trigger: 'locus-message',
-              locus: {
-                id: uuid1,
-                self: {
-                  callBackInfo: {
-                    callbackAddress: uri1,
+            assert.calledWith(
+              initialSetup,
+              {
+                trigger: 'locus-message',
+                locus: {
+                  id: uuid1,
+                  self: {
+                    callBackInfo: {
+                      callbackAddress: uri1,
+                    },
+                    devices: [],
                   },
-                  devices: [],
+                  info: {
+                    webExMeetingId,
+                  },
                 },
-                info: {
-                  webExMeetingId,
-                },
+                hashTreeMessage: undefined,
               },
-              hashTreeMessage: undefined,
-            }, sinon.match.func);
+              sinon.match.func
+            );
           });
 
           it('sends client event correctly on finally', async () => {
@@ -2533,22 +2693,26 @@ describe('plugin-meetings', () => {
               webExMeetingId
             );
             assert.calledOnce(initialSetup);
-            assert.calledWith(initialSetup, {
-              trigger: 'locus-message',
-              locus: {
-                id: uuid1,
-                self: {
-                  callBackInfo: {
-                    callbackAddress: uri1,
+            assert.calledWith(
+              initialSetup,
+              {
+                trigger: 'locus-message',
+                locus: {
+                  id: uuid1,
+                  self: {
+                    callBackInfo: {
+                      callbackAddress: uri1,
+                    },
+                    devices: [],
                   },
-                  devices: [],
+                  info: {
+                    webExMeetingId,
+                  },
                 },
-                info: {
-                  webExMeetingId,
-                },
+                hashTreeMessage: undefined,
               },
-              hashTreeMessage: undefined,
-            }, sinon.match.func);
+              sinon.match.func
+            );
           });
 
           const generateFakeLocusData = (isUnifiedSpaceMeeting) => ({
@@ -2780,6 +2944,101 @@ describe('plugin-meetings', () => {
               expectedMeetingData,
               false,
               true
+            );
+          });
+
+          it('accepts a prefetched response and keeps using preJoin for later requests', async () => {
+            const callState = {
+              correlationId: 'correlation-id',
+              sessionCorrelationId: 'session-correlation-id',
+              loginType: 'reuse-ci-token',
+              joinFlowVersion: 'NewFTE',
+            };
+            const permissionToken =
+              'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0';
+            const preJoinProvider = {fetchMeetingInfo: sinon.stub()};
+            const prefetchedMeetingInfo = {
+              extraParams: {joinTXId: 'join-transaction-id'},
+              sendCAevents: true,
+              provider: preJoinProvider,
+              request: Promise.resolve({
+                body: {
+                  permissionToken,
+                  meetingJoinUrl: 'meetingJoinUrl',
+                },
+              }),
+            };
+
+            const meeting = await webex.meetings.createMeeting(
+              'test destination',
+              'test type',
+              false,
+              {},
+              callState,
+              false,
+              undefined,
+              undefined,
+              undefined,
+              prefetchedMeetingInfo
+            );
+
+            assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
+            assert.equal(meeting.meetingJoinUrl, 'meetingJoinUrl');
+            assert.equal(meeting.permissionToken, permissionToken);
+            assert.deepEqual(meeting.selfUserPolicies, {a: true});
+            assert.isTrue(meeting.usePreJoinForMeetingInfo);
+
+            preJoinProvider.fetchMeetingInfo.resolves({
+              body: {meetingJoinUrl: 'refreshed-meetingJoinUrl', permissionToken},
+            });
+
+            await meeting.refreshPermissionToken('test');
+
+            assert.calledOnceWithExactly(
+              preJoinProvider.fetchMeetingInfo,
+              'test destination',
+              'test type',
+              null,
+              null,
+              undefined,
+              meeting.locusId,
+              {joinTXId: 'join-transaction-id', permissionToken},
+              {
+                meetingId: meeting.id,
+                sendCAevents: true,
+                ...callState,
+                requestType: 'preJoin',
+              },
+              null,
+              null,
+              null
+            );
+
+            preJoinProvider.fetchMeetingInfo.resetHistory();
+            preJoinProvider.fetchMeetingInfo.resolves({
+              body: {meetingJoinUrl: 'updated-meetingJoinUrl', permissionToken},
+            });
+
+            await meeting.fetchMeetingInfo({sendCAevents: true});
+
+            assert.calledOnceWithExactly(
+              preJoinProvider.fetchMeetingInfo,
+              'test destination',
+              'test type',
+              null,
+              null,
+              undefined,
+              meeting.locusId,
+              {},
+              {
+                meetingId: meeting.id,
+                sendCAevents: true,
+                ...callState,
+                requestType: 'preJoin',
+              },
+              null,
+              null,
+              null
             );
           });
 

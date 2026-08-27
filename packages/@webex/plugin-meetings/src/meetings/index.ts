@@ -1,5 +1,5 @@
 /* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
-import {cloneDeep, clone, set, once} from 'lodash';
+import {cloneDeep, clone, set, once, isEmpty} from 'lodash';
 import {WasmRuntimeProbe} from '@webex/web-capabilities';
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
@@ -61,6 +61,8 @@ import {
   INoiseReductionEffect,
   IVirtualBackgroundEffect,
   MeetingRegistrationStatus,
+  PrefetchedMeetingInfo,
+  PrefetchMeetingInfoParams,
   SitePreferencesResponse,
 } from './meetings.types';
 import MeetingsUtil from './util';
@@ -1546,6 +1548,7 @@ export default class Meetings extends WebexPlugin {
    * @param {String} [meetingLookupUrl] - meeting info prefetch url
    * @param {string} sessionCorrelationId - the optional specified sessionCorrelationId (callStateForMetrics.sessionCorrelationId) can be provided instead
    * @param {String} classificationId - If space support classification, it will provide it while start instant meeting
+   * @param {PrefetchedMeetingInfo} prefetchedMeetingInfo - meeting information requested before creating the Meeting
    * @returns {Promise<Meeting>} A new Meeting.
    * @public
    * @memberof Meetings
@@ -1561,8 +1564,15 @@ export default class Meetings extends WebexPlugin {
     meetingInfo = undefined,
     meetingLookupUrl = undefined,
     sessionCorrelationId: string = undefined,
-    classificationId: string = undefined
+    classificationId: string = undefined,
+    prefetchedMeetingInfo: PrefetchedMeetingInfo = undefined
   ) {
+    if (meetingInfo && prefetchedMeetingInfo) {
+      return Promise.reject(
+        new Error('meetingInfo and prefetchedMeetingInfo cannot both be provided')
+      );
+    }
+
     // Validate meeting information based on the provided destination and
     // type. This must be performed prior to determining if the meeting is
     // found in the collection, as we mutate the destination for hydra person
@@ -1632,7 +1642,8 @@ export default class Meetings extends WebexPlugin {
               failOnMissingMeetingInfo,
               meetingInfo,
               meetingLookupUrl,
-              classificationId
+              classificationId,
+              prefetchedMeetingInfo
             ).then((createdMeeting: any) => {
               // If the meeting was successfully created.
               if (createdMeeting && createdMeeting.on) {
@@ -1681,10 +1692,67 @@ export default class Meetings extends WebexPlugin {
           }
           meeting.updateCallStateForMetrics(callStateForMetrics);
 
+          if (prefetchedMeetingInfo && isEmpty(meeting.meetingInfo)) {
+            return meeting.consumePrefetchedMeetingInfo(prefetchedMeetingInfo).then(() => meeting);
+          }
+
           // Return the existing meeting.
           return Promise.resolve(meeting);
         })
     );
+  }
+
+  /**
+   * Starts meeting-information retrieval without creating or registering a Meeting.
+   *
+   * @param {PrefetchMeetingInfoParams} params request destination and metric identifiers
+   * @returns {PrefetchedMeetingInfo} opaque handle consumed later by create() or Meeting
+   * @public
+   * @memberof Meetings
+   */
+  public prefetchMeetingInfo({
+    destination,
+    type = null,
+    extraParams = {},
+    callStateForMetrics = {},
+    classificationId = undefined,
+  }: PrefetchMeetingInfoParams): PrefetchedMeetingInfo {
+    const sendCAevents = !!callStateForMetrics.correlationId;
+    // @ts-ignore - parent SDK instance inherited from WebexPlugin
+    const {webex} = this;
+    const meetingInfoProvider =
+      this.meetingInfo instanceof MeetingInfoV2 ? this.meetingInfo : new MeetingInfoV2(webex);
+    const request = meetingInfoProvider.fetchMeetingInfo(
+      destination,
+      type,
+      null,
+      null,
+      // @ts-ignore - config coming from registerPlugin
+      this.config.installedOrgID,
+      null,
+      extraParams,
+      {
+        correlationId: callStateForMetrics.correlationId,
+        sessionCorrelationId: callStateForMetrics.sessionCorrelationId,
+        loginType: callStateForMetrics.loginType,
+        joinFlowVersion: callStateForMetrics.joinFlowVersion,
+        sendCAevents,
+        requestType: 'preJoin',
+      },
+      null,
+      null,
+      classificationId
+    );
+
+    request.catch(() => undefined);
+
+    return {
+      request,
+      provider: meetingInfoProvider,
+      extraParams,
+      classificationId,
+      sendCAevents,
+    };
   }
 
   /**
@@ -1749,6 +1817,7 @@ export default class Meetings extends WebexPlugin {
    * @param {Object} [meetingInfo] - Pre-fetched complete meeting info
    * @param {String} [meetingLookupUrl] - meeting info prefetch url
    * @param {String} classificationId see create()
+   * @param {PrefetchedMeetingInfo} prefetchedMeetingInfo - meeting information requested before creating the Meeting
    * @returns {Promise} a new meeting instance complete with meeting info and destination
    * @private
    * @memberof Meetings
@@ -1762,7 +1831,8 @@ export default class Meetings extends WebexPlugin {
     failOnMissingMeetingInfo = false,
     meetingInfo = undefined,
     meetingLookupUrl = undefined,
-    classificationId = undefined
+    classificationId = undefined,
+    prefetchedMeetingInfo: PrefetchedMeetingInfo = undefined
   ) {
     const meeting = new Meeting(
       {
@@ -1821,6 +1891,8 @@ export default class Meetings extends WebexPlugin {
 
       if (meetingInfo) {
         meeting.injectMeetingInfo(meetingInfo, meetingInfoOptions, meetingLookupUrl);
+      } else if (prefetchedMeetingInfo) {
+        await meeting.consumePrefetchedMeetingInfo(prefetchedMeetingInfo);
       } else if (type !== DESTINATION_TYPE.ONE_ON_ONE_CALL && !isOneOnOneCallLocus) {
         // ignore fetchMeetingInfo for 1:1 meetings
         if (enableUnifiedMeetings && !isMeetingActive && useRandomDelayForInfo && waitingTime > 0) {

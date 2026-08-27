@@ -2,7 +2,8 @@ import type {
   NoiseReductionEffectOptions,
   VirtualBackgroundEffectOptions,
 } from '@webex/media-helpers';
-import {Enum} from '../constants';
+import type MeetingInfoV2 from '../meeting-info/meeting-info-v2';
+import {DESTINATION_TYPE, Enum} from '../constants';
 
 type INoiseReductionEffect = Omit<
   NoiseReductionEffectOptions,
@@ -49,4 +50,27 @@ export type SitePreferencesResponse = {
     supportScheduleWebinar?: boolean;
     webinarWebLink?: string;
   };
+};
+
+type PreJoinCallState = {
+  correlationId?: string;
+  sessionCorrelationId?: string;
+  loginType?: string;
+  joinFlowVersion?: string;
+};
+
+export type PrefetchMeetingInfoParams = {
+  destination: any;
+  type?: DESTINATION_TYPE;
+  extraParams?: Record<string, any>;
+  callStateForMetrics?: PreJoinCallState;
+  classificationId?: string;
+};
+
+export type PrefetchedMeetingInfo = {
+  request: Promise<any>;
+  provider: MeetingInfoV2;
+  extraParams: Record<string, any>;
+  classificationId?: string;
+  sendCAevents: boolean;
 };

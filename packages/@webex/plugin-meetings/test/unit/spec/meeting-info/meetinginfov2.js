@@ -486,6 +486,196 @@ describe('plugin-meetings', () => {
         MeetingInfoUtil.getDirectMeetingInfoURI.restore();
       });
 
+      it('should fetch and normalize preJoin meeting info with pre-meeting CA identifiers', async () => {
+        const correlationId = 'correlation-id';
+        const sessionCorrelationId = 'session-correlation-id';
+        const joinFlowVersion = 'NewFTE';
+        const meetingInfoBody = {
+          meetingKey: '1234323',
+          meetingId: 'global-meeting-id',
+          confID: 'conference-id',
+        };
+        const requestResponse = {
+          statusCode: 200,
+          url: 'https://example.webex.com/wbxappapi/v1/preJoin',
+          body: {meetingInfo: meetingInfoBody, guestJWT: 'not-consumed-by-meetings'},
+        };
+
+        webex.request.resolves(requestResponse);
+
+        const result = await meetingInfo.fetchMeetingInfo(
+          '1234323',
+          DESTINATION_TYPE.MEETING_ID,
+          null,
+          null,
+          null,
+          null,
+          {correlationId, joinTXId: 'join-transaction-id'},
+          {
+            correlationId,
+            sessionCorrelationId,
+            loginType: 'reuse-ci-token',
+            joinFlowVersion,
+            sendCAevents: true,
+            requestType: 'preJoin',
+          }
+        );
+
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          service: WBXAPPAPI_SERVICE,
+          resource: 'preJoin',
+          headers: {correlationId},
+          body: {
+            supportHostKey: true,
+            supportCountryList: true,
+            meetingKey: '1234323',
+            joinTXId: 'join-transaction-id',
+            disableWebRedirect: true,
+          },
+        });
+        assert.deepEqual(result, {...requestResponse, body: meetingInfoBody});
+        assert.deepEqual(webex.internal.newMetrics.submitClientEvent.firstCall.args[0], {
+          name: 'client.meetinginfo.request',
+          payload: {loginType: 'reuse-ci-token'},
+          options: {
+            correlationId,
+            sessionCorrelationId,
+            joinFlowVersion,
+            meetingJoinPhase: 'pre-join',
+          },
+        });
+        assert.deepEqual(webex.internal.newMetrics.submitClientEvent.secondCall.args[0], {
+          name: 'client.meetinginfo.response',
+          payload: {
+            identifiers: {meetingLookupUrl: requestResponse.url},
+            loginType: 'reuse-ci-token',
+          },
+          options: {
+            correlationId,
+            sessionCorrelationId,
+            joinFlowVersion,
+            meetingJoinPhase: 'pre-join',
+            webexConferenceIdStr: meetingInfoBody.confID,
+            globalMeetingId: meetingInfoBody.meetingId,
+          },
+        });
+      });
+
+      it('should use the direct preJoin uri when the destination resolves to a Webex site', async () => {
+        const body = {meetingKey: '1234323'};
+        const meetingInfoBody = {meetingKey: '1234323'};
+
+        sinon.stub(MeetingInfoUtil, 'getDestinationType').returns(
+          Promise.resolve({
+            type: DESTINATION_TYPE.SIP_URI,
+            destination: 'example@something.webex.com',
+          })
+        );
+        sinon.stub(MeetingInfoUtil, 'getRequestBody').returns(Promise.resolve(body));
+        sinon
+          .stub(MeetingInfoUtil, 'getDirectMeetingInfoURI')
+          .returns('https://something.webex.com/wbxappapi/v1/meetingInfo');
+        webex.request.resolves({statusCode: 200, body: {meetingInfo: meetingInfoBody}});
+
+        const result = await meetingInfo.fetchMeetingInfo(
+          'example@something.webex.com',
+          DESTINATION_TYPE.SIP_URI,
+          null,
+          null,
+          null,
+          null,
+          {},
+          {requestType: 'preJoin'}
+        );
+
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          uri: 'https://something.webex.com/wbxappapi/v1/preJoin',
+          body,
+        });
+        assert.deepEqual(result.body, meetingInfoBody);
+      });
+
+      it('should preserve preJoin meeting info on password errors', async () => {
+        const preJoinMeetingInfo = {meetingKey: '1234323'};
+
+        webex.request.rejects({
+          statusCode: 403,
+          body: {code: 403000, meetingInfo: preJoinMeetingInfo},
+        });
+
+        try {
+          await meetingInfo.fetchMeetingInfo(
+            '1234323',
+            DESTINATION_TYPE.MEETING_ID,
+            null,
+            null,
+            null,
+            null,
+            {},
+            {requestType: 'preJoin'}
+          );
+          assert.fail('fetchMeetingInfo should have thrown, but has not done that');
+        } catch (error) {
+          assert.instanceOf(error, MeetingInfoV2PasswordError);
+          assert.deepEqual(error.meetingInfo, preJoinMeetingInfo);
+        }
+      });
+
+      forEach(
+        [
+          {errorCode: 403049, ErrorType: MeetingInfoV2PolicyError},
+          {errorCode: 403022, ErrorType: MeetingInfoV2JoinWebinarError},
+          {errorCode: 403003, ErrorType: MeetingInfoV2JoinForbiddenError},
+        ],
+        ({errorCode, ErrorType}) => {
+          it(`should preserve preJoin meeting info for semantic error ${errorCode}`, async () => {
+            const preJoinMeetingInfo = {meetingKey: '1234323'};
+
+            webex.request.rejects({
+              statusCode: 403,
+              body: {code: errorCode, message: 'semantic error', meetingInfo: preJoinMeetingInfo},
+            });
+
+            try {
+              await meetingInfo.fetchMeetingInfo(
+                '1234323',
+                DESTINATION_TYPE.MEETING_ID,
+                null,
+                null,
+                null,
+                null,
+                {},
+                {requestType: 'preJoin'}
+              );
+              assert.fail('fetchMeetingInfo should have thrown, but has not done that');
+            } catch (error) {
+              assert.instanceOf(error, ErrorType);
+              assert.deepEqual(error.meetingInfo, preJoinMeetingInfo);
+            }
+          });
+        }
+      );
+
+      it('should reject a preJoin success response without meetingInfo', async () => {
+        webex.request.resolves({statusCode: 200, body: {}});
+
+        await assert.isRejected(
+          meetingInfo.fetchMeetingInfo(
+            '1234323',
+            DESTINATION_TYPE.MEETING_ID,
+            null,
+            null,
+            null,
+            null,
+            {},
+            {requestType: 'preJoin'}
+          ),
+          'PreJoin response did not include meetingInfo'
+        );
+      });
+
       it('should fetch meeting info with provided password and captcha code', async () => {
         const requestResponse = {statusCode: 200, body: {meetingKey: '1234323'}};
 

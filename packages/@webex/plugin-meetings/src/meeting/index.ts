@@ -150,6 +150,7 @@ import {
   MeetingInfoV2JoinWebinarError,
   MeetingInfoV2JoinForbiddenError,
 } from '../meeting-info/meeting-info-v2';
+import type {PrefetchedMeetingInfo} from '../meetings/meetings.types';
 import {CSI, ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import SendSlotManager from '../multistream/sendSlotManager';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
@@ -274,6 +275,7 @@ export type CallStateForMetrics = {
   sessionCorrelationId?: string;
   joinTrigger?: string;
   loginType?: string;
+  joinFlowVersion?: string;
   userNameInput?: string;
   emailInput?: string;
   pstnCorrelationId?: string;
@@ -683,6 +685,7 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingInfoFailureReason: string;
   meetingInfoFailureCode?: number;
   meetingInfoExtraParams?: Record<string, any>;
+  usePreJoinForMeetingInfo: boolean;
   networkQualityMonitor: NetworkQualityMonitor;
   networkStatus?: NETWORK_STATUS;
   passwordStatus: string;
@@ -833,6 +836,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.attrs = attrs;
+    this.usePreJoinForMeetingInfo = false;
     /**
      * @instance
      * @type {Object}
@@ -2075,26 +2079,45 @@ export default class Meeting extends StatelessWebexPlugin {
     sendCAevents = false,
     registrationId = null,
     classificationId = null,
+    prefetchedMeetingInfo = null,
   }): Promise<void> {
     try {
       const captchaInfo = captchaCode
         ? {code: captchaCode, id: this.requiredCaptcha.captchaId}
         : null;
 
-      const info = await this.attrs.meetingInfoProvider.fetchMeetingInfo(
-        destination,
-        destinationType,
-        password,
-        captchaInfo,
-        // @ts-ignore - config coming from registerPlugin
-        this.config.installedOrgID,
-        this.locusId,
-        extraParams,
-        {meetingId: this.id, sendCAevents},
-        registrationId,
-        null,
-        classificationId
-      );
+      let info;
+
+      if (prefetchedMeetingInfo) {
+        info = await prefetchedMeetingInfo.request;
+      } else {
+        const meetingInfoProviderOptions = {meetingId: this.id, sendCAevents};
+
+        if (this.usePreJoinForMeetingInfo) {
+          Object.assign(meetingInfoProviderOptions, {
+            correlationId: this.correlationId,
+            sessionCorrelationId: this.callStateForMetrics.sessionCorrelationId,
+            loginType: this.callStateForMetrics.loginType,
+            joinFlowVersion: this.callStateForMetrics.joinFlowVersion,
+            requestType: 'preJoin',
+          });
+        }
+
+        info = await this.attrs.meetingInfoProvider.fetchMeetingInfo(
+          destination,
+          destinationType,
+          password,
+          captchaInfo,
+          // @ts-ignore - config coming from registerPlugin
+          this.config.installedOrgID,
+          this.locusId,
+          extraParams,
+          meetingInfoProviderOptions,
+          registrationId,
+          null,
+          classificationId
+        );
+      }
 
       this.parseMeetingInfo(info?.body, this.destination, info?.errors);
       this.setMeetingInfo(info?.body, info?.url);
@@ -2286,6 +2309,27 @@ export default class Meeting extends StatelessWebexPlugin {
       destination: this.destination,
       destinationType: this.destinationType,
       ...options,
+    });
+  }
+
+  /**
+   * Consumes meeting information requested before this Meeting was created.
+   *
+   * @param {PrefetchedMeetingInfo} prefetchedMeetingInfo opaque early request handle
+   * @returns {Promise<void>} resolves after the response is applied to this Meeting
+   */
+  public async consumePrefetchedMeetingInfo(prefetchedMeetingInfo: PrefetchedMeetingInfo) {
+    const {provider, request, ...fetchParams} = prefetchedMeetingInfo;
+
+    await this.prepForFetchMeetingInfo(fetchParams, 'consumePrefetchedMeetingInfo');
+    this.attrs.meetingInfoProvider = provider;
+    this.usePreJoinForMeetingInfo = true;
+
+    return this.fetchMeetingInfoInternal({
+      destination: this.destination,
+      destinationType: this.destinationType,
+      ...fetchParams,
+      prefetchedMeetingInfo: {request},
     });
   }
 
