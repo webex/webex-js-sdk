@@ -53,17 +53,15 @@ export type SitePreferencesResponse = {
 };
 
 type PreJoinCallState = {
-  correlationId?: string;
+  correlationId: string;
   sessionCorrelationId?: string;
-  loginType?: string;
-  joinFlowVersion?: string;
 };
 
 export type PrefetchMeetingInfoParams = {
   destination: any;
   type?: DESTINATION_TYPE;
   extraParams?: Record<string, any>;
-  callStateForMetrics?: PreJoinCallState;
+  callStateForMetrics: PreJoinCallState;
   classificationId?: string;
 };
 

@@ -1714,7 +1714,7 @@ export default class Meetings extends WebexPlugin {
     destination,
     type = null,
     extraParams = {},
-    callStateForMetrics = {},
+    callStateForMetrics,
     classificationId = undefined,
   }: PrefetchMeetingInfoParams): PrefetchedMeetingInfo {
     const sendCAevents = !!callStateForMetrics.correlationId;
@@ -1723,8 +1723,6 @@ export default class Meetings extends WebexPlugin {
     const meetingInfoProvider = MeetingInfoV2.createPreJoinProvider(webex, {
       correlationId: callStateForMetrics.correlationId,
       sessionCorrelationId: callStateForMetrics.sessionCorrelationId,
-      loginType: callStateForMetrics.loginType,
-      joinFlowVersion: callStateForMetrics.joinFlowVersion,
     });
     const request = meetingInfoProvider.fetchMeetingInfo(
       destination,

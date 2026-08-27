@@ -1887,7 +1887,10 @@ describe('plugin-meetings', () => {
             classificationId: 'classification-id',
           });
 
-          assert.calledOnceWithExactly(createPreJoinProvider, webex, callStateForMetrics);
+          assert.calledOnceWithExactly(createPreJoinProvider, webex, {
+            correlationId: callStateForMetrics.correlationId,
+            sessionCorrelationId: callStateForMetrics.sessionCorrelationId,
+          });
           assert.calledOnceWithExactly(
             preJoinProvider.fetchMeetingInfo,
             'test destination',

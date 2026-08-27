@@ -489,7 +489,6 @@ describe('plugin-meetings', () => {
       it('should fetch and normalize preJoin meeting info with pre-meeting CA identifiers', async () => {
         const correlationId = 'correlation-id';
         const sessionCorrelationId = 'session-correlation-id';
-        const joinFlowVersion = 'NewFTE';
         const meetingInfoBody = {
           meetingKey: '1234323',
           meetingId: 'global-meeting-id',
@@ -506,8 +505,6 @@ describe('plugin-meetings', () => {
         const preJoinMeetingInfo = MeetingInfo.createPreJoinProvider(webex, {
           correlationId,
           sessionCorrelationId,
-          loginType: 'reuse-ci-token',
-          joinFlowVersion,
         });
 
         const result = await preJoinMeetingInfo.fetchMeetingInfo(
@@ -537,11 +534,9 @@ describe('plugin-meetings', () => {
         assert.deepEqual(result, {...requestResponse, body: meetingInfoBody});
         assert.deepEqual(webex.internal.newMetrics.submitClientEvent.firstCall.args[0], {
           name: 'client.meetinginfo.request',
-          payload: {loginType: 'reuse-ci-token'},
           options: {
             correlationId,
             sessionCorrelationId,
-            joinFlowVersion,
             meetingJoinPhase: 'pre-join',
           },
         });
@@ -549,12 +544,10 @@ describe('plugin-meetings', () => {
           name: 'client.meetinginfo.response',
           payload: {
             identifiers: {meetingLookupUrl: requestResponse.url},
-            loginType: 'reuse-ci-token',
           },
           options: {
             correlationId,
             sessionCorrelationId,
-            joinFlowVersion,
             meetingJoinPhase: 'pre-join',
             webexConferenceIdStr: meetingInfoBody.confID,
             globalMeetingId: meetingInfoBody.meetingId,
@@ -563,6 +556,7 @@ describe('plugin-meetings', () => {
       });
 
       it('should use the direct preJoin uri when the destination resolves to a Webex site', async () => {
+        const correlationId = 'correlation-id';
         const body = {meetingKey: '1234323'};
         const meetingInfoBody = {meetingKey: '1234323'};
 
@@ -578,7 +572,7 @@ describe('plugin-meetings', () => {
           .returns('https://something.webex.com/wbxappapi/v1/meetingInfo');
         webex.request.resolves({statusCode: 200, body: {meetingInfo: meetingInfoBody}});
 
-        const preJoinMeetingInfo = MeetingInfo.createPreJoinProvider(webex);
+        const preJoinMeetingInfo = MeetingInfo.createPreJoinProvider(webex, {correlationId});
 
         const result = await preJoinMeetingInfo.fetchMeetingInfo(
           'example@something.webex.com',
@@ -593,6 +587,7 @@ describe('plugin-meetings', () => {
         assert.calledWith(webex.request, {
           method: 'POST',
           uri: 'https://something.webex.com/wbxappapi/v1/preJoin',
+          headers: {correlationId},
           body,
         });
         assert.deepEqual(result.body, meetingInfoBody);
@@ -617,7 +612,9 @@ describe('plugin-meetings', () => {
 
       it('should preserve preJoin meeting info on password errors', async () => {
         const preJoinMeetingInfo = {meetingKey: '1234323'};
-        const preJoinProvider = MeetingInfo.createPreJoinProvider(webex);
+        const preJoinProvider = MeetingInfo.createPreJoinProvider(webex, {
+          correlationId: 'correlation-id',
+        });
 
         webex.request.rejects({
           statusCode: 403,
@@ -650,7 +647,9 @@ describe('plugin-meetings', () => {
         ({errorCode, ErrorType}) => {
           it(`should preserve preJoin meeting info for semantic error ${errorCode}`, async () => {
             const preJoinMeetingInfo = {meetingKey: '1234323'};
-            const preJoinProvider = MeetingInfo.createPreJoinProvider(webex);
+            const preJoinProvider = MeetingInfo.createPreJoinProvider(webex, {
+              correlationId: 'correlation-id',
+            });
 
             webex.request.rejects({
               statusCode: 403,
@@ -679,7 +678,9 @@ describe('plugin-meetings', () => {
       it('should reject a preJoin success response without meetingInfo', async () => {
         webex.request.resolves({statusCode: 200, body: {}});
 
-        const preJoinProvider = MeetingInfo.createPreJoinProvider(webex);
+        const preJoinProvider = MeetingInfo.createPreJoinProvider(webex, {
+          correlationId: 'correlation-id',
+        });
 
         await assert.isRejected(
           preJoinProvider.fetchMeetingInfo(

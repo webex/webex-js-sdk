@@ -12,19 +12,19 @@ import MeetingInfoUtil from './utilv2';
 
 type MeetingInfoProviderOptions = {
   meetingId?: string;
-  correlationId?: string;
-  sessionCorrelationId?: string;
-  loginType?: string;
-  joinFlowVersion?: string;
   sendCAevents?: boolean;
 };
 
 type MeetingInfoApi = 'meetingInfo' | 'preJoin';
 
-type MeetingInfoV2Config = {
-  api?: MeetingInfoApi;
-  requestContext?: Omit<MeetingInfoProviderOptions, 'meetingId' | 'sendCAevents'>;
+type PreJoinContext = {
+  correlationId: string;
+  sessionCorrelationId?: string;
 };
+
+type MeetingInfoV2Config =
+  | {api?: 'meetingInfo'; preJoinContext?: never}
+  | {api: 'preJoin'; preJoinContext: PreJoinContext};
 
 const PASSWORD_ERROR_DEFAULT_MESSAGE =
   'Password required. Call fetchMeetingInfo() with password argument';
@@ -293,7 +293,7 @@ export default class MeetingInfoV2 {
 
   private readonly api: MeetingInfoApi;
 
-  private readonly requestContext: MeetingInfoProviderOptions;
+  private readonly preJoinContext?: PreJoinContext;
 
   /**
    *
@@ -303,21 +303,18 @@ export default class MeetingInfoV2 {
   constructor(webex, config: MeetingInfoV2Config = {}) {
     this.webex = webex;
     this.api = config.api ?? 'meetingInfo';
-    this.requestContext = config.requestContext ?? {};
+    this.preJoinContext = config.preJoinContext;
   }
 
   /**
    * Creates a meeting-info provider whose requests consistently use preJoin.
    *
    * @param {WebexSDK} webex
-   * @param {MeetingInfoProviderOptions} requestContext identifiers retained for later requests
+   * @param {PreJoinContext} preJoinContext identifiers retained for later requests
    * @returns {MeetingInfoV2}
    */
-  static createPreJoinProvider(
-    webex,
-    requestContext: MeetingInfoV2Config['requestContext'] = {}
-  ): MeetingInfoV2 {
-    return new MeetingInfoV2(webex, {api: 'preJoin', requestContext});
+  static createPreJoinProvider(webex, preJoinContext: PreJoinContext): MeetingInfoV2 {
+    return new MeetingInfoV2(webex, {api: 'preJoin', preJoinContext});
   }
 
   /**
@@ -691,14 +688,8 @@ export default class MeetingInfoV2 {
     fullSiteUrl: string = null,
     classificationId: string = null
   ) {
-    const {
-      meetingId,
-      correlationId,
-      sessionCorrelationId,
-      loginType,
-      joinFlowVersion,
-      sendCAevents,
-    } = {...this.requestContext, ...options};
+    const {meetingId, sendCAevents} = options;
+    const {correlationId, sessionCorrelationId} = this.preJoinContext ?? {};
 
     const destinationType = await MeetingInfoUtil.getDestinationType({
       destination,
@@ -724,7 +715,7 @@ export default class MeetingInfoV2 {
       captchaInfo,
       installedOrgID,
       locusId,
-      extraParams,
+      extraParams: this.api === 'preJoin' ? lodash.omit(extraParams, 'correlationId') : extraParams,
       registrationId,
       disableWebRedirect: true,
     });
@@ -748,17 +739,8 @@ export default class MeetingInfoV2 {
     const requestOptions: any = {
       method: HTTP_VERBS.POST,
       body,
+      ...(this.api === 'preJoin' && {headers: {correlationId}}),
     };
-
-    if (this.api === 'preJoin') {
-      const requestCorrelationId = correlationId || requestOptions.body.correlationId;
-
-      delete requestOptions.body.correlationId;
-
-      if (requestCorrelationId) {
-        requestOptions.headers = {correlationId: requestCorrelationId};
-      }
-    }
 
     const directURI = await MeetingInfoUtil.getDirectMeetingInfoURI(destinationType);
 
@@ -777,25 +759,19 @@ export default class MeetingInfoV2 {
       : {
           correlationId,
           sessionCorrelationId,
-          joinFlowVersion,
           meetingJoinPhase: 'pre-join' as const,
         };
     const shouldSendCAEvents = sendCAevents && (meetingId || correlationId);
-    const metricPayload = loginType ? {loginType} : undefined;
 
     if (shouldSendCAEvents) {
       this.webex.internal.newMetrics.submitInternalEvent({
         name: 'internal.client.meetinginfo.request',
       });
 
-      const clientEvent = {
+      this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.meetinginfo.request',
         options: metricOptions,
-      } as const;
-
-      this.webex.internal.newMetrics.submitClientEvent(
-        metricPayload ? {...clientEvent, payload: metricPayload} : clientEvent
-      );
+      });
     }
 
     return this.webex
@@ -822,7 +798,6 @@ export default class MeetingInfoV2 {
               identifiers: {
                 meetingLookupUrl: normalizedResponse?.url,
               },
-              ...metricPayload,
             },
             options: {
               ...metricOptions,
@@ -852,7 +827,6 @@ export default class MeetingInfoV2 {
               identifiers: {
                 meetingLookupUrl: err?.url,
               },
-              ...metricPayload,
             },
             options: {
               ...metricOptions,
