@@ -690,6 +690,47 @@ describe('plugin-mercury', () => {
             assert.isUndefined(mercury.mockWebSocket, 'Mercury does not have a mockWebSocket');
           }));
 
+      it('emits disconnected event after offline when socket exists', () => {
+        const offlineSpy = sinon.spy();
+        const disconnectedSpy = sinon.spy();
+        let offlineCalledFirst = false;
+
+        return mercury.connect().then(() => {
+          mercury.on('offline', () => {
+            offlineSpy();
+            // At this point, disconnected should not have been called yet
+            offlineCalledFirst = !disconnectedSpy.called;
+          });
+          mercury.on('disconnected', disconnectedSpy);
+
+          const promise = mercury.disconnect();
+
+          mockWebSocket.emit('close', {
+            code: 1000,
+            reason: 'Done',
+          });
+
+          return promise.then(() => {
+            assert.calledOnce(offlineSpy);
+            assert.calledOnce(disconnectedSpy);
+            assert.isTrue(offlineCalledFirst, 'offline was emitted before disconnected');
+          });
+        });
+      });
+
+      it('emits disconnected event when no socket exists', () => {
+        const disconnectedSpy = sinon.spy();
+
+        mercury.on('disconnected', disconnectedSpy);
+
+        // Ensure there's no socket
+        assert.isUndefined(mercury.socket, 'Mercury should not have a socket');
+
+        return mercury.disconnect().then(() => {
+          assert.calledOnce(disconnectedSpy);
+        });
+      });
+
       it('disconnects the WebSocket with code 3050', () =>
         mercury
           .connect()

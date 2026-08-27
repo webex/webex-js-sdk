@@ -25,8 +25,16 @@ describe('plugin-llm', () => {
       };
 
       llmChannel = webex.internal.llm;
-      // Stub Mercury's prototype disconnect so super.disconnect() works in tests
-      sinon.stub(Object.getPrototypeOf(Object.getPrototypeOf(llmChannel)), 'disconnect').resolves();
+      // Stub Mercury's prototype disconnect so super.disconnect() works in tests.
+      // The real Mercury emits 'disconnected' after disconnect completes, so we simulate that.
+      sinon
+        .stub(Object.getPrototypeOf(Object.getPrototypeOf(llmChannel)), 'disconnect')
+        .callsFake(function () {
+          this.connected = false;
+          this._emit('disconnected');
+
+          return Promise.resolve();
+        });
       llmChannel.request = sinon.stub().resolves({
         headers: {},
         body: {
