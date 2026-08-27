@@ -1720,8 +1720,12 @@ export default class Meetings extends WebexPlugin {
     const sendCAevents = !!callStateForMetrics.correlationId;
     // @ts-ignore - parent SDK instance inherited from WebexPlugin
     const {webex} = this;
-    const meetingInfoProvider =
-      this.meetingInfo instanceof MeetingInfoV2 ? this.meetingInfo : new MeetingInfoV2(webex);
+    const meetingInfoProvider = MeetingInfoV2.createPreJoinProvider(webex, {
+      correlationId: callStateForMetrics.correlationId,
+      sessionCorrelationId: callStateForMetrics.sessionCorrelationId,
+      loginType: callStateForMetrics.loginType,
+      joinFlowVersion: callStateForMetrics.joinFlowVersion,
+    });
     const request = meetingInfoProvider.fetchMeetingInfo(
       destination,
       type,
@@ -1732,12 +1736,7 @@ export default class Meetings extends WebexPlugin {
       null,
       extraParams,
       {
-        correlationId: callStateForMetrics.correlationId,
-        sessionCorrelationId: callStateForMetrics.sessionCorrelationId,
-        loginType: callStateForMetrics.loginType,
-        joinFlowVersion: callStateForMetrics.joinFlowVersion,
         sendCAevents,
-        requestType: 'preJoin',
       },
       null,
       null,

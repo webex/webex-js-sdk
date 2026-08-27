@@ -685,7 +685,6 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingInfoFailureReason: string;
   meetingInfoFailureCode?: number;
   meetingInfoExtraParams?: Record<string, any>;
-  usePreJoinForMeetingInfo: boolean;
   networkQualityMonitor: NetworkQualityMonitor;
   networkStatus?: NETWORK_STATUS;
   passwordStatus: string;
@@ -836,7 +835,6 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.attrs = attrs;
-    this.usePreJoinForMeetingInfo = false;
     /**
      * @instance
      * @type {Object}
@@ -2093,16 +2091,6 @@ export default class Meeting extends StatelessWebexPlugin {
       } else {
         const meetingInfoProviderOptions = {meetingId: this.id, sendCAevents};
 
-        if (this.usePreJoinForMeetingInfo) {
-          Object.assign(meetingInfoProviderOptions, {
-            correlationId: this.correlationId,
-            sessionCorrelationId: this.callStateForMetrics.sessionCorrelationId,
-            loginType: this.callStateForMetrics.loginType,
-            joinFlowVersion: this.callStateForMetrics.joinFlowVersion,
-            requestType: 'preJoin',
-          });
-        }
-
         info = await this.attrs.meetingInfoProvider.fetchMeetingInfo(
           destination,
           destinationType,
@@ -2323,7 +2311,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
     await this.prepForFetchMeetingInfo(fetchParams, 'consumePrefetchedMeetingInfo');
     this.attrs.meetingInfoProvider = provider;
-    this.usePreJoinForMeetingInfo = true;
 
     return this.fetchMeetingInfoInternal({
       destination: this.destination,

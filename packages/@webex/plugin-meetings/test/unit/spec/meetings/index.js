@@ -1873,7 +1873,10 @@ describe('plugin-meetings', () => {
             joinFlowVersion: 'NewFTE',
           };
 
-          webex.meetings.meetingInfo.fetchMeetingInfo = sinon.stub().resolves(response);
+          const preJoinProvider = {fetchMeetingInfo: sinon.stub().resolves(response)};
+          const createPreJoinProvider = sinon
+            .stub(MeetingInfoV2, 'createPreJoinProvider')
+            .returns(preJoinProvider);
           const createMeeting = sinon.stub(webex.meetings, 'createMeeting');
 
           const prefetchedMeetingInfo = webex.meetings.prefetchMeetingInfo({
@@ -1884,8 +1887,9 @@ describe('plugin-meetings', () => {
             classificationId: 'classification-id',
           });
 
+          assert.calledOnceWithExactly(createPreJoinProvider, webex, callStateForMetrics);
           assert.calledOnceWithExactly(
-            webex.meetings.meetingInfo.fetchMeetingInfo,
+            preJoinProvider.fetchMeetingInfo,
             'test destination',
             DESTINATION_TYPE.MEETING_ID,
             null,
@@ -1893,11 +1897,7 @@ describe('plugin-meetings', () => {
             undefined,
             null,
             {joinTXId: 'join-transaction-id'},
-            {
-              ...callStateForMetrics,
-              sendCAevents: true,
-              requestType: 'preJoin',
-            },
+            {sendCAevents: true},
             null,
             null,
             'classification-id'
@@ -1905,7 +1905,7 @@ describe('plugin-meetings', () => {
           assert.deepEqual(await prefetchedMeetingInfo.request, response);
           assert.deepEqual(prefetchedMeetingInfo, {
             request: prefetchedMeetingInfo.request,
-            provider: webex.meetings.meetingInfo,
+            provider: preJoinProvider,
             extraParams: {joinTXId: 'join-transaction-id'},
             classificationId: 'classification-id',
             sendCAevents: true,
@@ -2986,7 +2986,7 @@ describe('plugin-meetings', () => {
             assert.equal(meeting.meetingJoinUrl, 'meetingJoinUrl');
             assert.equal(meeting.permissionToken, permissionToken);
             assert.deepEqual(meeting.selfUserPolicies, {a: true});
-            assert.isTrue(meeting.usePreJoinForMeetingInfo);
+            assert.equal(meeting.attrs.meetingInfoProvider, preJoinProvider);
 
             preJoinProvider.fetchMeetingInfo.resolves({
               body: {meetingJoinUrl: 'refreshed-meetingJoinUrl', permissionToken},
@@ -3006,8 +3006,6 @@ describe('plugin-meetings', () => {
               {
                 meetingId: meeting.id,
                 sendCAevents: true,
-                ...callState,
-                requestType: 'preJoin',
               },
               null,
               null,
@@ -3033,8 +3031,6 @@ describe('plugin-meetings', () => {
               {
                 meetingId: meeting.id,
                 sendCAevents: true,
-                ...callState,
-                requestType: 'preJoin',
               },
               null,
               null,

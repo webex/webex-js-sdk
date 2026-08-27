@@ -17,7 +17,13 @@ type MeetingInfoProviderOptions = {
   loginType?: string;
   joinFlowVersion?: string;
   sendCAevents?: boolean;
-  requestType?: 'meetingInfo' | 'preJoin';
+};
+
+type MeetingInfoApi = 'meetingInfo' | 'preJoin';
+
+type MeetingInfoV2Config = {
+  api?: MeetingInfoApi;
+  requestContext?: Omit<MeetingInfoProviderOptions, 'meetingId' | 'sendCAevents'>;
 };
 
 const PASSWORD_ERROR_DEFAULT_MESSAGE =
@@ -285,12 +291,33 @@ export class MeetingInfoV2StaticMeetingLinkAlreadyExists extends Error {
 export default class MeetingInfoV2 {
   webex: any;
 
+  private readonly api: MeetingInfoApi;
+
+  private readonly requestContext: MeetingInfoProviderOptions;
+
   /**
    *
    * @param {WebexSDK} webex
+   * @param {MeetingInfoV2Config} config
    */
-  constructor(webex) {
+  constructor(webex, config: MeetingInfoV2Config = {}) {
     this.webex = webex;
+    this.api = config.api ?? 'meetingInfo';
+    this.requestContext = config.requestContext ?? {};
+  }
+
+  /**
+   * Creates a meeting-info provider whose requests consistently use preJoin.
+   *
+   * @param {WebexSDK} webex
+   * @param {MeetingInfoProviderOptions} requestContext identifiers retained for later requests
+   * @returns {MeetingInfoV2}
+   */
+  static createPreJoinProvider(
+    webex,
+    requestContext: MeetingInfoV2Config['requestContext'] = {}
+  ): MeetingInfoV2 {
+    return new MeetingInfoV2(webex, {api: 'preJoin', requestContext});
   }
 
   /**
@@ -671,12 +698,7 @@ export default class MeetingInfoV2 {
       loginType,
       joinFlowVersion,
       sendCAevents,
-      requestType = 'meetingInfo',
-    } = options;
-
-    if (requestType !== 'meetingInfo' && requestType !== 'preJoin') {
-      throw new Error(`Unsupported meeting info request type: ${requestType}`);
-    }
+    } = {...this.requestContext, ...options};
 
     const destinationType = await MeetingInfoUtil.getDestinationType({
       destination,
@@ -728,7 +750,7 @@ export default class MeetingInfoV2 {
       body,
     };
 
-    if (requestType === 'preJoin') {
+    if (this.api === 'preJoin') {
       const requestCorrelationId = correlationId || requestOptions.body.correlationId;
 
       delete requestOptions.body.correlationId;
@@ -741,13 +763,13 @@ export default class MeetingInfoV2 {
     const directURI = await MeetingInfoUtil.getDirectMeetingInfoURI(destinationType);
 
     if (fullSiteUrl) {
-      requestOptions.uri = `https://${fullSiteUrl}/wbxappapi/v1/${requestType}`;
+      requestOptions.uri = `https://${fullSiteUrl}/wbxappapi/v1/${this.api}`;
     } else if (directURI) {
       requestOptions.uri =
-        requestType === 'preJoin' ? directURI.replace(/\/meetingInfo$/, '/preJoin') : directURI;
+        this.api === 'preJoin' ? directURI.replace(/\/meetingInfo$/, '/preJoin') : directURI;
     } else {
       requestOptions.service = WBXAPPAPI_SERVICE;
-      requestOptions.resource = requestType;
+      requestOptions.resource = this.api;
     }
 
     const metricOptions = meetingId
@@ -781,7 +803,7 @@ export default class MeetingInfoV2 {
       .then((response) => {
         let normalizedResponse = response;
 
-        if (requestType === 'preJoin') {
+        if (this.api === 'preJoin') {
           if (!response?.body?.meetingInfo) {
             throw new Error('PreJoin response did not include meetingInfo');
           }
@@ -815,7 +837,7 @@ export default class MeetingInfoV2 {
         return normalizedResponse;
       })
       .catch((err) => {
-        if (requestType === 'preJoin' && err?.body?.meetingInfo && !err.body.data?.meetingInfo) {
+        if (this.api === 'preJoin' && err?.body?.meetingInfo && !err.body.data?.meetingInfo) {
           err.body.data = {...err.body.data, meetingInfo: err.body.meetingInfo};
         }
 

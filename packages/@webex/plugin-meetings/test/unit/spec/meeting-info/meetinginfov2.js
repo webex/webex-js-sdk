@@ -503,7 +503,14 @@ describe('plugin-meetings', () => {
 
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo(
+        const preJoinMeetingInfo = MeetingInfo.createPreJoinProvider(webex, {
+          correlationId,
+          sessionCorrelationId,
+          loginType: 'reuse-ci-token',
+          joinFlowVersion,
+        });
+
+        const result = await preJoinMeetingInfo.fetchMeetingInfo(
           '1234323',
           DESTINATION_TYPE.MEETING_ID,
           null,
@@ -511,14 +518,7 @@ describe('plugin-meetings', () => {
           null,
           null,
           {correlationId, joinTXId: 'join-transaction-id'},
-          {
-            correlationId,
-            sessionCorrelationId,
-            loginType: 'reuse-ci-token',
-            joinFlowVersion,
-            sendCAevents: true,
-            requestType: 'preJoin',
-          }
+          {sendCAevents: true}
         );
 
         assert.calledWith(webex.request, {
@@ -578,15 +578,16 @@ describe('plugin-meetings', () => {
           .returns('https://something.webex.com/wbxappapi/v1/meetingInfo');
         webex.request.resolves({statusCode: 200, body: {meetingInfo: meetingInfoBody}});
 
-        const result = await meetingInfo.fetchMeetingInfo(
+        const preJoinMeetingInfo = MeetingInfo.createPreJoinProvider(webex);
+
+        const result = await preJoinMeetingInfo.fetchMeetingInfo(
           'example@something.webex.com',
           DESTINATION_TYPE.SIP_URI,
           null,
           null,
           null,
           null,
-          {},
-          {requestType: 'preJoin'}
+          {}
         );
 
         assert.calledWith(webex.request, {
@@ -597,8 +598,26 @@ describe('plugin-meetings', () => {
         assert.deepEqual(result.body, meetingInfoBody);
       });
 
+      it('should keep using preJoin and its request context for subsequent provider requests', async () => {
+        const correlationId = 'correlation-id';
+        const meetingInfoBody = {meetingKey: '1234323'};
+        const preJoinProvider = MeetingInfo.createPreJoinProvider(webex, {correlationId});
+
+        webex.request.resolves({statusCode: 200, body: {meetingInfo: meetingInfoBody}});
+
+        await preJoinProvider.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID);
+        await preJoinProvider.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, 'password');
+
+        assert.calledTwice(webex.request);
+        forEach(webex.request.args, ([requestOptions]) => {
+          assert.equal(requestOptions.resource, 'preJoin');
+          assert.deepEqual(requestOptions.headers, {correlationId});
+        });
+      });
+
       it('should preserve preJoin meeting info on password errors', async () => {
         const preJoinMeetingInfo = {meetingKey: '1234323'};
+        const preJoinProvider = MeetingInfo.createPreJoinProvider(webex);
 
         webex.request.rejects({
           statusCode: 403,
@@ -606,15 +625,14 @@ describe('plugin-meetings', () => {
         });
 
         try {
-          await meetingInfo.fetchMeetingInfo(
+          await preJoinProvider.fetchMeetingInfo(
             '1234323',
             DESTINATION_TYPE.MEETING_ID,
             null,
             null,
             null,
             null,
-            {},
-            {requestType: 'preJoin'}
+            {}
           );
           assert.fail('fetchMeetingInfo should have thrown, but has not done that');
         } catch (error) {
@@ -632,6 +650,7 @@ describe('plugin-meetings', () => {
         ({errorCode, ErrorType}) => {
           it(`should preserve preJoin meeting info for semantic error ${errorCode}`, async () => {
             const preJoinMeetingInfo = {meetingKey: '1234323'};
+            const preJoinProvider = MeetingInfo.createPreJoinProvider(webex);
 
             webex.request.rejects({
               statusCode: 403,
@@ -639,15 +658,14 @@ describe('plugin-meetings', () => {
             });
 
             try {
-              await meetingInfo.fetchMeetingInfo(
+              await preJoinProvider.fetchMeetingInfo(
                 '1234323',
                 DESTINATION_TYPE.MEETING_ID,
                 null,
                 null,
                 null,
                 null,
-                {},
-                {requestType: 'preJoin'}
+                {}
               );
               assert.fail('fetchMeetingInfo should have thrown, but has not done that');
             } catch (error) {
@@ -661,16 +679,17 @@ describe('plugin-meetings', () => {
       it('should reject a preJoin success response without meetingInfo', async () => {
         webex.request.resolves({statusCode: 200, body: {}});
 
+        const preJoinProvider = MeetingInfo.createPreJoinProvider(webex);
+
         await assert.isRejected(
-          meetingInfo.fetchMeetingInfo(
+          preJoinProvider.fetchMeetingInfo(
             '1234323',
             DESTINATION_TYPE.MEETING_ID,
             null,
             null,
             null,
             null,
-            {},
-            {requestType: 'preJoin'}
+            {}
           ),
           'PreJoin response did not include meetingInfo'
         );
