@@ -249,12 +249,15 @@ const Mercury = WebexPlugin.extend({
 
       if (this.socket) {
         this.socket.removeAllListeners('message');
-        this.once('offline', resolve);
-        this.socket.close(options || undefined);
+        this.once('offline', () => {
+          this._emit('disconnected');
+          resolve();
+        });
+        this.socket.close(options);
 
         return;
       }
-
+      this._emit('disconnected');
       resolve();
     });
   },

@@ -25,8 +25,16 @@ describe('plugin-llm', () => {
       };
 
       llmChannel = webex.internal.llm;
-      // Stub Mercury's prototype disconnect so super.disconnect() works in tests
-      sinon.stub(Object.getPrototypeOf(Object.getPrototypeOf(llmChannel)), 'disconnect').resolves();
+      // Stub Mercury's prototype disconnect so super.disconnect() works in tests.
+      // The real Mercury emits 'disconnected' after disconnect completes, so we simulate that.
+      sinon
+        .stub(Object.getPrototypeOf(Object.getPrototypeOf(llmChannel)), 'disconnect')
+        .callsFake(function () {
+          this.connected = false;
+          this._emit('disconnected');
+
+          return Promise.resolve();
+        });
       llmChannel.request = sinon.stub().resolves({
         headers: {},
         body: {
@@ -347,6 +355,7 @@ describe('plugin-llm', () => {
         assert.equal(llmChannel.getDatachannelUrl(), undefined);
         assert.equal(llmChannel.getBinding(), undefined);
         assert.equal(llmChannel.getDatachannelToken(), undefined);
+        assert.equal(llmChannel.isConnecting(), false);
       });
 
       it('works without options', async () => {
@@ -381,6 +390,167 @@ describe('plugin-llm', () => {
         await llmChannel.disconnect({code: 1000, reason: 'test'});
 
         sinon.assert.calledOnce(disconnectedSpy);
+      });
+
+      it('clears state before disconnected event fires', async () => {
+        await llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+        llmChannel.setDatachannelToken('token123');
+
+        let stateAtEventTime;
+
+        llmChannel.on('disconnected', () => {
+          // Capture state when event fires - should already be cleared
+          stateAtEventTime = {
+            locusUrl: llmChannel.getLocusUrl(),
+            datachannelUrl: llmChannel.getDatachannelUrl(),
+            binding: llmChannel.getBinding(),
+            datachannelToken: llmChannel.getDatachannelToken(),
+            isConnecting: llmChannel.isConnecting(),
+          };
+        });
+
+        await llmChannel.disconnect({code: 1000, reason: 'test'});
+
+        // State should have been undefined when the event fired
+        assert.deepEqual(stateAtEventTime, {
+          locusUrl: undefined,
+          datachannelUrl: undefined,
+          binding: undefined,
+          datachannelToken: undefined,
+          isConnecting: false,
+        });
+      });
+
+      it('invalidates in-flight connection via promise identity', async () => {
+        let resolveRequest;
+        llmChannel.request = sinon.stub().returns(
+          new Promise((resolve) => {
+            resolveRequest = resolve;
+          })
+        );
+
+        // Start connection but don't await - request is pending
+        const connectPromise = llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+
+        assert.equal(llmChannel.isConnecting(), true);
+
+        // Disconnect while connection is in-flight - should complete immediately
+        await llmChannel.disconnect({code: 1000, reason: 'test'});
+
+        // State should be cleared immediately, not waiting for connection
+        assert.equal(llmChannel.getLocusUrl(), undefined);
+        assert.equal(llmChannel.isConnecting(), false);
+
+        // Now resolve the pending request - stale operation should not overwrite state
+        resolveRequest({
+          headers: {},
+          body: {binding: 'stale-binding', webSocketUrl: 'wss://example.com/stale'},
+        });
+
+        // Wait for the stale promise to settle
+        await connectPromise;
+
+        // State should still be undefined - stale operation detected invalidation
+        assert.equal(llmChannel.getBinding(), undefined);
+        assert.equal(llmChannel.isConnecting(), false);
+      });
+
+      it('stale operation does not clear new connectingPromise', async () => {
+        let resolveFirstRequest;
+        let resolveSecondRequest;
+        llmChannel.request = sinon.stub().returns(
+          new Promise((resolve) => {
+            resolveFirstRequest = resolve;
+          })
+        );
+
+        // Start first connection
+        const firstConnectPromise = llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+
+        // Disconnect invalidates the first connection
+        await llmChannel.disconnect({code: 1000, reason: 'test'});
+
+        // Start second connection before first resolves
+        llmChannel.request = sinon.stub().returns(
+          new Promise((resolve) => {
+            resolveSecondRequest = resolve;
+          })
+        );
+        const secondConnectPromise = llmChannel.registerAndConnect(
+          'newLocusUrl',
+          'newDatachannelUrl'
+        );
+
+        assert.equal(llmChannel.isConnecting(), true);
+
+        // Resolve the first (stale) request
+        resolveFirstRequest({
+          headers: {},
+          body: {binding: 'stale-binding', webSocketUrl: 'wss://example.com/stale'},
+        });
+
+        await firstConnectPromise;
+
+        // isConnecting should still be true because second connection is in progress
+        assert.equal(llmChannel.isConnecting(), true);
+
+        // State should not have been overwritten by stale operation
+        assert.equal(llmChannel.getBinding(), undefined);
+
+        // Complete second connection
+        resolveSecondRequest({
+          headers: {},
+          body: {binding: 'new-binding', webSocketUrl: 'wss://example.com/new'},
+        });
+        await secondConnectPromise;
+
+        // Now isConnecting should be false and state should reflect second connection
+        assert.equal(llmChannel.isConnecting(), false);
+        assert.equal(llmChannel.getBinding(), 'new-binding');
+      });
+
+      it('does not call connect() if disconnect runs during isDataChannelTokenEnabled await', async () => {
+        let resolveFeatureToggle;
+        const featureTogglePromise = new Promise((resolve) => {
+          resolveFeatureToggle = resolve;
+        });
+
+        // Request resolves immediately
+        llmChannel.request = sinon.stub().resolves({
+          headers: {},
+          body: {binding: 'binding', webSocketUrl: 'wss://example.com/socket'},
+        });
+
+        // Feature toggle will block
+        webex.internal.feature.getFeature = sinon
+          .stub()
+          .onFirstCall()
+          .resolves(true) // First call in register()
+          .onSecondCall()
+          .returns(featureTogglePromise); // Second call blocks
+
+        // Start connection
+        const connectPromise = llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+
+        // Wait for register() to complete and state to be set
+        await new Promise((resolve) => setImmediate(resolve));
+
+        // Binding should be set after register() completes
+        assert.equal(llmChannel.getBinding(), 'binding');
+
+        // Disconnect while isDataChannelTokenEnabled() is pending
+        await llmChannel.disconnect({code: 1000, reason: 'test'});
+
+        // State should be cleared
+        assert.equal(llmChannel.getBinding(), undefined);
+
+        // Now resolve the feature toggle - stale operation should NOT call connect()
+        resolveFeatureToggle(true);
+
+        await connectPromise;
+
+        // connect() should NOT have been called - identity check after await should have aborted
+        sinon.assert.notCalled(llmChannel.connect);
       });
     });
 

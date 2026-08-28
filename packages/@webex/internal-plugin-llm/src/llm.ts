@@ -74,9 +74,12 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * Register to the websocket
    * @param {string} llmSocketUrl
    * @param {string} datachannelToken
-   * @returns {Promise<void>}
+   * @returns {Promise<object>} Promise resolving to {webSocketUrl, binding}
    */
-  private register = async (llmSocketUrl: string, datachannelToken?: string): Promise<void> => {
+  private register = async (
+    llmSocketUrl: string,
+    datachannelToken?: string
+  ): Promise<{webSocketUrl: string; binding: string}> => {
     const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
 
     return this.request({
@@ -88,10 +91,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
           ? {'Data-Channel-Auth-Token': datachannelToken}
           : {},
     })
-      .then((res: {body: {webSocketUrl: string; binding: string}}) => {
-        this.webSocketUrl = res.body.webSocketUrl;
-        this.binding = res.body.binding;
-      })
+      .then((res: {body: {webSocketUrl: string; binding: string}}) => res.body)
       .catch((error: any) => {
         this.logger.error(`Error connecting to websocket for : ${error}`);
         throw error;
@@ -131,10 +131,26 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.datachannelUrl = datachannelUrl;
     const registerStart = performance.now();
 
-    this.connectingPromise = this.register(datachannelUrl, datachannelToken)
-      .then(async () => {
+    const connectionPromise: Promise<RegisterAndConnectTiming | void> = this.register(
+      datachannelUrl,
+      datachannelToken
+    )
+      .then(async ({webSocketUrl, binding}) => {
+        // Check if this operation was invalidated by a disconnect
+        if (this.connectingPromise !== connectionPromise) {
+          return;
+        }
+
+        this.webSocketUrl = webSocketUrl;
+        this.binding = binding;
+
         const clientLLMDatachannelResponseTime = Math.round(performance.now() - registerStart);
         const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
+
+        // Check again after async operation - disconnect may have run during the await
+        if (this.connectingPromise !== connectionPromise) {
+          return;
+        }
 
         const connectUrl =
           isDataChannelTokenEnabled && this.webSocketUrl
@@ -158,8 +174,13 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
         return {clientLLMDatachannelResponseTime, clientLLMWebSocketConnectTime};
       })
       .finally(() => {
-        this.connectingPromise = undefined;
+        // Only clear if this operation is still current
+        if (this.connectingPromise === connectionPromise) {
+          this.connectingPromise = undefined;
+        }
       });
+
+    this.connectingPromise = connectionPromise;
 
     return this.connectingPromise;
   };
@@ -253,18 +274,28 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   /**
    * Disconnects the WebSocket and clears all connection state.
    * Overrides Mercury's disconnect to also clear LLM-specific state.
+   * Clears connectingPromise first to invalidate any in-flight operations,
+   * then clears state before calling super.disconnect(). This ensures:
+   * 1. Stale register() responses won't overwrite state (they check promise identity)
+   * 2. No deadlock with Mercury's _connectWithBackoff() (we don't await connectingPromise)
+   * 3. State is cleared before 'disconnected' event fires
    * @param {object} [options]
    * @returns {Promise<void>}
    */
   public async disconnect(options?: {code: number; reason: string}): Promise<void> {
-    await super.disconnect(options);
+    // Clear connectingPromise first to invalidate any in-flight operations.
+    // Their promise identity checks will detect they've been superseded.
+    this.connectingPromise = undefined;
+
+    // Clear LLM-specific state before Mercury emits 'disconnected'
     this.webSocketUrl = undefined;
     this.binding = undefined;
     this.locusUrl = undefined;
     this.datachannelUrl = undefined;
     this.datachannelToken = undefined;
     this.refreshHandler = undefined;
-    this.emit('disconnected');
+
+    await super.disconnect(options);
   }
 
   /**

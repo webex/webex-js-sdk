@@ -799,20 +799,25 @@ describe('plugin-meetings', () => {
       });
 
       it('re-checks the subscription when the llm emits online', () => {
-        const onlineCall = webex.internal.llm.on
-          .getCalls()
-          .find((c) => c.args[0] === 'online');
+        const onlineCall = webex.internal.llm.on.getCalls().find((c) => c.args[0] === 'online');
         assert.exists(onlineCall, 'expected an online listener to be registered');
         const onlineHandler = onlineCall.args[1];
 
-        webex.internal.llm.isConnected = sinon.stub().returns(true);
-        webex.internal.llm.getLocusUrl = sinon.stub().returns(breakouts.locusUrl);
+        // Set up _llmChannel so listenToBroadcastMessages can subscribe
+        const mockChannel = {
+          isConnected: sinon.stub().returns(true),
+          on: sinon.stub(),
+          off: sinon.stub(),
+        };
+        breakouts._llmChannel = mockChannel;
+
+        const listenToSpy = sinon.spy(breakouts, 'listenTo');
 
         onlineHandler.call(breakouts);
 
-        const call = webex.internal.llm.on
+        const call = listenToSpy
           .getCalls()
-          .find((c) => c.args[0] === 'event:breakout.message');
+          .find((c) => c.args[0] === mockChannel && c.args[1] === 'event:breakout.message');
         assert.exists(call, 'expected broadcast message subscription after online');
         assert.isTrue(breakouts.hasSubscribedToMessage);
       });
