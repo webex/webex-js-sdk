@@ -5933,7 +5933,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.locusInfo.suspendDestroyMeeting(false);
 
-      throw firstError ?? error;
+      // LOCUS_USER_FULL is a definitive capacity error the client must surface, so it takes
+      // precedence over any earlier retryable error stored in firstError.
+      throw this.isLocusUserFullError(error) ? error : firstError ?? error;
     }
   }
 
