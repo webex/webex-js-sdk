@@ -4262,6 +4262,91 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: fakeLocus.url});
       });
 
+      describe('#sync', () => {
+        it('pauses the parser and does a Locus sync for classic meetings when syncClassicLocus is true', () => {
+          const fakeFullLocusDto = {id: 'fake full locus dto'};
+          const meeting = {
+            meetingRequest: {
+              getLocusDTO: sandbox.stub().resolves({body: fakeFullLocusDto}),
+            },
+            locusInfo: {
+              onFullLocus: sandbox.stub(),
+            },
+            locusUrl: 'someLocusUrl',
+          };
+
+          locusInfo.locusParser.workingCopy = {}; // no syncUrl -> full sync
+          sandbox.stub(locusInfo.locusParser, 'pause');
+
+          return new Promise((resolve) => {
+            locusInfo.locusParser.resume = sandbox.stub().callsFake(() => resolve());
+            locusInfo.sync(meeting, {syncClassicLocus: true, syncHashTree: true});
+          }).then(() => {
+            assert.calledOnce(locusInfo.locusParser.pause);
+            assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'someLocusUrl'});
+            assert.calledOnceWithExactly(
+              meeting.locusInfo.onFullLocus,
+              'classic Locus sync',
+              fakeFullLocusDto
+            );
+            assert.calledOnce(locusInfo.locusParser.resume);
+          });
+        });
+
+        it('does nothing for classic meetings when syncClassicLocus is false', async () => {
+          const meeting = {
+            meetingRequest: {
+              getLocusDTO: sandbox.stub().resolves({body: {}}),
+            },
+            locusUrl: 'someLocusUrl',
+          };
+
+          locusInfo.locusParser.workingCopy = {};
+          sandbox.stub(locusInfo.locusParser, 'pause');
+
+          await locusInfo.sync(meeting, {syncClassicLocus: false, syncHashTree: true});
+
+          assert.notCalled(locusInfo.locusParser.pause);
+          assert.notCalled(meeting.meetingRequest.getLocusDTO);
+        });
+
+        it('syncs hash tree datasets and never does a classic Locus sync for hash tree based meetings', async () => {
+          const parser = {syncAllDatasets: sandbox.stub().resolves()};
+          const meeting = {
+            meetingRequest: {
+              getLocusDTO: sandbox.stub().resolves({body: {}}),
+            },
+          };
+
+          locusInfo.hashTreeParsers.set('someLocusUrl', {parser});
+          sandbox.stub(locusInfo.locusParser, 'pause');
+
+          await locusInfo.sync(meeting, {syncClassicLocus: true, syncHashTree: true});
+
+          assert.calledOnce(parser.syncAllDatasets);
+          assert.notCalled(locusInfo.locusParser.pause);
+          assert.notCalled(meeting.meetingRequest.getLocusDTO);
+        });
+
+        it('does not sync hash tree datasets when syncHashTree is false', async () => {
+          const parser = {syncAllDatasets: sandbox.stub().resolves()};
+          const meeting = {
+            meetingRequest: {
+              getLocusDTO: sandbox.stub().resolves({body: {}}),
+            },
+          };
+
+          locusInfo.hashTreeParsers.set('someLocusUrl', {parser});
+          sandbox.stub(locusInfo.locusParser, 'pause');
+
+          await locusInfo.sync(meeting, {syncClassicLocus: true, syncHashTree: false});
+
+          assert.notCalled(parser.syncAllDatasets);
+          assert.notCalled(locusInfo.locusParser.pause);
+          assert.notCalled(meeting.meetingRequest.getLocusDTO);
+        });
+      });
+
       describe('edge cases for sync failing', () => {
         const {DESYNC} = LocusDeltaParser.loci;
         const fakeFullLocusDto = {id: 'fake full locus dto'};

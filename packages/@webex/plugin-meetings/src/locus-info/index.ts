@@ -448,6 +448,43 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
+   * Syncs this meeting's Locus state (e.g. after a network reconnection), routing to whichever
+   * mechanism the meeting uses (a meeting only ever uses one): hash tree datasets via
+   * syncAllHashTreeDatasets() or a standalone Locus DTO fetch for classic meetings.
+   *
+   * The classic path is only needed when Meetings#syncMeetings() can't do its usual
+   * getActiveMeetings() fetch (e.g. unverified guests, for whom Locus rejects that call); signed-in
+   * users resync classic meetings via getActiveMeetings() and pass syncClassicLocus as false.
+   *
+   * @param {Meeting} meeting
+   * @param {Object} options
+   * @param {boolean} options.syncClassicLocus - fetch a standalone Locus DTO for classic meetings
+   * @param {boolean} options.syncHashTree - sync hash tree datasets for hash tree based meetings
+   * @returns {Promise<void>} resolves once the hash tree sync (if any) completes; the classic Locus
+   *   sync is fire-and-forget
+   */
+  async sync(
+    meeting: any,
+    {syncClassicLocus, syncHashTree}: {syncClassicLocus: boolean; syncHashTree: boolean}
+  ): Promise<void> {
+    if (this.hashTreeParsers.size > 0) {
+      // hash tree based meeting: doLocusSync must not be used, sync the hash tree datasets instead
+      if (syncHashTree) {
+        await this.syncAllHashTreeDatasets();
+      }
+
+      return;
+    }
+
+    // classic (non hash tree) meeting
+    if (syncClassicLocus) {
+      // Pause the parser so in-flight deltas don't race the DTO fetch; doLocusSync() resumes it.
+      this.locusParser.pause();
+      this.doLocusSync(meeting, false, undefined);
+    }
+  }
+
+  /**
    * Apply locus delta data to meeting
    * @param {string} action Locus delta action
    * @param {Locus} locus

@@ -1967,10 +1967,15 @@ export default class Meetings extends WebexPlugin {
     skipHashTreeSync = false,
   } = {}): Promise<void> {
     // @ts-ignore
-    if (this.webex.credentials.isUnverifiedGuest) {
+    const isUnverifiedGuest = Boolean(this.webex.credentials.isUnverifiedGuest);
+
+    if (isUnverifiedGuest) {
       LoggerProxy.logger.info(
         'Meetings:index#syncMeetings --> user is unverified guest, skipping calling Locus for meeting sync'
       );
+
+      // Locus rejects getActiveMeetings() for unverified guests, so the per-meeting sync below
+      // (with syncClassicLocus enabled) resyncs each classic meeting individually instead.
     } else {
       try {
         const locusArray = await this.request.getActiveMeetings();
@@ -2025,20 +2030,24 @@ export default class Meetings extends WebexPlugin {
       }
     }
 
-    if (!skipHashTreeSync) {
-      // Trigger hash tree syncs for all remaining meetings
-      const remainingMeetings = this.meetingCollection.getAll();
-      const syncPromises = [];
+    // Resync each remaining meeting via LocusInfo#sync, which routes to hash tree or classic. For
+    // signed-in users classic meetings were already synced above, so only the hash tree sync runs.
+    const remainingMeetings = this.meetingCollection.getAll();
+    const syncPromises = [];
 
-      for (const meeting of Object.values(remainingMeetings) as any[]) {
-        if (meeting.locusInfo) {
-          syncPromises.push(meeting.locusInfo.syncAllHashTreeDatasets());
-        }
+    for (const meeting of Object.values(remainingMeetings) as any[]) {
+      if (meeting.locusInfo) {
+        syncPromises.push(
+          meeting.locusInfo.sync(meeting, {
+            syncClassicLocus: isUnverifiedGuest,
+            syncHashTree: !skipHashTreeSync,
+          })
+        );
       }
+    }
 
-      if (syncPromises.length > 0) {
-        await Promise.all(syncPromises);
-      }
+    if (syncPromises.length > 0) {
+      await Promise.all(syncPromises);
     }
   }
 
