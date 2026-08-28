@@ -438,6 +438,7 @@ describe('plugin-meetings', () => {
           webinar._practiceSessionLLMChannel = mockPSChannel;
           mockVoiceaChannel = {
             switchLLMChannel: sinon.stub().resolves(),
+            getKeepTranscriptionSubscribed: sinon.stub().returns(false),
           };
           meeting = {
             id: 'meeting-id',
@@ -449,6 +450,7 @@ describe('plugin-meetings', () => {
             voiceaChannel: mockVoiceaChannel,
             annotation: {registerChannel: sinon.stub()},
             trigger: sinon.stub(),
+            transcription: {captions: []},
           };
           webex.meetings.getMeetingByType = sinon.stub().returns(meeting);
         });
@@ -566,6 +568,33 @@ describe('plugin-meetings', () => {
           // Should not throw - cleanup should continue without voicea switch
           assert.calledOnce(mockPSChannel.disconnect);
         });
+
+        it('reinitializes transcription before switching voicea when transcription is undefined and captions were active', async () => {
+          meeting.llmChannel.isConnected.returns(true);
+          meeting.transcription = undefined;
+          mockVoiceaChannel.getKeepTranscriptionSubscribed.returns(true);
+
+          await webinar.cleanupPSDataChannel();
+
+          // Transcription should be reinitialized
+          assert.isDefined(meeting.transcription);
+          assert.deepEqual(meeting.transcription.captions, []);
+          assert.equal(meeting.transcription.isCaptioning, false);
+          // And voicea should still be switched
+          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, meeting.llmChannel);
+        });
+
+        it('does not reinitialize transcription when it already exists', async () => {
+          meeting.llmChannel.isConnected.returns(true);
+          const existingTranscription = {captions: ['existing'], isCaptioning: true};
+          meeting.transcription = existingTranscription;
+          mockVoiceaChannel.getKeepTranscriptionSubscribed.returns(true);
+
+          await webinar.cleanupPSDataChannel();
+
+          // Transcription should remain unchanged
+          assert.strictEqual(meeting.transcription, existingTranscription);
+        });
       });
 
       describe('#updatePSDataChannel', () => {
@@ -586,6 +615,7 @@ describe('plugin-meetings', () => {
           });
           mockVoiceaChannel = {
             switchLLMChannel: sinon.stub().resolves(),
+            getKeepTranscriptionSubscribed: sinon.stub().returns(false),
           };
 
           // Default session channel on the meeting
@@ -615,6 +645,7 @@ describe('plugin-meetings', () => {
             }),
             voiceaListenerCallbacks: {},
             trigger: sinon.stub(),
+            transcription: {captions: []},
           };
 
           webex.meetings.getMeetingByType = sinon.stub().returns(meeting);
@@ -770,6 +801,20 @@ describe('plugin-meetings', () => {
         it('switches voicea channel to practice session LLM channel after connect', async () => {
           await webinar.updatePSDataChannel();
 
+          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockPSChannel);
+        });
+
+        it('reinitializes transcription before switching voicea when transcription is undefined and captions were active', async () => {
+          meeting.transcription = undefined;
+          mockVoiceaChannel.getKeepTranscriptionSubscribed.returns(true);
+
+          await webinar.updatePSDataChannel();
+
+          // Transcription should be reinitialized before switching
+          assert.isDefined(meeting.transcription);
+          assert.deepEqual(meeting.transcription.captions, []);
+          assert.equal(meeting.transcription.isCaptioning, false);
+          // And voicea should still be switched
           assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockPSChannel);
         });
 

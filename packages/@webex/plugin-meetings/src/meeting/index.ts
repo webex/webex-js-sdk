@@ -6933,6 +6933,23 @@ export default class Meeting extends StatelessWebexPlugin {
           this.webinar?.isPracticeSessionLLMChannelConnected() ?? false;
 
         if (this.voiceaChannel && !isPracticeSessionActive) {
+          // Reinitialize transcription object if it was cleared during leave() but voiceaChannel
+          // was preserved. switchLLMChannel() will restore captions if they were active,
+          // and the caption event callbacks require this.transcription to exist.
+          if (!this.transcription && this.voiceaChannel.getKeepTranscriptionSubscribed()) {
+            this.transcription = {
+              captions: [],
+              isListening: false,
+              commandText: '',
+              languageOptions: {currentSpokenLanguage: 'en'},
+              showCaptionBox: false,
+              transcribingRequestStatus: 'INACTIVE',
+              isCaptioning: false,
+              interimCaptions: {} as Map<string, CaptionData>,
+              speakerProxy: {} as Map<string, any>,
+            } as Transcription;
+          }
+
           // @ts-ignore - Fix type
           // Fire-and-forget: caption restoration shouldn't block LLM connection result
           this.voiceaChannel.switchLLMChannel(this.llmChannel).catch((error) => {

@@ -15082,6 +15082,7 @@ describe('plugin-meetings', () => {
             getIsCaptionBoxOn: sinon.stub().returns(false),
             updateSubchannelSubscriptions: sinon.stub(),
             switchLLMChannel: sinon.stub().resolves(),
+            getKeepTranscriptionSubscribed: sinon.stub().returns(false),
           };
 
           webex.internal.llm.createChannel = sinon.stub().returns(mockChannel);
@@ -15392,6 +15393,43 @@ describe('plugin-meetings', () => {
           await meeting.updateLLMConnection();
 
           assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockChannel);
+        });
+
+        it('reinitializes transcription before switchLLMChannel when transcription is undefined and captions were active', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+          meeting.transcription = undefined;
+          mockVoiceaChannel.getKeepTranscriptionSubscribed.returns(true);
+
+          await meeting.updateLLMConnection();
+
+          // Transcription should be reinitialized before switching
+          assert.isDefined(meeting.transcription);
+          assert.deepEqual(meeting.transcription.captions, []);
+          assert.equal(meeting.transcription.isCaptioning, false);
+          // And voicea should still be switched
+          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockChannel);
+        });
+
+        it('does not reinitialize transcription when it already exists', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+          const existingTranscription = {captions: ['existing'], isCaptioning: true};
+          meeting.transcription = existingTranscription;
+          mockVoiceaChannel.getKeepTranscriptionSubscribed.returns(true);
+
+          await meeting.updateLLMConnection();
+
+          // Transcription should remain unchanged
+          assert.strictEqual(meeting.transcription, existingTranscription);
         });
 
         it('skips switchLLMChannel when practice session is active', async () => {

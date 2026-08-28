@@ -235,6 +235,20 @@ const Webinar = WebexPlugin.extend({
     // Only switch if the main channel is actually connected - if it's reconnecting
     // (due to concurrent updateLLMConnection), we'll recheck after disconnect completes.
     if (meeting?.voiceaChannel && meeting?.llmChannel?.isConnected()) {
+      // Reinitialize transcription if it was cleared but voiceaChannel was preserved.
+      if (!meeting.transcription && meeting.voiceaChannel.getKeepTranscriptionSubscribed()) {
+        meeting.transcription = {
+          captions: [],
+          isListening: false,
+          commandText: '',
+          languageOptions: {currentSpokenLanguage: 'en'},
+          showCaptionBox: false,
+          transcribingRequestStatus: 'INACTIVE',
+          isCaptioning: false,
+          interimCaptions: {},
+          speakerProxy: {},
+        };
+      }
       await meeting.voiceaChannel.switchLLMChannel(meeting.llmChannel);
       switchedVoiceaBeforeDisconnect = true;
     }
@@ -277,6 +291,20 @@ const Webinar = WebexPlugin.extend({
         meeting?.voiceaChannel &&
         meeting?.llmChannel?.isConnected()
       ) {
+        // Reinitialize transcription if it was cleared but voiceaChannel was preserved.
+        if (!meeting.transcription && meeting.voiceaChannel.getKeepTranscriptionSubscribed()) {
+          meeting.transcription = {
+            captions: [],
+            isListening: false,
+            commandText: '',
+            languageOptions: {currentSpokenLanguage: 'en'},
+            showCaptionBox: false,
+            transcribingRequestStatus: 'INACTIVE',
+            isCaptioning: false,
+            interimCaptions: {},
+            speakerProxy: {},
+          };
+        }
         await meeting.voiceaChannel.switchLLMChannel(meeting.llmChannel);
       }
     }
@@ -464,6 +492,21 @@ const Webinar = WebexPlugin.extend({
         // Switch meeting's voicea channel to use the PS LLM connection
         // This preserves caption state and re-announces automatically
         if (meeting.voiceaChannel) {
+          // Reinitialize transcription if it was cleared but voiceaChannel was preserved.
+          // switchLLMChannel() will restore captions if active, and callbacks need transcription.
+          if (!meeting.transcription && meeting.voiceaChannel.getKeepTranscriptionSubscribed()) {
+            meeting.transcription = {
+              captions: [],
+              isListening: false,
+              commandText: '',
+              languageOptions: {currentSpokenLanguage: 'en'},
+              showCaptionBox: false,
+              transcribingRequestStatus: 'INACTIVE',
+              isCaptioning: false,
+              interimCaptions: {},
+              speakerProxy: {},
+            };
+          }
           await meeting.voiceaChannel.switchLLMChannel(psChannel);
         }
 
