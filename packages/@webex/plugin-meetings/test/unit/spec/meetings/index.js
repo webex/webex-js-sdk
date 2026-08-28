@@ -1387,9 +1387,12 @@ describe('plugin-meetings', () => {
             const result = await webex.meetings.fetchSitePreferencesMeViaSite();
 
             assert.deepEqual(result, sitePreferencesResponse);
-            assert.calledOnceWithExactly(webex.meetings.request.fetchSitePreferencesMeViaSite, {
-              siteUrl: 'go.webex.com',
-            });
+            assert.calledOnceWithExactly(
+              webex.meetings.request.fetchSitePreferencesMeViaSite,
+              {
+                siteUrl: 'go.webex.com',
+              }
+            );
           });
 
           it('uses the provided Webex site instead of the preferred Webex site', async () => {
@@ -1397,9 +1400,12 @@ describe('plugin-meetings', () => {
 
             await webex.meetings.fetchSitePreferencesMeViaSite({siteUrl: 'go.webex.com'});
 
-            assert.calledOnceWithExactly(webex.meetings.request.fetchSitePreferencesMeViaSite, {
-              siteUrl: 'go.webex.com',
-            });
+            assert.calledOnceWithExactly(
+              webex.meetings.request.fetchSitePreferencesMeViaSite,
+              {
+                siteUrl: 'go.webex.com',
+              }
+            );
           });
 
           it('forwards custom site name and preference sections to the request helper', async () => {
@@ -1410,11 +1416,14 @@ describe('plugin-meetings', () => {
               selectOptions: [SitePreferenceSelectOption.SCHEDULING],
             });
 
-            assert.calledOnceWithExactly(webex.meetings.request.fetchSitePreferencesMeViaSite, {
-              siteUrl: 'go.webex.com',
-              siteName: 'custom-site',
-              selectOptions: [SitePreferenceSelectOption.SCHEDULING],
-            });
+            assert.calledOnceWithExactly(
+              webex.meetings.request.fetchSitePreferencesMeViaSite,
+              {
+                siteUrl: 'go.webex.com',
+                siteName: 'custom-site',
+                selectOptions: [SitePreferenceSelectOption.SCHEDULING],
+              }
+            );
           });
 
           it('throws when no Webex site is available', () => {
@@ -1562,17 +1571,13 @@ describe('plugin-meetings', () => {
                 },
                 'LOCUS_ID'
               );
-              assert.calledWith(
-                initialSetup,
-                {
-                  trigger: 'get-loci-response',
-                  locus: {
-                    url: url1,
-                  },
-                  hashTreeMessage: undefined,
+              assert.calledWith(initialSetup, {
+                trigger: 'get-loci-response',
+                locus: {
+                  url: url1,
                 },
-                sinon.match.func
-              );
+                hashTreeMessage: undefined,
+              }, sinon.match.func);
             });
           });
           describe('when destroying meeting is needed', () => {
@@ -1725,10 +1730,7 @@ describe('plugin-meetings', () => {
               meeting1: {locusInfo: mockLocusInfo},
             });
 
-            await webex.meetings.syncMeetings({
-              keepOnlyLocusMeetings: false,
-              skipHashTreeSync: true,
-            });
+            await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: true});
 
             assert.calledOnce(webex.meetings.request.getActiveMeetings);
             assert.notCalled(mockLocusInfo.syncAllHashTreeDatasets);
@@ -1744,10 +1746,7 @@ describe('plugin-meetings', () => {
               meeting1: {locusInfo: mockLocusInfo},
             });
 
-            await webex.meetings.syncMeetings({
-              keepOnlyLocusMeetings: false,
-              skipHashTreeSync: false,
-            });
+            await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: false});
 
             assert.calledOnce(webex.meetings.request.getActiveMeetings);
             assert.calledOnce(mockLocusInfo.syncAllHashTreeDatasets);
@@ -1782,9 +1781,7 @@ describe('plugin-meetings', () => {
               syncAllHashTreeDatasets: sinon.stub().resolves(),
             };
 
-            webex.meetings.request.getActiveMeetings = sinon
-              .stub()
-              .rejects(new Error('network error'));
+            webex.meetings.request.getActiveMeetings = sinon.stub().rejects(new Error('network error'));
             webex.meetings.meetingCollection.getAll = sinon.stub().returns({
               meeting1: {locusInfo: mockLocusInfo},
             });
@@ -1866,11 +1863,9 @@ describe('plugin-meetings', () => {
       describe('#prefetchMeetingInfo', () => {
         it('starts a reusable preJoin request without creating a Meeting', async () => {
           const response = {body: {meetingJoinUrl: 'meeting-join-url'}};
-          const callStateForMetrics = {
+          const preJoinContext = {
             correlationId: 'correlation-id',
             sessionCorrelationId: 'session-correlation-id',
-            loginType: 'reuse-ci-token',
-            joinFlowVersion: 'NewFTE',
           };
 
           const preJoinProvider = {fetchMeetingInfo: sinon.stub().resolves(response)};
@@ -1883,14 +1878,11 @@ describe('plugin-meetings', () => {
             destination: 'test destination',
             type: DESTINATION_TYPE.MEETING_ID,
             extraParams: {joinTXId: 'join-transaction-id'},
-            callStateForMetrics,
+            preJoinContext,
             classificationId: 'classification-id',
           });
 
-          assert.calledOnceWithExactly(createPreJoinProvider, webex, {
-            correlationId: callStateForMetrics.correlationId,
-            sessionCorrelationId: callStateForMetrics.sessionCorrelationId,
-          });
+          assert.calledOnceWithExactly(createPreJoinProvider, webex, preJoinContext);
           assert.calledOnceWithExactly(
             preJoinProvider.fetchMeetingInfo,
             'test destination',
@@ -1910,8 +1902,6 @@ describe('plugin-meetings', () => {
             request: prefetchedMeetingInfo.request,
             provider: preJoinProvider,
             extraParams: {joinTXId: 'join-transaction-id'},
-            classificationId: 'classification-id',
-            sendCAevents: true,
           });
           assert.notCalled(createMeeting);
         });
@@ -1928,7 +1918,7 @@ describe('plugin-meetings', () => {
           const prefetchedMeetingInfo = webex.meetings.prefetchMeetingInfo({
             destination: 'test destination',
             type: DESTINATION_TYPE.MEETING_ID,
-            callStateForMetrics: {correlationId: 'correlation-id'},
+            preJoinContext: {correlationId: 'correlation-id'},
           });
 
           assert.deepEqual(await prefetchedMeetingInfo.request, response);
@@ -1957,12 +1947,27 @@ describe('plugin-meetings', () => {
         });
 
         describe('wasm runtime performance telemetry', () => {
+          const correlationId = 'wasm-corr-id';
+          const benchmarkMeasurements = {
+            divRatio: 1.888,
+            sqrtRatio: 3.474,
+            addNsPerOp: 2.006,
+            addMedianMs: 32.1,
+            divMedianMs: 60.6,
+            sqrtMedianMs: 111.5,
+          };
           const probeResult = {
             status: 'slow',
             capability: 'not capable',
-            ratio: 0.25,
-            wasmMs: 25,
-            jsMs: 100,
+            reason: null,
+            measurements: benchmarkMeasurements,
+          };
+          const expectedMetricFields = {
+            status: probeResult.status,
+            capability: probeResult.capability,
+            reason: probeResult.reason,
+            ...benchmarkMeasurements,
+            correlation_id: correlationId,
           };
           let metricsSpy;
           let probeCheckStub;
@@ -1971,7 +1976,7 @@ describe('plugin-meetings', () => {
             webex.meetings.meetingInfo.fetchInfoOptions = sinon.stub().resolves({});
             webex.meetings.createMeeting = sinon
               .stub()
-              .returns(Promise.resolve({on: () => true, correlationId: 'wasm-corr-id'}));
+              .returns(Promise.resolve({on: () => true, correlationId}));
             probeCheckStub = sinon.stub(WasmRuntimeProbe, 'check').resolves(probeResult);
             metricsSpy = sinon.stub(Metrics, 'sendBehavioralMetric');
           });
@@ -1986,13 +1991,11 @@ describe('plugin-meetings', () => {
             await testUtils.flushPromises();
 
             assert.calledOnceWithExactly(probeCheckStub);
-            assert.calledOnceWithExactly(metricsSpy, 'js_sdk_wasm_runtime_performance', {
-              status: 'slow',
-              ratio: 0.25,
-              wasmMs: 25,
-              jsMs: 100,
-              correlation_id: 'wasm-corr-id',
-            });
+            assert.calledOnceWithExactly(
+              metricsSpy,
+              'js_sdk_wasm_runtime_performance',
+              expectedMetricFields
+            );
           });
 
           it('logs the WASM runtime status after a meeting is created', async () => {
@@ -2017,12 +2020,35 @@ describe('plugin-meetings', () => {
             await testUtils.flushPromises();
 
             assert.calledOnceWithExactly(probeCheckStub);
+            assert.calledOnceWithExactly(
+              metricsSpy,
+              'js_sdk_wasm_runtime_performance',
+              expectedMetricFields
+            );
+          });
+
+          it('emits the reason with null measurement fields when no measurements are available', async () => {
+            probeCheckStub.resolves({
+              status: 'unknown',
+              capability: 'unknown',
+              reason: 'worker_timeout',
+              measurements: null,
+            });
+
+            await webex.meetings.create(test1, test2);
+            await testUtils.flushPromises();
+
             assert.calledOnceWithExactly(metricsSpy, 'js_sdk_wasm_runtime_performance', {
-              status: 'slow',
-              ratio: 0.25,
-              wasmMs: 25,
-              jsMs: 100,
-              correlation_id: 'wasm-corr-id',
+              status: 'unknown',
+              capability: 'unknown',
+              reason: 'worker_timeout',
+              divRatio: null,
+              sqrtRatio: null,
+              addNsPerOp: null,
+              addMedianMs: null,
+              divMedianMs: null,
+              sqrtMedianMs: null,
+              correlation_id: correlationId,
             });
           });
 
@@ -2033,8 +2059,7 @@ describe('plugin-meetings', () => {
             const created = await webex.meetings.create(test1, test2);
             await testUtils.flushPromises();
 
-            // create() resolved normally with the meeting, i.e. the failed probe did not break it.
-            assert.equal(created.correlationId, 'wasm-corr-id');
+            assert.equal(created.correlationId, correlationId);
             assert.notCalled(metricsSpy);
             assert.calledOnceWithExactly(
               loggerErrorStub,
@@ -2109,7 +2134,6 @@ describe('plugin-meetings', () => {
             request: Promise.resolve({body: {meetingJoinUrl: 'meeting-join-url'}}),
             provider: webex.meetings.meetingInfo,
             extraParams: {},
-            sendCAevents: true,
           };
           const fakeMeeting = {
             meetingInfo: {},
@@ -2147,7 +2171,6 @@ describe('plugin-meetings', () => {
             request: Promise.resolve({body: {meetingJoinUrl: 'meeting-join-url'}}),
             provider: webex.meetings.meetingInfo,
             extraParams: {},
-            sendCAevents: true,
           };
           const fakeMeeting = {
             meetingInfo: {meetingJoinUrl: 'existing-meeting-join-url'},
@@ -2489,31 +2512,27 @@ describe('plugin-meetings', () => {
               webExMeetingId
             );
             assert.calledOnce(initialSetup);
-            assert.calledWith(
-              initialSetup,
-              {
-                trigger: 'locus-message',
-                locus: {
-                  id: uuid1,
-                  replaces: [
-                    {
-                      locusUrl: 'http:locusUrl',
-                    },
-                  ],
-                  self: {
-                    callBackInfo: {
-                      callbackAddress: uri1,
-                    },
-                    devices: [],
+            assert.calledWith(initialSetup, {
+              trigger: 'locus-message',
+              locus: {
+                id: uuid1,
+                replaces: [
+                  {
+                    locusUrl: 'http:locusUrl',
                   },
-                  info: {
-                    webExMeetingId,
+                ],
+                self: {
+                  callBackInfo: {
+                    callbackAddress: uri1,
                   },
+                  devices: [],
                 },
-                hashTreeMessage: undefined,
+                info: {
+                  webExMeetingId,
+                },
               },
-              sinon.match.func
-            );
+              hashTreeMessage: undefined,
+            }, sinon.match.func);
           });
           it('should setup the meeting from a hash tree event', async () => {
             const selfData = {};
@@ -2538,20 +2557,16 @@ describe('plugin-meetings', () => {
             });
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
             assert.calledOnce(initialSetup);
-            assert.calledWith(
-              initialSetup,
-              {
-                trigger: 'locus-message',
-                locus: {
-                  participants: [],
-                  url: url1,
-                  self: selfData,
-                  info: infoData,
-                },
-                hashTreeMessage,
+            assert.calledWith(initialSetup, {
+              trigger: 'locus-message',
+              locus: {
+                participants: [],
+                url: url1,
+                self: selfData,
+                info: infoData,
               },
-              sinon.match.func
-            );
+              hashTreeMessage,
+            }, sinon.match.func);
           });
 
           it('should ignore hash tree event when created locus has INACTIVE fullState', async () => {
@@ -2616,26 +2631,22 @@ describe('plugin-meetings', () => {
               webExMeetingId
             );
             assert.calledOnce(initialSetup);
-            assert.calledWith(
-              initialSetup,
-              {
-                trigger: 'locus-message',
-                locus: {
-                  id: uuid1,
-                  self: {
-                    callBackInfo: {
-                      callbackAddress: uri1,
-                    },
-                    devices: [],
+            assert.calledWith(initialSetup, {
+              trigger: 'locus-message',
+              locus: {
+                id: uuid1,
+                self: {
+                  callBackInfo: {
+                    callbackAddress: uri1,
                   },
-                  info: {
-                    webExMeetingId,
-                  },
+                  devices: [],
                 },
-                hashTreeMessage: undefined,
+                info: {
+                  webExMeetingId,
+                },
               },
-              sinon.match.func
-            );
+              hashTreeMessage: undefined,
+            }, sinon.match.func);
           });
 
           it('sends client event correctly on finally', async () => {
@@ -2696,26 +2707,22 @@ describe('plugin-meetings', () => {
               webExMeetingId
             );
             assert.calledOnce(initialSetup);
-            assert.calledWith(
-              initialSetup,
-              {
-                trigger: 'locus-message',
-                locus: {
-                  id: uuid1,
-                  self: {
-                    callBackInfo: {
-                      callbackAddress: uri1,
-                    },
-                    devices: [],
+            assert.calledWith(initialSetup, {
+              trigger: 'locus-message',
+              locus: {
+                id: uuid1,
+                self: {
+                  callBackInfo: {
+                    callbackAddress: uri1,
                   },
-                  info: {
-                    webExMeetingId,
-                  },
+                  devices: [],
                 },
-                hashTreeMessage: undefined,
+                info: {
+                  webExMeetingId,
+                },
               },
-              sinon.match.func
-            );
+              hashTreeMessage: undefined,
+            }, sinon.match.func);
           });
 
           const generateFakeLocusData = (isUnifiedSpaceMeeting) => ({
@@ -2847,7 +2854,11 @@ describe('plugin-meetings', () => {
                 undefined,
                 undefined,
                 extraParams,
-                {meetingId: meeting.id, sendCAevents}
+                {
+                  meetingId: meeting.id,
+                  sendCAevents,
+                  correlationId: meeting.correlationId,
+                }
               );
             }
 
@@ -2962,7 +2973,6 @@ describe('plugin-meetings', () => {
             const preJoinProvider = {fetchMeetingInfo: sinon.stub()};
             const prefetchedMeetingInfo = {
               extraParams: {joinTXId: 'join-transaction-id'},
-              sendCAevents: true,
               provider: preJoinProvider,
               request: Promise.resolve({
                 body: {
@@ -3009,6 +3019,7 @@ describe('plugin-meetings', () => {
               {
                 meetingId: meeting.id,
                 sendCAevents: true,
+                correlationId: meeting.correlationId,
               },
               null,
               null,
@@ -3034,6 +3045,7 @@ describe('plugin-meetings', () => {
               {
                 meetingId: meeting.id,
                 sendCAevents: true,
+                correlationId: meeting.correlationId,
               },
               null,
               null,

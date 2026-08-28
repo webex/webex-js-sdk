@@ -3,6 +3,7 @@ import type {
   VirtualBackgroundEffectOptions,
 } from '@webex/media-helpers';
 import type MeetingInfoV2 from '../meeting-info/meeting-info-v2';
+import type {PreJoinContext} from '../meeting-info/meeting-info-v2';
 import {DESTINATION_TYPE, Enum} from '../constants';
 
 type INoiseReductionEffect = Omit<
@@ -52,16 +53,11 @@ export type SitePreferencesResponse = {
   };
 };
 
-type PreJoinCallState = {
-  correlationId: string;
-  sessionCorrelationId?: string;
-};
-
 export type PrefetchMeetingInfoParams = {
   destination: any;
   type?: DESTINATION_TYPE;
   extraParams?: Record<string, any>;
-  callStateForMetrics: PreJoinCallState;
+  preJoinContext: PreJoinContext;
   classificationId?: string;
 };
 
@@ -69,6 +65,4 @@ export type PrefetchedMeetingInfo = {
   request: Promise<any>;
   provider: MeetingInfoV2;
   extraParams: Record<string, any>;
-  classificationId?: string;
-  sendCAevents: boolean;
 };

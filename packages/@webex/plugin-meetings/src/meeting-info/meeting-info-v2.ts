@@ -10,14 +10,9 @@ import BEHAVIORAL_METRICS from '../metrics/constants';
 
 import MeetingInfoUtil from './utilv2';
 
-type MeetingInfoProviderOptions = {
-  meetingId?: string;
-  sendCAevents?: boolean;
-};
-
 type MeetingInfoApi = 'meetingInfo' | 'preJoin';
 
-type PreJoinContext = {
+export type PreJoinContext = {
   correlationId: string;
   sessionCorrelationId?: string;
 };
@@ -683,13 +678,14 @@ export default class MeetingInfoV2 {
     installedOrgID = null,
     locusId = null,
     extraParams: object = {},
-    options: MeetingInfoProviderOptions = {},
+    options: {meetingId?: string; sendCAevents?: boolean; correlationId?: string} = {},
     registrationId: string = null,
     fullSiteUrl: string = null,
     classificationId: string = null
   ) {
-    const {meetingId, sendCAevents} = options;
-    const {correlationId, sessionCorrelationId} = this.preJoinContext ?? {};
+    const {meetingId, sendCAevents, correlationId: meetingCorrelationId} = options;
+    const {correlationId: preJoinCorrelationId, sessionCorrelationId} = this.preJoinContext ?? {};
+    const correlationId = preJoinCorrelationId ?? meetingCorrelationId;
 
     const destinationType = await MeetingInfoUtil.getDestinationType({
       destination,
@@ -742,6 +738,10 @@ export default class MeetingInfoV2 {
       ...(this.api === 'preJoin' && {headers: {correlationId}}),
     };
 
+    if (meetingId && sendCAevents && correlationId) {
+      requestOptions.headers = {correlationId};
+    }
+
     const directURI = await MeetingInfoUtil.getDirectMeetingInfoURI(destinationType);
 
     if (fullSiteUrl) {
@@ -761,7 +761,8 @@ export default class MeetingInfoV2 {
           sessionCorrelationId,
           meetingJoinPhase: 'pre-join' as const,
         };
-    const shouldSendCAEvents = sendCAevents && (meetingId || correlationId);
+    const shouldSendCAEvents =
+      sendCAevents && (meetingId || (this.api === 'preJoin' && correlationId));
 
     if (shouldSendCAEvents) {
       this.webex.internal.newMetrics.submitInternalEvent({

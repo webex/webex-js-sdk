@@ -15,6 +15,9 @@ export default {
   },
   metrics: {
     appType: inBrowser ? 'browser' : 'nodejs',
+    unhandledExceptionTelemetry: {
+      enabled: false,
+    },
     batcherWait: 500,
     batcherMaxCalls: 50,
     batcherMaxWait: 1500,

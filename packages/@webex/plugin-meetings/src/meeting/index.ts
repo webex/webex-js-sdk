@@ -275,7 +275,6 @@ export type CallStateForMetrics = {
   sessionCorrelationId?: string;
   joinTrigger?: string;
   loginType?: string;
-  joinFlowVersion?: string;
   userNameInput?: string;
   emailInput?: string;
   pstnCorrelationId?: string;
@@ -2089,8 +2088,6 @@ export default class Meeting extends StatelessWebexPlugin {
       if (prefetchedMeetingInfo) {
         info = await prefetchedMeetingInfo.request;
       } else {
-        const meetingInfoProviderOptions = {meetingId: this.id, sendCAevents};
-
         info = await this.attrs.meetingInfoProvider.fetchMeetingInfo(
           destination,
           destinationType,
@@ -2100,7 +2097,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.config.installedOrgID,
           this.locusId,
           extraParams,
-          meetingInfoProviderOptions,
+          {meetingId: this.id, sendCAevents, correlationId: this.correlationId},
           registrationId,
           null,
           classificationId
@@ -2307,15 +2304,15 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise<void>} resolves after the response is applied to this Meeting
    */
   public async consumePrefetchedMeetingInfo(prefetchedMeetingInfo: PrefetchedMeetingInfo) {
-    const {provider, request, ...fetchParams} = prefetchedMeetingInfo;
+    const {provider, request, extraParams} = prefetchedMeetingInfo;
 
-    await this.prepForFetchMeetingInfo(fetchParams, 'consumePrefetchedMeetingInfo');
+    await this.prepForFetchMeetingInfo({extraParams}, 'consumePrefetchedMeetingInfo');
     this.attrs.meetingInfoProvider = provider;
 
     return this.fetchMeetingInfoInternal({
       destination: this.destination,
       destinationType: this.destinationType,
-      ...fetchParams,
+      extraParams,
       prefetchedMeetingInfo: {request},
     });
   }
