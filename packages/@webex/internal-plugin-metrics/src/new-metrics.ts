@@ -32,6 +32,7 @@ import {setMetricTimings} from './call-diagnostic/call-diagnostic-metrics.util';
 import {generateCommonErrorMetadata} from './utils';
 import {isAutomatedUser as detectAutomatedUser} from './automated-user';
 import PrivacyAndSecurityPermissionEnricher from './privacy-and-security-permission-enricher';
+import {startUnhandledExceptionTelemetry} from './unhandled-exception-telemetry';
 
 /**
  * Metrics plugin to centralize all types of metrics.
@@ -115,6 +116,8 @@ class Metrics extends WebexPlugin {
         shouldDelay: this.delaySubmitClientEvents,
         overrides: this.delayedClientEventsOverrides,
       });
+      // @ts-ignore
+      startUnhandledExceptionTelemetry(this.webex);
     });
   }
 
