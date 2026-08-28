@@ -421,7 +421,7 @@ describe('plugin-llm', () => {
         });
       });
 
-      it('waits for in-flight connection to settle before clearing state', async () => {
+      it('invalidates in-flight connection via promise identity', async () => {
         let resolveRequest;
         llmChannel.request = sinon.stub().returns(
           new Promise((resolve) => {
@@ -434,56 +434,79 @@ describe('plugin-llm', () => {
 
         assert.equal(llmChannel.isConnecting(), true);
 
-        // Start disconnect while connection is in-flight
-        const disconnectPromise = llmChannel.disconnect({code: 1000, reason: 'test'});
+        // Disconnect while connection is in-flight - should complete immediately
+        await llmChannel.disconnect({code: 1000, reason: 'test'});
 
-        // Disconnect should be blocked waiting for connection to settle
-        // Resolve the pending request
+        // State should be cleared immediately, not waiting for connection
+        assert.equal(llmChannel.getLocusUrl(), undefined);
+        assert.equal(llmChannel.isConnecting(), false);
+
+        // Now resolve the pending request - stale operation should not overwrite state
         resolveRequest({
           headers: {},
-          body: {binding: 'binding', webSocketUrl: 'wss://example.com/socket'},
+          body: {binding: 'stale-binding', webSocketUrl: 'wss://example.com/stale'},
         });
 
-        // Now both should complete
+        // Wait for the stale promise to settle
         await connectPromise;
-        await disconnectPromise;
 
-        // State should be cleared after disconnect completes
-        assert.equal(llmChannel.getLocusUrl(), undefined);
+        // State should still be undefined - stale operation detected invalidation
         assert.equal(llmChannel.getBinding(), undefined);
         assert.equal(llmChannel.isConnecting(), false);
       });
 
-      it('waits for in-flight connection that fails before clearing state', async () => {
-        let rejectRequest;
+      it('stale operation does not clear new connectingPromise', async () => {
+        let resolveFirstRequest;
+        let resolveSecondRequest;
         llmChannel.request = sinon.stub().returns(
-          new Promise((resolve, reject) => {
-            rejectRequest = reject;
+          new Promise((resolve) => {
+            resolveFirstRequest = resolve;
           })
         );
 
-        // Start connection but don't await - request is pending
-        const connectPromise = llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+        // Start first connection
+        const firstConnectPromise = llmChannel.registerAndConnect(locusUrl, datachannelUrl);
 
-        // Start disconnect while connection is in-flight
-        const disconnectPromise = llmChannel.disconnect({code: 1000, reason: 'test'});
+        // Disconnect invalidates the first connection
+        await llmChannel.disconnect({code: 1000, reason: 'test'});
 
-        // Reject the pending request
-        rejectRequest(new Error('Network error'));
+        // Start second connection before first resolves
+        llmChannel.request = sinon.stub().returns(
+          new Promise((resolve) => {
+            resolveSecondRequest = resolve;
+          })
+        );
+        const secondConnectPromise = llmChannel.registerAndConnect(
+          'newLocusUrl',
+          'newDatachannelUrl'
+        );
 
-        // Connect promise should reject
-        try {
-          await connectPromise;
-        } catch {
-          // expected
-        }
+        assert.equal(llmChannel.isConnecting(), true);
 
-        // Disconnect should still complete successfully
-        await disconnectPromise;
+        // Resolve the first (stale) request
+        resolveFirstRequest({
+          headers: {},
+          body: {binding: 'stale-binding', webSocketUrl: 'wss://example.com/stale'},
+        });
 
-        // State should be cleared
-        assert.equal(llmChannel.getLocusUrl(), undefined);
+        await firstConnectPromise;
+
+        // isConnecting should still be true because second connection is in progress
+        assert.equal(llmChannel.isConnecting(), true);
+
+        // State should not have been overwritten by stale operation
+        assert.equal(llmChannel.getBinding(), undefined);
+
+        // Complete second connection
+        resolveSecondRequest({
+          headers: {},
+          body: {binding: 'new-binding', webSocketUrl: 'wss://example.com/new'},
+        });
+        await secondConnectPromise;
+
+        // Now isConnecting should be false and state should reflect second connection
         assert.equal(llmChannel.isConnecting(), false);
+        assert.equal(llmChannel.getBinding(), 'new-binding');
       });
     });
 
