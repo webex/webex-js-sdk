@@ -15394,7 +15394,7 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockChannel);
         });
 
-        it('does not call switchLLMChannel when voiceaChannel is undefined', async () => {
+        it('recreates voiceaChannel and calls switchLLMChannel when voiceaChannel is undefined', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.voiceaChannel = undefined;
           meeting.locusInfo = {
@@ -15403,8 +15403,14 @@ describe('plugin-meetings', () => {
             info: {datachannelUrl: 'a datachannel url'},
           };
 
-          // Should not throw
           await meeting.updateLLMConnection();
+
+          // voiceaChannel should be recreated via createChannel()
+          assert.calledOnce(webex.internal.voicea.createChannel);
+          // switchLLMChannel should be called on the newly created channel
+          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockChannel);
+          // The meeting should now have the recreated voiceaChannel
+          assert.strictEqual(meeting.voiceaChannel, mockVoiceaChannel);
         });
 
         it('logs warning when switchLLMChannel fails', async () => {

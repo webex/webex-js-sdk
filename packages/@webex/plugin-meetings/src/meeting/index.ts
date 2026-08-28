@@ -6924,16 +6924,21 @@ export default class Meeting extends StatelessWebexPlugin {
         );
         this.startLLMHealthCheckTimer();
 
+        // Recreate voiceaChannel if it was cleared (e.g., after leave() + rejoin).
+        // This ensures startTranscription() works for the meeting object's entire lifetime.
+        if (!this.voiceaChannel) {
+          // @ts-ignore - Fix type
+          this.voiceaChannel = this.webex.internal.voicea.createChannel();
+        }
+
         // Switch voiceaChannel to use the new LLM channel (preserves transcription state)
         // Fire-and-forget: caption restoration shouldn't block LLM connection result
-        if (this.voiceaChannel) {
-          this.voiceaChannel.switchLLMChannel(this.llmChannel).catch((error) => {
-            LoggerProxy.logger.warn(
-              'Meeting:index#updateLLMConnection --> failed to switch voicea channel:',
-              error
-            );
-          });
-        }
+        this.voiceaChannel.switchLLMChannel(this.llmChannel).catch((error) => {
+          LoggerProxy.logger.warn(
+            'Meeting:index#updateLLMConnection --> failed to switch voicea channel:',
+            error
+          );
+        });
 
         if (registerAndConnectResult) {
           if (isInitialJoinPhase) {
