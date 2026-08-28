@@ -1132,6 +1132,139 @@ describe('plugin-meetings', () => {
           assert.equal(passedLocus.self.reason, 'MOVED');
         });
       });
+
+      describe('when a duplicate meeting exists for the same locusUrl', () => {
+        const incomingLocusUrl = 'http://locus-url.com/duplicate-test';
+        let duplicateMeeting;
+
+        beforeEach(() => {
+          duplicateMeeting = {
+            id: 'duplicate-meeting-id',
+            locusUrl: incomingLocusUrl,
+            locusInfo: {controls: {}},
+          };
+          webex.meetings.meetingCollection.set(duplicateMeeting);
+          sinon.stub(webex.meetings, 'destroy');
+        });
+
+        afterEach(() => {
+          webex.meetings.meetingCollection.delete(duplicateMeeting.id);
+        });
+
+        it('destroys another meeting object in the collection that shares the same locusUrl', async () => {
+          await locusInfo.initialSetup({
+            trigger: 'join-response',
+            locus: {url: incomingLocusUrl, participants: []},
+          });
+
+          assert.calledOnceWithExactly(
+            webex.meetings.destroy,
+            duplicateMeeting,
+            MEETING_REMOVED_REASON.DUPLICATE_LOCUS_MEETING
+          );
+        });
+
+        it('does not destroy anything when no other meeting shares the locusUrl', async () => {
+          await locusInfo.initialSetup({
+            trigger: 'join-response',
+            locus: {url: 'http://locus-url.com/unrelated', participants: []},
+          });
+
+          assert.notCalled(webex.meetings.destroy);
+        });
+
+        it('does not treat itself as a duplicate', async () => {
+          webex.meetings.meetingCollection.delete(duplicateMeeting.id);
+          webex.meetings.meetingCollection.set({...duplicateMeeting, id: meetingId});
+
+          await locusInfo.initialSetup({
+            trigger: 'join-response',
+            locus: {url: incomingLocusUrl, participants: []},
+          });
+
+          assert.notCalled(webex.meetings.destroy);
+        });
+
+        it("migrates the duplicate meeting's meetingContainer onto this meeting before destroying it", async () => {
+          duplicateMeeting.locusInfo.controls = {
+            meetingContainer: {meetingContainerUrl: 'http://meeting-container.example.com'},
+          };
+          locusInfo.emitScoped = sinon.stub();
+
+          await locusInfo.initialSetup({
+            trigger: 'join-response',
+            locus: {url: incomingLocusUrl, participants: []},
+          });
+
+          assert.deepEqual(locusInfo.controls, {
+            meetingContainer: {meetingContainerUrl: 'http://meeting-container.example.com'},
+          });
+          assert.deepEqual(locusInfo.parsedLocus.controls, {
+            meetingContainer: {meetingContainerUrl: 'http://meeting-container.example.com'},
+          });
+          assert.calledWith(
+            locusInfo.emitScoped,
+            {file: 'locus-info', function: 'initialSetup'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_CONTAINER_UPDATED,
+            {meetingContainerUrl: 'http://meeting-container.example.com'}
+          );
+          assert.calledOnceWithExactly(
+            webex.meetings.destroy,
+            duplicateMeeting,
+            MEETING_REMOVED_REASON.DUPLICATE_LOCUS_MEETING
+          );
+        });
+
+        it('does not overwrite an already-known meetingContainer on this meeting', async () => {
+          locusInfo.controls = {
+            meetingContainer: {meetingContainerUrl: 'http://existing-container.example.com'},
+          };
+          duplicateMeeting.locusInfo.controls = {
+            meetingContainer: {meetingContainerUrl: 'http://duplicate-container.example.com'},
+          };
+          locusInfo.emitScoped = sinon.stub();
+
+          await locusInfo.initialSetup({
+            trigger: 'join-response',
+            locus: {url: incomingLocusUrl, participants: []},
+          });
+
+          assert.equal(
+            locusInfo.controls.meetingContainer.meetingContainerUrl,
+            'http://existing-container.example.com'
+          );
+          assert.neverCalledWith(
+            locusInfo.emitScoped,
+            {file: 'locus-info', function: 'initialSetup'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_CONTAINER_UPDATED
+          );
+          assert.calledOnceWithExactly(
+            webex.meetings.destroy,
+            duplicateMeeting,
+            MEETING_REMOVED_REASON.DUPLICATE_LOCUS_MEETING
+          );
+        });
+
+        it('does not migrate anything when the duplicate meeting has no meetingContainer', async () => {
+          locusInfo.emitScoped = sinon.stub();
+
+          await locusInfo.initialSetup({
+            trigger: 'join-response',
+            locus: {url: incomingLocusUrl, participants: []},
+          });
+
+          assert.neverCalledWith(
+            locusInfo.emitScoped,
+            {file: 'locus-info', function: 'initialSetup'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_CONTAINER_UPDATED
+          );
+          assert.calledOnceWithExactly(
+            webex.meetings.destroy,
+            duplicateMeeting,
+            MEETING_REMOVED_REASON.DUPLICATE_LOCUS_MEETING
+          );
+        });
+      });
     });
 
     describe('#updateControls', () => {

@@ -633,6 +633,48 @@ export default class LocusInfo extends EventsScope {
         },
     onLocusSynced?: (locus: LocusDTO) => void
   ) {
+    // A duplicate Meeting object can exist for the same locus (e.g. syncMeetings() creates one
+    // proactively before this meeting's own join() resolves). MeetingCollection.getByKey() always
+    // returns the first match for a given locusUrl, so without this the duplicate would keep
+    // intercepting all future Locus/Mercury updates for this locus.
+    {
+      const incomingLocusUrl = (data as any).locus?.url;
+      if (incomingLocusUrl) {
+        const duplicateMeeting = Object.values(this.webex.meetings.meetingCollection.getAll()).find(
+          (candidate: any) =>
+            candidate.id !== this.meetingId && candidate.locusUrl === incomingLocusUrl
+        ) as any;
+
+        if (duplicateMeeting) {
+          // Carry over anything the duplicate already learned (currently only meetingContainer)
+          // before removing it, so this meeting doesn't have to wait for the next delta to get it.
+          const duplicateMeetingContainerUrl =
+            duplicateMeeting.locusInfo?.controls?.meetingContainer?.meetingContainerUrl;
+
+          if (
+            duplicateMeetingContainerUrl &&
+            !this.controls?.meetingContainer?.meetingContainerUrl
+          ) {
+            this.controls = {
+              ...this.controls,
+              meetingContainer: duplicateMeeting.locusInfo.controls.meetingContainer,
+            };
+            this.parsedLocus.controls = ControlsUtils.parse(this.controls);
+            this.emitScoped(
+              {file: 'locus-info', function: 'initialSetup'},
+              LOCUSINFO.EVENTS.CONTROLS_MEETING_CONTAINER_UPDATED,
+              {meetingContainerUrl: duplicateMeetingContainerUrl}
+            );
+          }
+
+          this.webex.meetings.destroy(
+            duplicateMeeting,
+            MEETING_REMOVED_REASON.DUPLICATE_LOCUS_MEETING
+          );
+        }
+      }
+    }
+
     let initialFullLocus: LocusDTO | null = null;
     switch (data.trigger) {
       case 'locus-message':
