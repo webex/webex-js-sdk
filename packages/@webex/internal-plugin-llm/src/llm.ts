@@ -147,6 +147,11 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
         const clientLLMDatachannelResponseTime = Math.round(performance.now() - registerStart);
         const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
 
+        // Check again after async operation - disconnect may have run during the await
+        if (this.connectingPromise !== connectionPromise) {
+          return;
+        }
+
         const connectUrl =
           isDataChannelTokenEnabled && this.webSocketUrl
             ? LLMChannel.buildUrlWithAwareSubchannels(this.webSocketUrl, AWARE_DATA_CHANNEL)

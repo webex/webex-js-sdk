@@ -508,6 +508,50 @@ describe('plugin-llm', () => {
         assert.equal(llmChannel.isConnecting(), false);
         assert.equal(llmChannel.getBinding(), 'new-binding');
       });
+
+      it('does not call connect() if disconnect runs during isDataChannelTokenEnabled await', async () => {
+        let resolveFeatureToggle;
+        const featureTogglePromise = new Promise((resolve) => {
+          resolveFeatureToggle = resolve;
+        });
+
+        // Request resolves immediately
+        llmChannel.request = sinon.stub().resolves({
+          headers: {},
+          body: {binding: 'binding', webSocketUrl: 'wss://example.com/socket'},
+        });
+
+        // Feature toggle will block
+        webex.internal.feature.getFeature = sinon
+          .stub()
+          .onFirstCall()
+          .resolves(true) // First call in register()
+          .onSecondCall()
+          .returns(featureTogglePromise); // Second call blocks
+
+        // Start connection
+        const connectPromise = llmChannel.registerAndConnect(locusUrl, datachannelUrl);
+
+        // Wait for register() to complete and state to be set
+        await new Promise((resolve) => setImmediate(resolve));
+
+        // Binding should be set after register() completes
+        assert.equal(llmChannel.getBinding(), 'binding');
+
+        // Disconnect while isDataChannelTokenEnabled() is pending
+        await llmChannel.disconnect({code: 1000, reason: 'test'});
+
+        // State should be cleared
+        assert.equal(llmChannel.getBinding(), undefined);
+
+        // Now resolve the feature toggle - stale operation should NOT call connect()
+        resolveFeatureToggle(true);
+
+        await connectPromise;
+
+        // connect() should NOT have been called - identity check after await should have aborted
+        sinon.assert.notCalled(llmChannel.connect);
+      });
     });
 
     describe('#setRefreshHandler', () => {
