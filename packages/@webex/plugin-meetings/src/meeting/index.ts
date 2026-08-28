@@ -6728,6 +6728,14 @@ export default class Meeting extends StatelessWebexPlugin {
     // Always clear the timer, even if there's no channel
     this.clearLLMHealthCheckTimer();
 
+    // Permanent cleanup must deregister voiceaChannel regardless of LLM presence.
+    // When a transient reconnect fails (LLM registration error), llmChannel is undefined
+    // but voiceaChannel may still exist with listeners attached to the old emitter.
+    if (!preserveVoiceaChannel) {
+      this.voiceaChannel?.deregisterEvents();
+      this.voiceaChannel = undefined;
+    }
+
     if (!this.llmChannel) {
       return;
     }
@@ -6748,12 +6756,6 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     } finally {
       this.stopListeningForLLMEvents();
-      // Only destroy voiceaChannel on permanent cleanup (meeting end/leave).
-      // Transient reconnects preserve it so switchLLMChannel() can restore subscriptions.
-      if (!preserveVoiceaChannel) {
-        this.voiceaChannel?.deregisterEvents();
-        this.voiceaChannel = undefined;
-      }
       this.llmChannel = undefined;
     }
   };
@@ -6924,11 +6926,27 @@ export default class Meeting extends StatelessWebexPlugin {
         );
         this.startLLMHealthCheckTimer();
 
-        // Recreate voiceaChannel if it was cleared (e.g., after leave() + rejoin).
-        // This ensures startTranscription() works for the meeting object's entire lifetime.
+        // Recreate voiceaChannel and transcription state if cleared (e.g., after leave() + rejoin).
+        // Both must be reinitialized together: voiceaListenerCallbacks reference this.transcription,
+        // so startTranscription() would throw if only voiceaChannel is recreated.
         if (!this.voiceaChannel) {
           // @ts-ignore - Fix type
           this.voiceaChannel = this.webex.internal.voicea.createChannel();
+
+          // Reinitialize transcription state (cleared by stopListeningForMeetingEvents during leave)
+          if (!this.transcription) {
+            this.transcription = {
+              captions: [],
+              isListening: false,
+              commandText: '',
+              languageOptions: {currentSpokenLanguage: 'en'},
+              showCaptionBox: false,
+              transcribingRequestStatus: 'INACTIVE',
+              isCaptioning: false,
+              interimCaptions: {} as Map<string, CaptionData>,
+              speakerProxy: {} as Map<string, any>,
+            } as Transcription;
+          }
         }
 
         // Switch voiceaChannel to use the new LLM channel (preserves transcription state)

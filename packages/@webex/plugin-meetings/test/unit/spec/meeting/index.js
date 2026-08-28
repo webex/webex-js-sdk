@@ -15394,9 +15394,10 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockChannel);
         });
 
-        it('recreates voiceaChannel and calls switchLLMChannel when voiceaChannel is undefined', async () => {
+        it('recreates voiceaChannel and transcription when both are undefined after leave+rejoin', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.voiceaChannel = undefined;
+          meeting.transcription = undefined; // Cleared by stopListeningForMeetingEvents during leave
           meeting.locusInfo = {
             syncAllHashTreeDatasets: sinon.stub().resolves(),
             url: 'a url',
@@ -15411,6 +15412,11 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockChannel);
           // The meeting should now have the recreated voiceaChannel
           assert.strictEqual(meeting.voiceaChannel, mockVoiceaChannel);
+          // transcription state should be reinitialized (so voiceaListenerCallbacks don't throw)
+          assert.isDefined(meeting.transcription);
+          assert.deepEqual(meeting.transcription.captions, []);
+          assert.strictEqual(meeting.transcription.isListening, false);
+          assert.strictEqual(meeting.transcription.isCaptioning, false);
         });
 
         it('logs warning when switchLLMChannel fails', async () => {
@@ -15603,6 +15609,31 @@ describe('plugin-meetings', () => {
               meeting.processLocusLLMEvent
             );
             assert.called(meeting.clearLLMHealthCheckTimer);
+          });
+
+          it('cleans up voiceaChannel even when llmChannel is undefined (failed transient reconnect scenario)', async () => {
+            // Simulate failed transient reconnect: llmChannel is undefined but voiceaChannel exists
+            meeting.llmChannel = undefined;
+            const originalVoiceaChannel = meeting.voiceaChannel;
+
+            assert.isDefined(originalVoiceaChannel);
+
+            // Permanent cleanup should still deregister voiceaChannel
+            await meeting.cleanupLLMConneciton({preserveVoiceaChannel: false});
+
+            assert.calledOnce(mockVoiceaChannel.deregisterEvents);
+            assert.isUndefined(meeting.voiceaChannel);
+          });
+
+          it('preserves voiceaChannel when llmChannel is undefined and preserveVoiceaChannel is true', async () => {
+            // Another transient reconnect scenario
+            meeting.llmChannel = undefined;
+            const originalVoiceaChannel = meeting.voiceaChannel;
+
+            await meeting.cleanupLLMConneciton({preserveVoiceaChannel: true});
+
+            assert.notCalled(mockVoiceaChannel.deregisterEvents);
+            assert.strictEqual(meeting.voiceaChannel, originalVoiceaChannel);
           });
         });
       });
