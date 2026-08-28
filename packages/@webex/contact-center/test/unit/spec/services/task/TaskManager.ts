@@ -6,6 +6,7 @@ import {
   CC_AGENT_EVENTS,
   CC_AI_SUMMARY_EVENTS,
   CC_EVENTS,
+  CC_TASK_EVENTS,
   WrapupData,
 } from '../../../../../src/services/config/types';
 import TaskManager from '../../../../../src/services/task/TaskManager';
@@ -346,6 +347,8 @@ describe('TaskManager', () => {
 
     return task;
   };
+
+  const createMockTask = createStateMachineTask;
 
   taskDataMock = {
     type: CC_EVENTS.AGENT_CONTACT_RESERVED,
