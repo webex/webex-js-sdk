@@ -226,9 +226,12 @@ const Webinar = WebexPlugin.extend({
       this._pendingOnlineListener = null;
     }
 
-    // Switch voicea back to main meeting LLM channel before disconnecting PS channel
+    // Switch voicea back to main meeting LLM channel before disconnecting PS channel.
+    // Only switch if the main channel is actually connected - if it's reconnecting
+    // (due to concurrent updateLLMConnection), skip the switch here and let
+    // updateLLMConnection handle voicea restoration when it completes.
     const meeting = this.getValidatedWebinarMeeting();
-    if (meeting?.voiceaChannel && meeting?.llmChannel) {
+    if (meeting?.voiceaChannel && meeting?.llmChannel?.isConnected()) {
       await meeting.voiceaChannel.switchLLMChannel(meeting.llmChannel);
     }
 
