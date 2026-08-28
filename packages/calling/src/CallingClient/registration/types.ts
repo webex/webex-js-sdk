@@ -1,9 +1,28 @@
 import {Devices, IDeviceInfo, RegistrationStatus} from '../../common/types';
+import {LineError} from '../../Errors/catalog/LineError';
 import {MobiusAsyncEvent} from '../calling/types';
 
 export type Header = {
   [key: string]: string;
 };
+
+/**
+ * Reason a registration is torn down without any re-registration attempt.
+ * The values double as the label used in hard-stop log messages.
+ */
+export enum HARD_STOP_REASON {
+  REGISTRATION_DOWN = 'registration-down',
+  SESSION_SUPERSEDED = 'session-superseded',
+}
+
+/**
+ * Describes a hard stop of the registration. A superseded session must carry the
+ * {@link LineError} that is handed to the SDK consumer as the reason on
+ * `LINE_EVENTS.UNREGISTERED`; a registration-down stop carries no reason.
+ */
+export type HardStop =
+  | {reason: HARD_STOP_REASON.REGISTRATION_DOWN; error?: undefined}
+  | {reason: HARD_STOP_REASON.SESSION_SUPERSEDED; error: LineError};
 
 export type restoreRegistrationCallBack = (
   restoreData: IDeviceInfo,
@@ -11,6 +30,38 @@ export type restoreRegistrationCallBack = (
 ) => Promise<boolean>;
 
 export type retry429CallBack = (retryAfter: number, caller: string) => Promise<void>;
+
+export type sessionSupersededCallBack = (clientError: LineError) => Promise<void>;
+
+/**
+ * Specialized handlers a caller of `handleRegistrationErrors` opts into. A flow only
+ * passes the handlers for the status codes it can act on, which is what keeps handling
+ * such as the `409` session-superseded hard stop scoped to the keepalive flow.
+ */
+export type RegistrationErrorHandlers = {
+  /** Invoked on `429` so the caller can reschedule its own flow after `Retry-After`. */
+  retry429Cb?: retry429CallBack;
+  /** Invoked on `403` device-limit so the caller can restore the existing registration. */
+  restoreRegCb?: restoreRegistrationCallBack;
+  /** Invoked on `409` so the caller can hard stop a superseded calling session. */
+  sessionSupersededCb?: sessionSupersededCallBack;
+};
+
+/**
+ * Outcome of `handleRegistrationErrors`.
+ */
+export type RegistrationErrorResult = {
+  /** The error is terminal — the caller must not retry. */
+  finalError: boolean;
+  /** The Mobius WebSocket of the failed server must be torn down before moving on. */
+  shouldDisconnect: boolean;
+  /**
+   * One of the {@link RegistrationErrorHandlers} fully owned the outcome, including
+   * cleanup and notifying the consumer. The caller must skip its own failure handling so
+   * that events are not emitted twice.
+   */
+  handledByCallback: boolean;
+};
 
 export type FailoverCacheState = {
   attempt: number;

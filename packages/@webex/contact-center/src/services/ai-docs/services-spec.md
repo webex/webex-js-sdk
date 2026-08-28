@@ -54,6 +54,7 @@ The `src/services/` directory is the service layer of the `@webex/contact-center
 | **User Preferences** | [`UserPreference.ts`](../UserPreference.ts) | Direct REST CRUD service exposed as `cc.userPreference`; it resolves the default user from agent configuration and does not use PageCache |
 | **Utilities** | [`src/utils/PageCache.ts`](../../utils/PageCache.ts) | Shared `PageCache<T>` generic class for pagination caching, plus `BaseSearchParams`, `PaginatedResponse`, and `PaginationMeta` types used by all data services |
 | **WebRTC Calling** | [`WebCallingService.ts`](../WebCallingService.ts) | Browser-based voice calling via `@webex/calling`, line registration, call answer/mute/decline |
+| **WxApp Better Together** | [`WebexCrossClientService.ts`](../WebexCrossClientService.ts), [`AnswerCallOnWebexService.ts`](../AnswerCallOnWebexService.ts), [`WxAppTelephonyMercurySync.ts`](../WxAppTelephonyMercurySync.ts) | usersub cross-client publish (`answer-calls-on-wxcc`), Hydra telephony REST (answer/reject/mute/DTMF/GET call), Mercury mute sync — orchestrated from `cc.ts` when `enableWxBetterTogether` is active |
 
 Each service folder contains its own `ai-docs/` with detailed documentation. **Always load the relevant service docs before making changes.**
 
@@ -227,6 +228,7 @@ Use [`constants.ts`](../constants.ts) as the canonical source for service-level 
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
 | `services.surface` | SDK / event / internal API | Internal `Services.getInstance()` composition root plus data-service and calling collaborators consumed by `ContactCenter`. | Stable module consumption boundary. | Additive changes by default; breaking package exports require a major-version transition. | `src/services/index.ts` | `../../../ai-docs/CONTRACTS.md` |
+| `services.destination-lists` | SDK data API | Existing `Queue.getQueues(ContactServiceQueueSearchParams)` and `EntryPoint.getEntryPoints(EntryPointSearchParams)` methods with full-record paginated responses. | Apply consult/transfer telephony eligibility, profile views, and backend name ordering as overridable defaults. | Behavioral default correction on existing methods; no specialized method, projected response, or replacement signature. | `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/types.ts` | `../../../ai-docs/CONTRACTS.md` |
 | `services.user-preference` | SDK data API | `UserPreference` and `cc.userPreference`. | Direct REST CRUD for user preferences; separate from PageCache-based pagination services. | Additive semver-public API; removals or signature changes are breaking. | `src/services/UserPreference.ts`, `src/services/config/types.ts` | `../../../ai-docs/CONTRACTS.md` |
 
 Compatibility notes:
@@ -261,6 +263,7 @@ ContactCenter READY callback
 | SERVICES-R-004 | Pass ApiAIAssistant, contact routing, WebCallingService, primary WebSocket, and RTD WebSocket into TaskManager. | Voice, task, transcript, and suggestion behavior depend on the complete collaborator set. | `src/cc.ts` | `test/unit/spec/services/task/TaskManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | SERVICES-R-005 | Inherit authenticated request identity from the host Webex SDK through Core/WebexRequest; Services must not store, parse, or refresh credentials. | One host-owned authentication boundary avoids duplicate token handling and credential leakage across composed services. | `src/services/index.ts`, `src/services/core/WebexRequest.ts` | `test/unit/spec/services/core/WebexRequest.ts` | None; authentication ownership is explicit. | PRESENT |
 | SERVICES-R-006 | Treat Services composition as unconditionally created by the ContactCenter READY callback; Services owns no rollout or feature-flag decision. | Capability flags belong to the consuming config/task/calling collaborators, so the composition root must not silently gate construction. | `src/services/index.ts`, `src/cc.ts` | `test/unit/spec/cc.ts` | None; rollout applicability is explicitly N/A for Services. | PRESENT |
+| SERVICES-R-007 | Existing Queue and EntryPoint list methods must apply inbound, active, telephony, profile/agent-view, and `name,ASC` defaults while retaining their established parameter and full-record response types. Caller-supplied existing filter, sort, or profile inputs override defaults. Queue must also treat `sortOrder` without `sortBy` as a name sort and bypass the simple-page cache. | Defaults on the established methods let thin consumers request lists without a parallel API, while existing parameters preserve specialized behavior for other consumers and full-record types remain truthful because no field projection is requested. | `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/types.ts` | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/cc.ts` | The backend honors the view flags and combined CMS sort value. | PRESENT |
 
 ## Design Overview
 `Services` is a singleton composition root for transport-facing capabilities only. It constructs two `WebSocketManager` instances (primary Contact Center and RTD), creates `AqmReqs` on the primary manager, then creates config, agent, contact, dialer, and ConnectionService collaborators.
@@ -419,7 +422,8 @@ These three services share an identical pattern. Use any one as a reference when
 | **HTTP calls** | `this.webexRequest.request({service: WCC_API_GATEWAY, resource, method: HTTP_METHODS.GET})` |
 | **Endpoints** | Uses `endPointMap` functions from `config/constants.ts` to build URL paths |
 | **Pagination** | Query params with `page`, `pageSize`; uses `PageCache` for caching |
-| **Caching** | `PageCache<T>` — caches pages for simple pagination, bypasses cache for search/filter |
+| **Caching** | `PageCache<T>` — caches pages for simple pagination and bypasses cache for result/shape variants, including an effective Queue sort |
+| **Consult/transfer policy** | Existing Queue and EntryPoint methods apply telephony eligibility, profile views, and backend name ordering by default, accept overrides through their existing query parameters, and return full-record responses unchanged |
 | **Metrics** | `timeEvent` on API call start, `trackEvent` on success/failure |
 | **Logging** | `LoggerProxy` with `{module: 'ClassName', method: 'methodName'}` context |
 | **Error handling** | try/catch with `LoggerProxy.error` + `metricsManager.trackEvent` for failures, then re-throw so callers receive the error |
@@ -476,6 +480,7 @@ Unit tests mirror module paths under `test/unit/spec/services`. Preserve positiv
 | `SERVICES-R-004` | `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/cc.ts` | None. |
 | `SERVICES-R-005` | `test/unit/spec/services/core/WebexRequest.ts` | None. |
 | `SERVICES-R-006` | `test/unit/spec/cc.ts` | None. |
+| `SERVICES-R-007` | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/cc.ts` | None. |
 
 ## Traceability
 - Repo architecture: `../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../ai-docs/SPEC_INDEX.md`
