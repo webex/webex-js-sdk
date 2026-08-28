@@ -226,13 +226,17 @@ const Webinar = WebexPlugin.extend({
       this._pendingOnlineListener = null;
     }
 
+    // Track whether we switched voicea before disconnecting.
+    // If we skip the switch now (main not connected), we must recheck after disconnect.
+    const meeting = this.getValidatedWebinarMeeting();
+    let switchedVoiceaBeforeDisconnect = false;
+
     // Switch voicea back to main meeting LLM channel before disconnecting PS channel.
     // Only switch if the main channel is actually connected - if it's reconnecting
-    // (due to concurrent updateLLMConnection), skip the switch here and let
-    // updateLLMConnection handle voicea restoration when it completes.
-    const meeting = this.getValidatedWebinarMeeting();
+    // (due to concurrent updateLLMConnection), we'll recheck after disconnect completes.
     if (meeting?.voiceaChannel && meeting?.llmChannel?.isConnected()) {
       await meeting.voiceaChannel.switchLLMChannel(meeting.llmChannel);
+      switchedVoiceaBeforeDisconnect = true;
     }
 
     if (!this._practiceSessionLLMChannel) {
@@ -263,6 +267,18 @@ const Webinar = WebexPlugin.extend({
         }
       }
       this._practiceSessionLLMChannel = undefined;
+
+      // Recheck: if we skipped the voicea switch earlier (main wasn't connected),
+      // but main is now connected (reconnect completed during our disconnect wait),
+      // switch voicea now. This prevents voicea from being orphaned on the disconnected
+      // practice channel when updateLLMConnection saw practice as still active and skipped its switch.
+      if (
+        !switchedVoiceaBeforeDisconnect &&
+        meeting?.voiceaChannel &&
+        meeting?.llmChannel?.isConnected()
+      ) {
+        await meeting.voiceaChannel.switchLLMChannel(meeting.llmChannel);
+      }
     }
   },
 

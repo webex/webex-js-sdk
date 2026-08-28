@@ -532,15 +532,30 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, meeting.llmChannel);
         });
 
-        it('skips voicea switch when main meeting LLM channel is not connected', async () => {
+        it('skips voicea switch when main channel is not connected before or after disconnect', async () => {
           meeting.llmChannel.isConnected.returns(false);
 
           await webinar.cleanupPSDataChannel();
 
-          // Should not call switchLLMChannel - let updateLLMConnection handle it when main channel reconnects
+          // Should not call switchLLMChannel - main channel never became available
           assert.notCalled(mockVoiceaChannel.switchLLMChannel);
           // But should still disconnect the practice session channel
           assert.calledOnce(mockPSChannel.disconnect);
+        });
+
+        it('switches voicea after disconnect when main channel becomes connected during practice disconnect', async () => {
+          // Main channel not connected initially
+          meeting.llmChannel.isConnected.returns(false);
+
+          // Simulate main channel becoming connected during practice disconnect
+          mockPSChannel.disconnect.callsFake(async () => {
+            meeting.llmChannel.isConnected.returns(true);
+          });
+
+          await webinar.cleanupPSDataChannel();
+
+          // Should switch voicea after disconnect completes (recheck found main now connected)
+          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, meeting.llmChannel);
         });
 
         it('does not switch voicea channel when meeting has no voiceaChannel', async () => {
