@@ -776,6 +776,69 @@ describe('TaskManager', () => {
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featurePayload);
   });
 
+  it('should retain and emit feature enablement when its metric fails', () => {
+    const task = taskManager.getTask(taskId);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const featurePayload = {
+      interactionId: taskId,
+      postCallEnabled: true,
+      midCallEnabled: false,
+      actionTimestamp: 10,
+    };
+    getMetricsTrackEvent().mockImplementationOnce(() => {
+      throw new Error('metrics unavailable');
+    });
+
+    expect(() =>
+      taskManager.handleRealtimeWebsocketEvent(
+        JSON.stringify({
+          type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+          data: {data: featurePayload},
+        })
+      )
+    ).not.toThrow();
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featurePayload);
+    expect((taskManager as any).aiSummaryCoordinator.getFeatureEnablement(taskId)).toEqual(
+      featurePayload
+    );
+  });
+
+  it('should replay retained feature enablement after the public incoming task event', () => {
+    const interactionId = 'retained-feature-task';
+    const featurePayload = {
+      interactionId,
+      postCallEnabled: true,
+      midCallEnabled: true,
+      actionTimestamp: 10,
+    };
+    const incomingPayload = {
+      ...taskDataMock,
+      interactionId,
+      mediaResourceId: interactionId,
+    };
+    const featureHandler = jest.fn();
+
+    taskManager.handleRealtimeWebsocketEvent(
+      JSON.stringify({
+        type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+        data: {data: featurePayload},
+      })
+    );
+    taskManager.taskCollection = {};
+    taskManager.on(TASK_EVENTS.TASK_INCOMING, (task) => {
+      task.on(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featureHandler);
+    });
+
+    webSocketManagerMock.emit(
+      'message',
+      JSON.stringify({data: {...incomingPayload, type: CC_EVENTS.AGENT_CONTACT_RESERVED}})
+    );
+
+    expect(featureHandler).toHaveBeenCalledTimes(1);
+    expect(featureHandler).toHaveBeenCalledWith(featurePayload);
+  });
+
   it('should emit task:featureEnablement on the task at registration when the feature frame arrived first (orphan path)', () => {
     jest.useFakeTimers();
     const newInteractionId = 'orphan-task-id';
@@ -2698,17 +2761,7 @@ describe('TaskManager', () => {
 
     expect(getInboundDropMetricCalls()).toHaveLength(0);
     expect(getLoggerProxy().warn).not.toHaveBeenCalled();
-    expect(getLoggerProxy().error).toHaveBeenCalledWith(
-      'Failed to dispatch RTD WebSocket message',
-      {
-        module: TASK_MANAGER_FILE,
-        method: METHODS.HANDLE_REAL_TIME_WEBSOCKET_EVENT,
-        data: {
-          reason: 'dispatch-error',
-          eventType: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
-        },
-      }
-    );
+    expect(getLoggerProxy().error).not.toHaveBeenCalled();
     expectNoSensitiveDiagnostics('private metric failure');
   });
 

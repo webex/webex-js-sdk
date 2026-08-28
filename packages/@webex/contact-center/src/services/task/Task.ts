@@ -468,15 +468,19 @@ export default abstract class Task extends EventEmitter implements ITask {
     operationStartedAt: number,
     fields: Record<string, unknown> = {}
   ): void {
-    this.metricsManager.trackEvent(
-      metricName,
-      {
-        taskId: this.data?.interactionId,
-        duration_ms: Math.max(0, Date.now() - operationStartedAt),
-        ...fields,
-      } as never,
-      ['operational']
-    );
+    try {
+      this.metricsManager.trackEvent(
+        metricName,
+        {
+          taskId: this.data?.interactionId,
+          duration_ms: Math.max(0, Date.now() - operationStartedAt),
+          ...fields,
+        } as never,
+        ['operational']
+      );
+    } catch {
+      // Metrics are best effort and must not affect the accepted response.
+    }
   }
 
   private async requestPostCallSummaryInternal(

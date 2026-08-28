@@ -22,11 +22,11 @@ const taskCreationTimes = new Map(); // Track when tasks first appear (taskId ->
 const summaryFeatureMap = new Map(); // interactionId -> { midCallEnabled, postCallEnabled } (populated from task:featureEnablement)
 const summaryFieldMap = new Map(); // prefix -> [{ id, label }] for per-section mode, [] for flat
 const summaryOriginalPayload = new Map(); // prefix -> original payload (for read-only/delta)
-const SUMMARY_STORAGE_KEY = 'cc_summary_state';
 let incomingMidCallSummaryPayload = null; // buffered until task:assigned (mirrors desktop behaviour)
 
 let midCallSummary = {
   actionType: null,
+  task: null,
   payload: null,
   numberOfTimesViewed: 0,
   numberOfTimesEdited: 0,
@@ -684,10 +684,12 @@ function applyTaskDestinationTypes(dropdown, action) {
 }
 
 async function showInitiateConsultDialog() {
+  const consultTask = currentTask;
   applyTaskDestinationTypes(destinationTypeDropdown, 'consult');
   if (!destinationTypeDropdown.disabled) await onConsultTypeSelectionChanged();
   initiateConsultDialog.showModal();
   midCallSummary.actionType = 'CONSULT';
+  midCallSummary.task = consultTask;
   midCallSummary.payload = null;
   midCallSummary.numberOfTimesViewed = 0;
   midCallSummary.numberOfTimesEdited = 0;
@@ -700,7 +702,7 @@ async function showInitiateConsultDialog() {
   const consultExclude = document.getElementById('consult-summary-exclude');
   if (consultExclude) consultExclude.checked = false;
   resetSummaryFeedbackUI('consult-summary');
-  const consultInteractionId = currentTask?.data?.interactionId;
+  const consultInteractionId = consultTask?.data?.interactionId;
   const consultFeatures = summaryFeatureMap.get(consultInteractionId) || {};
   if (!consultFeatures.midCallEnabled) {
     document.getElementById('consult-summary-block').style.display = 'none';
@@ -709,7 +711,7 @@ async function showInitiateConsultDialog() {
   document.getElementById('consult-summary-block').style.display = '';
   document.getElementById('consult-summary-status').textContent = 'Requesting summary…';
   try {
-    const summary = await currentTask.requestMidCallSummary('CONSULT');
+    const summary = await consultTask.requestMidCallSummary('CONSULT');
     document.getElementById('consult-summary-status').textContent = 'Summary ready.';
     document.getElementById('consult-summary-retry').style.display = 'none';
     if (!midCallSummary.payload) {
@@ -730,12 +732,13 @@ async function showInitiateConsultDialog() {
 async function closeConsultDialog() {
   initiateConsultDialog.close();
   if (midCallSummary.actionType !== 'CONSULT') return;
-  const interactionId = currentTask?.data?.interactionId;
+  const consultTask = midCallSummary.task;
+  const interactionId = consultTask?.data?.interactionId;
   const features = summaryFeatureMap.get(interactionId) || {};
   if (!features.midCallEnabled || !interactionId) return;
   try {
     if (midCallSummary.payload) {
-      await currentTask.sendMidCallSummaryResponse({
+      await consultTask.sendMidCallSummaryResponse({
         summaryReceived: true,
         summary: buildSummaryPayload('consult-summary'),
         numberOfTimesViewed: midCallSummary.numberOfTimesViewed,
@@ -745,7 +748,7 @@ async function closeConsultDialog() {
         state: 'MID_CALL_CANCELLED',
       }, 'CONSULT');
     } else {
-      await currentTask.sendMidCallSummaryResponse({
+      await consultTask.sendMidCallSummaryResponse({
         summaryReceived: false,
         summary: '',
         numberOfTimesViewed: 0,
@@ -761,7 +764,8 @@ async function closeConsultDialog() {
 }
 
 async function retrySummary(type) {
-  const interactionId = currentTask?.data?.interactionId;
+  const summaryTask = midCallSummary.task || currentTask;
+  const interactionId = summaryTask?.data?.interactionId;
   const features = summaryFeatureMap.get(interactionId) || {};
   if (!features.midCallEnabled || !interactionId) return;
   const prefix = type === 'CONSULT' ? 'consult-summary' : 'transfer-summary';
@@ -773,7 +777,7 @@ async function retrySummary(type) {
   if (retryBtn) retryBtn.style.display = 'none';
   if (statusEl) statusEl.textContent = 'Requesting summary…';
   try {
-    const summary = await currentTask.requestMidCallSummary(type);
+    const summary = await summaryTask.requestMidCallSummary(type);
     if (statusEl) statusEl.textContent = 'Summary ready.';
     midCallSummary.payload = summary;
     renderSummarySection(prefix, summary);
@@ -834,8 +838,6 @@ function wireSummaryListeners(task) {
     if (Array.isArray(payload.suggestedWrapUpCodes) && payload.suggestedWrapUpCodes.length > 0) {
       applySuggestedWrapUpCodes(payload.suggestedWrapUpCodes);
     }
-    const taskInteractionId = task.data?.interactionId;
-    if (taskInteractionId) saveSummaryState(taskInteractionId);
   });
 
   task.on('task:midCallSummaryForReceivingAgent', (payload) => {
@@ -855,7 +857,6 @@ function wireSummaryListeners(task) {
         midCallEnabled: !!payload.midCallEnabled,
         postCallEnabled: !!payload.postCallEnabled,
       });
-      saveSummaryState(payload.interactionId);
     }
   });
 }
@@ -1036,58 +1037,6 @@ function applySuggestedWrapUpCodes(suggestedCodes) {
         return;
       }
     }
-  }
-}
-
-function saveSummaryState(interactionId) {
-  try {
-    const state = JSON.parse(sessionStorage.getItem(SUMMARY_STORAGE_KEY) || '{}');
-    state[interactionId] = {
-      postCallSummary: {
-        payload: postCallSummary.payload,
-        numberOfTimesViewed: postCallSummary.numberOfTimesViewed,
-        numberOfTimesEdited: postCallSummary.numberOfTimesEdited,
-        numberOfTimesCopied: postCallSummary.numberOfTimesCopied,
-        feedback: postCallSummary.feedback,
-        requestFailed: postCallSummary.requestFailed,
-      },
-      featureFlags: summaryFeatureMap.get(interactionId) || {},
-    };
-    sessionStorage.setItem(SUMMARY_STORAGE_KEY, JSON.stringify(state));
-  } catch (e) {
-    console.warn('Failed to save summary state to sessionStorage', e);
-  }
-}
-
-function restoreSummaryState(interactionId) {
-  try {
-    const state = JSON.parse(sessionStorage.getItem(SUMMARY_STORAGE_KEY) || '{}');
-    const saved = state[interactionId];
-    if (!saved) return false;
-    if (saved.featureFlags) summaryFeatureMap.set(interactionId, saved.featureFlags);
-    if (saved.postCallSummary?.payload) {
-      Object.assign(postCallSummary, saved.postCallSummary);
-      postCallSummary._viewCounted = true;
-      renderSummarySection('postcall-summary', postCallSummary.payload);
-      const block = document.getElementById('postcall-summary-block');
-      if (block) block.style.display = '';
-      console.info('Post-call summary state restored from sessionStorage for', interactionId);
-      return true;
-    }
-    return false;
-  } catch (e) {
-    console.warn('Failed to restore summary state from sessionStorage', e);
-    return false;
-  }
-}
-
-function clearSummaryStorageState(interactionId) {
-  try {
-    const state = JSON.parse(sessionStorage.getItem(SUMMARY_STORAGE_KEY) || '{}');
-    delete state[interactionId];
-    sessionStorage.setItem(SUMMARY_STORAGE_KEY, JSON.stringify(state));
-  } catch (e) {
-    // ignore
   }
 }
 
@@ -1494,6 +1443,7 @@ async function onTransferTypeSelectionChanged() {
 
 // Function to initiate consult
 async function initiateConsult() {
+  const consultTask = midCallSummary.task || currentTask;
   const currentAgentId = webex?.cc?.taskManager?.getAgentId() || agentId;
 
   const destinationType = destinationTypeDropdown.value;
@@ -1505,7 +1455,7 @@ async function initiateConsult() {
     return;
   }
 
-  const consultInteractionId = currentTask?.data?.interactionId;
+  const consultInteractionId = consultTask?.data?.interactionId;
   const consultSendFeatures = summaryFeatureMap.get(consultInteractionId) || {};
   if (midCallSummary.actionType === 'CONSULT' && consultSendFeatures.midCallEnabled && consultInteractionId) {
     if (midCallSummary.payload) {
@@ -1513,7 +1463,7 @@ async function initiateConsult() {
       if (consultEdited) midCallSummary.numberOfTimesEdited += 1;
       const consultSummaryPayload = consultEdited ? buildSummaryPayload('consult-summary') : {};
       try {
-        await currentTask.sendMidCallSummaryResponse({
+        await consultTask.sendMidCallSummaryResponse({
           summaryReceived: true,
           summary: consultSummaryPayload,
           numberOfTimesViewed: midCallSummary.numberOfTimesViewed,
@@ -1527,7 +1477,7 @@ async function initiateConsult() {
       }
     } else if (midCallSummary.requestFailed) {
       try {
-        await currentTask.sendMidCallSummaryResponse({
+        await consultTask.sendMidCallSummaryResponse({
           summaryReceived: false,
           summary: '',
           numberOfTimesViewed: 0,
@@ -1541,7 +1491,7 @@ async function initiateConsult() {
       }
     } else {
       try {
-        await currentTask.sendMidCallSummaryResponse({
+        await consultTask.sendMidCallSummaryResponse({
           summaryReceived: false,
           summary: '',
           numberOfTimesViewed: 0,
@@ -1572,7 +1522,7 @@ async function initiateConsult() {
       consultedAgentId: consultDestination, // The queue being consulted
       isConsultedAgent: false // This agent is the consulting one, not the consulted one
     };
-    handleQueueConsult(consultPayload);
+    handleQueueConsult(consultPayload, consultTask);
     return;
   }
 
@@ -1586,7 +1536,7 @@ async function initiateConsult() {
   };
 
   try {
-    await currentTask.consult(consultPayload);
+    await consultTask.consult(consultPayload);
     console.log('Consult initiated successfully');
   } catch (error) {
     console.error('Failed to initiate consult', error);
@@ -1594,13 +1544,13 @@ async function initiateConsult() {
   }
 }
 
-async function handleQueueConsult(consultPayload) {
+async function handleQueueConsult(consultPayload, consultTask = currentTask) {
   // Update UI immediately
   currentConsultQueueId = consultPayload.to;
   endConsultBtn.innerText = 'Cancel Consult';
   
   try {
-    await currentTask.consult(consultPayload);
+    await consultTask.consult(consultPayload);
     endConsultBtn.innerText = 'End Consult';
     currentConsultQueueId = null;
     console.log('Queue Consult initiated successfully');
@@ -1615,6 +1565,7 @@ async function handleQueueConsult(consultPayload) {
 
 // Function to initiate transfer
 async function initiateTransfer() {
+  const transferTask = midCallSummary.task || currentTask;
   const destinationType = document.querySelector('#transfer-destination-type').value;
   const transferDestination = transferDestinationInput.value;
 
@@ -1623,7 +1574,7 @@ async function initiateTransfer() {
     return;
   }
 
-  const transferSummaryInteractionId = currentTask?.data?.interactionId;
+  const transferSummaryInteractionId = transferTask?.data?.interactionId;
   const transferSummaryFeatures = summaryFeatureMap.get(transferSummaryInteractionId) || {};
   if (midCallSummary.actionType === 'TRANSFER' && transferSummaryFeatures.midCallEnabled && transferSummaryInteractionId) {
     if (midCallSummary.payload) {
@@ -1631,7 +1582,7 @@ async function initiateTransfer() {
       if (transferEdited) midCallSummary.numberOfTimesEdited += 1;
       const transferSummaryPayload = transferEdited ? buildSummaryPayload('transfer-summary') : {};
       try {
-        await currentTask.sendMidCallSummaryResponse({
+        await transferTask.sendMidCallSummaryResponse({
           summaryReceived: true,
           summary: transferSummaryPayload,
           numberOfTimesViewed: midCallSummary.numberOfTimesViewed,
@@ -1646,7 +1597,7 @@ async function initiateTransfer() {
       }
     } else if (midCallSummary.requestFailed) {
       try {
-        await currentTask.sendMidCallSummaryResponse({
+        await transferTask.sendMidCallSummaryResponse({
           summaryReceived: false,
           summary: '',
           numberOfTimesViewed: 0,
@@ -1660,7 +1611,7 @@ async function initiateTransfer() {
       }
     } else {
       try {
-        await currentTask.sendMidCallSummaryResponse({
+        await transferTask.sendMidCallSummaryResponse({
           summaryReceived: false,
           summary: '',
           numberOfTimesViewed: 0,
@@ -1681,7 +1632,7 @@ async function initiateTransfer() {
   };
 
   try {
-    await currentTask.transfer(transferPayload);
+    await transferTask.transfer(transferPayload);
     console.log('Transfer initiated successfully');
     transferOptionsElm.style.display = 'none';
   } catch (error) {
@@ -1769,11 +1720,13 @@ async function toggleTransferOptions() {
   const transferOptions = document.getElementById('transfer-options');
   const isShowing = transferOptions.style.display === 'none' || !transferOptions.style.display;
   if (isShowing) {
+    const transferTask = currentTask;
     const transferDestinationType = document.querySelector('#transfer-destination-type');
     applyTaskDestinationTypes(transferDestinationType, 'transfer');
     transferOptions.style.display = 'block';
     if (!transferDestinationType.disabled) await onTransferTypeSelectionChanged();
     midCallSummary.actionType = 'TRANSFER';
+    midCallSummary.task = transferTask;
     midCallSummary.payload = null;
     midCallSummary.numberOfTimesViewed = 0;
     midCallSummary.numberOfTimesEdited = 0;
@@ -1788,7 +1741,7 @@ async function toggleTransferOptions() {
     resetSummaryFeedbackUI('transfer-summary');
     const transferRetryBtn = document.getElementById('transfer-summary-retry');
     if (transferRetryBtn) transferRetryBtn.style.display = 'none';
-    const transferInteractionId = currentTask?.data?.interactionId;
+    const transferInteractionId = transferTask?.data?.interactionId;
     const transferFeatures = summaryFeatureMap.get(transferInteractionId) || {};
     if (!transferFeatures.midCallEnabled) {
       document.getElementById('transfer-summary-block').style.display = 'none';
@@ -1798,7 +1751,7 @@ async function toggleTransferOptions() {
     document.getElementById('transfer-summary-status').textContent = 'Requesting summary…';
     if (!transferFeatures.midCallEnabled) return;
     try {
-      const summary = await currentTask.requestMidCallSummary('TRANSFER');
+      const summary = await transferTask.requestMidCallSummary('TRANSFER');
       document.getElementById('transfer-summary-status').textContent = 'Summary ready.';
       if (transferRetryBtn) transferRetryBtn.style.display = 'none';
       if (!midCallSummary.payload) {
@@ -1817,12 +1770,13 @@ async function toggleTransferOptions() {
   } else {
     transferOptions.style.display = 'none';
     if (midCallSummary.actionType !== 'TRANSFER') return;
-    const cancelInteractionId = currentTask?.data?.interactionId;
+    const transferTask = midCallSummary.task || currentTask;
+    const cancelInteractionId = transferTask?.data?.interactionId;
     const cancelFeatures = summaryFeatureMap.get(cancelInteractionId) || {};
     if (!cancelFeatures.midCallEnabled || !cancelInteractionId) return;
     try {
       if (midCallSummary.payload) {
-        await currentTask.sendMidCallSummaryResponse({
+        await transferTask.sendMidCallSummaryResponse({
           summaryReceived: true,
           summary: buildSummaryPayload('transfer-summary'),
           numberOfTimesViewed: midCallSummary.numberOfTimesViewed,
@@ -1832,7 +1786,7 @@ async function toggleTransferOptions() {
           state: 'MID_CALL_CANCELLED',
         }, 'TRANSFER');
       } else {
-        await currentTask.sendMidCallSummaryResponse({
+        await transferTask.sendMidCallSummaryResponse({
           summaryReceived: false,
           summary: '',
           numberOfTimesViewed: 0,
@@ -3056,7 +3010,6 @@ function registerTaskListeners(task) {
     Promise.resolve(wrapupResponsePending).catch(() => {}).then(() => {
       taskCreationTimes.delete(wrappedupInteractionId);
       summaryFeatureMap.delete(wrappedupInteractionId);
-      clearSummaryStorageState(wrappedupInteractionId);
       if (wrappedupIsCurrent) dismissAllSummaryUI();
     });
     if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
@@ -4035,7 +3988,8 @@ function handleTaskHydrate(task) {
     return;
   }
 
-  restoreSummaryState(currentTask.data.interactionId);
+  taskId = currentTask.data.interactionId;
+  registerTaskListeners(currentTask);
   handleTaskSelect(currentTask);
   updateUnregisterButtonState();
 }
@@ -4533,7 +4487,6 @@ async function sendWrapupAndSummaryResponse() {
         console.error('Failed to send post-call IGNORED response', e);
       }
     }
-    clearSummaryStorageState(wrapupInteractionId);
     const postcallBlock = document.getElementById('postcall-summary-block');
     if (postcallBlock) postcallBlock.style.display = 'none';
   } catch (error) {

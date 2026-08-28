@@ -166,6 +166,7 @@ export default class TaskManager extends EventEmitter {
   private apiAIAssistant?: ApiAIAssistant;
   private metricsManager: MetricsManager;
   private aiSummaryCoordinator: AISummaryCoordinator;
+  private readonly featureEnablementDeliveredTasks = new WeakSet<ITask>();
   private aiSummaryInboundActive = true;
   private readonly getGeneratedSummaryFlags: GeneratedSummaryFlagsAccessor = () =>
     this.configFlags?.aiFeature?.generatedSummaries;
@@ -399,6 +400,7 @@ export default class TaskManager extends EventEmitter {
     this.aiSummaryCoordinator.setFeatureEnablement(featurePayload, matchingTask !== undefined);
 
     if (matchingTask) {
+      this.featureEnablementDeliveredTasks.add(matchingTask);
       matchingTask.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featurePayload);
     }
   }
@@ -513,11 +515,15 @@ export default class TaskManager extends EventEmitter {
   }
 
   private trackFeatureEnablementReceived(payload: Record<string, unknown>): void {
-    this.metricsManager.trackEvent(
-      METRIC_EVENT_NAMES.AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED,
-      payload as never,
-      ['operational']
-    );
+    try {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED,
+        payload as never,
+        ['operational']
+      );
+    } catch {
+      // Metrics are best effort and must not affect inbound event handling.
+    }
   }
 
   private trackAISummaryInboundDrop(
@@ -659,6 +665,10 @@ export default class TaskManager extends EventEmitter {
   }
 
   private deliverFeatureEnablementToTask(task: ITask): void {
+    if (this.featureEnablementDeliveredTasks.has(task)) {
+      return;
+    }
+
     const correlation = this.getAISummaryCorrelationForTask(task, 'feature-delivery');
 
     if (correlation) {
@@ -667,6 +677,7 @@ export default class TaskManager extends EventEmitter {
       );
 
       if (featurePayload) {
+        this.featureEnablementDeliveredTasks.add(task);
         task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featurePayload);
       }
     }
@@ -1559,7 +1570,6 @@ export default class TaskManager extends EventEmitter {
 
     this.setupTaskListeners(task);
     this.retainFeatureEnablementForTask(task);
-    this.deliverFeatureEnablementToTask(task);
     context.payload = taskData;
     context.stateMachineEvent = {
       type: TaskEvent.CONTACT_OWNER_CHANGED,
@@ -1664,7 +1674,6 @@ export default class TaskManager extends EventEmitter {
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
       this.retainFeatureEnablementForTask(task);
-      this.deliverFeatureEnablementToTask(task);
     } else {
       task = this.updateTaskData(task, payload);
     }
@@ -1708,7 +1717,6 @@ export default class TaskManager extends EventEmitter {
     this.setupTaskListeners(task);
     this.taskCollection[payload.interactionId] = task;
     this.retainFeatureEnablementForTask(task);
-    this.deliverFeatureEnablementToTask(task);
 
     return {task};
   }
@@ -1752,7 +1760,6 @@ export default class TaskManager extends EventEmitter {
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
       this.retainFeatureEnablementForTask(task);
-      this.deliverFeatureEnablementToTask(task);
     }
 
     return {task};
@@ -1763,6 +1770,7 @@ export default class TaskManager extends EventEmitter {
       throw new Error('Task not found for update');
     }
 
+    const previousInteractionId = task.data?.interactionId;
     const snapshot = task.stateMachineService?.getSnapshot?.();
     const isConsultingFlow =
       snapshot?.value === 'CONSULTING' || taskData.interaction?.state === 'consulting';
@@ -1787,7 +1795,10 @@ export default class TaskManager extends EventEmitter {
     });
     this.taskCollection[taskData.interactionId] = task;
     this.retainFeatureEnablementForTask(task);
-    this.deliverFeatureEnablementToTask(task);
+    if (taskData.interactionId !== previousInteractionId) {
+      this.featureEnablementDeliveredTasks.delete(task);
+      this.deliverFeatureEnablementToTask(task);
+    }
 
     return task;
   }
@@ -1806,6 +1817,7 @@ export default class TaskManager extends EventEmitter {
       });
 
       this.emit(TASK_EVENTS.TASK_INCOMING, t);
+      this.deliverFeatureEnablementToTask(task);
     });
 
     task.on(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, (t: ITask) => {
@@ -1816,12 +1828,14 @@ export default class TaskManager extends EventEmitter {
       });
 
       this.emit(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, t);
+      this.deliverFeatureEnablementToTask(task);
     });
 
     // Listen for TASK_HYDRATE on the task and re-emit on TaskManager
     task.on(TASK_EVENTS.TASK_HYDRATE, (t: ITask) => {
       // Task data is already updated by the task itself before emitting
       this.emit(TASK_EVENTS.TASK_HYDRATE, t);
+      this.deliverFeatureEnablementToTask(task);
     });
 
     task.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, (t: ITask) => {
@@ -1933,11 +1947,11 @@ export default class TaskManager extends EventEmitter {
 
       this.setupTaskListeners(task);
       this.retainFeatureEnablementForTask(task);
-      this.deliverFeatureEnablementToTask(task);
     }
 
     if (task) {
       this.emit(TASK_EVENTS.TASK_MERGED, task);
+      this.deliverFeatureEnablementToTask(task);
       this.flushReceivingSummaryForTask(task);
     }
 

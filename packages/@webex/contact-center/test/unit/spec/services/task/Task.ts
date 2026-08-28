@@ -2190,6 +2190,21 @@ describe('Task AI summary APIs', () => {
     expect(metrics.timeEvent).not.toHaveBeenCalled();
   });
 
+  it('does not reject an accepted post-call response when success telemetry fails', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const metrics = spyOnAISummaryMetrics(task);
+    const {adapter} = createSummaryMocks(task);
+
+    metrics.trackEvent.mockImplementationOnce(() => {
+      throw new Error('metrics unavailable');
+    });
+
+    await expect(
+      task.sendPostCallSummaryResponse(createPostCallResponsePayload())
+    ).resolves.toBeUndefined();
+    expect(adapter.sendSummaryResponseEvent).toHaveBeenCalledTimes(1);
+  });
+
   it('uses current correlation for direct post-call responses that have no retained request context', async () => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
     const {adapter} = createSummaryMocks(task);
