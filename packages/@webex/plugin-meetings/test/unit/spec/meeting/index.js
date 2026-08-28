@@ -15213,6 +15213,7 @@ describe('plugin-meetings', () => {
             off: sinon.stub(),
           };
           meeting.llmChannel = existingChannel;
+          const originalVoiceaChannel = meeting.voiceaChannel;
 
           meeting.locusInfo = {
             syncAllHashTreeDatasets: sinon.stub().resolves(),
@@ -15233,6 +15234,9 @@ describe('plugin-meetings', () => {
             'a datachannel url',
             undefined
           );
+          // voiceaChannel should be preserved during transient reconnect
+          assert.strictEqual(meeting.voiceaChannel, originalVoiceaChannel);
+          assert.notCalled(mockVoiceaChannel.deregisterEvents);
         });
 
         it('disconnects and reconnects when datachannel URL changes', async () => {
@@ -15248,6 +15252,7 @@ describe('plugin-meetings', () => {
             off: sinon.stub(),
           };
           meeting.llmChannel = existingChannel;
+          const originalVoiceaChannel = meeting.voiceaChannel;
 
           meeting.locusInfo = {
             syncAllHashTreeDatasets: sinon.stub().resolves(),
@@ -15268,6 +15273,9 @@ describe('plugin-meetings', () => {
             'a different datachannel url',
             undefined
           );
+          // voiceaChannel should be preserved during transient reconnect
+          assert.strictEqual(meeting.voiceaChannel, originalVoiceaChannel);
+          assert.notCalled(mockVoiceaChannel.deregisterEvents);
         });
 
         it('disconnects when state changes to not joined', async () => {
@@ -15519,6 +15527,75 @@ describe('plugin-meetings', () => {
             // Should not throw
             await meeting.clearMeetingData();
 
+            assert.called(meeting.clearLLMHealthCheckTimer);
+          });
+        });
+
+        describe('#cleanupLLMConneciton', () => {
+          let existingChannel;
+
+          beforeEach(() => {
+            existingChannel = {
+              isConnected: sinon.stub().returns(true),
+              disconnect: sinon.stub().resolves(),
+              off: sinon.stub(),
+            };
+            meeting.llmChannel = existingChannel;
+
+            meeting.annotation.deregisterEvents = sinon.stub();
+            meeting.clearLLMHealthCheckTimer = sinon.stub();
+          });
+
+          it('destroys voiceaChannel when preserveVoiceaChannel is false (default)', async () => {
+            await meeting.cleanupLLMConneciton();
+
+            assert.calledOnce(mockVoiceaChannel.deregisterEvents);
+            assert.isUndefined(meeting.voiceaChannel);
+            assert.isUndefined(meeting.llmChannel);
+          });
+
+          it('destroys voiceaChannel when preserveVoiceaChannel is explicitly false', async () => {
+            await meeting.cleanupLLMConneciton({preserveVoiceaChannel: false});
+
+            assert.calledOnce(mockVoiceaChannel.deregisterEvents);
+            assert.isUndefined(meeting.voiceaChannel);
+            assert.isUndefined(meeting.llmChannel);
+          });
+
+          it('preserves voiceaChannel when preserveVoiceaChannel is true', async () => {
+            const originalVoiceaChannel = meeting.voiceaChannel;
+
+            await meeting.cleanupLLMConneciton({preserveVoiceaChannel: true});
+
+            assert.notCalled(mockVoiceaChannel.deregisterEvents);
+            assert.strictEqual(meeting.voiceaChannel, originalVoiceaChannel);
+            assert.isUndefined(meeting.llmChannel);
+          });
+
+          it('passes throwOnError alongside preserveVoiceaChannel', async () => {
+            existingChannel.disconnect.rejects(new Error('disconnect failed'));
+
+            // Should not throw when throwOnError is false
+            await meeting.cleanupLLMConneciton({throwOnError: false, preserveVoiceaChannel: true});
+
+            assert.notCalled(mockVoiceaChannel.deregisterEvents);
+            assert.isDefined(meeting.voiceaChannel);
+          });
+
+          it('cleans up LLM event listeners regardless of preserveVoiceaChannel', async () => {
+            await meeting.cleanupLLMConneciton({preserveVoiceaChannel: true});
+
+            assert.calledWithExactly(existingChannel.off, 'online', meeting.handleLLMOnline);
+            assert.calledWithExactly(
+              existingChannel.off,
+              'event:relay.event',
+              meeting.processRelayEvent
+            );
+            assert.calledWithExactly(
+              existingChannel.off,
+              'event:locus.state_message',
+              meeting.processLocusLLMEvent
+            );
             assert.called(meeting.clearLLMHealthCheckTimer);
           });
         });

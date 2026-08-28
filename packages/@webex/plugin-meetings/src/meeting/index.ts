@@ -6715,12 +6715,15 @@ export default class Meeting extends StatelessWebexPlugin {
    *
    * @param {Object} options
    * @param {boolean} [options.throwOnError=true] rethrows disconnect errors when true
+   * @param {boolean} [options.preserveVoiceaChannel=false] when true, keeps voiceaChannel for switchLLMChannel() during reconnects
    * @returns {Promise<void>}
    */
   private cleanupLLMConneciton = async ({
     throwOnError = true,
+    preserveVoiceaChannel = false,
   }: {
     throwOnError?: boolean;
+    preserveVoiceaChannel?: boolean;
   } = {}): Promise<void> => {
     // Always clear the timer, even if there's no channel
     this.clearLLMHealthCheckTimer();
@@ -6745,10 +6748,12 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     } finally {
       this.stopListeningForLLMEvents();
-      // Permanent cleanup: deregister voiceaChannel since meeting is being destroyed
-      // (transient reconnects preserve voiceaChannel via switchLLMChannel instead)
-      this.voiceaChannel?.deregisterEvents();
-      this.voiceaChannel = undefined;
+      // Only destroy voiceaChannel on permanent cleanup (meeting end/leave).
+      // Transient reconnects preserve it so switchLLMChannel() can restore subscriptions.
+      if (!preserveVoiceaChannel) {
+        this.voiceaChannel?.deregisterEvents();
+        this.voiceaChannel = undefined;
+      }
       this.llmChannel = undefined;
     }
   };
@@ -6868,7 +6873,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
 
       // URLs changed or not joined, disconnect existing channel
-      await this.cleanupLLMConneciton();
+      await this.cleanupLLMConneciton({preserveVoiceaChannel: true});
     }
 
     if (!isJoined) {
