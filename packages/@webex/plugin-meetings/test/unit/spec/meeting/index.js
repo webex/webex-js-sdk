@@ -15394,10 +15394,9 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockChannel);
         });
 
-        it('recreates voiceaChannel and transcription when both are undefined after leave+rejoin', async () => {
+        it('skips switchLLMChannel when practice session is active', async () => {
           meeting.joinedWith = {state: 'JOINED'};
-          meeting.voiceaChannel = undefined;
-          meeting.transcription = undefined; // Cleared by stopListeningForMeetingEvents during leave
+          meeting.webinar.isPracticeSessionLLMChannelConnected = sinon.stub().returns(true);
           meeting.locusInfo = {
             syncAllHashTreeDatasets: sinon.stub().resolves(),
             url: 'a url',
@@ -15406,17 +15405,9 @@ describe('plugin-meetings', () => {
 
           await meeting.updateLLMConnection();
 
-          // voiceaChannel should be recreated via createChannel()
-          assert.calledOnce(webex.internal.voicea.createChannel);
-          // switchLLMChannel should be called on the newly created channel
-          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockChannel);
-          // The meeting should now have the recreated voiceaChannel
-          assert.strictEqual(meeting.voiceaChannel, mockVoiceaChannel);
-          // transcription state should be reinitialized (so voiceaListenerCallbacks don't throw)
-          assert.isDefined(meeting.transcription);
-          assert.deepEqual(meeting.transcription.captions, []);
-          assert.strictEqual(meeting.transcription.isListening, false);
-          assert.strictEqual(meeting.transcription.isCaptioning, false);
+          // switchLLMChannel should NOT be called when practice session is active
+          // because practice session manages its own voicea binding
+          assert.notCalled(mockVoiceaChannel.switchLLMChannel);
         });
 
         it('logs warning when switchLLMChannel fails', async () => {

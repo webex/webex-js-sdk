@@ -6926,37 +6926,22 @@ export default class Meeting extends StatelessWebexPlugin {
         );
         this.startLLMHealthCheckTimer();
 
-        // Recreate voiceaChannel and transcription state if cleared (e.g., after leave() + rejoin).
-        // Both must be reinitialized together: voiceaListenerCallbacks reference this.transcription,
-        // so startTranscription() would throw if only voiceaChannel is recreated.
-        if (!this.voiceaChannel) {
+        // Switch voiceaChannel to use the new LLM channel (preserves transcription state).
+        // Skip if practice session is active - practice session manages its own voicea binding
+        // via updatePSDataChannel, and switching here would break practice session captions.
+        const isPracticeSessionActive =
+          this.webinar?.isPracticeSessionLLMChannelConnected() ?? false;
+
+        if (this.voiceaChannel && !isPracticeSessionActive) {
           // @ts-ignore - Fix type
-          this.voiceaChannel = this.webex.internal.voicea.createChannel();
-
-          // Reinitialize transcription state (cleared by stopListeningForMeetingEvents during leave)
-          if (!this.transcription) {
-            this.transcription = {
-              captions: [],
-              isListening: false,
-              commandText: '',
-              languageOptions: {currentSpokenLanguage: 'en'},
-              showCaptionBox: false,
-              transcribingRequestStatus: 'INACTIVE',
-              isCaptioning: false,
-              interimCaptions: {} as Map<string, CaptionData>,
-              speakerProxy: {} as Map<string, any>,
-            } as Transcription;
-          }
+          // Fire-and-forget: caption restoration shouldn't block LLM connection result
+          this.voiceaChannel.switchLLMChannel(this.llmChannel).catch((error) => {
+            LoggerProxy.logger.warn(
+              'Meeting:index#updateLLMConnection --> failed to switch voicea channel:',
+              error
+            );
+          });
         }
-
-        // Switch voiceaChannel to use the new LLM channel (preserves transcription state)
-        // Fire-and-forget: caption restoration shouldn't block LLM connection result
-        this.voiceaChannel.switchLLMChannel(this.llmChannel).catch((error) => {
-          LoggerProxy.logger.warn(
-            'Meeting:index#updateLLMConnection --> failed to switch voicea channel:',
-            error
-          );
-        });
 
         if (registerAndConnectResult) {
           if (isInitialJoinPhase) {
@@ -10485,8 +10470,11 @@ export default class Meeting extends StatelessWebexPlugin {
     // stopListeningForMeetingEvents() before /leave and /end so events
     // received mid-teardown do not trigger Locus syncs.
     // Token cleanup happens automatically when cleanupLLMConneciton destroys the channel.
+    // Preserve voiceaChannel because it's created in the constructor and should only
+    // be destroyed when the meeting object is destroyed (in MeetingUtil.cleanUp).
+    // On rejoin, switchLLMChannel() will rebind it to the new LLM channel.
 
-    await this.cleanupLLMConneciton({throwOnError: false});
+    await this.cleanupLLMConneciton({throwOnError: false, preserveVoiceaChannel: true});
   };
 
   /**
