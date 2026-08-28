@@ -5867,7 +5867,7 @@ export default class Meeting extends StatelessWebexPlugin {
       ) {
         // errors related to offer creation (for example missing H264 codec) will happen again no matter how many times we try,
         // so there is no point doing a retry
-        // when the user is full, we also don't want to retry, because it will just fail again
+        // when the locus is full, we also don't want to retry, because it will just fail again
         shouldRetry = false;
       }
 
