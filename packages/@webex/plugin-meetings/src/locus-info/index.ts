@@ -670,6 +670,16 @@ export default class LocusInfo extends EventsScope {
             return;
           }
 
+          // this meeting itself may already be gone (e.g. a syncMeetings() cleanup destroyed it
+          // before locusUrl was set), so keep the duplicate instead of destroying both
+          if (!this.webex.meetings.meetingCollection.get(this.meetingId)) {
+            LoggerProxy.logger.warn(
+              'Locus-info:index#initialSetup --> this meeting was already removed from the collection, keeping the reactively-created duplicate instead of destroying it'
+            );
+
+            return;
+          }
+
           // merged in below, after updateControls() has replaced this.controls, so it isn't lost
           duplicateMeetingContainer = duplicateMeeting.locusInfo?.controls?.meetingContainer;
 

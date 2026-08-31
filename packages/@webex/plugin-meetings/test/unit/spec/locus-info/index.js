@@ -1195,6 +1195,17 @@ describe('plugin-meetings', () => {
           assert.notCalled(webex.meetings.destroy);
         });
 
+        it('does not destroy the duplicate when this meeting (the join() winner) was already removed from the collection', async () => {
+          webex.meetings.meetingCollection.delete(selfMeeting.id);
+
+          await locusInfo.initialSetup({
+            trigger: 'join-response',
+            locus: {url: incomingLocusUrl, participants: []},
+          });
+
+          assert.notCalled(webex.meetings.destroy);
+        });
+
         it('does not treat itself as a duplicate', async () => {
           webex.meetings.meetingCollection.delete(duplicateMeeting.id);
           webex.meetings.meetingCollection.set({...selfMeeting, locusUrl: incomingLocusUrl});
