@@ -150,6 +150,82 @@ describe('plugin-meetings', () => {
         });
 
         describe('processNewCaptions', () => {
+            const processCaptions = () => processNewCaptions({
+                data: fakeVoiceaPayload,
+                meeting: fakeMeeting
+            });
+
+            it('should process a final-only caption without an existing interim caption', () => {
+                const transcriptData = fakeMeeting.transcription;
+                const transcriptId = fakeVoiceaPayload.transcriptId;
+
+                delete transcriptData.interimCaptions[transcriptId];
+
+                assert.doesNotThrow(processCaptions);
+
+                const finalCaption = transcriptData.captions.find(caption => caption.id === transcriptId);
+
+                assert.exists(finalCaption);
+                assert.deepEqual(transcriptData.interimCaptions[transcriptId], []);
+            });
+
+            it('should process an interim caption received after a final caption', () => {
+                const transcriptData = fakeMeeting.transcription;
+                const transcriptId = fakeVoiceaPayload.transcriptId;
+
+                delete transcriptData.interimCaptions[transcriptId];
+
+                assert.doesNotThrow(processCaptions);
+
+                fakeVoiceaPayload.isFinal = false;
+
+                assert.doesNotThrow(processCaptions);
+
+                const speakerId = fakeMeeting.members.membersCollection.members[fakeMemberId].participant.person.id;
+                const interimId = `${transcriptId}_${speakerId}`;
+
+                assert.exists(transcriptData.captions.find(caption => caption.id === transcriptId));
+                assert.exists(transcriptData.captions.find(caption => caption.id === interimId));
+                assert.deepEqual(transcriptData.interimCaptions[transcriptId], [interimId]);
+            });
+
+            it('should process repeated final captions without throwing', () => {
+                const transcriptData = fakeMeeting.transcription;
+                const transcriptId = fakeVoiceaPayload.transcriptId;
+
+                delete transcriptData.interimCaptions[transcriptId];
+
+                assert.doesNotThrow(() => {
+                    processCaptions();
+                    processCaptions();
+                });
+
+                assert.exists(transcriptData.captions.find(caption => caption.id === transcriptId));
+            });
+
+            it('should process final captions from multiple CSIs without throwing', () => {
+                const transcriptData = fakeMeeting.transcription;
+                const transcriptId = fakeVoiceaPayload.transcriptId;
+                const secondCaptionText = 'Caption from a second CSI';
+
+                fakeVoiceaPayload.transcripts.push({
+                    text: secondCaptionText,
+                    csis: [1234867713],
+                    transcript_language_code: 'en'
+                });
+
+                assert.doesNotThrow(processCaptions);
+
+                const finalCaptionTexts = transcriptData.captions
+                    .filter(caption => caption.id === transcriptId)
+                    .map(caption => caption.text);
+
+                assert.deepEqual(finalCaptionTexts, [
+                    fakeVoiceaPayload.transcripts[0].text,
+                    secondCaptionText
+                ]);
+            });
+
             it('should process new final captions correctly', () => {
                 let transcriptData = fakeMeeting.transcription;
                 let transcriptId = fakeVoiceaPayload.transcriptId;
