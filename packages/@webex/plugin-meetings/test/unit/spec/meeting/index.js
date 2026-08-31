@@ -5887,62 +5887,39 @@ describe('plugin-meetings', () => {
             });
           });
 
-          describe('handles AUDIO_METRICS_REPORT event for audio metric reports', () => {
-            it('AUDIO_METRICS_REPORT sends a single batched metric with every report item', async () => {
-              webex.internal.newMetrics.submitClientEvent.resetHistory();
+          describe('handles INBOUND_RTP_AUDIO_LEVEL_UPDATE event for inbound audio levels', () => {
+            it('INBOUND_RTP_AUDIO_LEVEL_UPDATE sends a behavioral metric with all track data', async () => {
+              Metrics.sendBehavioralMetric.resetHistory();
 
-              const audioMetrics = [
-                {
-                  audioLevelAvg: 42,
-                  ssrc: 12345,
-                },
-                {
-                  audioLevelAvg: 67,
-                  ssrc: 67890,
-                },
+              const inboundAudioLevels = [
+                {ssrc: 12345, audioLevel: 0.42},
+                {ssrc: 67890, audioLevel: 0.67},
               ];
 
               statsAnalyzerStub.emit(
                 {file: 'test', function: 'test'},
-                StatsAnalyzerEventNames.AUDIO_METRICS_REPORT,
-                audioMetrics
+                StatsAnalyzerEventNames.INBOUND_RTP_AUDIO_LEVEL_UPDATE,
+                inboundAudioLevels
               );
 
-              assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-              assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-                name: 'client.media.audio.metrics',
-                payload: {
-                  mediaType: 'main',
-                  data: [
-                    {
-                      audioLevelAvg: 42,
-                      ssrc: 12345,
-                    },
-                    {
-                      audioLevelAvg: 67,
-                      ssrc: 67890,
-                    },
-                  ],
-                },
-                options: {
-                  meetingId: meeting.id,
-                },
+              assert.calledOnce(Metrics.sendBehavioralMetric);
+              assert.calledWithMatch(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.INBOUND_RTP_AUDIO_LEVEL_UPDATE, {
+                meetingId: meeting.id,
+                correlationId: meeting.correlationId,
+                data: inboundAudioLevels,
               });
             });
 
-            it('AUDIO_METRICS_REPORT does not send any metrics when the report array is empty', async () => {
-              webex.internal.newMetrics.submitClientEvent.resetHistory();
+            it('INBOUND_RTP_AUDIO_LEVEL_UPDATE does not send any metric when the report array is empty', async () => {
+              Metrics.sendBehavioralMetric.resetHistory();
 
               statsAnalyzerStub.emit(
                 {file: 'test', function: 'test'},
-                StatsAnalyzerEventNames.AUDIO_METRICS_REPORT,
+                StatsAnalyzerEventNames.INBOUND_RTP_AUDIO_LEVEL_UPDATE,
                 []
               );
 
-              assert.neverCalledWith(
-                webex.internal.newMetrics.submitClientEvent,
-                sinon.match.has('name', 'client.media.audio.metrics')
-              );
+              assert.notCalled(Metrics.sendBehavioralMetric);
             });
           });
 
