@@ -651,12 +651,19 @@ export default class LocusInfo extends EventsScope {
           // 'get-loci-response' and 'locus-message' are created reactively and can lose the race
           // against it, so in those cases this meeting should destroy itself instead.
           if (data.trigger !== 'join-response') {
+            const selfMeeting = this.webex.meetings.meetingCollection.get(this.meetingId);
+
+            if (!selfMeeting) {
+              // already destroyed by the winning meeting's initialSetup() call, nothing left to do
+              return;
+            }
+
             LoggerProxy.logger.info(
               'Locus-info:index#initialSetup --> this meeting is a reactively-created duplicate of an already set up meeting, destroying self instead of the other meeting'
             );
 
             this.webex.meetings.destroy(
-              this.webex.meetings.meetingCollection.get(this.meetingId),
+              selfMeeting,
               MEETING_REMOVED_REASON.DUPLICATE_LOCUS_MEETING
             );
 

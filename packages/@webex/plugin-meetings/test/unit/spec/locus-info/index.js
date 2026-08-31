@@ -1184,6 +1184,17 @@ describe('plugin-meetings', () => {
           });
         });
 
+        it('does not destroy anything when this meeting was already removed from the collection (lost the race twice)', async () => {
+          webex.meetings.meetingCollection.delete(selfMeeting.id);
+
+          await locusInfo.initialSetup({
+            trigger: 'locus-message',
+            locus: {url: incomingLocusUrl, participants: []},
+          });
+
+          assert.notCalled(webex.meetings.destroy);
+        });
+
         it('does not treat itself as a duplicate', async () => {
           webex.meetings.meetingCollection.delete(duplicateMeeting.id);
           webex.meetings.meetingCollection.set({...selfMeeting, locusUrl: incomingLocusUrl});
