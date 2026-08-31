@@ -1158,7 +1158,7 @@ describe('plugin-meetings', () => {
 
         [
           {trigger: 'join-response', destroysSelf: false},
-          {trigger: 'locus-message', destroysSelf: false},
+          {trigger: 'locus-message', destroysSelf: true},
           {trigger: 'get-loci-response', destroysSelf: true},
         ].forEach(({trigger, destroysSelf}) => {
           it(`destroys ${destroysSelf ? 'itself' : 'the other meeting'} when triggered by ${trigger} and a duplicate exists`, async () => {
