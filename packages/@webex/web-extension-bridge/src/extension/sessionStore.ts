@@ -16,7 +16,14 @@ export class SessionStore<T> {
   public constructor(
     private readonly area: ChromeStorageArea,
     private readonly key: string,
-    private readonly fallback: T
+    private readonly fallback: T,
+    /**
+     * Called when a write is refused by the storage area — quota exceeded, area
+     * unavailable, extension shutting down. A write failure must not break message
+     * handling, but it must not be invisible either: without this hook a bridge whose
+     * session quota is full simply stops buffering and nothing anywhere says so.
+     */
+    private readonly onWriteError?: (error: unknown) => void
   ) {}
 
   /**
@@ -50,9 +57,11 @@ export class SessionStore<T> {
 
       try {
         await this.area.set({[this.key]: updated});
-      } catch {
+      } catch (error) {
         // A full or unavailable session store must not break message handling; the
-        // buffer is a convenience (FR8), not a delivery guarantee.
+        // buffer is a convenience (FR8), not a delivery guarantee. It is reported
+        // rather than swallowed, so "buffering silently stopped" is diagnosable.
+        this.onWriteError?.(error);
       }
 
       return updated;

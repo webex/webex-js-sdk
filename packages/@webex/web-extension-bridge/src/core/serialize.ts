@@ -1,6 +1,6 @@
 import {RESERVED_KEYS, TOPIC_PATTERN} from './constants';
 import {BridgeError} from './errors';
-import {findReservedKey} from './json';
+import {JsonRejection, inspectJson} from './json';
 import type {JsonValue} from './json';
 
 let encoder: TextEncoder | undefined;
@@ -26,6 +26,8 @@ export const PayloadRejection = {
   NOT_SERIALISABLE: 'NOT_SERIALISABLE',
   TOO_LARGE: 'TOO_LARGE',
   RESERVED_KEY: 'RESERVED_KEY',
+  /** Nested past {@link MAX_WALK_DEPTH}, so the value could not be fully validated. */
+  TOO_DEEP: 'TOO_DEEP',
 } as const;
 
 export type PayloadRejection = (typeof PayloadRejection)[keyof typeof PayloadRejection];
@@ -34,9 +36,26 @@ export type PayloadCheck =
   | {ok: true; bytes: number}
   | {ok: false; rejection: PayloadRejection; key?: string};
 
+/** Maps a structural rejection onto the payload-level vocabulary. */
+const REJECTION_FOR = new Map<JsonRejection, PayloadRejection>([
+  [JsonRejection.NOT_JSON, PayloadRejection.NOT_SERIALISABLE],
+  [JsonRejection.CYCLE, PayloadRejection.NOT_SERIALISABLE],
+  [JsonRejection.RESERVED_KEY, PayloadRejection.RESERVED_KEY],
+  [JsonRejection.TOO_DEEP, PayloadRejection.TOO_DEEP],
+  [JsonRejection.TOO_LARGE, PayloadRejection.TOO_LARGE],
+]);
+
 /**
  * Check a payload against everything that must hold on both send and receive:
- * serialisable, within the byte cap, and free of reserved keys (T5, T9).
+ * inside the {@link JsonValue} grammar, within the byte cap, free of reserved keys,
+ * and within the depth bound (T5, T9).
+ *
+ * The structural walk runs *before* `JSON.stringify`, not after. A stringify that
+ * returns a string is not evidence the payload is transportable: nested functions,
+ * `undefined` and symbol values are dropped, `NaN`/`Infinity` become `null`, and the
+ * bridge would go on to send the *original* object — which then either throws
+ * `DataCloneError` inside `postMessage` or arrives at a handler holding values the
+ * `JsonValue` contract says cannot occur.
  *
  * @param payload - Candidate payload. `undefined` is allowed and costs no bytes.
  * @param maxBytes - Already-clamped byte cap.
@@ -47,17 +66,42 @@ export function checkPayload(payload: unknown, maxBytes: number): PayloadCheck {
     return {ok: true, bytes: 0};
   }
 
+  let structure;
+
+  try {
+    // The byte cap doubles as the expanded-node budget. Every JSON node costs at least
+    // one byte of output, so a value whose expansion exceeds `maxBytes` nodes cannot
+    // stringify inside `maxBytes` — and refusing it here is what keeps the
+    // `JSON.stringify` below bounded, since stringify expands shared references and a
+    // small DAG can expand exponentially.
+    structure = inspectJson(payload, RESERVED_KEYS, maxBytes);
+  } catch {
+    // `inspectJson` refuses accessors without invoking them, so nothing in a payload
+    // should be able to run code here. This guard exists because the alternative to
+    // being wrong about that is an arbitrary exception escaping a message handler and
+    // past the documented "always a BridgeError" contract.
+    return {ok: false, rejection: PayloadRejection.NOT_SERIALISABLE};
+  }
+
+  if (!structure.ok) {
+    const rejection = REJECTION_FOR.get(structure.rejection) ?? PayloadRejection.NOT_SERIALISABLE;
+
+    return structure.key === undefined
+      ? {ok: false, rejection}
+      : {ok: false, rejection, key: structure.key};
+  }
+
   let serialised: string;
 
   try {
     serialised = JSON.stringify(payload) as string;
   } catch {
-    // Circular structures and BigInt land here.
+    // Unreachable for a value that passed `inspectJson`, kept as a belt-and-braces
+    // guard against a host `JSON` implementation that throws for its own reasons.
     return {ok: false, rejection: PayloadRejection.NOT_SERIALISABLE};
   }
 
   if (typeof serialised !== 'string') {
-    // `undefined`, functions and symbols serialise to `undefined`.
     return {ok: false, rejection: PayloadRejection.NOT_SERIALISABLE};
   }
 
@@ -65,12 +109,6 @@ export function checkPayload(payload: unknown, maxBytes: number): PayloadCheck {
 
   if (bytes > maxBytes) {
     return {ok: false, rejection: PayloadRejection.TOO_LARGE};
-  }
-
-  const reserved = findReservedKey(payload, RESERVED_KEYS);
-
-  if (reserved !== undefined) {
-    return {ok: false, rejection: PayloadRejection.RESERVED_KEY, key: reserved};
   }
 
   return {ok: true, bytes};

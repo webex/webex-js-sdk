@@ -81,7 +81,29 @@ export function createWebBridgeWith(
   let destroyed = false;
 
   const send = (envelope: Envelope): void => {
-    win.postMessage(envelope, config.targetOrigin);
+    try {
+      win.postMessage(envelope, config.targetOrigin);
+    } catch (error) {
+      // Payload validation should have caught anything the structured clone algorithm
+      // will refuse, so reaching here means validation and the clone disagree. Rather
+      // than let a raw `DataCloneError` — or, for an exotic object, an error thrown from
+      // inside the caller's own code during cloning — escape as the only exception
+      // `publish()` ever raises that is not a `BridgeError`, it is normalised. The
+      // documented contract is that every failure out of this API is coded.
+      counters.increment(CounterName.DROPPED, 'CLONE_FAILED');
+      logger.warn('postMessage refused the envelope', {
+        channel: config.channel,
+        kind: envelope.kind,
+        topic: envelope.topic,
+        reason: describe(error),
+      });
+
+      throw new BridgeError(
+        'INVALID_PAYLOAD',
+        'The payload could not be transferred to the extension',
+        envelope.topic
+      );
+    }
   };
 
   const control = (kind: (typeof EnvelopeKind)[keyof typeof EnvelopeKind], token: string): void => {
