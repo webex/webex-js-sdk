@@ -637,6 +637,7 @@ export default class LocusInfo extends EventsScope {
     // proactively before this meeting's own join() resolves). MeetingCollection.getByKey() always
     // returns the first match for a given locusUrl, so without this the duplicate would keep
     // intercepting all future Locus/Mercury updates for this locus.
+    let duplicateMeetingContainer: any;
     {
       const incomingLocusUrl = (data as any).locus?.url;
       if (incomingLocusUrl) {
@@ -646,26 +647,8 @@ export default class LocusInfo extends EventsScope {
         ) as any;
 
         if (duplicateMeeting) {
-          // Carry over anything the duplicate already learned (currently only meetingContainer)
-          // before removing it, so this meeting doesn't have to wait for the next delta to get it.
-          const duplicateMeetingContainerUrl =
-            duplicateMeeting.locusInfo?.controls?.meetingContainer?.meetingContainerUrl;
-
-          if (
-            duplicateMeetingContainerUrl &&
-            !this.controls?.meetingContainer?.meetingContainerUrl
-          ) {
-            this.controls = {
-              ...this.controls,
-              meetingContainer: duplicateMeeting.locusInfo.controls.meetingContainer,
-            };
-            this.parsedLocus.controls = ControlsUtils.parse(this.controls);
-            this.emitScoped(
-              {file: 'locus-info', function: 'initialSetup'},
-              LOCUSINFO.EVENTS.CONTROLS_MEETING_CONTAINER_UPDATED,
-              {meetingContainerUrl: duplicateMeetingContainerUrl}
-            );
-          }
+          // merged in below, after updateControls() has replaced this.controls, so it isn't lost
+          duplicateMeetingContainer = duplicateMeeting.locusInfo?.controls?.meetingContainer;
 
           this.webex.meetings.destroy(
             duplicateMeeting,
@@ -748,6 +731,22 @@ export default class LocusInfo extends EventsScope {
           this.onFullLocus('classic get-loci-response', data.locus, undefined);
           initialFullLocus = data.locus || null;
         }
+    }
+
+    if (
+      duplicateMeetingContainer?.meetingContainerUrl &&
+      !this.controls?.meetingContainer?.meetingContainerUrl
+    ) {
+      this.controls = {
+        ...this.controls,
+        meetingContainer: duplicateMeetingContainer,
+      };
+      this.parsedLocus.controls = ControlsUtils.parse(this.controls);
+      this.emitScoped(
+        {file: 'locus-info', function: 'initialSetup'},
+        LOCUSINFO.EVENTS.CONTROLS_MEETING_CONTAINER_UPDATED,
+        {meetingContainerUrl: duplicateMeetingContainer.meetingContainerUrl}
+      );
     }
 
     if (onLocusSynced) {

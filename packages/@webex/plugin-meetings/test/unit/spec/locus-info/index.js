@@ -1215,6 +1215,62 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it("survives updateControls() replacing this.controls with the incoming locus's own controls", async () => {
+          duplicateMeeting.locusInfo.controls = {
+            meetingContainer: {meetingContainerUrl: 'http://meeting-container.example.com'},
+          };
+          locusInfo.emitScoped = sinon.stub();
+
+          await locusInfo.initialSetup({
+            trigger: 'join-response',
+            // the incoming locus has its own (unrelated) controls object, which would previously
+            // wipe out the migrated meetingContainer via updateControls()
+            locus: {url: incomingLocusUrl, controls: {muteOnEntry: {enabled: true}}, participants: []},
+          });
+
+          assert.deepEqual(locusInfo.controls, {
+            muteOnEntry: {enabled: true},
+            meetingContainer: {meetingContainerUrl: 'http://meeting-container.example.com'},
+          });
+          assert.deepEqual(locusInfo.parsedLocus.controls.meetingContainer, {
+            meetingContainerUrl: 'http://meeting-container.example.com',
+          });
+          assert.calledWith(
+            locusInfo.emitScoped,
+            {file: 'locus-info', function: 'initialSetup'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_CONTAINER_UPDATED,
+            {meetingContainerUrl: 'http://meeting-container.example.com'}
+          );
+        });
+
+        it("does not overwrite a meetingContainer that the incoming locus's own controls just set via updateControls()", async () => {
+          duplicateMeeting.locusInfo.controls = {
+            meetingContainer: {meetingContainerUrl: 'http://stale-duplicate-container.example.com'},
+          };
+          locusInfo.emitScoped = sinon.stub();
+
+          await locusInfo.initialSetup({
+            trigger: 'join-response',
+            locus: {
+              url: incomingLocusUrl,
+              controls: {
+                meetingContainer: {meetingContainerUrl: 'http://fresh-container.example.com'},
+              },
+              participants: [],
+            },
+          });
+
+          assert.equal(
+            locusInfo.controls.meetingContainer.meetingContainerUrl,
+            'http://fresh-container.example.com'
+          );
+          assert.neverCalledWith(
+            locusInfo.emitScoped,
+            {file: 'locus-info', function: 'initialSetup'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_CONTAINER_UPDATED
+          );
+        });
+
         it('does not overwrite an already-known meetingContainer on this meeting', async () => {
           locusInfo.controls = {
             meetingContainer: {meetingContainerUrl: 'http://existing-container.example.com'},
