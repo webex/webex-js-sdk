@@ -19,6 +19,10 @@ export const DEFAULT_HTTP_RETRY_POLICY = {
     maxDelay: 3200,
     jitterRatio: 0.2,
   },
+  bodyErrorCodes: {
+    paths: ['errorCode', 'code', 'reason.reasonCode'],
+    nonRetryable: [],
+  },
   paths: [],
 };
 
@@ -137,6 +141,50 @@ const getRetryAfter = (reason) => {
   return headerName ? headers[headerName] : reason?.retryAfter;
 };
 
+const getOwnPathValue = (value, path) => {
+  if (typeof path !== 'string' || path.length === 0) {
+    return undefined;
+  }
+
+  return path.split('.').reduce((current, key) => {
+    if (
+      (isObject(current) || Array.isArray(current)) &&
+      Object.prototype.hasOwnProperty.call(current, key)
+    ) {
+      return current[key];
+    }
+
+    return undefined;
+  }, value);
+};
+
+const normalizeBodyErrorCode = (value) => {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : undefined;
+};
+
+const hasNonRetryableBodyErrorCode = (policy, reason) => {
+  const paths = policy.bodyErrorCodes?.paths;
+  const nonRetryable = policy.bodyErrorCodes?.nonRetryable;
+
+  if (!Array.isArray(paths) || !Array.isArray(nonRetryable) || nonRetryable.length === 0) {
+    return false;
+  }
+
+  const normalizedCodes = nonRetryable
+    .map(normalizeBodyErrorCode)
+    .filter((code) => code !== undefined);
+
+  return paths.some((path) => {
+    const errorCode = normalizeBodyErrorCode(getOwnPathValue(reason?.body, path));
+
+    return errorCode !== undefined && normalizedCodes.includes(errorCode);
+  });
+};
+
 export const parseRetryAfter = (value, now = Date.now()) => {
   if (value === undefined || value === null || String(value).trim() === '') {
     return undefined;
@@ -200,6 +248,10 @@ export const getHttpRetryDelay = ({
   random = Math.random,
 }) => {
   if (!isBaseEligible(policy, options)) {
+    return undefined;
+  }
+
+  if (hasNonRetryableBodyErrorCode(policy, reason)) {
     return undefined;
   }
 

@@ -33,6 +33,10 @@ const ENABLED_POLICY = {
     maxDelay: 3200,
     jitterRatio: 0.2,
   },
+  bodyErrorCodes: {
+    paths: ['errorCode', 'code', 'reason.reasonCode'],
+    nonRetryable: [],
+  },
 };
 
 const RETRY_CONFIG = {
@@ -57,8 +61,38 @@ const RETRY_CONFIG = {
   },
 };
 
-const errorResponse = (statusCode, retryAfter, headerName = 'retry-after') => ({
-  headers: retryAfter === undefined ? {} : {[headerName]: retryAfter},
+const BODY_CODE_CONFIG = {
+  default: {
+    ...ENABLED_POLICY,
+    bodyErrorCodes: {
+      paths: ['default.code'],
+      nonRetryable: ['DEFAULT_STOP'],
+    },
+  },
+  services: {
+    'body-service': {
+      bodyErrorCodes: {
+        paths: ['service.code'],
+        nonRetryable: ['SERVICE_STOP'],
+      },
+      paths: [
+        {
+          match: {suffixes: ['/special']},
+          policy: {
+            bodyErrorCodes: {
+              paths: ['path.code'],
+              nonRetryable: ['PATH_STOP'],
+            },
+          },
+        },
+      ],
+    },
+  },
+};
+
+const errorResponse = (statusCode, retryAfter, headerName, body) => ({
+  ...(body !== undefined && {body}),
+  headers: retryAfter === undefined ? {} : {[headerName ?? 'retry-after']: retryAfter},
   statusCode,
 });
 
@@ -128,6 +162,27 @@ const RESOLUTION_CASES = {
     serviceName: 'post-service',
     skipRetries: true,
   },
+  'default config defines body error-code cancellation': {config: BODY_CODE_CONFIG},
+  'service config overrides body error-code cancellation': {
+    config: BODY_CODE_CONFIG,
+    serviceName: 'body-service',
+  },
+  'service path overrides body error-code cancellation': {
+    config: BODY_CODE_CONFIG,
+    serviceName: 'body-service',
+    uri: 'https://example.com/special',
+  },
+  'request config overrides body error-code cancellation': {
+    config: BODY_CODE_CONFIG,
+    requestPolicy: {
+      bodyErrorCodes: {
+        paths: ['request.code'],
+        nonRetryable: ['REQUEST_STOP'],
+      },
+    },
+    serviceName: 'body-service',
+    uri: 'https://example.com/special',
+  },
 };
 
 const RESPONSE_CASES = {
@@ -174,6 +229,93 @@ const RESPONSE_CASES = {
   'Retry-After above its maximum is rejected': {
     error: errorResponse(429, '1'),
     options: {httpRetry: {retryAfter: {maxDelay: 999}}, method: 'GET'},
+  },
+  '429 body errorCode cancels Retry-After': {
+    error: errorResponse(429, '1', 'retry-after', {errorCode: 'STOP'}),
+    options: {
+      httpRetry: {bodyErrorCodes: {nonRetryable: ['STOP']}},
+      method: 'GET',
+    },
+  },
+  'numeric body errorCode matches configured string': {
+    error: errorResponse(429, '1', 'retry-after', {errorCode: 201409036}),
+    options: {
+      httpRetry: {bodyErrorCodes: {nonRetryable: ['201409036']}},
+      method: 'GET',
+    },
+  },
+  '503 body code cancels backoff': {
+    error: errorResponse(503, undefined, 'retry-after', {code: 'STOP'}),
+    options: {
+      httpRetry: {bodyErrorCodes: {nonRetryable: ['STOP']}},
+      method: 'GET',
+    },
+  },
+  '500 nested reasonCode cancels backoff': {
+    error: errorResponse(500, undefined, 'retry-after', {reason: {reasonCode: 'STOP'}}),
+    options: {
+      httpRetry: {bodyErrorCodes: {nonRetryable: ['STOP']}},
+      method: 'GET',
+    },
+  },
+  'unmatched body error code preserves retry': {
+    error: errorResponse(429, '1', 'retry-after', {errorCode: 'CONTINUE'}),
+    options: {
+      httpRetry: {bodyErrorCodes: {nonRetryable: ['STOP']}},
+      method: 'GET',
+    },
+  },
+  'service body error-code override cancels retry': {
+    config: BODY_CODE_CONFIG,
+    error: errorResponse(500, undefined, 'retry-after', {
+      default: {code: 'DEFAULT_STOP'},
+      service: {code: 'SERVICE_STOP'},
+    }),
+    options: {method: 'GET', service: 'body-service'},
+  },
+  'service body error-code override replaces default paths': {
+    config: BODY_CODE_CONFIG,
+    error: errorResponse(500, undefined, 'retry-after', {default: {code: 'DEFAULT_STOP'}}),
+    options: {method: 'GET', service: 'body-service'},
+  },
+  'service path body error-code override cancels retry': {
+    config: BODY_CODE_CONFIG,
+    error: errorResponse(500, undefined, 'retry-after', {path: {code: 'PATH_STOP'}}),
+    options: {
+      method: 'GET',
+      service: 'body-service',
+      uri: 'https://example.com/special',
+    },
+  },
+  'request body error-code override cancels retry': {
+    config: BODY_CODE_CONFIG,
+    error: errorResponse(500, undefined, 'retry-after', {request: {code: 'REQUEST_STOP'}}),
+    options: {
+      httpRetry: {
+        bodyErrorCodes: {
+          paths: ['request.code'],
+          nonRetryable: ['REQUEST_STOP'],
+        },
+      },
+      method: 'GET',
+      service: 'body-service',
+      uri: 'https://example.com/special',
+    },
+  },
+  'request body error-code override replaces inherited cancellation': {
+    config: BODY_CODE_CONFIG,
+    error: errorResponse(500, undefined, 'retry-after', {path: {code: 'PATH_STOP'}}),
+    options: {
+      httpRetry: {
+        bodyErrorCodes: {
+          paths: ['request.code'],
+          nonRetryable: ['REQUEST_STOP'],
+        },
+      },
+      method: 'GET',
+      service: 'body-service',
+      uri: 'https://example.com/special',
+    },
   },
   '408 uses backoff': {error: errorResponse(408), options: {method: 'GET'}},
   '500 uses backoff': {error: errorResponse(500), options: {method: 'GET'}},
@@ -380,30 +522,42 @@ const RESPONSE_CASES = {
 
 const GENERATED_POLICY_SOURCES = {
   default: {
+    allowedBody: {default: {code: 'CONTINUE'}},
+    blockedBody: {default: {code: 'DEFAULT_STOP'}},
     enabled: true,
     initialDelay: 400,
     methods: ['GET'],
     options: {},
   },
   service: {
+    allowedBody: {service: {code: 'CONTINUE'}},
+    blockedBody: {service: {code: 'SERVICE_STOP'}},
     enabled: true,
     initialDelay: 600,
     methods: ['GET', 'POST'],
     options: {service: 'matrix-service'},
   },
   'service-path': {
+    allowedBody: {path: {code: 'CONTINUE'}},
+    blockedBody: {path: {code: 'PATH_STOP'}},
     enabled: false,
     initialDelay: 600,
     methods: ['GET', 'POST'],
     options: {service: 'matrix-service', uri: 'https://example.com/items/disabled'},
   },
   request: {
+    allowedBody: {request: {code: 'CONTINUE'}},
+    blockedBody: {request: {code: 'REQUEST_STOP'}},
     enabled: true,
     initialDelay: 200,
     methods: ['GET', 'POST'],
     options: {
       httpRetry: {
         backoff: {initialDelay: 200},
+        bodyErrorCodes: {
+          paths: ['request.code'],
+          nonRetryable: ['REQUEST_STOP'],
+        },
         enabled: true,
         methods: ['GET', 'POST'],
       },
@@ -415,28 +569,47 @@ const GENERATED_POLICY_SOURCES = {
 
 const GENERATED_FAILURES = {
   '429-retry-after': {
-    error: errorResponse(429, '1'),
     outcome: 429,
+    retryAfter: '1',
     retryAfterDelay: 1000,
     retryable: true,
+    statusCode: 429,
+  },
+  '429-body-code-cancelled': {
+    blocked: true,
+    outcome: 429,
+    retryAfter: '1',
+    retryable: true,
+    statusCode: 429,
   },
   '503-no-retry-after': {
-    error: errorResponse(503),
     outcome: 503,
     retryable: true,
+    statusCode: 503,
+  },
+  '503-body-code-cancelled': {
+    blocked: true,
+    outcome: 503,
+    retryable: true,
+    statusCode: 503,
   },
   '500-backoff': {
-    error: errorResponse(500),
     outcome: 500,
     retryable: true,
+    statusCode: 500,
+  },
+  '500-body-code-cancelled': {
+    blocked: true,
+    outcome: 500,
+    retryable: true,
+    statusCode: 500,
   },
   '400-not-retryable': {
-    error: errorResponse(400),
     outcome: 400,
     retryable: false,
+    statusCode: 400,
   },
   network: {
-    error: new TypeError('Failed to fetch'),
     network: true,
     outcome: 'TypeError',
     retryable: true,
@@ -470,6 +643,10 @@ const generatedConfig = (retryNetworkErrors) => ({
   default: {
     ...ENABLED_POLICY,
     backoff: {...ENABLED_POLICY.backoff, jitterRatio: 0},
+    bodyErrorCodes: {
+      paths: ['default.code'],
+      nonRetryable: ['DEFAULT_STOP'],
+    },
     maxRetries: 1,
     methods: ['GET'],
     retryNetworkErrors,
@@ -477,8 +654,23 @@ const generatedConfig = (retryNetworkErrors) => ({
   services: {
     'matrix-service': {
       backoff: {initialDelay: 600},
+      bodyErrorCodes: {
+        paths: ['service.code'],
+        nonRetryable: ['SERVICE_STOP'],
+      },
       methods: ['GET', 'POST'],
-      paths: [{match: {suffixes: ['/disabled']}, policy: {enabled: false}}],
+      paths: [
+        {
+          match: {suffixes: ['/disabled']},
+          policy: {
+            bodyErrorCodes: {
+              paths: ['path.code'],
+              nonRetryable: ['PATH_STOP'],
+            },
+            enabled: false,
+          },
+        },
+      ],
     },
   },
 });
@@ -486,10 +678,13 @@ const generatedConfig = (retryNetworkErrors) => ({
 const generatedScenario = (combination) => {
   const source = GENERATED_POLICY_SOURCES[combination.policySource];
   const failure = GENERATED_FAILURES[combination.failure];
+  const responseBody = failure.blocked ? source.blockedBody : source.allowedBody;
 
   return {
     config: generatedConfig(combination.networkErrors),
-    error: failure.error,
+    error: failure.network
+      ? new TypeError('Failed to fetch')
+      : errorResponse(failure.statusCode, failure.retryAfter, 'retry-after', responseBody),
     options: {
       ...source.options,
       ...(combination.body === 'stream' && {body: {pipe: sinon.stub()}}),
@@ -511,6 +706,7 @@ const generatedExpectation = (combination) => {
     combination.body === 'replayable' &&
     hasBudget &&
     failure.retryable &&
+    !failure.blocked &&
     networkAllowed;
   const retryCount = hasBudget ? Number(shouldRetry) : 1;
 
@@ -541,7 +737,11 @@ const EXPECTED_HTTP_RETRY_CONTRACT = {
   decisions: {
     '503 honors Retry-After HTTP date': 2000,
   },
-  generatedCaseCount: 320,
+  generatedCaseCount: 512,
+  generatedOutcomeCounts: {
+    noRetry: 477,
+    retry: 35,
+  },
   generatedResponses: EXPECTED_GENERATED_RESPONSES,
   resolvedPolicies: {
     'sdk default is disabled': {...ENABLED_POLICY, enabled: false},
@@ -598,6 +798,34 @@ const EXPECTED_HTTP_RETRY_CONTRACT = {
       enabled: false,
       methods: [...ENABLED_POLICY.methods, 'POST'],
       maxRetries: 4,
+    },
+    'default config defines body error-code cancellation': {
+      ...ENABLED_POLICY,
+      bodyErrorCodes: {
+        paths: ['default.code'],
+        nonRetryable: ['DEFAULT_STOP'],
+      },
+    },
+    'service config overrides body error-code cancellation': {
+      ...ENABLED_POLICY,
+      bodyErrorCodes: {
+        paths: ['service.code'],
+        nonRetryable: ['SERVICE_STOP'],
+      },
+    },
+    'service path overrides body error-code cancellation': {
+      ...ENABLED_POLICY,
+      bodyErrorCodes: {
+        paths: ['path.code'],
+        nonRetryable: ['PATH_STOP'],
+      },
+    },
+    'request config overrides body error-code cancellation': {
+      ...ENABLED_POLICY,
+      bodyErrorCodes: {
+        paths: ['request.code'],
+        nonRetryable: ['REQUEST_STOP'],
+      },
     },
   },
   responses: {
@@ -670,6 +898,76 @@ const EXPECTED_HTTP_RETRY_CONTRACT = {
       requestCount: 0,
       retryCount: 0,
       willRetry: false,
+    },
+    '429 body errorCode cancels Retry-After': {
+      delays: [],
+      outcome: 'rejected:429',
+      requestCount: 0,
+      retryCount: 0,
+      willRetry: false,
+    },
+    'numeric body errorCode matches configured string': {
+      delays: [],
+      outcome: 'rejected:429',
+      requestCount: 0,
+      retryCount: 0,
+      willRetry: false,
+    },
+    '503 body code cancels backoff': {
+      delays: [],
+      outcome: 'rejected:503',
+      requestCount: 0,
+      retryCount: 0,
+      willRetry: false,
+    },
+    '500 nested reasonCode cancels backoff': {
+      delays: [],
+      outcome: 'rejected:500',
+      requestCount: 0,
+      retryCount: 0,
+      willRetry: false,
+    },
+    'unmatched body error code preserves retry': {
+      delays: [1000],
+      outcome: 'resolved:200',
+      requestCount: 1,
+      retryCount: 1,
+      willRetry: true,
+    },
+    'service body error-code override cancels retry': {
+      delays: [],
+      outcome: 'rejected:500',
+      requestCount: 0,
+      retryCount: 0,
+      willRetry: false,
+    },
+    'service body error-code override replaces default paths': {
+      delays: [400],
+      outcome: 'resolved:200',
+      requestCount: 1,
+      retryCount: 1,
+      willRetry: true,
+    },
+    'service path body error-code override cancels retry': {
+      delays: [],
+      outcome: 'rejected:500',
+      requestCount: 0,
+      retryCount: 0,
+      willRetry: false,
+    },
+    'request body error-code override cancels retry': {
+      delays: [],
+      outcome: 'rejected:500',
+      requestCount: 0,
+      retryCount: 0,
+      willRetry: false,
+    },
+    'request body error-code override replaces inherited cancellation': {
+      delays: [400],
+      outcome: 'resolved:200',
+      requestCount: 1,
+      retryCount: 1,
+      willRetry: true,
     },
     '408 uses backoff': {
       delays: [400],
@@ -1110,12 +1408,21 @@ describe('HTTP retry contract', () => {
       Object.entries(RESOLUTION_CASES).map(([name, input]) => [name, resolveHttpRetryPolicy(input)])
     );
     const generatedResponses = await evaluateResponses(Object.entries(GENERATED_RESPONSE_CASES));
+    const generatedOutcomeCounts = Object.values(generatedResponses).reduce(
+      (counts, response) => ({
+        ...counts,
+        [response.willRetry ? 'retry' : 'noRetry']:
+          counts[response.willRetry ? 'retry' : 'noRetry'] + 1,
+      }),
+      {noRetry: 0, retry: 0}
+    );
     const responses = await evaluateResponses(Object.entries(RESPONSE_CASES));
 
     assert.deepEqual(
       {
         decisions,
         generatedCaseCount: Object.keys(generatedResponses).length,
+        generatedOutcomeCounts,
         generatedResponses,
         resolvedPolicies,
         responses,
