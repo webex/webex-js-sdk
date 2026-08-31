@@ -908,6 +908,32 @@ describe('plugin-voicea', () => {
         });
       });
 
+      it('processes speaker name update', async () => {
+        const triggerSpy = sinon.spy();
+        const voiceaPayload = {
+          id: 'speaker-name-update-1',
+          taggedSpeakers: [
+            {
+              csiId: 3556942592,
+              speakerId: '1',
+              newName: 'Alice',
+            },
+          ],
+        };
+
+        voiceaService.on(EVENT_TRIGGERS.SPEAKER_NAME_UPDATED, triggerSpy);
+
+        // eslint-disable-next-line no-underscore-dangle
+        await voiceaService.webex.internal.llm._emit('event:relay.event', {
+          data: {
+            relayType: 'voicea.update_speakername',
+            voiceaPayload,
+          },
+        });
+
+        assert.calledOnceWithExactly(triggerSpy, voiceaPayload);
+      });
+
       it('processes a eva wake up', async () => {
         voiceaService.on(EVENT_TRIGGERS.EVA_COMMAND, triggerSpy);
 

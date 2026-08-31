@@ -71,6 +71,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       case AIBRIDGE_RELAY_TYPES.VOICEA.TRANSCRIPTION:
         this.processTranscription(e.data.voiceaPayload);
         break;
+      case AIBRIDGE_RELAY_TYPES.VOICEA.SPEAKER_NAME_UPDATE:
+        // @ts-ignore
+        this.trigger(EVENT_TRIGGERS.SPEAKER_NAME_UPDATED, e.data.voiceaPayload);
+        break;
       case AIBRIDGE_RELAY_TYPES.MANUAL.TRANSCRIPTION:
       case AIBRIDGE_RELAY_TYPES.MANUAL.CAPTIONER:
         this.processManualTranscription({
