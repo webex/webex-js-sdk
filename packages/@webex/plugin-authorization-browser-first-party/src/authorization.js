@@ -21,10 +21,6 @@ import uuid from 'uuid';
 import base64url from 'crypto-js/enc-base64url';
 import CryptoJS from 'crypto-js';
 
-// Necessary to require lodash this way in order to stub
-// methods in the unit test
-const lodash = require('lodash');
-
 const OAUTH2_CSRF_TOKEN = 'oauth2-csrf-token';
 const OAUTH2_CODE_VERIFIER = 'oauth2-code-verifier';
 
@@ -37,6 +33,18 @@ export const Events = {
    * QR code login events
    */
   qRCodeLogin: 'qRCodeLogin',
+};
+
+/**
+ * Terminal outcomes for the automatic authorization-code exchange performed
+ * during authorization plugin initialization.
+ *
+ * @enum {string}
+ */
+export const InitialAuthorizationCodeGrantOutcomes = {
+  failure: 'failure',
+  notAttempted: 'not_attempted',
+  success: 'success',
 };
 
 /**
@@ -70,6 +78,37 @@ export const Events = {
 const Authorization = WebexPlugin.extend({
   derived: {
     /**
+     * Retains the terminal outcome of the automatic authorization-code exchange
+     * performed during this authorization plugin instance's initialization.
+     *
+     * This historical value does not represent current authorization state,
+     * credentials hydrated from storage, guest authentication, or
+     * authorization-code exchanges requested later on the same SDK instance. It
+     * is not reset by logout. OAuth redirect errors and CSRF validation failures
+     * occur before the exchange, so the value remains not_attempted; these errors
+     * can throw before ready becomes true.
+     *
+     * Calling logout({noRedirect: true}) does not cancel an initialization
+     * exchange already in flight. If that exchange later settles, it can still
+     * update credentials and this retained outcome.
+     *
+     * Interpret only after authorization readiness:
+     * - not_attempted: initialization did not invoke requestAuthorizationCodeGrant()
+     * - success: the initialization exchange fulfilled
+     * - failure: the initialization exchange threw or rejected
+     *
+     * @instance
+     * @memberof AuthorizationBrowserFirstParty
+     * @readonly
+     * @type {string}
+     */
+    initialAuthorizationCodeGrantOutcome: {
+      deps: ['_initialAuthorizationCodeGrantOutcome'],
+      fn() {
+        return this._initialAuthorizationCodeGrantOutcome;
+      },
+    },
+    /**
      * Alias of {@link AuthorizationBrowserFirstParty#isAuthorizing}
      * @instance
      * @memberof AuthorizationBrowserFirstParty
@@ -93,6 +132,14 @@ const Authorization = WebexPlugin.extend({
     isAuthorizing: {
       default: false,
       type: 'boolean',
+    },
+    /**
+     * Internal backing state for the initial authorization-code grant outcome.
+     * @private
+     */
+    _initialAuthorizationCodeGrantOutcome: {
+      default: InitialAuthorizationCodeGrantOutcomes.notAttempted,
+      type: 'string',
     },
     /**
      * Indicates that the plugin has finished any automatic startup
@@ -233,7 +280,13 @@ const Authorization = WebexPlugin.extend({
         .collectPreauthCatalog(preauthCatalogParams)
         .catch(() => Promise.resolve()) // Non-fatal if catalog collection fails
         .then(() => this.requestAuthorizationCodeGrant({code, codeVerifier}))
+        .then(() => {
+          this._initialAuthorizationCodeGrantOutcome =
+            InitialAuthorizationCodeGrantOutcomes.success;
+        })
         .catch((error) => {
+          this._initialAuthorizationCodeGrantOutcome =
+            InitialAuthorizationCodeGrantOutcomes.failure;
           this.logger.warn('authorization: failed initial authorization code grant request', error);
         })
         .then(() => {
@@ -424,7 +477,12 @@ const Authorization = WebexPlugin.extend({
     this._verifySecurityToken(location.query, {requireMatch: true});
     this._cleanUrl(location);
 
-    const {id_token: idToken, email, error, state: {csrf_token, ...state}} = location.query;
+    const {
+      id_token: idToken,
+      email,
+      error,
+      state: {csrf_token, ...state},
+    } = location.query;
 
     return {idToken, email, error, state};
   },
@@ -825,7 +883,8 @@ const Authorization = WebexPlugin.extend({
    * during authorization code exchange; removes it once consumed.
    *
    * Implementation details:
-   * - Creates a 128 character string using base64url safe alphabet.
+   * - Creates a 128 character string using a cryptographically secure random
+   *   source and the base64url safe alphabet.
    * - Computes SHA256 hash, encodes to base64url (no padding).
    *
    * @instance
@@ -838,10 +897,14 @@ const Authorization = WebexPlugin.extend({
 
     // eslint-disable-next-line no-underscore-dangle
     const safeCharacterMap = base64url._safe_map;
+    const randomValues = new Uint8Array(128);
 
-    const codeVerifier = lodash
-      .times(128, () => safeCharacterMap[lodash.random(0, safeCharacterMap.length - 1)])
-      .join('');
+    this.webex.getWindow().crypto.getRandomValues(randomValues);
+
+    const codeVerifier = Array.from(
+      randomValues,
+      (randomValue) => safeCharacterMap[randomValue & (safeCharacterMap.length - 1)]
+    ).join('');
 
     const codeChallenge = CryptoJS.SHA256(codeVerifier).toString(base64url);
 

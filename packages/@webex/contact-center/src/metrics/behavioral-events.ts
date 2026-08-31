@@ -352,6 +352,48 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     verb: 'fail',
   },
 
+  // Conference Exit
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_exit',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_exit',
+    verb: 'fail',
+  },
+
+  // Conference Participant Drop
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_participant_drop',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_participant_drop',
+    verb: 'fail',
+  },
+
+  // Switch Call
+  [METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_switch_call',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.TASK_SWITCH_CALL_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_switch_call',
+    verb: 'fail',
+  },
+
   // upload logs
   [METRIC_EVENT_NAMES.UPLOAD_LOGS_SUCCESS]: {
     product,
@@ -475,6 +517,56 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     product,
     agent: 'user',
     target: 'campaign_preview_remove',
+    verb: 'fail',
+  },
+
+  // User Preference API Events
+  [METRIC_EVENT_NAMES.USER_PREFERENCE_GET_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'user_preference_get',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.USER_PREFERENCE_GET_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'user_preference_get',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.USER_PREFERENCE_CREATE_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'user_preference_create',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.USER_PREFERENCE_CREATE_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'user_preference_create',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.USER_PREFERENCE_UPDATE_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'user_preference_update',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.USER_PREFERENCE_UPDATE_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'user_preference_update',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.USER_PREFERENCE_DELETE_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'user_preference_delete',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.USER_PREFERENCE_DELETE_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'user_preference_delete',
     verb: 'fail',
   },
 };

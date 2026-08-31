@@ -1,11 +1,14 @@
 # Registration Module
 
+> Canonical SDD target: [`src/CallingClient/registration/ai-docs/registration-spec.md`](registration-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## AI Agent Routing Instructions
 
 **If you are an AI assistant or automated tool:**
 
 - **First step:** Load the parent [CallingClient/ai-docs/AGENTS.md](../../ai-docs/AGENTS.md) for module-level context.
 - **For line-specific context:** Also load [line/ai-docs/AGENTS.md](../../line/ai-docs/AGENTS.md) (Registration is owned by Line).
+- **For Mobius WSS transport changes (connect/disconnect, registration-down close code 4001, close-code matrix):** Also load [`mobius-socket/ai-docs/AGENTS.md`](../../../mobius-socket/ai-docs/AGENTS.md). `Registration` goes through `APIRequest` (see `src/CallingClient/utils/request.ts`) — it never imports `MobiusSocket` directly.
 
 ---
 
@@ -27,13 +30,14 @@ The `Registration` class manages the lifecycle of a device registration with the
 
 The Registration module handles:
 
-- **Device Registration** — `POST /calling/web/device` to Mobius to register the client device
-- **Keepalive** — Periodic `POST /devices/{deviceId}/status` via a dedicated Web Worker
+- **Device Registration** — `POST /calling/web/device` to Mobius to register the client device (via `APIRequest.makeRequest` — HTTP or WSS depending on `apiRequest.isSocketEnabled()`)
+- **Keepalive** — Periodic `POST /devices/{deviceId}/status` via a dedicated Web Worker (routed through `APIRequest.makeRequest` — HTTP when WSS is off, WebSocket when WSS is on)
 - **Registration Failover** — Automatic switch from primary to backup Mobius servers on failure
 - **Registration Failback** — Automatic return to primary servers when they become available
 - **Reconnection** — Re-register after network disruption or Mercury disconnection
 - **429 Retry** — Respect `Retry-After` headers with exponential backoff
-- **Deregistration** — `DELETE /devices/{deviceId}` to clean up the device on Mobius
+- **Deregistration** — `DELETE /devices/{deviceId}` to clean up the device on Mobius, with optional Mobius WebSocket teardown
+- **Mobius WSS Lifecycle (when `apiRequest.isSocketEnabled()`)** — Connect to the per-server WSS URL before `POST /device`, and disconnect with `{code: 3050, reason: 'done (permanent)'}` on failover, failback, registration-down cleanup, restore-previous-registration, and `deregister(closeMobiusWss = true)`. See [`mobius-socket/ai-docs/AGENTS.md`](../../../mobius-socket/ai-docs/AGENTS.md) for the close-code policy.
 
 ---
 
@@ -50,15 +54,14 @@ The Registration module handles:
 | `getStatus` | `(): RegistrationStatus` | Returns current status (`IDLE`, `active`, `inactive`) |
 | `getDeviceInfo` | `(): IDeviceInfo` | Returns device info from last successful registration |
 | `clearKeepaliveTimer` | `(): void` | Stops the keepalive Web Worker |
-| `deregister` | `(): Promise<void>` | Deletes device from Mobius and stops keepalive |
+| `deregister` | `(closeMobiusWss?: boolean): Promise<void>` | Deletes device from Mobius and stops keepalive. When `closeMobiusWss = true` (and `apiRequest.isSocketEnabled()`), also tears down the Mobius WebSocket with close `{code: 3050, reason: 'done (permanent)'}` after the DELETE returns. Defaults to `false`. |
 | `setActiveMobiusUrl` | `(url: string): void` | Sets the active Mobius URL |
 | `getActiveMobiusUrl` | `(): string` | Returns current active Mobius URL |
 | `reconnectOnFailure` | `(caller: string): Promise<void>` | Re-registers or defers if calls are active |
 | `isReconnectPending` | `(): boolean` | Returns `true` if reconnect is deferred |
 | `handleConnectionRestoration` | `(retry: boolean): Promise<boolean>` | Re-registers after network/Mercury recovery |
 | `setDeviceInfo` | `(body: Devices): void` | Hydrates device info from a Devices response |
-| `handleRegistrationDownEvent` | `(event?: MobiusAsyncEvent): Promise<void>` | Handles a Mobius `REGISTRATION_DOWN` async event; defers cleanup while calls are active, otherwise cleans up immediately. Safe to re-invoke |
-| `isRegistrationDownPending` | `(): boolean` | Returns `true` while a registration-down cleanup is deferred due to active calls |
+| `handleRegistrationDownEvent` | `(event?: MobiusAsyncEvent): Promise<void>` | Handles a Mobius `REGISTRATION_DOWN` async event; immediately ends the first active call (if any) then runs registration-side cleanup. |
 
 ---
 
@@ -86,6 +89,7 @@ A dedicated Web Worker manages keepalive requests to ensure a responsive and rel
 
 - Worker posts `KEEPALIVE_SUCCESS` **only when recovering** from a previous failure (`retryCount > 0` before the success). Normal successes silently reset the counter.
 - On **429**: `handle429Retry` clears the current worker and schedules a new keepalive timer after the `Retry-After` delay.
+- On **409**: `handleRegistrationErrors` invokes the keepalive-only `sessionSupersededCb`, so `handle409KeepaliveFailure` treats the failure as a hard stop on the very first occurrence — the retry count is ignored, the worker is terminated, no registration is attempted, and the consumer receives `UNREGISTERED` carrying the superseded reason. The returned `handledByCallback` makes the keepalive branch skip its generic failure handling.
 - On **fatal error** (abort) or **retries exceeded** (retryCount >= threshold, 4 for CC / 5 otherwise): the worker is terminated and the main thread either calls `reconnectOnFailure` (non-fatal threshold) or attempts fresh registration (404).
 - On **non-fatal error below threshold**: only `LINE_EVENTS.RECONNECTING` is emitted; the worker keeps running.
 
@@ -100,6 +104,7 @@ Robust error handling is built in for registration and keepalive via `handleRegi
 - **403 (Device Creation Disabled, code 102):** Fatal — `abort = true`.
 - **429 Too Many Requests:** Non-fatal — stores `Retry-After` value via `handle429Retry`. During initial registration, the loop continues to the next server; the stored value influences `startFailoverTimer` interval. During failback, retries up to `REG_FAILBACK_429_MAX_RETRIES` (5).
 - **500 / 503 / Other:** Non-fatal — the loop in `attemptRegistrationWithServers` continues to the next server. If all servers fail, `startFailoverTimer` schedules retries with exponential backoff.
+- **409 Conflict (keepalive only):** Hard stop — `handleRegistrationErrors` builds the `SESSION_SUPERSEDED` error and hands it to `handle409KeepaliveFailure` through `sessionSupersededCb`, so no server loop, failover, or restore is attempted. Flows that do not pass that handler (registration, restoration, failover, failback) still treat `409` as an unknown error.
 
 ---
 
@@ -107,10 +112,8 @@ Robust error handling is built in for registration and keepalive via `handleRegi
 
 When Mobius emits a `REGISTRATION_DOWN` async event, `CallingClient` forwards it to `Registration.handleRegistrationDownEvent`:
 
-- **Active calls present:** `registrationDownPending` is set to `true` and the method returns early without running cleanup. `CallingClient` schedules a polling interval (every 30s) that re-invokes `handleRegistrationDownEvent` with the same event; once no active calls remain on a subsequent tick, the cleanup runs and the interval is cleared.
-- **No active calls:** cleanup runs immediately and `registrationDownPending` stays `false`.
-
-`handleRegistrationDownEvent` is safe to re-invoke: it is idempotent across repeated calls and only performs the teardown once the active-call precondition is met.
+1. Retrieves the first active call (if any) from `CallManager` and immediately calls `activeCall?.end()` to tear it down.
+2. Calls `registrationCleanup` unconditionally — there is no deferral, no `registrationDownPending` flag, and no polling interval.
 
 Cleanup (under the shared mutex) performs:
 - `clearFailbackTimer()` and `clearKeepaliveTimer()`
@@ -118,8 +121,11 @@ Cleanup (under the shared mutex) performs:
 - `clearFailoverState()` and `setStatus(RegistrationStatus.INACTIVE)`
 - Disconnects the Mobius WebSocket when `apiRequest.isSocketEnabled()` (code `3050`, reason `'done (permanent)'`)
 - Emits `LINE_EVENTS.UNREGISTERED` via `lineEmitter` so the SDK consumer is notified
+- For a superseded session, that event carries the `LineError` describing why the line stays unregistered
 
 No `DELETE /devices/{id}` is sent because Mobius has already signaled that the registration is gone.
+
+`registrationCleanup(caller, hardStop)` is shared with the keepalive `409 Conflict` path. The `HardStop` discriminated union (`src/CallingClient/registration/types.ts`) selects the log label (`registration-down` / `session-superseded`) and requires the `LineError` for a superseded session, so the terminal event and its payload cannot be mismatched.
 
 ---
 
@@ -149,13 +155,14 @@ Tracking these metrics enables effective monitoring of registration reliability 
 
 ### Keepalive Web Worker
 
-The keepalive mechanism runs in a dedicated **Web Worker** to avoid being blocked by main-thread activity. Worker messages use the `WorkerMessageType` enum (values are string constants):
+The keepalive mechanism runs in a dedicated **Web Worker** to avoid being blocked by main-thread activity. The worker does **not** call Mobius directly — it sends a `SEND_KEEPALIVE` signal to the main thread, which calls `apiRequest.makeRequest(POST /devices/{id}/status)` and returns the result via `KEEPALIVE_RESULT`. Worker messages use the `WorkerMessageType` enum (values are string constants):
 
-- **Start:** Worker receives `WorkerMessageType.START_KEEPALIVE` (`'START_KEEPALIVE'`) with access token, device URL, interval, and retry threshold
-- **Loop:** Worker sends `POST /devices/{id}/status` every `keepaliveInterval` seconds
-- **Success:** Worker posts `WorkerMessageType.KEEPALIVE_SUCCESS` (`'KEEPALIVE_SUCCESS'`) to main thread
-- **Failure:** Worker posts `WorkerMessageType.KEEPALIVE_FAILURE` (`'KEEPALIVE_FAILURE'`) with error details and retry count
-- **Stop:** Main thread sends `WorkerMessageType.CLEAR_KEEPALIVE` (`'CLEAR_KEEPALIVE'`), Worker clears interval and main thread terminates it
+- **Start:** Worker receives `WorkerMessageType.START_KEEPALIVE` (`'START_KEEPALIVE'`) with `{interval, retryCountThreshold}`
+- **Tick:** Worker sends `WorkerMessageType.SEND_KEEPALIVE` (`'SEND_KEEPALIVE'`) to main thread every `keepaliveInterval` seconds (when no request is in flight and retryCount is below threshold)
+- **Result:** Main thread sends `WorkerMessageType.KEEPALIVE_RESULT` (`'KEEPALIVE_RESULT'`) back to worker with `{statusCode}` on success or `{err}` on failure
+- **Success:** Worker posts `WorkerMessageType.KEEPALIVE_SUCCESS` (`'KEEPALIVE_SUCCESS'`) with `{statusCode}` to main thread — only when recovering from a prior failure (`retryCount > 0` before the success); normal successes are silent
+- **Failure:** Worker posts `WorkerMessageType.KEEPALIVE_FAILURE` (`'KEEPALIVE_FAILURE'`) with `{err, keepAliveRetryCount}` to main thread
+- **Stop:** Main thread sends `WorkerMessageType.CLEAR_KEEPALIVE` (`'CLEAR_KEEPALIVE'`), Worker clears the interval; main thread also calls `worker.terminate()`
 
 ### 429 Retry Logic
 
@@ -257,6 +264,8 @@ type FailoverCacheState = {
 
 ## Related Documentation
 
-- [Registration Architecture](./ARCHITECTURE.md) — Internal flows, failover, keepalive details
+- [Registration Architecture](./ARCHITECTURE.md) — Internal flows, failover, keepalive details, WSS touch points
 - [Line AGENTS.md](../../line/ai-docs/AGENTS.md) — Line owns Registration via `lineEmitter`
 - [CallingClient AGENTS.md](../../ai-docs/AGENTS.md) — Parent module overview
+- [`mobius-socket` AGENTS.md](../../../mobius-socket/ai-docs/AGENTS.md) — Mobius WebSocket transport public API
+- [`mobius-socket` ARCHITECTURE.md](../../../mobius-socket/ai-docs/ARCHITECTURE.md) — Close-code matrix, backoff/retry policy, shutdown switchover

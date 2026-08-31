@@ -14,6 +14,8 @@ export const CONSULT = '/consult';
 export const CONSULT_ACCEPT = '/consult/accept';
 export const CONSULT_END = '/consult/end';
 export const TRANSFER = '/transfer';
+/** Backend destination value for direct entry-point transfers through the vteam endpoint. */
+export const ENTRY_POINT_TRANSFER_DESTINATION_TYPE = 'entrypointDialNumber';
 export const CONSULT_TRANSFER = '/consult/transfer';
 export const PAUSE = '/record/pause';
 export const RESUME = '/record/resume';
@@ -52,6 +54,10 @@ export const PRESERVED_TASK_DATA_FIELDS = {
  */
 export const KEYS_TO_NOT_DELETE: string[] = Object.values(PRESERVED_TASK_DATA_FIELDS);
 
+/**
+ * Consultation status constants derived from state machine
+ * These values are computed and available in task.data.consultStatus
+ */
 // METHOD NAMES
 export const METHODS = {
   // Task class methods
@@ -69,6 +75,7 @@ export const METHODS = {
   TRANSFER: 'transfer',
   CONSULT_TRANSFER: 'consultTransfer',
   CONSULT_CONFERENCE: 'consultConference',
+  DROP_CONFERENCE_PARTICIPANT: 'dropConferenceParticipant',
   EXIT_CONFERENCE: 'exitConference',
   TRANSFER_CONFERENCE: 'transferConference',
   UPDATE_TASK_DATA: 'updateTaskData',
@@ -85,6 +92,7 @@ export const METHODS = {
   GET_TASK_MANAGER: 'getTaskManager',
   SETUP_AUTO_WRAPUP_TIMER: 'setupAutoWrapupTimer',
   CANCEL_AUTO_WRAPUP_TIMER: 'cancelAutoWrapupTimer',
+  REQUEST_REAL_TIME_TRANSCRIPTS: 'requestRealTimeTranscripts',
 };
 
 export const TRANSCRIPT_EVENT_MAP = {

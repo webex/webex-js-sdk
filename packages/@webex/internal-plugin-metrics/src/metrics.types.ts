@@ -23,6 +23,15 @@ export type ClientUserNameInput = NonNullable<RawClientEvent['userNameInput']>;
 
 export type ClientEmailInput = NonNullable<RawClientEvent['emailInput']>;
 
+export type PrivacyAndSecurityPermission = NonNullable<
+  RawClientEvent['privacyAndSecurityPermission']
+>;
+
+export type PrivacyAndSecurityPermissionResource = keyof PrivacyAndSecurityPermission;
+
+export type PrivacyAndSecurityPermissionState =
+  PrivacyAndSecurityPermission[PrivacyAndSecurityPermissionResource];
+
 export type BrowserLaunchMethodType = NonNullable<
   RawEvent['origin']['clientInfo']
 >['browserLaunchMethod'];
@@ -149,6 +158,17 @@ export type SubmitMQEOptions = {
   globalMeetingId?: string;
 };
 
+export const LOCUS_SYNC_LATENCY_EVENT_NAMES = [
+  'internal.client.locus.sync.start',
+  'internal.client.locus.hashtree.request',
+  'internal.client.locus.hashtree.response',
+  'internal.client.locus.sync.request',
+  'internal.client.locus.sync.response',
+  'internal.client.locus.sync.message.received',
+] as const;
+
+export type LocusSyncLatencyEventName = (typeof LOCUS_SYNC_LATENCY_EVENT_NAMES)[number];
+
 export type InternalEvent = {
   name:
     | 'internal.client.meetinginfo.request'
@@ -162,7 +182,8 @@ export type InternalEvent = {
     | 'internal.client.add-media.turn-discovery.start'
     | 'internal.client.add-media.turn-discovery.end'
     | 'internal.client.share.initiated'
-    | 'internal.client.share.stopped';
+    | 'internal.client.share.stopped'
+    | LocusSyncLatencyEventName;
 
   payload?: never;
   options?: never;
@@ -324,7 +345,8 @@ export type PreComputedLatencies =
   | 'internal.get.u2c.time'
   | 'internal.call.init.join.req'
   | 'internal.other.app.api.time'
-  | 'internal.api.fetch.intelligence.models';
+  | 'internal.api.fetch.intelligence.models'
+  | 'internal.client.locus.sync.random.backoff';
 
 export interface IdType {
   meetingId?: string;

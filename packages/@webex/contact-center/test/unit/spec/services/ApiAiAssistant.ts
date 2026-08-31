@@ -1,7 +1,8 @@
 import ApiAIAssistant from '../../../../src/services/ApiAiAssistant';
 import MetricsManager from '../../../../src/metrics/MetricsManager';
 import LoggerProxy from '../../../../src/logger-proxy';
-import {HTTP_METHODS, WebexSDK} from '../../../../src/types';
+import WebexRequest from '../../../../src/services/core/WebexRequest';
+import {HTTP_METHODS, RealTimeAssistanceUserActionId, WebexSDK} from '../../../../src/types';
 
 jest.mock('../../../../src/metrics/MetricsManager');
 jest.mock('../../../../src/logger-proxy');
@@ -13,6 +14,9 @@ describe('ApiAIAssistant', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(WebexRequest, 'getInstance').mockReturnValue({
+      uploadLogs: jest.fn(),
+    } as any);
 
     mockWebex = {
       credentials: {
@@ -50,26 +54,21 @@ describe('ApiAIAssistant', () => {
       'interaction-1',
       'CUSTOM_EVENT',
       'GET_TRANSCRIPTS',
-      'START'
+      {action: 'START'}
     );
 
-    expect(mockWebex.request).toHaveBeenCalledWith({
-      uri: 'https://api-ai-assistant.produs1.ciscoccservice.com/event',
-      method: HTTP_METHODS.POST,
-      addAuthHeader: true,
-      body: {
-        agentId: 'test-agent-id',
-        orgId: 'test-org-id',
-        eventType: 'CUSTOM_EVENT',
-        eventName: 'GET_TRANSCRIPTS',
-        eventDetails: {
-          data: expect.objectContaining({
-            interactionId: 'interaction-1',
-            action: 'START',
-          }),
-        },
-      },
-    });
+    expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    const requestArgs = (mockWebex.request as jest.Mock).mock.calls[0][0];
+
+    expect(requestArgs.uri).toBe('https://api-ai-assistant.produs1.ciscoccservice.com/event');
+    expect(requestArgs.method).toBe(HTTP_METHODS.POST);
+    expect(requestArgs.addAuthHeader).toBe(true);
+    expect(requestArgs.body.agentId).toBe('test-agent-id');
+    expect(requestArgs.body.orgId).toBe('test-org-id');
+    expect(requestArgs.body.eventType).toBe('CUSTOM_EVENT');
+    expect(requestArgs.body.eventName).toBe('GET_TRANSCRIPTS');
+    expect(requestArgs.body.eventDetails.data.interactionId).toBe('interaction-1');
+    expect(requestArgs.body.eventDetails.data.action).toBe('START');
     expect(result).toEqual({ok: true});
   });
 
@@ -93,6 +92,118 @@ describe('ApiAIAssistant', () => {
     expect(result).toEqual(responseBody as any);
   });
 
+  it('should request real-time assistance without extra context using sendEvent', async () => {
+    const sendEventSpy = jest.spyOn(apiAIAssistant, 'sendEvent').mockResolvedValue({ok: true});
+    apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
+
+    const result = await apiAIAssistant.getRealTimeAssistance({
+      agentId: 'test-agent-id',
+      interactionId: 'interaction-1',
+    });
+
+    expect(sendEventSpy).toHaveBeenCalledTimes(1);
+    const [agentId, interactionId, eventType, eventName, metadata, languageCode, trackingId] =
+      sendEventSpy.mock.calls[0];
+
+    expect(agentId).toBe('test-agent-id');
+    expect(interactionId).toBe('interaction-1');
+    expect(eventType).toBe('CUSTOM_EVENT');
+    expect(eventName).toBe('GET_SUGGESTIONS');
+    expect(metadata).toBeUndefined();
+    expect(languageCode).toBe('en');
+    expect(typeof trackingId).toBe('string');
+    expect(trackingId.startsWith('WX_CC_SDK_')).toBe(true);
+    expect(result).toEqual({ok: true});
+  });
+
+  it('should request real-time assistance with extra context using sendEvent', async () => {
+    const sendEventSpy = jest.spyOn(apiAIAssistant, 'sendEvent').mockResolvedValue({ok: true});
+    apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
+
+    const result = await apiAIAssistant.getRealTimeAssistance({
+      agentId: 'test-agent-id',
+      interactionId: 'interaction-1',
+      context: 'Need assistance with credit card payment due date',
+    });
+
+    expect(sendEventSpy).toHaveBeenCalledTimes(1);
+    const [agentId, interactionId, eventType, eventName, metadata, languageCode, trackingId] =
+      sendEventSpy.mock.calls[0];
+
+    expect(agentId).toBe('test-agent-id');
+    expect(interactionId).toBe('interaction-1');
+    expect(eventType).toBe('CUSTOM_EVENT');
+    expect(eventName).toBe('ADD_SUGGESTIONS_EXTRA_CONTEXT');
+    expect(metadata).toEqual({context: 'Need assistance with credit card payment due date'});
+    expect(languageCode).toBe('en');
+    expect(typeof trackingId).toBe('string');
+    expect(trackingId.startsWith('WX_CC_SDK_')).toBe(true);
+    expect(result).toEqual({ok: true});
+  });
+
+  it('should treat whitespace-only context as GET_SUGGESTIONS', async () => {
+    const sendEventSpy = jest.spyOn(apiAIAssistant, 'sendEvent').mockResolvedValue({ok: true});
+    apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
+
+    const result = await apiAIAssistant.getRealTimeAssistance({
+      agentId: 'test-agent-id',
+      interactionId: 'interaction-1',
+      context: '   ',
+    });
+
+    expect(sendEventSpy).toHaveBeenCalledTimes(1);
+    const [agentId, interactionId, eventType, eventName, metadata, languageCode, trackingId] =
+      sendEventSpy.mock.calls[0];
+
+    expect(agentId).toBe('test-agent-id');
+    expect(interactionId).toBe('interaction-1');
+    expect(eventType).toBe('CUSTOM_EVENT');
+    expect(eventName).toBe('GET_SUGGESTIONS');
+    expect(metadata).toEqual({context: ''});
+    expect(languageCode).toBe('en');
+    expect(typeof trackingId).toBe('string');
+    expect(trackingId.startsWith('WX_CC_SDK_')).toBe(true);
+    expect(result).toEqual({ok: true});
+  });
+
+  [
+    RealTimeAssistanceUserActionId.LIKE,
+    RealTimeAssistanceUserActionId.DISLIKE,
+    RealTimeAssistanceUserActionId.COPY,
+  ].forEach((actionId) => {
+    it(`should send real-time assistance user action for ${actionId}`, async () => {
+      (mockWebex.request as jest.Mock).mockResolvedValue({body: {ok: true}});
+      apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
+
+      const result = await apiAIAssistant.sendRealTimeAssistanceUserAction({
+        agentId: 'test-agent-id',
+        interactionId: 'interaction-1',
+        adaptiveCardId: 'adaptive-card-1',
+        actionId,
+      });
+
+      expect(mockWebex.request).toHaveBeenCalledTimes(1);
+      const requestArgs = (mockWebex.request as jest.Mock).mock.calls[0][0];
+      const eventData = requestArgs.body.eventDetails.data;
+
+      expect(requestArgs.uri).toBe('https://api-ai-assistant.produs1.ciscoccservice.com/event');
+      expect(requestArgs.method).toBe(HTTP_METHODS.POST);
+      expect(requestArgs.addAuthHeader).toBe(true);
+      expect(requestArgs.body.agentId).toBe('test-agent-id');
+      expect(requestArgs.body.orgId).toBe('test-org-id');
+      expect(requestArgs.body.eventType).toBe('CUSTOM_EVENT');
+      expect(requestArgs.body.eventName).toBe('SUGGESTED_RESPONSES_USER_ACTION');
+      expect(eventData.interactionId).toBe('interaction-1');
+      expect(eventData.adaptiveCardId).toBe('adaptive-card-1');
+      expect(eventData.userAction.actionType).toBe('Action.Submit');
+      expect(eventData.userAction.actionId).toBe(actionId);
+      expect(eventData.languageCode).toBe('en');
+      expect(typeof eventData.actionTimeStamp).toBe('string');
+      expect(eventData.trackingId.startsWith('WX_CC_SDK_')).toBe(true);
+      expect(result).toEqual({ok: true});
+    });
+  });
+
   it('should fail when base URL mapping is not available', async () => {
     (mockWebex.internal.services.get as jest.Mock).mockReturnValue('https://unknown-host.invalid');
 
@@ -103,7 +214,7 @@ describe('ApiAIAssistant', () => {
         'interaction-1',
         'CUSTOM_EVENT',
         'GET_TRANSCRIPTS',
-        'STOP'
+        {action: 'STOP'}
       );
     } catch (_error) {
       failed = true;
@@ -111,5 +222,52 @@ describe('ApiAIAssistant', () => {
 
     expect(failed).toBe(true);
     expect(LoggerProxy.error).toHaveBeenCalled();
+  });
+
+  it('should fail when realtime transcripts feature is disabled', async () => {
+    apiAIAssistant.setAIFeatureFlags({realtimeTranscripts: {enable: false}} as any);
+    let errorMessage = '';
+
+    try {
+      await apiAIAssistant.fetchHistoricTranscripts('test-agent-id', 'interaction-1');
+    } catch (error) {
+      errorMessage = (error as Error)?.message || '';
+    }
+
+    expect(errorMessage).toBe('Error while performing fetchHistoricTranscripts');
+  });
+
+  it('should fail when real-time assistance feature is disabled', async () => {
+    apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: false}} as any);
+    let errorMessage = '';
+
+    try {
+      await apiAIAssistant.getRealTimeAssistance({
+        agentId: 'test-agent-id',
+        interactionId: 'interaction-1',
+      });
+    } catch (error) {
+      errorMessage = (error as Error)?.message || '';
+    }
+
+    expect(errorMessage).toBe('Error while performing getRealTimeAssistance');
+  });
+
+  it('should fail to send real-time assistance user action when feature is disabled', async () => {
+    apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: false}} as any);
+    let errorMessage = '';
+
+    try {
+      await apiAIAssistant.sendRealTimeAssistanceUserAction({
+        agentId: 'test-agent-id',
+        interactionId: 'interaction-1',
+        adaptiveCardId: 'adaptive-card-1',
+        actionId: RealTimeAssistanceUserActionId.LIKE,
+      });
+    } catch (error) {
+      errorMessage = (error as Error)?.message || '';
+    }
+
+    expect(errorMessage).toBe('Error while performing sendRealTimeAssistanceUserAction');
   });
 });

@@ -72,7 +72,7 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(voiceaService.webex.internal.llm.socket.send, {
           id: '1',
           type: 'publishRequest',
-          recipients: {route: undefined},
+          recipients: [{route: undefined}],
           headers: {},
           data: {
             clientPayload: {
@@ -109,7 +109,7 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(voiceaService.webex.internal.llm.socket.send, {
           id: '1',
           type: 'publishRequest',
-          recipients: {route: undefined},
+          recipients: [{route: undefined}],
           headers: {to: 'svc-123'},
           data: {
             clientPayload: {
@@ -143,7 +143,7 @@ describe('plugin-voicea', () => {
           {
             id: '1',
             type: 'publishRequest',
-            recipients: {route: undefined},
+            recipients: [{route: undefined}],
             headers: {},
             data: {
               eventType: 'relay.event',
@@ -182,7 +182,7 @@ describe('plugin-voicea', () => {
           {
             id: '1',
             type: 'publishRequest',
-            recipients: {route: undefined},
+            recipients: [{route: undefined}],
             headers: {},
             data: {
               eventType: 'relay.event',
@@ -225,7 +225,7 @@ describe('plugin-voicea', () => {
       beforeEach(async () => {
         const mockWebSocket = new MockWebSocket();
         voiceaService.webex.internal.llm.socket = mockWebSocket;
-        voiceaService.isCaptionBoxOn = true;
+        voiceaService.keepTranscriptionSubscribed = true;
       });
 
       it('deregisters voicea service and resets caption state', async () => {
@@ -239,14 +239,14 @@ describe('plugin-voicea', () => {
 
         assert.equal(voiceaService.areCaptionsEnabled, true);
         assert.equal(voiceaService.captionServiceId, 'ws');
-        assert.equal(voiceaService.isCaptionBoxOn, true);
+        assert.equal(voiceaService.keepTranscriptionSubscribed, true);
 
         voiceaService.deregisterEvents();
         assert.equal(voiceaService.areCaptionsEnabled, false);
         assert.equal(voiceaService.captionServiceId, undefined);
         assert.equal(voiceaService.announceStatus, 'idle');
         assert.equal(voiceaService.captionStatus, 'idle');
-        assert.equal(voiceaService.isCaptionBoxOn, false);
+        assert.equal(voiceaService.keepTranscriptionSubscribed, false);
       });
     });
     describe('#processAnnouncementMessage', () => {
@@ -305,7 +305,7 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(voiceaService.webex.internal.llm.socket.send, {
           id: '1',
           type: 'publishRequest',
-          recipients: {route: undefined},
+          recipients: [{route: undefined}],
           headers: {to: undefined},
           data: {
             clientPayload: {
@@ -327,7 +327,7 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(voiceaService.webex.internal.llm.socket.send, {
           id: '1',
           type: 'publishRequest',
-          recipients: {route: undefined},
+          recipients: [{route: undefined}],
           headers: {to: 'svc-456'},
           data: {
             clientPayload: {
@@ -492,23 +492,23 @@ describe('plugin-voicea', () => {
       });
     });
 
-    describe('#getIsCaptionBoxOn', () => {
+    describe('#getKeepTranscriptionSubscribed', () => {
       beforeEach(() => {
-        voiceaService.isCaptionBoxOn = false;
+        voiceaService.keepTranscriptionSubscribed = false;
       });
 
       it('returns false when captions are disabled', () => {
-        voiceaService.isCaptionBoxOn = false;
+        voiceaService.keepTranscriptionSubscribed = false;
 
-        const result = voiceaService.getIsCaptionBoxOn();
+        const result = voiceaService.getKeepTranscriptionSubscribed();
 
         assert.equal(result, false);
       });
 
       it('returns true when captions are enabled', () => {
-        voiceaService.isCaptionBoxOn = true;
+        voiceaService.keepTranscriptionSubscribed = true;
 
-        const result = voiceaService.getIsCaptionBoxOn();
+        const result = voiceaService.getKeepTranscriptionSubscribed();
 
         assert.equal(result, true);
       });
@@ -1402,7 +1402,7 @@ describe('plugin-voicea', () => {
           true
         );
 
-        assert.equal(voiceaService.isCaptionBoxOn, true);
+        assert.equal(voiceaService.keepTranscriptionSubscribed, true);
 
         assert.calledOnceWithExactly(
           voiceaService.updateSubchannelSubscriptions,
@@ -1419,7 +1419,7 @@ describe('plugin-voicea', () => {
           false
         );
 
-        assert.equal(voiceaService.isCaptionBoxOn, false);
+        assert.equal(voiceaService.keepTranscriptionSubscribed, false);
 
         assert.calledOnceWithExactly(
           voiceaService.updateSubchannelSubscriptions,
@@ -1430,7 +1430,7 @@ describe('plugin-voicea', () => {
       it('defaults subscribe/unsubscribe to empty arrays when options is empty', async () => {
         await voiceaService.updateSubchannelSubscriptionsAndSyncCaptionState({}, true);
 
-        assert.equal(voiceaService.isCaptionBoxOn, true);
+        assert.equal(voiceaService.keepTranscriptionSubscribed, true);
 
         assert.calledOnceWithExactly(
           voiceaService.updateSubchannelSubscriptions,
@@ -1446,7 +1446,7 @@ describe('plugin-voicea', () => {
           true
         );
 
-        assert.equal(voiceaService.isCaptionBoxOn, true);
+        assert.equal(voiceaService.keepTranscriptionSubscribed, true);
 
         assert.calledOnceWithExactly(
           voiceaService.updateSubchannelSubscriptions,
@@ -1487,7 +1487,7 @@ describe('plugin-voicea', () => {
         assert.notCalled(defaultSocket.send);
 
         const sent = practiceSocket.send.getCall(0).args[0];
-        expect(sent).to.have.nested.property('recipients.route', 'practice-binding');
+        expect(sent).to.have.nested.property('recipients[0].route', 'practice-binding');
       });
 
       it('sendAnnouncement falls back to the default socket and binding when the practice session is not connected', () => {
@@ -1500,7 +1500,7 @@ describe('plugin-voicea', () => {
         assert.notCalled(practiceSocket.send);
 
         const sent = defaultSocket.send.getCall(0).args[0];
-        expect(sent).to.have.nested.property('recipients.route', 'default-binding');
+        expect(sent).to.have.nested.property('recipients[0].route', 'default-binding');
       });
 
       it('requestLanguage uses the practice session socket and binding when available', () => {
@@ -1510,7 +1510,7 @@ describe('plugin-voicea', () => {
         assert.notCalled(defaultSocket.send);
 
         const sent = practiceSocket.send.getCall(0).args[0];
-        expect(sent).to.have.nested.property('recipients.route', 'practice-binding');
+        expect(sent).to.have.nested.property('recipients[0].route', 'practice-binding');
         expect(sent).to.have.nested.property('data.clientPayload.translationLanguage', 'fr');
       });
 
@@ -1523,7 +1523,7 @@ describe('plugin-voicea', () => {
         assert.notCalled(practiceSocket.send);
 
         const sent = defaultSocket.send.getCall(0).args[0];
-        expect(sent).to.have.nested.property('recipients.route', 'default-binding');
+        expect(sent).to.have.nested.property('recipients[0].route', 'default-binding');
         expect(sent).to.have.nested.property('data.clientPayload.translationLanguage', 'fr');
       });
 
@@ -1534,7 +1534,7 @@ describe('plugin-voicea', () => {
         assert.notCalled(defaultSocket.send);
 
         const sent = practiceSocket.send.getCall(0).args[0];
-        expect(sent).to.have.nested.property('recipients.route', 'practice-binding');
+        expect(sent).to.have.nested.property('recipients[0].route', 'practice-binding');
         expect(sent).to.have.nested.property(
           'data.transcriptPayload.type',
           'manual_caption_final_result'
@@ -1550,7 +1550,7 @@ describe('plugin-voicea', () => {
         assert.notCalled(practiceSocket.send);
 
         const sent = defaultSocket.send.getCall(0).args[0];
-        expect(sent).to.have.nested.property('recipients.route', 'default-binding');
+        expect(sent).to.have.nested.property('recipients[0].route', 'default-binding');
         expect(sent).to.have.nested.property(
           'data.transcriptPayload.type',
           'manual_caption_interim_result'

@@ -20,6 +20,8 @@ export type Req<TRes, TErr> = {
   url: string;
   host?: string;
   method?: HTTP_METHODS;
+  /** Suppress request URLs and routing payloads from AQM logs for sensitive operations. */
+  redactSensitiveLogs?: boolean;
   err?:
     | ((errObj: WebexRequestPayload) => Err.Details<'Service.reqs.generic.failure'>)
     | Err.IdsMessage

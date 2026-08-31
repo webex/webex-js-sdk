@@ -11,6 +11,7 @@ import {CallDetails, CallDirection, CorrelationId, ServiceIndicator} from '../..
 import {
   ICall,
   ICallManager,
+  IceGatheringConfig,
   MediaState,
   MidCallEvent,
   MobiusAsyncEvent,
@@ -41,14 +42,24 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
 
   private apiRequest: APIRequest;
 
+  private isMobiusSocketListenerRegistered = false;
+
+  private iceGatheringConfig?: IceGatheringConfig;
+
   /**
    * @param webex -.
    * @param indicator - Service Indicator.
+   * @param iceGatheringConfig - Optional ICE candidate gathering configuration.
    */
-  constructor(webex: WebexSDK, indicator: ServiceIndicator) {
+  constructor(
+    webex: WebexSDK,
+    indicator: ServiceIndicator,
+    iceGatheringConfig?: IceGatheringConfig
+  ) {
     super();
     this.sdkConnector = SDKConnector;
     this.serviceIndicator = indicator;
+    this.iceGatheringConfig = iceGatheringConfig;
     if (!this.sdkConnector.getWebex()) {
       SDKConnector.setWebex(webex);
     }
@@ -100,7 +111,8 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
         }
       },
       this.serviceIndicator,
-      destination
+      destination,
+      this.iceGatheringConfig
     );
 
     this.callCollection[newCall.getCorrelationId()] = newCall;
@@ -126,17 +138,44 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
       file: CALL_MANAGER_FILE,
       method: METHODS.UPDATE_ACTIVE_MOBIUS,
     });
+
+    /*
+     * The active transport is resolved per Mobius server group during registration: a
+     * group with no WSS URL falls back to HTTP even while the Mobius socket feature is
+     * enabled, so the final transport is only known once registration succeeds. Re-align
+     * the Mobius event source with that transport now that the device has registered.
+     */
+    this.listenForWsEvents();
   }
 
   /**
-   * A listener for Mobius events.
+   * Aligns the Mobius event source with the active transport.
+   *
+   * Call events reach {@link dequeueWsEvents} over one of two paths:
+   * - HTTP transport: a Mercury `event:mobius` listener owned by this CallManager.
+   * - WebSocket transport: CallingClient forwards Mobius socket events to dequeueWsEvents().
+   *
+   * Because the transport can fall back from WSS to HTTP per server group during
+   * registration, this is invoked both at construction and whenever the active Mobius
+   * URL changes. It registers the Mercury listener for HTTP and removes it for the
+   * WebSocket transport, and is idempotent so repeated calls do not duplicate listeners.
    */
   private listenForWsEvents() {
-    if (!this.apiRequest.isSocketEnabled()) {
+    const socketEnabled = this.apiRequest.isSocketEnabled();
+
+    if (!socketEnabled && !this.isMobiusSocketListenerRegistered) {
       this.sdkConnector.registerListener('event:mobius', async (event) => {
         this.dequeueWsEvents(event);
       });
+      this.isMobiusSocketListenerRegistered = true;
       log.info('Successfully registered listener for Mobius events', {
+        file: CALL_MANAGER_FILE,
+        method: METHODS.REGISTER_SESSIONS_LISTENER,
+      });
+    } else if (socketEnabled && this.isMobiusSocketListenerRegistered) {
+      this.sdkConnector.unregisterListener('event:mobius');
+      this.isMobiusSocketListenerRegistered = false;
+      log.info('Unregistered Mercury listener for Mobius events; using WebSocket transport', {
         file: CALL_MANAGER_FILE,
         method: METHODS.REGISTER_SESSIONS_LISTENER,
       });
@@ -489,15 +528,35 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
   private getLineId(deviceId: string) {
     return this.lineDict[deviceId].lineId;
   }
+
+  /**
+   * Updates the ICE candidate gathering configuration applied to newly created calls.
+   *
+   * The {@link CallManager} is a module-level singleton that may be first constructed by a
+   * collaborator (e.g. line or registration) that does not have the SDK config. This lets the
+   * `CallingClient` seed the config on the shared instance regardless of construction order.
+   *
+   * @param iceGatheringConfig - The ICE candidate gathering configuration.
+   */
+  public setIceGatheringConfig(iceGatheringConfig?: IceGatheringConfig) {
+    this.iceGatheringConfig = iceGatheringConfig;
+  }
 }
 
 /**
  * @param webex -.
  * @param indicator - Service Indicator.
+ * @param iceGatheringConfig - Optional ICE candidate gathering configuration.
  */
-export const getCallManager = (webex: WebexSDK, indicator: ServiceIndicator): ICallManager => {
+export const getCallManager = (
+  webex: WebexSDK,
+  indicator: ServiceIndicator,
+  iceGatheringConfig?: IceGatheringConfig
+): ICallManager => {
   if (!callManager) {
-    callManager = new CallManager(webex, indicator);
+    callManager = new CallManager(webex, indicator, iceGatheringConfig);
+  } else if (iceGatheringConfig) {
+    (callManager as CallManager).setIceGatheringConfig(iceGatheringConfig);
   }
 
   return callManager;

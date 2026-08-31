@@ -14,7 +14,7 @@ import {base64, patterns} from '@webex/common';
 import {merge, times} from 'lodash';
 import CryptoJS from 'crypto-js';
 import Authorization from '@webex/plugin-authorization-browser-first-party';
-import {Events} from '../../../src';
+import {Events, InitialAuthorizationCodeGrantOutcomes} from '../../../src';
 
 // Necessary to require lodash this way in order to stub the method
 const lodash = require('lodash');
@@ -25,9 +25,13 @@ describe('plugin-authorization-browser-first-party', () => {
       href = 'https://example.com',
       csrfToken = undefined,
       pkceVerifier = undefined,
-      config = {}
+      config = {},
+      getRandomValues = sinon.stub().callsFake((randomValues) => randomValues.fill(0))
     ) {
       const mockWindow = {
+        crypto: {
+          getRandomValues,
+        },
         history: {
           replaceState(a, b, location) {
             mockWindow.location.href = location;
@@ -104,6 +108,35 @@ describe('plugin-authorization-browser-first-party', () => {
       sinon.restore();
     });
 
+    it('exposes the initial authorization code grant outcome as readonly', () => {
+      const webex = makeWebex();
+      const changeSpy = sinon.spy();
+
+      webex.authorization.on('change:initialAuthorizationCodeGrantOutcome', changeSpy);
+
+      assert.equal(
+        webex.authorization.initialAuthorizationCodeGrantOutcome,
+        InitialAuthorizationCodeGrantOutcomes.notAttempted
+      );
+      assert.throws(() => {
+        webex.authorization.initialAuthorizationCodeGrantOutcome =
+          InitialAuthorizationCodeGrantOutcomes.success;
+      }, /derived property, it can't be set directly/);
+
+      webex.authorization._initialAuthorizationCodeGrantOutcome =
+        InitialAuthorizationCodeGrantOutcomes.success;
+
+      assert.equal(
+        webex.authorization.initialAuthorizationCodeGrantOutcome,
+        InitialAuthorizationCodeGrantOutcomes.success
+      );
+      assert.calledOnceWithExactly(
+        changeSpy,
+        webex.authorization,
+        InitialAuthorizationCodeGrantOutcomes.success
+      );
+    });
+
     describe('#initialize()', () => {
       describe('when there is a code in the url', () => {
         it('exchanges it for an access token and sets ready', () => {
@@ -119,7 +152,23 @@ describe('plugin-authorization-browser-first-party', () => {
             assert.calledTwice(webex.request);
             assert.isTrue(webex.authorization.ready);
             assert.isTrue(webex.credentials.canAuthorize);
+            assert.equal(
+              webex.authorization.initialAuthorizationCodeGrantOutcome,
+              InitialAuthorizationCodeGrantOutcomes.success
+            );
           });
+        });
+
+        it('retains the initialization exchange outcome after logout', async () => {
+          const webex = makeWebex('http://example.com/?code=5');
+
+          await webex.authorization.when('change:ready');
+          webex.authorization.logout({noRedirect: true});
+
+          assert.equal(
+            webex.authorization.initialAuthorizationCodeGrantOutcome,
+            InitialAuthorizationCodeGrantOutcomes.success
+          );
         });
 
         it('validates the csrf token', () => {
@@ -264,7 +313,31 @@ describe('plugin-authorization-browser-first-party', () => {
               'authorization: failed initial authorization code grant request',
               error
             );
+            assert.equal(
+              webex.authorization.initialAuthorizationCodeGrantOutcome,
+              InitialAuthorizationCodeGrantOutcomes.failure
+            );
           });
+        });
+
+        it('retains failure when the automatic exchange promise rejects', async () => {
+          const error = new Error('exchange rejected');
+
+          sinon.stub(Authorization.prototype, 'requestAuthorizationCodeGrant').rejects(error);
+
+          const webex = makeWebex('http://example.com?code=5');
+
+          await webex.authorization.when('change:ready');
+
+          assert.equal(
+            webex.authorization.initialAuthorizationCodeGrantOutcome,
+            InitialAuthorizationCodeGrantOutcomes.failure
+          );
+          assert.calledOnceWithExactly(
+            webex.logger.warn,
+            'authorization: failed initial authorization code grant request',
+            error
+          );
         });
       });
       describe('when the url contains an error', () => {
@@ -287,6 +360,21 @@ describe('plugin-authorization-browser-first-party', () => {
 
           assert.isTrue(webex.authorization.ready);
           assert.isFalse(webex.credentials.canAuthorize);
+          assert.equal(
+            webex.authorization.initialAuthorizationCodeGrantOutcome,
+            InitialAuthorizationCodeGrantOutcomes.notAttempted
+          );
+        });
+
+        it('does not treat a later authorization-code grant as the initialization exchange', async () => {
+          const webex = makeWebex('http://example.com');
+
+          await webex.authorization.requestAuthorizationCodeGrant({code: 'later-code'});
+
+          assert.equal(
+            webex.authorization.initialAuthorizationCodeGrantOutcome,
+            InitialAuthorizationCodeGrantOutcomes.notAttempted
+          );
         });
       });
 
@@ -1221,34 +1309,84 @@ describe('plugin-authorization-browser-first-party', () => {
     });
 
     describe('#_generateCodeChallenge', () => {
-      const expectedCodeChallenge = 'code challenge';
       // eslint-disable-next-line no-underscore-dangle
       const safeCharacterMap = CryptoJS.enc.Base64url._safe_map;
 
-      const expectedVerifier = times(128, () => safeCharacterMap[0]).join('');
+      function makeWebexWithRandomValues(fillRandomValues) {
+        const getRandomValuesStub = sinon.stub().callsFake((randomValues) => {
+          fillRandomValues(randomValues);
 
-      it('generates a challenge code and stores it in session storage', () => {
-        const webex = makeWebex('http://example.com');
-
-        const toStringStub = sinon.stub().returns(expectedCodeChallenge);
-        const randomStub = sinon.stub(lodash, 'random').returns(0);
-        const sha256Stub = sinon.stub(CryptoJS, 'SHA256').returns({
-          toString: toStringStub,
+          return randomValues;
         });
+        const webex = makeWebex(
+          'http://example.com',
+          undefined,
+          undefined,
+          {},
+          getRandomValuesStub
+        );
+
+        getRandomValuesStub.resetHistory();
+        webex.getWindow().sessionStorage.setItem.resetHistory();
+
+        return {getRandomValuesStub, webex};
+      }
+
+      it('uses a 128-byte CSPRNG and does not use insecure random generators', () => {
+        const {getRandomValuesStub, webex} = makeWebexWithRandomValues((randomValues) => {
+          randomValues.fill(0);
+        });
+        const mathRandomStub = sinon.stub(Math, 'random');
+        const lodashRandomStub = sinon.stub(lodash, 'random');
+
+        // eslint-disable-next-line no-underscore-dangle
+        webex.authorization._generateCodeChallenge();
+
+        const generatedRandomValues = getRandomValuesStub.firstCall.args[0];
+
+        assert.calledOnceWithExactly(getRandomValuesStub, generatedRandomValues);
+        assert.instanceOf(generatedRandomValues, Uint8Array);
+        assert.lengthOf(generatedRandomValues, 128);
+        assert.notCalled(mathRandomStub);
+        assert.notCalled(lodashRandomStub);
+      });
+
+      it('generates a 128-character verifier from the base64url-safe alphabet', () => {
+        const {webex} = makeWebexWithRandomValues((randomValues) => {
+          randomValues.set(times(128, (index) => index));
+        });
+        const expectedVerifier = times(
+          128,
+          (index) => safeCharacterMap[index & (safeCharacterMap.length - 1)]
+        ).join('');
+
+        // eslint-disable-next-line no-underscore-dangle
+        webex.authorization._generateCodeChallenge();
+
+        const storedVerifier = webex.getWindow().sessionStorage.setItem.firstCall.args[1];
+
+        assert.match(storedVerifier, /^[A-Za-z0-9_-]{128}$/);
+        assert.equal(storedVerifier, expectedVerifier);
+      });
+
+      it('stores the verifier and returns its SHA-256 base64url challenge', () => {
+        const {webex} = makeWebexWithRandomValues((randomValues) => {
+          randomValues.fill(42);
+        });
+        const expectedVerifier = safeCharacterMap[42 & (safeCharacterMap.length - 1)].repeat(128);
+        const expectedChallenge = CryptoJS.SHA256(expectedVerifier).toString(
+          CryptoJS.enc.Base64url
+        );
 
         // eslint-disable-next-line no-underscore-dangle
         const codeChallenge = webex.authorization._generateCodeChallenge();
 
-        assert.equal(codeChallenge, expectedCodeChallenge);
-        assert.calledWith(sha256Stub, expectedVerifier);
-        assert.calledWith(toStringStub, CryptoJS.enc.Base64url);
-        assert.callCount(randomStub, 128);
-        assert.calledWith(randomStub, 0, safeCharacterMap.length - 1);
-        assert.calledWith(
+        assert.calledOnceWithExactly(
           webex.getWindow().sessionStorage.setItem,
           'oauth2-code-verifier',
           expectedVerifier
         );
+        assert.equal(codeChallenge, expectedChallenge);
       });
     });
 

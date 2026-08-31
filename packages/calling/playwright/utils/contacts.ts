@@ -223,24 +223,34 @@ export const deleteGroupByName = async (page: Page, displayName: string): Promis
 
 /**
  * Delete all contacts and contact groups via the UI delete buttons.
- * Uses recursion instead of a loop to satisfy the no-await-in-loop and
- * no-plusplus ESLint rules while still handling any realistic table size.
+ * All Delete buttons are wired with their own IDs, so we bulk-click all visible Delete buttons per table pass and refresh once per pass. This is faster than refreshing after each delete, and repeated passes ensure all rows are eventually removed.
  */
 export const cleanupAllContacts = async (page: Page): Promise<void> => {
-  const deleteFirst = async (selector: string, remaining: number): Promise<void> => {
-    if (remaining <= 0) return;
-    const btn = page.locator(selector).first();
-    if (!(await btn.isVisible().catch(() => false))) return;
-    await btn.click();
+  // Click every currently visible Delete button for a table, then refresh once.
+  // Recurses per pass (not per item) to satisfy the no-await-in-loop rule.
+  const drainTable = async (selector: string, passes: number): Promise<void> => {
+    if (passes <= 0) return;
+
+    const buttons = await page.locator(selector).all();
+    if (buttons.length === 0) return;
+
+    // Click sequentially; reduce avoids the no-await-in-loop lint rule.
+    await buttons.reduce(
+      (prev, btn) => prev.then(() => btn.click().catch(() => {})),
+      Promise.resolve()
+    );
+
+    // Let the backend deletes settle, then refresh the table a single time.
     await page.waitForTimeout(500);
     await clickGetContacts(page);
-    await deleteFirst(selector, remaining - 1);
+
+    await drainTable(selector, passes - 1);
   };
 
   try {
     await clickGetContacts(page);
-    await deleteFirst('#contactsTableId tr button.btn--red', 50);
-    await deleteFirst('#contactGroupsTableId tr button.btn--red', 50);
+    await drainTable('#contactsTableId tr button.btn--red', 5);
+    await drainTable('#contactGroupsTableId tr button.btn--red', 5);
   } catch {
     // Best-effort cleanup — never fail the test suite on teardown errors
   }

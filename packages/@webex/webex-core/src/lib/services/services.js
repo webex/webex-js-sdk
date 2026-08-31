@@ -57,6 +57,22 @@ const Services = WebexPlugin.extend({
     initFailed: ['boolean', false, false],
   },
 
+  session: {
+    /**
+     * Becomes `true` once the initial catalog collection has completed
+     * (successfully or otherwise) and any in-flight credentials refresh has
+     * settled. Blocks `webex.ready` so consumers can rely on `webex.ready`
+     * implying "catalogs populated AND credential state stable".
+     * @instance
+     * @memberof Services
+     * @type {boolean}
+     */
+    ready: {
+      default: false,
+      type: 'boolean',
+    },
+  },
+
   _catalogs: new WeakMap(),
 
   _serviceUrls: null,
@@ -1087,9 +1103,16 @@ const Services = WebexPlugin.extend({
       requestObject.headers = {authorization: token};
     }
 
-    return this.webex.internal.newMetrics.callDiagnosticLatencies
-      .measureLatency(() => this.request(requestObject), 'internal.get.u2c.time')
-      .then(({body}) => body);
+    const sendRequest = () => this.request(requestObject);
+
+    const responsePromise = this.webex.internal.newMetrics
+      ? this.webex.internal.newMetrics.callDiagnosticLatencies.measureLatency(
+          sendRequest,
+          'internal.get.u2c.time'
+        )
+      : sendRequest();
+
+    return responsePromise.then(({body}) => body);
   },
 
   /**
@@ -1346,6 +1369,7 @@ const Services = WebexPlugin.extend({
 
     // Destructure the credentials plugin.
     const {credentials} = this.webex;
+    const catalog = this._getCatalog();
 
     // Init a promise chain. Must be done as a Promise.resolve() to allow
     // credentials#getOrgId() to properly throw.
@@ -1358,18 +1382,69 @@ const Services = WebexPlugin.extend({
         .then(() => {
           // Validate if the token is authorized.
           if (credentials.canAuthorize) {
-            // Attempt to collect the postauth catalog.
-
-            return this.updateServices().catch(() => {
-              this.initFailed = true;
-              this.logger.warn('services: cannot retrieve postauth catalog');
-            });
+            // Attempt to collect the postauth catalog, then mark the catalog
+            // ready. Setting `isReady` here - rather than only in the init
+            // callers - means a slow postauth fetch that loses the gated-init
+            // timeout race still marks the catalog ready once it completes.
+            return this.updateServices()
+              .then(() => {
+                catalog.isReady = true;
+              })
+              .catch(() => {
+                this.initFailed = true;
+                this.logger.warn('services: cannot retrieve postauth catalog');
+              });
           }
 
           // Return a resolved promise for consistent return value.
           return Promise.resolve();
         })
     );
+  },
+
+  /**
+   * Await any in-flight credentials refresh, then flip `services.ready` so
+   * `webex.ready` can fire. Closes the parallel-refresh window: if a credential
+   * refresh is in flight when initial catalog collection settles, we must not
+   * signal ready until the refresh has resolved - otherwise downstream
+   * consumers may observe `canAuthorize`/token state that is about to change
+   * under them.
+   *
+   * @private
+   * @returns {Promise<void>}
+   */
+  async _finalizeReady() {
+    const {credentials} = this.webex;
+
+    if (credentials && credentials.isRefreshing) {
+      await new Promise((resolve) => {
+        credentials.once('change:isRefreshing', resolve);
+      });
+    }
+
+    this.ready = true;
+  },
+
+  /**
+   * Build a promise that rejects once the catalog init timeout elapses. Race
+   * this against catalog collection so a hung request never leaves
+   * `services.ready` false forever - that would stall `webex.ready` and leave
+   * consumers waiting on it indefinitely. Timeout is configurable via
+   * `config.services.catalogInitTimeout` (defaults to 15s in config). Created
+   * lazily so paths that skip catalog collection never schedule a stray timer.
+   *
+   * @private
+   * @returns {Promise<never>}
+   */
+  _makeInitTimeout() {
+    const initTimeoutMs = this.webex.config?.services?.catalogInitTimeout;
+
+    return new Promise((_, reject) => {
+      setTimeout(
+        () => reject(new Error(`services: init timed out after ${initTimeoutMs}ms`)),
+        initTimeoutMs
+      );
+    });
   },
 
   /**
@@ -1388,11 +1463,39 @@ const Services = WebexPlugin.extend({
     this.registries.set(this.webex, registry);
     this.states.set(this.webex, state);
 
-    // Listen for configuration changes once.
+    // Listen for configuration changes once. The config is not populated on the
+    // webex instance until the `change:config` event fires, so any decision that
+    // depends on config values (such as the gated-vs-ungated init below) must be
+    // made from within this handler rather than synchronously in `initialize()`.
     this.listenToOnce(this.webex, 'change:config', () => {
       this.initConfig();
-    });
 
+      // Feature flag: when enabled, `webex.ready` is blocked until the initial
+      // catalog collection has settled AND any in-flight credentials refresh has
+      // completed. When disabled (the default), preserves the pre-existing
+      // behavior where `webex.ready` fires as soon as `webex.loaded` does and
+      // the catalog is collected out-of-band.
+      const waitForCatalogInit = this.webex.config?.services?.waitForCatalogInit === true;
+
+      if (waitForCatalogInit) {
+        this._initializeCatalogsGated(catalog);
+      } else {
+        // Not gating - immediately mark ready so we do not block webex.ready.
+        this.ready = true;
+        this._initializeCatalogsUngated(catalog);
+      }
+    });
+  },
+
+  /**
+   * Original (pre-verified-ready) initialization path. Runs on `webex.ready`
+   * and collects catalogs opportunistically without blocking anything.
+   *
+   * @private
+   * @param {ServiceCatalog} catalog
+   * @returns {void}
+   */
+  _initializeCatalogsUngated(catalog) {
     // wait for webex instance to be ready before attempting
     // to update the service catalogs
     // this can cause a race condition because credentials may
@@ -1407,18 +1510,24 @@ const Services = WebexPlugin.extend({
       const {supertoken} = this.webex.credentials;
       // Validate if the supertoken exists.
       if (supertoken && supertoken.access_token) {
-        this.initServiceCatalogs()
-          .then(() => {
-            catalog.isReady = true;
-          })
-          .catch((error) => {
-            this.initFailed = true;
-            this.logger.error(
-              `services: failed to init initial services when credentials available, ${error?.message}`
-            );
-          });
+        // `initServiceCatalogs` marks the catalog ready internally once the
+        // postauth catalog is collected.
+        this.initServiceCatalogs().catch((error) => {
+          this.initFailed = true;
+          this.logger.error(
+            `services: failed to init initial services when credentials available, ${error?.message}`
+          );
+        });
       } else {
         const {email} = this.webex.config;
+
+        if (this.webex.config?.services?.skipPreauthCatalogOnUnauthenticated === true) {
+          this.logger.info(
+            'services: skipping preauth catalog collection while unauthenticated as per the config'
+          );
+
+          return;
+        }
 
         this.collectPreauthCatalog(email ? {email} : undefined).catch((error) => {
           this.initFailed = true;
@@ -1426,6 +1535,85 @@ const Services = WebexPlugin.extend({
             `services: failed to init initial services when no credentials available, ${error?.message}`
           );
         });
+      }
+    });
+  },
+
+  /**
+   * Verified-ready initialization path. Blocks `webex.ready` until the initial
+   * catalog fetch has settled (or timed out) AND any in-flight credentials
+   * refresh has completed. Also handles the fresh-login case where OAuth
+   * completes after `loaded` fires.
+   *
+   * @private
+   * @param {ServiceCatalog} catalog
+   * @returns {void}
+   */
+  _initializeCatalogsGated(catalog) {
+    // Wait for storage to be loaded before attempting to update the service
+    // catalogs. We listen for 'loaded' instead of 'ready' because `services.ready`
+    // now blocks `webex.ready` - listening to 'ready' would deadlock.
+    this.listenToOnce(this.webex, 'loaded', async () => {
+      const cachedCatalog = await this._loadCatalogFromCache();
+      if (cachedCatalog) {
+        catalog.isReady = true;
+        await this._finalizeReady();
+
+        return; // skip initServiceCatalogs() on reload when cache exists
+      }
+      const {supertoken} = this.webex.credentials;
+
+      // Validate if the supertoken exists.
+      if (supertoken && supertoken.access_token) {
+        // `initServiceCatalogs` marks the catalog ready internally once the
+        // postauth catalog is collected - even if it loses the timeout race
+        // below, so a slow fetch still eventually flips `catalog.isReady`.
+        Promise.race([this.initServiceCatalogs(), this._makeInitTimeout()])
+          .catch((error) => {
+            this.initFailed = true;
+            this.logger.error(
+              `services: failed to init initial services when credentials available, ${error?.message}`
+            );
+          })
+          .finally(() => this._finalizeReady());
+      } else {
+        const {email} = this.webex.config;
+
+        // Handle fresh login: 'loaded' fires before OAuth completes, so listen
+        // for `canAuthorize` flipping true and then collect the postauth catalog.
+        this.listenToOnce(this.webex, 'change:canAuthorize', () => {
+          if (this.webex.canAuthorize && !catalog.status.postauth.ready) {
+            // `initServiceCatalogs` marks the catalog ready internally.
+            this.initServiceCatalogs().catch((error) => {
+              this.logger.error(
+                `services: failed to init service catalogs after auth, ${error?.message}`
+              );
+            });
+          }
+        });
+
+        if (this.webex.config?.services?.skipPreauthCatalogOnUnauthenticated === true) {
+          // Skip the preauth catalog fetch (it will be collected manually
+          // later), but still finalize `services.ready` so `webex.ready` is not
+          // stalled while unauthenticated. No timeout is created here so there
+          // is no stray timer or unhandled rejection.
+          this.logger.info(
+            'services: skipping preauth catalog collection while unauthenticated as per the config'
+          );
+          this._finalizeReady();
+        } else {
+          Promise.race([
+            this.collectPreauthCatalog(email ? {email} : undefined),
+            this._makeInitTimeout(),
+          ])
+            .catch((error) => {
+              this.initFailed = true;
+              this.logger.error(
+                `services: failed to init initial services when no credentials available, ${error?.message}`
+              );
+            })
+            .finally(() => this._finalizeReady());
+        }
       }
     });
   },

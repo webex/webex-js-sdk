@@ -1,0 +1,883 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/contact-center",
+    "purpose": "A Webex SDK plugin package that exposes Contact Center agent, task, calling, configuration, realtime event, and telemetry APIs.",
+    "category": "cat1-legacy",
+    "primary_languages": [
+      "TypeScript",
+      "JavaScript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "compile": {
+      "command": "yarn workspace @webex/contact-center compile",
+      "source_file": "packages/@webex/contact-center/package.json",
+      "verified_at": "2026-08-05T10:53:14Z"
+    },
+    "build": {
+      "command": "yarn workspace @webex/contact-center build:src",
+      "source_file": "package.json"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/contact-center test:unit",
+      "source_file": "packages/@webex/contact-center/package.json",
+      "verified_at": "2026-08-05T10:53:14Z"
+    },
+    "test": {
+      "command": "yarn workspace @webex/contact-center test",
+      "source_file": "package.json"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/contact-center test:style",
+      "source_file": "package.json"
+    },
+    "docs": {
+      "command": "yarn workspace @webex/contact-center build:docs",
+      "source_file": "package.json"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% — spec is authoritative",
+    "partial": "40-80% specced — spec is a hint, cross-check code",
+    "untracked": "<40% specced — code is the source of truth"
+  },
+  "modules": [
+    {
+      "path": "src",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
+      "canonical_spec": "ai-docs/contact-center-spec.md",
+      "contracts": {
+        "provides": [
+          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task with ordered action-specific consult/transfer destination controls, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, existing getQueues/getEntryPoints methods with consult/transfer defaults, full Queue records, and mapped EntryPoint records with optional numbers, exported user-preference request/response types, and preview-campaign methods acceptPreviewContact/skipPreviewContact/removePreviewContact",
+          "WXCC-6026 wxApp Better Together: enableWxBetterTogether init config, isWxBetterTogetherEnabled read API, unified task telephony (task.accept/decline/toggleMute/transmitDtmf), TASK_WXAPP_MUTE_STATE_UPDATED event, optional main.keypad uiControl, multi-login supported; runtime toggle deferred to Phase 2 (private)"
+        ],
+        "requires": [
+          "Webex SDK host/plugin runtime; Contact Center REST and WebSocket services; internal Webex calling, metrics, support, authorization, logger, and mercury packages"
+        ]
+      },
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": true,
+        "holds_client_state": true,
+        "resolved_by": "Codex generator with user-confirmed module map",
+        "resolved_at": "2026-07-07T13:41:40Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "AGENTS.md",
+          "ai-docs/README.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
+      }
+    },
+    {
+      "path": "src/metrics",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
+      "canonical_spec": "src/metrics/ai-docs/metrics-spec.md",
+      "contracts": {
+        "provides": [
+          "MetricsManager timing, behavioral/operational/business event submission, taxonomy, queues, and tracking-field helpers"
+        ],
+        "requires": [
+          "Webex internal metrics service; Webex ready lifecycle; LoggerProxy; browser document visibility"
+        ]
+      },
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": false,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex generator with user-confirmed module map",
+        "resolved_at": "2026-07-07T13:41:40Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/metrics/ai-docs/AGENTS.md",
+          "src/metrics/ai-docs/ARCHITECTURE.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
+      }
+    },
+    {
+      "path": "src/services",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
+      "canonical_spec": "src/services/ai-docs/services-spec.md",
+      "contracts": {
+        "provides": [
+          "Services composition root; agent/config/contact/dialer factories; AddressBook, EntryPoint, Queue, UserPreference, ApiAiAssistant, and WebCalling integration; existing Queue/EntryPoint list methods with SDK-owned defaults and compatible existing-parameter overrides; Queue returns full records and EntryPoint maps profile-scoped dial-number rows to typed records with optional numbers; cc.userPreference exposes user-preference CRUD"
+        ],
+        "requires": [
+          "Core HTTP/WebSocket/AQM infrastructure; WCC APIs; @webex/calling; MetricsManager; PageCache"
+        ]
+      },
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex generator with user-confirmed module map",
+        "resolved_at": "2026-07-07T13:41:40Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/services/ai-docs/AGENTS.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
+      }
+    },
+    {
+      "path": "src/services/agent",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
+      "canonical_spec": "src/services/agent/ai-docs/agent-spec.md",
+      "contracts": {
+        "provides": [
+          "Agent request factory; station login/logout, state changes, buddy-agent and relogin operations; AGENT_EVENTS and agent types"
+        ],
+        "requires": [
+          "AqmReqs; WCC API gateway; correlated WebSocket notifications; ContactCenter registration/profile state"
+        ]
+      },
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": false,
+        "resolved_by": "Codex generator with user-confirmed module map",
+        "resolved_at": "2026-07-07T13:41:40Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/services/agent/ai-docs/AGENTS.md",
+          "src/services/agent/ai-docs/ARCHITECTURE.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
+      }
+    },
+    {
+      "path": "src/services/config",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
+      "canonical_spec": "src/services/config/ai-docs/config-spec.md",
+      "contracts": {
+        "provides": [
+          "Agent profile aggregation; config endpoint methods; CC event/type contracts; outdial ANI access"
+        ],
+        "requires": [
+          "WebexRequest; WCC organization, team, profile, aux-code, dial-plan, site, tenant, and URL-mapping APIs"
+        ]
+      },
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": false,
+        "resolved_by": "Codex generator with user-confirmed module map",
+        "resolved_at": "2026-07-07T13:41:40Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/services/config/ai-docs/AGENTS.md",
+          "src/services/config/ai-docs/ARCHITECTURE.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
+      }
+    },
+    {
+      "path": "src/services/core",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
+      "canonical_spec": "src/services/core/ai-docs/core-spec.md",
+      "contracts": {
+        "provides": [
+          "WebexRequest; WebSocketManager; ConnectionService; AqmReqs; shared error and request types/utilities"
+        ],
+        "requires": [
+          "Webex SDK authenticated service routing; browser WebSocket/Worker/network APIs; LoggerProxy; metrics/log-upload infrastructure"
+        ]
+      },
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex generator with user-confirmed module map",
+        "resolved_at": "2026-07-07T13:41:40Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/services/core/ai-docs/AGENTS.md",
+          "src/services/core/ai-docs/ARCHITECTURE.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
+      }
+    },
+    {
+      "path": "src/services/task",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
+      "canonical_spec": "src/services/task/ai-docs/task-spec.md",
+      "contracts": {
+        "provides": [
+          "Task/Voice/WebRTC/Digital lifecycle APIs; TaskManager lifecycle correlation, narrowly scoped backend-authoritative ContactOwnerChanged recovery, and task-event publication, including routing owner-changing ContactUpdated through the existing task:hydrate event; task events/types; ordered action-specific consult/transfer destination controls; call-control and dialer operations including acceptPreviewContact, skipPreviewContact, and removePreviewContact"
+        ],
+        "requires": [
+          "Contact/dialer AqmReqs; WebSocket managers; @webex/calling; MetricsManager; XState task-state module"
+        ]
+      },
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex generator with user-confirmed module map",
+        "resolved_at": "2026-07-07T13:41:40Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/services/task/ai-docs/AGENTS.md",
+          "src/services/task/ai-docs/ARCHITECTURE.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
+      }
+    },
+    {
+      "path": "src/services/task/state-machine",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
+      "canonical_spec": "src/services/task/state-machine/ai-docs/task-state-machine-spec.md",
+      "contracts": {
+        "provides": [
+          "Task state-machine factory; TaskState/TaskEvent contracts; guards/actions; state/profile/interaction-derived UI-control and ordered consult/transfer destination computation"
+        ],
+        "requires": [
+          "XState; TaskData/task event contracts; Task and TaskManager integration"
+        ]
+      },
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": false,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex generator with user-confirmed module map",
+        "resolved_at": "2026-07-07T13:41:40Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/services/task/state-machine/ai-docs/AGENTS.md",
+          "src/services/task/state-machine/ai-docs/ARCHITECTURE.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
+      }
+    },
+    {
+      "path": "src/utils",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
+      "canonical_spec": "src/utils/ai-docs/utils-spec.md",
+      "contracts": {
+        "provides": [
+          "PageCache; pagination/search/cache contracts and defaults"
+        ],
+        "requires": [
+          "LoggerProxy; in-memory Map and clock; AddressBook, EntryPoint, and Queue consumers"
+        ]
+      },
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": false,
+        "owns_persistence": false,
+        "returns_caller_errors": false,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": true,
+        "resolved_by": "Codex generator with user-confirmed module map",
+        "resolved_at": "2026-07-07T13:41:40Z"
+      },
+      "source_policy": {
+        "mode": "migrate-existing",
+        "existing_sources": [
+          "src/utils/AGENTS.md"
+        ],
+        "conflict_status": "none",
+        "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
+      }
+    }
+  ],
+  "spec_source_policy": {
+    "mode": "migrate-existing",
+    "decided_by": "user",
+    "decided_at": "2026-07-07T13:27:09Z",
+    "decision_record": "ai-docs/adr/0001-spec-source-policy.md"
+  },
+  "spec_sources": [
+    {
+      "path": "AGENTS.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": true,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "AGENTS.md",
+      "notes": "Approved in-place canonical target; source units must be inventoried before rewrite."
+    },
+    {
+      "path": "ai-docs/README.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "ai-docs/GETTING_STARTED.md",
+      "notes": "Package purpose, technologies, navigation, commands, and architecture overview migrate by meaning."
+    },
+    {
+      "path": "ai-docs/RULES.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": true,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "ai-docs/RULES.md",
+      "notes": "Approved in-place canonical standing document; source units must be inventoried before rewrite."
+    },
+    {
+      "path": "ai-docs/patterns/event-driven-patterns.md",
+      "scope": "reference",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "ai-docs/RULES.md",
+      "notes": "Event and WebSocket rules remain in place and feed canonical rules/module specs."
+    },
+    {
+      "path": "ai-docs/patterns/testing-patterns.md",
+      "scope": "reference",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "ai-docs/RULES.md",
+      "notes": "Testing conventions remain in place and feed canonical rules/module specs."
+    },
+    {
+      "path": "ai-docs/patterns/typescript-patterns.md",
+      "scope": "reference",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "canonical_target": "ai-docs/RULES.md",
+      "notes": "TypeScript/JSDoc conventions remain in place and feed canonical rules/module specs."
+    },
+    {
+      "path": "src/metrics/ai-docs/AGENTS.md",
+      "scope": "module",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "module": "src/metrics",
+      "canonical_target": "src/metrics/ai-docs/metrics-spec.md",
+      "notes": "Retained in place; becomes a superseded migration source only after source-fidelity and canonical generation pass."
+    },
+    {
+      "path": "src/metrics/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "module": "src/metrics",
+      "canonical_target": "src/metrics/ai-docs/metrics-spec.md",
+      "notes": "Retained in place; becomes a superseded migration source only after source-fidelity and canonical generation pass."
+    },
+    {
+      "path": "src/services/ai-docs/AGENTS.md",
+      "scope": "module",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "module": "src/services",
+      "canonical_target": "src/services/ai-docs/services-spec.md",
+      "notes": "Retained in place; becomes a superseded migration source only after source-fidelity and canonical generation pass."
+    },
+    {
+      "path": "src/services/agent/ai-docs/AGENTS.md",
+      "scope": "module",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "module": "src/services/agent",
+      "canonical_target": "src/services/agent/ai-docs/agent-spec.md",
+      "notes": "Retained in place; becomes a superseded migration source only after source-fidelity and canonical generation pass."
+    },
+    {
+      "path": "src/services/agent/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "module": "src/services/agent",
+      "canonical_target": "src/services/agent/ai-docs/agent-spec.md",
+      "notes": "Retained in place; becomes a superseded migration source only after source-fidelity and canonical generation pass."
+    },
+    {
+      "path": "src/services/config/ai-docs/AGENTS.md",
+      "scope": "module",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "module": "src/services/config",
+      "canonical_target": "src/services/config/ai-docs/config-spec.md",
+      "notes": "Retained in place; becomes a superseded migration source only after source-fidelity and canonical generation pass."
+    },
+    {
+      "path": "src/services/config/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "module": "src/services/config",
+      "canonical_target": "src/services/config/ai-docs/config-spec.md",
+      "notes": "Retained in place; becomes a superseded migration source only after source-fidelity and canonical generation pass."
+    },
+    {
+      "path": "src/services/core/ai-docs/AGENTS.md",
+      "scope": "module",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "module": "src/services/core",
+      "canonical_target": "src/services/core/ai-docs/core-spec.md",
+      "notes": "Retained in place; becomes a superseded migration source only after source-fidelity and canonical generation pass."
+    },
+    {
+      "path": "src/services/core/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "module": "src/services/core",
+      "canonical_target": "src/services/core/ai-docs/core-spec.md",
+      "notes": "Retained in place; becomes a superseded migration source only after source-fidelity and canonical generation pass."
+    },
+    {
+      "path": "src/services/task/ai-docs/AGENTS.md",
+      "scope": "module",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "module": "src/services/task",
+      "canonical_target": "src/services/task/ai-docs/task-spec.md",
+      "notes": "Retained in place; becomes a superseded migration source only after source-fidelity and canonical generation pass."
+    },
+    {
+      "path": "src/services/task/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "module": "src/services/task",
+      "canonical_target": "src/services/task/ai-docs/task-spec.md",
+      "notes": "Retained in place; becomes a superseded migration source only after source-fidelity and canonical generation pass."
+    },
+    {
+      "path": "src/services/task/state-machine/ai-docs/AGENTS.md",
+      "scope": "module",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "module": "src/services/task/state-machine",
+      "canonical_target": "src/services/task/state-machine/ai-docs/task-state-machine-spec.md",
+      "notes": "Retained in place; becomes a superseded migration source only after source-fidelity and canonical generation pass."
+    },
+    {
+      "path": "src/services/task/state-machine/ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "module": "src/services/task/state-machine",
+      "canonical_target": "src/services/task/state-machine/ai-docs/task-state-machine-spec.md",
+      "notes": "Retained in place; becomes a superseded migration source only after source-fidelity and canonical generation pass."
+    },
+    {
+      "path": "src/utils/AGENTS.md",
+      "scope": "module",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-migration",
+      "module": "src/utils",
+      "canonical_target": "src/utils/ai-docs/utils-spec.md",
+      "notes": "Retained in place; becomes a superseded migration source only after source-fidelity and canonical generation pass."
+    },
+    {
+      "path": "ai-docs/templates/README.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Legacy package workflow template retained unchanged; not a product intent/design source for canonical SDD specs."
+    },
+    {
+      "path": "ai-docs/templates/documentation/create-agents-md.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Legacy package workflow template retained unchanged; not a product intent/design source for canonical SDD specs."
+    },
+    {
+      "path": "ai-docs/templates/documentation/create-architecture-md.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Legacy package workflow template retained unchanged; not a product intent/design source for canonical SDD specs."
+    },
+    {
+      "path": "ai-docs/templates/existing-service/bug-fix.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Legacy package workflow template retained unchanged; not a product intent/design source for canonical SDD specs."
+    },
+    {
+      "path": "ai-docs/templates/existing-service/feature-enhancement.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Legacy package workflow template retained unchanged; not a product intent/design source for canonical SDD specs."
+    },
+    {
+      "path": "ai-docs/templates/new-method/00-master.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Legacy package workflow template retained unchanged; not a product intent/design source for canonical SDD specs."
+    },
+    {
+      "path": "ai-docs/templates/new-method/01-requirements.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Legacy package workflow template retained unchanged; not a product intent/design source for canonical SDD specs."
+    },
+    {
+      "path": "ai-docs/templates/new-method/02-implementation.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Legacy package workflow template retained unchanged; not a product intent/design source for canonical SDD specs."
+    },
+    {
+      "path": "ai-docs/templates/new-method/03-tests.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Legacy package workflow template retained unchanged; not a product intent/design source for canonical SDD specs."
+    },
+    {
+      "path": "ai-docs/templates/new-method/04-validation.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Legacy package workflow template retained unchanged; not a product intent/design source for canonical SDD specs."
+    },
+    {
+      "path": "ai-docs/templates/new-service/00-master.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Legacy package workflow template retained unchanged; not a product intent/design source for canonical SDD specs."
+    },
+    {
+      "path": "ai-docs/templates/new-service/01-pre-questions.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Legacy package workflow template retained unchanged; not a product intent/design source for canonical SDD specs."
+    },
+    {
+      "path": "ai-docs/templates/new-service/02-code-generation.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Legacy package workflow template retained unchanged; not a product intent/design source for canonical SDD specs."
+    },
+    {
+      "path": "ai-docs/templates/new-service/03-integration.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Legacy package workflow template retained unchanged; not a product intent/design source for canonical SDD specs."
+    },
+    {
+      "path": "ai-docs/templates/new-service/04-test-generation.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Legacy package workflow template retained unchanged; not a product intent/design source for canonical SDD specs."
+    },
+    {
+      "path": "ai-docs/templates/new-service/05-validation.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Legacy package workflow template retained unchanged; not a product intent/design source for canonical SDD specs."
+    }
+  ],
+  "spec_policy": {
+    "delta_grammar": {
+      "added": "## ADDED Requirements",
+      "modified": "## MODIFIED Requirements",
+      "removed": "## REMOVED Requirements"
+    },
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "ai-docs/contact-center-spec.md",
+      "src/metrics/ai-docs/metrics-spec.md",
+      "src/services/ai-docs/services-spec.md",
+      "src/services/agent/ai-docs/agent-spec.md",
+      "src/services/config/ai-docs/config-spec.md",
+      "src/services/core/ai-docs/core-spec.md",
+      "src/services/task/ai-docs/task-spec.md",
+      "src/services/task/state-machine/ai-docs/task-state-machine-spec.md",
+      "src/utils/ai-docs/utils-spec.md",
+      "AGENTS.md",
+      "ai-docs/ARCHITECTURE.md",
+      "ai-docs/RULES.md",
+      "ai-docs/CONTRACTS.md",
+      "ai-docs/SPEC_INDEX.md"
+    ],
+    "required_sections_by_change_class": {
+      "core_always": [
+        "Intent (WHAT)",
+        "Rationale (WHY)",
+        "Scope/Out-of-scope",
+        "Acceptance criteria",
+        "Contracts delta"
+      ],
+      "security_or_contract_or_perf_critical": [
+        "Data",
+        "Error Matrix",
+        "Resilience",
+        "Observability",
+        "Operations"
+      ]
+    }
+  },
+  "validation": {
+    "generator_runtime": "codex",
+    "validator_runtime": "claude-code",
+    "must_differ": true,
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "generator_run_id": "contact-center-bootstrap-20260707",
+    "source_commit": "382831a838c34fb1520320654beaf12d4afdfacb",
+    "runtime_family": "openai-codex"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "ai-docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "ai-docs",
+    "spec_index_path": "ai-docs/SPEC_INDEX.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_folder_name": "ai-docs",
+    "template_roots": {
+      "canonical": "../../../.sdd/templates",
+      "extensions": [
+        "../../../.sdd/templates/extensions"
+      ],
+      "legacy_compat": "ai-docs/templates"
+    },
+    "repo_skills_root": "../../../.agents/skills",
+    "runtime_skill_entrypoints": {
+      "codex": "../../../.agents/skills",
+      "cursor": "../../../.cursor/skills"
+    },
+    "contracts_strategy": "root-index-module-detail"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "source_repo": "repo-installed SDLC skills",
+      "source_ref": "brownfield-onboarding@0.1.6+codex.20260706172001",
+      "install_mode": "copy",
+      "installed_at": "2026-07-06T17:20:01Z",
+      "plugins": [
+        "brownfield-onboarding@0.1.6+codex.20260706172001",
+        "sdlc-lifecycle@0.1.1+codex.20260630150003"
+      ]
+    }
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "webex-js-sdk repository standards",
+    "consumed": [
+      "root lint/format configs (.eslintrc.js, .prettierrc, .editorconfig)",
+      "standard files (README.md, CONTRIBUTING.md, .github/CODEOWNERS)",
+      "workspace build/test tooling"
+    ],
+    "compliance_tier": "legacy"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": true,
+      "observability_convention": true,
+      "deploys_to_infra": true,
+      "shared_base_libs": true,
+      "is_monorepo": true,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": true,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true
+    },
+    "resolved_by": "Codex generator with user-confirmed scope/module boundaries",
+    "resolved_at": "2026-07-07T13:41:40Z"
+  }
+}

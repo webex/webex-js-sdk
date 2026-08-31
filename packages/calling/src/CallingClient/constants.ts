@@ -130,7 +130,11 @@ export const MOBIUS_EU_INT = 'mobius-eu-central-1.int.infra.webex.com';
 export const FAILOVER_CACHE_PREFIX = 'wxc-failover-state';
 export const ACTIVE_MOBIUS_STORAGE_KEY = 'wxc-active-mobius';
 export const ICE_CANDIDATES_TIMEOUT = 3000;
+// Reduced ICE candidates timeout used for ice-lite offers.
+export const ICE_LITE_CANDIDATES_TIMEOUT = 500;
 export const WCC_CALLING_RTMS_DOMAIN = 'wcc-calling-rtms-domain';
+export const SESSION_SUPERSEDED_MESSAGE =
+  'This calling session has been superseded by another registration for the same user, for example calling opened in another browser tab or device. Calling is no longer available on this session.';
 
 // Define constants for method names
 export const METHODS = {
@@ -238,6 +242,7 @@ export const METHODS = {
   GET_SDK_CONNECTOR: 'getSDKConnector',
   GET_CONNECTED_CALL: 'getConnectedCall',
   CONNECT_TO_MOBIUS_SOCKET: 'connectToMobiusSocket',
+  SET_SOCKET_ENABLED: 'setSocketEnabled',
   REGISTER_MOBIUS_SOCKET_LISTENER: 'registerMobiusSocketListener',
   UNREGISTER_MOBIUS_SOCKET_LISTENER: 'unregisterMobiusSocketListener',
   REGISTER_MOBIUS_SOCKET_CONNECTION_LISTENER: 'registerMobiusSocketConnectionListener',
@@ -252,6 +257,7 @@ export const METHODS = {
   RESTART_REGISTRATION: 'restartRegistration',
   TRIGGER_REGISTRATION: 'triggerRegistration',
   HANDLE_404_KEEPALIVE_FAILURE: 'handle404KeepaliveFailure',
+  HANDLE_409_KEEPALIVE_FAILURE: 'handle409KeepaliveFailure',
   INITIATE_FAILBACK: 'initiateFailback',
   EXECUTE_FAILBACK: 'executeFailback',
   GET_RTMS_DOMAIN: 'getRTMSDomain',

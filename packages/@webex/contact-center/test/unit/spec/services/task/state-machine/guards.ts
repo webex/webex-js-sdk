@@ -1,0 +1,839 @@
+import {guards, GuardParams} from '../../../../../../src/services/task/state-machine/guards';
+import {
+  TaskContext,
+  TaskEventPayload,
+} from '../../../../../../src/services/task/state-machine/types';
+import {TaskEvent} from '../../../../../../src/services/task/state-machine/constants';
+import {TaskData, InteractionParticipant} from '../../../../../../src/services/task/types';
+
+describe('State Machine Guards', () => {
+  const createParticipant = (
+    id: string,
+    pType: string,
+    hasLeft = false
+  ): InteractionParticipant => ({
+    id,
+    pType,
+    type: pType,
+    hasJoined: true,
+    hasLeft,
+    isInPredial: false,
+  });
+  // Note: media key must match mainInteractionId for getIsConferenceInProgress to work
+  const INTERACTION_ID = 'interaction-123';
+
+  const createTaskData = (overrides: Partial<TaskData> = {}): TaskData =>
+    ({
+      mediaResourceId: INTERACTION_ID,
+      eventType: 'TEST_EVENT',
+      agentId: 'agent-123',
+      destAgentId: '',
+      trackingId: 'track-123',
+      consultMediaResourceId: '',
+      interactionId: INTERACTION_ID,
+      orgId: 'org-123',
+      owner: 'agent-123',
+      queueMgr: 'queue-mgr',
+      type: 'voice',
+      isConferencing: false,
+      interaction: {
+        mainInteractionId: INTERACTION_ID,
+        interactionId: INTERACTION_ID,
+        participants: {},
+        media: {
+          [INTERACTION_ID]: {
+            mediaResourceId: INTERACTION_ID,
+            mediaType: 'telephony',
+            mediaMgr: 'media-mgr',
+            participants: ['agent-123'],
+            mType: 'mainCall',
+            isHold: false,
+            holdTimestamp: null,
+          },
+        },
+        owner: 'agent-123',
+        mediaChannel: 'telephony',
+        contactDirection: {type: 'inbound'},
+      },
+      ...overrides,
+    } as TaskData);
+
+  const createContext = (overrides: Partial<TaskContext> = {}): TaskContext =>
+    ({
+      recordingControlsAvailable: false,
+      recordingInProgress: false,
+      consultDestinationAgentJoined: false,
+      consultCallHeld: false,
+      consultInitiator: false,
+      exitingConference: false,
+      hideBlindTransferForEpDnPendingMerge: false,
+      consultDestinationType: null,
+      taskData: createTaskData(),
+      uiControlConfig: {agentId: 'agent-123'},
+      uiControls: {
+        main: {
+          accept: {isVisible: false, isEnabled: false},
+          decline: {isVisible: false, isEnabled: false},
+          hold: {isVisible: false, isEnabled: false},
+          end: {isVisible: false, isEnabled: false},
+          transfer: {isVisible: false, isEnabled: false},
+          consult: {isVisible: false, isEnabled: false},
+          consultTransfer: {isVisible: false, isEnabled: false},
+          endConsult: {isVisible: false, isEnabled: false},
+          recording: {isVisible: false, isEnabled: false},
+          conference: {isVisible: false, isEnabled: false},
+          wrapup: {isVisible: false, isEnabled: false},
+          exitConference: {isVisible: false, isEnabled: false},
+          transferConference: {isVisible: false, isEnabled: false},
+          mergeToConference: {isVisible: false, isEnabled: false},
+          switch: {isVisible: false, isEnabled: false},
+          mute: {isVisible: false, isEnabled: false},
+        },
+        consult: {
+          accept: {isVisible: false, isEnabled: false},
+          decline: {isVisible: false, isEnabled: false},
+          hold: {isVisible: false, isEnabled: false},
+          end: {isVisible: false, isEnabled: false},
+          transfer: {isVisible: false, isEnabled: false},
+          consult: {isVisible: false, isEnabled: false},
+          consultTransfer: {isVisible: false, isEnabled: false},
+          endConsult: {isVisible: false, isEnabled: false},
+          recording: {isVisible: false, isEnabled: false},
+          conference: {isVisible: false, isEnabled: false},
+          wrapup: {isVisible: false, isEnabled: false},
+          exitConference: {isVisible: false, isEnabled: false},
+          transferConference: {isVisible: false, isEnabled: false},
+          mergeToConference: {isVisible: false, isEnabled: false},
+          switch: {isVisible: false, isEnabled: false},
+          mute: {isVisible: false, isEnabled: false},
+        },
+        activeLeg: 'main',
+      },
+      ...overrides,
+    } as TaskContext);
+
+  const createParams = (context: TaskContext, event?: TaskEventPayload): GuardParams => ({
+    context,
+    event,
+  });
+
+  const createEventWithTaskData = (taskData: TaskData): TaskEventPayload =>
+    ({taskData} as TaskEventPayload);
+
+  describe('Conference Guards', () => {
+    it('conferenceInProgressFromEvent returns true with 2+ agents in event', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          participants: {
+            a1: createParticipant('a1', 'Agent'),
+            a2: createParticipant('a2', 'Agent'),
+          },
+          media: {
+            [INTERACTION_ID]: {
+              mediaResourceId: INTERACTION_ID,
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['a1', 'a2'],
+              mType: 'mainCall',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        },
+      });
+      expect(
+        guards.conferenceInProgressFromEvent(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(true);
+    });
+
+    it('conferenceInProgressFromEvent returns false with 1 agent', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          participants: {
+            a1: createParticipant('a1', 'Agent'),
+          },
+          media: {
+            [INTERACTION_ID]: {
+              mediaResourceId: INTERACTION_ID,
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['a1'],
+              mType: 'mainCall',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        },
+      });
+      expect(
+        guards.conferenceInProgressFromEvent(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
+    });
+  });
+
+  describe('Consult Guards', () => {
+    it('didInitiateConsult returns true when consultingAgentId matches', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        consultingAgentId: 'agent-123',
+        isConsulted: false,
+      });
+      expect(guards.didInitiateConsult(createParams(ctx, createEventWithTaskData(taskData)))).toBe(
+        true
+      );
+    });
+
+    it('didInitiateConsult returns false when isConsulted is true', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({isConsulted: true});
+      expect(guards.didInitiateConsult(createParams(ctx, createEventWithTaskData(taskData)))).toBe(
+        false
+      );
+    });
+
+    it('isInteractionConsulting returns true for pending self consult on hydrate', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        isConsulted: false,
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'conference',
+          participants: {
+            'agent-123': {
+              ...createParticipant('agent-123', 'Agent'),
+              consultState: 'consultInitiated',
+              isConsulted: false,
+            },
+            'agent-456': {
+              ...createParticipant('agent-456', 'Agent'),
+              hasJoined: false,
+              consultState: 'consultReserved',
+              isConsulted: true,
+            },
+          },
+          media: {
+            [INTERACTION_ID]: {
+              mediaResourceId: INTERACTION_ID,
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123'],
+              mType: 'mainCall',
+              isHold: true,
+              holdTimestamp: Date.now(),
+            },
+            'consult-media': {
+              mediaResourceId: 'consult-media',
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123', 'agent-456'],
+              mType: 'consult',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        } as any,
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(true);
+    });
+
+    it('isInteractionConsulting returns false for consulted agent pending consult state', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        isConsulted: true,
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'conference',
+          participants: {
+            'agent-123': {
+              ...createParticipant('agent-123', 'Agent'),
+              consultState: 'consultInitiated',
+              isConsulted: true,
+            },
+          },
+          media: {
+            [INTERACTION_ID]: {
+              mediaResourceId: INTERACTION_ID,
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123'],
+              mType: 'mainCall',
+              isHold: true,
+              holdTimestamp: Date.now(),
+            },
+            'consult-media': {
+              mediaResourceId: 'consult-media',
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123'],
+              mType: 'consult',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        } as any,
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
+    });
+  });
+
+  describe('Wrap-up Guards', () => {
+    it('shouldWrapUp returns true for owner', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          owner: 'agent-123',
+        },
+      });
+      expect(guards.shouldWrapUp(createParams(ctx, createEventWithTaskData(taskData)))).toBe(true);
+    });
+
+    it('shouldWrapUp returns false for non-owner', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          owner: 'other-agent',
+        },
+      });
+      expect(guards.shouldWrapUp(createParams(ctx, createEventWithTaskData(taskData)))).toBe(false);
+    });
+
+    it('shouldWrapUp returns true when agentsPendingWrapUp includes agent', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        agentsPendingWrapUp: ['agent-123', 'other-agent'],
+      } as Partial<TaskData>);
+      expect(guards.shouldWrapUp(createParams(ctx, createEventWithTaskData(taskData)))).toBe(true);
+    });
+
+    it('shouldWrapUp uses isConsulted fallback when no owner', () => {
+      const taskData = createTaskData({
+        isConsulted: false,
+        interaction: {
+          ...createTaskData().interaction,
+          owner: undefined as unknown as string, // No owner
+        },
+      });
+      const ctx = createContext({taskData});
+      expect(guards.shouldWrapUp(createParams(ctx, createEventWithTaskData(taskData)))).toBe(true);
+    });
+  });
+
+  describe('isPassiveConferenceTransferObserver', () => {
+    it('returns false when transfer was initiated via widgets', () => {
+      const ctx = createContext({transferConferenceRequested: true, consultInitiator: false});
+      expect(
+        guards.isPassiveConferenceTransferObserver(createParams(ctx, createEventWithTaskData()))
+      ).toBe(false);
+    });
+
+    it('returns false when this agent initiated the consult transfer', () => {
+      const ctx = createContext({transferConferenceRequested: false, consultInitiator: false});
+      const taskData = createTaskData({consultingAgentId: 'agent-123'});
+      expect(
+        guards.isPassiveConferenceTransferObserver(
+          createParams(ctx, createEventWithTaskData(taskData))
+        )
+      ).toBe(false);
+    });
+
+    it('returns true when only stale consultInitiator is set without consultingAgentId evidence', () => {
+      const ctx = createContext({transferConferenceRequested: false, consultInitiator: true});
+      expect(
+        guards.isPassiveConferenceTransferObserver(createParams(ctx, createEventWithTaskData()))
+      ).toBe(true);
+    });
+
+    it('returns false when self is absent from participants snapshot', () => {
+      const ctx = createContext({consultInitiator: false});
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          participants: {
+            'other-agent': createParticipant('other-agent', 'Agent'),
+          },
+        },
+      });
+      expect(
+        guards.isPassiveConferenceTransferObserver(
+          createParams(ctx, createEventWithTaskData(taskData))
+        )
+      ).toBe(false);
+    });
+
+    it('returns false when self hasLeft in participants snapshot', () => {
+      const ctx = createContext({consultInitiator: false});
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          participants: {
+            'agent-123': createParticipant('agent-123', 'Agent', true),
+          },
+        },
+      });
+      expect(
+        guards.isPassiveConferenceTransferObserver(
+          createParams(ctx, createEventWithTaskData(taskData))
+        )
+      ).toBe(false);
+    });
+
+    it('returns true for passive observer still in the conference', () => {
+      const ctx = createContext({transferConferenceRequested: false, consultInitiator: false});
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          participants: {
+            'agent-123': createParticipant('agent-123', 'Agent'),
+            'other-agent': createParticipant('other-agent', 'Agent'),
+          },
+        },
+      });
+      expect(
+        guards.isPassiveConferenceTransferObserver(
+          createParams(ctx, createEventWithTaskData(taskData))
+        )
+      ).toBe(true);
+    });
+
+    it('returns false when secondary agent initiated transfer via payload consultingAgentId', () => {
+      const ctx = createContext({transferConferenceRequested: false, consultInitiator: false});
+      const taskData = createTaskData({
+        isConsulted: true,
+        consultingAgentId: 'agent-123',
+        interaction: {
+          ...createTaskData().interaction,
+          participants: {
+            'agent-123': {...createParticipant('agent-123', 'Agent'), consultState: 'consulting'},
+          },
+          media: {
+            ...createTaskData().interaction!.media,
+            'consult-media': {
+              mediaResourceId: 'consult-media',
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123', 'agent-456'],
+              mType: 'consult',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        },
+      });
+      expect(
+        guards.isPassiveConferenceTransferObserver(
+          createParams(ctx, createEventWithTaskData(taskData))
+        )
+      ).toBe(false);
+    });
+  });
+
+  describe('isSelfConferenceTransferInitiator', () => {
+    it('returns true when consultingAgentId matches self even if isConsulted is true', () => {
+      const ctx = createContext({consultInitiator: false, transferConferenceRequested: false});
+      const taskData = createTaskData({
+        isConsulted: true,
+        consultingAgentId: 'agent-123',
+      });
+      expect(
+        guards.isSelfConferenceTransferInitiator(
+          createParams(ctx, createEventWithTaskData(taskData))
+        )
+      ).toBe(true);
+    });
+
+    it('returns false when consultee has consultState consulting but consultingAgentId is another agent', () => {
+      const ctx = createContext({consultInitiator: false, transferConferenceRequested: false});
+      const taskData = createTaskData({
+        isConsulted: true,
+        consultingAgentId: 'agent-456',
+        interaction: {
+          ...createTaskData().interaction,
+          participants: {
+            'agent-123': {...createParticipant('agent-123', 'Agent'), consultState: 'consulting'},
+          },
+          media: {
+            [INTERACTION_ID]: createTaskData().interaction!.media![INTERACTION_ID],
+            'consult-media': {
+              mediaResourceId: 'consult-media',
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123', 'agent-456'],
+              mType: 'consult',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        },
+      });
+      expect(
+        guards.isSelfConferenceTransferInitiator(
+          createParams(ctx, createEventWithTaskData(taskData))
+        )
+      ).toBe(false);
+    });
+
+    it('returns false for passive observer without consult signals', () => {
+      const ctx = createContext({consultInitiator: false, transferConferenceRequested: false});
+      const taskData = createTaskData({
+        isConsulted: true,
+        interaction: {
+          ...createTaskData().interaction,
+          participants: {
+            'agent-123': createParticipant('agent-123', 'Agent'),
+          },
+        },
+      });
+      expect(
+        guards.isSelfConferenceTransferInitiator(
+          createParams(ctx, createEventWithTaskData(taskData))
+        )
+      ).toBe(false);
+    });
+  });
+
+  describe('Hydration Guards - isInteractionConsulting', () => {
+    it('returns true when interaction state is consulting', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'consulting',
+        },
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(true);
+    });
+
+    it('returns true for EP_DN consulted agent (state=connected, CPD relationshipType=consult)', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'connected',
+          callProcessingDetails: {
+            ...createTaskData().interaction!.callProcessingDetails,
+            relationshipType: 'consult',
+          },
+        },
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(true);
+    });
+
+    it('returns true when post_call with active consult (consultState=consulting + consult media)', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'post_call',
+          participants: {
+            'agent-123': {
+              ...createParticipant('agent-123', 'Agent'),
+              consultState: 'consulting',
+            },
+          },
+          media: {
+            [INTERACTION_ID]: {
+              mediaResourceId: INTERACTION_ID,
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123'],
+              mType: 'mainCall',
+              isHold: false,
+              holdTimestamp: null,
+            },
+            'consult-media': {
+              mediaResourceId: 'consult-media',
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123', 'agent-2'],
+              mType: 'consult',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        },
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(true);
+    });
+
+    it('returns false for post_call without consult media', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'post_call',
+          participants: {
+            'agent-123': {
+              ...createParticipant('agent-123', 'Agent'),
+              consultState: undefined,
+            },
+          },
+        },
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
+    });
+
+    it('returns false for plain connected state without consult CPD', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'connected',
+        },
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
+    });
+  });
+
+  describe('didCurrentAgentLeaveMainInteraction', () => {
+    const activeTaskData = createTaskData({
+      interaction: {
+        ...createTaskData().interaction,
+        participants: {
+          'agent-123': createParticipant('agent-123', 'Agent'),
+          'agent-456': createParticipant('agent-456', 'Agent'),
+        },
+        media: {
+          'non-interaction-main-key': {
+            mediaResourceId: INTERACTION_ID,
+            mediaType: 'telephony',
+            mediaMgr: 'media-mgr',
+            participants: ['agent-123', 'agent-456'],
+            mType: 'mainCall',
+            isHold: false,
+            holdTimestamp: null,
+          },
+        },
+      },
+    });
+
+    it('returns true when the lifecycle event explicitly names the current agent', () => {
+      const context = createContext({taskData: activeTaskData});
+      const event = {
+        ...createEventWithTaskData(activeTaskData),
+        participantId: 'agent-123',
+      } as TaskEventPayload;
+
+      expect(guards.didCurrentAgentLeaveMainInteraction(createParams(context, event))).toBe(true);
+    });
+
+    it('returns true when the current participant is marked as departed', () => {
+      const context = createContext({taskData: activeTaskData});
+      const updatedTaskData = createTaskData({
+        interaction: {
+          ...activeTaskData.interaction,
+          participants: {
+            ...activeTaskData.interaction.participants,
+            'agent-123': createParticipant('agent-123', 'Agent', true),
+          },
+        },
+      });
+
+      expect(
+        guards.didCurrentAgentLeaveMainInteraction(
+          createParams(context, createEventWithTaskData(updatedTaskData))
+        )
+      ).toBe(true);
+    });
+
+    it('uses mainCall membership for nested CONSULT_END cleanup', () => {
+      const context = createContext({taskData: activeTaskData, consultFromConference: true});
+      const updatedTaskData = createTaskData({
+        interaction: {
+          ...activeTaskData.interaction,
+          participants: activeTaskData.interaction.participants,
+          media: {
+            'another-arbitrary-key': {
+              mediaResourceId: INTERACTION_ID,
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-456'],
+              mType: 'mainCall',
+              isHold: false,
+              holdTimestamp: null,
+            },
+            'consult-media-key': {
+              mediaResourceId: 'consult-media-id',
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123', 'agent-789'],
+              mType: 'consult',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        },
+      });
+      const event = {
+        type: TaskEvent.CONSULT_END,
+        taskData: updatedTaskData,
+      } as TaskEventPayload;
+
+      expect(
+        guards.didCurrentAgentLeaveMainInteraction(createParams(context, event))
+      ).toBe(true);
+    });
+
+    it('does not infer self departure when another participant leaves and the map omits self', () => {
+      const context = createContext({taskData: activeTaskData});
+      const partialTaskData = createTaskData({
+        interaction: {
+          ...activeTaskData.interaction,
+          participants: {'agent-456': createParticipant('agent-456', 'Agent')},
+          media: {
+            'partial-main-key': {
+              mediaResourceId: INTERACTION_ID,
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-456'],
+              mType: 'mainCall',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        },
+      });
+      const event = {
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        participantId: 'agent-456',
+        taskData: partialTaskData,
+      } as TaskEventPayload;
+
+      expect(guards.didCurrentAgentLeaveMainInteraction(createParams(context, event))).toBe(false);
+    });
+
+    it.each(['connected', 'held'])(
+      'does not infer departure from a partial CONSULT_END snapshot while %s',
+      (state) => {
+        const previousTaskData = createTaskData({
+          ...activeTaskData,
+          interaction: {...activeTaskData.interaction, state},
+        });
+        const context = createContext({taskData: previousTaskData});
+        const partialTaskData = createTaskData({
+          interaction: {
+            ...previousTaskData.interaction,
+            participants: previousTaskData.interaction.participants,
+            media: {
+              'partial-main-key': {
+                mediaResourceId: INTERACTION_ID,
+                mediaType: 'telephony',
+                mediaMgr: 'media-mgr',
+                participants: ['agent-456'],
+                mType: 'mainCall',
+                isHold: state === 'held',
+                holdTimestamp: state === 'held' ? Date.now() : null,
+              },
+            },
+          },
+        });
+        const event = {type: TaskEvent.CONSULT_END, taskData: partialTaskData} as TaskEventPayload;
+
+        expect(guards.didCurrentAgentLeaveMainInteraction(createParams(context, event))).toBe(
+          false
+        );
+      }
+    );
+
+    it('returns true when an active current participant disappears from the updated map', () => {
+      const context = createContext({taskData: activeTaskData});
+      const updatedTaskData = createTaskData({
+        interaction: {
+          ...activeTaskData.interaction,
+          participants: {'agent-456': createParticipant('agent-456', 'Agent')},
+          media: activeTaskData.interaction.media,
+        },
+      });
+
+      expect(
+        guards.didCurrentAgentLeaveMainInteraction(
+          createParams(context, createEventWithTaskData(updatedTaskData))
+        )
+      ).toBe(true);
+    });
+
+    it('does not infer departure from missing partial interaction membership', () => {
+      const context = createContext({taskData: activeTaskData});
+      const partialTaskData = createTaskData({
+        interaction: {
+          interactionId: INTERACTION_ID,
+          mainInteractionId: INTERACTION_ID,
+          state: 'conference',
+        } as TaskData['interaction'],
+      });
+
+      expect(
+        guards.didCurrentAgentLeaveMainInteraction(
+          createParams(context, createEventWithTaskData(partialTaskData))
+        )
+      ).toBe(false);
+    });
+  });
+
+  describe('Server State Guards', () => {
+    it('isPrimaryMediaOnHold returns true when media isHold is true', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          media: {
+            [INTERACTION_ID]: {
+              mediaResourceId: INTERACTION_ID,
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123'],
+              mType: 'mainCall',
+              isHold: true,
+              holdTimestamp: Date.now(),
+            },
+          },
+        },
+      });
+      expect(
+        guards.isPrimaryMediaOnHold(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(true);
+    });
+
+    it('isPrimaryMediaOnHold returns false when media isHold is false', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          media: {
+            [INTERACTION_ID]: {
+              mediaResourceId: INTERACTION_ID,
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123'],
+              mType: 'mainCall',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        },
+      });
+      expect(
+        guards.isPrimaryMediaOnHold(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
+    });
+  });
+});

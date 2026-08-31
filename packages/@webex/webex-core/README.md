@@ -78,8 +78,11 @@ const webex = new WebexCore({
       // Validate domains against the allowed domains
       validateDomains: true,
 
-      // The allowed domains to validate domains against
-      allowedDomains: ['allowed-domain']
+      // The allowed domains to validate domains against. Each entry is a
+      // hostname, matched on label boundaries: an entry allows that host and
+      // its subdomains, so 'example.com' covers 'api.example.com' but not
+      // 'notexample.com'.
+      allowedDomains: ['example.com']
     }
   }
 });

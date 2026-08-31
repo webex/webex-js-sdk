@@ -44,6 +44,7 @@ import {
   DEVICES_ENDPOINT_RESOURCE,
   HOLD_ENDPOINT,
   ICE_CANDIDATES_TIMEOUT,
+  ICE_LITE_CANDIDATES_TIMEOUT,
   INITIAL_SEQ_NUMBER,
   MAX_CALL_KEEPALIVE_RETRY_COUNT,
   MEDIA_ENDPOINT_RESOURCE,
@@ -78,6 +79,7 @@ import {
   ICall,
   IceCandidateErrorEventPayload,
   IceEventPayload,
+  IceGatheringConfig,
   MediaContext,
   MidCallCallerId,
   MidCallEvent,
@@ -185,6 +187,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private callKeepaliveRetryCount = 0;
 
   private apiRequest: APIRequest;
+
+  private iceGatheringConfig?: IceGatheringConfig;
 
   private handleMediaRoapEvent = async (event: RoapMessageEvent) => {
     log.info(
@@ -455,7 +459,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     lineId: string,
     deleteCb: DeleteRecordCallBack,
     indicator: ServiceIndicator,
-    destination?: CallDetails
+    destination?: CallDetails,
+    iceGatheringConfig?: IceGatheringConfig
   ) {
     super();
     this.destination = destination;
@@ -464,6 +469,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.deviceId = deviceId;
     this.serviceIndicator = indicator;
     this.lineId = lineId;
+    this.iceGatheringConfig = iceGatheringConfig;
 
     /* istanbul ignore else */
     if (!this.sdkConnector.getWebex()) {
@@ -2365,6 +2371,39 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     }
   };
 
+  /**
+   * Determines the ICE candidate gathering timeout to use for the media connection.
+   *
+   * When the remote peer advertises itself as an ICE-lite agent (a=ice-lite) in its ROAP offer,
+   * it only provides host candidates and does not perform connectivity checks, so there is no
+   * need to wait the full ICE_CANDIDATES_TIMEOUT for local candidate gathering. In that case a
+   * shorter timeout is returned to avoid stalling media negotiation for ~3 seconds.
+   *
+   * This optimization is opt-in: it only applies when the SDK is initialized with
+   * `iceGathering.reduceTimeoutForIceLite` set to `true`. Otherwise the default
+   * ICE_CANDIDATES_TIMEOUT is always used.
+   *
+   * @returns The ICE candidates timeout in milliseconds.
+   */
+  private getIceCandidatesTimeout(): number {
+    if (!this.iceGatheringConfig?.reduceTimeoutForIceLite) {
+      return ICE_CANDIDATES_TIMEOUT;
+    }
+
+    const remoteSdp = this.remoteRoapMessage?.sdp;
+
+    if (remoteSdp && /^a=ice-lite[\r\n]*$/im.test(remoteSdp)) {
+      log.info('Remote offer advertises ice-lite, using reduced ICE candidates timeout', {
+        file: CALL_FILE,
+        method: METHODS.INIT_MEDIA_CONNECTION,
+      });
+
+      return this.iceGatheringConfig.iceLiteTimeout ?? ICE_LITE_CANDIDATES_TIMEOUT;
+    }
+
+    return ICE_CANDIDATES_TIMEOUT;
+  }
+
   /* istanbul ignore next */
   /**
    * Initialize Media Connection.
@@ -2378,7 +2417,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       {
         skipInactiveTransceivers: true,
         iceServers: [],
-        iceCandidatesTimeout: ICE_CANDIDATES_TIMEOUT,
+        iceCandidatesTimeout: this.getIceCandidatesTimeout(),
         sdpMunging: {
           convertPort9to0: true,
           addContentSlides: false,
@@ -3006,7 +3045,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     if (this.localAudioStream) {
       const effect = this.localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
 
-      if (effect === addedEffect) {
+      if (effect && effect === addedEffect) {
         effect.on(EffectEvent.Enabled, this.onEffectEnabled);
         effect.on(EffectEvent.Disabled, this.onEffectDisabled);
       }
@@ -3397,5 +3436,7 @@ export const createCall = (
   lineId: string,
   deleteCb: DeleteRecordCallBack,
   indicator: ServiceIndicator,
-  dest?: CallDetails
-): ICall => new Call(activeUrl, webex, dir, deviceId, lineId, deleteCb, indicator, dest);
+  dest?: CallDetails,
+  iceGatheringConfig?: IceGatheringConfig
+): ICall =>
+  new Call(activeUrl, webex, dir, deviceId, lineId, deleteCb, indicator, dest, iceGatheringConfig);

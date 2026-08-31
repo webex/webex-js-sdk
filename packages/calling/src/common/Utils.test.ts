@@ -20,6 +20,7 @@ import {
   WebexRequestPayload,
   CALLING_BACKEND,
   RegistrationStatus,
+  HTTP_METHODS,
 } from './types';
 import log from '../Logger';
 import {
@@ -28,6 +29,7 @@ import {
   UTILS_FILE,
   REGISTER_UTIL,
   DEFAULT_KEEPALIVE_INTERVAL,
+  SESSION_SUPERSEDED_MESSAGE,
 } from '../CallingClient/constants';
 import {
   CALL_ERROR_CODE,
@@ -51,6 +53,8 @@ import {
   modifySdpForIPv4,
   uploadLogs,
   handleCallingClientErrors,
+  resolveCallingBackend,
+  getCallingBackEnd,
 } from './Utils';
 import {
   getVoicemailListJsonWXC,
@@ -63,7 +67,9 @@ import {
   SCIM_ENDPOINT_RESOURCE,
   SCIM_USER_FILTER,
   WEBEX_API_BTS,
+  XSI_ACTION_ENDPOINT_ORG_URL_PARAM,
 } from './constants';
+import {xsiEndpointUrlResponse} from '../CallSettings/testFixtures';
 import {CALL_EVENT_KEYS} from '../Events/types';
 import SDKConnector from '../SDKConnector';
 
@@ -78,6 +84,7 @@ const mockSubmitRegistrationMetric = jest.fn();
 const mockEmitterCb = jest.fn();
 const mockRestoreCb = jest.fn();
 const mock429RetryCb = jest.fn();
+const mockSessionSupersededCb = jest.fn();
 
 const webex = getTestUtilsWebex();
 SDKConnector.setWebex(webex);
@@ -486,6 +493,20 @@ describe('Registration Tests', () => {
       logMsg: '400 Bad Request',
     },
     {
+      name: 'verify 409 error response',
+      statusCode: ERROR_CODE.CONFLICT,
+      deviceErrorCode: 0,
+      message: SESSION_SUPERSEDED_MESSAGE,
+      errorType: ERROR_TYPE.SESSION_SUPERSEDED,
+      emitterCbExpected: false,
+      finalError: true,
+      restoreCbExpected: false,
+      retry429CbExpected: false,
+      sessionSupersededCbExpected: true,
+      handledByCallback: true,
+      logMsg: '409 Conflict: session superseded by another device for this user',
+    },
+    {
       name: 'verify unknown error response',
       statusCode: 206,
       deviceErrorCode: 0,
@@ -511,7 +532,7 @@ describe('Registration Tests', () => {
   };
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  it.each(errorCodes)('%s', (codeObj) => {
+  it.each(errorCodes)('%s', async (codeObj) => {
     const webexPayload = <WebexRequestPayload>(<unknown>{
       statusCode: codeObj.statusCode,
       headers: {
@@ -551,9 +572,19 @@ describe('Registration Tests', () => {
       RegistrationStatus.ACTIVE
     );
 
-    handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, mock429RetryCb, mockRestoreCb);
+    const result = await handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, {
+      retry429Cb: mock429RetryCb,
+      restoreRegCb: mockRestoreCb,
+      sessionSupersededCb: mockSessionSupersededCb,
+    });
+
+    expect(result.finalError).toBe(codeObj.finalError);
+    expect(result.handledByCallback).toBe(!!codeObj.handledByCallback);
+
     if (codeObj.emitterCbExpected) {
       expect(mockEmitterCb).toBeCalledOnceWith(callClientError, codeObj.finalError);
+    } else {
+      expect(mockEmitterCb).not.toHaveBeenCalled();
     }
     if (codeObj.restoreCbExpected) {
       expect(mockRestoreCb).toBeCalledOnceWith(webexPayload.body, logObj.method);
@@ -567,8 +598,42 @@ describe('Registration Tests', () => {
       expect(mock429RetryCb).not.toHaveBeenCalled();
     }
 
+    if (codeObj.sessionSupersededCbExpected) {
+      expect(mockSessionSupersededCb).toBeCalledOnceWith(callClientError);
+    } else {
+      expect(mockSessionSupersededCb).not.toHaveBeenCalled();
+    }
+
     expect(logSpy).toHaveBeenCalledWith(`Status code: -> ${codeObj.statusCode}`, logObj);
     expect(logSpy).toHaveBeenCalledWith(codeObj.logMsg, logObj);
+  });
+
+  it('verify 409 response for a caller that does not handle a superseded session', async () => {
+    const webexPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: ERROR_CODE.CONFLICT,
+      headers: {trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31'},
+    });
+
+    const result = await handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, {
+      retry429Cb: mock429RetryCb,
+      restoreRegCb: mockRestoreCb,
+    });
+
+    expect(result).toStrictEqual({
+      finalError: false,
+      shouldDisconnect: false,
+      handledByCallback: false,
+    });
+    expect(mockEmitterCb).toBeCalledOnceWith(
+      new CallingClientError(
+        'Unknown error',
+        logObj,
+        ERROR_TYPE.DEFAULT,
+        RegistrationStatus.ACTIVE
+      ),
+      false
+    );
+    expect(logSpy).toHaveBeenCalledWith('Unknown Error', logObj);
   });
 });
 
@@ -1782,6 +1847,71 @@ describe('Get XSI Action Endpoint tests', () => {
     method: 'testMethod',
   };
 
+  const expectedXsiEndpoint = 'https://api-proxy-si.broadcloudpbx.net/com.broadsoft.xsi-actions';
+
+  beforeEach(() => {
+    mockWebex.request.mockClear();
+  });
+
+  it('should return xsiEndpoint for WXC backend using _serviceUrls.hydra', async () => {
+    const hydraEndpoint = 'https://hydra-a.wbx2.com/v1/';
+    const wxcWebex = {
+      request: jest.fn().mockResolvedValue({
+        statusCode: 200,
+        body: xsiEndpointUrlResponse,
+      }),
+      internal: {
+        services: {
+          _serviceUrls: {
+            hydra: hydraEndpoint,
+          },
+          _activeServices: {
+            hydra: 'urn:TEAM:us-east-2_a:hydra',
+          },
+          get: jest.fn(),
+        },
+      },
+    };
+
+    const result = await getXsiActionEndpoint(wxcWebex, loggerContext, CALLING_BACKEND.WXC);
+
+    expect(wxcWebex.request).toBeCalledOnceWith({
+      method: HTTP_METHODS.GET,
+      uri: `${hydraEndpoint}/${XSI_ACTION_ENDPOINT_ORG_URL_PARAM}`,
+    });
+    expect(result).toBe(expectedXsiEndpoint);
+    expect(wxcWebex.internal.services.get).not.toHaveBeenCalled();
+  });
+
+  it('should return xsiEndpoint for WXC backend using services.get when _serviceUrls is undefined', async () => {
+    const hydraEndpoint = 'https://hydra-a.wbx2.com/v1/';
+    const activeHydraCluster = 'urn:TEAM:us-east-2_a:hydra';
+    const wxcWebex = {
+      request: jest.fn().mockResolvedValue({
+        statusCode: 200,
+        body: xsiEndpointUrlResponse,
+      }),
+      internal: {
+        services: {
+          _serviceUrls: undefined,
+          _activeServices: {
+            hydra: activeHydraCluster,
+          },
+          get: jest.fn().mockReturnValue(hydraEndpoint),
+        },
+      },
+    };
+
+    const result = await getXsiActionEndpoint(wxcWebex, loggerContext, CALLING_BACKEND.WXC);
+
+    expect(wxcWebex.internal.services.get).toBeCalledOnceWith(activeHydraCluster);
+    expect(wxcWebex.request).toBeCalledOnceWith({
+      method: HTTP_METHODS.GET,
+      uri: `${hydraEndpoint}/${XSI_ACTION_ENDPOINT_ORG_URL_PARAM}`,
+    });
+    expect(result).toBe(expectedXsiEndpoint);
+  });
+
   it('should return xsiEndpoint for BWRKS backend when URL ends with /v2.0', async () => {
     const mockResponse = {
       body: {
@@ -2079,5 +2209,90 @@ describe('uploadLogs', () => {
         type: 'behavioral',
       }
     );
+  });
+});
+
+describe('resolveCallingBackend', () => {
+  const createDevice = (callingBehavior: string, entitlementKeys: string[]) => ({
+    url: 'https://wdm.example.com/devices/123',
+    userId: 'user-id',
+    orgId: 'org-id',
+    version: '1.0',
+    callingBehavior,
+    features: {
+      developer: {models: [], get: jest.fn()},
+      entitlement: {
+        models: entitlementKeys.map((key) => ({_values: {key}})),
+      },
+    },
+  });
+
+  it.each([
+    ['bc-sp-basic', CALLING_BACKEND.WXC],
+    ['bc-sp-standard', CALLING_BACKEND.WXC],
+  ])(
+    'returns WXC when callingBehavior is NATIVE_WEBEX_TEAMS_CALLING and entitlement is %s',
+    (entitlement, expected) => {
+      const device = createDevice('NATIVE_WEBEX_TEAMS_CALLING', [entitlement]);
+
+      expect(resolveCallingBackend(device)).toBe(expected);
+    }
+  );
+
+  it('returns BWRKS when callingBehavior is NATIVE_WEBEX_TEAMS_CALLING and entitlement is broadworks-connector', () => {
+    const device = createDevice('NATIVE_WEBEX_TEAMS_CALLING', ['broadworks-connector']);
+
+    expect(resolveCallingBackend(device)).toBe(CALLING_BACKEND.BWRKS);
+  });
+
+  it('returns UCM when callingBehavior is NATIVE_SIP_CALL_TO_UCM', () => {
+    const device = createDevice('NATIVE_SIP_CALL_TO_UCM', []);
+
+    expect(resolveCallingBackend(device)).toBe(CALLING_BACKEND.UCM);
+  });
+
+  it('returns INVALID when callingBehavior is unknown', () => {
+    const device = createDevice('UNKNOWN_BEHAVIOR', []);
+
+    expect(resolveCallingBackend(device)).toBe(CALLING_BACKEND.INVALID);
+  });
+
+  it('returns INVALID when callingBehavior is NATIVE_WEBEX_TEAMS_CALLING but no matching entitlement', () => {
+    const device = createDevice('NATIVE_WEBEX_TEAMS_CALLING', ['some-other-entitlement']);
+
+    expect(resolveCallingBackend(device)).toBe(CALLING_BACKEND.INVALID);
+  });
+
+  it('matches the first qualifying entitlement when multiple are present', () => {
+    const device = createDevice('NATIVE_WEBEX_TEAMS_CALLING', [
+      'broadworks-connector',
+      'bc-sp-basic',
+    ]);
+
+    expect(resolveCallingBackend(device)).toBe(CALLING_BACKEND.BWRKS);
+  });
+});
+
+describe('getCallingBackEnd', () => {
+  it('passes webex.internal.device to resolveCallingBackend and returns its result', () => {
+    const device = {
+      url: 'https://wdm.example.com/devices/123',
+      userId: 'user-id',
+      orgId: 'org-id',
+      version: '1.0',
+      callingBehavior: 'NATIVE_SIP_CALL_TO_UCM',
+      features: {
+        developer: {models: [], get: jest.fn()},
+        entitlement: {models: []},
+      },
+    };
+
+    const mockWebex = {internal: {device}} as any;
+
+    const result = getCallingBackEnd(mockWebex);
+
+    expect(result).toBe(resolveCallingBackend(device));
+    expect(resolveCallingBackend(device)).toBe(CALLING_BACKEND.UCM);
+    expect(result).toBe(CALLING_BACKEND.UCM);
   });
 });

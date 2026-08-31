@@ -1,5 +1,7 @@
 # @webex/calling — Architecture
 
+> Canonical SDD target: [`ai-docs/ARCHITECTURE.md`](../../ai-docs/ARCHITECTURE.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## High-Level Architecture
 
 ```mermaid

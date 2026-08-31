@@ -1,5 +1,6 @@
 /* globals window */
 
+import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 import {
   _CALL_,
   _CREATED_,
@@ -187,20 +188,36 @@ MeetingsUtil.getSiteName = (site: string, multipartSitePrefixList: string[] = []
  * @returns {Promise<boolean>}
  */
 MeetingsUtil.hasH264Codec = async () => {
+  try {
+    const codecCapability = WebCapabilities.isCapableOfReceivingVideoCodec('video/H264');
+
+    if (codecCapability === CapabilityState.CAPABLE) {
+      return true;
+    }
+
+    if (codecCapability === CapabilityState.NOT_CAPABLE) {
+      return false;
+    }
+  } catch (_) {
+    // NO-OP
+  }
+
   let hasCodec = false;
 
+  let pc;
   try {
-    const pc = new window.RTCPeerConnection();
+    pc = new window.RTCPeerConnection();
     const offer = await pc.createOffer({offerToReceiveVideo: true});
 
-    if (offer.sdp.match(/^a=rtpmap:\d+\s+H264\/\d+/m)) {
+    if (offer.sdp?.match(/^a=rtpmap:\d+\s+H264\/\d+/m)) {
       hasCodec = true;
     }
-    pc.close();
   } catch (error) {
     LoggerProxy.logger.warn(
       'Meetings:util#hasH264Codec --> Error creating peerConnection for H.264 test.'
     );
+  } finally {
+    pc?.close();
   }
 
   return hasCodec;

@@ -1,0 +1,41 @@
+name: Remove Validated Label On New Push
+run-name: Remove validated label for PR #${{ github.event.pull_request.number }}
+
+on:
+  pull_request_target:
+    types: [synchronize]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  remove-validated-label:
+    name: Remove reusable validated label
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove validated label from PR
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pull_number = context.payload.pull_request.number;
+
+            const labels = context.payload.pull_request.labels.map((label) => label.name);
+            if (!labels.includes('validated')) {
+              core.info('No validated label found; skipping.');
+              return;
+            }
+
+            try {
+              await github.rest.issues.removeLabel({
+                owner,
+                repo,
+                issue_number: pull_number,
+                name: 'validated',
+              });
+
+              core.info('Removed validated label after synchronize event.');
+            } catch (error) {
+              core.warning(`Failed to remove validated label: ${error.message}`);
+            }

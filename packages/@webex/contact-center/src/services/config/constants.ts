@@ -1,6 +1,13 @@
 // making query params configurable for List Teams and List Aux Codes API
 export const DEFAULT_PAGE = 0;
 
+/** Desktop Profile access levels for collaboration destination categories. */
+export const COLLABORATION_ACCESS = {
+  ALL: 'ALL',
+  SPECIFIC: 'SPECIFIC',
+  NONE: 'NONE',
+} as const;
+
 /**
  * Default page size for paginated API requests.
  * @type {number}
@@ -258,17 +265,14 @@ export const endPointMap = {
   queueList: (orgId: string, queryParams: string) =>
     `/organization/${orgId}/v2/contact-service-queue?${queryParams}`,
   /**
-   * Gets the endpoint for entry points list with custom query parameters.
+   * Gets the desktop-profile-filtered dial-number mappings used by entry-point destination lists.
    * @param orgId - Organization ID.
    * @param queryParams - Query parameters string.
    * @returns The endpoint URL string.
-   * @public
-   * @example
-   * const url = endPointMap.entryPointList('org123', 'page=0&pageSize=10');
    * @ignore
    */
-  entryPointList: (orgId: string, queryParams: string) =>
-    `/organization/${orgId}/v2/entry-point?${queryParams}`,
+  entryPointDialNumberList: (orgId: string, queryParams: string) =>
+    `/organization/${orgId}/v3/dial-number?${queryParams}`,
   /**
    * Gets the endpoint for address book entries with custom query parameters.
    * @param orgId - Organization ID.
@@ -298,4 +302,28 @@ export const endPointMap = {
     `organization/${orgId}/v2/outdial-ani/${outdialANI}/entry${
       queryParams ? `?${queryParams}` : ''
     }`,
+
+  /**
+   * Gets the endpoint for user preference by user ID.
+   * @param orgId - Organization ID.
+   * @param userId - User ID.
+   * @returns The endpoint URL string.
+   * @public
+   * @example
+   * const url = endPointMap.userPreference('org123', 'user456');
+   * @ignore
+   */
+  userPreference: (orgId: string, userId: string) =>
+    `organization/${orgId}/user-preference/${userId}`,
+
+  /**
+   * Gets the endpoint for creating user preference.
+   * @param orgId - Organization ID.
+   * @returns The endpoint URL string.
+   * @public
+   * @example
+   * const url = endPointMap.userPreferenceCreate('org123');
+   * @ignore
+   */
+  userPreferenceCreate: (orgId: string) => `organization/${orgId}/user-preference`,
 };

@@ -343,16 +343,18 @@ export type LineErrorEmitterCallback = (err: LineError, finalError?: boolean) =>
 
 ### handleRegistrationErrors
 
-Handles registration and keepalive error flows by mapping HTTP status codes to `LineError` and deciding whether to emit a final error, trigger a retry, or restore registration. Used by `Registration` for both initial registration failures and keepalive failures received from the web worker. Returns `Promise<boolean>` indicating whether to abort. See `src/common/Utils.ts`.
+Handles registration and keepalive error flows by mapping HTTP status codes to `LineError` and deciding whether to emit a final error, trigger a retry, restore registration, or run registration cleanup. Used by `Registration` for both initial registration failures and keepalive failures received from the web worker. See `src/common/Utils.ts`.
 
-Signature: `handleRegistrationErrors(err, emitterCb, loggerContext, retry429Cb?, restoreRegCb?): Promise<boolean>`
+Signature: `handleRegistrationErrors(err, emitterCb, loggerContext, handlers?, serverCount?): Promise<RegistrationErrorResult>`
+
+The specialized handlers are opt-in per flow, which is how status codes that only one flow can act on stay scoped to that flow (`sessionSupersededCb` is passed by the keepalive path only). The result reports `finalError` (do not retry), `shouldDisconnect` (tear down the failed server's WSS), and `handledByCallback` (a handler already ran cleanup and notified the consumer, so the caller must skip its own failure handling).
 
 ```typescript
 // Real usage from register.ts — initial registration error path
-abort = await handleRegistrationErrors(
+const {finalError, shouldDisconnect} = await handleRegistrationErrors(
   body,
-  (clientError, finalError) => {
-    if (finalError) {
+  (clientError, isFinalError) => {
+    if (isFinalError) {
       this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
     }
     this.metricManager.submitRegistrationMetric(
@@ -360,27 +362,29 @@ abort = await handleRegistrationErrors(
     );
   },
   loggerContext,
-  retry429Cb,
-  restoreRegCb
+  {
+    retry429Cb: (retryAfter, retryCaller) => this.handle429Retry(retryAfter, retryCaller),
+    restoreRegCb: this.restoreRegistrationCallBack(),
+  },
+  servers.length
 );
 
 // Real usage from register.ts — keepalive failure path (web worker message handler)
 if (event.data.type === WorkerMessageType.KEEPALIVE_FAILURE) {
-  const abort = await handleRegistrationErrors(
+  const {finalError: abort, handledByCallback} = await handleRegistrationErrors(
     error,
-    (clientError, finalError) => {
-      if (finalError) {
-        this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
-      }
-      this.metricManager.submitRegistrationMetric(
-        METRIC_EVENT.KEEPALIVE_ERROR,
-        REG_ACTION.KEEPALIVE_FAILURE, ...
-      );
-    },
+    (clientError, finalError) => { ... },
     loggerContext,
-    retry429Cb,
-    restoreRegCb
+    {
+      retry429Cb: (retryAfter, retryCaller) => this.handle429Retry(retryAfter, retryCaller),
+      sessionSupersededCb: (clientError) =>
+        this.handle409KeepaliveFailure(clientError, error, serverType, keepAliveRetryCount),
+    }
   );
+
+  if (handledByCallback) {
+    return;
+  }
 }
 ```
 
@@ -389,6 +393,7 @@ Key behaviors by status code:
 - **401 Unauthorized** — final error, emits token error
 - **403 Forbidden** — inspects `errorCode` in body for device-limit-exceeded (triggers `restoreRegCb`), device-creation-disabled (final error), or device-creation-failed (non-final)
 - **404 Device Not Found** — final error; on keepalive, triggers `handle404KeepaliveFailure` which re-attempts registration
+- **409 Conflict (keepalive only)** — final error, because only the keepalive flow passes `sessionSupersededCb`: that handler owns the hard stop and `handledByCallback` is returned, so no event is emitted from here. Registration, restoration, failover, and failback do not pass the handler and keep the unknown-error treatment for `409`
 - **429 Too Many Requests** — non-final, invokes `retry429Cb` with the `Retry-After` header value
 - **500 / 503** — non-final, emits error and allows retry
 
@@ -553,3 +558,34 @@ try {
 - [Event Patterns](./event-patterns.md)
 - [Testing Patterns](./testing-patterns.md)
 - [TypeScript Patterns](./typescript-patterns.md)
+## Pattern-Extract Verification
+
+### When to use
+
+Use the shared service error mapper in service-backed client modules so HTTP status handling and caller-visible response shapes stay consistent. This convention covers domain error routing that lint rules cannot enforce.
+
+### Correct
+
+```typescript
+return serviceErrorCodeHandler(error, logger, context);
+```
+
+### Incorrect
+
+```typescript
+return {statusCode: error.statusCode, data: undefined};
+```
+
+Hand-building a response can omit the package's status mapping, logging context, and normalized failure payload.
+
+### Where it appears
+
+- `src/CallHistory/CallHistory.ts`
+- `src/CallRecording/WxcCallRecordingConnector.ts`
+- `src/CallSettings/WxCallBackendConnector.ts`
+- `src/Contacts/ContactsClient.ts`
+- `src/Voicemail/WxCallBackendConnector.ts`
+
+### Edge cases
+
+Call, line, and client lifecycle errors use typed error factories and events because their consumers observe asynchronous state changes. Transport-specific errors may first be normalized by the owning adapter before entering either path.

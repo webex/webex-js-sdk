@@ -1,5 +1,7 @@
 # Line Module
 
+> Canonical SDD target: [`src/CallingClient/line/ai-docs/line-spec.md`](line-spec.md). This legacy document is retained as migration source; use the canonical target for current lifecycle work.
+
 ## AI Agent Routing Instructions
 
 **If you are an AI assistant or automated tool:**
@@ -95,7 +97,7 @@ constructor(
 |-------|------|---------|---------|
 | `connecting` | `LINE_EVENTS.CONNECTING` | _(none)_ | `register()` called |
 | `registered` | `LINE_EVENTS.REGISTERED` | `ILine` | Device registration succeeded |
-| `unregistered` | `LINE_EVENTS.UNREGISTERED` | _(none)_ | Device deregistered |
+| `unregistered` | `LINE_EVENTS.UNREGISTERED` | `LineError` (optional) | Device deregistered, registration down, or session superseded. The `LineError` is present only when the SDK will not re-register — currently a `409 Conflict` on keepalive, reported as `ERROR_TYPE.SESSION_SUPERSEDED` |
 | `reconnecting` | `LINE_EVENTS.RECONNECTING` | _(none)_ | Keepalive failure, attempting recovery |
 | `reconnected` | `LINE_EVENTS.RECONNECTED` | _(none)_ | Recovery succeeded |
 | `error` | `LINE_EVENTS.ERROR` | `LineError` | Registration or line error |

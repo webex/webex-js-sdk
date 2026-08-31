@@ -8,6 +8,7 @@ import Metrics from './metrics';
 import config from './config';
 import NewMetrics from './new-metrics';
 import * as Utils from './utils';
+import * as AutomatedUserUtils from './automated-user';
 import {
   ClientEvent,
   ClientEventLeaveReason,
@@ -19,6 +20,8 @@ import {
   SubmitMQE,
   PreComputedLatencies,
   SubmitFeatureEvent,
+  LocusSyncLatencyEventName,
+  PrivacyAndSecurityPermission,
 } from './metrics.types';
 import * as CALL_DIAGNOSTIC_CONFIG from './call-diagnostic/config';
 import * as CallDiagnosticUtils from './call-diagnostic/call-diagnostic-metrics.util';
@@ -43,6 +46,7 @@ export {default, getOSNameInternal} from './metrics';
 export {
   config,
   CALL_DIAGNOSTIC_CONFIG,
+  AutomatedUserUtils,
   NewMetrics,
   Utils,
   CallDiagnosticUtils,
@@ -54,6 +58,7 @@ export {
   RtcMetrics,
   PreLoginMetrics,
 };
+export {isAutomatedUser, isAutomatedUserAgent} from './automated-user';
 export type {
   ClientEvent,
   ClientEventLeaveReason,
@@ -65,4 +70,6 @@ export type {
   SubmitBusinessEvent,
   PreComputedLatencies,
   SubmitFeatureEvent,
+  LocusSyncLatencyEventName,
+  PrivacyAndSecurityPermission,
 };

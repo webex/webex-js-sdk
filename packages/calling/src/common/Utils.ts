@@ -5,7 +5,10 @@ import * as platform from 'platform';
 import {v4 as uuid} from 'uuid';
 import {METRIC_EVENT, METRIC_TYPE, UPLOAD_LOGS_ACTION} from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
-import {restoreRegistrationCallBack, retry429CallBack} from '../CallingClient/registration/types';
+import {
+  RegistrationErrorHandlers,
+  RegistrationErrorResult,
+} from '../CallingClient/registration/types';
 import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 import {LogContext} from '../Logger/types';
 import {
@@ -91,6 +94,7 @@ import {
   UTILS_FILE,
   METHODS,
   DEFAULT_KEEPALIVE_INTERVAL,
+  SESSION_SUPERSEDED_MESSAGE,
 } from '../CallingClient/constants';
 import {
   DeleteCallHistoryRecordsResponse,
@@ -129,7 +133,7 @@ import {
   WEBEX_API_BTS,
   BW_XSI_ENDPOINT_VERSION_WITH_SLASH,
 } from './constants';
-import {Model, WebexSDK} from '../SDKConnector/types';
+import {Model, WDMDevice, WebexSDK} from '../SDKConnector/types';
 import SDKConnector from '../SDKConnector';
 import {CallSettingResponse} from '../CallSettings/types';
 import {ContactResponse} from '../Contacts/types';
@@ -330,7 +334,9 @@ export function emitFinalFailure(
  * @param err - Error body.
  * @param emitterCb - LineErrorEmitterCallback
  * @param loggerContext - Logging context that has method and file name
- * @param restoreRegCb - Callback which will try restoring resgistration in case of 403
+ * @param handlers - Specialized per-status-code handlers the caller opts into, as
+ * {@link RegistrationErrorHandlers}.
+ * @param serverCount - Number of servers in the list.
  *
  * In emitterCb,
  * For non final error scenarios in registration flow,
@@ -345,15 +351,32 @@ export async function handleRegistrationErrors(
   err: WebexRequestPayload,
   emitterCb: LineErrorEmitterCallback,
   loggerContext: LogContext,
-  retry429Cb?: retry429CallBack,
-  restoreRegCb?: restoreRegistrationCallBack,
-  serverCount = 1 // Number of servers in the list
-): Promise<{finalError: boolean; shouldDisconnect: boolean}> {
+  handlers: RegistrationErrorHandlers = {},
+  serverCount = 1
+): Promise<RegistrationErrorResult> {
+  const {retry429Cb, restoreRegCb, sessionSupersededCb} = handlers;
   let shouldDisconnect = false;
+  let handledByCallback = false;
   const lineError = createLineError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
 
   const errorCode = Number(err.statusCode);
   let finalError = false;
+
+  /* Treatment for a status code this handler has no specific rule for: notify the
+   * consumer and leave the retry decision to the caller. */
+  const handleUnknownError = () => {
+    updateLineErrorContext(
+      loggerContext,
+      ERROR_TYPE.DEFAULT,
+      'Unknown error',
+      RegistrationStatus.INACTIVE,
+      lineError
+    );
+    log.warn(`Unknown Error`, loggerContext);
+    emitterCb(lineError, finalError);
+    shouldDisconnect = serverCount > 1;
+  };
+
   log.warn(`Status code: -> ${errorCode}`, loggerContext);
   switch (errorCode) {
     case ERROR_CODE.BAD_REQUEST: {
@@ -404,6 +427,33 @@ export async function handleRegistrationErrors(
 
       emitterCb(lineError, finalError);
       shouldDisconnect = serverCount > 1;
+      break;
+    }
+
+    case ERROR_CODE.CONFLICT: {
+      /* Mobius answers 409 when this device is gone while the same user still holds an
+       * active registration elsewhere, typically calling opened in another browser tab.
+       * Only a flow that can hard stop the session opts into this handling; the remaining
+       * flows keep treating 409 as an unknown error. */
+      if (!sessionSupersededCb) {
+        handleUnknownError();
+        break;
+      }
+
+      finalError = true;
+      handledByCallback = true;
+      log.warn(`409 Conflict: session superseded by another device for this user`, loggerContext);
+
+      updateLineErrorContext(
+        loggerContext,
+        ERROR_TYPE.SESSION_SUPERSEDED,
+        SESSION_SUPERSEDED_MESSAGE,
+        RegistrationStatus.INACTIVE,
+        lineError
+      );
+
+      await sessionSupersededCb(lineError);
+      shouldDisconnect = false;
       break;
     }
 
@@ -473,7 +523,7 @@ export async function handleRegistrationErrors(
         emitterCb(lineError, finalError);
         shouldDisconnect = serverCount > 1;
 
-        return {finalError, shouldDisconnect};
+        return {finalError, shouldDisconnect, handledByCallback};
       }
 
       const code = Number(errorBody.errorCode);
@@ -539,20 +589,11 @@ export async function handleRegistrationErrors(
     }
 
     default: {
-      updateLineErrorContext(
-        loggerContext,
-        ERROR_TYPE.DEFAULT,
-        'Unknown error',
-        RegistrationStatus.INACTIVE,
-        lineError
-      );
-      log.warn(`Unknown Error`, loggerContext);
-      emitterCb(lineError, finalError);
-      shouldDisconnect = serverCount > 1;
+      handleUnknownError();
     }
   }
 
-  return {finalError, shouldDisconnect};
+  return {finalError, shouldDisconnect, handledByCallback};
 }
 
 /**
@@ -1216,16 +1257,16 @@ export const waitForMsecs = (msec: number) =>
   });
 
 /**
- * Register calling backend.
+ * Determine the calling backend from the device object.
  *
- * @param webex -.
+ * @param device - The device object containing callingBehavior and entitlement features.
  * @returns CallingBackEnd.
  */
-export function getCallingBackEnd(webex: WebexSDK): CALLING_BACKEND {
-  const entModels: Model[] = webex.internal.device.features.entitlement.models;
+export function resolveCallingBackend(device: WDMDevice): CALLING_BACKEND {
+  const entModels: Model[] = device.features.entitlement.models;
   let callingBackend;
 
-  if (webex.internal.device.callingBehavior === NATIVE_WEBEX_TEAMS_CALLING) {
+  if (device.callingBehavior === NATIVE_WEBEX_TEAMS_CALLING) {
     for (let i = 0; i < entModels.length; i += 1) {
       if (
         entModels[i][VALUES][KEY] === ENTITLEMENT_BASIC ||
@@ -1238,13 +1279,23 @@ export function getCallingBackEnd(webex: WebexSDK): CALLING_BACKEND {
         break;
       }
     }
-  } else if (webex.internal.device.callingBehavior === NATIVE_SIP_CALL_TO_UCM) {
+  } else if (device.callingBehavior === NATIVE_SIP_CALL_TO_UCM) {
     callingBackend = CALLING_BACKEND.UCM;
   } else {
     callingBackend = CALLING_BACKEND.INVALID;
   }
 
-  return callingBackend as CALLING_BACKEND;
+  return callingBackend || CALLING_BACKEND.INVALID;
+}
+
+/**
+ * Register calling backend.
+ *
+ * @param webex -.
+ * @returns CallingBackEnd.
+ */
+export function getCallingBackEnd(webex: WebexSDK): CALLING_BACKEND {
+  return resolveCallingBackend(webex.internal.device);
 }
 
 /**
@@ -1263,8 +1314,12 @@ export async function getXsiActionEndpoint(
   try {
     switch (callingBackend) {
       case CALLING_BACKEND.WXC: {
+        const hydraEndpoint =
+          webex.internal.services._serviceUrls?.hydra ||
+          webex.internal.services.get(webex.internal.services._activeServices.hydra);
+
         const userIdResponse = <WebexRequestPayload>await webex.request({
-          uri: `${webex.internal.services._serviceUrls.hydra}/${XSI_ACTION_ENDPOINT_ORG_URL_PARAM}`,
+          uri: `${hydraEndpoint}/${XSI_ACTION_ENDPOINT_ORG_URL_PARAM}`,
           method: HTTP_METHODS.GET,
         });
 

@@ -135,7 +135,7 @@ describe('plugin-mercury', () => {
       }
 
       // Small delay to ensure all async operations complete
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
     });
 
     describe('#listen()', () => {
@@ -294,18 +294,20 @@ describe('plugin-mercury', () => {
             .then(() => {
               assert.calledOnce(Socket.prototype.open);
 
-              return promiseTick(5);
+              // Wait for error handling from 1st failure to schedule 2nd timer
+              return promiseTick(10);
             })
             .then(() => {
               clock.tick(mercury.config.backoffTimeReset);
 
-              return promiseTick(5);
+              // Wait for 2nd socket.open call AND error handling to schedule 3rd timer
+              return promiseTick(10);
             })
             .then(() => {
               assert.calledTwice(Socket.prototype.open);
               clock.tick(2 * mercury.config.backoffTimeReset);
 
-              return promiseTick(5);
+              return promiseTick(10);
             })
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
@@ -380,20 +382,20 @@ describe('plugin-mercury', () => {
             .then(() => {
               assert.calledOnce(Socket.prototype.open);
 
-              // I'm not sure why, but it's important the clock doesn't advance
-              // until a tick happens
-              return promiseTick(5);
+              // Wait for error handling from 1st failure to schedule 2nd timer
+              return promiseTick(10);
             })
             .then(() => {
               clock.tick(mercury.config.backoffTimeReset);
 
-              return promiseTick(5);
+              // Wait for 2nd socket.open call AND error handling to schedule 3rd timer
+              return promiseTick(10);
             })
             .then(() => {
               assert.calledTwice(Socket.prototype.open);
               clock.tick(2 * mercury.config.backoffTimeReset);
 
-              return promiseTick(5);
+              return promiseTick(10);
             })
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
@@ -493,15 +495,49 @@ describe('plugin-mercury', () => {
         // });
 
         describe('when web-high-availability feature is enabled', () => {
-          it('marks current socket url as failed and get new one on Connection Error', () => {
+          it('marks the URL as failed when socket.open() fails with a ConnectionError', () => {
+            // When socket.open() fails, _prepareAndOpenSocket attaches webSocketUrl to the error.
+            // The error handler then uses wsUrl = newWSUrl || reason.webSocketUrl, so markFailedUrl
+            // is called with the URL obtained before the socket open attempt.
             webex.internal.feature.getFeature.returns(Promise.resolve(true));
             socketOpenStub.restore();
             socketOpenStub = sinon.stub(Socket.prototype, 'open').returns(Promise.resolve());
             socketOpenStub.onCall(0).returns(Promise.reject(new ConnectionError({code: 4001})));
             const promise = mercury.connect();
 
-            return promiseTick(7).then(() => {
+            return promiseTick(15).then(() => {
               assert.calledOnce(webex.internal.services.markFailedUrl);
+              assert.calledWith(
+                webex.internal.services.markFailedUrl,
+                sinon.match(/example-2\.com/)
+              );
+              clock.tick(1000);
+
+              return promise;
+            });
+          });
+
+          it('does not mark a URL as failed when no wsUrl is available in ConnectionError', () => {
+            // If the error has no webSocketUrl and newWSUrl is also undefined,
+            // markFailedUrl should not be called.
+            webex.internal.feature.getFeature.returns(Promise.resolve(true));
+
+            const errWithNoUrl = new ConnectionError({code: 4001});
+            // Explicitly ensure no webSocketUrl on the error
+            delete errWithNoUrl.webSocketUrl;
+
+            // Stub _prepareAndOpenSocket so it rejects without attaching webSocketUrl
+            // (simulating a failure before socket.open is reached, e.g. _prepareUrl failure)
+            const prepareAndOpenStub = sinon.stub(mercury, '_prepareAndOpenSocket');
+
+            prepareAndOpenStub.onCall(0).returns(Promise.reject(errWithNoUrl));
+            prepareAndOpenStub.returns(Promise.resolve('ws://example-2.com'));
+
+            const promise = mercury.connect();
+
+            return promiseTick(15).then(() => {
+              assert.notCalled(webex.internal.services.markFailedUrl);
+              prepareAndOpenStub.restore();
               clock.tick(1000);
 
               return promise;
@@ -532,13 +568,13 @@ describe('plugin-mercury', () => {
 
           return promise.then(() =>
             promiseTick(2)
-            .then(() => {
-              clock.tick(6 * webex.internal.mercury.config.backoffTimeReset);
+              .then(() => {
+                clock.tick(6 * webex.internal.mercury.config.backoffTimeReset);
 
-              return promiseTick(2);
-            })
-            .then(() => {
-              assert.calledOnce(Socket.prototype.open);
+                return promiseTick(2);
+              })
+              .then(() => {
+                assert.calledOnce(Socket.prototype.open);
               })
           );
         });
@@ -754,12 +790,18 @@ describe('plugin-mercury', () => {
           return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
             // By this time backoffCall and mercury socket should be defined by the
             // 'connect' call
-            assert.isDefined(mercury.backoffCalls.get('mercury-default-session'), 'Mercury backoffCall is not defined');
+            assert.isDefined(
+              mercury.backoffCalls.get('mercury-default-session'),
+              'Mercury backoffCall is not defined'
+            );
             assert.isDefined(mercury.socket, 'Mercury socket is not defined');
             // Calling disconnect will abort the backoffCall, close the socket, and
             // reject the connect
             mercury.disconnect();
-            assert.isUndefined(mercury.backoffCalls.get('mercury-default-session'), 'Mercury backoffCall is still defined');
+            assert.isUndefined(
+              mercury.backoffCalls.get('mercury-default-session'),
+              'Mercury backoffCall is still defined'
+            );
             // The socket will never be unset (which seems bad)
             assert.isDefined(mercury.socket, 'Mercury socket is not defined');
 
@@ -815,7 +857,10 @@ describe('plugin-mercury', () => {
             return assert.isRejected(promise).then((error) => {
               const lastError = mercury.getLastError();
 
-              assert.equal(error.message, `Mercury Connection Aborted for ${mercury.defaultSessionId}`);
+              assert.equal(
+                error.message,
+                `Mercury Connection Aborted for ${mercury.defaultSessionId}`
+              );
               assert.isDefined(lastError);
               assert.equal(lastError, realError);
             });
@@ -1113,7 +1158,6 @@ describe('plugin-mercury', () => {
         });
       });
 
-
       describe('#_onmessage() with shutdown message', () => {
         beforeEach(() => {
           sinon.stub(mercury, '_handleImminentShutdown');
@@ -1249,8 +1293,18 @@ describe('plugin-mercury', () => {
 
           // Normal flow emits namespace-specific events after processing handlers.
           // The early-return guard only emits 'event', so asserting these proves the normal path was taken.
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'event:conversation', event.data);
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'event:conversation.activity', event.data);
+          assert.calledWith(
+            mercury._emit,
+            mercury.defaultSessionId,
+            'event:conversation',
+            event.data
+          );
+          assert.calledWith(
+            mercury._emit,
+            mercury.defaultSessionId,
+            'event:conversation.activity',
+            event.data
+          );
         });
       });
 
@@ -1277,6 +1331,129 @@ describe('plugin-mercury', () => {
           const result = mercury._getEventHandlers('unknownNamespace.someEvent');
 
           assert.deepEqual(result, []);
+        });
+      });
+
+      describe('#_onclose() with code 4000', () => {
+        let mockSocket, anotherSocket;
+
+        beforeEach(() => {
+          mockSocket = {
+            url: 'ws://active-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          anotherSocket = {
+            url: 'ws://old-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          mercury.socket = mockSocket;
+          mercury.sockets.set(mercury.defaultSessionId, mockSocket);
+          mercury.sessionWebSocketUrls.set(mercury.defaultSessionId, mockSocket.url);
+          mercury.connected = true;
+          sinon.stub(mercury, '_emit');
+          sinon.stub(mercury, '_reconnect');
+          sinon.stub(mercury, 'unset');
+        });
+
+        afterEach(() => {
+          mercury._emit.restore();
+          mercury._reconnect.restore();
+          mercury.unset.restore();
+        });
+
+        it('should not reconnect when active socket is replaced', () => {
+          const closeEvent = {
+            code: 4000,
+            reason: 'Replaced',
+          };
+
+          mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
+
+          assert.calledOnceWithExactly(
+            webex.internal.metrics.submitClientMetrics,
+            'JS_SDK_MERCURY_CLOSE_4000',
+            {
+              fields: {
+                action: 'no_action',
+                close_code: 4000,
+                close_reason: 'Replaced',
+                is_active_socket: true,
+                message_type: 'replaced',
+                session_id: mercury.defaultSessionId,
+              },
+              tags: {
+                action: 'no_action',
+                message_type: 'replaced',
+              },
+            }
+          );
+          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.replaced', closeEvent);
+          assert.notCalled(mercury._reconnect);
+        });
+
+        it('should reconnect active socket when 4000 has an unknown reason', () => {
+          const closeEvent = {
+            code: 4000,
+            reason: 'Unexpected close',
+          };
+
+          mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
+
+          assert.calledOnceWithExactly(
+            webex.internal.metrics.submitClientMetrics,
+            'JS_SDK_MERCURY_CLOSE_4000',
+            {
+              fields: {
+                action: 'reconnect',
+                close_code: 4000,
+                close_reason: 'Unexpected close',
+                is_active_socket: true,
+                message_type: 'other',
+                session_id: mercury.defaultSessionId,
+              },
+              tags: {
+                action: 'reconnect',
+                message_type: 'other',
+              },
+            }
+          );
+          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.transient', closeEvent);
+          assert.calledWith(
+            mercury._reconnect,
+            mockSocket.url,
+            mercury.defaultSessionId
+          );
+        });
+
+        it('should not reconnect a non-active socket with an unknown 4000 reason', () => {
+          const closeEvent = {
+            code: 4000,
+            reason: 'Unexpected close',
+          };
+
+          mercury._onclose(mercury.defaultSessionId, closeEvent, anotherSocket);
+
+          assert.calledOnceWithExactly(
+            webex.internal.metrics.submitClientMetrics,
+            'JS_SDK_MERCURY_CLOSE_4000',
+            {
+              fields: {
+                action: 'ignore_non_active',
+                close_code: 4000,
+                close_reason: 'Unexpected close',
+                is_active_socket: false,
+                message_type: 'other',
+                session_id: mercury.defaultSessionId,
+              },
+              tags: {
+                action: 'ignore_non_active',
+                message_type: 'other',
+              },
+            }
+          );
+          assert.notCalled(mercury._emit);
+          assert.notCalled(mercury._reconnect);
+          assert.isTrue(mercury.connected);
         });
       });
 
@@ -1314,7 +1491,12 @@ describe('plugin-mercury', () => {
 
           mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
 
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.permanent', closeEvent);
+          assert.calledWith(
+            mercury._emit,
+            mercury.defaultSessionId,
+            'offline.permanent',
+            closeEvent
+          );
           assert.notCalled(mercury._reconnect); // No reconnect for 4001 on active socket
           assert.isFalse(mercury.connected);
         });
@@ -1327,7 +1509,12 @@ describe('plugin-mercury', () => {
 
           mercury._onclose(mercury.defaultSessionId, closeEvent, anotherSocket);
 
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.replaced', closeEvent);
+          assert.calledWith(
+            mercury._emit,
+            mercury.defaultSessionId,
+            'offline.replaced',
+            closeEvent
+          );
           assert.notCalled(mercury._reconnect);
           assert.isTrue(mercury.connected); // Should remain connected
           assert.notCalled(mercury.unset);
@@ -1341,7 +1528,12 @@ describe('plugin-mercury', () => {
 
           // Test non-active socket
           mercury._onclose(mercury.defaultSessionId, closeEvent, anotherSocket);
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.replaced', closeEvent);
+          assert.calledWith(
+            mercury._emit,
+            mercury.defaultSessionId,
+            'offline.replaced',
+            closeEvent
+          );
 
           // Reset the spy call history
           mercury._emit.resetHistory();
@@ -1349,7 +1541,12 @@ describe('plugin-mercury', () => {
           // Test active socket
           mercury.sockets.set(mercury.defaultSessionId, mockSocket);
           mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.permanent', closeEvent);
+          assert.calledWith(
+            mercury._emit,
+            mercury.defaultSessionId,
+            'offline.permanent',
+            closeEvent
+          );
         });
 
         it('should handle missing sourceSocket parameter (treats as non-active)', () => {
@@ -1361,7 +1558,12 @@ describe('plugin-mercury', () => {
           mercury._onclose(mercury.defaultSessionId, closeEvent); // No sourceSocket parameter
 
           // With simplified logic, undefined !== this.socket, so isActiveSocket = false
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.replaced', closeEvent);
+          assert.calledWith(
+            mercury._emit,
+            mercury.defaultSessionId,
+            'offline.replaced',
+            closeEvent
+          );
           assert.notCalled(mercury._reconnect);
         });
 
@@ -1391,6 +1593,76 @@ describe('plugin-mercury', () => {
 
           // Verify listeners were removed from active socket
           assert.calledOnce(mockSocket.removeAllListeners);
+        });
+      });
+
+      describe('#_onclose() reconnect URL derivation', () => {
+        const sessionId = 'mercury-default-session';
+        // The URL resolved and stored in _prepareAndOpenSocket (catalog-valid host).
+        const resolvedUrl = 'wss://mercury-connection.wbx2.com/v1/apps/wx2/registrations';
+        // The URL the native socket was actually opened with, after a lower
+        // layer (e.g. the same-site websocket proxy) rewrote it into a
+        // non-catalog host. Reusing this would fail host-catalog validation.
+        const proxiedUrl = 'wss://web.webex.com/webproxy/mercury-connection.wbx2.com/v1/apps/wx2';
+        let sourceSocket;
+
+        beforeEach(() => {
+          sourceSocket = {
+            url: proxiedUrl,
+            removeAllListeners: sinon.stub(),
+          };
+          mercury.socket = sourceSocket;
+          mercury.sockets.set(sessionId, sourceSocket);
+          mercury.sessionWebSocketUrls.set(sessionId, resolvedUrl);
+          mercury.connected = true;
+          sinon.stub(mercury, '_emit');
+          sinon.stub(mercury, '_reconnect');
+          sinon.stub(mercury, 'unset');
+        });
+
+        afterEach(() => {
+          mercury._emit.restore();
+          mercury._reconnect.restore();
+          mercury.unset.restore();
+          mercury.sockets.clear();
+          mercury.sessionWebSocketUrls.clear();
+        });
+
+        [1001, 1005, 1006, 1011].forEach((code) => {
+          it(`reconnects an active socket using the stored resolved URL (not the proxied socket.url) for code ${code}`, () => {
+            mercury._onclose(sessionId, {code, reason: 'transient'}, sourceSocket);
+
+            assert.calledOnceWithExactly(mercury._reconnect, resolvedUrl, sessionId);
+            assert.neverCalledWith(mercury._reconnect, proxiedUrl, sessionId);
+          });
+        });
+
+        it('reconnects using the stored resolved URL for a normal close (1000) with a reconnect reason', () => {
+          mercury._onclose(sessionId, {code: 1000, reason: 'done (forced)'}, sourceSocket);
+
+          assert.calledOnceWithExactly(mercury._reconnect, resolvedUrl, sessionId);
+        });
+
+        it('does not reconnect when a non-active (old) socket closes', () => {
+          const oldSocket = {
+            url: proxiedUrl,
+            removeAllListeners: sinon.stub(),
+          };
+
+          mercury._onclose(sessionId, {code: 1006, reason: 'transient'}, oldSocket);
+
+          assert.notCalled(mercury._reconnect);
+        });
+      });
+
+      describe('#disconnectAll()', () => {
+        it('clears sessionWebSocketUrls along with the other session state', async () => {
+          mercury.sessionWebSocketUrls.set('mercury-default-session', 'ws://example.com');
+          mercury.sessionWebSocketUrls.set('llm-session', 'ws://example-2.com');
+
+          await mercury.disconnectAll();
+
+          assert.equal(mercury.sessionWebSocketUrls.size, 0);
         });
       });
 
@@ -1582,6 +1854,16 @@ describe('plugin-mercury', () => {
           assert.equal(result, 'ws://example.com');
         });
 
+        it('stores the resolved (pre-proxy) URL under the sessionId in sessionWebSocketUrls', async () => {
+          const sessionId = 'llm-session';
+
+          await mercury._prepareAndOpenSocket(mockSocket, 'ws://original.com', sessionId);
+
+          // The stored value is the URL resolved by _prepareUrl, not the raw
+          // input, so _onclose can later reconnect from a catalog-valid host.
+          assert.equal(mercury.sessionWebSocketUrls.get(sessionId), 'ws://example.com');
+        });
+
         it('should handle errors during socket open', async () => {
           mockSocket.open.returns(Promise.reject(new Error('Open failed')));
 
@@ -1590,6 +1872,7 @@ describe('plugin-mercury', () => {
             assert.fail('Should have thrown an error');
           } catch (err) {
             assert.equal(err.message, 'Open failed');
+            assert.equal(err.webSocketUrl, 'ws://example.com');
           }
         });
       });
@@ -1648,11 +1931,7 @@ describe('plugin-mercury', () => {
             onSuccess: (newSocket, url) => {
               mercury.socket = newSocket;
               mercury.connected = true;
-              mercury._emit(
-                sessionId,
-                'event:mercury_shutdown_switchover_complete',
-                {url}
-              );
+              mercury._emit(sessionId, 'event:mercury_shutdown_switchover_complete', {url});
             },
           });
 
@@ -1680,12 +1959,9 @@ describe('plugin-mercury', () => {
         it('should check _shutdownSwitchoverBackoffCall for shutdown connections', () => {
           mercury._shutdownSwitchoverBackoffCalls.clear();
 
-          const result = mercury._attemptConnection(
-            'ws://test.com',
-            sessionId,
-            callback,
-            {isShutdownSwitchover: true}
-          );
+          const result = mercury._attemptConnection('ws://test.com', sessionId, callback, {
+            isShutdownSwitchover: true,
+          });
 
           return result.catch((err) => {
             assert.instanceOf(err, Error);

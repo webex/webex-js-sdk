@@ -1,7 +1,7 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
-import {get, isEmpty, set} from 'lodash';
+import {get, isEmpty, isEqual, set} from 'lodash';
 // @ts-ignore
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
@@ -15,6 +15,7 @@ import {
 } from '../constants';
 import Trigger from '../common/events/trigger-proxy';
 import Member from '../member';
+import MemberUtil from '../member/util';
 import LoggerProxy from '../common/logs/logger-proxy';
 import ParameterError from '../common/errors/parameter';
 import {
@@ -98,6 +99,15 @@ export default class Members extends StatelessWebexPlugin {
   recordingId: any;
   selfId: any;
   type: any;
+
+  /**
+   * Map of CSI -> memberId that previously used the CSI in a Locus update.
+   * Keyed by CSI so findMemberByCsi can resolve it in O(1).
+   * Kept here (rather than on each Member) so it survives members being removed
+   * and re-added (e.g. when entering/leaving a breakout session).
+   * @private
+   */
+  private memberIdByHistoryCsi: Map<number, string> = new Map();
 
   namespace = MEETINGS;
 
@@ -315,6 +325,14 @@ export default class Members extends StatelessWebexPlugin {
    * @memberof Members
    */
   clearMembers() {
+    // capture CSIs of all current members before reset so findMemberByCsi can
+    // still resolve them if a member is later re-added (e.g. when leaving a
+    // breakout session)
+    Object.values(this.membersCollection.getAll()).forEach((member) => {
+      MemberUtil.extractCsis(member.participant).forEach((csi) =>
+        this.memberIdByHistoryCsi.set(csi, member.id)
+      );
+    });
     this.membersCollection.reset();
     Trigger.trigger(
       this,
@@ -569,6 +587,15 @@ export default class Members extends StatelessWebexPlugin {
    */
   private removeMembers(removedMembers: Array<string>) {
     removedMembers.forEach((memberId) => {
+      // capture CSIs before removal so findMemberByCsi can still resolve them
+      // if the member is later re-added (e.g. when leaving a breakout session)
+      // with a participant payload that no longer contains the original CSIs
+      const existingMember = this.membersCollection.get(memberId);
+      if (existingMember) {
+        MemberUtil.extractCsis(existingMember.participant).forEach((csi) =>
+          this.memberIdByHistoryCsi.set(csi, memberId)
+        );
+      }
       this.membersCollection.remove(memberId);
     });
   }
@@ -598,6 +625,19 @@ export default class Members extends StatelessWebexPlugin {
               set(member, prop, existingValue);
             }
           });
+
+          // remember CSIs the member used previously so findMemberByCsi can still
+          // resolve a CSI even after participant.devices[].csis no longer contains it.
+          // Skip re-extracting when devices haven't changed - existing history already covers them.
+          const devicesUnchanged = isEqual(
+            existingMember.participant?.devices,
+            member.participant?.devices
+          );
+          if (!devicesUnchanged) {
+            MemberUtil.extractCsis(existingMember.participant).forEach((csi) =>
+              this.memberIdByHistoryCsi.set(csi, member.id)
+            );
+          }
         }
       }
       this.membersCollection.set(member.id, member);
@@ -1096,12 +1136,16 @@ export default class Members extends StatelessWebexPlugin {
    * Transfers the host to another member
    * @param {String} memberId
    * @param {boolean} [moderator] default true
+   * @param {String} [breakoutLocusUrl] when provided, the request is sent against this locus url
+   * (i.e. the breakout session's locus) instead of the main session's locus url
    * @returns {Promise}
    * @public
    * @memberof Members
    */
-  public transferHostToMember(memberId: string, moderator = true) {
-    if (!this.locusUrl) {
+  public transferHostToMember(memberId: string, moderator = true, breakoutLocusUrl = '') {
+    const locusUrl = breakoutLocusUrl || this.locusUrl;
+
+    if (!locusUrl) {
       return Promise.reject(
         new ParameterError(
           'The associated locus url for this meetings members object must be defined.'
@@ -1113,11 +1157,14 @@ export default class Members extends StatelessWebexPlugin {
         new ParameterError('The member id must be defined to transfer host to the member.')
       );
     }
-    const options = MembersUtil.generateTransferHostMemberOptions(
+    const options: Record<string, any> = MembersUtil.generateTransferHostMemberOptions(
       memberId,
       moderator,
-      this.locusUrl
+      locusUrl
     );
+    if (breakoutLocusUrl && breakoutLocusUrl !== this.locusUrl) {
+      options.authorizingLocusUrl = this.locusUrl;
+    }
 
     return this.membersRequest.transferHostToMember(options);
   }
@@ -1161,18 +1208,34 @@ export default class Members extends StatelessWebexPlugin {
     );
   }
 
-  /** Finds a member that has any device with a csi matching provided value
+  /** Finds a member that has any device with a csi matching provided value.
+   * Falls back to the `memberIdByHistoryCsi` map so that a CSI a member used in
+   * a previous Locus update can still be resolved even if it is no longer
+   * present in `participant.devices[].csis`.
    *
    * @param {number} csi
    * @returns {Member}
    */
   findMemberByCsi(csi) {
-    return Object.values(this.membersCollection.getAll()).find((member) =>
+    const members = Object.values(this.membersCollection.getAll());
+
+    const currentMatch = members.find((member) =>
       // @ts-ignore
       member.participant?.devices?.find((device) =>
         device.csis?.find((memberCsi) => memberCsi === csi)
       )
     );
+
+    if (currentMatch) {
+      return currentMatch;
+    }
+
+    const historyMemberId = this.memberIdByHistoryCsi.get(csi);
+    if (historyMemberId) {
+      return this.membersCollection.get(historyMemberId);
+    }
+
+    return undefined;
   }
 
   /**

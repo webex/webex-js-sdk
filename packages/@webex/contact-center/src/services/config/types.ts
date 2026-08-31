@@ -1,10 +1,14 @@
 import * as Agent from '../agent/types';
+import {COLLABORATION_ACCESS} from './constants';
 
 /**
  * Generic type for converting a const enum object into a union type of its values
  * @internal
  */
 type Enum<T extends Record<string, unknown>> = T[keyof T];
+
+/** Desktop Profile access level for a collaboration destination category. */
+export type CollaborationAccess = Enum<typeof COLLABORATION_ACCESS>;
 
 /**
  * Events emitted on task objects
@@ -57,6 +61,8 @@ export const CC_TASK_EVENTS = {
   PARTICIPANT_LEFT_CONFERENCE: 'ParticipantLeftConference',
   /** Event emitted when participant leaving conference fails */
   PARTICIPANT_LEFT_CONFERENCE_FAILED: 'ParticipantLeftConferenceFailed',
+  /** Event emitted when dropping another conference participant fails */
+  PARTICIPANT_DROP_CONFERENCE_FAILED: 'ParticipantDropConferenceFailed',
   /** Event emitted when consultation conference end fails */
   AGENT_CONSULT_CONFERENCE_END_FAILED: 'AgentConsultConferenceEndFailed',
   /** Event emitted when conference is successfully transferred */
@@ -65,6 +71,8 @@ export const CC_TASK_EVENTS = {
   AGENT_CONFERENCE_TRANSFER_FAILED: 'AgentConferenceTransferFailed',
   /** Event emitted for post-call activity by participant */
   PARTICIPANT_POST_CALL_ACTIVITY: 'ParticipantPostCallActivity',
+  /** Event emitted when consulted participant is being moved/transferred */
+  CONSULTED_PARTICIPANT_MOVING: 'ConsultedParticipantMoving',
   /** Event emitted when contact is blind transferred */
   AGENT_BLIND_TRANSFERRED: 'AgentBlindTransferred',
   /** Event emitted when blind transfer fails */
@@ -81,6 +89,8 @@ export const CC_TASK_EVENTS = {
   AGENT_CONSULT_TRANSFER_FAILED: 'AgentConsultTransferFailed',
   /** Event emitted when contact recording is paused */
   CONTACT_RECORDING_PAUSED: 'ContactRecordingPaused',
+  /** Event emitted when contact recording is started */
+  CONTACT_RECORDING_STARTED: 'ContactRecordingStarted',
   /** Event emitted when pausing contact recording fails */
   CONTACT_RECORDING_PAUSE_FAILED: 'ContactRecordingPauseFailed',
   /** Event emitted when contact recording is resumed */
@@ -91,6 +101,10 @@ export const CC_TASK_EVENTS = {
   CONTACT_ENDED: 'ContactEnded',
   /** Event emitted when contact is merged */
   CONTACT_MERGED: 'ContactMerged',
+  /** Event emitted when contact payload is updated (routing updates) */
+  CONTACT_UPDATED: 'ContactUpdated',
+  /** Event emitted when contact owner changes */
+  CONTACT_OWNER_CHANGED: 'ContactOwnerChanged',
   /** Event emitted when ending contact fails */
   AGENT_CONTACT_END_FAILED: 'AgentContactEndFailed',
   /** Event emitted when agent enters wrap-up state */
@@ -123,6 +137,14 @@ export const CC_TASK_EVENTS = {
   CAMPAIGN_PREVIEW_REMOVE_FAILED: 'CampaignPreviewRemoveFailed',
   /** Event emitted when a real-time transcript chunk is received */
   REAL_TIME_TRANSCRIPTION: 'REAL_TIME_TRANSCRIPTION',
+  /** Event emitted when an AI assistant suggested response is available */
+  SUGGESTED_RESPONSE: 'SUGGESTED_RESPONSE',
+  /** Event emitted when backend acknowledges it is listening for more context */
+  SUGGESTED_RESPONSE_ACKNOWLEDGE: 'SUGGESTED_RESPONSE_ACKNOWLEDGE',
+  /** Event emitted when a mid-call summary is available */
+  MID_CALL_SUMMARY: 'MID_CALL_SUMMARY',
+  /** Event emitted when a post-call summary is available */
+  POST_CALL_SUMMARY: 'POST_CALL_SUMMARY',
 } as const;
 
 /**
@@ -188,6 +210,15 @@ export type WelcomeEvent = {
   /** ID of the agent that connected */
   agentId: string;
 };
+
+/**
+ * Available login options for voice channel access
+ * 'AGENT_DN' - Login using agent's DN
+ * 'EXTENSION' - Login using extension number
+ * 'BROWSER' - Login using browser-based WebRTC
+ * @public
+ */
+export type LoginOption = 'AGENT_DN' | 'EXTENSION' | 'BROWSER';
 
 /**
  * Response type for welcome events which can be either success or error
@@ -289,6 +320,31 @@ export type AgentResponse = {
  */
 export type DesktopProfileResponse = {
   /**
+   * Unique identifier of the agent profile configuration.
+   */
+  id: string;
+
+  /**
+   * Display name for the agent profile.
+   */
+  name: string;
+
+  /**
+   * Description of the agent profile.
+   */
+  description: string;
+
+  /**
+   * Parent entity type for the profile (for example ORGANIZATION).
+   */
+  parentType: string;
+
+  /**
+   * Indicates whether screen pop is enabled.
+   */
+  screenPopup: boolean;
+
+  /**
    * Represents the voice options of an agent.
    */
   loginVoiceOptions: LoginOption[];
@@ -329,6 +385,11 @@ export type DesktopProfileResponse = {
   autoWrapUp: boolean;
 
   /**
+   * Whether the agent personal greeting is enabled.
+   */
+  agentPersonalGreeting: boolean;
+
+  /**
    * Auto answer allowed.
    */
   autoAnswer: boolean;
@@ -347,6 +408,36 @@ export type DesktopProfileResponse = {
    * Allow auto wrap-up extension.
    */
   allowAutoWrapUpExtension: boolean;
+
+  /**
+   * Access control for queues assigned to the agent (ALL, SPECIFIC, or NONE).
+   */
+  accessQueue: CollaborationAccess;
+
+  /**
+   * Queue identifiers available to the agent when access is SPECIFIC.
+   */
+  queues: string[];
+
+  /**
+   * Access control for entry points assigned to the agent.
+   */
+  accessEntryPoint: CollaborationAccess;
+
+  /**
+   * Entry point identifiers available to the agent when access is SPECIFIC.
+   */
+  entryPoints: string[];
+
+  /**
+   * Access control for buddy teams assigned to the agent.
+   */
+  accessBuddyTeam: CollaborationAccess;
+
+  /**
+   * Buddy team identifiers available to the agent when access is SPECIFIC.
+   */
+  buddyTeams: string[];
 
   /**
    * Outdial enabled for the agent.
@@ -392,6 +483,11 @@ export type DesktopProfileResponse = {
   agentDNValidation: string;
 
   /**
+   * Additional DN validation criteria configured for the agent.
+   */
+  agentDNValidationCriterions: string[];
+
+  /**
    * Dial plans of the agent.
    */
   dialPlans: string[];
@@ -425,6 +521,31 @@ export type DesktopProfileResponse = {
    * State synchronization in Webex enabled or not.
    */
   stateSynchronizationWebex: boolean;
+
+  /**
+   * Threshold rules configured for the agent profile.
+   */
+  thresholdRules: Array<Record<string, string | number>>;
+
+  /**
+   * Whether the agent profile is currently active.
+   */
+  active: boolean;
+
+  /**
+   * Whether this profile is the system default.
+   */
+  systemDefault: boolean;
+
+  /**
+   * Timestamp when the profile was created.
+   */
+  createdTime: number;
+
+  /**
+   * Timestamp when the profile was last updated.
+   */
+  lastUpdatedTime: number;
 };
 
 /**
@@ -872,15 +993,6 @@ export type WrapupData = {
 };
 
 /**
- * Available login options for voice channel access
- * 'AGENT_DN' - Login using agent's DN
- * 'EXTENSION' - Login using extension number
- * 'BROWSER' - Login using browser-based WebRTC
- * @public
- */
-export type LoginOption = 'AGENT_DN' | 'EXTENSION' | 'BROWSER';
-
-/**
  * Team configuration information
  * @public
  */
@@ -1052,7 +1164,7 @@ export type Profile = {
   /** Outbound entry point */
   outDialEp: string;
   /** Whether ending calls is enabled */
-  isEndCallEnabled: boolean;
+  isEndTaskEnabled: boolean;
   /** Whether ending consultations is enabled */
   isEndConsultEnabled: boolean;
   /** Optional lifecycle manager URL */
@@ -1063,6 +1175,12 @@ export type Profile = {
   agentAnalyzerId?: string;
   /** Whether consult to queue is allowed */
   allowConsultToQueue: boolean;
+  /** Access control for queues on Desktop Profile Collaboration tab */
+  accessQueue?: CollaborationAccess;
+  /** Access control for entry points on Desktop Profile Collaboration tab */
+  accessEntryPoint?: CollaborationAccess;
+  /** Access control for buddy teams on Desktop Profile Collaboration tab */
+  accessBuddyTeam?: CollaborationAccess;
   /** Additional campaign manager information */
   campaignManagerAdditionalInfo?: string;
   /** Whether personal statistics are enabled */
@@ -1187,4 +1305,56 @@ export type OutdialAniParams = {
   filter?: string;
   /** Comma-separated list of attributes to include in response (optional) */
   attributes?: string;
+};
+
+/**
+ * User preference data structure
+ * @public
+ */
+export type UserPreference = {
+  /** Unique identifier for the user preference */
+  id: string;
+  /** Organization ID */
+  organizationId: string;
+  /** User ID (CI user ID) */
+  userId: string;
+  /** User preference data as key-value pairs */
+  preferences: Record<string, unknown>;
+  /** Timestamp when this preference was created (Unix timestamp in milliseconds) */
+  createdTime?: number;
+  /** Timestamp when this preference was last updated (Unix timestamp in milliseconds) */
+  lastUpdatedTime?: number;
+};
+
+/**
+ * Request payload for creating user preferences
+ * @public
+ */
+export type CreateUserPreferenceRequest = {
+  /** User ID (CI user ID) */
+  userId: string;
+  /** Desktop preference data as a JSON string (required) */
+  desktopPreference: string;
+};
+
+/**
+ * Request payload for updating user preferences
+ * @public
+ */
+export type UpdateUserPreferenceRequest = {
+  /** Desktop preference data as a JSON string (required) */
+  desktopPreference: string;
+};
+
+/**
+ * Query parameters for fetching user preferences
+ * @public
+ */
+export type GetUserPreferenceParams = {
+  /** User ID to fetch preferences for. Defaults to current user's CI user ID. */
+  userId?: string;
+  /** Page number (0-indexed). Default: 0 */
+  page?: number;
+  /** Number of items per page. Default: 100 */
+  pageSize?: number;
 };

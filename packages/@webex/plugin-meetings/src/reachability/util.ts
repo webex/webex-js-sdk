@@ -1,4 +1,40 @@
 /* eslint-disable import/prefer-default-export */
+import {EnableReachabilityChecksConfig, ResolvedReachabilityProtocols} from './reachability.types';
+
+/**
+ * Resolves `enableReachabilityChecks` into explicit per-protocol flags.
+ * Defaults to all protocols enabled when not configured.
+ * UDP is always tested unless reachability is disabled entirely (`false`).
+ *
+ * @param {EnableReachabilityChecksConfig} enabled value of config.meetings.enableReachabilityChecks
+ * @returns {ResolvedReachabilityProtocols} resolved per-protocol flags
+ */
+export function resolveReachabilityProtocols(
+  enabled: EnableReachabilityChecksConfig = true
+): ResolvedReachabilityProtocols {
+  if (typeof enabled === 'object') {
+    return {
+      udp: true,
+      tcp: enabled.tcp ?? true,
+      tls: enabled.tls ?? true,
+    };
+  }
+
+  return {udp: enabled, tcp: enabled, tls: enabled};
+}
+
+/**
+ * Whether any reachability protocol is enabled.
+ *
+ * @param {EnableReachabilityChecksConfig} config value of config.meetings.enableReachabilityChecks
+ * @returns {boolean} true if any protocol is enabled
+ */
+export function isReachabilityEnabled(config: EnableReachabilityChecksConfig = true): boolean {
+  const {udp, tcp, tls} = resolveReachabilityProtocols(config);
+
+  return udp || tcp || tls;
+}
+
 /**
  * Converts a stun url to a turn url
  *

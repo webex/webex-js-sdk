@@ -21,6 +21,7 @@ import {
 } from './errors';
 
 const normalReconnectReasons = ['idle', 'done (forced)', 'pong not received', 'pong mismatch'];
+const MERCURY_CLOSE_4000_METRIC = 'JS_SDK_MERCURY_CLOSE_4000';
 
 const Mercury = WebexPlugin.extend({
   namespace: 'Mercury',
@@ -41,6 +42,10 @@ const Mercury = WebexPlugin.extend({
       type: 'boolean',
     },
     sockets: {
+      default: () => new Map(),
+      type: 'object',
+    },
+    sessionWebSocketUrls: {
       default: () => new Map(),
       type: 'object',
     },
@@ -377,6 +382,7 @@ const Mercury = WebexPlugin.extend({
     return Promise.all(disconnectPromises).then(() => {
       this.connected = false;
       this.sockets.clear();
+      this.sessionWebSocketUrls.clear();
       this.backoffCalls.clear();
       // Clear connection promises to prevent stale promises
       if (this._connectPromises) {
@@ -610,12 +616,24 @@ const Mercury = WebexPlugin.extend({
           return this.webex.internal.feature
             .getFeature('developer', 'web-high-availability')
             .then((haMessagingEnabled) => {
+              const wsUrl = newWSUrl || reason.webSocketUrl;
+
               if (haMessagingEnabled) {
                 this.logger.info(
-                  `${this.namespace}: received a generic connection error for ${sessionId}, will try to connect to another datacenter. failed, action: 'failed', url: ${newWSUrl} error: ${reason.message}`
+                  `${this.namespace}: received a generic connection error for ${sessionId}, will try to connect to another datacenter. failed, action: 'failed', url: ${wsUrl} error: ${reason.message}`
                 );
 
-                return this.webex.internal.services.markFailedUrl(newWSUrl);
+                if (wsUrl) {
+                  this.logger.info(
+                    `${this.namespace}: marking ${wsUrl} as failed for ${sessionId} due to connection error`
+                  );
+
+                  return this.webex.internal.services.markFailedUrl(wsUrl);
+                }
+
+                this.logger.info(
+                  `${this.namespace}: no socket url available to mark as failed for ${sessionId} due to connection error`
+                );
               }
 
               return null;
@@ -664,7 +682,22 @@ const Mercury = WebexPlugin.extend({
 
         this.logger.info(`${this.namespace} ${logPrefix} url for ${sessionId}: ${webSocketUrl}`);
 
-        return socket.open(webSocketUrl, options).then(() => webSocketUrl);
+        // Remember the resolved URL used to open this socket so that
+        // reconnection in _onclose re-derives from a catalog-valid host. This is
+        // captured before socket.open(), which a lower layer (e.g. the same-site
+        // websocket proxy done with interceptors) may rewrite into a non-catalog host.
+        // Reusing the post-proxy native socket URL would fail
+        // host-catalog validation in _prepareUrl and block reconnection.
+        this.sessionWebSocketUrls.set(sessionId, webSocketUrl);
+
+        return socket
+          .open(webSocketUrl, options)
+          .then(() => webSocketUrl)
+          .catch((err) => {
+            err.webSocketUrl = webSocketUrl;
+
+            return Promise.reject(err);
+          });
       }
     );
   },
@@ -850,6 +883,29 @@ const Mercury = WebexPlugin.extend({
     return handlers;
   },
 
+  _submitMercuryClose4000Metric(sessionId, event, options) {
+    const {action, isActiveSocket, messageType} = options;
+
+    try {
+      this.webex.internal.metrics.submitClientMetrics(MERCURY_CLOSE_4000_METRIC, {
+        fields: {
+          action,
+          close_code: event.code,
+          close_reason: event.reason || '',
+          is_active_socket: isActiveSocket,
+          message_type: messageType,
+          session_id: sessionId,
+        },
+        tags: {
+          action,
+          message_type: messageType,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(`${this.namespace}: failed to submit Mercury 4000 close metric`, error);
+    }
+  },
+
   _onclose(sessionId, event, sourceSocket) {
     // I don't see any way to avoid the complexity or statement count in here.
     /* eslint complexity: [0] */
@@ -857,13 +913,18 @@ const Mercury = WebexPlugin.extend({
     try {
       const reason = event.reason && event.reason.toLowerCase();
       const sessionSocket = this.sockets.get(sessionId);
-      let socketUrl;
       event.sessionId = sessionId;
 
       const isActiveSocket = sourceSocket === sessionSocket;
-      if (sourceSocket) {
-        socketUrl = sourceSocket.url;
-      }
+      // Reconnect using the resolved URL this session's socket was
+      // opened with, captured in _prepareAndOpenSocket. Do NOT reuse
+      // sourceSocket.url: that reflects the URL the native WebSocket was
+      // actually opened with, which a lower layer may have rewritten
+      // (e.g. via interceptors) into a host that is not in the SDK host
+      // catalog. Feeding such a URL back into _prepareUrl fails host-catalog
+      // validation and permanently blocks reconnection.
+      const socketUrl = this.sessionWebSocketUrls.get(sessionId);
+
       this.sockets.delete(sessionId);
 
       if (isActiveSocket) {
@@ -901,9 +962,28 @@ const Mercury = WebexPlugin.extend({
           break;
         case 4000:
           // metric: disconnect
-          this.logger.info(`${this.namespace}: socket ${sessionId} replaced; will not reconnect`);
-          if (isActiveSocket) this._emit(sessionId, 'offline.replaced', event);
-          // If not active, nothing to do
+          if (reason === 'replaced') {
+            this._submitMercuryClose4000Metric(sessionId, event, {
+              action: 'no_action',
+              isActiveSocket,
+              messageType: 'replaced',
+            });
+            this.logger.info(`${this.namespace}: socket ${sessionId} replaced; will not reconnect`);
+            if (isActiveSocket) this._emit(sessionId, 'offline.replaced', event);
+          } else {
+            this._submitMercuryClose4000Metric(sessionId, event, {
+              action: isActiveSocket ? 'reconnect' : 'ignore_non_active',
+              isActiveSocket,
+              messageType: 'other',
+            });
+            this.logger.info(
+              `${this.namespace}: socket ${sessionId} disconnected with 4000: ${event.reason}; reconnecting`
+            );
+            if (isActiveSocket) {
+              this._emit(sessionId, 'offline.transient', event);
+              this._reconnect(socketUrl, sessionId);
+            }
+          }
           break;
         case 4001:
           // replaced during shutdown

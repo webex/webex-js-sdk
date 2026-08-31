@@ -14,6 +14,9 @@ export enum COMMON_EVENT_KEYS {
   CALL_HISTORY_USER_SESSION_INFO = 'callHistory:user_recent_sessions',
   CALL_HISTORY_USER_VIEWED_SESSIONS = 'callHistory:user_viewed_sessions',
   CALL_HISTORY_USER_SESSIONS_DELETED = 'callHistory:user_sessions_deleted',
+  CALL_RECORDING_CREATED = 'callRecording:created',
+  CALL_RECORDING_UPDATED = 'callRecording:updated',
+  CALL_RECORDING_DELETED = 'callRecording:deleted',
 }
 
 export enum LINE_EVENT_KEYS {
@@ -171,6 +174,9 @@ export enum MOBIUS_EVENT_KEYS {
   CALL_SESSION_EVENT_LEGACY = 'event:janus.user_sessions',
   CALL_SESSION_EVENT_VIEWED = 'event:janus.user_viewed_sessions',
   CALL_SESSION_EVENT_DELETED = 'event:janus.user_sessions_deleted',
+  RECORDING_EVENT_CREATED = 'event:convergedRecordings.created',
+  RECORDING_EVENT_UPDATED = 'event:convergedRecordings.updated',
+  RECORDING_EVENT_DELETED = 'event:convergedRecordings.deleted',
 }
 
 export type CallSessionData = {
@@ -206,7 +212,15 @@ export type LineEventTypes = {
   [LINE_EVENTS.RECONNECTED]: () => void;
   [LINE_EVENTS.RECONNECTING]: () => void;
   [LINE_EVENTS.REGISTERED]: (lineInfo: ILine) => void;
-  [LINE_EVENTS.UNREGISTERED]: () => void;
+  /**
+   * Emitted whenever the line is no longer registered.
+   *
+   * `error` is present only when the SDK knows why the registration ended and will not
+   * re-establish it. Today that is a session superseded by another registration for the
+   * same user, for example calling opened in a second browser tab, reported as
+   * `ERROR_TYPE.SESSION_SUPERSEDED`.
+   */
+  [LINE_EVENTS.UNREGISTERED]: (error?: LineError) => void;
   [LINE_EVENTS.INCOMING_CALL]: (callObj: ICall) => void;
 };
 
@@ -250,6 +264,79 @@ export type CallHistoryEventTypes = {
   [COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO]: (event: CallSessionEvent) => void;
   [COMMON_EVENT_KEYS.CALL_HISTORY_USER_VIEWED_SESSIONS]: (event: CallSessionViewedEvent) => void;
   [COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSIONS_DELETED]: (event: CallSessionDeletedEvent) => void;
+};
+
+/**
+ * Backend recording Mercury `eventType` values, surfaced on the recording activity envelope.
+ */
+export enum RECORDING_EVENT_TYPE {
+  CREATED = 'convergedRecordings.created',
+  UPDATED = 'convergedRecordings.updated',
+  DELETED = 'convergedRecordings.deleted',
+}
+
+/**
+ * Sub-type that qualifies a `convergedRecordings.updated` event. Notably, AI summary/transcript
+ * availability is surfaced as an `updated` event with `eventSubType: SUMMARY_CREATE` — there are
+ * no separate `transcriptAvailable`/`summaryAvailable` backend events.
+ */
+export enum RECORDING_EVENT_SUBTYPE {
+  TRASH = 'TRASH',
+  PURGE = 'PURGE',
+  RESTORE = 'RESTORE',
+  SUMMARY_CREATE = 'SUMMARY_CREATE',
+}
+
+export type RecordingActor = {
+  id?: string;
+  objectType?: string;
+  emailAddress?: string;
+  displayName?: string;
+};
+
+export type RecordingActivityObject = {
+  id: string;
+  objectType?: string;
+  suiteID?: string;
+  callSessionID?: string;
+  locationID?: string;
+  topic?: string;
+  durationSeconds?: number;
+  sizeBytes?: number;
+  callingActorID?: string;
+  calledActorID?: string;
+  personality?: string;
+  storageRegion?: string;
+  playbackUrl?: string;
+  published?: string;
+};
+
+export type RecordingActivity = {
+  id?: string;
+  objectType?: string;
+  verb?: string;
+  published?: string;
+  actor?: RecordingActor;
+  object: RecordingActivityObject;
+};
+
+export type RecordingEventData = {
+  activity: RecordingActivity;
+  eventType: RECORDING_EVENT_TYPE;
+  eventSubType?: RECORDING_EVENT_SUBTYPE;
+};
+
+export type RecordingEvent = {
+  id?: string;
+  data: RecordingEventData;
+  timestamp?: number;
+  trackingId?: string;
+};
+
+export type CallRecordingEventTypes = {
+  [COMMON_EVENT_KEYS.CALL_RECORDING_CREATED]: (event: RecordingEvent) => void;
+  [COMMON_EVENT_KEYS.CALL_RECORDING_UPDATED]: (event: RecordingEvent) => void;
+  [COMMON_EVENT_KEYS.CALL_RECORDING_DELETED]: (event: RecordingEvent) => void;
 };
 /* External Eventing End */
 

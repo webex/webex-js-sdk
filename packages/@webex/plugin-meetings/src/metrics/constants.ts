@@ -11,6 +11,7 @@ const BEHAVIORAL_METRICS = {
   ADD_MEDIA_SUCCESS: 'js_sdk_add_media_success',
   ADD_MEDIA_FAILURE: 'js_sdk_add_media_failures',
   ADD_MEDIA_RETRY: 'js_sdk_add_media_retry',
+  LOCUS_MEDIA_REQUEST_RETRY: 'js_sdk_locus_media_request_retry',
   ROAP_MERCURY_EVENT_RECEIVED: 'js_sdk_roap_mercury_received',
   CONNECTION_SUCCESS: 'js_sdk_connection_success',
   CONNECTION_FAILURE: 'js_sdk_connection_failures',
@@ -99,6 +100,8 @@ const BEHAVIORAL_METRICS = {
   HASH_TREE_SYNC_FAILURE: 'js_sdk_hash_tree_sync_failure',
   HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED: 'js_sdk_hash_tree_heartbeat_watchdog_expired',
   HASH_TREE_EMPTY_LOCUS_STATE_ELEMENTS: 'js_sdk_hash_tree_empty_locus_state_elements',
+  DESTROY_MEETING_WHILE_SUSPENDED: 'js_sdk_destroy_meeting_while_suspended',
+  WASM_RUNTIME_PERFORMANCE: 'js_sdk_wasm_runtime_performance',
 };
 
 export {BEHAVIORAL_METRICS as default};
