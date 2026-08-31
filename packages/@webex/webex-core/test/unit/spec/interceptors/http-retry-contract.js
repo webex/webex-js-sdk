@@ -378,10 +378,171 @@ const RESPONSE_CASES = {
   },
 };
 
+const GENERATED_POLICY_SOURCES = {
+  default: {
+    enabled: true,
+    initialDelay: 400,
+    methods: ['GET'],
+    options: {},
+  },
+  service: {
+    enabled: true,
+    initialDelay: 600,
+    methods: ['GET', 'POST'],
+    options: {service: 'matrix-service'},
+  },
+  'service-path': {
+    enabled: false,
+    initialDelay: 600,
+    methods: ['GET', 'POST'],
+    options: {service: 'matrix-service', uri: 'https://example.com/items/disabled'},
+  },
+  request: {
+    enabled: true,
+    initialDelay: 200,
+    methods: ['GET', 'POST'],
+    options: {
+      httpRetry: {
+        backoff: {initialDelay: 200},
+        enabled: true,
+        methods: ['GET', 'POST'],
+      },
+      service: 'matrix-service',
+      uri: 'https://example.com/items/disabled',
+    },
+  },
+};
+
+const GENERATED_FAILURES = {
+  '429-retry-after': {
+    error: errorResponse(429, '1'),
+    outcome: 429,
+    retryAfterDelay: 1000,
+    retryable: true,
+  },
+  '503-no-retry-after': {
+    error: errorResponse(503),
+    outcome: 503,
+    retryable: true,
+  },
+  '500-backoff': {
+    error: errorResponse(500),
+    outcome: 500,
+    retryable: true,
+  },
+  '400-not-retryable': {
+    error: errorResponse(400),
+    outcome: 400,
+    retryable: false,
+  },
+  network: {
+    error: new TypeError('Failed to fetch'),
+    network: true,
+    outcome: 'TypeError',
+    retryable: true,
+  },
+};
+
+const cartesianProduct = (axes) =>
+  axes.reduce(
+    (combinations, [dimension, values]) =>
+      combinations.flatMap((combination) =>
+        values.map((value) => ({...combination, [dimension]: value}))
+      ),
+    [{}]
+  );
+
+const GENERATED_COMBINATIONS = cartesianProduct([
+  ['policySource', Object.keys(GENERATED_POLICY_SOURCES)],
+  ['method', ['GET', 'POST']],
+  ['body', ['replayable', 'stream']],
+  ['retryBudget', ['available', 'exhausted']],
+  ['failure', Object.keys(GENERATED_FAILURES)],
+  ['networkErrors', [false, true]],
+]);
+
+const generatedCaseName = (combination) =>
+  Object.entries(combination)
+    .map(([dimension, value]) => `${dimension}:${value}`)
+    .join('|');
+
+const generatedConfig = (retryNetworkErrors) => ({
+  default: {
+    ...ENABLED_POLICY,
+    backoff: {...ENABLED_POLICY.backoff, jitterRatio: 0},
+    maxRetries: 1,
+    methods: ['GET'],
+    retryNetworkErrors,
+  },
+  services: {
+    'matrix-service': {
+      backoff: {initialDelay: 600},
+      methods: ['GET', 'POST'],
+      paths: [{match: {suffixes: ['/disabled']}, policy: {enabled: false}}],
+    },
+  },
+});
+
+const generatedScenario = (combination) => {
+  const source = GENERATED_POLICY_SOURCES[combination.policySource];
+  const failure = GENERATED_FAILURES[combination.failure];
+
+  return {
+    config: generatedConfig(combination.networkErrors),
+    error: failure.error,
+    options: {
+      ...source.options,
+      ...(combination.body === 'stream' && {body: {pipe: sinon.stub()}}),
+      ...(combination.retryBudget === 'exhausted' && {$httpRetryCount: 1}),
+      method: combination.method,
+    },
+  };
+};
+
+const generatedExpectation = (combination) => {
+  const source = GENERATED_POLICY_SOURCES[combination.policySource];
+  const failure = GENERATED_FAILURES[combination.failure];
+  const hasBudget = combination.retryBudget === 'available';
+  const methodAllowed = source.methods.includes(combination.method);
+  const networkAllowed = !failure.network || combination.networkErrors;
+  const shouldRetry =
+    source.enabled &&
+    methodAllowed &&
+    combination.body === 'replayable' &&
+    hasBudget &&
+    failure.retryable &&
+    networkAllowed;
+  const retryCount = hasBudget ? Number(shouldRetry) : 1;
+
+  return {
+    delays: shouldRetry ? [failure.retryAfterDelay ?? source.initialDelay] : [],
+    outcome: shouldRetry ? 'resolved:200' : `rejected:${failure.outcome}`,
+    requestCount: Number(shouldRetry),
+    retryCount,
+    willRetry: shouldRetry,
+  };
+};
+
+const GENERATED_RESPONSE_CASES = Object.fromEntries(
+  GENERATED_COMBINATIONS.map((combination) => [
+    generatedCaseName(combination),
+    generatedScenario(combination),
+  ])
+);
+
+const EXPECTED_GENERATED_RESPONSES = Object.fromEntries(
+  GENERATED_COMBINATIONS.map((combination) => [
+    generatedCaseName(combination),
+    generatedExpectation(combination),
+  ])
+);
+
 const EXPECTED_HTTP_RETRY_CONTRACT = {
   decisions: {
     '503 honors Retry-After HTTP date': 2000,
   },
+  generatedCaseCount: 320,
+  generatedResponses: EXPECTED_GENERATED_RESPONSES,
   resolvedPolicies: {
     'sdk default is disabled': {...ENABLED_POLICY, enabled: false},
     'boolean default enables retry': ENABLED_POLICY,
@@ -936,7 +1097,7 @@ const evaluateResponses = async (entries, responses = {}) => {
 };
 
 describe('HTTP retry contract', () => {
-  it('matches every configured policy and response permutation', async () => {
+  it('matches curated boundaries and bounded configuration combinations', async () => {
     const decisions = {
       '503 honors Retry-After HTTP date': getHttpRetryDelay({
         now: NOW,
@@ -948,8 +1109,18 @@ describe('HTTP retry contract', () => {
     const resolvedPolicies = Object.fromEntries(
       Object.entries(RESOLUTION_CASES).map(([name, input]) => [name, resolveHttpRetryPolicy(input)])
     );
+    const generatedResponses = await evaluateResponses(Object.entries(GENERATED_RESPONSE_CASES));
     const responses = await evaluateResponses(Object.entries(RESPONSE_CASES));
 
-    assert.deepEqual({decisions, resolvedPolicies, responses}, EXPECTED_HTTP_RETRY_CONTRACT);
+    assert.deepEqual(
+      {
+        decisions,
+        generatedCaseCount: Object.keys(generatedResponses).length,
+        generatedResponses,
+        resolvedPolicies,
+        responses,
+      },
+      EXPECTED_HTTP_RETRY_CONTRACT
+    );
   });
 });
