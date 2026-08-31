@@ -8185,25 +8185,19 @@ export default class Meeting extends StatelessWebexPlugin {
         );
       }
     });
-    this.statsAnalyzer.on(StatsAnalyzerEventNames.AUDIO_METRICS_REPORT, (data) => {
+    this.statsAnalyzer.on(StatsAnalyzerEventNames.INBOUND_RTP_AUDIO_LEVEL_UPDATE, (data) => {
       if (data.length === 0) {
         return;
       }
 
       LoggerProxy.logger.info(
-        `Meeting:index#setupStatsAnalyzerEventHandlers --> audio metrics report received for ${data.length} tracks`
+        `Meeting:index#setupStatsAnalyzerEventHandlers --> inbound RTP audio level update received for ${data.length} tracks`
       );
 
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.media.audio.metrics',
-        payload: {
-          mediaType: 'main', // Audio slides not supported yet
-          data,
-        },
-        options: {
-          meetingId: this.id,
-        },
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.INBOUND_RTP_AUDIO_LEVEL_UPDATE, {
+        meetingId: this.id,
+        correlationId: this.correlationId,
+        data,
       });
     });
   };
