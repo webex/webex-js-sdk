@@ -647,6 +647,20 @@ export default class LocusInfo extends EventsScope {
         ) as any;
 
         if (duplicateMeeting) {
+          if (data.trigger === 'get-loci-response') {
+            // This meeting lost the race: `duplicateMeeting` is the real one, so destroy self instead.
+            LoggerProxy.logger.info(
+              'Locus-info:index#initialSetup --> this meeting is a sync-created duplicate of an already set up meeting, destroying self instead of the other meeting'
+            );
+
+            this.webex.meetings.destroy(
+              this.webex.meetings.meetingCollection.get(this.meetingId),
+              MEETING_REMOVED_REASON.DUPLICATE_LOCUS_MEETING
+            );
+
+            return;
+          }
+
           // merged in below, after updateControls() has replaced this.controls, so it isn't lost
           duplicateMeetingContainer = duplicateMeeting.locusInfo?.controls?.meetingContainer;
 
