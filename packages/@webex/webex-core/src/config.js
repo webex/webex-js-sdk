@@ -12,27 +12,9 @@ export default {
   maxLocusRedirects: 5,
   maxAuthenticationReplays: 1,
   maxReconnectAttempts: 1,
-  appLevelRetry: {
-    enabled: false,
-    statuses: {
-      429: true,
-      503: true,
-    },
-    methods: {
-      GET: true,
-      POST: true,
-      PUT: true,
-      HEAD: false,
-      OPTIONS: false,
-    },
-    maxRetries: 3,
-    retryAfter: {
-      enabled: true,
-      maxDelay: 3600000,
-    },
-    fallback: {
-      enabled: true,
-      delays: [400, 1600, 3200],
+  httpRetry: {
+    default: {
+      enabled: false,
     },
     services: {},
   },

@@ -30,7 +30,7 @@ import ProxyInterceptor from './interceptors/proxy';
 import WebexTrackingIdInterceptor from './interceptors/webex-tracking-id';
 import WebexUserAgentInterceptor from './interceptors/webex-user-agent';
 import RateLimitInterceptor from './interceptors/rate-limit';
-import AppLevelRetryInterceptor from './interceptors/app-level-retry';
+import HttpRetryInterceptor from './interceptors/http-retry';
 import EmbargoInterceptor from './interceptors/embargo';
 import DefaultOptionsInterceptor from './interceptors/default-options';
 import HostMapInterceptor from './lib/interceptors/hostmap';
@@ -67,7 +67,7 @@ const interceptors = {
   PayloadTransformerInterceptor: PayloadTransformerInterceptor.create,
   ConversationInterceptor: undefined,
   RedirectInterceptor: RedirectInterceptor.create,
-  AppLevelRetryInterceptor: AppLevelRetryInterceptor.create,
+  HttpRetryInterceptor: HttpRetryInterceptor.create,
   HttpStatusInterceptor() {
     return HttpStatusInterceptor.create({
       error: WebexHttpError,

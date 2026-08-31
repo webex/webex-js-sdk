@@ -196,7 +196,7 @@ describe('Webex', () => {
           'AuthInterceptor',
           'PayloadTransformerInterceptor',
           'RedirectInterceptor',
-          'AppLevelRetryInterceptor',
+          'HttpRetryInterceptor',
           'DefaultOptionsInterceptor',
           'HostMapInterceptor',
           'ServerErrorInterceptor',
