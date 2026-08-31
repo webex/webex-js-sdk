@@ -55,6 +55,16 @@ export {default as WebexTrackingIdInterceptor} from './interceptors/webex-tracki
 export {sequenceNumbers as webexTrackingIdSequenceNumbers} from './interceptors/webex-tracking-id';
 export {default as WebexUserAgentInterceptor} from './interceptors/webex-user-agent';
 export {default as RateLimitInterceptor} from './interceptors/rate-limit';
+export {
+  default as HttpRetryInterceptor,
+  DEFAULT_HTTP_RETRY_POLICY,
+  getHttpRetryDelay,
+  isReplayableBody,
+  mergeHttpRetryPolicy,
+  parseRetryAfter,
+  resolveHttpRetryPolicy,
+  willRetryHttpRequest,
+} from './interceptors/http-retry';
 export {default as EmbargoInterceptor} from './interceptors/embargo';
 export {default as DefaultOptionsInterceptor} from './interceptors/default-options';
 export {default as HostMapInterceptor} from './lib/interceptors/hostmap';

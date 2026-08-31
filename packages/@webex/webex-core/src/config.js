@@ -12,6 +12,12 @@ export default {
   maxLocusRedirects: 5,
   maxAuthenticationReplays: 1,
   maxReconnectAttempts: 1,
+  httpRetry: {
+    default: {
+      enabled: false,
+    },
+    services: {},
+  },
   onBeforeLogout: [],
   trackingIdPrefix: 'webex-js-sdk',
   trackingIdSuffix: '',

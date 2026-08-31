@@ -7,7 +7,7 @@ import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import { expect } from "@webex/test-helper-chai";
 import MockWebex from '@webex/test-helper-mock-webex';
-import {LocusRetryStatusInterceptor} from "@webex/plugin-meetings/src/interceptors";
+import {LocusRetryStatusInterceptor} from '../../../../src/interceptors';
 import {WebexHttpError} from '@webex/webex-core';
 import Meetings from '@webex/plugin-meetings';
 import sinon from 'sinon';
@@ -192,6 +192,27 @@ describe('plugin-meetings', () => {
               });
             });
 
+            it('defers when the central HTTP retry policy owns the failure', () => {
+              const centrallyHandledOptions = {
+                ...options,
+                $httpRetryWillRetry: sinon.stub().returns(true),
+              };
+              const handleRetryStub = sinon.stub(
+                interceptor,
+                'handleRetryRequestLocusServiceError'
+              );
+
+              return interceptor.onResponseError(centrallyHandledOptions, reason2).then(
+                () => assert.fail('Expected promise to be rejected'),
+                (error) => {
+                  expect(error).to.equal(reason2);
+                  expect(handleRetryStub.called).to.be.false;
+                  expect(centrallyHandledOptions.$httpRetryWillRetry.calledWith(reason2)).to.be.true;
+                  handleRetryStub.restore();
+                }
+              );
+            });
+
             describe('URI parsing edge cases', () => {
               const make503Reason = (uri) =>
                 new WebexHttpError.MethodNotAllowed({
@@ -304,7 +325,7 @@ describe('plugin-meetings', () => {
             it('rejects the promise when the request is unsuccessful', () => {
               const rejectionReason = 'Service Unavaialble after retry';
 
-              interceptor.webex.request = sinon.stub().returns(Promise.reject(rejectionReason));
+              interceptor.webex.request = sinon.stub().callsFake(() => Promise.reject(rejectionReason));
 
               return interceptor.handleRetryRequestLocusServiceError(options, retryAfterTime)
                 .catch((error) => {
@@ -324,10 +345,9 @@ describe('plugin-meetings', () => {
 
                 return promise.then(() => {
                     expect(interceptor.webex.request.calledOnce).to.be.true;
-                    });
+                    }).finally(() => clock.restore());
             });
         });
     });
     });
 });
-

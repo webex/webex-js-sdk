@@ -179,11 +179,11 @@ describe('Webex', () => {
 
   describe('initializes with interceptors', () => {
     [
-      // 4 pre, 4 post, 10 remaining default = 18
+      // 4 pre, 4 post, 11 remaining default = 19
       [
         'defaults to existing interceptors if undefined',
         undefined,
-        18,
+        19,
         [
           'RequestTimingInterceptor',
           'RequestEventInterceptor',
@@ -196,6 +196,7 @@ describe('Webex', () => {
           'AuthInterceptor',
           'PayloadTransformerInterceptor',
           'RedirectInterceptor',
+          'HttpRetryInterceptor',
           'DefaultOptionsInterceptor',
           'HostMapInterceptor',
           'ServerErrorInterceptor',
