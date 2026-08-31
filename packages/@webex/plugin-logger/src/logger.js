@@ -6,6 +6,21 @@ import {inBrowser, patterns} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, has, isArray, isObject, isString} from 'lodash';
 
+import {
+  createEventId,
+  EVENT_INITIATOR_TYPES,
+  EVENT_TRIGGER_TYPES,
+  getEventIdPrefix,
+  isValidEventId,
+  isValidEventIdPrefix,
+  isValidEventName,
+  LOG_ATTRIBUTE_KEYS,
+  LOG_RECORD_ATTRIBUTE_COUNT_LIMIT,
+  LOG_RECORD_SCHEMA_VERSION,
+  LOG_TYPES,
+  RESERVED_LOG_ATTRIBUTE_KEYS,
+} from './log-record-schema';
+
 const precedence = {
   silent: 0,
   group: 1,
@@ -28,14 +43,13 @@ const fallbacks = {
   trace: ['debug', 'info', 'log'],
 };
 
-const LOG_TYPES = {
-  SDK: 'sdk',
-  CLIENT: 'client',
-};
-
 const SDK_LOG_TYPE_NAME = 'wx-js-sdk';
 
 const authTokenKeyPattern = /[Aa]uthorization/;
+const authTokenValuePattern = /\b(Basic|Bearer)\s+[A-Za-z0-9._~+/-]+=*/gi;
+const reservedAttributeKeys = new Set(RESERVED_LOG_ATTRIBUTE_KEYS);
+const eventInitiatorTypes = new Set(Object.values(EVENT_INITIATOR_TYPES));
+const eventTriggerTypes = new Set(Object.values(EVENT_TRIGGER_TYPES));
 
 /**
  * Recursively strips "authorization" fields from the specified object
@@ -57,11 +71,12 @@ function walkAndFilter(object, visited = []) {
   }
   if (!isObject(object)) {
     if (isString(object)) {
+      object = object.replace(authTokenValuePattern, '$1 [REDACTED]');
       if (patterns.containsEmails.test(object)) {
-        return object.replace(patterns.containsEmails, '[REDACTED]');
+        object = object.replace(patterns.containsEmails, '[REDACTED]');
       }
       if (patterns.containsMTID.test(object)) {
-        return object.replace(patterns.containsMTID, '$1[REDACTED]');
+        object = object.replace(patterns.containsMTID, '$1[REDACTED]');
       }
     }
 
@@ -77,6 +92,184 @@ function walkAndFilter(object, visited = []) {
   }
 
   return object;
+}
+
+/**
+ * Resolves the available console implementation for a log level.
+ * @param {string} level log level
+ * @returns {string} console method name
+ */
+function getConsoleImpl(level) {
+  let impls = fallbacks[level];
+  let impl = level;
+
+  if (impls) {
+    impls = impls.slice();
+    // eslint-disable-next-line no-console
+    while (!console[impl]) {
+      impl = impls.pop();
+    }
+  }
+
+  return impl;
+}
+
+/**
+ * Filters structured attributes down to supported scalar values.
+ * @param {Logger} logger logger instance
+ * @param {Object} attributes candidate attributes
+ * @returns {Object|undefined} sanitized attributes
+ */
+function sanitizeAttributes(logger, attributes) {
+  if (!isObject(attributes) || isArray(attributes)) {
+    return undefined;
+  }
+
+  const [filteredAttributes] = logger.filter(attributes);
+  const sanitizedAttributes = Object.entries(filteredAttributes).reduce((result, [key, value]) => {
+    if (Object.keys(result).length >= LOG_RECORD_ATTRIBUTE_COUNT_LIMIT) {
+      return result;
+    }
+
+    const isInvalidTaxonomy =
+      (key === LOG_ATTRIBUTE_KEYS.EVENT_INITIATOR_TYPE && !eventInitiatorTypes.has(value)) ||
+      (key === LOG_ATTRIBUTE_KEYS.EVENT_TRIGGER_TYPE && !eventTriggerTypes.has(value));
+    const isInvalidOperationId = key === LOG_ATTRIBUTE_KEYS.OPERATION_ID && !isValidEventId(value);
+
+    if (
+      key &&
+      !reservedAttributeKeys.has(key) &&
+      !isInvalidTaxonomy &&
+      !isInvalidOperationId &&
+      (typeof value === 'boolean' ||
+        typeof value === 'string' ||
+        (typeof value === 'number' && Number.isFinite(value)))
+    ) {
+      result[key] = value;
+    }
+
+    return result;
+  }, {});
+
+  return Object.keys(sanitizedAttributes).length ? sanitizedAttributes : undefined;
+}
+
+/**
+ * Builds the SDK-owned structured log record.
+ * @param {Logger} logger logger instance
+ * @param {Object} options record inputs
+ * @returns {Object} structured log record
+ */
+function createLogRecord(logger, {level, type, name, timestamp, stringified, structuredRecord}) {
+  const record = {
+    schemaVersion: LOG_RECORD_SCHEMA_VERSION,
+    timestamp: timestamp.getTime(),
+    level,
+    type,
+    name,
+    message: stringified.slice(1).join(' '),
+  };
+
+  if (structuredRecord) {
+    const attributes = sanitizeAttributes(logger, structuredRecord.attributes);
+
+    if (attributes) {
+      record.attributes = attributes;
+    }
+
+    if (isString(structuredRecord.eventName)) {
+      const [eventName] = logger.filter(structuredRecord.eventName);
+
+      if (!isValidEventName(eventName)) {
+        throw new TypeError(`Invalid event name: ${eventName}`);
+      }
+
+      const eventIdPrefix = structuredRecord.eventIdPrefix || getEventIdPrefix(eventName);
+
+      if (!isValidEventIdPrefix(eventIdPrefix)) {
+        throw new TypeError(`Invalid event ID prefix: ${eventIdPrefix}`);
+      }
+
+      if (structuredRecord.eventId && !isValidEventId(structuredRecord.eventId)) {
+        throw new TypeError(`Invalid event ID: ${structuredRecord.eventId}`);
+      }
+
+      record.eventName = eventName;
+      record.eventId = structuredRecord.eventId || createEventId(eventIdPrefix);
+    }
+  }
+
+  return record;
+}
+
+/**
+ * Returns whether the configured transport array replaces the SDK defaults.
+ * @param {Logger} logger logger instance
+ * @returns {boolean} whether custom transports were explicitly configured
+ */
+function hasConfiguredTransports(logger) {
+  return isArray(logger.config.transports);
+}
+
+/**
+ * Delivers a formatted record to each configured transport.
+ * @param {Logger} logger logger instance
+ * @param {Object} record structured transport record
+ * @returns {void}
+ */
+function writeToTransports(logger, record) {
+  let formattedRecord = record;
+
+  if (typeof logger.config.formatter === 'function') {
+    try {
+      formattedRecord = logger.config.formatter(record);
+    } catch {
+      return;
+    }
+  }
+
+  if (!formattedRecord) {
+    return;
+  }
+
+  logger.config.transports.forEach((transport) => {
+    if (!transport || typeof transport.write !== 'function') {
+      return;
+    }
+
+    try {
+      transport.write(formattedRecord);
+    } catch {
+      // One transport must not prevent delivery to the remaining transports.
+    }
+  });
+}
+
+/**
+ * Builds the structured buffer entry used by legacy log uploads.
+ * @param {Object} record structured log record
+ * @param {Array<string>} stringified filtered and stringified log values
+ * @param {number} groupLevel current console group depth
+ * @returns {Object} structured buffer entry
+ */
+function createBufferEntry(record, stringified, groupLevel) {
+  return {
+    record,
+    legacyLine: [
+      '|  '.repeat(groupLevel),
+      new Date(record.timestamp).toISOString(),
+      ...stringified,
+    ],
+  };
+}
+
+/**
+ * Serializes one structured buffer entry to the existing upload format.
+ * @param {Object} entry structured buffer entry
+ * @returns {string} legacy upload line
+ */
+function formatBufferEntry(entry) {
+  return entry.legacyLine.join(',');
 }
 
 /**
@@ -279,7 +472,7 @@ const Logger = WebexPlugin.extend({
    */
   formatLogs(options = {}) {
     function getDate(log) {
-      return log[1];
+      return log.record.timestamp;
     }
     const {diff = false} = options;
     let buffer = [];
@@ -323,7 +516,7 @@ const Logger = WebexPlugin.extend({
       buffer = this.buffer.buffer;
     }
 
-    return buffer.join('\n');
+    return buffer.map(formatBufferEntry).join('\n');
   },
 
   /**
@@ -364,16 +557,26 @@ const Logger = WebexPlugin.extend({
  * @param {string} type type of log, SDK or client
  * @param {bool} neverPrint function never prints to console
  * @param {bool} alwaysBuffer function always logs to log buffer
- * @instance
- * @memberof Logger
- * @private
- * @memberof Logger
+ * @param {bool} structured whether the method accepts a structured record
  * @returns {function} logger method with specified params
  */
-function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = false) {
+function makeLoggerMethod(
+  level,
+  impl,
+  type,
+  neverPrint = false,
+  alwaysBuffer = false,
+  structured = false
+) {
   // Much of the complexity in the following function is due to a test-mode-only
   // helper
   return function wrappedConsoleMethod(...args) {
+    const structuredRecord = structured ? args[0] : undefined;
+
+    if (structured) {
+      args = [structuredRecord.message];
+    }
+
     // it would be easier to just pass in the name and buffer here, but the config isn't completely initialized
     // in Ampersand, even if the initialize method is used to set this up.  so we keep the type to achieve
     // a sort of late binding to allow retrieving a name from config.
@@ -395,17 +598,24 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
     }
 
     try {
-      const shouldPrint = !neverPrint && this.shouldPrint(level, logType);
-      const shouldBuffer = alwaysBuffer || this.shouldBuffer(level);
+      const customTransportsConfigured = hasConfiguredTransports(this);
+      const shouldPrint =
+        !customTransportsConfigured && !neverPrint && this.shouldPrint(level, logType);
+      const shouldBuffer =
+        !customTransportsConfigured && (alwaysBuffer || this.shouldBuffer(level));
+      const shouldTransport =
+        customTransportsConfigured &&
+        this.config.transports.length > 0 &&
+        (alwaysBuffer || this.shouldBuffer(level));
 
-      if (!shouldBuffer && !shouldPrint) {
+      if (!shouldBuffer && !shouldPrint && !shouldTransport) {
         return;
       }
 
       const filtered = [clientName, ...this.filter(...args)];
       const stringified = filtered.map((item) => {
         if (item instanceof Error) {
-          return item.toString();
+          return walkAndFilter(item.toString());
         }
         if (typeof item === 'object') {
           let cache = [];
@@ -449,31 +659,43 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
         console[impl](...toPrint);
       }
 
-      if (shouldBuffer) {
+      if (shouldBuffer || shouldTransport) {
         const logDate = new Date();
+        const transportRecord = createLogRecord(this, {
+          level,
+          type: logType,
+          name: clientName,
+          timestamp: logDate,
+          stringified,
+          structuredRecord,
+        });
 
-        stringified.unshift(logDate.toISOString());
-        stringified.unshift('|  '.repeat(this.groupLevel));
-        bufferRef.buffer.push(stringified);
-        if (bufferRef.buffer.length > historyLength) {
-          // we've gone over the buffer limit, trim it down
-          const deleteCount = bufferRef.buffer.length - historyLength;
+        if (shouldBuffer) {
+          bufferRef.buffer.push(createBufferEntry(transportRecord, stringified, this.groupLevel));
+          if (bufferRef.buffer.length > historyLength) {
+            // we've gone over the buffer limit, trim it down
+            const deleteCount = bufferRef.buffer.length - historyLength;
 
-          bufferRef.buffer.splice(0, deleteCount);
+            bufferRef.buffer.splice(0, deleteCount);
 
-          // and adjust the corresponding buffer index used for log diff uploads
-          bufferRef.nextIndex -= deleteCount;
-          if (bufferRef.nextIndex < 0) {
-            bufferRef.nextIndex = 0;
-          }
+            // and adjust the corresponding buffer index used for log diff uploads
+            bufferRef.nextIndex -= deleteCount;
+            if (bufferRef.nextIndex < 0) {
+              bufferRef.nextIndex = 0;
+            }
 
-          bufferRef.lastSubmitted -= deleteCount;
-          if (bufferRef.lastSubmitted < 0) {
-            bufferRef.lastSubmitted = 0;
+            bufferRef.lastSubmitted -= deleteCount;
+            if (bufferRef.lastSubmitted < 0) {
+              bufferRef.lastSubmitted = 0;
+            }
           }
         }
         if (level === 'group') this.groupLevel += 1;
         if (level === 'groupEnd' && this.groupLevel > 0) this.groupLevel -= 1;
+
+        if (shouldTransport) {
+          writeToTransports(this, transportRecord);
+        }
       }
     } catch (reason) {
       if (!neverPrint) {
@@ -485,36 +707,81 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
   };
 }
 
-levels.forEach((level) => {
-  let impls = fallbacks[level];
-  let impl = level;
+const structuredClientMethods = {};
 
-  if (impls) {
-    impls = impls.slice();
-    // eslint-disable-next-line no-console
-    while (!console[impl]) {
-      impl = impls.pop();
-    }
-  }
+levels.forEach((level) => {
+  const impl = getConsoleImpl(level);
 
   // eslint-disable-next-line complexity
   Logger.prototype[`client_${level}`] = makeLoggerMethod(level, impl, LOG_TYPES.CLIENT);
   Logger.prototype[level] = makeLoggerMethod(level, impl, LOG_TYPES.SDK);
+  structuredClientMethods[level] = makeLoggerMethod(
+    level,
+    impl,
+    LOG_TYPES.CLIENT,
+    false,
+    false,
+    true
+  );
 });
 
+/**
+ * Writes a structured client record through the normal console, buffer, and optional transport path.
+ *
+ * @param {Object} record structured client record
+ * @param {string} record.level log level
+ * @param {string} record.message log message
+ * @param {string} [record.eventName] event name
+ * @param {string} [record.eventId] event instance identifier
+ * @param {string} [record.eventIdPrefix] event identifier prefix
+ * @param {Object} [record.attributes] scalar attributes
+ * @private
+ * @returns {void}
+ */
+Logger.prototype.client_logRecord = function clientLogRecord({
+  level,
+  message,
+  eventName,
+  eventId,
+  eventIdPrefix,
+  attributes,
+}) {
+  if (!levels.includes(level)) {
+    throw new TypeError(`Unsupported log level: ${level}`);
+  }
+  if (!isString(message)) {
+    throw new TypeError('Structured log message must be a string');
+  }
+
+  if (eventName !== undefined && !isValidEventName(eventName)) {
+    throw new TypeError(`Invalid event name: ${eventName}`);
+  }
+  if (eventId !== undefined && !isValidEventId(eventId)) {
+    throw new TypeError(`Invalid event ID: ${eventId}`);
+  }
+  if (eventIdPrefix !== undefined && !isValidEventIdPrefix(eventIdPrefix)) {
+    throw new TypeError(`Invalid event ID prefix: ${eventIdPrefix}`);
+  }
+  if ((eventId || eventIdPrefix) && !eventName) {
+    throw new TypeError('Structured event identifier requires an event name');
+  }
+
+  structuredClientMethods[level].call(this, {
+    message,
+    eventName,
+    eventId,
+    eventIdPrefix,
+    attributes,
+  });
+};
+
 Logger.prototype.client_logToBuffer = makeLoggerMethod(
-  levels.info,
-  levels.info,
+  'info',
+  'info',
   LOG_TYPES.CLIENT,
   true,
   true
 );
-Logger.prototype.logToBuffer = makeLoggerMethod(
-  levels.info,
-  levels.info,
-  LOG_TYPES.SDK,
-  true,
-  true
-);
+Logger.prototype.logToBuffer = makeLoggerMethod('info', 'info', LOG_TYPES.SDK, true, true);
 
 export default Logger;
