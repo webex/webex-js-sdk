@@ -8,11 +8,14 @@ import {
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 
+import SourceNewMetrics from '@webex/internal-plugin-metrics/src/new-metrics';
+import * as Telemetry from '@webex/internal-plugin-metrics/src/unhandled-exception-telemetry';
+
 describe('internal-plugin-metrics', () => {
-  const mockWebex = () =>
+  const mockWebex = (NewMetricsPlugin = NewMetrics) =>
     new MockWebex({
       children: {
-        newMetrics: NewMetrics,
+        newMetrics: NewMetricsPlugin,
       },
       meetings: {
         getBasicMeetingInformation: sinon.stub().callsFake((meetingId) => ({
@@ -73,6 +76,10 @@ describe('internal-plugin-metrics', () => {
   });
 
   describe('new-metrics contstructor', () => {
+    afterEach(() => {
+      sinon.restore();
+    });
+
     it('checks callDiagnosticLatencies is defined before ready emit', () => {
       const webex = mockWebex();
 
@@ -87,10 +94,12 @@ describe('internal-plugin-metrics', () => {
 
     it('can call buildClientEventFetchRequestOptions before ready', async () => {
       const webex = mockWebex();
-      const stub = sinon.stub(
-        webex.internal.newMetrics.callDiagnosticMetrics,
-        'buildClientEventFetchRequestOptions'
-      ).resolves({url: 'https://metrics.example.com'});
+      const stub = sinon
+        .stub(
+          webex.internal.newMetrics.callDiagnosticMetrics,
+          'buildClientEventFetchRequestOptions'
+        )
+        .resolves({url: 'https://metrics.example.com'});
 
       const result = await webex.internal.newMetrics.buildClientEventFetchRequestOptions({
         name: 'client.alert.displayed',
@@ -103,6 +112,17 @@ describe('internal-plugin-metrics', () => {
         options: {correlationId: 'test-id'},
       });
       assert.deepEqual(result, {url: 'https://metrics.example.com'});
+    });
+
+    it('starts unhandled exception telemetry when webex is ready', () => {
+      const start = sinon.stub(Telemetry, 'startUnhandledExceptionTelemetry');
+      const webex = mockWebex(SourceNewMetrics);
+
+      assert.notCalled(start);
+
+      webex.emit('ready');
+
+      assert.calledOnceWithExactly(start, webex);
     });
   });
 
