@@ -133,6 +133,9 @@ export function createWiredPair(options: WiredPairOptions = {}): WiredPair {
 
   const bridge = createExtensionBridgeWith(world.backgroundChrome, {
     channel,
+    // `allowedOrigins` is mandatory now, so the wired pair supplies the fake world's
+    // own origin by default. A test that cares about origin rejection overrides it.
+    allowedOrigins: [origin],
     ...options.bridgeOptions,
   });
 

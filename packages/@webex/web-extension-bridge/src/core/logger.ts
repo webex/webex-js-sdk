@@ -26,6 +26,10 @@ export interface LogContext {
   tabId?: number;
   reason?: DropReason | string;
   origin?: string;
+  /** Which storage area a write failed against. A name, never a stored value. */
+  store?: string;
+  /** A bounded occurrence count, such as consecutive delivery failures. */
+  count?: number;
 }
 
 export interface BridgeLogger {
@@ -44,6 +48,8 @@ const CONTEXT_KEYS: readonly (keyof LogContext)[] = [
   'tabId',
   'reason',
   'origin',
+  'store',
+  'count',
 ];
 
 /**

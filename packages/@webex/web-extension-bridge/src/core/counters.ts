@@ -12,6 +12,12 @@ export const CounterName = {
   REQUEST_FAILED: 'requestFailed',
   DROPPED: 'dropped',
   RATE_LIMITED: 'rateLimited',
+  /** A push the content relay refused before it ever reached the worker. */
+  RELAY_DROPPED: 'relayDropped',
+  /** A `runtime.sendMessage` from the relay to the worker that never arrived. */
+  RELAY_SEND_FAILED: 'relaySendFailed',
+  /** A `chrome.storage.session` write the platform refused. */
+  STORAGE_WRITE_FAILED: 'storageWriteFailed',
 } as const;
 
 export type CounterName = (typeof CounterName)[keyof typeof CounterName];

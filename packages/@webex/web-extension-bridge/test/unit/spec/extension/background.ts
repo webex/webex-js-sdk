@@ -24,15 +24,20 @@ describe('extension/background', () => {
   let log: ReturnType<typeof createLogCapture>;
   let idCounter = 0;
 
-  const create = (options: ExtensionBridgeOptions = {}): ExtensionBridge =>
-    createExtensionBridgeWith(world.backgroundChrome, {logSink: log.sink, ...options});
+  const create = (options: Partial<ExtensionBridgeOptions> = {}): ExtensionBridge =>
+    createExtensionBridgeWith(world.backgroundChrome, {
+      logSink: log.sink,
+      // Required option; tests that exercise origin rejection override it.
+      allowedOrigins: [ORIGIN],
+      ...options,
+    });
 
   /**
    * Start over with a fresh world and bridge. Tests that need non-default options call
    * this again, so a discarded bridge's runtime listeners can never double-handle the
    * next test's messages.
    */
-  const setup = (options: ExtensionBridgeOptions = {}): void => {
+  const setup = (options: Partial<ExtensionBridgeOptions> = {}): void => {
     world = createFakeExtensionWorld({origin: ORIGIN});
     log = createLogCapture();
     bridge = create(options);
@@ -171,7 +176,11 @@ describe('extension/background', () => {
 
     it('refuses to run without chrome.tabs, which means it is not in the worker', () => {
       assert.throws(
-        () => createExtensionBridgeWith({runtime: world.backgroundChrome.runtime}),
+        () =>
+          createExtensionBridgeWith(
+            {runtime: world.backgroundChrome.runtime},
+            {allowedOrigins: [ORIGIN]}
+          ),
         /chrome\.tabs is unavailable/
       );
     });
@@ -179,10 +188,13 @@ describe('extension/background', () => {
     it('refuses to run without chrome.storage.session', () => {
       assert.throws(
         () =>
-          createExtensionBridgeWith({
-            runtime: world.backgroundChrome.runtime,
-            tabs: world.backgroundChrome.tabs,
-          }),
+          createExtensionBridgeWith(
+            {
+              runtime: world.backgroundChrome.runtime,
+              tabs: world.backgroundChrome.tabs,
+            },
+            {allowedOrigins: [ORIGIN]}
+          ),
         /chrome\.storage\.session is unavailable/
       );
     });
@@ -217,12 +229,13 @@ describe('extension/background', () => {
       assert.lengthOf(await bridge.listConnections(), 1);
     });
 
-    it('derives the origin from the tab url when the platform omits it', async () => {
+    it('refuses a relay whose sender reports no origin', async () => {
+      // Previously this fell back to deriving the origin from `tab.url`. With the
+      // runtime allow-list now mandatory, an origin the platform did not report is not
+      // an origin on the list, and a second way to satisfy the check would defeat it.
       await attach(SESSION, {origin: undefined});
 
-      const connections = await bridge.listConnections();
-
-      assert.equal(connections[0].origin, ORIGIN);
+      assert.lengthOf(await bridge.listConnections(), 0);
     });
 
     const detachCases: [string, (world: FakeExtensionWorld) => Promise<void> | void][] = [

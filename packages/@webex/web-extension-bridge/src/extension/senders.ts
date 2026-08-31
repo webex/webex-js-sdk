@@ -45,18 +45,13 @@ export function isFromContentScript(
 }
 
 /**
- * @param allowed - Configured runtime allow-list, or `undefined` to defer to the
- *   manifest.
+ * @param allowed - Configured runtime allow-list. Required: the background bridge
+ *   refuses to construct without one, so there is no "defer to the manifest" mode for
+ *   this check to fall back to.
  * @param origin - Reported sender origin.
- * @returns Whether the origin is acceptable.
+ * @returns Whether the origin is on the list. A sender that reports no origin at all
+ *   is refused rather than waved through — an unknown origin is not an allowed one.
  */
-export function isOriginAllowed(
-  allowed: Set<string> | undefined,
-  origin: string | undefined
-): boolean {
-  if (!allowed) {
-    return true;
-  }
-
+export function isOriginAllowed(allowed: Set<string>, origin: string | undefined): boolean {
   return typeof origin === 'string' && allowed.has(origin);
 }

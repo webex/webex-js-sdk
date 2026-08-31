@@ -1,7 +1,7 @@
 import {assert} from '@webex/test-helper-chai';
 
 import {RESERVED_KEYS} from '../../../../src/core/constants';
-import {findReservedKey, nullPrototypeRecord, readOwn} from '../../../../src/core/json';
+import {JsonRejection, inspectJson, nullPrototypeRecord, readOwn} from '../../../../src/core/json';
 
 describe('core/json', () => {
   describe('nullPrototypeRecord', () => {
@@ -32,27 +32,43 @@ describe('core/json', () => {
     });
   });
 
-  describe('findReservedKey', () => {
+  describe('inspectJson: reserved keys', () => {
+    /**
+     * @param value - Value to inspect.
+     * @returns The rejection reason, or `undefined` when the value was accepted.
+     */
+    const rejection = (value: unknown): string | undefined => {
+      const result = inspectJson(value, RESERVED_KEYS);
+
+      return result.ok ? undefined : result.rejection;
+    };
+
     RESERVED_KEYS.forEach((key) => {
       it(`finds '${key}' at the top level`, () => {
-        assert.equal(findReservedKey(JSON.parse(`{"${key}": {}}`), RESERVED_KEYS), key);
+        const result = inspectJson(JSON.parse(`{"${key}": {}}`), RESERVED_KEYS);
+
+        assert.isFalse(result.ok);
+        assert.equal(result.ok ? '' : result.rejection, JsonRejection.RESERVED_KEY);
+        assert.equal(result.ok ? '' : result.key, key);
       });
 
       it(`finds '${key}' nested inside an array`, () => {
         const value = JSON.parse(`{"a": [1, {"b": {"${key}": 1}}]}`);
+        const result = inspectJson(value, RESERVED_KEYS);
 
-        assert.equal(findReservedKey(value, RESERVED_KEYS), key);
+        assert.isFalse(result.ok);
+        assert.equal(result.ok ? '' : result.key, key);
       });
     });
 
     it('accepts clean values', () => {
-      assert.isUndefined(findReservedKey({a: [1, 2, {b: 'c'}], d: null}, RESERVED_KEYS));
-      assert.isUndefined(findReservedKey('a string', RESERVED_KEYS));
-      assert.isUndefined(findReservedKey(null, RESERVED_KEYS));
+      assert.isUndefined(rejection({a: [1, 2, {b: 'c'}], d: null}));
+      assert.isUndefined(rejection('a string'));
+      assert.isUndefined(rejection(null));
     });
 
     it('does not confuse a reserved name used as a value', () => {
-      assert.isUndefined(findReservedKey({name: '__proto__'}, RESERVED_KEYS));
+      assert.isUndefined(rejection({name: '__proto__'}));
     });
 
     it('terminates on a self-referential structure', () => {
@@ -60,17 +76,19 @@ describe('core/json', () => {
 
       cyclic.self = cyclic;
 
-      assert.isUndefined(findReservedKey(cyclic, RESERVED_KEYS));
+      // Reported as a cycle rather than accepted. The old `findReservedKey` returned
+      // `undefined` here, which is indistinguishable from "clean".
+      assert.equal(rejection(cyclic), JsonRejection.CYCLE);
     });
 
-    it('terminates on a structure deeper than the walk limit', () => {
+    it('rejects, rather than accepts, a structure deeper than the walk limit', () => {
       let deep: Record<string, unknown> = {};
 
       for (let index = 0; index < 500; index += 1) {
         deep = {next: deep};
       }
 
-      assert.isUndefined(findReservedKey(deep, RESERVED_KEYS));
+      assert.equal(rejection(deep), JsonRejection.TOO_DEEP);
     });
   });
 });

@@ -422,7 +422,7 @@ describe('integration/bridge', () => {
     it('ignores an envelope from a future version at the relay', async () => {
       const world = createFakeExtensionWorld({origin: ORIGIN});
       const win = createFakeWindow(ORIGIN);
-      const bridge = createExtensionBridgeWith(world.backgroundChrome);
+      const bridge = createExtensionBridgeWith(world.backgroundChrome, {allowedOrigins: [ORIGIN]});
       const relay: ContentRelay = createContentRelay(win, world.contentChrome, {});
 
       win.inject({
@@ -458,7 +458,10 @@ describe('integration/bridge', () => {
     let beta: Channel;
 
     const wire = (world: ReturnType<typeof createFakeExtensionWorld>, channel: string): Channel => {
-      const bridge = createExtensionBridgeWith(world.backgroundChrome, {channel});
+      const bridge = createExtensionBridgeWith(world.backgroundChrome, {
+        channel,
+        allowedOrigins: [ORIGIN],
+      });
       const relay = createContentRelay(win, world.contentChrome, {channel});
       const page = createWebBridgeWith(win, {channel});
       const received: {topic: string; payload: JsonValue}[] = [];

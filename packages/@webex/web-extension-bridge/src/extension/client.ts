@@ -146,7 +146,7 @@ export function createExtensionClientWith(
       // The worker owns the request timer. An abort here stops the caller waiting; it
       // cannot recall a request already in flight in the page.
       if (opts.signal) {
-        return (await Promise.race([send(command), abortRejection(opts.signal, topic)])) as T;
+        return (await raceAbort(send(command), opts.signal, topic)) as T;
       }
 
       return (await send(command)) as T;
@@ -165,17 +165,24 @@ export function createExtensionClientWith(
     async getBufferedMessages(
       opts: {topic?: string; limit?: number} = {}
     ): Promise<BufferedMessage[]> {
+      if (opts.topic !== undefined) {
+        assertTopic(opts.topic);
+      }
+
+      // `topic` goes to the worker so it can filter *before* applying the limit.
+      // Filtering here instead meant the worker trimmed to the newest `limit` entries
+      // across every topic and this side then filtered the survivors, so a topic whose
+      // entries sat behind newer pushes on other topics came back short or empty even
+      // though the buffer still held them.
       const value = await send({
         __webexBridgeClient: true,
         channel,
         command: ClientCommand.GET_BUFFERED,
+        ...(opts.topic === undefined ? {} : {topic: opts.topic}),
         ...(typeof opts.limit === 'number' ? {limit: opts.limit} : {}),
       });
-      const messages = (Array.isArray(value) ? value : []) as BufferedMessage[];
 
-      return opts.topic === undefined
-        ? messages
-        : messages.filter((entry) => entry.topic === opts.topic);
+      return (Array.isArray(value) ? value : []) as BufferedMessage[];
     },
 
     async getCounters(): Promise<Record<string, number>> {
@@ -193,20 +200,42 @@ export function createExtensionClientWith(
 }
 
 /**
+ * Settle on whichever comes first: the worker's answer, or an abort.
+ *
+ * The listener is removed on *either* outcome. Racing against a bare
+ * `new Promise(... addEventListener('abort') ...)` leaked: when the request won the
+ * race, the losing promise stayed pending forever and its abort listener stayed
+ * attached to the caller's signal, holding the closure — and the rejection it would
+ * eventually construct — alive. `{once: true}` does not help, because the event that
+ * would fire it never comes. A long-lived signal reused across many requests, which is
+ * exactly what a signal is for, therefore accumulated one dead listener per request.
+ *
+ * @param work - The in-flight command.
  * @param signal - Caller's abort signal.
  * @param topic - Topic, for the error.
- * @returns A promise that rejects with `ABORTED`, and never resolves.
+ * @returns The command's value, or a rejection with `ABORTED`.
  */
-function abortRejection(signal: AbortSignal, topic: string): Promise<never> {
-  return new Promise<never>((_resolve, reject) => {
-    if (signal.aborted) {
-      reject(new BridgeError('ABORTED', undefined, topic));
+async function raceAbort(
+  work: Promise<unknown>,
+  signal: AbortSignal,
+  topic: string
+): Promise<unknown> {
+  if (signal.aborted) {
+    throw new BridgeError('ABORTED', undefined, topic);
+  }
 
-      return;
-    }
+  let onAbort: (() => void) | undefined;
 
-    signal.addEventListener('abort', () => reject(new BridgeError('ABORTED', undefined, topic)), {
-      once: true,
-    });
+  const aborted = new Promise<never>((_resolve, reject) => {
+    onAbort = () => reject(new BridgeError('ABORTED', undefined, topic));
+    signal.addEventListener('abort', onAbort, {once: true});
   });
+
+  try {
+    return await Promise.race([work, aborted]);
+  } finally {
+    if (onAbort) {
+      signal.removeEventListener('abort', onAbort);
+    }
+  }
 }

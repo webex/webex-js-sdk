@@ -59,10 +59,18 @@ export interface ClientCommandMessage {
   __webexBridgeClient: true;
   channel: string;
   command: ClientCommand;
+  /**
+   * The request topic for `REQUEST`, and the buffer filter for `GET_BUFFERED`.
+   *
+   * `GET_BUFFERED` carries it so the worker can filter before applying `limit`. The
+   * client used to send `limit` alone and filter the reply itself, which meant the
+   * limit truncated across all topics first and the requested topic came back short.
+   */
   topic?: string;
   payload?: JsonValue;
   tabId?: number;
   timeoutMs?: number;
+  /** `GET_BUFFERED` only. Applied by the worker *after* `topic`. */
   limit?: number;
 }
 

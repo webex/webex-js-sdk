@@ -92,17 +92,38 @@ export interface BufferedMessage {
 }
 
 export interface ExtensionBridgeOptions {
+  /**
+   * Required, non-empty list of exact origins the worker accepts relay traffic from,
+   * checked in addition to the manifest's `matches`.
+   *
+   * A manifest pattern controls where the content script is injected, not who sent the
+   * message being handled, so it is not a substitute for this list. Construction fails
+   * with `INSECURE_CONFIG` when it is missing, empty, or contains a wildcard.
+   */
+  allowedOrigins: string[];
   channel?: string;
   debug?: boolean;
   defaultTimeoutMs?: number;
-  /**
-   * Runtime origin allow-list, checked in addition to the manifest's `matches`.
-   * When omitted, the manifest is the only origin control — see the ship checklist.
-   */
-  allowedOrigins?: string[];
   maxPayloadBytes?: number;
-  buffer?: {maxEntries?: number; ttlMs?: number};
-  rateLimit?: {pushesPerSecond?: number; maxInFlightPerTab?: number};
+  buffer?: {
+    maxEntries?: number;
+    ttlMs?: number;
+    /**
+     * Total serialised bytes the replay buffer may hold, enforced alongside
+     * `maxEntries`. Defaults to 4 MiB.
+     */
+    maxBytes?: number;
+  };
+  rateLimit?: {
+    /** Per `(tab, topic)` push budget. */
+    pushesPerSecond?: number;
+    /**
+     * Per-tab push budget across every topic, which is what actually bounds a page
+     * that cycles topic names. Defaults to four times `pushesPerSecond`.
+     */
+    aggregatePushesPerSecond?: number;
+    maxInFlightPerTab?: number;
+  };
   logSink?: LogSink;
 }
 

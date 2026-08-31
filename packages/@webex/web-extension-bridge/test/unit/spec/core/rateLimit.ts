@@ -74,11 +74,34 @@ describe('core/rateLimit', () => {
       assert.isAtMost(limiter.size, 4);
     });
 
-    it('clamps a nonsensical rate up to at least one per second', () => {
-      const limiter = new RateLimiter({perSecond: 0, now: clock});
+    it('refuses a nonsensical rate rather than clamping it', () => {
+      // Clamping was the bug. `Math.max(NaN, 1)` is `NaN`, every `tokens < 1` test
+      // against `NaN` is false, and the limiter silently fails open — which is the one
+      // failure mode a rate limiter must not have.
+      assert.throws(() => new RateLimiter({perSecond: 0, now: clock}), /between 1 and/);
+      assert.throws(() => new RateLimiter({perSecond: Number.NaN, now: clock}), /finite integer/);
+      assert.throws(
+        () => new RateLimiter({perSecond: Number.POSITIVE_INFINITY, now: clock}),
+        /finite integer/
+      );
+      assert.throws(() => new RateLimiter({perSecond: 2.5, now: clock}), /finite integer/);
+      assert.throws(() => new RateLimiter({perSecond: -1, now: clock}), /between 1 and/);
+    });
 
-      assert.isTrue(limiter.allow('k'));
-      assert.isFalse(limiter.allow('k'));
+    it('does not fail open for a NaN rate', () => {
+      // The regression this guards: before the fix, `new RateLimiter({perSecond: NaN})`
+      // constructed happily and then allowed every message for ever.
+      let constructed = false;
+
+      try {
+        // eslint-disable-next-line no-new
+        new RateLimiter({perSecond: Number.NaN, now: clock});
+        constructed = true;
+      } catch {
+        constructed = false;
+      }
+
+      assert.isFalse(constructed);
     });
 
     it('resets', () => {

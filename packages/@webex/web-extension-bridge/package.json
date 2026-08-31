@@ -12,7 +12,7 @@
   "types": "dist/types/index.d.ts",
   "devMain": "src/index.ts",
   "sideEffects": [
-    "./dist/extension/content.js"
+    "./dist/content-script.js"
   ],
   "exports": {
     ".": {
@@ -20,25 +20,35 @@
       "import": "./dist/index.js",
       "require": "./dist/index.js"
     },
+    "./extension": {
+      "types": "./dist/types/extension/index.d.ts",
+      "import": "./dist/extension/index.js",
+      "require": "./dist/extension/index.js"
+    },
+    "./content-script": {
+      "types": "./dist/types/content-script.d.ts",
+      "import": "./dist/content-script.js",
+      "require": "./dist/content-script.js"
+    },
     "./web": {
-      "types": "./dist/types/web/webBridge.d.ts",
-      "import": "./dist/web/webBridge.js",
-      "require": "./dist/web/webBridge.js"
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
     },
     "./extension/background": {
-      "types": "./dist/types/extension/background.d.ts",
-      "import": "./dist/extension/background.js",
-      "require": "./dist/extension/background.js"
+      "types": "./dist/types/extension/index.d.ts",
+      "import": "./dist/extension/index.js",
+      "require": "./dist/extension/index.js"
     },
     "./extension/content": {
-      "types": "./dist/types/extension/content.d.ts",
-      "import": "./dist/extension/content.js",
-      "require": "./dist/extension/content.js"
+      "types": "./dist/types/content-script.d.ts",
+      "import": "./dist/content-script.js",
+      "require": "./dist/content-script.js"
     },
     "./extension/client": {
-      "types": "./dist/types/extension/client.d.ts",
-      "import": "./dist/extension/client.js",
-      "require": "./dist/extension/client.js"
+      "types": "./dist/types/extension/index.d.ts",
+      "import": "./dist/extension/index.js",
+      "require": "./dist/extension/index.js"
     },
     "./package": "./package.json"
   },

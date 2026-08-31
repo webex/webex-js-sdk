@@ -79,9 +79,14 @@ describe('extension/senders', () => {
   });
 
   describe('isOriginAllowed', () => {
-    it('defers to the manifest when no allow-list is configured', () => {
-      assert.isTrue(isOriginAllowed(undefined, 'https://anything.example.com'));
-      assert.isTrue(isOriginAllowed(undefined, undefined));
+    it('refuses a sender that reports no origin', () => {
+      // There is no "defer to the manifest" mode any more: the background bridge
+      // refuses to construct without an allow-list, so an unknown origin is simply
+      // not an allowed one.
+      const allowed = new Set(['https://app.example.com']);
+
+      assert.isFalse(isOriginAllowed(allowed, undefined));
+      assert.isFalse(isOriginAllowed(allowed, ''));
     });
 
     it('enforces an exact match when configured', () => {

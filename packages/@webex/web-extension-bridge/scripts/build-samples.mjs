@@ -22,17 +22,23 @@ const webVendor = resolve(samplesRoot, 'web-extension-bridge/vendor');
 const extensionVendor = resolve(samplesRoot, 'web-extension-bridge-extension/vendor');
 
 /**
- * `globalName` is omitted for the content script: importing that module starts the
- * relay, so the bundle needs no entry point for the page to call.
+ * `globalName` is omitted for the content script: loading that bundle starts the relay
+ * as its side effect, so there is no entry point for anyone to call.
+ *
+ * The page bundle is built from the package root, which is the page API. The two
+ * privileged bundles are built from their individual source modules rather than the
+ * `extension` facade, so each context still ships only its own slice — a popup bundle
+ * that also contained the service-worker bridge would be a larger attack surface than
+ * the popup needs, whatever tree-shaking might have done.
  */
 const bundles = [
   {
-    entry: resolve(packageRoot, 'src/web/webBridge.ts'),
+    entry: resolve(packageRoot, 'src/index.ts'),
     outfile: resolve(webVendor, 'web-extension-bridge-web.js'),
     globalName: 'WebExtensionBridge',
   },
   {
-    entry: resolve(packageRoot, 'src/extension/content.ts'),
+    entry: resolve(packageRoot, 'src/content-script.ts'),
     outfile: resolve(extensionVendor, 'web-extension-bridge-content.js'),
   },
   {

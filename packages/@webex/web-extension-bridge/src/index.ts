@@ -1,14 +1,29 @@
 /*!
  * `@webex/web-extension-bridge`
  *
- * The root entry deliberately carries no platform code, so importing it from a page,
- * a service worker or Node is always safe. The adapters live behind subpath exports:
+ * The root entry is the **page** API: the surface a web application uses, reached by
+ * importing `createWebBridge` from the bare package name.
  *
- * - `@webex/web-extension-bridge/web` — `createWebBridge`
- * - `@webex/web-extension-bridge/extension/content` — the relay
- * - `@webex/web-extension-bridge/extension/background` — `createExtensionBridge`
- * - `@webex/web-extension-bridge/extension/client` — `createExtensionClient`
+ * That is the product concept most consumers import, so it gets the bare specifier.
+ * The extension side — service worker, popup, content script — is a different
+ * deployment target, and lives behind two facades named for what they are rather than
+ * for the directory the source happens to sit in:
+ *
+ * - `@webex/web-extension-bridge/extension` — `createExtensionBridge`,
+ *   `createExtensionClient`, `startContentRelay`
+ * - `@webex/web-extension-bridge/content-script` — the manifest wiring entry, whose
+ *   only job is to start the relay as a side effect
+ *
+ * Importing this module runs no platform code: `createWebBridge` reaches for `window`
+ * when it is *called*, not when it is loaded, so the module graph stays safe to pull
+ * into a service worker or into Node for type-checking.
+ *
+ * The earlier layout-shaped specifiers — `/web`, `/extension/background`,
+ * `/extension/client`, `/extension/content` — still resolve, and are documented as
+ * deprecated aliases of the surfaces above.
  */
+
+export {createWebBridge} from './web/webBridge';
 
 export {BridgeError, BRIDGE_ERROR_CODES, isBridgeError} from './core/errors';
 export {PROTOCOL_VERSION, DEFAULT_CHANNEL} from './core/constants';

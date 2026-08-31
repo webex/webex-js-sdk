@@ -25,21 +25,49 @@ extension as untrusted on the page side.
 npm install @webex/web-extension-bridge
 ```
 
-Four subpath exports, one per execution context, so a web build never pulls in extension
-code and a content script never pulls in the service-worker bridge:
+Three entry points, named for what a consumer is building rather than for where the
+source happens to live:
 
-| Import | Context |
+| Import | Context | What you get |
+| --- | --- | --- |
+| `@webex/web-extension-bridge` | The web application page | `createWebBridge`, plus `BridgeError` and every type |
+| `@webex/web-extension-bridge/extension` | Service worker, popup, options page, side panel, and any content script needing options | `createExtensionBridge`, `createExtensionClient`, `startContentRelay` |
+| `@webex/web-extension-bridge/content-script` | Manifest wiring | Nothing to call — loading it starts the relay |
+
+The page API gets the bare specifier because it is the surface most consumers import.
+The root entry runs no platform code when loaded, so it stays safe to pull into a
+service worker or into Node for type-checking; `createWebBridge` reaches for `window`
+only when it is called.
+
+Only `/content-script` has a side effect. Importing the relay's API through
+`/extension` never starts one, so a popup or worker that pulls in `startContentRelay`
+does not acquire hidden startup behaviour along with it.
+
+<details>
+<summary>Deprecated specifiers</summary>
+
+The earlier layout-shaped specifiers still resolve, and map onto the entries above.
+They will be removed in the next major version.
+
+| Deprecated | Use instead |
 | --- | --- |
-| `@webex/web-extension-bridge/web` | The web application page |
-| `@webex/web-extension-bridge/extension/content` | Content script (relay only) |
-| `@webex/web-extension-bridge/extension/background` | Service worker |
-| `@webex/web-extension-bridge/extension/client` | Popup, options page, side panel |
-| `@webex/web-extension-bridge` | Types and `BridgeError` only — safe to import anywhere |
+| `@webex/web-extension-bridge/web` | `@webex/web-extension-bridge` |
+| `@webex/web-extension-bridge/extension/background` | `@webex/web-extension-bridge/extension` |
+| `@webex/web-extension-bridge/extension/client` | `@webex/web-extension-bridge/extension` |
+| `@webex/web-extension-bridge/extension/content` | `@webex/web-extension-bridge/content-script` |
+
+The `*With` test seams (`createExtensionBridgeWith`, `createExtensionClientWith`,
+`createContentRelay`) are no longer reachable through any published specifier. They
+accept an injected platform object in place of the real `chrome`, which is what the
+sender-verification rules are built on, so a consumer able to reach them is a consumer
+able to construct a bridge that trusts whatever it is handed.
+
+</details>
 
 ### Web application
 
 ```js
-import {createWebBridge} from '@webex/web-extension-bridge/web';
+import {createWebBridge} from '@webex/web-extension-bridge';
 
 const webBridge = createWebBridge({allowedOrigins: [location.origin]});
 
@@ -56,8 +84,9 @@ webBridge.onConnected(() => console.log('extension attached'));
 ### Extension service worker
 
 ```js
-import {createExtensionBridge} from '@webex/web-extension-bridge/extension/background';
+import {createExtensionBridge} from '@webex/web-extension-bridge/extension';
 
+// `allowedOrigins` is required. See §6 for why the manifest is not a substitute.
 const extBridge = createExtensionBridge({allowedOrigins: ['https://app.example.com']});
 
 // FR1 — receive pushed messages
@@ -75,9 +104,33 @@ revive it.
 
 ### Content script
 
+Name the built file directly in the manifest — it is the whole content script:
+
+```json
+{
+  "content_scripts": [
+    {
+      "matches": ["https://app.example.com/*"],
+      "js": ["vendor/web-extension-bridge/content-script.js"],
+      "run_at": "document_start"
+    }
+  ]
+}
+```
+
+Or, from a bundled content script:
+
 ```js
-// content script — relay only, no product logic
-import '@webex/web-extension-bridge/extension/content';
+// relay only, no product logic — the import itself starts it
+import '@webex/web-extension-bridge/content-script';
+```
+
+For a non-default channel, or any other relay option, call it yourself instead:
+
+```js
+import {startContentRelay} from '@webex/web-extension-bridge/extension';
+
+startContentRelay({channel: 'my-channel'});
 ```
 
 ### Extension UI (popup, options, side panel)
@@ -87,11 +140,11 @@ popup document. The client mirrors the `ExtensionBridge` surface and proxies to 
 worker over a private command protocol.
 
 ```js
-import {createExtensionClient} from '@webex/web-extension-bridge/extension/client';
+import {createExtensionClient} from '@webex/web-extension-bridge/extension';
 
 const client = createExtensionClient();
 const data = await client.request('snapshot', {any: 'input'});
-const messages = await client.getBufferedMessages({limit: 50});
+const messages = await client.getBufferedMessages({topic: 'message', limit: 50});
 
 client.subscribe((topic, payload, meta) => renderRow(topic, payload, meta));
 ```
@@ -110,18 +163,27 @@ with the same flows asserted end to end in
 flowchart LR
     subgraph page ["Page context (untrusted)"]
         app["your app code"]
-        wb["/web<br/>createWebBridge()"]
+        wb["(root entry)<br/>createWebBridge()"]
     end
     subgraph ext ["Extension (privileged)"]
-        relay["/extension/content<br/>relay — TRUST BOUNDARY"]
-        bg["/extension/background<br/>createExtensionBridge()"]
-        cli["/extension/client<br/>createExtensionClient()"]
+        relay["/content-script<br/>relay — TRUST BOUNDARY"]
+        bg["/extension<br/>createExtensionBridge()"]
+        cli["/extension<br/>createExtensionClient()"]
     end
     app --- wb
     wb <-->|"window.postMessage<br/>exact origin + session token"| relay
     relay <-->|"chrome.runtime"| bg
     bg <-->|"sender.id + sender.tab checks"| cli
 ```
+
+Longer-form design notes — core concepts, an SDK anatomy walkthrough mapping manifest
+entries to SDK calls, and a worked sample — live alongside this README in
+[`docs/`](docs/), so they version with the package rather than drifting in an external
+gist:
+
+- [`docs/core-concepts.md`](docs/core-concepts.md)
+- [`docs/overview.md`](docs/overview.md)
+- [`docs/sdk-anatomy.md`](docs/sdk-anatomy.md)
 
 There are three hops, and each one has its own check:
 
@@ -140,14 +202,30 @@ There are three hops, and each one has its own check:
 ### Push flow (FR1)
 
 `publish()` validates the topic and payload synchronously and throws on failure, so a
-message is never silently dropped by the caller's own mistake. The envelope crosses to the
-relay, which re-validates it and forwards it to the worker. The worker applies the
-per-`(tabId, topic)` token bucket, then fans the push out to `subscribe()` listeners and
-appends it to the bounded `chrome.storage.session` buffer so a popup opened later can
-still see it via `getBufferedMessages()`.
+message is never silently dropped by the caller's *own mistake*. The envelope crosses to
+the relay, which re-validates it and forwards it to the worker. The worker applies its
+token buckets, then fans the push out to `subscribe()` listeners and appends it to the
+bounded `chrome.storage.session` buffer so a popup opened later can still see it via
+`getBufferedMessages()`.
 
-Push is best-effort by design: if the worker is mid-eviction the message can be lost.
-Anything that must be correct on read belongs on the pull path.
+**Push is fire-and-forget past the `publish()` call.** "Throws rather than dropping
+silently" describes the page API boundary and nothing beyond it. Each later hop can drop
+a message, for a bounded and counted reason:
+
+| Hop | Can drop when | Signal |
+| --- | --- | --- |
+| `publish()` → `postMessage` | Invalid topic, payload outside the JSON grammar, over the byte cap, over the depth bound, reserved key, not connected | **Throws `BridgeError`** — synchronous, never silent |
+| relay inbound | Envelope fails re-validation at the boundary | `relay.getCounters()` → `dropped.*` |
+| relay → worker | Relay's own token bucket refuses the push | `relay.getCounters()` → `relayDropped.RATE_LIMITED` |
+| relay → worker | `runtime.sendMessage` rejects (worker evicted, extension reloading) | `relay.getCounters()` → `relaySendFailed.*`; after three consecutive failures the page is told it has disconnected and `onDisconnected` fires |
+| worker inbound | Sender checks, re-validation, or the worker's per-topic / per-tab buckets refuse it | `getCounters()` → `dropped.*`, `rateLimited.*` |
+| worker buffer | Entry cap, byte budget, or TTL evicts an older entry | Best-effort by contract; `subscribe()` listeners already fired |
+| worker buffer | Storage write refused (quota, area unavailable) | `getCounters()` → `storageWriteFailed.buffer` |
+
+Every one of those is observable — none is a silent loss — but none of them is
+recoverable from the page either, because `publish()` has already returned by the time
+the message reaches them. **Anything that must be correct on read belongs on the pull
+path.**
 
 ### Pull flow (FR2)
 
@@ -241,17 +319,22 @@ A handler receives `(payload, meta)` where `meta` is a frozen
 serialisability-checked too: an oversized or circular result fails as `INVALID_PAYLOAD`
 rather than throwing inside `postMessage`.
 
-### `createExtensionBridge(options?): ExtensionBridge`
+### `createExtensionBridge(options): ExtensionBridge`
 
 | `ExtensionBridgeOptions` | Type | Default | Notes |
 | --- | --- | --- | --- |
+| `allowedOrigins` | `string[]` | **required** | Non-empty list of exact origins, checked in addition to `content_scripts.matches`. Missing, empty, wildcarded or non-origin entries all throw `INSECURE_CONFIG` at construction. A manifest pattern controls where the relay is *injected*, not who sent the message being handled, so it is not a substitute. |
 | `channel` | `string` | `'webex-bridge'` | Must match the page and the client. |
-| `allowedOrigins` | `string[]` | manifest only | Runtime origin allow-list checked in addition to `content_scripts.matches`. Exact origins; `'*'` throws `INSECURE_CONFIG`. Strongly recommended. |
 | `defaultTimeoutMs` | `number` | `5000` | Clamped to `[100, 30000]`. |
 | `maxPayloadBytes` | `number` | `262144` | Clamped to `[1, 1048576]`. |
-| `buffer` | `{maxEntries?, ttlMs?}` | `{maxEntries: 200, ttlMs: 1800000}` | FR8 buffer in `chrome.storage.session`, FIFO with TTL eviction. |
-| `rateLimit` | `{pushesPerSecond?, maxInFlightPerTab?}` | `{pushesPerSecond: 20, maxInFlightPerTab: 16}` | Token bucket per `(tabId, topic)`; in-flight cap per tab. |
+| `buffer` | `{maxEntries?, ttlMs?, maxBytes?}` | `{maxEntries: 200, ttlMs: 1800000, maxBytes: 4194304}` | FR8 buffer in `chrome.storage.session`. Oldest-out eviction against **both** the entry cap and the byte budget, plus TTL. |
+| `rateLimit` | `{pushesPerSecond?, aggregatePushesPerSecond?, maxInFlightPerTab?}` | `{pushesPerSecond: 20, aggregatePushesPerSecond: 80, maxInFlightPerTab: 16}` | Token bucket per `(tabId, topic)` **and** per `tabId` across all topics; in-flight cap per tab. |
 | `debug` / `logSink` | | `false` / console | As above. |
+
+Sizes and timeouts are *clamped* — a too-large value there is a safe intent, just an
+unsupported one. Limiter and buffer bounds are *validated*: a non-integer, non-finite or
+out-of-range value throws `INSECURE_CONFIG` rather than being silently reinterpreted,
+because `Math.max(NaN, 1)` is `NaN` and a limiter holding `NaN` fails open.
 
 | Member | Signature | Notes |
 | --- | --- | --- |
@@ -259,7 +342,7 @@ rather than throwing inside `postMessage`.
 | `subscribeTopic` | `(topic, listener) => () => void` | Topic-filtered `subscribe`. |
 | `request` | `<T>(topic, payload?, opts?) => Promise<T>` | FR2. `opts` is `{tabId?, timeoutMs?, signal?}`. Always settles. |
 | `listConnections` | `() => Promise<Connection[]>` | FR5. `{tabId, origin, url?, connectedAt}` per attached tab. |
-| `getBufferedMessages` | `(opts?: {topic?, limit?}) => Promise<BufferedMessage[]>` | FR8. Oldest first. |
+| `getBufferedMessages` | `(opts?: {topic?, limit?}) => Promise<BufferedMessage[]>` | FR8. Oldest first. `topic` is applied **before** `limit`, so `{topic, limit: 5}` returns the newest five entries *on that topic* rather than whatever survives a global trim. |
 | `getCounters` | `() => Promise<Record<string, number>>` | Asynchronous because the counters live in the worker. |
 
 Requires `"permissions": ["storage"]`. It deliberately does **not** require the `tabs`
@@ -309,11 +392,27 @@ try {
 
 ### Observability
 
-`getCounters()` returns a flat `Record<string, number>` keyed `name.detail`, covering
-pushes sent and received, requests issued, outcomes by error code, drops by validation
-reason and rate-limit rejections. The SDK never sends this anywhere — wire it to your own
-telemetry. Logging is metadata only: `{channel, kind, topic, id, correlationId, tabId,
-reason}`, never payloads and never the session token.
+`getCounters()` returns a flat `Record<string, number>` keyed `name.detail`. The SDK never
+sends this anywhere — wire it to your own telemetry.
+
+| Key prefix | Where | Meaning |
+| --- | --- | --- |
+| `pushSent.<topic>` | page | `publish()` accepted and posted |
+| `pushReceived.<topic>` | worker | Push accepted after every check |
+| `requestIssued.<topic>` / `requestServed.<topic>` / `requestFailed.<code>` | worker, page | Pull-path outcomes |
+| `dropped.<DropReason>` | every hop | Envelope refused by validation or sender checks |
+| `rateLimited.<topic>` | worker | Refused by the worker's token buckets |
+| `relayDropped.RATE_LIMITED` | relay | Push refused by the **relay's** bucket, before the worker ever saw it |
+| `relaySendFailed.<kind>` | relay | `runtime.sendMessage` to the worker rejected |
+| `storageWriteFailed.<store>` | worker | `chrome.storage.session` refused a write |
+
+The relay's counters are read from its own handle — `startContentRelay().getCounters()` —
+because the relay sits between `publish()` and the worker and its two failure modes are
+invisible from either end.
+
+Logging is metadata only: `{channel, kind, topic, id, correlationId, tabId, reason, store,
+count}`, never payloads and never the session token. That is enforced by construction —
+there is no field a payload would fit in — not by convention.
 
 ## 6. Security architecture
 
@@ -323,9 +422,9 @@ reason}`, never payloads and never the session token.
 | --- | --- |
 | Page → extension | Exact `targetOrigin` on every send; `'*'` is unrepresentable in the API and banned by lint. |
 | Extension → page | `event.source === window`, allow-listed `event.origin`, session-token binding, isolated-world content script. |
-| Service worker | `sender.origin` and `sender.tab` re-checked against a runtime allow-list; client commands only from own extension pages; no generic command surface reachable from a page. |
-| Protocol | CSPRNG ids (no `Math.random` fallback), single-use correlation, seen-id replay cache, ±30 s clock-skew window, protocol-version equality, reserved-key rejection (`__proto__`, `constructor`, `prototype`), null-prototype envelopes. |
-| Resource safety | 256 KiB payload default with a 1 MiB ceiling, serialisability checks both ways, token-bucket rate limiting, in-flight caps, bounded buffers, bounded seen-id caches, bounded listener sets. |
+| Service worker | `sender.origin` and `sender.tab` re-checked against a **required** runtime allow-list — construction fails without one, and a sender reporting no origin is refused rather than waved through; client commands only from own extension pages; no generic command surface reachable from a page. |
+| Protocol | CSPRNG ids (no `Math.random` fallback), single-use correlation, `correlationId` required null on every kind but `RESPONSE`, well-formed `{code, message}` required on a failed `RESPONSE`, seen-id replay cache, ±30 s clock-skew window, protocol-version equality, reserved-key rejection (`__proto__`, `constructor`, `prototype`) with depth overflow treated as a rejection rather than a pass, null-prototype envelopes. |
+| Resource safety | 256 KiB payload default with a 1 MiB ceiling, recursive `JsonValue` grammar validation both ways (not "did `JSON.stringify` return a string"), accessor properties refused without being invoked, 64-level depth bound, an *expanded*-node budget so a small object graph with shared references cannot expand exponentially on the way out, two-level token-bucket rate limiting — per `(tab, topic)` **and** per tab in aggregate, so cycling topic names cannot buy a fresh budget — in-flight caps, buffers bounded in entries *and* bytes, bounded seen-id caches, bounded listener sets, and limiter/buffer options rejected rather than clamped so a `NaN` cannot make a limiter fail open. |
 | Failure handling | Coded, redacted errors; no stack traces and no handler text cross the boundary; every request settles exactly once. |
 | Code level | Zero runtime dependencies; no `eval`; no HTML sinks; security lint rules are errors, enforced over the samples too. |
 
@@ -352,7 +451,8 @@ you decide what to put on the bridge.
 | --- | --- | --- |
 | **XSS in your page** can call `publish()`, invoke your registered handlers, and observe bridge traffic on `window`. All same-origin page scripts share one JavaScript world. | The SDK cannot create a confidentiality boundary against code running in the same context. | Treat the page as one trust domain. Fix XSS as the primary control (CSP, encoding, Trusted Types). Never register a handler that exposes data an XSS payload should not reach. |
 | **Another installed extension** with host permissions on the same origin can inject a content script and speak this protocol. | Any extension the user grants host access to has at least our privileges. | Handlers must not return secrets. Use out-of-band signing where authenticity matters. |
-| **Push is best-effort.** MV3 workers are ephemeral; a push sent while the worker spins up can be dropped. | Platform behaviour. | Use the pull path for anything that must be correct on read. The bounded buffer mitigates, it does not solve. |
+| **Push is best-effort at every hop past `publish()`.** MV3 workers are ephemeral, the relay and worker both rate-limit, and the buffer evicts. See the delivery table in §2. | Partly platform behaviour, partly deliberate: the alternative to dropping a flood is queueing it, which moves the denial of service from CPU to memory. | Use the pull path for anything that must be correct on read. Watch `relayDropped.*`, `relaySendFailed.*`, `rateLimited.*` and `storageWriteFailed.*` in the counters — every drop is counted even though none is recoverable. |
+| **The relay cannot apply backpressure to the page.** `publish()` has already returned by the time the relay's limiter runs. | `postMessage` is one-way and the page API is synchronous by design; making `publish()` await a round trip would change it from fire-and-forget into a slow request. | Read `relay.getCounters()` if the relay handle is yours to hold, and treat sustained `relayDropped.RATE_LIMITED` as a signal to batch on the page side. |
 
 A `MessagePort` handshake was evaluated as a way to move post-handshake traffic off the
 shared `window`. It is not a security control — the port is transferred over a
@@ -420,6 +520,23 @@ yarn workspace @webex/web-extension-bridge test:unit --targets security/threats.
 The security regression suite is not optional and must not be skipped. A change that
 relaxes a validation rule, widens an allow-list, adds an HTML sink or introduces a runtime
 dependency needs an explicit review note explaining why.
+
+Defects found in review have a named regression test rather than a comment: see
+[`test/unit/spec/core/reviewRegressions.ts`](test/unit/spec/core/reviewRegressions.ts) and
+[`test/unit/spec/extension/reviewRegressions.ts`](test/unit/spec/extension/reviewRegressions.ts),
+where each case records what used to happen alongside the assertion that it no longer does.
+
+### Tracked follow-ups
+
+Deliberately deferred, so they are visible rather than forgotten:
+
+| Item | Status |
+| --- | --- |
+| Playwright end-to-end tests in a real browser (M5) | Deferred. Unit, integration and security suites plus the manual click-path in §3 cover the flows today. Needs a follow-up ticket before merge. |
+| CI job running this package's suite on pull requests | Not yet wired into `.github/workflows`. Owned by the repo's CI configuration rather than this package. |
+| Coverage thresholds (≥90 % core, ≥80 % overall) | No `coverage` script or gate yet. |
+| `CHANGELOG.md` | To be added with the first published release. |
+| Single `dev` script for build + watch + serve | Nice-to-have; today the samples need `build:src` then `build:samples`. |
 
 Vulnerability reports: see [SECURITY.md](SECURITY.md). Licensed under
 [Cisco's General Terms](https://www.cisco.com/site/us/en/about/legal/contract-experience/index.html).

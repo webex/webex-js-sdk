@@ -32,7 +32,9 @@ export const DropReason = {
   REPLAYED_ID: 'REPLAYED_ID',
   PAYLOAD_TOO_LARGE: 'PAYLOAD_TOO_LARGE',
   PAYLOAD_NOT_SERIALISABLE: 'PAYLOAD_NOT_SERIALISABLE',
+  PAYLOAD_TOO_DEEP: 'PAYLOAD_TOO_DEEP',
   INVALID_RESULT: 'INVALID_RESULT',
+  INVALID_ERROR: 'INVALID_ERROR',
 } as const;
 
 export type DropReason = (typeof DropReason)[keyof typeof DropReason];
@@ -62,6 +64,45 @@ export type ValidationResult = {ok: true; envelope: Envelope} | {ok: false; reas
 const drop = (reason: DropReason): ValidationResult => ({ok: false, reason});
 
 const KIND_SET = new Set<string>(ENVELOPE_KINDS);
+
+/** The complete key set of a {@link WireError}. Anything else is not one. */
+const WIRE_ERROR_KEYS = new Set<string>(['code', 'message']);
+
+/**
+ * Validate the `error` sub-object of a failed `RESPONSE`.
+ *
+ * `fromWireError` already refuses to trust an unrecognised `code`, so this is not the
+ * only thing standing between a hostile peer and a consumer's `switch`. It is here so
+ * the validator enforces the whole wire contract in one place: a `RESPONSE` that does
+ * not carry a well-formed error is malformed, and a malformed envelope should be
+ * dropped and counted at the boundary rather than quietly normalised three hops later.
+ * Unknown keys are rejected too, so an error object cannot be used to smuggle fields
+ * past the envelope-level key checks.
+ *
+ * @param value - The `error` field of an inbound `RESPONSE`.
+ * @returns Whether it is a well-formed `{code, message}` pair.
+ */
+function isValidWireError(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  for (const key of Object.getOwnPropertyNames(value)) {
+    if (RESERVED_KEYS.includes(key) || !WIRE_ERROR_KEYS.has(key)) {
+      return false;
+    }
+  }
+
+  const code = readOwn(value, 'code');
+
+  if (typeof code !== 'string' || code.length < 1 || code.length > MAX_ID_LENGTH) {
+    return false;
+  }
+
+  const message = readOwn(value, 'message');
+
+  return message === undefined || (typeof message === 'string' && message.length <= MAX_ID_LENGTH);
+}
 
 /**
  * Validate an inbound value against every protocol rule.
@@ -131,6 +172,14 @@ export function validateEnvelope(value: unknown, context: ValidateContext): Vali
     return drop(DropReason.INVALID_CORRELATION_ID);
   }
 
+  // Only a `RESPONSE` correlates to anything. A `REQUEST`, `PUSH` or handshake kind
+  // carrying a correlation id is either a peer that does not implement the protocol
+  // or an attempt to have a downstream hop treat one kind as a reply to another, so
+  // the field is required to be null rather than merely ignored.
+  if (kind !== EnvelopeKind.RESPONSE && correlationId !== null) {
+    return drop(DropReason.INVALID_CORRELATION_ID);
+  }
+
   const topic = readOwn(value, 'topic');
 
   if (!isValidTopic(topic)) {
@@ -173,6 +222,10 @@ export function validateEnvelope(value: unknown, context: ValidateContext): Vali
       return drop(DropReason.RESERVED_KEY);
     }
 
+    if (payloadCheck.rejection === PayloadRejection.TOO_DEEP) {
+      return drop(DropReason.PAYLOAD_TOO_DEEP);
+    }
+
     return drop(DropReason.PAYLOAD_NOT_SERIALISABLE);
   }
 
@@ -185,6 +238,10 @@ export function validateEnvelope(value: unknown, context: ValidateContext): Vali
 
     if (correlationId === null) {
       return drop(DropReason.INVALID_CORRELATION_ID);
+    }
+
+    if (ok === false && !isValidWireError(readOwn(value, 'error'))) {
+      return drop(DropReason.INVALID_ERROR);
     }
   }
 

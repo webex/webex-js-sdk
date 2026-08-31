@@ -97,7 +97,10 @@ describe('extension/client', () => {
   beforeEach(() => {
     world = createFakeExtensionWorld({origin: ORIGIN});
     log = createLogCapture();
-    worker = createExtensionBridgeWith(world.backgroundChrome, {logSink: log.sink});
+    worker = createExtensionBridgeWith(world.backgroundChrome, {
+      logSink: log.sink,
+      allowedOrigins: [ORIGIN],
+    });
     client = createExtensionClientWith(world.uiChrome, {logSink: log.sink});
   });
 
