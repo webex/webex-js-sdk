@@ -66,7 +66,7 @@ state-machine/
 - **State Graph and Transition Rules**: `TaskStateMachine.ts` defines all states, transition tables, and event handlers that drive the task lifecycle.
 - **Deterministic Context Updates**: `actions.ts` implements XState actions for task context mutation and provides emitter placeholders that `Task` overrides to surface SDK events.
 - **Transition Eligibility**: `guards.ts` contains pure predicates that gate transitions based on current context, task data, and backend state.
-- **UI Controls Computation**: `uiControlsComputer.ts` derives `TaskUIControls` from state and context for voice/digital channels, keeping UI enablement centralized.
+- **UI Controls Computation**: `uiControlsComputer.ts` derives per-leg action controls and ordered Consult/Transfer destination categories from state, Task data, and injected profile policy for voice/digital channels. Consumers read `task.uiControls`; do not add a parallel policy method or UI-side decision tree.
 - **Typed Event Contracts**: `constants.ts` and `types.ts` define `TaskState`, `TaskEvent`, and the `TaskEventPayloadMap` so transitions and payloads stay type-safe.
 - **Public Exports**: `index.ts` exposes the state machine factory, event enums, and types for consumption by the task layer.
 
@@ -266,14 +266,18 @@ shouldWrapUpOrIsInitiator(context, event) {
   return Boolean(event.taskData?.wrapUpRequired || context.consultInitiator);
 }
 
-// Check whether the leaving participant is the current agent
-didCurrentAgentLeaveConference(context, event) {
+// Check whether the current agent left the main interaction
+didCurrentAgentLeaveMainInteraction(context, event) {
   const selfAgentId = getSelfAgentId(context, event.taskData);
   if (!selfAgentId) return false;
 
   const participantIdFromEvent = 'participantId' in event ? event.participantId : undefined;
   const participantId = participantIdFromEvent ?? event.taskData?.participantId;
-  return Boolean(participantId) && participantId === selfAgentId;
+  if (Boolean(participantId) && participantId === selfAgentId) return true;
+  // Explicit hasLeft or removal of a previously active self from the participant map is terminal.
+  // PARTICIPANT_LEAVE naming another participant does not infer self departure from media.
+  // Only a from-conference CONSULT_END may compare mainCall membership, and only when self
+  // remains active in the participant map and on the consult leg. Partial ordinary calls are false.
 }
 ```
 

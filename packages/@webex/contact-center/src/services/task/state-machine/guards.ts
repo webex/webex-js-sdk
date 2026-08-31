@@ -362,13 +362,14 @@ export const guards = {
   },
 
   /**
-   * True if PARTICIPANT_LEAVE indicates that *this* agent left the conference.
+   * True when an updated lifecycle event shows that this agent left the main interaction.
    *
-   * Important: PARTICIPANT_LEAVE is broadcast to all agents in the conference.
-   * Only the agent whose id matches the leaving participant should transition to
-   * TERMINATED / WRAPPING_UP based on wrapup rules.
+   * Explicit self-participant evidence is authoritative. Main-call membership is used only
+   * for the from-conference nested-consult race where CONSULT_END still represents the agent as
+   * active on the consult leg after removing them from the main leg. Partial or ordinary call
+   * snapshots are not treated as a departure.
    */
-  didCurrentAgentLeaveConference: ({context, event}: GuardParams): boolean => {
+  didCurrentAgentLeaveMainInteraction: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
     const selfAgentId = getSelfAgentId(context, taskData);
     if (!selfAgentId) return false;
@@ -383,12 +384,64 @@ export const guards = {
       return true;
     }
 
-    //    For EP-DN agents the backend removes the leaving participant entirely
-    //    from the participants map (rather than setting hasLeft). If this task
-    //    is in CONFERENCING (implied by the guard being evaluated here) but the
-    //    agent is absent from the updated participants, they have left.
-    const participants = taskData?.interaction?.participants;
-    if (participants && !(selfAgentId in participants)) {
+    // Routing represents self-departure either by naming the participant or by retaining the
+    // participant entry with hasLeft set. Agent Desktop treats both representations as terminal.
+    const currentParticipant = taskData?.interaction?.participants?.[selfAgentId];
+    if (currentParticipant?.hasLeft === true) {
+      return true;
+    }
+
+    // A participant-left event that explicitly identifies somebody else must not use a
+    // potentially partial participant or media roster to infer that self also departed.
+    if (
+      event?.type === TaskEvent.PARTICIPANT_LEAVE &&
+      Boolean(participantId) &&
+      participantId !== selfAgentId
+    ) {
+      return false;
+    }
+
+    const previousParticipants = context.taskData?.interaction?.participants;
+    const updatedParticipants = taskData?.interaction?.participants;
+    const wasPreviouslyActive = Boolean(
+      previousParticipants?.[selfAgentId] && previousParticipants[selfAgentId].hasLeft !== true
+    );
+    // Some EP-DN lifecycle payloads remove the participant entry instead of setting hasLeft.
+    // Requiring a previously active entry prevents an incomplete initial snapshot from ending a task.
+    if (updatedParticipants && wasPreviouslyActive && !(selfAgentId in updatedParticipants)) {
+      return true;
+    }
+
+    const previousMainMedia = Object.values(context.taskData?.interaction?.media ?? {}).filter(
+      (media) => media?.mType === 'mainCall'
+    );
+    const updatedMainMedia = Object.values(taskData?.interaction?.media ?? {}).filter(
+      (media) => media?.mType === 'mainCall'
+    );
+    const wasPreviouslyInMainCall = previousMainMedia.some((media) =>
+      media.participants?.includes(selfAgentId)
+    );
+    const remainsInMainCall = updatedMainMedia.some((media) =>
+      media.participants?.includes(selfAgentId)
+    );
+    // A hasLeft participant returned above, so presence here means the updated map keeps self active.
+    const remainsActiveInParticipantMap = Boolean(currentParticipant);
+    const remainsOnConsultLeg = Object.values(taskData?.interaction?.media ?? {}).some(
+      (media) => media?.mType === MEDIA_TYPE_CONSULT && media.participants?.includes(selfAgentId)
+    );
+
+    // Agent Desktop uses mainCall membership for AgentConsultEnded cleanup. Restrict that fallback
+    // to a consult that originated from conference and require corroborating active-map and
+    // consult-leg membership so ordinary partial CONNECTED/HELD payloads cannot terminate a task.
+    if (
+      event?.type === TaskEvent.CONSULT_END &&
+      context.consultFromConference === true &&
+      updatedMainMedia.length > 0 &&
+      wasPreviouslyInMainCall &&
+      !remainsInMainCall &&
+      remainsActiveInParticipantMap &&
+      remainsOnConsultLeg
+    ) {
       return true;
     }
 

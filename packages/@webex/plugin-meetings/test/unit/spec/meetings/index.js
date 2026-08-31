@@ -1879,12 +1879,27 @@ describe('plugin-meetings', () => {
         });
 
         describe('wasm runtime performance telemetry', () => {
+          const correlationId = 'wasm-corr-id';
+          const benchmarkMeasurements = {
+            divRatio: 1.888,
+            sqrtRatio: 3.474,
+            addNsPerOp: 2.006,
+            addMedianMs: 32.1,
+            divMedianMs: 60.6,
+            sqrtMedianMs: 111.5,
+          };
           const probeResult = {
             status: 'slow',
             capability: 'not capable',
-            ratio: 0.25,
-            wasmMs: 25,
-            jsMs: 100,
+            reason: null,
+            measurements: benchmarkMeasurements,
+          };
+          const expectedMetricFields = {
+            status: probeResult.status,
+            capability: probeResult.capability,
+            reason: probeResult.reason,
+            ...benchmarkMeasurements,
+            correlation_id: correlationId,
           };
           let metricsSpy;
           let probeCheckStub;
@@ -1893,7 +1908,7 @@ describe('plugin-meetings', () => {
             webex.meetings.meetingInfo.fetchInfoOptions = sinon.stub().resolves({});
             webex.meetings.createMeeting = sinon
               .stub()
-              .returns(Promise.resolve({on: () => true, correlationId: 'wasm-corr-id'}));
+              .returns(Promise.resolve({on: () => true, correlationId}));
             probeCheckStub = sinon.stub(WasmRuntimeProbe, 'check').resolves(probeResult);
             metricsSpy = sinon.stub(Metrics, 'sendBehavioralMetric');
           });
@@ -1908,13 +1923,11 @@ describe('plugin-meetings', () => {
             await testUtils.flushPromises();
 
             assert.calledOnceWithExactly(probeCheckStub);
-            assert.calledOnceWithExactly(metricsSpy, 'js_sdk_wasm_runtime_performance', {
-              status: 'slow',
-              ratio: 0.25,
-              wasmMs: 25,
-              jsMs: 100,
-              correlation_id: 'wasm-corr-id',
-            });
+            assert.calledOnceWithExactly(
+              metricsSpy,
+              'js_sdk_wasm_runtime_performance',
+              expectedMetricFields
+            );
           });
 
           it('logs the WASM runtime status after a meeting is created', async () => {
@@ -1939,12 +1952,35 @@ describe('plugin-meetings', () => {
             await testUtils.flushPromises();
 
             assert.calledOnceWithExactly(probeCheckStub);
+            assert.calledOnceWithExactly(
+              metricsSpy,
+              'js_sdk_wasm_runtime_performance',
+              expectedMetricFields
+            );
+          });
+
+          it('emits the reason with null measurement fields when no measurements are available', async () => {
+            probeCheckStub.resolves({
+              status: 'unknown',
+              capability: 'unknown',
+              reason: 'worker_timeout',
+              measurements: null,
+            });
+
+            await webex.meetings.create(test1, test2);
+            await testUtils.flushPromises();
+
             assert.calledOnceWithExactly(metricsSpy, 'js_sdk_wasm_runtime_performance', {
-              status: 'slow',
-              ratio: 0.25,
-              wasmMs: 25,
-              jsMs: 100,
-              correlation_id: 'wasm-corr-id',
+              status: 'unknown',
+              capability: 'unknown',
+              reason: 'worker_timeout',
+              divRatio: null,
+              sqrtRatio: null,
+              addNsPerOp: null,
+              addMedianMs: null,
+              divMedianMs: null,
+              sqrtMedianMs: null,
+              correlation_id: correlationId,
             });
           });
 
@@ -1955,8 +1991,7 @@ describe('plugin-meetings', () => {
             const created = await webex.meetings.create(test1, test2);
             await testUtils.flushPromises();
 
-            // create() resolved normally with the meeting, i.e. the failed probe did not break it.
-            assert.equal(created.correlationId, 'wasm-corr-id');
+            assert.equal(created.correlationId, correlationId);
             assert.notCalled(metricsSpy);
             assert.calledOnceWithExactly(
               loggerErrorStub,
@@ -2680,7 +2715,11 @@ describe('plugin-meetings', () => {
                 undefined,
                 undefined,
                 extraParams,
-                {meetingId: meeting.id, sendCAevents}
+                {
+                  meetingId: meeting.id,
+                  sendCAevents,
+                  correlationId: meeting.correlationId,
+                }
               );
             }
 

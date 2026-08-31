@@ -2480,6 +2480,7 @@ describe('plugin-meetings', () => {
 
         selfWithLocalUnmuteRequired.controls.audio.muted = false;
         selfWithLocalUnmuteRequired.controls.audio.localAudioUnmuteRequired = true;
+        selfWithLocalUnmuteRequired.controls.audio.meta = {modifiedBy: 'host-uuid-123'};
 
         locusInfo.emitScoped = sinon.stub();
         locusInfo.updateSelf(selfWithLocalUnmuteRequired);
@@ -2494,6 +2495,33 @@ describe('plugin-meetings', () => {
           {
             muted: false,
             unmuteAllowed: true,
+            modifiedBy: 'host-uuid-123',
+          }
+        );
+      });
+
+      it('should set modifiedBy to null on LOCAL_UNMUTE_REQUIRED when it is unavailable', () => {
+        locusInfo.webex.internal.device.url = self.deviceUrl;
+        locusInfo.updateSelf(self);
+        const selfWithLocalUnmuteRequired = cloneDeep(self);
+
+        selfWithLocalUnmuteRequired.controls.audio.muted = false;
+        selfWithLocalUnmuteRequired.controls.audio.localAudioUnmuteRequired = true;
+
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateSelf(selfWithLocalUnmuteRequired);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUIRED,
+          {
+            muted: false,
+            unmuteAllowed: true,
+            modifiedBy: null,
           }
         );
       });

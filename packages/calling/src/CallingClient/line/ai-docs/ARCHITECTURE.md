@@ -74,12 +74,12 @@ flowchart TD
   E --> F[emit REGISTERED with Line instance]
   C -- No --> Z[No-op]
 
-  B -->|UNREGISTERED| G[emit UNREGISTERED]
+  B -->|UNREGISTERED| G[emit UNREGISTERED with optional LineError reason]
   B -->|RECONNECTED| H[emit RECONNECTED]
   B -->|RECONNECTING| I[emit RECONNECTING]
 
   B -->|ERROR| J{lineError provided?}
-  J -- Yes --> K[emit ERROR with LineError]
+  J -- Yes --> K[emit event with LineError]
   J -- No --> Z
 
   F --> APP[Application receives event]
