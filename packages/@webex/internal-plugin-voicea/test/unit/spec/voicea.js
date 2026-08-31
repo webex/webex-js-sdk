@@ -925,13 +925,16 @@ describe('plugin-voicea', () => {
 
         // eslint-disable-next-line no-underscore-dangle
         await voiceaService.webex.internal.llm._emit('event:relay.event', {
+          headers: {from: 'ws'},
           data: {
             relayType: 'voicea.update_speakername',
             voiceaPayload,
           },
+          sequenceNumber: 23,
         });
 
         assert.calledOnceWithExactly(triggerSpy, voiceaPayload);
+        assert.equal(voiceaService.seqNum, 24);
       });
 
       it('processes a eva wake up', async () => {

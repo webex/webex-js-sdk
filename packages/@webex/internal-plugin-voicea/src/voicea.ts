@@ -17,6 +17,7 @@ import {
 import {
   AnnouncementPayload,
   CaptionLanguageResponse,
+  SpeakerNameUpdatePayload,
   TranscriptionResponse,
   IVoiceaChannel,
 } from './voicea.types';
@@ -72,8 +73,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         this.processTranscription(e.data.voiceaPayload);
         break;
       case AIBRIDGE_RELAY_TYPES.VOICEA.SPEAKER_NAME_UPDATE:
-        // @ts-ignore
-        this.trigger(EVENT_TRIGGERS.SPEAKER_NAME_UPDATED, e.data.voiceaPayload);
+        this.processSpeakerNameUpdate(e.data.voiceaPayload);
         break;
       case AIBRIDGE_RELAY_TYPES.MANUAL.TRANSCRIPTION:
       case AIBRIDGE_RELAY_TYPES.MANUAL.CAPTIONER:
@@ -158,6 +158,16 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         source: transcriptPayload.data_source,
       });
     }
+  };
+
+  /**
+   * Process speaker name update and send alert
+   * @param {SpeakerNameUpdatePayload} voiceaPayload
+   * @returns {void}
+   */
+  private processSpeakerNameUpdate = (voiceaPayload: SpeakerNameUpdatePayload): void => {
+    // @ts-ignore
+    this.trigger(EVENT_TRIGGERS.SPEAKER_NAME_UPDATED, voiceaPayload);
   };
 
   /**
