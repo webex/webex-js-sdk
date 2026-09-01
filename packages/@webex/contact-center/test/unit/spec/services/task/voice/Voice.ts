@@ -12,6 +12,7 @@ import * as Utils from '../../../../../../src/services/core/Utils';
 import {createTaskData} from '../taskTestUtils';
 import MetricsManager from '../../../../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../../../../src/metrics/constants';
+import * as wxAppDiagnosticLogging from '../../../../../../src/services/wxAppDiagnosticLogging';
 
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
@@ -842,6 +843,51 @@ describe('Voice Task', () => {
       expect(emitSpy).toHaveBeenCalledWith(
         TASK_EVENTS.TASK_UI_CONTROLS_UPDATED,
         expect.any(Object)
+      );
+    });
+  });
+
+  describe('wxApp offer decision logging', () => {
+    const wxAppParticipant = {
+      deviceType: 'wxApp',
+      deviceId: 'device-id-1',
+      deviceCallId: 'call-id-1',
+    };
+
+    const makeWxAppOfferTaskData = () =>
+      createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+
+    it('logs evolving accept reasons through the normal wxApp accept flow', () => {
+      const logSpy = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppOfferDecision');
+      const taskData = makeWxAppOfferTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
+
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({acceptReason: 'wxApp_offer_ready'})
+      );
+
+      logSpy.mockClear();
+      voice['setWxAppAcceptInFlight'](true);
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({acceptReason: 'wxApp_accept_in_flight'})
+      );
+
+      logSpy.mockClear();
+      voice['setWxAppAcceptInFlight'](false);
+      voice['setWxAppAnswerPending'](true);
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({acceptReason: 'wxApp_answer_pending'})
       );
     });
   });

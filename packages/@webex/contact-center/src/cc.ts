@@ -1622,20 +1622,34 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         publishedEnable = true;
         this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
 
+        const mercurySubscribed = this.wxAppTelephonyMercurySync.isSubscribed();
+
         logWxAppSessionReadiness({
           enableWxBetterTogether: true,
           loginOption,
           wxAppHooksApplied: true,
           usersubPublished: this.webexCrossClientService.isAnswerCallsStateActive(),
-          mercurySubscribed: this.wxAppTelephonyMercurySync.isSubscribed(),
+          mercurySubscribed,
           telephonyTaskType,
         });
 
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS,
-          {loginOption, enableWxBetterTogether: true},
-          ['operational', 'behavioral']
-        );
+        if (mercurySubscribed) {
+          this.metricsManager.trackEvent(
+            METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS,
+            {loginOption, enableWxBetterTogether: true},
+            ['operational', 'behavioral']
+          );
+        } else {
+          this.metricsManager.trackEvent(
+            METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
+            {
+              loginOption,
+              enableWxBetterTogether: true,
+              skipReason: 'mercury_not_subscribed',
+            },
+            ['operational', 'behavioral']
+          );
+        }
       } else {
         await this.ensureWxAppDeviceRegistered();
         await this.publishAnswerOnWebexCrossClientState(false, {force: true});
@@ -1665,16 +1679,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         method: METHODS.STATION_LOGIN,
       });
 
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
-        {
-          loginOption,
-          enableWxBetterTogether: flagEnabled,
-          skipReason: 'publish_failed',
-          error: error instanceof Error ? error.toString() : String(error),
-        },
-        ['operational', 'behavioral']
-      );
+      if (flagEnabled) {
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
+          {
+            loginOption,
+            enableWxBetterTogether: true,
+            skipReason: 'publish_failed',
+            error: error instanceof Error ? error.toString() : String(error),
+          },
+          ['operational', 'behavioral']
+        );
+      }
 
       if (flagEnabled) {
         logWxAppSessionReadiness({
@@ -1927,6 +1943,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         module: CC_FILE,
         method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
       });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED,
+        {error: 'agentId unavailable'},
+        ['operational', 'behavioral']
+      );
 
       return;
     }

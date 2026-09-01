@@ -52,6 +52,7 @@ import {
   logWxAppMercuryMuteSync,
   logWxAppOfferDecision,
   callIdSuffix,
+  WxAppAcceptReason,
 } from '../../wxAppDiagnosticLogging';
 
 export default class Voice extends Task implements IVoice {
@@ -65,7 +66,7 @@ export default class Voice extends Task implements IVoice {
   private wxAppAcceptInFlight = false;
   private wxAppMuteSyncInFlight?: Promise<boolean | undefined>;
   private wxAppMuteToggleInFlight?: Promise<void>;
-  private wxAppOfferDecisionLogged = false;
+  private lastLoggedWxAppAcceptReason?: WxAppAcceptReason;
 
   constructor(
     contact: ReturnType<typeof routingContact>,
@@ -149,7 +150,7 @@ export default class Voice extends Task implements IVoice {
   }
 
   private logWxAppOfferDecisionIfNeeded(): void {
-    if (!this.enableWxBetterTogether || this.wxAppOfferDecisionLogged) {
+    if (!this.enableWxBetterTogether) {
       return;
     }
 
@@ -163,28 +164,33 @@ export default class Voice extends Task implements IVoice {
       return;
     }
 
-    this.wxAppOfferDecisionLogged = true;
-
     const deps = this.getWxAppVoiceDependencies();
     const isOutdial = this.data?.interaction?.outboundType === 'OUTDIAL';
     const isWxAppInboundOffer = this.isWebexAppInboundCallingOffer();
     const isWxAppOutdialOffer = this.isWebexAppCallingOffer() && isOutdial;
     const deviceDetails = getCallingDeviceDetails(deps);
+    const acceptReason = deriveWxAppAcceptReason({
+      isWxAppInboundOffer,
+      isWxAppOutdialOffer,
+      isWebrtc: false,
+      isOutdial,
+      wxAppAcceptInFlight: this.wxAppAcceptInFlight,
+      wxAppAnswerPending: this.wxAppAnswerPending,
+      enableWxBetterTogether: this.enableWxBetterTogether,
+      hasDeviceCallId: Boolean(deviceDetails?.deviceCallId),
+    });
+
+    if (acceptReason === this.lastLoggedWxAppAcceptReason) {
+      return;
+    }
+
+    this.lastLoggedWxAppAcceptReason = acceptReason;
 
     logWxAppOfferDecision({
       interactionId: this.data.interactionId,
       acceptVisible: accept.isVisible,
       acceptEnabled: accept.isEnabled,
-      acceptReason: deriveWxAppAcceptReason({
-        isWxAppInboundOffer,
-        isWxAppOutdialOffer,
-        isWebrtc: false,
-        isOutdial,
-        wxAppAcceptInFlight: this.wxAppAcceptInFlight,
-        wxAppAnswerPending: this.wxAppAnswerPending,
-        enableWxBetterTogether: this.enableWxBetterTogether,
-        hasDeviceCallId: Boolean(deviceDetails?.deviceCallId),
-      }),
+      acceptReason,
       wxAppParticipantDeviceType: deviceDetails?.deviceType,
       hasDeviceCallId: Boolean(deviceDetails?.deviceCallId),
     });
