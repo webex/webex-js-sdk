@@ -1994,6 +1994,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     const userId = this.$webex.internal.device?.userId;
     if (!userId) {
+      if (enable && this.isWxBetterTogetherEnabled()) {
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+          {
+            enableWxBetterTogether: true,
+            skipReason: 'user_id_unavailable',
+            error: 'User ID is unavailable for cross-client publish',
+          },
+          ['operational', 'behavioral']
+        );
+      }
+
       return;
     }
 

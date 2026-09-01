@@ -156,12 +156,21 @@ export default class WebexCrossClientService {
     this.appName = appName;
 
     if (!userId) {
-      throw new Error('User ID is unavailable for cross-client publish');
+      const error = 'User ID is unavailable for cross-client publish';
+      this.trackUsersubPreflightFailure(enable, 'user_id_unavailable', error, trackPublishMetrics);
+      throw new Error(error);
     }
 
     const deviceUrl = this.getDeviceUrl();
     if (!deviceUrl) {
-      throw new Error('Device URL is unavailable for cross-client publish');
+      const error = 'Device URL is unavailable for cross-client publish';
+      this.trackUsersubPreflightFailure(
+        enable,
+        'device_url_unavailable',
+        error,
+        trackPublishMetrics
+      );
+      throw new Error(error);
     }
 
     const composition = {
@@ -232,6 +241,27 @@ export default class WebexCrossClientService {
         ttl,
       },
     });
+  }
+
+  private trackUsersubPreflightFailure(
+    enable: boolean,
+    skipReason: 'user_id_unavailable' | 'device_url_unavailable',
+    error: string,
+    trackPublishMetrics: boolean
+  ): void {
+    if (!trackPublishMetrics) {
+      return;
+    }
+
+    MetricsManager.getInstance().trackEvent(
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+      {
+        enableWxBetterTogether: enable,
+        skipReason,
+        error,
+      },
+      ['operational', 'behavioral']
+    );
   }
 
   public teardown(): void {

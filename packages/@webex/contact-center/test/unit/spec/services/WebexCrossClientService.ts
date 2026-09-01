@@ -97,6 +97,26 @@ describe('WebexCrossClientService', () => {
       'User ID is unavailable for cross-client publish'
     );
     expect(webex.request).not.toHaveBeenCalled();
+    expect(trackEvent).not.toHaveBeenCalled();
+  });
+
+  it('emits usersub publish failed when user ID is unavailable and trackPublishMetrics is true', async () => {
+    webex.internal.device.userId = undefined as unknown as string;
+
+    await expect(
+      service.setManageWebexCallingInWxcc(true, {trackPublishMetrics: true})
+    ).rejects.toThrow('User ID is unavailable for cross-client publish');
+
+    expect(trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+      expect.objectContaining({
+        enableWxBetterTogether: true,
+        skipReason: 'user_id_unavailable',
+      }),
+      ['operational', 'behavioral']
+    );
+    expect(timeEvent).not.toHaveBeenCalled();
+    expect(webex.request).not.toHaveBeenCalled();
   });
 
   it('throws when device URL is unavailable', async () => {
@@ -105,6 +125,26 @@ describe('WebexCrossClientService', () => {
     await expect(service.setManageWebexCallingInWxcc(true)).rejects.toThrow(
       'Device URL is unavailable for cross-client publish'
     );
+    expect(webex.request).not.toHaveBeenCalled();
+    expect(trackEvent).not.toHaveBeenCalled();
+  });
+
+  it('emits usersub publish failed when device URL is unavailable and trackPublishMetrics is true', async () => {
+    webex.internal.device.url = undefined as unknown as string;
+
+    await expect(
+      service.setManageWebexCallingInWxcc(true, {trackPublishMetrics: true})
+    ).rejects.toThrow('Device URL is unavailable for cross-client publish');
+
+    expect(trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+      expect.objectContaining({
+        enableWxBetterTogether: true,
+        skipReason: 'device_url_unavailable',
+      }),
+      ['operational', 'behavioral']
+    );
+    expect(timeEvent).not.toHaveBeenCalled();
     expect(webex.request).not.toHaveBeenCalled();
   });
 

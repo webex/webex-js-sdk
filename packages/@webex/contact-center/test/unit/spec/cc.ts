@@ -1616,6 +1616,11 @@ describe('webex.cc', () => {
         expect.objectContaining({skipReason: 'usersub_not_published'}),
         ['operational', 'behavioral']
       );
+      expect(metricSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+        expect.objectContaining({skipReason: 'user_id_unavailable'}),
+        ['operational', 'behavioral']
+      );
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
     });
 
