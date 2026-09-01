@@ -187,42 +187,42 @@ describe('metrics/behavioral-events', () => {
       expect(getEventTaxonomy(METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_SUCCESS)).toEqual({
         product,
         agent: 'user',
-        target: 'wxapp_task_accept',
+        target: 'task_accept_webex_together',
         verb: 'complete',
       });
 
       expect(getEventTaxonomy(METRIC_EVENT_NAMES.WXAPP_SESSION_SKIPPED)).toEqual({
         product,
         agent: 'user',
-        target: 'wxapp_session_init',
+        target: 'webex_together_session_init',
         verb: 'ignore',
       });
 
       expect(getEventTaxonomy(METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS)).toEqual({
         product,
         agent: 'user',
-        target: 'wxapp_usersub_publish',
+        target: 'webex_together_usersub_publish',
         verb: 'complete',
       });
 
       expect(getEventTaxonomy(METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED)).toEqual({
         product,
         agent: 'user',
-        target: 'wxapp_mercury_subscribe',
+        target: 'webex_together_mercury_subscribe',
         verb: 'fail',
       });
 
       expect(getEventTaxonomy(METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_SUCCESS)).toEqual({
         product,
         agent: 'user',
-        target: 'wxapp_task_mute',
+        target: 'task_mute_webex_together',
         verb: 'complete',
       });
 
       expect(getEventTaxonomy(METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_FAILED)).toEqual({
         product,
         agent: 'user',
-        target: 'wxapp_task_dtmf',
+        target: 'task_dtmf_webex_together',
         verb: 'fail',
       });
 

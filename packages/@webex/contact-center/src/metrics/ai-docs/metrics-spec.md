@@ -35,6 +35,8 @@ Metrics is one of nine confirmed Contact Center SDK modules. Own timing, taxonom
 
 - **Behavioral Taxonomy**: Structured `product.agent.target.verb` naming convention for behavioral events
 
+- **Webex Together behavioral naming**: Webex Together (wxApp) events use `*_webex_together` compound targets (e.g. `wxcc_sdk.user.task_accept_webex_together.complete`). Operational/business wire names remain `WXCC_SDK_WXAPP_*` unchanged.
+
 - **Payload Preparation**: Automatic cleanup of empty fields, space-to-underscore conversion, and `tabHidden` metadata
 
 - **AQM Response Helpers**: Static methods to extract common tracking fields from AQM responses
@@ -236,14 +238,14 @@ All event names are defined in `METRIC_EVENT_NAMES` (`constants.ts`). Events fol
 | `TASK_ACCEPT_CONSULT_SUCCESS` / `FAILED` | `'Task Accept Consult ...'` | Accept consult result |
 | `TASK_AUTO_ANSWER_SUCCESS` / `FAILED` | `'Task Auto Answer ...'` | Auto-answer result |
 | `TASK_OUTDIAL_SUCCESS` / `FAILED` | `'Task Outdial ...'` | Outdial result |
-| `WXAPP_TASK_MUTE_SUCCESS` / `FAILED` | `'WxApp Task Mute ...'` | wxApp task mute result |
-| `WXAPP_TASK_DTMF_SUCCESS` / `FAILED` | `'WxApp Task Dtmf ...'` | wxApp task DTMF result |
-| `WXAPP_TASK_ACCEPT_SUCCESS` / `FAILED` | `'WxApp Task Accept ...'` | wxApp task accept result |
-| `WXAPP_TASK_DECLINE_SUCCESS` / `FAILED` | `'WxApp Task Decline ...'` | wxApp task decline result |
-| `WXAPP_SESSION_INIT_SUCCESS` / `FAILED` | `'WxApp Session Init ...'` | wxApp post-station-login init result |
-| `WXAPP_SESSION_SKIPPED` | `'WxApp Session Skipped'` | wxApp session init skipped (browser login or flag disabled) |
-| `WXAPP_USERSUB_PUBLISH_SUCCESS` / `FAILED` | `'WxApp Usersub Publish ...'` | wxApp usersub publish result |
-| `WXAPP_MERCURY_SUBSCRIBE_SUCCESS` / `FAILED` | `'WxApp Mercury Subscribe ...'` | wxApp Mercury subscribe result |
+| `WXAPP_TASK_MUTE_SUCCESS` / `FAILED` | `'WxApp Task Mute ...'` | Webex Together task mute/unmute toggle (`wxcc_sdk.user.task_mute_webex_together.complete\|fail`) |
+| `WXAPP_TASK_DTMF_SUCCESS` / `FAILED` | `'WxApp Task Dtmf ...'` | Webex Together DTMF/keypad (`wxcc_sdk.user.task_dtmf_webex_together.complete\|fail`) |
+| `WXAPP_TASK_ACCEPT_SUCCESS` / `FAILED` | `'WxApp Task Accept ...'` | Webex Together accept/answer (`wxcc_sdk.user.task_accept_webex_together.complete\|fail`) |
+| `WXAPP_TASK_DECLINE_SUCCESS` / `FAILED` | `'WxApp Task Decline ...'` | Webex Together reject/decline (`wxcc_sdk.user.task_reject_webex_together.complete\|fail`) |
+| `WXAPP_SESSION_INIT_SUCCESS` / `FAILED` | `'WxApp Session Init ...'` | Webex Together session orchestration (`wxcc_sdk.user.webex_together_session_init.complete\|fail`) |
+| `WXAPP_SESSION_SKIPPED` | `'WxApp Session Skipped'` | Webex Together session skipped (`wxcc_sdk.user.webex_together_session_init.ignore`) |
+| `WXAPP_USERSUB_PUBLISH_SUCCESS` / `FAILED` | `'WxApp Usersub Publish ...'` | Cross-client usersub publish (`wxcc_sdk.user.webex_together_usersub_publish.complete\|fail`) |
+| `WXAPP_MERCURY_SUBSCRIBE_SUCCESS` / `FAILED` | `'WxApp Mercury Subscribe ...'` | Telephony Mercury mute-sync subscribe (`wxcc_sdk.user.webex_together_mercury_subscribe.complete\|fail`) |
 | `TASK_CONFERENCE_START_SUCCESS` / `FAILED` | `'Task Conference Start ...'` | Conference start result |
 | `TASK_CONFERENCE_END_SUCCESS` / `FAILED` | `'Task Conference End ...'` | Conference end result |
 | `TASK_CONFERENCE_TRANSFER_SUCCESS` / `FAILED` | `'Task Conference Transfer ...'` | Conference transfer result |
@@ -304,6 +306,22 @@ All event names are defined in `constants.ts` as `METRIC_EVENT_NAMES`. Events fo
 | Queue                  | `QUEUE_FETCH_SUCCESS`                  | `QUEUE_FETCH_FAILED`                   |
 | Outdial ANI Entries    | `OUTDIAL_ANI_EP_FETCH_SUCCESS`         | `OUTDIAL_ANI_EP_FETCH_FAILED`          |
 
+### Webex Together behavioral taxonomy
+
+Webex Together events (`WXAPP_*` constants) use `*_webex_together` compound targets. Assembled Amplitude names follow `wxcc_sdk.user.{target}.{verb}`:
+
+| Feature | Behavioral target | Success name | Failure name | Skip name |
+|---|---|---|---|---|
+| Task accept / answer | `task_accept_webex_together` | `wxcc_sdk.user.task_accept_webex_together.complete` | `wxcc_sdk.user.task_accept_webex_together.fail` | — |
+| Task reject / decline | `task_reject_webex_together` | `wxcc_sdk.user.task_reject_webex_together.complete` | `wxcc_sdk.user.task_reject_webex_together.fail` | — |
+| Task mute / unmute toggle | `task_mute_webex_together` | `wxcc_sdk.user.task_mute_webex_together.complete` | `wxcc_sdk.user.task_mute_webex_together.fail` | — |
+| Task DTMF / keypad | `task_dtmf_webex_together` | `wxcc_sdk.user.task_dtmf_webex_together.complete` | `wxcc_sdk.user.task_dtmf_webex_together.fail` | — |
+| Usersub publish | `webex_together_usersub_publish` | `wxcc_sdk.user.webex_together_usersub_publish.complete` | `wxcc_sdk.user.webex_together_usersub_publish.fail` | — |
+| Mercury subscribe | `webex_together_mercury_subscribe` | `wxcc_sdk.user.webex_together_mercury_subscribe.complete` | `wxcc_sdk.user.webex_together_mercury_subscribe.fail` | — |
+| Session init | `webex_together_session_init` | `wxcc_sdk.user.webex_together_session_init.complete` | `wxcc_sdk.user.webex_together_session_init.fail` | `wxcc_sdk.user.webex_together_session_init.ignore` |
+
+Operational and business wire names are unchanged (`WXCC_SDK_WXAPP_*`).
+
 Special events (no success/failure pair):
 
 - `AGENT_RONA` — has behavioral taxonomy (`service.agent_rona.set`)
@@ -314,7 +332,7 @@ Special events (no success/failure pair):
 
 - `WEBSOCKET_EVENT_RECEIVED` — **no** behavioral taxonomy (not in `eventTaxonomyMap`)
 
-- `WXAPP_SESSION_SKIPPED` — has behavioral taxonomy (`user.wxapp_session_init.ignore`)
+- `WXAPP_SESSION_SKIPPED` — has behavioral taxonomy (`wxcc_sdk.user.webex_together_session_init.ignore`)
 
 Of the 107 defined metric names, 96 have behavioral taxonomy and 11 do not. Events **without** an `eventTaxonomyMap` entry are the eight `AI_ASSISTANT_*` names plus `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`.
 
