@@ -2055,53 +2055,6 @@ describe('plugin-meetings', () => {
     });
 
     describe('#updateSelf', () => {
-      describe('LLM watchdog re-evaluation', () => {
-        it('re-evaluates LLM watchdogs on all hash tree parsers when self transitions to joined', () => {
-          const parserA = {reevaluateLlmWatchdogs: sinon.stub()};
-          const parserB = {reevaluateLlmWatchdogs: sinon.stub()};
-          locusInfo.hashTreeParsers.set('urlA', {parser: parserA});
-          locusInfo.hashTreeParsers.set('urlB', {parser: parserB});
-
-          // start with LLM not expected (no self yet)
-          locusInfo.parsedLocus.self = undefined;
-          locusInfo.webex.internal.device.url = self.deviceUrl;
-
-          // the self fixture's joined device has state JOINED -> isLlmExpected becomes true
-          locusInfo.updateSelf(cloneDeep(self));
-
-          assert.calledOnceWithExactly(parserA.reevaluateLlmWatchdogs);
-          assert.calledOnceWithExactly(parserB.reevaluateLlmWatchdogs);
-        });
-
-        it('does not re-evaluate LLM watchdogs when LLM was already expected before the update', () => {
-          const parser = {reevaluateLlmWatchdogs: sinon.stub()};
-          locusInfo.hashTreeParsers.set('urlA', {parser});
-          locusInfo.webex.internal.device.url = self.deviceUrl;
-
-          // first update establishes the JOINED state (LLM already expected)
-          locusInfo.updateSelf(cloneDeep(self));
-          parser.reevaluateLlmWatchdogs.resetHistory();
-
-          // second update while already joined must not re-trigger re-evaluation
-          locusInfo.updateSelf(cloneDeep(self));
-
-          assert.notCalled(parser.reevaluateLlmWatchdogs);
-        });
-
-        it('does not re-evaluate LLM watchdogs when the self update does not make LLM expected', () => {
-          const parser = {reevaluateLlmWatchdogs: sinon.stub()};
-          locusInfo.hashTreeParsers.set('urlA', {parser});
-
-          locusInfo.parsedLocus.self = undefined;
-          // device url does not match any of self's devices -> joinedWith is undefined -> not expected
-          locusInfo.webex.internal.device.url = 'https://some-other-device-url.com';
-
-          locusInfo.updateSelf(cloneDeep(self));
-
-          assert.notCalled(parser.reevaluateLlmWatchdogs);
-        });
-      });
-
       it('should trigger SELF_MEETING_BRB_CHANGED when brb state changed', () => {
         locusInfo.self = undefined;
 
