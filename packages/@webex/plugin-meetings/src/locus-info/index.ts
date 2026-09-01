@@ -568,6 +568,7 @@ export default class LocusInfo extends EventsScope {
       callbacks: {
         locusInfoUpdateCallback: this.updateFromHashTree.bind(this, locusUrl),
         syncLatencyTracker: this.callbacks.syncLatencyTracker,
+        isLlmExpected: () => this.parsedLocus.self?.joinedWith?.state === 'JOINED',
         // Reuse webex-core's tracking-id interceptor sequence (exposed publicly via
         // webexTrackingIdSequenceNumbers) so Locus requests share the client's unified
         // ${sessionId}_${sequence} tracking id space instead of minting an unrelated id. Fall

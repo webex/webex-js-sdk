@@ -1230,6 +1230,78 @@ describe('plugin-meetings', () => {
           assert.calledWith(suspendDestroyMeetingStub.thirdCall, false);
         });
 
+        it('should not retry if join() fails because the Locus user capacity is full', async () => {
+          const error = new Error('Error Joining Meeting');
+          error.error = {
+            statusCode: 423,
+            body: {errorCode: 2423001},
+          };
+          meeting.join = sinon.stub().rejects(error);
+
+          const thrownError = await assert.isRejected(
+            meeting.joinWithMedia({joinOptions, mediaOptions})
+          );
+
+          assert.equal(thrownError, error);
+          assert.calledOnce(meeting.join);
+          assert.calledOnce(generateTurnDiscoveryRequestMessageStub);
+          assert.calledOnce(Metrics.sendBehavioralMetric);
+          assert.calledTwice(suspendDestroyMeetingStub);
+          assert.calledWith(suspendDestroyMeetingStub.firstCall, true);
+          assert.calledWith(suspendDestroyMeetingStub.secondCall, false);
+        });
+
+        it('should still retry if join() fails with another HTTP 423 Locus error', async () => {
+          const error = new Error('Error Joining Meeting');
+          error.error = {
+            statusCode: 423,
+            body: {errorCode: 2423028},
+          };
+          meeting.join = sinon.stub().rejects(error);
+
+          const thrownError = await assert.isRejected(
+            meeting.joinWithMedia({joinOptions, mediaOptions})
+          );
+
+          assert.equal(thrownError, error);
+          assert.calledTwice(meeting.join);
+          assert.calledTwice(generateTurnDiscoveryRequestMessageStub);
+          assert.calledTwice(Metrics.sendBehavioralMetric);
+        });
+
+        it('should throw the Locus user full error over firstError when the retry hits full capacity', async () => {
+          const firstJoinError = new Error('first join error');
+          const capacityError = new Error('Error Joining Meeting');
+          capacityError.error = {
+            statusCode: 423,
+            body: {errorCode: 2423001},
+          };
+
+          meeting.join = sinon
+            .stub()
+            .onFirstCall()
+            .rejects(firstJoinError)
+            .onSecondCall()
+            .rejects(capacityError);
+          meeting.locusUrl = null; // join never succeeds
+
+          const thrownError = await assert.isRejected(
+            meeting.joinWithMedia({joinOptions, mediaOptions})
+          );
+
+          // join() runs once for the first attempt and once for the re-join
+          assert.calledTwice(meeting.join);
+          // the capacity error must take precedence over the stored firstError
+          assert.equal(thrownError, capacityError);
+
+          assert.deepEqual(meeting.joinWithMediaRetryInfo, {
+            retryCount: 0,
+            prevJoinResponse: undefined,
+            firstError: undefined,
+            prevError: undefined,
+          });
+        });
+
         it('should re-join on retry when join() fails on first attempt, and throw the first error if join fails again', async () => {
           const firstJoinError = new Error('first join error');
           const secondJoinError = new Error('second join error');
