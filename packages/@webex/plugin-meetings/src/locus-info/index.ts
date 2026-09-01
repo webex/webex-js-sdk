@@ -327,7 +327,7 @@ export default class LocusInfo extends EventsScope {
    * @param {Meeting} meeting
    * @param {boolean} isLocusUrlChanged
    * @param {Locus} locus
-   * @returns {undefined}
+   * @returns {Promise} resolves once the fetched DTO has been applied
    */
   private doLocusSync(meeting: any, isLocusUrlChanged: boolean, locus: any) {
     let url;
@@ -353,8 +353,7 @@ export default class LocusInfo extends EventsScope {
       } DTO)`
     );
 
-    // return value ignored on purpose
-    meeting.meetingRequest
+    return meeting.meetingRequest
       .getLocusDTO({url})
       .catch((e) => {
         if (isDelta) {
@@ -460,8 +459,7 @@ export default class LocusInfo extends EventsScope {
    * @param {Object} options
    * @param {boolean} options.syncClassicLocus - fetch a standalone Locus DTO for classic meetings
    * @param {boolean} options.syncHashTree - sync hash tree datasets for hash tree based meetings
-   * @returns {Promise<void>} resolves once the hash tree sync (if any) completes; the classic Locus
-   *   sync is fire-and-forget
+   * @returns {Promise<void>} resolves once the sync (hash tree or classic) completes
    */
   async sync(
     meeting: any,
@@ -476,11 +474,12 @@ export default class LocusInfo extends EventsScope {
       return;
     }
 
-    // classic (non hash tree) meeting
-    if (syncClassicLocus) {
+    // classic (non hash tree) meeting: only sync if there's a Locus URL to fetch against, otherwise
+    // getLocusDTO() would reject and doLocusSync() would destroy the (e.g. not-yet-joined) meeting
+    if (syncClassicLocus && meeting.locusUrl) {
       // Pause the parser so in-flight deltas don't race the DTO fetch; doLocusSync() resumes it.
       this.locusParser.pause();
-      this.doLocusSync(meeting, false, undefined);
+      await this.doLocusSync(meeting, false, undefined);
     }
   }
 
