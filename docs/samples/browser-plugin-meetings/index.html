@@ -757,12 +757,59 @@
           <fieldset>
             <legend>Breakout Sessions</legend>
             <input type="checkbox" id="enable-breakout" onclick="toggleBreakout()">
-            <label for="enable-breakout">Enable breakout</label><br>
-            <div id="newBreakout-div"></div>
-            <div id="breakouts-list">
-              <div id="breakout-host-operation"></div>
-              <div id="breakout-table"></div>
+            <label for="enable-breakout">Enable breakout</label>
+
+            <div id="breakout-configuration" class="breakout-configuration hidden">
+              <div class="breakout-control">
+                <label for="breakout-session-count">Number of breakout sessions:</label>
+                <input id="breakout-session-count" type="number" min="1" step="1" value="1">
+              </div>
+
+              <div class="breakout-assignment-options">
+                <div class="breakout-assignment-option">
+                  <input id="breakout-assignment-automatic" type="radio"
+                    name="breakout-assignment-method" value="automatic" checked
+                    onchange="updateBreakoutAssignmentOptions()">
+                  <label for="breakout-assignment-automatic">Assign participants automatically</label>
+                </div>
+
+                <div id="breakout-automatic-options" class="breakout-automatic-options">
+                  <div>
+                    <input id="breakout-assign-cohosts" type="checkbox">
+                    <label for="breakout-assign-cohosts">Assign cohosts automatically</label>
+                  </div>
+                  <div>
+                    <input id="breakout-include-lobby" type="checkbox">
+                    <label for="breakout-include-lobby">Include participants in lobby</label>
+                  </div>
+                </div>
+
+                <div class="breakout-assignment-option">
+                  <input id="breakout-assignment-manual" type="radio"
+                    name="breakout-assignment-method" value="manual"
+                    onchange="updateBreakoutAssignmentOptions()">
+                  <label for="breakout-assignment-manual">Assign participants manually</label>
+                </div>
+
+                <div class="breakout-assignment-option">
+                  <input id="breakout-assignment-choose" type="radio"
+                    name="breakout-assignment-method" value="choose"
+                    onchange="updateBreakoutAssignmentOptions()">
+                  <label for="breakout-assignment-choose">Let participants choose any session</label>
+                </div>
+              </div>
+
+              <button id="breakout-create-sessions" type="button" class="btn-code"
+                onclick="prepareBreakoutSessions()">Create Breakout Sessions</button>
+              <button id="breakout-start-sessions" type="button" class="btn-code hidden"
+                onclick="startBreakoutSessions()">Start Breakout Sessions</button>
+              <button id="breakout-reset-sessions" type="button" class="btn-code hidden"
+                onclick="resetBreakoutSessionSetup()">Reset</button>
+
+              <div id="breakout-table" class="breakout-table hidden"></div>
             </div>
+
+            <p id="breakout-status" class="note" aria-live="polite"></p>
           </fieldset>
         </div>
         <!-- meetings / events published -->
