@@ -1471,6 +1471,9 @@ describe('webex.cc', () => {
       const publishSpy = jest
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockResolvedValue(undefined);
+      jest
+        .spyOn(webex.cc['webexCrossClientService'], 'isAnswerCallsStateActive')
+        .mockReturnValue(true);
       const metricSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
 
       jest.spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue({
@@ -1502,6 +1505,62 @@ describe('webex.cc', () => {
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
         expect.objectContaining({skipReason: 'mercury_not_subscribed'}),
+        ['operational', 'behavioral']
+      );
+      expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
+    });
+
+    it('should record session init failed when userId is missing but not emit success', async () => {
+      webex.cc.$config = {...webex.cc.$config, enableWxBetterTogether: true};
+      webex.internal.device = {
+        url: 'https://wdm.example.com/devices/dev-1',
+        registered: true,
+        register: jest.fn().mockResolvedValue(undefined),
+      };
+      webex.internal.mercury = {
+        connected: true,
+        connect: jest.fn().mockResolvedValue(undefined),
+        on: jest.fn(),
+        off: jest.fn(),
+      };
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        webRtcEnabled: false,
+        loginVoiceOptions: ['EXTENSION'],
+      };
+      webex.cc.webCallingService.loginOption = LoginOption.EXTENSION;
+      mockTaskManager.applyEnableWxBetterTogether(true);
+
+      const publishSpy = jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+      jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'isSubscribed').mockReturnValue(true);
+      const metricSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
+
+      jest.spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue({
+        data: {
+          agentId: 'agentId',
+          teamId: 'teamId',
+          channelsMap: {chat: [], email: [], social: [], telephony: []},
+        },
+        trackingId: 'track-1',
+      } as StationLoginSuccess);
+
+      await webex.cc.stationLogin({
+        teamId: 'teamId',
+        loginOption: LoginOption.EXTENSION,
+        dialNumber: '1001',
+      });
+
+      expect(publishSpy).not.toHaveBeenCalledWith(true, expect.anything());
+      expect(metricSpy).not.toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS,
+        expect.anything(),
+        expect.anything()
+      );
+      expect(metricSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
+        expect.objectContaining({skipReason: 'usersub_not_published'}),
         ['operational', 'behavioral']
       );
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);

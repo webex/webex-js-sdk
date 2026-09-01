@@ -1623,17 +1623,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
 
         const mercurySubscribed = this.wxAppTelephonyMercurySync.isSubscribed();
+        const usersubPublished = this.webexCrossClientService.isAnswerCallsStateActive();
 
         logWxAppSessionReadiness({
           enableWxBetterTogether: true,
           loginOption,
           wxAppHooksApplied: true,
-          usersubPublished: this.webexCrossClientService.isAnswerCallsStateActive(),
+          usersubPublished,
           mercurySubscribed,
           telephonyTaskType,
         });
 
-        if (mercurySubscribed) {
+        const sessionInitReady = mercurySubscribed && usersubPublished;
+
+        if (sessionInitReady) {
           this.metricsManager.trackEvent(
             METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS,
             {loginOption, enableWxBetterTogether: true},
@@ -1645,7 +1648,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             {
               loginOption,
               enableWxBetterTogether: true,
-              skipReason: 'mercury_not_subscribed',
+              skipReason: !usersubPublished ? 'usersub_not_published' : 'mercury_not_subscribed',
             },
             ['operational', 'behavioral']
           );

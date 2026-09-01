@@ -316,11 +316,11 @@ Special events (no success/failure pair):
 
 - `WXAPP_SESSION_SKIPPED` — has behavioral taxonomy (`user.wxapp_session_init.ignore`)
 
-Of the 99 defined metric names, 90 have behavioral taxonomy and 9 do not. Events **without** an `eventTaxonomyMap` entry are the six `AI_ASSISTANT_*` names plus `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`.
+Of the 107 defined metric names, 96 have behavioral taxonomy and 11 do not. Events **without** an `eventTaxonomyMap` entry are the eight `AI_ASSISTANT_*` names plus `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`.
 
 ### Complete METRIC_EVENT_NAMES catalog
 
-This table contains all 99 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 90 mapped and 9 unmapped.
+This table contains all 107 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 96 mapped and 11 unmapped.
 
 | Constant | Emitted name | Behavioral taxonomy? |
 |---|---|---|
@@ -417,12 +417,22 @@ This table contains all 99 names from `src/metrics/constants.ts`; taxonomy prese
 | `CAMPAIGN_PREVIEW_REMOVE_FAILED` | `Campaign Preview Remove Failed` | yes |
 | `AI_ASSISTANT_SEND_EVENT_SUCCESS` | `AI Assistant Send Event Success` | no |
 | `AI_ASSISTANT_SEND_EVENT_FAILED` | `AI Assistant Send Event Failed` | no |
-| `AI_ASSISTANT_GET_SUGGESTED_RESPONSE_SUCCESS` | `AI Assistant Get Suggested Response Success` | no |
-| `AI_ASSISTANT_GET_SUGGESTED_RESPONSE_FAILED` | `AI Assistant Get Suggested Response Failed` | no |
+| `AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_SUCCESS` | `AI Assistant Get Real Time Assistance Success` | no |
+| `AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_FAILED` | `AI Assistant Get Real Time Assistance Failed` | no |
+| `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_SUCCESS` | `AI Assistant Send Real Time Assistance User Action Success` | no |
+| `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_FAILED` | `AI Assistant Send Real Time Assistance User Action Failed` | no |
 | `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS` | `AI Assistant Fetch Historic Transcripts Success` | no |
 | `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED` | `AI Assistant Fetch Historic Transcripts Failed` | no |
+| `USER_PREFERENCE_GET_SUCCESS` | `User Preference Get Success` | yes |
+| `USER_PREFERENCE_GET_FAILED` | `User Preference Get Failed` | yes |
+| `USER_PREFERENCE_CREATE_SUCCESS` | `User Preference Create Success` | yes |
+| `USER_PREFERENCE_CREATE_FAILED` | `User Preference Create Failed` | yes |
+| `USER_PREFERENCE_UPDATE_SUCCESS` | `User Preference Update Success` | yes |
+| `USER_PREFERENCE_UPDATE_FAILED` | `User Preference Update Failed` | yes |
+| `USER_PREFERENCE_DELETE_SUCCESS` | `User Preference Delete Success` | yes |
+| `USER_PREFERENCE_DELETE_FAILED` | `User Preference Delete Failed` | yes |
 
-Defined names without an `eventTaxonomyMap` entry: `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED`, `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS`, `AI_ASSISTANT_GET_SUGGESTED_RESPONSE_FAILED`, `AI_ASSISTANT_GET_SUGGESTED_RESPONSE_SUCCESS`, `AI_ASSISTANT_SEND_EVENT_FAILED`, `AI_ASSISTANT_SEND_EVENT_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_EVENT_RECEIVED`.
+Defined names without an `eventTaxonomyMap` entry: `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED`, `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS`, `AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_FAILED`, `AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_SUCCESS`, `AI_ASSISTANT_SEND_EVENT_FAILED`, `AI_ASSISTANT_SEND_EVENT_SUCCESS`, `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_FAILED`, `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_EVENT_RECEIVED`.
 
 ## Requires (dependencies)
 - `webex.internal.newMetrics` submission APIs
@@ -470,8 +480,10 @@ Each behavioral event maps to a structured taxonomy in `behavioral-events.ts`:
 > **Note**: The following events do **not** have behavioral taxonomy mappings in `behavioral-events.ts`:
 > - `AI_ASSISTANT_SEND_EVENT_SUCCESS`
 > - `AI_ASSISTANT_SEND_EVENT_FAILED`
-> - `AI_ASSISTANT_GET_SUGGESTED_RESPONSE_SUCCESS`
-> - `AI_ASSISTANT_GET_SUGGESTED_RESPONSE_FAILED`
+> - `AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_SUCCESS`
+> - `AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_FAILED`
+> - `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_SUCCESS`
+> - `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_FAILED`
 > - `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS`
 > - `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED`
 > - `WEBSOCKET_DEREGISTER_SUCCESS`
@@ -801,7 +813,7 @@ stateDiagram-v2
 - **metricsDisabled**: When `true`, `timeEvent` and all `track*` methods return early, and `clearPendingEvents()` empties all queues.
 
 ## Pitfalls
-- `METRIC_EVENT_NAMES` and `eventTaxonomyMap` are different inventories: nine defined names intentionally have no behavioral taxonomy.
+- `METRIC_EVENT_NAMES` and `eventTaxonomyMap` are different inventories: eleven defined names intentionally have no behavioral taxonomy.
 - `setMetricsDisabled(true)` clears pending queues but does not create a delivery receipt; callers must not infer that previously submitted events were accepted.
 - Submission helpers hand events to `webex.internal.newMetrics` without a module-level retry/requeue policy, so telemetry must remain non-blocking and non-authoritative.
 
@@ -862,7 +874,7 @@ Use `test/unit/spec/metrics/MetricsManager.ts` for readiness queues, timing/trac
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
 | `METRICS-R-001` | `test/unit/spec/metrics/MetricsManager.ts` | Add a catalog parity assertion if constants change. |
-| `METRICS-R-002` | `test/unit/spec/metrics/behavioral-events.ts` | Keep explicit coverage for all nine unmapped names. |
+| `METRICS-R-002` | `test/unit/spec/metrics/behavioral-events.ts` | Keep explicit coverage for all eleven unmapped names. |
 | `METRICS-R-003` | `test/unit/spec/metrics/MetricsManager.ts` | None. |
 | `METRICS-R-004` | `test/unit/spec/metrics/MetricsManager.ts` | None. |
 | `METRICS-R-005` | `test/unit/spec/metrics/MetricsManager.ts` | Authentication ownership is verified indirectly through the host metrics client. |
