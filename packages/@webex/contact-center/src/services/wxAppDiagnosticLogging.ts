@@ -14,6 +14,7 @@ export type WxAppAcceptReason =
 export type WxAppSessionSkipReason =
   | 'unsupported_browser_login'
   | 'flag_disabled'
+  | 'mercury_subscribe_failed'
   | 'publish_failed';
 
 export type WxAppTelephonyAction = 'accept' | 'decline' | 'mute' | 'dtmf';

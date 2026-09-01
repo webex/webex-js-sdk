@@ -12,15 +12,22 @@ export type WxAppTelephonyError = Error & {
   status?: number | string;
 };
 
+const extractWxAppTrackingId = (source: unknown): string | undefined => {
+  const sourceObj = source as {details?: {trackingId?: string}; trackingId?: string};
+
+  return sourceObj?.details?.trackingId || sourceObj?.trackingId;
+};
+
 const markWxAppTelephonyError = (error: Error, source: unknown): WxAppTelephonyError => {
   const marked = error as WxAppTelephonyError;
   marked.isWxAppTelephonyError = true;
   const sourceObj = source as {
     details?: {trackingId?: string; status?: number | string};
+    trackingId?: string;
     statusCode?: number;
     status?: number | string;
   };
-  const trackingId = sourceObj?.details?.trackingId;
+  const trackingId = extractWxAppTrackingId(source);
   if (trackingId) {
     marked.trackingId = trackingId;
   }
@@ -74,9 +81,7 @@ export default class AnswerCallOnWebexService {
   }
 
   private extractTrackingId(source: unknown): string | undefined {
-    const sourceObj = source as {details?: {trackingId?: string}};
-
-    return sourceObj?.details?.trackingId;
+    return extractWxAppTrackingId(source);
   }
 
   private async telephonyRequest(

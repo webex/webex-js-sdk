@@ -172,7 +172,7 @@ export default class Voice extends Task implements IVoice {
     const acceptReason = deriveWxAppAcceptReason({
       isWxAppInboundOffer,
       isWxAppOutdialOffer,
-      isWebrtc: false,
+      isWebrtc: this.uiControlConfig.voiceVariant === VOICE_VARIANT.WEBRTC,
       isOutdial,
       wxAppAcceptInFlight: this.wxAppAcceptInFlight,
       wxAppAnswerPending: this.wxAppAnswerPending,

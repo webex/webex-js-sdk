@@ -1609,6 +1609,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
 
     let publishedEnable = false;
+    let wxAppInitStage: 'mercury' | 'publish' = 'mercury';
 
     try {
       if (flagEnabled) {
@@ -1618,6 +1619,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ]);
 
         await this.ensureWxAppMercuryAndSubscribe();
+        wxAppInitStage = 'publish';
         await this.publishAnswerOnWebexCrossClientState(true);
         publishedEnable = true;
         this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
@@ -1683,19 +1685,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       });
 
       if (flagEnabled) {
+        const sessionInitFailureReason =
+          wxAppInitStage === 'mercury' ? 'mercury_subscribe_failed' : 'publish_failed';
+
         this.metricsManager.trackEvent(
           METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
           {
             loginOption,
             enableWxBetterTogether: true,
-            skipReason: 'publish_failed',
+            skipReason: sessionInitFailureReason,
             error: error instanceof Error ? error.toString() : String(error),
           },
           ['operational', 'behavioral']
         );
-      }
 
-      if (flagEnabled) {
         logWxAppSessionReadiness({
           enableWxBetterTogether: true,
           loginOption,
@@ -1704,7 +1707,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             publishedEnable && this.webexCrossClientService.isAnswerCallsStateActive(),
           mercurySubscribed: this.wxAppTelephonyMercurySync.isSubscribed(),
           telephonyTaskType,
-          skipReason: 'publish_failed',
+          skipReason: sessionInitFailureReason,
         });
 
         if (publishedEnable) {

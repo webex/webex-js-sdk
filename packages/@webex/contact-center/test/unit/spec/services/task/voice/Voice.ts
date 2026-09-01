@@ -4,6 +4,7 @@ import {
   TaskData,
   CONSULT_TRANSFER_DESTINATION_TYPE,
   TASK_EVENTS,
+  VOICE_VARIANT,
 } from '../../../../../../src/services/task/types';
 import {CC_EVENTS} from '../../../../../../src/services/config/types';
 import {TaskEvent, TaskState} from '../../../../../../src/services/task/state-machine';
@@ -888,6 +889,28 @@ describe('Voice Task', () => {
 
       expect(logSpy).toHaveBeenCalledWith(
         expect.objectContaining({acceptReason: 'wxApp_answer_pending'})
+      );
+    });
+
+    it('logs browser_webrtc_offer when voice variant is WebRTC on a non-wxApp inbound offer', () => {
+      const logSpy = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppOfferDecision');
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', deviceType: 'phone', deviceId: 'device-id-1'},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        voiceVariant: VOICE_VARIANT.WEBRTC,
+      });
+
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({acceptReason: 'browser_webrtc_offer'})
       );
     });
   });
