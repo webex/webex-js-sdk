@@ -5888,12 +5888,12 @@ describe('plugin-meetings', () => {
           });
 
           describe('handles INBOUND_RTP_AUDIO_LEVEL_UPDATE event for inbound audio levels', () => {
-            it('INBOUND_RTP_AUDIO_LEVEL_UPDATE sends a behavioral metric with all track data', async () => {
+            it('INBOUND_RTP_AUDIO_LEVEL_UPDATE sends a behavioral metric for each track in the batch', async () => {
               Metrics.sendBehavioralMetric.resetHistory();
 
               const inboundAudioLevels = [
-                {ssrc: 12345, audioLevel: 0.42},
-                {ssrc: 67890, audioLevel: 0.67},
+                {ssrc: 12345, meanRtpHeaderAudioLevel: 0.42},
+                {ssrc: 67890, meanRtpHeaderAudioLevel: 0.67},
               ];
 
               statsAnalyzerStub.emit(
@@ -5902,11 +5902,18 @@ describe('plugin-meetings', () => {
                 inboundAudioLevels
               );
 
-              assert.calledOnce(Metrics.sendBehavioralMetric);
-              assert.calledWithMatch(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.INBOUND_RTP_AUDIO_LEVEL_UPDATE, {
+              assert.calledTwice(Metrics.sendBehavioralMetric);
+              assert.calledWithMatch(Metrics.sendBehavioralMetric.firstCall, BEHAVIORAL_METRICS.INBOUND_RTP_AUDIO_LEVEL_UPDATE, {
                 meetingId: meeting.id,
                 correlationId: meeting.correlationId,
-                data: inboundAudioLevels,
+                ssrc: 12345,
+                meanRtpHeaderAudioLevel: 0.42,
+              });
+              assert.calledWithMatch(Metrics.sendBehavioralMetric.secondCall, BEHAVIORAL_METRICS.INBOUND_RTP_AUDIO_LEVEL_UPDATE, {
+                meetingId: meeting.id,
+                correlationId: meeting.correlationId,
+                ssrc: 67890,
+                meanRtpHeaderAudioLevel: 0.67,
               });
             });
 
