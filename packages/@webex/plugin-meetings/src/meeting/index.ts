@@ -3078,16 +3078,22 @@ export default class Meeting extends StatelessWebexPlugin {
               return;
             }
             this.startTranscription();
-          } else if (!transcribing && this.areVoiceaEventsSetup) {
-            Trigger.trigger(
-              this,
-              {
-                file: 'meeting/index',
-                function: 'setupLocusControlsListener',
-              },
-              EVENT_TRIGGERS.MEETING_STOPPED_RECEIVING_TRANSCRIPTION,
-              {caption, transcribing}
-            );
+          } else if (!transcribing) {
+            // Always clear pending flag when transcription turns off - prevents stale deferred
+            // starts if transcribing flipped false before LLM connected.
+            this._pendingTranscriptionStart = false;
+
+            if (this.areVoiceaEventsSetup) {
+              Trigger.trigger(
+                this,
+                {
+                  file: 'meeting/index',
+                  function: 'setupLocusControlsListener',
+                },
+                EVENT_TRIGGERS.MEETING_STOPPED_RECEIVING_TRANSCRIPTION,
+                {caption, transcribing}
+              );
+            }
           }
         }
       }

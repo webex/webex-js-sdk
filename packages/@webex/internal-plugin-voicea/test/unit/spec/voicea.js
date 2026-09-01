@@ -8,6 +8,8 @@ import Mercury from '@webex/internal-plugin-mercury';
 import {VoiceaChannel} from '../../../src/voicea';
 import {EVENT_TRIGGERS, TOGGLE_MANUAL_CAPTION_STATUS} from '../../../src/constants';
 
+const flushPromises = () => new Promise(setImmediate);
+
 /**
  * Creates a mock LLM channel for testing
  * @param {Object} [options] - Options for the mock channel
@@ -1115,7 +1117,7 @@ describe('plugin-voicea', () => {
         onlineListener();
 
         // Wait for async turnOnCaptions to complete
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        await flushPromises();
 
         // Now it should have sent messages (announcement + subchannel subscription)
         assert.calledTwice(newMockLLMChannel.socket.send);
