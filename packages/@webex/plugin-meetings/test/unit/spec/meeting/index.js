@@ -8217,6 +8217,7 @@ describe('plugin-meetings', () => {
         it('stops listening for LLM/Mercury and tears down transcription and annotation before calling Locus /leave', async () => {
           const onlineHandler = meeting.mercuryOnlineHandler;
           const offlineHandler = meeting.mercuryOfflineHandler;
+          meeting.areVoiceaEventsSetup = true;
 
           // Set up llmChannel with mock off function
           meeting.llmChannel = {
@@ -8253,12 +8254,16 @@ describe('plugin-meetings', () => {
           assert.isUndefined(meeting.mercuryOfflineHandler);
           assert.calledOnceWithExactly(meeting.stopTranscription);
           assert.calledOnceWithExactly(meeting.annotation.deregisterEvents);
-          assert.isUndefined(meeting.transcription);
+          // Transcription is reset to initial state (not undefined)
+          assert.isDefined(meeting.transcription);
+          assert.deepEqual(meeting.transcription.captions, []);
+          assert.equal(meeting.transcription.isCaptioning, false);
         });
 
         it('tears down llm/mercury/transcription/annotation even when /leave rejects', async () => {
           const onlineHandler = meeting.mercuryOnlineHandler;
           const offlineHandler = meeting.mercuryOfflineHandler;
+          meeting.areVoiceaEventsSetup = true;
           meeting.meetingRequest.leaveMeeting = sinon
             .stub()
             .returns(Promise.reject(new Error('leave failed')));
@@ -10371,6 +10376,7 @@ describe('plugin-meetings', () => {
         it('stops listening for LLM/Mercury and tears down transcription and annotation before calling Locus /end', async () => {
           const onlineHandler = meeting.mercuryOnlineHandler;
           const offlineHandler = meeting.mercuryOfflineHandler;
+          meeting.areVoiceaEventsSetup = true;
 
           // Set up llmChannel with mock off function
           meeting.llmChannel = {
@@ -10412,6 +10418,7 @@ describe('plugin-meetings', () => {
         it('tears down llm/mercury/transcription/annotation even when /end rejects', async () => {
           const onlineHandler = meeting.mercuryOnlineHandler;
           const offlineHandler = meeting.mercuryOfflineHandler;
+          meeting.areVoiceaEventsSetup = true;
           meeting.meetingRequest.endMeetingForAll = sinon
             .stub()
             .returns(Promise.reject(new Error('end failed')));
@@ -15393,43 +15400,6 @@ describe('plugin-meetings', () => {
           await meeting.updateLLMConnection();
 
           assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockChannel);
-        });
-
-        it('reinitializes transcription before switchLLMChannel when transcription is undefined and captions were active', async () => {
-          meeting.joinedWith = {state: 'JOINED'};
-          meeting.locusInfo = {
-            syncAllHashTreeDatasets: sinon.stub().resolves(),
-            url: 'a url',
-            info: {datachannelUrl: 'a datachannel url'},
-          };
-          meeting.transcription = undefined;
-          mockVoiceaChannel.getKeepTranscriptionSubscribed.returns(true);
-
-          await meeting.updateLLMConnection();
-
-          // Transcription should be reinitialized before switching
-          assert.isDefined(meeting.transcription);
-          assert.deepEqual(meeting.transcription.captions, []);
-          assert.equal(meeting.transcription.isCaptioning, false);
-          // And voicea should still be switched
-          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockChannel);
-        });
-
-        it('does not reinitialize transcription when it already exists', async () => {
-          meeting.joinedWith = {state: 'JOINED'};
-          meeting.locusInfo = {
-            syncAllHashTreeDatasets: sinon.stub().resolves(),
-            url: 'a url',
-            info: {datachannelUrl: 'a datachannel url'},
-          };
-          const existingTranscription = {captions: ['existing'], isCaptioning: true};
-          meeting.transcription = existingTranscription;
-          mockVoiceaChannel.getKeepTranscriptionSubscribed.returns(true);
-
-          await meeting.updateLLMConnection();
-
-          // Transcription should remain unchanged
-          assert.strictEqual(meeting.transcription, existingTranscription);
         });
 
         it('skips switchLLMChannel when practice session is active', async () => {

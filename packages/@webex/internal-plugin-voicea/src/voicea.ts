@@ -47,8 +47,12 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
   private spokenLanguages: string[] = [];
   private currentCaptionLanguage?: string;
 
-  // Pending listener for deferred caption restoration when switching to a not-yet-connected channel
-  private _pendingCaptionRestoreListener?: () => void;
+  // Target channel for reconciler pattern - the channel voicea WANTS to be bound to
+  private targetLLMChannel?: LLMChannel;
+  // Single pending 'online' listener for deferred reconciliation
+  private _pendingOnlineListener?: () => void;
+  // Tracks whether caption restoration is pending (set on switch, cleared on restore)
+  private _pendingCaptionRestore = false;
 
   /**
    * Creates a VoiceaChannel, optionally bound to an LLMChannel.
@@ -135,12 +139,11 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
     this.areCaptionsEnabled = false;
     this.keepTranscriptionSubscribed = false;
     this.captionServiceId = undefined;
+    this.targetLLMChannel = undefined;
+    this._pendingCaptionRestore = false;
 
-    // Remove any pending caption restore listener
-    if (this._pendingCaptionRestoreListener && this.llmChannel) {
-      this.llmChannel.off('online', this._pendingCaptionRestoreListener);
-      this._pendingCaptionRestoreListener = undefined;
-    }
+    // Remove any pending online listener
+    this.detachPendingOnline();
 
     if (this.hasSubscribedToEvents && this.llmChannel) {
       this.llmChannel.off('event:relay.event', this.eventProcessor);
@@ -155,74 +158,94 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
   }
 
   /**
-   * Switch to a different LLM channel while preserving caption state.
-   * Used when transitioning between main meeting and practice session.
-   * - Preserves keepTranscriptionSubscribed and spokenLanguage state
-   * - Unsubscribes from old channel, subscribes to new channel
-   * - Re-announces and re-enables captions if they were on
-   * @param {LLMChannel} newLLMChannel - The new LLM channel to switch to
-   * @returns {Promise<void>}
+   * Attach a pending 'online' listener to a channel for deferred reconciliation.
+   * Detaches any existing listener first.
+   * @param {LLMChannel} channel - The channel to attach to
+   * @param {Function} callback - The callback to run when 'online' fires
+   * @private
+   * @returns {void}
    */
-  public async switchLLMChannel(newLLMChannel: LLMChannel): Promise<void> {
-    // Skip if already on this channel - prevents duplicate HTTP requests when
-    // multiple callers (e.g., cleanupPSDataChannel and updateLLMConnection) both
-    // try to switch to the same channel concurrently.
-    if (this.llmChannel === newLLMChannel) {
-      return;
+  private attachPendingOnline(channel: LLMChannel, callback: () => void): void {
+    this.detachPendingOnline();
+    this._pendingOnlineListener = callback;
+    channel.once('online', this._pendingOnlineListener);
+  }
+
+  /**
+   * Detach any pending 'online' listener.
+   * @private
+   * @returns {void}
+   */
+  private detachPendingOnline(): void {
+    if (this._pendingOnlineListener && this.llmChannel) {
+      this.llmChannel.off('online', this._pendingOnlineListener);
     }
+    this._pendingOnlineListener = undefined;
+  }
 
-    // Save current state
-    const captionsWereOn = this.keepTranscriptionSubscribed;
-    const spokenLanguage = this.currentSpokenLanguage;
-
-    // Remove any pending caption restore listener from old channel
-    if (this._pendingCaptionRestoreListener && this.llmChannel) {
-      this.llmChannel.off('online', this._pendingCaptionRestoreListener);
-      this._pendingCaptionRestoreListener = undefined;
-    }
-
-    // Unsubscribe from old channel
-    if (this.hasSubscribedToEvents && this.llmChannel) {
-      this.llmChannel.off('event:relay.event', this.eventProcessor);
-      this.hasSubscribedToEvents = false;
-    }
-
-    // Switch to new channel
-    this.llmChannel = newLLMChannel;
-
-    // Subscribe to new channel
-    this.llmChannel.on('event:relay.event', this.eventProcessor);
-    this.hasSubscribedToEvents = true;
-
-    // Reset announcement state for new connection
+  /**
+   * Reset announcement state for a new connection.
+   * @private
+   * @returns {void}
+   */
+  private resetAnnounceState(): void {
     this.announceStatus = ANNOUNCE_STATUS.IDLE;
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
     this.captionServiceId = undefined;
     this.areCaptionsEnabled = false;
+  }
 
-    // Re-announce and re-enable captions if they were on.
-    // Caption restoration is fire-and-forget: errors are logged but don't propagate,
-    // ensuring cleanup operations (e.g., cleanupPSDataChannel) complete even if
-    // caption restoration fails.
-    if (captionsWereOn) {
-      if (this.isLLMConnected()) {
-        // Channel is already connected, restore captions immediately
-        this.turnOnCaptions(spokenLanguage).catch(() => {
-          // Best-effort restoration - if it fails, captions were already in a bad state
-        });
-      } else {
-        // Channel not yet connected - defer caption restoration until 'online' event.
-        // This handles the race where switchLLMChannel is called while the main channel
-        // is still reconnecting (e.g., concurrent updateLLMConnection and updatePSDataChannel).
-        this._pendingCaptionRestoreListener = () => {
-          this._pendingCaptionRestoreListener = undefined;
-          this.turnOnCaptions(spokenLanguage).catch(() => {
-            // Best-effort restoration - if it fails, captions were already in a bad state
-          });
-        };
-        this.llmChannel.once('online', this._pendingCaptionRestoreListener);
+  /**
+   * Reconcile voicea binding and caption state to match the desired target.
+   * This is idempotent - always re-reads targetLLMChannel and current state.
+   * A deferred 'online' callback that fires late self-corrects automatically.
+   * @private
+   * @returns {void}
+   */
+  private reconcile(): void {
+    const target = this.targetLLMChannel;
+    if (!target) return;
+
+    // 1. Rebind relay-event subscription if actual != desired
+    if (this.llmChannel !== target) {
+      if (this.hasSubscribedToEvents && this.llmChannel) {
+        this.llmChannel.off('event:relay.event', this.eventProcessor);
       }
+      this.detachPendingOnline();
+      this.llmChannel = target;
+      this.llmChannel.on('event:relay.event', this.eventProcessor);
+      this.hasSubscribedToEvents = true;
+      this.resetAnnounceState();
+      // Mark caption restoration as pending if captions were subscribed
+      this._pendingCaptionRestore = this.keepTranscriptionSubscribed;
     }
+
+    // 2. Restore captions if pending
+    if (!this._pendingCaptionRestore) return;
+
+    if (this.isLLMConnected()) {
+      // Channel is connected, restore captions immediately
+      this._pendingCaptionRestore = false;
+      this.turnOnCaptions(this.currentSpokenLanguage).catch(() => {
+        // Best-effort restoration
+      });
+    } else {
+      // Channel not yet connected - defer until 'online' then re-reconcile.
+      // If target changes meanwhile, reconcile() self-corrects.
+      this.attachPendingOnline(target, () => this.reconcile());
+    }
+  }
+
+  /**
+   * Switch to a different LLM channel while preserving caption state.
+   * Used when transitioning between main meeting and practice session.
+   * This is a thin intent-setter - actual binding happens in reconcile().
+   * @param {LLMChannel} newLLMChannel - The new LLM channel to switch to
+   * @returns {Promise<void>}
+   */
+  public async switchLLMChannel(newLLMChannel: LLMChannel): Promise<void> {
+    this.targetLLMChannel = newLLMChannel;
+    this.reconcile();
   }
 
   /**
@@ -530,7 +553,7 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
         this.announce();
         this.updateSubchannelSubscriptionsAndSyncCaptionState({subscribe: ['transcription']}, true);
       })
-      .catch((error) => {
+      .catch(() => {
         this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
         throw new Error('turn on captions fail');
       });

@@ -546,11 +546,10 @@ describe('plugin-meetings', () => {
           assert.calledOnce(mockPSChannel.disconnect);
         });
 
-        it('switches voicea after disconnect when main channel was replaced during practice disconnect', async () => {
+        it('switches voicea to final main channel after disconnect when main channel was replaced during practice disconnect', async () => {
           // Main channel connected initially
           meeting.llmChannel.isConnected.returns(true);
 
-          const originalLLMChannel = meeting.llmChannel;
           const newLLMChannel = {
             isConnected: sinon.stub().returns(true),
             on: sinon.stub(),
@@ -564,10 +563,10 @@ describe('plugin-meetings', () => {
 
           await webinar.cleanupPSDataChannel();
 
-          // Should switch voicea twice: once before disconnect (to original), once after (to new)
-          assert.calledTwice(mockVoiceaChannel.switchLLMChannel);
-          assert.calledWith(mockVoiceaChannel.switchLLMChannel.firstCall, originalLLMChannel);
-          assert.calledWith(mockVoiceaChannel.switchLLMChannel.secondCall, newLLMChannel);
+          // With reconciler pattern: single switch point after disconnect picks up the new channel
+          // (reconciler handles the actual rebinding internally)
+          assert.calledOnce(mockVoiceaChannel.switchLLMChannel);
+          assert.calledWith(mockVoiceaChannel.switchLLMChannel, newLLMChannel);
         });
 
         it('does not switch voicea channel when meeting has no voiceaChannel', async () => {
@@ -577,33 +576,6 @@ describe('plugin-meetings', () => {
 
           // Should not throw - cleanup should continue without voicea switch
           assert.calledOnce(mockPSChannel.disconnect);
-        });
-
-        it('reinitializes transcription before switching voicea when transcription is undefined and captions were active', async () => {
-          meeting.llmChannel.isConnected.returns(true);
-          meeting.transcription = undefined;
-          mockVoiceaChannel.getKeepTranscriptionSubscribed.returns(true);
-
-          await webinar.cleanupPSDataChannel();
-
-          // Transcription should be reinitialized
-          assert.isDefined(meeting.transcription);
-          assert.deepEqual(meeting.transcription.captions, []);
-          assert.equal(meeting.transcription.isCaptioning, false);
-          // And voicea should still be switched
-          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, meeting.llmChannel);
-        });
-
-        it('does not reinitialize transcription when it already exists', async () => {
-          meeting.llmChannel.isConnected.returns(true);
-          const existingTranscription = {captions: ['existing'], isCaptioning: true};
-          meeting.transcription = existingTranscription;
-          mockVoiceaChannel.getKeepTranscriptionSubscribed.returns(true);
-
-          await webinar.cleanupPSDataChannel();
-
-          // Transcription should remain unchanged
-          assert.strictEqual(meeting.transcription, existingTranscription);
         });
       });
 
@@ -811,20 +783,6 @@ describe('plugin-meetings', () => {
         it('switches voicea channel to practice session LLM channel after connect', async () => {
           await webinar.updatePSDataChannel();
 
-          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockPSChannel);
-        });
-
-        it('reinitializes transcription before switching voicea when transcription is undefined and captions were active', async () => {
-          meeting.transcription = undefined;
-          mockVoiceaChannel.getKeepTranscriptionSubscribed.returns(true);
-
-          await webinar.updatePSDataChannel();
-
-          // Transcription should be reinitialized before switching
-          assert.isDefined(meeting.transcription);
-          assert.deepEqual(meeting.transcription.captions, []);
-          assert.equal(meeting.transcription.isCaptioning, false);
-          // And voicea should still be switched
           assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockPSChannel);
         });
 

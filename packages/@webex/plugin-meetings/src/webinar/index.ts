@@ -226,35 +226,14 @@ const Webinar = WebexPlugin.extend({
       this._pendingOnlineListener = null;
     }
 
-    // Track which main channel we switched voicea to before disconnecting.
-    // If main channel changes during disconnect (concurrent updateLLMConnection),
-    // we need to switch again even if we already switched once.
     const meeting = this.getValidatedWebinarMeeting();
-    let switchedToChannel: LLMChannel | undefined;
-
-    // Switch voicea back to main meeting LLM channel before disconnecting PS channel.
-    // switchLLMChannel handles the case where the channel is still connecting by
-    // deferring caption restoration until the 'online' event fires.
-    if (meeting?.voiceaChannel && meeting?.llmChannel) {
-      // Reinitialize transcription if it was cleared but voiceaChannel was preserved.
-      if (!meeting.transcription && meeting.voiceaChannel.getKeepTranscriptionSubscribed()) {
-        meeting.transcription = {
-          captions: [],
-          isListening: false,
-          commandText: '',
-          languageOptions: {currentSpokenLanguage: 'en'},
-          showCaptionBox: false,
-          transcribingRequestStatus: 'INACTIVE',
-          isCaptioning: false,
-          interimCaptions: {},
-          speakerProxy: {},
-        };
-      }
-      switchedToChannel = meeting.llmChannel;
-      await meeting.voiceaChannel.switchLLMChannel(meeting.llmChannel);
-    }
 
     if (!this._practiceSessionLLMChannel) {
+      // Even without PS channel, ensure voicea is bound to main channel
+      if (meeting?.voiceaChannel && meeting?.llmChannel) {
+        await meeting.voiceaChannel.switchLLMChannel(meeting.llmChannel);
+      }
+
       return;
     }
 
@@ -283,32 +262,14 @@ const Webinar = WebexPlugin.extend({
       }
       this._practiceSessionLLMChannel = undefined;
 
-      // Always recheck the current main channel after disconnect completes.
-      // Even if we switched voicea earlier, the main channel may have been replaced
-      // by a concurrent updateLLMConnection during our disconnect wait. In that case,
-      // updateLLMConnection skipped its voicea switch (saw practice still active),
-      // so we must switch to the new channel now. We don't require the channel to be
-      // connected — switchLLMChannel defers caption restoration if still connecting.
-      const currentMainChannel = meeting?.llmChannel;
-      const needsSwitch =
-        meeting?.voiceaChannel && currentMainChannel && currentMainChannel !== switchedToChannel;
-
-      if (needsSwitch) {
-        // Reinitialize transcription if it was cleared but voiceaChannel was preserved.
-        if (!meeting.transcription && meeting.voiceaChannel.getKeepTranscriptionSubscribed()) {
-          meeting.transcription = {
-            captions: [],
-            isListening: false,
-            commandText: '',
-            languageOptions: {currentSpokenLanguage: 'en'},
-            showCaptionBox: false,
-            transcribingRequestStatus: 'INACTIVE',
-            isCaptioning: false,
-            interimCaptions: {},
-            speakerProxy: {},
-          };
-        }
-        await meeting.voiceaChannel.switchLLMChannel(currentMainChannel);
+      // Switch voicea to current main channel. The reconciler pattern in switchLLMChannel
+      // handles all timing concerns:
+      // - If main channel was replaced during disconnect (concurrent updateLLMConnection),
+      //   meeting.llmChannel will be the new channel, and reconciler binds to it
+      // - If channel is still connecting, reconciler defers caption restoration until 'online'
+      // - If same channel, reconciler is a no-op for rebind but still reconciles captions
+      if (meeting?.voiceaChannel && meeting?.llmChannel) {
+        await meeting.voiceaChannel.switchLLMChannel(meeting.llmChannel);
       }
     }
   },
@@ -492,24 +453,10 @@ const Webinar = WebexPlugin.extend({
         // Switch annotation to practice session channel
         meeting.annotation.registerChannel(psChannel);
 
-        // Switch meeting's voicea channel to use the PS LLM connection
-        // This preserves caption state and re-announces automatically
+        // Switch meeting's voicea channel to use the PS LLM connection.
+        // The reconciler pattern preserves caption state and handles all timing.
+        // transcription is always initialized (reset to initial shape, never null).
         if (meeting.voiceaChannel) {
-          // Reinitialize transcription if it was cleared but voiceaChannel was preserved.
-          // switchLLMChannel() will restore captions if active, and callbacks need transcription.
-          if (!meeting.transcription && meeting.voiceaChannel.getKeepTranscriptionSubscribed()) {
-            meeting.transcription = {
-              captions: [],
-              isListening: false,
-              commandText: '',
-              languageOptions: {currentSpokenLanguage: 'en'},
-              showCaptionBox: false,
-              transcribingRequestStatus: 'INACTIVE',
-              isCaptioning: false,
-              interimCaptions: {},
-              speakerProxy: {},
-            };
-          }
           await meeting.voiceaChannel.switchLLMChannel(psChannel);
         }
 
