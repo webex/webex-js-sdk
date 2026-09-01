@@ -195,6 +195,38 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('passes an isLlmExpected callback that is true when current device is joined', async () => {
+        locusInfo.parsedLocus.self = {
+          state: 'LEFT',
+          joinedWith: {state: 'JOINED'},
+        };
+
+        await locusInfo.initialSetup({
+          trigger: 'locus-message',
+          hashTreeMessage: createHashTreeMessage(['dataset1']),
+        });
+
+        const {isLlmExpected} = HashTreeParserStub.firstCall.args[0].callbacks;
+
+        assert.equal(isLlmExpected(), true);
+      });
+
+      it('passes an isLlmExpected callback that is false when self is joined but current device is not joined', async () => {
+        locusInfo.parsedLocus.self = {
+          state: 'JOINED',
+          joinedWith: {state: 'LEFT'},
+        };
+
+        await locusInfo.initialSetup({
+          trigger: 'locus-message',
+          hashTreeMessage: createHashTreeMessage(['dataset1']),
+        });
+
+        const {isLlmExpected} = HashTreeParserStub.firstCall.args[0].callbacks;
+
+        assert.equal(isLlmExpected(), false);
+      });
+
       it('should not initialize the hash tree when triggered from a non-hash tree locus message', async () => {
         const locus = {url: 'http://locus-url.com', participants: []};
 
