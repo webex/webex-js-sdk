@@ -437,6 +437,7 @@ The public `TASK_EVENTS` enum contains 49 members; every member is listed below 
 | TASK-R-007 | Route enabled preview-campaign accept, skip, and remove operations through the dialer AQM factory using `PreviewContactPayload`, returning `Promise<TaskResponse>` from the public ContactCenter methods. Before routing skip/remove, reject the operation when the matching task's disable flag is `'true'`. | Preview reservations require typed payloads and correlated backend completion, while campaign controls must block prohibited skip/remove requests before transport begins. | `src/cc.ts`, `src/services/task/dialer.ts`, `src/services/task/types.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/dialer.ts` | Public delegation and dialer requests are covered; the `campaignPreviewSkipDisabled` and `campaignPreviewRemoveDisabled` early-exit guards lack direct unit coverage. Independent review identified this gap on 2026-07-15. | PRESENT |
 | TASK-R-008 | Voice `dropConferenceParticipant` must validate the public target, resolve the latest main interaction, POST an empty body to the encoded participant-drop route, and settle only from `ParticipantLeftConference`, `ParticipantDropConferenceFailed`, HTTP failure, or the existing AQM timeout. | Participant removal is backend-authoritative and must preserve event-driven roster/state synchronization without exposing participant identifiers through telemetry or logs. | `src/services/task/voice/Voice.ts`, `src/services/task/contact.ts`, `src/services/task/types.ts` | `test/unit/spec/services/task/voice/Voice.ts`, `test/unit/spec/services/task/contact.ts`, `test/unit/spec/services/core/aqm-reqs.ts` | Backend authorization and media removal are remote-service responsibilities. | PRESENT |
 | TASK-R-009 | ContactCenter must inject Desktop Profile collaboration policy into TaskFactory, and every created voice/digital Task must expose ordered Consult and Transfer destination categories through `TaskUIControls.consultTransferDestinations`. | Task consumers need one already-computed policy surface and must not fetch profile flags or duplicate destination decisions. | `src/cc.ts`, `src/services/task/TaskFactory.ts`, `src/services/task/types.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/TaskFactory.ts` | Host-specific UI options may only further hide an SDK-allowed category. | PRESENT |
+| TASK-R-010 | TaskManager must propagate backend owner promotion without electing an owner locally. `ContactOwnerChanged` resolves an exact task first, then one unique related task whose existing snapshot proves that the current Agent is active on `mainCall`, or whose incoming snapshot both names that Agent as `interaction.owner` and proves the same active-main-leg membership. Active membership requires a participant entry with `hasLeft !== true`. If no task exists, recovery is limited to that incoming owner=current-Agent proof: create the normal Task under the stable main interaction ID, silently HYDRATE its actor before listener installation, then process the original owner-change event so consumers receive one `task:hydrate` and no `task:incoming`. An owner-changing `ContactUpdated` uses the existing owner-change hydrate path only for an existing task, and a late `ParticipantLeftConference` cannot replace a confirmed active owner with the departed participant. | Every surviving agent must observe the backend-selected primary Agent immediately, including stale child-keyed and narrowly recoverable desynchronization cases, without duplicating tasks or exposing an uninitialized actor. | `src/services/task/TaskManager.ts` | `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/services/task/Task.ts` | Backend owner selection and delivery of a complete owner-bearing `ContactOwnerChanged` payload remain remote responsibilities; missing-task `ContactUpdated` remains update-only. | PRESENT |
 
 ## Design Overview
 Task separates its stable consumption boundary from collaborators so ownership and failure behavior stay explicit. A shared Task base preserves a stable API while media-specific subclasses and a separate state engine enforce capability differences.
@@ -918,6 +919,39 @@ returns to the main-call state selected by the existing guards. Starting a
 consult preserves the prior task snapshot so this membership comparison remains
 available while the consult is initiating.
 
+Primary-Agent promotion remains backend-authoritative and follows the two-event
+desktop contract. `ContactOwnerChanged` updates the promoted Agent; TaskManager
+prefers an exact task, then one unique related task resolved through nested
+main/parent identifiers or the `mainCall` media-map identity. A related
+candidate is eligible when its current
+snapshot contains the current Agent's participant entry with `hasLeft !== true`
+and membership on the `mType: mainCall` leg. The incoming snapshot can provide
+that evidence only when it also names the current Agent as `interaction.owner`;
+this permits an authoritative promotion payload to repair a stale child-keyed
+snapshot while still excluding consult-only tasks. The update keeps the
+surviving main interaction identity even when the notification names a
+promoted-Agent child interaction.
+
+If no related task exists, TaskManager recovers only the promoted current Agent
+from a non-terminal telephony `ContactOwnerChanged` payload that provides the same
+active-main-leg evidence. It creates the normal Task through TaskFactory under the
+stable main interaction ID, sends an internal HYDRATE before installing external
+listeners, and then processes the original owner-change event. Consumers
+therefore receive one `task:hydrate`, never a synthetic `task:incoming`, and a
+later canonical contact or merge event reuses the same task rather than creating
+an alias. Missing, partial, departed, consult-only, non-promoted, and ambiguous
+payloads are ignored for recovery.
+
+For other surviving Agents, a `ContactUpdated` whose non-empty
+`interaction.owner` differs from the current owner is delivered through the
+existing `CONTACT_OWNER_CHANGED`/`task:hydrate` path; same-owner or owner-less
+updates remain data-only, and a missing task is not created from `ContactUpdated`.
+If a later `ParticipantLeftConference` still names the departed participant as
+owner, an already confirmed owner is retained only when the new roster proves
+that confirmed owner remains active on `mainCall` and explicitly names the
+incoming owner as `participantId` or marks it `hasLeft`. Main-call omission alone
+is not departure evidence. The SDK never chooses the successor locally.
+
 In the Contact Center sample roster, non-owner and Supervisor targets remain
 visible but non-actionable; the UI does not display a separate read-only label.
 The roster is visible whenever the viewing agent remains active on the main leg
@@ -1383,7 +1417,7 @@ await cc.stationLogin({ loginOption: 'BROWSER', ... });
 - A shared Task base preserves a stable API while media-specific subclasses and a separate state engine enforce capability differences.
 
 ## Test-Case Strategy (module)
-Use `test/unit/spec/services/task/Task.ts`, `TaskFactory.ts`, `TaskManager.ts`, media-specific suites, contact/dialer suites, and state-machine suites. Cover concrete-versus-interface method signatures, every TASK_EVENTS group, unsupported media rejection, primary/RTD event ownership, injected state actions, preview-campaign accept/skip/remove payloads and failure paths, the disabled skip/remove pre-guards, Participant Drop validation/correlation/privacy, and success/failure/timeout paths.
+Use `test/unit/spec/services/task/Task.ts`, `TaskFactory.ts`, `TaskManager.ts`, media-specific suites, contact/dialer suites, and state-machine suites. Cover concrete-versus-interface method signatures, every TASK_EVENTS group, unsupported media rejection, primary/RTD event ownership, injected state actions, preview-campaign accept/skip/remove payloads and failure paths, the disabled skip/remove pre-guards, Participant Drop validation/correlation/privacy, primary-owner promotion propagation, and success/failure/timeout paths.
 
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
@@ -1396,6 +1430,7 @@ Use `test/unit/spec/services/task/Task.ts`, `TaskFactory.ts`, `TaskManager.ts`, 
 | `TASK-R-007` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/dialer.ts` | Add direct tests proving disabled skip/remove flags throw before dialer invocation; keep public signatures, metrics/error handling, and AQM request contracts synchronized. |
 | `TASK-R-008` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/voice/Voice.ts`, `test/unit/spec/services/task/contact.ts`, `test/unit/spec/services/core/aqm-reqs.ts`, `test/unit/spec/services/task/TaskManager.ts` | None. |
 | `TASK-R-009` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/TaskFactory.ts`, `test/unit/spec/services/task/state-machine/uiControlsComputer.ts` | None. |
+| `TASK-R-010` | `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/services/task/Task.ts` | None. |
 
 ## Traceability
 - Repo architecture: `../../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../../ai-docs/SPEC_INDEX.md`
