@@ -1608,15 +1608,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return;
     }
 
-    this.metricsManager.timeEvent([
-      METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS,
-      METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
-    ]);
-
     let publishedEnable = false;
 
     try {
       if (flagEnabled) {
+        this.metricsManager.timeEvent([
+          METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS,
+          METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
+        ]);
+
         await this.ensureWxAppMercuryAndSubscribe();
         await this.publishAnswerOnWebexCrossClientState(true);
         publishedEnable = true;
@@ -1654,7 +1654,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         });
 
         this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS,
+          METRIC_EVENT_NAMES.WXAPP_SESSION_SKIPPED,
           {loginOption, enableWxBetterTogether: false, skipReason: 'flag_disabled'},
           ['operational', 'behavioral']
         );

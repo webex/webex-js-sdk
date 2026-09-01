@@ -236,6 +236,14 @@ All event names are defined in `METRIC_EVENT_NAMES` (`constants.ts`). Events fol
 | `TASK_ACCEPT_CONSULT_SUCCESS` / `FAILED` | `'Task Accept Consult ...'` | Accept consult result |
 | `TASK_AUTO_ANSWER_SUCCESS` / `FAILED` | `'Task Auto Answer ...'` | Auto-answer result |
 | `TASK_OUTDIAL_SUCCESS` / `FAILED` | `'Task Outdial ...'` | Outdial result |
+| `WXAPP_TASK_MUTE_SUCCESS` / `FAILED` | `'WxApp Task Mute ...'` | wxApp task mute result |
+| `WXAPP_TASK_DTMF_SUCCESS` / `FAILED` | `'WxApp Task Dtmf ...'` | wxApp task DTMF result |
+| `WXAPP_TASK_ACCEPT_SUCCESS` / `FAILED` | `'WxApp Task Accept ...'` | wxApp task accept result |
+| `WXAPP_TASK_DECLINE_SUCCESS` / `FAILED` | `'WxApp Task Decline ...'` | wxApp task decline result |
+| `WXAPP_SESSION_INIT_SUCCESS` / `FAILED` | `'WxApp Session Init ...'` | wxApp post-station-login init result |
+| `WXAPP_SESSION_SKIPPED` | `'WxApp Session Skipped'` | wxApp session init skipped (browser login or flag disabled) |
+| `WXAPP_USERSUB_PUBLISH_SUCCESS` / `FAILED` | `'WxApp Usersub Publish ...'` | wxApp usersub publish result |
+| `WXAPP_MERCURY_SUBSCRIBE_SUCCESS` / `FAILED` | `'WxApp Mercury Subscribe ...'` | wxApp Mercury subscribe result |
 | `TASK_CONFERENCE_START_SUCCESS` / `FAILED` | `'Task Conference Start ...'` | Conference start result |
 | `TASK_CONFERENCE_END_SUCCESS` / `FAILED` | `'Task Conference End ...'` | Conference end result |
 | `TASK_CONFERENCE_TRANSFER_SUCCESS` / `FAILED` | `'Task Conference Transfer ...'` | Conference transfer result |
@@ -281,6 +289,13 @@ All event names are defined in `constants.ts` as `METRIC_EVENT_NAMES`. Events fo
 | Conference Participant Drop | `TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS` | `TASK_CONFERENCE_PARTICIPANT_DROP_FAILED` |
 | Switch Call            | `TASK_SWITCH_CALL_SUCCESS`             | `TASK_SWITCH_CALL_FAILED`              |
 | Outdial                | `TASK_OUTDIAL_SUCCESS`                 | `TASK_OUTDIAL_FAILED`                  |
+| WxApp Task Mute        | `WXAPP_TASK_MUTE_SUCCESS`              | `WXAPP_TASK_MUTE_FAILED`               |
+| WxApp Task DTMF        | `WXAPP_TASK_DTMF_SUCCESS`              | `WXAPP_TASK_DTMF_FAILED`               |
+| WxApp Task Accept      | `WXAPP_TASK_ACCEPT_SUCCESS`            | `WXAPP_TASK_ACCEPT_FAILED`             |
+| WxApp Task Decline     | `WXAPP_TASK_DECLINE_SUCCESS`           | `WXAPP_TASK_DECLINE_FAILED`            |
+| WxApp Session Init     | `WXAPP_SESSION_INIT_SUCCESS`           | `WXAPP_SESSION_INIT_FAILED`            |
+| WxApp Usersub Publish  | `WXAPP_USERSUB_PUBLISH_SUCCESS`        | `WXAPP_USERSUB_PUBLISH_FAILED`         |
+| WxApp Mercury Subscribe | `WXAPP_MERCURY_SUBSCRIBE_SUCCESS`     | `WXAPP_MERCURY_SUBSCRIBE_FAILED`       |
 | Upload Logs            | `UPLOAD_LOGS_SUCCESS`                  | `UPLOAD_LOGS_FAILED`                   |
 | WebSocket Deregister   | `WEBSOCKET_DEREGISTER_SUCCESS`         | `WEBSOCKET_DEREGISTER_FAIL`            |
 | Device Type Update     | `AGENT_DEVICE_TYPE_UPDATE_SUCCESS`     | `AGENT_DEVICE_TYPE_UPDATE_FAILED`      |
@@ -299,11 +314,13 @@ Special events (no success/failure pair):
 
 - `WEBSOCKET_EVENT_RECEIVED` — **no** behavioral taxonomy (not in `eventTaxonomyMap`)
 
-Of the 82 defined metric names, 73 have behavioral taxonomy and 9 do not. Events **without** an `eventTaxonomyMap` entry are the six `AI_ASSISTANT_*` names plus `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`.
+- `WXAPP_SESSION_SKIPPED` — has behavioral taxonomy (`user.wxapp_session_init.ignore`)
+
+Of the 99 defined metric names, 90 have behavioral taxonomy and 9 do not. Events **without** an `eventTaxonomyMap` entry are the six `AI_ASSISTANT_*` names plus `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`.
 
 ### Complete METRIC_EVENT_NAMES catalog
 
-This table contains all 82 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 73 mapped and 9 unmapped.
+This table contains all 99 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 90 mapped and 9 unmapped.
 
 | Constant | Emitted name | Behavioral taxonomy? |
 |---|---|---|
@@ -362,6 +379,21 @@ This table contains all 82 names from `src/metrics/constants.ts`; taxonomy prese
 | `TASK_SWITCH_CALL_FAILED` | `Task Switch Call Failed` | yes |
 | `TASK_OUTDIAL_SUCCESS` | `Task Outdial Success` | yes |
 | `TASK_OUTDIAL_FAILED` | `Task Outdial Failed` | yes |
+| `WXAPP_TASK_MUTE_SUCCESS` | `WxApp Task Mute Success` | yes |
+| `WXAPP_TASK_MUTE_FAILED` | `WxApp Task Mute Failed` | yes |
+| `WXAPP_TASK_DTMF_SUCCESS` | `WxApp Task Dtmf Success` | yes |
+| `WXAPP_TASK_DTMF_FAILED` | `WxApp Task Dtmf Failed` | yes |
+| `WXAPP_TASK_ACCEPT_SUCCESS` | `WxApp Task Accept Success` | yes |
+| `WXAPP_TASK_ACCEPT_FAILED` | `WxApp Task Accept Failed` | yes |
+| `WXAPP_TASK_DECLINE_SUCCESS` | `WxApp Task Decline Success` | yes |
+| `WXAPP_TASK_DECLINE_FAILED` | `WxApp Task Decline Failed` | yes |
+| `WXAPP_SESSION_INIT_SUCCESS` | `WxApp Session Init Success` | yes |
+| `WXAPP_SESSION_INIT_FAILED` | `WxApp Session Init Failed` | yes |
+| `WXAPP_SESSION_SKIPPED` | `WxApp Session Skipped` | yes |
+| `WXAPP_USERSUB_PUBLISH_SUCCESS` | `WxApp Usersub Publish Success` | yes |
+| `WXAPP_USERSUB_PUBLISH_FAILED` | `WxApp Usersub Publish Failed` | yes |
+| `WXAPP_MERCURY_SUBSCRIBE_SUCCESS` | `WxApp Mercury Subscribe Success` | yes |
+| `WXAPP_MERCURY_SUBSCRIBE_FAILED` | `WxApp Mercury Subscribe Failed` | yes |
 | `UPLOAD_LOGS_SUCCESS` | `Upload Logs Success` | yes |
 | `UPLOAD_LOGS_FAILED` | `Upload Logs Failed` | yes |
 | `WEBSOCKET_DEREGISTER_SUCCESS` | `Websocket Deregister Success` | no |

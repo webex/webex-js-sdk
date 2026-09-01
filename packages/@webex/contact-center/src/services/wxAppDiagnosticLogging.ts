@@ -30,16 +30,18 @@ export function callIdSuffix(callId: string | null | undefined): string | undefi
   return callId.length <= 8 ? callId : callId.slice(-8);
 }
 
-function logWxApp(message: string, data: WxAppLogData): void {
+function logWxApp(message: string, method: string, data: WxAppLogData): void {
   LoggerProxy.info(`${WXAPP_LOG_PREFIX} ${message}`, {
     module: 'wxAppDiagnosticLogging',
+    method,
     data: {feature: WXAPP_LOG_FEATURE, ...data},
   });
 }
 
-function logWxAppError(message: string, data: WxAppLogData): void {
+function logWxAppError(message: string, method: string, data: WxAppLogData): void {
   LoggerProxy.error(`${WXAPP_LOG_PREFIX} ${message}`, {
     module: 'wxAppDiagnosticLogging',
+    method,
     data: {feature: WXAPP_LOG_FEATURE, ...data},
   });
 }
@@ -53,7 +55,7 @@ export function logWxAppSessionReadiness(params: {
   telephonyTaskType: 'Voice' | 'WebRTC' | 'unknown';
   skipReason?: WxAppSessionSkipReason;
 }): void {
-  logWxApp('session readiness', {
+  logWxApp('session readiness', 'logWxAppSessionReadiness', {
     event: 'session_readiness',
     enableWxBetterTogether: params.enableWxBetterTogether,
     loginOption: params.loginOption,
@@ -109,7 +111,7 @@ export function logWxAppOfferDecision(params: {
   wxAppParticipantDeviceType?: string;
   hasDeviceCallId: boolean;
 }): void {
-  logWxApp('offer decision', {
+  logWxApp('offer decision', 'logWxAppOfferDecision', {
     event: 'offer_decision',
     interactionId: params.interactionId,
     acceptVisible: params.acceptVisible,
@@ -139,14 +141,14 @@ export function logWxAppTelephonyAction(params: {
   };
 
   if (params.phase === 'failed') {
-    logWxAppError(`telephony ${params.action} ${params.phase}`, payload);
+    logWxAppError(`telephony ${params.action} ${params.phase}`, 'logWxAppTelephonyAction', payload);
   } else {
-    logWxApp(`telephony ${params.action} ${params.phase}`, payload);
+    logWxApp(`telephony ${params.action} ${params.phase}`, 'logWxAppTelephonyAction', payload);
   }
 }
 
 export function logWxAppValidationFailure(reason: string, interactionId?: string): void {
-  logWxAppError('validation failed', {
+  logWxAppError('validation failed', 'logWxAppValidationFailure', {
     event: 'validation_failed',
     reason,
     interactionId,
@@ -160,7 +162,7 @@ export function logWxAppMercuryMuteSync(params: {
   interactionId?: string;
   dropReason?: string;
 }): void {
-  logWxApp(`mercury mute sync ${params.phase}`, {
+  logWxApp(`mercury mute sync ${params.phase}`, 'logWxAppMercuryMuteSync', {
     event: 'mercury_mute_sync',
     phase: params.phase,
     muted: params.muted,

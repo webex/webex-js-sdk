@@ -89,6 +89,8 @@ describe('wxAppDiagnosticLogging', () => {
       expect(LoggerProxy.info).toHaveBeenCalledWith(
         `${WXAPP_LOG_PREFIX} session readiness`,
         expect.objectContaining({
+          module: 'wxAppDiagnosticLogging',
+          method: 'logWxAppSessionReadiness',
           data: expect.objectContaining({
             feature: 'wxApp',
             event: 'session_readiness',

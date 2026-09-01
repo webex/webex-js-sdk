@@ -1073,7 +1073,7 @@ describe('webex.cc', () => {
         dialNumber: '1001',
       });
 
-      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123'});
+      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
       expect(subscribeSpy).toHaveBeenCalledWith('agentId', expect.any(Function));
     });
 
@@ -1330,7 +1330,7 @@ describe('webex.cc', () => {
         await publishSpy.mock.results[1]?.value;
 
         expect(publishSpy).toHaveBeenCalledTimes(2);
-        expect(publishSpy).toHaveBeenLastCalledWith(false, {userId: 'user-123'});
+        expect(publishSpy).toHaveBeenLastCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
       } finally {
         jest.useRealTimers();
       }
@@ -1399,9 +1399,17 @@ describe('webex.cc', () => {
         dialNumber: '1001',
       });
 
-      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
       expect(teardownSpy).toHaveBeenCalled();
       expect(unsubscribeSpy).toHaveBeenCalled();
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_SESSION_SKIPPED,
+        expect.objectContaining({
+          enableWxBetterTogether: false,
+          skipReason: 'flag_disabled',
+        }),
+        ['operational', 'behavioral']
+      );
     });
 
     it('should clear stale usersub on login after prior session enabled wxApp then hard refresh', async () => {
@@ -1444,7 +1452,7 @@ describe('webex.cc', () => {
         dialNumber: '1001',
       });
 
-      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
     });
   });
 
@@ -1542,7 +1550,7 @@ describe('webex.cc', () => {
 
       await webex.cc.stationLogout({logoutReason: 'Logout reason'});
 
-      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
       expect(teardownSpy).toHaveBeenCalled();
       expect(unsubscribeSpy).toHaveBeenCalled();
     });
@@ -1613,7 +1621,7 @@ describe('webex.cc', () => {
 
         expect(result).toEqual({trackingId: 'track-1'});
         expect(publishSpy).toHaveBeenCalledTimes(1);
-        expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
+        expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
         expect(teardownSpy).toHaveBeenCalled();
         expect(unsubscribeSpy).toHaveBeenCalled();
 
@@ -1621,7 +1629,7 @@ describe('webex.cc', () => {
         await publishSpy.mock.results[1]?.value;
 
         expect(publishSpy).toHaveBeenCalledTimes(2);
-        expect(publishSpy).toHaveBeenLastCalledWith(false, {userId: 'user-123'});
+        expect(publishSpy).toHaveBeenLastCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
       } finally {
         jest.useRealTimers();
       }
@@ -1683,8 +1691,8 @@ describe('webex.cc', () => {
         });
 
         expect(publishSpy).toHaveBeenCalledTimes(2);
-        expect(publishSpy).toHaveBeenNthCalledWith(1, false, {userId: 'user-123'});
-        expect(publishSpy).toHaveBeenNthCalledWith(2, true, {userId: 'user-123'});
+        expect(publishSpy).toHaveBeenNthCalledWith(1, false, {userId: 'user-123', trackPublishMetrics: true});
+        expect(publishSpy).toHaveBeenNthCalledWith(2, true, {userId: 'user-123', trackPublishMetrics: true});
         expect(teardownSpy).toHaveBeenCalledTimes(1);
 
         jest.advanceTimersByTime(30_000);
@@ -2211,7 +2219,7 @@ describe('webex.cc', () => {
 
       await webex.cc['silentRelogin']();
 
-      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123'});
+      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
       expect(subscribeSpy).toHaveBeenCalledWith('agentId', expect.any(Function));
     });
 
@@ -2244,7 +2252,7 @@ describe('webex.cc', () => {
 
       await webex.cc['silentRelogin']();
 
-      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
       expect(teardownSpy).toHaveBeenCalled();
       expect(unsubscribeSpy).toHaveBeenCalled();
     });
@@ -2725,7 +2733,7 @@ describe('webex.cc', () => {
 
       await (webex.cc as any).teardownWxAppLocalState();
 
-      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
 
       resolveEnable();
       await enableInFlight;
@@ -3091,8 +3099,8 @@ describe('webex.cc', () => {
       });
 
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
-      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
-      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123'});
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
+      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
     });
 
     it('should use provided teamId if passed in payload', async () => {
@@ -3646,7 +3654,7 @@ describe('webex.cc', () => {
 
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
       expect(mockTaskManager.applyEnableWxBetterTogether).toHaveBeenCalledWith(true);
-      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123'});
+      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
     });
 
     it('should publish false and update config when disabled after wxApp was enabled', async () => {
@@ -3666,7 +3674,7 @@ describe('webex.cc', () => {
 
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(false);
       expect(mockTaskManager.applyEnableWxBetterTogether).toHaveBeenCalledWith(false);
-      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123'});
+      expect(publishSpy).toHaveBeenCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
     });
 
     it('should skip usersub publish when disabling without prior wxApp publish', async () => {
@@ -3747,7 +3755,7 @@ describe('webex.cc', () => {
       await (webex.cc as any).setManageWebexCallingInWxcc(true);
 
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
-      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123'});
+      expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
     });
 
     it('should no-op usersub publish when disabling before login', async () => {
@@ -3901,14 +3909,14 @@ describe('webex.cc', () => {
 
         expect(scheduleRetrySpy).toHaveBeenCalled();
         expect(publishSpy).toHaveBeenCalledTimes(2);
-        expect(publishSpy).toHaveBeenNthCalledWith(1, true, {userId: 'user-123'});
-        expect(publishSpy).toHaveBeenNthCalledWith(2, false, {userId: 'user-123'});
+        expect(publishSpy).toHaveBeenNthCalledWith(1, true, {userId: 'user-123', trackPublishMetrics: true});
+        expect(publishSpy).toHaveBeenNthCalledWith(2, false, {userId: 'user-123', trackPublishMetrics: true});
 
         jest.advanceTimersByTime(30_000);
         await publishSpy.mock.results[2]?.value;
 
         expect(publishSpy).toHaveBeenCalledTimes(3);
-        expect(publishSpy).toHaveBeenLastCalledWith(false, {userId: 'user-123'});
+        expect(publishSpy).toHaveBeenLastCalledWith(false, {userId: 'user-123', trackPublishMetrics: true});
       } finally {
         jest.useRealTimers();
       }
