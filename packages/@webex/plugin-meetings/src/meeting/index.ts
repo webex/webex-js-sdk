@@ -8194,10 +8194,13 @@ export default class Meeting extends StatelessWebexPlugin {
         `Meeting:index#setupStatsAnalyzerEventHandlers --> inbound RTP audio level update received for ${data.length} tracks`
       );
 
-      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.INBOUND_RTP_AUDIO_LEVEL_UPDATE, {
-        meetingId: this.id,
-        correlationId: this.correlationId,
-        data,
+      data.forEach((stats) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.INBOUND_RTP_AUDIO_LEVEL_UPDATE, {
+          meetingId: this.id,
+          correlationId: this.correlationId,
+          ssrc: stats.ssrc,
+          meanRtpHeaderAudioLevel: stats.meanRtpHeaderAudioLevel,
+        });
       });
     });
   };
