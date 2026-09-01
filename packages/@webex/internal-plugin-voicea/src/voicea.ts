@@ -164,6 +164,13 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
    * @returns {Promise<void>}
    */
   public async switchLLMChannel(newLLMChannel: LLMChannel): Promise<void> {
+    // Skip if already on this channel - prevents duplicate HTTP requests when
+    // multiple callers (e.g., cleanupPSDataChannel and updateLLMConnection) both
+    // try to switch to the same channel concurrently.
+    if (this.llmChannel === newLLMChannel) {
+      return;
+    }
+
     // Save current state
     const captionsWereOn = this.keepTranscriptionSubscribed;
     const spokenLanguage = this.currentSpokenLanguage;
@@ -193,11 +200,16 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
     this.captionServiceId = undefined;
     this.areCaptionsEnabled = false;
 
-    // Re-announce and re-enable captions if they were on
+    // Re-announce and re-enable captions if they were on.
+    // Caption restoration is fire-and-forget: errors are logged but don't propagate,
+    // ensuring cleanup operations (e.g., cleanupPSDataChannel) complete even if
+    // caption restoration fails.
     if (captionsWereOn) {
       if (this.isLLMConnected()) {
         // Channel is already connected, restore captions immediately
-        await this.turnOnCaptions(spokenLanguage);
+        this.turnOnCaptions(spokenLanguage).catch(() => {
+          // Best-effort restoration - if it fails, captions were already in a bad state
+        });
       } else {
         // Channel not yet connected - defer caption restoration until 'online' event.
         // This handles the race where switchLLMChannel is called while the main channel

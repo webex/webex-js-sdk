@@ -969,6 +969,9 @@ describe('plugin-voicea', () => {
 
         await voiceaChannel.switchLLMChannel(newMockLLMChannel);
 
+        // Wait for fire-and-forget turnOnCaptions to complete
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
         // Should have unsubscribed from old channel
         assert.calledWith(mockLLMChannel.off, 'event:relay.event', sinon.match.func);
 
@@ -996,6 +999,24 @@ describe('plugin-voicea', () => {
           },
           trackingId: sinon.match.string,
         });
+      });
+
+      it('skips switch when already on the same channel', async () => {
+        // Enable captions to verify they are NOT re-enabled on no-op switch
+        voiceaChannel.keepTranscriptionSubscribed = true;
+        voiceaChannel.currentSpokenLanguage = 'es';
+
+        // Switch to the same channel that voiceaChannel is already using
+        await voiceaChannel.switchLLMChannel(mockLLMChannel);
+
+        // Should NOT have unsubscribed (no-op)
+        assert.notCalled(mockLLMChannel.off);
+
+        // Should NOT have re-subscribed
+        // The 'on' was already called in the constructor, but no NEW calls should happen
+        // Since constructor already called 'on', we check it wasn't called again after construction
+        // The mock was created fresh, so we just verify no additional sends
+        assert.notCalled(mockLLMChannel.socket.send);
       });
 
       it('does not turn on captions if they were not on before switching', async () => {
@@ -1144,6 +1165,27 @@ describe('plugin-voicea', () => {
 
         // Should have registered a new 'online' listener on second channel
         assert.calledWith(secondNewChannel.once, 'online', sinon.match.func);
+      });
+
+      it('does not duplicate caption HTTP requests on concurrent same-channel switches', async () => {
+        // Enable captions
+        voiceaChannel.keepTranscriptionSubscribed = true;
+        voiceaChannel.currentSpokenLanguage = 'en';
+
+        const newMockLLMChannel = createMockLLMChannel({locusUrl: 'newLocusUrl'});
+
+        // Simulate concurrent switches to the same channel
+        const switch1 = voiceaChannel.switchLLMChannel(newMockLLMChannel);
+        const switch2 = voiceaChannel.switchLLMChannel(newMockLLMChannel);
+
+        await Promise.all([switch1, switch2]);
+
+        // Wait for fire-and-forget turnOnCaptions to complete
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        // Should only have sent 2 messages total (announcement + subchannel subscription)
+        // NOT 4 messages (which would indicate duplicate switches)
+        assert.calledTwice(newMockLLMChannel.socket.send);
       });
     });
 
