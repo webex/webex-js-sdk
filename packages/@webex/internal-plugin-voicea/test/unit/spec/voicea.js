@@ -28,6 +28,7 @@ function createMockLLMChannel(options = {}) {
     isDataChannelTokenEnabled: sinon.stub().resolves(true),
     on: sinon.stub(),
     off: sinon.stub(),
+    once: sinon.stub(),
     socket: mockWebSocket,
   };
 }
@@ -1047,6 +1048,102 @@ describe('plugin-voicea', () => {
 
         // isLLMConnected should now return true
         assert.equal(channelWithoutLLM.isLLMConnected(), true);
+      });
+
+      it('defers caption restoration when new channel is not connected', async () => {
+        // Enable captions
+        voiceaChannel.keepTranscriptionSubscribed = true;
+        voiceaChannel.currentSpokenLanguage = 'fr';
+
+        // Create a new channel that is NOT connected yet
+        const newMockLLMChannel = createMockLLMChannel({
+          isConnected: false,
+          locusUrl: 'newLocusUrl',
+        });
+
+        await voiceaChannel.switchLLMChannel(newMockLLMChannel);
+
+        // Should have subscribed to new channel events
+        assert.calledWith(newMockLLMChannel.on, 'event:relay.event', sinon.match.func);
+
+        // Should have registered a 'once' listener for 'online' event
+        assert.calledWith(newMockLLMChannel.once, 'online', sinon.match.func);
+
+        // Should NOT have sent any messages yet (waiting for connection)
+        assert.notCalled(newMockLLMChannel.socket.send);
+      });
+
+      it('restores captions when deferred channel comes online', async () => {
+        // Enable captions
+        voiceaChannel.keepTranscriptionSubscribed = true;
+        voiceaChannel.currentSpokenLanguage = 'de';
+
+        // Create a new channel that is NOT connected yet
+        const newMockLLMChannel = createMockLLMChannel({
+          isConnected: false,
+          locusUrl: 'newLocusUrl',
+        });
+
+        await voiceaChannel.switchLLMChannel(newMockLLMChannel);
+
+        // Get the 'online' listener that was registered
+        const onlineListener = newMockLLMChannel.once.getCall(0).args[1];
+
+        // Simulate channel coming online
+        newMockLLMChannel.isConnected.returns(true);
+        onlineListener();
+
+        // Wait for async turnOnCaptions to complete
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        // Now it should have sent messages (announcement + subchannel subscription)
+        assert.calledTwice(newMockLLMChannel.socket.send);
+      });
+
+      it('removes pending online listener when deregisterEvents is called', async () => {
+        // Enable captions
+        voiceaChannel.keepTranscriptionSubscribed = true;
+
+        // Create a new channel that is NOT connected yet
+        const newMockLLMChannel = createMockLLMChannel({
+          isConnected: false,
+          locusUrl: 'newLocusUrl',
+        });
+
+        await voiceaChannel.switchLLMChannel(newMockLLMChannel);
+
+        // Get the 'online' listener that was registered
+        const onlineListener = newMockLLMChannel.once.getCall(0).args[1];
+
+        // Now deregister events
+        voiceaChannel.deregisterEvents();
+
+        // Should have removed the 'online' listener
+        assert.calledWith(newMockLLMChannel.off, 'online', onlineListener);
+      });
+
+      it('removes old pending online listener when switching channels again', async () => {
+        // Enable captions
+        voiceaChannel.keepTranscriptionSubscribed = true;
+
+        // Create first new channel that is NOT connected
+        const firstNewChannel = createMockLLMChannel({isConnected: false, locusUrl: 'firstUrl'});
+
+        await voiceaChannel.switchLLMChannel(firstNewChannel);
+
+        // Get the 'online' listener registered on first channel
+        const firstOnlineListener = firstNewChannel.once.getCall(0).args[1];
+
+        // Now switch to another channel (also not connected)
+        const secondNewChannel = createMockLLMChannel({isConnected: false, locusUrl: 'secondUrl'});
+
+        await voiceaChannel.switchLLMChannel(secondNewChannel);
+
+        // Should have removed the 'online' listener from first channel
+        assert.calledWith(firstNewChannel.off, 'online', firstOnlineListener);
+
+        // Should have registered a new 'online' listener on second channel
+        assert.calledWith(secondNewChannel.once, 'online', sinon.match.func);
       });
     });
 

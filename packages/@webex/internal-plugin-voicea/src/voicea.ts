@@ -47,6 +47,9 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
   private spokenLanguages: string[] = [];
   private currentCaptionLanguage?: string;
 
+  // Pending listener for deferred caption restoration when switching to a not-yet-connected channel
+  private _pendingCaptionRestoreListener?: () => void;
+
   /**
    * Creates a VoiceaChannel, optionally bound to an LLMChannel.
    * If no llmChannel is provided, call switchLLMChannel() later to attach one.
@@ -133,6 +136,12 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
     this.keepTranscriptionSubscribed = false;
     this.captionServiceId = undefined;
 
+    // Remove any pending caption restore listener
+    if (this._pendingCaptionRestoreListener && this.llmChannel) {
+      this.llmChannel.off('online', this._pendingCaptionRestoreListener);
+      this._pendingCaptionRestoreListener = undefined;
+    }
+
     if (this.hasSubscribedToEvents && this.llmChannel) {
       this.llmChannel.off('event:relay.event', this.eventProcessor);
       this.hasSubscribedToEvents = false;
@@ -159,6 +168,12 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
     const captionsWereOn = this.keepTranscriptionSubscribed;
     const spokenLanguage = this.currentSpokenLanguage;
 
+    // Remove any pending caption restore listener from old channel
+    if (this._pendingCaptionRestoreListener && this.llmChannel) {
+      this.llmChannel.off('online', this._pendingCaptionRestoreListener);
+      this._pendingCaptionRestoreListener = undefined;
+    }
+
     // Unsubscribe from old channel
     if (this.hasSubscribedToEvents && this.llmChannel) {
       this.llmChannel.off('event:relay.event', this.eventProcessor);
@@ -180,7 +195,21 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
 
     // Re-announce and re-enable captions if they were on
     if (captionsWereOn) {
-      await this.turnOnCaptions(spokenLanguage);
+      if (this.isLLMConnected()) {
+        // Channel is already connected, restore captions immediately
+        await this.turnOnCaptions(spokenLanguage);
+      } else {
+        // Channel not yet connected - defer caption restoration until 'online' event.
+        // This handles the race where switchLLMChannel is called while the main channel
+        // is still reconnecting (e.g., concurrent updateLLMConnection and updatePSDataChannel).
+        this._pendingCaptionRestoreListener = () => {
+          this._pendingCaptionRestoreListener = undefined;
+          this.turnOnCaptions(spokenLanguage).catch(() => {
+            // Best-effort restoration - if it fails, captions were already in a bad state
+          });
+        };
+        this.llmChannel.once('online', this._pendingCaptionRestoreListener);
+      }
     }
   }
 
