@@ -539,6 +539,15 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
+   * Whether we expect to receive updates over the LLM connection. This is used by hash tree parsers
+   * to decide whether to arm heartbeat watchdog timers for LLM data sets.
+   * @returns {boolean}
+   */
+  private isLlmExpected(): boolean {
+    return this.parsedLocus.self?.joinedWith?.state === 'JOINED';
+  }
+
+  /**
    * Creates a HashTreeParser instance for a given locusUrl and stores it in the map.
    * @param {Object} params
    * @param {string} params.locusUrl - the locus URL used as the map key
@@ -568,7 +577,7 @@ export default class LocusInfo extends EventsScope {
       callbacks: {
         locusInfoUpdateCallback: this.updateFromHashTree.bind(this, locusUrl),
         syncLatencyTracker: this.callbacks.syncLatencyTracker,
-        isLlmExpected: () => this.parsedLocus.self?.joinedWith?.state === 'JOINED',
+        isLlmExpected: () => this.isLlmExpected(),
         // Reuse webex-core's tracking-id interceptor sequence (exposed publicly via
         // webexTrackingIdSequenceNumbers) so Locus requests share the client's unified
         // ${sessionId}_${sequence} tracking id space instead of minting an unrelated id. Fall
@@ -2714,6 +2723,7 @@ export default class LocusInfo extends EventsScope {
    */
   updateSelf(self: any) {
     if (self) {
+      const wasLlmExpected = this.isLlmExpected();
       // @ts-ignore
       const parsedSelves = SelfUtils.getSelves(
         this.parsedLocus.self,
@@ -2993,6 +3003,15 @@ export default class LocusInfo extends EventsScope {
       this.parsedLocus.self = parsedSelves.current;
       // @ts-ignore
       this.self = self;
+
+      // If LLM just became expected (self reported JOINED), some hash tree parsers may have skipped
+      // arming heartbeat watchdog timers for LLM data sets whose messages arrived before this
+      // update. Re-evaluate them now so those watchdogs get armed.
+      if (!wasLlmExpected && this.isLlmExpected()) {
+        this.hashTreeParsers.forEach((entry) => {
+          entry.parser.reevaluateLlmWatchdogs();
+        });
+      }
     } else {
       this.compareAndUpdateFlags.compareHostAndSelf = false;
     }
