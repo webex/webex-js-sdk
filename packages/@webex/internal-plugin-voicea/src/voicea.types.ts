@@ -124,6 +124,10 @@ type MeetingTranscripts = {
     [key: string]: string;
   };
   timestamp?: string;
+  taggedSpeaker?: {
+    speakerId?: string[];
+    newName?: string;
+  };
 };
 
 type MeetingTranscriptPayload = {
