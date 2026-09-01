@@ -15433,6 +15433,59 @@ describe('plugin-meetings', () => {
           assert.equal(result, 'something');
         });
 
+        it('starts pending transcription after LLM connects when _pendingTranscriptionStart is true', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting._pendingTranscriptionStart = true;
+          meeting.areVoiceaEventsSetup = false;
+          meeting.startTranscription = sinon.stub().resolves();
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          await meeting.updateLLMConnection();
+
+          // Should call startTranscription for the pending request
+          assert.calledOnce(meeting.startTranscription);
+          // Should clear the pending flag
+          assert.equal(meeting._pendingTranscriptionStart, false);
+        });
+
+        it('does not start transcription when _pendingTranscriptionStart is false', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting._pendingTranscriptionStart = false;
+          meeting.areVoiceaEventsSetup = false;
+          meeting.startTranscription = sinon.stub().resolves();
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          await meeting.updateLLMConnection();
+
+          // Should NOT call startTranscription
+          assert.notCalled(meeting.startTranscription);
+        });
+
+        it('does not start transcription when areVoiceaEventsSetup is already true', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting._pendingTranscriptionStart = true;
+          meeting.areVoiceaEventsSetup = true;
+          meeting.startTranscription = sinon.stub().resolves();
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          await meeting.updateLLMConnection();
+
+          // Should NOT call startTranscription (already setup)
+          assert.notCalled(meeting.startTranscription);
+        });
+
         it('registers annotation channel when not in practice session', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {

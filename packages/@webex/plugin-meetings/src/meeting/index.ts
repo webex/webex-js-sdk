@@ -739,6 +739,8 @@ export default class Meeting extends StatelessWebexPlugin {
   turnDiscoverySkippedReason: TurnDiscoverySkipReason;
   turnServerUsed: boolean;
   areVoiceaEventsSetup = false;
+  // Tracks if transcription should start once LLM connects (deferred from CONTROLS_MEETING_TRANSCRIBE_UPDATED)
+  private _pendingTranscriptionStart = false;
 
   /**
    * Returns the initial transcription object shape.
@@ -3068,6 +3070,13 @@ export default class Meeting extends StatelessWebexPlugin {
         if (this.isJoined()) {
           // @ts-ignore - config coming from registerPlugin
           if (transcribing && !this.areVoiceaEventsSetup) {
+            // Defer transcription start if LLM not yet connected - voiceaChannel exists from
+            // constructor but can't make HTTP requests until switchLLMChannel binds an LLM.
+            if (!this.voiceaChannel?.isLLMConnected()) {
+              this._pendingTranscriptionStart = true;
+
+              return;
+            }
             this.startTranscription();
           } else if (!transcribing && this.areVoiceaEventsSetup) {
             Trigger.trigger(
@@ -6328,6 +6337,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.voiceaChannel?.deregisterEvents();
 
     this.areVoiceaEventsSetup = false;
+    this._pendingTranscriptionStart = false;
     this.triggerStopReceivingTranscriptionEvent();
   }
 
@@ -6964,6 +6974,13 @@ export default class Meeting extends StatelessWebexPlugin {
               error
             );
           });
+
+          // Start transcription if it was deferred while waiting for LLM to connect.
+          // This handles the race where CONTROLS_MEETING_TRANSCRIBE_UPDATED arrived before LLM was ready.
+          if (this._pendingTranscriptionStart && !this.areVoiceaEventsSetup) {
+            this._pendingTranscriptionStart = false;
+            this.startTranscription();
+          }
         }
 
         if (registerAndConnectResult) {
