@@ -203,16 +203,24 @@ describe('plugin-meetings', () => {
                 assert.exists(transcriptData.captions.find(caption => caption.id === transcriptId));
             });
 
-            it('should process final captions from multiple CSIs without throwing', () => {
+            it('should process a final payload containing transcript entries for multiple CSIs without throwing', () => {
                 const transcriptData = fakeMeeting.transcription;
                 const transcriptId = fakeVoiceaPayload.transcriptId;
+                const firstCsi = 1234867712;
+                const secondCsi = 1234867713;
                 const secondCaptionText = 'Caption from a second CSI';
 
-                fakeVoiceaPayload.transcripts.push({
-                    text: secondCaptionText,
-                    csis: [1234867713],
-                    transcript_language_code: 'en'
-                });
+                fakeVoiceaPayload.transcripts = [
+                    {
+                        ...fakeVoiceaPayload.transcripts[0],
+                        csis: [firstCsi]
+                    },
+                    {
+                        text: secondCaptionText,
+                        csis: [secondCsi],
+                        transcript_language_code: 'en'
+                    }
+                ];
 
                 assert.doesNotThrow(processCaptions);
 
