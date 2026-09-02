@@ -429,9 +429,6 @@ export class Registration implements IRegistration {
      */
     this.sessionSuperseded = true;
 
-    /* Device this 409 was reported for, so cleanup can tell a replacement registration apart. */
-    const supersededDeviceId = this.deviceInfo.device?.deviceId;
-
     log.warn(
       `Stopping keepalive without re-registration, session superseded by another device for this user - keepaliveRetryCount: ${keepaliveRetryCount}`,
       loggerContext
@@ -454,7 +451,6 @@ export class Registration implements IRegistration {
     await this.registrationCleanup(METHODS.HANDLE_409_KEEPALIVE_FAILURE, {
       reason: HARD_STOP_REASON.SESSION_SUPERSEDED,
       error: lineError,
-      deviceId: supersededDeviceId,
     });
 
     await uploadLogs();
@@ -916,29 +912,7 @@ export class Registration implements IRegistration {
       file: REGISTRATION_FILE,
     });
 
-    if (this.sessionSuperseded) {
-      log.warn('Session superseded, skipping registration restoration', {
-        method: METHODS.HANDLE_CONNECTION_RESTORATION,
-        file: REGISTRATION_FILE,
-      });
-
-      return false;
-    }
-
     await this.mutex.runExclusive(async () => {
-      /* Re-check inside the mutex: the session can have been superseded while this call
-       * was queued behind the cleanup that latched it. */
-      if (this.sessionSuperseded) {
-        log.warn('Session superseded while waiting to restore registration, skipping', {
-          method: METHODS.HANDLE_CONNECTION_RESTORATION,
-          file: REGISTRATION_FILE,
-        });
-
-        retry = false;
-
-        return;
-      }
-
       /* Check retry once again to see if another timer thread has not finished the job already. */
       if (retry) {
         log.log('Network is up again, re-registering with Webex Calling if needed', {
@@ -1518,15 +1492,6 @@ export class Registration implements IRegistration {
     log.info(METHOD_START_MESSAGE, {method: METHODS.RECONNECT_ON_FAILURE, file: REGISTRATION_FILE});
     this.reconnectPending = false;
 
-    if (this.sessionSuperseded) {
-      log.warn(`Session superseded, skipping reconnect - caller: ${caller}`, {
-        method: METHODS.RECONNECT_ON_FAILURE,
-        file: REGISTRATION_FILE,
-      });
-
-      return;
-    }
-
     if (!this.isDeviceRegistered()) {
       if (Object.keys(this.callManager.getActiveCalls()).length === 0) {
         const abort = await this.restorePreviousRegistration(caller);
@@ -1595,26 +1560,6 @@ export class Registration implements IRegistration {
     log.info(`[${caller}] : Running ${hardStop.reason} cleanup`, loggerContext);
 
     await this.mutex.runExclusive(async () => {
-      if (
-        hardStop.reason === HARD_STOP_REASON.SESSION_SUPERSEDED &&
-        hardStop.deviceId !== undefined &&
-        this.isDeviceRegistered() &&
-        this.deviceInfo.device?.deviceId !== hardStop.deviceId
-      ) {
-        /*
-         * A recovery that already held the mutex registered a replacement device while
-         * this cleanup was queued behind it. The hard stop still applies, so that device
-         * is deleted at Mobius rather than dropped locally, which would leave it
-         * registered with no keepalive and keep the other session superseded.
-         */
-        log.warn(
-          `Deregistering the replacement device ${this.deviceInfo.device?.deviceId} registered while the ${hardStop.reason} cleanup was queued`,
-          loggerContext
-        );
-
-        await this.deregister();
-      }
-
       this.clearFailbackTimer();
       this.clearKeepaliveTimer();
 

@@ -2051,29 +2051,33 @@ describe('Registration Tests', () => {
         restoreSpy.mockClear();
         restartSpy.mockClear();
 
+        postRegistrationSpy.mockClear();
+        failoverSpy.mockClear();
+
         const retry = await reg.handleConnectionRestoration(true);
 
+        /* The restoration runs, but every registration attempt it makes is refused at the
+         * choke point, so nothing reaches Mobius and no failover is rescheduled. */
         expect(retry).toStrictEqual(false);
         expect(warnSpy).toHaveBeenCalledWith(
-          'Session superseded, skipping registration restoration',
-          {
-            file: REGISTRATION_FILE,
-            method: METHODS.HANDLE_CONNECTION_RESTORATION,
-          }
+          `Session superseded, skipping registration attempt - caller: ${METHODS.HANDLE_CONNECTION_RESTORATION}`,
+          {file: REGISTRATION_FILE, method: METHODS.HANDLE_CONNECTION_RESTORATION}
         );
-        expect(restoreSpy).not.toHaveBeenCalled();
+        expect(postRegistrationSpy).not.toHaveBeenCalled();
         expect(restartSpy).not.toHaveBeenCalled();
+        expect(failoverSpy).not.toHaveBeenCalled();
         expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
       });
 
       it('abandons a restoration that was already queued when the session was superseded', async () => {
         await beforeEachSetupForKeepalive();
         lineEmitter.mockClear();
-        restoreSpy.mockClear();
-        deregisterSpy.mockClear();
+        postRegistrationSpy.mockClear();
+        restartSpy.mockClear();
+        failoverSpy.mockClear();
 
         /* Something else holds the mutex, so the restoration queues behind it having
-         * already passed the pre-mutex check while the session was still valid. */
+         * begun while the session was still valid. */
         const release = await reg.mutex.acquire();
         const restoration = reg.handleConnectionRestoration(true);
 
@@ -2085,14 +2089,16 @@ describe('Registration Tests', () => {
         release();
 
         expect(await restoration).toStrictEqual(false);
+
+        /* The latch flipped after this restoration had already started, so the choke
+         * point is what stops it: no device is registered for the dead session. */
         expect(warnSpy).toHaveBeenCalledWith(
-          'Session superseded while waiting to restore registration, skipping',
+          `Session superseded, skipping registration attempt - caller: ${METHODS.HANDLE_CONNECTION_RESTORATION}`,
           {file: REGISTRATION_FILE, method: METHODS.HANDLE_CONNECTION_RESTORATION}
         );
-        /* Nothing is torn down or re-registered on behalf of the dead session. */
-        expect(deregisterSpy).not.toHaveBeenCalled();
-        expect(restoreSpy).not.toHaveBeenCalled();
+        expect(postRegistrationSpy).not.toHaveBeenCalled();
         expect(restartSpy).not.toHaveBeenCalled();
+        expect(failoverSpy).not.toHaveBeenCalled();
       });
 
       it('stays terminal when all calls are cleared after a superseded session', async () => {
@@ -2101,17 +2107,19 @@ describe('Registration Tests', () => {
 
         await sendKeepaliveFailure(conflictError, 1);
 
-        restoreSpy.mockClear();
+        postRegistrationSpy.mockClear();
         restartSpy.mockClear();
+        failoverSpy.mockClear();
 
         await reg.reconnectOnFailure(CALLS_CLEARED_HANDLER_UTIL);
 
         expect(warnSpy).toHaveBeenCalledWith(
-          `Session superseded, skipping reconnect - caller: ${CALLS_CLEARED_HANDLER_UTIL}`,
-          {file: REGISTRATION_FILE, method: METHODS.RECONNECT_ON_FAILURE}
+          `Session superseded, skipping registration attempt - caller: ${CALLS_CLEARED_HANDLER_UTIL}`,
+          {file: REGISTRATION_FILE, method: CALLS_CLEARED_HANDLER_UTIL}
         );
-        expect(restoreSpy).not.toHaveBeenCalled();
+        expect(postRegistrationSpy).not.toHaveBeenCalled();
         expect(restartSpy).not.toHaveBeenCalled();
+        expect(failoverSpy).not.toHaveBeenCalled();
         expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
       });
 
@@ -2172,65 +2180,6 @@ describe('Registration Tests', () => {
         await inFlight;
         await flushPromises();
 
-        expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
-      });
-
-      it('deregisters a replacement registration that won the race for the mutex', async () => {
-        await beforeEachSetupForKeepalive();
-        const worker = reg.webWorker;
-        const deleteSpy = jest.spyOn(reg, 'deleteRegistration').mockResolvedValue(undefined);
-        lineEmitter.mockClear();
-
-        const release = await reg.mutex.acquire();
-
-        const inFlight = worker.onmessage({
-          data: {
-            type: WorkerMessageType.KEEPALIVE_FAILURE,
-            err: conflictError,
-            keepAliveRetryCount: 1,
-          },
-        } as MessageEvent);
-
-        await flushPromises();
-
-        /* The recovery holding the mutex completes a replacement registration. */
-        reg.deviceInfo = {
-          ...reg.deviceInfo,
-          device: {...reg.deviceInfo.device, deviceId: 'replacement-device-id'},
-        };
-        reg.registrationStatus = RegistrationStatus.ACTIVE;
-
-        release();
-        await inFlight;
-        await flushPromises();
-
-        /* The replacement is deleted at Mobius rather than left registered without keepalive. */
-        expect(deleteSpy).toBeCalledOnceWith(
-          expect.anything(),
-          'replacement-device-id',
-          expect.anything()
-        );
-        expect(warnSpy).toHaveBeenCalledWith(
-          expect.stringContaining('Deregistering the replacement device replacement-device-id'),
-          {file: REGISTRATION_FILE, method: METHODS.HANDLE_409_KEEPALIVE_FAILURE}
-        );
-        expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
-        expect(reg.sessionSuperseded).toStrictEqual(true);
-        expect(lineEmitter).toHaveBeenLastCalledWith(
-          LINE_EVENTS.UNREGISTERED,
-          undefined,
-          expect.any(LineError)
-        );
-      });
-
-      it('does not deregister when no replacement registration intervened', async () => {
-        await beforeEachSetupForKeepalive();
-        const deleteSpy = jest.spyOn(reg, 'deleteRegistration');
-        lineEmitter.mockClear();
-
-        await sendKeepaliveFailure(conflictError, 1);
-
-        expect(deleteSpy).not.toHaveBeenCalled();
         expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
       });
 
