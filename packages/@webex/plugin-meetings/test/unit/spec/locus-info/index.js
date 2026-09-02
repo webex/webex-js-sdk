@@ -1149,6 +1149,9 @@ describe('plugin-meetings', () => {
           webex.meetings.meetingCollection.set(duplicateMeeting);
           webex.meetings.meetingCollection.set(selfMeeting);
           sinon.stub(webex.meetings, 'destroy');
+          // these tests rely on the incoming locus's own controls actually being applied via
+          // the real updateControls(), which the outer describe's stub would otherwise skip
+          updateLocusInfoStub.restore();
         });
 
         afterEach(() => {
