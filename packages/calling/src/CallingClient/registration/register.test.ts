@@ -2066,6 +2066,35 @@ describe('Registration Tests', () => {
         expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
       });
 
+      it('abandons a restoration that was already queued when the session was superseded', async () => {
+        await beforeEachSetupForKeepalive();
+        lineEmitter.mockClear();
+        restoreSpy.mockClear();
+        deregisterSpy.mockClear();
+
+        /* Something else holds the mutex, so the restoration queues behind it having
+         * already passed the pre-mutex check while the session was still valid. */
+        const release = await reg.mutex.acquire();
+        const restoration = reg.handleConnectionRestoration(true);
+
+        await flushPromises();
+
+        /* The 409 cleanup latches without the mutex, so the flip lands mid-wait. */
+        reg.sessionSuperseded = true;
+
+        release();
+
+        expect(await restoration).toStrictEqual(false);
+        expect(warnSpy).toHaveBeenCalledWith(
+          'Session superseded while waiting to restore registration, skipping',
+          {file: REGISTRATION_FILE, method: METHODS.HANDLE_CONNECTION_RESTORATION}
+        );
+        /* Nothing is torn down or re-registered on behalf of the dead session. */
+        expect(deregisterSpy).not.toHaveBeenCalled();
+        expect(restoreSpy).not.toHaveBeenCalled();
+        expect(restartSpy).not.toHaveBeenCalled();
+      });
+
       it('stays terminal when all calls are cleared after a superseded session', async () => {
         await beforeEachSetupForKeepalive();
         lineEmitter.mockClear();
@@ -2099,6 +2128,110 @@ describe('Registration Tests', () => {
 
         expect(reg.sessionSuperseded).toStrictEqual(false);
         expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
+      });
+
+      it('latches the superseded state before waiting on the shared mutex', async () => {
+        await beforeEachSetupForKeepalive();
+        const worker = reg.webWorker;
+        lineEmitter.mockClear();
+        postRegistrationSpy.mockClear();
+
+        /* A recovery already holds the mutex, so the 409 cleanup queues behind it. */
+        const release = await reg.mutex.acquire();
+
+        const inFlight = worker.onmessage({
+          data: {
+            type: WorkerMessageType.KEEPALIVE_FAILURE,
+            err: conflictError,
+            keepAliveRetryCount: 1,
+          },
+        } as MessageEvent);
+
+        await flushPromises();
+
+        /* The latch and the worker teardown are visible before cleanup has run. */
+        expect(reg.sessionSuperseded).toStrictEqual(true);
+        expect(reg.webWorker).toBeUndefined();
+        expect(lineEmitter).not.toHaveBeenCalledWith(
+          LINE_EVENTS.UNREGISTERED,
+          undefined,
+          expect.anything()
+        );
+
+        /* A registration path starting now aborts instead of racing the queued cleanup. */
+        const abort = await reg.attemptRegistrationWithServers(FAILOVER_UTIL);
+
+        expect(abort).toStrictEqual(true);
+        expect(postRegistrationSpy).not.toHaveBeenCalled();
+        expect(warnSpy).toHaveBeenCalledWith(
+          `Session superseded, skipping registration attempt - caller: ${FAILOVER_UTIL}`,
+          {file: REGISTRATION_FILE, method: FAILOVER_UTIL}
+        );
+
+        release();
+        await inFlight;
+        await flushPromises();
+
+        expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      });
+
+      it('deregisters a replacement registration that won the race for the mutex', async () => {
+        await beforeEachSetupForKeepalive();
+        const worker = reg.webWorker;
+        const deleteSpy = jest.spyOn(reg, 'deleteRegistration').mockResolvedValue(undefined);
+        lineEmitter.mockClear();
+
+        const release = await reg.mutex.acquire();
+
+        const inFlight = worker.onmessage({
+          data: {
+            type: WorkerMessageType.KEEPALIVE_FAILURE,
+            err: conflictError,
+            keepAliveRetryCount: 1,
+          },
+        } as MessageEvent);
+
+        await flushPromises();
+
+        /* The recovery holding the mutex completes a replacement registration. */
+        reg.deviceInfo = {
+          ...reg.deviceInfo,
+          device: {...reg.deviceInfo.device, deviceId: 'replacement-device-id'},
+        };
+        reg.registrationStatus = RegistrationStatus.ACTIVE;
+
+        release();
+        await inFlight;
+        await flushPromises();
+
+        /* The replacement is deleted at Mobius rather than left registered without keepalive. */
+        expect(deleteSpy).toBeCalledOnceWith(
+          expect.anything(),
+          'replacement-device-id',
+          expect.anything()
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Deregistering the replacement device replacement-device-id'),
+          {file: REGISTRATION_FILE, method: METHODS.HANDLE_409_KEEPALIVE_FAILURE}
+        );
+        expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+        expect(reg.sessionSuperseded).toStrictEqual(true);
+        expect(lineEmitter).toHaveBeenLastCalledWith(
+          LINE_EVENTS.UNREGISTERED,
+          undefined,
+          expect.any(LineError)
+        );
+      });
+
+      it('does not deregister when no replacement registration intervened', async () => {
+        await beforeEachSetupForKeepalive();
+        const deleteSpy = jest.spyOn(reg, 'deleteRegistration');
+        lineEmitter.mockClear();
+
+        await sendKeepaliveFailure(conflictError, 1);
+
+        expect(deleteSpy).not.toHaveBeenCalled();
+        expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
       });
 
       it('discards a 409 delivered by a keepalive worker that has been replaced', async () => {
@@ -2139,6 +2272,45 @@ describe('Registration Tests', () => {
           expect.anything()
         );
       });
+    });
+  });
+
+  describe('409 Conflict outside the keepalive flow', () => {
+    /* The registration flow passes no sessionSupersededCb, so a 409 there is logged and
+     * ignored: no consumer event, no registration-error metric, and non-final so the
+     * server loop and failover proceed as they would for any non-fatal status. */
+    it('ignores a 409 during registration without notifying the consumer', async () => {
+      jest.useFakeTimers();
+      const conflictPayload = {statusCode: 409, headers: {trackingid: 'tid-reg-409'}};
+      webex.request.mockRejectedValue(conflictPayload);
+      lineEmitter.mockClear();
+      metricSpy.mockClear();
+
+      await reg.triggerRegistration();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '409 Conflict: ignored, caller does not handle a superseded session',
+        {file: REGISTRATION_FILE, method: REGISTRATION_UTIL}
+      );
+
+      /* No consumer notification and no registration-error metric on this path. */
+      expect(lineEmitter).not.toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(lineEmitter).not.toHaveBeenCalledWith(LINE_EVENTS.ERROR, undefined, expect.anything());
+      expect(metricSpy).not.toHaveBeenCalledWith(
+        METRIC_EVENT.REGISTRATION_ERROR,
+        REG_ACTION.REGISTER,
+        METRIC_TYPE.BEHAVIORAL,
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything()
+      );
+
+      /* Non-final: every server was tried and failover was scheduled. */
+      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(reg.sessionSuperseded).toStrictEqual(false);
+      expect(failoverSpy).toHaveBeenCalled();
     });
   });
 

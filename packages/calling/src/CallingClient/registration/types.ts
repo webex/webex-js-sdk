@@ -19,10 +19,14 @@ export enum HARD_STOP_REASON {
  * Describes a hard stop of the registration. A superseded session must carry the
  * {@link LineError} that is handed to the SDK consumer as the reason on
  * `LINE_EVENTS.UNREGISTERED`; a registration-down stop carries no reason.
+ *
+ * `deviceId` is the device the superseding `409` was reported for. Cleanup compares it
+ * with the currently registered device to detect a replacement that a recovery already
+ * holding the shared mutex registered while this cleanup was queued behind it.
  */
 export type HardStop =
-  | {reason: HARD_STOP_REASON.REGISTRATION_DOWN; error?: undefined}
-  | {reason: HARD_STOP_REASON.SESSION_SUPERSEDED; error: LineError};
+  | {reason: HARD_STOP_REASON.REGISTRATION_DOWN; error?: undefined; deviceId?: undefined}
+  | {reason: HARD_STOP_REASON.SESSION_SUPERSEDED; error: LineError; deviceId?: string};
 
 export type restoreRegistrationCallBack = (
   restoreData: IDeviceInfo,

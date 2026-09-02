@@ -421,6 +421,17 @@ export class Registration implements IRegistration {
       method: METHODS.HANDLE_409_KEEPALIVE_FAILURE,
     };
 
+    /*
+     * Latch the terminal state before anything that can yield. Cleanup runs under the
+     * shared mutex, so it can be queued behind a recovery that is already registering;
+     * latching here means every registration path that has not started yet sees the
+     * superseded state rather than racing this cleanup.
+     */
+    this.sessionSuperseded = true;
+
+    /* Device this 409 was reported for, so cleanup can tell a replacement registration apart. */
+    const supersededDeviceId = this.deviceInfo.device?.deviceId;
+
     log.warn(
       `Stopping keepalive without re-registration, session superseded by another device for this user - keepaliveRetryCount: ${keepaliveRetryCount}`,
       loggerContext
@@ -443,6 +454,7 @@ export class Registration implements IRegistration {
     await this.registrationCleanup(METHODS.HANDLE_409_KEEPALIVE_FAILURE, {
       reason: HARD_STOP_REASON.SESSION_SUPERSEDED,
       error: lineError,
+      deviceId: supersededDeviceId,
     });
 
     await uploadLogs();
@@ -914,6 +926,19 @@ export class Registration implements IRegistration {
     }
 
     await this.mutex.runExclusive(async () => {
+      /* Re-check inside the mutex: the session can have been superseded while this call
+       * was queued behind the cleanup that latched it. */
+      if (this.sessionSuperseded) {
+        log.warn('Session superseded while waiting to restore registration, skipping', {
+          method: METHODS.HANDLE_CONNECTION_RESTORATION,
+          file: REGISTRATION_FILE,
+        });
+
+        retry = false;
+
+        return;
+      }
+
       /* Check retry once again to see if another timer thread has not finished the job already. */
       if (retry) {
         log.log('Network is up again, re-registering with Webex Calling if needed', {
@@ -1042,6 +1067,24 @@ export class Registration implements IRegistration {
       file: REGISTRATION_FILE,
       method: REGISTER_UTIL,
     };
+
+    /*
+     * Single choke point for every registration attempt - initial registration, restore,
+     * restart, the scheduled failover retries and failback all reach Mobius through here.
+     * Guarding it once means a superseded session cannot be re-registered by any
+     * automatic path, including one whose timer was already scheduled when the 409
+     * arrived. `true` is returned so callers treat it as a final error and schedule no
+     * further retries. `triggerRegistration()` clears the latch before calling in, so an
+     * explicit registration by the consumer is unaffected.
+     */
+    if (this.sessionSuperseded) {
+      log.warn(`Session superseded, skipping registration attempt - caller: ${caller}`, {
+        file: REGISTRATION_FILE,
+        method: caller,
+      });
+
+      return true;
+    }
 
     let abort = false;
     this.retryAfter = undefined;
@@ -1552,6 +1595,26 @@ export class Registration implements IRegistration {
     log.info(`[${caller}] : Running ${hardStop.reason} cleanup`, loggerContext);
 
     await this.mutex.runExclusive(async () => {
+      if (
+        hardStop.reason === HARD_STOP_REASON.SESSION_SUPERSEDED &&
+        hardStop.deviceId !== undefined &&
+        this.isDeviceRegistered() &&
+        this.deviceInfo.device?.deviceId !== hardStop.deviceId
+      ) {
+        /*
+         * A recovery that already held the mutex registered a replacement device while
+         * this cleanup was queued behind it. The hard stop still applies, so that device
+         * is deleted at Mobius rather than dropped locally, which would leave it
+         * registered with no keepalive and keep the other session superseded.
+         */
+        log.warn(
+          `Deregistering the replacement device ${this.deviceInfo.device?.deviceId} registered while the ${hardStop.reason} cleanup was queued`,
+          loggerContext
+        );
+
+        await this.deregister();
+      }
+
       this.clearFailbackTimer();
       this.clearKeepaliveTimer();
 
@@ -1560,12 +1623,6 @@ export class Registration implements IRegistration {
       this.failoverImmediately = false;
       this.retryAfter = undefined;
       this.registerRetry = false;
-
-      if (hardStop.reason === HARD_STOP_REASON.SESSION_SUPERSEDED) {
-        /* Latch the terminal state so that a later network flap, calls-cleared event or
-         * any other recovery path does not silently re-register this session. */
-        this.sessionSuperseded = true;
-      }
 
       this.clearFailoverState();
       this.setStatus(RegistrationStatus.INACTIVE);

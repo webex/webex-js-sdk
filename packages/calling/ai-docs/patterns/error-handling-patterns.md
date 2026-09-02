@@ -347,7 +347,7 @@ Handles registration and keepalive error flows by mapping HTTP status codes to `
 
 Signature: `handleRegistrationErrors(err, emitterCb, loggerContext, handlers?, serverCount?): Promise<RegistrationErrorResult>`
 
-The specialized handlers are opt-in per flow, which is how status codes that only one flow can act on stay scoped to that flow (`sessionSupersededCb` is passed by the keepalive path only). The result reports `finalError` (do not retry), `shouldDisconnect` (tear down the failed server's WSS), and `handledByCallback` (a handler already ran cleanup and notified the consumer, so the caller must skip its own failure handling).
+The specialized handlers are opt-in per flow, which is how status codes that only one flow can act on stay scoped to that flow (`sessionSupersededCb` is passed by the keepalive path only). The result reports `finalError` (do not retry) and `shouldDisconnect` (tear down the failed server's WSS). When a specialized handler owns the outcome the caller recognises it from `finalError` plus the status code — the keepalive path returns early on a final `409` because `handle409KeepaliveFailure` has already run cleanup and notified the consumer.
 
 ```typescript
 // Real usage from register.ts — initial registration error path
@@ -371,7 +371,7 @@ const {finalError, shouldDisconnect} = await handleRegistrationErrors(
 
 // Real usage from register.ts — keepalive failure path (web worker message handler)
 if (event.data.type === WorkerMessageType.KEEPALIVE_FAILURE) {
-  const {finalError: abort, handledByCallback} = await handleRegistrationErrors(
+  const {finalError: abort} = await handleRegistrationErrors(
     error,
     (clientError, finalError) => { ... },
     loggerContext,
@@ -382,7 +382,8 @@ if (event.data.type === WorkerMessageType.KEEPALIVE_FAILURE) {
     }
   );
 
-  if (handledByCallback) {
+  if (abort && Number(error.statusCode) === ERROR_CODE.CONFLICT) {
+    /* handle409KeepaliveFailure already ran cleanup and notified the consumer. */
     return;
   }
 }
