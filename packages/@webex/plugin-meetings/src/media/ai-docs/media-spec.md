@@ -22,7 +22,7 @@ validation_status: pass-with-warnings
 | Coverage score | 93% assessed 2026-08-22; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains; pending independent validation of the participant-role repair |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
 | generated_by / approved_by / updated_at | codex / repository user / 2026-08-22T15:21:29Z |
-| Validation status | not-run |
+| Validation status | pass-with-warnings |
 
 ## Evidence Rules
 
