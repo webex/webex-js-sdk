@@ -38,6 +38,7 @@ import MetricsManager from '../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../src/metrics/constants';
 import Mercury from '@webex/internal-plugin-mercury';
 import WebexRequest from '../../../src/services/core/WebexRequest';
+import {CONNECTIVITY_CHECK_INTERVAL} from '../../../src/services/core/constants';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -70,7 +71,6 @@ describe('webex.cc', () => {
   beforeEach(() => {
     webex = MockWebex({
       children: {
-        cc: ContactCenter,
         mercury: Mercury,
       },
       logger: {
@@ -125,11 +125,13 @@ describe('webex.cc', () => {
         logout: jest.fn(),
         reload: jest.fn(),
         stateChange: jest.fn(),
+        stateChangeV2: jest.fn(),
         buddyAgents: jest.fn(),
       },
       config: {
         getAgentConfig: jest.fn(),
         getOutdialAniEntries: jest.fn(),
+        getWellbeingBreakIdleCode: jest.fn(),
       },
       webSocketManager: mockWebSocketManager,
       rtdWebSocketManager: {
@@ -180,6 +182,7 @@ describe('webex.cc', () => {
       off: jest.fn(),
       emit: jest.fn(),
       unregisterIncomingCallEvent: jest.fn(),
+      handleRealtimeWebsocketEvent: jest.fn(),
     };
 
     mockMetricsManager = {
@@ -202,6 +205,12 @@ describe('webex.cc', () => {
   });
 
   afterEach(() => {
+    webex?.cc?.['clearWxAppFalsePublishRetryTimer']?.();
+    webex?.cc?.['webexCrossClientService']?.teardown?.();
+    if (webex?.cc?.['rtdReconnectTimer']) {
+      clearTimeout(webex.cc['rtdReconnectTimer']);
+      webex.cc['rtdReconnectTimer'] = undefined;
+    }
     jest.clearAllMocks();
   });
 
@@ -321,6 +330,7 @@ describe('webex.cc', () => {
       isTimeoutDesktopInactivityEnabled: false,
       webRtcEnabled: true,
       lostConnectionRecoveryTimeout: 0,
+      isWellnessBreakEnabled: false,
     };
 
     it('should register successfully and return agent profile', async () => {
@@ -1132,9 +1142,7 @@ describe('webex.cc', () => {
         .mockRejectedValue(new Error('mercury connect failed'));
       const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
       const unsubscribeSpy = jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'unsubscribe');
-      jest
-        .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
-        .mockResolvedValue(undefined);
+      jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
 
       jest.spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue({
         data: {
@@ -1163,13 +1171,12 @@ describe('webex.cc', () => {
       webex.internal.device = {
         userId: 'user-123',
         registered: false,
-        register: jest.fn().mockImplementation(async function (this: {
-          url?: string;
-          registered?: boolean;
-        }) {
-          this.url = 'https://wdm.example.com/devices/dev-1';
-          this.registered = true;
-        }),
+        register: jest
+          .fn()
+          .mockImplementation(async function (this: {url?: string; registered?: boolean}) {
+            this.url = 'https://wdm.example.com/devices/dev-1';
+            this.registered = true;
+          }),
       };
       webex.internal.mercury = {
         connected: false,
@@ -1184,14 +1191,13 @@ describe('webex.cc', () => {
       jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe').mockImplementation(() => {});
 
       const callOrder: string[] = [];
-      jest.spyOn(webex.internal.device, 'register').mockImplementation(async function (this: {
-        url?: string;
-        registered?: boolean;
-      }) {
-        callOrder.push('device.register');
-        this.url = 'https://wdm.example.com/devices/dev-1';
-        this.registered = true;
-      });
+      jest
+        .spyOn(webex.internal.device, 'register')
+        .mockImplementation(async function (this: {url?: string; registered?: boolean}) {
+          callOrder.push('device.register');
+          this.url = 'https://wdm.example.com/devices/dev-1';
+          this.registered = true;
+        });
       jest
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockImplementation(async (enable: boolean) => {
@@ -1224,13 +1230,12 @@ describe('webex.cc', () => {
       webex.internal.device = {
         userId: 'user-123',
         registered: false,
-        register: jest.fn().mockImplementation(async function (this: {
-          url?: string;
-          registered?: boolean;
-        }) {
-          this.url = 'https://wdm.example.com/devices/dev-1';
-          this.registered = true;
-        }),
+        register: jest
+          .fn()
+          .mockImplementation(async function (this: {url?: string; registered?: boolean}) {
+            this.url = 'https://wdm.example.com/devices/dev-1';
+            this.registered = true;
+          }),
       };
       webex.internal.mercury = {
         connected: false,
@@ -1242,19 +1247,16 @@ describe('webex.cc', () => {
         loginVoiceOptions: ['EXTENSION'],
       };
       webex.cc.webCallingService.loginOption = LoginOption.EXTENSION;
-      jest
-        .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
-        .mockResolvedValue(undefined);
+      jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
 
       const callOrder: string[] = [];
-      jest.spyOn(webex.internal.device, 'register').mockImplementation(async function (this: {
-        url?: string;
-        registered?: boolean;
-      }) {
-        callOrder.push('device.register');
-        this.url = 'https://wdm.example.com/devices/dev-1';
-        this.registered = true;
-      });
+      jest
+        .spyOn(webex.internal.device, 'register')
+        .mockImplementation(async function (this: {url?: string; registered?: boolean}) {
+          callOrder.push('device.register');
+          this.url = 'https://wdm.example.com/devices/dev-1';
+          this.registered = true;
+        });
       jest
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockImplementation(async (enable: boolean) => {
@@ -1298,14 +1300,9 @@ describe('webex.cc', () => {
           .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
           .mockRejectedValueOnce(new Error('usersub publish failed'))
           .mockResolvedValue(undefined);
-        const scheduleRetrySpy = jest.spyOn(
-          webex.cc as any,
-          'scheduleForcedFalsePublishRetry'
-        );
+        const scheduleRetrySpy = jest.spyOn(webex.cc as any, 'scheduleForcedFalsePublishRetry');
         const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
-        jest
-          .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
-          .mockResolvedValue(undefined);
+        jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
 
         jest.spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue({
           data: {
@@ -1563,10 +1560,7 @@ describe('webex.cc', () => {
       jest
         .spyOn(webex.cc as never, 'publishAnswerOnWebexCrossClientState' as never)
         .mockRejectedValue(new Error('usersub publish failed'));
-      const scheduleRetrySpy = jest.spyOn(
-        webex.cc as any,
-        'scheduleCompensatingFalsePublishRetry'
-      );
+      const scheduleRetrySpy = jest.spyOn(webex.cc as any, 'scheduleCompensatingFalsePublishRetry');
       const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
       const unsubscribeSpy = jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'unsubscribe');
 
@@ -1605,9 +1599,7 @@ describe('webex.cc', () => {
           .mockResolvedValue(undefined);
         const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
         const unsubscribeSpy = jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'unsubscribe');
-        jest
-          .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
-          .mockResolvedValue(undefined);
+        jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
 
         const result = await webex.cc.stationLogout({logoutReason: 'Logout reason'});
 
@@ -1671,9 +1663,7 @@ describe('webex.cc', () => {
           .mockRejectedValueOnce(new Error('usersub publish failed'))
           .mockResolvedValue(undefined);
         const teardownSpy = jest.spyOn(webex.cc['webexCrossClientService'], 'teardown');
-        jest
-          .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
-          .mockResolvedValue(undefined);
+        jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
 
         await webex.cc.stationLogout({logoutReason: 'Logout reason'});
         await webex.cc.stationLogin({
@@ -1845,6 +1835,389 @@ describe('webex.cc', () => {
         `setAgentState failed with reason: ${error.details.data.reason}`,
         {module: CC_FILE, method: 'setAgentState', trackingId: error.details.trackingId}
       );
+    });
+  });
+
+  describe('Agent Wellness Break SDK contracts', () => {
+    const wellbeingCode = {
+      id: 'wellbeing-code',
+      name: 'WellbeingBreak',
+      isSystem: true,
+      isDefault: false,
+    };
+
+    beforeEach(() => {
+      webex.cc.agentConfig = {
+        agentId: 'agent-1',
+        isWellnessBreakEnabled: true,
+      } as Profile;
+      webex.cc['updateWellnessSession']('session-1');
+    });
+
+    it('fetches the system idle code once per registration', async () => {
+      const lookup = jest
+        .spyOn(webex.cc.services.config, 'getWellbeingBreakIdleCode')
+        .mockResolvedValue(wellbeingCode);
+
+      await expect(webex.cc.getWellbeingBreakIdleCode()).resolves.toEqual(wellbeingCode);
+      await expect(webex.cc.getWellbeingBreakIdleCode()).resolves.toEqual(wellbeingCode);
+
+      expect(lookup).toHaveBeenCalledTimes(1);
+      expect(lookup).toHaveBeenCalledWith('mockOrgId');
+    });
+
+    it('rejects the system idle-code lookup when wellness is disabled', async () => {
+      webex.cc.agentConfig.isWellnessBreakEnabled = false;
+
+      await expect(webex.cc.getWellbeingBreakIdleCode()).rejects.toThrow(
+        'WELLNESS_BREAK_NOT_ENABLED'
+      );
+      expect(webex.cc.services.config.getWellbeingBreakIdleCode).not.toHaveBeenCalled();
+    });
+
+    it('invalidates the wellness session only for a current-session multi-login close', () => {
+      webex.cc['handleWebsocketMessage'](
+        JSON.stringify({
+          type: CC_EVENTS.AGENT_MULTI_LOGIN,
+          data: {
+            type: 'AgentMultiLoginCloseSession',
+            agentSessionId: 'another-session',
+          },
+        })
+      );
+      expect(webex.cc['currentAgentSessionId']).toBe('session-1');
+
+      webex.cc['handleWebsocketMessage'](
+        JSON.stringify({
+          type: CC_EVENTS.AGENT_MULTI_LOGIN,
+          data: {
+            type: 'AgentMultiLoginCloseSession',
+            agentSessionId: 'session-1',
+          },
+        })
+      );
+      expect(webex.cc['currentAgentSessionId']).toBeUndefined();
+    });
+
+    it('normalizes an Idle Agent State Control request and response', async () => {
+      jest.spyOn(webex.cc.services.agent, 'stateChangeV2').mockResolvedValue({
+        type: 'RoutingMessage',
+        orgId: 'mockOrgId',
+        trackingId: 'envelope-tracking',
+        data: {
+          agentId: 'agent-1',
+          orgId: 'mockOrgId',
+          agentSessionId: 'session-1',
+          channelType: 'telephony',
+          agentChannelStateDetail: {
+            agentState: 'Idle',
+            pendingIdle: false,
+            auxCodeId: 'wellbeing-code',
+            stateChangeTimestamp: 1787640000000,
+            stateChangeReason: 'wellness-break',
+          },
+          connectedChannels: ['telephony'],
+          trackingId: 'event-tracking',
+          type: 'AgentChannelStateChanged',
+          eventType: 'AgentDesktopMessage',
+        },
+      });
+
+      await expect(
+        webex.cc.setAgentChannelState({
+          channelTypes: [' telephony ', 'chat'],
+          state: 'Idle',
+          auxCodeId: ' wellbeing-code ',
+          reason: ' wellness-break ',
+        })
+      ).resolves.toEqual({
+        agentId: 'agent-1',
+        orgId: 'mockOrgId',
+        agentSessionId: 'session-1',
+        channelType: 'telephony',
+        agentChannelStateDetail: expect.objectContaining({agentState: 'Idle'}),
+        connectedChannels: ['telephony'],
+        trackingId: 'event-tracking',
+      });
+      expect(webex.cc.services.agent.stateChangeV2).toHaveBeenCalledWith({
+        data: {
+          channelType: ['telephony', 'chat'],
+          state: 'Idle',
+          auxCodeId: 'wellbeing-code',
+          reason: 'wellness-break',
+          agentId: 'agent-1',
+        },
+      });
+    });
+
+    it('omits auxCodeId for Available and validates channel state input locally', async () => {
+      jest.spyOn(webex.cc.services.agent, 'stateChangeV2').mockResolvedValue({
+        type: 'AgentChannelStateChange',
+        orgId: 'mockOrgId',
+        trackingId: 'event-tracking',
+        data: {
+          agentId: 'agent-1',
+          orgId: 'mockOrgId',
+          agentSessionId: 'session-1',
+          channelType: 'chat',
+          agentChannelStateDetail: {
+            agentState: 'Available',
+            pendingIdle: false,
+            stateChangeTimestamp: 1787640000000,
+            stateChangeReason: 'restore',
+          },
+          connectedChannels: ['chat'],
+          trackingId: 'event-tracking',
+          type: 'AgentChannelStateChanged',
+          eventType: 'AgentDesktopMessage',
+        },
+      });
+
+      await webex.cc.setAgentChannelState({
+        channelTypes: ['chat'],
+        state: 'Available',
+        auxCodeId: 'must-not-be-sent',
+      });
+      expect(webex.cc.services.agent.stateChangeV2).toHaveBeenCalledWith({
+        data: {channelType: ['chat'], state: 'Available', agentId: 'agent-1'},
+      });
+
+      await expect(
+        webex.cc.setAgentChannelState({channelTypes: [], state: 'Available'})
+      ).rejects.toThrow('AGENT_CHANNEL_TYPES_REQUIRED');
+      await expect(
+        webex.cc.setAgentChannelState({channelTypes: ['chat'], state: 'Idle'})
+      ).rejects.toThrow('AGENT_CHANNEL_IDLE_CODE_REQUIRED');
+    });
+
+    it('emits only validated active-session wellness events and keeps task RTD routing', () => {
+      const emitSpy = jest.spyOn(webex.cc, 'emit');
+      webex.cc['activeRtdGeneration'] = 2;
+      const validPayload = {
+        type: 'Wellness_Break_Handler',
+        orgId: 'mockOrgId',
+        trackingId: 'notification-tracking',
+        data: {
+          agentId: 'agent-1',
+          orgId: 'mockOrgId',
+          notifType: 'Wellness_Break_Handler',
+          notifDetails: {
+            actionEvent: 'PROVIDE_WELLNESS_BREAK',
+            actionText: '<b>Take a break</b>',
+          },
+          data: {
+            orgId: 'mockOrgId',
+            agentSessionId: 'session-1',
+            InteractionId: 'interaction-1',
+          },
+        },
+      };
+
+      webex.cc['handleRTDWebsocketMessage'](JSON.stringify(validPayload), 2);
+      expect(emitSpy).toHaveBeenCalledWith(CC_EVENTS.WELLNESS_BREAK, {
+        agentId: 'agent-1',
+        orgId: 'mockOrgId',
+        agentSessionId: 'session-1',
+        actionEvent: 'PROVIDE_WELLNESS_BREAK',
+        actionText: '<b>Take a break</b>',
+        interactionId: 'interaction-1',
+        trackingId: 'notification-tracking',
+      });
+
+      webex.cc['handleRTDWebsocketMessage'](
+        JSON.stringify({
+          ...validPayload,
+          data: {...validPayload.data, data: {...validPayload.data.data, agentSessionId: 'stale'}},
+        }),
+        2
+      );
+      webex.cc['handleRTDWebsocketMessage'](JSON.stringify(validPayload), 1);
+      expect(emitSpy).toHaveBeenCalledTimes(1);
+
+      const taskPayload = JSON.stringify({type: 'RealTimeTranscript'});
+      webex.cc['handleRTDWebsocketMessage'](taskPayload, 2);
+      expect(mockTaskManager.handleRealtimeWebsocketEvent).toHaveBeenCalledWith(taskPayload);
+    });
+
+    it('emits validated wellness events received on the primary data-notification websocket', () => {
+      const emitSpy = jest.spyOn(webex.cc, 'emit');
+      const payload = {
+        type: 'Wellness_Break_Handler',
+        orgId: 'mockOrgId',
+        trackingId: 'data-notification-tracking',
+        data: {
+          agentId: 'agent-1',
+          orgId: 'mockOrgId',
+          notifType: 'Wellness_Break_Handler',
+          notifDetails: {
+            actionEvent: 'SUGGEST_WELLNESS_BREAK',
+            actionText: 'How about a break?',
+          },
+          data: {
+            orgId: 'mockOrgId',
+            agentSessionId: 'session-1',
+            interactionId: 'interaction-1',
+          },
+        },
+      };
+
+      webex.cc['handleWebsocketMessage'](JSON.stringify(payload));
+
+      expect(emitSpy).toHaveBeenCalledWith(CC_EVENTS.WELLNESS_BREAK, {
+        agentId: 'agent-1',
+        orgId: 'mockOrgId',
+        agentSessionId: 'session-1',
+        actionEvent: 'SUGGEST_WELLNESS_BREAK',
+        actionText: 'How about a break?',
+        interactionId: 'interaction-1',
+        trackingId: 'data-notification-tracking',
+      });
+    });
+
+    it.each([
+      ['SUGGEST_WELLNESS_BREAK', 'interactionId'],
+      ['WELLNESS_BREAK_NOT_ALLOWED', 'InteractionId'],
+    ])('normalizes the %s action and either interaction-id spelling', (actionEvent, key) => {
+      const emitSpy = jest.spyOn(webex.cc, 'emit');
+      webex.cc['activeRtdGeneration'] = 3;
+      webex.cc['handleRTDWebsocketMessage'](
+        JSON.stringify({
+          type: 'Wellness_Break_Handler',
+          orgId: 'mockOrgId',
+          data: {
+            agentId: 'agent-1',
+            orgId: 'mockOrgId',
+            notifType: 'Wellness_Break_Handler',
+            notifDetails: {actionEvent},
+            data: {
+              orgId: 'mockOrgId',
+              agentSessionId: 'session-1',
+              [key]: 'interaction-2',
+            },
+          },
+        }),
+        3
+      );
+
+      expect(emitSpy).toHaveBeenCalledWith(
+        CC_EVENTS.WELLNESS_BREAK,
+        expect.objectContaining({actionEvent, interactionId: 'interaction-2'})
+      );
+    });
+
+    it('does not promote uncontracted notification text fields', () => {
+      const emitSpy = jest.spyOn(webex.cc, 'emit');
+      webex.cc['activeRtdGeneration'] = 4;
+      webex.cc['handleRTDWebsocketMessage'](
+        JSON.stringify({
+          type: 'Wellness_Break_Handler',
+          orgId: 'mockOrgId',
+          trackingId: 'notification-tracking',
+          data: {
+            agentId: 'agent-1',
+            orgId: 'mockOrgId',
+            notifType: 'Wellness_Break_Handler',
+            notifDetails: {
+              actionEvent: 'SUGGEST_WELLNESS_BREAK',
+              actionText2: 'Uncontracted text',
+            },
+            data: {
+              orgId: 'mockOrgId',
+              agentSessionId: 'session-1',
+              InteractionId: 'interaction-qa',
+            },
+          },
+        }),
+        4
+      );
+
+      expect(emitSpy).toHaveBeenCalledWith(CC_EVENTS.WELLNESS_BREAK, {
+        agentId: 'agent-1',
+        orgId: 'mockOrgId',
+        agentSessionId: 'session-1',
+        actionEvent: 'SUGGEST_WELLNESS_BREAK',
+        interactionId: 'interaction-qa',
+        trackingId: 'notification-tracking',
+      });
+    });
+
+    it('ignores wellness events when the effective flag is disabled or identity is missing', () => {
+      const emitSpy = jest.spyOn(webex.cc, 'emit');
+      webex.cc['activeRtdGeneration'] = 1;
+      const payload = {
+        type: 'Wellness_Break_Handler',
+        orgId: 'mockOrgId',
+        data: {
+          agentId: 'agent-1',
+          orgId: 'mockOrgId',
+          notifType: 'Wellness_Break_Handler',
+          notifDetails: {actionEvent: 'SUGGEST_WELLNESS_BREAK'},
+          data: {orgId: 'mockOrgId', agentSessionId: 'session-1'},
+        },
+      };
+
+      webex.cc.agentConfig.isWellnessBreakEnabled = false;
+      webex.cc['handleRTDWebsocketMessage'](JSON.stringify(payload), 1);
+      webex.cc.agentConfig.isWellnessBreakEnabled = true;
+      const {orgId: omittedOrgId, ...payloadWithoutEnvelopeOrg} = payload;
+      expect(omittedOrgId).toBe('mockOrgId');
+      webex.cc['handleRTDWebsocketMessage'](JSON.stringify(payloadWithoutEnvelopeOrg), 1);
+
+      expect(emitSpy).not.toHaveBeenCalledWith(CC_EVENTS.WELLNESS_BREAK, expect.anything());
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_RTD_EVENT_INVALID,
+        {reason: 'wellness_disabled'},
+        ['operational']
+      );
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_RTD_EVENT_INVALID,
+        {reason: 'missing_wellness_identity'},
+        ['operational']
+      );
+    });
+
+    it('reconnects RTD with a new generation and rejects the superseded handler', async () => {
+      jest.useFakeTimers();
+      const rtdManager = webex.cc.services.rtdWebSocketManager;
+      const emitSpy = jest.spyOn(webex.cc, 'emit');
+      try {
+        webex.cc['shouldReconnectRtd'] = true;
+        await webex.cc['connectRTDWebsocket']();
+        const firstMessageHandler = rtdManager.on.mock.calls.find(
+          ([eventName]) => eventName === 'message'
+        )[1];
+
+        webex.cc['handleRTDSocketClose']();
+        jest.advanceTimersByTime(CONNECTIVITY_CHECK_INTERVAL);
+        await webex.cc['rtdConnectPromise'];
+
+        expect(rtdManager.initWebSocket).toHaveBeenCalledTimes(2);
+        expect(webex.cc['activeRtdGeneration']).toBe(2);
+        expect(rtdManager.off).toHaveBeenCalledWith('message', firstMessageHandler);
+
+        emitSpy.mockClear();
+        firstMessageHandler(
+          JSON.stringify({
+            type: 'Wellness_Break_Handler',
+            orgId: 'mockOrgId',
+            data: {
+              agentId: 'agent-1',
+              orgId: 'mockOrgId',
+              notifType: 'Wellness_Break_Handler',
+              notifDetails: {actionEvent: 'PROVIDE_WELLNESS_BREAK'},
+              data: {orgId: 'mockOrgId', agentSessionId: 'session-1'},
+            },
+          })
+        );
+        expect(emitSpy).not.toHaveBeenCalledWith(CC_EVENTS.WELLNESS_BREAK, expect.anything());
+      } finally {
+        webex.cc['shouldReconnectRtd'] = false;
+        if (webex.cc['rtdReconnectTimer']) {
+          clearTimeout(webex.cc['rtdReconnectTimer']);
+          webex.cc['rtdReconnectTimer'] = undefined;
+        }
+        jest.useRealTimers();
+      }
     });
   });
 
@@ -2514,7 +2887,7 @@ describe('webex.cc', () => {
       );
       expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
       expect(webex.cc.services.rtdWebSocketManager.off).toHaveBeenCalledWith(
-        'message',
+        'socketClose',
         expect.any(Function)
       );
       expect(webex.cc.services.connectionService.off).toHaveBeenCalledWith(
@@ -2525,7 +2898,7 @@ describe('webex.cc', () => {
       expect(mockWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
       expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenCalledWith(
         false,
-        'Unregistering the RTD websocket'
+        'Unregistering the SDK'
       );
       expect(webex.cc.agentConfig).toBeNull();
 
@@ -2715,9 +3088,7 @@ describe('webex.cc', () => {
             await enableGate;
           }
         });
-      jest
-        .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
-        .mockResolvedValue(undefined);
+      jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
 
       expect(webex.cc['webexCrossClientService'].answerCallsState).toBe(false);
 
@@ -2906,6 +3277,78 @@ describe('webex.cc', () => {
       });
     });
 
+    it('should emit a normalized Agent State Control relogin snapshot', () => {
+      const channelsMap = {chat: ['chat-1'], telephony: ['voice-1']};
+      const agentChannelStateDetailMap = {
+        chat: {
+          agentState: 'Idle',
+          pendingIdle: false,
+          auxCodeId: 'wellness-code',
+          stateChangeTimestamp: 123,
+          stateChangeReason: 'wellness-break',
+        },
+      };
+      messageCallback(
+        JSON.stringify({
+          trackingId: 'notification-track',
+          type: 'AgentRequestEvent',
+          data: {
+            type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            agentId: 'agent-1',
+            orgId: 'org-id',
+            agentSessionId: 'session-1',
+            channelsMap,
+            agentChannelStateDetailMap,
+          },
+        })
+      );
+
+      expect(emitSpy).toHaveBeenCalledWith(CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS, {
+        agentId: 'agent-1',
+        orgId: 'org-id',
+        agentSessionId: 'session-1',
+        trackingId: 'notification-track',
+        channelsMap,
+        agentChannelStateDetailMap,
+      });
+      expect(emitSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should emit a normalized Agent State Control channel-state event', () => {
+      const agentChannelStateDetail = {
+        agentState: 'Available',
+        pendingIdle: false,
+        stateChangeTimestamp: 456,
+        stateChangeReason: 'wellness-break-complete',
+      };
+      messageCallback(
+        JSON.stringify({
+          trackingId: 'notification-track',
+          type: 'AgentChannelStateChange',
+          data: {
+            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            agentId: 'agent-1',
+            orgId: 'org-id',
+            agentSessionId: 'session-1',
+            channelType: 'chat',
+            agentChannelStateDetail,
+            connectedChannels: ['chat'],
+          },
+        })
+      );
+
+      expect(emitSpy).toHaveBeenCalledWith(CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED, {
+        agentId: 'agent-1',
+        orgId: 'org-id',
+        agentSessionId: 'session-1',
+        channelType: 'chat',
+        agentChannelStateDetail,
+        connectedChannels: ['chat'],
+        trackingId: 'notification-track',
+      });
+      expect(emitSpy).toHaveBeenCalledTimes(1);
+    });
+
     [
       {
         ccEvent: CC_EVENTS.AGENT_STATION_LOGIN_FAILED,
@@ -3065,9 +3508,7 @@ describe('webex.cc', () => {
       const publishSpy = jest
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockResolvedValue(undefined);
-      jest
-        .spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe')
-        .mockImplementation(() => {});
+      jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe').mockImplementation(() => {});
       jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
 
       jest.spyOn(webex.cc.services.agent, 'logout').mockResolvedValue({
@@ -3829,7 +4270,9 @@ describe('webex.cc', () => {
         .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
         .mockRejectedValue(new Error('usersub failed'));
 
-      await expect((webex.cc as any).setManageWebexCallingInWxcc(true)).rejects.toThrow('usersub failed');
+      await expect((webex.cc as any).setManageWebexCallingInWxcc(true)).rejects.toThrow(
+        'usersub failed'
+      );
 
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(false);
       expect(mockTaskManager.applyEnableWxBetterTogether).toHaveBeenCalledWith(true);
@@ -3879,12 +4322,8 @@ describe('webex.cc', () => {
           .mockRejectedValueOnce(new Error('compensating false failed'))
           .mockResolvedValue(undefined);
         jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe').mockImplementation(() => {});
-        jest
-          .spyOn(webex.cc as any, 'ensureWxAppMercuryConnected')
-          .mockResolvedValue(undefined);
-        jest
-          .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
-          .mockResolvedValue(undefined);
+        jest.spyOn(webex.cc as any, 'ensureWxAppMercuryConnected').mockResolvedValue(undefined);
+        jest.spyOn(webex.cc as any, 'releaseWxAppMercuryResources').mockResolvedValue(undefined);
         jest
           .spyOn(mockTaskManager, 'syncWxAppMuteFromCallDetailsForAllTasks')
           .mockImplementation(() => {

@@ -186,6 +186,10 @@ function parseAgentConfigs(profileData: {
   const defaultWrapUpData = getDefaultWrapUpCode(wrapupCodes);
   const aiFeature: AIFeatureFlags | undefined =
     aiFeatureFlags?.data?.length > 0 ? aiFeatureFlags.data[0] : undefined;
+  const isWellnessConfigured =
+    aiFeature?.agentWellbeing?.enable === true &&
+    aiFeature.agentWellbeing.wellnessBreakReminders === 'ENABLED';
+  const hasAIAssistantLicense = (orgSettingsData.aiAssistantQuantity ?? 0) > 0;
 
   const finalData = {
     teams: teamData,
@@ -264,6 +268,7 @@ function parseAgentConfigs(profileData: {
     lostConnectionRecoveryTimeout:
       tenantData.lostConnectionRecoveryTimeout || LOST_CONNECTION_RECOVERY_TIMEOUT,
     aiFeature,
+    isWellnessBreakEnabled: isWellnessConfigured && hasAIAssistantLicense,
   };
 
   return finalData;

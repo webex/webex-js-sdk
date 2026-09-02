@@ -232,6 +232,45 @@ describe('AqmReqs', () => {
       } catch (e) {}
     });
 
+    it('clears the scheduled timeout when a notification settles the request', async () => {
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
+      const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+      const conf = {
+        host: 'fake-host',
+        url: '/url',
+        method: 'POST',
+        data: {},
+        timeout: 30_000,
+        notifSuccess: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {type: 'AgentConsultCreated', interactionId: 'timeout-cleanup'},
+          },
+        },
+        notifFail: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {type: 'AgentConsultFailed'},
+          },
+          errId: 'Service.aqm.contact.consult',
+        },
+      };
+
+      try {
+        const promise = aqm['createPromise'](conf);
+        const eventData = {
+          type: 'RoutingMessage',
+          data: {type: 'AgentConsultCreated', interactionId: 'timeout-cleanup'},
+        };
+        webSocketManagerInstance.emit('message', JSON.stringify(eventData));
+
+        await expect(promise).resolves.toEqual(eventData);
+        expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+      } finally {
+        clearTimeoutSpy.mockRestore();
+      }
+    });
+
     it('AqmReqs notif success with async error', async () => {
       webexRequestInstance.request.mockRejectedValueOnce(new Error('Async error'));
 

@@ -10,6 +10,9 @@
 | `task:*` | publish | Task/TaskManager → application | `src/services/task/types.ts` |
 | `CC_EVENTS` | consume | WCC WebSocket → Core/ContactCenter/Task/AqmReqs | `src/services/config/types.ts` |
 | realtime transcript/suggestion | consume/publish | RTD WebSocket → owning Task | `src/services/task/TaskManager.ts` |
+| `Wellness_Break_Handler` | consume/publish | Primary data-notification or RTD WebSocket → ContactCenter → `CC_AGENT_EVENTS.WELLNESS_BREAK` | `src/cc.ts`, `src/types.ts` |
+| `AIAssistantRTDStatusChanged` | publish | ContactCenter → application | `src/types.ts`, `src/services/config/types.ts` |
+| ASC agent-channel events | consume/publish | WCC WebSocket → ContactCenter/application/AqmReqs | `src/services/agent/types.ts`, `src/services/config/types.ts` |
 
 ## Data Stores
 
@@ -42,6 +45,9 @@
 | `allowAutomatedRelogin` | silent relogin after recovery | config-defined | ContactCenter | replacement recovery contract exists |
 | `webRtcEnabled` / login option | browser calling path | remote profile | Config/WCC | remote contract removed |
 | task UI/config flags | task controls and operations | profile/config-defined | Task/Config | owning behavior removed |
+| `Profile.isWellnessBreakEnabled` | wellness RTD connection, event/action APIs, system-code access | false unless backend AI enablement, reminders, and positive license quantity are all present | Config/ContactCenter | wellness contract removed |
+
+The backend-delivered `agentWellbeing.enable` value is the supported server rollout decision. The SDK combines it with `wellnessBreakReminders === 'ENABLED'` and `aiAssistantQuantity > 0`; it does not evaluate the Desktop Split flag or define a new rollout response field.
 
 ## Maintenance
 

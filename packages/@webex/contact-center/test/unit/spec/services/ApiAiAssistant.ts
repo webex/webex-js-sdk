@@ -72,6 +72,27 @@ describe('ApiAIAssistant', () => {
     expect(result).toEqual({ok: true});
   });
 
+  it('should map the discovered QA WCC gateway to the QA AI Assistant service', async () => {
+    (mockWebex.internal.services.get as jest.Mock).mockReturnValue(
+      'https://api.qaus1.ciscoccservice.com'
+    );
+    (mockWebex.request as jest.Mock).mockResolvedValue({body: {ok: true}});
+
+    await apiAIAssistant.sendEvent(
+      'test-agent-id',
+      'interaction-1',
+      'CUSTOM_EVENT',
+      'GET_TRANSCRIPTS',
+      {action: 'START'}
+    );
+
+    expect(mockWebex.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        uri: 'https://api-ai-assistant.qaus1.ciscoccservice.com/event',
+      })
+    );
+  });
+
   it('should fetch historic transcripts with mapped base URL', async () => {
     const responseBody = {interactionId: 'interaction-1', data: []};
     (mockWebex.request as jest.Mock).mockResolvedValue({body: responseBody});
@@ -269,5 +290,145 @@ describe('ApiAIAssistant', () => {
     }
 
     expect(errorMessage).toBe('Error while performing sendRealTimeAssistanceUserAction');
+  });
+
+  describe('Agent Wellness Break actions', () => {
+    beforeEach(() => {
+      apiAIAssistant.setWellnessContext({
+        isWellnessBreakEnabled: true,
+        agentId: 'test-agent-id',
+        agentSessionId: 'session-1',
+      });
+    });
+
+    it('sends the exact REQUESTED body and resolves only for HTTP 202', async () => {
+      jest.spyOn(Date, 'now').mockReturnValue(1787640000000);
+      (mockWebex.request as jest.Mock).mockResolvedValue({statusCode: 202});
+
+      await expect(
+        apiAIAssistant.requestWellnessBreak({
+          agentId: 'test-agent-id',
+          agentSessionId: 'session-1',
+        })
+      ).resolves.toBeUndefined();
+
+      expect(mockWebex.request).toHaveBeenCalledWith({
+        uri: 'https://api-ai-assistant.produs1.ciscoccservice.com/event',
+        method: HTTP_METHODS.POST,
+        addAuthHeader: true,
+        body: {
+          agentId: 'test-agent-id',
+          orgId: 'test-org-id',
+          eventType: 'CUSTOM_EVENT',
+          eventName: 'WellnessBreakAction',
+          eventDetails: {
+            data: {
+              action: 'REQUESTED',
+              agentSessionId: 'session-1',
+              actionTimeStamp: 1787640000000,
+            },
+          },
+        },
+      });
+    });
+
+    it.each(['ACCEPTED', 'REJECTED', 'NO_RESPONSE'] as const)(
+      'sends the %s offer action',
+      async (action) => {
+        (mockWebex.request as jest.Mock).mockResolvedValue({statusCode: 202});
+
+        await apiAIAssistant.respondToWellnessBreak({
+          agentId: 'test-agent-id',
+          agentSessionId: 'session-1',
+          action,
+        });
+
+        expect(
+          (mockWebex.request as jest.Mock).mock.calls[0][0].body.eventDetails.data.action
+        ).toBe(action);
+      }
+    );
+
+    it('rejects disabled, mismatched, and stale session requests before HTTP', async () => {
+      apiAIAssistant.setWellnessContext({
+        isWellnessBreakEnabled: false,
+        agentId: 'test-agent-id',
+        agentSessionId: 'session-1',
+      });
+      await expect(
+        apiAIAssistant.requestWellnessBreak({
+          agentId: 'test-agent-id',
+          agentSessionId: 'session-1',
+        })
+      ).rejects.toThrow('WELLNESS_BREAK_NOT_ENABLED');
+
+      apiAIAssistant.setWellnessContext({
+        isWellnessBreakEnabled: true,
+        agentId: 'test-agent-id',
+        agentSessionId: 'session-2',
+      });
+      await expect(
+        apiAIAssistant.requestWellnessBreak({
+          agentId: 'another-agent',
+          agentSessionId: 'session-2',
+        })
+      ).rejects.toThrow('WELLNESS_BREAK_AGENT_ID_MISMATCH');
+      await expect(
+        apiAIAssistant.requestWellnessBreak({
+          agentId: 'test-agent-id',
+          agentSessionId: 'session-1',
+        })
+      ).rejects.toThrow('WELLNESS_BREAK_AGENT_SESSION_MISMATCH');
+      expect(mockWebex.request).not.toHaveBeenCalled();
+    });
+
+    it('rejects a missing organization before HTTP', async () => {
+      (mockWebex.credentials.getOrgId as jest.Mock).mockReturnValue('   ');
+
+      await expect(
+        apiAIAssistant.requestWellnessBreak({
+          agentId: 'test-agent-id',
+          agentSessionId: 'session-1',
+        })
+      ).rejects.toThrow('WELLNESS_BREAK_ORG_ID_REQUIRED');
+      expect(mockWebex.request).not.toHaveBeenCalled();
+    });
+
+    it.each([200, 204, 400, 401, 403, 404, 409, 429, 500])(
+      'rejects the non-202 HTTP status %i',
+      async (statusCode) => {
+        (mockWebex.request as jest.Mock).mockResolvedValue({statusCode});
+
+        await expect(
+          apiAIAssistant.requestWellnessBreak({
+            agentId: 'test-agent-id',
+            agentSessionId: 'session-1',
+          })
+        ).rejects.toThrow(`WELLNESS_BREAK_ACTION_UNEXPECTED_STATUS_${statusCode}`);
+      }
+    );
+
+    it('rejects network failures through the structured error path', async () => {
+      (mockWebex.request as jest.Mock).mockRejectedValue(new Error('Network unavailable'));
+
+      await expect(
+        apiAIAssistant.requestWellnessBreak({
+          agentId: 'test-agent-id',
+          agentSessionId: 'session-1',
+        })
+      ).rejects.toThrow('Error while performing requestWellnessBreak');
+    });
+
+    it('rejects unsupported offer actions before HTTP', async () => {
+
+      await expect(
+        apiAIAssistant.respondToWellnessBreak({
+          agentId: 'test-agent-id',
+          agentSessionId: 'session-1',
+          action: 'REQUESTED',
+        } as unknown as Parameters<ApiAIAssistant['respondToWellnessBreak']>[0])
+      ).rejects.toThrow('WELLNESS_BREAK_ACTION_INVALID');
+      expect(mockWebex.request).not.toHaveBeenCalled();
+    });
   });
 });

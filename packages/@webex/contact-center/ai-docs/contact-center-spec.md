@@ -11,8 +11,8 @@
 | Doc kind | Module spec |
 | Coverage score | Partial (manifest-authoritative); 15/15 required document fields present |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved follow-up review remediation / 2026-08-21 |
-| Validation status | Follow-up validation passed (independent Claude fallback, 2026-07-21); 1 existing test-coverage gap; coverage remains Partial |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved Agent Wellness Break remediation / 2026-09-07 |
+| Validation status | Agent Wellness Break v0.4 remediation independently validated by claude-code on 2026-09-07; coverage remains Partial until the remaining baseline promotion criteria are satisfied |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -38,6 +38,8 @@ The `@webex/contact-center` package is a Webex SDK plugin that provides a TypeSc
 - **Metrics & Diagnostics**: Built-in telemetry and log upload
 
 - **Answer on Webex**: Accept, Decline, Mute, and DTMF for voice offers when the agent uses Webex App desktop calling (`enableWxBetterTogether`).
+
+- **Agent Wellness Break**: Effective enablement, session-bound RTD offers, action reporting, system idle-code lookup, and legacy/ASC state transitions.
 
 ## Purpose / Responsibility
 Own the published Webex Contact Center SDK plugin surface, registration lifecycle, public method delegation, and application-facing event routing.
@@ -79,6 +81,7 @@ src/
 | `contact-center.user-preference` | SDK data API | Exported `UserPreference`, `cc.userPreference`, and user-preference request/response types. | Read and mutate user preferences through authenticated REST operations. | Additive public API; removals or signature changes are breaking. | `src/services/UserPreference.ts`, `src/services/config/types.ts` | `CONTRACTS.md` |
 | `contact-center.preview-campaign` | SDK task API | `acceptPreviewContact`, `skipPreviewContact`, `removePreviewContact`. | Resolve campaign preview reservations through typed AQM operations. | Additive public API; removals or signature changes are breaking. | `src/cc.ts`, `src/services/task/dialer.ts`, `src/services/task/types.ts` | `CONTRACTS.md` |
 | `contact-center.conference-participant-drop` | SDK task API | Exported `DropConferenceParticipantPayload` and `ITask.dropConferenceParticipant`. | Remove a conference participant through the media-specific task implementation and correlated AQM completion. | Additive public API; removals or signature changes are breaking. | `src/index.ts`, `src/services/task/types.ts`, `src/services/task/voice/Voice.ts` | `CONTRACTS.md` |
+| `contact-center.agent-wellness-break` | SDK API / events | `Profile.isWellnessBreakEnabled`, `requestWellnessBreak`, `respondToWellnessBreak`, `getWellbeingBreakIdleCode`, `setAgentChannelState`, and the wellness/RTD/ASC event contracts. | Let hosts implement the complete wellness-break lifecycle without reproducing backend payloads, routing rules, or session validation. | Additive public API; the effective gate is false unless all supported configuration inputs are affirmative. | `src/cc.ts`, `src/types.ts`, `src/services/config/types.ts`, `src/services/agent/types.ts` | `CONTRACTS.md` |
 
 Compatibility notes:
 - Do not remove or reinterpret exported symbols/events without a documented consumer migration.
@@ -96,6 +99,9 @@ Compatibility notes:
 | CONTACT_CENTER-R-003 | Delegate agent, task, data, user-preference, preview-campaign, AI-assistant, calling, and telemetry behavior to their owning collaborators while preserving typed package methods and events. Existing `getQueues` and `getEntryPoints` delegate to their services with unchanged signatures and full-record responses; the services own consult/transfer telephony filter, profile-view, ordering, and cache defaults while honoring explicit existing-parameter overrides. Before preview delegation, reject disabled skip/remove actions from task campaign flags. | A thin stable façade avoids parallel consumer APIs while service-owned defaults keep ordinary widget calls consistent and preserve an override path for other consumers. | `src/cc.ts`, `src/types.ts`, `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/services/UserPreference.ts`, `src/services/task/dialer.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/services/UserPreference.ts`, `test/unit/spec/services/task/dialer.ts` | Public preview delegation is covered; the `campaignPreviewSkipDisabled` and `campaignPreviewRemoveDisabled` early-exit guards lack direct unit coverage. Independent review identified this gap on 2026-07-15. | PRESENT |
 | CONTACT_CENTER-R-004 | `deregister()` must remove registered listeners, stop applicable host/calling resources, close primary and RTD WebSockets, clear agent configuration, and surface cleanup failures. | Listener or connection leaks create duplicate events and stale authenticated sessions in long-lived hosts. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CONTACT_CENTER-R-005 | On `connectionLost`, ContactCenter must own recovery policy and invoke private `silentRelogin()` only when automated relogin is allowed. | ConnectionService reports transport state; only ContactCenter has agent profile and policy context for authentication recovery. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| CONTACT_CENTER-R-006 | Expose Agent Wellness Break methods and types only through the package façade; reject action calls when effective enablement is false, the current organization is unavailable, or the supplied agent/session does not match the current registration. Invalidate the action context on logout, deregistration, or a current-session multi-login close and replace it on relogin. | Wellness actions are session-scoped and must not leak across agents, relogins, multi-login closures, or registrations. | `src/cc.ts`, `src/types.ts`, `src/services/ApiAiAssistant.ts`, `src/index.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/ApiAiAssistant.ts`, `docs/samples/contact-center/` | The backend-delivered `agentWellbeing.enable` value is treated as the server rollout decision because no distinct rollout field exists in the supported SDK response contracts. | PRESENT |
+| CONTACT_CENTER-R-007 | When wellness is effectively enabled, connect the RTD socket without blocking registration and route valid `Wellness_Break_Handler` messages from either the primary data-notification socket or RTD socket to `CC_AGENT_EVENTS.WELLNESS_BREAK`. Report RTD status transitions, ignore malformed/stale messages, reconnect after an unexpected RTD close, and invalidate handlers on reconnect/deregister. Non-wellness RTD messages continue to TaskManager unchanged. ASC relogin and channel-state notifications bypass the generic nested-event pass-through and are emitted exactly once in normalized form. | A long-lived host needs reliable offers across the backend's active notification route without duplicate listeners, stale-session actions, or regression to transcription/suggestion delivery. | `src/cc.ts`, `src/constants.ts`, `src/services/config/types.ts` | `test/unit/spec/cc.ts`, `docs/samples/contact-center/` | Notification delivery remains best-effort; the backend owns route selection, offer generation, and ordering. | PRESENT |
+| CONTACT_CENTER-R-008 | The standalone SDK sample must keep `WellbeingBreak` out of the ordinary idle-code selector, wait for state confirmation and all tasks to become safe, preserve ASC pre-break channel states, restore sequentially with bounded recovery, synchronize authoritative external state changes, and use a session-scoped refresh marker without replaying an offer, action, or break. | The sample is the executable public-contract reference and must not demonstrate state stranding or behavior forbidden to SDK consumers. | `docs/samples/contact-center/app.js`, `docs/samples/contact-center/wellness-utils.js`, `docs/samples/contact-center/index.html` | `test/unit/spec/wellnessSampleUtils.ts`, sample build | Live QA still supplies authoritative backend/session integration evidence. | PRESENT |
 
 ## Design Overview
 `ContactCenter` is the package façade and lifecycle owner. Its constructor waits for the host Webex SDK `READY` event, validates plugin configuration, initializes `WebexRequest`, obtains the singleton `Services` graph, and constructs calling, AI-assistant, metrics, task-management, `UserPreference`, and data-service collaborators. `register()` is deliberately narrower: it attaches runtime listeners and establishes the primary Contact Center WebSocket subscription.
@@ -103,6 +109,16 @@ Compatibility notes:
 Direct data/configuration and user-preference operations return authenticated REST responses. Enabled agent/task AQM operations, including preview-campaign accept/skip/remove, send authenticated HTTP requests but resolve or reject only after a matching WebSocket notification. Before delegating preview skip/remove, ContactCenter checks the task's campaign-disable flags and throws locally when the corresponding flag is `'true'`. TaskManager converts backend task events into Task instances and typed state-machine events. ContactCenter maps package-facing events through WebexPlugin `trigger` or its internal EventEmitter according to the published contract.
 
 Durable agent, task, and configuration records remain remote-system owned. The package owns only in-memory profile/task/listener/cache/connection state.
+
+### Agent Wellness Break
+
+The public enablement signal is `Profile.isWellnessBreakEnabled`. It is true only when the backend-delivered AI feature row has `agentWellbeing.enable === true`, `wellnessBreakReminders === 'ENABLED'`, and the organization reports `aiAssistantQuantity > 0`. The SDK does not create a Desktop Split client or invent a rollout response field: the backend controls rollout by deciding whether the delivered AI feature configuration enables wellness for the organization.
+
+After station login or relogin, ContactCenter retains the current agent-session id and supplies it to ApiAIAssistant. Logout, deregistration, and a current-session multi-login close invalidate that action context. `requestWellnessBreak()` and `respondToWellnessBreak()` POST a direct custom event with a fresh numeric timestamp and reject a missing organization plus disabled, mismatched, or stale contexts before transport. `getWellbeingBreakIdleCode()` resolves the exact active system code named `WellbeingBreak` and caches it for the registration lifetime. `setAgentChannelState()` selects the ASC v2 or legacy state route explicitly through separate public methods, allowing a host to choose from its supported session shape.
+
+Wellness payloads are handled by ContactCenter on both the primary data-notification socket and the RTD socket before ordinary routing. Only known actions with matching agent, organization, and session are emitted; RTD payloads additionally require the active connection generation. The canonical optional `actionText` field is normalized to public `actionText`. Each RTD reconnect receives a new generation so late callbacks from an older socket are ignored; deregistration removes the message/close handlers, cancels reconnect, closes RTD, and clears the session/code cache. Raw ASC relogin and channel-state notifications are excluded from the generic nested-event pass-through so applications receive exactly one normalized event.
+
+The standalone SDK browser sample keeps `WellbeingBreak` out of the ordinary status selector. It creates a session-scoped recovery marker before changing state, confirms the legacy or ASC transition, sends `ACCEPTED` only after state success, and waits for every task to leave incoming, active, consult, conference, campaign, and wrap-up work before starting its 60-second demonstration timer. Legacy restoration targets `Available / 0`; ASC restoration groups the captured per-channel targets and submits groups sequentially, skips channels that moved to an external system idle state, retries bounded failures, and retains reconnect recovery ownership after exhaustion. Authoritative external Available changes end the local lifecycle, while refresh recovery restores a matching current session without replaying the offer, response action, or break.
 
 ### wxApp Better Together (WXCC-6026)
 
@@ -283,6 +299,7 @@ classDiagram
 - **UC-3 Delegate SDK operations:** validate/map public inputs, call the owning collaborator, track metrics, and return or emit typed results. Evidence: `src/cc.ts`, `src/index.ts`, `test/unit/spec/cc.ts`.
 - **UC-4 Recover connection:** consume ConnectionService state and conditionally reload the agent session through ContactCenter policy. Evidence: `src/cc.ts`, `test/unit/spec/cc.ts`.
 - **UC-5 Deregister:** remove the same listener identities, shut down applicable host/WebSocket resources, and clear in-memory profile state. Evidence: `src/cc.ts`, `test/unit/spec/cc.ts`.
+- **UC-6 Wellness lifecycle:** consume a session-bound offer, report a user action, resolve the system idle code, move one or more ASC channels to Idle, and restore them to Available. Evidence: `src/cc.ts`, `src/services/ApiAiAssistant.ts`, `src/services/config/index.ts`, `src/services/agent/index.ts`, `test/unit/spec/cc.ts`, `docs/samples/contact-center/`.
 
 ## State Model
 ContactCenter retains in-memory `agentConfig`, collaborator references, event listeners, task collections through TaskManager, and connection/recovery state. Remote Webex services remain authoritative for agent, task, and organization data. Registration establishes runtime connectivity but does not imply station login; deregistration tears down SDK resources but does not itself perform station logout.
@@ -294,9 +311,12 @@ ContactCenter retains in-memory `agentConfig`, collaborator references, event li
 - ContactCenter owns automated relogin policy; ConnectionService owns transport-state detection/emission. Evidence: `src/cc.ts`, `src/services/core/websocket/connection-service.ts`.
 - Deregistration does not station-logout the agent. Evidence: `src/cc.ts`.
 - Published methods/types/events remain semver-sensitive through `src/index.ts`.
+- Wellness actions require the effective profile flag, a non-empty current organization, and an exact registered agent/session match; all checks fail closed, including after current-session logout, multi-login close, or deregistration.
+- Malformed, unknown-action, stale-session, stale-agent, stale-org, and old-generation wellness RTD messages are ignored and measured without logging the full payload.
+- RTD failure must not reject an otherwise successful Contact Center registration.
 
 ## Concurrency & Reactive Flow
-READY initialization, REST promises, AQM WebSocket correlation, TaskManager events, calling events, and connection timers execute asynchronously. Listener cleanup must use the registered function identity. Message listeners are independent: AqmReqs correlates pending requests, ContactCenter maps package events, TaskManager owns task lifecycle, and ConnectionService tracks liveness/reconnect state.
+READY initialization, REST promises, AQM WebSocket correlation, TaskManager events, calling events, and connection timers execute asynchronously. Listener cleanup must use the registered function identity. Message listeners are independent: AqmReqs correlates pending requests, ContactCenter maps package events, TaskManager owns task lifecycle, and ConnectionService tracks liveness/reconnect state. ContactCenter additionally owns wellness RTD generation and reconnect state; a newer generation invalidates callbacks from the prior connection.
 
 ## State Machine
 ```mermaid
@@ -315,7 +335,7 @@ stateDiagram-v2
 ```
 
 ## Protocol / Wire Format
-Authenticated REST initiates direct data/config operations and AQM agent/task operations. For AQM, the HTTP response is acknowledgement only; `notifSuccess.bind`/`notifFail.bind` match WebSocket payloads that settle the promise. The primary WebSocket carries Contact Center notifications; the RTD WebSocket carries transcript/suggestion traffic. Payload and event names are owned by `src/types.ts`, `src/services/config/types.ts`, `src/services/agent/types.ts`, and `src/services/task/types.ts`.
+Authenticated REST initiates direct data/config operations and AQM agent/task operations. For AQM, the HTTP response is acknowledgement only; `notifSuccess.bind`/`notifFail.bind` match WebSocket payloads that settle the promise. Wellness actions are the exception: ApiAIAssistant posts a direct `CUSTOM_EVENT` to `/event` and requires HTTP 202. The primary WebSocket carries Contact Center and legacy data-notification traffic; the RTD WebSocket carries transcript/suggestion traffic. `Wellness_Break_Handler` may arrive on either backend-selected route and is normalized identically. Payload and event names are owned by `src/types.ts`, `src/services/config/types.ts`, `src/services/agent/types.ts`, and `src/services/task/types.ts`.
 
 ## Error Handling & Failure Modes
 | Condition | Signal (error/code/result) | Caller recovery |
@@ -353,6 +373,9 @@ The module registers as `cc` through the Webex SDK plugin system and depends on 
 | CONTACT_CENTER-R-003 | `test/unit/spec/cc.ts`, `test/unit/spec/services/UserPreference.ts`, `test/unit/spec/services/task/dialer.ts` | Add direct tests proving disabled skip/remove flags throw before dialer invocation; revalidate typed delegation, user-preference CRUD, preview-campaign AQM operations, and event routing. |
 | CONTACT_CENTER-R-004 | `test/unit/spec/cc.ts` | listener/resource cleanup and error propagation |
 | CONTACT_CENTER-R-005 | `test/unit/spec/cc.ts` | relogin policy ownership |
+| CONTACT_CENTER-R-006 | `test/unit/spec/cc.ts`, `test/unit/spec/services/ApiAiAssistant.ts` | Effective-gate, organization/agent/session validation, current-session multi-login invalidation, exact request body, action validation, and direct-HTTP failure paths. |
+| CONTACT_CENTER-R-007 | `test/unit/spec/cc.ts` | Wellness normalization on primary and RTD sockets, invalid/stale/generation filtering, exactly-once normalized ASC events, RTD status, reconnect cleanup, and unchanged non-wellness forwarding. |
+| CONTACT_CENTER-R-008 | `test/unit/spec/wellnessSampleUtils.ts`, sample build | Safe-work classification, exact ASC restore grouping, external/RONA decisions, minimal refresh marker, and recovery decisions. |
 
 ## Traceability
 - Repo architecture: `ARCHITECTURE.md` · Registry: `SPEC_INDEX.md`

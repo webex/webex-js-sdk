@@ -12,6 +12,10 @@ import {
   HistoricTranscriptsResponse,
   RealTimeAssistanceParams,
   RealTimeAssistanceUserActionParams,
+  RequestWellnessBreakParams,
+  RespondToWellnessBreakParams,
+  WellnessBreakUserAction,
+  GenericError,
 } from '../types';
 import {getErrorDetails} from './core/Utils';
 import {
@@ -30,6 +34,21 @@ export class ApiAIAssistant {
   private webex: WebexSDK;
   private metricsManager: MetricsManager;
   private aiFeature: AIFeatureFlags;
+  private isWellnessBreakEnabled = false;
+  private wellnessAgentId?: string;
+  private wellnessAgentSessionId?: string;
+
+  private createWellnessError(reason: string): GenericError {
+    const error = new Error(reason) as GenericError;
+    error.details = {
+      type: 'SDK_VALIDATION_ERROR',
+      orgId: this.webex.credentials.getOrgId(),
+      trackingId: '',
+      data: {reason},
+    };
+
+    return error;
+  }
 
   constructor(webex: WebexSDK) {
     this.webex = webex;
@@ -38,6 +57,154 @@ export class ApiAIAssistant {
 
   public setAIFeatureFlags(aiFeature: AIFeatureFlags): void {
     this.aiFeature = aiFeature;
+  }
+
+  /**
+   * Updates the current registration/session values used to validate wellness actions.
+   * @param context - Effective enablement and current registered agent/session identifiers
+   * @internal
+   */
+  public setWellnessContext(context: {
+    isWellnessBreakEnabled: boolean;
+    agentId?: string;
+    agentSessionId?: string;
+  }): void {
+    this.isWellnessBreakEnabled = context.isWellnessBreakEnabled;
+    this.wellnessAgentId = context.agentId;
+    this.wellnessAgentSessionId = context.agentSessionId;
+  }
+
+  private validateWellnessParams(
+    params: RequestWellnessBreakParams
+  ): RequestWellnessBreakParams & {orgId: string} {
+    const agentId = params.agentId?.trim();
+    const agentSessionId = params.agentSessionId?.trim();
+    const orgId = this.webex.credentials.getOrgId()?.trim();
+
+    let validationError: string | undefined;
+    if (!this.isWellnessBreakEnabled) {
+      validationError = 'WELLNESS_BREAK_NOT_ENABLED';
+    } else if (!orgId) {
+      validationError = 'WELLNESS_BREAK_ORG_ID_REQUIRED';
+    } else if (!agentId) {
+      validationError = 'WELLNESS_BREAK_AGENT_ID_REQUIRED';
+    } else if (!this.wellnessAgentId || agentId !== this.wellnessAgentId) {
+      validationError = 'WELLNESS_BREAK_AGENT_ID_MISMATCH';
+    } else if (!agentSessionId || agentSessionId !== this.wellnessAgentSessionId) {
+      validationError = 'WELLNESS_BREAK_AGENT_SESSION_MISMATCH';
+    }
+
+    if (validationError) {
+      throw this.createWellnessError(validationError);
+    }
+
+    return {agentId, agentSessionId, orgId};
+  }
+
+  private async sendWellnessBreakAction(
+    params: RequestWellnessBreakParams,
+    action: WellnessBreakUserAction,
+    method: string
+  ): Promise<void> {
+    this.metricsManager.timeEvent([
+      METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED,
+      METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_FAILED,
+    ]);
+
+    try {
+      const {agentId, agentSessionId, orgId} = this.validateWellnessParams(params);
+      const baseUrl = this.getBaseUrl();
+      const response = (await this.webex.request({
+        uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
+        method: HTTP_METHODS.POST,
+        addAuthHeader: true,
+        body: {
+          agentId,
+          orgId,
+          eventType: AIAssistantEventType.CUSTOM_EVENT,
+          eventName: AIAssistantEventName.WELLNESS_BREAK_ACTION,
+          eventDetails: {
+            data: {
+              action,
+              agentSessionId,
+              actionTimeStamp: Date.now(),
+            },
+          },
+        },
+      })) as IHttpResponse;
+
+      if (response.statusCode !== 202) {
+        throw this.createWellnessError(
+          `WELLNESS_BREAK_ACTION_UNEXPECTED_STATUS_${response.statusCode}`
+        );
+      }
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED,
+        {action},
+        ['operational']
+      );
+      LoggerProxy.log('Wellness action accepted by AI Assistant', {
+        module: CC_FILE,
+        method,
+        data: {action},
+      });
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_ACTION_FAILED,
+        {
+          action,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        ['operational']
+      );
+      const {error: detailedError} = getErrorDetails(error, method, CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Requests an Agent Wellness Break.
+   * The promise resolves when the HTTP request is accepted with status 202; the later
+   * approval or denial is delivered independently through the wellness RTD event.
+   * @param params - Current agent and login/relogin session identifiers
+   * @returns A promise that resolves with no value after HTTP acceptance
+   * @throws Structured Contact Center error when disabled, stale, invalid, or delivery fails
+   * @example
+   * await webex.cc.apiAIAssistant.requestWellnessBreak({agentId, agentSessionId});
+   * @public
+   */
+  public async requestWellnessBreak(params: RequestWellnessBreakParams): Promise<void> {
+    return this.sendWellnessBreakAction(params, 'REQUESTED', METHODS.REQUEST_WELLNESS_BREAK);
+  }
+
+  /**
+   * Responds to a backend-provided Agent Wellness Break offer.
+   * The promise resolves when the HTTP request is accepted with status 202 and does not
+   * wait for a WebSocket completion event.
+   * @param params - Current agent/session identifiers and ACCEPTED, REJECTED, or NO_RESPONSE
+   * @returns A promise that resolves with no value after HTTP acceptance
+   * @throws Structured Contact Center error when disabled, stale, invalid, or delivery fails
+   * @example
+   * await webex.cc.apiAIAssistant.respondToWellnessBreak({
+   *   agentId,
+   *   agentSessionId,
+   *   action: 'ACCEPTED',
+   * });
+   * @public
+   */
+  public async respondToWellnessBreak(params: RespondToWellnessBreakParams): Promise<void> {
+    const {action, ...requestParams} = params;
+    if (action !== 'ACCEPTED' && action !== 'REJECTED' && action !== 'NO_RESPONSE') {
+      const {error} = getErrorDetails(
+        this.createWellnessError('WELLNESS_BREAK_ACTION_INVALID'),
+        METHODS.RESPOND_TO_WELLNESS_BREAK,
+        CC_FILE
+      );
+      throw error;
+    }
+
+    return this.sendWellnessBreakAction(requestParams, action, METHODS.RESPOND_TO_WELLNESS_BREAK);
   }
 
   private getBaseUrl(): string {

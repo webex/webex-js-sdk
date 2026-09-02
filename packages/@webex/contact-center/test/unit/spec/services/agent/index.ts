@@ -21,7 +21,7 @@ describe('AQM routing agent', () => {
     fakeAqm.reqEmpty = jest.fn().mockImplementation((fn) => fn);
     fakeAqm.req = jest.fn().mockImplementation((fn) => fn);
     fakeMetricsManager = {
-      trackEvent: jest.fn()
+      trackEvent: jest.fn(),
     } as unknown as jest.Mocked<MetricsManager>;
     fakeMetricsManager.trackEvent = jest.fn();
 
@@ -55,6 +55,34 @@ describe('AQM routing agent', () => {
     const req = await agent.stateChange({data: {} as any});
     expect(req).toBeDefined();
     expect(reqSpy).toHaveBeenCalled();
+  });
+  it('stateChangeV2 uses the Agent State Control route and notification bindings', async () => {
+    const req = await agent.stateChangeV2({
+      data: {channelType: ['telephony', 'chat'], state: 'Idle', auxCodeId: 'wellbeing-code'},
+    });
+
+    expect(req).toMatchObject({
+      url: '/v2/agents/session/state',
+      host: 'wcc-api-gateway',
+      method: 'PUT',
+      data: {
+        channelType: ['telephony', 'chat'],
+        state: 'Idle',
+        auxCodeId: 'wellbeing-code',
+      },
+      notifSuccess: {
+        bind: {
+          type: ['AgentRequestEvent', 'RoutingMessage', 'AgentChannelStateChange'],
+          data: {type: 'AgentChannelStateChanged'},
+        },
+      },
+      notifFail: {
+        bind: {
+          type: 'AgentChannelStateChange',
+          data: {type: 'AgentChannelStateChangeFailed'},
+        },
+      },
+    });
   });
   it('buddyAgents', async () => {
     const reqSpy = jest.spyOn(fakeAqm, 'req');

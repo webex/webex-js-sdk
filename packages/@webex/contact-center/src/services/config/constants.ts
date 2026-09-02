@@ -34,6 +34,9 @@ export const AGENT_STATE_AVAILABLE_ID = '0';
  */
 export const AGENT_STATE_AVAILABLE = 'Available';
 
+/** System idle-code name reserved for Agent Wellness Break. */
+export const WELLBEING_BREAK_IDLE_CODE = 'WellbeingBreak';
+
 /**
  * Description for the 'Available' agent state.
  * @type {string}
@@ -75,6 +78,7 @@ export const METHODS = {
   GET_URL_MAPPING: 'getURLMapping',
   GET_DIAL_PLAN_DATA: 'getDialPlanData',
   GET_AI_FEATURE_FLAGS: 'getAIFeatureFlags',
+  GET_WELLBEING_BREAK_IDLE_CODE: 'getWellbeingBreakIdleCode',
   GET_QUEUES: 'getQueues',
 
   // Util methods
@@ -174,6 +178,11 @@ export const endPointMap = {
     `organization/${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}${
       filter && filter.length > 0 ? `&filter=id=in=(${filter})` : ''
     }&attributes=${attributes}&desktopProfileFilter=true`,
+
+  /** Lists system idle codes without applying the agent Desktop Profile filter. */
+  systemIdleCodes: (orgId: string, page: number, pageSize: number) =>
+    `organization/${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}` +
+    '&workType=IDLE_CODE&customFilter=isSystemCode==true&desktopProfileFilter=false',
 
   /**
    * Gets the endpoint for organization info.

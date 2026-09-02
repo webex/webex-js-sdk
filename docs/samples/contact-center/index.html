@@ -64,7 +64,11 @@
           </p>
         </fieldset>
 
-        <button id="changeEnv" type="button" class="btn-code" onclick=changeEnv()>In Production</button><span class="text-color"> ( Click to change the environment )</span>
+        <button id="changeEnv" type="button" class="btn-code" onclick=changeEnv()>Production</button><span class="text-color"> ( Click to switch environments before webex.init() )</span>
+        <p class="note">
+          Select QA / Integration when using QA credentials. Service discovery will route a QA tenant to
+          api.qaus1.ciscoccservice.com.
+        </p>
         <div>
           <select name="auth-type" id="auth-type" onchange="changeAuthType()">
             <option value="accessToken">Access Token</option>
@@ -472,6 +476,51 @@
       <div id="aiAssistantSection">
         <fieldset>
           <legend>Cisco AI Assistant</legend>
+          <section class="wellness-card" aria-labelledby="wellness-heading">
+            <div class="wellness-card__heading">
+              <div>
+                <h3 id="wellness-heading">Agent Wellness Break</h3>
+                <p>Exercises the agent-level SDK API with live registration and RTD events.</p>
+              </div>
+              <span id="wellness-ready-badge" class="wellness-badge">Unavailable</span>
+            </div>
+
+            <dl class="wellness-status-grid">
+              <div><dt>Effective gate</dt><dd id="wellness-enabled-status">Not registered</dd></div>
+              <div><dt>Agent session</dt><dd id="wellness-session-status">Not logged in</dd></div>
+              <div><dt>RTD</dt><dd id="wellness-rtd-status">Disconnected</dd></div>
+              <div><dt>System code</dt><dd id="wellness-code-status">Not loaded</dd></div>
+              <div><dt>Lifecycle</dt><dd id="wellness-lifecycle-status">Unavailable</dd></div>
+            </dl>
+
+            <div class="wellness-routing-controls">
+              <label for="wellness-state-mode">State API</label>
+              <select id="wellness-state-mode">
+                <option value="auto">Auto (from relogin snapshot)</option>
+                <option value="legacy">Legacy setAgentState</option>
+                <option value="channel">Agent State Control</option>
+              </select>
+              <label for="wellness-channel-types">ASC channel types</label>
+              <input id="wellness-channel-types" type="text" value="telephony,chat,email,social"
+                aria-describedby="wellness-channel-help">
+              <small id="wellness-channel-help">Comma-separated; used only when Agent State Control is enabled for the current session.</small>
+            </div>
+
+            <p id="wellness-message" class="wellness-message" aria-live="polite">
+              Register and log in to test this feature.
+            </p>
+            <div class="wellness-actions">
+              <button id="wellness-request" type="button" class="btn--green" disabled>Take wellbeing break</button>
+              <button id="wellness-accept" type="button" class="btn--green" disabled>Take a break</button>
+              <button id="wellness-reject" type="button" class="btn--red" disabled>Later</button>
+              <button id="wellness-no-response" type="button" disabled>Send no response</button>
+              <button id="wellness-restore" type="button" disabled>Restore previous state</button>
+            </div>
+            <details class="wellness-event-details">
+              <summary>Latest normalized SDK event</summary>
+              <pre id="wellness-event-output">No wellness event received.</pre>
+            </details>
+          </section>
           <div class="assistant-card">
             <div id="ai-assistant-content" class="assistant-content"></div>
             <div class="assistant-actions">
@@ -535,6 +584,7 @@
   </script>
 
   <script src="../contact-center.min.js"></script>
+  <script src="wellness-utils.js"></script>
   <script id="imi-controller-bundle" dc="produs1" src="https://wc.imiengage.io/engage.js" defer></script>
   <script src="https://wc.imiengage.io/v0.9.11/momentum/momentum.js" defer></script>
   <script src="app.js"></script>

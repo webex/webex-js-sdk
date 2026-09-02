@@ -15,7 +15,7 @@ export default function routingAgent(routing: AqmReqs) {
   return {
     /**
      * Reloads the agent session
-     * @public
+     * @internal
      */
     reload: routing.reqEmpty(() => ({
       host: WCC_API_GATEWAY,
@@ -24,10 +24,10 @@ export default function routingAgent(routing: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
-          data: {type: CC_EVENTS.AGENT_RELOGIN_SUCCESS},
+          type: [CC_EVENTS.AGENT_RELOGIN_SUCCESS, CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS],
+          data: {type: [CC_EVENTS.AGENT_RELOGIN_SUCCESS, CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS]},
         },
-        msg: {} as Agent.ReloginSuccess,
+        msg: {} as Agent.ReloginSuccess | Agent.AgentChannelReloginSuccess,
       },
       notifFail: {
         bind: {
@@ -115,6 +115,33 @@ export default function routingAgent(routing: AqmReqs) {
         bind: {
           type: CC_EVENTS.AGENT_STATE_CHANGE,
           data: {type: CC_EVENTS.AGENT_STATE_CHANGE_FAILED},
+        },
+        errId: 'Service.aqm.agent.stateChange',
+      },
+    })),
+    /**
+     * Changes state for one or more Agent State Control channels.
+     * The promise settles from the matching WebSocket success/failure notification.
+     * @param p.data - Normalized channel-state request payload
+     * @public
+     */
+    stateChangeV2: routing.req((p: {data: Agent.StateChangeV2}) => ({
+      url: '/v2/agents/session/state',
+      host: WCC_API_GATEWAY,
+      data: p.data,
+      err,
+      method: HTTP_METHODS.PUT,
+      notifSuccess: {
+        bind: {
+          type: ['AgentRequestEvent', 'RoutingMessage', 'AgentChannelStateChange'],
+          data: {type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED},
+        },
+        msg: {} as Agent.AgentChannelStateChanged,
+      },
+      notifFail: {
+        bind: {
+          type: 'AgentChannelStateChange',
+          data: {type: 'AgentChannelStateChangeFailed'},
         },
         errId: 'Service.aqm.agent.stateChange',
       },

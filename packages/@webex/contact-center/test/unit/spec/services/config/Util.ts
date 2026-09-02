@@ -82,4 +82,48 @@ describe('parseAgentConfigs collaboration access fields', () => {
     expect(profile.accessEntryPoint).toBe('NONE');
     expect(profile.accessBuddyTeam).toBe('ALL');
   });
+
+  it('enables wellness only when organization config, reminders, and license are present', () => {
+    const profile = parseAgentConfigs({
+      ...baseProfileData,
+      orgSettingsData: {...baseProfileData.orgSettingsData, aiAssistantQuantity: 1},
+      aiFeatureFlags: {
+        data: [
+          {
+            id: 'ai-feature-1',
+            agentWellbeing: {
+              enable: true,
+              wellnessBreakReminders: 'ENABLED',
+            },
+          },
+        ],
+      },
+    });
+
+    expect(profile.isWellnessBreakEnabled).toBe(true);
+  });
+
+  it.each([
+    {quantity: 0, enable: true, reminders: 'ENABLED'},
+    {quantity: 1, enable: false, reminders: 'ENABLED'},
+    {quantity: 1, enable: true, reminders: 'DISABLED'},
+  ] as const)(
+    'disables wellness when an effective gate is missing',
+    ({quantity, enable, reminders}) => {
+      const profile = parseAgentConfigs({
+        ...baseProfileData,
+        orgSettingsData: {...baseProfileData.orgSettingsData, aiAssistantQuantity: quantity},
+        aiFeatureFlags: {
+          data: [
+            {
+              id: 'ai-feature-1',
+              agentWellbeing: {enable, wellnessBreakReminders: reminders},
+            },
+          ],
+        },
+      });
+
+      expect(profile.isWellnessBreakEnabled).toBe(false);
+    }
+  );
 });

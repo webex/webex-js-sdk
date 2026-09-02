@@ -8,6 +8,7 @@ import * as Agent from './services/agent/types';
 import * as Contact from './services/task/types';
 import {
   AIFeatureFlags,
+  Entity,
   Profile,
   CreateUserPreferenceRequest,
   UpdateUserPreferenceRequest,
@@ -419,6 +420,14 @@ export interface IContactCenter {
    * cc.register().then(profile => { ... });
    */
   register(): Promise<Profile>;
+
+  /** Returns the system-managed WellbeingBreak idle code for the registered session. */
+  getWellbeingBreakIdleCode(): Promise<Entity>;
+
+  /** Changes one or more Agent State Control channels and waits for WebSocket completion. */
+  setAgentChannelState(
+    params: Agent.SetAgentChannelStateParams
+  ): Promise<Agent.AgentChannelStateChangedEvent>;
 }
 
 /**
@@ -554,6 +563,7 @@ export type RequestBody =
   | Agent.Logout
   | Agent.UserStationLogin
   | Agent.StateChange
+  | Agent.StateChangeV2
   | Agent.BuddyAgents
   | Contact.HoldResumePayload
   | Contact.ResumeRecordingPayload
@@ -946,6 +956,82 @@ export type RealTimeAssistanceUserActionParams = {
 };
 
 /**
+ * Wellness notification actions delivered by the AI Assistant RTD service.
+ * @public
+ */
+export type WellnessBreakNotificationAction =
+  | 'PROVIDE_WELLNESS_BREAK'
+  | 'SUGGEST_WELLNESS_BREAK'
+  | 'WELLNESS_BREAK_NOT_ALLOWED';
+
+/**
+ * Agent actions accepted by the wellness action API.
+ * @public
+ */
+export type WellnessBreakUserAction = 'REQUESTED' | 'ACCEPTED' | 'REJECTED' | 'NO_RESPONSE';
+
+/** AI Assistant RTD connection states exposed to consumers. @public */
+export type AIAssistantRTDConnectionState = 'connected' | 'disconnected';
+
+/**
+ * AI Assistant RTD connection lifecycle event.
+ * @public
+ */
+export interface AIAssistantRTDStatusEvent {
+  /** Current connection state */
+  state: AIAssistantRTDConnectionState;
+  /** Monotonically increases for each successful RTD subscription */
+  generation: number;
+}
+
+/**
+ * Validated, agent-scoped wellness notification emitted by Contact Center.
+ * @public
+ */
+export interface WellnessBreakEvent {
+  /** Agent identifier */
+  agentId: string;
+  /** Organization identifier */
+  orgId: string;
+  /** Current login/relogin session identifier */
+  agentSessionId: string;
+  /** Backend wellness action */
+  actionEvent: WellnessBreakNotificationAction;
+  /** Optional untrusted plain-text message supplied by the backend */
+  actionText?: string;
+  /** Optional normalized interaction diagnostic */
+  interactionId?: string;
+  /** Notification diagnostic only; never an action-request correlation identifier */
+  trackingId?: string;
+}
+
+/** Listener for validated wellness notifications. @public */
+export type WellnessBreakEventListener = (event: WellnessBreakEvent) => void;
+
+/** Listener for AI Assistant RTD connection lifecycle events. @public */
+export type AIAssistantRTDStatusListener = (event: AIAssistantRTDStatusEvent) => void;
+
+/**
+ * Parameters for requesting an Agent Wellness Break.
+ * @public
+ */
+export interface RequestWellnessBreakParams {
+  /** Agent identifier */
+  agentId: string;
+  /** Current login/relogin session identifier */
+  agentSessionId: string;
+}
+
+/**
+ * Parameters for responding to a backend-provided wellness offer.
+ * @public
+ */
+export interface RespondToWellnessBreakParams extends RequestWellnessBreakParams {
+  /** Agent response; REQUESTED is available only through requestWellnessBreak */
+  action: Exclude<WellnessBreakUserAction, 'REQUESTED'>;
+}
+
+/**
  * Supported AI Assistant event categories.
  * @public
  * @example
@@ -994,6 +1080,8 @@ export const AIAssistantEventName = {
   SUGGESTED_RESPONSES_DIGITAL: 'SUGGESTED_RESPONSES_DIGITAL',
   /** User action on a suggested response adaptive card */
   SUGGESTED_RESPONSES_USER_ACTION: 'SUGGESTED_RESPONSES_USER_ACTION',
+  /** Agent Wellness Break request/response action */
+  WELLNESS_BREAK_ACTION: 'WellnessBreakAction',
 } as const;
 
 /**

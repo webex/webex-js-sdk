@@ -11,8 +11,8 @@
 | Doc kind | Module spec |
 | Coverage score | Partial (manifest-authoritative); 15/15 required document fields present |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved follow-up review remediation / 2026-07-21 |
-| Validation status | Follow-up validation passed (independent Claude fallback, 2026-07-21); coverage remains Partial |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved Agent Wellness Break remediation / 2026-09-03 |
+| Validation status | Agent Wellness Break v0.4 remediation independently validated by claude-code on 2026-09-07; coverage remains Partial until the remaining baseline promotion criteria are satisfied |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -59,8 +59,8 @@ services/agent/
 ## Public Surface
 | Contract | Owner | Real surface | Source |
 |---|---|---|---|
-| `routingAgent` | Agent | exported factory `(routing: AqmReqs) => {reload, logout, stationLogin, stateChange, buddyAgents}` | `src/services/agent/index.ts`, `src/index.ts` |
-| ContactCenter agent methods | Contact Center | `stationLogin`, `stationLogout`, `setAgentState`, `getBuddyAgents` | `src/cc.ts`, `src/types.ts` |
+| `routingAgent` | Agent | exported factory `(routing: AqmReqs) => {reload, logout, stationLogin, stateChange, stateChangeV2, buddyAgents}` | `src/services/agent/index.ts`, `src/index.ts` |
+| ContactCenter agent methods | Contact Center | `stationLogin`, `stationLogout`, `setAgentState`, `setAgentChannelState`, `getBuddyAgents` | `src/cc.ts`, `src/types.ts` |
 | Profile/device update | Contact Center | `updateAgentProfile(AgentProfileUpdate)`; not a routingAgent method | `src/cc.ts`, `src/types.ts` |
 | Automated relogin | Contact Center | private `silentRelogin()` invokes `services.agent.reload()` | `src/cc.ts` |
 | Routing notification types | Agent | `Logout`, `StateChange`, `StationLoginSuccess`, `BuddyAgentsSuccess`, `ReloginSuccess`, and related contracts | `src/services/agent/types.ts` |
@@ -87,9 +87,12 @@ Key nested WebSocket binds use the actual outer/data constants, for example `CC_
 | AGENT-R-003 | Buddy-agent lookup must preserve its typed request and correlated response contract. | Consult/transfer selection depends on backend-filtered availability. | `src/services/agent/index.ts` | `test/unit/spec/services/agent/index.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | AGENT-R-004 | The agent factory exposes `reload`, while ContactCenter alone decides when automated relogin is permitted. | Transport recovery lacks the profile/policy context required to mutate an agent session safely. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | AGENT-R-005 | Device/profile update must be documented as `ContactCenter.updateAgentProfile`, not as an agent-factory method. | Calling a non-existent `routingAgent.deviceUpdate` would fail at runtime. | `src/cc.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| AGENT-R-006 | ASC state change must use PUT `/v2/agents/session/state` with `channelType` as a non-empty string array and nested `AgentChannelStateChanged` success/failure binds. ContactCenter validates Idle/Available input, normalizes the successful channel details, and emits each normalized ASC relogin/state notification exactly once. | Channel-specific wellness state changes require the v2 ASC wire contract and correlated completion rather than reusing the legacy whole-agent response; duplicate raw and normalized callbacks would make consumer state nondeterministic. | `src/services/agent/index.ts`, `src/services/agent/types.ts`, `src/cc.ts` | `test/unit/spec/services/agent/index.ts`, `test/unit/spec/cc.ts` | The host selects legacy `setAgentState` or ASC `setAgentChannelState` based on its supported session mode. | PRESENT |
 
 ## Design Overview
-`routingAgent` is a pure AQM factory. It receives an initialized AqmReqs instance and returns five request functions: `reload`, `logout`, `stationLogin`, `stateChange`, and `buddyAgents`. Each request config declares the endpoint/payload plus exact `CC_EVENTS` notification binds.
+`routingAgent` is a pure AQM factory. It receives an initialized AqmReqs instance and returns six request functions: `reload`, `logout`, `stationLogin`, `stateChange`, `stateChangeV2`, and `buddyAgents`. Each request config declares the endpoint/payload plus exact `CC_EVENTS` notification binds.
+
+`stateChangeV2` targets agent channel sessions. ContactCenter trims and validates the public channel list, requires an auxiliary code for Idle, omits it for Available, adds the registered agent id, and returns the normalized nested channel-state details. Reload accepts both legacy `AgentReloginSuccess` and ASC `AgentChannelReloginSuccess`; ContactCenter refreshes the session id and restores disconnected ASC channels to Available when the backend reports `agent-wss-disconnect`. ASC relogin and state notifications bypass the generic nested-event re-emission path and are published once after normalization.
 
 ContactCenter validates and enriches public inputs, starts metrics, delegates to the factory, performs browser-calling work when required, and maps backend notifications to application-facing events. `updateAgentProfile()` and private `silentRelogin()` are ContactCenter methods; the latter calls `services.agent.reload()` only after package-level recovery policy permits it.
 
@@ -308,6 +311,7 @@ classDiagram
 - **UC-3 Buddy-agent query:** retrieve backend-filtered candidates for consult/transfer. Evidence: `src/services/agent/index.ts`, `test/unit/spec/services/agent/index.ts`.
 - **UC-4 Recovery reload:** ContactCenter decides whether to invoke private relogin and the factory's `reload`. Evidence: `src/cc.ts`, `test/unit/spec/cc.ts`.
 - **UC-5 Device/profile update:** ContactCenter owns `updateAgentProfile`; the agent factory has no device-update method. Evidence: `src/cc.ts`, `test/unit/spec/cc.ts`.
+- **UC-6 ASC state change/relogin:** change selected channel sessions through v2 and refresh the current session/profile from ASC relogin notifications. Evidence: `src/services/agent/index.ts`, `src/cc.ts`, `test/unit/spec/services/agent/index.ts`, `test/unit/spec/cc.ts`.
 
 ## Business Rules & Invariants
 - Agent must preserve its typed public/event contracts and must not invent backend states or responses. Enforced in `src/services/agent/index.ts`.
@@ -343,7 +347,7 @@ await cc.setAgentState({
 });
 ```
 
-The `AgentState` type (`'Available' | 'Idle' | 'RONA' | string`) is extensible -- the `string` union member allows backend-defined states beyond the known values listed below.
+The `AgentState` type (`'Available' | 'Idle' | 'RONA' | string`) is extensible -- the `string` union member allows backend-defined states beyond the known values listed below. The ASC public method intentionally accepts only `Available` or `Idle`, requires at least one channel, and requires `auxCodeId` for Idle.
 
 | State | SubStatus | Description |
 |---|---|---|
@@ -464,7 +468,8 @@ const webex = Webex.init({
 
 ## Pitfalls
 - Station login/logout and state-change binds match both the outer event type and nested `data.type`; flattening either bind can settle the wrong request.
-- `routingAgent` has exactly five request functions and no `deviceUpdate`; profile/device changes belong to ContactCenter.
+- `routingAgent` has exactly six request functions and no `deviceUpdate`; profile/device changes belong to ContactCenter.
+- ASC uses the distinct v2 payload and nested `AgentChannelStateChanged` completion contract; it must not be flattened into legacy state change.
 - ConnectionService reports transport state, but ContactCenter alone decides whether `silentRelogin()` is allowed and whether `AGENT_NOT_FOUND` is handled silently.
 
 ## Module Do's / Don'ts
@@ -486,6 +491,7 @@ Use `test/unit/spec/services/agent/index.ts` for factory endpoint/bind/payload c
 | `AGENT-R-003` | `test/unit/spec/services/agent/index.ts` | None. |
 | `AGENT-R-004` | `test/unit/spec/cc.ts` | None. |
 | `AGENT-R-005` | `test/unit/spec/cc.ts` | Keep a negative assertion that `routingAgent.deviceUpdate` is absent. |
+| `AGENT-R-006` | `test/unit/spec/services/agent/index.ts`, `test/unit/spec/cc.ts` | None. |
 
 ## Traceability
 - Repo architecture: `../../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../../ai-docs/SPEC_INDEX.md`

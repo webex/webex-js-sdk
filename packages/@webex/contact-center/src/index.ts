@@ -120,6 +120,24 @@ export type {
   GenericError,
   /** Set state response */
   SetStateResponse,
+  /** Wellness notification action */
+  WellnessBreakNotificationAction,
+  /** Wellness action API value */
+  WellnessBreakUserAction,
+  /** AI Assistant RTD connection state */
+  AIAssistantRTDConnectionState,
+  /** AI Assistant RTD connection lifecycle event */
+  AIAssistantRTDStatusEvent,
+  /** Validated agent-scoped wellness notification */
+  WellnessBreakEvent,
+  /** Wellness notification listener */
+  WellnessBreakEventListener,
+  /** AI Assistant RTD status listener */
+  AIAssistantRTDStatusListener,
+  /** Wellness manual-request parameters */
+  RequestWellnessBreakParams,
+  /** Wellness offer-response parameters */
+  RespondToWellnessBreakParams,
 } from './types';
 
 /** Task related types */
@@ -181,6 +199,14 @@ export type {
   BuddyDetails,
   /** Buddy agents success response */
   BuddyAgentsSuccess,
+  /** Agent State Control state detail */
+  AgentChannelStateDetail,
+  /** Agent State Control relogin snapshot */
+  AgentChannelReloginSuccessEvent,
+  /** Agent State Control state-change event */
+  AgentChannelStateChangedEvent,
+  /** Agent State Control state-change parameters */
+  SetAgentChannelStateParams,
 } from './services/agent/types';
 
 /** Config related types */
