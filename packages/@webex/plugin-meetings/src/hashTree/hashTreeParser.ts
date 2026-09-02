@@ -1947,10 +1947,13 @@ class HashTreeParser {
 
     const dataSetsNeedingWatchdog = pendingDataSetNames
       .map((name) => this.dataSets[name])
-      .filter(
-        (dataSet): dataSet is InternalDataSet =>
-          Boolean(dataSet?.hashTree) && !dataSet?.heartbeatWatchdogTimer
-      );
+      .filter((dataSet): dataSet is InternalDataSet => {
+        if (!dataSet?.hashTree || dataSet.heartbeatWatchdogTimer) {
+          return false;
+        }
+
+        return this.isVisibleDataSet(dataSet.name);
+      });
 
     if (dataSetsNeedingWatchdog.length > 0) {
       LoggerProxy.logger.info(
