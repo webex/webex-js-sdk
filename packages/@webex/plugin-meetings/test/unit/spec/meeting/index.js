@@ -15389,7 +15389,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.startLLMHealthCheckTimer);
         });
 
-        it('calls switchLLMChannel on voiceaChannel after successful connection', async () => {
+        it('reuses voiceaChannel after successful connection', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {
             syncAllHashTreeDatasets: sinon.stub().resolves(),
@@ -15399,6 +15399,8 @@ describe('plugin-meetings', () => {
 
           await meeting.updateLLMConnection();
 
+          assert.notCalled(webex.internal.voicea.createChannel);
+          assert.strictEqual(meeting.voiceaChannel, mockVoiceaChannel);
           assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockChannel);
         });
 

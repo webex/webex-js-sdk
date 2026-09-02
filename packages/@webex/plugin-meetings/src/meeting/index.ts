@@ -6954,16 +6954,6 @@ export default class Meeting extends StatelessWebexPlugin {
         );
         this.startLLMHealthCheckTimer();
 
-        // Recreate voiceaChannel if it was destroyed (e.g., by MeetingUtil.cleanUp after
-        // a DESTROY_MEETING event, but user rejoined the same meeting object).
-        if (!this.voiceaChannel) {
-          // @ts-ignore - Fix type
-          this.voiceaChannel = this.webex.internal.voicea.createChannel();
-          LoggerProxy.logger.info(
-            'Meeting:index#updateLLMConnection --> recreated voiceaChannel after rejoin'
-          );
-        }
-
         // Switch voiceaChannel to use the new LLM channel (preserves transcription state).
         // Skip if practice session is active - practice session manages its own voicea binding
         // via updatePSDataChannel, and switching here would break practice session captions.
