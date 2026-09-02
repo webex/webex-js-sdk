@@ -701,6 +701,50 @@ describe('plugin-voicea', () => {
         });
       });
 
+      it('processes speaker name updates and advances the message sequence', () => {
+        const spy = sinon.spy();
+        const voiceaPayload = {
+          id: 'speaker-name-update-1',
+          taggedSpeakers: [
+            {
+              csiId: 3556942592,
+              speakerId: '1',
+              newName: 'Alice',
+            },
+          ],
+        };
+
+        voiceaChannel.on(EVENT_TRIGGERS.SPEAKER_NAME_UPDATED, spy);
+
+        eventHandler({
+          sequenceNumber: 23,
+          headers: {from: 'ws'},
+          data: {
+            relayType: 'voicea.update_speakername',
+            voiceaPayload,
+          },
+        });
+
+        assert.calledOnceWithExactly(spy, voiceaPayload);
+
+        voiceaChannel.sendAnnouncement();
+
+        assert.calledOnceWithExactly(mockLLMChannel.socket.send, {
+          id: '24',
+          type: 'publishRequest',
+          recipients: [{route: 'binding'}],
+          headers: {},
+          data: {
+            clientPayload: {
+              version: 'v2',
+            },
+            eventType: 'relay.event',
+            relayType: 'client.annc',
+          },
+          trackingId: sinon.match.string,
+        });
+      });
+
       it('processes transcription interim results', () => {
         const spy = sinon.spy();
         voiceaChannel.on(EVENT_TRIGGERS.NEW_CAPTION, spy);

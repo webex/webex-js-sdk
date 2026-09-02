@@ -7,6 +7,7 @@ export const EVENT_TRIGGERS = {
   TRANSCRIBING_OFF: 'voicea:transcribingOff',
 
   NEW_CAPTION: 'voicea:newCaption',
+  SPEAKER_NAME_UPDATED: 'voicea:speakerNameUpdated',
   EVA_COMMAND: 'voicea:wxa',
   HIGHLIGHT_CREATED: 'voicea:highlightCreated',
   NEW_MANUAL_CAPTION: 'aibridge:newManualCaption',
@@ -21,6 +22,7 @@ export const AIBRIDGE_RELAY_TYPES = {
     TRANSLATION_REQUEST: 'voicea.transl.req',
     TRANSLATION_RESPONSE: 'voicea.transl.rsp',
     TRANSCRIPTION: 'voicea.transcription',
+    SPEAKER_NAME_UPDATE: 'voicea.update_speakername',
   },
   MANUAL: {
     TRANSCRIPTION: 'aibridge.manual_transcription',
