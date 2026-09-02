@@ -900,6 +900,63 @@ describe('plugin-meetings', () => {
         }
       );
 
+      forEach(
+        [
+          {
+            meetingId: 'meeting-id',
+            sendCAevents: true,
+            correlationId: 'correlation-id',
+            shouldSendCorrelationId: true,
+            condition: 'when CA events are enabled for the meeting',
+          },
+          {
+            sendCAevents: true,
+            correlationId: 'correlation-id',
+            shouldSendCorrelationId: false,
+            condition: 'without a meetingId',
+          },
+          {
+            meetingId: 'meeting-id',
+            sendCAevents: false,
+            correlationId: 'correlation-id',
+            shouldSendCorrelationId: false,
+            condition: 'when CA events are disabled',
+          },
+          {
+            meetingId: 'meeting-id',
+            sendCAevents: true,
+            shouldSendCorrelationId: false,
+            condition: 'without a correlationId',
+          },
+        ],
+        ({meetingId, sendCAevents, correlationId, shouldSendCorrelationId, condition}) => {
+          it(`should ${
+            shouldSendCorrelationId ? '' : 'not '
+          }send the correlationId header ${condition}`, async () => {
+            webex.request.resolves({statusCode: 200, body: {meetingKey: '1234323'}});
+
+            await meetingInfo.fetchMeetingInfo(
+              '1234323',
+              DESTINATION_TYPE.MEETING_ID,
+              null,
+              null,
+              null,
+              null,
+              undefined,
+              {meetingId, sendCAevents, correlationId}
+            );
+
+            const requestOptions = webex.request.firstCall.args[0];
+
+            if (shouldSendCorrelationId) {
+              assert.deepEqual(requestOptions.headers, {correlationId});
+            } else {
+              assert.notProperty(requestOptions, 'headers');
+            }
+          });
+        }
+      );
+
       it('should send CA metric if meetingId is provided and send CA events is authorized', async () => {
         const requestResponse = {
           statusCode: 200,

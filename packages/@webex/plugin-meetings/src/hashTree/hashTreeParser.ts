@@ -110,6 +110,7 @@ export type HashTreeParserCallbacks = {
   locusInfoUpdateCallback: LocusInfoUpdateCallback;
   syncLatencyTracker?: SyncLatencyTracker;
   generateTrackingId?: GenerateTrackingId;
+  isLlmExpected: () => boolean;
 };
 
 const SYNC_METRICS_DATA_SETS = [
@@ -1222,11 +1223,11 @@ class HashTreeParser {
       // emitted only from the LLM message path, so no completion happens here.
       const updatedObjects = this.parseMessage(message, debugText);
 
-      this.resetHeartbeatWatchdogs(message.dataSets);
       this.callLocusInfoUpdateCallback({
         updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
         updatedObjects,
       });
+      this.resetHeartbeatWatchdogs(message.dataSets);
     }
   }
 
@@ -1876,7 +1877,20 @@ class HashTreeParser {
       // dataset-level heartbeatIntervalMs takes priority; fall back to top-level common value
       const heartbeatIntervalMs = dataSet?.heartbeatIntervalMs ?? this.topLevelHeartbeatIntervalMs;
 
-      if (!dataSet?.hashTree || !heartbeatIntervalMs) {
+      if (!dataSet?.hashTree || !this.isVisibleDataSet(dataSet.name) || !heartbeatIntervalMs) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      if (
+        LLM_DATASET_NAMES.includes(dataSet.name) &&
+        this.callbacks.isLlmExpected &&
+        !this.callbacks.isLlmExpected()
+      ) {
+        LoggerProxy.logger.info(
+          `HashTreeParser#resetHeartbeatWatchdogs --> ${this.debugId} skipping heartbeat watchdog timer for data set "${dataSet.name}" because LLM is disconnected`
+        );
+
         // eslint-disable-next-line no-continue
         continue;
       }
@@ -1888,7 +1902,7 @@ class HashTreeParser {
         dataSet.heartbeatWatchdogTimer = undefined;
 
         LoggerProxy.logger.warn(
-          `HashTreeParser#resetHeartbeatWatchdogs --> ${this.debugId} Heartbeat watchdog fired for data set "${dataSet.name}" - no heartbeat received within expected interval, initiating sync`
+          `HashTreeParser#resetHeartbeatWatchdogs --> ${this.debugId} Heartbeat watchdog fired for data set "${dataSet.name}" - no heartbeat received within expected interval(heartbeatIntervalMs=${heartbeatIntervalMs}, backoffTime=${backoffTime}), initiating sync`
         );
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED, {

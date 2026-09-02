@@ -184,7 +184,8 @@ describe('HashTreeParser', () => {
     excludedDataSets?: string[],
     syncLatencyTracker?: any,
     syncLatencyMeetingId = 'meeting-1',
-    generateTrackingId?: any
+    generateTrackingId?: any,
+    isLlmExpected?: () => boolean
   ) {
     return new HashTreeParser({
       initialLocus,
@@ -194,6 +195,7 @@ describe('HashTreeParser', () => {
         locusInfoUpdateCallback: callback,
         syncLatencyTracker,
         generateTrackingId,
+        isLlmExpected,
       },
       debugId: 'test',
       excludedDataSets,
@@ -3519,6 +3521,45 @@ describe('HashTreeParser', () => {
         expect(parser.dataSets.main.heartbeatWatchdogTimer).to.be.undefined;
       });
 
+      it('skips watchdog timers for LLM datasets when current meeting LLM is not expected', async () => {
+        const parser = createHashTreeParser(
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          'meeting-1',
+          undefined,
+          () => false
+        );
+
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+            {
+              ...createDataSet('self', 1, 2100),
+              url: parser.dataSets.self.url,
+              root: parser.dataSets.self.hashTree.getRootHash(),
+            },
+            {
+              ...createDataSet('atd-unmuted', 16, 3100),
+              url: parser.dataSets['atd-unmuted'].url,
+              root: parser.dataSets['atd-unmuted'].hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'heartbeat with meeting-scoped llm not expected');
+
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.be.undefined;
+        expect(parser.dataSets['atd-unmuted'].heartbeatWatchdogTimer).to.be.undefined;
+        expect(parser.dataSets.self.heartbeatWatchdogTimer).to.not.be.undefined;
+      });
+
       it('stops all watchdog timers when meeting ends via sentinel message', async () => {
         const parser = createHashTreeParser();
 
@@ -3677,6 +3718,28 @@ describe('HashTreeParser', () => {
         // Watchdog set for main (visible) but not for atd-active (no hash tree)
         expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
         expect(parser.dataSets['atd-active']?.heartbeatWatchdogTimer).to.be.undefined;
+      });
+
+      it('does not set watchdog for a data set that has a hash tree but is not in visibleDataSets', async () => {
+        const parser = createHashTreeParser();
+
+        // simulate a dataset that still has a hash tree but is no longer visible
+        parser.visibleDataSets = parser.visibleDataSets.filter((vds) => vds.name !== 'main');
+
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'heartbeat for non-visible dataset with hash tree');
+
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.be.undefined;
       });
 
       it('restarts the watchdog timer after it fires so that future missed heartbeats still trigger syncs', async () => {
