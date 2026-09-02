@@ -23,13 +23,7 @@ export default class CatalogUrlInterceptor extends Interceptor {
    * @returns {Object}
    */
   onRequest(options) {
-    // Skip validation if using service parameter (already safe - resolved from catalog)
-    if (options.service) {
-      return Promise.resolve(options);
-    }
-
-    // Skip if explicitly opted out
-    if (options.allowNonCatalogUrl === true) {
+    if (options.service && !options.uri && !options.url) {
       return Promise.resolve(options);
     }
 
@@ -66,10 +60,7 @@ export default class CatalogUrlInterceptor extends Interceptor {
 
     // URL not in catalog or allowed domains - block the request
     return Promise.reject(
-      new Error(
-        `Request blocked: URL not in service catalog or allowed domains: ${url}. ` +
-          'Use {allowNonCatalogUrl: true} to bypass validation.'
-      )
+      new Error(`Request blocked: URL not in service catalog or allowed domains: ${url}.`)
     );
   }
 }

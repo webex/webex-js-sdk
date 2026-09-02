@@ -121,7 +121,6 @@ const User = WebexPlugin.extend({
       uri: this.webex.config.credentials.activationUrl,
       method: 'POST',
       body: activateOptions,
-      allowNonCatalogUrl: true,
       auth: {
         user: this.webex.config.credentials.client_id,
         pass: this.webex.config.credentials.client_secret,
@@ -200,7 +199,6 @@ const User = WebexPlugin.extend({
       uri: this.webex.config.credentials.generateOtpUrl,
       method: 'POST',
       body: options,
-      allowNonCatalogUrl: true,
       auth: {
         user: this.webex.config.credentials.client_id,
         pass: this.webex.config.credentials.client_secret,
@@ -307,7 +305,6 @@ const User = WebexPlugin.extend({
       this.request({
         uri: `${this.webex.config.credentials.setPasswordUrl}/${this.webex.internal.device.userId}`,
         method: 'PATCH',
-        allowNonCatalogUrl: true,
         headers: {
           authorization: token.toString(),
         },
@@ -394,7 +391,6 @@ const User = WebexPlugin.extend({
       return this.request({
         uri: `${identityUrl}/identity/scim/${resolvedOrgId}/v1/Users/${userId}`,
         method: 'PATCH',
-        allowNonCatalogUrl: true,
         body: buildPreferredSiteBody(newSiteUrl, oldSiteUrl),
       }).then((res) => res.body);
     } catch (error) {
@@ -458,7 +454,6 @@ const User = WebexPlugin.extend({
       uri: this.webex.config.credentials.validateOtpUrl,
       method: 'POST',
       body: options,
-      allowNonCatalogUrl: true,
       auth: {
         user: this.webex.config.credentials.client_id,
         pass: this.webex.config.credentials.client_secret,

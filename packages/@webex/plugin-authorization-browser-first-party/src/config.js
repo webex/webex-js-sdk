@@ -19,7 +19,6 @@ export default {
         .request({
           method: 'POST',
           uri: token.config.tokenUrl,
-          allowNonCatalogUrl: true,
           form: {
             grant_type: 'refresh_token',
             redirect_uri: token.config.redirect_uri,

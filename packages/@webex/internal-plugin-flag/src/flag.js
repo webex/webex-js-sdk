@@ -94,8 +94,9 @@ const Flag = WebexCore.WebexPlugin.extend({
       const convoUrlRegex = /(.*)\/activities\//;
       const activity = flag['flag-item'];
       const match = convoUrlRegex.exec(activity);
+      const service = match && this.webex.internal.services.getServiceFromUrl(match[1]);
 
-      if (match && this.webex.internal.services.getServiceFromUrl(match[1])) {
+      if (service?.name === 'conversation') {
         const url = match[1];
         let activities = mapUrlActivities.get(url);
 

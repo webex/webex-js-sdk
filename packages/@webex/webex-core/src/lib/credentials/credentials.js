@@ -342,7 +342,6 @@ const Credentials = WebexPlugin.extend({
         /* eslint-disable camelcase */
         method: 'POST',
         uri: options.uri || this.config.tokenUrl,
-        allowNonCatalogUrl: true,
         form: {
           grant_type: 'client_credentials',
           scope: options.scope || 'webexsquare:admin',

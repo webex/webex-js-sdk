@@ -61,6 +61,21 @@ describe('plugin-flag', () => {
         assert.deepEqual(activities, []);
       });
 
+      it('rejects activity URLs from non-conversation Webex services', async () => {
+        const flags = [
+          {
+            'flag-item': 'https://idbroker.webex.com/idb/activities/fake-id',
+          },
+        ];
+
+        getServiceFromUrlStub.returns({name: 'idbroker'});
+
+        const activities = await webex.internal.flag.mapToActivities(flags);
+
+        assert.notCalled(webex.request);
+        assert.deepEqual(activities, []);
+      });
+
       it('allows activity URLs from known Webex services', async () => {
         const legitimateFlags = [
           {

@@ -760,6 +760,26 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#getServiceFromUrl()', () => {
+      it('matches an exact service URL when the catalog URL has a trailing slash', () => {
+        const baseUrl = 'https://example.com/api/v1/';
+
+        catalog.updateServiceGroups('preauth', [
+          {
+            id: 'example',
+            serviceName: 'example',
+            serviceUrls: [{host: 'example.com', baseUrl, priority: 1}],
+          },
+        ]);
+
+        assert.deepEqual(services.getServiceFromUrl('https://example.com/api/v1'), {
+          name: 'example',
+          priorityUrl: baseUrl,
+          defaultUrl: baseUrl,
+        });
+      });
+    });
+
     describe('#_formatReceivedHostmap()', () => {
       let serviceHostmap;
       let formattedHM;

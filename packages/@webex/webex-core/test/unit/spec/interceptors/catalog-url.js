@@ -58,20 +58,8 @@ describe('webex-core', () => {
           assert.calledOnce(webex.internal.services.getServiceFromUrl);
         });
 
-        it('allows non-catalog URLs with allowNonCatalogUrl: true', async () => {
-          const options = {
-            uri: 'https://idbroker.webex.com/idb/oauth2/v1/access_token',
-            allowNonCatalogUrl: true,
-          };
-
-          const result = await interceptor.onRequest(options);
-
-          assert.deepEqual(result, options);
-          assert.notCalled(webex.internal.services.getServiceFromUrl);
-        });
-
         describe('service parameter bypass', () => {
-          it('skips validation when service parameter is present', async () => {
+          it('skips validation when service has not been resolved to a URL', async () => {
             const options = {
               service: 'conversation',
               resource: '/messages',
@@ -81,6 +69,19 @@ describe('webex-core', () => {
 
             assert.deepEqual(result, options);
             assert.notCalled(webex.internal.services.getServiceFromUrl);
+          });
+
+          it('blocks a non-catalog URL when service is also present', async () => {
+            const options = {
+              service: 'conversation',
+              resource: '/messages',
+              uri: 'https://attacker.com/steal',
+              headers: {authorization: 'Bearer token'},
+            };
+            webex.internal.services.getServiceFromUrl.returns(undefined);
+
+            await assert.isRejected(interceptor.onRequest(options), /Request blocked/);
+            assert.calledOnceWithExactly(webex.internal.services.getServiceFromUrl, options.uri);
           });
         });
 

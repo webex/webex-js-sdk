@@ -397,7 +397,7 @@ const WebexCore = AmpState.extend({
       }
 
       // CatalogUrlInterceptor is opt-in via config.services.validateCatalogUrls
-      if (key === 'CatalogUrlInterceptor' && !this.config.services?.validateCatalogUrls) {
+      if (key === 'CatalogUrlInterceptor' && this.config.services?.validateCatalogUrls !== true) {
         return ints;
       }
 
