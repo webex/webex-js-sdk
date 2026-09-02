@@ -393,7 +393,7 @@ Key behaviors by status code:
 - **401 Unauthorized** — final error, emits token error
 - **403 Forbidden** — inspects `errorCode` in body for device-limit-exceeded (triggers `restoreRegCb`), device-creation-disabled (final error), or device-creation-failed (non-final)
 - **404 Device Not Found** — final error; on keepalive, triggers `handle404KeepaliveFailure` which re-attempts registration
-- **409 Conflict (keepalive only)** — final error, because only the keepalive flow passes `sessionSupersededCb`: that handler owns the hard stop and `handledByCallback` is returned, so no event is emitted from here. Registration, restoration, failover, and failback do not pass the handler and keep the unknown-error treatment for `409`
+- **409 Conflict (keepalive only)** — final error, because only the keepalive flow passes `sessionSupersededCb`: that handler owns the hard stop and notifies the consumer, so no event is emitted from here. Registration, restoration, failover, and failback do not pass the handler, so for them a `409` is logged and ignored — non-final, no event, no metric
 - **429 Too Many Requests** — non-final, invokes `retry429Cb` with the `Retry-After` header value
 - **500 / 503** — non-final, emits error and allows retry
 
