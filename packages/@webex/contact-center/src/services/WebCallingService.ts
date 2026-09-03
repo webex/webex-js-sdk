@@ -15,6 +15,7 @@ import {TIMEOUT_DURATION, WEB_CALLING_SERVICE_FILE} from '../constants';
 import LoggerProxy from '../logger-proxy';
 import {
   DEFAULT_RTMS_DOMAIN,
+  ALLOWED_RTMS_DOMAIN,
   POST_AUTH,
   WCC_CALLING_RTMS_DOMAIN,
   DEREGISTER_WEBCALLING_LINE_MSG,
@@ -142,8 +143,23 @@ export default class WebCallingService extends EventEmitter {
 
     try {
       const url = new URL(rtmsURL);
+      const hostname = url.hostname.toLowerCase();
+      const isAllowedHost =
+        hostname === ALLOWED_RTMS_DOMAIN || hostname.endsWith(`.${ALLOWED_RTMS_DOMAIN}`);
 
-      return url.hostname;
+      if (!isAllowedHost) {
+        LoggerProxy.error(
+          `Non-allow-listed RTMS host from u2c catalogue: ${hostname} so falling back to default domain`,
+          {
+            module: WEB_CALLING_SERVICE_FILE,
+            method: METHODS.GET_RTMS_DOMAIN,
+          }
+        );
+
+        return DEFAULT_RTMS_DOMAIN;
+      }
+
+      return hostname;
     } catch (error) {
       LoggerProxy.error(
         `Invalid URL from u2c catalogue: ${rtmsURL} so falling back to default domain`,

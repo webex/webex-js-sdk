@@ -198,6 +198,44 @@ describe('WebCallingService', () => {
 
     });
 
+    it('should fall back to default domain for a non-allow-listed catalog RTMS host', async () => {
+      webex.internal.services.get.mockReturnValue('wss://evil.attacker.com');
+
+      line = callingClient.getLines().line1 as ILine;
+      const deviceInfo = {
+        mobiusDeviceId: 'device123',
+        status: 'registered',
+        setError: jest.fn(),
+        getError: jest.fn(),
+        type: 'line',
+        id: 'line1',
+      };
+
+      const registeredHandler = jest.fn();
+      const lineOnSpy = jest.spyOn(line, 'on').mockImplementation((event, handler) => {
+        if (event === LINE_EVENTS.REGISTERED) {
+          registeredHandler.mockImplementation(handler);
+          handler(deviceInfo);
+        }
+      });
+      await expect(webRTCCalling.registerWebCallingLine()).resolves.toBeUndefined();
+      expect(createClient).toHaveBeenCalledWith(webex, {
+        logger: {
+          level: 'info',
+        },
+        serviceData: {
+          indicator: 'contactcenter',
+          domain: 'rtw.prod-us1.rtmsprod.net',
+        },
+      });
+      expect(lineOnSpy).toHaveBeenCalledWith(LINE_EVENTS.REGISTERED, expect.any(Function));
+      expect(line.register).toHaveBeenCalled();
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'Non-allow-listed RTMS host from u2c catalogue: evil.attacker.com so falling back to default domain',
+        {module: WEB_CALLING_SERVICE_FILE, method: 'getRTMSDomain'}
+      );
+    });
+
     it('should reject if registration times out', async () => {
       line = callingClient.getLines().line1 as ILine;
       jest.spyOn(global, 'setTimeout').mockImplementation(((handler: TimerHandler) => {

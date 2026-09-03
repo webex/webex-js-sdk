@@ -92,6 +92,39 @@ describe('ApiAIAssistant', () => {
     expect(result).toEqual(responseBody as any);
   });
 
+  it('rejects an invalid agentId/interactionId and does not call webex.request', async () => {
+    apiAIAssistant.setAIFeatureFlags({realtimeTranscripts: {enable: true}} as any);
+
+    await expect(
+      apiAIAssistant.fetchHistoricTranscripts('', 'interaction-1')
+    ).rejects.toBeDefined();
+    await expect(
+      apiAIAssistant.fetchHistoricTranscripts('test-agent-id', 'bad id!')
+    ).rejects.toBeDefined();
+
+    expect(mockWebex.request).not.toHaveBeenCalled();
+  });
+
+  it('sends the request for valid agentId/interactionId identifiers', async () => {
+    const responseBody = {interactionId: 'interaction-1', data: []};
+    (mockWebex.request as jest.Mock).mockResolvedValue({body: responseBody});
+    apiAIAssistant.setAIFeatureFlags({realtimeTranscripts: {enable: true}} as any);
+
+    const result = await apiAIAssistant.fetchHistoricTranscripts('test-agent-id', 'interaction-1');
+
+    expect(mockWebex.request).toHaveBeenCalledWith({
+      uri: 'https://api-ai-assistant.produs1.ciscoccservice.com/transcripts/list',
+      method: HTTP_METHODS.POST,
+      addAuthHeader: true,
+      body: {
+        agentId: 'test-agent-id',
+        orgId: 'test-org-id',
+        interactionId: 'interaction-1',
+      },
+    });
+    expect(result).toEqual(responseBody as any);
+  });
+
   it('should request real-time assistance without extra context using sendEvent', async () => {
     const sendEventSpy = jest.spyOn(apiAIAssistant, 'sendEvent').mockResolvedValue({ok: true});
     apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
