@@ -3313,7 +3313,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jest/environment@npm:^29.7.0":
+"@jest/environment@npm:^29.3.1, @jest/environment@npm:^29.7.0":
   version: 29.7.0
   resolution: "@jest/environment@npm:29.7.0"
   dependencies:
@@ -3367,7 +3367,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jest/fake-timers@npm:^29.7.0":
+"@jest/fake-timers@npm:^29.3.1, @jest/fake-timers@npm:^29.7.0":
   version: 29.7.0
   resolution: "@jest/fake-timers@npm:29.7.0"
   dependencies:
@@ -3721,7 +3721,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jridgewell/trace-mapping@npm:^0.3.12, @jridgewell/trace-mapping@npm:^0.3.18, @jridgewell/trace-mapping@npm:^0.3.24, @jridgewell/trace-mapping@npm:^0.3.25, @jridgewell/trace-mapping@npm:^0.3.28":
+"@jridgewell/trace-mapping@npm:^0.3.12, @jridgewell/trace-mapping@npm:^0.3.18, @jridgewell/trace-mapping@npm:^0.3.24, @jridgewell/trace-mapping@npm:^0.3.25, @jridgewell/trace-mapping@npm:^0.3.28, @jridgewell/trace-mapping@npm:^0.3.31":
   version: 0.3.31
   resolution: "@jridgewell/trace-mapping@npm:0.3.31"
   dependencies:
@@ -9780,6 +9780,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@webex/webexconnect@workspace:packages/webexconnect":
+  version: 0.0.0-use.local
+  resolution: "@webex/webexconnect@workspace:packages/webexconnect"
+  dependencies:
+    eslint: ^8.24.0
+    jest: 29.3.1
+    jest-environment-jsdom: 29.3.1
+    rimraf: 3.0.2
+    terser-webpack-plugin: ^5.3.14
+    webpack: ^5.103.0
+    webpack-cli: ^5.1.4
+  languageName: unknown
+  linkType: soft
+
 "@webex/webrtc-core@npm:2.14.2":
   version: 2.14.2
   resolution: "@webex/webrtc-core@npm:2.14.2"
@@ -9844,6 +9858,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@webpack-cli/configtest@npm:^2.1.1":
+  version: 2.1.1
+  resolution: "@webpack-cli/configtest@npm:2.1.1"
+  peerDependencies:
+    webpack: 5.x.x
+    webpack-cli: 5.x.x
+  checksum: 9f9f9145c2d05471fc83d426db1df85cf49f329836b0c4b9f46b6948bed4b013464c00622b136d2a0a26993ce2306976682592245b08ee717500b1db45009a72
+  languageName: node
+  linkType: hard
+
 "@webpack-cli/info@npm:^1.5.0":
   version: 1.5.0
   resolution: "@webpack-cli/info@npm:1.5.0"
@@ -9852,6 +9876,16 @@ __metadata:
   peerDependencies:
     webpack-cli: 4.x.x
   checksum: 7f56fe037cd7d1fd5c7428588519fbf04a0cad33925ee4202ffbafd00f8ec1f2f67d991245e687d50e0f3e23f7b7814273d56cb9f7da4b05eed47c8d815c6296
+  languageName: node
+  linkType: hard
+
+"@webpack-cli/info@npm:^2.0.2":
+  version: 2.0.2
+  resolution: "@webpack-cli/info@npm:2.0.2"
+  peerDependencies:
+    webpack: 5.x.x
+    webpack-cli: 5.x.x
+  checksum: 8f9a178afca5c82e113aed1efa552d64ee5ae4fdff63fe747c096a981ec74f18a5d07bd6e89bbe6715c3e57d96eea024a410e58977169489fe1df044c10dd94e
   languageName: node
   linkType: hard
 
@@ -9864,6 +9898,19 @@ __metadata:
     webpack-dev-server:
       optional: true
   checksum: d475e8effa23eb7ff9a48b14d4de425989fd82f906ce71c210921cc3852327c22873be00c35e181a25a6bd03d424ae2b83e7f3b3f410ac7ee31b128ab4ac7713
+  languageName: node
+  linkType: hard
+
+"@webpack-cli/serve@npm:^2.0.5":
+  version: 2.0.5
+  resolution: "@webpack-cli/serve@npm:2.0.5"
+  peerDependencies:
+    webpack: 5.x.x
+    webpack-cli: 5.x.x
+  peerDependenciesMeta:
+    webpack-dev-server:
+      optional: true
+  checksum: 75f0e54681796d567a71ac3e2781d2901a8d8cf1cdfc82f261034dddac59a8343e8c3bc5e32b4bb9d6766759ba49fb29a5cd86ef1701d79c506fe886bb63ac75
   languageName: node
   linkType: hard
 
@@ -13457,6 +13504,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"commander@npm:^10.0.1":
+  version: 10.0.1
+  resolution: "commander@npm:10.0.1"
+  checksum: 436901d64a818295803c1996cd856621a74f30b9f9e28a588e726b2b1670665bccd7c1a77007ebf328729f0139838a88a19265858a0fa7a8728c4656796db948
+  languageName: node
+  linkType: hard
+
 "commander@npm:^2.20.0, commander@npm:^2.8.1":
   version: 2.20.3
   resolution: "commander@npm:2.20.3"
@@ -15849,6 +15903,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"enhanced-resolve@npm:^5.24.4":
+  version: 5.24.5
+  resolution: "enhanced-resolve@npm:5.24.5"
+  dependencies:
+    graceful-fs: ^4.2.4
+    tapable: ^2.3.3
+  checksum: dc2da64244f529335c603870ca485281f92cd92c4579b1baf613d5f86cfc71f901ea3c29066e242c115340be8164e9d9c917bd05720b3be8bed649745004dc24
+  languageName: node
+  linkType: hard
+
 "ent@npm:~2.2.0":
   version: 2.2.2
   resolution: "ent@npm:2.2.2"
@@ -16023,6 +16087,13 @@ __metadata:
   version: 2.0.0
   resolution: "es-module-lexer@npm:2.0.0"
   checksum: 6290c43cc9bf6c9f9167b4be8c0105137401fbbd9d503d89880f7e811286cd33ab628407e7dea3c14d41cf9e634e580e5d9952907003a88c7fb2461de6f1b2c1
+  languageName: node
+  linkType: hard
+
+"es-module-lexer@npm:^2.1.0":
+  version: 2.3.2
+  resolution: "es-module-lexer@npm:2.3.2"
+  checksum: 4f8c2b36c185afab4eab102d3e75284521688388e42a6dac830e62e5d7b53b8a33880e36e8e86b4ca880e5f5eed7e69d038f8ae2550f4ce9af28e4e156040814
   languageName: node
   linkType: hard
 
@@ -20279,6 +20350,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"interpret@npm:^3.1.1":
+  version: 3.1.1
+  resolution: "interpret@npm:3.1.1"
+  checksum: 35cebcf48c7351130437596d9ab8c8fe131ce4038da4561e6d665f25640e0034702a031cf7e3a5cea60ac7ac548bf17465e0571ede126f3d3a6933152171ac82
+  languageName: node
+  linkType: hard
+
 "into-stream@npm:^3.1.0":
   version: 3.1.0
   resolution: "into-stream@npm:3.1.0"
@@ -21629,6 +21707,27 @@ __metadata:
   languageName: node
   linkType: hard
 
+"jest-environment-jsdom@npm:29.3.1":
+  version: 29.3.1
+  resolution: "jest-environment-jsdom@npm:29.3.1"
+  dependencies:
+    "@jest/environment": ^29.3.1
+    "@jest/fake-timers": ^29.3.1
+    "@jest/types": ^29.3.1
+    "@types/jsdom": ^20.0.0
+    "@types/node": "*"
+    jest-mock: ^29.3.1
+    jest-util: ^29.3.1
+    jsdom: ^20.0.0
+  peerDependencies:
+    canvas: ^2.5.0
+  peerDependenciesMeta:
+    canvas:
+      optional: true
+  checksum: 91b04ed02b2275c3a47740e20c2691f67c4295e17174c8ccd3a71fe77707239e487506bd157279b4257ce1be0a8c2be377817ee85689966a9e604bb6ef1199f0
+  languageName: node
+  linkType: hard
+
 "jest-environment-jsdom@npm:^27.5.1":
   version: 27.5.1
   resolution: "jest-environment-jsdom@npm:27.5.1"
@@ -21948,7 +22047,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jest-mock@npm:^29.7.0":
+"jest-mock@npm:^29.3.1, jest-mock@npm:^29.7.0":
   version: 29.7.0
   resolution: "jest-mock@npm:29.7.0"
   dependencies:
@@ -22279,7 +22378,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jest-util@npm:^29.7.0":
+"jest-util@npm:^29.3.1, jest-util@npm:^29.7.0":
   version: 29.7.0
   resolution: "jest-util@npm:29.7.0"
   dependencies:
@@ -25172,7 +25271,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mime-db@npm:>= 1.43.0 < 2, mime-db@npm:^1.28.0":
+"mime-db@npm:>= 1.43.0 < 2, mime-db@npm:^1.28.0, mime-db@npm:^1.54.0":
   version: 1.54.0
   resolution: "mime-db@npm:1.54.0"
   checksum: e99aaf2f23f5bd607deb08c83faba5dd25cf2fec90a7cc5b92d8260867ee08dab65312e1a589e60093dc7796d41e5fae013268418482f1db4c7d52d0a0960ac9
@@ -25392,6 +25491,45 @@ __metadata:
   version: 1.2.8
   resolution: "minimist@npm:1.2.8"
   checksum: 75a6d645fb122dad29c06a7597bddea977258957ed88d7a6df59b5cd3fe4a527e253e9bbf2e783e4b73657f9098b96a5fe96ab8a113655d4109108577ecf85b0
+  languageName: node
+  linkType: hard
+
+"minimizer-webpack-plugin@npm:^5.7.0":
+  version: 5.8.0
+  resolution: "minimizer-webpack-plugin@npm:5.8.0"
+  dependencies:
+    "@jridgewell/trace-mapping": ^0.3.31
+    jest-worker: ^27.4.5
+    schema-utils: ^4.3.3
+    terser: ^5.51.0
+  peerDependencies:
+    webpack: ^5.1.0
+  peerDependenciesMeta:
+    "@minify-html/node":
+      optional: true
+    "@swc/core":
+      optional: true
+    "@swc/css":
+      optional: true
+    "@swc/html":
+      optional: true
+    clean-css:
+      optional: true
+    cssnano:
+      optional: true
+    csso:
+      optional: true
+    esbuild:
+      optional: true
+    html-minifier-terser:
+      optional: true
+    lightningcss:
+      optional: true
+    postcss:
+      optional: true
+    uglify-js:
+      optional: true
+  checksum: 58af8d88ccc098e1f6c264321be97dfdb578adb63322432d069151e4c76e907533785f29e8eeddd98729a4e3074a568bf67717dd8070480ece3059bbb7b06f6b
   languageName: node
   linkType: hard
 
@@ -28510,6 +28648,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"rechoir@npm:^0.8.0":
+  version: 0.8.0
+  resolution: "rechoir@npm:0.8.0"
+  dependencies:
+    resolve: ^1.20.0
+  checksum: ad3caed8afdefbc33fbc30e6d22b86c35b3d51c2005546f4e79bcc03c074df804b3640ad18945e6bef9ed12caedc035655ec1082f64a5e94c849ff939dc0a788
+  languageName: node
+  linkType: hard
+
 "recursive-readdir@npm:^2.2.2":
   version: 2.2.3
   resolution: "recursive-readdir@npm:2.2.3"
@@ -31388,6 +31535,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tapable@npm:^2.3.3":
+  version: 2.3.3
+  resolution: "tapable@npm:2.3.3"
+  checksum: 6f37a59e82a2daedd0fbfc231f6e6004389a9d4bcf8ab8f2d61f96f9f4fd4cbb087799627c5d644d75f518df2abbbc9b9ac699945e0c9a0c610f2a3ca92e0265
+  languageName: node
+  linkType: hard
+
 "tar-fs@npm:2.1.1":
   version: 2.1.1
   resolution: "tar-fs@npm:2.1.1"
@@ -31596,6 +31750,45 @@ __metadata:
   languageName: node
   linkType: hard
 
+"terser-webpack-plugin@npm:^5.3.14":
+  version: 5.6.1
+  resolution: "terser-webpack-plugin@npm:5.6.1"
+  dependencies:
+    "@jridgewell/trace-mapping": ^0.3.25
+    jest-worker: ^27.4.5
+    schema-utils: ^4.3.0
+    terser: ^5.31.1
+  peerDependencies:
+    webpack: ^5.1.0
+  peerDependenciesMeta:
+    "@minify-html/node":
+      optional: true
+    "@swc/core":
+      optional: true
+    "@swc/css":
+      optional: true
+    "@swc/html":
+      optional: true
+    clean-css:
+      optional: true
+    cssnano:
+      optional: true
+    csso:
+      optional: true
+    esbuild:
+      optional: true
+    html-minifier-terser:
+      optional: true
+    lightningcss:
+      optional: true
+    postcss:
+      optional: true
+    uglify-js:
+      optional: true
+  checksum: b596093d667af8c7c89c2a65d93090f37cf58ebcfb5c86429ad1c6d9dba05857b572659c17900cafc25888613ac4c391a4c20d27b4c8b5dcdbcdf32e0f1ee8fc
+  languageName: node
+  linkType: hard
+
 "terser-webpack-plugin@npm:^5.3.17":
   version: 5.4.0
   resolution: "terser-webpack-plugin@npm:5.4.0"
@@ -31628,6 +31821,20 @@ __metadata:
   bin:
     terser: bin/terser
   checksum: 1d93e7c57c192b029738684df639426e788041eea689080e4c1e54823dc949fbaead64b287d637084df28ef5dc1ddd46fdf28370bfc219f6b53e528f5f49506c
+  languageName: node
+  linkType: hard
+
+"terser@npm:^5.51.0":
+  version: 5.51.2
+  resolution: "terser@npm:5.51.2"
+  dependencies:
+    "@jridgewell/source-map": ^0.3.3
+    acorn: ^8.15.0
+    commander: ^2.20.0
+    source-map-support: ~0.5.20
+  bin:
+    terser: bin/terser
+  checksum: 1d3c6b2aa6e5d346d2e4af978eafc5dd955f1544d1e7c57cf11c8d1101bd30cd532a817b47fde1cb272f3993472ddb64d9d983782d80584404bc01fb7a77880d
   languageName: node
   linkType: hard
 
@@ -33600,6 +33807,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"watchpack@npm:^2.5.2":
+  version: 2.5.2
+  resolution: "watchpack@npm:2.5.2"
+  dependencies:
+    graceful-fs: ^4.1.2
+  checksum: f057bf74f80e82ac283f9a8700c3c41fddcf6136bd2b91dd8895b6cdcee1adcf5825bcb8f63e6f313ac880c8954701ee2f6f187996b45027b8540fe6b5fbc301
+  languageName: node
+  linkType: hard
+
 "wbuf@npm:^1.1.0, wbuf@npm:^1.7.3":
   version: 1.7.3
   resolution: "wbuf@npm:1.7.3"
@@ -34180,6 +34396,38 @@ __metadata:
   languageName: node
   linkType: hard
 
+"webpack-cli@npm:^5.1.4":
+  version: 5.1.4
+  resolution: "webpack-cli@npm:5.1.4"
+  dependencies:
+    "@discoveryjs/json-ext": ^0.5.0
+    "@webpack-cli/configtest": ^2.1.1
+    "@webpack-cli/info": ^2.0.2
+    "@webpack-cli/serve": ^2.0.5
+    colorette: ^2.0.14
+    commander: ^10.0.1
+    cross-spawn: ^7.0.3
+    envinfo: ^7.7.3
+    fastest-levenshtein: ^1.0.12
+    import-local: ^3.0.2
+    interpret: ^3.1.1
+    rechoir: ^0.8.0
+    webpack-merge: ^5.7.3
+  peerDependencies:
+    webpack: 5.x.x
+  peerDependenciesMeta:
+    "@webpack-cli/generators":
+      optional: true
+    webpack-bundle-analyzer:
+      optional: true
+    webpack-dev-server:
+      optional: true
+  bin:
+    webpack-cli: bin/cli.js
+  checksum: 3a4ad0d0342a6815c850ee4633cc2a8a5dae04f918e7847f180bf24ab400803cf8a8943707ffbed03eb20fe6ce647f996f60a2aade87b0b4a9954da3da172ce0
+  languageName: node
+  linkType: hard
+
 "webpack-dev-middleware@npm:^5.3.4":
   version: 5.3.4
   resolution: "webpack-dev-middleware@npm:5.3.4"
@@ -34270,6 +34518,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"webpack-sources@npm:^3.5.1":
+  version: 3.5.1
+  resolution: "webpack-sources@npm:3.5.1"
+  checksum: 496528dbaf2cfe9547db2cf015b7d7d56c406f60f5c8829e985692e16dd3f09bcc73898039228283bb90cf9fabed07d22088a6c44405d34ad91409e8ce4ffc4e
+  languageName: node
+  linkType: hard
+
 "webpack@npm:^5.1.0, webpack@npm:^5.74.0":
   version: 5.105.4
   resolution: "webpack@npm:5.105.4"
@@ -34305,6 +34560,38 @@ __metadata:
   bin:
     webpack: bin/webpack.js
   checksum: b1a109016630b2817463981d28aa760f2a9a4cbb0098875ea40abbe694f5b93c708ab3cbca577865faf4046d9946cca7f660fa5a872440605008e19a5874182b
+  languageName: node
+  linkType: hard
+
+"webpack@npm:^5.103.0":
+  version: 5.110.2
+  resolution: "webpack@npm:5.110.2"
+  dependencies:
+    "@types/estree": ^1.0.8
+    "@types/json-schema": ^7.0.15
+    "@webassemblyjs/ast": ^1.14.1
+    "@webassemblyjs/wasm-edit": ^1.14.1
+    "@webassemblyjs/wasm-parser": ^1.14.1
+    acorn: ^8.16.0
+    browserslist: ^4.28.1
+    chrome-trace-event: ^1.0.2
+    enhanced-resolve: ^5.24.4
+    es-module-lexer: ^2.1.0
+    events: ^3.2.0
+    graceful-fs: ^4.2.11
+    mime-db: ^1.54.0
+    minimizer-webpack-plugin: ^5.7.0
+    neo-async: ^2.6.2
+    schema-utils: ^4.3.3
+    tapable: ^2.3.0
+    watchpack: ^2.5.2
+    webpack-sources: ^3.5.1
+  peerDependenciesMeta:
+    webpack-cli:
+      optional: true
+  bin:
+    webpack: bin/webpack.js
+  checksum: a0dd8b8aa9ad75773e685e574d0274c326f6a9ba42954d241082e9e6b8a36491ccc98b17cae3d6be0e1fc70addc9c0b65c958ff859a3ecb4789e1395a3d4a748
   languageName: node
   linkType: hard
 
