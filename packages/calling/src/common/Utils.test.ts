@@ -29,6 +29,7 @@ import {
   UTILS_FILE,
   REGISTER_UTIL,
   DEFAULT_KEEPALIVE_INTERVAL,
+  SESSION_SUPERSEDED_MESSAGE,
 } from '../CallingClient/constants';
 import {
   CALL_ERROR_CODE,
@@ -83,6 +84,7 @@ const mockSubmitRegistrationMetric = jest.fn();
 const mockEmitterCb = jest.fn();
 const mockRestoreCb = jest.fn();
 const mock429RetryCb = jest.fn();
+const mockSessionSupersededCb = jest.fn();
 
 const webex = getTestUtilsWebex();
 SDKConnector.setWebex(webex);
@@ -491,6 +493,19 @@ describe('Registration Tests', () => {
       logMsg: '400 Bad Request',
     },
     {
+      name: 'verify 409 error response',
+      statusCode: ERROR_CODE.CONFLICT,
+      deviceErrorCode: 0,
+      message: SESSION_SUPERSEDED_MESSAGE,
+      errorType: ERROR_TYPE.SESSION_SUPERSEDED,
+      emitterCbExpected: false,
+      finalError: true,
+      restoreCbExpected: false,
+      retry429CbExpected: false,
+      sessionSupersededCbExpected: true,
+      logMsg: '409 Conflict: session superseded by another device for this user',
+    },
+    {
       name: 'verify unknown error response',
       statusCode: 206,
       deviceErrorCode: 0,
@@ -516,7 +531,7 @@ describe('Registration Tests', () => {
   };
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  it.each(errorCodes)('%s', (codeObj) => {
+  it.each(errorCodes)('%s', async (codeObj) => {
     const webexPayload = <WebexRequestPayload>(<unknown>{
       statusCode: codeObj.statusCode,
       headers: {
@@ -556,9 +571,18 @@ describe('Registration Tests', () => {
       RegistrationStatus.ACTIVE
     );
 
-    handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, mock429RetryCb, mockRestoreCb);
+    const result = await handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, {
+      retry429Cb: mock429RetryCb,
+      restoreRegCb: mockRestoreCb,
+      sessionSupersededCb: mockSessionSupersededCb,
+    });
+
+    expect(result.finalError).toBe(codeObj.finalError);
+
     if (codeObj.emitterCbExpected) {
       expect(mockEmitterCb).toBeCalledOnceWith(callClientError, codeObj.finalError);
+    } else {
+      expect(mockEmitterCb).not.toHaveBeenCalled();
     }
     if (codeObj.restoreCbExpected) {
       expect(mockRestoreCb).toBeCalledOnceWith(webexPayload.body, logObj.method);
@@ -572,8 +596,36 @@ describe('Registration Tests', () => {
       expect(mock429RetryCb).not.toHaveBeenCalled();
     }
 
+    if (codeObj.sessionSupersededCbExpected) {
+      expect(mockSessionSupersededCb).toBeCalledOnceWith(callClientError);
+    } else {
+      expect(mockSessionSupersededCb).not.toHaveBeenCalled();
+    }
+
     expect(logSpy).toHaveBeenCalledWith(`Status code: -> ${codeObj.statusCode}`, logObj);
     expect(logSpy).toHaveBeenCalledWith(codeObj.logMsg, logObj);
+  });
+
+  it('verify 409 response for a caller that does not handle a superseded session', async () => {
+    const webexPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: ERROR_CODE.CONFLICT,
+      headers: {trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31'},
+    });
+
+    const result = await handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, {
+      retry429Cb: mock429RetryCb,
+      restoreRegCb: mockRestoreCb,
+    });
+
+    expect(result).toStrictEqual({
+      finalError: false,
+      shouldDisconnect: false,
+    });
+    expect(mockEmitterCb).not.toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith(
+      '409 Conflict: ignored, caller does not handle a superseded session',
+      logObj
+    );
   });
 });
 

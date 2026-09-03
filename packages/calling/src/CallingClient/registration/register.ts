@@ -15,7 +15,7 @@ import {ICallManager, MobiusAsyncEvent} from '../calling/types';
 import {getCallManager} from '../calling';
 import {LOGGER} from '../../Logger/types';
 import log from '../../Logger';
-import {FailoverCacheState, IRegistration} from './types';
+import {FailoverCacheState, HardStop, HARD_STOP_REASON, IRegistration} from './types';
 import SDKConnector from '../../SDKConnector';
 import {
   ALLOWED_SERVICES,
@@ -59,6 +59,7 @@ import {
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
+import {ERROR_CODE} from '../../Errors/types';
 import {APIRequest} from '../utils/request';
 
 /**
@@ -95,6 +96,13 @@ export class Registration implements IRegistration {
   private retryAfter: number | undefined;
   private scheduled429Retry = false;
   private webWorker: Worker | undefined;
+  /**
+   * Set once Mobius reports this session as superseded by another registration for the
+   * same user. It survives cleanup so that no automatic recovery path re-registers this
+   * device, which would restart the registration ping-pong between the two sessions.
+   * Only an explicit `triggerRegistration()` from the consumer clears it.
+   */
+  private sessionSuperseded = false;
   private apiRequest: APIRequest;
 
   /**
@@ -384,6 +392,68 @@ export class Registration implements IRegistration {
         );
       }
     }
+  }
+
+  /**
+   * Hard stops a calling session that Mobius reported as superseded, in response to a
+   * `409 Conflict` on a keepalive (device_status) message.
+   *
+   * Mobius returns 409 when this deviceId is gone but the same user still has an active
+   * registration elsewhere (typically calling opened in another browser tab, which
+   * superseded this device). Re-registering here would unregister the other device and
+   * restart the registration ping-pong between the two, so no registration is attempted:
+   * the keepalive worker is terminated, the Mobius WebSocket is closed and the consumer
+   * receives `LINE_EVENTS.UNREGISTERED` carrying `lineError` as the reason.
+   *
+   * @param lineError - Superseded-session error built by `handleRegistrationErrors`.
+   * @param error - The keepalive failure payload forwarded by the keepalive worker.
+   * @param serverType - Mobius server type the keepalive was sent to, for metrics.
+   * @param keepaliveRetryCount - Consecutive keepalive failures reported by the worker.
+   */
+  private async handle409KeepaliveFailure(
+    lineError: LineError,
+    error: WebexRequestPayload,
+    serverType: SERVER_TYPE,
+    keepaliveRetryCount: number
+  ): Promise<void> {
+    const loggerContext = {
+      file: REGISTRATION_FILE,
+      method: METHODS.HANDLE_409_KEEPALIVE_FAILURE,
+    };
+
+    /*
+     * Latch the terminal state before anything that can yield. Cleanup runs under the
+     * shared mutex, so it can be queued behind a recovery that is already registering;
+     * latching here means every registration path that has not started yet sees the
+     * superseded state rather than racing this cleanup.
+     */
+    this.sessionSuperseded = true;
+
+    log.warn(
+      `Stopping keepalive without re-registration, session superseded by another device for this user - keepaliveRetryCount: ${keepaliveRetryCount}`,
+      loggerContext
+    );
+
+    /* Stop the keepalive worker up front so no further keepalive is sent while cleanup waits on the mutex. */
+    this.clearKeepaliveTimer();
+
+    this.metricManager.submitRegistrationMetric(
+      METRIC_EVENT.KEEPALIVE_ERROR,
+      REG_ACTION.KEEPALIVE_FAILURE,
+      METRIC_TYPE.BEHAVIORAL,
+      METHODS.HANDLE_409_KEEPALIVE_FAILURE,
+      serverType,
+      error.headers?.trackingid ?? '',
+      keepaliveRetryCount,
+      lineError
+    );
+
+    await this.registrationCleanup(METHODS.HANDLE_409_KEEPALIVE_FAILURE, {
+      reason: HARD_STOP_REASON.SESSION_SUPERSEDED,
+      error: lineError,
+    });
+
+    await uploadLogs();
   }
 
   /**
@@ -841,6 +911,7 @@ export class Registration implements IRegistration {
       method: METHODS.HANDLE_CONNECTION_RESTORATION,
       file: REGISTRATION_FILE,
     });
+
     await this.mutex.runExclusive(async () => {
       /* Check retry once again to see if another timer thread has not finished the job already. */
       if (retry) {
@@ -925,6 +996,10 @@ export class Registration implements IRegistration {
 
     log.info(METHOD_START_MESSAGE, loggerContext);
 
+    /* An explicit registration from the consumer is the only way out of a superseded
+     * session, so the terminal state is lifted here. */
+    this.sessionSuperseded = false;
+
     if (await this.resumeFailover()) {
       log.info('Registration trigger handled by resumeFailover path', loggerContext);
 
@@ -966,6 +1041,24 @@ export class Registration implements IRegistration {
       file: REGISTRATION_FILE,
       method: REGISTER_UTIL,
     };
+
+    /*
+     * Single choke point for every registration attempt - initial registration, restore,
+     * restart, the scheduled failover retries and failback all reach Mobius through here.
+     * Guarding it once means a superseded session cannot be re-registered by any
+     * automatic path, including one whose timer was already scheduled when the 409
+     * arrived. `true` is returned so callers treat it as a final error and schedule no
+     * further retries. `triggerRegistration()` clears the latch before calling in, so an
+     * explicit registration by the consumer is unaffected.
+     */
+    if (this.sessionSuperseded) {
+      log.warn(`Session superseded, skipping registration attempt - caller: ${caller}`, {
+        file: REGISTRATION_FILE,
+        method: caller,
+      });
+
+      return true;
+    }
 
     let abort = false;
     this.retryAfter = undefined;
@@ -1075,8 +1168,11 @@ export class Registration implements IRegistration {
             );
           },
           {method: caller, file: REGISTRATION_FILE},
-          (retryAfter: number, retryCaller: string) => this.handle429Retry(retryAfter, retryCaller),
-          this.restoreRegistrationCallBack(),
+          {
+            retry429Cb: (retryAfter: number, retryCaller: string) =>
+              this.handle429Retry(retryAfter, retryCaller),
+            restoreRegCb: this.restoreRegistrationCallBack(),
+          },
           servers.length
         );
 
@@ -1141,25 +1237,48 @@ export class Registration implements IRegistration {
         if (!this.webWorker) {
           const blob = new Blob([webWorkerStr], {type: 'application/javascript'});
           const blobUrl = URL.createObjectURL(blob);
-          this.webWorker = new Worker(blobUrl);
+          const worker = new Worker(blobUrl);
+          this.webWorker = worker;
           URL.revokeObjectURL(blobUrl);
 
-          this.webWorker.postMessage({
+          worker.postMessage({
             type: WorkerMessageType.START_KEEPALIVE,
             interval,
             retryCountThreshold: RETRY_COUNT_THRESHOLD,
           });
 
-          this.webWorker.onmessage = async (event: MessageEvent) => {
+          /*
+           * A keepalive is in flight across an `await`, so this worker can be replaced
+           * meanwhile - on failback, connection restoration or any re-registration. Its
+           * result then belongs to a device that is no longer the registered one and must
+           * not reach the current worker, whose retry count and failure handling (including
+           * the 409 hard stop) would otherwise act on a stale registration.
+           */
+          const isCurrentWorker = () => this.webWorker === worker;
+
+          worker.onmessage = async (event: MessageEvent) => {
             const logContext = {
               file: REGISTRATION_FILE,
               method: KEEPALIVE_UTIL,
             };
+
+            if (!isCurrentWorker()) {
+              log.info('Ignoring message from a replaced keepalive worker', logContext);
+
+              return;
+            }
+
             if (event.data.type === WorkerMessageType.SEND_KEEPALIVE) {
               try {
                 const res = await this.postKeepAlive(String(this.webex.internal.device.url), url);
 
-                this.webWorker?.postMessage({
+                if (!isCurrentWorker()) {
+                  log.info('Discarding keepalive result of a replaced worker', logContext);
+
+                  return;
+                }
+
+                worker.postMessage({
                   type: WorkerMessageType.KEEPALIVE_RESULT,
                   statusCode: res.statusCode,
                 });
@@ -1174,7 +1293,16 @@ export class Registration implements IRegistration {
                   type: err.type,
                 };
 
-                this.webWorker?.postMessage({
+                if (!isCurrentWorker()) {
+                  log.info(
+                    `Discarding keepalive failure of a replaced worker, status -> ${error.statusCode}`,
+                    logContext
+                  );
+
+                  return;
+                }
+
+                worker.postMessage({
                   type: WorkerMessageType.KEEPALIVE_RESULT,
                   err: error,
                 });
@@ -1212,9 +1340,24 @@ export class Registration implements IRegistration {
                   );
                 },
                 {method: KEEPALIVE_UTIL, file: REGISTRATION_FILE},
-                (retryAfter: number, retryCaller: string) =>
-                  this.handle429Retry(retryAfter, retryCaller)
+                {
+                  retry429Cb: (retryAfter: number, retryCaller: string) =>
+                    this.handle429Retry(retryAfter, retryCaller),
+                  sessionSupersededCb: (clientError: LineError) =>
+                    this.handle409KeepaliveFailure(
+                      clientError,
+                      error,
+                      serverType,
+                      event.data.keepAliveRetryCount
+                    ),
+                }
               );
+
+              if (abort && Number(error.statusCode) === ERROR_CODE.CONFLICT) {
+                /* handle409KeepaliveFailure already ran cleanup and notified the consumer,
+                 * so the generic keepalive failure handling must be skipped. */
+                return;
+              }
 
               if (abort || event.data.keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
                 this.failoverImmediately = this.isCCFlow;
@@ -1348,6 +1491,7 @@ export class Registration implements IRegistration {
   public async reconnectOnFailure(caller: string) {
     log.info(METHOD_START_MESSAGE, {method: METHODS.RECONNECT_ON_FAILURE, file: REGISTRATION_FILE});
     this.reconnectPending = false;
+
     if (!this.isDeviceRegistered()) {
       if (Object.keys(this.callManager.getActiveCalls()).length === 0) {
         const abort = await this.restorePreviousRegistration(caller);
@@ -1387,27 +1531,33 @@ export class Registration implements IRegistration {
     const [activeCall] = Object.values(this.callManager.getActiveCalls());
     activeCall?.end();
 
-    await this.performRegistrationDownCleanup(METHODS.HANDLE_REGISTRATION_DOWN_EVENT);
+    await this.registrationCleanup(METHODS.HANDLE_REGISTRATION_DOWN_EVENT, {
+      reason: HARD_STOP_REASON.REGISTRATION_DOWN,
+    });
   }
 
   /**
-   * Cleans up registration-side state after a Mobius registration-down event.
+   * Cleans up registration-side state for a hard stop, i.e. a registration that is gone
+   * and must not be re-established by the SDK (Mobius registration-down event, or a
+   * session superseded by another registration for the same user).
    *
    * Stops timers, resets transient flags, clears failover cache, sets status to
    * INACTIVE, tears down the Mobius WebSocket (when enabled), and finally emits
-   * `LINE_EVENTS.UNREGISTERED` so the SDK consumer is notified.
+   * `LINE_EVENTS.UNREGISTERED` so the SDK consumer is notified. A superseded session
+   * carries its `LineError` on that event as the reason the line will stay unregistered.
    *
    * Runs under the shared mutex to avoid racing with other registration flows.
    *
    * @param caller - Identifier of the caller, used for logs.
+   * @param hardStop - Why the registration is being torn down as {@link HardStop}.
    */
-  private async performRegistrationDownCleanup(caller: string): Promise<void> {
+  private async registrationCleanup(caller: string, hardStop: HardStop): Promise<void> {
     const loggerContext = {
       file: REGISTRATION_FILE,
-      method: METHODS.HANDLE_REGISTRATION_DOWN_EVENT,
+      method: caller,
     };
 
-    log.info(`[${caller}] : Running registration-down cleanup`, loggerContext);
+    log.info(`[${caller}] : Running ${hardStop.reason} cleanup`, loggerContext);
 
     await this.mutex.runExclusive(async () => {
       this.clearFailbackTimer();
@@ -1428,16 +1578,16 @@ export class Registration implements IRegistration {
             code: 3050,
             reason: 'done (permanent)',
           });
-          log.log('Mobius socket disconnect complete after registration-down', loggerContext);
+          log.log(`Mobius socket disconnect complete after ${hardStop.reason}`, loggerContext);
         } catch (err) {
           log.warn(
-            `Mobius socket disconnect failed after registration-down: ${String(err)}`,
+            `Mobius socket disconnect failed after ${hardStop.reason}: ${String(err)}`,
             loggerContext
           );
         }
       }
 
-      this.lineEmitter(LINE_EVENTS.UNREGISTERED);
+      this.lineEmitter(LINE_EVENTS.UNREGISTERED, undefined, hardStop.error);
     });
   }
 }

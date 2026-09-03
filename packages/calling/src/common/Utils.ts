@@ -5,7 +5,10 @@ import * as platform from 'platform';
 import {v4 as uuid} from 'uuid';
 import {METRIC_EVENT, METRIC_TYPE, UPLOAD_LOGS_ACTION} from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
-import {restoreRegistrationCallBack, retry429CallBack} from '../CallingClient/registration/types';
+import {
+  RegistrationErrorHandlers,
+  RegistrationErrorResult,
+} from '../CallingClient/registration/types';
 import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 import {LogContext} from '../Logger/types';
 import {
@@ -91,6 +94,7 @@ import {
   UTILS_FILE,
   METHODS,
   DEFAULT_KEEPALIVE_INTERVAL,
+  SESSION_SUPERSEDED_MESSAGE,
 } from '../CallingClient/constants';
 import {
   DeleteCallHistoryRecordsResponse,
@@ -330,7 +334,9 @@ export function emitFinalFailure(
  * @param err - Error body.
  * @param emitterCb - LineErrorEmitterCallback
  * @param loggerContext - Logging context that has method and file name
- * @param restoreRegCb - Callback which will try restoring resgistration in case of 403
+ * @param handlers - Specialized per-status-code handlers the caller opts into, as
+ * {@link RegistrationErrorHandlers}.
+ * @param serverCount - Number of servers in the list.
  *
  * In emitterCb,
  * For non final error scenarios in registration flow,
@@ -345,15 +351,16 @@ export async function handleRegistrationErrors(
   err: WebexRequestPayload,
   emitterCb: LineErrorEmitterCallback,
   loggerContext: LogContext,
-  retry429Cb?: retry429CallBack,
-  restoreRegCb?: restoreRegistrationCallBack,
-  serverCount = 1 // Number of servers in the list
-): Promise<{finalError: boolean; shouldDisconnect: boolean}> {
+  handlers: RegistrationErrorHandlers = {},
+  serverCount = 1
+): Promise<RegistrationErrorResult> {
+  const {retry429Cb, restoreRegCb, sessionSupersededCb} = handlers;
   let shouldDisconnect = false;
   const lineError = createLineError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
 
   const errorCode = Number(err.statusCode);
   let finalError = false;
+
   log.warn(`Status code: -> ${errorCode}`, loggerContext);
   switch (errorCode) {
     case ERROR_CODE.BAD_REQUEST: {
@@ -404,6 +411,35 @@ export async function handleRegistrationErrors(
 
       emitterCb(lineError, finalError);
       shouldDisconnect = serverCount > 1;
+      break;
+    }
+
+    case ERROR_CODE.CONFLICT: {
+      /* Mobius answers 409 when this device is gone while the same user still holds an
+       * active registration elsewhere, typically calling opened in another browser tab.
+       * Only a flow that can hard stop the session opts into this handling; the remaining
+       * flows have nothing to act on, so the error is logged and ignored. */
+      if (!sessionSupersededCb) {
+        log.warn(
+          `409 Conflict: ignored, caller does not handle a superseded session`,
+          loggerContext
+        );
+        break;
+      }
+
+      finalError = true;
+      log.warn(`409 Conflict: session superseded by another device for this user`, loggerContext);
+
+      updateLineErrorContext(
+        loggerContext,
+        ERROR_TYPE.SESSION_SUPERSEDED,
+        SESSION_SUPERSEDED_MESSAGE,
+        RegistrationStatus.INACTIVE,
+        lineError
+      );
+
+      await sessionSupersededCb(lineError);
+      shouldDisconnect = false;
       break;
     }
 

@@ -151,9 +151,55 @@ describe('webex-core', () => {
         const [, event] = services.listenToOnce.getCall(1).args;
         assert.equal(event, 'ready', 'default path listens on webex ready');
       });
+
+      it('skips preauth catalog collection when skipPreauthCatalogOnUnauthenticated is true and no credentials', async () => {
+        services.webex.config = {
+          ...(services.webex.config || {}),
+          services: {skipPreauthCatalogOnUnauthenticated: true},
+        };
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+        services.logger.info = sinon.stub();
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isFalse(
+          services.collectPreauthCatalog.called,
+          'must not collect preauth catalog while unauthenticated when option is enabled'
+        );
+        assert.isFalse(services.initFailed);
+        sinon.assert.calledWith(
+          services.logger.info,
+          'services: skipping preauth catalog collection while unauthenticated as per the config'
+        );
+      });
+
+      it('still collects preauth catalog when skipPreauthCatalogOnUnauthenticated is false (default)', async () => {
+        services.webex.config = {
+          ...(services.webex.config || {}),
+          services: {skipPreauthCatalogOnUnauthenticated: false},
+        };
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isTrue(
+          services.collectPreauthCatalog.called,
+          'must collect preauth catalog when option is disabled'
+        );
+      });
     });
 
     describe('#initialize (waitForCatalogInit=true)', () => {
+      let clock;
+
       beforeEach(() => {
         services.webex.config = {
           ...(services.webex.config || {}),
@@ -164,6 +210,15 @@ describe('webex-core', () => {
         // true). We reset here so tests that call initialize() a second time
         // with the flag enabled observe the gated behavior from a clean state.
         services.ready = false;
+        // The gated path schedules a real 15s setTimeout via _makeInitTimeout()
+        // that is not cleared when the init race resolves. Fake only setTimeout/
+        // clearTimeout (leaving setImmediate real so waitForAsync still works)
+        // so restoring in afterEach clears the pending timer and Jest can exit.
+        clock = sinon.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
+      });
+
+      afterEach(() => {
+        clock.restore();
       });
 
       it('leaves services.ready=false after initialize (does not flip until finalize)', () => {
@@ -243,7 +298,6 @@ describe('webex-core', () => {
       });
 
       it('flips services.ready=true when init times out', async () => {
-        const clock = sinon.useFakeTimers();
         services.listenToOnce = sinon.stub();
         services.initServiceCatalogs = sinon.stub().returns(new Promise(() => {}));
         services.webex.credentials = {
@@ -256,7 +310,6 @@ describe('webex-core', () => {
         services.listenToOnce.getCall(1).args[2]();
 
         await clock.tickAsync(15_001);
-        clock.restore();
 
         assert.isTrue(services.initFailed);
         assert.isTrue(services.ready);
@@ -372,6 +425,89 @@ describe('webex-core', () => {
         assert.isFalse(
           services.collectPreauthCatalog.called,
           'must skip preauth fetch when cache is warm'
+        );
+      });
+    });
+
+    describe('#initialize (waitForCatalogInit=true, skipPreauthCatalogOnUnauthenticated=true)', () => {
+      beforeEach(() => {
+        services.webex.config = {
+          ...(services.webex.config || {}),
+          services: {
+            waitForCatalogInit: true,
+            catalogInitTimeout: 15000,
+            skipPreauthCatalogOnUnauthenticated: true,
+          },
+        };
+        services.ready = false;
+      });
+
+      it('skips preauth catalog collection but still finalizes services.ready when unauthenticated', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+        services.logger.info = sinon.stub();
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isFalse(
+          services.collectPreauthCatalog.called,
+          'must not collect preauth catalog while unauthenticated when option is enabled'
+        );
+        assert.isTrue(services.ready, 'must still finalize ready so webex.ready is not stalled');
+        sinon.assert.calledWith(
+          services.logger.info,
+          'services: skipping preauth catalog collection while unauthenticated as per the config'
+        );
+      });
+
+      it('still registers a change:canAuthorize listener when skipping preauth (fresh-login path)', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+        const currentCatalog = services._getCatalog();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        const freshLoginCall = services.listenToOnce
+          .getCalls()
+          .find((call: any) => call.args[1] === 'change:canAuthorize');
+        assert.isDefined(freshLoginCall, 'expected change:canAuthorize listener to be registered');
+
+        services.webex.canAuthorize = true;
+        currentCatalog.status.postauth.ready = false;
+        freshLoginCall!.args[2]();
+
+        assert.isTrue(
+          services.initServiceCatalogs.called,
+          'expected postauth catalog init after canAuthorize flips'
+        );
+        await waitForAsync();
+      });
+
+      it('does not schedule an init timeout when skipping preauth (no stray timer/rejection)', async () => {
+        const clock = sinon.useFakeTimers();
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+        services.logger.error = sinon.stub();
+
+        services.initialize();
+        services.listenToOnce.getCall(0).args[2]();
+        services.listenToOnce.getCall(1).args[2]();
+
+        // Advance well past the configured init timeout; since no timeout was
+        // scheduled in skip mode, no timeout error should ever be logged.
+        await clock.tickAsync(30_000);
+        clock.restore();
+
+        sinon.assert.neverCalledWithMatch(
+          services.logger.error,
+          /services: init timed out/
         );
       });
     });

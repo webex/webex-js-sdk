@@ -35,6 +35,16 @@ export default {
     useCatalogOverride: false,
 
     /**
+     * When true, skips fetching the preauth catalog during initialization
+     * while the user is unauthenticated (no existing token). The catalog is
+     * expected to be collected manually later instead. When false (default),
+     * the preauth catalog is collected automatically during init.
+     *
+     * @type {boolean}
+     */
+    skipPreauthCatalogOnUnauthenticated: false,
+
+    /**
      * Maximum time (in milliseconds) to wait for the initial service catalog
      * collection when `waitForCatalogInit` is enabled, before letting
      * `services.ready` (and therefore `webex.ready`) fire anyway. Prevents a
