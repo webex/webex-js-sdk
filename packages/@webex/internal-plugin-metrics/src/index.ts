@@ -2,6 +2,8 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
+/* eslint-disable valid-jsdoc */
+
 import {registerInternalPlugin} from '@webex/webex-core';
 
 import Metrics from './metrics';
@@ -35,6 +37,13 @@ import PreLoginMetrics from './prelogin-metrics';
 
 registerInternalPlugin('metrics', Metrics, {
   config,
+  /**
+   * Stops network telemetry before SDK logout.
+   * @returns
+   */
+  onBeforeLogout() {
+    this.stopNetworkTelemetry();
+  },
 });
 
 registerInternalPlugin('newMetrics', NewMetrics, {
