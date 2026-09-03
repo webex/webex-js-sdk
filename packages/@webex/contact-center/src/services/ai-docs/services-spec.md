@@ -69,7 +69,7 @@ Each service folder contains its own `ai-docs/` with detailed documentation. **A
 
 **Paginated data services** (AddressBook, Queue, EntryPoint) do not have dedicated ai-docs. Read their source files directly — they follow shared REST/pagination/caching patterns documented in [`ai-docs/patterns/typescript-patterns.md`](../../../ai-docs/patterns/typescript-patterns.md). `UserPreference` is also a direct REST service, but it has CRUD semantics and does not use their PageCache pattern.
 
-**WebCallingService** also has no dedicated ai-docs, but it follows a different pattern: EventEmitter-based call lifecycle orchestration around `@webex/calling` (`createClient`, line registration/deregistration, `ICall` events), `callTaskMap` tracking, and async registration flows with timeout handling. Read [`WebCallingService.ts`](../WebCallingService.ts) directly when changing browser calling behavior.
+**WebCallingService** also has no dedicated ai-docs, but it follows a different pattern: EventEmitter-based call lifecycle orchestration around `@webex/calling` (`createClient`, line registration/deregistration, `ICall` events), `callTaskMap` tracking, and async registration flows with timeout handling. Before registering the calling line it resolves the RTMS domain from the u2c service catalog through `getRTMSDomain()`, which trusts the catalog host only when it is on the `ALLOWED_RTMS_DOMAIN` allow-list and otherwise falls back to `DEFAULT_RTMS_DOMAIN`. Read [`WebCallingService.ts`](../WebCallingService.ts) directly when changing browser calling behavior.
 
 The `ContactCenter` plugin class (`cc.ts`) is the **only public entry point**. It delegates all backend work to the services layer:
 
@@ -211,6 +211,8 @@ Use [`constants.ts`](../constants.ts) as the canonical source for service-level 
 
 - `DEFAULT_RTMS_DOMAIN`, `WCC_CALLING_RTMS_DOMAIN` — RTMS/WebRTC domain constants
 
+- `ALLOWED_RTMS_DOMAIN` — trusted RTMS domain suffix (`rtmsprod.net`); a catalog-provided RTMS host is used only when its hostname equals or is a subdomain of this value, otherwise `DEFAULT_RTMS_DOMAIN` is used
+
 - `METHODS` — method name constants used by `WebCallingService`
 
 ## Key Files (source of truth)
@@ -264,6 +266,8 @@ ContactCenter READY callback
 | SERVICES-R-005 | Inherit authenticated request identity from the host Webex SDK through Core/WebexRequest; Services must not store, parse, or refresh credentials. | One host-owned authentication boundary avoids duplicate token handling and credential leakage across composed services. | `src/services/index.ts`, `src/services/core/WebexRequest.ts` | `test/unit/spec/services/core/WebexRequest.ts` | None; authentication ownership is explicit. | PRESENT |
 | SERVICES-R-006 | Treat Services composition as unconditionally created by the ContactCenter READY callback; Services owns no rollout or feature-flag decision. | Capability flags belong to the consuming config/task/calling collaborators, so the composition root must not silently gate construction. | `src/services/index.ts`, `src/cc.ts` | `test/unit/spec/cc.ts` | None; rollout applicability is explicitly N/A for Services. | PRESENT |
 | SERVICES-R-007 | Existing Queue and EntryPoint list methods must apply inbound, active, telephony, profile/agent-view, and `name,ASC` defaults while retaining their established parameter and full-record response types. Caller-supplied existing filter, sort, or profile inputs override defaults. Queue must also treat `sortOrder` without `sortBy` as a name sort and bypass the simple-page cache. | Defaults on the established methods let thin consumers request lists without a parallel API, while existing parameters preserve specialized behavior for other consumers and full-record types remain truthful because no field projection is requested. | `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/types.ts` | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/cc.ts` | The backend honors the view flags and combined CMS sort value. | PRESENT |
+| SERVICES-R-008 | `WebCallingService.getRTMSDomain()` returns a catalog-provided RTMS hostname only when it equals `ALLOWED_RTMS_DOMAIN` (`rtmsprod.net`) or is a subdomain of it; a parseable but non-allow-listed host, or a catalog value that is not a valid URL, falls back to `DEFAULT_RTMS_DOMAIN`. The rejected host is logged as a diagnostic before fallback. | The u2c service catalog is an untrusted input at the calling trust boundary; allow-listing the RTMS host prevents WebRTC registration against an attacker-controlled domain. | `src/services/WebCallingService.ts`, `src/services/constants.ts` | `test/unit/spec/services/WebCallingService.ts` | The `@webex/calling` client accepts the resolved domain string. | PRESENT |
+| SERVICES-R-009 | `ApiAIAssistant.fetchHistoricTranscripts(agentId: string, interactionId: string): Promise<HistoricTranscriptsResponse>` validates both caller-supplied identifiers before building the authenticated request, accepting only non-empty strings matching the identifier format `^[A-Za-z0-9_-]{1,128}$`. Invalid inputs reject with a typed error and no request is sent. | `agentId`/`interactionId` are caller-controlled inputs on an authenticated request boundary; validating them before use rejects malformed identifiers instead of forwarding them to the backend. | `src/services/ApiAiAssistant.ts` | `test/unit/spec/services/ApiAiAssistant.ts` | Real-time transcription feature flag must already be enabled; format validation runs after that gate. | PRESENT |
 
 ## Design Overview
 `Services` is a singleton composition root for transport-facing capabilities only. It constructs two `WebSocketManager` instances (primary Contact Center and RTD), creates `AqmReqs` on the primary manager, then creates config, agent, contact, dialer, and ConnectionService collaborators.
@@ -409,6 +413,7 @@ classDiagram
 - ApiAIAssistant, TaskManager, and UserPreference are READY-time ContactCenter collaborators, not fields constructed by Services.
 - Authentication is inherited from the host SDK through Core/WebexRequest; Services owns no credential lifecycle.
 - Rollout applicability is N/A for the Services composition root: it is created at READY and does not evaluate a feature flag.
+- Untrusted external inputs are validated at the service trust boundary: catalog-provided RTMS hosts must pass the `ALLOWED_RTMS_DOMAIN` allow-list before use, and caller-supplied `agentId`/`interactionId` must match the accepted identifier format before an authenticated transcript request is built.
 
 ## Concurrency & Reactive Flow
 - `getInstance` composition is synchronous in the JavaScript execution turn. Direct REST promises can proceed independently, while each AQM promise remains pending until its matching primary-WebSocket notification, HTTP failure, or timeout.
@@ -481,6 +486,8 @@ Unit tests mirror module paths under `test/unit/spec/services`. Preserve positiv
 | `SERVICES-R-005` | `test/unit/spec/services/core/WebexRequest.ts` | None. |
 | `SERVICES-R-006` | `test/unit/spec/cc.ts` | None. |
 | `SERVICES-R-007` | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/cc.ts` | None. |
+| `SERVICES-R-008` | `test/unit/spec/services/WebCallingService.ts` | Cover allowed host, subdomain, non-allow-listed host, and unparseable catalog value fallback. |
+| `SERVICES-R-009` | `test/unit/spec/services/ApiAiAssistant.ts` | Cover valid identifiers plus empty, over-length, and disallowed-character rejections. |
 
 ## Traceability
 - Repo architecture: `../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../ai-docs/SPEC_INDEX.md`
