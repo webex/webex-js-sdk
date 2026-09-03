@@ -437,6 +437,34 @@ describe('internal-plugin-metrics', () => {
         assert.equal(res.clientInfo.browserVersion, getBrowserVersion());
       });
 
+      it('builds origin with device details provided by the host client', () => {
+        webex.meetings.config.metrics.os = 'ios';
+        webex.meetings.config.metrics.osVersion = '17.6';
+        webex.meetings.config.metrics.deviceFormFactor = 'tablet';
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.equal(res.clientInfo.os, 'ios');
+        assert.equal(res.clientInfo.osVersion, '17.6');
+        assert.equal(res.clientInfo.deviceFormFactor, 'tablet');
+      });
+
+      it('falls back to SDK OS detection and omits device form factor when the host provides nothing', () => {
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
+          fakeMeeting.id
+        );
+
+        assert.equal(res.clientInfo.os, getOSNameInternal());
+        assert.equal(res.clientInfo.osVersion, getOSVersion() || 'unknown');
+        assert.notProperty(res.clientInfo, 'deviceFormFactor');
+      });
+
       it('builds origin correctly with the browser support flags from config', () => {
         // `false` is the meaningful "unsupported family" signal, so it must survive a truthy check
         webex.meetings.config.metrics.isSupportedBrowserFamily = false;
