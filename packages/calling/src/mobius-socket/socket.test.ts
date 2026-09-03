@@ -62,7 +62,7 @@ describe('plugin-mobius-socket', () => {
       );
 
       socket = new Socket();
-      const promise = socket.open('ws://example.com', mockoptions);
+      const promise = socket.open('wss://mobius.webex.com', mockoptions);
 
       mockWebSocket.open();
       // Simulate Mobius auth response (MockWebSocket.open auto-sends mercury.buffer_state which Mobius ignores)
@@ -132,7 +132,7 @@ describe('plugin-mobius-socket', () => {
         ));
 
       it('accepts a logLevelToken option', () => {
-        const openPromise = freshSocket.open('ws://example.com', {
+        const openPromise = freshSocket.open('wss://mobius.webex.com', {
           forceCloseDelay: mockoptions.forceCloseDelay,
           wssResponseTimeout: mockoptions.wssResponseTimeout,
           logger: console,
@@ -213,13 +213,31 @@ describe('plugin-mobius-socket', () => {
           /Socket#open\(\) can only be called once/
         ));
 
+      it('socket.open rejects non-allowlisted host before authorize', () => {
+        const s = new Socket();
+        const promise = s.open('wss://evil.example.com', mockoptions);
+
+        return assert.isRejected(promise, /not in the Mobius WSS trusted allowlist/i);
+      });
+
+      it('socket.open accepts allowlisted host', () => {
+        const s = new Socket();
+        const promise = s.open('wss://mobius.webex.com', mockoptions);
+
+        mockWebSocket.readyState = 1;
+        mockWebSocket.emit('open');
+        emitAuthResponse();
+
+        return promise.then(() => s.close());
+      });
+
       it("sets the underlying socket's binary type", () =>
         assert.equal(socket.binaryType, 'arraybuffer'));
 
       describe('when connection fails because this is a service account', () => {
         it('rejects with a BadRequest', () => {
           const s = new Socket();
-          const promise = s.open('ws://example.com', mockoptions);
+          const promise = s.open('wss://mobius.webex.com', mockoptions);
 
           mockWebSocket.readyState = 1;
           mockWebSocket.emit('open');
@@ -247,7 +265,7 @@ describe('plugin-mobius-socket', () => {
       describe('when connection fails because of an invalid token', () => {
         it('rejects with a NotAuthorized', () => {
           const s = new Socket();
-          const promise = s.open('ws://example.com', mockoptions);
+          const promise = s.open('wss://mobius.webex.com', mockoptions);
 
           mockWebSocket.readyState = 1;
           mockWebSocket.emit('open');
@@ -275,7 +293,7 @@ describe('plugin-mobius-socket', () => {
       describe('when connection fails because of a missing entitlement', () => {
         it('rejects with a Forbidden', () => {
           const s = new Socket();
-          const promise = s.open('ws://example.com', mockoptions);
+          const promise = s.open('wss://mobius.webex.com', mockoptions);
 
           mockWebSocket.readyState = 1;
           mockWebSocket.emit('open');
@@ -303,7 +321,7 @@ describe('plugin-mobius-socket', () => {
       describe('when connection fails for non-authorization reasons', () => {
         it("rejects with the close event's reason", () => {
           const s = new Socket();
-          const promise = s.open('ws://example.com', mockoptions);
+          const promise = s.open('wss://mobius.webex.com', mockoptions);
 
           mockWebSocket.emit('close', {
             code: 4001,
@@ -336,7 +354,7 @@ describe('plugin-mobius-socket', () => {
           it('includes auth payload with token', () => {
             const s = new Socket();
 
-            s.open('ws://example.com', {
+            s.open('wss://mobius.webex.com', {
               forceCloseDelay: mockoptions.forceCloseDelay,
               wssResponseTimeout: mockoptions.wssResponseTimeout,
               logger: console,
@@ -359,7 +377,7 @@ describe('plugin-mobius-socket', () => {
 
         it('resolves upon receiving response_event auth response', () => {
           const s = new Socket();
-          const promise = s.open('ws://example.com', mockoptions);
+          const promise = s.open('wss://mobius.webex.com', mockoptions);
 
           mockWebSocket.readyState = 1;
           mockWebSocket.emit('open');
@@ -370,7 +388,7 @@ describe('plugin-mobius-socket', () => {
 
         it('rejects upon receiving a non-2xx auth response_event', () => {
           const s = new Socket();
-          const promise = s.open('ws://example.com', mockoptions);
+          const promise = s.open('wss://mobius.webex.com', mockoptions);
 
           mockWebSocket.readyState = 1;
           mockWebSocket.emit('open');
@@ -426,7 +444,7 @@ describe('plugin-mobius-socket', () => {
 
       it('signals closure if no close frame is received within the specified window', () => {
         const transientSocket = new Socket();
-        const openPromise = transientSocket.open('ws://example.com', mockoptions);
+        const openPromise = transientSocket.open('wss://mobius.webex.com', mockoptions);
 
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
@@ -458,7 +476,7 @@ describe('plugin-mobius-socket', () => {
 
       it('signals closure if no close frame is received within the specified window, but uses the initial options as 3050 if specified by options call', () => {
         const transientSocket = new Socket();
-        const openPromise = transientSocket.open('ws://example.com', mockoptions);
+        const openPromise = transientSocket.open('wss://mobius.webex.com', mockoptions);
 
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
@@ -490,7 +508,7 @@ describe('plugin-mobius-socket', () => {
 
       it('signals closure if no close frame is received within the specified window, and uses default options as 1000 if the code is not 3050', () => {
         const transientSocket = new Socket();
-        const openPromise = transientSocket.open('ws://example.com', mockoptions);
+        const openPromise = transientSocket.open('wss://mobius.webex.com', mockoptions);
 
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
@@ -522,7 +540,7 @@ describe('plugin-mobius-socket', () => {
 
       it('signals closure if no close frame is received within the specified window, and uses default options as 1000 if the code is not 3050', () => {
         const transientSocket = new Socket();
-        const openPromise = transientSocket.open('ws://example.com', mockoptions);
+        const openPromise = transientSocket.open('wss://mobius.webex.com', mockoptions);
 
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
@@ -583,7 +601,7 @@ describe('plugin-mobius-socket', () => {
           );
 
           // open the socket
-          s.open('ws://example.com', mockoptions);
+          s.open('wss://mobius.webex.com', mockoptions);
 
           // Keep socket in CONNECTING state (readyState 0)
           socketInstance.readyState = 0;

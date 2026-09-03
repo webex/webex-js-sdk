@@ -48,6 +48,20 @@ export const SCIM_ENTERPRISE_USER = 'urn:ietf:params:scim:schemas:extension:ente
 export const WEBEX_API_PROD = 'https://webexapis.com';
 export const WEBEX_API_BTS = 'https://integration.webexapis.com';
 export const WEBEX_API_FEDRAMP = 'https://api-usgov.webex.com';
+
+/**
+ * Trusted domain suffixes for Mobius WSS connections (AC-2).
+ *
+ * A bearer token may only be transmitted over a WSS socket whose hostname
+ * ends with one of these domains.  The list covers primary/backup Mobius
+ * infrastructure, the Webex API gateway, and FedRAMP variants.
+ */
+export const MOBIUS_WSS_ALLOWED_DOMAINS: readonly string[] = [
+  'webex.com',
+  'wbx2.com',
+  'webexapis.com',
+  'cisco.com',
+];
 export const WEBEX_API_CONFIG_INT_URL = `${WEBEX_API_BTS}/v1/uc/config`;
 export const WEBEX_API_CONFIG_PROD_URL = `${WEBEX_API_PROD}/v1/uc/config`;
 export const WEBEX_API_CONFIG_FEDRAMP_URL = `${WEBEX_API_FEDRAMP}/v1/uc/config`;

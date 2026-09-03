@@ -129,14 +129,16 @@ describe('plugin-mobius-socket', () => {
         registered: true,
         register: sinon.stub().returns(Promise.resolve()),
         refresh: sinon.stub().returns(Promise.resolve()),
-        webSocketUrl: 'ws://example.com',
-        getWebSocketUrl: sinon.stub().returns(Promise.resolve('ws://example-2.com')),
+        webSocketUrl: 'wss://mobius.webex.com',
+        getWebSocketUrl: sinon.stub().returns(Promise.resolve('wss://mobius2.webex.com')),
         useServiceCatalogUrl: sinon
           .stub()
           .returns(Promise.resolve('https://service-catalog-url.com')),
       };
       webex.internal.services = {
-        convertUrlToPriorityHostUrl: sinon.stub().returns(Promise.resolve('ws://example-2.com')),
+        convertUrlToPriorityHostUrl: sinon
+          .stub()
+          .returns(Promise.resolve('wss://mobius2.webex.com')),
         markFailedUrl: sinon.stub().returns(Promise.resolve()),
         switchActiveClusterIds: sinon.stub(),
         invalidateCache: sinon.stub(),
@@ -241,7 +243,7 @@ describe('plugin-mobius-socket', () => {
         return promise.then(() => {
           assert.isTrue(mobiusSocket.connected, 'MobiusSocket is connected');
           assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
-          assert.calledWith(socketOpenStub, 'ws://example.com', sinon.match.any);
+          assert.calledWith(socketOpenStub, 'wss://mobius.webex.com', sinon.match.any);
         });
       });
 
@@ -525,7 +527,7 @@ describe('plugin-mobius-socket', () => {
 
       describe('when webSocketUrl is provided', () => {
         it('connects to MobiusSocket with provided url', () => {
-          const webSocketUrl = 'ws://providedurl.com';
+          const webSocketUrl = 'wss://mobius-provided.webex.com';
           const promise = mobiusSocket.connect(webSocketUrl);
 
           assert.isFalse(mobiusSocket.connected, 'MobiusSocket is not connected');
@@ -535,7 +537,11 @@ describe('plugin-mobius-socket', () => {
           return promise.then(() => {
             assert.isTrue(mobiusSocket.connected, 'MobiusSocket is connected');
             assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
-            assert.calledWith(Socket.prototype.open, 'ws://providedurl.com', sinon.match.any);
+            assert.calledWith(
+              Socket.prototype.open,
+              'wss://mobius-provided.webex.com',
+              sinon.match.any
+            );
           });
         });
       });
@@ -544,7 +550,7 @@ describe('plugin-mobius-socket', () => {
         it('connects successfully through the shared backoff flow', () => {
           const backoffSpy = sinon.spy(mobiusSocket, 'connectWithBackoff');
           mobiusSocket.config.initialConnectionMaxRetries = 0;
-          const promise = mobiusSocket.connect('ws://example.com');
+          const promise = mobiusSocket.connect('wss://mobius.webex.com');
 
           assert.isTrue(mobiusSocket.connecting, 'MobiusSocket is connecting');
           mockWebSocket.open();
@@ -569,7 +575,7 @@ describe('plugin-mobius-socket', () => {
             .returns(Promise.reject(new ConnectionError({code: 4001})));
           mobiusSocket.config.initialConnectionMaxRetries = 0;
 
-          const promise = mobiusSocket.connect('ws://example.com');
+          const promise = mobiusSocket.connect('wss://mobius.webex.com');
 
           return assert.isRejected(promise).then(() => {
             assert.calledOnce(Socket.prototype.open);
@@ -581,7 +587,7 @@ describe('plugin-mobius-socket', () => {
           const backoffSpy = sinon.spy(mobiusSocket, 'connectWithBackoff');
           mobiusSocket.config.initialConnectionMaxRetries = 0;
 
-          const promise = mobiusSocket.connect('ws://example.com');
+          const promise = mobiusSocket.connect('wss://mobius.webex.com');
 
           mockWebSocket.open();
 
@@ -636,7 +642,7 @@ describe('plugin-mobius-socket', () => {
           assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
           assert.calledWith(
             socketOpenStub,
-            'ws://example.com',
+            'wss://mobius.webex.com',
             sinon.match.has(
               'agent',
               sinon.match.has('proxy', sinon.match.has('href', testProxyUrl))
@@ -655,7 +661,11 @@ describe('plugin-mobius-socket', () => {
         return promise.then(() => {
           assert.isTrue(mobiusSocket.connected, 'MobiusSocket is connected');
           assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
-          assert.calledWith(socketOpenStub, 'ws://example.com', sinon.match({agent: undefined}));
+          assert.calledWith(
+            socketOpenStub,
+            'wss://mobius.webex.com',
+            sinon.match({agent: undefined})
+          );
         });
       });
     });
@@ -1017,7 +1027,7 @@ describe('plugin-mobius-socket', () => {
 
       it('falls back to device webSocketUrl when no URL is provided', () =>
         mobiusSocket.prepareUrl().then((wsUrl) => {
-          assert.equal(wsUrl, 'ws://example.com');
+          assert.equal(wsUrl, 'wss://mobius.webex.com');
         }));
     });
 
