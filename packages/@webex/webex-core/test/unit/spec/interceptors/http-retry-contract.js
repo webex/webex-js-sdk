@@ -26,6 +26,19 @@ const ENABLED_POLICY = {
   retryAfter: {
     enabled: true,
     maxDelay: 3600000,
+    sources: [
+      {header: 'retry-after', format: 'retry-after'},
+      {
+        header: 'x-ratelimit-reset',
+        format: 'epoch-seconds',
+        remainingHeader: 'x-ratelimit-remaining',
+      },
+      {
+        header: 'x-rate-limit-reset',
+        format: 'epoch-seconds',
+        remainingHeader: 'x-rate-limit-remaining',
+      },
+    ],
   },
   backoff: {
     initialDelay: 400,
@@ -90,9 +103,42 @@ const BODY_CODE_CONFIG = {
   },
 };
 
+const RATE_LIMIT_SOURCE_CONFIG = {
+  default: {
+    ...ENABLED_POLICY,
+    retryAfter: {
+      ...ENABLED_POLICY.retryAfter,
+      sources: [{header: 'x-default-retry-in', format: 'delay-seconds'}],
+    },
+  },
+  services: {
+    'rate-service': {
+      retryAfter: {
+        sources: [{header: 'x-service-retry-in', format: 'delay-seconds'}],
+      },
+      paths: [
+        {
+          match: {suffixes: ['/special']},
+          policy: {
+            retryAfter: {
+              sources: [{header: 'x-path-retry-in', format: 'delay-seconds'}],
+            },
+          },
+        },
+      ],
+    },
+  },
+};
+
 const errorResponse = (statusCode, retryAfter, headerName, body) => ({
   ...(body !== undefined && {body}),
   headers: retryAfter === undefined ? {} : {[headerName ?? 'retry-after']: retryAfter},
+  statusCode,
+});
+
+const errorResponseWithHeaders = (statusCode, headers, body) => ({
+  ...(body !== undefined && {body}),
+  headers,
   statusCode,
 });
 
@@ -198,6 +244,121 @@ const RESPONSE_CASES = {
   'Retry-After header lookup is case insensitive': {
     error: errorResponse(429, '1', 'Retry-After'),
     options: {method: 'GET'},
+  },
+  '429 accepts case-insensitive X-RateLimit headers': {
+    error: errorResponseWithHeaders(429, {
+      'X-RateLimit-Remaining': '0',
+      'X-RateLimit-Reset': '0',
+    }),
+    options: {method: 'GET'},
+  },
+  'hyphenated X-Rate-Limit aliases are case insensitive': {
+    error: errorResponseWithHeaders(429, {
+      'X-RATE-LIMIT-REMAINING': '0',
+      'X-RATE-LIMIT-RESET': '0',
+    }),
+    options: {method: 'GET'},
+  },
+  'Retry-After takes precedence over X-RateLimit-Reset': {
+    error: errorResponseWithHeaders(429, {
+      'retry-after': '1',
+      'x-ratelimit-remaining': '0',
+      'x-ratelimit-reset': String(NOW / 1000 + 10),
+    }),
+    options: {method: 'GET'},
+  },
+  'positive X-RateLimit-Remaining ignores reset and uses backoff': {
+    error: errorResponseWithHeaders(429, {
+      'x-ratelimit-remaining': '1',
+      'x-ratelimit-reset': String(NOW / 1000 + 10),
+    }),
+    options: {method: 'GET'},
+  },
+  'invalid X-RateLimit-Remaining ignores reset and uses backoff': {
+    error: errorResponseWithHeaders(429, {
+      'x-ratelimit-remaining': 'unknown',
+      'x-ratelimit-reset': String(NOW / 1000 + 10),
+    }),
+    options: {method: 'GET'},
+  },
+  'X-RateLimit quota metadata without reset uses backoff': {
+    error: errorResponseWithHeaders(429, {
+      'x-ratelimit-limit': '100',
+      'x-ratelimit-remaining': '0',
+    }),
+    options: {method: 'GET'},
+  },
+  'expired X-RateLimit-Reset retries immediately': {
+    error: errorResponseWithHeaders(429, {
+      'x-ratelimit-remaining': '0',
+      'x-ratelimit-reset': String(NOW / 1000 - 1),
+    }),
+    options: {method: 'GET'},
+  },
+  'configured server delay above its maximum is rejected': {
+    error: errorResponseWithHeaders(429, {'x-service-retry-in': '2'}),
+    options: {
+      httpRetry: {
+        retryAfter: {
+          maxDelay: 1999,
+          sources: [{header: 'x-service-retry-in', format: 'delay-seconds'}],
+        },
+      },
+      method: 'GET',
+    },
+  },
+  'custom delay-seconds header replaces default sources': {
+    error: errorResponseWithHeaders(429, {'x-service-retry-in': '1.25'}),
+    options: {
+      httpRetry: {
+        retryAfter: {
+          sources: [{header: 'x-service-retry-in', format: 'delay-seconds'}],
+        },
+      },
+      method: 'GET',
+    },
+  },
+  'default policy overrides rate-limit sources': {
+    config: RATE_LIMIT_SOURCE_CONFIG,
+    error: errorResponseWithHeaders(429, {'x-default-retry-in': '1'}),
+    options: {method: 'GET'},
+  },
+  'service policy overrides rate-limit sources': {
+    config: RATE_LIMIT_SOURCE_CONFIG,
+    error: errorResponseWithHeaders(429, {'x-service-retry-in': '2'}),
+    options: {method: 'GET', service: 'rate-service'},
+  },
+  'service path policy overrides rate-limit sources': {
+    config: RATE_LIMIT_SOURCE_CONFIG,
+    error: errorResponseWithHeaders(429, {'x-path-retry-in': '3'}),
+    options: {
+      method: 'GET',
+      service: 'rate-service',
+      uri: 'https://example.com/special',
+    },
+  },
+  'service source list replaces the default source list': {
+    config: RATE_LIMIT_SOURCE_CONFIG,
+    error: errorResponseWithHeaders(429, {'x-default-retry-in': '10'}),
+    options: {method: 'GET', service: 'rate-service'},
+  },
+  'empty retry source list uses backoff': {
+    error: errorResponse(429, '10'),
+    options: {httpRetry: {retryAfter: {sources: []}}, method: 'GET'},
+  },
+  'body error code cancels X-RateLimit retry': {
+    error: errorResponseWithHeaders(
+      429,
+      {
+        'x-ratelimit-remaining': '0',
+        'x-ratelimit-reset': String(NOW / 1000 + 2),
+      },
+      {errorCode: 'STOP'}
+    ),
+    options: {
+      httpRetry: {bodyErrorCodes: {nonRetryable: ['STOP']}},
+      method: 'GET',
+    },
   },
   '429 without Retry-After uses backoff': {
     error: errorResponse(429),
@@ -582,6 +743,44 @@ const GENERATED_FAILURES = {
     retryable: true,
     statusCode: 429,
   },
+  '429-x-ratelimit-reset': {
+    headers: {
+      'x-ratelimit-remaining': '0',
+      'x-ratelimit-reset': '0',
+    },
+    outcome: 429,
+    retryAfterDelay: 0,
+    retryable: true,
+    statusCode: 429,
+  },
+  '429-x-rate-limit-reset': {
+    headers: {
+      'x-rate-limit-remaining': '0',
+      'x-rate-limit-reset': '0',
+    },
+    outcome: 429,
+    retryAfterDelay: 0,
+    retryable: true,
+    statusCode: 429,
+  },
+  '429-reset-with-positive-remaining': {
+    headers: {
+      'x-ratelimit-remaining': '1',
+      'x-ratelimit-reset': String(NOW / 1000 + 10),
+    },
+    outcome: 429,
+    retryable: true,
+    statusCode: 429,
+  },
+  '429-quota-metadata-without-reset': {
+    headers: {
+      'x-ratelimit-limit': '100',
+      'x-ratelimit-remaining': '0',
+    },
+    outcome: 429,
+    retryable: true,
+    statusCode: 429,
+  },
   '503-no-retry-after': {
     outcome: 503,
     retryable: true,
@@ -679,12 +878,19 @@ const generatedScenario = (combination) => {
   const source = GENERATED_POLICY_SOURCES[combination.policySource];
   const failure = GENERATED_FAILURES[combination.failure];
   const responseBody = failure.blocked ? source.blockedBody : source.allowedBody;
+  let error;
+
+  if (failure.network) {
+    error = new TypeError('Failed to fetch');
+  } else if (failure.headers) {
+    error = errorResponseWithHeaders(failure.statusCode, failure.headers, responseBody);
+  } else {
+    error = errorResponse(failure.statusCode, failure.retryAfter, 'retry-after', responseBody);
+  }
 
   return {
     config: generatedConfig(combination.networkErrors),
-    error: failure.network
-      ? new TypeError('Failed to fetch')
-      : errorResponse(failure.statusCode, failure.retryAfter, 'retry-after', responseBody),
+    error,
     options: {
       ...source.options,
       ...(combination.body === 'stream' && {body: {pipe: sinon.stub()}}),
@@ -736,11 +942,14 @@ const EXPECTED_GENERATED_RESPONSES = Object.fromEntries(
 const EXPECTED_HTTP_RETRY_CONTRACT = {
   decisions: {
     '503 honors Retry-After HTTP date': 2000,
+    '429 honors X-RateLimit-Reset epoch seconds': 2000,
+    '429 honors X-Rate-Limit-Reset epoch seconds': 3000,
+    'X-RateLimit-Reset above its maximum is rejected': undefined,
   },
-  generatedCaseCount: 512,
+  generatedCaseCount: 768,
   generatedOutcomeCounts: {
-    noRetry: 477,
-    retry: 35,
+    noRetry: 693,
+    retry: 75,
   },
   generatedResponses: EXPECTED_GENERATED_RESPONSES,
   resolvedPolicies: {
@@ -849,6 +1058,111 @@ const EXPECTED_HTTP_RETRY_CONTRACT = {
       requestCount: 1,
       retryCount: 1,
       willRetry: true,
+    },
+    '429 accepts case-insensitive X-RateLimit headers': {
+      delays: [0],
+      outcome: 'resolved:200',
+      requestCount: 1,
+      retryCount: 1,
+      willRetry: true,
+    },
+    'hyphenated X-Rate-Limit aliases are case insensitive': {
+      delays: [0],
+      outcome: 'resolved:200',
+      requestCount: 1,
+      retryCount: 1,
+      willRetry: true,
+    },
+    'Retry-After takes precedence over X-RateLimit-Reset': {
+      delays: [1000],
+      outcome: 'resolved:200',
+      requestCount: 1,
+      retryCount: 1,
+      willRetry: true,
+    },
+    'positive X-RateLimit-Remaining ignores reset and uses backoff': {
+      delays: [400],
+      outcome: 'resolved:200',
+      requestCount: 1,
+      retryCount: 1,
+      willRetry: true,
+    },
+    'invalid X-RateLimit-Remaining ignores reset and uses backoff': {
+      delays: [400],
+      outcome: 'resolved:200',
+      requestCount: 1,
+      retryCount: 1,
+      willRetry: true,
+    },
+    'X-RateLimit quota metadata without reset uses backoff': {
+      delays: [400],
+      outcome: 'resolved:200',
+      requestCount: 1,
+      retryCount: 1,
+      willRetry: true,
+    },
+    'expired X-RateLimit-Reset retries immediately': {
+      delays: [0],
+      outcome: 'resolved:200',
+      requestCount: 1,
+      retryCount: 1,
+      willRetry: true,
+    },
+    'configured server delay above its maximum is rejected': {
+      delays: [],
+      outcome: 'rejected:429',
+      requestCount: 0,
+      retryCount: 0,
+      willRetry: false,
+    },
+    'custom delay-seconds header replaces default sources': {
+      delays: [1250],
+      outcome: 'resolved:200',
+      requestCount: 1,
+      retryCount: 1,
+      willRetry: true,
+    },
+    'default policy overrides rate-limit sources': {
+      delays: [1000],
+      outcome: 'resolved:200',
+      requestCount: 1,
+      retryCount: 1,
+      willRetry: true,
+    },
+    'service policy overrides rate-limit sources': {
+      delays: [2000],
+      outcome: 'resolved:200',
+      requestCount: 1,
+      retryCount: 1,
+      willRetry: true,
+    },
+    'service path policy overrides rate-limit sources': {
+      delays: [3000],
+      outcome: 'resolved:200',
+      requestCount: 1,
+      retryCount: 1,
+      willRetry: true,
+    },
+    'service source list replaces the default source list': {
+      delays: [400],
+      outcome: 'resolved:200',
+      requestCount: 1,
+      retryCount: 1,
+      willRetry: true,
+    },
+    'empty retry source list uses backoff': {
+      delays: [400],
+      outcome: 'resolved:200',
+      requestCount: 1,
+      retryCount: 1,
+      willRetry: true,
+    },
+    'body error code cancels X-RateLimit retry': {
+      delays: [],
+      outcome: 'rejected:429',
+      requestCount: 0,
+      retryCount: 0,
+      willRetry: false,
     },
     '429 without Retry-After uses backoff': {
       delays: [400],
@@ -1402,6 +1716,33 @@ describe('HTTP retry contract', () => {
         options: {method: 'GET'},
         policy: ENABLED_POLICY,
         reason: errorResponse(503, new Date(NOW + 2000).toUTCString()),
+      }),
+      '429 honors X-RateLimit-Reset epoch seconds': getHttpRetryDelay({
+        now: NOW,
+        options: {method: 'GET'},
+        policy: ENABLED_POLICY,
+        reason: errorResponseWithHeaders(429, {
+          'x-ratelimit-remaining': '0',
+          'x-ratelimit-reset': String(NOW / 1000 + 2),
+        }),
+      }),
+      '429 honors X-Rate-Limit-Reset epoch seconds': getHttpRetryDelay({
+        now: NOW,
+        options: {method: 'GET'},
+        policy: ENABLED_POLICY,
+        reason: errorResponseWithHeaders(429, {
+          'x-rate-limit-remaining': '0',
+          'x-rate-limit-reset': String(NOW / 1000 + 3),
+        }),
+      }),
+      'X-RateLimit-Reset above its maximum is rejected': getHttpRetryDelay({
+        now: NOW,
+        options: {method: 'GET'},
+        policy: {...ENABLED_POLICY, retryAfter: {...ENABLED_POLICY.retryAfter, maxDelay: 1999}},
+        reason: errorResponseWithHeaders(429, {
+          'x-ratelimit-remaining': '0',
+          'x-ratelimit-reset': String(NOW / 1000 + 2),
+        }),
       }),
     };
     const resolvedPolicies = Object.fromEntries(

@@ -12,6 +12,19 @@ export const DEFAULT_HTTP_RETRY_POLICY = {
   retryAfter: {
     enabled: true,
     maxDelay: 3600000,
+    sources: [
+      {header: 'retry-after', format: 'retry-after'},
+      {
+        header: 'x-ratelimit-reset',
+        format: 'epoch-seconds',
+        remainingHeader: 'x-ratelimit-remaining',
+      },
+      {
+        header: 'x-rate-limit-reset',
+        format: 'epoch-seconds',
+        remainingHeader: 'x-rate-limit-remaining',
+      },
+    ],
   },
   backoff: {
     initialDelay: 400,
@@ -134,11 +147,17 @@ const getStatusCode = (reason) => {
   return Number.isFinite(statusCode) ? statusCode : undefined;
 };
 
-const getRetryAfter = (reason) => {
-  const headers = reason?.headers || {};
-  const headerName = Object.keys(headers).find((name) => name.toLowerCase() === 'retry-after');
+const getHeader = (reason, requestedName) => {
+  if (typeof requestedName !== 'string') {
+    return undefined;
+  }
 
-  return headerName ? headers[headerName] : reason?.retryAfter;
+  const headers = reason?.headers || {};
+  const headerName = Object.keys(headers).find(
+    (name) => name.toLowerCase() === requestedName.toLowerCase()
+  );
+
+  return headerName ? headers[headerName] : undefined;
 };
 
 const getOwnPathValue = (value, path) => {
@@ -199,6 +218,65 @@ export const parseRetryAfter = (value, now = Date.now()) => {
   const date = Date.parse(value);
 
   return Number.isFinite(date) ? Math.max(date - now, 0) : undefined;
+};
+
+const parseRateLimitDelay = (value, format, now) => {
+  if (format === 'retry-after') {
+    return parseRetryAfter(value, now);
+  }
+
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return undefined;
+  }
+
+  const number = Number(String(value).trim());
+
+  if (!Number.isFinite(number) || number < 0) {
+    return undefined;
+  }
+
+  if (format === 'epoch-seconds') {
+    return Math.max(number * 1000 - now, 0);
+  }
+
+  return format === 'delay-seconds' ? number * 1000 : undefined;
+};
+
+const getSourceRetryDelay = (source, reason, now) => {
+  if (!isObject(source) || typeof source.header !== 'string') {
+    return undefined;
+  }
+
+  const remaining = getHeader(reason, source.remainingHeader);
+
+  if (remaining !== undefined) {
+    const remainingNumber = Number(String(remaining).trim());
+
+    if (!Number.isFinite(remainingNumber) || remainingNumber > 0) {
+      return undefined;
+    }
+  }
+
+  const headerValue = getHeader(reason, source.header);
+  const value =
+    headerValue === undefined && source.header.toLowerCase() === 'retry-after'
+      ? reason?.retryAfter
+      : headerValue;
+
+  return parseRateLimitDelay(value, source.format, now);
+};
+
+const getServerRetryDelay = (policy, reason, now) => {
+  const sources = policy.retryAfter?.sources;
+
+  if (!Array.isArray(sources)) {
+    return undefined;
+  }
+
+  return sources.reduce(
+    (delay, source) => (delay === undefined ? getSourceRetryDelay(source, reason, now) : delay),
+    undefined
+  );
 };
 
 export const isReplayableBody = (body) => {
@@ -262,7 +340,7 @@ export const getHttpRetryDelay = ({
     includesNumber(policy.retryAfterStatuses, statusCode) &&
     policy.retryAfter?.enabled !== false
   ) {
-    const retryAfterDelay = parseRetryAfter(getRetryAfter(reason), now);
+    const retryAfterDelay = getServerRetryDelay(policy, reason, now);
 
     if (retryAfterDelay !== undefined) {
       const maxDelay = Math.max(asFiniteNumber(policy.retryAfter.maxDelay, 3600000), 0);
