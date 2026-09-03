@@ -83,14 +83,20 @@ const Flag = WebexCore.WebexPlugin.extend({
    * TODO: this should be implemented as a batched request when migrating to the modular sdk
    */
   async mapToActivities(flags) {
+    // Wait for the postauth catalog to be ready before validating URLs.
+    // Without this, calls immediately after webex.ready would see an empty
+    // catalog and incorrectly filter all flags as unrecognized.
+    await this.webex.internal.services.waitForCatalog('postauth');
+
     const mapUrlActivities = new Map();
 
     for (const flag of flags) {
       const convoUrlRegex = /(.*)\/activities\//;
       const activity = flag['flag-item'];
       const match = convoUrlRegex.exec(activity);
+      const service = match && this.webex.internal.services.getServiceFromUrl(match[1]);
 
-      if (match) {
+      if (service?.name === 'conversation') {
         const url = match[1];
         let activities = mapUrlActivities.get(url);
 
@@ -100,7 +106,9 @@ const Flag = WebexCore.WebexPlugin.extend({
         }
         activities.push(activity);
       } else {
-        this.logger.warn(`The activity URL has a strange format (${activity}). Ignoring it.`);
+        this.logger.warn(
+          `The activity URL has a strange format or an unrecognized host (${activity}). Ignoring it.`
+        );
       }
     }
 

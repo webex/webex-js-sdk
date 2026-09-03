@@ -7,6 +7,7 @@ import METRICS from '../metrics';
 import ServiceCatalog from './service-catalog';
 import fedRampServices from './service-fed-ramp';
 import {COMMERCIAL_ALLOWED_DOMAINS} from '../constants';
+import {matchesCatalogUrl} from '../services/service-catalog';
 import {
   ActiveServices,
   IServiceCatalog,
@@ -15,6 +16,7 @@ import {
   ServiceHostmap,
   ServiceGroup,
   ServiceHost,
+  ServiceUrl,
   SelectionMeta,
 } from './types';
 
@@ -988,7 +990,9 @@ const Services = WebexPlugin.extend({
 
     const priorityUrl = service.get();
     const defaultUrl = new URL(
-      service.serviceUrls.find((serviceUrl) => url.startsWith(serviceUrl.baseUrl)).baseUrl
+      service.serviceUrls.find((serviceUrl: ServiceUrl) =>
+        matchesCatalogUrl(url, serviceUrl.baseUrl)
+      ).baseUrl
     ).href;
 
     return {
