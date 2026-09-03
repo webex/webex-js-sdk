@@ -2930,6 +2930,27 @@ describe('webex.cc', () => {
       });
     });
 
+    it('does not emit an unknown server-controlled event type', () => {
+      const payload = {
+        type: 'UnhandledMessage',
+        data: {foo: 'bar', type: 'MaliciousInjectedType'},
+      };
+
+      messageCallback(JSON.stringify(payload));
+
+      expect(emitSpy).not.toHaveBeenCalledWith('MaliciousInjectedType', expect.anything());
+    });
+
+    it('emits a known agent event type verbatim from data.type', () => {
+      const sample = {foo: 'bar', type: CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS};
+
+      messageCallback(
+        JSON.stringify({type: CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, data: sample})
+      );
+
+      expect(emitSpy).toHaveBeenCalledWith(CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, sample);
+    });
+
     it('should call webCallingService.setLoginOption with correct deviceType on AGENT_STATION_LOGIN_SUCCESS', () => {
       const setLoginOptionSpy = jest.spyOn(webex.cc.webCallingService, 'setLoginOption');
       const deviceType = LoginOption.EXTENSION;

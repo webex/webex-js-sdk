@@ -610,6 +610,35 @@ describe('AqmReqs', () => {
       expect(aqm['pendingRequests']).toEqual({});
     });
 
+    it('never logs the raw routing-failure payload even when redactSensitiveLogs is not set', async () => {
+      const participantId = '+1/plain-failure-secret';
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
+      const conf = {
+        ...participantDropConfig(participantId, 'disabled'),
+        redactSensitiveLogs: false,
+      };
+      const promise = aqm['createPromise'](conf);
+
+      webSocketManagerInstance.emit(
+        'message',
+        JSON.stringify({
+          type: 'RoutingMessage',
+          data: {type: 'ParticipantDropConferenceFailed', participantId},
+        })
+      );
+
+      await expect(promise).rejects.toBeDefined();
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        'Routing request failed (sensitive details redacted)',
+        expect.objectContaining({module: AQM_REQS_FILE})
+      );
+
+      const loggedCalls = JSON.stringify((LoggerProxy.log as jest.Mock).mock.calls);
+      expect(loggedCalls).not.toContain(participantId);
+      expect(loggedCalls).not.toContain('ParticipantDropConferenceFailed');
+      expect(aqm['pendingRequests']).toEqual({});
+    });
+
     it('resolves a correlated participant-left event and clears its binds', async () => {
       jest.useFakeTimers();
       (global.window as any).setTimeout = global.setTimeout;

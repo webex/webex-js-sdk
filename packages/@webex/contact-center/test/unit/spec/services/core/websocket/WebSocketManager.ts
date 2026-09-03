@@ -94,7 +94,9 @@ describe('WebSocketManager', () => {
     };
 
     global.Worker = jest.fn(() => mockWorker) as any;
-    global.WebSocket = MockWebSocket as any;
+    global.WebSocket = jest.fn(function (this: any, ...args: any[]) {
+      return new MockWebSocket(...(args as []));
+    }) as any;
 
     global.Blob = function (content: any[], options: any) {
       return {content, options};
@@ -119,10 +121,58 @@ describe('WebSocketManager', () => {
     expect(webSocketManager).toBeDefined();
   });
 
+  describe('webSocketUrl validation', () => {
+    it('rejects a non-wss webSocketUrl and does not construct a socket', async () => {
+      const subscribeResponse = {
+        body: {
+          webSocketUrl: 'http://fake-url.cisco.com',
+        },
+      };
+
+      (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+      await expect(
+        webSocketManager.initWebSocket({body: fakeSubscribeRequest, resource: SUBSCRIBE_API})
+      ).rejects.toBeDefined();
+
+      expect(global.WebSocket).not.toHaveBeenCalled();
+    });
+
+    it('rejects a wss webSocketUrl with a non-allow-listed host and does not construct a socket', async () => {
+      const subscribeResponse = {
+        body: {
+          webSocketUrl: 'wss://evil.attacker.com',
+        },
+      };
+
+      (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+      await expect(
+        webSocketManager.initWebSocket({body: fakeSubscribeRequest, resource: SUBSCRIBE_API})
+      ).rejects.toBeDefined();
+
+      expect(global.WebSocket).not.toHaveBeenCalled();
+    });
+
+    it('connects for a valid wss allow-listed webSocketUrl', async () => {
+      const subscribeResponse = {
+        body: {
+          webSocketUrl: 'wss://notifs.wxcc-us1.cisco.com',
+        },
+      };
+
+      (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+      await webSocketManager.initWebSocket({body: fakeSubscribeRequest, resource: SUBSCRIBE_API});
+
+      expect(global.WebSocket).toHaveBeenCalledWith('wss://notifs.wxcc-us1.cisco.com');
+    });
+  });
+
   it('should register and connect to WebSocket with X-ORGANIZATION-ID header for INT environment', async () => {
     const subscribeResponse = {
       body: {
-        webSocketUrl: 'wss://fake-url',
+        webSocketUrl: 'wss://fake-url.cisco.com',
       },
     };
 
@@ -144,7 +194,7 @@ describe('WebSocketManager', () => {
   it('should connect rtd websocket', async () => {
     const subscribeResponse = {
       body: {
-        webSocketUrl: 'wss://fake-url',
+        webSocketUrl: 'wss://fake-url.cisco.com',
       },
     };
 
@@ -167,7 +217,7 @@ describe('WebSocketManager', () => {
 it('should register and connect to WebSocket without X-ORGANIZATION-ID header for production environment', async () => {
   const subscribeResponse = {
     body: {
-      webSocketUrl: 'wss://fake-url',
+      webSocketUrl: 'wss://fake-url.cisco.com',
     },
   };
     // Mock production environment (services.isIntegrationEnvironment returns false)
@@ -196,7 +246,7 @@ it('should register and connect to WebSocket without X-ORGANIZATION-ID header fo
   it('should not send X-ORGANIZATION-ID header when services.isIntegrationEnvironment is not available', async () => {
     const subscribeResponse = {
       body: {
-        webSocketUrl: 'wss://fake-url',
+        webSocketUrl: 'wss://fake-url.cisco.com',
       },
     };
 
@@ -245,7 +295,7 @@ it('should register and connect to WebSocket without X-ORGANIZATION-ID header fo
   it('should close WebSocket connection', async () => {
     const subscribeResponse = {
       body: {
-        webSocketUrl: 'wss://fake-url',
+        webSocketUrl: 'wss://fake-url.cisco.com',
       },
     };
 
@@ -262,7 +312,7 @@ it('should register and connect to WebSocket without X-ORGANIZATION-ID header fo
   it('should handle WebSocket keepalive messages', async () => {
     const subscribeResponse = {
       body: {
-        webSocketUrl: 'wss://fake-url',
+        webSocketUrl: 'wss://fake-url.cisco.com',
       },
     };
 
@@ -286,7 +336,7 @@ it('should register and connect to WebSocket without X-ORGANIZATION-ID header fo
   it('should handle WebSocket close due to network issue', async () => {
     const subscribeResponse = {
       body: {
-        webSocketUrl: 'wss://fake-url',
+        webSocketUrl: 'wss://fake-url.cisco.com',
       },
     };
 
@@ -333,7 +383,7 @@ it('should register and connect to WebSocket without X-ORGANIZATION-ID header fo
   it('should handle WebSocket error event', async () => {
     const subscribeResponse = {
       body: {
-        webSocketUrl: 'wss://fake-url',
+        webSocketUrl: 'wss://fake-url.cisco.com',
       },
     };
 
@@ -353,7 +403,7 @@ it('should register and connect to WebSocket without X-ORGANIZATION-ID header fo
   it('should handle WebSocket message event with AGENT_MULTI_LOGIN', async () => {
     const subscribeResponse = {
       body: {
-        webSocketUrl: 'wss://fake-url',
+        webSocketUrl: 'wss://fake-url.cisco.com',
       },
     };
 
@@ -376,7 +426,7 @@ it('should register and connect to WebSocket without X-ORGANIZATION-ID header fo
   it('should handle WebSocket message event with Welcome', async () => {
     const subscribeResponse = {
       body: {
-        webSocketUrl: 'wss://fake-url',
+        webSocketUrl: 'wss://fake-url.cisco.com',
       },
     };
 
@@ -395,7 +445,7 @@ it('should register and connect to WebSocket without X-ORGANIZATION-ID header fo
   it('should handle WebSocket close with forceCloseWebSocketOnTimeout', async () => {
     const subscribeResponse = {
       body: {
-        webSocketUrl: 'wss://fake-url',
+        webSocketUrl: 'wss://fake-url.cisco.com',
       },
     };
 
@@ -430,7 +480,7 @@ it('should register and connect to WebSocket without X-ORGANIZATION-ID header fo
   it('should handle WebSocket close without reconnect', async () => {
     const subscribeResponse = {
       body: {
-        webSocketUrl: 'wss://fake-url',
+        webSocketUrl: 'wss://fake-url.cisco.com',
       },
     };
 
@@ -460,7 +510,7 @@ it('should register and connect to WebSocket without X-ORGANIZATION-ID header fo
   it('should handle WebSocket close with clean close', async () => {
     const subscribeResponse = {
       body: {
-        webSocketUrl: 'wss://fake-url',
+        webSocketUrl: 'wss://fake-url.cisco.com',
       },
     };
 
