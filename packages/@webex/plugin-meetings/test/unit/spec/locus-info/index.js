@@ -4468,6 +4468,34 @@ describe('plugin-meetings', () => {
           // the parser must still be resumed so it isn't left paused
           assert.calledOnce(locusInfo.locusParser.resume);
         });
+
+        it('destroys the meeting and resolves when the classic sync gets a terminal 403, so the caller does not retry', async () => {
+          const fake403Error = new Error('meeting ended');
+          fake403Error.statusCode = 403;
+          const meeting = {
+            correlationId: 'correlationId',
+            meetingRequest: {
+              getLocusDTO: sandbox.stub().rejects(fake403Error),
+            },
+            locusInfo: {
+              onFullLocus: sandbox.stub(),
+            },
+            locusUrl: 'someLocusUrl',
+          };
+
+          locusInfo.locusParser.workingCopy = {syncUrl: 'deltaSyncUrl'}; // delta sync -> 403 is terminal
+          sandbox.stub(locusInfo.locusParser, 'pause');
+          sandbox.stub(locusInfo.locusParser, 'resume');
+          sandbox.stub(webex.meetings, 'destroy');
+
+          // a terminal 403 means the meeting has ended, so the sync must resolve (not reject),
+          // otherwise the reconnection flow would retry indefinitely
+          await locusInfo.sync(meeting, {syncClassicLocus: true, syncHashTree: true});
+
+          assert.calledOnceWithExactly(webex.meetings.destroy, meeting, 'LOCUS_DTO_SYNC_FAILED');
+          // meeting was destroyed, so the parser is not resumed
+          assert.notCalled(locusInfo.locusParser.resume);
+        });
       });
 
       describe('edge cases for sync failing', () => {

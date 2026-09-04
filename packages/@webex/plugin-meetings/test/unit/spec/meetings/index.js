@@ -2273,6 +2273,28 @@ describe('plugin-meetings', () => {
           assert.calledWith(webex.internal.mercury.on, OFFLINE);
           assert.callCount(webex.internal.mercury.on, 4);
         });
+
+        it('handles a rejected syncMeetings when the ONLINE event fires so it does not become an unhandled rejection', async () => {
+          const syncError = new Error('sync failed');
+          sinon.stub(webex.meetings, 'syncMeetings').rejects(syncError);
+          const loggerWarnStub = sinon.stub(LoggerProxy.logger, 'warn');
+
+          webex.meetings.listenForEvents();
+
+          const onlineCallback = webex.internal.mercury.on
+            .getCalls()
+            .find((call) => call.args[0] === ONLINE).args[1];
+
+          // invoking the listener must not throw synchronously nor leave a rejection unhandled
+          onlineCallback();
+
+          assert.calledOnceWithExactly(webex.meetings.syncMeetings, {keepOnlyLocusMeetings: false});
+
+          await testUtils.flushPromises();
+
+          assert.calledOnce(loggerWarnStub);
+          assert.include(loggerWarnStub.firstCall.args[0], 'syncMeetings after ONLINE event failed');
+        });
       });
       describe('#handleLocusMercury', () => {
         beforeEach(() => {

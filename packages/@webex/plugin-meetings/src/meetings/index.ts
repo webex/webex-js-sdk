@@ -759,7 +759,14 @@ export default class Meetings extends WebexPlugin {
 
     // @ts-ignore
     this.webex.internal.mercury.on(ONLINE, () => {
-      this.syncMeetings({keepOnlyLocusMeetings: false});
+      // Fire-and-forget sync on socket recovery. Unlike the reconnection manager (which awaits and
+      // retries), nothing consumes this promise, so catch its rejection to avoid an unhandled
+      // promise rejection (a transient guest classic-sync failure would otherwise crash Node hosts).
+      this.syncMeetings({keepOnlyLocusMeetings: false}).catch((error) => {
+        LoggerProxy.logger.warn(
+          `Meetings:index#listenForEvents --> syncMeetings after ONLINE event failed: ${error}`
+        );
+      });
     });
 
     // @ts-ignore

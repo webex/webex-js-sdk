@@ -328,17 +328,19 @@ export default class LocusInfo extends EventsScope {
    * @param {boolean} isLocusUrlChanged
    * @param {Locus} locus
    * @param {Object} [options]
-   * @param {boolean} [options.destroyMeetingOnFailure=true] when true, a sync failure destroys
-   *   the meeting and the returned promise still resolves. When false, the meeting is preserved
-   *   and the returned promise rejects so the caller can retry.
-   * @returns {Promise} resolves once the fetched DTO has been applied; see destroyMeetingOnFailure
+   * @param {boolean} [options.destroyOnTransientFailure=true] controls what happens on a *transient*
+   *   sync failure (a terminal failure, e.g. a 403 meaning the meeting has ended, always destroys
+   *   the meeting regardless of this flag). When true, a transient failure destroys the meeting and
+   *   the returned promise still resolves. When false, the meeting is preserved and the returned
+   *   promise rejects so the caller can retry.
+   * @returns {Promise} resolves once the fetched DTO has been applied; see destroyOnTransientFailure
    *   for the failure behavior
    */
   private doLocusSync(
     meeting: any,
     isLocusUrlChanged: boolean,
     locus: any,
-    {destroyMeetingOnFailure = true}: {destroyMeetingOnFailure?: boolean} = {}
+    {destroyOnTransientFailure = true}: {destroyOnTransientFailure?: boolean} = {}
   ) {
     let url;
     let isDelta = false;
@@ -366,16 +368,22 @@ export default class LocusInfo extends EventsScope {
     );
 
     // Called once the DTO fetch (delta plus any full-sync fallback) has failed and we're giving up.
-    // On the delta-processing path we destroy the meeting; on the reconnection path we preserve it
-    // and let the rejection propagate so the caller can retry.
-    const onFetchFailure = (error: any, logMessage: string) => {
+    // The meeting is destroyed when either the delta-processing path asked for it, or the failure is
+    // terminal (e.g. a 403 meaning the meeting has ended) - in both cases there's nothing left to
+    // sync or retry, so the trailing catch below swallows the rejection whenever meetingDestroyed is
+    // set. On the caller-driven reconnection path a non-terminal failure preserves the meeting and
+    // lets the rejection propagate so the caller can retry.
+    const onFetchFailure = (error: any, logMessage: string, {terminal = false} = {}) => {
+      // terminal failures always destroy the meeting; destroyOnTransientFailure only controls the
+      // non-terminal case
+      const destroyMeeting = terminal || destroyOnTransientFailure;
       LoggerProxy.logger.info(
         `Locus-info:index#doLocusSync --> ${logMessage}${
-          destroyMeetingOnFailure ? ', destroying the meeting' : ''
+          destroyMeeting ? ', destroying the meeting' : ''
         }`
       );
       fetchFailed = true;
-      if (destroyMeetingOnFailure) {
+      if (destroyMeeting) {
         this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
         meetingDestroyed = true;
       }
@@ -408,7 +416,11 @@ export default class LocusInfo extends EventsScope {
               .catch((err) => onFetchFailure(err, 'fallback full sync failed'));
           }
 
-          return onFetchFailure(e, 'got 403 from Locus, skipping fallback to full sync');
+          // A 403 means the meeting has ended - this is terminal, so remove the meeting even on the
+          // reconnection path (there's nothing to retry) instead of preserving it and rejecting.
+          return onFetchFailure(e, 'got 403 from Locus, skipping fallback to full sync', {
+            terminal: true,
+          });
         }
 
         return onFetchFailure(e, 'full sync failed');
@@ -458,8 +470,9 @@ export default class LocusInfo extends EventsScope {
           });
         }
 
-        if (!destroyMeetingOnFailure) {
-          // caller-driven sync (e.g. reconnection): propagate the failure so it can be retried
+        if (!destroyOnTransientFailure && !meetingDestroyed) {
+          // caller-driven sync (e.g. reconnection): propagate a transient failure so it can be
+          // retried. If the meeting was destroyed (terminal failure), there's nothing to retry.
           throw e;
         }
       })
@@ -507,9 +520,10 @@ export default class LocusInfo extends EventsScope {
     if (syncClassicLocus && meeting.locusUrl) {
       // Pause the parser so in-flight deltas don't race the DTO fetch; doLocusSync() resumes it.
       this.locusParser.pause();
-      // destroyMeetingOnFailure: false so a transient failure preserves the meeting and rejects,
-      // letting the reconnection flow retry instead of tearing the meeting down.
-      await this.doLocusSync(meeting, false, undefined, {destroyMeetingOnFailure: false});
+      // destroyOnTransientFailure: false so a transient failure preserves the meeting and rejects,
+      // letting the reconnection flow retry instead of tearing the meeting down. A terminal failure
+      // (e.g. a 403 meaning the meeting has ended) still destroys the meeting.
+      await this.doLocusSync(meeting, false, undefined, {destroyOnTransientFailure: false});
     }
   }
 
