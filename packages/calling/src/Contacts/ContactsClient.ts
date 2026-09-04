@@ -54,6 +54,8 @@ export class ContactsClient implements IContacts {
 
   private encryptionKeyUrl: string;
 
+  private encryptionKeyUrlPromise: Promise<string> | undefined;
+
   private webex: WebexSDK;
 
   private groups: ContactGroup[] | undefined;
@@ -495,25 +497,39 @@ export class ContactsClient implements IContacts {
       return this.groups[0].encryptionKeyUrl;
     }
 
-    this.encryptionKeyUrl = await this.createNewEncryptionKeyUrl();
-    log.log(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
-      file: CONTACTS_CLIENT,
-      method: this.fetchEncryptionKeyUrl.name,
-    });
-    const response: ContactResponse = await this.createContactGroup(
-      DEFAULT_GROUP_NAME,
-      this.encryptionKeyUrl
-    );
+    // Single-flight guard: concurrent callers await the same in-flight promise
+    // so that only one KMS key and one default group are ever created.
+    if (!this.encryptionKeyUrlPromise) {
+      this.encryptionKeyUrlPromise = (async () => {
+        try {
+          this.encryptionKeyUrl = await this.createNewEncryptionKeyUrl();
+          log.log(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
+            file: CONTACTS_CLIENT,
+            method: this.fetchEncryptionKeyUrl.name,
+          });
+          const response: ContactResponse = await this.createContactGroup(
+            DEFAULT_GROUP_NAME,
+            this.encryptionKeyUrl
+          );
 
-    if (response.data.group?.groupId) {
-      this.defaultGroupId = response.data.group?.groupId;
-      log.log(`Successfully created default group with ID: ${this.defaultGroupId}`, {
-        file: CONTACTS_CLIENT,
-        method: this.fetchEncryptionKeyUrl.name,
-      });
+          if (response.data.group?.groupId) {
+            this.defaultGroupId = response.data.group?.groupId;
+            log.log(`Successfully created default group with ID: ${this.defaultGroupId}`, {
+              file: CONTACTS_CLIENT,
+              method: this.fetchEncryptionKeyUrl.name,
+            });
+          }
+
+          return this.encryptionKeyUrl;
+        } catch (e) {
+          // Clear the in-flight promise on failure so subsequent callers can retry
+          this.encryptionKeyUrlPromise = undefined;
+          throw e;
+        }
+      })();
     }
 
-    return this.encryptionKeyUrl;
+    return this.encryptionKeyUrlPromise;
   }
 
   /**
