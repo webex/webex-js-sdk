@@ -990,6 +990,7 @@ meeting.on(...)
 | `meeting:recording:stopped`            | Fired when member stops recording                                                                 |
 | `meeting:recording:paused`             | Fired when member pauses recording                                                                |
 | `meeting:recording:resumed`            | Fired when member resumes recording                                                               |
+| `meeting:recording:durationUpdated`    | Fired after the SDK hydrates the recording duration from the recording stream service (e.g. on rejoin). Distinct from the transition events above so consumers can update timer state without re-running side effects tied to start/pause/resume. |
 | `meeting:receiveTranscription:started` | Fired when transcription is received                                                              |
 | `meeting:receiveTranscription:stopped` | Fired when transcription has stopped from being received                                          |
 | `meeting:meetingContainer:update`      | Fired when the meetingContainerUrl is updated                                                     |
