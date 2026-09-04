@@ -15,7 +15,6 @@ import {
   EventContext,
   BufferedReceivingSummary,
   FeatureEnablementEventPayload,
-  FeatureEnablementAccessor,
   GeneratedSummaryFlagsAccessor,
   AISummaryRealtimeEventType,
   InteractionFeatureEnablementEntry,
@@ -163,7 +162,6 @@ export default class TaskManager extends EventEmitter {
   private taskCollection: Record<TaskId, ITask>;
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
-  private rtdWebSocketManager: WebSocketManager;
   // eslint-disable-next-line no-use-before-define
   private static taskManager: TaskManager;
   private configFlags?: ConfigFlags;
@@ -191,15 +189,13 @@ export default class TaskManager extends EventEmitter {
     apiAIAssistant: ApiAIAssistant,
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
-    webSocketManager: WebSocketManager,
-    rtdWebSocketManager: WebSocketManager
+    webSocketManager: WebSocketManager
   ) {
     super();
     this.apiAIAssistant = apiAIAssistant;
     this.contact = contact;
     this.webCallingService = webCallingService;
     this.webSocketManager = webSocketManager;
-    this.rtdWebSocketManager = rtdWebSocketManager;
     this.taskCollection = {};
     this.webRtcEnabled = false;
     this.metricsManager = MetricsManager.getInstance();
@@ -371,11 +367,19 @@ export default class TaskManager extends EventEmitter {
 
     switch (eventType) {
       case CC_TASK_EVENTS.POST_CALL_SUMMARY:
-        this.handlePostCallSummaryEvent(innerPayload as Record<string, unknown>);
+        this.handleInitiatorSummaryEvent(
+          eventType,
+          innerPayload as Record<string, unknown>,
+          this.isPostCallSummaryEventPayload.bind(this)
+        );
         break;
 
       case CC_TASK_EVENTS.MID_CALL_SUMMARY:
-        this.handleMidCallSummaryEvent(innerPayload as Record<string, unknown>);
+        this.handleInitiatorSummaryEvent(
+          eventType,
+          innerPayload as Record<string, unknown>,
+          this.isMidCallSummaryEventPayload.bind(this)
+        );
         break;
 
       case CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT:
@@ -462,42 +466,26 @@ export default class TaskManager extends EventEmitter {
     );
   }
 
-  private handlePostCallSummaryEvent(payload: Record<string, unknown>): void {
-    if (!this.isPostCallSummaryEventPayload(payload)) {
-      this.trackAISummaryInboundDrop('invalid-payload', CC_TASK_EVENTS.POST_CALL_SUMMARY);
+  private handleInitiatorSummaryEvent(
+    eventType: typeof CC_TASK_EVENTS.POST_CALL_SUMMARY | typeof CC_TASK_EVENTS.MID_CALL_SUMMARY,
+    payload: Record<string, unknown>,
+    isValidPayload: (payload: Record<string, unknown>) => boolean
+  ): void {
+    if (!isValidPayload(payload)) {
+      this.trackAISummaryInboundDrop('invalid-payload', eventType);
 
       return;
     }
 
     const result = this.rtdRequestResolver.resolve(
-      AI_SUMMARY_INBOUND_TYPE_BY_EVENT[CC_TASK_EVENTS.POST_CALL_SUMMARY],
-      payload.conversationId,
+      AI_SUMMARY_INBOUND_TYPE_BY_EVENT[eventType],
+      payload.conversationId as string,
       payload
     );
 
     if (result === 'not-found') {
-      this.trackAISummaryInboundDrop('late-or-uncorrelated', CC_TASK_EVENTS.POST_CALL_SUMMARY, {
-        conversationId: payload.conversationId,
-      });
-    }
-  }
-
-  private handleMidCallSummaryEvent(payload: Record<string, unknown>): void {
-    if (!this.isMidCallSummaryEventPayload(payload)) {
-      this.trackAISummaryInboundDrop('invalid-payload', CC_TASK_EVENTS.MID_CALL_SUMMARY);
-
-      return;
-    }
-
-    const result = this.rtdRequestResolver.resolve(
-      AI_SUMMARY_INBOUND_TYPE_BY_EVENT[CC_TASK_EVENTS.MID_CALL_SUMMARY],
-      payload.conversationId,
-      payload
-    );
-
-    if (result === 'not-found') {
-      this.trackAISummaryInboundDrop('late-or-uncorrelated', CC_TASK_EVENTS.MID_CALL_SUMMARY, {
-        conversationId: payload.conversationId,
+      this.trackAISummaryInboundDrop('late-or-uncorrelated', eventType, {
+        conversationId: payload.conversationId as string,
       });
     }
   }
@@ -695,16 +683,7 @@ export default class TaskManager extends EventEmitter {
   }
 
   private configureTaskAISummary(task: ITask): void {
-    (
-      task as ITask & {
-        configureAISummary?: (
-          adapter: ApiAIAssistant | undefined,
-          rtdRequestResolver: RtdRequestResolver,
-          getGeneratedSummaryFlags: GeneratedSummaryFlagsAccessor,
-          getFeatureEnablement: FeatureEnablementAccessor
-        ) => void;
-      }
-    ).configureAISummary?.(
+    task.configureAISummary?.(
       this.apiAIAssistant,
       this.rtdRequestResolver,
       this.getGeneratedSummaryFlags,
@@ -2205,16 +2184,14 @@ export default class TaskManager extends EventEmitter {
     apiAIAssistant: ApiAIAssistant,
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
-    webSocketManager: WebSocketManager,
-    rtdWebSocketManager?: WebSocketManager
+    webSocketManager: WebSocketManager
   ): TaskManager {
     if (!TaskManager.taskManager) {
       TaskManager.taskManager = new TaskManager(
         apiAIAssistant,
         contact,
         webCallingService,
-        webSocketManager,
-        rtdWebSocketManager
+        webSocketManager
       );
     }
 

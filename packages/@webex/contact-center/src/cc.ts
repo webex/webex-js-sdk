@@ -446,8 +446,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.apiAIAssistant,
         this.services.contact,
         this.webCallingService,
-        this.services.webSocketManager,
-        this.services.rtdWebSocketManager
+        this.services.webSocketManager
       );
       this.taskManager.setAnswerCallOnWebexService(this.answerCallOnWebexService);
       this.refreshTaskManagerEventForwarders();

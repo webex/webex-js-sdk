@@ -35,6 +35,7 @@ let midCallSummary = {
   excluded: false,
   _viewCounted: false,
   requestFailed: false,
+  requestPending: null,
 };
 
 let postCallSummary = {
@@ -698,6 +699,7 @@ async function showInitiateConsultDialog() {
   midCallSummary.excluded = false;
   midCallSummary._viewCounted = false;
   midCallSummary.requestFailed = false;
+  midCallSummary.requestPending = null;
   clearSummarySection('consult-summary');
   const consultExclude = document.getElementById('consult-summary-exclude');
   if (consultExclude) consultExclude.checked = false;
@@ -710,8 +712,10 @@ async function showInitiateConsultDialog() {
   }
   document.getElementById('consult-summary-block').style.display = '';
   document.getElementById('consult-summary-status').textContent = 'Requesting summary…';
+  const summaryRequest = consultTask.requestMidCallSummary('CONSULT');
+  midCallSummary.requestPending = summaryRequest;
   try {
-    const summary = await consultTask.requestMidCallSummary('CONSULT');
+    const summary = await summaryRequest;
     document.getElementById('consult-summary-status').textContent = 'Summary ready.';
     document.getElementById('consult-summary-retry').style.display = 'none';
     if (!midCallSummary.payload) {
@@ -726,6 +730,10 @@ async function showInitiateConsultDialog() {
     midCallSummary.requestFailed = true;
     document.getElementById('consult-summary-status').textContent = `Summary unavailable: ${e?.message || e}`;
     document.getElementById('consult-summary-retry').style.display = '';
+  } finally {
+    if (midCallSummary.requestPending === summaryRequest) {
+      midCallSummary.requestPending = null;
+    }
   }
 }
 
@@ -773,11 +781,14 @@ async function retrySummary(type) {
   const retryBtn = document.getElementById(`${prefix}-retry`);
   midCallSummary.requestFailed = false;
   midCallSummary.payload = null;
+  midCallSummary.requestPending = null;
   clearSummarySection(prefix);
   if (retryBtn) retryBtn.style.display = 'none';
   if (statusEl) statusEl.textContent = 'Requesting summary…';
+  const summaryRequest = summaryTask.requestMidCallSummary(type);
+  midCallSummary.requestPending = summaryRequest;
   try {
-    const summary = await summaryTask.requestMidCallSummary(type);
+    const summary = await summaryRequest;
     if (statusEl) statusEl.textContent = 'Summary ready.';
     midCallSummary.payload = summary;
     renderSummarySection(prefix, summary);
@@ -789,6 +800,10 @@ async function retrySummary(type) {
     midCallSummary.requestFailed = true;
     if (statusEl) statusEl.textContent = `Summary unavailable: ${e?.message || e}`;
     if (retryBtn) retryBtn.style.display = '';
+  } finally {
+    if (midCallSummary.requestPending === summaryRequest) {
+      midCallSummary.requestPending = null;
+    }
   }
 }
 
@@ -1458,10 +1473,18 @@ async function initiateConsult() {
   const consultInteractionId = consultTask?.data?.interactionId;
   const consultSendFeatures = summaryFeatureMap.get(consultInteractionId) || {};
   if (midCallSummary.actionType === 'CONSULT' && consultSendFeatures.midCallEnabled && consultInteractionId) {
+    if (midCallSummary.requestPending) {
+      try {
+        await midCallSummary.requestPending;
+      } catch (_error) {
+        midCallSummary.requestFailed = true;
+      }
+    }
+
     if (midCallSummary.payload) {
       const consultEdited = isSummaryEdited('consult-summary', midCallSummary.payload);
       if (consultEdited) midCallSummary.numberOfTimesEdited += 1;
-      const consultSummaryPayload = consultEdited ? buildSummaryPayload('consult-summary') : {};
+      const consultSummaryPayload = buildSummaryPayload('consult-summary');
       try {
         await consultTask.sendMidCallSummaryResponse({
           summaryReceived: true,
@@ -1577,10 +1600,18 @@ async function initiateTransfer() {
   const transferSummaryInteractionId = transferTask?.data?.interactionId;
   const transferSummaryFeatures = summaryFeatureMap.get(transferSummaryInteractionId) || {};
   if (midCallSummary.actionType === 'TRANSFER' && transferSummaryFeatures.midCallEnabled && transferSummaryInteractionId) {
+    if (midCallSummary.requestPending) {
+      try {
+        await midCallSummary.requestPending;
+      } catch (_error) {
+        midCallSummary.requestFailed = true;
+      }
+    }
+
     if (midCallSummary.payload) {
       const transferEdited = isSummaryEdited('transfer-summary', midCallSummary.payload);
       if (transferEdited) midCallSummary.numberOfTimesEdited += 1;
-      const transferSummaryPayload = transferEdited ? buildSummaryPayload('transfer-summary') : {};
+      const transferSummaryPayload = buildSummaryPayload('transfer-summary');
       try {
         await transferTask.sendMidCallSummaryResponse({
           summaryReceived: true,
@@ -1735,6 +1766,7 @@ async function toggleTransferOptions() {
     midCallSummary.excluded = false;
     midCallSummary._viewCounted = false;
     midCallSummary.requestFailed = false;
+    midCallSummary.requestPending = null;
     clearSummarySection('transfer-summary');
     const transferExclude = document.getElementById('transfer-summary-exclude');
     if (transferExclude) transferExclude.checked = false;

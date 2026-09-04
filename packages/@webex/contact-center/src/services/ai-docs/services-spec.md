@@ -250,7 +250,7 @@ ContactCenter READY callback
 │   ├── config + agent + contact + dialer
 │   └── ConnectionService(primary WebSocket)
 ├── WebCallingService + ApiAIAssistant + MetricsManager
-├── TaskManager(ApiAIAssistant, contact, calling, primary WS, RTD WS)
+├── TaskManager(ApiAIAssistant, contact, calling, primary WS)
 └── AddressBook + EntryPoint + Queue + UserPreference
 ```
 
@@ -324,7 +324,7 @@ sequenceDiagram
   CC->>S: getInstance(webex, connectionConfig)
   S->>S: primary WS + RTD WS + AqmReqs + config/agent/contact/dialer + ConnectionService
   CC->>CC: create calling + AI assistant + metrics + data services + UserPreference
-  CC->>TM: getTaskManager(AI, contact, calling, primary WS, RTD WS)
+  CC->>TM: getTaskManager(AI, contact, calling, primary WS)
 ```
 
 ### Direct REST request

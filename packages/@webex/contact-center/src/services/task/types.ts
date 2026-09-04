@@ -2020,6 +2020,17 @@ export interface ITask extends IEventEmitter {
   cancelAutoWrapupTimer(): void;
 
   /**
+   * Configure the shared AI Summary dependencies used by this task.
+   * @internal
+   */
+  configureAISummary?(
+    apiAIAssistant: AISummaryAdapter | undefined,
+    rtdRequestResolver: RtdRequestResolver,
+    getGeneratedSummaryFlags: GeneratedSummaryFlagsAccessor,
+    getFeatureEnablement: FeatureEnablementAccessor
+  ): void;
+
+  /**
    * Requests an AI-generated post-call summary for this task.
    * @returns Promise resolving with the matching post-call summary payload.
    */
