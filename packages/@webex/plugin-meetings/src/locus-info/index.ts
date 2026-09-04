@@ -411,9 +411,11 @@ export default class LocusInfo extends EventsScope {
 
           // Locus sometimes returns 403, for example if meeting has ended, no point trying the fallback to full sync in that case
           if (e.statusCode !== 403) {
-            return meeting.meetingRequest
-              .getLocusDTO({url: meeting.locusUrl})
-              .catch((err) => onFetchFailure(err, 'fallback full sync failed'));
+            return meeting.meetingRequest.getLocusDTO({url: meeting.locusUrl}).catch((err) =>
+              // A 403 from the fallback full sync is also terminal (meeting has ended), so remove the
+              // meeting even on the reconnection path instead of preserving it and rejecting.
+              onFetchFailure(err, 'fallback full sync failed', {terminal: err.statusCode === 403})
+            );
           }
 
           // A 403 means the meeting has ended - this is terminal, so remove the meeting even on the

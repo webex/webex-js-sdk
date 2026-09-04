@@ -4496,6 +4496,42 @@ describe('plugin-meetings', () => {
           // meeting was destroyed, so the parser is not resumed
           assert.notCalled(locusInfo.locusParser.resume);
         });
+
+        it('destroys the meeting and resolves when the fallback full sync gets a terminal 403, so the caller does not retry', async () => {
+          const fakeDeltaError = new Error('delta failed');
+          fakeDeltaError.statusCode = 500;
+          const fake403Error = new Error('meeting ended');
+          fake403Error.statusCode = 403;
+          const getLocusDTO = sandbox.stub();
+          getLocusDTO.onCall(0).rejects(fakeDeltaError); // delta sync fails with non-403
+          getLocusDTO.onCall(1).rejects(fake403Error); // fallback full sync fails with 403
+          const meeting = {
+            correlationId: 'correlationId',
+            meetingRequest: {
+              getLocusDTO,
+            },
+            locusInfo: {
+              onFullLocus: sandbox.stub(),
+            },
+            locusUrl: 'someLocusUrl',
+          };
+
+          locusInfo.locusParser.workingCopy = {syncUrl: 'deltaSyncUrl'}; // delta sync -> fallback to full sync
+          sandbox.stub(locusInfo.locusParser, 'pause');
+          sandbox.stub(locusInfo.locusParser, 'resume');
+          sandbox.stub(webex.meetings, 'destroy');
+
+          // a terminal 403 from the fallback full sync means the meeting has ended, so the sync must
+          // resolve (not reject), otherwise the reconnection flow would retry indefinitely
+          await locusInfo.sync(meeting, {syncClassicLocus: true, syncHashTree: true});
+
+          assert.calledTwice(getLocusDTO);
+          assert.deepEqual(getLocusDTO.getCalls()[0].args, [{url: 'deltaSyncUrl'}]);
+          assert.deepEqual(getLocusDTO.getCalls()[1].args, [{url: 'someLocusUrl'}]);
+          assert.calledOnceWithExactly(webex.meetings.destroy, meeting, 'LOCUS_DTO_SYNC_FAILED');
+          // meeting was destroyed, so the parser is not resumed
+          assert.notCalled(locusInfo.locusParser.resume);
+        });
       });
 
       describe('edge cases for sync failing', () => {
