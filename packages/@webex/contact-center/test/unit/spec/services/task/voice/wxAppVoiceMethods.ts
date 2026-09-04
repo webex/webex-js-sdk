@@ -530,6 +530,35 @@ describe('runWxAppOutdialDecline', () => {
       ['operational', 'behavioral']
     );
   });
+
+  it('preserves AQM correlation fields when cancel fails with error.details', async () => {
+    const deps = makeDeps();
+    const error = Object.assign(new Error('AQM failed'), {
+      details: {
+        trackingId: 'aqm-track-1',
+        orgId: 'org-1',
+        type: 'Service.aqm.task.cancel',
+        data: {reason: 'TASK_NOT_FOUND', reasonCode: 404, agentId: 'agent-1'},
+      },
+    });
+
+    await expect(
+      runWxAppOutdialDecline(deps, async () => {
+        throw error;
+      })
+    ).rejects.toThrow('AQM failed');
+
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        trackingId: 'aqm-track-1',
+        failureReason: 'TASK_NOT_FOUND',
+        reasonCode: 404,
+      }),
+      ['operational', 'behavioral']
+    );
+  });
 });
 
 describe('mapWxAppVoiceError', () => {

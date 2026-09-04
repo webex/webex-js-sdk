@@ -1396,7 +1396,14 @@ describe('Voice Task', () => {
     });
 
     it('emits TASK_DECLINE and WXAPP_TASK_DECLINE failed metrics when outdial cancel fails', async () => {
-      const cancelError = new Error('cancel failed');
+      const cancelError = Object.assign(new Error('AQM failed'), {
+        details: {
+          trackingId: 'aqm-track-1',
+          orgId: 'org-1',
+          type: 'Service.aqm.task.cancel',
+          data: {reason: 'TASK_NOT_FOUND', reasonCode: 404, agentId: 'agent-1'},
+        },
+      });
       dummyContact.cancelTask = jest.fn().mockRejectedValue(cancelError);
       const taskData = makeWxAppOutdialTaskData();
       const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
@@ -1404,16 +1411,24 @@ describe('Voice Task', () => {
       const metricsManager = MetricsManager.getInstance();
       const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent');
 
-      await expect(voice.decline()).rejects.toThrow('cancel failed');
+      await expect(voice.decline()).rejects.toThrow('AQM failed');
 
       expect(trackEventSpy).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
-        expect.objectContaining({taskId: 'int1'}),
+        expect.objectContaining({
+          taskId: 'int1',
+          trackingId: 'aqm-track-1',
+          failureReason: 'TASK_NOT_FOUND',
+        }),
         ['operational', 'behavioral']
       );
       expect(trackEventSpy).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
-        expect.objectContaining({taskId: 'int1'}),
+        expect.objectContaining({
+          taskId: 'int1',
+          trackingId: 'aqm-track-1',
+          failureReason: 'TASK_NOT_FOUND',
+        }),
         ['operational', 'behavioral']
       );
       dummyContact.cancelTask = jest.fn().mockResolvedValue(undefined);

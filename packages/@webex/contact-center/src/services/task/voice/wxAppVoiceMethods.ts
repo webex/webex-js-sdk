@@ -2,6 +2,7 @@ import AnswerCallOnWebexService, {WxAppTelephonyError} from '../../AnswerCallOnW
 import LoggerProxy from '../../../logger-proxy';
 import {METHODS} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
+import {Failure} from '../../core/GlobalTypes';
 import {TaskData, TaskToggleMuteOptions, TaskTransmitDtmfOptions} from '../types';
 import {TaskState} from '../state-machine';
 import MetricsManager from '../../../metrics/MetricsManager';
@@ -178,6 +179,41 @@ function getWxAppTelephonyMetricFailurePayload(
   }
 
   return payload;
+}
+
+type AqmWrappedError = {
+  details?: Failure;
+};
+
+function getWxAppOutdialDeclineFailurePayload(
+  deps: WxAppVoiceDependencies,
+  error: unknown
+): Record<string, unknown> {
+  const base = {
+    taskId: getInteractionId(deps) ?? '',
+    error: error instanceof Error ? error.toString() : String(error),
+  };
+  const aqmDetails = (error as AqmWrappedError).details;
+
+  if (aqmDetails) {
+    return {...base, ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(aqmDetails)};
+  }
+
+  return getWxAppTelephonyMetricFailurePayload(deps, error);
+}
+
+function logWxAppOutdialDeclineFailure(deps: WxAppVoiceDependencies, error: unknown): void {
+  const aqmDetails = (error as AqmWrappedError).details;
+  const wxError = error as WxAppTelephonyError;
+
+  logWxAppTelephonyAction({
+    action: 'decline',
+    phase: 'failed',
+    interactionId: getInteractionId(deps),
+    trackingId: aqmDetails?.trackingId ?? wxError.trackingId,
+    httpStatus: wxError.status,
+    failureReason: aqmDetails?.data?.reason ?? wxError.message,
+  });
 }
 
 function assertWxAppEnabled(deps: WxAppVoiceDependencies): void {
@@ -393,10 +429,10 @@ export async function runWxAppOutdialDecline<T>(
 
     return result;
   } catch (error) {
-    logTelephonyFailure('decline', deps, error);
+    logWxAppOutdialDeclineFailure(deps, error);
     deps.metricsManager.trackEvent(
       METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
-      getWxAppTelephonyMetricFailurePayload(deps, error),
+      getWxAppOutdialDeclineFailurePayload(deps, error),
       ['operational', 'behavioral']
     );
     throw error;
