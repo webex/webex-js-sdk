@@ -2009,6 +2009,14 @@ export default class Meetings extends WebexPlugin {
                 // don't destroy the meeting as Locus API still returned some Locus that shares
                 // the same globalMeetingId - that happens for example if a webinar user (who hasn't scheduled it)
                 // is in a breakout and gets moved to a different breakout while we were offline
+                // @ts-ignore
+              } else if (meeting.deferJoin) {
+                // meeting.join() is still in flight and will set locusUrl once it gets its own
+                // join-response, so don't destroy it based on a locusUrl it doesn't have yet
+                LoggerProxy.logger.info(
+                  // @ts-ignore
+                  `Meetings:index#syncMeetings --> not destroying meeting ${meeting.id}, its join() is still in progress`
+                );
               } else {
                 // destroy function also uploads logs
                 // @ts-ignore

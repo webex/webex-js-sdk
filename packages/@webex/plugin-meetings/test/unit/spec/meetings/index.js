@@ -37,6 +37,7 @@ import {
   EVENT_TRIGGERS,
   DESTINATION_TYPE,
   INITIAL_REGISTRATION_STATUS,
+  MEETING_REMOVED_REASON,
 } from '../../../../src/constants';
 import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error';
 import {forEach} from 'lodash';
@@ -1715,6 +1716,55 @@ describe('plugin-meetings', () => {
 
             assert.calledOnce(destroySpy);
             assert.calledWith(destroySpy, meetingCollectionMeetings.breakoutMeeting);
+          });
+        });
+
+        describe('when a meeting has a join() in progress', () => {
+          let destroySpy;
+          let cleanUpSpy;
+
+          beforeEach(() => {
+            destroySpy = sinon.spy(webex.meetings, 'destroy');
+            cleanUpSpy = sinon.stub(MeetingUtil, 'cleanUp').returns(Promise.resolve());
+            webex.meetings.request.getActiveMeetings = sinon.stub().resolves({
+              loci: [{url: 'some-other-url'}],
+            });
+          });
+
+          afterEach(() => {
+            cleanUpSpy.restore();
+          });
+
+          it('does not destroy a meeting that has no locusUrl yet while its join() is still pending', async () => {
+            const meetingCollectionMeetings = {
+              joiningMeeting: {locusUrl: undefined, deferJoin: Promise.resolve()},
+            };
+
+            webex.meetings.meetingCollection.getAll = sinon
+              .stub()
+              .returns(meetingCollectionMeetings);
+
+            await webex.meetings.syncMeetings();
+
+            assert.notCalled(destroySpy);
+          });
+
+          it('destroys a meeting that has no locusUrl once its join() is no longer pending', async () => {
+            const meetingCollectionMeetings = {
+              staleMeeting: {locusUrl: undefined, deferJoin: undefined},
+            };
+
+            webex.meetings.meetingCollection.getAll = sinon
+              .stub()
+              .returns(meetingCollectionMeetings);
+
+            await webex.meetings.syncMeetings();
+
+            assert.calledOnceWithExactly(
+              destroySpy,
+              meetingCollectionMeetings.staleMeeting,
+              MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC
+            );
           });
         });
 

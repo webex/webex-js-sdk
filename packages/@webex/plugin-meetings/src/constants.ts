@@ -427,6 +427,7 @@ export const MEETING_REMOVED_REASON = {
   MEETING_CONNECTION_FAILED: 'MEETING_CONNECTION_FAILED', // meeting failed to connect due to ice failures or firewall issue
   LOCUS_DTO_SYNC_FAILED: 'LOCUS_DTO_SYNC_FAILED', // failed to get any Locus DTO for that meeting
   MISSING_MEETING_INFO: 'MISSING_MEETING_INFO', // meeting info failed to be fetched
+  DUPLICATE_LOCUS_MEETING: 'DUPLICATE_LOCUS_MEETING', // this meeting duplicated an existing one for the same locusUrl (e.g. created early by syncMeetings) and was merged into it
 };
 
 // One one one calls ends for the following reasons
