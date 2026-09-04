@@ -1854,17 +1854,6 @@ export type PostCallSummaryResponseContext = Readonly<{
   interactionId: string;
 }>;
 
-export type AISummaryResponsePayload =
-  | PostCallSummaryResponsePayload
-  | MidCallSummaryResponsePayload;
-
-export type AISummaryResponseTransportFields<T extends AISummaryResponsePayload> = T extends unknown
-  ? Pick<
-      T,
-      'summary' | 'numberOfTimesViewed' | 'numberOfTimesEdited' | 'numberOfTimesCopied' | 'state'
-    >
-  : never;
-
 /** @internal Buffered receiving-agent summary and its expiry timer. */
 export type BufferedReceivingSummary = {
   payload: MidCallSummaryReceivingAgentPayload;

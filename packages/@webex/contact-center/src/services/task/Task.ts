@@ -30,8 +30,6 @@ import {
   GeneratedSummaryFlagsAccessor,
   AISummaryAdapter,
   PostCallSummaryResponseContext,
-  AISummaryResponsePayload,
-  AISummaryResponseTransportFields,
   AISummaryInboundType,
   AISummaryPayloadByInboundType,
   AISummaryTimeoutCodeByInboundType,
@@ -346,7 +344,25 @@ export default abstract class Task extends EventEmitter implements ITask {
 
       await (this.aiSummaryAdapter as AISummaryAdapter).sendSummaryResponseEvent(
         this.agentId as string,
-        this.buildPostCallSummaryResponseTransportPayload(payload, context)
+        {
+          agentId: this.agentId as string,
+          interactionId: context.interactionId,
+          conversationId: context.conversationId,
+          eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+          feedback: payload.feedback,
+          wrapUpCode: payload.wrapUpCode,
+          summary: payload.summary,
+          numberOfTimesViewed: payload.numberOfTimesViewed,
+          numberOfTimesEdited: payload.numberOfTimesEdited,
+          numberOfTimesCopied: payload.numberOfTimesCopied,
+          state: payload.state,
+          ...(payload.actionTimeStamp !== undefined
+            ? {actionTimeStamp: payload.actionTimeStamp}
+            : {}),
+          ...(payload.publishTimestamp !== undefined
+            ? {publishTimestamp: payload.publishTimestamp}
+            : {}),
+        } as AISummaryResponseTransportPayload
       );
 
       this.metricsManager.trackEvent(
@@ -405,7 +421,9 @@ export default abstract class Task extends EventEmitter implements ITask {
         'MID_CALL_SUMMARY_TIMEOUT',
         conversationId,
         interactionId,
-        Task.getMidCallSummaryGetEventName(actionType)
+        actionType === 'CONSULT'
+          ? AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY
+          : AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY
       );
 
       this.metricsManager.trackEvent(
@@ -457,7 +475,28 @@ export default abstract class Task extends EventEmitter implements ITask {
 
       await (this.aiSummaryAdapter as AISummaryAdapter).sendSummaryResponseEvent(
         this.agentId as string,
-        this.buildMidCallSummaryResponseTransportPayload(payload, context, actionType)
+        {
+          agentId: this.agentId as string,
+          interactionId: context.interactionId,
+          conversationId: context.conversationId,
+          eventName:
+            actionType === 'CONSULT'
+              ? AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE
+              : AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE,
+          feedback: payload.feedback,
+          agentName: this.agentName ?? '',
+          summary: payload.summary,
+          numberOfTimesViewed: payload.numberOfTimesViewed,
+          numberOfTimesEdited: payload.numberOfTimesEdited,
+          numberOfTimesCopied: payload.numberOfTimesCopied,
+          state: payload.state,
+          ...(payload.actionTimeStamp !== undefined
+            ? {actionTimeStamp: payload.actionTimeStamp}
+            : {}),
+          ...(payload.publishTimestamp !== undefined
+            ? {publishTimestamp: payload.publishTimestamp}
+            : {}),
+        } as AISummaryResponseTransportPayload
       );
 
       this.metricsManager.trackEvent(
@@ -487,10 +526,6 @@ export default abstract class Task extends EventEmitter implements ITask {
     }
 
     return AI_SUMMARY_TASK_ERROR_CODES.INVALID_RESPONSE_PAYLOAD;
-  }
-
-  private getTaskOwnerId(): string {
-    return this.data?.taskId ?? this.data?.interactionId ?? '';
   }
 
   private requireAISummaryConfiguration(): void {
@@ -558,30 +593,6 @@ export default abstract class Task extends EventEmitter implements ITask {
     return actionType === 'CONSULT' || actionType === 'TRANSFER';
   }
 
-  private static getMidCallSummaryGetEventName(actionType: AISummaryActionType) {
-    return actionType === 'CONSULT'
-      ? AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY
-      : AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY;
-  }
-
-  private static getMidCallSummaryResponseEventName(actionType: AISummaryActionType) {
-    return actionType === 'CONSULT'
-      ? AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE
-      : AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE;
-  }
-
-  private static getAISummaryResponseTransportFields<T extends AISummaryResponsePayload>(
-    payload: T
-  ): AISummaryResponseTransportFields<T> {
-    return {
-      summary: payload.summary,
-      numberOfTimesViewed: payload.numberOfTimesViewed,
-      numberOfTimesEdited: payload.numberOfTimesEdited,
-      numberOfTimesCopied: payload.numberOfTimesCopied,
-      state: payload.state,
-    } as AISummaryResponseTransportFields<T>;
-  }
-
   private async requestAISummary<T extends AISummaryInboundType>(
     inboundType: T,
     timeoutCode: AISummaryTimeoutCodeByInboundType[T],
@@ -589,7 +600,7 @@ export default abstract class Task extends EventEmitter implements ITask {
     interactionId: string,
     eventName: Parameters<AISummaryAdapter['sendSummaryGetEvent']>[3]
   ): Promise<AISummaryPayloadByInboundType[T]> {
-    const taskId = this.getTaskOwnerId();
+    const taskId = this.data?.taskId ?? this.data?.interactionId ?? '';
 
     return (this.rtdRequestResolver as RtdRequestResolver).request({
       ownerId: taskId,
@@ -679,57 +690,6 @@ export default abstract class Task extends EventEmitter implements ITask {
     ) {
       Task.throwInvalidSummaryResponse();
     }
-  }
-
-  private buildPostCallSummaryResponseTransportPayload(
-    payload: PostCallSummaryResponsePayload,
-    context: PostCallSummaryResponseContext
-  ): AISummaryResponseTransportPayload {
-    const transportBase = {
-      agentId: this.agentId as string,
-      interactionId: context.interactionId,
-      conversationId: context.conversationId,
-      eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
-      feedback: payload.feedback,
-      wrapUpCode: payload.wrapUpCode,
-      ...(payload.actionTimeStamp !== undefined ? {actionTimeStamp: payload.actionTimeStamp} : {}),
-      ...(payload.publishTimestamp !== undefined
-        ? {publishTimestamp: payload.publishTimestamp}
-        : {}),
-    };
-
-    const transportPayload = {
-      ...transportBase,
-      ...Task.getAISummaryResponseTransportFields(payload),
-    } satisfies AISummaryResponseTransportPayload;
-
-    return transportPayload;
-  }
-
-  private buildMidCallSummaryResponseTransportPayload(
-    payload: MidCallSummaryResponsePayload,
-    context: PostCallSummaryResponseContext,
-    actionType: AISummaryActionType
-  ): AISummaryResponseTransportPayload {
-    const transportBase = {
-      agentId: this.agentId as string,
-      interactionId: context.interactionId,
-      conversationId: context.conversationId,
-      eventName: Task.getMidCallSummaryResponseEventName(actionType),
-      feedback: payload.feedback,
-      agentName: this.agentName ?? '',
-      ...(payload.actionTimeStamp !== undefined ? {actionTimeStamp: payload.actionTimeStamp} : {}),
-      ...(payload.publishTimestamp !== undefined
-        ? {publishTimestamp: payload.publishTimestamp}
-        : {}),
-    };
-
-    const transportPayload = {
-      ...transportBase,
-      ...Task.getAISummaryResponseTransportFields(payload),
-    } satisfies AISummaryResponseTransportPayload;
-
-    return transportPayload;
   }
 
   /**

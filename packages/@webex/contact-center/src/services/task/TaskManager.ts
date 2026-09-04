@@ -691,10 +691,6 @@ export default class TaskManager extends EventEmitter {
     );
   }
 
-  private getTaskOwnerId(task: ITask): string {
-    return task.data?.taskId ?? task.data?.interactionId ?? '';
-  }
-
   private getAISummaryCorrelationForTask(
     task: ITask,
     scanContext: string
@@ -708,7 +704,7 @@ export default class TaskManager extends EventEmitter {
         data: {
           reason: 'invalid-task-correlation',
           scanContext,
-          taskId: this.getTaskOwnerId(task),
+          taskId: task.data?.taskId ?? task.data?.interactionId ?? '',
         },
       });
     }
@@ -1969,7 +1965,7 @@ export default class TaskManager extends EventEmitter {
 
   private removeTaskFromCollection(task: ITask) {
     const correlation = this.getAISummaryCorrelationForTask(task, 'task-removal');
-    const ownerId = this.getTaskOwnerId(task);
+    const ownerId = task.data?.taskId ?? task.data?.interactionId ?? '';
 
     if (typeof task.cancelAutoWrapupTimer === 'function') {
       task.cancelAutoWrapupTimer();
