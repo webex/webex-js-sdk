@@ -1180,11 +1180,13 @@ describe('Task AI summary APIs', () => {
       expect.objectContaining({
         conversationId: 'conversation-1',
         interactionId: 'interaction-1',
-        duration_ms: expect.any(Number),
       }),
       ['operational']
     );
-    expect(metrics.timeEvent).not.toHaveBeenCalled();
+    expect(metrics.timeEvent).toHaveBeenCalledWith([
+      METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
+      METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
+    ]);
   });
 
   it('maps consult and transfer mid-call summary requests to their exact outbound event names', async () => {
@@ -1218,7 +1220,6 @@ describe('Task AI summary APIs', () => {
         actionType: 'CONSULT',
         conversationId: 'conversation-1',
         interactionId: 'interaction-1',
-        duration_ms: expect.any(Number),
       }),
       ['operational']
     );
@@ -1247,6 +1248,7 @@ describe('Task AI summary APIs', () => {
       eventName: AIAssistantEventName.GET_POST_CALL_SUMMARY,
       payload: createPostCallSummaryPayload(),
       successMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
+      failureMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
       operation: METHODS.REQUEST_POST_CALL_SUMMARY,
       settleFirst: 'result' as const,
     },
@@ -1258,6 +1260,7 @@ describe('Task AI summary APIs', () => {
       eventName: AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY,
       payload: createMidCallSummaryPayload(),
       successMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
+      failureMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
       operation: METHODS.REQUEST_MID_CALL_SUMMARY,
       actionType: 'CONSULT',
       settleFirst: 'acknowledgement' as const,
@@ -1271,6 +1274,7 @@ describe('Task AI summary APIs', () => {
       eventName,
       payload,
       successMetric,
+      failureMetric,
       operation,
       actionType,
       settleFirst,
@@ -1339,11 +1343,10 @@ describe('Task AI summary APIs', () => {
           ...(actionType ? {actionType} : {}),
           conversationId: 'conversation-1',
           interactionId: 'interaction-1',
-          duration_ms: expect.any(Number),
         }),
         ['operational']
       );
-      expect(metrics.timeEvent).not.toHaveBeenCalled();
+      expect(metrics.timeEvent).toHaveBeenCalledWith([successMetric, failureMetric]);
     }
   );
 
@@ -1435,11 +1438,10 @@ describe('Task AI summary APIs', () => {
           operation,
           ...(actionType ? {actionType} : {}),
           failureCode: disabledCode,
-          duration_ms: expect.any(Number),
         }),
         ['operational']
       );
-      expect(metrics.timeEvent).not.toHaveBeenCalled();
+      expect(metrics.timeEvent).toHaveBeenCalled();
     }
   );
 
@@ -1547,7 +1549,7 @@ describe('Task AI summary APIs', () => {
         sendSummaryGetEvent: jest.fn().mockResolvedValue(undefined),
         sendSummaryResponseEvent: jest.fn().mockResolvedValue(undefined),
       };
-      const coordinator = new RtdRequestResolver();
+    const coordinator = new RtdRequestResolver();
       const registerSpy = jest.spyOn(coordinator, 'request');
       const getGeneratedSummaryFlags = jest.fn(() => flags);
 
@@ -1651,7 +1653,7 @@ describe('Task AI summary APIs', () => {
         sendSummaryGetEvent: jest.fn(),
         sendSummaryResponseEvent: jest.fn().mockResolvedValue(undefined),
       };
-    const coordinator = new RtdRequestResolver();
+      const coordinator = new RtdRequestResolver();
       const requestSpy = jest.spyOn(coordinator, 'request');
       const resultObserver = jest.fn();
       let requestToken: symbol | undefined;
@@ -1702,37 +1704,6 @@ describe('Task AI summary APIs', () => {
       ).toBe('not-found');
     }
   );
-
-  it('HTTP status/network rejection without a consumer handler', async () => {
-    const task = new DummyTask(dummyContact, createAISummaryTaskData());
-    const neverSettlingResult = createDeferred<any>();
-    const {adapter, coordinator} = createSummaryMocks(task, {
-      registrationResult: neverSettlingResult.promise,
-    });
-    const transportError = createAISummaryError(
-      AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE
-    );
-    const unhandledRejections: unknown[] = [];
-    const listener = jest.fn((reason) => {
-      unhandledRejections.push(reason);
-    });
-
-    process.on('unhandledRejection', listener);
-    try {
-      adapter.sendSummaryGetEvent.mockRejectedValue(transportError);
-
-      const publicRequest = task.requestPostCallSummary();
-
-      await flushEventLoopTurn();
-
-      expect(listener).not.toHaveBeenCalled();
-      expect(unhandledRejections).toHaveLength(0);
-      await expect(publicRequest).rejects.toBe(transportError);
-      expect(coordinator.request).toHaveBeenCalled();
-    } finally {
-      process.off('unhandledRejection', listener);
-    }
-  });
 
   it('keeps same-conversation CONSULT and TRANSFER overlap isolated through the real coordinator slot', async () => {
     jest.useFakeTimers();
@@ -1807,7 +1778,6 @@ describe('Task AI summary APIs', () => {
           conversationId: 'conversation-1',
           interactionId: 'interaction-1',
           failureCode: AI_SUMMARY_ERROR_CODES.AI_SUMMARY_REQUEST_ALREADY_PENDING,
-          duration_ms: 15,
         }),
         ['operational']
       );
@@ -1829,14 +1799,13 @@ describe('Task AI summary APIs', () => {
           actionType: 'CONSULT',
           conversationId: 'conversation-1',
           interactionId: 'interaction-1',
-          duration_ms: 200,
         }),
         ['operational']
       );
       expect(metrics.trackEvent.mock.invocationCallOrder[0]).toBeLessThan(
         metrics.trackEvent.mock.invocationCallOrder[1]
       );
-      expect(metrics.timeEvent).not.toHaveBeenCalled();
+      expect(metrics.timeEvent).toHaveBeenCalledTimes(2);
     } finally {
       coordinator.clearAll();
       jest.useRealTimers();
@@ -1946,56 +1915,16 @@ describe('Task AI summary APIs', () => {
             operation,
             ...(actionType ? {actionType} : {}),
             failureCode: timeoutCode,
-            duration_ms: expect.any(Number),
           }),
           ['operational']
         );
-        expect(metrics.timeEvent).not.toHaveBeenCalled();
+        expect(metrics.timeEvent).toHaveBeenCalled();
       } finally {
         coordinator.clearAll();
         jest.useRealTimers();
       }
     }
   );
-
-  it('AI_SUMMARY_DURATION_MS rejection without a consumer handler', async () => {
-    jest.useFakeTimers();
-    const task = new DummyTask(dummyContact, createAISummaryTaskData());
-    const {adapter, coordinator} = createRealSummaryMocks(task);
-    const unhandledRejections: unknown[] = [];
-    const listener = jest.fn((reason) => {
-      unhandledRejections.push(reason);
-    });
-
-    process.on('unhandledRejection', listener);
-    try {
-      const publicRequest = task.requestPostCallSummary();
-
-      await Promise.resolve();
-      expect(adapter.sendSummaryGetEvent).toHaveBeenCalledTimes(1);
-
-      jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS);
-      jest.useRealTimers();
-      await flushEventLoopTurn();
-
-      expect(listener).not.toHaveBeenCalled();
-      expect(unhandledRejections).toHaveLength(0);
-
-      const timeoutError = await publicRequest.catch((error) => error);
-
-      expect(timeoutError).toMatchObject(
-        createAISummaryErrorExpectation(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_TIMEOUT)
-      );
-      expect(
-        coordinator.resolve('POST_CALL_SUMMARY', 'conversation-1', createPostCallSummaryPayload())
-      ).toBe('not-found');
-      await expect(publicRequest).rejects.toBe(timeoutError);
-    } finally {
-      process.off('unhandledRejection', listener);
-      coordinator.clearAll();
-      jest.useRealTimers();
-    }
-  });
 
   it.each(summaryRequestCases.map((testCase) => [testCase.label, testCase] as const))(
     'issues a fresh second adapter call when %s request is invoked again after settlement',
@@ -2039,34 +1968,6 @@ describe('Task AI summary APIs', () => {
       );
     }
   );
-
-  it('owner-task cleanup rejection without a consumer handler', async () => {
-    const task = new DummyTask(dummyContact, createAISummaryTaskData());
-    const {coordinator} = createRealSummaryMocks(task);
-    const unhandledRejections: unknown[] = [];
-    const listener = jest.fn((reason) => {
-      unhandledRejections.push(reason);
-    });
-
-    process.on('unhandledRejection', listener);
-    try {
-      const publicRequest = task.requestMidCallSummary('CONSULT');
-
-      await Promise.resolve();
-      coordinator.clear('task-owner-1', 'conversation-1');
-      await flushEventLoopTurn();
-
-      expect(listener).not.toHaveBeenCalled();
-      expect(unhandledRejections).toHaveLength(0);
-      await expect(publicRequest).rejects.toMatchObject({
-        message: AI_SUMMARY_REQUEST_CANCELLED,
-        data: {errorCode: AI_SUMMARY_REQUEST_CANCELLED},
-      });
-    } finally {
-      process.off('unhandledRejection', listener);
-      coordinator.clearAll();
-    }
-  });
 
   it('settles public request promises when coordinator rejects owner cleanup results', async () => {
     const cleanupTask = new DummyTask(dummyContact, createAISummaryTaskData());
@@ -2151,7 +2052,6 @@ describe('Task AI summary APIs', () => {
         operation: METHODS.SEND_POST_CALL_SUMMARY_RESPONSE,
         conversationId: 'conversation-1',
         interactionId: 'interaction-1',
-        duration_ms: expect.any(Number),
       }),
       ['operational']
     );
@@ -2161,10 +2061,13 @@ describe('Task AI summary APIs', () => {
     expect(JSON.stringify(metrics.trackEvent.mock.calls)).not.toContain(
       'human-authored-section-value-sentinel'
     );
-    expect(metrics.timeEvent).not.toHaveBeenCalled();
+    expect(metrics.timeEvent).toHaveBeenCalledWith([
+      METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
+      METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
+    ]);
   });
 
-  it('does not reject an accepted post-call response when success telemetry fails', async () => {
+  it('propagates a post-call response telemetry failure', async () => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
     const metrics = spyOnAISummaryMetrics(task);
     const {adapter} = createSummaryMocks(task);
@@ -2173,9 +2076,9 @@ describe('Task AI summary APIs', () => {
       throw new Error('metrics unavailable');
     });
 
-    await expect(
-      task.sendPostCallSummaryResponse(createPostCallResponsePayload())
-    ).resolves.toBeUndefined();
+    await expect(task.sendPostCallSummaryResponse(createPostCallResponsePayload())).rejects.toThrow(
+      'metrics unavailable'
+    );
     expect(adapter.sendSummaryResponseEvent).toHaveBeenCalledTimes(1);
   });
 
@@ -2447,7 +2350,6 @@ describe('Task AI summary APIs', () => {
         actionType: 'CONSULT',
         conversationId: 'conversation-1',
         interactionId: 'interaction-1',
-        duration_ms: expect.any(Number),
       }),
       ['operational']
     );
@@ -3145,7 +3047,7 @@ describe('Task AI summary APIs', () => {
         }),
         ['operational']
       );
-      expect(responseMetrics.timeEvent).not.toHaveBeenCalled();
+      expect(responseMetrics.timeEvent).toHaveBeenCalled();
     }
   );
 
@@ -3237,7 +3139,7 @@ describe('Task AI summary APIs', () => {
         }),
         ['operational']
       );
-      expect(responseMetrics.timeEvent).not.toHaveBeenCalled();
+      expect(responseMetrics.timeEvent).toHaveBeenCalled();
     }
   );
 });

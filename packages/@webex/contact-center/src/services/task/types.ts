@@ -6,7 +6,6 @@ import AutoWrapup from './AutoWrapup';
 import type {AIFeatureFlags, CollaborationAccess} from '../config/types';
 import type {AISummaryGetEventName, AISummaryResponseTransportPayload} from '../../types';
 import type RtdRequestResolver from '../core/RtdRequestResolver';
-import type {METRIC_EVENT_NAMES} from '../../metrics/constants';
 
 /**
  * Unique identifier for a task in the contact center system
@@ -1854,11 +1853,6 @@ export type PostCallSummaryResponseContext = Readonly<{
   conversationId: string;
   interactionId: string;
 }>;
-
-export type AISummaryOperationMetric = {
-  success: METRIC_EVENT_NAMES;
-  failure: METRIC_EVENT_NAMES;
-};
 
 export type AISummaryResponsePayload =
   | PostCallSummaryResponsePayload

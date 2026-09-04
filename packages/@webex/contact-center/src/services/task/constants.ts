@@ -5,8 +5,6 @@
  */
 
 import {CC_EVENTS} from '../config/types';
-import {METRIC_EVENT_NAMES} from '../../metrics/constants';
-import type {AISummaryOperationMetric} from './types';
 
 export const TASK_MESSAGE_TYPE = 'RoutingMessage';
 export const TASK_API = '/v1/tasks/';
@@ -53,25 +51,6 @@ export const MID_CALL_SUMMARY_UNAVAILABLE_STATES = new Set([
   'MID_CALL_CANCELLED',
   'IGNORED',
 ]);
-
-export const AI_SUMMARY_OPERATION_METRICS = {
-  POST_CALL_REQUEST: {
-    success: METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
-    failure: METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
-  },
-  MID_CALL_REQUEST: {
-    success: METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
-    failure: METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
-  },
-  POST_CALL_RESPONSE: {
-    success: METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
-    failure: METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
-  },
-  MID_CALL_RESPONSE: {
-    success: METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
-    failure: METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
-  },
-} satisfies Record<string, AISummaryOperationMetric>;
 
 export const TASK_MANAGER_FILE = 'taskManager';
 export const TASK_FILE = 'task';

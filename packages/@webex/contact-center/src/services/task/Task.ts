@@ -30,7 +30,6 @@ import {
   GeneratedSummaryFlagsAccessor,
   AISummaryAdapter,
   PostCallSummaryResponseContext,
-  AISummaryOperationMetric,
   AISummaryResponsePayload,
   AISummaryResponseTransportFields,
   AISummaryInboundType,
@@ -40,7 +39,6 @@ import {
   TaskTransmitDtmfOptions,
 } from './types';
 import {
-  AI_SUMMARY_OPERATION_METRICS,
   AI_SUMMARY_TASK_ERROR_CODES,
   AI_SUMMARY_DURATION_MS,
   AI_SUMMARY_REQUEST_CANCELLED,
@@ -272,139 +270,213 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.getGeneratedSummaryFlags = getGeneratedSummaryFlags;
   }
 
-  public requestPostCallSummary(): Promise<PostCallSummaryEventPayload> {
-    const operationStartedAt = Date.now();
+  public async requestPostCallSummary(): Promise<PostCallSummaryEventPayload> {
+    const metricFields: Record<string, unknown> = {
+      operation: METHODS.REQUEST_POST_CALL_SUMMARY,
+    };
 
-    return this.runAISummaryOperation(
-      operationStartedAt,
-      AI_SUMMARY_OPERATION_METRICS.POST_CALL_REQUEST,
-      METHODS.REQUEST_POST_CALL_SUMMARY,
-      async (metricFields) => {
-        this.requireAISummaryConfiguration();
-        const {conversationId, interactionId} = getAISummaryCorrelation(this.data);
-        Object.assign(metricFields, {conversationId, interactionId});
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
+      ]);
+      this.requireAISummaryConfiguration();
+      const {conversationId, interactionId} = getAISummaryCorrelation(this.data);
+      Object.assign(metricFields, {conversationId, interactionId});
 
-        const organizationEnabled =
-          (this.getGeneratedSummaryFlags as GeneratedSummaryFlagsAccessor)()
-            ?.wrapUpSummariesEnabled === true;
-        const interactionEnabled =
-          (this.getFeatureEnablement as FeatureEnablementAccessor)(interactionId)
-            ?.postCallEnabled === true;
+      const organizationEnabled =
+        (this.getGeneratedSummaryFlags as GeneratedSummaryFlagsAccessor)()
+          ?.wrapUpSummariesEnabled === true;
+      const interactionEnabled =
+        (this.getFeatureEnablement as FeatureEnablementAccessor)(interactionId)?.postCallEnabled ===
+        true;
 
-        if (!organizationEnabled || !interactionEnabled) {
-          throw createAISummaryError(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED);
-        }
-
-        const result = await this.requestAISummary(
-          'POST_CALL_SUMMARY',
-          'POST_CALL_SUMMARY_TIMEOUT',
-          conversationId,
-          interactionId,
-          AIAssistantEventName.GET_POST_CALL_SUMMARY
-        );
-
-        this.postCallSummaryResponseContext = {conversationId, interactionId};
-
-        return result;
+      if (!organizationEnabled || !interactionEnabled) {
+        throw createAISummaryError(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED);
       }
-    );
+
+      const result = await this.requestAISummary(
+        'POST_CALL_SUMMARY',
+        'POST_CALL_SUMMARY_TIMEOUT',
+        conversationId,
+        interactionId,
+        AIAssistantEventName.GET_POST_CALL_SUMMARY
+      );
+
+      this.postCallSummaryResponseContext = {conversationId, interactionId};
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
+        {taskId: this.data?.interactionId, ...metricFields},
+        ['operational']
+      );
+
+      return result;
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
+        {
+          taskId: this.data?.interactionId,
+          ...metricFields,
+          failureCode: Task.getAISummaryFailureCode(error),
+        },
+        ['operational']
+      );
+      throw error;
+    }
   }
 
-  public sendPostCallSummaryResponse(payload: PostCallSummaryResponsePayload): Promise<void> {
-    const operationStartedAt = Date.now();
+  public async sendPostCallSummaryResponse(payload: PostCallSummaryResponsePayload): Promise<void> {
+    const metricFields: Record<string, unknown> = {
+      operation: METHODS.SEND_POST_CALL_SUMMARY_RESPONSE,
+    };
 
-    return this.runAISummaryOperation(
-      operationStartedAt,
-      AI_SUMMARY_OPERATION_METRICS.POST_CALL_RESPONSE,
-      METHODS.SEND_POST_CALL_SUMMARY_RESPONSE,
-      async (metricFields) => {
-        this.requireAISummaryConfiguration();
-        Task.validatePostCallSummaryResponsePayload(payload);
-        const context = this.postCallSummaryResponseContext ?? getAISummaryCorrelation(this.data);
-        Object.assign(metricFields, {
-          conversationId: context.conversationId,
-          interactionId: context.interactionId,
-        });
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
+        METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
+      ]);
+      this.requireAISummaryConfiguration();
+      Task.validatePostCallSummaryResponsePayload(payload);
+      const context = this.postCallSummaryResponseContext ?? getAISummaryCorrelation(this.data);
+      Object.assign(metricFields, {
+        conversationId: context.conversationId,
+        interactionId: context.interactionId,
+      });
 
-        await (this.aiSummaryAdapter as AISummaryAdapter).sendSummaryResponseEvent(
-          this.agentId as string,
-          this.buildPostCallSummaryResponseTransportPayload(payload, context)
-        );
-      }
-    );
+      await (this.aiSummaryAdapter as AISummaryAdapter).sendSummaryResponseEvent(
+        this.agentId as string,
+        this.buildPostCallSummaryResponseTransportPayload(payload, context)
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
+        {taskId: this.data?.interactionId, ...metricFields},
+        ['operational']
+      );
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
+        {
+          taskId: this.data?.interactionId,
+          ...metricFields,
+          failureCode: Task.getAISummaryFailureCode(error),
+        },
+        ['operational']
+      );
+      throw error;
+    }
   }
 
-  public requestMidCallSummary(
+  public async requestMidCallSummary(
     actionType: AISummaryActionType
   ): Promise<MidCallSummaryEventPayload> {
-    const operationStartedAt = Date.now();
+    const metricFields: Record<string, unknown> = {
+      operation: METHODS.REQUEST_MID_CALL_SUMMARY,
+    };
 
-    return this.runAISummaryOperation(
-      operationStartedAt,
-      AI_SUMMARY_OPERATION_METRICS.MID_CALL_REQUEST,
-      METHODS.REQUEST_MID_CALL_SUMMARY,
-      async (metricFields) => {
-        this.requireAISummaryConfiguration();
-        if (!Task.isValidAISummaryActionType(actionType)) {
-          throw createAISummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
-        }
-
-        Object.assign(metricFields, {actionType});
-        const {conversationId, interactionId} = getAISummaryCorrelation(this.data);
-        Object.assign(metricFields, {conversationId, interactionId});
-
-        const organizationEnabled =
-          (this.getGeneratedSummaryFlags as GeneratedSummaryFlagsAccessor)()
-            ?.consultTransferSummariesEnabled === true;
-        const interactionEnabled =
-          (this.getFeatureEnablement as FeatureEnablementAccessor)(interactionId)
-            ?.midCallEnabled === true;
-
-        if (!organizationEnabled || !interactionEnabled) {
-          throw createAISummaryError(AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED);
-        }
-
-        return this.requestAISummary(
-          'MID_CALL_SUMMARY',
-          'MID_CALL_SUMMARY_TIMEOUT',
-          conversationId,
-          interactionId,
-          Task.getMidCallSummaryGetEventName(actionType)
-        );
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
+      ]);
+      this.requireAISummaryConfiguration();
+      if (!Task.isValidAISummaryActionType(actionType)) {
+        throw createAISummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
       }
-    );
+
+      Object.assign(metricFields, {actionType});
+      const {conversationId, interactionId} = getAISummaryCorrelation(this.data);
+      Object.assign(metricFields, {conversationId, interactionId});
+
+      const organizationEnabled =
+        (this.getGeneratedSummaryFlags as GeneratedSummaryFlagsAccessor)()
+          ?.consultTransferSummariesEnabled === true;
+      const interactionEnabled =
+        (this.getFeatureEnablement as FeatureEnablementAccessor)(interactionId)?.midCallEnabled ===
+        true;
+
+      if (!organizationEnabled || !interactionEnabled) {
+        throw createAISummaryError(AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED);
+      }
+
+      const result = await this.requestAISummary(
+        'MID_CALL_SUMMARY',
+        'MID_CALL_SUMMARY_TIMEOUT',
+        conversationId,
+        interactionId,
+        Task.getMidCallSummaryGetEventName(actionType)
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
+        {taskId: this.data?.interactionId, ...metricFields},
+        ['operational']
+      );
+
+      return result;
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
+        {
+          taskId: this.data?.interactionId,
+          ...metricFields,
+          failureCode: Task.getAISummaryFailureCode(error),
+        },
+        ['operational']
+      );
+      throw error;
+    }
   }
 
-  public sendMidCallSummaryResponse(
+  public async sendMidCallSummaryResponse(
     payload: MidCallSummaryResponsePayload,
     actionType: AISummaryActionType
   ): Promise<void> {
-    const operationStartedAt = Date.now();
+    const metricFields: Record<string, unknown> = {
+      operation: METHODS.SEND_MID_CALL_SUMMARY_RESPONSE,
+    };
 
-    return this.runAISummaryOperation(
-      operationStartedAt,
-      AI_SUMMARY_OPERATION_METRICS.MID_CALL_RESPONSE,
-      METHODS.SEND_MID_CALL_SUMMARY_RESPONSE,
-      async (metricFields) => {
-        this.requireAISummaryConfiguration();
-        if (!Task.isValidAISummaryActionType(actionType)) {
-          throw createAISummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
-        }
-
-        Object.assign(metricFields, {actionType});
-        Task.validateMidCallSummaryResponsePayload(payload);
-        const context = getAISummaryCorrelation(this.data);
-        Object.assign(metricFields, {
-          conversationId: context.conversationId,
-          interactionId: context.interactionId,
-        });
-
-        await (this.aiSummaryAdapter as AISummaryAdapter).sendSummaryResponseEvent(
-          this.agentId as string,
-          this.buildMidCallSummaryResponseTransportPayload(payload, context, actionType)
-        );
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
+        METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
+      ]);
+      this.requireAISummaryConfiguration();
+      if (!Task.isValidAISummaryActionType(actionType)) {
+        throw createAISummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
       }
-    );
+
+      Object.assign(metricFields, {actionType});
+      Task.validateMidCallSummaryResponsePayload(payload);
+      const context = getAISummaryCorrelation(this.data);
+      Object.assign(metricFields, {
+        conversationId: context.conversationId,
+        interactionId: context.interactionId,
+      });
+
+      await (this.aiSummaryAdapter as AISummaryAdapter).sendSummaryResponseEvent(
+        this.agentId as string,
+        this.buildMidCallSummaryResponseTransportPayload(payload, context, actionType)
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
+        {taskId: this.data?.interactionId, ...metricFields},
+        ['operational']
+      );
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
+        {
+          taskId: this.data?.interactionId,
+          ...metricFields,
+          failureCode: Task.getAISummaryFailureCode(error),
+        },
+        ['operational']
+      );
+      throw error;
+    }
   }
 
   private static getAISummaryFailureCode(error: unknown): string {
@@ -508,60 +580,6 @@ export default abstract class Task extends EventEmitter implements ITask {
       numberOfTimesCopied: payload.numberOfTimesCopied,
       state: payload.state,
     } as AISummaryResponseTransportFields<T>;
-  }
-
-  private trackAISummaryOperation(
-    metricName: METRIC_EVENT_NAMES,
-    operationStartedAt: number,
-    fields: Record<string, unknown> = {}
-  ): void {
-    try {
-      this.metricsManager.trackEvent(
-        metricName,
-        {
-          taskId: this.data?.interactionId,
-          duration_ms: Math.max(0, Date.now() - operationStartedAt),
-          ...fields,
-        } as never,
-        ['operational']
-      );
-    } catch {
-      // Metrics are best effort and must not affect the accepted response.
-    }
-  }
-
-  private runAISummaryOperation<T>(
-    operationStartedAt: number,
-    operationMetric: AISummaryOperationMetric,
-    operationName: string,
-    operation: (metricFields: Record<string, unknown>) => Promise<T>
-  ): Promise<T> {
-    const metricFields: Record<string, unknown> = {operation: operationName};
-    let operationPromise: Promise<T>;
-
-    try {
-      operationPromise = operation(metricFields);
-    } catch (error) {
-      operationPromise = Promise.reject(error);
-    }
-
-    const resultPromise = operationPromise.then(
-      (result) => {
-        this.trackAISummaryOperation(operationMetric.success, operationStartedAt, metricFields);
-
-        return result;
-      },
-      (error) => {
-        this.trackAISummaryOperation(operationMetric.failure, operationStartedAt, {
-          ...metricFields,
-          failureCode: Task.getAISummaryFailureCode(error),
-        });
-        throw error;
-      }
-    );
-    resultPromise.catch(() => undefined);
-
-    return resultPromise;
   }
 
   private async requestAISummary<T extends AISummaryInboundType>(
