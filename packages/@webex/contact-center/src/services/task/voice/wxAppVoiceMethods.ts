@@ -372,6 +372,37 @@ export async function runWxAppReject(
   }
 }
 
+export async function runWxAppOutdialDecline<T>(
+  deps: WxAppVoiceDependencies,
+  executeCancel: () => Promise<T>
+): Promise<T> {
+  const taskId = getInteractionId(deps);
+
+  deps.metricsManager.timeEvent([
+    METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+    METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
+  ]);
+
+  try {
+    const result = await executeCancel();
+
+    deps.metricsManager.trackEvent(METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS, {taskId}, [
+      'operational',
+      'behavioral',
+    ]);
+
+    return result;
+  } catch (error) {
+    logTelephonyFailure('decline', deps, error);
+    deps.metricsManager.trackEvent(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
+      getWxAppTelephonyMetricFailurePayload(deps, error),
+      ['operational', 'behavioral']
+    );
+    throw error;
+  }
+}
+
 export async function runWxAppToggleMute(
   deps: WxAppVoiceDependencies,
   lifecycle: WxAppVoiceLifecycle,

@@ -41,6 +41,7 @@ import {
   isWebexAppInboundCallingOffer as wxIsWebexAppInboundCallingOffer,
   mapWxAppVoiceError,
   runWxAppAccept,
+  runWxAppOutdialDecline,
   runWxAppReject,
   runWxAppToggleMute,
   runWxAppTransmitDtmf,
@@ -445,7 +446,9 @@ export default class Voice extends Task implements IVoice {
       ]);
 
       this.setWxAppAnswerPending(false);
-      const response = await this.contact.cancelTask({interactionId});
+      const response = await runWxAppOutdialDecline(this.getWxAppVoiceDependencies(), () =>
+        this.contact.cancelTask({interactionId})
+      );
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,

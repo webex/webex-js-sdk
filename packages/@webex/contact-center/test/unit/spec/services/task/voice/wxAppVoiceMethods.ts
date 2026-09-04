@@ -8,6 +8,7 @@ import {
   toggleMuteOnWebex,
   transmitDtmfOnWebex,
   runWxAppAccept,
+  runWxAppOutdialDecline,
   runWxAppReject,
   runWxAppToggleMute,
   runWxAppTransmitDtmf,
@@ -491,6 +492,43 @@ describe('runWxAppReject', () => {
       ['operational', 'behavioral']
     );
     expect(lifecycle.mapWxAppVoiceError).toHaveBeenCalledWith(error, METHODS.REJECT);
+  });
+});
+
+describe('runWxAppOutdialDecline', () => {
+  it('tracks wxApp decline success metric for outdial cancel', async () => {
+    const deps = makeDeps();
+    const cancelResult = {type: 'RoutingMessage', trackingId: 'track-1', data: {}};
+
+    const result = await runWxAppOutdialDecline(deps, async () => cancelResult);
+
+    expect(result).toBe(cancelResult);
+    expect(deps.metricsManager.timeEvent).toHaveBeenCalledWith([
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
+    ]);
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+      {taskId: 'interaction-1'},
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('tracks wxApp decline failed metric and rethrows when cancel fails', async () => {
+    const deps = makeDeps();
+    const error = new Error('cancel failed');
+
+    await expect(
+      runWxAppOutdialDecline(deps, async () => {
+        throw error;
+      })
+    ).rejects.toThrow('cancel failed');
+
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
+      expect.objectContaining({taskId: 'interaction-1'}),
+      ['operational', 'behavioral']
+    );
   });
 });
 

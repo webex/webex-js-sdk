@@ -217,6 +217,88 @@ describe('WebexCrossClientService', () => {
     expect(trackEvent).not.toHaveBeenCalled();
   });
 
+  it('does not cancel newer publish timer when stale publish completes', async () => {
+    let resolveFirstPublish: (value: {body: Record<string, never>}) => void;
+    const firstPublishPromise = new Promise<{body: Record<string, never>}>((resolve) => {
+      resolveFirstPublish = resolve;
+    });
+    webex.request = jest
+      .fn()
+      .mockReturnValueOnce(firstPublishPromise)
+      .mockResolvedValueOnce({body: {}});
+
+    const firstPublishCall = service.setManageWebexCallingInWxcc(true, {
+      trackPublishMetrics: true,
+    });
+    const secondPublishCall = service.setManageWebexCallingInWxcc(false, {
+      trackPublishMetrics: true,
+    });
+
+    await secondPublishCall;
+
+    service.teardown();
+    resolveFirstPublish!({body: {}});
+    await firstPublishCall;
+
+    expect(cancelTimedEvent).not.toHaveBeenCalled();
+    expect(trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS,
+      {enableWxBetterTogether: false},
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('preserves duration_ms on newer publish when stale publish completes', async () => {
+    const {default: RealMetricsManager} = jest.requireActual(
+      '../../../../src/metrics/MetricsManager'
+    );
+    RealMetricsManager.resetInstance();
+    const realManager = RealMetricsManager.getInstance();
+    jest.spyOn(realManager as any, 'isMetricsDisabled').mockReturnValue(false);
+    const trackEventSpy = jest.spyOn(realManager, 'trackEvent');
+    (MetricsManager.getInstance as jest.Mock).mockReturnValue(realManager);
+
+    let resolveFirstPublish: (value: {body: Record<string, never>}) => void;
+    const firstPublishPromise = new Promise<{body: Record<string, never>}>((resolve) => {
+      resolveFirstPublish = resolve;
+    });
+    webex.request = jest
+      .fn()
+      .mockReturnValueOnce(firstPublishPromise)
+      .mockResolvedValueOnce({body: {}});
+
+    const firstPublishCall = service.setManageWebexCallingInWxcc(true, {
+      trackPublishMetrics: true,
+    });
+    const secondPublishCall = service.setManageWebexCallingInWxcc(false, {
+      trackPublishMetrics: true,
+    });
+
+    await secondPublishCall;
+    service.teardown();
+    resolveFirstPublish!({body: {}});
+    await firstPublishCall;
+
+    const successCall = trackEventSpy.mock.calls.find(
+      ([eventName, payload]) =>
+        eventName === METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS &&
+        (payload as {enableWxBetterTogether?: boolean}).enableWxBetterTogether === false
+    );
+    expect(successCall?.[1]).toEqual(
+      expect.objectContaining({
+        enableWxBetterTogether: false,
+        duration_ms: expect.any(Number),
+      })
+    );
+
+    RealMetricsManager.resetInstance();
+    (MetricsManager.getInstance as jest.Mock).mockReturnValue({
+      trackEvent,
+      timeEvent,
+      cancelTimedEvent,
+    });
+  });
+
   it('does not track usersub metrics by default', async () => {
     await service.setManageWebexCallingInWxcc(true);
 

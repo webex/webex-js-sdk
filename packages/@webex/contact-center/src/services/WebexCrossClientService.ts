@@ -25,6 +25,8 @@ export default class WebexCrossClientService {
   private appName = DEFAULT_APP_NAME;
   /** Incremented on teardown/disable to ignore stale refresh timer callbacks. */
   private refreshGeneration = 0;
+  /** Monotonic id for usersub publish metrics timers; stale publishes cancel only their own timer. */
+  private usersubPublishMetricsId = 0;
 
   constructor(webex: WebexSDK) {
     this.webex = webex;
@@ -191,7 +193,10 @@ export default class WebexCrossClientService {
       METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
     ];
 
+    let publishMetricsId = 0;
     if (trackPublishMetrics) {
+      this.usersubPublishMetricsId += 1;
+      publishMetricsId = this.usersubPublishMetricsId;
       metricsManager.timeEvent(usersubPublishEventKeys);
     }
 
@@ -200,7 +205,9 @@ export default class WebexCrossClientService {
     } catch (error) {
       if (trackPublishMetrics) {
         if (operationGeneration !== this.refreshGeneration) {
-          metricsManager.cancelTimedEvent(usersubPublishEventKeys);
+          if (publishMetricsId === this.usersubPublishMetricsId) {
+            metricsManager.cancelTimedEvent(usersubPublishEventKeys);
+          }
         } else {
           metricsManager.trackEvent(
             METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
@@ -217,7 +224,7 @@ export default class WebexCrossClientService {
     }
 
     if (operationGeneration !== this.refreshGeneration) {
-      if (trackPublishMetrics) {
+      if (trackPublishMetrics && publishMetricsId === this.usersubPublishMetricsId) {
         metricsManager.cancelTimedEvent(usersubPublishEventKeys);
       }
 

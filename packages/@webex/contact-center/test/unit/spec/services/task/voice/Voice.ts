@@ -1374,6 +1374,51 @@ describe('Voice Task', () => {
       expect(dummyContact.cancelTask).toHaveBeenCalledWith({interactionId: 'int1'});
     });
 
+    it('emits TASK_DECLINE and WXAPP_TASK_DECLINE success metrics for wxApp outdial decline', async () => {
+      const taskData = makeWxAppOutdialTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+      const metricsManager = MetricsManager.getInstance();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent');
+
+      await voice.decline();
+
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+        expect.objectContaining({taskId: 'int1'}),
+        ['operational', 'behavioral']
+      );
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
+        expect.objectContaining({taskId: 'int1'}),
+        ['operational', 'behavioral']
+      );
+    });
+
+    it('emits TASK_DECLINE and WXAPP_TASK_DECLINE failed metrics when outdial cancel fails', async () => {
+      const cancelError = new Error('cancel failed');
+      dummyContact.cancelTask = jest.fn().mockRejectedValue(cancelError);
+      const taskData = makeWxAppOutdialTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+      const metricsManager = MetricsManager.getInstance();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent');
+
+      await expect(voice.decline()).rejects.toThrow('cancel failed');
+
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
+        expect.objectContaining({taskId: 'int1'}),
+        ['operational', 'behavioral']
+      );
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
+        expect.objectContaining({taskId: 'int1'}),
+        ['operational', 'behavioral']
+      );
+      dummyContact.cancelTask = jest.fn().mockResolvedValue(undefined);
+    });
+
     it('clears wxAppAnswerPending when declining outdial', async () => {
       const mockSvc = {
         answerCall: jest.fn().mockResolvedValue(undefined),
