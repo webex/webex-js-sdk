@@ -8,6 +8,8 @@ import Mercury from '@webex/internal-plugin-mercury';
 import {VoiceaChannel} from '../../../src/voicea';
 import {EVENT_TRIGGERS, TOGGLE_MANUAL_CAPTION_STATUS} from '../../../src/constants';
 
+const flushPromises = () => new Promise(setImmediate);
+
 /**
  * Creates a mock LLM channel for testing
  * @param {Object} [options] - Options for the mock channel
@@ -28,6 +30,7 @@ function createMockLLMChannel(options = {}) {
     isDataChannelTokenEnabled: sinon.stub().resolves(true),
     on: sinon.stub(),
     off: sinon.stub(),
+    once: sinon.stub(),
     socket: mockWebSocket,
   };
 }
@@ -65,8 +68,14 @@ describe('plugin-voicea', () => {
         assert.equal(voiceaChannel.getCaptionStatus(), 'idle');
       });
 
-      it('should subscribe to relay events', () => {
+      it('should subscribe to relay events when llmChannel is provided', () => {
         assert.calledWith(mockLLMChannel.on, 'event:relay.event', sinon.match.func);
+      });
+
+      it('should not subscribe to events when llmChannel is undefined', () => {
+        const channelWithoutLLM = new VoiceaChannel(undefined, requestStub);
+        // No llmChannel means no subscription, just verify it doesn't throw
+        assert.equal(channelWithoutLLM.getAnnounceStatus(), 'idle');
       });
     });
 
@@ -193,9 +202,20 @@ describe('plugin-voicea', () => {
     });
 
     describe('#deregisterEvents', () => {
-
       beforeEach(async () => {
         voiceaChannel.keepTranscriptionSubscribed = true;
+      });
+
+      it('works when llmChannel is undefined', () => {
+        const channelWithoutLLM = new VoiceaChannel(undefined, requestStub);
+        channelWithoutLLM.areCaptionsEnabled = true;
+        channelWithoutLLM.keepTranscriptionSubscribed = true;
+
+        // Should not throw
+        channelWithoutLLM.deregisterEvents();
+
+        assert.equal(channelWithoutLLM.areCaptionsEnabled, false);
+        assert.equal(channelWithoutLLM.keepTranscriptionSubscribed, false);
       });
 
       it('deregisters voicea channel and resets state', () => {
@@ -321,6 +341,11 @@ describe('plugin-voicea', () => {
       it('returns false when the LLM channel is not connected', () => {
         mockLLMChannel.isConnected.returns(false);
         assert.equal(voiceaChannel.isLLMConnected(), false);
+      });
+
+      it('returns false when the LLM channel is undefined', () => {
+        const channelWithoutLLM = new VoiceaChannel(undefined, requestStub);
+        assert.equal(channelWithoutLLM.isLLMConnected(), false);
       });
     });
 
@@ -990,6 +1015,9 @@ describe('plugin-voicea', () => {
 
         await voiceaChannel.switchLLMChannel(newMockLLMChannel);
 
+        // Wait for fire-and-forget turnOnCaptions to complete
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
         // Should have unsubscribed from old channel
         assert.calledWith(mockLLMChannel.off, 'event:relay.event', sinon.match.func);
 
@@ -1017,6 +1045,24 @@ describe('plugin-voicea', () => {
           },
           trackingId: sinon.match.string,
         });
+      });
+
+      it('skips switch when already on the same channel', async () => {
+        // Enable captions to verify they are NOT re-enabled on no-op switch
+        voiceaChannel.keepTranscriptionSubscribed = true;
+        voiceaChannel.currentSpokenLanguage = 'es';
+
+        // Switch to the same channel that voiceaChannel is already using
+        await voiceaChannel.switchLLMChannel(mockLLMChannel);
+
+        // Should NOT have unsubscribed (no-op)
+        assert.notCalled(mockLLMChannel.off);
+
+        // Should NOT have re-subscribed
+        // The 'on' was already called in the constructor, but no NEW calls should happen
+        // Since constructor already called 'on', we check it wasn't called again after construction
+        // The mock was created fresh, so we just verify no additional sends
+        assert.notCalled(mockLLMChannel.socket.send);
       });
 
       it('does not turn on captions if they were not on before switching', async () => {
@@ -1054,6 +1100,154 @@ describe('plugin-voicea', () => {
 
         // Should have subscribed to new channel
         assert.calledWith(newMockLLMChannel.on, 'event:relay.event', sinon.match.func);
+      });
+
+      it('switches from undefined llmChannel to a valid one', async () => {
+        // Create a channel without llmChannel
+        const channelWithoutLLM = new VoiceaChannel(undefined, requestStub);
+
+        const newMockLLMChannel = createMockLLMChannel({locusUrl: 'newLocusUrl'});
+
+        await channelWithoutLLM.switchLLMChannel(newMockLLMChannel);
+
+        // Should have subscribed to new channel
+        assert.calledWith(newMockLLMChannel.on, 'event:relay.event', sinon.match.func);
+
+        // isLLMConnected should now return true
+        assert.equal(channelWithoutLLM.isLLMConnected(), true);
+      });
+
+      it('defers caption restoration when new channel is not connected', async () => {
+        // Enable captions
+        voiceaChannel.keepTranscriptionSubscribed = true;
+        voiceaChannel.currentSpokenLanguage = 'fr';
+
+        // Create a new channel that is NOT connected yet
+        const newMockLLMChannel = createMockLLMChannel({
+          isConnected: false,
+          locusUrl: 'newLocusUrl',
+        });
+
+        await voiceaChannel.switchLLMChannel(newMockLLMChannel);
+
+        // Should have subscribed to new channel events
+        assert.calledWith(newMockLLMChannel.on, 'event:relay.event', sinon.match.func);
+
+        // Should have registered a 'once' listener for 'online' event
+        assert.calledWith(newMockLLMChannel.once, 'online', sinon.match.func);
+
+        // Should NOT have sent any messages yet (waiting for connection)
+        assert.notCalled(newMockLLMChannel.socket.send);
+      });
+
+      it('restores captions when deferred channel comes online', async () => {
+        // Enable captions
+        voiceaChannel.keepTranscriptionSubscribed = true;
+        voiceaChannel.currentSpokenLanguage = 'de';
+
+        // Create a new channel that is NOT connected yet
+        const newMockLLMChannel = createMockLLMChannel({
+          isConnected: false,
+          locusUrl: 'newLocusUrl',
+        });
+
+        await voiceaChannel.switchLLMChannel(newMockLLMChannel);
+
+        // Get the 'online' listener that was registered
+        const onlineListener = newMockLLMChannel.once.getCall(0).args[1];
+
+        // Simulate channel coming online
+        newMockLLMChannel.isConnected.returns(true);
+        onlineListener();
+
+        // Wait for async turnOnCaptions to complete
+        await flushPromises();
+
+        // Now it should have sent messages (announcement + subchannel subscription)
+        assert.calledTwice(newMockLLMChannel.socket.send);
+      });
+
+      it('removes pending online listener when deregisterEvents is called', async () => {
+        // Enable captions
+        voiceaChannel.keepTranscriptionSubscribed = true;
+
+        // Create a new channel that is NOT connected yet
+        const newMockLLMChannel = createMockLLMChannel({
+          isConnected: false,
+          locusUrl: 'newLocusUrl',
+        });
+
+        await voiceaChannel.switchLLMChannel(newMockLLMChannel);
+
+        // Get the 'online' listener that was registered
+        const onlineListener = newMockLLMChannel.once.getCall(0).args[1];
+
+        // Now deregister events
+        voiceaChannel.deregisterEvents();
+
+        // Should have removed the 'online' listener
+        assert.calledWith(newMockLLMChannel.off, 'online', onlineListener);
+      });
+
+      it('removes old pending online listener when switching channels again', async () => {
+        // Enable captions
+        voiceaChannel.keepTranscriptionSubscribed = true;
+
+        // Create first new channel that is NOT connected
+        const firstNewChannel = createMockLLMChannel({isConnected: false, locusUrl: 'firstUrl'});
+
+        await voiceaChannel.switchLLMChannel(firstNewChannel);
+
+        // Get the 'online' listener registered on first channel
+        const firstOnlineListener = firstNewChannel.once.getCall(0).args[1];
+
+        // Now switch to another channel (also not connected)
+        const secondNewChannel = createMockLLMChannel({isConnected: false, locusUrl: 'secondUrl'});
+
+        await voiceaChannel.switchLLMChannel(secondNewChannel);
+
+        // Should have removed the 'online' listener from first channel
+        assert.calledWith(firstNewChannel.off, 'online', firstOnlineListener);
+
+        // Should have registered a new 'online' listener on second channel
+        assert.calledWith(secondNewChannel.once, 'online', sinon.match.func);
+      });
+
+      it('does not duplicate caption HTTP requests on concurrent same-channel switches', async () => {
+        // Enable captions
+        voiceaChannel.keepTranscriptionSubscribed = true;
+        voiceaChannel.currentSpokenLanguage = 'en';
+
+        const newMockLLMChannel = createMockLLMChannel({locusUrl: 'newLocusUrl'});
+
+        // Simulate concurrent switches to the same channel
+        const switch1 = voiceaChannel.switchLLMChannel(newMockLLMChannel);
+        const switch2 = voiceaChannel.switchLLMChannel(newMockLLMChannel);
+
+        await Promise.all([switch1, switch2]);
+
+        // Wait for fire-and-forget turnOnCaptions to complete
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        // Should only have sent 2 messages total (announcement + subchannel subscription)
+        // NOT 4 messages (which would indicate duplicate switches)
+        assert.calledTwice(newMockLLMChannel.socket.send);
+      });
+    });
+
+    describe('#requireLLMChannel', () => {
+      it('throws when llmChannel is undefined', () => {
+        const channelWithoutLLM = new VoiceaChannel(undefined, requestStub);
+
+        assert.throws(
+          () => channelWithoutLLM.sendAnnouncement(),
+          'VoiceaChannel: LLM channel not available'
+        );
+      });
+
+      it('does not throw when llmChannel is defined', () => {
+        // voiceaChannel has a mockLLMChannel, so this should not throw
+        assert.doesNotThrow(() => voiceaChannel.sendAnnouncement());
       });
     });
   });

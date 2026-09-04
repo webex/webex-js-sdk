@@ -51,6 +51,18 @@ describe('plugin-voicea', () => {
         assert.instanceOf(channel, VoiceaChannel);
       });
 
+      it('creates a new VoiceaChannel instance without llmChannel', () => {
+        const channel = plugin.createChannel();
+
+        assert.instanceOf(channel, VoiceaChannel);
+      });
+
+      it('creates a new VoiceaChannel instance with undefined llmChannel', () => {
+        const channel = plugin.createChannel(undefined);
+
+        assert.instanceOf(channel, VoiceaChannel);
+      });
+
       it('creates independent channels for multiple calls', () => {
         const mockLLMChannel1 = createMockLLMChannel();
         const mockLLMChannel2 = createMockLLMChannel();

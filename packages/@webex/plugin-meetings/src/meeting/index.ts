@@ -739,6 +739,29 @@ export default class Meeting extends StatelessWebexPlugin {
   turnDiscoverySkippedReason: TurnDiscoverySkipReason;
   turnServerUsed: boolean;
   areVoiceaEventsSetup = false;
+  // Tracks if transcription should start once LLM connects (deferred from CONTROLS_MEETING_TRANSCRIBE_UPDATED)
+  private _pendingTranscriptionStart = false;
+
+  /**
+   * Returns the initial transcription object shape.
+   * Used by constructor and reset paths to ensure consistent initialization.
+   * @private
+   * @returns {Transcription}
+   */
+  private getInitialTranscription(): Transcription {
+    return {
+      captions: [],
+      isListening: false,
+      commandText: '',
+      languageOptions: {currentSpokenLanguage: 'en'},
+      showCaptionBox: false,
+      transcribingRequestStatus: 'INACTIVE',
+      isCaptioning: false,
+      interimCaptions: {} as Map<string, CaptionData>,
+      speakerProxy: {} as Map<string, any>,
+    } as Transcription;
+  }
+
   isMoveToInProgress = false;
   registrationIdStatus: string;
   brbState: BrbState;
@@ -985,6 +1008,16 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     // @ts-ignore
     this.webinar = new Webinar({meetingId: this.id}, {parent: this.webex});
+    /**
+     * VoiceaChannel for transcription/captions. Created without llmChannel;
+     * switchLLMChannel() is called in updateLLMConnection() when LLM connects.
+     * @instance
+     * @type {VoiceaChannel}
+     * @public
+     * @memberof Meeting
+     */
+    // @ts-ignore - Fix type
+    this.voiceaChannel = this.webex.internal.voicea.createChannel();
     /**
      * helper class for managing receive slots (for multistream media connections)
      */
@@ -1508,17 +1541,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @private
      * @memberof Meeting
      */
-    this.transcription = {
-      captions: [],
-      isListening: false,
-      commandText: '',
-      languageOptions: {currentSpokenLanguage: 'en'},
-      showCaptionBox: false,
-      transcribingRequestStatus: 'INACTIVE',
-      isCaptioning: false,
-      interimCaptions: {} as Map<string, CaptionData>,
-      speakerProxy: {} as Map<string, any>,
-    } as Transcription;
+    this.transcription = this.getInitialTranscription();
 
     /**
      * Password status. If it's PASSWORD_STATUS.REQUIRED then verifyPassword() needs to be called
@@ -3046,18 +3069,31 @@ export default class Meeting extends StatelessWebexPlugin {
         // user need to be joined to start the llm and receive transcription
         if (this.isJoined()) {
           // @ts-ignore - config coming from registerPlugin
-          if (transcribing && !this.transcription) {
+          if (transcribing && !this.areVoiceaEventsSetup) {
+            // Defer transcription start if LLM not yet connected - voiceaChannel exists from
+            // constructor but can't make HTTP requests until switchLLMChannel binds an LLM.
+            if (!this.voiceaChannel?.isLLMConnected()) {
+              this._pendingTranscriptionStart = true;
+
+              return;
+            }
             this.startTranscription();
-          } else if (!transcribing && this.transcription) {
-            Trigger.trigger(
-              this,
-              {
-                file: 'meeting/index',
-                function: 'setupLocusControlsListener',
-              },
-              EVENT_TRIGGERS.MEETING_STOPPED_RECEIVING_TRANSCRIPTION,
-              {caption, transcribing}
-            );
+          } else if (!transcribing) {
+            // Always clear pending flag when transcription turns off - prevents stale deferred
+            // starts if transcribing flipped false before LLM connected.
+            this._pendingTranscriptionStart = false;
+
+            if (this.areVoiceaEventsSetup) {
+              Trigger.trigger(
+                this,
+                {
+                  file: 'meeting/index',
+                  function: 'setupLocusControlsListener',
+                },
+                EVENT_TRIGGERS.MEETING_STOPPED_RECEIVING_TRANSCRIPTION,
+                {caption, transcribing}
+              );
+            }
           }
         }
       }
@@ -6311,6 +6347,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.voiceaChannel?.deregisterEvents();
 
     this.areVoiceaEventsSetup = false;
+    this._pendingTranscriptionStart = false;
     this.triggerStopReceivingTranscriptionEvent();
   }
 
@@ -6674,8 +6711,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.llmChannel?.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
     this.llmChannel?.off('online', this.handleLLMOnline);
     this.breakouts?.unregisterLLMChannel();
-    this.voiceaChannel?.deregisterEvents();
-    this.voiceaChannel = undefined;
+    // voiceaChannel persists across LLM reconnects; switchLLMChannel() handles re-subscribing
     this.clearLLMHealthCheckTimer();
   }
 
@@ -6698,10 +6734,11 @@ export default class Meeting extends StatelessWebexPlugin {
   private stopListeningForMeetingEvents() {
     this.stopListeningForLLMEvents();
     this.stopListeningForMercuryEvents();
-    if (this.transcription) {
+    if (this.areVoiceaEventsSetup) {
       this.stopTranscription();
-      this.transcription = undefined;
     }
+    // Reset to initial shape instead of null - transcription is always a valid object
+    this.transcription = this.getInitialTranscription();
     this.annotation.deregisterEvents();
   }
 
@@ -6710,15 +6747,26 @@ export default class Meeting extends StatelessWebexPlugin {
    *
    * @param {Object} options
    * @param {boolean} [options.throwOnError=true] rethrows disconnect errors when true
+   * @param {boolean} [options.preserveVoiceaChannel=false] when true, keeps voiceaChannel for switchLLMChannel() during reconnects
    * @returns {Promise<void>}
    */
   private cleanupLLMConneciton = async ({
     throwOnError = true,
+    preserveVoiceaChannel = false,
   }: {
     throwOnError?: boolean;
+    preserveVoiceaChannel?: boolean;
   } = {}): Promise<void> => {
     // Always clear the timer, even if there's no channel
     this.clearLLMHealthCheckTimer();
+
+    // Permanent cleanup must deregister voiceaChannel regardless of LLM presence.
+    // When a transient reconnect fails (LLM registration error), llmChannel is undefined
+    // but voiceaChannel may still exist with listeners attached to the old emitter.
+    if (!preserveVoiceaChannel) {
+      this.voiceaChannel?.deregisterEvents();
+      this.voiceaChannel = undefined;
+    }
 
     if (!this.llmChannel) {
       return;
@@ -6859,7 +6907,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
 
       // URLs changed or not joined, disconnect existing channel
-      await this.cleanupLLMConneciton();
+      await this.cleanupLLMConneciton({preserveVoiceaChannel: true});
     }
 
     if (!isJoined) {
@@ -6905,13 +6953,35 @@ export default class Meeting extends StatelessWebexPlugin {
         // Register breakouts channel
         this.breakouts.registerLLMChannel(this.llmChannel);
 
-        // Create VoiceaChannel for this meeting
-        // @ts-ignore - Fix type
-        this.voiceaChannel = this.webex.internal.voicea.createChannel(this.llmChannel);
         LoggerProxy.logger.info(
           'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
         );
         this.startLLMHealthCheckTimer();
+
+        // Switch voiceaChannel to use the new LLM channel (preserves transcription state).
+        // Skip if practice session is active - practice session manages its own voicea binding
+        // via updatePSDataChannel, and switching here would break practice session captions.
+        const isPracticeSessionActive =
+          this.webinar?.isPracticeSessionLLMChannelConnected() ?? false;
+
+        if (this.voiceaChannel && !isPracticeSessionActive) {
+          // Fire-and-forget: caption restoration shouldn't block LLM connection result.
+          // transcription is always initialized (reset to initial shape, never null),
+          // so no re-init needed here.
+          this.voiceaChannel.switchLLMChannel(this.llmChannel).catch((error) => {
+            LoggerProxy.logger.warn(
+              'Meeting:index#updateLLMConnection --> failed to switch voicea channel:',
+              error
+            );
+          });
+
+          // Start transcription if it was deferred while waiting for LLM to connect.
+          // This handles the race where CONTROLS_MEETING_TRANSCRIBE_UPDATED arrived before LLM was ready.
+          if (this._pendingTranscriptionStart && !this.areVoiceaEventsSetup) {
+            this._pendingTranscriptionStart = false;
+            this.startTranscription();
+          }
+        }
 
         if (registerAndConnectResult) {
           if (isInitialJoinPhase) {
@@ -10444,8 +10514,11 @@ export default class Meeting extends StatelessWebexPlugin {
     // stopListeningForMeetingEvents() before /leave and /end so events
     // received mid-teardown do not trigger Locus syncs.
     // Token cleanup happens automatically when cleanupLLMConneciton destroys the channel.
+    // Preserve voiceaChannel because it's created in the constructor and should only
+    // be destroyed when the meeting object is destroyed (in MeetingUtil.cleanUp).
+    // On rejoin, switchLLMChannel() will rebind it to the new LLM channel.
 
-    await this.cleanupLLMConneciton({throwOnError: false});
+    await this.cleanupLLMConneciton({throwOnError: false, preserveVoiceaChannel: true});
   };
 
   /**

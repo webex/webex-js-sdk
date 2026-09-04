@@ -226,13 +226,14 @@ const Webinar = WebexPlugin.extend({
       this._pendingOnlineListener = null;
     }
 
-    // Switch voicea back to main meeting LLM channel before disconnecting PS channel
     const meeting = this.getValidatedWebinarMeeting();
-    if (meeting?.voiceaChannel && meeting?.llmChannel) {
-      await meeting.voiceaChannel.switchLLMChannel(meeting.llmChannel);
-    }
 
     if (!this._practiceSessionLLMChannel) {
+      // Even without PS channel, ensure voicea is bound to main channel
+      if (meeting?.voiceaChannel && meeting?.llmChannel) {
+        await meeting.voiceaChannel.switchLLMChannel(meeting.llmChannel);
+      }
+
       return;
     }
 
@@ -260,6 +261,16 @@ const Webinar = WebexPlugin.extend({
         }
       }
       this._practiceSessionLLMChannel = undefined;
+
+      // Switch voicea to current main channel. The reconciler pattern in switchLLMChannel
+      // handles all timing concerns:
+      // - If main channel was replaced during disconnect (concurrent updateLLMConnection),
+      //   meeting.llmChannel will be the new channel, and reconciler binds to it
+      // - If channel is still connecting, reconciler defers caption restoration until 'online'
+      // - If same channel, reconciler is a no-op for rebind but still reconciles captions
+      if (meeting?.voiceaChannel && meeting?.llmChannel) {
+        await meeting.voiceaChannel.switchLLMChannel(meeting.llmChannel);
+      }
     }
   },
 
@@ -442,8 +453,9 @@ const Webinar = WebexPlugin.extend({
         // Switch annotation to practice session channel
         meeting.annotation.registerChannel(psChannel);
 
-        // Switch meeting's voicea channel to use the PS LLM connection
-        // This preserves caption state and re-announces automatically
+        // Switch meeting's voicea channel to use the PS LLM connection.
+        // The reconciler pattern preserves caption state and handles all timing.
+        // transcription is always initialized (reset to initial shape, never null).
         if (meeting.voiceaChannel) {
           await meeting.voiceaChannel.switchLLMChannel(psChannel);
         }

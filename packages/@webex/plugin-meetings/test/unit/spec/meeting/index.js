@@ -315,6 +315,7 @@ describe('plugin-meetings', () => {
       deregisterEvents: sinon.stub(),
       getIsCaptionBoxOn: sinon.stub().returns(false),
       updateSubchannelSubscriptions: sinon.stub(),
+      switchLLMChannel: sinon.stub().resolves(),
     }));
     webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
       {},
@@ -573,6 +574,11 @@ describe('plugin-meetings', () => {
           localWebex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(false);
           localWebex.internal.llm.on = sinon.stub();
           localWebex.internal.voicea.announce = sinon.stub();
+          localWebex.internal.voicea.createChannel = sinon.stub().returns({
+            on: sinon.stub(),
+            off: sinon.stub(),
+            switchLLMChannel: sinon.stub().resolves(),
+          });
           localWebex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
             {},
             {parent: localWebex}
@@ -8283,6 +8289,7 @@ describe('plugin-meetings', () => {
         it('stops listening for LLM/Mercury and tears down transcription and annotation before calling Locus /leave', async () => {
           const onlineHandler = meeting.mercuryOnlineHandler;
           const offlineHandler = meeting.mercuryOfflineHandler;
+          meeting.areVoiceaEventsSetup = true;
 
           // Set up llmChannel with mock off function
           meeting.llmChannel = {
@@ -8319,12 +8326,16 @@ describe('plugin-meetings', () => {
           assert.isUndefined(meeting.mercuryOfflineHandler);
           assert.calledOnceWithExactly(meeting.stopTranscription);
           assert.calledOnceWithExactly(meeting.annotation.deregisterEvents);
-          assert.isUndefined(meeting.transcription);
+          // Transcription is reset to initial state (not undefined)
+          assert.isDefined(meeting.transcription);
+          assert.deepEqual(meeting.transcription.captions, []);
+          assert.equal(meeting.transcription.isCaptioning, false);
         });
 
         it('tears down llm/mercury/transcription/annotation even when /leave rejects', async () => {
           const onlineHandler = meeting.mercuryOnlineHandler;
           const offlineHandler = meeting.mercuryOfflineHandler;
+          meeting.areVoiceaEventsSetup = true;
           meeting.meetingRequest.leaveMeeting = sinon
             .stub()
             .returns(Promise.reject(new Error('leave failed')));
@@ -10437,6 +10448,7 @@ describe('plugin-meetings', () => {
         it('stops listening for LLM/Mercury and tears down transcription and annotation before calling Locus /end', async () => {
           const onlineHandler = meeting.mercuryOnlineHandler;
           const offlineHandler = meeting.mercuryOfflineHandler;
+          meeting.areVoiceaEventsSetup = true;
 
           // Set up llmChannel with mock off function
           meeting.llmChannel = {
@@ -10478,6 +10490,7 @@ describe('plugin-meetings', () => {
         it('tears down llm/mercury/transcription/annotation even when /end rejects', async () => {
           const onlineHandler = meeting.mercuryOnlineHandler;
           const offlineHandler = meeting.mercuryOfflineHandler;
+          meeting.areVoiceaEventsSetup = true;
           meeting.meetingRequest.endMeetingForAll = sinon
             .stub()
             .returns(Promise.reject(new Error('end failed')));
@@ -15147,10 +15160,15 @@ describe('plugin-meetings', () => {
             deregisterEvents: sinon.stub(),
             getIsCaptionBoxOn: sinon.stub().returns(false),
             updateSubchannelSubscriptions: sinon.stub(),
+            switchLLMChannel: sinon.stub().resolves(),
+            getKeepTranscriptionSubscribed: sinon.stub().returns(false),
           };
 
           webex.internal.llm.createChannel = sinon.stub().returns(mockChannel);
           webex.internal.voicea.createChannel = sinon.stub().returns(mockVoiceaChannel);
+
+          // voiceaChannel is created in the Meeting constructor
+          meeting.voiceaChannel = mockVoiceaChannel;
 
           meeting.processRelayEvent = sinon.stub();
           meeting.processLocusLLMEvent = sinon.stub();
@@ -15275,6 +15293,7 @@ describe('plugin-meetings', () => {
             off: sinon.stub(),
           };
           meeting.llmChannel = existingChannel;
+          const originalVoiceaChannel = meeting.voiceaChannel;
 
           meeting.locusInfo = {
             syncAllHashTreeDatasets: sinon.stub().resolves(),
@@ -15295,6 +15314,9 @@ describe('plugin-meetings', () => {
             'a datachannel url',
             undefined
           );
+          // voiceaChannel should be preserved during transient reconnect
+          assert.strictEqual(meeting.voiceaChannel, originalVoiceaChannel);
+          assert.notCalled(mockVoiceaChannel.deregisterEvents);
         });
 
         it('disconnects and reconnects when datachannel URL changes', async () => {
@@ -15310,6 +15332,7 @@ describe('plugin-meetings', () => {
             off: sinon.stub(),
           };
           meeting.llmChannel = existingChannel;
+          const originalVoiceaChannel = meeting.voiceaChannel;
 
           meeting.locusInfo = {
             syncAllHashTreeDatasets: sinon.stub().resolves(),
@@ -15330,6 +15353,9 @@ describe('plugin-meetings', () => {
             'a different datachannel url',
             undefined
           );
+          // voiceaChannel should be preserved during transient reconnect
+          assert.strictEqual(meeting.voiceaChannel, originalVoiceaChannel);
+          assert.notCalled(mockVoiceaChannel.deregisterEvents);
         });
 
         it('disconnects when state changes to not joined', async () => {
@@ -15433,6 +15459,105 @@ describe('plugin-meetings', () => {
           await meeting.updateLLMConnection();
 
           assert.calledOnce(meeting.startLLMHealthCheckTimer);
+        });
+
+        it('reuses voiceaChannel after successful connection', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          await meeting.updateLLMConnection();
+
+          assert.notCalled(webex.internal.voicea.createChannel);
+          assert.strictEqual(meeting.voiceaChannel, mockVoiceaChannel);
+          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockChannel);
+        });
+
+        it('skips switchLLMChannel when practice session is active', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.webinar.isPracticeSessionLLMChannelConnected = sinon.stub().returns(true);
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          await meeting.updateLLMConnection();
+
+          // switchLLMChannel should NOT be called when practice session is active
+          // because practice session manages its own voicea binding
+          assert.notCalled(mockVoiceaChannel.switchLLMChannel);
+        });
+
+        it('logs warning when switchLLMChannel fails', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          mockVoiceaChannel.switchLLMChannel.rejects(new Error('switch failed'));
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          // Should not throw - fire-and-forget behavior
+          const result = await meeting.updateLLMConnection();
+
+          assert.equal(result, 'something');
+        });
+
+        it('starts pending transcription after LLM connects when _pendingTranscriptionStart is true', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting._pendingTranscriptionStart = true;
+          meeting.areVoiceaEventsSetup = false;
+          meeting.startTranscription = sinon.stub().resolves();
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          await meeting.updateLLMConnection();
+
+          // Should call startTranscription for the pending request
+          assert.calledOnce(meeting.startTranscription);
+          // Should clear the pending flag
+          assert.equal(meeting._pendingTranscriptionStart, false);
+        });
+
+        it('does not start transcription when _pendingTranscriptionStart is false', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting._pendingTranscriptionStart = false;
+          meeting.areVoiceaEventsSetup = false;
+          meeting.startTranscription = sinon.stub().resolves();
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          await meeting.updateLLMConnection();
+
+          // Should NOT call startTranscription
+          assert.notCalled(meeting.startTranscription);
+        });
+
+        it('does not start transcription when areVoiceaEventsSetup is already true', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting._pendingTranscriptionStart = true;
+          meeting.areVoiceaEventsSetup = true;
+          meeting.startTranscription = sinon.stub().resolves();
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          await meeting.updateLLMConnection();
+
+          // Should NOT call startTranscription (already setup)
+          assert.notCalled(meeting.startTranscription);
         });
 
         it('registers annotation channel when not in practice session', async () => {
@@ -15540,6 +15665,106 @@ describe('plugin-meetings', () => {
             // Should not throw
             await meeting.clearMeetingData();
 
+            assert.called(meeting.clearLLMHealthCheckTimer);
+          });
+        });
+
+        describe('#cleanupLLMConneciton', () => {
+          let existingChannel;
+
+          beforeEach(() => {
+            existingChannel = {
+              isConnected: sinon.stub().returns(true),
+              disconnect: sinon.stub().resolves(),
+              off: sinon.stub(),
+            };
+            meeting.llmChannel = existingChannel;
+
+            meeting.annotation.deregisterEvents = sinon.stub();
+            meeting.clearLLMHealthCheckTimer = sinon.stub();
+          });
+
+          forEach(
+            [
+              {
+                description: 'destroys voiceaChannel when preserveVoiceaChannel is false (default)',
+                llmChannelDefined: true,
+                options: undefined,
+                expectedVoiceaPreserved: false,
+              },
+              {
+                description:
+                  'destroys voiceaChannel when preserveVoiceaChannel is explicitly false',
+                llmChannelDefined: true,
+                options: {preserveVoiceaChannel: false},
+                expectedVoiceaPreserved: false,
+              },
+              {
+                description: 'preserves voiceaChannel when preserveVoiceaChannel is true',
+                llmChannelDefined: true,
+                options: {preserveVoiceaChannel: true},
+                expectedVoiceaPreserved: true,
+              },
+              {
+                description:
+                  'cleans up voiceaChannel even when llmChannel is undefined (failed transient reconnect)',
+                llmChannelDefined: false,
+                options: {preserveVoiceaChannel: false},
+                expectedVoiceaPreserved: false,
+              },
+              {
+                description:
+                  'preserves voiceaChannel when llmChannel is undefined and preserveVoiceaChannel is true',
+                llmChannelDefined: false,
+                options: {preserveVoiceaChannel: true},
+                expectedVoiceaPreserved: true,
+              },
+            ],
+            ({description, llmChannelDefined, options, expectedVoiceaPreserved}) => {
+              it(description, async () => {
+                if (!llmChannelDefined) {
+                  meeting.llmChannel = undefined;
+                }
+                const originalVoiceaChannel = meeting.voiceaChannel;
+
+                await meeting.cleanupLLMConneciton(options);
+
+                if (expectedVoiceaPreserved) {
+                  assert.notCalled(mockVoiceaChannel.deregisterEvents);
+                  assert.strictEqual(meeting.voiceaChannel, originalVoiceaChannel);
+                } else {
+                  assert.calledOnce(mockVoiceaChannel.deregisterEvents);
+                  assert.isUndefined(meeting.voiceaChannel);
+                }
+                assert.isUndefined(meeting.llmChannel);
+              });
+            }
+          );
+
+          it('passes throwOnError alongside preserveVoiceaChannel', async () => {
+            existingChannel.disconnect.rejects(new Error('disconnect failed'));
+
+            // Should not throw when throwOnError is false
+            await meeting.cleanupLLMConneciton({throwOnError: false, preserveVoiceaChannel: true});
+
+            assert.notCalled(mockVoiceaChannel.deregisterEvents);
+            assert.isDefined(meeting.voiceaChannel);
+          });
+
+          it('cleans up LLM event listeners regardless of preserveVoiceaChannel', async () => {
+            await meeting.cleanupLLMConneciton({preserveVoiceaChannel: true});
+
+            assert.calledWithExactly(existingChannel.off, 'online', meeting.handleLLMOnline);
+            assert.calledWithExactly(
+              existingChannel.off,
+              'event:relay.event',
+              meeting.processRelayEvent
+            );
+            assert.calledWithExactly(
+              existingChannel.off,
+              'event:locus.state_message',
+              meeting.processLocusLLMEvent
+            );
             assert.called(meeting.clearLLMHealthCheckTimer);
           });
         });
