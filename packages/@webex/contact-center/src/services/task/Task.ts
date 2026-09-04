@@ -29,7 +29,7 @@ import {
   FeatureEnablementAccessor,
   GeneratedSummaryFlagsAccessor,
   AISummaryAdapter,
-  PostCallSummaryResponseContext,
+  AISummaryResponseContext,
   AISummaryInboundType,
   AISummaryPayloadByInboundType,
   AISummaryTimeoutCodeByInboundType,
@@ -101,7 +101,8 @@ export default abstract class Task extends EventEmitter implements ITask {
   private rtdRequestResolver?: RtdRequestResolver;
   private getFeatureEnablement?: FeatureEnablementAccessor;
   private getGeneratedSummaryFlags?: GeneratedSummaryFlagsAccessor;
-  private postCallSummaryResponseContext?: PostCallSummaryResponseContext;
+  private postCallSummaryResponseContext?: AISummaryResponseContext;
+  private midCallSummaryResponseContext?: AISummaryResponseContext;
 
   constructor(
     contact: ReturnType<typeof routingContact>,
@@ -268,7 +269,15 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.getGeneratedSummaryFlags = getGeneratedSummaryFlags;
   }
 
-  public async requestPostCallSummary(): Promise<PostCallSummaryEventPayload> {
+  public requestPostCallSummary(): Promise<PostCallSummaryEventPayload> {
+    const operation = this.requestPostCallSummaryInternal();
+
+    operation.catch(() => undefined);
+
+    return operation;
+  }
+
+  private async requestPostCallSummaryInternal(): Promise<PostCallSummaryEventPayload> {
     const metricFields: Record<string, unknown> = {
       operation: METHODS.REQUEST_POST_CALL_SUMMARY,
     };
@@ -384,7 +393,17 @@ export default abstract class Task extends EventEmitter implements ITask {
     }
   }
 
-  public async requestMidCallSummary(
+  public requestMidCallSummary(
+    actionType: AISummaryActionType
+  ): Promise<MidCallSummaryEventPayload> {
+    const operation = this.requestMidCallSummaryInternal(actionType);
+
+    operation.catch(() => undefined);
+
+    return operation;
+  }
+
+  private async requestMidCallSummaryInternal(
     actionType: AISummaryActionType
   ): Promise<MidCallSummaryEventPayload> {
     const metricFields: Record<string, unknown> = {
@@ -425,6 +444,8 @@ export default abstract class Task extends EventEmitter implements ITask {
           ? AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY
           : AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY
       );
+
+      this.midCallSummaryResponseContext = {conversationId, interactionId};
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
@@ -467,7 +488,7 @@ export default abstract class Task extends EventEmitter implements ITask {
 
       Object.assign(metricFields, {actionType});
       Task.validateMidCallSummaryResponsePayload(payload);
-      const context = getAISummaryCorrelation(this.data);
+      const context = this.midCallSummaryResponseContext ?? getAISummaryCorrelation(this.data);
       Object.assign(metricFields, {
         conversationId: context.conversationId,
         interactionId: context.interactionId,

@@ -53,7 +53,7 @@ export default class TaskFactory {
       case MEDIA_CHANNEL.CHAT:
       case MEDIA_CHANNEL.EMAIL:
       case MEDIA_CHANNEL.SOCIAL:
-        return new Digital(contact, data, wrapupData, agentId, consultTransfer);
+        return new Digital(contact, data, wrapupData, agentId, consultTransfer, agentName);
 
       default:
         throw new Error(`Unknown media type: ${mediaType}`);

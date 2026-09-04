@@ -2100,6 +2100,39 @@ describe('Task AI summary APIs', () => {
     );
   });
 
+  it('serializes mid-call responses from retained request context after task data changes', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const {adapter, coordinator} = createRealSummaryMocks(task);
+    const midCallRequest = task.requestMidCallSummary('CONSULT');
+
+    await flushEventLoopTurn();
+    expect(
+      coordinator.resolve('MID_CALL_SUMMARY', 'conversation-1', createMidCallSummaryPayload())
+    ).toBe('resolved');
+    await expect(midCallRequest).resolves.toEqual(createMidCallSummaryPayload());
+
+    task.updateTaskData(
+      createAISummaryTaskData({
+        interactionId: 'current-interaction',
+        interaction: {mainInteractionId: 'current-conversation'} as any,
+      }),
+      true
+    );
+
+    await expect(
+      task.sendMidCallSummaryResponse(createMidCallResponsePayload(), 'CONSULT')
+    ).resolves.toBeUndefined();
+
+    expect(adapter.sendSummaryResponseEvent).toHaveBeenCalledWith(
+      'agent-1',
+      expect.objectContaining({
+        interactionId: 'interaction-1',
+        conversationId: 'conversation-1',
+        eventName: AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE,
+      })
+    );
+  });
+
   it('does not retain correlation when a post-call summary request fails', async () => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
     const {adapter} = createSummaryMocks(task);

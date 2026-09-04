@@ -2639,6 +2639,14 @@ describe('TaskManager', () => {
         eventType: 'unknown',
       },
     });
+    expect(getLoggerProxy().error).toHaveBeenCalledWith('Failed to parse RTD WebSocket message', {
+      module: TASK_MANAGER_FILE,
+      method: METHODS.HANDLE_REAL_TIME_WEBSOCKET_EVENT,
+      data: {
+        reason: 'unparseable',
+        error: expect.any(SyntaxError),
+      },
+    });
     expectNoSensitiveDiagnostics('private-summary');
   });
 

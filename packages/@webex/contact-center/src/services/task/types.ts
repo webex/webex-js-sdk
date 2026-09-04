@@ -1849,7 +1849,7 @@ export type AISummaryAdapter = {
   ) => Promise<void>;
 };
 
-export type PostCallSummaryResponseContext = Readonly<{
+export type AISummaryResponseContext = Readonly<{
   conversationId: string;
   interactionId: string;
 }>;

@@ -224,12 +224,12 @@ export default class TaskManager extends EventEmitter {
 
     try {
       payload = JSON.parse(event);
-    } catch {
+    } catch (error) {
       this.trackAISummaryInboundDrop('unparseable', 'unknown');
       LoggerProxy.error('Failed to parse RTD WebSocket message', {
         module: TASK_MANAGER_FILE,
         method: METHODS.HANDLE_REAL_TIME_WEBSOCKET_EVENT,
-        data: {reason: 'unparseable'},
+        data: {reason: 'unparseable', error},
       });
 
       return;
