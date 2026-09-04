@@ -20,7 +20,6 @@ let campaignPreviewAutoAction = null; // Auto-action on timeout: ACCEPT, SKIP, R
 let outdialANIId; // Store outdial ANI ID from agent profile
 const taskCreationTimes = new Map(); // Track when tasks first appear (taskId -> timestamp)
 const summaryFeatureMap = new Map(); // interactionId -> { midCallEnabled, postCallEnabled } (populated from task:featureEnablement)
-const summaryFieldMap = new Map(); // prefix -> [{ id, label }] for per-section mode, [] for flat
 const summaryOriginalPayload = new Map(); // prefix -> original payload (for read-only/delta)
 let incomingMidCallSummaryPayload = null; // buffered until task:assigned (mirrors desktop behaviour)
 
@@ -958,7 +957,6 @@ function renderSummarySection(prefix, payload) {
   if (!container) return;
   container.innerHTML = '';
   summaryOriginalPayload.set(prefix, payload);
-  summaryFieldMap.set(prefix, []); // empty until agent clicks Edit
 
   const editBtn = document.createElement('button');
   editBtn.type = 'button';
@@ -993,7 +991,6 @@ function renderSummarySection(prefix, payload) {
 function renderSummaryEditMode(prefix, payload, container) {
   const fields = extractSummarySections(payload);
   if (fields.length > 0) {
-    summaryFieldMap.set(prefix, fields.map((f) => ({ id: f.id, label: f.label })));
     fields.forEach((field) => {
       const label = document.createElement('label');
       label.textContent = `${field.label}:`;
@@ -1006,7 +1003,6 @@ function renderSummaryEditMode(prefix, payload, container) {
       container.appendChild(ta);
     });
   } else {
-    summaryFieldMap.set(prefix, []);
     const ta = document.createElement('textarea');
     ta.id = `${prefix}-text`;
     ta.rows = prefix.startsWith('postcall') ? 8 : 6;
@@ -1033,7 +1029,6 @@ function clearSummarySection(prefix) {
   const container = document.getElementById(`${prefix}-sections`);
   if (!container) return;
   container.innerHTML = '';
-  summaryFieldMap.set(prefix, []);
   summaryOriginalPayload.delete(prefix);
 }
 
@@ -1062,7 +1057,7 @@ function dismissAllSummaryUI() {
 }
 
 function getSummaryText(prefix) {
-  const fields = summaryFieldMap.get(prefix) || [];
+  const fields = extractSummarySections(summaryOriginalPayload.get(prefix));
   if (fields.length > 0) {
     return fields
       .map((f) => { const ta = document.getElementById(`${prefix}-${f.id}`); return ta ? ta.value.trim() : ''; })
@@ -1074,8 +1069,8 @@ function getSummaryText(prefix) {
 }
 
 function buildSummaryPayload(prefix) {
-  const fields = summaryFieldMap.get(prefix) || [];
   const original = summaryOriginalPayload.get(prefix);
+  const fields = extractSummarySections(original);
   if (fields.length > 0) {
     const originalFields = extractSummarySections(original);
     const origMap = Object.fromEntries(originalFields.map((f) => [f.id, f.value]));
@@ -1091,7 +1086,7 @@ function buildSummaryPayload(prefix) {
 }
 
 function isSummaryEdited(prefix, originalPayload) {
-  const fields = summaryFieldMap.get(prefix) || [];
+  const fields = extractSummarySections(originalPayload);
   if (fields.length > 0) {
     const originalFields = extractSummarySections(originalPayload);
     const origMap = Object.fromEntries(originalFields.map((f) => [f.id, f.value]));
