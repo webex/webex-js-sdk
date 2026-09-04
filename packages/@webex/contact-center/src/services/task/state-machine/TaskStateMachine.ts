@@ -416,14 +416,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
           ],
-          // Routing lifecycle events can arrive out of order in child-task/EP-DN flows. The
-          // local actor may still be CONNECTED when ParticipantLeftConference reports that this
-          // agent left the main interaction. Handle that self-departure race; for another
-          // participant, the action-only fallback updates data while preserving CONNECTED.
-          [TaskEvent.PARTICIPANT_LEAVE]: [
-            ...currentAgentParticipantLeaveTransitions(),
-            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
-          ],
           // AgentContactEnded Event
           [TaskEvent.CONTACT_ENDED]: [
             {
@@ -486,13 +478,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.CONNECTED,
             actions: ['updateTaskData'],
           },
-          // Another agent can remove this agent while the local hold request is awaiting its
-          // routing acknowledgement. Process that backend lifecycle event independently of
-          // whether Drop was initiated from this task; another-participant event preserves state.
-          [TaskEvent.PARTICIPANT_LEAVE]: [
-            ...currentAgentParticipantLeaveTransitions(),
-            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
-          ],
           [TaskEvent.OUTBOUND_FAILED]: [
             {
               guard: guards.shouldWrapUp,
@@ -626,7 +611,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.UNHOLD_FAILED]: {
             target: TaskState.HELD,
           },
-          // The same remote-removal race can occur while an unhold request is in flight.
           [TaskEvent.PARTICIPANT_LEAVE]: [
             ...currentAgentParticipantLeaveTransitions(),
             {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
@@ -1019,10 +1003,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               target: TaskState.CONNECTED,
               actions: ['updateTaskData', 'clearConsultState'],
             },
-          ],
-          [TaskEvent.PARTICIPANT_LEAVE]: [
-            ...currentAgentParticipantLeaveTransitions(),
-            {actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft']},
           ],
           [TaskEvent.OUTBOUND_FAILED]: [
             {
