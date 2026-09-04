@@ -4,6 +4,7 @@ import {union} from 'lodash';
 import ServiceDetail from './service-detail';
 import {IServiceDetail, ServiceGroup} from './types';
 import {matchAllowedDomain, normalizeAllowedDomains} from '../domains';
+import {matchesCatalogUrl} from '../services/service-catalog';
 
 /**
  * @class
@@ -201,7 +202,7 @@ const ServiceCatalog = AmpState.extend({
 
     return serviceDetails.find(({serviceUrls}) => {
       for (const serviceUrl of serviceUrls) {
-        if (url.startsWith(serviceUrl.baseUrl)) {
+        if (matchesCatalogUrl(url, serviceUrl.baseUrl)) {
           return true;
         }
       }
