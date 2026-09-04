@@ -150,6 +150,20 @@ const hasValidOptionalSuggestedWrapUpCodes = (payload: Record<string, unknown>):
   );
 };
 
+const isPostCallSummaryEventPayload = (
+  payload: Record<string, unknown>
+): payload is PostCallSummaryEventPayload =>
+  isNonEmptyString(payload.conversationId) &&
+  hasValidOptionalInitiatorSummaryCommonFields(payload, POST_CALL_SUMMARY_SECTION_KEYS) &&
+  hasValidOptionalSuggestedWrapUpCodes(payload) &&
+  hasValidOptionalString(payload, 'suggestedWrapUpCodesMessage');
+
+const isMidCallSummaryEventPayload = (
+  payload: Record<string, unknown>
+): payload is MidCallSummaryEventPayload =>
+  isNonEmptyString(payload.conversationId) &&
+  hasValidOptionalInitiatorSummaryCommonFields(payload, MID_CALL_SUMMARY_SECTION_KEYS);
+
 /** @internal */
 export default class TaskManager extends EventEmitter {
   private call: ICall;
@@ -370,7 +384,7 @@ export default class TaskManager extends EventEmitter {
         this.handleInitiatorSummaryEvent(
           eventType,
           innerPayload as Record<string, unknown>,
-          this.isPostCallSummaryEventPayload.bind(this)
+          isPostCallSummaryEventPayload
         );
         break;
 
@@ -378,7 +392,7 @@ export default class TaskManager extends EventEmitter {
         this.handleInitiatorSummaryEvent(
           eventType,
           innerPayload as Record<string, unknown>,
-          this.isMidCallSummaryEventPayload.bind(this)
+          isMidCallSummaryEventPayload
         );
         break;
 
@@ -444,26 +458,6 @@ export default class TaskManager extends EventEmitter {
     }
 
     return 'valid';
-  }
-
-  private isPostCallSummaryEventPayload(
-    payload: Record<string, unknown>
-  ): payload is PostCallSummaryEventPayload {
-    return (
-      isNonEmptyString(payload.conversationId) &&
-      hasValidOptionalInitiatorSummaryCommonFields(payload, POST_CALL_SUMMARY_SECTION_KEYS) &&
-      hasValidOptionalSuggestedWrapUpCodes(payload) &&
-      hasValidOptionalString(payload, 'suggestedWrapUpCodesMessage')
-    );
-  }
-
-  private isMidCallSummaryEventPayload(
-    payload: Record<string, unknown>
-  ): payload is MidCallSummaryEventPayload {
-    return (
-      isNonEmptyString(payload.conversationId) &&
-      hasValidOptionalInitiatorSummaryCommonFields(payload, MID_CALL_SUMMARY_SECTION_KEYS)
-    );
   }
 
   private handleInitiatorSummaryEvent(

@@ -11,10 +11,9 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
 export type CollaborationAccess = Enum<typeof COLLABORATION_ACCESS>;
 
 /**
- * Contact Center task and AI Assistant events.
+ * Contact Center backend and realtime event types.
  *
- * Task lifecycle, transcript, suggested-response, and summary RTD events share this catalog so
- * consumers do not need a feature-specific event object.
+ * Includes task lifecycle, transcript, suggested-response, and AI summary events.
  * @enum {string}
  * @private
  * @ignore

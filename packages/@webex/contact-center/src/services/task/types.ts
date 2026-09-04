@@ -1860,14 +1860,6 @@ export type AISummaryOperationMetric = {
   failure: METRIC_EVENT_NAMES;
 };
 
-export type AISummaryRuntime = {
-  adapter: AISummaryAdapter;
-  rtdRequestResolver: RtdRequestResolver;
-  getFeatureEnablement: FeatureEnablementAccessor;
-  getGeneratedSummaryFlags: GeneratedSummaryFlagsAccessor;
-  agentId: string;
-};
-
 export type AISummaryResponsePayload =
   | PostCallSummaryResponsePayload
   | MidCallSummaryResponsePayload;
