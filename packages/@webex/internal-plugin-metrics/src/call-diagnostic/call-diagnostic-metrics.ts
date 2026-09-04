@@ -301,7 +301,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       browserVersion: providedBrowserVersion,
       os: providedOs,
       osVersion: providedOsVersion,
-      deviceFormFactor,
+      modelNumber,
       isSupportedBrowserFamily,
       isOutdatedBrowserVersion,
       // @ts-ignore
@@ -349,7 +349,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           os: providedOs || getOSNameInternal(),
           browser: providedBrowser || getBrowserName(),
           browserVersion: providedBrowserVersion || getBrowserVersion(),
-          ...(deviceFormFactor === undefined ? {} : {deviceFormFactor}),
+          ...(modelNumber === undefined ? {} : {modelNumber}),
           ...(isSupportedBrowserFamily === undefined ? {} : {isSupportedBrowserFamily}),
           ...(isOutdatedBrowserVersion === undefined ? {} : {isOutdatedBrowserVersion}),
         },

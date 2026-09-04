@@ -440,7 +440,7 @@ describe('internal-plugin-metrics', () => {
       it('builds origin with device details provided by the host client', () => {
         webex.meetings.config.metrics.os = 'ios';
         webex.meetings.config.metrics.osVersion = '17.6';
-        webex.meetings.config.metrics.deviceFormFactor = 'tablet';
+        webex.meetings.config.metrics.modelNumber = 'iPad';
 
         //@ts-ignore
         const res = cd.getOrigin(
@@ -450,10 +450,10 @@ describe('internal-plugin-metrics', () => {
 
         assert.equal(res.clientInfo.os, 'ios');
         assert.equal(res.clientInfo.osVersion, '17.6');
-        assert.equal(res.clientInfo.deviceFormFactor, 'tablet');
+        assert.equal(res.clientInfo.modelNumber, 'iPad');
       });
 
-      it('falls back to SDK OS detection and omits device form factor when the host provides nothing', () => {
+      it('falls back to SDK OS detection and omits model number when the host provides nothing', () => {
         //@ts-ignore
         const res = cd.getOrigin(
           {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
@@ -462,7 +462,7 @@ describe('internal-plugin-metrics', () => {
 
         assert.equal(res.clientInfo.os, getOSNameInternal());
         assert.equal(res.clientInfo.osVersion, getOSVersion() || 'unknown');
-        assert.notProperty(res.clientInfo, 'deviceFormFactor');
+        assert.notProperty(res.clientInfo, 'modelNumber');
       });
 
       it('builds origin correctly with the browser support flags from config', () => {
