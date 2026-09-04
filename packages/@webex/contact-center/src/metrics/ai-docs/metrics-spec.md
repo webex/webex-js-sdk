@@ -238,7 +238,7 @@ All event names are defined in `METRIC_EVENT_NAMES` (`constants.ts`). Events fol
 | `TASK_ACCEPT_CONSULT_SUCCESS` / `FAILED` | `'Task Accept Consult ...'` | Accept consult result |
 | `TASK_AUTO_ANSWER_SUCCESS` / `FAILED` | `'Task Auto Answer ...'` | Auto-answer result |
 | `TASK_OUTDIAL_SUCCESS` / `FAILED` | `'Task Outdial ...'` | Outdial result |
-| `WXAPP_TASK_MUTE_SUCCESS` / `FAILED` | `'WxApp Task Mute ...'` | Webex Together task mute/unmute toggle (`wxcc_sdk.user.task_mute_webex_together.complete\|fail`) |
+| `WXAPP_TASK_MUTE_SUCCESS` / `FAILED` | `'WxApp Task Mute ...'` | Webex Together task mute/unmute toggle (`wxcc_sdk.user.task_mute_webex_together.complete\|fail`). Mute telephony is queued per task via tail promise chain (`Voice.wxAppMuteToggleTail`) so concurrent toggles do not overwrite the shared `timeEvent` timer or reorder requests. |
 | `WXAPP_TASK_DTMF_SUCCESS` / `FAILED` | `'WxApp Task Dtmf ...'` | Webex Together DTMF/keypad (`wxcc_sdk.user.task_dtmf_webex_together.complete\|fail`). DTMF telephony is queued per task via tail promise chain (`Voice.wxAppDtmfTail`) so concurrent keypad input does not overwrite the shared `timeEvent` timer or reorder digits. |
 | `WXAPP_TASK_ACCEPT_SUCCESS` / `FAILED` | `'WxApp Task Accept ...'` | Webex Together accept/answer (`wxcc_sdk.user.task_accept_webex_together.complete\|fail`) |
 | `WXAPP_TASK_DECLINE_SUCCESS` / `FAILED` | `'WxApp Task Decline ...'` | Webex Together reject/decline (`wxcc_sdk.user.task_reject_webex_together.complete\|fail`) |

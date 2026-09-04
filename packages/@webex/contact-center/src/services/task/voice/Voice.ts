@@ -65,7 +65,7 @@ export default class Voice extends Task implements IVoice {
   private wxAppAnswerPending = false;
   private wxAppAcceptInFlight = false;
   private wxAppMuteSyncInFlight?: Promise<boolean | undefined>;
-  private wxAppMuteToggleInFlight?: Promise<void>;
+  private wxAppMuteToggleTail: Promise<void> = Promise.resolve();
   private wxAppDtmfTail: Promise<void> = Promise.resolve();
   private lastLoggedWxAppAcceptReason?: WxAppAcceptReason;
 
@@ -479,25 +479,13 @@ export default class Voice extends Task implements IVoice {
    */
   public async toggleMute(options?: TaskToggleMuteOptions): Promise<void> {
     if (this.enableWxBetterTogether && this.getWebexCallingCallId()) {
-      if (this.wxAppMuteToggleInFlight) {
-        await this.wxAppMuteToggleInFlight.catch(() => undefined);
-      }
+      const togglePromise = this.wxAppMuteToggleTail
+        .catch(() => undefined)
+        .then(() =>
+          runWxAppToggleMute(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), options)
+        );
 
-      const togglePromise = runWxAppToggleMute(
-        this.getWxAppVoiceDependencies(),
-        this.createWxAppLifecycle(),
-        options
-      );
-
-      this.wxAppMuteToggleInFlight = togglePromise;
-      togglePromise
-        .finally(() => {
-          if (this.wxAppMuteToggleInFlight === togglePromise) {
-            this.wxAppMuteToggleInFlight = undefined;
-          }
-        })
-        .catch(() => undefined);
-
+      this.wxAppMuteToggleTail = togglePromise.catch(() => undefined);
       await togglePromise;
 
       return;

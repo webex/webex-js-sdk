@@ -1525,12 +1525,109 @@ describe('Voice Task', () => {
       const firstToggle = voice.toggleMute();
       const secondToggle = voice.toggleMute();
 
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(mockSvc.muteCall).toHaveBeenCalledTimes(1);
+      expect(mockSvc.unmuteCall).not.toHaveBeenCalled();
+
       resolveMute!();
       await Promise.all([firstToggle, secondToggle]);
 
       expect(mockSvc.muteCall).toHaveBeenCalledTimes(1);
       expect(mockSvc.unmuteCall).toHaveBeenCalledTimes(1);
       expect(voice.getWxAppMuted()).toBe(false);
+    });
+
+    it('queues three concurrent no-arg toggleMute() calls in order', async () => {
+      let resolveFirstMute: () => void;
+      const firstMuteGate = new Promise<void>((resolve) => {
+        resolveFirstMute = resolve;
+      });
+      const mockSvc = {
+        muteCall: jest
+          .fn()
+          .mockImplementationOnce(() => firstMuteGate)
+          .mockResolvedValue(undefined),
+        unmuteCall: jest.fn().mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+      expect(voice.getWxAppMuted()).toBe(false);
+
+      const firstToggle = voice.toggleMute();
+      const secondToggle = voice.toggleMute();
+      const thirdToggle = voice.toggleMute();
+
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(mockSvc.muteCall).toHaveBeenCalledTimes(1);
+      expect(mockSvc.unmuteCall).not.toHaveBeenCalled();
+
+      resolveFirstMute!();
+      await Promise.all([firstToggle, secondToggle, thirdToggle]);
+
+      expect(mockSvc.muteCall).toHaveBeenCalledTimes(2);
+      expect(mockSvc.unmuteCall).toHaveBeenCalledTimes(1);
+      expect(voice.getWxAppMuted()).toBe(true);
+    });
+
+    it('records duration_ms on each serialized toggleMute success metric', async () => {
+      let resolveFirstMute: () => void;
+      const firstMuteGate = new Promise<void>((resolve) => {
+        resolveFirstMute = resolve;
+      });
+      const mockSvc = {
+        muteCall: jest.fn().mockImplementationOnce(() => firstMuteGate),
+        unmuteCall: jest.fn().mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+      const metricsManager = MetricsManager.getInstance();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent');
+
+      const firstToggle = voice.toggleMute();
+      const secondToggle = voice.toggleMute();
+
+      resolveFirstMute!();
+      await Promise.all([firstToggle, secondToggle]);
+
+      const successCalls = trackEventSpy.mock.calls.filter(
+        ([eventName]) => eventName === METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_SUCCESS
+      );
+      expect(successCalls).toHaveLength(2);
+      successCalls.forEach(([, payload]) => {
+        expect(payload).toEqual(
+          expect.objectContaining({
+            duration_ms: expect.any(Number),
+          })
+        );
+      });
     });
 
     it('continues queued toggleMute after predecessor failure', async () => {
