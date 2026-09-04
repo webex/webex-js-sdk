@@ -79,8 +79,9 @@ import type {
   EntryPointSearchParams,
   ContactServiceQueuesResponse,
   ContactServiceQueueSearchParams,
-  DeregisterFailure,
 } from './types';
+
+type DeregisterFailure = {captured: false; error?: never} | {captured: true; error: unknown};
 
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.

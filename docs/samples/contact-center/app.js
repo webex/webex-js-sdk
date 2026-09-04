@@ -829,44 +829,18 @@ function renderSummaryText(payload) {
 }
 
 function wireSummaryListeners(task) {
-  task.on('task:midCallSummary', (payload) => {
-    midCallSummary.payload = payload;
-    const prefix = midCallSummary.actionType === 'TRANSFER' ? 'transfer-summary' : 'consult-summary';
-    const block = document.getElementById(`${prefix}-block`);
-    if (block) block.style.display = '';
-    renderSummarySection(prefix, payload);
-    if (!midCallSummary._viewCounted) {
-      midCallSummary.numberOfTimesViewed += 1;
-      midCallSummary._viewCounted = true;
-    }
-  });
-
-  task.on('task:postCallSummary', (payload) => {
-    postCallSummary.payload = payload;
-    const block = document.getElementById('postcall-summary-block');
-    if (block) block.style.display = '';
-    renderSummarySection('postcall-summary', payload);
-    if (!postCallSummary._viewCounted) {
-      postCallSummary.numberOfTimesViewed += 1;
-      postCallSummary._viewCounted = true;
-    }
-    if (Array.isArray(payload.suggestedWrapUpCodes) && payload.suggestedWrapUpCodes.length > 0) {
-      applySuggestedWrapUpCodes(payload.suggestedWrapUpCodes);
-    }
-  });
-
   task.on('task:midCallSummaryForReceivingAgent', (payload) => {
     if (!renderSummaryText(payload)) {
       console.warn('[Receiving agent] Ignoring mid-call summary with no non-empty sections or summary text');
       return;
     }
 
-    console.info('[Receiving agent] mid-call summary buffered, waiting for task:assigned', payload);
+    console.info('[Receiving agent] mid-call summary buffered, waiting for task:assigned');
     incomingMidCallSummaryPayload = payload;
   });
 
   task.on('task:featureEnablement', (payload) => {
-    console.info('FEATURE_ENABLEMENT received on task', payload);
+    console.info('FEATURE_ENABLEMENT received on task');
     if (payload?.interactionId) {
       summaryFeatureMap.set(payload.interactionId, {
         midCallEnabled: !!payload.midCallEnabled,

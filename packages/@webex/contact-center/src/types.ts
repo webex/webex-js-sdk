@@ -14,9 +14,6 @@ import {
 } from './services/config/types';
 import {PaginatedResponse, BaseSearchParams} from './utils/PageCache';
 
-/** @internal Result of a deregistration operation or an individual cleanup step. */
-export type DeregisterFailure = {captured: false; error?: never} | {captured: true; error: unknown};
-
 /**
  * Generic type for converting a const enum object into a union type of its values.
  * @template T The enum object type

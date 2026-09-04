@@ -658,9 +658,15 @@ export default class TaskManager extends EventEmitter {
         ...(metadata.conversationId ? {conversationId: metadata.conversationId} : {}),
       },
     });
-    this.metricsManager.trackEvent(METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED, metadata, [
-      'operational',
-    ]);
+    try {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
+        metadata,
+        ['operational']
+      );
+    } catch {
+      // Metrics are best effort and must not affect inbound event handling.
+    }
   }
 
   /**

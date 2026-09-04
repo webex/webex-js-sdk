@@ -32,6 +32,7 @@ export const CAMPAIGN_PREVIEW_SKIP = '/skip';
 export const CAMPAIGN_PREVIEW_REMOVE = '/remove';
 /** 80-second timeout for accepting preview contact (outbound call setup takes longer than default 20s) */
 export const TIMEOUT_PREVIEW_ACCEPT = 80000;
+/** RTD result deadline; the initiating HTTP acknowledgement uses the 20-second service timeout. */
 export const AI_SUMMARY_DURATION_MS = 15000;
 export const AI_SUMMARY_REQUEST_CANCELLED = 'AI_SUMMARY_REQUEST_CANCELLED' as const;
 export const AI_SUMMARY_TASK_ERROR_CODES = {
@@ -40,7 +41,6 @@ export const AI_SUMMARY_TASK_ERROR_CODES = {
   NOT_INITIALIZED: 'AI_SUMMARY_NOT_INITIALIZED',
 } as const;
 
-export const AI_SUMMARY_FEEDBACK_VALUES = new Set(['none', 'thumbs_up', 'thumbs_down']);
 export const POST_CALL_SUMMARY_STATES = new Set(['DEFAULT', 'IGNORED', 'NOT_RECEIVED']);
 export const MID_CALL_SUMMARY_RECEIVED_STATES = new Set([
   'DEFAULT',

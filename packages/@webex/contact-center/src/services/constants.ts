@@ -1,5 +1,4 @@
 import {AIAssistantEventName} from '../types';
-import type {AISummaryResponseTransportPayload} from '../types';
 import {TIMEOUT_REQ} from './core/constants';
 
 /**
@@ -127,6 +126,7 @@ export const AI_ASSISTANT_API_URLS = {
   TRANSCRIPTS_LIST: '/transcripts/list',
 };
 
+/** HTTP acknowledgement deadline; the matching RTD event has its own 15-second deadline. */
 export const AI_SUMMARY_HTTP_TIMEOUT_MS = TIMEOUT_REQ;
 
 export const AI_SUMMARY_TRANSPORT_ERROR_CODES = {
@@ -146,12 +146,6 @@ export const AI_SUMMARY_RESPONSE_EVENT_NAMES = new Set<string>([
   AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE,
   AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE,
 ]);
-
-export const AI_SUMMARY_FEEDBACK_VALUES = new Set<unknown>([
-  'none',
-  'thumbs_up',
-  'thumbs_down',
-] satisfies AISummaryResponseTransportPayload['feedback'][]);
 
 export const AI_ASSISTANT_BASE_URL_TEMPLATE = 'https://api-ai-assistant.%s.ciscoccservice.com';
 

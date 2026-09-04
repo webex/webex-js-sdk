@@ -45,7 +45,6 @@ import {
   AI_SUMMARY_DURATION_MS,
   AI_SUMMARY_REQUEST_CANCELLED,
   ENTRY_POINT_TRANSFER_DESTINATION_TYPE,
-  AI_SUMMARY_FEEDBACK_VALUES,
   POST_CALL_SUMMARY_STATES,
   MID_CALL_SUMMARY_RECEIVED_STATES,
   MID_CALL_SUMMARY_UNAVAILABLE_STATES,
@@ -57,6 +56,12 @@ import routingContact from './contact';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import LoggerProxy from '../../logger-proxy';
+import {
+  AI_SUMMARY_FEEDBACK_VALUES,
+  createAISummaryError,
+  isFiniteNonNegativeNumber,
+  isNonEmptyString,
+} from '../AISummaryUtils';
 import {createTaskStateMachine, TaskState} from './state-machine';
 import type {
   TaskEventPayload,
@@ -76,7 +81,6 @@ import {WrapupData} from '../config/types';
 import {AIAssistantEventName} from '../../types';
 import type {AISummaryResponseTransportPayload} from '../../types';
 import {getAISummaryCorrelation} from './TaskUtils';
-import {createAISummaryError, isFiniteNonNegativeNumber, isNonEmptyString} from '../AISummaryUtils';
 import type RtdRequestResolver from '../core/RtdRequestResolver';
 
 type UIControlConfigInput = Omit<UIControlConfig, 'channelType'> & {
@@ -416,6 +420,7 @@ export default abstract class Task extends EventEmitter implements ITask {
       this.aiSummaryAdapter &&
         this.rtdRequestResolver &&
         this.getGeneratedSummaryFlags &&
+        this.getFeatureEnablement &&
         isNonEmptyString(this.agentId)
     );
   }

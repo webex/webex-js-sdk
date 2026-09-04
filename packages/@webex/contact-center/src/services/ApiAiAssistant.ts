@@ -23,7 +23,6 @@ import {
   AI_ASSISTANT_BASE_URL_TEMPLATE,
   AI_ASSISTANT_ENV_MAP,
   AI_ASSISTANT_API_URLS,
-  AI_SUMMARY_FEEDBACK_VALUES,
   AI_SUMMARY_GET_EVENT_NAMES,
   AI_SUMMARY_HTTP_TIMEOUT_MS,
   AI_SUMMARY_RESPONSE_EVENT_NAMES,
@@ -31,7 +30,11 @@ import {
   WCC_API_GATEWAY,
 } from './constants';
 import {AIFeatureFlags} from './config/types';
-import {isFiniteNonNegativeNumber, isNonEmptyString} from './AISummaryUtils';
+import {
+  AI_SUMMARY_FEEDBACK_VALUES,
+  isFiniteNonNegativeNumber,
+  isNonEmptyString,
+} from './AISummaryUtils';
 
 /**
  * ApiAIAssistant provides AI Assistant APIs for transcript controls.
