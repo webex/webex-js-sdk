@@ -2693,6 +2693,100 @@ describe('plugin-meetings', () => {
             assert.calledOnce(initialSetup);
           });
         });
+        describe('when a join() is in progress', () => {
+          let initialSetup;
+
+          const buildLocusEvent = () => ({
+            locus: {url: url1, self: {devices: []}},
+            eventType: 'locus.difference',
+            locusUrl: url1,
+          });
+
+          beforeEach(() => {
+            initialSetup = sinon.stub().returns(true);
+            sinon.stub(MeetingsUtil, 'isBreakoutLocusDTO').returns(false);
+            webex.meetings.create = sinon.stub().returns(
+              Promise.resolve({
+                id: 'meeting-id',
+                locusInfo: {initialSetup},
+              })
+            );
+          });
+
+          // flushes the Promise.allSettled().finally() microtasks that trigger reprocessing
+          const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+          it('does not create or route the event while another meeting has a join() still pending', async () => {
+            const deferJoin = new Promise(() => {}); // never resolves - join stays in flight
+            webex.meetings.meetingCollection.getByKey = sinon.stub().returns(undefined);
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              joiningMeeting: {id: 'joining-id', locusUrl: undefined, deferJoin},
+            });
+
+            webex.meetings.handleLocusEvent(buildLocusEvent());
+
+            await Promise.resolve();
+
+            assert.notCalled(webex.meetings.create);
+            assert.notCalled(locusInfo.parse);
+          });
+
+          it('reprocesses the event and creates a meeting once the in-flight join settles if still unmatched', async () => {
+            let resolveJoin;
+            const deferJoin = new Promise((resolve) => {
+              resolveJoin = resolve;
+            });
+            webex.meetings.meetingCollection.getByKey = sinon.stub().returns(undefined);
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              joiningMeeting: {id: 'joining-id', locusUrl: undefined, deferJoin},
+            });
+
+            webex.meetings.handleLocusEvent(buildLocusEvent());
+
+            await Promise.resolve();
+            assert.notCalled(webex.meetings.create);
+
+            resolveJoin();
+            await deferJoin;
+            await flushMicrotasks();
+
+            assert.calledOnceWithExactly(
+              webex.meetings.create,
+              {url: url1, self: {devices: []}},
+              DESTINATION_TYPE.LOCUS_ID,
+              false
+            );
+          });
+
+          it('routes the event to the existing meeting instead of creating a duplicate once the join settles', async () => {
+            let joined = false;
+            let resolveJoin;
+            const deferJoin = new Promise((resolve) => {
+              resolveJoin = resolve;
+            });
+            const joiningMeeting = {id: 'joining-id', locusUrl: undefined, deferJoin, locusInfo};
+
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({joiningMeeting});
+            // the joining meeting only becomes matchable once its join() has assigned its locusUrl
+            webex.meetings.meetingCollection.getByKey = sinon
+              .stub()
+              .callsFake(() => (joined ? joiningMeeting : undefined));
+
+            webex.meetings.handleLocusEvent(buildLocusEvent());
+
+            await Promise.resolve();
+            assert.notCalled(webex.meetings.create);
+            assert.notCalled(locusInfo.parse);
+
+            joined = true;
+            resolveJoin();
+            await deferJoin;
+            await flushMicrotasks();
+
+            assert.notCalled(webex.meetings.create);
+            assert.calledOnce(locusInfo.parse);
+          });
+        });
       });
       describe('#createMeeting', () => {
         beforeEach(() => {

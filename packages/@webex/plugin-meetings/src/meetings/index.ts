@@ -534,11 +534,16 @@ export default class Meetings extends WebexPlugin {
    * @param {Object} data.locus
    * @param {Boolean} useRandomDelayForInfo whether a random delay should be added to fetching meeting info
    * @param {String} data.eventType
+   * @param {Boolean} skipJoinDeferral internal flag used when reprocessing an event after in-flight joins settled, to avoid deferring again
    * @returns {undefined}
    * @private
    * @memberof Meetings
    */
-  private handleLocusEvent(data: LocusEvent, useRandomDelayForInfo = false) {
+  private handleLocusEvent(
+    data: LocusEvent,
+    useRandomDelayForInfo = false,
+    skipJoinDeferral = false
+  ) {
     let meeting = this.getCorrespondingMeetingByLocus(data);
     // @ts-ignore
     if (this.config.experimental.storeLocusHashTreeEventsForDebugging) {
@@ -629,6 +634,31 @@ export default class Meetings extends WebexPlugin {
         );
 
         return;
+      }
+
+      // A user-initiated join() creates its Meeting object up front but only assigns its
+      // locusUrl later, once the join HTTP response arrives (Meeting#setLocus()). During that
+      // window getCorrespondingMeetingByLocus() can't match this event to the joining meeting,
+      // so we would create a second Meeting object for the same locus. To avoid that, if any
+      // join is currently in flight, wait for it to settle and then reprocess this event once -
+      // by then the joining meeting has its locusUrl and the event gets routed to it instead.
+      if (!skipJoinDeferral) {
+        const inFlightJoins = Object.values(this.meetingCollection.getAll())
+          .map((inFlightMeeting: any) => inFlightMeeting.deferJoin)
+          .filter((deferJoin) => !!deferJoin);
+
+        if (inFlightJoins.length > 0) {
+          LoggerProxy.logger.info(
+            'Meetings:index#handleLocusEvent --> a join() is in progress, deferring processing of this locus event until it settles'
+          );
+
+          // wait for every in-flight join to settle (ignoring rejections) before reprocessing
+          Promise.all(
+            inFlightJoins.map((deferJoin) => Promise.resolve(deferJoin).catch(() => undefined))
+          ).then(() => this.handleLocusEvent(data, useRandomDelayForInfo, true));
+
+          return;
+        }
       }
 
       this.create(data.locus, DESTINATION_TYPE.LOCUS_ID, useRandomDelayForInfo)
