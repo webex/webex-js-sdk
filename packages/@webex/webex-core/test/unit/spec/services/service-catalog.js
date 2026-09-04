@@ -5,6 +5,94 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {Services} from '@webex/webex-core';
+import {matchesCatalogUrl} from '../../../../src/lib/services/service-catalog';
+
+describe('matchesCatalogUrl()', () => {
+  describe('origin validation', () => {
+    it('returns true when origins match exactly', () => {
+      assert.isTrue(
+        matchesCatalogUrl('https://example.com/api/v1/users', 'https://example.com/api/v1')
+      );
+    });
+
+    it('returns false when hosts differ', () => {
+      assert.isFalse(
+        matchesCatalogUrl('https://other.com/api/v1/users', 'https://example.com/api/v1')
+      );
+    });
+
+    it('returns false when catalog host is prefix of candidate host (SECURITY)', () => {
+      // Attack: trusted.example.attacker.com should NOT match trusted.example
+      assert.isFalse(
+        matchesCatalogUrl(
+          'https://trusted.example.attacker.com/activities/id',
+          'https://trusted.example'
+        )
+      );
+    });
+
+    it('returns false when schemes differ', () => {
+      assert.isFalse(
+        matchesCatalogUrl('http://example.com/api/v1/users', 'https://example.com/api/v1')
+      );
+    });
+
+    it('returns false when ports differ', () => {
+      assert.isFalse(
+        matchesCatalogUrl('https://example.com:8443/api/v1/users', 'https://example.com/api/v1')
+      );
+    });
+  });
+
+  describe('path validation', () => {
+    it('returns true for root path catalog entry', () => {
+      assert.isTrue(matchesCatalogUrl('https://example.com/any/path/here', 'https://example.com/'));
+    });
+
+    it('returns true when paths match exactly', () => {
+      assert.isTrue(matchesCatalogUrl('https://example.com/api/v1', 'https://example.com/api/v1'));
+    });
+
+    it('returns true when candidate path extends catalog path at boundary', () => {
+      assert.isTrue(
+        matchesCatalogUrl('https://example.com/api/v1/users/123', 'https://example.com/api/v1')
+      );
+    });
+
+    it('returns true when catalog path has trailing slash', () => {
+      assert.isTrue(
+        matchesCatalogUrl('https://example.com/api/v1/users', 'https://example.com/api/v1/')
+      );
+    });
+
+    it('returns false when catalog path is prefix but not at path boundary (SECURITY)', () => {
+      // /api/v1 should NOT match /api/v1extra
+      assert.isFalse(
+        matchesCatalogUrl('https://example.com/api/v1extra/something', 'https://example.com/api/v1')
+      );
+    });
+
+    it('returns false when candidate path does not start with catalog path', () => {
+      assert.isFalse(
+        matchesCatalogUrl('https://example.com/other/path', 'https://example.com/api/v1')
+      );
+    });
+  });
+
+  describe('error handling', () => {
+    it('returns false for invalid candidate URL', () => {
+      assert.isFalse(matchesCatalogUrl('not-a-url', 'https://example.com/api'));
+    });
+
+    it('returns false for invalid catalog URL', () => {
+      assert.isFalse(matchesCatalogUrl('https://example.com/api', 'not-a-url'));
+    });
+
+    it('returns false when both URLs are invalid', () => {
+      assert.isFalse(matchesCatalogUrl('not-a-url', 'also-not-a-url'));
+    });
+  });
+});
 
 /* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
@@ -331,6 +419,109 @@ describe('webex-core', () => {
         const service = catalog.findServiceUrlFromUrl(url);
 
         assert.equal(service, exampleService);
+      });
+
+      describe('security: origin validation', () => {
+        it('rejects URLs where the catalog host is a prefix of the candidate host (SECURITY)', () => {
+          // Attack: https://trusted.example.attacker.com should NOT match https://trusted.example
+          const exampleService = {
+            defaultUrl: 'https://trusted.example',
+            hosts: [],
+          };
+
+          catalog.serviceGroups.postauth.push(exampleService);
+
+          // Attacker registers trusted.example.attacker.com
+          const attackerUrl = 'https://trusted.example.attacker.com/activities/id';
+          const service = catalog.findServiceUrlFromUrl(attackerUrl);
+
+          assert.isUndefined(service);
+        });
+
+        it('rejects URLs with different ports even if host matches', () => {
+          const exampleService = {
+            defaultUrl: 'https://example.com/resource',
+            hosts: [],
+          };
+
+          catalog.serviceGroups.postauth.push(exampleService);
+
+          const differentPortUrl = 'https://example.com:8443/resource/id';
+          const service = catalog.findServiceUrlFromUrl(differentPortUrl);
+
+          assert.isUndefined(service);
+        });
+
+        it('rejects URLs with different schemes', () => {
+          const exampleService = {
+            defaultUrl: 'https://example.com/resource',
+            hosts: [],
+          };
+
+          catalog.serviceGroups.postauth.push(exampleService);
+
+          const httpUrl = 'http://example.com/resource/id';
+          const service = catalog.findServiceUrlFromUrl(httpUrl);
+
+          assert.isUndefined(service);
+        });
+
+        it('rejects URLs where catalog path is a prefix but not at path boundary', () => {
+          // /api/v1 should NOT match /api/v1extra
+          const exampleService = {
+            defaultUrl: 'https://example.com/api/v1',
+            hosts: [],
+          };
+
+          catalog.serviceGroups.postauth.push(exampleService);
+
+          const nonBoundaryUrl = 'https://example.com/api/v1extra/something';
+          const service = catalog.findServiceUrlFromUrl(nonBoundaryUrl);
+
+          assert.isUndefined(service);
+        });
+
+        it('accepts URLs at exact path boundary', () => {
+          const exampleService = {
+            defaultUrl: 'https://example.com/api/v1',
+            hosts: [],
+          };
+
+          catalog.serviceGroups.postauth.push(exampleService);
+
+          const boundaryUrl = 'https://example.com/api/v1/users/123';
+          const service = catalog.findServiceUrlFromUrl(boundaryUrl);
+
+          assert.equal(service, exampleService);
+        });
+
+        it('returns undefined for invalid URLs', () => {
+          const exampleService = {
+            defaultUrl: 'https://example.com/resource',
+            hosts: [],
+          };
+
+          catalog.serviceGroups.postauth.push(exampleService);
+
+          const invalidUrl = 'not-a-valid-url';
+          const service = catalog.findServiceUrlFromUrl(invalidUrl);
+
+          assert.isUndefined(service);
+        });
+
+        it('matches root path catalog entries correctly', () => {
+          const exampleService = {
+            defaultUrl: 'https://example.com/',
+            hosts: [],
+          };
+
+          catalog.serviceGroups.postauth.push(exampleService);
+
+          const subpathUrl = 'https://example.com/any/path/here';
+          const service = catalog.findServiceUrlFromUrl(subpathUrl);
+
+          assert.equal(service, exampleService);
+        });
       });
     });
   });

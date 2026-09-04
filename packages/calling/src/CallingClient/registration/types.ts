@@ -55,12 +55,6 @@ export type RegistrationErrorResult = {
   finalError: boolean;
   /** The Mobius WebSocket of the failed server must be torn down before moving on. */
   shouldDisconnect: boolean;
-  /**
-   * One of the {@link RegistrationErrorHandlers} fully owned the outcome, including
-   * cleanup and notifying the consumer. The caller must skip its own failure handling so
-   * that events are not emitted twice.
-   */
-  handledByCallback: boolean;
 };
 
 export type FailoverCacheState = {
