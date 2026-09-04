@@ -159,6 +159,27 @@ describe('plugin-meetings', () => {
         interpretation.updateInterpretation({siLanguages: [{languageName: 'en', languageCode: 1}]});
         checkSILanguage(interpretation.siLanguages.en, {languageName: 'en', languageCode: 1});
       });
+      it('stores siEnabled from the interpretation control', () => {
+        interpretation.updateInterpretation({siEnabled: true, siLanguages: []});
+        assert.equal(interpretation.siEnabled, true);
+
+        interpretation.updateInterpretation({siEnabled: false, siLanguages: []});
+        assert.equal(interpretation.siEnabled, false);
+      });
+      it('leaves siEnabled untouched when the key is not provided', () => {
+        interpretation.updateInterpretation({siEnabled: true, siLanguages: []});
+        assert.equal(interpretation.siEnabled, true);
+
+        // The meeting-info path passes only siLanguages; siEnabled must not be clobbered to false.
+        interpretation.updateInterpretation({siLanguages: [{languageName: 'en', languageCode: 1}]});
+        assert.equal(interpretation.siEnabled, true);
+
+        interpretation.updateInterpretation({});
+        assert.equal(interpretation.siEnabled, true);
+
+        interpretation.updateInterpretation(undefined);
+        assert.equal(interpretation.siEnabled, true);
+      });
     });
 
     describe('#updateSelfInterpretation', () => {
@@ -356,6 +377,47 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(
           LoggerProxy.logger.error,
           'Meeting:interpretation#updateInterpreters failed',
+          mockError
+        );
+      });
+    });
+
+    describe('#endSimultaneousInterpretation', () => {
+      it('makes the request as expected', async () => {
+        const mockResponse = {body: {locus: {url: 'locusUrl'}}};
+        webex.request.returns(Promise.resolve(mockResponse));
+
+        await interpretation.endSimultaneousInterpretation();
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PATCH',
+          uri: 'locusUrl/controls',
+          body: {
+            interpretation: {
+              siEnabled: false,
+            },
+          },
+        });
+        assert.calledOnceWithExactly(
+          mockMeeting.locusInfo.handleLocusAPIResponse,
+          mockMeeting,
+          mockResponse.body
+        );
+      });
+
+      it('rejects with error', async () => {
+        const mockError = new Error('something wrong');
+        webex.request.returns(Promise.reject(mockError));
+        LoggerProxy.logger.error = sinon.stub();
+
+        await assert.isRejected(
+          interpretation.endSimultaneousInterpretation(),
+          mockError,
+          'something wrong'
+        );
+
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.error,
+          'Meeting:interpretation#endSimultaneousInterpretation failed',
           mockError
         );
       });
