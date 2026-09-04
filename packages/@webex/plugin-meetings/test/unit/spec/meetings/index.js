@@ -95,6 +95,7 @@ describe('plugin-meetings', () => {
         parse: sinon.stub().returns(true),
         updateMainSessionLocusCache: sinon.stub(),
         syncAllHashTreeDatasets: sinon.stub(),
+        sync: sinon.stub().resolves(),
       };
       webex = new MockWebex({
         children: {
@@ -1479,7 +1480,7 @@ describe('plugin-meetings', () => {
         it('should have #syncMeetings', () => {
           assert.exists(webex.meetings.syncMeetings);
         });
-        it('should skip getActiveMeetings but still call syncAllHashTreeDatasets if unverified guest', async () => {
+        it('should skip getActiveMeetings but still sync each meeting with syncClassicLocus enabled if unverified guest', async () => {
           webex.meetings.request.getActiveMeetings = sinon.stub().returns(
             Promise.resolve({
               loci: [
@@ -1493,10 +1494,11 @@ describe('plugin-meetings', () => {
           LoggerProxy.logger.info = sinon.stub();
 
           const mockLocusInfo = {
-            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            sync: sinon.stub().resolves(),
           };
+          const meeting1 = {locusInfo: mockLocusInfo};
           webex.meetings.meetingCollection.getAll = sinon.stub().returns({
-            meeting1: {locusInfo: mockLocusInfo},
+            meeting1,
             meeting2: {locusInfo: undefined},
             meeting3: {},
           });
@@ -1508,7 +1510,10 @@ describe('plugin-meetings', () => {
             LoggerProxy.logger.info,
             'Meetings:index#syncMeetings --> user is unverified guest, skipping calling Locus for meeting sync'
           );
-          assert.calledOnce(mockLocusInfo.syncAllHashTreeDatasets);
+          assert.calledOnceWithExactly(mockLocusInfo.sync, meeting1, {
+            syncClassicLocus: true,
+            syncHashTree: true,
+          });
         });
         describe('succesful requests', () => {
           beforeEach(() => {
@@ -1537,7 +1542,11 @@ describe('plugin-meetings', () => {
               assert.calledOnce(webex.meetings.meetingCollection.getByKey);
               assert.calledOnce(locusInfo.parse);
               assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
-              assert.calledOnce(locusInfo.syncAllHashTreeDatasets);
+              assert.calledOnceWithExactly(
+                locusInfo.sync,
+                {locusInfo, locusUrl: url1},
+                {syncClassicLocus: false, syncHashTree: true}
+              );
             });
           });
           describe('when meeting is not returned', () => {
@@ -1674,7 +1683,7 @@ describe('plugin-meetings', () => {
                 locusUrl: 'breakout-url',
                 locusInfo: {
                   info: {globalMeetingId: 'gmid-123'},
-                  syncAllHashTreeDatasets: sinon.stub().resolves(),
+                  sync: sinon.stub().resolves(),
                 },
                 sendCallAnalyzerMetrics: sinon.stub(),
               },
@@ -1698,7 +1707,7 @@ describe('plugin-meetings', () => {
                 locusUrl: 'breakout-url',
                 locusInfo: {
                   info: {globalMeetingId: 'gmid-other'},
-                  syncAllHashTreeDatasets: sinon.stub().resolves(),
+                  sync: sinon.stub().resolves(),
                 },
                 sendCallAnalyzerMetrics: sinon.stub(),
               },
@@ -1719,46 +1728,54 @@ describe('plugin-meetings', () => {
         });
 
         describe('skipHashTreeSync parameter', () => {
-          it('should skip syncAllHashTreeDatasets when skipHashTreeSync is true', async () => {
+          it('should pass syncHashTree:false to locusInfo.sync when skipHashTreeSync is true', async () => {
             const mockLocusInfo = {
-              syncAllHashTreeDatasets: sinon.stub().resolves(),
+              sync: sinon.stub().resolves(),
             };
+            const meeting1 = {locusInfo: mockLocusInfo};
 
             webex.meetings.request.getActiveMeetings = sinon.stub().resolves({loci: []});
             webex.meetings.meetingCollection.getAll = sinon.stub().returns({
-              meeting1: {locusInfo: mockLocusInfo},
+              meeting1,
             });
 
             await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: true});
 
             assert.calledOnce(webex.meetings.request.getActiveMeetings);
-            assert.notCalled(mockLocusInfo.syncAllHashTreeDatasets);
+            assert.calledOnceWithExactly(mockLocusInfo.sync, meeting1, {
+              syncClassicLocus: false,
+              syncHashTree: false,
+            });
           });
 
-          it('should call syncAllHashTreeDatasets when skipHashTreeSync is false (default)', async () => {
+          it('should pass syncHashTree:true to locusInfo.sync when skipHashTreeSync is false (default)', async () => {
             const mockLocusInfo = {
-              syncAllHashTreeDatasets: sinon.stub().resolves(),
+              sync: sinon.stub().resolves(),
             };
+            const meeting1 = {locusInfo: mockLocusInfo};
 
             webex.meetings.request.getActiveMeetings = sinon.stub().resolves({loci: []});
             webex.meetings.meetingCollection.getAll = sinon.stub().returns({
-              meeting1: {locusInfo: mockLocusInfo},
+              meeting1,
             });
 
             await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: false});
 
             assert.calledOnce(webex.meetings.request.getActiveMeetings);
-            assert.calledOnce(mockLocusInfo.syncAllHashTreeDatasets);
+            assert.calledOnceWithExactly(mockLocusInfo.sync, meeting1, {
+              syncClassicLocus: false,
+              syncHashTree: true,
+            });
           });
         });
 
-        describe('syncAllHashTreeDatasets in syncMeetings', () => {
-          it('should call syncAllHashTreeDatasets for multiple meetings, skipping those without locusInfo', async () => {
+        describe('per-meeting sync in syncMeetings', () => {
+          it('should call locusInfo.sync for multiple meetings, skipping those without locusInfo', async () => {
             const mockLocusInfo1 = {
-              syncAllHashTreeDatasets: sinon.stub().resolves(),
+              sync: sinon.stub().resolves(),
             };
             const mockLocusInfo2 = {
-              syncAllHashTreeDatasets: sinon.stub().resolves(),
+              sync: sinon.stub().resolves(),
             };
 
             webex.meetings.request.getActiveMeetings = sinon.stub().resolves({loci: []});
@@ -1771,13 +1788,13 @@ describe('plugin-meetings', () => {
 
             await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false});
 
-            assert.calledOnce(mockLocusInfo1.syncAllHashTreeDatasets);
-            assert.calledOnce(mockLocusInfo2.syncAllHashTreeDatasets);
+            assert.calledOnce(mockLocusInfo1.sync);
+            assert.calledOnce(mockLocusInfo2.sync);
           });
 
-          it('should not call syncAllHashTreeDatasets when getActiveMeetings throws an error', async () => {
+          it('should not call locusInfo.sync when getActiveMeetings throws an error', async () => {
             const mockLocusInfo = {
-              syncAllHashTreeDatasets: sinon.stub().resolves(),
+              sync: sinon.stub().resolves(),
             };
 
             webex.meetings.request.getActiveMeetings = sinon.stub().rejects(new Error('network error'));
@@ -1792,7 +1809,7 @@ describe('plugin-meetings', () => {
               assert.equal(err.message, 'network error');
             }
 
-            assert.notCalled(mockLocusInfo.syncAllHashTreeDatasets);
+            assert.notCalled(mockLocusInfo.sync);
           });
         });
       });
@@ -2255,6 +2272,28 @@ describe('plugin-meetings', () => {
           assert.calledWith(webex.internal.mercury.on, ROAP.ROAP_MERCURY);
           assert.calledWith(webex.internal.mercury.on, OFFLINE);
           assert.callCount(webex.internal.mercury.on, 4);
+        });
+
+        it('handles a rejected syncMeetings when the ONLINE event fires so it does not become an unhandled rejection', async () => {
+          const syncError = new Error('sync failed');
+          sinon.stub(webex.meetings, 'syncMeetings').rejects(syncError);
+          const loggerWarnStub = sinon.stub(LoggerProxy.logger, 'warn');
+
+          webex.meetings.listenForEvents();
+
+          const onlineCallback = webex.internal.mercury.on
+            .getCalls()
+            .find((call) => call.args[0] === ONLINE).args[1];
+
+          // invoking the listener must not throw synchronously nor leave a rejection unhandled
+          onlineCallback();
+
+          assert.calledOnceWithExactly(webex.meetings.syncMeetings, {keepOnlyLocusMeetings: false});
+
+          await testUtils.flushPromises();
+
+          assert.calledOnce(loggerWarnStub);
+          assert.include(loggerWarnStub.firstCall.args[0], 'syncMeetings after ONLINE event failed');
         });
       });
       describe('#handleLocusMercury', () => {
