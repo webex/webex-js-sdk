@@ -5888,34 +5888,13 @@ describe('plugin-meetings', () => {
           });
 
           describe('handles INBOUND_RTP_AUDIO_LEVEL_UPDATE event for inbound audio levels', () => {
-            it('INBOUND_RTP_AUDIO_LEVEL_UPDATE sends a single behavioral metric with the top 1 session when there is one report item', async () => {
-              Metrics.sendBehavioralMetric.resetHistory();
-
-              const inboundAudioLevels = [{ssrc: 12345, meanRtpHeaderAudioLevel: 0.42}];
-
-              statsAnalyzerStub.emit(
-                {file: 'test', function: 'test'},
-                StatsAnalyzerEventNames.INBOUND_RTP_AUDIO_LEVEL_UPDATE,
-                inboundAudioLevels
-              );
-
-              assert.calledOnce(Metrics.sendBehavioralMetric);
-              assert.calledWithMatch(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.INBOUND_RTP_AUDIO_LEVEL_UPDATE, {
-                meetingId: meeting.id,
-                correlationId: meeting.correlationId,
-                mean_audio_level_1: 0.42,
-                ssrc_1: 12345,
-              });
-            });
-
-            it('INBOUND_RTP_AUDIO_LEVEL_UPDATE sends a single behavioral metric with only the top 3 sessions when there are 4 report items', async () => {
+            it('INBOUND_RTP_AUDIO_LEVEL_UPDATE sends a single behavioral metric with the 3 sessions', async () => {
               Metrics.sendBehavioralMetric.resetHistory();
 
               const inboundAudioLevels = [
                 {ssrc: 11111, meanRtpHeaderAudioLevel: 0.1},
                 {ssrc: 22222, meanRtpHeaderAudioLevel: 0.91},
                 {ssrc: 33333, meanRtpHeaderAudioLevel: 0.54},
-                {ssrc: 44444, meanRtpHeaderAudioLevel: 0.76},
               ];
 
               statsAnalyzerStub.emit(
@@ -5928,10 +5907,10 @@ describe('plugin-meetings', () => {
               assert.calledWithMatch(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.INBOUND_RTP_AUDIO_LEVEL_UPDATE, {
                 meetingId: meeting.id,
                 correlationId: meeting.correlationId,
-                mean_audio_level_1: 0.91,
-                ssrc_1: 22222,
-                mean_audio_level_2: 0.76,
-                ssrc_2: 44444,
+                mean_audio_level_1: 0.1,
+                ssrc_1: 11111,
+                mean_audio_level_2: 0.91,
+                ssrc_2: 22222,
                 mean_audio_level_3: 0.54,
                 ssrc_3: 33333,
               });

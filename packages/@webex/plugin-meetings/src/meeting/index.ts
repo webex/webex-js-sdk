@@ -8194,11 +8194,7 @@ export default class Meeting extends StatelessWebexPlugin {
         `Meeting:index#setupStatsAnalyzerEventHandlers --> inbound RTP audio level update received for ${data.length} tracks`
       );
 
-      const mostActiveSessions = data
-        .sort((a, b) => b.meanRtpHeaderAudioLevel - a.meanRtpHeaderAudioLevel)
-        .slice(0, 3);
-
-      const mostActiveAudioSessionsStatMappings = mostActiveSessions.reduce((acc, stats, index) => {
+      const mostActiveAudioSessionsStatMappings = data.reduce((acc, stats, index) => {
         acc[`mean_audio_level_${index + 1}`] = stats.meanRtpHeaderAudioLevel;
         acc[`ssrc_${index + 1}`] = stats.ssrc;
 
