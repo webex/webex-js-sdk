@@ -1015,14 +1015,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       }
 
+      const deviceId = this.getDeviceId(data.loginOption, data.dialNumber);
       const loginResponse = await this.services.agent.stationLogin({
         data: {
-          dialNumber:
-            data.loginOption === LoginOption.BROWSER ? this.agentConfig.agentId : data.dialNumber,
+          // BROWSER DN must be webrtc-{agentId} so VPOP/RTMS do not treat a bare UUID as PSTN.
+          dialNumber: data.loginOption === LoginOption.BROWSER ? deviceId : data.dialNumber,
           teamId: data.teamId,
           deviceType: data.loginOption,
           isExtension: data.loginOption === LoginOption.EXTENSION,
-          deviceId: this.getDeviceId(data.loginOption, data.dialNumber),
+          deviceId,
           roles: [AGENT],
           teamName: EMPTY_STRING,
           siteId: EMPTY_STRING,
