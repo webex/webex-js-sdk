@@ -66,6 +66,7 @@ export default class Voice extends Task implements IVoice {
   private wxAppAcceptInFlight = false;
   private wxAppMuteSyncInFlight?: Promise<boolean | undefined>;
   private wxAppMuteToggleInFlight?: Promise<void>;
+  private wxAppDtmfInFlight?: Promise<void>;
   private lastLoggedWxAppAcceptReason?: WxAppAcceptReason;
 
   constructor(
@@ -510,11 +511,26 @@ export default class Voice extends Task implements IVoice {
    */
   public async transmitDtmf(options: TaskTransmitDtmfOptions): Promise<void> {
     if (this.enableWxBetterTogether && this.getWebexCallingCallId()) {
-      await runWxAppTransmitDtmf(
+      if (this.wxAppDtmfInFlight) {
+        await this.wxAppDtmfInFlight.catch(() => undefined);
+      }
+
+      const dtmfPromise = runWxAppTransmitDtmf(
         this.getWxAppVoiceDependencies(),
         this.createWxAppLifecycle(),
         options
       );
+
+      this.wxAppDtmfInFlight = dtmfPromise;
+      dtmfPromise
+        .finally(() => {
+          if (this.wxAppDtmfInFlight === dtmfPromise) {
+            this.wxAppDtmfInFlight = undefined;
+          }
+        })
+        .catch(() => undefined);
+
+      await dtmfPromise;
 
       return;
     }

@@ -239,7 +239,7 @@ All event names are defined in `METRIC_EVENT_NAMES` (`constants.ts`). Events fol
 | `TASK_AUTO_ANSWER_SUCCESS` / `FAILED` | `'Task Auto Answer ...'` | Auto-answer result |
 | `TASK_OUTDIAL_SUCCESS` / `FAILED` | `'Task Outdial ...'` | Outdial result |
 | `WXAPP_TASK_MUTE_SUCCESS` / `FAILED` | `'WxApp Task Mute ...'` | Webex Together task mute/unmute toggle (`wxcc_sdk.user.task_mute_webex_together.complete\|fail`) |
-| `WXAPP_TASK_DTMF_SUCCESS` / `FAILED` | `'WxApp Task Dtmf ...'` | Webex Together DTMF/keypad (`wxcc_sdk.user.task_dtmf_webex_together.complete\|fail`) |
+| `WXAPP_TASK_DTMF_SUCCESS` / `FAILED` | `'WxApp Task Dtmf ...'` | Webex Together DTMF/keypad (`wxcc_sdk.user.task_dtmf_webex_together.complete\|fail`). DTMF telephony is serialized per task (`Voice.wxAppDtmfInFlight`) so concurrent keypad input does not overwrite the shared `timeEvent` timer. |
 | `WXAPP_TASK_ACCEPT_SUCCESS` / `FAILED` | `'WxApp Task Accept ...'` | Webex Together accept/answer (`wxcc_sdk.user.task_accept_webex_together.complete\|fail`) |
 | `WXAPP_TASK_DECLINE_SUCCESS` / `FAILED` | `'WxApp Task Decline ...'` | Webex Together reject/decline (`wxcc_sdk.user.task_reject_webex_together.complete\|fail`) |
 | `WXAPP_SESSION_INIT_SUCCESS` / `FAILED` | `'WxApp Session Init ...'` | Webex Together session orchestration (`wxcc_sdk.user.webex_together_session_init.complete\|fail`) |

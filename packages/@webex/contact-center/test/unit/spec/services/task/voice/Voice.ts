@@ -1588,5 +1588,99 @@ describe('Voice Task', () => {
         lineOwnerId: undefined,
       });
     });
+
+    it('serializes concurrent transmitDtmf() so each digit completes before the next', async () => {
+      let resolveFirst: () => void;
+      const firstGate = new Promise<void>((resolve) => {
+        resolveFirst = resolve;
+      });
+      const mockSvc = {
+        transmitDtmf: jest
+          .fn()
+          .mockImplementationOnce(() => firstGate)
+          .mockResolvedValueOnce(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      const firstDtmf = voice.transmitDtmf({dtmf: '1'});
+      const secondDtmf = voice.transmitDtmf({dtmf: '2'});
+
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledTimes(1);
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledWith({
+        callId: 'call-id-1',
+        dtmf: '1',
+        lineOwnerId: undefined,
+      });
+
+      resolveFirst!();
+      await Promise.all([firstDtmf, secondDtmf]);
+
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledTimes(2);
+      expect(mockSvc.transmitDtmf).toHaveBeenNthCalledWith(2, {
+        callId: 'call-id-1',
+        dtmf: '2',
+        lineOwnerId: undefined,
+      });
+    });
+
+    it('records duration_ms on each serialized transmitDtmf success metric', async () => {
+      let resolveFirst: () => void;
+      const firstGate = new Promise<void>((resolve) => {
+        resolveFirst = resolve;
+      });
+      const mockSvc = {
+        transmitDtmf: jest
+          .fn()
+          .mockImplementationOnce(() => firstGate)
+          .mockResolvedValueOnce(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+      const metricsManager = MetricsManager.getInstance();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent');
+
+      const firstDtmf = voice.transmitDtmf({dtmf: '1'});
+      const secondDtmf = voice.transmitDtmf({dtmf: '2'});
+
+      resolveFirst!();
+      await Promise.all([firstDtmf, secondDtmf]);
+
+      const successCalls = trackEventSpy.mock.calls.filter(
+        ([eventName]) => eventName === METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_SUCCESS
+      );
+      expect(successCalls).toHaveLength(2);
+      successCalls.forEach(([, payload]) => {
+        expect(payload).toEqual(
+          expect.objectContaining({
+            duration_ms: expect.any(Number),
+          })
+        );
+      });
+
+      trackEventSpy.mockRestore();
+    });
   });
 });
