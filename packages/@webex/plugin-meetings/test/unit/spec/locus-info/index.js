@@ -4361,6 +4361,34 @@ describe('plugin-meetings', () => {
           assert.notCalled(locusInfo.locusParser.pause);
           assert.notCalled(meeting.meetingRequest.getLocusDTO);
         });
+
+        it('preserves the meeting and rejects when the classic sync fails, so the caller can retry', async () => {
+          const fetchError = new Error('transient failure');
+          const meeting = {
+            meetingRequest: {
+              getLocusDTO: sandbox.stub().rejects(fetchError),
+            },
+            locusInfo: {
+              onFullLocus: sandbox.stub(),
+            },
+            locusUrl: 'someLocusUrl',
+          };
+
+          locusInfo.locusParser.workingCopy = {}; // no syncUrl -> full sync
+          sandbox.stub(locusInfo.locusParser, 'pause');
+          sandbox.stub(locusInfo.locusParser, 'resume');
+          sandbox.stub(webex.meetings, 'destroy');
+
+          await assert.isRejected(
+            locusInfo.sync(meeting, {syncClassicLocus: true, syncHashTree: true}),
+            fetchError
+          );
+
+          // the meeting must not be torn down on a transient reconnection sync failure
+          assert.notCalled(webex.meetings.destroy);
+          // the parser must still be resumed so it isn't left paused
+          assert.calledOnce(locusInfo.locusParser.resume);
+        });
       });
 
       describe('edge cases for sync failing', () => {

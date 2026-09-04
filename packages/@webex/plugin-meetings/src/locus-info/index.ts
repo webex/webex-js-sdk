@@ -327,12 +327,24 @@ export default class LocusInfo extends EventsScope {
    * @param {Meeting} meeting
    * @param {boolean} isLocusUrlChanged
    * @param {Locus} locus
-   * @returns {Promise} resolves once the fetched DTO has been applied
+   * @param {Object} [options]
+   * @param {boolean} [options.destroyMeetingOnFailure=true] when true, a sync failure destroys
+   *   the meeting and the returned promise still resolves. When false, the meeting is preserved
+   *   and the returned promise rejects so the caller can retry.
+   * @returns {Promise} resolves once the fetched DTO has been applied; see destroyMeetingOnFailure
+   *   for the failure behavior
    */
-  private doLocusSync(meeting: any, isLocusUrlChanged: boolean, locus: any) {
+  private doLocusSync(
+    meeting: any,
+    isLocusUrlChanged: boolean,
+    locus: any,
+    {destroyMeetingOnFailure = true}: {destroyMeetingOnFailure?: boolean} = {}
+  ) {
     let url;
     let isDelta = false;
     let meetingDestroyed = false;
+    // whether the DTO fetch itself failed (as opposed to applying a successfully fetched DTO)
+    let fetchFailed = false;
 
     if (isLocusUrlChanged) {
       // for the locus url changed case from breakout to main session, we should always do a full sync, in this case, the url from locus is always on main session,
@@ -352,6 +364,23 @@ export default class LocusInfo extends EventsScope {
         isDelta ? 'delta' : 'full'
       } DTO)`
     );
+
+    // Called once the DTO fetch (delta plus any full-sync fallback) has failed and we're giving up.
+    // On the delta-processing path we destroy the meeting; on the reconnection path we preserve it
+    // and let the rejection propagate so the caller can retry.
+    const onFetchFailure = (error: any, logMessage: string) => {
+      LoggerProxy.logger.info(
+        `Locus-info:index#doLocusSync --> ${logMessage}${
+          destroyMeetingOnFailure ? ', destroying the meeting' : ''
+        }`
+      );
+      fetchFailed = true;
+      if (destroyMeetingOnFailure) {
+        this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
+        meetingDestroyed = true;
+      }
+      throw error;
+    };
 
     return meeting.meetingRequest
       .getLocusDTO({url})
@@ -374,26 +403,15 @@ export default class LocusInfo extends EventsScope {
 
           // Locus sometimes returns 403, for example if meeting has ended, no point trying the fallback to full sync in that case
           if (e.statusCode !== 403) {
-            return meeting.meetingRequest.getLocusDTO({url: meeting.locusUrl}).catch((err) => {
-              LoggerProxy.logger.info(
-                'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
-              );
-              this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
-              meetingDestroyed = true;
-              throw err;
-            });
+            return meeting.meetingRequest
+              .getLocusDTO({url: meeting.locusUrl})
+              .catch((err) => onFetchFailure(err, 'fallback full sync failed'));
           }
-          LoggerProxy.logger.info(
-            'Locus-info:index#doLocusSync --> got 403 from Locus, skipping fallback to full sync, destroying the meeting'
-          );
-        } else {
-          LoggerProxy.logger.info(
-            'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
-          );
+
+          return onFetchFailure(e, 'got 403 from Locus, skipping fallback to full sync');
         }
-        this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
-        meetingDestroyed = true;
-        throw e;
+
+        return onFetchFailure(e, 'full sync failed');
       })
       .then((res) => {
         if (isEmpty(res.body)) {
@@ -424,18 +442,26 @@ export default class LocusInfo extends EventsScope {
         meeting.locusInfo.onFullLocus('classic Locus sync', res.body);
       })
       .catch((e) => {
-        LoggerProxy.logger.info(
-          `Locus-info:index#doLocusSync --> getLocusDTO succeeded but failed to handle result, locus parser will resume but not all data may be synced (${e.toString()})`
-        );
+        if (!fetchFailed) {
+          // the DTO was fetched successfully but applying it failed
+          LoggerProxy.logger.info(
+            `Locus-info:index#doLocusSync --> getLocusDTO succeeded but failed to handle result, locus parser will resume but not all data may be synced (${e.toString()})`
+          );
 
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LOCUS_SYNC_HANDLING_FAILED, {
-          correlationId: meeting.correlationId,
-          url,
-          reason: e.message,
-          errorName: e.name,
-          stack: e.stack,
-          code: e.code,
-        });
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LOCUS_SYNC_HANDLING_FAILED, {
+            correlationId: meeting.correlationId,
+            url,
+            reason: e.message,
+            errorName: e.name,
+            stack: e.stack,
+            code: e.code,
+          });
+        }
+
+        if (!destroyMeetingOnFailure) {
+          // caller-driven sync (e.g. reconnection): propagate the failure so it can be retried
+          throw e;
+        }
       })
       .finally(() => {
         if (!meetingDestroyed) {
@@ -450,6 +476,7 @@ export default class LocusInfo extends EventsScope {
    * Syncs this meeting's Locus state (e.g. after a network reconnection), routing to whichever
    * mechanism the meeting uses (a meeting only ever uses one): hash tree datasets via
    * syncAllHashTreeDatasets() or a standalone Locus DTO fetch for classic meetings.
+   * It does not destroy the meeting if the sync fails.
    *
    * The classic path is only needed when Meetings#syncMeetings() can't do its usual
    * getActiveMeetings() fetch (e.g. unverified guests, for whom Locus rejects that call); signed-in
@@ -459,7 +486,8 @@ export default class LocusInfo extends EventsScope {
    * @param {Object} options
    * @param {boolean} options.syncClassicLocus - fetch a standalone Locus DTO for classic meetings
    * @param {boolean} options.syncHashTree - sync hash tree datasets for hash tree based meetings
-   * @returns {Promise<void>} resolves once the sync (hash tree or classic) completes
+   * @returns {Promise<void>} resolves once the sync (hash tree or classic) completes; for the
+   *   classic path it rejects if the sync fails, so the caller can retry
    */
   async sync(
     meeting: any,
@@ -479,7 +507,9 @@ export default class LocusInfo extends EventsScope {
     if (syncClassicLocus && meeting.locusUrl) {
       // Pause the parser so in-flight deltas don't race the DTO fetch; doLocusSync() resumes it.
       this.locusParser.pause();
-      await this.doLocusSync(meeting, false, undefined);
+      // destroyMeetingOnFailure: false so a transient failure preserves the meeting and rejects,
+      // letting the reconnection flow retry instead of tearing the meeting down.
+      await this.doLocusSync(meeting, false, undefined, {destroyMeetingOnFailure: false});
     }
   }
 
