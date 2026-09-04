@@ -35,6 +35,8 @@ Metrics is one of nine confirmed Contact Center SDK modules. Own timing, taxonom
 
 - **Behavioral Taxonomy**: Structured `product.agent.target.verb` naming convention for behavioral events
 
+- **Webex Together behavioral naming**: Webex Together (wxApp) events use `*_webex_together` compound targets (e.g. `wxcc_sdk.user.task_accept_webex_together.complete`). Operational/business wire names remain `WXCC_SDK_WXAPP_*` unchanged.
+
 - **Payload Preparation**: Automatic cleanup of empty fields, space-to-underscore conversion, and `tabHidden` metadata
 
 - **AQM Response Helpers**: Static methods to extract common tracking fields from AQM responses
@@ -236,6 +238,14 @@ All event names are defined in `METRIC_EVENT_NAMES` (`constants.ts`). Events fol
 | `TASK_ACCEPT_CONSULT_SUCCESS` / `FAILED` | `'Task Accept Consult ...'` | Accept consult result |
 | `TASK_AUTO_ANSWER_SUCCESS` / `FAILED` | `'Task Auto Answer ...'` | Auto-answer result |
 | `TASK_OUTDIAL_SUCCESS` / `FAILED` | `'Task Outdial ...'` | Outdial result |
+| `WXAPP_TASK_MUTE_SUCCESS` / `FAILED` | `'WxApp Task Mute ...'` | Webex Together task mute/unmute toggle (`wxcc_sdk.user.task_mute_webex_together.complete\|fail`). Mute telephony is queued per task via tail promise chain (`Voice.wxAppMuteToggleTail`) so concurrent toggles do not overwrite the shared `timeEvent` timer or reorder requests. |
+| `WXAPP_TASK_DTMF_SUCCESS` / `FAILED` | `'WxApp Task Dtmf ...'` | Webex Together DTMF/keypad (`wxcc_sdk.user.task_dtmf_webex_together.complete\|fail`). DTMF telephony is queued per task via tail promise chain (`Voice.wxAppDtmfTail`) so concurrent keypad input does not overwrite the shared `timeEvent` timer or reorder digits. |
+| `WXAPP_TASK_ACCEPT_SUCCESS` / `FAILED` | `'WxApp Task Accept ...'` | Webex Together accept/answer (`wxcc_sdk.user.task_accept_webex_together.complete\|fail`) |
+| `WXAPP_TASK_DECLINE_SUCCESS` / `FAILED` | `'WxApp Task Decline ...'` | Webex Together reject/decline (`wxcc_sdk.user.task_reject_webex_together.complete\|fail`). Inbound offers: telephony `rejectCall` via `runWxAppReject`. wxApp outdial cancellations: CC `cancelTask` via `runWxAppOutdialDecline` (additive with `TASK_DECLINE_*`). Outdial failure payloads merge AQM `error.details` via `getCommonTrackingFieldForAQMResponseFailed` so wxApp metrics and diagnostic logs preserve `trackingId` / structured failure reason. |
+| `WXAPP_SESSION_INIT_SUCCESS` / `FAILED` | `'WxApp Session Init ...'` | Webex Together session orchestration (`wxcc_sdk.user.webex_together_session_init.complete\|fail`) |
+| `WXAPP_SESSION_SKIPPED` | `'WxApp Session Skipped'` | Webex Together session skipped (`wxcc_sdk.user.webex_together_session_init.ignore`) |
+| `WXAPP_USERSUB_PUBLISH_SUCCESS` / `FAILED` | `'WxApp Usersub Publish ...'` | Cross-client usersub publish (`wxcc_sdk.user.webex_together_usersub_publish.complete\|fail`). Preflight failures (missing `userId` or device URL before HTTP publish) emit `WXAPP_USERSUB_PUBLISH_FAILED` with `skipReason` (`user_id_unavailable` / `device_url_unavailable`) and no `timeEvent` timer. Stale-generation discards (teardown or concurrent disable while HTTP publish is in flight) call `cancelTimedEvent` without emitting success/fail only when the completing publish still owns the active timer (`usersubPublishMetricsId` guard — a newer overlapping publish must not have its timer cleared). |
+| `WXAPP_MERCURY_SUBSCRIBE_SUCCESS` / `FAILED` | `'WxApp Mercury Subscribe ...'` | Telephony Mercury mute-sync subscribe (`wxcc_sdk.user.webex_together_mercury_subscribe.complete\|fail`) |
 | `TASK_CONFERENCE_START_SUCCESS` / `FAILED` | `'Task Conference Start ...'` | Conference start result |
 | `TASK_CONFERENCE_END_SUCCESS` / `FAILED` | `'Task Conference End ...'` | Conference end result |
 | `TASK_CONFERENCE_TRANSFER_SUCCESS` / `FAILED` | `'Task Conference Transfer ...'` | Conference transfer result |
@@ -281,6 +291,13 @@ All event names are defined in `constants.ts` as `METRIC_EVENT_NAMES`. Events fo
 | Conference Participant Drop | `TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS` | `TASK_CONFERENCE_PARTICIPANT_DROP_FAILED` |
 | Switch Call            | `TASK_SWITCH_CALL_SUCCESS`             | `TASK_SWITCH_CALL_FAILED`              |
 | Outdial                | `TASK_OUTDIAL_SUCCESS`                 | `TASK_OUTDIAL_FAILED`                  |
+| WxApp Task Mute        | `WXAPP_TASK_MUTE_SUCCESS`              | `WXAPP_TASK_MUTE_FAILED`               |
+| WxApp Task DTMF        | `WXAPP_TASK_DTMF_SUCCESS`              | `WXAPP_TASK_DTMF_FAILED`               |
+| WxApp Task Accept      | `WXAPP_TASK_ACCEPT_SUCCESS`            | `WXAPP_TASK_ACCEPT_FAILED`             |
+| WxApp Task Decline     | `WXAPP_TASK_DECLINE_SUCCESS`           | `WXAPP_TASK_DECLINE_FAILED`            |
+| WxApp Session Init     | `WXAPP_SESSION_INIT_SUCCESS`           | `WXAPP_SESSION_INIT_FAILED`            |
+| WxApp Usersub Publish  | `WXAPP_USERSUB_PUBLISH_SUCCESS`        | `WXAPP_USERSUB_PUBLISH_FAILED`         |
+| WxApp Mercury Subscribe | `WXAPP_MERCURY_SUBSCRIBE_SUCCESS`     | `WXAPP_MERCURY_SUBSCRIBE_FAILED`       |
 | Upload Logs            | `UPLOAD_LOGS_SUCCESS`                  | `UPLOAD_LOGS_FAILED`                   |
 | WebSocket Deregister   | `WEBSOCKET_DEREGISTER_SUCCESS`         | `WEBSOCKET_DEREGISTER_FAIL`            |
 | Device Type Update     | `AGENT_DEVICE_TYPE_UPDATE_SUCCESS`     | `AGENT_DEVICE_TYPE_UPDATE_FAILED`      |
@@ -288,6 +305,22 @@ All event names are defined in `constants.ts` as `METRIC_EVENT_NAMES`. Events fo
 | AddressBook            | `ADDRESSBOOK_FETCH_SUCCESS`            | `ADDRESSBOOK_FETCH_FAILED`             |
 | Queue                  | `QUEUE_FETCH_SUCCESS`                  | `QUEUE_FETCH_FAILED`                   |
 | Outdial ANI Entries    | `OUTDIAL_ANI_EP_FETCH_SUCCESS`         | `OUTDIAL_ANI_EP_FETCH_FAILED`          |
+
+### Webex Together behavioral taxonomy
+
+Webex Together events (`WXAPP_*` constants) use `*_webex_together` compound targets. Assembled Amplitude names follow `wxcc_sdk.user.{target}.{verb}`:
+
+| Feature | Behavioral target | Success name | Failure name | Skip name |
+|---|---|---|---|---|
+| Task accept / answer | `task_accept_webex_together` | `wxcc_sdk.user.task_accept_webex_together.complete` | `wxcc_sdk.user.task_accept_webex_together.fail` | — |
+| Task reject / decline | `task_reject_webex_together` | `wxcc_sdk.user.task_reject_webex_together.complete` | `wxcc_sdk.user.task_reject_webex_together.fail` | — |
+| Task mute / unmute toggle | `task_mute_webex_together` | `wxcc_sdk.user.task_mute_webex_together.complete` | `wxcc_sdk.user.task_mute_webex_together.fail` | — |
+| Task DTMF / keypad | `task_dtmf_webex_together` | `wxcc_sdk.user.task_dtmf_webex_together.complete` | `wxcc_sdk.user.task_dtmf_webex_together.fail` | — |
+| Usersub publish | `webex_together_usersub_publish` | `wxcc_sdk.user.webex_together_usersub_publish.complete` | `wxcc_sdk.user.webex_together_usersub_publish.fail` | — |
+| Mercury subscribe | `webex_together_mercury_subscribe` | `wxcc_sdk.user.webex_together_mercury_subscribe.complete` | `wxcc_sdk.user.webex_together_mercury_subscribe.fail` | — |
+| Session init | `webex_together_session_init` | `wxcc_sdk.user.webex_together_session_init.complete` | `wxcc_sdk.user.webex_together_session_init.fail` | `wxcc_sdk.user.webex_together_session_init.ignore` |
+
+Operational and business wire names are unchanged (`WXCC_SDK_WXAPP_*`).
 
 Special events (no success/failure pair):
 
@@ -299,11 +332,13 @@ Special events (no success/failure pair):
 
 - `WEBSOCKET_EVENT_RECEIVED` — **no** behavioral taxonomy (not in `eventTaxonomyMap`)
 
-Of the 82 defined metric names, 73 have behavioral taxonomy and 9 do not. Events **without** an `eventTaxonomyMap` entry are the six `AI_ASSISTANT_*` names plus `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`.
+- `WXAPP_SESSION_SKIPPED` — has behavioral taxonomy (`wxcc_sdk.user.webex_together_session_init.ignore`)
+
+Of the 107 defined metric names, 96 have behavioral taxonomy and 11 do not. Events **without** an `eventTaxonomyMap` entry are the eight `AI_ASSISTANT_*` names plus `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`.
 
 ### Complete METRIC_EVENT_NAMES catalog
 
-This table contains all 82 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 73 mapped and 9 unmapped.
+This table contains all 107 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 96 mapped and 11 unmapped.
 
 | Constant | Emitted name | Behavioral taxonomy? |
 |---|---|---|
@@ -362,6 +397,21 @@ This table contains all 82 names from `src/metrics/constants.ts`; taxonomy prese
 | `TASK_SWITCH_CALL_FAILED` | `Task Switch Call Failed` | yes |
 | `TASK_OUTDIAL_SUCCESS` | `Task Outdial Success` | yes |
 | `TASK_OUTDIAL_FAILED` | `Task Outdial Failed` | yes |
+| `WXAPP_TASK_MUTE_SUCCESS` | `WxApp Task Mute Success` | yes |
+| `WXAPP_TASK_MUTE_FAILED` | `WxApp Task Mute Failed` | yes |
+| `WXAPP_TASK_DTMF_SUCCESS` | `WxApp Task Dtmf Success` | yes |
+| `WXAPP_TASK_DTMF_FAILED` | `WxApp Task Dtmf Failed` | yes |
+| `WXAPP_TASK_ACCEPT_SUCCESS` | `WxApp Task Accept Success` | yes |
+| `WXAPP_TASK_ACCEPT_FAILED` | `WxApp Task Accept Failed` | yes |
+| `WXAPP_TASK_DECLINE_SUCCESS` | `WxApp Task Decline Success` | yes |
+| `WXAPP_TASK_DECLINE_FAILED` | `WxApp Task Decline Failed` | yes |
+| `WXAPP_SESSION_INIT_SUCCESS` | `WxApp Session Init Success` | yes |
+| `WXAPP_SESSION_INIT_FAILED` | `WxApp Session Init Failed` | yes |
+| `WXAPP_SESSION_SKIPPED` | `WxApp Session Skipped` | yes |
+| `WXAPP_USERSUB_PUBLISH_SUCCESS` | `WxApp Usersub Publish Success` | yes |
+| `WXAPP_USERSUB_PUBLISH_FAILED` | `WxApp Usersub Publish Failed` | yes |
+| `WXAPP_MERCURY_SUBSCRIBE_SUCCESS` | `WxApp Mercury Subscribe Success` | yes |
+| `WXAPP_MERCURY_SUBSCRIBE_FAILED` | `WxApp Mercury Subscribe Failed` | yes |
 | `UPLOAD_LOGS_SUCCESS` | `Upload Logs Success` | yes |
 | `UPLOAD_LOGS_FAILED` | `Upload Logs Failed` | yes |
 | `WEBSOCKET_DEREGISTER_SUCCESS` | `Websocket Deregister Success` | no |
@@ -385,12 +435,22 @@ This table contains all 82 names from `src/metrics/constants.ts`; taxonomy prese
 | `CAMPAIGN_PREVIEW_REMOVE_FAILED` | `Campaign Preview Remove Failed` | yes |
 | `AI_ASSISTANT_SEND_EVENT_SUCCESS` | `AI Assistant Send Event Success` | no |
 | `AI_ASSISTANT_SEND_EVENT_FAILED` | `AI Assistant Send Event Failed` | no |
-| `AI_ASSISTANT_GET_SUGGESTED_RESPONSE_SUCCESS` | `AI Assistant Get Suggested Response Success` | no |
-| `AI_ASSISTANT_GET_SUGGESTED_RESPONSE_FAILED` | `AI Assistant Get Suggested Response Failed` | no |
+| `AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_SUCCESS` | `AI Assistant Get Real Time Assistance Success` | no |
+| `AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_FAILED` | `AI Assistant Get Real Time Assistance Failed` | no |
+| `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_SUCCESS` | `AI Assistant Send Real Time Assistance User Action Success` | no |
+| `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_FAILED` | `AI Assistant Send Real Time Assistance User Action Failed` | no |
 | `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS` | `AI Assistant Fetch Historic Transcripts Success` | no |
 | `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED` | `AI Assistant Fetch Historic Transcripts Failed` | no |
+| `USER_PREFERENCE_GET_SUCCESS` | `User Preference Get Success` | yes |
+| `USER_PREFERENCE_GET_FAILED` | `User Preference Get Failed` | yes |
+| `USER_PREFERENCE_CREATE_SUCCESS` | `User Preference Create Success` | yes |
+| `USER_PREFERENCE_CREATE_FAILED` | `User Preference Create Failed` | yes |
+| `USER_PREFERENCE_UPDATE_SUCCESS` | `User Preference Update Success` | yes |
+| `USER_PREFERENCE_UPDATE_FAILED` | `User Preference Update Failed` | yes |
+| `USER_PREFERENCE_DELETE_SUCCESS` | `User Preference Delete Success` | yes |
+| `USER_PREFERENCE_DELETE_FAILED` | `User Preference Delete Failed` | yes |
 
-Defined names without an `eventTaxonomyMap` entry: `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED`, `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS`, `AI_ASSISTANT_GET_SUGGESTED_RESPONSE_FAILED`, `AI_ASSISTANT_GET_SUGGESTED_RESPONSE_SUCCESS`, `AI_ASSISTANT_SEND_EVENT_FAILED`, `AI_ASSISTANT_SEND_EVENT_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_EVENT_RECEIVED`.
+Defined names without an `eventTaxonomyMap` entry: `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED`, `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS`, `AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_FAILED`, `AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_SUCCESS`, `AI_ASSISTANT_SEND_EVENT_FAILED`, `AI_ASSISTANT_SEND_EVENT_SUCCESS`, `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_FAILED`, `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_EVENT_RECEIVED`.
 
 ## Requires (dependencies)
 - `webex.internal.newMetrics` submission APIs
@@ -438,8 +498,10 @@ Each behavioral event maps to a structured taxonomy in `behavioral-events.ts`:
 > **Note**: The following events do **not** have behavioral taxonomy mappings in `behavioral-events.ts`:
 > - `AI_ASSISTANT_SEND_EVENT_SUCCESS`
 > - `AI_ASSISTANT_SEND_EVENT_FAILED`
-> - `AI_ASSISTANT_GET_SUGGESTED_RESPONSE_SUCCESS`
-> - `AI_ASSISTANT_GET_SUGGESTED_RESPONSE_FAILED`
+> - `AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_SUCCESS`
+> - `AI_ASSISTANT_GET_REAL_TIME_ASSISTANCE_FAILED`
+> - `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_SUCCESS`
+> - `AI_ASSISTANT_SEND_REAL_TIME_ASSISTANCE_USER_ACTION_FAILED`
 > - `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS`
 > - `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED`
 > - `WEBSOCKET_DEREGISTER_SUCCESS`
@@ -769,7 +831,7 @@ stateDiagram-v2
 - **metricsDisabled**: When `true`, `timeEvent` and all `track*` methods return early, and `clearPendingEvents()` empties all queues.
 
 ## Pitfalls
-- `METRIC_EVENT_NAMES` and `eventTaxonomyMap` are different inventories: nine defined names intentionally have no behavioral taxonomy.
+- `METRIC_EVENT_NAMES` and `eventTaxonomyMap` are different inventories: eleven defined names intentionally have no behavioral taxonomy.
 - `setMetricsDisabled(true)` clears pending queues but does not create a delivery receipt; callers must not infer that previously submitted events were accepted.
 - Submission helpers hand events to `webex.internal.newMetrics` without a module-level retry/requeue policy, so telemetry must remain non-blocking and non-authoritative.
 
@@ -830,7 +892,7 @@ Use `test/unit/spec/metrics/MetricsManager.ts` for readiness queues, timing/trac
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
 | `METRICS-R-001` | `test/unit/spec/metrics/MetricsManager.ts` | Add a catalog parity assertion if constants change. |
-| `METRICS-R-002` | `test/unit/spec/metrics/behavioral-events.ts` | Keep explicit coverage for all nine unmapped names. |
+| `METRICS-R-002` | `test/unit/spec/metrics/behavioral-events.ts` | Keep explicit coverage for all eleven unmapped names. |
 | `METRICS-R-003` | `test/unit/spec/metrics/MetricsManager.ts` | None. |
 | `METRICS-R-004` | `test/unit/spec/metrics/MetricsManager.ts` | None. |
 | `METRICS-R-005` | `test/unit/spec/metrics/MetricsManager.ts` | Authentication ownership is verified indirectly through the host metrics client. |

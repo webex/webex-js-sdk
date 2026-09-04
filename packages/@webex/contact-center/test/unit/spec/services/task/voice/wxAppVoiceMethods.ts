@@ -8,7 +8,10 @@ import {
   toggleMuteOnWebex,
   transmitDtmfOnWebex,
   runWxAppAccept,
+  runWxAppOutdialDecline,
   runWxAppReject,
+  runWxAppToggleMute,
+  runWxAppTransmitDtmf,
   mapWxAppVoiceError,
   WxAppVoiceDeps,
   WxAppVoiceLifecycle,
@@ -17,6 +20,8 @@ import {METHODS} from '../../../../../../src/constants';
 import {TaskState} from '../../../../../../src/services/task/state-machine';
 import {TaskData} from '../../../../../../src/services/task/types';
 import AnswerCallOnWebexService from '../../../../../../src/services/AnswerCallOnWebexService';
+import MetricsManager from '../../../../../../src/metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../../../../../../src/metrics/constants';
 
 const WX_APP_DEVICE = {
   deviceType: 'wxApp',
@@ -53,6 +58,13 @@ function makeMockService(): jest.Mocked<AnswerCallOnWebexService> {
   } as unknown as jest.Mocked<AnswerCallOnWebexService>;
 }
 
+function makeMockMetricsManager(): jest.Mocked<Pick<MetricsManager, 'timeEvent' | 'trackEvent'>> {
+  return {
+    timeEvent: jest.fn(),
+    trackEvent: jest.fn(),
+  };
+}
+
 function makeDeps(overrides: Partial<WxAppVoiceDeps> = {}): WxAppVoiceDeps {
   let muted = false;
 
@@ -60,6 +72,7 @@ function makeDeps(overrides: Partial<WxAppVoiceDeps> = {}): WxAppVoiceDeps {
     enableWxBetterTogether: true,
     answerCallOnWebexService: makeMockService(),
     agentId: 'agent-1',
+    metricsManager: makeMockMetricsManager() as unknown as MetricsManager,
     getTaskData: () => makeTaskData(),
     getTaskState: () => TaskState.OFFERED,
     getWxAppMuted: () => muted,
@@ -412,6 +425,15 @@ describe('runWxAppAccept', () => {
 
     await runWxAppAccept(deps, lifecycle);
 
+    expect(deps.metricsManager.timeEvent).toHaveBeenCalledWith([
+      METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_SUCCESS,
+      METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_FAILED,
+    ]);
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_SUCCESS,
+      {taskId: 'interaction-1'},
+      ['operational', 'behavioral']
+    );
     expect(lifecycle.setWxAppAcceptInFlight).toHaveBeenNthCalledWith(1, true);
     expect(lifecycle.setWxAppAnswerPending).toHaveBeenCalledWith(true);
     expect(deps.answerCallOnWebexService!.answerCall).toHaveBeenCalled();
@@ -422,12 +444,20 @@ describe('runWxAppAccept', () => {
 
   it('clears pending and maps error when answer fails', async () => {
     const deps = makeDeps();
-    const error = new Error('answer failed');
+    const error = Object.assign(new Error('answer failed'), {trackingId: 'track-1'});
     deps.answerCallOnWebexService!.answerCall = jest.fn().mockRejectedValue(error);
     const lifecycle = makeLifecycle();
 
     await expect(runWxAppAccept(deps, lifecycle)).rejects.toThrow('answer failed');
 
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_FAILED,
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        trackingId: 'track-1',
+      }),
+      ['operational', 'behavioral']
+    );
     expect(lifecycle.setWxAppAnswerPending).toHaveBeenCalledWith(false);
     expect(lifecycle.mapWxAppVoiceError).toHaveBeenCalledWith(error, METHODS.ACCEPT);
     expect(lifecycle.setWxAppAcceptInFlight).toHaveBeenLastCalledWith(false);
@@ -435,6 +465,19 @@ describe('runWxAppAccept', () => {
 });
 
 describe('runWxAppReject', () => {
+  it('tracks wxApp decline success metric', async () => {
+    const deps = makeDeps();
+    const lifecycle = makeLifecycle();
+
+    await runWxAppReject(deps, lifecycle);
+
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+      {taskId: 'interaction-1'},
+      ['operational', 'behavioral']
+    );
+  });
+
   it('maps error when reject fails', async () => {
     const deps = makeDeps();
     const error = new Error('reject failed');
@@ -443,7 +486,78 @@ describe('runWxAppReject', () => {
 
     await expect(runWxAppReject(deps, lifecycle)).rejects.toThrow('reject failed');
 
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
+      expect.objectContaining({taskId: 'interaction-1'}),
+      ['operational', 'behavioral']
+    );
     expect(lifecycle.mapWxAppVoiceError).toHaveBeenCalledWith(error, METHODS.REJECT);
+  });
+});
+
+describe('runWxAppOutdialDecline', () => {
+  it('tracks wxApp decline success metric for outdial cancel', async () => {
+    const deps = makeDeps();
+    const cancelResult = {type: 'RoutingMessage', trackingId: 'track-1', data: {}};
+
+    const result = await runWxAppOutdialDecline(deps, async () => cancelResult);
+
+    expect(result).toBe(cancelResult);
+    expect(deps.metricsManager.timeEvent).toHaveBeenCalledWith([
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
+    ]);
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+      {taskId: 'interaction-1'},
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('tracks wxApp decline failed metric and rethrows when cancel fails', async () => {
+    const deps = makeDeps();
+    const error = new Error('cancel failed');
+
+    await expect(
+      runWxAppOutdialDecline(deps, async () => {
+        throw error;
+      })
+    ).rejects.toThrow('cancel failed');
+
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
+      expect.objectContaining({taskId: 'interaction-1'}),
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('preserves AQM correlation fields when cancel fails with error.details', async () => {
+    const deps = makeDeps();
+    const error = Object.assign(new Error('AQM failed'), {
+      details: {
+        trackingId: 'aqm-track-1',
+        orgId: 'org-1',
+        type: 'Service.aqm.task.cancel',
+        data: {reason: 'TASK_NOT_FOUND', reasonCode: 404, agentId: 'agent-1'},
+      },
+    });
+
+    await expect(
+      runWxAppOutdialDecline(deps, async () => {
+        throw error;
+      })
+    ).rejects.toThrow('AQM failed');
+
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        trackingId: 'aqm-track-1',
+        failureReason: 'TASK_NOT_FOUND',
+        reasonCode: 404,
+      }),
+      ['operational', 'behavioral']
+    );
   });
 });
 
@@ -455,5 +569,35 @@ describe('mapWxAppVoiceError', () => {
     });
 
     expect(() => mapWxAppVoiceError(normalized, 'accept', 'cc')).toThrow(normalized);
+  });
+});
+
+describe('runWxAppToggleMute metrics', () => {
+  it('tracks mute success metric', async () => {
+    const deps = makeDeps({getTaskState: () => TaskState.CONNECTED});
+    const lifecycle = makeLifecycle();
+
+    await runWxAppToggleMute(deps, lifecycle);
+
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_SUCCESS,
+      expect.objectContaining({taskId: 'interaction-1', targetMuted: true}),
+      ['operational', 'behavioral']
+    );
+  });
+});
+
+describe('runWxAppTransmitDtmf metrics', () => {
+  it('tracks dtmf success metric with digit length only', async () => {
+    const deps = makeDeps({getTaskState: () => TaskState.CONNECTED});
+    const lifecycle = makeLifecycle();
+
+    await runWxAppTransmitDtmf(deps, lifecycle, {dtmf: '123'});
+
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_SUCCESS,
+      {taskId: 'interaction-1', dtmfLength: 3},
+      ['operational', 'behavioral']
+    );
   });
 });
