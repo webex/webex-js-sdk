@@ -1617,6 +1617,10 @@ describe('Voice Task', () => {
       const firstDtmf = voice.transmitDtmf({dtmf: '1'});
       const secondDtmf = voice.transmitDtmf({dtmf: '2'});
 
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
       expect(mockSvc.transmitDtmf).toHaveBeenCalledTimes(1);
       expect(mockSvc.transmitDtmf).toHaveBeenCalledWith({
         callId: 'call-id-1',
@@ -1631,6 +1635,62 @@ describe('Voice Task', () => {
       expect(mockSvc.transmitDtmf).toHaveBeenNthCalledWith(2, {
         callId: 'call-id-1',
         dtmf: '2',
+        lineOwnerId: undefined,
+      });
+    });
+
+    it('queues three concurrent transmitDtmf() calls in order', async () => {
+      let resolveFirst: () => void;
+      const firstGate = new Promise<void>((resolve) => {
+        resolveFirst = resolve;
+      });
+      const mockSvc = {
+        transmitDtmf: jest
+          .fn()
+          .mockImplementationOnce(() => firstGate)
+          .mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      const firstDtmf = voice.transmitDtmf({dtmf: '1'});
+      const secondDtmf = voice.transmitDtmf({dtmf: '2'});
+      const thirdDtmf = voice.transmitDtmf({dtmf: '3'});
+
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledTimes(1);
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledWith({
+        callId: 'call-id-1',
+        dtmf: '1',
+        lineOwnerId: undefined,
+      });
+
+      resolveFirst!();
+      await Promise.all([firstDtmf, secondDtmf, thirdDtmf]);
+
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledTimes(3);
+      expect(mockSvc.transmitDtmf).toHaveBeenNthCalledWith(2, {
+        callId: 'call-id-1',
+        dtmf: '2',
+        lineOwnerId: undefined,
+      });
+      expect(mockSvc.transmitDtmf).toHaveBeenNthCalledWith(3, {
+        callId: 'call-id-1',
+        dtmf: '3',
         lineOwnerId: undefined,
       });
     });
