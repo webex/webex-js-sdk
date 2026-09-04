@@ -851,6 +851,7 @@ const devices = await callingClient.getDevices();
 - Mobius WSS is enabled only by the WDM developer flag or the allow-listed local override; absence of a WSS URL falls back to HTTP.
 - Async `registration.down` events go to Registration; other Mobius async events go to CallManager.
 - Active calls defer disruptive re-registration until calls clear. Evidence: `src/CallingClient/CallingClient.ts`, `src/CallingClient/utils/wsFeatureFlag.ts`, `src/CallingClient/utils/request.ts`.
+- Outbound-call destination addresses are strictly validated against the fully-anchored `MAKE_CALL_PHONE_REGEX` (`/^[\d\s()*#+.-]+$/`), which requires the entire address to consist only of valid dial characters before a `tel:` URI is formed; addresses that do not match are rejected. The unanchored `VALID_PHONE_REGEX` (`/[\d\s()*#+.-]+/`) remains available for partial-match consumers such as caller-id resolution. Evidence: `src/CallingClient/constants.ts`.
 
 ## Concurrency & Reactive Flow
 
