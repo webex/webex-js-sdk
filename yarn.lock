@@ -8932,7 +8932,7 @@ __metadata:
     "@webex/test-helper-retry": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
     "@webex/ts-sdp": ^1.8.1
-    "@webex/web-capabilities": ^1.13.0
+    "@webex/web-capabilities": ^1.13.1
     "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
     bowser: ^2.11.0
@@ -9625,15 +9625,6 @@ __metadata:
   dependencies:
     bowser: ^2.11.0
   checksum: 70e6d564b0082b5f83030561b94cb9711faa49ea6a01a639cc9fc116f8b7c7bdad7e6beeb816fd9d6bfcc9bce9b80ff31873db6c388ed41641116474d4d1c2f5
-  languageName: node
-  linkType: hard
-
-"@webex/web-capabilities@npm:^1.13.0":
-  version: 1.13.0
-  resolution: "@webex/web-capabilities@npm:1.13.0"
-  dependencies:
-    bowser: ^2.11.0
-  checksum: 52d6a0ef4659f57c89654c38e0edd2e90b70e13da598455b017bc562841be79df28d1f4d7d443e1ff6e21ec5f3254e58287c91c303bf4611612aad363db6854c
   languageName: node
   linkType: hard
 
