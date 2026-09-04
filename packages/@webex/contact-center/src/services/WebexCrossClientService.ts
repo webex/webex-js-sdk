@@ -186,32 +186,41 @@ export default class WebexCrossClientService {
     };
 
     const metricsManager = MetricsManager.getInstance();
+    const usersubPublishEventKeys = [
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS,
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+    ];
 
     if (trackPublishMetrics) {
-      metricsManager.timeEvent([
-        METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS,
-        METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
-      ]);
+      metricsManager.timeEvent(usersubPublishEventKeys);
     }
 
     try {
       await this.publishCrossClientState([userId], ttl, composition, 'setManageWebexCallingInWxcc');
     } catch (error) {
       if (trackPublishMetrics) {
-        metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
-          {
-            enableWxBetterTogether: enable,
-            error: error instanceof Error ? error.toString() : String(error),
-          },
-          ['operational', 'behavioral']
-        );
+        if (operationGeneration !== this.refreshGeneration) {
+          metricsManager.cancelTimedEvent(usersubPublishEventKeys);
+        } else {
+          metricsManager.trackEvent(
+            METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+            {
+              enableWxBetterTogether: enable,
+              error: error instanceof Error ? error.toString() : String(error),
+            },
+            ['operational', 'behavioral']
+          );
+        }
       }
 
       throw error;
     }
 
     if (operationGeneration !== this.refreshGeneration) {
+      if (trackPublishMetrics) {
+        metricsManager.cancelTimedEvent(usersubPublishEventKeys);
+      }
+
       return;
     }
 

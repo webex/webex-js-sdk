@@ -234,6 +234,26 @@ describe('AnswerCallOnWebexService', () => {
       expect(LoggerProxy.error).toHaveBeenCalled();
     });
 
+    it('logs HTTP status on non-404 getCallDetails failure', async () => {
+      const err = {
+        statusCode: 503,
+        trackingId: 'track-top-level-1',
+        message: 'Service unavailable',
+      };
+      (webex.request as jest.Mock).mockRejectedValue(err);
+
+      await expect(service.getCallDetails({callId: 'c1'})).rejects.toBeDefined();
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        expect.stringContaining('getCallDetails failed'),
+        expect.objectContaining({
+          data: expect.objectContaining({
+            trackingId: 'track-top-level-1',
+            status: 503,
+          }),
+        })
+      );
+    });
+
     it('rejects without error log for expected call-not-found during mute backfill race', async () => {
       (webex.request as jest.Mock).mockRejectedValue({status: 400, message: 'Call not found'});
 

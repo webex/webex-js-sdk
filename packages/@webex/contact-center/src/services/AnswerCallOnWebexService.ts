@@ -18,20 +18,24 @@ const extractWxAppTrackingId = (source: unknown): string | undefined => {
   return sourceObj?.details?.trackingId || sourceObj?.trackingId;
 };
 
+const extractWxAppHttpStatus = (source: unknown): number | string | undefined => {
+  const obj = source as {
+    statusCode?: number;
+    status?: number | string;
+    details?: {status?: number | string};
+  };
+
+  return obj?.statusCode ?? obj?.status ?? obj?.details?.status;
+};
+
 const markWxAppTelephonyError = (error: Error, source: unknown): WxAppTelephonyError => {
   const marked = error as WxAppTelephonyError;
   marked.isWxAppTelephonyError = true;
-  const sourceObj = source as {
-    details?: {trackingId?: string; status?: number | string};
-    trackingId?: string;
-    statusCode?: number;
-    status?: number | string;
-  };
   const trackingId = extractWxAppTrackingId(source);
   if (trackingId) {
     marked.trackingId = trackingId;
   }
-  const status = sourceObj?.statusCode ?? sourceObj?.details?.status ?? sourceObj?.status;
+  const status = extractWxAppHttpStatus(source);
   if (status !== undefined) {
     marked.status = status;
   }
@@ -120,9 +124,7 @@ export default class AnswerCallOnWebexService {
         method: logMethod,
         data: {
           trackingId,
-          status:
-            (error as {statusCode?: number; status?: number | string})?.statusCode ??
-            (error as {status?: number | string})?.status,
+          status: extractWxAppHttpStatus(error),
         },
       });
       const {error: detailedError} = getErrorDetails(error, logMethod, CC_FILE);
@@ -221,7 +223,10 @@ export default class AnswerCallOnWebexService {
       LoggerProxy.error(`AnswerCallOnWebexService.getCallDetails failed: ${error}`, {
         module: ANSWER_CALL_ON_WEBEX_FILE,
         method: METHODS.GET_CALL_DETAILS_ON_WEBEX,
-        data: {trackingId},
+        data: {
+          trackingId,
+          status: extractWxAppHttpStatus(error),
+        },
       });
       const {error: detailedError} = getErrorDetails(
         error,
