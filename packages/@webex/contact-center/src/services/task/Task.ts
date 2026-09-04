@@ -54,7 +54,7 @@ import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import LoggerProxy from '../../logger-proxy';
 import {
   AI_SUMMARY_FEEDBACK_VALUES,
-  createAISummaryError,
+  createSummaryError,
   isFiniteNonNegativeNumber,
   isNonEmptyString,
 } from '../AISummaryUtils';
@@ -290,7 +290,7 @@ export default abstract class Task extends EventEmitter implements ITask {
         true;
 
       if (!organizationEnabled || !interactionEnabled) {
-        throw createAISummaryError(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED);
+        throw createSummaryError(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED);
       }
 
       const result = await this.requestAISummary(
@@ -398,7 +398,7 @@ export default abstract class Task extends EventEmitter implements ITask {
       ]);
       this.requireAISummaryConfiguration();
       if (!Task.isValidAISummaryActionType(actionType)) {
-        throw createAISummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
+        throw createSummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
       }
 
       Object.assign(metricFields, {actionType});
@@ -413,7 +413,7 @@ export default abstract class Task extends EventEmitter implements ITask {
         true;
 
       if (!organizationEnabled || !interactionEnabled) {
-        throw createAISummaryError(AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED);
+        throw createSummaryError(AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED);
       }
 
       const result = await this.requestAISummary(
@@ -462,7 +462,7 @@ export default abstract class Task extends EventEmitter implements ITask {
       ]);
       this.requireAISummaryConfiguration();
       if (!Task.isValidAISummaryActionType(actionType)) {
-        throw createAISummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
+        throw createSummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
       }
 
       Object.assign(metricFields, {actionType});
@@ -536,7 +536,7 @@ export default abstract class Task extends EventEmitter implements ITask {
       !this.getFeatureEnablement ||
       !isNonEmptyString(this.agentId)
     ) {
-      throw createAISummaryError(AI_SUMMARY_TASK_ERROR_CODES.NOT_INITIALIZED);
+      throw createSummaryError(AI_SUMMARY_TASK_ERROR_CODES.NOT_INITIALIZED);
     }
   }
 
@@ -584,7 +584,7 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   private static throwInvalidSummaryResponse(): never {
-    throw createAISummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_RESPONSE_PAYLOAD);
+    throw createSummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_RESPONSE_PAYLOAD);
   }
 
   private static isValidAISummaryActionType(
@@ -608,9 +608,9 @@ export default abstract class Task extends EventEmitter implements ITask {
       eventType: inboundType,
       timeoutMs: AI_SUMMARY_DURATION_MS,
       createDuplicateRequestError: () =>
-        createAISummaryError(AI_SUMMARY_ERROR_CODES.AI_SUMMARY_REQUEST_ALREADY_PENDING),
-      createTimeoutError: () => createAISummaryError(timeoutCode),
-      createCancellationError: () => createAISummaryError(AI_SUMMARY_REQUEST_CANCELLED),
+        createSummaryError(AI_SUMMARY_ERROR_CODES.AI_SUMMARY_REQUEST_ALREADY_PENDING),
+      createTimeoutError: () => createSummaryError(timeoutCode),
+      createCancellationError: () => createSummaryError(AI_SUMMARY_REQUEST_CANCELLED),
       sendRequest: () =>
         (this.aiSummaryAdapter as AISummaryAdapter).sendSummaryGetEvent(
           this.agentId as string,

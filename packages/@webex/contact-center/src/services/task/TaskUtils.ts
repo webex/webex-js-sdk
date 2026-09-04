@@ -11,7 +11,7 @@ import {
 import {TaskContext} from './state-machine/types';
 import {CC_EVENTS} from '../config/types';
 import {OUTBOUND_TYPE, OUTDIAL_DIRECTION, OUTDIAL_MEDIA_TYPE} from '../../constants';
-import {createAISummaryError, isNonEmptyString} from '../AISummaryUtils';
+import {createSummaryError, isNonEmptyString} from '../AISummaryUtils';
 
 const CAMPAIGN_PREVIEW_OUTBOUND_TYPES = ['STANDARD_PREVIEW_CAMPAIGN', 'DIRECT_PREVIEW_CAMPAIGN'];
 const CAMPAIGN_PREVIEW_CAMPAIGN_TYPES = ['preview_standard', 'preview_direct'];
@@ -266,7 +266,7 @@ export const getAISummaryCorrelation = (taskData?: TaskData | null): AISummaryCo
   const correlation = tryGetAISummaryCorrelation(taskData);
 
   if (!correlation) {
-    throw createAISummaryError(AI_SUMMARY_CORRELATION_NOT_AVAILABLE);
+    throw createSummaryError(AI_SUMMARY_CORRELATION_NOT_AVAILABLE);
   }
 
   return correlation;

@@ -32,6 +32,7 @@ import {
 import {AIFeatureFlags} from './config/types';
 import {
   AI_SUMMARY_FEEDBACK_VALUES,
+  createSummaryError,
   isFiniteNonNegativeNumber,
   isNonEmptyString,
 } from './AISummaryUtils';
@@ -94,44 +95,6 @@ export class ApiAIAssistant {
     return baseUrl;
   }
 
-  /**
-   * Creates the API transport error with diagnostic context and the API's logging policy.
-   * This differs from the lightweight task-layer errors created by createAISummaryError.
-   */
-  private createSummaryError(
-    errorCode: string,
-    methodName: string,
-    context?: Partial<AISummaryFailureContext> & {statusCode?: number}
-  ): Error {
-    const {error} = getErrorDetails(
-      {
-        ...(context?.statusCode !== undefined ? {statusCode: context.statusCode} : {}),
-        details: {
-          data: {
-            reason: errorCode,
-            methodName,
-            ...(context?.eventName ? {eventName: context.eventName} : {}),
-            ...(context?.agentId ? {agentId: context.agentId} : {}),
-            ...(context?.orgId ? {orgId: context.orgId} : {}),
-            ...(context?.interactionId ? {interactionId: context.interactionId} : {}),
-            ...(context?.conversationId ? {conversationId: context.conversationId} : {}),
-          },
-        },
-      },
-      methodName,
-      CC_FILE,
-      {uploadLogs: false}
-    );
-
-    (error as Error & {data?: Record<string, unknown>}).data = {
-      ...((error as Error & {data?: Record<string, unknown>}).data ?? {}),
-      errorCode,
-      ...(context?.statusCode !== undefined ? {statusCode: context.statusCode} : {}),
-    };
-
-    return error;
-  }
-
   private getSummaryBaseUrl(): string {
     try {
       const baseUrl = this.resolveBaseUrl();
@@ -142,7 +105,7 @@ export class ApiAIAssistant {
 
       return baseUrl;
     } catch (_error) {
-      throw this.createSummaryError(
+      throw createSummaryError(
         AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE,
         METHODS.GET_BASE_URL
       );
@@ -217,7 +180,7 @@ export class ApiAIAssistant {
       }
     } catch (error) {
       if (error === timeoutMarker || (error as {code?: unknown})?.code === 'ETIMEDOUT') {
-        throw this.createSummaryError(
+        throw createSummaryError(
           AI_SUMMARY_TRANSPORT_ERROR_CODES.TIMEOUT,
           context.methodName,
           context
@@ -228,7 +191,7 @@ export class ApiAIAssistant {
         ? (error as {statusCode: number}).statusCode
         : undefined;
 
-      throw this.createSummaryError(
+      throw createSummaryError(
         AI_SUMMARY_TRANSPORT_ERROR_CODES.HTTP_REQUEST_FAILED,
         context.methodName,
         {...context, ...(statusCode !== undefined ? {statusCode} : {})}
@@ -251,7 +214,7 @@ export class ApiAIAssistant {
     try {
       orgId = this.webex.credentials.getOrgId();
     } catch (_error) {
-      throw this.createSummaryError(
+      throw createSummaryError(
         AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED,
         METHODS.SEND_SUMMARY_GET_EVENT
       );
@@ -264,7 +227,7 @@ export class ApiAIAssistant {
       !isNonEmptyString(conversationId) ||
       !AI_SUMMARY_GET_EVENT_NAMES.has(eventName)
     ) {
-      throw this.createSummaryError(
+      throw createSummaryError(
         AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED,
         METHODS.SEND_SUMMARY_GET_EVENT
       );
@@ -302,7 +265,7 @@ export class ApiAIAssistant {
     try {
       orgId = this.webex.credentials.getOrgId();
     } catch (_error) {
-      throw this.createSummaryError(
+      throw createSummaryError(
         AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED,
         METHODS.SEND_SUMMARY_RESPONSE_EVENT
       );
@@ -323,7 +286,7 @@ export class ApiAIAssistant {
       (payload?.publishTimestamp !== undefined &&
         !isFiniteNonNegativeNumber(payload.publishTimestamp))
     ) {
-      throw this.createSummaryError(
+      throw createSummaryError(
         AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED,
         METHODS.SEND_SUMMARY_RESPONSE_EVENT
       );
