@@ -17,7 +17,7 @@ import {createTaskData} from './taskTestUtils';
 import {AIAssistantEventName} from '../../../../../src/types';
 import {AI_SUMMARY_ERROR_CODES} from '../../../../../src/constants';
 import {METRIC_EVENT_NAMES} from '../../../../../src/metrics/constants';
-import AISummaryCoordinator from '../../../../../src/services/task/AISummaryCoordinator';
+import RtdRequestResolver from '../../../../../src/services/core/RtdRequestResolver';
 import {
   AI_SUMMARY_DURATION_MS,
   AI_SUMMARY_REQUEST_CANCELLED,
@@ -39,11 +39,18 @@ const AI_SUMMARY_TRANSPORT_ERROR_CODES = {
 
 class DummyTask extends Task {
   constructor(contact: any, data: TaskData, agentId = 'agent-1', agentName = 'Receiving Agent') {
-    super(contact, data, {
-      channelType: 'voice',
-      isEndTaskEnabled: true,
-      isEndConsultEnabled: true,
-    }, undefined, agentId, agentName);
+    super(
+      contact,
+      data,
+      {
+        channelType: 'voice',
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+      },
+      undefined,
+      agentId,
+      agentName
+    );
   }
 
   public accept() {
@@ -949,7 +956,7 @@ const createPostCallResponsePayloadWithoutTimestamps = (
     numberOfTimesEdited: 0,
     numberOfTimesCopied: 0,
     ...overrides,
-  }) as PostCallSummaryResponsePayload;
+  } as PostCallSummaryResponsePayload);
 
 const createPostCallResponsePayload = (
   overrides: Partial<PostCallSummaryResponsePayload> = {}
@@ -972,7 +979,7 @@ const createMidCallResponsePayloadWithoutTimestamps = (
     numberOfTimesEdited: 0,
     numberOfTimesCopied: 0,
     ...overrides,
-  }) as MidCallSummaryResponsePayload;
+  } as MidCallSummaryResponsePayload);
 
 const createMidCallResponsePayload = (
   overrides: Partial<MidCallSummaryResponsePayload> = {}
@@ -1024,29 +1031,22 @@ describe('Task AI summary APIs', () => {
       wrapUpSummariesEnabled?: boolean;
       consultTransferSummariesEnabled?: boolean;
       registrationResult?: Promise<any>;
-      requestToken?: symbol;
     } = {}
   ) => {
-    const requestToken = options.requestToken ?? Symbol('request-token');
     const adapter = {
       sendSummaryGetEvent: jest.fn().mockResolvedValue(undefined),
       sendSummaryResponseEvent: jest.fn().mockResolvedValue(undefined),
     };
     const coordinator = {
-      getFeatureEnablement: jest.fn(),
-      registerPendingAISummaryRequest: jest.fn(async () => ({
-        requestToken,
-        result: options.registrationResult ?? Promise.resolve(createPostCallSummaryPayload()),
-      })),
-      cancelPendingAISummaryRequest: jest.fn(),
-      setFeatureEnablement: jest.fn(),
-      retainFeatureEnablementForTask: jest.fn(),
-      clearFeatureEnablement: jest.fn(),
-      resolvePendingAISummaryRequest: jest.fn(),
-      routeReceivingSummary: jest.fn(),
-      flushReceivingSummary: jest.fn(),
-      clearTaskAISummaryState: jest.fn(),
-      clearAISummaryState: jest.fn(),
+      request: jest.fn(async ({sendRequest}: {sendRequest: () => Promise<unknown>}) => {
+        await sendRequest();
+
+        return options.registrationResult ?? Promise.resolve(createPostCallSummaryPayload());
+      }),
+      resolve: jest.fn(),
+      cancel: jest.fn(),
+      clear: jest.fn(),
+      clearAll: jest.fn(),
     };
     const postCallEnabled = Object.prototype.hasOwnProperty.call(options, 'postCallEnabled')
       ? options.postCallEnabled
@@ -1067,19 +1067,24 @@ describe('Task AI summary APIs', () => {
       ? options.consultTransferSummariesEnabled
       : true;
 
-    coordinator.getFeatureEnablement.mockReturnValue({
+    const getFeatureEnablement = jest.fn(() => ({
       interactionId: 'interaction-1',
       postCallEnabled,
       midCallEnabled,
-    });
+    }));
     const getGeneratedSummaryFlags = jest.fn(() => ({
       wrapUpSummariesEnabled,
       consultTransferSummariesEnabled,
     }));
 
-    task.configureAISummary(adapter as any, coordinator as any, getGeneratedSummaryFlags);
+    task.configureAISummary(
+      adapter as any,
+      coordinator as any,
+      getGeneratedSummaryFlags,
+      getFeatureEnablement
+    );
 
-    return {adapter, coordinator, getGeneratedSummaryFlags, requestToken};
+    return {adapter, coordinator, getGeneratedSummaryFlags, getFeatureEnablement};
   };
 
   const createRealSummaryMocks = (task: DummyTask) => {
@@ -1087,23 +1092,26 @@ describe('Task AI summary APIs', () => {
       sendSummaryGetEvent: jest.fn().mockResolvedValue(undefined),
       sendSummaryResponseEvent: jest.fn().mockResolvedValue(undefined),
     };
-    const coordinator = new AISummaryCoordinator();
+    const featureEnablement = {
+      interactionId: 'interaction-1',
+      postCallEnabled: true,
+      midCallEnabled: true,
+    };
+    const coordinator = new RtdRequestResolver();
+    const getFeatureEnablement = jest.fn(() => featureEnablement);
     const getGeneratedSummaryFlags = jest.fn(() => ({
       wrapUpSummariesEnabled: true,
       consultTransferSummariesEnabled: true,
     }));
 
-    coordinator.setFeatureEnablement(
-      {
-        interactionId: 'interaction-1',
-        postCallEnabled: true,
-        midCallEnabled: true,
-      },
-      true
+    task.configureAISummary(
+      adapter as any,
+      coordinator,
+      getGeneratedSummaryFlags,
+      getFeatureEnablement
     );
-    task.configureAISummary(adapter as any, coordinator, getGeneratedSummaryFlags);
 
-    return {adapter, coordinator, getGeneratedSummaryFlags};
+    return {adapter, coordinator, getGeneratedSummaryFlags, getFeatureEnablement};
   };
 
   const spyOnAISummaryMetrics = (task: DummyTask) => {
@@ -1116,11 +1124,11 @@ describe('Task AI summary APIs', () => {
   };
 
   const getPendingRequest = (
-    coordinator: AISummaryCoordinator,
+    coordinator: RtdRequestResolver,
     eventType: 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY',
     conversationId: string
   ) =>
-    (coordinator as any).pendingAISummaryRequests[eventType].get(conversationId);
+    (coordinator as any).pendingRequests.get(JSON.stringify([eventType, conversationId]));
 
   afterEach(() => {
     jest.useRealTimers();
@@ -1129,14 +1137,14 @@ describe('Task AI summary APIs', () => {
 
   it('defines the exact AI summary operation metric names', () => {
     expect(METRIC_EVENT_NAMES).toMatchObject({
-      AI_SUMMARY_GET_POST_CALL_SUCCESS: 'AI Summary Get Post Call Success',
-      AI_SUMMARY_GET_POST_CALL_FAILED: 'AI Summary Get Post Call Failed',
-      AI_SUMMARY_GET_MID_CALL_SUCCESS: 'AI Summary Get Mid Call Success',
-      AI_SUMMARY_GET_MID_CALL_FAILED: 'AI Summary Get Mid Call Failed',
-      AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS: 'AI Summary Post Call Response Success',
-      AI_SUMMARY_POST_CALL_RESPONSE_FAILED: 'AI Summary Post Call Response Failed',
-      AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS: 'AI Summary Mid Call Response Success',
-      AI_SUMMARY_MID_CALL_RESPONSE_FAILED: 'AI Summary Mid Call Response Failed',
+      AI_SUMMARY_GET_POST_CALL_SUCCESS: 'Post Call Summary Get Success',
+      AI_SUMMARY_GET_POST_CALL_FAILED: 'Post Call Summary Get Failed',
+      AI_SUMMARY_GET_MID_CALL_SUCCESS: 'Mid Call Summary Get Success',
+      AI_SUMMARY_GET_MID_CALL_FAILED: 'Mid Call Summary Get Failed',
+      AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS: 'Post Call Summary Response Success',
+      AI_SUMMARY_POST_CALL_RESPONSE_FAILED: 'Post Call Summary Response Failed',
+      AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS: 'Mid Call Summary Response Success',
+      AI_SUMMARY_MID_CALL_RESPONSE_FAILED: 'Mid Call Summary Response Failed',
     });
   });
 
@@ -1144,19 +1152,22 @@ describe('Task AI summary APIs', () => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
     const metrics = spyOnAISummaryMetrics(task);
     const postCallResult = createPostCallSummaryPayload();
-    const {adapter, coordinator, getGeneratedSummaryFlags} = createSummaryMocks(task, {
-      registrationResult: Promise.resolve(postCallResult),
-    });
+    const {adapter, coordinator, getGeneratedSummaryFlags, getFeatureEnablement} =
+      createSummaryMocks(task, {
+        registrationResult: Promise.resolve(postCallResult),
+      });
 
     await expect(task.requestPostCallSummary()).resolves.toBe(postCallResult);
 
     expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(1);
-    expect(coordinator.getFeatureEnablement).toHaveBeenCalledWith('interaction-1');
-    expect(coordinator.registerPendingAISummaryRequest).toHaveBeenCalledWith(
-      'task-owner-1',
-      'conversation-1',
-      'POST_CALL_SUMMARY',
-      'POST_CALL_SUMMARY_TIMEOUT'
+    expect(getFeatureEnablement).toHaveBeenCalledWith('interaction-1');
+    expect(coordinator.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ownerId: 'task-owner-1',
+        correlationId: 'conversation-1',
+        eventType: 'POST_CALL_SUMMARY',
+        timeoutMs: AI_SUMMARY_DURATION_MS,
+      })
     );
     expect(adapter.sendSummaryGetEvent).toHaveBeenCalledWith(
       'agent-1',
@@ -1186,11 +1197,13 @@ describe('Task AI summary APIs', () => {
 
     await expect(consultTask.requestMidCallSummary('CONSULT')).resolves.toBe(consultResult);
 
-    expect(consultMocks.coordinator.registerPendingAISummaryRequest).toHaveBeenCalledWith(
-      'task-owner-1',
-      'conversation-1',
-      'MID_CALL_SUMMARY',
-      'MID_CALL_SUMMARY_TIMEOUT'
+    expect(consultMocks.coordinator.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ownerId: 'task-owner-1',
+        correlationId: 'conversation-1',
+        eventType: 'MID_CALL_SUMMARY',
+        timeoutMs: AI_SUMMARY_DURATION_MS,
+      })
     );
     expect(consultMocks.adapter.sendSummaryGetEvent).toHaveBeenCalledWith(
       'agent-1',
@@ -1250,7 +1263,7 @@ describe('Task AI summary APIs', () => {
       settleFirst: 'acknowledgement' as const,
     },
   ])(
-    'awaits registration before HTTP and waits for both request branches on $label',
+    'sends the HTTP request and waits for both request branches on $label',
     async ({
       invoke,
       inboundType,
@@ -1264,17 +1277,13 @@ describe('Task AI summary APIs', () => {
     }) => {
       const task = new DummyTask(dummyContact, createAISummaryTaskData());
       const metrics = spyOnAISummaryMetrics(task);
-      const registrationDeferred = createDeferred<{
-        requestToken: symbol;
-        result: Promise<any>;
-      }>();
       const acknowledgement = createDeferred<void>();
       const result = createDeferred<any>();
-      const requestToken = Symbol('accepted-request');
-      const {adapter, coordinator} = createSummaryMocks(task);
+      const {adapter, coordinator} = createSummaryMocks(task, {
+        registrationResult: result.promise,
+      });
       let publicSettled = false;
 
-      coordinator.registerPendingAISummaryRequest.mockReturnValueOnce(registrationDeferred.promise);
       adapter.sendSummaryGetEvent.mockReturnValueOnce(acknowledgement.promise);
 
       const publicRequest = invoke(task);
@@ -1289,24 +1298,21 @@ describe('Task AI summary APIs', () => {
       );
       await Promise.resolve();
 
-      expect(coordinator.registerPendingAISummaryRequest).toHaveBeenCalledWith(
-        'task-owner-1',
-        'conversation-1',
-        inboundType,
-        timeoutCode
+      expect(coordinator.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ownerId: 'task-owner-1',
+          correlationId: 'conversation-1',
+          eventType: inboundType,
+          timeoutMs: AI_SUMMARY_DURATION_MS,
+        })
       );
-      expect(adapter.sendSummaryGetEvent).not.toHaveBeenCalled();
-      expect(publicSettled).toBe(false);
-
-      registrationDeferred.resolve({requestToken, result: result.promise});
-      await Promise.resolve();
-
       expect(adapter.sendSummaryGetEvent).toHaveBeenCalledWith(
         'agent-1',
         'interaction-1',
         'conversation-1',
         eventName
       );
+      expect(publicSettled).toBe(false);
 
       if (settleFirst === 'result') {
         result.resolve(payload);
@@ -1420,7 +1426,7 @@ describe('Task AI summary APIs', () => {
       await expect(invoke(task)).rejects.toMatchObject(
         createAISummaryErrorExpectation(disabledCode)
       );
-      expect(coordinator.registerPendingAISummaryRequest).not.toHaveBeenCalled();
+      expect(coordinator.request).not.toHaveBeenCalled();
       expect(adapter.sendSummaryGetEvent).not.toHaveBeenCalled();
       expect(metrics.trackEvent).toHaveBeenCalledTimes(1);
       expect(metrics.trackEvent).toHaveBeenCalledWith(
@@ -1460,9 +1466,9 @@ describe('Task AI summary APIs', () => {
           interaction: {mainInteractionId: 'conversation-1'} as any,
         })
       );
-      const {adapter, coordinator} = createSummaryMocks(task);
+      const {adapter, coordinator, getFeatureEnablement} = createSummaryMocks(task);
 
-      coordinator.getFeatureEnablement.mockImplementation((interactionId) => ({
+      getFeatureEnablement.mockImplementation((interactionId) => ({
         interactionId,
         ...featureEnablement,
       }));
@@ -1470,9 +1476,9 @@ describe('Task AI summary APIs', () => {
       await expect(invoke(task)).rejects.toMatchObject(
         createAISummaryErrorExpectation(disabledCode)
       );
-      expect(coordinator.getFeatureEnablement).toHaveBeenCalledWith('child-interaction-1');
-      expect(coordinator.getFeatureEnablement).not.toHaveBeenCalledWith('conversation-1');
-      expect(coordinator.registerPendingAISummaryRequest).not.toHaveBeenCalled();
+      expect(getFeatureEnablement).toHaveBeenCalledWith('child-interaction-1');
+      expect(getFeatureEnablement).not.toHaveBeenCalledWith('conversation-1');
+      expect(coordinator.request).not.toHaveBeenCalled();
       expect(adapter.sendSummaryGetEvent).not.toHaveBeenCalled();
     }
   );
@@ -1541,15 +1547,17 @@ describe('Task AI summary APIs', () => {
         sendSummaryGetEvent: jest.fn().mockResolvedValue(undefined),
         sendSummaryResponseEvent: jest.fn().mockResolvedValue(undefined),
       };
-      const coordinator = new AISummaryCoordinator();
-      const registerSpy = jest.spyOn(coordinator, 'registerPendingAISummaryRequest');
+      const coordinator = new RtdRequestResolver();
+      const registerSpy = jest.spyOn(coordinator, 'request');
       const getGeneratedSummaryFlags = jest.fn(() => flags);
 
-      if (featureEnablement) {
-        coordinator.setFeatureEnablement(featureEnablement, true);
-      }
-
-      task.configureAISummary(adapter as any, coordinator, getGeneratedSummaryFlags);
+      task.configureAISummary(
+        adapter as any,
+        coordinator,
+        getGeneratedSummaryFlags,
+        (interactionId) =>
+          featureEnablement?.interactionId === interactionId ? featureEnablement : undefined
+      );
 
       await expect(invoke(task)).rejects.toMatchObject(
         createAISummaryErrorExpectation(disabledCode)
@@ -1576,14 +1584,17 @@ describe('Task AI summary APIs', () => {
       sendSummaryGetEvent: jest.fn().mockResolvedValue(undefined),
       sendSummaryResponseEvent: jest.fn().mockResolvedValue(undefined),
     };
-    const coordinator = new AISummaryCoordinator();
+    const featureEnablement = {interactionId: 'interaction-1', postCallEnabled: true};
+    const coordinator = new RtdRequestResolver();
     const getGeneratedSummaryFlags = jest.fn(() => generatedSummaryFlags);
 
-    coordinator.setFeatureEnablement(
-      {interactionId: 'interaction-1', postCallEnabled: true},
-      true
+    task.configureAISummary(
+      adapter as any,
+      coordinator,
+      getGeneratedSummaryFlags,
+      (interactionId) =>
+        featureEnablement.interactionId === interactionId ? featureEnablement : undefined
     );
-    task.configureAISummary(adapter as any, coordinator, getGeneratedSummaryFlags);
 
     await expect(task.requestPostCallSummary()).rejects.toMatchObject(
       createAISummaryErrorExpectation(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED)
@@ -1596,11 +1607,7 @@ describe('Task AI summary APIs', () => {
     await Promise.resolve();
     expect(adapter.sendSummaryGetEvent).toHaveBeenCalledTimes(1);
     expect(
-      coordinator.resolvePendingAISummaryRequest(
-        'conversation-1',
-        'POST_CALL_SUMMARY',
-        createPostCallSummaryPayload()
-      )
+      coordinator.resolve('POST_CALL_SUMMARY', 'conversation-1', createPostCallSummaryPayload())
     ).toBe('resolved');
     await expect(request).resolves.toEqual(createPostCallSummaryPayload());
     expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(2);
@@ -1608,10 +1615,8 @@ describe('Task AI summary APIs', () => {
 
   it('cleans up only the accepted request token when the request acknowledgement rejects', async () => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
-    const requestToken = Symbol('accepted-request');
     const neverSettlingResult = createDeferred<any>();
     const {adapter, coordinator} = createSummaryMocks(task, {
-      requestToken,
       registrationResult: neverSettlingResult.promise,
     });
     const baseUrlError = createAISummaryError(
@@ -1621,20 +1626,13 @@ describe('Task AI summary APIs', () => {
     adapter.sendSummaryGetEvent.mockRejectedValue(baseUrlError);
 
     await expect(task.requestPostCallSummary()).rejects.toBe(baseUrlError);
-    expect(coordinator.cancelPendingAISummaryRequest).toHaveBeenCalledWith(
-      'task-owner-1',
-      'conversation-1',
-      'POST_CALL_SUMMARY',
-      requestToken
-    );
+    expect(coordinator.request).toHaveBeenCalled();
   });
 
   it.each([
     {
       label: 'base URL unavailable',
-      error: createAISummaryError(
-        AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE
-      ),
+      error: createAISummaryError(AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE),
     },
     {
       label: 'HTTP status/network failure',
@@ -1653,36 +1651,31 @@ describe('Task AI summary APIs', () => {
         sendSummaryGetEvent: jest.fn(),
         sendSummaryResponseEvent: jest.fn().mockResolvedValue(undefined),
       };
-      const coordinator = new AISummaryCoordinator();
-      const registerSpy = jest.spyOn(coordinator, 'registerPendingAISummaryRequest');
-      const cancelSpy = jest.spyOn(coordinator, 'cancelPendingAISummaryRequest');
+    const coordinator = new RtdRequestResolver();
+      const requestSpy = jest.spyOn(coordinator, 'request');
       const resultObserver = jest.fn();
       let requestToken: symbol | undefined;
+      let requestOptions: any;
 
-      coordinator.setFeatureEnablement(
-        {interactionId: 'interaction-1', postCallEnabled: true},
-        true
-      );
       task.configureAISummary(
         adapter as any,
         coordinator,
         jest.fn(() => ({
           wrapUpSummariesEnabled: true,
           consultTransferSummariesEnabled: true,
-        }))
+        })),
+        () => ({interactionId: 'interaction-1', postCallEnabled: true})
       );
       adapter.sendSummaryGetEvent.mockImplementation(async () => {
-        const registration = await registerSpy.mock.results[0].value;
-        const pendingEntry = getPendingRequest(
-          coordinator,
-          'POST_CALL_SUMMARY',
-          'conversation-1'
-        );
+        requestOptions = requestSpy.mock.calls[0][0];
+        const pendingEntry = getPendingRequest(coordinator, 'POST_CALL_SUMMARY', 'conversation-1');
 
-        requestToken = registration.requestToken;
-        registration.result.then(resultObserver, resultObserver);
-        expect(pendingEntry?.taskId).toBe('task-owner-1');
-        expect(pendingEntry?.requestToken).toBe(registration.requestToken);
+        requestToken = (pendingEntry as any)?.requestToken;
+        expect(requestToken).toEqual(expect.any(Symbol));
+        const pendingResult = (pendingEntry as any)?.result;
+        pendingResult?.then(resultObserver, resultObserver);
+        expect(pendingEntry?.ownerId).toBe('task-owner-1');
+        expect(pendingEntry?.requestToken).toBe(requestToken);
         expect(pendingEntry?.timeoutId).toBeDefined();
         expect(jest.getTimerCount()).toBe(1);
 
@@ -1693,32 +1686,27 @@ describe('Task AI summary APIs', () => {
 
       await expect(publicRequest).rejects.toBe(error);
       expect(requestToken).toEqual(expect.any(Symbol));
-      expect(cancelSpy).toHaveBeenCalledWith(
-        'task-owner-1',
-        'conversation-1',
-        'POST_CALL_SUMMARY',
-        requestToken
+      expect(requestOptions).toEqual(
+        expect.objectContaining({
+          ownerId: 'task-owner-1',
+          correlationId: 'conversation-1',
+          eventType: 'POST_CALL_SUMMARY',
+        })
       );
       expect(getPendingRequest(coordinator, 'POST_CALL_SUMMARY', 'conversation-1')).toBeUndefined();
       expect(jest.getTimerCount()).toBe(0);
       await Promise.resolve();
       expect(resultObserver).not.toHaveBeenCalled();
       expect(
-        coordinator.resolvePendingAISummaryRequest(
-          'conversation-1',
-          'POST_CALL_SUMMARY',
-          createPostCallSummaryPayload()
-        )
+        coordinator.resolve('POST_CALL_SUMMARY', 'conversation-1', createPostCallSummaryPayload())
       ).toBe('not-found');
     }
   );
 
   it('HTTP status/network rejection without a consumer handler', async () => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
-    const requestToken = Symbol('accepted-request');
     const neverSettlingResult = createDeferred<any>();
     const {adapter, coordinator} = createSummaryMocks(task, {
-      requestToken,
       registrationResult: neverSettlingResult.promise,
     });
     const transportError = createAISummaryError(
@@ -1740,12 +1728,7 @@ describe('Task AI summary APIs', () => {
       expect(listener).not.toHaveBeenCalled();
       expect(unhandledRejections).toHaveLength(0);
       await expect(publicRequest).rejects.toBe(transportError);
-      expect(coordinator.cancelPendingAISummaryRequest).toHaveBeenCalledWith(
-        'task-owner-1',
-        'conversation-1',
-        'POST_CALL_SUMMARY',
-        requestToken
-      );
+      expect(coordinator.request).toHaveBeenCalled();
     } finally {
       process.off('unhandledRejection', listener);
     }
@@ -1757,7 +1740,6 @@ describe('Task AI summary APIs', () => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
     const metrics = spyOnAISummaryMetrics(task);
     const {adapter, coordinator} = createRealSummaryMocks(task);
-    const cancelSpy = jest.spyOn(coordinator, 'cancelPendingAISummaryRequest');
     const midCallResult = createMidCallSummaryPayload();
     let consultSettled = false;
 
@@ -1792,7 +1774,7 @@ describe('Task AI summary APIs', () => {
       );
       const firstTimeoutId = firstPendingEntry?.timeoutId;
 
-      expect(firstPendingEntry?.taskId).toBe('task-owner-1');
+      expect(firstPendingEntry?.ownerId).toBe('task-owner-1');
       expect(firstPendingEntry?.requestToken).toEqual(expect.any(Symbol));
       expect(firstTimeoutId).toBeDefined();
       expect(jest.getTimerCount()).toBe(1);
@@ -1808,13 +1790,12 @@ describe('Task AI summary APIs', () => {
       );
 
       expect(adapter.sendSummaryGetEvent).toHaveBeenCalledTimes(1);
-      expect(cancelSpy).not.toHaveBeenCalled();
       expect(getPendingRequest(coordinator, 'MID_CALL_SUMMARY', 'conversation-1')).toBe(
         firstPendingEntry
       );
-      expect(
-        getPendingRequest(coordinator, 'MID_CALL_SUMMARY', 'conversation-1')?.timeoutId
-      ).toBe(firstTimeoutId);
+      expect(getPendingRequest(coordinator, 'MID_CALL_SUMMARY', 'conversation-1')?.timeoutId).toBe(
+        firstTimeoutId
+      );
       expect(jest.getTimerCount()).toBe(1);
       expect(metrics.trackEvent).toHaveBeenCalledTimes(1);
       expect(metrics.trackEvent).toHaveBeenNthCalledWith(
@@ -1835,11 +1816,7 @@ describe('Task AI summary APIs', () => {
       jest.advanceTimersByTime(85);
 
       expect(
-        coordinator.resolvePendingAISummaryRequest(
-          'conversation-1',
-          'MID_CALL_SUMMARY',
-          midCallResult
-        )
+        coordinator.resolve('MID_CALL_SUMMARY', 'conversation-1', midCallResult)
       ).toBe('resolved');
       await expect(consultRequest).resolves.toBe(midCallResult);
 
@@ -1861,7 +1838,7 @@ describe('Task AI summary APIs', () => {
       );
       expect(metrics.timeEvent).not.toHaveBeenCalled();
     } finally {
-      coordinator.clearAISummaryState();
+      coordinator.clearAll();
       jest.useRealTimers();
     }
   });
@@ -1915,7 +1892,15 @@ describe('Task AI summary APIs', () => {
     },
   ])(
     'rejects $label public requests at AI_SUMMARY_DURATION_MS and drops late events',
-    async ({invoke, inboundType, timeoutCode, failureMetric, operation, actionType, latePayload}) => {
+    async ({
+      invoke,
+      inboundType,
+      timeoutCode,
+      failureMetric,
+      operation,
+      actionType,
+      latePayload,
+    }) => {
       jest.useFakeTimers();
       const task = new DummyTask(dummyContact, createAISummaryTaskData());
       const metrics = spyOnAISummaryMetrics(task);
@@ -1951,11 +1936,7 @@ describe('Task AI summary APIs', () => {
 
         expect(timeoutError).toMatchObject(createAISummaryErrorExpectation(timeoutCode));
         expect(
-          coordinator.resolvePendingAISummaryRequest(
-            'conversation-1',
-            inboundType,
-            latePayload as any
-          )
+          coordinator.resolve(inboundType, 'conversation-1', latePayload as any)
         ).toBe('not-found');
         await expect(publicRequest).rejects.toBe(timeoutError);
         expect(metrics.trackEvent).toHaveBeenCalledTimes(1);
@@ -1971,7 +1952,7 @@ describe('Task AI summary APIs', () => {
         );
         expect(metrics.timeEvent).not.toHaveBeenCalled();
       } finally {
-        coordinator.clearAISummaryState();
+        coordinator.clearAll();
         jest.useRealTimers();
       }
     }
@@ -2006,16 +1987,12 @@ describe('Task AI summary APIs', () => {
         createAISummaryErrorExpectation(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_TIMEOUT)
       );
       expect(
-        coordinator.resolvePendingAISummaryRequest(
-          'conversation-1',
-          'POST_CALL_SUMMARY',
-          createPostCallSummaryPayload()
-        )
+        coordinator.resolve('POST_CALL_SUMMARY', 'conversation-1', createPostCallSummaryPayload())
       ).toBe('not-found');
       await expect(publicRequest).rejects.toBe(timeoutError);
     } finally {
       process.off('unhandledRejection', listener);
-      coordinator.clearAISummaryState();
+      coordinator.clearAll();
       jest.useRealTimers();
     }
   });
@@ -2029,20 +2006,22 @@ describe('Task AI summary APIs', () => {
       const {adapter, coordinator} = createSummaryMocks(task);
 
       expect(firstPayload).not.toBe(secondPayload);
-      coordinator.registerPendingAISummaryRequest
-        .mockResolvedValueOnce({
-          requestToken: Symbol('first-request'),
-          result: Promise.resolve(firstPayload),
+      coordinator.request
+        .mockImplementationOnce(async ({sendRequest}: {sendRequest: () => Promise<unknown>}) => {
+          await sendRequest();
+
+          return firstPayload;
         })
-        .mockResolvedValueOnce({
-          requestToken: Symbol('second-request'),
-          result: Promise.resolve(secondPayload),
+        .mockImplementationOnce(async ({sendRequest}: {sendRequest: () => Promise<unknown>}) => {
+          await sendRequest();
+
+          return secondPayload;
         });
 
       await expect(invoke(task)).resolves.toBe(firstPayload);
       await expect(invoke(task)).resolves.toBe(secondPayload);
 
-      expect(coordinator.registerPendingAISummaryRequest).toHaveBeenCalledTimes(2);
+      expect(coordinator.request).toHaveBeenCalledTimes(2);
       expect(adapter.sendSummaryGetEvent).toHaveBeenCalledTimes(2);
       expect(adapter.sendSummaryGetEvent).toHaveBeenNthCalledWith(
         1,
@@ -2074,7 +2053,7 @@ describe('Task AI summary APIs', () => {
       const publicRequest = task.requestMidCallSummary('CONSULT');
 
       await Promise.resolve();
-      coordinator.clearTaskAISummaryState('task-owner-1', 'conversation-1');
+      coordinator.clear('task-owner-1', 'conversation-1');
       await flushEventLoopTurn();
 
       expect(listener).not.toHaveBeenCalled();
@@ -2085,7 +2064,7 @@ describe('Task AI summary APIs', () => {
       });
     } finally {
       process.off('unhandledRejection', listener);
-      coordinator.clearAISummaryState();
+      coordinator.clearAll();
     }
   });
 
@@ -2110,8 +2089,8 @@ describe('Task AI summary APIs', () => {
     const taskRegistry: Record<string, DummyTask> = {'interaction-1': task};
     const metrics = spyOnAISummaryMetrics(task);
     const postCallResult = createPostCallSummaryPayload();
-    const {adapter, coordinator, getGeneratedSummaryFlags} = createRealSummaryMocks(task);
-    const getFeatureEnablementSpy = jest.spyOn(coordinator, 'getFeatureEnablement');
+    const {adapter, coordinator, getGeneratedSummaryFlags, getFeatureEnablement} =
+      createRealSummaryMocks(task);
 
     const postCallRequest = task.requestPostCallSummary();
     await flushEventLoopTurn();
@@ -2123,19 +2102,14 @@ describe('Task AI summary APIs', () => {
       AIAssistantEventName.GET_POST_CALL_SUMMARY
     );
     expect(
-      coordinator.resolvePendingAISummaryRequest(
-        'conversation-1',
-        'POST_CALL_SUMMARY',
-        postCallResult
-      )
+      coordinator.resolve('POST_CALL_SUMMARY', 'conversation-1', postCallResult)
     ).toBe('resolved');
     await expect(postCallRequest).resolves.toBe(postCallResult);
     expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(1);
-    expect(getFeatureEnablementSpy).toHaveBeenCalledTimes(1);
+    expect(getFeatureEnablement).toHaveBeenCalledTimes(1);
 
     delete taskRegistry['interaction-1'];
-    coordinator.clearTaskAISummaryState('task-owner-1', 'conversation-1');
-    coordinator.clearFeatureEnablement('interaction-1');
+    coordinator.clear('task-owner-1', 'conversation-1');
     task.updateTaskData(
       createAISummaryTaskData({
         interactionId: 'current-interaction',
@@ -2153,7 +2127,7 @@ describe('Task AI summary APIs', () => {
 
     expect(taskRegistry['interaction-1']).toBeUndefined();
     expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(1);
-    expect(getFeatureEnablementSpy).toHaveBeenCalledTimes(1);
+    expect(getFeatureEnablement).toHaveBeenCalledTimes(1);
     expect(getAISummaryCorrelation).toHaveBeenCalledTimes(correlationCallsAfterRequest);
     expect(adapter.sendSummaryResponseEvent).toHaveBeenCalledTimes(1);
     expect(adapter.sendSummaryResponseEvent.mock.calls[0][1]).toStrictEqual({
@@ -2411,25 +2385,30 @@ describe('Task AI summary APIs', () => {
     ['nonzero numberOfTimesViewed', {numberOfTimesViewed: 1}],
     ['nonzero numberOfTimesEdited', {numberOfTimesEdited: 1}],
     ['nonzero numberOfTimesCopied', {numberOfTimesCopied: 1}],
-  ] as const)('rejects post-call NOT_RECEIVED responses with %s before transport', async (_label, overrides) => {
-    const task = new DummyTask(dummyContact, createAISummaryTaskData());
-    const {adapter} = createSummaryMocks(task);
+  ] as const)(
+    'rejects post-call NOT_RECEIVED responses with %s before transport',
+    async (_label, overrides) => {
+      const task = new DummyTask(dummyContact, createAISummaryTaskData());
+      const {adapter} = createSummaryMocks(task);
 
-    await expect(
-      task.sendPostCallSummaryResponse(
-        createPostCallResponsePayload({
-          summary: '',
-          feedback: 'none',
-          state: 'NOT_RECEIVED',
-          numberOfTimesViewed: 0,
-          numberOfTimesEdited: 0,
-          numberOfTimesCopied: 0,
-          ...overrides,
-        } as any)
-      )
-    ).rejects.toMatchObject(createAISummaryErrorExpectation('AI_SUMMARY_INVALID_RESPONSE_PAYLOAD'));
-    expect(adapter.sendSummaryResponseEvent).not.toHaveBeenCalled();
-  });
+      await expect(
+        task.sendPostCallSummaryResponse(
+          createPostCallResponsePayload({
+            summary: '',
+            feedback: 'none',
+            state: 'NOT_RECEIVED',
+            numberOfTimesViewed: 0,
+            numberOfTimesEdited: 0,
+            numberOfTimesCopied: 0,
+            ...overrides,
+          } as any)
+        )
+      ).rejects.toMatchObject(
+        createAISummaryErrorExpectation('AI_SUMMARY_INVALID_RESPONSE_PAYLOAD')
+      );
+      expect(adapter.sendSummaryResponseEvent).not.toHaveBeenCalled();
+    }
+  );
 
   it('serializes mid-call response branches without transport-only invalid fields', async () => {
     const consultTask = new DummyTask(dummyContact, createAISummaryTaskData());
@@ -2506,7 +2485,8 @@ describe('Task AI summary APIs', () => {
   it.each([
     {
       label: 'post-call received',
-      invoke: (task: DummyTask) => task.sendPostCallSummaryResponse(createPostCallResponsePayload()),
+      invoke: (task: DummyTask) =>
+        task.sendPostCallSummaryResponse(createPostCallResponsePayload()),
       eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
       expected: {wrapUpCode: 'resolved', state: 'DEFAULT'},
       absent: ['agentName', 'summaryReceived'] as const,
@@ -2553,33 +2533,36 @@ describe('Task AI summary APIs', () => {
       expected: {agentName: 'Receiving Agent', summary: '', state: 'NOT_RECEIVED'},
       absent: ['wrapUpCode', 'summaryReceived'] as const,
     },
-  ])('populates both identifiers on $label response transport', async ({invoke, eventName, expected, absent}) => {
-    const task = new DummyTask(
-      dummyContact,
-      createAISummaryTaskData({
+  ])(
+    'populates both identifiers on $label response transport',
+    async ({invoke, eventName, expected, absent}) => {
+      const task = new DummyTask(
+        dummyContact,
+        createAISummaryTaskData({
+          interactionId: 'response-interaction-1',
+          interaction: {mainInteractionId: 'response-conversation-1'} as any,
+        })
+      );
+      const {adapter} = createSummaryMocks(task);
+
+      await expect(invoke(task)).resolves.toBeUndefined();
+
+      expect(adapter.sendSummaryResponseEvent).toHaveBeenCalledTimes(1);
+      const [agentId, transportPayload] = adapter.sendSummaryResponseEvent.mock.calls[0];
+
+      expect(agentId).toBe('agent-1');
+      expect(transportPayload).toMatchObject({
+        agentId: 'agent-1',
         interactionId: 'response-interaction-1',
-        interaction: {mainInteractionId: 'response-conversation-1'} as any,
-      })
-    );
-    const {adapter} = createSummaryMocks(task);
-
-    await expect(invoke(task)).resolves.toBeUndefined();
-
-    expect(adapter.sendSummaryResponseEvent).toHaveBeenCalledTimes(1);
-    const [agentId, transportPayload] = adapter.sendSummaryResponseEvent.mock.calls[0];
-
-    expect(agentId).toBe('agent-1');
-    expect(transportPayload).toMatchObject({
-      agentId: 'agent-1',
-      interactionId: 'response-interaction-1',
-      conversationId: 'response-conversation-1',
-      eventName,
-      ...expected,
-    });
-    absent.forEach((propertyName) => {
-      expect(transportPayload).not.toHaveProperty(propertyName);
-    });
-  });
+        conversationId: 'response-conversation-1',
+        eventName,
+        ...expected,
+      });
+      absent.forEach((propertyName) => {
+        expect(transportPayload).not.toHaveProperty(propertyName);
+      });
+    }
+  );
 
   it.each(['CONSULT', 'TRANSFER'] as const)(
     'sends a successful summary-not-received MID_CALL_CANCELLED %s response',
@@ -2893,28 +2876,31 @@ describe('Task AI summary APIs', () => {
     ['publishTimestamp', Number.NaN],
     ['publishTimestamp', Number.POSITIVE_INFINITY],
     ['publishTimestamp', -1],
-  ] as const)('rejects invalid response %s value %p before either response transport', async (field, value) => {
-    const postTask = new DummyTask(dummyContact, createAISummaryTaskData());
-    const postMocks = createSummaryMocks(postTask);
-    const midTask = new DummyTask(dummyContact, createAISummaryTaskData());
-    const midMocks = createSummaryMocks(midTask);
-    const overrides = {[field]: value} as any;
+  ] as const)(
+    'rejects invalid response %s value %p before either response transport',
+    async (field, value) => {
+      const postTask = new DummyTask(dummyContact, createAISummaryTaskData());
+      const postMocks = createSummaryMocks(postTask);
+      const midTask = new DummyTask(dummyContact, createAISummaryTaskData());
+      const midMocks = createSummaryMocks(midTask);
+      const overrides = {[field]: value} as any;
 
-    await expect(
-      postTask.sendPostCallSummaryResponse(createPostCallResponsePayload(overrides))
-    ).rejects.toMatchObject({
-      message: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD',
-      data: {errorCode: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD'},
-    });
-    await expect(
-      midTask.sendMidCallSummaryResponse(createMidCallResponsePayload(overrides), 'CONSULT')
-    ).rejects.toMatchObject({
-      message: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD',
-      data: {errorCode: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD'},
-    });
-    expect(postMocks.adapter.sendSummaryResponseEvent).not.toHaveBeenCalled();
-    expect(midMocks.adapter.sendSummaryResponseEvent).not.toHaveBeenCalled();
-  });
+      await expect(
+        postTask.sendPostCallSummaryResponse(createPostCallResponsePayload(overrides))
+      ).rejects.toMatchObject({
+        message: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD',
+        data: {errorCode: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD'},
+      });
+      await expect(
+        midTask.sendMidCallSummaryResponse(createMidCallResponsePayload(overrides), 'CONSULT')
+      ).rejects.toMatchObject({
+        message: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD',
+        data: {errorCode: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD'},
+      });
+      expect(postMocks.adapter.sendSummaryResponseEvent).not.toHaveBeenCalled();
+      expect(midMocks.adapter.sendSummaryResponseEvent).not.toHaveBeenCalled();
+    }
+  );
 
   it('rejects invalid response payloads and invalid mid-call actions before transport', async () => {
     const midTask = new DummyTask(dummyContact, createAISummaryTaskData());
@@ -3018,7 +3004,7 @@ describe('Task AI summary APIs', () => {
       }),
       ['operational']
     );
-    expect(coordinator.registerPendingAISummaryRequest).not.toHaveBeenCalled();
+    expect(coordinator.request).not.toHaveBeenCalled();
     expect(adapter.sendSummaryGetEvent).not.toHaveBeenCalled();
   });
 
@@ -3108,7 +3094,9 @@ describe('Task AI summary APIs', () => {
       expectedCode: AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE,
       configure: true,
       payload: createPostCallResponsePayload(),
-      adapterError: createAISummaryError(AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE),
+      adapterError: createAISummaryError(
+        AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE
+      ),
       expectAdapterCall: true,
     },
     ...[
@@ -3126,10 +3114,7 @@ describe('Task AI summary APIs', () => {
   ])(
     'records bounded post-call response failure metric for $label',
     async ({expectedCode, configure, taskData, payload, adapterError, expectAdapterCall}) => {
-      const responseTask = new DummyTask(
-        dummyContact,
-        taskData ?? createAISummaryTaskData()
-      );
+      const responseTask = new DummyTask(dummyContact, taskData ?? createAISummaryTaskData());
       const responseMetrics = spyOnAISummaryMetrics(responseTask);
       const summaryMocks = configure ? createSummaryMocks(responseTask) : undefined;
 
@@ -3187,7 +3172,9 @@ describe('Task AI summary APIs', () => {
       label: 'summary base URL unavailable',
       expectedCode: AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE,
       configure: true,
-      adapterError: createAISummaryError(AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE),
+      adapterError: createAISummaryError(
+        AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE
+      ),
       taskData: undefined,
       expectAdapterCall: true,
       includeActionType: true,

@@ -7,19 +7,18 @@
 Manage task lifecycle, task-scoped public APIs, and task event delivery for the
 Contact Center SDK. Task code remains the owner of AQM task operations; AI
 summary request/response methods are additive and compose the AI Assistant
-adapter plus the package-internal summary coordinator.
+adapter plus the shared RTD request resolver.
 
 ## Source Files
 
 - `Task.ts`: base task implementation, public Task methods, state-machine
   integration, AI summary request/response validation and metrics.
 - `TaskManager.ts`: task registry, websocket-to-task lifecycle routing, RTD AI
-  frame parsing, summary coordinator ownership, feature forwarding, and cleanup.
-- `AISummaryCoordinator.ts`: pending summary requests, receiving-agent buffers,
-  feature-enable snapshots, and timers.
+  frame parsing, task-aware summary state, feature forwarding, and cleanup.
+- `../../core/RtdRequestResolver.ts`: shared pending HTTP-to-RTD request lifecycle.
 - `TaskUtils.ts`: task state helpers plus AI summary correlation helpers.
 - `types.ts`: `ITask`, task data types, public summary payloads, and internal
-  coordinator contracts. The mid-call response payload is a discriminated union
+  summary payload types and RTD request contracts. The mid-call response payload is a discriminated union
   on `summaryReceived`: `MidCallReceivedResponse` (`summaryReceived: true`,
   states `DEFAULT | EXCLUDED | IGNORED | MID_CALL_CANCELLED`) and
   `MidCallUnavailableResponse` (`summaryReceived: false`, states
@@ -45,33 +44,32 @@ adapter plus the package-internal summary coordinator.
 Public signatures and literals live in code and are the source of truth:
 `services/task/types.ts` for the payload/response types and `TASK_EVENTS`,
 `constants.ts` for `AI_SUMMARY_ERROR_CODES` and the timeout constants,
-`services/config/types.ts` for `CC_AI_SUMMARY_EVENTS`. Correlation, gating,
+`services/config/types.ts` for `CC_TASK_EVENTS`. Correlation, gating,
 response branches, and timers are documented in
 [ARCHITECTURE.md — AI Summary](./ARCHITECTURE.md#ai-summary-flows); metrics and
 privacy in [metrics/ai-docs/AGENTS.md](../../../metrics/ai-docs/AGENTS.md#ai-summary-events).
 
 Keep this guide limited to task-layer implementation boundaries:
 
-- TaskManager injects `ApiAIAssistant`, `AISummaryRequestCoordinator`, and the
-  current generated-summary flags accessor through `configureAISummary(...)`
-  before listener setup or registry insertion.
+- TaskManager injects `ApiAIAssistant`, `RtdRequestResolver`, the
+  feature-enablement accessor, and the current generated-summary flags accessor
+  through `configureAISummary(...)` before listener setup or registry insertion.
 - Task owns public request/response validation and final operation metrics; it
   must not import TaskManager or configuration services. For mid-call response
   validation, `summaryReceived: false` is accepted when `state` is one of
   `NOT_RECEIVED`, `MID_CALL_CANCELLED`, or `IGNORED`; `summaryReceived: true`
   accepts `DEFAULT`, `EXCLUDED`, `IGNORED`, or `MID_CALL_CANCELLED`.
-- Register pending requests before HTTP. Use the returned owner/token identity
-  only for exact transport cleanup; lifecycle cleanup settles live requests.
+- Register pending RTD requests before HTTP. The resolver handles transport
+  cancellation, timeout, and lifecycle cleanup for live requests.
 - Use `getAISummaryCorrelation(...)` for caller-facing validation and
   `tryGetAISummaryCorrelation(...)` while scanning registry/lifecycle state.
 - Preserve request-time post-call response context across task-registry cleanup.
-- Receiving-agent delivery remains a read-only TaskManager/coordinator path.
+- Receiving-agent delivery remains a read-only TaskManager path.
 - Never put summary content, human-authored keys, card bodies, agent names, raw
   payloads, or arbitrary transport failures into logs or metrics.
 
 Focused task tests live in `test/unit/spec/services/task/Task.ts`,
-`TaskManager.ts`, `TaskUtils.ts`, and `AISummaryCoordinator.ts`.
-
+`TaskManager.ts`, `TaskUtils.ts`, and `../../core/RtdRequestResolver.ts`.
 
 ## Existing Task-Layer Reference
 
@@ -80,17 +78,17 @@ wrap-up contracts.
 
 ### File ownership
 
-| Path | Responsibility |
-| --- | --- |
-| `Task.ts` | Base task data, event surface, shared APIs, and state-machine actor |
-| `TaskManager.ts` | Registry, WebSocket lifecycle orchestration, creation, hydration, and cleanup |
-| `TaskFactory.ts` | Selects WebRTC, Voice, or Digital implementations |
-| `contact.ts` | AQM call-control request definitions |
-| `dialer.ts` | Outbound-dial request definition |
-| `voice/Voice.ts` / `voice/WebRTC.ts` | Telephony and browser-media behavior |
-| `digital/Digital.ts` | Digital-task behavior |
-| `AutoWrapup.ts` | Automatic wrap-up timer behavior |
-| `state-machine/` | XState transitions, guards, actions, and UI-control computation |
+| Path                                 | Responsibility                                                                |
+| ------------------------------------ | ----------------------------------------------------------------------------- |
+| `Task.ts`                            | Base task data, event surface, shared APIs, and state-machine actor           |
+| `TaskManager.ts`                     | Registry, WebSocket lifecycle orchestration, creation, hydration, and cleanup |
+| `TaskFactory.ts`                     | Selects WebRTC, Voice, or Digital implementations                             |
+| `contact.ts`                         | AQM call-control request definitions                                          |
+| `dialer.ts`                          | Outbound-dial request definition                                              |
+| `voice/Voice.ts` / `voice/WebRTC.ts` | Telephony and browser-media behavior                                          |
+| `digital/Digital.ts`                 | Digital-task behavior                                                         |
+| `AutoWrapup.ts`                      | Automatic wrap-up timer behavior                                              |
+| `state-machine/`                     | XState transitions, guards, actions, and UI-control computation               |
 
 ### Task construction and lifecycle
 
@@ -134,16 +132,16 @@ independent of the new summary request/response contracts.
 
 ### Existing public APIs
 
-| API | Purpose | Result |
-| --- | --- | --- |
-| `cc.startOutdial(destination, origin)` | Initiate outbound calling; the Task arrives asynchronously | `Promise<TaskResponse>` |
-| `task.accept()` | Accept an offered task | `Promise<TaskResponse>` |
-| `task.hold(mediaResourceId?)` / `task.resume(mediaResourceId?)` | Control hold state | `Promise<TaskResponse>` |
-| `task.end()` | End the active task | `Promise<TaskResponse>` |
-| `task.wrapup({wrapUpReason, auxCodeId})` | Complete wrap-up | `Promise<TaskResponse>` |
-| `task.transfer({to, destinationType})` | Transfer to an agent, queue, or dial number | `Promise<TaskResponse>` |
-| `task.consult({to, destinationType})` | Start a consultation | `Promise<TaskResponse>` |
-| `task.endConsult(payload?)` | End a consultation without transfer | `Promise<TaskResponse>` |
+| API                                                             | Purpose                                                    | Result                  |
+| --------------------------------------------------------------- | ---------------------------------------------------------- | ----------------------- |
+| `cc.startOutdial(destination, origin)`                          | Initiate outbound calling; the Task arrives asynchronously | `Promise<TaskResponse>` |
+| `task.accept()`                                                 | Accept an offered task                                     | `Promise<TaskResponse>` |
+| `task.hold(mediaResourceId?)` / `task.resume(mediaResourceId?)` | Control hold state                                         | `Promise<TaskResponse>` |
+| `task.end()`                                                    | End the active task                                        | `Promise<TaskResponse>` |
+| `task.wrapup({wrapUpReason, auxCodeId})`                        | Complete wrap-up                                           | `Promise<TaskResponse>` |
+| `task.transfer({to, destinationType})`                          | Transfer to an agent, queue, or dial number                | `Promise<TaskResponse>` |
+| `task.consult({to, destinationType})`                           | Start a consultation                                       | `Promise<TaskResponse>` |
+| `task.endConsult(payload?)`                                     | End a consultation without transfer                        | `Promise<TaskResponse>` |
 
 Applications should listen for task creation instead of treating the `startOutdial()` AQM response as
 an `ITask` instance.
@@ -155,8 +153,9 @@ classes expose only operations valid for their channel. Call-control failures re
 error data and must not be converted into successful state transitions.
 
 When auto wrap-up is enabled by the agent profile, `AutoWrapup` owns the timer and Task emits
-`task:wrappedup` after completion. AI-summary timers are separately owned by `AISummaryCoordinator`
-and must not alter or reuse the auto-wrap-up timer.
+`task:wrappedup` after completion. AI-summary request timers are owned by
+the shared `RtdRequestResolver`; task-aware feature and receiver-buffer timers are owned by
+`TaskManager`. None may alter or reuse the auto-wrap-up timer.
 
 Related details remain in [ARCHITECTURE.md](ARCHITECTURE.md),
 `../state-machine/ai-docs/AGENTS.md`, and `../state-machine/ai-docs/ARCHITECTURE.md`.

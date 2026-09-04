@@ -14,6 +14,9 @@ import {
 } from './services/config/types';
 import {PaginatedResponse, BaseSearchParams} from './utils/PageCache';
 
+/** @internal Result of a deregistration operation or an individual cleanup step. */
+export type DeregisterFailure = {captured: false; error?: never} | {captured: true; error: unknown};
+
 /**
  * Generic type for converting a const enum object into a union type of its values.
  * @template T The enum object type
@@ -74,6 +77,8 @@ export type WebexRequestPayload = {
   uri?: string;
   /** Whether to add authorization header */
   addAuthHeader?: boolean;
+  /** Request timeout in milliseconds */
+  timeout?: number;
   /** Custom headers to include in request */
   headers?: {
     [key: string]: string | null;
@@ -1009,6 +1014,11 @@ export const AIAssistantEventName = {
  */
 export type AIAssistantEventName = Enum<typeof AIAssistantEventName>;
 
+export type AISummaryGetEventName =
+  | typeof AIAssistantEventName.GET_POST_CALL_SUMMARY
+  | typeof AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY
+  | typeof AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY;
+
 type AISummaryResponseTransportIdentifiers = {
   agentId: string;
   interactionId: string;
@@ -1032,6 +1042,35 @@ export type AISummaryResponseTransportPayload =
         eventName: typeof AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE;
       })
   | AISummaryMidCallResponseTransportPayload;
+
+export type AISummaryEnvelopeInput =
+  | {
+      kind: 'get';
+      agentId: string;
+      orgId: string;
+      interactionId: string;
+      conversationId: string;
+      eventName: AISummaryGetEventName;
+      publishTimestamp: number;
+      actionTimeStamp: number;
+    }
+  | {
+      kind: 'response';
+      agentId: string;
+      orgId: string;
+      payload: AISummaryResponseTransportPayload;
+      publishTimestamp: number;
+      actionTimeStamp: number;
+    };
+
+export type AISummaryFailureContext = {
+  methodName: string;
+  eventName: string;
+  agentId: string;
+  orgId: string;
+  interactionId: string;
+  conversationId: string;
+};
 
 /**
  * A single transcript message entry returned by AI Assistant APIs.

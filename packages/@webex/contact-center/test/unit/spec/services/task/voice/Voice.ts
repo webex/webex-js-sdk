@@ -1,5 +1,5 @@
 import Voice from '../../../../../../src/services/task/voice/Voice';
-import AISummaryCoordinator from '../../../../../../src/services/task/AISummaryCoordinator';
+import RtdRequestResolver from '../../../../../../src/services/core/RtdRequestResolver';
 import LoggerProxy from '../../../../../../src/logger-proxy';
 import {
   TaskData,
@@ -15,10 +15,7 @@ import {createTaskData} from '../taskTestUtils';
 import {AIAssistantEventName} from '../../../../../../src/types';
 import {AI_SUMMARY_ERROR_CODES} from '../../../../../../src/constants';
 import {AI_SUMMARY_REQUEST_CANCELLED} from '../../../../../../src/services/task/constants';
-import {
-  createAISummaryError,
-  flushMicrotasks,
-} from '../../../../fixtures/aiSummaryTestUtils';
+import {createAISummaryError, flushMicrotasks} from '../../../../fixtures/aiSummaryTestUtils';
 import MetricsManager from '../../../../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../../../../src/metrics/constants';
 
@@ -107,9 +104,7 @@ describe('Voice Task', () => {
         reason: 'CUSTOMER_BUSY',
       });
 
-      const outdialFailedCall = emitSpy.mock.calls.find(
-        (call) => call[0] === 'task:outdialFailed'
-      );
+      const outdialFailedCall = emitSpy.mock.calls.find((call) => call[0] === 'task:outdialFailed');
       expect(outdialFailedCall).toBeDefined();
       expect(outdialFailedCall![1]).toBe('CUSTOMER_BUSY');
     });
@@ -130,9 +125,7 @@ describe('Voice Task', () => {
         reason: 'AGENT_ENDS',
       });
 
-      const outdialFailedCall = emitSpy.mock.calls.find(
-        (call) => call[0] === 'task:outdialFailed'
-      );
+      const outdialFailedCall = emitSpy.mock.calls.find((call) => call[0] === 'task:outdialFailed');
       expect(outdialFailedCall).toBeUndefined();
     });
   });
@@ -214,7 +207,10 @@ describe('Voice Task', () => {
     }) as any;
     const voice = new Voice(dummyContact, heldConferenceData, {});
     primeConnectedState(voice, heldConferenceData);
-    voice.stateMachineService?.send({type: TaskEvent.CONFERENCE_START, taskData: heldConferenceData});
+    voice.stateMachineService?.send({
+      type: TaskEvent.CONFERENCE_START,
+      taskData: heldConferenceData,
+    });
     expect(voice.stateMachineService?.getSnapshot().value).toBe(TaskState.CONFERENCING);
 
     await voice.holdResume();
@@ -642,7 +638,7 @@ describe('Voice Task', () => {
         blindTransfer: jest.fn().mockResolvedValue(operationResult),
         vteamTransfer: jest.fn().mockResolvedValue(operationResult),
         consultTransfer: jest.fn().mockResolvedValue(operationResult),
-      }) as any;
+      } as any);
 
     const createSummaryAdapter = () => ({
       sendSummaryGetEvent: jest.fn().mockResolvedValue(undefined),
@@ -652,19 +648,21 @@ describe('Voice Task', () => {
     const configureAISummary = (
       voice: Voice,
       adapter = createSummaryAdapter(),
-      coordinator = new AISummaryCoordinator()
+      coordinator = new RtdRequestResolver(),
+      getFeatureEnablement = () => ({
+        interactionId: 'int1',
+        postCallEnabled: true,
+        midCallEnabled: true,
+      })
     ) => {
-      coordinator.setFeatureEnablement(
-        {interactionId: 'int1', postCallEnabled: true, midCallEnabled: true},
-        true
-      );
       voice.configureAISummary(
         adapter as any,
         coordinator as any,
         jest.fn(() => ({
           wrapUpSummariesEnabled: true,
           consultTransferSummariesEnabled: true,
-        }))
+        })),
+        getFeatureEnablement
       );
 
       return {adapter, coordinator};
@@ -823,7 +821,7 @@ describe('Voice Task', () => {
 
           return async () => {
             expect(summaryObserver).not.toHaveBeenCalled();
-            coordinator.clearTaskAISummaryState('int1', 'int1');
+            coordinator.clear('int1', 'int1');
             await expectCancelledSummary(summaryRequest);
           };
         },
@@ -837,7 +835,7 @@ describe('Voice Task', () => {
           await flushMicrotasks();
           expectSummaryGetRequest(adapter, harness.testCase.summaryEventName);
 
-          coordinator.clearTaskAISummaryState('int1', 'int1');
+          coordinator.clear('int1', 'int1');
           await expectCancelledSummary(summaryRequest);
 
           return async () => undefined;
@@ -1102,13 +1100,7 @@ describe('Voice Task', () => {
       ['number', 503],
     ])('records failure telemetry and preserves a %s rejection', async (_label, failure) => {
       dummyContact.dropConferenceParticipant.mockRejectedValueOnce(failure);
-      const voice = new Voice(
-        dummyContact,
-        createBaseData(),
-        {},
-        undefined,
-        'current-agent-id'
-      );
+      const voice = new Voice(dummyContact, createBaseData(), {}, undefined, 'current-agent-id');
       const metricsManager = MetricsManager.getInstance();
       const failureFieldsSpy = jest.spyOn(
         MetricsManager,
@@ -1118,9 +1110,9 @@ describe('Voice Task', () => {
       const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent').mockImplementation();
       const errorSpy = jest.spyOn(LoggerProxy, 'error').mockImplementation();
 
-      await expect(
-        voice.dropConferenceParticipant({participantId: 'participant-id'})
-      ).rejects.toBe(failure);
+      await expect(voice.dropConferenceParticipant({participantId: 'participant-id'})).rejects.toBe(
+        failure
+      );
 
       expect(failureFieldsSpy).toHaveBeenCalledWith({});
       expect(trackEventSpy).toHaveBeenCalledWith(
@@ -1182,7 +1174,9 @@ describe('Voice Task', () => {
 
       voice.applyWxAppMuteStateFromSync('prefix:call-id-1', true);
 
-      expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, {muted: true});
+      expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_WXAPP_MUTE_STATE_UPDATED, {
+        muted: true,
+      });
     });
 
     it('no-ops when callId does not match active call', () => {

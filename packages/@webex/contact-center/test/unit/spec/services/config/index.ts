@@ -5,9 +5,8 @@ import {WCC_API_GATEWAY} from '../../../../../src/services/constants';
 import {CONFIG_FILE_NAME} from '../../../../../src/constants';
 import {
   CC_AGENT_EVENTS,
-  CC_AI_SUMMARY_EVENTS,
-  CC_EVENTS,
   CC_TASK_EVENTS,
+  CC_EVENTS,
 } from '../../../../../src/services/config/types';
 import MockWebex from '@webex/test-helper-mock-webex';
 import LoggerProxy from '../../../../../src/logger-proxy';
@@ -53,15 +52,15 @@ describe('AgentConfigService', () => {
 
   describe('AI summary event contracts', () => {
     it('preserves AI summary wire discriminators', () => {
-      expect(CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY).toBe('POST_CALL_SUMMARY');
-      expect(CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY).toBe('MID_CALL_SUMMARY');
-      expect(CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT).toBe('FEATURE_ENABLEMENT');
-      expect(CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT).toBe(
+      expect(CC_TASK_EVENTS.POST_CALL_SUMMARY).toBe('POST_CALL_SUMMARY');
+      expect(CC_TASK_EVENTS.MID_CALL_SUMMARY).toBe('MID_CALL_SUMMARY');
+      expect(CC_TASK_EVENTS.FEATURE_ENABLEMENT).toBe('FEATURE_ENABLEMENT');
+      expect(CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT).toBe(
         'MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT'
       );
     });
 
-    it('keeps CC_EVENTS spread in agent, task, then AI summary order', () => {
+    it('keeps CC_EVENTS spread in agent then task order', () => {
       const agentKeys = Object.keys(CC_AGENT_EVENTS);
       const taskKeys = Object.keys(CC_TASK_EVENTS);
       const ccEventKeys = Object.keys(CC_EVENTS);
@@ -70,15 +69,15 @@ describe('AgentConfigService', () => {
       expect(ccEventKeys.slice(agentKeys.length, agentKeys.length + taskKeys.length)).toEqual(
         taskKeys
       );
-      expect(ccEventKeys.slice(agentKeys.length + taskKeys.length)).toEqual([
-        'POST_CALL_SUMMARY',
-        'MID_CALL_SUMMARY',
-        'FEATURE_ENABLEMENT',
-        'MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT',
-      ]);
-      expect(CC_EVENTS.FEATURE_ENABLEMENT).toBe(CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT);
+      expect(ccEventKeys.slice(agentKeys.length + taskKeys.length)).toEqual([]);
+      expect(CC_TASK_EVENTS.REAL_TIME_TRANSCRIPTION).toBe('REAL_TIME_TRANSCRIPTION');
+      expect(CC_TASK_EVENTS.SUGGESTED_RESPONSE).toBe('SUGGESTED_RESPONSE');
+      expect(CC_TASK_EVENTS.SUGGESTED_RESPONSE_ACKNOWLEDGE).toBe(
+        'SUGGESTED_RESPONSE_ACKNOWLEDGE'
+      );
+      expect(CC_EVENTS.FEATURE_ENABLEMENT).toBe(CC_TASK_EVENTS.FEATURE_ENABLEMENT);
       expect(CC_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT).toBe(
-        CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT
+        CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT
       );
     });
   });

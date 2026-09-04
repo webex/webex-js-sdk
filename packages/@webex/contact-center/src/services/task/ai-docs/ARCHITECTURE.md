@@ -6,18 +6,18 @@
 
 ## Component Overview
 
-| Component | File | Responsibility |
-| --- | --- | --- |
-| `TaskManager` | [TaskManager.ts](../TaskManager.ts) | Singleton registry and lifecycle coordinator for websocket task events, task creation, WebRTC call mapping, RTD routing, AI summary coordinator ownership, and cleanup. |
-| `Task` | [Task.ts](../Task.ts) | Abstract task base class for public operations, state-machine integration, auto wrap-up setup, AI summary validation, request/response composition, and operation metrics. |
-| `Voice` | [voice/Voice.ts](../voice/Voice.ts) | Telephony task operations for hold/resume, recording controls, consult, transfer, conference, and switch-call behavior. |
-| `WebRTC` | [voice/WebRTC.ts](../voice/WebRTC.ts) | Browser-based voice task that binds calling media events to task events and answers or declines through `WebCallingService`. |
-| `Digital` | [digital/Digital.ts](../digital/Digital.ts) | Digital task implementation for accept and task data refresh. |
-| `TaskFactory` | [TaskFactory.ts](../TaskFactory.ts) | Media-aware task construction for telephony, browser WebRTC, chat, email, and social channels. |
-| `routingContact` | [contact.ts](../contact.ts) | AQM request surface for task call control, consult, transfer, conference, wrap-up, and cancellation operations. |
-| `AutoWrapup` | [AutoWrapup.ts](../AutoWrapup.ts) | Timer wrapper used by `Task` to execute configured default wrap-up after the configured interval. |
-| `TaskUtils` | [TaskUtils.ts](../TaskUtils.ts) | Shared task-state, participant, auto-answer, consult, campaign preview, and AI summary correlation helpers. |
-| `state-machine` | [state-machine/ai-docs/ARCHITECTURE.md](../state-machine/ai-docs/ARCHITECTURE.md) | Task state transitions, guards, actions, cleanup events, and UI control derivation. |
+| Component        | File                                                                              | Responsibility                                                                                                                                                             |
+| ---------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TaskManager`    | [TaskManager.ts](../TaskManager.ts)                                               | Singleton registry and lifecycle coordinator for websocket task events, task creation, WebRTC call mapping, RTD routing, task-aware AI summary state, and cleanup.         |
+| `Task`           | [Task.ts](../Task.ts)                                                             | Abstract task base class for public operations, state-machine integration, auto wrap-up setup, AI summary validation, request/response composition, and operation metrics. |
+| `Voice`          | [voice/Voice.ts](../voice/Voice.ts)                                               | Telephony task operations for hold/resume, recording controls, consult, transfer, conference, and switch-call behavior.                                                    |
+| `WebRTC`         | [voice/WebRTC.ts](../voice/WebRTC.ts)                                             | Browser-based voice task that binds calling media events to task events and answers or declines through `WebCallingService`.                                               |
+| `Digital`        | [digital/Digital.ts](../digital/Digital.ts)                                       | Digital task implementation for accept and task data refresh.                                                                                                              |
+| `TaskFactory`    | [TaskFactory.ts](../TaskFactory.ts)                                               | Media-aware task construction for telephony, browser WebRTC, chat, email, and social channels.                                                                             |
+| `routingContact` | [contact.ts](../contact.ts)                                                       | AQM request surface for task call control, consult, transfer, conference, wrap-up, and cancellation operations.                                                            |
+| `AutoWrapup`     | [AutoWrapup.ts](../AutoWrapup.ts)                                                 | Timer wrapper used by `Task` to execute configured default wrap-up after the configured interval.                                                                          |
+| `TaskUtils`      | [TaskUtils.ts](../TaskUtils.ts)                                                   | Shared task-state, participant, auto-answer, consult, campaign preview, and AI summary correlation helpers.                                                                |
+| `state-machine`  | [state-machine/ai-docs/ARCHITECTURE.md](../state-machine/ai-docs/ARCHITECTURE.md) | Task state transitions, guards, actions, cleanup events, and UI control derivation.                                                                                        |
 
 ## Task Module Design Overview
 
@@ -184,7 +184,7 @@ operation transport.
 `TaskManager` is a singleton obtained through `TaskManager.getTaskManager(...)`.
 It holds the websocket managers, `WebCallingService`, the `routingContact`
 request surface, config flags, wrap-up data, current agent ID, metrics manager,
-and one `AISummaryCoordinator`.
+and one shared `RtdRequestResolver`.
 
 Its responsibilities are:
 
@@ -347,7 +347,7 @@ notification channel that keeps task state and UI controls synchronized.
 realtime subscription socket used by AI features. It parses JSON, logs bounded
 diagnostics on parse or dispatch failure, and then dispatches one of two paths:
 
-- AI summary frames with top-level `CC_AI_SUMMARY_EVENTS` are handled by
+- AI summary frames with top-level `CC_TASK_EVENTS` are handled by
   `handleAISummaryEvent(...)`.
 - Existing transcript and suggested-response frames are routed by conversation
   ID to the registered task and emitted on the task as
@@ -388,11 +388,12 @@ AI summary RTD routing is stricter:
 ```mermaid
 flowchart LR
   App[Consumer] -->|request/response API| Task
-  Task -->|pending registration| Coord[AISummaryCoordinator]
+  Task -->|request and await RTD| Resolver[RtdRequestResolver]
   Task -->|bounded HTTP event| API[ApiAIAssistant]
   RTD[Realtime websocket] --> TM[TaskManager]
-  TM -->|result, feature, receiver candidates| Coord
-  Coord -->|Promise result or receiving-task event| Task
+  TM -->|resolve pending request| Resolver
+  TM -->|emit selected receiving-task event| Task
+  Resolver -->|Promise result| Task
 ```
 
 - `Task` owns caller validation, organization/interaction gating, retained
@@ -403,16 +404,16 @@ flowchart LR
   accepts `NOT_RECEIVED`, `MID_CALL_CANCELLED`, and `IGNORED`.
 - `TaskManager` owns task registry integration, realtime classification,
   feature-state keys, receiving-task candidate discovery, and lifecycle hooks.
-- `AISummaryCoordinator` owns pending slots, exact owner/token cleanup, feature
-  snapshots, receiving-agent buffers, and their timers.
+- `RtdRequestResolver` owns generic pending HTTP-to-RTD request slots, timeout,
+  cancellation, and owner cleanup. It has no AI Summary or Task dependency.
+- `TaskManager` owns feature snapshots, receiving-agent buffers, and their timers.
 - `ApiAIAssistant` owns the bounded transport envelope and safe transport errors.
 
 Correlation, overlap, response, timeout, and cleanup rules are implemented in
-`AISummaryCoordinator.ts` and `constants.ts`; metric and privacy rules are in
+`RtdRequestResolver.ts`, `TaskManager.ts`, and `constants.ts`; metric and privacy rules are in
 [metrics/ai-docs/AGENTS.md](../../../metrics/ai-docs/AGENTS.md#ai-summary-events).
 The consumer-facing sequences are in [AI Summary Flows](#ai-summary-flows)
 below; this section owns only module handoffs.
-
 
 ## AI Summary Flows
 
@@ -427,7 +428,7 @@ Promise. Only the receiving-agent path is event-delivered.
 sequenceDiagram
   actor App
   participant Task
-  participant Coord as AISummaryCoordinator
+  participant Resolver as RtdRequestResolver
   participant API as ApiAIAssistant
   participant Backend
   participant TM as TaskManager
@@ -438,15 +439,15 @@ sequenceDiagram
     Task-->>App: reject POST_CALL_SUMMARY_DISABLED
   else enabled
     Task->>Task: capture {conversationId, interactionId}
-    Task->>Coord: register POST_CALL_SUMMARY
-    Coord-->>Task: {requestToken, result}
+    Task->>Resolver: register POST_CALL_SUMMARY
+    Resolver-->>Task: pending Promise
     Task->>API: sendSummaryGetEvent(GET_POST_CALL_SUMMARY)
     Task->>Task: Promise.all(result, acknowledgement)
     API->>Backend: POST /event
     Backend-->>API: 2xx acknowledgement
     Backend->>TM: RTD POST_CALL_SUMMARY
-    TM->>Coord: resolve by conversationId + POST_CALL_SUMMARY
-    Coord-->>Task: summary payload
+    TM->>Resolver: resolve by conversationId + POST_CALL_SUMMARY
+    Resolver-->>Task: summary payload
     Task-->>App: resolve summary payload
     App->>Task: wrapup(...)
     Task-->>App: wrap-up completed
@@ -473,7 +474,7 @@ completing wrapup.
 sequenceDiagram
   actor App
   participant Task
-  participant Coord as AISummaryCoordinator
+  participant Resolver as RtdRequestResolver
   participant API as ApiAIAssistant
   participant Backend
   participant TM as TaskManager
@@ -483,15 +484,15 @@ sequenceDiagram
   alt consultTransferSummariesEnabled !== true or midCallEnabled !== true
     Task-->>App: reject MID_CALL_SUMMARY_DISABLED
   else enabled
-    Task->>Coord: register MID_CALL_SUMMARY
-    Coord-->>Task: {requestToken, result}
+    Task->>Resolver: register MID_CALL_SUMMARY
+    Resolver-->>Task: pending Promise
     Task->>API: sendSummaryGetEvent(action-specific GET)
     Task->>Task: Promise.all(result, acknowledgement)
     API->>Backend: POST /event
     Backend-->>API: 2xx acknowledgement
     Backend->>TM: RTD MID_CALL_SUMMARY
-    TM->>Coord: resolve by conversationId + MID_CALL_SUMMARY
-    Coord-->>Task: summary payload
+    TM->>Resolver: resolve by conversationId + MID_CALL_SUMMARY
+    Resolver-->>Task: summary payload
     Task-->>App: resolve summary payload
     App->>Task: sendMidCallSummaryResponse(payload, actionType)
     Task->>API: sendSummaryResponseEvent(action-specific response)
@@ -529,22 +530,20 @@ flowchart LR
   Backend[api-ai-assistant]
   RTD[Realtime websocket]
   TM[TaskManager]
-  Coord[AISummaryCoordinator]
+  Resolver[RtdRequestResolver]
   Task[Receiving Task]
   App[Consumer application]
 
   Backend -->|push subsequent-agent frame| RTD
   RTD --> TM
-  TM -->|validated payload + selected tasks| Coord
-  Coord -->|emit task:midCallSummaryForReceivingAgent| Task
+  TM -->|validated payload + selected task| Task
   Task --> App
 ```
 
 1. TaskManager validates the realtime double envelope and derives candidate
    conversation IDs with the shared correlation helper.
-2. The coordinator delivers to one unique receiving-task leaf, buffers a
-   zero-match payload on its original retention deadline, or drops an ambiguous
-   match.
+2. TaskManager delivers to one unique receiving-task leaf, buffers a zero-match
+   payload on its original retention deadline, or drops an ambiguous match.
 3. Task insertion, update, and removal re-evaluate buffered payloads; full SDK
    cleanup deactivates handling and clears buffers and timers.
 4. Delivery emits `task:midCallSummaryForReceivingAgent`.
@@ -557,7 +556,6 @@ task.on('task:midCallSummaryForReceivingAgent', (payload) => {
 
 Treat `summaryText` as fallback display text and as sensitive content; it must
 not be logged.
-
 
 ## WebRTC Integration
 
@@ -613,26 +611,26 @@ task.
 `routingContact(aqm)` returns task-scoped AQM request methods wired to
 `TASK_API`, `TASK_MESSAGE_TYPE`, and `WCC_API_GATEWAY`.
 
-| Operation | Endpoint suffix | Success event | Failure event |
-| --- | --- | --- | --- |
-| `accept` | `/accept` | `AGENT_CONTACT_ASSIGNED` | `AGENT_CONTACT_ASSIGN_FAILED` |
-| `hold` | `/hold` | `AGENT_CONTACT_HELD` | `AGENT_CONTACT_HOLD_FAILED` |
-| `unHold` | `/unhold` | `AGENT_CONTACT_UNHELD` | `AGENT_CONTACT_UNHOLD_FAILED` |
-| `pauseRecording` | `/record/pause` | `CONTACT_RECORDING_PAUSED` | `CONTACT_RECORDING_PAUSE_FAILED` |
-| `resumeRecording` | `/record/resume` | `CONTACT_RECORDING_RESUMED` | `CONTACT_RECORDING_RESUME_FAILED` |
-| `consult` | `/consult` | `AGENT_CONSULT_CREATED` | `AGENT_CONSULT_FAILED` or `AGENT_CTQ_FAILED` |
-| `consultEnd` | `/consult/end` | `AGENT_CTQ_CANCELLED`, `CONTACT_ENDED`, `AGENT_CONSULT_ENDED`, or `AGENT_CONSULT_CONFERENCE_ENDED` | `AGENT_CTQ_CANCEL_FAILED` or `AGENT_CONSULT_END_FAILED` |
-| `consultAccept` | `/consult/accept` | `AGENT_CONSULTING` | `AGENT_CONTACT_ASSIGN_FAILED` |
-| `blindTransfer` | `/transfer` | `AGENT_BLIND_TRANSFERRED` | `AGENT_BLIND_TRANSFER_FAILED` |
-| `vteamTransfer` | `/transfer` | `AGENT_VTEAM_TRANSFERRED` | `AGENT_VTEAM_TRANSFER_FAILED` |
-| `consultTransfer` | `/consult/transfer` | `AGENT_CONSULT_TRANSFERRED` or `AGENT_CONSULT_TRANSFERRING` | `AGENT_CONSULT_TRANSFER_FAILED` |
-| `end` | `/end` | `AGENT_WRAPUP` | `AGENT_CONTACT_END_FAILED` |
-| `wrapup` | `/wrapup` | `AGENT_WRAPPEDUP` | `AGENT_WRAPUP_FAILED` |
-| `cancelTask` | `/end` | `CONTACT_ENDED` | `AGENT_CONTACT_END_FAILED` |
-| `cancelCtq` | `/cancelCtq` | `AgentCtqCancelled` | `AgentCtqCancelFailed` |
-| `consultConference` | `/consult/conference` | `AGENT_CONSULT_CONFERENCED` or `AGENT_CONSULT_CONFERENCING` | `AGENT_CONSULT_CONFERENCE_FAILED` |
-| `exitConference` | `/conference/exit` | `PARTICIPANT_LEFT_CONFERENCE` | `PARTICIPANT_LEFT_CONFERENCE_FAILED` |
-| `conferenceTransfer` | `/conference/transfer` | `PARTICIPANT_LEFT_CONFERENCE` | `AGENT_CONFERENCE_TRANSFER_FAILED` |
+| Operation            | Endpoint suffix        | Success event                                                                                      | Failure event                                           |
+| -------------------- | ---------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `accept`             | `/accept`              | `AGENT_CONTACT_ASSIGNED`                                                                           | `AGENT_CONTACT_ASSIGN_FAILED`                           |
+| `hold`               | `/hold`                | `AGENT_CONTACT_HELD`                                                                               | `AGENT_CONTACT_HOLD_FAILED`                             |
+| `unHold`             | `/unhold`              | `AGENT_CONTACT_UNHELD`                                                                             | `AGENT_CONTACT_UNHOLD_FAILED`                           |
+| `pauseRecording`     | `/record/pause`        | `CONTACT_RECORDING_PAUSED`                                                                         | `CONTACT_RECORDING_PAUSE_FAILED`                        |
+| `resumeRecording`    | `/record/resume`       | `CONTACT_RECORDING_RESUMED`                                                                        | `CONTACT_RECORDING_RESUME_FAILED`                       |
+| `consult`            | `/consult`             | `AGENT_CONSULT_CREATED`                                                                            | `AGENT_CONSULT_FAILED` or `AGENT_CTQ_FAILED`            |
+| `consultEnd`         | `/consult/end`         | `AGENT_CTQ_CANCELLED`, `CONTACT_ENDED`, `AGENT_CONSULT_ENDED`, or `AGENT_CONSULT_CONFERENCE_ENDED` | `AGENT_CTQ_CANCEL_FAILED` or `AGENT_CONSULT_END_FAILED` |
+| `consultAccept`      | `/consult/accept`      | `AGENT_CONSULTING`                                                                                 | `AGENT_CONTACT_ASSIGN_FAILED`                           |
+| `blindTransfer`      | `/transfer`            | `AGENT_BLIND_TRANSFERRED`                                                                          | `AGENT_BLIND_TRANSFER_FAILED`                           |
+| `vteamTransfer`      | `/transfer`            | `AGENT_VTEAM_TRANSFERRED`                                                                          | `AGENT_VTEAM_TRANSFER_FAILED`                           |
+| `consultTransfer`    | `/consult/transfer`    | `AGENT_CONSULT_TRANSFERRED` or `AGENT_CONSULT_TRANSFERRING`                                        | `AGENT_CONSULT_TRANSFER_FAILED`                         |
+| `end`                | `/end`                 | `AGENT_WRAPUP`                                                                                     | `AGENT_CONTACT_END_FAILED`                              |
+| `wrapup`             | `/wrapup`              | `AGENT_WRAPPEDUP`                                                                                  | `AGENT_WRAPUP_FAILED`                                   |
+| `cancelTask`         | `/end`                 | `CONTACT_ENDED`                                                                                    | `AGENT_CONTACT_END_FAILED`                              |
+| `cancelCtq`          | `/cancelCtq`           | `AgentCtqCancelled`                                                                                | `AgentCtqCancelFailed`                                  |
+| `consultConference`  | `/consult/conference`  | `AGENT_CONSULT_CONFERENCED` or `AGENT_CONSULT_CONFERENCING`                                        | `AGENT_CONSULT_CONFERENCE_FAILED`                       |
+| `exitConference`     | `/conference/exit`     | `PARTICIPANT_LEFT_CONFERENCE`                                                                      | `PARTICIPANT_LEFT_CONFERENCE_FAILED`                    |
+| `conferenceTransfer` | `/conference/transfer` | `PARTICIPANT_LEFT_CONFERENCE`                                                                      | `AGENT_CONFERENCE_TRANSFER_FAILED`                      |
 
 Queue consults set the AQM timeout to `disabled`; other consult destinations
 use the default AQM request timeout. `Task.transfer(...)` chooses vTeam transfer
@@ -673,7 +671,7 @@ Consult, campaign, and auto-answer helpers:
 AI summary helpers:
 
 - `tryGetAISummaryCorrelation(taskData)` returns `{conversationId,
-  interactionId}` when both identifiers are available, using
+interactionId}` when both identifiers are available, using
   `interaction.mainInteractionId ?? interactionId` as the conversation ID.
 - `getAISummaryCorrelation(taskData)` returns the same correlation or throws a
   bounded `AI_SUMMARY_CORRELATION_NOT_AVAILABLE` error for public Task summary
@@ -690,37 +688,37 @@ Classic task operations use the existing metrics pattern: call
 `MetricsManager.timeEvent(...)` with the success/failure metric pair before the
 AQM operation, then emit exactly one `trackEvent(...)` on success or failure.
 
-| Area | Success metric | Failure metric |
-| --- | --- | --- |
-| Accept | `TASK_ACCEPT_SUCCESS` | `TASK_ACCEPT_FAILED` |
-| Decline | `TASK_DECLINE_SUCCESS` | `TASK_DECLINE_FAILED` |
-| End | `TASK_END_SUCCESS` | `TASK_END_FAILED` |
-| Wrap-up | `TASK_WRAPUP_SUCCESS` | `TASK_WRAPUP_FAILED` |
-| Hold | `TASK_HOLD_SUCCESS` | `TASK_HOLD_FAILED` |
-| Resume | `TASK_RESUME_SUCCESS` | `TASK_RESUME_FAILED` |
-| Consult start | `TASK_CONSULT_START_SUCCESS` | `TASK_CONSULT_START_FAILED` |
-| Consult end | `TASK_CONSULT_END_SUCCESS` | `TASK_CONSULT_END_FAILED` |
-| Transfer | `TASK_TRANSFER_SUCCESS` | `TASK_TRANSFER_FAILED` |
-| Pause recording | `TASK_PAUSE_RECORDING_SUCCESS` | `TASK_PAUSE_RECORDING_FAILED` |
-| Resume recording | `TASK_RESUME_RECORDING_SUCCESS` | `TASK_RESUME_RECORDING_FAILED` |
-| Accept consult | `TASK_ACCEPT_CONSULT_SUCCESS` | `TASK_ACCEPT_CONSULT_FAILED` |
-| Auto-answer | `TASK_AUTO_ANSWER_SUCCESS` | `TASK_AUTO_ANSWER_FAILED` |
-| Outdial | `TASK_OUTDIAL_SUCCESS` | `TASK_OUTDIAL_FAILED` |
-| Conference start | `TASK_CONFERENCE_START_SUCCESS` | `TASK_CONFERENCE_START_FAILED` |
-| Conference end | `TASK_CONFERENCE_END_SUCCESS` | `TASK_CONFERENCE_END_FAILED` |
+| Area                | Success metric                     | Failure metric                    |
+| ------------------- | ---------------------------------- | --------------------------------- |
+| Accept              | `TASK_ACCEPT_SUCCESS`              | `TASK_ACCEPT_FAILED`              |
+| Decline             | `TASK_DECLINE_SUCCESS`             | `TASK_DECLINE_FAILED`             |
+| End                 | `TASK_END_SUCCESS`                 | `TASK_END_FAILED`                 |
+| Wrap-up             | `TASK_WRAPUP_SUCCESS`              | `TASK_WRAPUP_FAILED`              |
+| Hold                | `TASK_HOLD_SUCCESS`                | `TASK_HOLD_FAILED`                |
+| Resume              | `TASK_RESUME_SUCCESS`              | `TASK_RESUME_FAILED`              |
+| Consult start       | `TASK_CONSULT_START_SUCCESS`       | `TASK_CONSULT_START_FAILED`       |
+| Consult end         | `TASK_CONSULT_END_SUCCESS`         | `TASK_CONSULT_END_FAILED`         |
+| Transfer            | `TASK_TRANSFER_SUCCESS`            | `TASK_TRANSFER_FAILED`            |
+| Pause recording     | `TASK_PAUSE_RECORDING_SUCCESS`     | `TASK_PAUSE_RECORDING_FAILED`     |
+| Resume recording    | `TASK_RESUME_RECORDING_SUCCESS`    | `TASK_RESUME_RECORDING_FAILED`    |
+| Accept consult      | `TASK_ACCEPT_CONSULT_SUCCESS`      | `TASK_ACCEPT_CONSULT_FAILED`      |
+| Auto-answer         | `TASK_AUTO_ANSWER_SUCCESS`         | `TASK_AUTO_ANSWER_FAILED`         |
+| Outdial             | `TASK_OUTDIAL_SUCCESS`             | `TASK_OUTDIAL_FAILED`             |
+| Conference start    | `TASK_CONFERENCE_START_SUCCESS`    | `TASK_CONFERENCE_START_FAILED`    |
+| Conference end      | `TASK_CONFERENCE_END_SUCCESS`      | `TASK_CONFERENCE_END_FAILED`      |
 | Conference transfer | `TASK_CONFERENCE_TRANSFER_SUCCESS` | `TASK_CONFERENCE_TRANSFER_FAILED` |
-| Conference exit | `TASK_CONFERENCE_EXIT_SUCCESS` | `TASK_CONFERENCE_EXIT_FAILED` |
-| Switch call | `TASK_SWITCH_CALL_SUCCESS` | `TASK_SWITCH_CALL_FAILED` |
+| Conference exit     | `TASK_CONFERENCE_EXIT_SUCCESS`     | `TASK_CONFERENCE_EXIT_FAILED`     |
+| Switch call         | `TASK_SWITCH_CALL_SUCCESS`         | `TASK_SWITCH_CALL_FAILED`         |
 
 AI summary metrics are an explicit exception because public summary methods can
 overlap on the same task and metric names. They do not use `timeEvent(...)`.
 
-| Owner | Metrics |
-| --- | --- |
-| `Task` | `AI_SUMMARY_POST_CALL_REQUEST_SUCCESS`, `AI_SUMMARY_POST_CALL_REQUEST_FAILED`, `AI_SUMMARY_MID_CALL_REQUEST_SUCCESS`, `AI_SUMMARY_MID_CALL_REQUEST_FAILED`, `AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_POST_CALL_RESPONSE_FAILED`, `AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_MID_CALL_RESPONSE_FAILED` |
-| `TaskManager` | `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED`, `AI_SUMMARY_INBOUND_EVENT_DROPPED` |
-| `ApiAIAssistant` | Adapter send-event, suggested-response, historic-transcript, and summary transport metrics outside Task operation ownership. |
-| `AISummaryCoordinator` | No direct operation metric ownership; receiver expiry reports through TaskManager. |
+| Owner                  | Metrics                                                                                                                                                                                                                                                                                                                    |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Task`                 | `AI_SUMMARY_POST_CALL_REQUEST_SUCCESS`, `AI_SUMMARY_POST_CALL_REQUEST_FAILED`, `AI_SUMMARY_MID_CALL_REQUEST_SUCCESS`, `AI_SUMMARY_MID_CALL_REQUEST_FAILED`, `AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_POST_CALL_RESPONSE_FAILED`, `AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_MID_CALL_RESPONSE_FAILED` |
+| `TaskManager`          | `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED`, `AI_SUMMARY_INBOUND_EVENT_DROPPED`                                                                                                                                                                                                                                               |
+| `ApiAIAssistant`       | Adapter send-event, suggested-response, historic-transcript, and summary transport metrics outside Task operation ownership.                                                                                                                                                                                               |
+| `RtdRequestResolver` | No direct operation metric ownership; receiver expiry reports through TaskManager.                                                                                                                                                                                                                                         |
 
 ## Metrics And Privacy Boundary
 
@@ -737,7 +735,6 @@ values, Adaptive Card bodies, agent names, raw envelopes or payloads, original
 HTTP error messages, stacks, request options, response bodies, details, or
 causes. Full event table and privacy boundary:
 [metrics/ai-docs/AGENTS.md](../../../metrics/ai-docs/AGENTS.md#ai-summary-events).
-
 
 ## Troubleshooting
 
@@ -805,7 +802,7 @@ later success, timeout, cancellation, or transport failure metric.
 - [cc.ts](../../../cc.ts) - Main Contact Center plugin that wires task and RTD events.
 - [TaskManager.ts](../TaskManager.ts) - Task registry, websocket routing, AI summary receive path, and cleanup.
 - [Task.ts](../Task.ts) - Base task operations, state-machine integration, AI summary outbound APIs, and metrics.
-- [AISummaryCoordinator.ts](../AISummaryCoordinator.ts) - Pending summary requests, receiving-agent buffers, feature state, and timers.
+- [RtdRequestResolver.ts](../../core/RtdRequestResolver.ts) - Shared HTTP-to-RTD request lifecycle and timers.
 - [TaskFactory.ts](../TaskFactory.ts) - Concrete task selection.
 - [contact.ts](../contact.ts) - AQM task operation request definitions.
 - [TaskUtils.ts](../TaskUtils.ts) - Shared task and AI summary helpers.
@@ -819,5 +816,5 @@ later success, timeout, cancellation, or transport failure metric.
 - [metrics/ai-docs/AGENTS.md](../../../metrics/ai-docs/AGENTS.md) - Metrics usage rules, including the AI summary exception.
 - [metrics/ai-docs/ARCHITECTURE.md](../../../metrics/ai-docs/ARCHITECTURE.md) - Metrics architecture and ownership.
 - [AI Summary Flows](#ai-summary-flows) - Post-call, mid-call initiator, and receiving-agent sequences.
-- [AISummaryCoordinator.ts](../AISummaryCoordinator.ts) - Request correlation, timers, receiver buffering, and feature snapshots.
+- [RtdRequestResolver.ts](../../core/RtdRequestResolver.ts) - Request correlation and request timers.
 - [ApiAiAssistant.ts](../../ApiAiAssistant.ts) - Summary get/response transport envelope.

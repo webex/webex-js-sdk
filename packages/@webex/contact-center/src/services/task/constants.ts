@@ -5,6 +5,8 @@
  */
 
 import {CC_EVENTS} from '../config/types';
+import {METRIC_EVENT_NAMES} from '../../metrics/constants';
+import type {AISummaryOperationMetric} from './types';
 
 export const TASK_MESSAGE_TYPE = 'RoutingMessage';
 export const TASK_API = '/v1/tasks/';
@@ -30,8 +32,47 @@ export const CAMPAIGN_PREVIEW_SKIP = '/skip';
 export const CAMPAIGN_PREVIEW_REMOVE = '/remove';
 /** 80-second timeout for accepting preview contact (outbound call setup takes longer than default 20s) */
 export const TIMEOUT_PREVIEW_ACCEPT = 80000;
-export const AI_SUMMARY_DURATION_MS = 15_000;
+export const AI_SUMMARY_DURATION_MS = 15000;
 export const AI_SUMMARY_REQUEST_CANCELLED = 'AI_SUMMARY_REQUEST_CANCELLED' as const;
+export const AI_SUMMARY_TASK_ERROR_CODES = {
+  INVALID_RESPONSE_PAYLOAD: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD',
+  INVALID_ACTION_TYPE: 'AI_SUMMARY_INVALID_ACTION_TYPE',
+  NOT_INITIALIZED: 'AI_SUMMARY_NOT_INITIALIZED',
+} as const;
+
+export const AI_SUMMARY_FEEDBACK_VALUES = new Set(['none', 'thumbs_up', 'thumbs_down']);
+export const POST_CALL_SUMMARY_STATES = new Set(['DEFAULT', 'IGNORED', 'NOT_RECEIVED']);
+export const MID_CALL_SUMMARY_RECEIVED_STATES = new Set([
+  'DEFAULT',
+  'EXCLUDED',
+  'IGNORED',
+  'MID_CALL_CANCELLED',
+]);
+export const MID_CALL_SUMMARY_UNAVAILABLE_STATES = new Set([
+  'NOT_RECEIVED',
+  'MID_CALL_CANCELLED',
+  'IGNORED',
+]);
+
+export const AI_SUMMARY_OPERATION_METRICS = {
+  POST_CALL_REQUEST: {
+    success: METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
+    failure: METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
+  },
+  MID_CALL_REQUEST: {
+    success: METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
+    failure: METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
+  },
+  POST_CALL_RESPONSE: {
+    success: METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
+    failure: METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
+  },
+  MID_CALL_RESPONSE: {
+    success: METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
+    failure: METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
+  },
+} satisfies Record<string, AISummaryOperationMetric>;
+
 export const TASK_MANAGER_FILE = 'taskManager';
 export const TASK_FILE = 'task';
 

@@ -4,9 +4,8 @@ import {ConfigFlags, LoginOption, WebexSDK} from '../../../../../src/types';
 import {CALL_EVENT_KEYS, CallingClientConfig, LINE_EVENTS} from '@webex/calling';
 import {
   CC_AGENT_EVENTS,
-  CC_AI_SUMMARY_EVENTS,
-  CC_EVENTS,
   CC_TASK_EVENTS,
+  CC_EVENTS,
   WrapupData,
 } from '../../../../../src/services/config/types';
 import TaskManager from '../../../../../src/services/task/TaskManager';
@@ -180,11 +179,7 @@ jest.mock('../../../../../src/services/task/voice/WebRTC', () => {
         }
       });
 
-      constructor(
-        _contact: unknown,
-        _webCallingService: unknown,
-        data: Record<string, unknown>
-      ) {
+      constructor(_contact: unknown, _webCallingService: unknown, data: Record<string, unknown>) {
         super();
         this.data = data;
         this.webCallingService = _webCallingService as EventEmitter;
@@ -207,6 +202,30 @@ describe('TaskManager', () => {
   let webCallingService;
   let webex: WebexSDK;
   const taskId = '0ae913a4-c857-4705-8d49-76dd3dde75e4';
+  const createRtdError = (errorCode: string) => {
+    const error = new Error(errorCode) as Error & {data?: Record<string, unknown>};
+    error.data = {errorCode};
+
+    return error;
+  };
+  const registerRtdRequest = (
+    resolver: any,
+    ownerId: string,
+    correlationId: string,
+    eventType: string,
+    timeoutCode: string
+  ) =>
+    resolver.register({
+      ownerId,
+      correlationId,
+      eventType,
+      timeoutMs: AI_SUMMARY_DURATION_MS,
+      createDuplicateRequestError: () =>
+        createRtdError(AI_SUMMARY_ERROR_CODES.AI_SUMMARY_REQUEST_ALREADY_PENDING),
+      createTimeoutError: () => createRtdError(timeoutCode),
+      createCancellationError: () => createRtdError(AI_SUMMARY_REQUEST_CANCELLED),
+      sendRequest: () => Promise.resolve(),
+    });
   const getMetricsTrackEvent = (): jest.Mock =>
     require('../../../../../src/metrics/MetricsManager').mockTrackEvent;
   const getLoggerProxy = (): Record<string, jest.Mock> =>
@@ -286,10 +305,7 @@ describe('TaskManager', () => {
       }
 
       let mappedEvent = taskEventMap[event.type as TaskEvent];
-      if (
-        event.type === TaskEvent.TASK_INCOMING &&
-        event.isCampaignReservationAccept === true
-      ) {
+      if (event.type === TaskEvent.TASK_INCOMING && event.isCampaignReservationAccept === true) {
         mappedEvent = TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION;
       }
 
@@ -648,7 +664,7 @@ describe('TaskManager', () => {
     taskManager.handleRealtimeWebsocketEvent(JSON.stringify(firstRealtimePayload));
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
+        type: CC_TASK_EVENTS.POST_CALL_SUMMARY,
         data: {data: {conversationId: taskId, summaryText: {invalid: true}}},
       })
     );
@@ -668,11 +684,7 @@ describe('TaskManager', () => {
     expect(transcriptHandler).toHaveBeenCalledTimes(2);
     expect(transcriptHandler).toHaveBeenNthCalledWith(1, firstRealtimePayload.data);
     expect(transcriptHandler).toHaveBeenNthCalledWith(2, secondRealtimePayload.data);
-    expect(observedOrder).toEqual([
-      'transcript:1',
-      'ai-summary:invalid-payload',
-      'transcript:2',
-    ]);
+    expect(observedOrder).toEqual(['transcript:1', 'ai-summary:invalid-payload', 'transcript:2']);
   });
 
   it('should ignore RTD transcript events when task is not found', () => {
@@ -710,7 +722,7 @@ describe('TaskManager', () => {
 
   it('should store and forward valid feature enablement frames with raw flag metrics', () => {
     const payload = {
-      type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+      type: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
       data: {
         data: {
           interactionId: taskId,
@@ -724,7 +736,7 @@ describe('TaskManager', () => {
     taskManager.handleRealtimeWebsocketEvent(JSON.stringify(payload));
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+        type: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
         data: {
           data: {
             interactionId: taskId,
@@ -735,7 +747,7 @@ describe('TaskManager', () => {
       })
     );
 
-    expect((taskManager as any).aiSummaryCoordinator.getFeatureEnablement(taskId)).toEqual({
+    expect((taskManager as any).interactionFeatureEnablement.get(taskId)?.payload).toEqual({
       interactionId: taskId,
       postCallEnabled: undefined,
       midCallEnabled: true,
@@ -771,7 +783,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+        type: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
         data: {data: featurePayload},
       })
     );
@@ -795,14 +807,14 @@ describe('TaskManager', () => {
     expect(() =>
       taskManager.handleRealtimeWebsocketEvent(
         JSON.stringify({
-          type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+          type: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
           data: {data: featurePayload},
         })
       )
     ).not.toThrow();
 
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featurePayload);
-    expect((taskManager as any).aiSummaryCoordinator.getFeatureEnablement(taskId)).toEqual(
+    expect((taskManager as any).interactionFeatureEnablement.get(taskId)?.payload).toEqual(
       featurePayload
     );
   });
@@ -824,7 +836,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+        type: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
         data: {data: featurePayload},
       })
     );
@@ -855,7 +867,7 @@ describe('TaskManager', () => {
     // Feature frame arrives before task registration — stored as orphan
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+        type: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
         data: {data: featurePayload},
       })
     );
@@ -880,9 +892,36 @@ describe('TaskManager', () => {
     jest.useRealTimers();
   });
 
+  it('should expire an unmatched feature enablement snapshot', () => {
+    jest.useFakeTimers();
+    const interactionId = 'unmatched-feature-interaction';
+    const featurePayload = {
+      interactionId,
+      postCallEnabled: true,
+      midCallEnabled: true,
+    };
+
+    taskManager.handleRealtimeWebsocketEvent(
+      JSON.stringify({
+        type: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
+        data: {data: featurePayload},
+      })
+    );
+
+    expect((taskManager as any).interactionFeatureEnablement.get(interactionId)?.payload).toEqual(
+      featurePayload
+    );
+    expect(jest.getTimerCount()).toBe(1);
+
+    jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS);
+
+    expect((taskManager as any).interactionFeatureEnablement.get(interactionId)).toBeUndefined();
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
   it('should not use a main interaction feature frame as fallback for a child task key', () => {
     jest.useFakeTimers();
-    const coordinator = (taskManager as any).aiSummaryCoordinator;
+    const coordinator = (taskManager as any).rtdRequestResolver;
     const childInteractionId = 'child-task';
     const conversationId = 'conversation-1';
     const childTask = createStateMachineTask({
@@ -906,13 +945,17 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+        type: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
         data: {data: featurePayload},
       })
     );
 
-    expect(coordinator.getFeatureEnablement(conversationId)).toEqual(featurePayload);
-    expect(coordinator.getFeatureEnablement(childInteractionId)).toBeUndefined();
+    expect((taskManager as any).interactionFeatureEnablement.get(conversationId)?.payload).toEqual(
+      featurePayload
+    );
+    expect(
+      (taskManager as any).interactionFeatureEnablement.get(childInteractionId)
+    ).toBeUndefined();
 
     taskManager.clearAISummaryState();
   });
@@ -920,7 +963,7 @@ describe('TaskManager', () => {
   it('should metric classified invalid feature frames without storing or forwarding them', () => {
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+        type: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
         data: {
           data: {
             interactionId: taskId,
@@ -931,7 +974,7 @@ describe('TaskManager', () => {
       })
     );
 
-    expect((taskManager as any).aiSummaryCoordinator.getFeatureEnablement(taskId)).toBeUndefined();
+    expect((taskManager as any).interactionFeatureEnablement.get(taskId)).toBeUndefined();
     expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED,
       {validationOutcome: 'invalid'},
@@ -940,15 +983,12 @@ describe('TaskManager', () => {
   });
 
   it.each([
-    ['missing inner payload', {type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT, data: {}}],
+    ['missing inner payload', {type: CC_TASK_EVENTS.FEATURE_ENABLEMENT, data: {}}],
     [
       'non-object inner payload',
-      {type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT, data: {data: 'invalid'}},
+      {type: CC_TASK_EVENTS.FEATURE_ENABLEMENT, data: {data: 'invalid'}},
     ],
-    [
-      'array inner payload',
-      {type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT, data: {data: ['invalid']}},
-    ],
+    ['array inner payload', {type: CC_TASK_EVENTS.FEATURE_ENABLEMENT, data: {data: ['invalid']}}],
   ])('should count a classified feature frame with %s exactly once as invalid', (_label, frame) => {
     taskManager.handleRealtimeWebsocketEvent(JSON.stringify(frame));
 
@@ -966,54 +1006,53 @@ describe('TaskManager', () => {
     expect(getInboundDropMetricCalls()).toHaveLength(0);
   });
 
-  it.each(
+  it.each([
     [
-      [
-        'post-call',
-        CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
-        'POST_CALL_SUMMARY',
-        'POST_CALL_SUMMARY_TIMEOUT',
-        {
-          conversationId: taskId,
-          adaptiveCard: {body: ['card']},
-          adaptiveCardId: 'adaptive-card-id',
-          editAdaptiveCard: {body: ['edit-card']},
-          editAdaptiveCardId: 'edit-adaptive-card-id',
-          languageCode: 'en-US',
-          summaryText: 'safe summary',
-          resolution: 'resolved',
-          areTranscriptsAvailable: true,
-          sections: {initialContactReason: 'billing', safeKey: 'safe value'},
-          suggestedWrapUpCodes: [{name: 'Resolved', id: 'wrap-up-code-id'}],
-          suggestedWrapUpCodesMessage: 'Use resolved wrap-up',
-          timestamp: 1773807297475,
-        },
-      ],
-      [
-        'mid-call',
-        CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY,
-        'MID_CALL_SUMMARY',
-        'MID_CALL_SUMMARY_TIMEOUT',
-        {
-          conversationId: 'mid-summary-conversation',
-          adaptiveCard: {body: ['mid-card']},
-          adaptiveCardId: 'mid-adaptive-card-id',
-          editAdaptiveCard: {body: ['mid-edit-card']},
-          editAdaptiveCardId: 'mid-edit-adaptive-card-id',
-          languageCode: 'en-US',
-          summaryText: 'safe mid summary',
-          resolution: 'transferred',
-          areTranscriptsAvailable: false,
-          sections: {reasonForTransferOrConsult: 'specialist', safeKey: 'safe value'},
-          timestamp: 1773807297476,
-        },
-      ],
-    ] as const
-  )(
+      'post-call',
+      CC_TASK_EVENTS.POST_CALL_SUMMARY,
+      'POST_CALL_SUMMARY',
+      'POST_CALL_SUMMARY_TIMEOUT',
+      {
+        conversationId: taskId,
+        adaptiveCard: {body: ['card']},
+        adaptiveCardId: 'adaptive-card-id',
+        editAdaptiveCard: {body: ['edit-card']},
+        editAdaptiveCardId: 'edit-adaptive-card-id',
+        languageCode: 'en-US',
+        summaryText: 'safe summary',
+        resolution: 'resolved',
+        areTranscriptsAvailable: true,
+        sections: {initialContactReason: 'billing', safeKey: 'safe value'},
+        suggestedWrapUpCodes: [{name: 'Resolved', id: 'wrap-up-code-id'}],
+        suggestedWrapUpCodesMessage: 'Use resolved wrap-up',
+        timestamp: 1773807297475,
+      },
+    ],
+    [
+      'mid-call',
+      CC_TASK_EVENTS.MID_CALL_SUMMARY,
+      'MID_CALL_SUMMARY',
+      'MID_CALL_SUMMARY_TIMEOUT',
+      {
+        conversationId: 'mid-summary-conversation',
+        adaptiveCard: {body: ['mid-card']},
+        adaptiveCardId: 'mid-adaptive-card-id',
+        editAdaptiveCard: {body: ['mid-edit-card']},
+        editAdaptiveCardId: 'mid-edit-adaptive-card-id',
+        languageCode: 'en-US',
+        summaryText: 'safe mid summary',
+        resolution: 'transferred',
+        areTranscriptsAvailable: false,
+        sections: {reasonForTransferOrConsult: 'specialist', safeKey: 'safe value'},
+        timestamp: 1773807297476,
+      },
+    ],
+  ] as const)(
     'should resolve matching %s initiator summary payload through the request Promise only',
     async (_summaryKind, realtimeEvent, inboundType, timeoutCode, summaryPayload) => {
-      const coordinator = (taskManager as any).aiSummaryCoordinator;
-      const registration = await coordinator.registerPendingAISummaryRequest(
+      const coordinator = (taskManager as any).rtdRequestResolver;
+      const registration = registerRtdRequest(
+        coordinator,
         taskId,
         summaryPayload.conversationId,
         inboundType,
@@ -1043,7 +1082,7 @@ describe('TaskManager', () => {
         ([eventName]) => eventName
       );
 
-      [CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY, CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY].forEach(
+      [CC_TASK_EVENTS.POST_CALL_SUMMARY, CC_TASK_EVENTS.MID_CALL_SUMMARY].forEach(
         (summaryInboundEvent) => {
           expect(taskEmittedEvents).not.toContain(summaryInboundEvent);
           expect(taskManagerEmittedEvents).not.toContain(summaryInboundEvent);
@@ -1054,7 +1093,7 @@ describe('TaskManager', () => {
 
   it('should resolve only the matching active mid-call initiator slot through TaskManager RTD routing', async () => {
     jest.useFakeTimers();
-    const coordinator = (taskManager as any).aiSummaryCoordinator;
+    const coordinator = (taskManager as any).rtdRequestResolver;
     const conversationId = 'shared-summary-conversation';
     const midSummaryPayload = {
       conversationId,
@@ -1069,13 +1108,15 @@ describe('TaskManager', () => {
       sections: {reasonForTransferOrConsult: 'specialist'},
       timestamp: 1773807297476,
     };
-    const postRegistration = await coordinator.registerPendingAISummaryRequest(
+    const postRegistration = registerRtdRequest(
+      coordinator,
       taskId,
       conversationId,
       'POST_CALL_SUMMARY',
       'POST_CALL_SUMMARY_TIMEOUT'
     );
-    const midRegistration = await coordinator.registerPendingAISummaryRequest(
+    const midRegistration = registerRtdRequest(
+      coordinator,
       taskId,
       conversationId,
       'MID_CALL_SUMMARY',
@@ -1099,7 +1140,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY,
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY,
         data: {data: midSummaryPayload},
       })
     );
@@ -1111,22 +1152,19 @@ describe('TaskManager', () => {
     expect(postResolved).not.toHaveBeenCalled();
     expect(postRejected).not.toHaveBeenCalled();
     expect(getInboundDropMetricCalls()).toHaveLength(0);
-    [CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY, CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY].forEach(
+    [CC_TASK_EVENTS.POST_CALL_SUMMARY, CC_TASK_EVENTS.MID_CALL_SUMMARY].forEach(
       (summaryInboundEvent) => {
         expect(initiatorTaskEmitSpy).not.toHaveBeenCalledWith(
           summaryInboundEvent,
           expect.anything()
         );
-        expect(taskManagerEmitSpy).not.toHaveBeenCalledWith(
-          summaryInboundEvent,
-          expect.anything()
-        );
+        expect(taskManagerEmitSpy).not.toHaveBeenCalledWith(summaryInboundEvent, expect.anything());
       }
     );
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY,
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY,
         data: {data: midSummaryPayload},
       })
     );
@@ -1135,7 +1173,7 @@ describe('TaskManager', () => {
     expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
       {
-        eventType: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY,
+        eventType: CC_TASK_EVENTS.MID_CALL_SUMMARY,
         dropReason: 'late-or-uncorrelated',
         conversationId,
       },
@@ -1143,19 +1181,15 @@ describe('TaskManager', () => {
     );
     expectNoSensitiveDiagnostics('private mid summary', 'specialist');
 
-    coordinator.cancelPendingAISummaryRequest(
-      taskId,
-      conversationId,
-      'POST_CALL_SUMMARY',
-      postRegistration.requestToken
-    );
+    coordinator.cancel('POST_CALL_SUMMARY', conversationId, postRegistration.requestToken);
     expect(jest.getTimerCount()).toBe(0);
   });
 
   it('should reject on timeout and drop one later mid-call frame without changing settlement', async () => {
     jest.useFakeTimers();
-    const coordinator = (taskManager as any).aiSummaryCoordinator;
-    const registration = await coordinator.registerPendingAISummaryRequest(
+    const coordinator = (taskManager as any).rtdRequestResolver;
+    const registration = registerRtdRequest(
+      coordinator,
       taskId,
       'mid-timeout-conversation',
       'MID_CALL_SUMMARY',
@@ -1178,7 +1212,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY,
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY,
         data: {
           data: {
             conversationId: 'mid-timeout-conversation',
@@ -1192,7 +1226,7 @@ describe('TaskManager', () => {
     expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
       {
-        eventType: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY,
+        eventType: CC_TASK_EVENTS.MID_CALL_SUMMARY,
         dropReason: 'late-or-uncorrelated',
         conversationId: 'mid-timeout-conversation',
       },
@@ -1203,7 +1237,7 @@ describe('TaskManager', () => {
   });
 
   it('should drop late post-call initiator summary events once', async () => {
-    const coordinator = (taskManager as any).aiSummaryCoordinator;
+    const coordinator = (taskManager as any).rtdRequestResolver;
     const postSummaryPayload = {
       conversationId: taskId,
       adaptiveCard: {body: ['card']},
@@ -1219,7 +1253,8 @@ describe('TaskManager', () => {
       suggestedWrapUpCodesMessage: 'Use resolved wrap-up',
       timestamp: 1773807297475,
     };
-    const postRegistration = await coordinator.registerPendingAISummaryRequest(
+    const postRegistration = registerRtdRequest(
+      coordinator,
       taskId,
       taskId,
       'POST_CALL_SUMMARY',
@@ -1228,7 +1263,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
+        type: CC_TASK_EVENTS.POST_CALL_SUMMARY,
         data: {data: postSummaryPayload},
       })
     );
@@ -1237,7 +1272,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
+        type: CC_TASK_EVENTS.POST_CALL_SUMMARY,
         data: {data: postSummaryPayload},
       })
     );
@@ -1245,7 +1280,7 @@ describe('TaskManager', () => {
     expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
       {
-        eventType: CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
+        eventType: CC_TASK_EVENTS.POST_CALL_SUMMARY,
         dropReason: 'late-or-uncorrelated',
         conversationId: taskId,
       },
@@ -1254,123 +1289,120 @@ describe('TaskManager', () => {
     expect(getInboundDropMetricCalls()).toHaveLength(1);
   });
 
-  it.each(
+  it.each([
     [
-      [
-        'post-call adaptive card',
-        CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
-        {conversationId: taskId, adaptiveCard: []},
-      ],
-      [
-        'post-call adaptive card id',
-        CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
-        {conversationId: taskId, adaptiveCardId: 123},
-      ],
-      [
-        'post-call edit adaptive card',
-        CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
-        {conversationId: taskId, editAdaptiveCard: null},
-      ],
-      [
-        'post-call edit adaptive card id',
-        CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
-        {conversationId: taskId, editAdaptiveCardId: false},
-      ],
-      [
-        'post-call language code',
-        CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
-        {conversationId: taskId, languageCode: 1},
-      ],
-      [
-        'post-call summary text',
-        CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
-        {conversationId: taskId, summaryText: {invalid: true}},
-      ],
-      [
-        'post-call resolution',
-        CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
-        {conversationId: taskId, resolution: []},
-      ],
-      [
-        'post-call transcript availability',
-        CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
-        {conversationId: taskId, areTranscriptsAvailable: 'true'},
-      ],
-      [
-        'post-call sections',
-        CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
-        {conversationId: taskId, sections: {initialContactReason: 1}},
-      ],
-      [
-        'post-call suggested wrap-up collection',
-        CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
-        {conversationId: taskId, suggestedWrapUpCodes: {name: 'Resolved'}},
-      ],
-      [
-        'post-call suggested wrap-up item',
-        CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
-        {conversationId: taskId, suggestedWrapUpCodes: [{name: 1}]},
-      ],
-      [
-        'post-call suggested wrap-up message',
-        CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
-        {conversationId: taskId, suggestedWrapUpCodesMessage: 2},
-      ],
-      [
-        'post-call timestamp',
-        CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
-        {conversationId: taskId, timestamp: '1773807297475'},
-      ],
-      [
-        'mid-call adaptive card',
-        CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY,
-        {conversationId: taskId, adaptiveCard: []},
-      ],
-      [
-        'mid-call sections',
-        CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY,
-        {conversationId: taskId, sections: {reasonForTransferOrConsult: 1}},
-      ],
-      [
-        'mid-call timestamp',
-        CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY,
-        {conversationId: taskId, timestamp: '1773807297475'},
-      ],
-    ] as const
-  )('should drop invalid %s initiator payload exactly once', (_label, eventType, data) => {
-    const resolveSpy = jest.spyOn(
-      (taskManager as any).aiSummaryCoordinator,
-      'resolvePendingAISummaryRequest'
-    );
+      'post-call adaptive card',
+      CC_TASK_EVENTS.POST_CALL_SUMMARY,
+      {conversationId: taskId, adaptiveCard: []},
+    ],
+    [
+      'post-call adaptive card id',
+      CC_TASK_EVENTS.POST_CALL_SUMMARY,
+      {conversationId: taskId, adaptiveCardId: 123},
+    ],
+    [
+      'post-call edit adaptive card',
+      CC_TASK_EVENTS.POST_CALL_SUMMARY,
+      {conversationId: taskId, editAdaptiveCard: null},
+    ],
+    [
+      'post-call edit adaptive card id',
+      CC_TASK_EVENTS.POST_CALL_SUMMARY,
+      {conversationId: taskId, editAdaptiveCardId: false},
+    ],
+    [
+      'post-call language code',
+      CC_TASK_EVENTS.POST_CALL_SUMMARY,
+      {conversationId: taskId, languageCode: 1},
+    ],
+    [
+      'post-call summary text',
+      CC_TASK_EVENTS.POST_CALL_SUMMARY,
+      {conversationId: taskId, summaryText: {invalid: true}},
+    ],
+    [
+      'post-call resolution',
+      CC_TASK_EVENTS.POST_CALL_SUMMARY,
+      {conversationId: taskId, resolution: []},
+    ],
+    [
+      'post-call transcript availability',
+      CC_TASK_EVENTS.POST_CALL_SUMMARY,
+      {conversationId: taskId, areTranscriptsAvailable: 'true'},
+    ],
+    [
+      'post-call sections',
+      CC_TASK_EVENTS.POST_CALL_SUMMARY,
+      {conversationId: taskId, sections: {initialContactReason: 1}},
+    ],
+    [
+      'post-call suggested wrap-up collection',
+      CC_TASK_EVENTS.POST_CALL_SUMMARY,
+      {conversationId: taskId, suggestedWrapUpCodes: {name: 'Resolved'}},
+    ],
+    [
+      'post-call suggested wrap-up item',
+      CC_TASK_EVENTS.POST_CALL_SUMMARY,
+      {conversationId: taskId, suggestedWrapUpCodes: [{name: 1}]},
+    ],
+    [
+      'post-call suggested wrap-up message',
+      CC_TASK_EVENTS.POST_CALL_SUMMARY,
+      {conversationId: taskId, suggestedWrapUpCodesMessage: 2},
+    ],
+    [
+      'post-call timestamp',
+      CC_TASK_EVENTS.POST_CALL_SUMMARY,
+      {conversationId: taskId, timestamp: '1773807297475'},
+    ],
+    [
+      'mid-call adaptive card',
+      CC_TASK_EVENTS.MID_CALL_SUMMARY,
+      {conversationId: taskId, adaptiveCard: []},
+    ],
+    [
+      'mid-call sections',
+      CC_TASK_EVENTS.MID_CALL_SUMMARY,
+      {conversationId: taskId, sections: {reasonForTransferOrConsult: 1}},
+    ],
+    [
+      'mid-call timestamp',
+      CC_TASK_EVENTS.MID_CALL_SUMMARY,
+      {conversationId: taskId, timestamp: '1773807297475'},
+    ],
+  ] as const)(
+    'should drop invalid %s initiator payload exactly once',
+    (_label, eventType, data) => {
+      const resolveSpy = jest.spyOn(
+        (taskManager as any).rtdRequestResolver,
+        'resolve'
+      );
 
-    taskManager.handleRealtimeWebsocketEvent(
-      JSON.stringify({
-        type: eventType,
-        data: {data},
-      })
-    );
+      taskManager.handleRealtimeWebsocketEvent(
+        JSON.stringify({
+          type: eventType,
+          data: {data},
+        })
+      );
 
-    expect(resolveSpy).not.toHaveBeenCalled();
-    expect(getMetricsTrackEvent()).toHaveBeenCalledTimes(1);
-    expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
-      METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
-      {
-        eventType,
-        dropReason: 'invalid-payload',
-      },
-      ['operational']
-    );
-  });
+      expect(resolveSpy).not.toHaveBeenCalled();
+      expect(getMetricsTrackEvent()).toHaveBeenCalledTimes(1);
+      expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
+        {
+          eventType,
+          dropReason: 'invalid-payload',
+        },
+        ['operational']
+      );
+    }
+  );
 
   it.each(['parent-first', 'child-first'] as const)(
     'should select the unique receiving-agent leaf for parent-child order %s',
     (registryOrder) => {
       const parentTask = createReceivingSummaryTask('parent-task', 'conversation-1');
-      const childTask = createReceivingSummaryTask(
-        'child-task',
-        'conversation-1',
-        'parent-task'
-      );
+      const childTask = createReceivingSummaryTask('child-task', 'conversation-1', 'parent-task');
 
       taskManager.taskCollection =
         registryOrder === 'parent-first'
@@ -1386,7 +1418,7 @@ describe('TaskManager', () => {
 
       taskManager.handleRealtimeWebsocketEvent(
         JSON.stringify({
-          type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+          type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
           data: {data: receivingPayload},
         })
       );
@@ -1412,11 +1444,7 @@ describe('TaskManager', () => {
         'conversation-1',
         'grandparent-task'
       );
-      const childTask = createReceivingSummaryTask(
-        'child-task',
-        'conversation-1',
-        'parent-task'
-      );
+      const childTask = createReceivingSummaryTask('child-task', 'conversation-1', 'parent-task');
 
       taskManager.taskCollection =
         registryOrder === 'root-to-leaf'
@@ -1441,7 +1469,7 @@ describe('TaskManager', () => {
 
       taskManager.handleRealtimeWebsocketEvent(
         JSON.stringify({
-          type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+          type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
           data: {data: receivingPayload},
         })
       );
@@ -1460,24 +1488,22 @@ describe('TaskManager', () => {
     }
   );
 
-  it.each(
+  it.each([
     [
+      'cyclic',
       [
-        'cyclic',
-        [
-          ['cycle-a-task', 'cycle-b-task'],
-          ['cycle-b-task', 'cycle-a-task'],
-        ],
+        ['cycle-a-task', 'cycle-b-task'],
+        ['cycle-b-task', 'cycle-a-task'],
       ],
+    ],
+    [
+      'missing-parent',
       [
-        'missing-parent',
-        [
-          ['missing-parent-a-task', 'missing-parent-root-a'],
-          ['missing-parent-b-task', 'missing-parent-root-b'],
-        ],
+        ['missing-parent-a-task', 'missing-parent-root-a'],
+        ['missing-parent-b-task', 'missing-parent-root-b'],
       ],
-    ] as const
-  )(
+    ],
+  ] as const)(
     'should drop %s receiving-agent lineage ambiguity without task delivery',
     (_lineageKind, taskLineage) => {
       const receivingTasks = taskLineage.map(([interactionId, parentInteractionId]) =>
@@ -1496,7 +1522,7 @@ describe('TaskManager', () => {
 
       taskManager.handleRealtimeWebsocketEvent(
         JSON.stringify({
-          type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+          type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
           data: {data: receivingPayload},
         })
       );
@@ -1511,7 +1537,7 @@ describe('TaskManager', () => {
       expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
         {
-          eventType: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+          eventType: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
           dropReason: 'ambiguous-receiver',
           conversationId: 'conversation-1',
         },
@@ -1561,7 +1587,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         data: {data: receivingPayload},
         rawEnvelope: rawEnvelopeSentinel,
       })
@@ -1638,7 +1664,7 @@ describe('TaskManager', () => {
 
       taskManager.handleRealtimeWebsocketEvent(
         JSON.stringify({
-          type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+          type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
           data: {
             data: {
               conversationId: 'conversation-1',
@@ -1673,7 +1699,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         data: {data: receivingPayload},
       })
     );
@@ -1696,6 +1722,52 @@ describe('TaskManager', () => {
     );
   });
 
+  it('should drop a buffered receiving summary when task registration remains ambiguous', () => {
+    jest.useFakeTimers();
+    const conversationId = 'ambiguous-buffer-conversation';
+    const receivingPayload = {
+      conversationId,
+      summaryText: 'buffered ambiguous receiver summary',
+    };
+
+    taskManager.taskCollection = {};
+    taskManager.handleRealtimeWebsocketEvent(
+      JSON.stringify({
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        data: {data: receivingPayload},
+      })
+    );
+
+    const firstTask = createReceivingSummaryTask('ambiguous-first-task', conversationId);
+    const secondTask = createReceivingSummaryTask('ambiguous-second-task', conversationId);
+    const firstTaskEmitSpy = jest.spyOn(firstTask, 'emit');
+    const secondTaskEmitSpy = jest.spyOn(secondTask, 'emit');
+    taskManager.taskCollection = {firstTask, secondTask};
+
+    (taskManager as any).flushReceivingSummaryForConversation(conversationId);
+
+    expect(firstTaskEmitSpy).not.toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+      expect.anything()
+    );
+    expect(secondTaskEmitSpy).not.toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+      expect.anything()
+    );
+    expect((taskManager as any).receivingSummaryBuffer.get(conversationId)).toBeUndefined();
+    expect(getInboundDropMetricCalls()).toHaveLength(1);
+    expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
+      {
+        eventType: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        dropReason: 'ambiguous-receiver',
+        conversationId,
+      },
+      ['operational']
+    );
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
   it('should flush buffered receiving summaries after an unmapped task update establishes correlation', () => {
     jest.useFakeTimers();
     const conversationId = 'unmapped-update-conversation';
@@ -1712,7 +1784,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         data: {data: receivingPayload},
       })
     );
@@ -1746,7 +1818,7 @@ describe('TaskManager', () => {
   it('should clear reservation feature state and flush buffered receiver summary after reservation re-key', () => {
     jest.useFakeTimers();
     taskManager.taskCollection = {};
-    const coordinator = (taskManager as any).aiSummaryCoordinator;
+    const coordinator = (taskManager as any).rtdRequestResolver;
     const reservationInteractionId = 'reservation-rekey-id';
     const assignedInteractionId = 'assigned-rekey-id';
     const conversationId = 'reservation-rekey-conversation';
@@ -1789,27 +1861,31 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+        type: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
         data: {data: featurePayload},
       })
     );
 
-    expect(coordinator.getFeatureEnablement(reservationInteractionId)).toEqual(featurePayload);
+    expect(
+      (taskManager as any).interactionFeatureEnablement.get(reservationInteractionId)?.payload
+    ).toEqual(featurePayload);
     expect(jest.getTimerCount()).toBe(0);
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+        type: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
         data: {data: assignedFeaturePayload},
       })
     );
 
-    expect(coordinator.getFeatureEnablement(assignedInteractionId)).toEqual(assignedFeaturePayload);
+    expect(
+      (taskManager as any).interactionFeatureEnablement.get(assignedInteractionId)?.payload
+    ).toEqual(assignedFeaturePayload);
     expect(jest.getTimerCount()).toBe(1);
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         data: {data: receivingPayload},
       })
     );
@@ -1836,7 +1912,9 @@ describe('TaskManager', () => {
 
     expect(taskManager.getTask(assignedInteractionId)).toBe(reservationTask);
     expect(taskManager.getTask(reservationInteractionId)).toBeUndefined();
-    expect(coordinator.getFeatureEnablement(reservationInteractionId)).toBeUndefined();
+    expect(
+      (taskManager as any).interactionFeatureEnablement.get(reservationInteractionId)
+    ).toBeUndefined();
     expect(featureHandler).toHaveBeenCalledWith(assignedFeaturePayload);
     expect(receiverHandler).toHaveBeenCalledTimes(1);
     expect(receiverHandler).toHaveBeenCalledWith(receivingPayload);
@@ -1858,7 +1936,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         data: {data: receivingPayload},
       })
     );
@@ -1883,7 +1961,7 @@ describe('TaskManager', () => {
     expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
       {
-        eventType: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        eventType: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         dropReason: 'receiver-buffer-expired',
         conversationId: 'conversation-1',
       },
@@ -1901,31 +1979,29 @@ describe('TaskManager', () => {
     expect(jest.getTimerCount()).toBe(0);
   });
 
-  it.each(
+  it.each([
     [
-      [
-        'reserved contact',
-        CC_EVENTS.AGENT_CONTACT_RESERVED,
-        TASK_EVENTS.TASK_INCOMING,
-        'receiver-reserved-task',
-        'receiver-reserved-conversation',
-      ],
-      [
-        'agent contact hydrate',
-        CC_EVENTS.AGENT_CONTACT,
-        TASK_EVENTS.TASK_HYDRATE,
-        'receiver-agent-contact-task',
-        'receiver-agent-contact-conversation',
-      ],
-      [
-        'campaign preview reservation',
-        CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION,
-        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
-        'receiver-campaign-task',
-        'receiver-campaign-conversation',
-      ],
-    ] as const
-  )(
+      'reserved contact',
+      CC_EVENTS.AGENT_CONTACT_RESERVED,
+      TASK_EVENTS.TASK_INCOMING,
+      'receiver-reserved-task',
+      'receiver-reserved-conversation',
+    ],
+    [
+      'agent contact hydrate',
+      CC_EVENTS.AGENT_CONTACT,
+      TASK_EVENTS.TASK_HYDRATE,
+      'receiver-agent-contact-task',
+      'receiver-agent-contact-conversation',
+    ],
+    [
+      'campaign preview reservation',
+      CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION,
+      TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+      'receiver-campaign-task',
+      'receiver-campaign-conversation',
+    ],
+  ] as const)(
     'should flush buffered receiving summaries once after %s publication',
     (_name, eventType, publicationEvent, interactionId, conversationId) => {
       jest.useFakeTimers();
@@ -1939,7 +2015,7 @@ describe('TaskManager', () => {
 
       taskManager.handleRealtimeWebsocketEvent(
         JSON.stringify({
-          type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+          type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
           data: {data: receivingPayload},
         })
       );
@@ -1991,7 +2067,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         data: {data: receivingPayload},
       })
     );
@@ -2049,7 +2125,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         data: {
           data: {
             conversationId: 'conversation-1',
@@ -2065,7 +2141,7 @@ describe('TaskManager', () => {
     expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
       {
-        eventType: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        eventType: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         dropReason: 'ambiguous-receiver',
         conversationId: 'conversation-1',
       },
@@ -2080,7 +2156,7 @@ describe('TaskManager', () => {
 
   it('should cancel owner AI summary state and re-flush receiver buffers after task deletion', async () => {
     jest.useFakeTimers();
-    const coordinator = (taskManager as any).aiSummaryCoordinator;
+    const coordinator = (taskManager as any).rtdRequestResolver;
     const createCorrelatedTask = (interactionId: string, conversationId: string) =>
       createStateMachineTask({
         ...taskDataMock,
@@ -2105,18 +2181,21 @@ describe('TaskManager', () => {
     taskManager.taskCollection = {};
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         data: {data: deliveredPayload},
       })
     );
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         data: {data: retainedPayload},
       })
     );
 
-    const deliveredOwnerTask = createCorrelatedTask('owner-delivered-task', deliveredConversationId);
+    const deliveredOwnerTask = createCorrelatedTask(
+      'owner-delivered-task',
+      deliveredConversationId
+    );
     const receiverTask = createCorrelatedTask('receiver-task', deliveredConversationId);
     const retainedOwnerTask = createCorrelatedTask('owner-retained-task', retainedConversationId);
 
@@ -2129,13 +2208,15 @@ describe('TaskManager', () => {
     const deliveredOwnerEmitSpy = jest.spyOn(deliveredOwnerTask, 'emit');
     const receiverEmitSpy = jest.spyOn(receiverTask, 'emit');
     const retainedOwnerEmitSpy = jest.spyOn(retainedOwnerTask, 'emit');
-    const deliveredRegistration = await coordinator.registerPendingAISummaryRequest(
+    const deliveredRegistration = registerRtdRequest(
+      coordinator,
       deliveredOwnerTask.data.interactionId,
       deliveredConversationId,
       'MID_CALL_SUMMARY',
       'MID_CALL_SUMMARY_TIMEOUT'
     );
-    const retainedRegistration = await coordinator.registerPendingAISummaryRequest(
+    const retainedRegistration = registerRtdRequest(
+      coordinator,
       retainedOwnerTask.data.interactionId,
       retainedConversationId,
       'MID_CALL_SUMMARY',
@@ -2186,7 +2267,7 @@ describe('TaskManager', () => {
     expect(getMetricsTrackEvent()).not.toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
       {
-        eventType: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        eventType: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         dropReason: 'receiver-buffer-expired',
         conversationId: retainedConversationId,
       },
@@ -2198,7 +2279,7 @@ describe('TaskManager', () => {
     expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
       {
-        eventType: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        eventType: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         dropReason: 'receiver-buffer-expired',
         conversationId: retainedConversationId,
       },
@@ -2209,7 +2290,7 @@ describe('TaskManager', () => {
 
   it('should clear AI summary state, cancel pending requests, drop queued frames, and reactivate on config', async () => {
     jest.useFakeTimers();
-    const coordinator = (taskManager as any).aiSummaryCoordinator;
+    const coordinator = (taskManager as any).rtdRequestResolver;
     const generatedSummaries: NonNullable<
       NonNullable<ConfigFlags['aiFeature']>['generatedSummaries']
     > = {
@@ -2226,21 +2307,29 @@ describe('TaskManager', () => {
         generatedSummaries,
       },
     };
-    const postRegistration = await coordinator.registerPendingAISummaryRequest(
+    const postRegistration = registerRtdRequest(
+      coordinator,
       taskId,
       taskId,
       'POST_CALL_SUMMARY',
       'POST_CALL_SUMMARY_TIMEOUT'
     );
-    const midRegistration = await coordinator.registerPendingAISummaryRequest(
+    const midRegistration = registerRtdRequest(
+      coordinator,
       taskId,
       taskId,
       'MID_CALL_SUMMARY',
       'MID_CALL_SUMMARY_TIMEOUT'
     );
 
-    coordinator.setFeatureEnablement({interactionId: taskId, postCallEnabled: true}, false);
-    coordinator.routeReceivingSummary({conversationId: 'conversation-1', summaryText: 'summary'}, []);
+    (taskManager as any).setFeatureEnablement(
+      {interactionId: taskId, postCallEnabled: true},
+      false
+    );
+    (taskManager as any).routeReceivingSummary(
+      {conversationId: 'conversation-1', summaryText: 'summary'},
+      []
+    );
     expect(jest.getTimerCount()).toBe(4);
 
     taskManager.clearAISummaryState();
@@ -2257,7 +2346,7 @@ describe('TaskManager', () => {
         data: {errorCode: AI_SUMMARY_REQUEST_CANCELLED},
       })
     );
-    expect(coordinator.getFeatureEnablement(taskId)).toBeUndefined();
+    expect((taskManager as any).interactionFeatureEnablement.get(taskId)).toBeUndefined();
     expect(jest.getTimerCount()).toBe(0);
 
     const taskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
@@ -2265,7 +2354,7 @@ describe('TaskManager', () => {
     const receiverSummaryHandler = jest.fn();
     const postClearFrames = [
       {
-        eventType: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+        eventType: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
         data: {
           interactionId: taskId,
           postCallEnabled: true,
@@ -2274,21 +2363,21 @@ describe('TaskManager', () => {
         },
       },
       {
-        eventType: CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
+        eventType: CC_TASK_EVENTS.POST_CALL_SUMMARY,
         data: {
           conversationId: taskId,
           summaryText: 'post-clear post-call summary',
         },
       },
       {
-        eventType: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY,
+        eventType: CC_TASK_EVENTS.MID_CALL_SUMMARY,
         data: {
           conversationId: taskId,
           summaryText: 'post-clear mid-call summary',
         },
       },
       {
-        eventType: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        eventType: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         data: {
           conversationId: taskId,
           summaryText: 'post-clear receiver summary',
@@ -2296,16 +2385,15 @@ describe('TaskManager', () => {
       },
     ];
     const expectCoordinatorStateCleared = () => {
-      expect((coordinator as any).pendingAISummaryRequests.POST_CALL_SUMMARY.size).toBe(0);
-      expect((coordinator as any).pendingAISummaryRequests.MID_CALL_SUMMARY.size).toBe(0);
-      expect((coordinator as any).receivingSummaryBuffer.size).toBe(0);
-      expect((coordinator as any).interactionFeatureEnablement.size).toBe(0);
-      expect(coordinator.getFeatureEnablement(taskId)).toBeUndefined();
+      expect((coordinator as any).pendingRequests.size).toBe(0);
+      expect((taskManager as any).receivingSummaryBuffer.size).toBe(0);
+      expect((taskManager as any).interactionFeatureEnablement.size).toBe(0);
+      expect((taskManager as any).interactionFeatureEnablement.get(taskId)).toBeUndefined();
       expect(jest.getTimerCount()).toBe(0);
     };
     const expectNoPublicAISummaryEmission = () => {
       expect(receiverSummaryHandler).not.toHaveBeenCalled();
-      [CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY, CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY].forEach(
+      [CC_TASK_EVENTS.POST_CALL_SUMMARY, CC_TASK_EVENTS.MID_CALL_SUMMARY].forEach(
         (summaryInboundEvent) => {
           expect(taskEmitSpy).not.toHaveBeenCalledWith(summaryInboundEvent, expect.anything());
           expect(taskManagerEmitSpy).not.toHaveBeenCalledWith(
@@ -2352,12 +2440,12 @@ describe('TaskManager', () => {
     taskManager.setConfigFlags(configFlags);
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+        type: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
         data: {data: {interactionId: taskId, postCallEnabled: true}},
       })
     );
 
-    expect(coordinator.getFeatureEnablement(taskId)).toEqual({
+    expect((taskManager as any).interactionFeatureEnablement.get(taskId)?.payload).toEqual({
       interactionId: taskId,
       postCallEnabled: true,
     });
@@ -2415,6 +2503,7 @@ describe('TaskManager', () => {
     expect(configuredTask.configureAISummary).toHaveBeenCalledWith(
       mockApiAIAssistant,
       expect.any(Object),
+      expect.any(Function),
       expect.any(Function)
     );
     const injectedGeneratedSummaryFlagsAccessor =
@@ -2496,17 +2585,17 @@ describe('TaskManager', () => {
   it('should handle malformed AI summary and parser drop branches with bounded metadata', () => {
     taskManager.handleRealtimeWebsocketEvent('{bad-json "private-summary"');
     taskManager.handleRealtimeWebsocketEvent(
-      JSON.stringify({type: CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY, data: {}})
+      JSON.stringify({type: CC_TASK_EVENTS.POST_CALL_SUMMARY, data: {}})
     );
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
+        type: CC_TASK_EVENTS.POST_CALL_SUMMARY,
         data: {data: {conversationId: ''}},
       })
     );
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         data: {data: {conversationId: ''}},
       })
     );
@@ -2522,7 +2611,7 @@ describe('TaskManager', () => {
     expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
       {
-        eventType: CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
+        eventType: CC_TASK_EVENTS.POST_CALL_SUMMARY,
         dropReason: 'malformed-envelope',
       },
       ['operational']
@@ -2530,7 +2619,7 @@ describe('TaskManager', () => {
     expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
       {
-        eventType: CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
+        eventType: CC_TASK_EVENTS.POST_CALL_SUMMARY,
         dropReason: 'invalid-payload',
       },
       ['operational']
@@ -2538,7 +2627,7 @@ describe('TaskManager', () => {
     expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
       {
-        eventType: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        eventType: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         dropReason: 'invalid-payload',
       },
       ['operational']
@@ -2556,33 +2645,31 @@ describe('TaskManager', () => {
     expectNoSensitiveDiagnostics('private-summary');
   });
 
-  it.each([undefined, ''])(
-    'drops receiving-agent summaries with summaryText %p',
-    (summaryText) => {
-      taskManager.taskCollection = {};
+  it.each([undefined, ''])('drops receiving-agent summaries with summaryText %p', (summaryText) => {
+    taskManager.taskCollection = {};
 
-      taskManager.handleRealtimeWebsocketEvent(
-        JSON.stringify({
-          type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
-          data: {data: {conversationId: 'conversation-1', summaryText}},
-        })
-      );
+    taskManager.handleRealtimeWebsocketEvent(
+      JSON.stringify({
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        data: {data: {conversationId: 'conversation-1', summaryText}},
+      })
+    );
 
-      expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
-        {
-          eventType: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
-          dropReason: 'invalid-payload',
-        },
-        ['operational']
-      );
-    }
-  );
+    expect(getMetricsTrackEvent()).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
+      {
+        eventType: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        dropReason: 'invalid-payload',
+      },
+      ['operational']
+    );
+  });
 
   it('should keep a pending request operational after unparseable, malformed, and unknown frames', async () => {
-    const coordinator = (taskManager as any).aiSummaryCoordinator;
+    const coordinator = (taskManager as any).rtdRequestResolver;
     const conversationId = 'recovery-conversation';
-    const registration = await coordinator.registerPendingAISummaryRequest(
+    const registration = registerRtdRequest(
+      coordinator,
       taskId,
       conversationId,
       'POST_CALL_SUMMARY',
@@ -2595,7 +2682,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent('{not-json');
     taskManager.handleRealtimeWebsocketEvent(
-      JSON.stringify({type: CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY, data: {}})
+      JSON.stringify({type: CC_TASK_EVENTS.POST_CALL_SUMMARY, data: {}})
     );
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({type: 'UNKNOWN_SUMMARY_RECOVERY_EVENT', data: {data: {conversationId}}})
@@ -2605,7 +2692,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
+        type: CC_TASK_EVENTS.POST_CALL_SUMMARY,
         data: {data: validPayload},
       })
     );
@@ -2672,7 +2759,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         data: {data: receiverPayload},
       })
     );
@@ -2680,18 +2767,15 @@ describe('TaskManager', () => {
     expect(receiverHandler).toHaveBeenCalledWith(receiverPayload);
     expect(getInboundDropMetricCalls()).toHaveLength(0);
     expect(getLoggerProxy().warn).not.toHaveBeenCalled();
-    expect(getLoggerProxy().error).toHaveBeenCalledWith(
-      'AI summary receiver listener failed',
-      {
-        module: TASK_MANAGER_FILE,
-        method: METHODS.HANDLE_AI_SUMMARY_EVENT,
-        data: {
-          reason: 'consumer-listener-error',
-          eventType: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
-          conversationId: taskId,
-        },
-      }
-    );
+    expect(getLoggerProxy().error).toHaveBeenCalledWith('AI summary receiver listener failed', {
+      module: TASK_MANAGER_FILE,
+      method: METHODS.HANDLE_AI_SUMMARY_EVENT,
+      data: {
+        reason: 'consumer-listener-error',
+        eventType: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        conversationId: taskId,
+      },
+    });
     expectNoSensitiveDiagnostics(
       'private receiver summary',
       'privateKey',
@@ -2713,7 +2797,7 @@ describe('TaskManager', () => {
     taskManager.taskCollection = {};
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        type: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
         data: {data: receivingPayload},
       })
     );
@@ -2729,18 +2813,15 @@ describe('TaskManager', () => {
 
     expect(jest.getTimerCount()).toBe(0);
     expect(getInboundDropMetricCalls()).toHaveLength(0);
-    expect(getLoggerProxy().error).toHaveBeenCalledWith(
-      'AI summary receiver listener failed',
-      {
-        module: TASK_MANAGER_FILE,
-        method: METHODS.HANDLE_AI_SUMMARY_EVENT,
-        data: {
-          reason: 'consumer-listener-error',
-          eventType: CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
-          conversationId,
-        },
-      }
-    );
+    expect(getLoggerProxy().error).toHaveBeenCalledWith('AI summary receiver listener failed', {
+      module: TASK_MANAGER_FILE,
+      method: METHODS.HANDLE_AI_SUMMARY_EVENT,
+      data: {
+        reason: 'consumer-listener-error',
+        eventType: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+        conversationId,
+      },
+    });
     expectNoSensitiveDiagnostics('private buffered summary', 'private buffered listener failure');
   });
 
@@ -2751,7 +2832,7 @@ describe('TaskManager', () => {
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
-        type: CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT,
+        type: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
         data: {
           data: {
             interactionId: taskId,
@@ -2772,8 +2853,9 @@ describe('TaskManager', () => {
     expect(task.configureAISummary).toHaveBeenCalledTimes(1);
     expect(task.configureAISummary).toHaveBeenCalledWith(
       mockApiAIAssistant,
-      (taskManager as any).aiSummaryCoordinator,
-      (taskManager as any).getGeneratedSummaryFlags
+      (taskManager as any).rtdRequestResolver,
+      (taskManager as any).getGeneratedSummaryFlags,
+      expect.any(Function)
     );
     expect(task.on).toHaveBeenCalled();
     expect(task.configureAISummary.mock.invocationCallOrder[0]).toBeLessThan(
@@ -2781,54 +2863,52 @@ describe('TaskManager', () => {
     );
   };
 
-  it.each(
+  it.each([
     [
-      [
-        'AGENT_CONTACT_RESERVED',
-        TASK_EVENTS.TASK_INCOMING,
-        {
-          ...taskDataMock,
-          type: CC_EVENTS.AGENT_CONTACT_RESERVED,
-          interactionId: 'ai-summary-reserved-task',
-          mediaResourceId: 'ai-summary-reserved-task',
-          interaction: {mediaType: 'telephony'},
-        },
-      ],
-      [
-        'missing-task AGENT_CONTACT',
-        TASK_EVENTS.TASK_HYDRATE,
-        {
-          ...taskDataMock,
-          type: CC_EVENTS.AGENT_CONTACT,
-          interactionId: 'ai-summary-agent-contact-task',
-          mediaResourceId: 'ai-summary-agent-contact-task',
-          interaction: {mediaType: 'telephony'},
-        },
-      ],
-      [
-        'campaign-preview reservation',
-        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
-        {
-          ...taskDataMock,
-          type: CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION,
-          interactionId: 'ai-summary-campaign-task',
-          mediaResourceId: 'ai-summary-campaign-task',
-          interaction: {mediaType: 'telephony'},
-        },
-      ],
-      [
-        'missing-task CONTACT_MERGED',
-        TASK_EVENTS.TASK_MERGED,
-        {
-          ...taskDataMock,
-          type: CC_EVENTS.CONTACT_MERGED,
-          interactionId: 'ai-summary-merged-task',
-          mediaResourceId: 'ai-summary-merged-task',
-          interaction: {mediaType: 'telephony', callProcessingDetails: {}},
-        },
-      ],
-    ] as const
-  )(
+      'AGENT_CONTACT_RESERVED',
+      TASK_EVENTS.TASK_INCOMING,
+      {
+        ...taskDataMock,
+        type: CC_EVENTS.AGENT_CONTACT_RESERVED,
+        interactionId: 'ai-summary-reserved-task',
+        mediaResourceId: 'ai-summary-reserved-task',
+        interaction: {mediaType: 'telephony'},
+      },
+    ],
+    [
+      'missing-task AGENT_CONTACT',
+      TASK_EVENTS.TASK_HYDRATE,
+      {
+        ...taskDataMock,
+        type: CC_EVENTS.AGENT_CONTACT,
+        interactionId: 'ai-summary-agent-contact-task',
+        mediaResourceId: 'ai-summary-agent-contact-task',
+        interaction: {mediaType: 'telephony'},
+      },
+    ],
+    [
+      'campaign-preview reservation',
+      TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+      {
+        ...taskDataMock,
+        type: CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION,
+        interactionId: 'ai-summary-campaign-task',
+        mediaResourceId: 'ai-summary-campaign-task',
+        interaction: {mediaType: 'telephony'},
+      },
+    ],
+    [
+      'missing-task CONTACT_MERGED',
+      TASK_EVENTS.TASK_MERGED,
+      {
+        ...taskDataMock,
+        type: CC_EVENTS.CONTACT_MERGED,
+        interactionId: 'ai-summary-merged-task',
+        mediaResourceId: 'ai-summary-merged-task',
+        interaction: {mediaType: 'telephony', callProcessingDetails: {}},
+      },
+    ],
+  ] as const)(
     'should configure AI summary on factory-created task before publishing %s',
     (_name, publicationEvent, payload) => {
       taskManager.taskCollection = {};
@@ -3006,13 +3086,15 @@ describe('TaskManager', () => {
       rtdWebSocketManagerMock as any
     );
 
-    expect(TaskManager.getTaskManager(
-      mockApiAIAssistant as any,
-      contactMock,
-      webCallingService,
-      webSocketManagerMock as any,
-      rtdWebSocketManagerMock as any
-    )).toBe(singleton);
+    expect(
+      TaskManager.getTaskManager(
+        mockApiAIAssistant as any,
+        contactMock,
+        webCallingService,
+        webSocketManagerMock as any,
+        rtdWebSocketManagerMock as any
+      )
+    ).toBe(singleton);
   });
 
   it('should cover TaskManager-imported TaskUtils helper branches', () => {
@@ -3046,9 +3128,7 @@ describe('TaskManager', () => {
     expect(getIsCustomerInCall(interaction, 'main')).toBe(true);
     expect(getConferenceParticipantsCount(interaction, 'main')).toBe(1);
     expect(getIsConsultInProgressForConferenceControls(interaction, 'main', 'agent-1')).toBe(true);
-    expect(getIsConsultedAgentForControls({isConsulted: true} as any, {} as any, false)).toBe(
-      true
-    );
+    expect(getIsConsultedAgentForControls({isConsulted: true} as any, {} as any, false)).toBe(true);
     expect(getServerHoldStateForControls({taskData: task.data} as any, 'main')).toBe(true);
     expect(isPrimary(task, 'agent-1')).toBe(true);
     expect(isParticipantInMainInteraction(task, 'agent-1')).toBe(true);
@@ -3131,12 +3211,10 @@ describe('TaskManager', () => {
     ).toBeUndefined();
 
     expect(isPrimary({data: {agentId: 'agent-1', interaction: {}}} as any, 'agent-1')).toBe(true);
-    expect(isPrimary({data: {agentId: 'agent-2', interaction: {owner: 'agent-1'}}} as any, 'agent-2')).toBe(
-      false
-    );
-    expect(isParticipantInMainInteraction({data: {interaction: {}}} as any, 'agent-1')).toBe(
-      false
-    );
+    expect(
+      isPrimary({data: {agentId: 'agent-2', interaction: {owner: 'agent-1'}}} as any, 'agent-2')
+    ).toBe(false);
+    expect(isParticipantInMainInteraction({data: {interaction: {}}} as any, 'agent-1')).toBe(false);
     expect(checkParticipantNotInInteraction({data: {interaction: {}}} as any, 'agent-1')).toBe(
       true
     );
@@ -3196,9 +3274,14 @@ describe('TaskManager', () => {
         'agent-1'
       )
     ).toBe(false);
-    expect(shouldAutoAnswerTask({interaction: baseInteraction} as any, 'agent-1', LoginOption.BROWSER, true)).toBe(
-      true
-    );
+    expect(
+      shouldAutoAnswerTask(
+        {interaction: baseInteraction} as any,
+        'agent-1',
+        LoginOption.BROWSER,
+        true
+      )
+    ).toBe(true);
     expect(
       shouldAutoAnswerTask(
         {
@@ -5634,17 +5717,11 @@ describe('TaskManager', () => {
     it('correlates child-keyed ContactOwnerChanged and keeps the main task identity', () => {
       const childTaskId = 'surviving-child-id';
       const promotedChildId = 'promoted-child-id';
-      const task = installTask(
-        createConferenceTaskData(childTaskId, previousOwnerId, taskId)
-      );
+      const task = installTask(createConferenceTaskData(childTaskId, previousOwnerId, taskId));
       const hydrateHandler = jest.fn();
       taskManager.on(TASK_EVENTS.TASK_HYDRATE, hydrateHandler);
 
-      const ownerChangeData = createConferenceTaskData(
-        promotedChildId,
-        promotedOwnerId,
-        taskId
-      );
+      const ownerChangeData = createConferenceTaskData(promotedChildId, promotedOwnerId, taskId);
       ownerChangeData.interaction.interactionId = taskId;
       webSocketManagerMock.emit(
         'message',
@@ -5659,9 +5736,9 @@ describe('TaskManager', () => {
       expect(taskManager.taskCollection[childTaskId]).toBeUndefined();
       expect(taskManager.taskCollection[promotedChildId]).toBeUndefined();
       expect(taskManager.taskCollection[taskId]).toBe(task);
-      expect(Object.values(taskManager.taskCollection).filter((entry) => entry === task)).toHaveLength(
-        1
-      );
+      expect(
+        Object.values(taskManager.taskCollection).filter((entry) => entry === task)
+      ).toHaveLength(1);
       expect(hydrateHandler).toHaveBeenCalledTimes(1);
     });
 
@@ -5697,11 +5774,7 @@ describe('TaskManager', () => {
       const mainMediaInteractionId = 'main-media-interaction-id';
       const promotedChildId = 'promoted-child-without-main-id';
       const task = installTask(
-        createConferenceTaskData(
-          mainMediaInteractionId,
-          previousOwnerId,
-          mainMediaInteractionId
-        )
+        createConferenceTaskData(mainMediaInteractionId, previousOwnerId, mainMediaInteractionId)
       );
       const hydrateHandler = jest.fn();
       taskManager.on(TASK_EVENTS.TASK_HYDRATE, hydrateHandler);
@@ -6528,11 +6601,8 @@ describe('TaskManager', () => {
         )
       ).toMatchObject({mediaResourceId: 'fallback-media-resource'});
       expect(
-        mapEvent(
-          CC_EVENTS.CONTACT_ENDED,
-          {...payload, agentsPendingWrapUp: undefined},
-          'agent-1'
-        ).taskData.wrapUpRequired
+        mapEvent(CC_EVENTS.CONTACT_ENDED, {...payload, agentsPendingWrapUp: undefined}, 'agent-1')
+          .taskData.wrapUpRequired
       ).toBe(false);
       expect(mapEvent('UNMAPPED_EVENT', payload, 'agent-1')).toBeNull();
     });

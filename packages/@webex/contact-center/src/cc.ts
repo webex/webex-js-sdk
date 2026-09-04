@@ -79,9 +79,8 @@ import type {
   EntryPointSearchParams,
   ContactServiceQueuesResponse,
   ContactServiceQueueSearchParams,
+  DeregisterFailure,
 } from './types';
-
-type CapturedFailure = {captured: false; error?: never} | {captured: true; error: unknown};
 
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
@@ -529,12 +528,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     return UNKNOWN_ERROR;
   }
 
-  private runDeregisterCleanup(): CapturedFailure {
-    let capturedFailure: CapturedFailure = {captured: false};
+  /**
+   * Runs deregistration cleanup independently so one failing cleanup step cannot prevent later
+   * resources from being released. The first cleanup failure is retained for reporting only when
+   * the main deregistration operation did not already fail; preserving the primary failure keeps
+   * the caller's original error and its associated diagnostics intact.
+   */
+  private runDeregisterCleanup(): DeregisterFailure {
+    let capturedFailure: DeregisterFailure = {captured: false};
     const cleanupSteps = [
       () => this.taskManager.clearAISummaryState(),
+      // Detach the RTD listener as part of the same guaranteed cleanup path as the socket close.
       () => this.services.rtdWebSocketManager?.off('message', this.handleRTDWebsocketMessage),
       () => {
+        // Keep one guarded RTD close here; the previous duplicate close could run after the
+        // socket was already closed and made cleanup behavior dependent on the socket implementation.
         if (
           this.services.rtdWebSocketManager &&
           !this.services.rtdWebSocketManager.isSocketClosed
@@ -586,8 +594,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Sets up event listeners for incoming tasks and task hydration
-   * Subscribes to task events from the task manager
+   * Removes ContactCenter's task-manager event forwarders.
+   *
+   * This is intentionally separate from registration so the same bound handlers can be removed
+   * during deregistration and before a new registration cycle. Keeping refresh idempotent prevents
+   * duplicate task events when the SDK is registered more than once.
    * @private
    */
   private unregisterTaskManagerEventForwarders(): void {
@@ -601,6 +612,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     );
   }
 
+  /**
+   * Rebinds task-manager event forwarders for initialization and repeated registration cycles.
+   * Removing the existing bound handlers first makes each invocation idempotent.
+   * @private
+   */
   private refreshTaskManagerEventForwarders(): void {
     this.unregisterTaskManagerEventForwarders();
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
@@ -734,8 +750,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
    */
   public async deregister(): Promise<void> {
-    let primaryFailure: CapturedFailure = {captured: false};
-    let cleanupFailure: CapturedFailure = {captured: false};
+    let primaryFailure: DeregisterFailure = {captured: false};
+    let cleanupFailure: DeregisterFailure = {captured: false};
 
     try {
       this.metricsManager.timeEvent([
@@ -794,6 +810,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         method: METHODS.DEREGISTER,
       });
     } finally {
+      // Cleanup must run even when a primary deregistration step fails. Preserve the primary
+      // failure below, while still surfacing a cleanup failure when deregistration otherwise succeeds.
       cleanupFailure = this.runDeregisterCleanup();
     }
 

@@ -63,7 +63,7 @@ export {AGENT_EVENTS} from './services/agent/types';
 export type {AGENT_EVENTS as AgentEvents} from './services/agent/types';
 
 /**
- * Contact Center Task Events
+ * Contact Center task, realtime, and AI Assistant events
  * @enum {string}
  * @category Enums
  */
@@ -75,13 +75,6 @@ export {CC_TASK_EVENTS} from './services/config/types';
  * @category Enums
  */
 export {CC_AGENT_EVENTS} from './services/config/types';
-
-/**
- * Contact Center AI summary events
- * @enum {string}
- * @category Enums
- */
-export {CC_AI_SUMMARY_EVENTS} from './services/config/types';
 
 /**
  * Combined Contact Center Events

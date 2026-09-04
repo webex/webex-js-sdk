@@ -1,3 +1,7 @@
+import {AIAssistantEventName} from '../types';
+import type {AISummaryResponseTransportPayload} from '../types';
+import {TIMEOUT_REQ} from './core/constants';
+
 /**
  * Post-authentication event name.
  * @type {string}
@@ -122,6 +126,32 @@ export const AI_ASSISTANT_API_URLS = {
   EVENT: '/event',
   TRANSCRIPTS_LIST: '/transcripts/list',
 };
+
+export const AI_SUMMARY_HTTP_TIMEOUT_MS = TIMEOUT_REQ;
+
+export const AI_SUMMARY_TRANSPORT_ERROR_CODES = {
+  VALIDATION_FAILED: 'AI_SUMMARY_TRANSPORT_VALIDATION_FAILED',
+  HTTP_REQUEST_FAILED: 'AI_SUMMARY_HTTP_REQUEST_FAILED',
+  TIMEOUT: 'AI_SUMMARY_TRANSPORT_TIMEOUT',
+} as const;
+
+export const AI_SUMMARY_GET_EVENT_NAMES = new Set<string>([
+  AIAssistantEventName.GET_POST_CALL_SUMMARY,
+  AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY,
+  AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY,
+]);
+
+export const AI_SUMMARY_RESPONSE_EVENT_NAMES = new Set<string>([
+  AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+  AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE,
+  AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE,
+]);
+
+export const AI_SUMMARY_FEEDBACK_VALUES = new Set<unknown>([
+  'none',
+  'thumbs_up',
+  'thumbs_down',
+] satisfies AISummaryResponseTransportPayload['feedback'][]);
 
 export const AI_ASSISTANT_BASE_URL_TEMPLATE = 'https://api-ai-assistant.%s.ciscoccservice.com';
 

@@ -13,6 +13,7 @@ The Core service provides the foundational infrastructure layer that all other s
 - **WebSocket Communication**: Real-time bidirectional messaging with the contact center backend, including automatic reconnection and keepalive management
 - **HTTP Request Handling**: Authenticated REST API calls to WCC API Gateway with built-in error handling and log upload support
 - **AQM Request/Response Pattern**: A structured pattern used by the routing and contact layers to send HTTP requests to the contact center backend and correlate responses/failures via WebSocket notifications
+- **RTD Request/Response Pattern**: A shared Promise resolver for HTTP acknowledgements completed by matching RTD events
 - **Error Handling & Logging**: Standardized error extraction, logging via `LoggerProxy`, and log upload utilities that all services use for consistent error reporting
 
 | Component | File | Description |
@@ -21,6 +22,7 @@ The Core service provides the foundational infrastructure layer that all other s
 | `ConnectionService` | [`connection-service.ts`](../websocket/connection-service.ts) | Orchestrates reconnection logic and keepalive heartbeats on top of `WebSocketManager`. Detects connection loss and triggers `silentRelogin()` to restore agent state transparently. |
 | `WebexRequest` | [`WebexRequest.ts`](../WebexRequest.ts) | Singleton HTTP client that wraps authenticated requests to the WCC API Gateway. Handles service routing, response parsing, and provides a `uploadLogs` method for diagnostics. |
 | `AqmReqs` | [`aqm-reqs.ts`](../aqm-reqs.ts) | Factory for creating request methods that send HTTP requests and wait for correlated WebSocket notifications (success or failure). Used by routing and task services to implement their API methods. |
+| `RtdRequestResolver` | [`RtdRequestResolver.ts`](../RtdRequestResolver.ts) | Generic pending-request resolver for operations whose HTTP acknowledgement is completed by a matching RTD event. |
 | `Utils` | [`Utils.ts`](../Utils.ts) | Shared utility functions including `getErrorDetails()` for standardized error handling, `generateTaskErrorObject()` for task-specific errors, and `createErrDetailsObject()` for constructing error detail objects. |
 | `Err` | [`Err.ts`](../Err.ts) | Error class definitions. `Err.Details` carries structured error metadata (status, type, trackingId) for consistent error propagation. |
 | `constants` | [`constants.ts`](../constants.ts) | Timeout values, interval durations, participant types, interaction states, and method name constants used throughout the core layer. Any new constants for core should be defined here. |
@@ -38,6 +40,7 @@ services/core/
 ├── types.ts              # Request/response types
 ├── Utils.ts              # Utility functions
 ├── WebexRequest.ts       # HTTP client
+├── RtdRequestResolver.ts  # HTTP-to-RTD Promise resolver
 └── websocket/
     ├── WebSocketManager.ts    # Main WS handler
     ├── connection-service.ts  # Connection lifecycle

@@ -20,7 +20,7 @@ import {SetStateResponse} from '../../../src/types';
 import {AGENT, SUBSCRIBE_API, WEB_RTC_PREFIX} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
-import {CC_AI_SUMMARY_EVENTS, CC_EVENTS} from '../../../src/services/config/types';
+import {CC_TASK_EVENTS, CC_EVENTS} from '../../../src/services/config/types';
 import LoggerProxy from '../../../src/logger-proxy';
 import * as Utils from '../../../src/services/core/Utils';
 import {
@@ -36,7 +36,7 @@ import {
 import '../../../__mocks__/workerMock';
 import {Profile} from '../../../src/services/config/types';
 import TaskManager from '../../../src/services/task/TaskManager';
-import AISummaryCoordinator from '../../../src/services/task/AISummaryCoordinator';
+import RtdRequestResolver from '../../../src/services/core/RtdRequestResolver';
 import Task from '../../../src/services/task/Task';
 import {
   AgentContact,
@@ -1212,16 +1212,22 @@ describe('webex.cc', () => {
       const dispatchRtdFrame = (type: string, data: Record<string, unknown>) => {
         webex.cc['handleRTDWebsocketMessage'](JSON.stringify({type, data: {data}}));
       };
-      const getCoordinator = () =>
-        (taskManager as any).aiSummaryCoordinator as AISummaryCoordinator;
+      const getResolver = () =>
+        (taskManager as any).rtdRequestResolver as RtdRequestResolver;
       const getSummaryMapCounts = () => {
-        const coordinator = getCoordinator() as any;
+        const resolver = getResolver() as any;
+        const manager = taskManager as any;
+        const pendingRequests = Array.from(resolver.pendingRequests.values());
 
         return {
-          pendingPostCall: coordinator.pendingAISummaryRequests.POST_CALL_SUMMARY.size,
-          pendingMidCall: coordinator.pendingAISummaryRequests.MID_CALL_SUMMARY.size,
-          receiving: coordinator.receivingSummaryBuffer.size,
-          featureEnablement: coordinator.interactionFeatureEnablement.size,
+          pendingPostCall: pendingRequests.filter(
+            (request: any) => request.eventType === 'POST_CALL_SUMMARY'
+          ).length,
+          pendingMidCall: pendingRequests.filter(
+            (request: any) => request.eventType === 'MID_CALL_SUMMARY'
+          ).length,
+          receiving: manager.receivingSummaryBuffer.size,
+          featureEnablement: manager.interactionFeatureEnablement.size,
         };
       };
       const expectSummaryStateCleared = () => {
@@ -1239,7 +1245,7 @@ describe('webex.cc', () => {
         dispatchRtdFrame,
         emitRtdFrame,
         expectSummaryStateCleared,
-        getCoordinator,
+        getResolver,
         getSummaryMapCounts,
         rtdWebSocketManager,
         task,
@@ -1287,7 +1293,7 @@ describe('webex.cc', () => {
         actionTimestamp: 1,
       }
     ) => {
-      harness.emitRtdFrame(CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT, payload);
+      harness.emitRtdFrame(CC_TASK_EVENTS.FEATURE_ENABLEMENT, payload);
     };
 
     const dispatchFeatureEnablement = (
@@ -1299,7 +1305,7 @@ describe('webex.cc', () => {
         actionTimestamp: 1,
       }
     ) => {
-      harness.dispatchRtdFrame(CC_AI_SUMMARY_EVENTS.FEATURE_ENABLEMENT, payload);
+      harness.dispatchRtdFrame(CC_TASK_EVENTS.FEATURE_ENABLEMENT, payload);
     };
 
     const emitTaskLifecycleEvent = (
@@ -1328,7 +1334,7 @@ describe('webex.cc', () => {
       harness: ReturnType<typeof createSummaryHarness>,
       conversationId = 'conversation-1'
     ) => {
-      harness.emitRtdFrame(CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY, {
+      harness.emitRtdFrame(CC_TASK_EVENTS.POST_CALL_SUMMARY, {
         conversationId,
         summaryText: sentinels[0],
         sections: {
@@ -1345,7 +1351,7 @@ describe('webex.cc', () => {
       harness: ReturnType<typeof createSummaryHarness>,
       conversationId = 'conversation-1'
     ) => {
-      harness.dispatchRtdFrame(CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY, {
+      harness.dispatchRtdFrame(CC_TASK_EVENTS.POST_CALL_SUMMARY, {
         conversationId,
         summaryText: sentinels[0],
         sections: {
@@ -1362,7 +1368,7 @@ describe('webex.cc', () => {
       harness: ReturnType<typeof createSummaryHarness>,
       conversationId = 'conversation-1'
     ) => {
-      harness.emitRtdFrame(CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY, {
+      harness.emitRtdFrame(CC_TASK_EVENTS.MID_CALL_SUMMARY, {
         conversationId,
         summaryText: sentinels[0],
         agentName: sentinels[4],
@@ -1508,7 +1514,7 @@ describe('webex.cc', () => {
         midCallEnabled: true,
         actionTimestamp: 3,
       });
-      harness.dispatchRtdFrame(CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT, {
+      harness.dispatchRtdFrame(CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT, {
         conversationId: 'queued-before-register',
         summaryText: sentinels[0],
       });
@@ -1529,7 +1535,7 @@ describe('webex.cc', () => {
         midCallEnabled: true,
         actionTimestamp: 4,
       });
-      harness.dispatchRtdFrame(CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT, {
+      harness.dispatchRtdFrame(CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT, {
         conversationId: 'queued-before-reconnect',
         summaryText: sentinels[0],
       });
@@ -1569,7 +1575,7 @@ describe('webex.cc', () => {
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
         {
-          eventType: CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
+          eventType: CC_TASK_EVENTS.POST_CALL_SUMMARY,
           dropReason: 'sdk-deregistered',
         },
         ['operational']
@@ -1592,7 +1598,7 @@ describe('webex.cc', () => {
       let publishedTask: Task | undefined;
       let receiverEmitSpy: jest.SpyInstance | undefined;
 
-      harness.dispatchRtdFrame(CC_AI_SUMMARY_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT, {
+      harness.dispatchRtdFrame(CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT, {
         ...receivingPayload,
       });
 
@@ -1686,12 +1692,7 @@ describe('webex.cc', () => {
       const harness = createSummaryHarness();
       const interactionId = 'post-call-cleanup-interaction';
       const conversationId = 'post-call-cleanup-conversation';
-      const coordinator = harness.getCoordinator();
-      const getFeatureEnablementSpy = jest.spyOn(coordinator, 'getFeatureEnablement');
-      const registerPendingAISummaryRequestSpy = jest.spyOn(
-        coordinator,
-        'registerPendingAISummaryRequest'
-      );
+      const resolver = harness.getResolver();
       let applicationTask: Task | undefined;
 
       harness.taskManager.on(TASK_EVENTS.TASK_INCOMING, (task: Task) => {
@@ -1728,7 +1729,7 @@ describe('webex.cc', () => {
         conversationId,
         AIAssistantEventName.GET_POST_CALL_SUMMARY
       );
-      harness.dispatchRtdFrame(CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY, {
+      harness.dispatchRtdFrame(CC_TASK_EVENTS.POST_CALL_SUMMARY, {
         conversationId,
         summaryText: sentinels[0],
       });
@@ -1763,8 +1764,7 @@ describe('webex.cc', () => {
       });
       expect(jest.getTimerCount()).toBe(0);
 
-      const featureGateCallsAfterRemoval = getFeatureEnablementSpy.mock.calls.length;
-      const registrationCallsAfterRemoval = registerPendingAISummaryRequestSpy.mock.calls.length;
+      const requestCallsAfterRemoval = (resolver as any).pendingRequests.size;
 
       retainedTask.updateTaskData(
         createAISummaryLifecycleTaskData({
@@ -1790,10 +1790,7 @@ describe('webex.cc', () => {
         retainedTask.sendPostCallSummaryResponse(responsePayload)
       ).resolves.toBeUndefined();
 
-      expect(getFeatureEnablementSpy).toHaveBeenCalledTimes(featureGateCallsAfterRemoval);
-      expect(registerPendingAISummaryRequestSpy).toHaveBeenCalledTimes(
-        registrationCallsAfterRemoval
-      );
+      expect((resolver as any).pendingRequests.size).toBe(requestCallsAfterRemoval);
       expect(harness.apiAIAssistant.sendSummaryResponseEvent).toHaveBeenCalledTimes(1);
       expect(harness.apiAIAssistant.sendSummaryResponseEvent).toHaveBeenCalledWith('agent-1', {
         agentId: 'agent-1',
@@ -1867,7 +1864,7 @@ describe('webex.cc', () => {
         expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
           METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
           {
-            eventType: CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY,
+            eventType: CC_TASK_EVENTS.POST_CALL_SUMMARY,
             dropReason: 'sdk-deregistered',
           },
           ['operational']

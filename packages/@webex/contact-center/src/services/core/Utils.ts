@@ -1,6 +1,6 @@
 import * as Err from './Err';
 import {LoginOption, WebexRequestPayload} from '../../types';
-import {Failure, AugmentedError} from './GlobalTypes';
+import {Failure, AugmentedError, GetErrorDetailsOptions} from './GlobalTypes';
 import LoggerProxy from '../../logger-proxy';
 import WebexRequest from './WebexRequest';
 import {
@@ -16,10 +16,10 @@ import {
 import {PARTICIPANT_TYPES, STATE_CONSULT} from './constants';
 import {DialPlan} from '../config/types';
 
-type GetErrorDetailsOptions = {
-  uploadLogs?: boolean;
-};
-
+/**
+ * Uploads diagnostic logs without allowing an upload failure to affect the original operation.
+ * This is shared by the error helpers because both paths intentionally use best-effort logging.
+ */
 const uploadLogsFireAndForget = (correlationId?: string) => {
   const uploadLogsPromise = WebexRequest.getInstance().uploadLogs({
     correlationId,

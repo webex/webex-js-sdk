@@ -41,6 +41,7 @@ The Core service provides the foundational infrastructure layer that all other s
 | `ConnectionService` | [`connection-service.ts`](../websocket/connection-service.ts) | Orchestrates reconnection logic and keepalive heartbeats on top of `WebSocketManager`. Detects connection loss/recovery and emits `connectionLost` details; ContactCenter owns any `silentRelogin()` policy. |
 | `WebexRequest` | [`WebexRequest.ts`](../WebexRequest.ts) | Singleton HTTP client that forwards service/resource/method/body options to the authenticated host request API and provides `uploadLogs` diagnostics. |
 | `AqmReqs` | [`aqm-reqs.ts`](../aqm-reqs.ts) | Factory for creating request methods that send HTTP requests and wait for correlated WebSocket notifications (success or failure). Used by routing and task services to implement their API methods. |
+| `RtdRequestResolver` | [`RtdRequestResolver.ts`](../RtdRequestResolver.ts) | Generic Promise resolver for HTTP requests completed by matching RTD events. RTD routing remains owned by the consuming service. |
 | `Utils` | [`Utils.ts`](../Utils.ts) | Shared utility functions including `getErrorDetails()` for standardized error handling, `generateTaskErrorObject()` for task-specific errors, and `createErrDetailsObject()` for constructing error detail objects. |
 | `Err` | [`Err.ts`](../Err.ts) | Error class definitions. `Err.Details` carries structured error metadata (status, type, trackingId) for consistent error propagation. |
 | `constants` | [`constants.ts`](../constants.ts) | Timeout values, interval durations, participant types, interaction states, and method name constants used throughout the core layer. Any new constants for core should be defined here. |
@@ -58,6 +59,7 @@ src/services/core/
 ├── GlobalTypes.ts
 ├── Utils.ts
 ├── WebexRequest.ts
+├── RtdRequestResolver.ts
 ├── aqm-reqs.ts
 ├── constants.ts
 ├── types.ts
@@ -93,7 +95,7 @@ services/core/
 ## Public Surface
 | Contract ID | Type | Surface | Purpose | Compatibility / deprecation | Schema / detail link | Root index |
 |---|---|---|---|---|---|---|
-| `core.surface` | SDK / event / internal API | Internal WebexRequest, WebSocketManager, ConnectionService, AqmReqs, and shared error/request types and helpers. | Stable module consumption boundary. | Additive changes by default; breaking package exports require a major-version transition. | `src/services/core/WebexRequest.ts` | `../../../../ai-docs/CONTRACTS.md` |
+| `core.surface` | SDK / event / internal API | Internal WebexRequest, WebSocketManager, ConnectionService, AqmReqs, RtdRequestResolver, and shared error/request types and helpers. | Stable module consumption boundary. | Additive changes by default; breaking package exports require a major-version transition. | `src/services/core/WebexRequest.ts`, `src/services/core/RtdRequestResolver.ts` | `../../../../ai-docs/CONTRACTS.md` |
 
 Compatibility notes:
 - Do not remove or reinterpret exported symbols/events without a documented consumer migration.
@@ -256,6 +258,7 @@ connectionService.on('connectionLost', (details: ConnectionLostDetails) => {
 | CORE-R-001 | WebexRequest must delegate service/resource/method/body options to the authenticated host request API and return or reject with the host result unchanged. | All Contact Center REST clients share host-owned authentication and service routing without duplicating credential logic. | `src/services/core/WebexRequest.ts` | `test/unit/spec/services/core/WebexRequest.ts` | Authorization-header masking belongs to `AqmReqs` HTTP-failure handling, not `WebexRequest.request`. | PRESENT |
 | CORE-R-002 | `initWebSocket` requires `{body: SubscribeRequest, resource: string}` and resolves only after WebSocket welcome or rejects on register/connect failure. | Subscription resource selection and readiness are required for a valid realtime session. | `src/services/core/websocket/WebSocketManager.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CORE-R-003 | AqmReqs must be constructed with the primary WebSocket manager and settle generated request promises from `notifSuccess`/`notifFail` binds or `TIMEOUT_REQ`. | HTTP acknowledgement alone does not represent backend operation completion. | `src/services/core/aqm-reqs.ts` | `test/unit/spec/services/core/aqm-reqs.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| CORE-R-008 | RtdRequestResolver must register an RTD slot before invoking the supplied HTTP request, settle only from the matching event or timeout, cancel the slot on HTTP rejection, and support owner/lifecycle cleanup. | Some backend operations acknowledge over HTTP but return their result asynchronously over the RTD WebSocket. | `src/services/core/RtdRequestResolver.ts` | `test/unit/spec/services/core/RtdRequestResolver.ts` | RTD parsing and event ownership remain with the consuming service. | PRESENT |
 | CORE-R-004 | ConnectionService must emit transport-state details and retry `initWebSocket({body, resource})`; ContactCenter owns relogin policy. | Separating transport detection from agent recovery prevents Core from mutating package-level session state. | `src/services/core/websocket/connection-service.ts` | `test/unit/spec/services/core/websocket/connection-service.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CORE-R-005 | The keepalive worker must use the configured 4-second interval and 16-second close-socket timeout; AQM defaults to 20 seconds unless disabled/overridden. | Accurate timing is required for predictable recovery and request failure behavior. | `src/services/core/constants.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CORE-R-006 | Treat Core timeout, keepalive, and recovery constants as fixed behavior controls, not rollout flags; Core owns no feature-gate evaluation. | Conflating operational constants with rollout policy could disable transport or correlation paths unexpectedly. | `src/services/core/constants.ts`, `src/services/index.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None; rollout applicability is explicitly N/A for Core. | PRESENT |
@@ -751,6 +754,7 @@ Unit tests mirror module paths under `test/unit/spec/services/core`. Preserve po
 | `CORE-R-005` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | Keep timer-value assertions synchronized with constants. |
 | `CORE-R-006` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | Feature-gate absence is verified from construction/source rather than a dedicated negative test. |
 | `CORE-R-007` | `test/unit/spec/services/core/aqm-reqs.ts` | None. |
+| `CORE-R-008` | `test/unit/spec/services/core/RtdRequestResolver.ts` | None. |
 
 ## Traceability
 - Repo architecture: `../../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../../ai-docs/SPEC_INDEX.md`

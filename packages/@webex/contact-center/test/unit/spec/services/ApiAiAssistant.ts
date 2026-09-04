@@ -2,7 +2,7 @@ import ApiAIAssistant from '../../../../src/services/ApiAiAssistant';
 import {
   AI_SUMMARY_HTTP_TIMEOUT_MS,
   AI_SUMMARY_TRANSPORT_ERROR_CODES,
-} from '../../../../src/services/ApiAiAssistant';
+} from '../../../../src/services/constants';
 import MetricsManager from '../../../../src/metrics/MetricsManager';
 import LoggerProxy from '../../../../src/logger-proxy';
 import WebexRequest from '../../../../src/services/core/WebexRequest';
@@ -70,9 +70,6 @@ describe('ApiAIAssistant', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUploadLogs = jest.fn();
-    jest.spyOn(WebexRequest, 'getInstance').mockReturnValue({
-      uploadLogs: mockUploadLogs,
-    } as any);
 
     mockWebex = {
       credentials: {
@@ -93,6 +90,11 @@ describe('ApiAIAssistant', () => {
       once: jest.fn(),
     } as unknown as WebexSDK;
 
+    jest.spyOn(WebexRequest, 'getInstance').mockReturnValue({
+      request: mockWebex.request,
+      uploadLogs: mockUploadLogs,
+    } as any);
+
     mockMetricsManager = {
       trackEvent: jest.fn(),
       timeEvent: jest.fn(),
@@ -102,10 +104,7 @@ describe('ApiAIAssistant', () => {
     apiAIAssistant = new ApiAIAssistant(mockWebex);
   });
 
-  const projectDiagnosticValue = (
-    value: unknown,
-    seen = new WeakSet<object>()
-  ): unknown => {
+  const projectDiagnosticValue = (value: unknown, seen = new WeakSet<object>()): unknown => {
     if (value === null || typeof value !== 'object') {
       return value;
     }
@@ -144,10 +143,7 @@ describe('ApiAIAssistant', () => {
     }
 
     return Object.keys(value).reduce<Record<string, unknown>>((projected, key) => {
-      projected[key] = projectDiagnosticValue(
-        (value as Record<string, unknown>)[key],
-        seen
-      );
+      projected[key] = projectDiagnosticValue((value as Record<string, unknown>)[key], seen);
 
       return projected;
     }, {});
@@ -325,10 +321,7 @@ describe('ApiAIAssistant', () => {
       {
         label: 'response',
         invoke: () =>
-          apiAIAssistant.sendSummaryResponseEvent(
-            'test-agent-id',
-            validMidCallResponsePayload()
-          ),
+          apiAIAssistant.sendSummaryResponseEvent('test-agent-id', validMidCallResponsePayload()),
       },
     ])('clears the bounded timer after a successful $label request', async ({invoke}) => {
       jest.useFakeTimers();
@@ -356,10 +349,7 @@ describe('ApiAIAssistant', () => {
       {
         label: 'response',
         invoke: () =>
-          apiAIAssistant.sendSummaryResponseEvent(
-            'test-agent-id',
-            validMidCallResponsePayload()
-          ),
+          apiAIAssistant.sendSummaryResponseEvent('test-agent-id', validMidCallResponsePayload()),
       },
     ])('clears the bounded timer after a failed $label request', async ({invoke}) => {
       jest.useFakeTimers();
@@ -389,10 +379,7 @@ describe('ApiAIAssistant', () => {
         ).resolves.toBeUndefined();
 
         const request = expectOneSummaryPostRequest(expectedGetBody(eventName, 1234));
-        expectDataPropertiesAbsent(
-          request.body.eventDetails.data,
-          GET_FLOW_INVALID_DATA_KEYS
-        );
+        expectDataPropertiesAbsent(request.body.eventDetails.data, GET_FLOW_INVALID_DATA_KEYS);
       }
     );
 
@@ -698,56 +685,64 @@ describe('ApiAIAssistant', () => {
         ),
         invalidDataKeys: MID_CALL_RESPONSE_FLOW_INVALID_DATA_KEYS,
       },
-    ])('serializes $label plain-text response summaries unchanged', async ({payload, expectedBody, invalidDataKeys}) => {
-      (mockWebex.request as jest.Mock).mockResolvedValue({statusCode: 202});
+    ])(
+      'serializes $label plain-text response summaries unchanged',
+      async ({payload, expectedBody, invalidDataKeys}) => {
+        (mockWebex.request as jest.Mock).mockResolvedValue({statusCode: 202});
 
-      await apiAIAssistant.sendSummaryResponseEvent('test-agent-id', payload);
+        await apiAIAssistant.sendSummaryResponseEvent('test-agent-id', payload);
 
-      const request = expectOneSummaryPostRequest(expectedBody);
+        const request = expectOneSummaryPostRequest(expectedBody);
 
-      expect(request.body.eventDetails.data.summary).toBe('Caller reported a billing discrepancy.');
-      expectDataPropertiesAbsent(request.body.eventDetails.data, invalidDataKeys);
-    });
+        expect(request.body.eventDetails.data.summary).toBe(
+          'Caller reported a billing discrepancy.'
+        );
+        expectDataPropertiesAbsent(request.body.eventDetails.data, invalidDataKeys);
+      }
+    );
 
     it.each([
       [AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE, 'NOT_RECEIVED'],
       [AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE, 'MID_CALL_CANCELLED'],
       [AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE, 'NOT_RECEIVED'],
       [AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE, 'MID_CALL_CANCELLED'],
-    ] as const)('serializes %s %s mid-call responses without wrapUpCode or summaryReceived', async (eventName, state) => {
-      (mockWebex.request as jest.Mock).mockResolvedValue({statusCode: 202});
-      jest.spyOn(Date, 'now').mockReturnValue(555);
+    ] as const)(
+      'serializes %s %s mid-call responses without wrapUpCode or summaryReceived',
+      async (eventName, state) => {
+        (mockWebex.request as jest.Mock).mockResolvedValue({statusCode: 202});
+        jest.spyOn(Date, 'now').mockReturnValue(555);
 
-      await apiAIAssistant.sendSummaryResponseEvent('test-agent-id', {
-        agentId: 'payload-agent-id',
-        interactionId: 'interaction-1',
-        conversationId: 'conversation-1',
-        eventName,
-        summary: '',
-        feedback: 'none',
-        state,
-        agentName: 'Agent One',
-        numberOfTimesViewed: 0,
-        numberOfTimesEdited: 0,
-        numberOfTimesCopied: 0,
-        publishTimestamp: 777,
-      });
+        await apiAIAssistant.sendSummaryResponseEvent('test-agent-id', {
+          agentId: 'payload-agent-id',
+          interactionId: 'interaction-1',
+          conversationId: 'conversation-1',
+          eventName,
+          summary: '',
+          feedback: 'none',
+          state,
+          agentName: 'Agent One',
+          numberOfTimesViewed: 0,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+          publishTimestamp: 777,
+        });
 
-      const expectedBody = expectedResponseBody(eventName, 777, 555, {
-        summary: '',
-        numberOfTimesViewed: 0,
-        numberOfTimesEdited: 0,
-        numberOfTimesCopied: 0,
-        feedback: 'none',
-        state,
-        agentName: 'Agent One',
-      });
-      const request = expectOneSummaryPostRequest(expectedBody);
-      const data = request.body.eventDetails.data;
+        const expectedBody = expectedResponseBody(eventName, 777, 555, {
+          summary: '',
+          numberOfTimesViewed: 0,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+          feedback: 'none',
+          state,
+          agentName: 'Agent One',
+        });
+        const request = expectOneSummaryPostRequest(expectedBody);
+        const data = request.body.eventDetails.data;
 
-      expect(data.actionTimeStamp).toBe(555);
-      expectDataPropertiesAbsent(data, MID_CALL_RESPONSE_FLOW_INVALID_DATA_KEYS);
-    });
+        expect(data.actionTimeStamp).toBe(555);
+        expectDataPropertiesAbsent(data, MID_CALL_RESPONSE_FLOW_INVALID_DATA_KEYS);
+      }
+    );
 
     it.each([
       {
@@ -798,14 +793,17 @@ describe('ApiAIAssistant', () => {
         ),
         invalidDataKeys: MID_CALL_RESPONSE_FLOW_INVALID_DATA_KEYS,
       },
-    ])('serializes $label response body with required identifiers', async ({payload, expectedBody, invalidDataKeys}) => {
-      (mockWebex.request as jest.Mock).mockResolvedValue({statusCode: 202});
+    ])(
+      'serializes $label response body with required identifiers',
+      async ({payload, expectedBody, invalidDataKeys}) => {
+        (mockWebex.request as jest.Mock).mockResolvedValue({statusCode: 202});
 
-      await apiAIAssistant.sendSummaryResponseEvent('test-agent-id', payload);
+        await apiAIAssistant.sendSummaryResponseEvent('test-agent-id', payload);
 
-      const request = expectOneSummaryPostRequest(expectedBody);
-      expectDataPropertiesAbsent(request.body.eventDetails.data, invalidDataKeys);
-    });
+        const request = expectOneSummaryPostRequest(expectedBody);
+        expectDataPropertiesAbsent(request.body.eventDetails.data, invalidDataKeys);
+      }
+    );
 
     it.each([
       {
@@ -865,9 +863,27 @@ describe('ApiAIAssistant', () => {
     );
 
     it.each([
-      ['agentId', '', 'interaction-1', 'conversation-1', AIAssistantEventName.GET_POST_CALL_SUMMARY],
-      ['interactionId', 'test-agent-id', '', 'conversation-1', AIAssistantEventName.GET_POST_CALL_SUMMARY],
-      ['conversationId', 'test-agent-id', 'interaction-1', '', AIAssistantEventName.GET_POST_CALL_SUMMARY],
+      [
+        'agentId',
+        '',
+        'interaction-1',
+        'conversation-1',
+        AIAssistantEventName.GET_POST_CALL_SUMMARY,
+      ],
+      [
+        'interactionId',
+        'test-agent-id',
+        '',
+        'conversation-1',
+        AIAssistantEventName.GET_POST_CALL_SUMMARY,
+      ],
+      [
+        'conversationId',
+        'test-agent-id',
+        'interaction-1',
+        '',
+        AIAssistantEventName.GET_POST_CALL_SUMMARY,
+      ],
       ['eventName', 'test-agent-id', 'interaction-1', 'conversation-1', 'INVALID_EVENT_NAME'],
       [
         'response eventName',
@@ -876,18 +892,21 @@ describe('ApiAIAssistant', () => {
         'conversation-1',
         AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
       ],
-    ])('rejects invalid GET %s before HTTP as a Promise rejection', async (_field, agentId, interactionId, conversationId, eventName) => {
-      const result = apiAIAssistant.sendSummaryGetEvent(
-        agentId,
-        interactionId,
-        conversationId,
-        eventName as any
-      );
+    ])(
+      'rejects invalid GET %s before HTTP as a Promise rejection',
+      async (_field, agentId, interactionId, conversationId, eventName) => {
+        const result = apiAIAssistant.sendSummaryGetEvent(
+          agentId,
+          interactionId,
+          conversationId,
+          eventName as any
+        );
 
-      expect(result).toBeInstanceOf(Promise);
-      await expectSummaryError(result, AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED);
-      expect(mockWebex.request).not.toHaveBeenCalled();
-    });
+        expect(result).toBeInstanceOf(Promise);
+        await expectSummaryError(result, AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED);
+        expect(mockWebex.request).not.toHaveBeenCalled();
+      }
+    );
 
     it('rejects empty derived GET orgId before HTTP as a Promise rejection', async () => {
       (mockWebex.credentials.getOrgId as jest.Mock).mockReturnValue('');
@@ -905,10 +924,7 @@ describe('ApiAIAssistant', () => {
     });
 
     it.each([
-      [
-        'agentId',
-        () => apiAIAssistant.sendSummaryResponseEvent('', validMidCallResponsePayload()),
-      ],
+      ['agentId', () => apiAIAssistant.sendSummaryResponseEvent('', validMidCallResponsePayload())],
       [
         'interactionId',
         () =>
@@ -1003,19 +1019,16 @@ describe('ApiAIAssistant', () => {
       ['numberOfTimesCopied', Number.POSITIVE_INFINITY],
       ['numberOfTimesCopied', -1],
       ['feedback', 'other'],
-    ] as const)(
-      'rejects invalid response %s value %p before HTTP',
-      async (field, value) => {
-        await expectSummaryError(
-          apiAIAssistant.sendSummaryResponseEvent(
-            'test-agent-id',
-            validPostCallResponsePayload({summary: 'summary', state: 'DEFAULT', [field]: value})
-          ),
-          AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED
-        );
-        expect(mockWebex.request).not.toHaveBeenCalled();
-      }
-    );
+    ] as const)('rejects invalid response %s value %p before HTTP', async (field, value) => {
+      await expectSummaryError(
+        apiAIAssistant.sendSummaryResponseEvent(
+          'test-agent-id',
+          validPostCallResponsePayload({summary: 'summary', state: 'DEFAULT', [field]: value})
+        ),
+        AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED
+      );
+      expect(mockWebex.request).not.toHaveBeenCalled();
+    });
 
     it.each(
       (['actionTimeStamp', 'publishTimestamp'] as const).flatMap((field) =>
@@ -1055,13 +1068,12 @@ describe('ApiAIAssistant', () => {
       {
         label: 'response',
         invoke: () =>
-          apiAIAssistant.sendSummaryResponseEvent(
-            'test-agent-id',
-            validMidCallResponsePayload()
-          ),
+          apiAIAssistant.sendSummaryResponseEvent('test-agent-id', validMidCallResponsePayload()),
       },
     ])('rejects $label summary base URL failures with the public error code', async ({invoke}) => {
-      (mockWebex.internal.services.get as jest.Mock).mockReturnValue('https://unknown-host.invalid');
+      (mockWebex.internal.services.get as jest.Mock).mockReturnValue(
+        'https://unknown-host.invalid'
+      );
 
       await expectSummaryError(
         invoke(),
@@ -1115,20 +1127,15 @@ describe('ApiAIAssistant', () => {
         })
       );
       const request = expectOneSummaryPostRequest(
-        expectedResponseBody(
-          AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE,
-          222,
-          111,
-          {
-            summary: '',
-            numberOfTimesViewed: 0,
-            numberOfTimesEdited: 0,
-            numberOfTimesCopied: 0,
-            feedback: 'none',
-            state: 'NOT_RECEIVED',
-            agentName: 'Agent One',
-          }
-        )
+        expectedResponseBody(AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE, 222, 111, {
+          summary: '',
+          numberOfTimesViewed: 0,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+          feedback: 'none',
+          state: 'NOT_RECEIVED',
+          agentName: 'Agent One',
+        })
       );
       expectDataPropertiesAbsent(
         request.body.eventDetails.data,
@@ -1251,15 +1258,18 @@ describe('ApiAIAssistant', () => {
         mockMetricsManager.timeEvent.mock.calls,
         mockMetricsManager.trackEvent.mock.calls
       );
-      [sentinelSummary, sentinelSectionKey, sentinelSectionValue, sentinelCard, sentinelAgentName].forEach(
-        (sentinel) => {
-          expect(diagnostics).not.toContain(sentinel);
-        }
-      );
+      [
+        sentinelSummary,
+        sentinelSectionKey,
+        sentinelSectionValue,
+        sentinelCard,
+        sentinelAgentName,
+      ].forEach((sentinel) => {
+        expect(diagnostics).not.toContain(sentinel);
+      });
 
-      const realGetErrorDetails = jest.requireActual(
-        '../../../../src/services/core/Utils'
-      ).getErrorDetails as typeof getErrorDetails;
+      const realGetErrorDetails = jest.requireActual('../../../../src/services/core/Utils')
+        .getErrorDetails as typeof getErrorDetails;
       const realProjection = realGetErrorDetails(
         errorArg,
         METHODS.SEND_SUMMARY_RESPONSE_EVENT,
@@ -1268,11 +1278,15 @@ describe('ApiAIAssistant', () => {
       );
       const realDiagnostics = serializeDiagnostics(realProjection);
 
-      [sentinelSummary, sentinelSectionKey, sentinelSectionValue, sentinelCard, sentinelAgentName].forEach(
-        (sentinel) => {
-          expect(realDiagnostics).not.toContain(sentinel);
-        }
-      );
+      [
+        sentinelSummary,
+        sentinelSectionKey,
+        sentinelSectionValue,
+        sentinelCard,
+        sentinelAgentName,
+      ].forEach((sentinel) => {
+        expect(realDiagnostics).not.toContain(sentinel);
+      });
     });
   });
 

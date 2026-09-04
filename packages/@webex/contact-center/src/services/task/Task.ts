@@ -25,15 +25,32 @@ import {
   MidCallSummaryEventPayload,
   PostCallSummaryResponsePayload,
   MidCallSummaryResponsePayload,
-  AISummaryRequestCoordinator,
+  FeatureEnablementAccessor,
   GeneratedSummaryFlagsAccessor,
+  AISummaryAdapter,
+  PostCallSummaryResponseContext,
+  AISummaryOperationMetric,
+  AISummaryRuntime,
+  AISummaryResponsePayload,
+  AISummaryResponseTransportFields,
   AISummaryInboundType,
   AISummaryPayloadByInboundType,
   AISummaryTimeoutCodeByInboundType,
   TaskToggleMuteOptions,
   TaskTransmitDtmfOptions,
 } from './types';
-import {ENTRY_POINT_TRANSFER_DESTINATION_TYPE, METHODS} from './constants';
+import {
+  AI_SUMMARY_OPERATION_METRICS,
+  AI_SUMMARY_TASK_ERROR_CODES,
+  AI_SUMMARY_DURATION_MS,
+  AI_SUMMARY_REQUEST_CANCELLED,
+  ENTRY_POINT_TRANSFER_DESTINATION_TYPE,
+  AI_SUMMARY_FEEDBACK_VALUES,
+  POST_CALL_SUMMARY_STATES,
+  MID_CALL_SUMMARY_RECEIVED_STATES,
+  MID_CALL_SUMMARY_UNAVAILABLE_STATES,
+  METHODS,
+} from './constants';
 import {AI_SUMMARY_ERROR_CODES, CC_FILE, TASK_FILE} from '../../constants';
 import {getErrorDetails} from '../core/Utils';
 import routingContact from './contact';
@@ -56,79 +73,14 @@ import {
 } from './state-machine/uiControlsComputer';
 import AutoWrapup from './AutoWrapup';
 import {WrapupData} from '../config/types';
-import type {ApiAIAssistant} from '../ApiAiAssistant';
 import {AIAssistantEventName} from '../../types';
 import type {AISummaryResponseTransportPayload} from '../../types';
 import {getAISummaryCorrelation} from './TaskUtils';
 import {createAISummaryError, isFiniteNonNegativeNumber, isNonEmptyString} from '../AISummaryUtils';
+import type RtdRequestResolver from '../core/RtdRequestResolver';
 
 type UIControlConfigInput = Omit<UIControlConfig, 'channelType'> & {
   channelType?: UIControlConfig['channelType'];
-};
-
-type AISummaryAdapter = Pick<ApiAIAssistant, 'sendSummaryGetEvent' | 'sendSummaryResponseEvent'>;
-
-type PostCallSummaryResponseContext = Readonly<{
-  conversationId: string;
-  interactionId: string;
-}>;
-
-type AISummaryOperationMetric = {
-  success: METRIC_EVENT_NAMES;
-  failure: METRIC_EVENT_NAMES;
-};
-
-type AISummaryRuntime = {
-  adapter: AISummaryAdapter;
-  coordinator: AISummaryRequestCoordinator;
-  getGeneratedSummaryFlags: GeneratedSummaryFlagsAccessor;
-  agentId: string;
-};
-
-type AISummaryResponsePayload = PostCallSummaryResponsePayload | MidCallSummaryResponsePayload;
-
-type AISummaryResponseTransportFields<T extends AISummaryResponsePayload> = T extends unknown
-  ? Pick<
-      T,
-      'summary' | 'numberOfTimesViewed' | 'numberOfTimesEdited' | 'numberOfTimesCopied' | 'state'
-    >
-  : never;
-
-const AI_SUMMARY_TASK_ERROR_CODES = {
-  INVALID_RESPONSE_PAYLOAD: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD',
-  INVALID_ACTION_TYPE: 'AI_SUMMARY_INVALID_ACTION_TYPE',
-  NOT_INITIALIZED: 'AI_SUMMARY_NOT_INITIALIZED',
-} as const;
-
-const AI_SUMMARY_FEEDBACK_VALUES = new Set(['none', 'thumbs_up', 'thumbs_down']);
-const POST_CALL_SUMMARY_STATES = new Set(['DEFAULT', 'IGNORED', 'NOT_RECEIVED']);
-const MID_CALL_SUMMARY_RECEIVED_STATES = new Set([
-  'DEFAULT',
-  'EXCLUDED',
-  'IGNORED',
-  'MID_CALL_CANCELLED',
-]);
-const MID_CALL_SUMMARY_UNAVAILABLE_STATES = new Set([
-  'NOT_RECEIVED',
-  'MID_CALL_CANCELLED',
-  'IGNORED',
-]);
-
-const POST_CALL_REQUEST_METRIC: AISummaryOperationMetric = {
-  success: METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
-  failure: METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
-};
-const MID_CALL_REQUEST_METRIC: AISummaryOperationMetric = {
-  success: METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
-  failure: METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
-};
-const POST_CALL_RESPONSE_METRIC: AISummaryOperationMetric = {
-  success: METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
-  failure: METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
-};
-const MID_CALL_RESPONSE_METRIC: AISummaryOperationMetric = {
-  success: METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
-  failure: METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
 };
 
 export default abstract class Task extends EventEmitter implements ITask {
@@ -146,7 +98,8 @@ export default abstract class Task extends EventEmitter implements ITask {
   protected agentId?: string;
   protected agentName?: string;
   private aiSummaryAdapter?: AISummaryAdapter;
-  private aiSummaryCoordinator?: AISummaryRequestCoordinator;
+  private rtdRequestResolver?: RtdRequestResolver;
+  private getFeatureEnablement?: FeatureEnablementAccessor;
   private getGeneratedSummaryFlags?: GeneratedSummaryFlagsAccessor;
   private postCallSummaryResponseContext?: PostCallSummaryResponseContext;
 
@@ -305,24 +258,73 @@ export default abstract class Task extends EventEmitter implements ITask {
 
   public configureAISummary(
     apiAIAssistant: AISummaryAdapter | undefined,
-    coordinator: AISummaryRequestCoordinator,
-    getGeneratedSummaryFlags: GeneratedSummaryFlagsAccessor
+    rtdRequestResolver: RtdRequestResolver,
+    getGeneratedSummaryFlags: GeneratedSummaryFlagsAccessor,
+    getFeatureEnablement: FeatureEnablementAccessor
   ): void {
     this.aiSummaryAdapter = apiAIAssistant;
-    this.aiSummaryCoordinator = coordinator;
+    this.rtdRequestResolver = rtdRequestResolver;
+    this.getFeatureEnablement = getFeatureEnablement;
     this.getGeneratedSummaryFlags = getGeneratedSummaryFlags;
   }
 
   public requestPostCallSummary(): Promise<PostCallSummaryEventPayload> {
     const operationStartedAt = Date.now();
 
-    return this.observeAISummaryRequest(this.requestPostCallSummaryInternal(operationStartedAt));
+    return this.runAISummaryOperation(
+      operationStartedAt,
+      AI_SUMMARY_OPERATION_METRICS.POST_CALL_REQUEST,
+      METHODS.REQUEST_POST_CALL_SUMMARY,
+      async (runtime, metricFields) => {
+        const {conversationId, interactionId} = getAISummaryCorrelation(this.data);
+        Object.assign(metricFields, {conversationId, interactionId});
+
+        const organizationEnabled =
+          runtime.getGeneratedSummaryFlags()?.wrapUpSummariesEnabled === true;
+        const interactionEnabled =
+          runtime.getFeatureEnablement(interactionId)?.postCallEnabled === true;
+
+        if (!organizationEnabled || !interactionEnabled) {
+          throw createAISummaryError(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED);
+        }
+
+        const result = await this.requestAISummary(
+          runtime,
+          'POST_CALL_SUMMARY',
+          'POST_CALL_SUMMARY_TIMEOUT',
+          conversationId,
+          interactionId,
+          AIAssistantEventName.GET_POST_CALL_SUMMARY
+        );
+
+        this.postCallSummaryResponseContext = {conversationId, interactionId};
+
+        return result;
+      }
+    );
   }
 
   public sendPostCallSummaryResponse(payload: PostCallSummaryResponsePayload): Promise<void> {
     const operationStartedAt = Date.now();
 
-    return this.sendPostCallSummaryResponseInternal(payload, operationStartedAt);
+    return this.runAISummaryOperation(
+      operationStartedAt,
+      AI_SUMMARY_OPERATION_METRICS.POST_CALL_RESPONSE,
+      METHODS.SEND_POST_CALL_SUMMARY_RESPONSE,
+      async (runtime, metricFields) => {
+        this.validatePostCallSummaryResponsePayload(payload);
+        const context = this.postCallSummaryResponseContext ?? getAISummaryCorrelation(this.data);
+        Object.assign(metricFields, {
+          conversationId: context.conversationId,
+          interactionId: context.interactionId,
+        });
+
+        await runtime.adapter.sendSummaryResponseEvent(
+          runtime.agentId,
+          this.buildPostCallSummaryResponseTransportPayload(payload, context)
+        );
+      }
+    );
   }
 
   public requestMidCallSummary(
@@ -330,8 +332,37 @@ export default abstract class Task extends EventEmitter implements ITask {
   ): Promise<MidCallSummaryEventPayload> {
     const operationStartedAt = Date.now();
 
-    return this.observeAISummaryRequest(
-      this.requestMidCallSummaryInternal(actionType, operationStartedAt)
+    return this.runAISummaryOperation(
+      operationStartedAt,
+      AI_SUMMARY_OPERATION_METRICS.MID_CALL_REQUEST,
+      METHODS.REQUEST_MID_CALL_SUMMARY,
+      async (runtime, metricFields) => {
+        if (!Task.isValidAISummaryActionType(actionType)) {
+          throw createAISummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
+        }
+
+        Object.assign(metricFields, {actionType});
+        const {conversationId, interactionId} = getAISummaryCorrelation(this.data);
+        Object.assign(metricFields, {conversationId, interactionId});
+
+        const organizationEnabled =
+          runtime.getGeneratedSummaryFlags()?.consultTransferSummariesEnabled === true;
+        const interactionEnabled =
+          runtime.getFeatureEnablement(interactionId)?.midCallEnabled === true;
+
+        if (!organizationEnabled || !interactionEnabled) {
+          throw createAISummaryError(AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED);
+        }
+
+        return this.requestAISummary(
+          runtime,
+          'MID_CALL_SUMMARY',
+          'MID_CALL_SUMMARY_TIMEOUT',
+          conversationId,
+          interactionId,
+          Task.getMidCallSummaryGetEventName(actionType)
+        );
+      }
     );
   }
 
@@ -341,13 +372,29 @@ export default abstract class Task extends EventEmitter implements ITask {
   ): Promise<void> {
     const operationStartedAt = Date.now();
 
-    return this.sendMidCallSummaryResponseInternal(payload, actionType, operationStartedAt);
-  }
+    return this.runAISummaryOperation(
+      operationStartedAt,
+      AI_SUMMARY_OPERATION_METRICS.MID_CALL_RESPONSE,
+      METHODS.SEND_MID_CALL_SUMMARY_RESPONSE,
+      async (runtime, metricFields) => {
+        if (!Task.isValidAISummaryActionType(actionType)) {
+          throw createAISummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
+        }
 
-  private observeAISummaryRequest<T>(operation: Promise<T>): Promise<T> {
-    operation.catch(() => undefined);
+        Object.assign(metricFields, {actionType});
+        this.validateMidCallSummaryResponsePayload(payload);
+        const context = getAISummaryCorrelation(this.data);
+        Object.assign(metricFields, {
+          conversationId: context.conversationId,
+          interactionId: context.interactionId,
+        });
 
-    return operation;
+        await runtime.adapter.sendSummaryResponseEvent(
+          runtime.agentId,
+          this.buildMidCallSummaryResponseTransportPayload(payload, context, actionType)
+        );
+      }
+    );
   }
 
   private getAISummaryFailureCode(error: unknown): string {
@@ -367,7 +414,7 @@ export default abstract class Task extends EventEmitter implements ITask {
   private isAISummaryConfigured(): boolean {
     return Boolean(
       this.aiSummaryAdapter &&
-        this.aiSummaryCoordinator &&
+        this.rtdRequestResolver &&
         this.getGeneratedSummaryFlags &&
         isNonEmptyString(this.agentId)
     );
@@ -380,7 +427,8 @@ export default abstract class Task extends EventEmitter implements ITask {
 
     return {
       adapter: this.aiSummaryAdapter as AISummaryAdapter,
-      coordinator: this.aiSummaryCoordinator as AISummaryRequestCoordinator,
+      rtdRequestResolver: this.rtdRequestResolver as RtdRequestResolver,
+      getFeatureEnablement: this.getFeatureEnablement as FeatureEnablementAccessor,
       getGeneratedSummaryFlags: this.getGeneratedSummaryFlags as GeneratedSummaryFlagsAccessor,
       agentId: this.agentId as string,
     };
@@ -483,103 +531,38 @@ export default abstract class Task extends EventEmitter implements ITask {
     }
   }
 
-  private async requestPostCallSummaryInternal(
-    operationStartedAt: number
-  ): Promise<PostCallSummaryEventPayload> {
-    let metricFields: Record<string, unknown> = {operation: METHODS.REQUEST_POST_CALL_SUMMARY};
+  private runAISummaryOperation<T>(
+    operationStartedAt: number,
+    operationMetric: AISummaryOperationMetric,
+    operationName: string,
+    operation: (runtime: AISummaryRuntime, metricFields: Record<string, unknown>) => Promise<T>
+  ): Promise<T> {
+    const metricFields: Record<string, unknown> = {operation: operationName};
+    let operationPromise: Promise<T>;
 
     try {
-      const runtime = this.getAISummaryRuntime();
-      const {conversationId, interactionId} = getAISummaryCorrelation(this.data);
-      metricFields = {...metricFields, conversationId, interactionId};
-
-      const organizationEnabled =
-        runtime.getGeneratedSummaryFlags()?.wrapUpSummariesEnabled === true;
-      const interactionEnabled =
-        runtime.coordinator.getFeatureEnablement(interactionId)?.postCallEnabled === true;
-
-      if (!organizationEnabled || !interactionEnabled) {
-        throw createAISummaryError(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED);
-      }
-
-      const result = await this.requestAISummary(
-        runtime,
-        'POST_CALL_SUMMARY',
-        'POST_CALL_SUMMARY_TIMEOUT',
-        conversationId,
-        interactionId,
-        AIAssistantEventName.GET_POST_CALL_SUMMARY
-      );
-
-      this.postCallSummaryResponseContext = {conversationId, interactionId};
-
-      this.trackAISummaryOperation(
-        POST_CALL_REQUEST_METRIC.success,
-        operationStartedAt,
-        metricFields
-      );
-
-      return result;
+      operationPromise = operation(this.getAISummaryRuntime(), metricFields);
     } catch (error) {
-      this.trackAISummaryOperation(POST_CALL_REQUEST_METRIC.failure, operationStartedAt, {
-        ...metricFields,
-        failureCode: this.getAISummaryFailureCode(error),
-      });
-      throw error;
+      operationPromise = Promise.reject(error);
     }
-  }
 
-  private async requestMidCallSummaryInternal(
-    actionType: AISummaryActionType,
-    operationStartedAt: number
-  ): Promise<MidCallSummaryEventPayload> {
-    let metricFields: Record<string, unknown> = {
-      operation: METHODS.REQUEST_MID_CALL_SUMMARY,
-    };
+    const resultPromise = operationPromise.then(
+      (result) => {
+        this.trackAISummaryOperation(operationMetric.success, operationStartedAt, metricFields);
 
-    try {
-      const runtime = this.getAISummaryRuntime();
-
-      if (!Task.isValidAISummaryActionType(actionType)) {
-        throw createAISummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
+        return result;
+      },
+      (error) => {
+        this.trackAISummaryOperation(operationMetric.failure, operationStartedAt, {
+          ...metricFields,
+          failureCode: this.getAISummaryFailureCode(error),
+        });
+        throw error;
       }
+    );
+    resultPromise.catch(() => undefined);
 
-      metricFields = {...metricFields, actionType};
-      const {conversationId, interactionId} = getAISummaryCorrelation(this.data);
-      metricFields = {...metricFields, conversationId, interactionId};
-
-      const organizationEnabled =
-        runtime.getGeneratedSummaryFlags()?.consultTransferSummariesEnabled === true;
-      const interactionEnabled =
-        runtime.coordinator.getFeatureEnablement(interactionId)?.midCallEnabled === true;
-
-      if (!organizationEnabled || !interactionEnabled) {
-        throw createAISummaryError(AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED);
-      }
-
-      const result = await this.requestAISummary(
-        runtime,
-        'MID_CALL_SUMMARY',
-        'MID_CALL_SUMMARY_TIMEOUT',
-        conversationId,
-        interactionId,
-        Task.getMidCallSummaryGetEventName(actionType)
-      );
-
-      this.trackAISummaryOperation(
-        MID_CALL_REQUEST_METRIC.success,
-        operationStartedAt,
-        metricFields
-      );
-
-      return result;
-    } catch (error) {
-      this.trackAISummaryOperation(MID_CALL_REQUEST_METRIC.failure, operationStartedAt, {
-        ...metricFields,
-        failureCode: this.getAISummaryFailureCode(error),
-      });
-      throw error;
-    }
+    return resultPromise;
   }
 
   private async requestAISummary<T extends AISummaryInboundType>(
@@ -591,27 +574,24 @@ export default abstract class Task extends EventEmitter implements ITask {
     eventName: Parameters<AISummaryAdapter['sendSummaryGetEvent']>[3]
   ): Promise<AISummaryPayloadByInboundType[T]> {
     const taskId = this.getTaskOwnerId();
-    const registration = await runtime.coordinator.registerPendingAISummaryRequest(
-      taskId,
-      conversationId,
-      inboundType,
-      timeoutCode
-    );
-    const acknowledgement = runtime.adapter
-      .sendSummaryGetEvent(runtime.agentId, interactionId, conversationId, eventName)
-      .catch((error) => {
-        runtime.coordinator.cancelPendingAISummaryRequest(
-          taskId,
+
+    return runtime.rtdRequestResolver.request({
+      ownerId: taskId,
+      correlationId: conversationId,
+      eventType: inboundType,
+      timeoutMs: AI_SUMMARY_DURATION_MS,
+      createDuplicateRequestError: () =>
+        createAISummaryError(AI_SUMMARY_ERROR_CODES.AI_SUMMARY_REQUEST_ALREADY_PENDING),
+      createTimeoutError: () => createAISummaryError(timeoutCode),
+      createCancellationError: () => createAISummaryError(AI_SUMMARY_REQUEST_CANCELLED),
+      sendRequest: () =>
+        runtime.adapter.sendSummaryGetEvent(
+          runtime.agentId,
+          interactionId,
           conversationId,
-          inboundType,
-          registration.requestToken
-        );
-        throw error;
-      });
-
-    const [summary] = await Promise.all([registration.result, acknowledgement]);
-
-    return summary;
+          eventName
+        ),
+    });
   }
 
   private validatePostCallSummaryResponsePayload(payload: PostCallSummaryResponsePayload): void {
@@ -730,85 +710,6 @@ export default abstract class Task extends EventEmitter implements ITask {
     } satisfies AISummaryResponseTransportPayload;
 
     return transportPayload;
-  }
-
-  private async sendPostCallSummaryResponseInternal(
-    payload: PostCallSummaryResponsePayload,
-    operationStartedAt: number
-  ): Promise<void> {
-    let metricFields: Record<string, unknown> = {
-      operation: METHODS.SEND_POST_CALL_SUMMARY_RESPONSE,
-    };
-
-    try {
-      const runtime = this.getAISummaryRuntime();
-      this.validatePostCallSummaryResponsePayload(payload);
-      const context = this.postCallSummaryResponseContext ?? getAISummaryCorrelation(this.data);
-      metricFields = {
-        ...metricFields,
-        conversationId: context.conversationId,
-        interactionId: context.interactionId,
-      };
-
-      await runtime.adapter.sendSummaryResponseEvent(
-        runtime.agentId,
-        this.buildPostCallSummaryResponseTransportPayload(payload, context)
-      );
-      this.trackAISummaryOperation(
-        POST_CALL_RESPONSE_METRIC.success,
-        operationStartedAt,
-        metricFields
-      );
-    } catch (error) {
-      this.trackAISummaryOperation(POST_CALL_RESPONSE_METRIC.failure, operationStartedAt, {
-        ...metricFields,
-        failureCode: this.getAISummaryFailureCode(error),
-      });
-      throw error;
-    }
-  }
-
-  private async sendMidCallSummaryResponseInternal(
-    payload: MidCallSummaryResponsePayload,
-    actionType: AISummaryActionType,
-    operationStartedAt: number
-  ): Promise<void> {
-    let metricFields: Record<string, unknown> = {
-      operation: METHODS.SEND_MID_CALL_SUMMARY_RESPONSE,
-    };
-
-    try {
-      const runtime = this.getAISummaryRuntime();
-
-      if (!Task.isValidAISummaryActionType(actionType)) {
-        throw createAISummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
-      }
-
-      metricFields = {...metricFields, actionType};
-      this.validateMidCallSummaryResponsePayload(payload);
-      const context = getAISummaryCorrelation(this.data);
-      metricFields = {
-        ...metricFields,
-        conversationId: context.conversationId,
-        interactionId: context.interactionId,
-      };
-
-      await runtime.adapter.sendSummaryResponseEvent(
-        runtime.agentId,
-        this.buildMidCallSummaryResponseTransportPayload(payload, context, actionType)
-      );
-      this.trackAISummaryOperation(
-        MID_CALL_RESPONSE_METRIC.success,
-        operationStartedAt,
-        metricFields
-      );
-    } catch (error) {
-      this.trackAISummaryOperation(MID_CALL_RESPONSE_METRIC.failure, operationStartedAt, {
-        ...metricFields,
-        failureCode: this.getAISummaryFailureCode(error),
-      });
-      throw error;
-    }
   }
 
   /**

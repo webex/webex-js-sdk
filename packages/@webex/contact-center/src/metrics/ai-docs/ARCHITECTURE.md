@@ -8,11 +8,11 @@
 
 ## Component Overview
 
-| Component | File | Responsibility |
-| --- | --- | --- |
-| `MetricsManager` | `MetricsManager.ts` | Singleton that manages event queuing, timing, payload preparation, and submission |
-| `BehavioralEventTaxonomy` | `behavioral-events.ts` | Maps metric event names to structured taxonomy for behavioral analytics |
-| `METRIC_EVENT_NAMES` | `constants.ts` | Canonical constant object of tracked metric event names |
+| Component                 | File                   | Responsibility                                                                    |
+| ------------------------- | ---------------------- | --------------------------------------------------------------------------------- |
+| `MetricsManager`          | `MetricsManager.ts`    | Singleton that manages event queuing, timing, payload preparation, and submission |
+| `BehavioralEventTaxonomy` | `behavioral-events.ts` | Maps metric event names to structured taxonomy for behavioral analytics           |
+| `METRIC_EVENT_NAMES`      | `constants.ts`         | Canonical constant object of tracked metric event names                           |
 
 ## File Structure
 
@@ -105,11 +105,11 @@ sequenceDiagram
 
 MetricsManager maintains three independent queues:
 
-| Queue | Type | Submitted via | Name transform | Extra metadata |
-| --- | --- | --- | --- | --- |
-| `pendingBehavioralEvents` | behavioral | `webex.internal.newMetrics.submitBehavioralEvent` | taxonomy fields from `behavioral-events.ts` | none |
-| `pendingOperationalEvents` | operational | `webex.internal.newMetrics.submitOperationalEvent` | `WXCC_SDK_` prefix plus uppercase, underscore-normalized metric name | none |
-| `pendingBusinessEvents` | business | `webex.internal.newMetrics.submitBusinessEvent` | same as operational | `metadata: {appType: 'wxcc_sdk'}` |
+| Queue                      | Type        | Submitted via                                      | Name transform                                                       | Extra metadata                    |
+| -------------------------- | ----------- | -------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------- |
+| `pendingBehavioralEvents`  | behavioral  | `webex.internal.newMetrics.submitBehavioralEvent`  | taxonomy fields from `behavioral-events.ts`                          | none                              |
+| `pendingOperationalEvents` | operational | `webex.internal.newMetrics.submitOperationalEvent` | `WXCC_SDK_` prefix plus uppercase, underscore-normalized metric name | none                              |
+| `pendingBusinessEvents`    | business    | `webex.internal.newMetrics.submitBusinessEvent`    | same as operational                                                  | `metadata: {appType: 'wxcc_sdk'}` |
 
 Submission guards:
 
@@ -217,12 +217,12 @@ request's duration.
 
 ## AI Summary Metric Ownership
 
-| Owner | Metrics |
-| --- | --- |
-| `Task` | `AI_SUMMARY_GET_POST_CALL_SUCCESS`, `AI_SUMMARY_GET_POST_CALL_FAILED`, `AI_SUMMARY_GET_MID_CALL_SUCCESS`, `AI_SUMMARY_GET_MID_CALL_FAILED`, `AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_POST_CALL_RESPONSE_FAILED`, `AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_MID_CALL_RESPONSE_FAILED` |
-| `TaskManager` | `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED`, `AI_SUMMARY_INBOUND_EVENT_DROPPED` |
-| `ApiAIAssistant` | No Task operation metric ownership; adapter tests prove bounded transport and privacy. |
-| `AISummaryCoordinator` | No operation metric ownership; receiver expiry reports through the TaskManager callback. |
+| Owner                  | Metrics                                                                                                                                                                                                                                                                                                    |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Task`                 | `AI_SUMMARY_GET_POST_CALL_SUCCESS`, `AI_SUMMARY_GET_POST_CALL_FAILED`, `AI_SUMMARY_GET_MID_CALL_SUCCESS`, `AI_SUMMARY_GET_MID_CALL_FAILED`, `AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_POST_CALL_RESPONSE_FAILED`, `AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_MID_CALL_RESPONSE_FAILED` |
+| `TaskManager`          | `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED`, `AI_SUMMARY_INBOUND_EVENT_DROPPED`                                                                                                                                                                                                                               |
+| `ApiAIAssistant`       | No Task operation metric ownership; adapter tests prove bounded transport and privacy.                                                                                                                                                                                                                     |
+| `RtdRequestResolver` | No operation metric ownership; owns generic pending HTTP-to-RTD request timeout/cancellation state.                                                                                                                                                                                                                       |
 
 Request success is withheld until both the HTTP acknowledgement and matching RTD
 result fulfill. Response success is recorded when bounded HTTP acknowledgement
@@ -247,7 +247,6 @@ Exact AI-summary event names, owners, and success conditions are tabulated in
   expired).
 - Failure metrics carry only a bounded `failureCode`.
 
-
 ## Privacy Boundary
 
 MetricsManager receives only upstream-sanitized, bounded AI-summary metadata.
@@ -258,7 +257,6 @@ state, feedback, action type, validation outcomes, and bounded error codes.
 **Forbidden**: summary text, human-authored section keys or values, Adaptive
 Card bodies, agent names, raw envelopes or payloads, original HTTP error
 messages, stacks, request options, response bodies, details, and causes.
-
 
 ## Error Handling Strategy
 

@@ -11,7 +11,10 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
 export type CollaborationAccess = Enum<typeof COLLABORATION_ACCESS>;
 
 /**
- * Events emitted on task objects
+ * Contact Center task and AI Assistant events.
+ *
+ * Task lifecycle, transcript, suggested-response, and summary RTD events share this catalog so
+ * consumers do not need a feature-specific event object.
  * @enum {string}
  * @private
  * @ignore
@@ -141,17 +144,13 @@ export const CC_TASK_EVENTS = {
   SUGGESTED_RESPONSE: 'SUGGESTED_RESPONSE',
   /** Event emitted when backend acknowledges it is listening for more context */
   SUGGESTED_RESPONSE_ACKNOWLEDGE: 'SUGGESTED_RESPONSE_ACKNOWLEDGE',
-} as const;
-
-/**
- * AI summary events received through Contact Center realtime delivery.
- * @enum {string}
- * @public
- */
-export const CC_AI_SUMMARY_EVENTS = {
+  /** Event received when a post-call summary is available through realtime delivery */
   POST_CALL_SUMMARY: 'POST_CALL_SUMMARY',
+  /** Event received when a mid-call summary is available through realtime delivery */
   MID_CALL_SUMMARY: 'MID_CALL_SUMMARY',
+  /** Event received when AI-summary feature enablement is available through realtime delivery */
   FEATURE_ENABLEMENT: 'FEATURE_ENABLEMENT',
+  /** Event received when a subsequent agent receives a mid-call summary */
   MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT: 'MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT',
 } as const;
 
@@ -208,7 +207,6 @@ export const CC_AGENT_EVENTS = {
 export const CC_EVENTS = {
   ...CC_AGENT_EVENTS,
   ...CC_TASK_EVENTS,
-  ...CC_AI_SUMMARY_EVENTS,
 } as const;
 
 /**
@@ -240,12 +238,6 @@ export type WelcomeResponse = WelcomeEvent | Error;
  * @public
  */
 export type CC_EVENTS = Enum<typeof CC_EVENTS>;
-
-/**
- * Type representing AI summary realtime event names.
- * @public
- */
-export type CC_AI_SUMMARY_EVENTS = Enum<typeof CC_AI_SUMMARY_EVENTS>;
 
 /**
  * WebSocket event structure for Contact Center events

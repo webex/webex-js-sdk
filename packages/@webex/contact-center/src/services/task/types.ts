@@ -4,6 +4,9 @@ import {TaskEventPayload} from './state-machine';
 import {Msg} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
 import type {AIFeatureFlags, CollaborationAccess} from '../config/types';
+import type {AISummaryGetEventName, AISummaryResponseTransportPayload} from '../../types';
+import type RtdRequestResolver from '../core/RtdRequestResolver';
+import type {METRIC_EVENT_NAMES} from '../../metrics/constants';
 
 /**
  * Unique identifier for a task in the contact center system
@@ -1828,48 +1831,72 @@ export type AISummaryTimeoutCodeByInboundType = {
   MID_CALL_SUMMARY: typeof import('../../constants').AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_TIMEOUT;
 };
 
-export type AISummaryPendingRegistration<T extends AISummaryInboundType> = Readonly<{
-  requestToken: symbol;
-  result: Promise<AISummaryPayloadByInboundType[T]>;
-}>;
-
 export type GeneratedSummaryFlagsAccessor = () => AIFeatureFlags['generatedSummaries'] | undefined;
 
-export type AISummaryReceiverDropReason = 'ambiguous-receiver' | 'receiver-buffer-expired';
+export type FeatureEnablementAccessor = (
+  interactionId: string
+) => FeatureEnablementEventPayload | undefined;
 
-export interface AISummaryRequestCoordinator {
-  getFeatureEnablement(interactionId: string): FeatureEnablementEventPayload | undefined;
-  registerPendingAISummaryRequest<T extends AISummaryInboundType>(
-    taskId: string,
+export type AISummaryAdapter = {
+  sendSummaryGetEvent: (
+    agentId: string,
+    interactionId: string,
     conversationId: string,
-    eventType: T,
-    timeoutCode: AISummaryTimeoutCodeByInboundType[T]
-  ): Promise<AISummaryPendingRegistration<T>>;
-  cancelPendingAISummaryRequest<T extends AISummaryInboundType>(
-    taskId: string,
-    conversationId: string,
-    eventType: T,
-    requestToken: symbol
-  ): void;
-  setFeatureEnablement(payload: FeatureEnablementEventPayload, hasRegisteredTask: boolean): void;
-  retainFeatureEnablementForTask(interactionId: string): void;
-  clearFeatureEnablement(interactionId: string): void;
-  resolvePendingAISummaryRequest<T extends AISummaryInboundType>(
-    conversationId: string,
-    eventType: T,
-    payload: AISummaryPayloadByInboundType[T]
-  ): 'resolved' | 'not-found';
-  routeReceivingSummary(
-    payload: MidCallSummaryReceivingAgentPayload,
-    matchingTasks: ReadonlyArray<Pick<ITask, 'data' | 'emit'>>
-  ): 'delivered' | 'buffered' | 'dropped-ambiguous';
-  flushReceivingSummary(
-    conversationId: string,
-    matchingTasks: ReadonlyArray<Pick<ITask, 'data' | 'emit'>>
-  ): 'delivered' | 'retained' | 'dropped-ambiguous' | 'not-found';
-  clearTaskAISummaryState(taskId: string, conversationId: string): void;
-  clearAISummaryState(): void;
-}
+    eventName: AISummaryGetEventName
+  ) => Promise<void>;
+  sendSummaryResponseEvent: (
+    agentId: string,
+    payload: AISummaryResponseTransportPayload
+  ) => Promise<void>;
+};
+
+export type PostCallSummaryResponseContext = Readonly<{
+  conversationId: string;
+  interactionId: string;
+}>;
+
+export type AISummaryOperationMetric = {
+  success: METRIC_EVENT_NAMES;
+  failure: METRIC_EVENT_NAMES;
+};
+
+export type AISummaryRuntime = {
+  adapter: AISummaryAdapter;
+  rtdRequestResolver: RtdRequestResolver;
+  getFeatureEnablement: FeatureEnablementAccessor;
+  getGeneratedSummaryFlags: GeneratedSummaryFlagsAccessor;
+  agentId: string;
+};
+
+export type AISummaryResponsePayload =
+  | PostCallSummaryResponsePayload
+  | MidCallSummaryResponsePayload;
+
+export type AISummaryResponseTransportFields<T extends AISummaryResponsePayload> = T extends unknown
+  ? Pick<
+      T,
+      'summary' | 'numberOfTimesViewed' | 'numberOfTimesEdited' | 'numberOfTimesCopied' | 'state'
+    >
+  : never;
+
+/** @internal Buffered receiving-agent summary and its expiry timer. */
+export type BufferedReceivingSummary = {
+  payload: MidCallSummaryReceivingAgentPayload;
+  timeoutId?: ReturnType<typeof setTimeout>;
+};
+
+/** @internal Feature-enablement snapshot and its optional expiry timer. */
+export type InteractionFeatureEnablementEntry = {
+  payload: FeatureEnablementEventPayload;
+  timeoutId?: ReturnType<typeof setTimeout>;
+};
+
+/** @internal AI-summary event names handled by the realtime-delivery path. */
+export type AISummaryRealtimeEventType =
+  | typeof import('../config/types').CC_TASK_EVENTS.POST_CALL_SUMMARY
+  | typeof import('../config/types').CC_TASK_EVENTS.MID_CALL_SUMMARY
+  | typeof import('../config/types').CC_TASK_EVENTS.FEATURE_ENABLEMENT
+  | typeof import('../config/types').CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT;
 
 /**
  * Request payload for removing a supported participant from an active conference.

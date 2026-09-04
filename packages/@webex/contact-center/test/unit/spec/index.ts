@@ -32,9 +32,8 @@ const EXPECTED_ROOT_EXPORTS = Object.freeze([
   'BuddyDetails',
   'CCPluginConfig',
   'CC_AGENT_EVENTS',
-  'CC_AI_SUMMARY_EVENTS',
-  'CC_EVENTS',
   'CC_TASK_EVENTS',
+  'CC_EVENTS',
   'ConsultEndPayload',
   'ConsultPayload',
   'ConsultTransferPayLoad',
@@ -127,8 +126,6 @@ const INTERNAL_ROOT_EXPORTS = Object.freeze([
   'AISummaryInboundType',
   'AISummaryPayloadByInboundType',
   'AISummaryTimeoutCodeByInboundType',
-  'AISummaryPendingRegistration',
-  'AISummaryRequestCoordinator',
   'GeneratedSummaryFlagsAccessor',
   'AISummaryResponseTransportPayload',
   'SummaryResponseTimestamps',
@@ -159,7 +156,12 @@ const EXPECTED_AI_SUMMARY_WIRE_LITERALS = Object.freeze({
     MID_CALL_CONSULT_SUMMARY_RESPONSE: 'MID_CALL_CONSULT_SUMMARY_RESPONSE',
     MID_CALL_TRANSFER_SUMMARY_RESPONSE: 'MID_CALL_TRANSFER_SUMMARY_RESPONSE',
   }),
-  CC_AI_SUMMARY_EVENTS: Object.freeze({
+  CC_TASK_EVENTS: Object.freeze({
+    REAL_TIME_TRANSCRIPTION: 'REAL_TIME_TRANSCRIPTION',
+    SUGGESTED_RESPONSE: 'SUGGESTED_RESPONSE',
+    SUGGESTED_RESPONSE_ACKNOWLEDGE: 'SUGGESTED_RESPONSE_ACKNOWLEDGE',
+    POST_CALL_SUMMARY: 'POST_CALL_SUMMARY',
+    MID_CALL_SUMMARY: 'MID_CALL_SUMMARY',
     FEATURE_ENABLEMENT: 'FEATURE_ENABLEMENT',
     MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT: 'MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT',
   }),
@@ -171,7 +173,7 @@ const VALID_PUBLIC_CONTRACT_FIXTURE = `
 import {
   AIAssistantEventName as AIAssistantEventNames,
   AI_SUMMARY_ERROR_CODES,
-  CC_AI_SUMMARY_EVENTS,
+  CC_TASK_EVENTS,
   TASK_EVENTS,
 } from '../../../src';
 import type {
@@ -322,7 +324,7 @@ const taskSummaryMethods: Pick<
 
 const outboundGet: AIAssistantEventName = AIAssistantEventNames.GET_MID_CALL_CONSULT_SUMMARY;
 const outboundResponse: AIAssistantEventName = AIAssistantEventNames.MID_CALL_TRANSFER_SUMMARY_RESPONSE;
-const inboundPost = CC_AI_SUMMARY_EVENTS.POST_CALL_SUMMARY;
+const inboundPost = CC_TASK_EVENTS.POST_CALL_SUMMARY;
 const receivingEvent = TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT;
 const disabledCode = AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED;
 void action;
@@ -833,17 +835,17 @@ describe('contact-center root public contract', () => {
     const ccAISummaryEventLiterals = entriesToObject(
       getNamedStringLiteralObjectEntries(
         getObjectLiteralInitializer(
-          getRootExportSymbol(program, 'CC_AI_SUMMARY_EVENTS'),
-          'CC_AI_SUMMARY_EVENTS'
+          getRootExportSymbol(program, 'CC_TASK_EVENTS'),
+          'CC_TASK_EVENTS'
         ),
-        Object.keys(EXPECTED_AI_SUMMARY_WIRE_LITERALS.CC_AI_SUMMARY_EVENTS),
-        'CC_AI_SUMMARY_EVENTS'
+        Object.keys(EXPECTED_AI_SUMMARY_WIRE_LITERALS.CC_TASK_EVENTS),
+        'CC_TASK_EVENTS'
       )
     );
 
     expect({
       AIAssistantEventName: aiAssistantEventNameLiterals,
-      CC_AI_SUMMARY_EVENTS: ccAISummaryEventLiterals,
+      CC_TASK_EVENTS: ccAISummaryEventLiterals,
     }).toEqual(EXPECTED_AI_SUMMARY_WIRE_LITERALS);
   });
 
