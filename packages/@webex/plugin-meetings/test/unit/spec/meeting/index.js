@@ -5887,6 +5887,48 @@ describe('plugin-meetings', () => {
             });
           });
 
+          describe('handles INBOUND_RTP_AUDIO_LEVEL_UPDATE event for inbound audio levels', () => {
+            it('INBOUND_RTP_AUDIO_LEVEL_UPDATE sends a single behavioral metric with the 3 sessions', async () => {
+              Metrics.sendBehavioralMetric.resetHistory();
+
+              const inboundAudioLevels = [
+                {ssrc: 11111, meanRtpHeaderAudioLevel: 0.1},
+                {ssrc: 22222, meanRtpHeaderAudioLevel: 0.91},
+                {ssrc: 33333, meanRtpHeaderAudioLevel: 0.54},
+              ];
+
+              statsAnalyzerStub.emit(
+                {file: 'test', function: 'test'},
+                StatsAnalyzerEventNames.INBOUND_RTP_AUDIO_LEVEL_UPDATE,
+                inboundAudioLevels
+              );
+
+              assert.calledOnce(Metrics.sendBehavioralMetric);
+              assert.calledWithMatch(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.INBOUND_RTP_AUDIO_LEVEL_UPDATE, {
+                meetingId: meeting.id,
+                correlationId: meeting.correlationId,
+                mean_audio_level_1: 0.1,
+                ssrc_1: 11111,
+                mean_audio_level_2: 0.91,
+                ssrc_2: 22222,
+                mean_audio_level_3: 0.54,
+                ssrc_3: 33333,
+              });
+            });
+
+            it('INBOUND_RTP_AUDIO_LEVEL_UPDATE does not send any metric when the report array is empty', async () => {
+              Metrics.sendBehavioralMetric.resetHistory();
+
+              statsAnalyzerStub.emit(
+                {file: 'test', function: 'test'},
+                StatsAnalyzerEventNames.INBOUND_RTP_AUDIO_LEVEL_UPDATE,
+                []
+              );
+
+              assert.notCalled(Metrics.sendBehavioralMetric);
+            });
+          });
+
           describe('handles STATS_UPDATE event for SRTP cipher detection', () => {
             it('emits MEETING_SRTP_CIPHER_UPDATED event when srtpCipher is found in transport stats', async () => {
               const fakeStats = new Map([

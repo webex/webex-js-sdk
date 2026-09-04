@@ -8185,6 +8185,28 @@ export default class Meeting extends StatelessWebexPlugin {
         );
       }
     });
+    this.statsAnalyzer.on(StatsAnalyzerEventNames.INBOUND_RTP_AUDIO_LEVEL_UPDATE, (data) => {
+      if (data.length === 0) {
+        return;
+      }
+
+      LoggerProxy.logger.info(
+        `Meeting:index#setupStatsAnalyzerEventHandlers --> inbound RTP audio level update received for ${data.length} tracks`
+      );
+
+      const mostActiveAudioSessionsStatMappings = data.reduce((acc, stats, index) => {
+        acc[`mean_audio_level_${index + 1}`] = stats.meanRtpHeaderAudioLevel;
+        acc[`ssrc_${index + 1}`] = stats.ssrc;
+
+        return acc;
+      }, {} as Record<string, number>);
+
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.INBOUND_RTP_AUDIO_LEVEL_UPDATE, {
+        meetingId: this.id,
+        correlationId: this.correlationId,
+        ...mostActiveAudioSessionsStatMappings,
+      });
+    });
   };
 
   getMediaConnectionDebugId() {

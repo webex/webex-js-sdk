@@ -62,7 +62,7 @@
   "dependencies": {
     "@webex/common": "workspace:*",
     "@webex/event-dictionary-ts": "^1.0.2215",
-    "@webex/internal-media-core": "2.29.2",
+    "@webex/internal-media-core": "2.30.0",
     "@webex/internal-plugin-conversation": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-llm": "workspace:*",
@@ -75,7 +75,7 @@
     "@webex/plugin-people": "workspace:*",
     "@webex/plugin-rooms": "workspace:*",
     "@webex/ts-sdp": "^1.8.1",
-    "@webex/web-capabilities": "^1.13.0",
+    "@webex/web-capabilities": "^1.13.1",
     "@webex/webex-core": "workspace:*",
     "ampersand-collection": "^2.0.2",
     "bowser": "^2.11.0",
