@@ -11,6 +11,7 @@ import {
 import {TaskContext} from './state-machine/types';
 import {CC_EVENTS} from '../config/types';
 import {OUTBOUND_TYPE, OUTDIAL_DIRECTION, OUTDIAL_MEDIA_TYPE} from '../../constants';
+import {createSummaryError, isNonEmptyString} from '../AISummaryUtils';
 
 const CAMPAIGN_PREVIEW_OUTBOUND_TYPES = ['STANDARD_PREVIEW_CAMPAIGN', 'DIRECT_PREVIEW_CAMPAIGN'];
 const CAMPAIGN_PREVIEW_CAMPAIGN_TYPES = ['preview_standard', 'preview_direct'];
@@ -239,6 +240,36 @@ export const getIsConferenceInProgress = (data: TaskData): boolean => {
   });
 
   return agentParticipants.size >= 2;
+};
+
+export type AISummaryCorrelation = {
+  conversationId: string;
+  interactionId: string;
+};
+
+const AI_SUMMARY_CORRELATION_NOT_AVAILABLE = 'AI_SUMMARY_CORRELATION_NOT_AVAILABLE';
+
+export const tryGetAISummaryCorrelation = (
+  taskData?: TaskData | null
+): AISummaryCorrelation | undefined => {
+  const interactionId = taskData?.interactionId;
+  const conversationId = taskData?.interaction?.mainInteractionId ?? interactionId;
+
+  if (!isNonEmptyString(interactionId) || !isNonEmptyString(conversationId)) {
+    return undefined;
+  }
+
+  return {conversationId, interactionId};
+};
+
+export const getAISummaryCorrelation = (taskData?: TaskData | null): AISummaryCorrelation => {
+  const correlation = tryGetAISummaryCorrelation(taskData);
+
+  if (!correlation) {
+    throw createSummaryError(AI_SUMMARY_CORRELATION_NOT_AVAILABLE);
+  }
+
+  return correlation;
 };
 
 const EP_DN_MERGE_TERMINAL_CONSULT_EVENTS = new Set<string>([

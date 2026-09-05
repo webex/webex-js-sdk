@@ -59,3 +59,12 @@ export interface TaskError {
 export interface AugmentedError extends Error {
   data?: Record<string, any>;
 }
+
+/**
+ * Optional behavior for standardized error-detail extraction.
+ * @private
+ * @ignore
+ */
+export type GetErrorDetailsOptions = {
+  uploadLogs?: boolean;
+};

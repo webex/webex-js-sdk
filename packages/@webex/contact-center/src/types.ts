@@ -74,6 +74,8 @@ export type WebexRequestPayload = {
   uri?: string;
   /** Whether to add authorization header */
   addAuthHeader?: boolean;
+  /** Request timeout in milliseconds */
+  timeout?: number;
   /** Custom headers to include in request */
   headers?: {
     [key: string]: string | null;
@@ -982,14 +984,18 @@ export const AIAssistantEventName = {
   GET_SUGGESTIONS: 'GET_SUGGESTIONS',
   /** Add extra context to refine a suggested response */
   ADD_SUGGESTIONS_EXTRA_CONTEXT: 'ADD_SUGGESTIONS_EXTRA_CONTEXT',
-  /** Request mid-call summary generation */
-  GET_MID_CALL_SUMMARY: 'GET_MID_CALL_SUMMARY',
   /** Request post-call summary generation */
   GET_POST_CALL_SUMMARY: 'GET_POST_CALL_SUMMARY',
-  /** Mid-call summary response event */
-  MID_CALL_SUMMARY_RESPONSE: 'MID_CALL_SUMMARY_RESPONSE',
+  /** Request consult mid-call summary generation */
+  GET_MID_CALL_CONSULT_SUMMARY: 'GET_MID_CALL_CONSULT_SUMMARY',
+  /** Request transfer mid-call summary generation */
+  GET_MID_CALL_TRANSFER_SUMMARY: 'GET_MID_CALL_TRANSFER_SUMMARY',
   /** Post-call summary response event */
   POST_CALL_SUMMARY_RESPONSE: 'POST_CALL_SUMMARY_RESPONSE',
+  /** Consult mid-call summary response event */
+  MID_CALL_CONSULT_SUMMARY_RESPONSE: 'MID_CALL_CONSULT_SUMMARY_RESPONSE',
+  /** Transfer mid-call summary response event */
+  MID_CALL_TRANSFER_SUMMARY_RESPONSE: 'MID_CALL_TRANSFER_SUMMARY_RESPONSE',
   /** Suggested digital response event */
   SUGGESTED_RESPONSES_DIGITAL: 'SUGGESTED_RESPONSES_DIGITAL',
   /** User action on a suggested response adaptive card */
@@ -1004,6 +1010,64 @@ export const AIAssistantEventName = {
  * @ignore
  */
 export type AIAssistantEventName = Enum<typeof AIAssistantEventName>;
+
+export type AISummaryGetEventName =
+  | typeof AIAssistantEventName.GET_POST_CALL_SUMMARY
+  | typeof AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY
+  | typeof AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY;
+
+type AISummaryResponseTransportIdentifiers = {
+  agentId: string;
+  interactionId: string;
+  conversationId: string;
+};
+
+type AISummaryMidCallResponseTransportPayload = (
+  | Omit<Contact.MidCallReceivedResponse, 'summaryReceived'>
+  | Omit<Contact.MidCallUnavailableResponse, 'summaryReceived'>
+) &
+  AISummaryResponseTransportIdentifiers & {
+    eventName:
+      | typeof AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE
+      | typeof AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE;
+    agentName: string;
+  };
+
+export type AISummaryResponseTransportPayload =
+  | (Contact.PostCallSummaryResponsePayload &
+      AISummaryResponseTransportIdentifiers & {
+        eventName: typeof AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE;
+      })
+  | AISummaryMidCallResponseTransportPayload;
+
+export type AISummaryEnvelopeInput =
+  | {
+      kind: 'get';
+      agentId: string;
+      orgId: string;
+      interactionId: string;
+      conversationId: string;
+      eventName: AISummaryGetEventName;
+      publishTimestamp: number;
+      actionTimeStamp: number;
+    }
+  | {
+      kind: 'response';
+      agentId: string;
+      orgId: string;
+      payload: AISummaryResponseTransportPayload;
+      publishTimestamp: number;
+      actionTimeStamp: number;
+    };
+
+export type AISummaryFailureContext = {
+  methodName: string;
+  eventName: string;
+  agentId: string;
+  orgId: string;
+  interactionId: string;
+  conversationId: string;
+};
 
 /**
  * A single transcript message entry returned by AI Assistant APIs.

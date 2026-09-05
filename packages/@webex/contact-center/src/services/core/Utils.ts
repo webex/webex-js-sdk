@@ -1,6 +1,6 @@
 import * as Err from './Err';
 import {LoginOption, WebexRequestPayload} from '../../types';
-import {Failure, AugmentedError} from './GlobalTypes';
+import {Failure, AugmentedError, GetErrorDetailsOptions} from './GlobalTypes';
 import LoggerProxy from '../../logger-proxy';
 import WebexRequest from './WebexRequest';
 import {
@@ -15,6 +15,18 @@ import {
 } from '../task/types';
 import {PARTICIPANT_TYPES, STATE_CONSULT} from './constants';
 import {DialPlan} from '../config/types';
+
+/**
+ * Uploads diagnostic logs without allowing an upload failure to affect the original operation.
+ * This is shared by the error helpers because both paths intentionally use best-effort logging.
+ */
+const uploadLogsFireAndForget = (correlationId?: string) => {
+  const uploadLogsPromise = WebexRequest.getInstance().uploadLogs({
+    correlationId,
+  });
+
+  uploadLogsPromise?.catch?.(() => undefined);
+};
 
 /**
  * Extracts common error details from a Webex request payload.
@@ -147,11 +159,17 @@ export const getStationLoginErrorData = (failure: Failure, loginOption: LoginOpt
  * if (details.error) { handleError(details.error); }
  * @ignore
  */
-export const getErrorDetails = (error: any, methodName: string, moduleName: string) => {
+export const getErrorDetails = (
+  error: any,
+  methodName: string,
+  moduleName: string,
+  options: GetErrorDetailsOptions = {}
+) => {
   let errData = {message: '', fieldName: ''};
 
   const failure = error.details as Failure;
   const reason = failure?.data?.reason ?? `Error while performing ${methodName}`;
+  const shouldUploadLogs = options.uploadLogs !== false;
 
   if (!(reason === 'AGENT_NOT_FOUND' && methodName === 'silentRelogin')) {
     LoggerProxy.error(`${methodName} failed with reason: ${reason}`, {
@@ -160,9 +178,9 @@ export const getErrorDetails = (error: any, methodName: string, moduleName: stri
       trackingId: failure?.trackingId,
     });
     // we can add more conditions here if not needed for specific cases eg: silentReLogin
-    WebexRequest.getInstance().uploadLogs({
-      correlationId: failure?.trackingId,
-    });
+    if (shouldUploadLogs) {
+      uploadLogsFireAndForget(failure?.trackingId);
+    }
   }
 
   if (methodName === 'stationLogin') {
@@ -227,9 +245,7 @@ export const generateTaskErrorObject = (
     method: methodName,
     trackingId,
   });
-  WebexRequest.getInstance().uploadLogs({
-    correlationId: trackingId,
-  });
+  uploadLogsFireAndForget(trackingId);
 
   const reason = `${errorType}: ${errorMessage}${errorData ? ` (${errorData})` : ''}`;
   const err: AugmentedError = new Error(reason);

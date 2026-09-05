@@ -20,16 +20,44 @@ import {
   TASK_CHANNEL_TYPE,
   VOICE_VARIANT,
   CallId,
+  AISummaryActionType,
+  AISummaryFeedback,
+  PostCallSummaryEventPayload,
+  MidCallSummaryEventPayload,
+  PostCallSummaryResponsePayload,
+  MidCallSummaryResponsePayload,
+  FeatureEnablementAccessor,
+  GeneratedSummaryFlagsAccessor,
+  AISummaryAdapter,
+  AISummaryResponseContext,
+  AISummaryInboundType,
+  AISummaryPayloadByInboundType,
+  AISummaryTimeoutCodeByInboundType,
   TaskToggleMuteOptions,
   TaskTransmitDtmfOptions,
 } from './types';
-import {ENTRY_POINT_TRANSFER_DESTINATION_TYPE, METHODS} from './constants';
-import {CC_FILE, TASK_FILE} from '../../constants';
+import {
+  AI_SUMMARY_TASK_ERROR_CODES,
+  AI_SUMMARY_DURATION_MS,
+  AI_SUMMARY_REQUEST_CANCELLED,
+  ENTRY_POINT_TRANSFER_DESTINATION_TYPE,
+  POST_CALL_SUMMARY_STATES,
+  MID_CALL_SUMMARY_RECEIVED_STATES,
+  MID_CALL_SUMMARY_UNAVAILABLE_STATES,
+  METHODS,
+} from './constants';
+import {AI_SUMMARY_ERROR_CODES, CC_FILE, TASK_FILE} from '../../constants';
 import {getErrorDetails} from '../core/Utils';
 import routingContact from './contact';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import LoggerProxy from '../../logger-proxy';
+import {
+  AI_SUMMARY_FEEDBACK_VALUES,
+  createSummaryError,
+  isFiniteNonNegativeNumber,
+  isNonEmptyString,
+} from '../AISummaryUtils';
 import {createTaskStateMachine, TaskState} from './state-machine';
 import type {
   TaskEventPayload,
@@ -46,6 +74,10 @@ import {
 } from './state-machine/uiControlsComputer';
 import AutoWrapup from './AutoWrapup';
 import {WrapupData} from '../config/types';
+import {AIAssistantEventName} from '../../types';
+import type {AISummaryResponseTransportPayload} from '../../types';
+import {getAISummaryCorrelation} from './TaskUtils';
+import type RtdRequestResolver from '../core/RtdRequestResolver';
 
 type UIControlConfigInput = Omit<UIControlConfig, 'channelType'> & {
   channelType?: UIControlConfig['channelType'];
@@ -64,13 +96,21 @@ export default abstract class Task extends EventEmitter implements ITask {
   protected wrapupData?: WrapupData;
   public autoWrapup?: AutoWrapup;
   protected agentId?: string;
+  protected agentName?: string;
+  private aiSummaryAdapter?: AISummaryAdapter;
+  private rtdRequestResolver?: RtdRequestResolver;
+  private getFeatureEnablement?: FeatureEnablementAccessor;
+  private getGeneratedSummaryFlags?: GeneratedSummaryFlagsAccessor;
+  private postCallSummaryResponseContext?: AISummaryResponseContext;
+  private midCallSummaryResponseContext?: AISummaryResponseContext;
 
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
     uiControlConfig: UIControlConfigInput,
     wrapupData?: WrapupData,
-    agentId?: string
+    agentId?: string,
+    agentName?: string
   ) {
     super();
     this.contact = contact;
@@ -80,6 +120,7 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.uiControlConfig = {...uiControlConfig, channelType, agentId};
     this.wrapupData = wrapupData;
     this.agentId = agentId;
+    this.agentName = agentName;
     this.metricsManager = MetricsManager.getInstance();
     this.webCallMap = {};
     this.currentUiControls = getDefaultUIControls();
@@ -214,6 +255,462 @@ export default abstract class Task extends EventEmitter implements ITask {
 
   public async holdResume(): Promise<TaskResponse> {
     this.unsupportedMethodError('holdResume');
+  }
+
+  public configureAISummary(
+    apiAIAssistant: AISummaryAdapter | undefined,
+    rtdRequestResolver: RtdRequestResolver,
+    getGeneratedSummaryFlags: GeneratedSummaryFlagsAccessor,
+    getFeatureEnablement: FeatureEnablementAccessor
+  ): void {
+    this.aiSummaryAdapter = apiAIAssistant;
+    this.rtdRequestResolver = rtdRequestResolver;
+    this.getFeatureEnablement = getFeatureEnablement;
+    this.getGeneratedSummaryFlags = getGeneratedSummaryFlags;
+  }
+
+  public requestPostCallSummary(): Promise<PostCallSummaryEventPayload> {
+    const operation = this.requestPostCallSummaryInternal();
+
+    operation.catch(() => undefined);
+
+    return operation;
+  }
+
+  private async requestPostCallSummaryInternal(): Promise<PostCallSummaryEventPayload> {
+    const metricFields: Record<string, unknown> = {
+      operation: METHODS.REQUEST_POST_CALL_SUMMARY,
+    };
+
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
+      ]);
+      this.requireAISummaryConfiguration();
+      const {conversationId, interactionId} = getAISummaryCorrelation(this.data);
+      Object.assign(metricFields, {conversationId, interactionId});
+
+      const organizationEnabled =
+        (this.getGeneratedSummaryFlags as GeneratedSummaryFlagsAccessor)()
+          ?.wrapUpSummariesEnabled === true;
+      const interactionEnabled =
+        (this.getFeatureEnablement as FeatureEnablementAccessor)(interactionId)?.postCallEnabled ===
+        true;
+
+      if (!organizationEnabled || !interactionEnabled) {
+        throw createSummaryError(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED);
+      }
+
+      const result = await this.requestAISummary(
+        'POST_CALL_SUMMARY',
+        'POST_CALL_SUMMARY_TIMEOUT',
+        conversationId,
+        interactionId,
+        AIAssistantEventName.GET_POST_CALL_SUMMARY
+      );
+
+      this.postCallSummaryResponseContext = {conversationId, interactionId};
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
+        {taskId: this.data?.interactionId, ...metricFields},
+        ['operational']
+      );
+
+      return result;
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
+        {
+          taskId: this.data?.interactionId,
+          ...metricFields,
+          failureCode: Task.getAISummaryFailureCode(error),
+        },
+        ['operational']
+      );
+      throw error;
+    }
+  }
+
+  public async sendPostCallSummaryResponse(payload: PostCallSummaryResponsePayload): Promise<void> {
+    const metricFields: Record<string, unknown> = {
+      operation: METHODS.SEND_POST_CALL_SUMMARY_RESPONSE,
+    };
+
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
+        METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
+      ]);
+      this.requireAISummaryConfiguration();
+      Task.validatePostCallSummaryResponsePayload(payload);
+      const context = this.postCallSummaryResponseContext ?? getAISummaryCorrelation(this.data);
+      Object.assign(metricFields, {
+        conversationId: context.conversationId,
+        interactionId: context.interactionId,
+      });
+
+      await (this.aiSummaryAdapter as AISummaryAdapter).sendSummaryResponseEvent(
+        this.agentId as string,
+        {
+          agentId: this.agentId as string,
+          interactionId: context.interactionId,
+          conversationId: context.conversationId,
+          eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+          feedback: payload.feedback,
+          wrapUpCode: payload.wrapUpCode,
+          summary: payload.summary,
+          numberOfTimesViewed: payload.numberOfTimesViewed,
+          numberOfTimesEdited: payload.numberOfTimesEdited,
+          numberOfTimesCopied: payload.numberOfTimesCopied,
+          state: payload.state,
+          ...(payload.actionTimeStamp !== undefined
+            ? {actionTimeStamp: payload.actionTimeStamp}
+            : {}),
+          ...(payload.publishTimestamp !== undefined
+            ? {publishTimestamp: payload.publishTimestamp}
+            : {}),
+        } as AISummaryResponseTransportPayload
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
+        {taskId: this.data?.interactionId, ...metricFields},
+        ['operational']
+      );
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
+        {
+          taskId: this.data?.interactionId,
+          ...metricFields,
+          failureCode: Task.getAISummaryFailureCode(error),
+        },
+        ['operational']
+      );
+      throw error;
+    }
+  }
+
+  public requestMidCallSummary(
+    actionType: AISummaryActionType
+  ): Promise<MidCallSummaryEventPayload> {
+    const operation = this.requestMidCallSummaryInternal(actionType);
+
+    operation.catch(() => undefined);
+
+    return operation;
+  }
+
+  private async requestMidCallSummaryInternal(
+    actionType: AISummaryActionType
+  ): Promise<MidCallSummaryEventPayload> {
+    const metricFields: Record<string, unknown> = {
+      operation: METHODS.REQUEST_MID_CALL_SUMMARY,
+    };
+
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
+      ]);
+      this.requireAISummaryConfiguration();
+      if (!Task.isValidAISummaryActionType(actionType)) {
+        throw createSummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
+      }
+
+      Object.assign(metricFields, {actionType});
+      const {conversationId, interactionId} = getAISummaryCorrelation(this.data);
+      Object.assign(metricFields, {conversationId, interactionId});
+
+      const organizationEnabled =
+        (this.getGeneratedSummaryFlags as GeneratedSummaryFlagsAccessor)()
+          ?.consultTransferSummariesEnabled === true;
+      const interactionEnabled =
+        (this.getFeatureEnablement as FeatureEnablementAccessor)(interactionId)?.midCallEnabled ===
+        true;
+
+      if (!organizationEnabled || !interactionEnabled) {
+        throw createSummaryError(AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED);
+      }
+
+      const result = await this.requestAISummary(
+        'MID_CALL_SUMMARY',
+        'MID_CALL_SUMMARY_TIMEOUT',
+        conversationId,
+        interactionId,
+        actionType === 'CONSULT'
+          ? AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY
+          : AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY
+      );
+
+      this.midCallSummaryResponseContext = {conversationId, interactionId};
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
+        {taskId: this.data?.interactionId, ...metricFields},
+        ['operational']
+      );
+
+      return result;
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
+        {
+          taskId: this.data?.interactionId,
+          ...metricFields,
+          failureCode: Task.getAISummaryFailureCode(error),
+        },
+        ['operational']
+      );
+      throw error;
+    }
+  }
+
+  public async sendMidCallSummaryResponse(
+    payload: MidCallSummaryResponsePayload,
+    actionType: AISummaryActionType
+  ): Promise<void> {
+    const metricFields: Record<string, unknown> = {
+      operation: METHODS.SEND_MID_CALL_SUMMARY_RESPONSE,
+    };
+
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
+        METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
+      ]);
+      this.requireAISummaryConfiguration();
+      if (!Task.isValidAISummaryActionType(actionType)) {
+        throw createSummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
+      }
+
+      Object.assign(metricFields, {actionType});
+      Task.validateMidCallSummaryResponsePayload(payload);
+      const context = this.midCallSummaryResponseContext ?? getAISummaryCorrelation(this.data);
+      Object.assign(metricFields, {
+        conversationId: context.conversationId,
+        interactionId: context.interactionId,
+      });
+
+      await (this.aiSummaryAdapter as AISummaryAdapter).sendSummaryResponseEvent(
+        this.agentId as string,
+        {
+          agentId: this.agentId as string,
+          interactionId: context.interactionId,
+          conversationId: context.conversationId,
+          eventName:
+            actionType === 'CONSULT'
+              ? AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE
+              : AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE,
+          feedback: payload.feedback,
+          agentName: this.agentName ?? '',
+          summary: payload.summary,
+          numberOfTimesViewed: payload.numberOfTimesViewed,
+          numberOfTimesEdited: payload.numberOfTimesEdited,
+          numberOfTimesCopied: payload.numberOfTimesCopied,
+          state: payload.state,
+          ...(payload.actionTimeStamp !== undefined
+            ? {actionTimeStamp: payload.actionTimeStamp}
+            : {}),
+          ...(payload.publishTimestamp !== undefined
+            ? {publishTimestamp: payload.publishTimestamp}
+            : {}),
+        } as AISummaryResponseTransportPayload
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
+        {taskId: this.data?.interactionId, ...metricFields},
+        ['operational']
+      );
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
+        {
+          taskId: this.data?.interactionId,
+          ...metricFields,
+          failureCode: Task.getAISummaryFailureCode(error),
+        },
+        ['operational']
+      );
+      throw error;
+    }
+  }
+
+  private static getAISummaryFailureCode(error: unknown): string {
+    const errorCode = (error as {data?: {errorCode?: unknown}})?.data?.errorCode;
+
+    if (typeof errorCode === 'string') {
+      return errorCode;
+    }
+
+    return AI_SUMMARY_TASK_ERROR_CODES.INVALID_RESPONSE_PAYLOAD;
+  }
+
+  private requireAISummaryConfiguration(): void {
+    if (
+      !this.aiSummaryAdapter ||
+      !this.rtdRequestResolver ||
+      !this.getGeneratedSummaryFlags ||
+      !this.getFeatureEnablement ||
+      !isNonEmptyString(this.agentId)
+    ) {
+      throw createSummaryError(AI_SUMMARY_TASK_ERROR_CODES.NOT_INITIALIZED);
+    }
+  }
+
+  private static isPlainSummary(value: unknown): value is string | Record<string, unknown> {
+    return (
+      typeof value === 'string' ||
+      (Boolean(value) && typeof value === 'object' && !Array.isArray(value))
+    );
+  }
+
+  private static hasValidCounters(payload: Record<string, unknown>): boolean {
+    return (
+      isFiniteNonNegativeNumber(payload.numberOfTimesViewed) &&
+      isFiniteNonNegativeNumber(payload.numberOfTimesEdited) &&
+      isFiniteNonNegativeNumber(payload.numberOfTimesCopied)
+    );
+  }
+
+  private static hasZeroCounters(payload: Record<string, unknown>): boolean {
+    return (
+      payload.numberOfTimesViewed === 0 &&
+      payload.numberOfTimesEdited === 0 &&
+      payload.numberOfTimesCopied === 0
+    );
+  }
+
+  private static hasValidOptionalTimestamps(payload: Record<string, unknown>): boolean {
+    return (
+      (payload.actionTimeStamp === undefined ||
+        isFiniteNonNegativeNumber(payload.actionTimeStamp)) &&
+      (payload.publishTimestamp === undefined ||
+        isFiniteNonNegativeNumber(payload.publishTimestamp))
+    );
+  }
+
+  private static isSummaryResponseRecord(payload: unknown): payload is Record<string, unknown> {
+    return Boolean(payload) && typeof payload === 'object' && !Array.isArray(payload);
+  }
+
+  private static hasValidSummaryResponseCommonFields(payload: Record<string, unknown>): boolean {
+    return (
+      AI_SUMMARY_FEEDBACK_VALUES.has(payload.feedback as AISummaryFeedback) &&
+      Task.hasValidOptionalTimestamps(payload)
+    );
+  }
+
+  private static throwInvalidSummaryResponse(): never {
+    throw createSummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_RESPONSE_PAYLOAD);
+  }
+
+  private static isValidAISummaryActionType(
+    actionType: unknown
+  ): actionType is AISummaryActionType {
+    return actionType === 'CONSULT' || actionType === 'TRANSFER';
+  }
+
+  private async requestAISummary<T extends AISummaryInboundType>(
+    inboundType: T,
+    timeoutCode: AISummaryTimeoutCodeByInboundType[T],
+    conversationId: string,
+    interactionId: string,
+    eventName: Parameters<AISummaryAdapter['sendSummaryGetEvent']>[3]
+  ): Promise<AISummaryPayloadByInboundType[T]> {
+    const taskId = this.data?.taskId ?? this.data?.interactionId ?? '';
+
+    return (this.rtdRequestResolver as RtdRequestResolver).request({
+      ownerId: taskId,
+      correlationId: conversationId,
+      eventType: inboundType,
+      timeoutMs: AI_SUMMARY_DURATION_MS,
+      createDuplicateRequestError: () =>
+        createSummaryError(AI_SUMMARY_ERROR_CODES.AI_SUMMARY_REQUEST_ALREADY_PENDING),
+      createTimeoutError: () => createSummaryError(timeoutCode),
+      createCancellationError: () => createSummaryError(AI_SUMMARY_REQUEST_CANCELLED),
+      sendRequest: () =>
+        (this.aiSummaryAdapter as AISummaryAdapter).sendSummaryGetEvent(
+          this.agentId as string,
+          interactionId,
+          conversationId,
+          eventName
+        ),
+    });
+  }
+
+  private static validatePostCallSummaryResponsePayload(
+    payload: PostCallSummaryResponsePayload
+  ): void {
+    const candidate = payload as unknown as Record<string, unknown>;
+
+    if (!Task.isSummaryResponseRecord(candidate)) {
+      Task.throwInvalidSummaryResponse();
+    }
+
+    const hasValidCommonFields =
+      Task.hasValidSummaryResponseCommonFields(candidate) &&
+      POST_CALL_SUMMARY_STATES.has(candidate.state as string) &&
+      isNonEmptyString(candidate.wrapUpCode);
+
+    if (!hasValidCommonFields) {
+      Task.throwInvalidSummaryResponse();
+    }
+
+    if (candidate.state === 'NOT_RECEIVED') {
+      if (candidate.summary !== '' || !Task.hasZeroCounters(candidate)) {
+        Task.throwInvalidSummaryResponse();
+      }
+
+      return;
+    }
+
+    if (!Task.isPlainSummary(candidate.summary) || !Task.hasValidCounters(candidate)) {
+      Task.throwInvalidSummaryResponse();
+    }
+  }
+
+  private static validateMidCallSummaryResponsePayload(
+    payload: MidCallSummaryResponsePayload
+  ): void {
+    const candidate = payload as unknown as Record<string, unknown>;
+
+    if (
+      !Task.isSummaryResponseRecord(candidate) ||
+      Object.prototype.hasOwnProperty.call(candidate, 'wrapUpCode') ||
+      (candidate.summaryReceived !== true && candidate.summaryReceived !== false)
+    ) {
+      Task.throwInvalidSummaryResponse();
+    }
+
+    const hasValidCommonFields = Task.hasValidSummaryResponseCommonFields(candidate);
+
+    if (!hasValidCommonFields) {
+      Task.throwInvalidSummaryResponse();
+    }
+
+    if (candidate.summaryReceived === false) {
+      if (
+        !MID_CALL_SUMMARY_UNAVAILABLE_STATES.has(candidate.state as string) ||
+        candidate.summary !== '' ||
+        !Task.hasZeroCounters(candidate)
+      ) {
+        Task.throwInvalidSummaryResponse();
+      }
+
+      return;
+    }
+
+    if (
+      !MID_CALL_SUMMARY_RECEIVED_STATES.has(candidate.state as string) ||
+      !Task.isPlainSummary(candidate.summary) ||
+      !Task.hasValidCounters(candidate)
+    ) {
+      Task.throwInvalidSummaryResponse();
+    }
   }
 
   /**
@@ -650,7 +1147,7 @@ export default abstract class Task extends EventEmitter implements ITask {
    * @param methodName - The name of the method that is unsupported
    * @throws Error
    */
-  protected unsupportedMethodError(methodName: string) {
+  protected unsupportedMethodError(methodName: string): never {
     LoggerProxy.error(`Unsupported operation`, {
       module: 'TASK',
       method: methodName,

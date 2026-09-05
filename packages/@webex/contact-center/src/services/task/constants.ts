@@ -30,6 +30,28 @@ export const CAMPAIGN_PREVIEW_SKIP = '/skip';
 export const CAMPAIGN_PREVIEW_REMOVE = '/remove';
 /** 80-second timeout for accepting preview contact (outbound call setup takes longer than default 20s) */
 export const TIMEOUT_PREVIEW_ACCEPT = 80000;
+/** RTD result deadline; the initiating HTTP acknowledgement uses the 20-second service timeout. */
+export const AI_SUMMARY_DURATION_MS = 15000;
+export const AI_SUMMARY_REQUEST_CANCELLED = 'AI_SUMMARY_REQUEST_CANCELLED' as const;
+export const AI_SUMMARY_TASK_ERROR_CODES = {
+  INVALID_RESPONSE_PAYLOAD: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD',
+  INVALID_ACTION_TYPE: 'AI_SUMMARY_INVALID_ACTION_TYPE',
+  NOT_INITIALIZED: 'AI_SUMMARY_NOT_INITIALIZED',
+} as const;
+
+export const POST_CALL_SUMMARY_STATES = new Set(['DEFAULT', 'IGNORED', 'NOT_RECEIVED']);
+export const MID_CALL_SUMMARY_RECEIVED_STATES = new Set([
+  'DEFAULT',
+  'EXCLUDED',
+  'IGNORED',
+  'MID_CALL_CANCELLED',
+]);
+export const MID_CALL_SUMMARY_UNAVAILABLE_STATES = new Set([
+  'NOT_RECEIVED',
+  'MID_CALL_CANCELLED',
+  'IGNORED',
+]);
+
 export const TASK_MANAGER_FILE = 'taskManager';
 export const TASK_FILE = 'task';
 
@@ -93,6 +115,12 @@ export const METHODS = {
   SETUP_AUTO_WRAPUP_TIMER: 'setupAutoWrapupTimer',
   CANCEL_AUTO_WRAPUP_TIMER: 'cancelAutoWrapupTimer',
   REQUEST_REAL_TIME_TRANSCRIPTS: 'requestRealTimeTranscripts',
+  REQUEST_POST_CALL_SUMMARY: 'requestPostCallSummary',
+  SEND_POST_CALL_SUMMARY_RESPONSE: 'sendPostCallSummaryResponse',
+  REQUEST_MID_CALL_SUMMARY: 'requestMidCallSummary',
+  SEND_MID_CALL_SUMMARY_RESPONSE: 'sendMidCallSummaryResponse',
+  HANDLE_AI_SUMMARY_EVENT: 'handleAISummaryEvent',
+  CLEAR_AI_SUMMARY_STATE: 'clearAISummaryState',
 };
 
 export const TRANSCRIPT_EVENT_MAP = {

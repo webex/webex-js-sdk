@@ -15,10 +15,23 @@ import {
 class WebexRequest {
   private webex: WebexSDK;
   private static instance: WebexRequest;
+  private static instances = new WeakMap<WebexSDK, WebexRequest>();
 
   public static getInstance(options?: {webex: WebexSDK}): WebexRequest {
-    if (!WebexRequest.instance && options && options.webex) {
-      WebexRequest.instance = new WebexRequest(options);
+    if (options?.webex) {
+      const existingInstance = WebexRequest.instances.get(options.webex);
+
+      if (existingInstance) {
+        WebexRequest.instance = existingInstance;
+
+        return existingInstance;
+      }
+
+      const instance = new WebexRequest(options);
+      WebexRequest.instances.set(options.webex, instance);
+      WebexRequest.instance = instance;
+
+      return instance;
     }
 
     return WebexRequest.instance;
@@ -30,20 +43,26 @@ class WebexRequest {
   }
 
   public async request(options: {
-    service: string;
-    resource: string;
+    service?: string;
+    resource?: string;
+    uri?: string;
     method: HTTP_METHODS;
     body?: RequestBody;
     headers?: Record<string, string | null>;
+    addAuthHeader?: boolean;
+    timeout?: number;
   }): Promise<IHttpResponse> {
-    const {service, resource, method, body, headers} = options;
+    const {service, resource, uri, method, body, headers, addAuthHeader, timeout} = options;
 
     return this.webex.request({
-      service,
-      resource,
+      ...(service !== undefined ? {service} : {}),
+      ...(resource !== undefined ? {resource} : {}),
+      ...(uri !== undefined ? {uri} : {}),
       method,
       body,
       ...(headers ? {headers} : {}),
+      ...(addAuthHeader !== undefined ? {addAuthHeader} : {}),
+      ...(timeout !== undefined ? {timeout} : {}),
     });
   }
 

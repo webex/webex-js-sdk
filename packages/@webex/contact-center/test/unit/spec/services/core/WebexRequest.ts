@@ -39,7 +39,7 @@ describe('WebexRequest', () => {
     it('should send a request and return the response', async () => {
       const mockResponse: IHttpResponse = {
         statusCode: 200,
-        body: { message: 'Success' },
+        body: {message: 'Success'},
         method: 'POST',
         url: 'https://example.com/resource',
       };
@@ -50,7 +50,7 @@ describe('WebexRequest', () => {
         service: 'service',
         resource: 'resource',
         method: HTTP_METHODS.POST,
-        body: { key: 'value' },
+        body: {key: 'value'},
         headers: {'x-test-header': 'test-value'},
       });
 
@@ -59,7 +59,7 @@ describe('WebexRequest', () => {
         service: 'service',
         resource: 'resource',
         method: HTTP_METHODS.POST,
-        body: { key: 'value' },
+        body: {key: 'value'},
         headers: {'x-test-header': 'test-value'},
       });
     });
@@ -73,10 +73,68 @@ describe('WebexRequest', () => {
           service: 'service',
           resource: 'resource',
           method: HTTP_METHODS.POST,
-          body: { key: 'value' },
+          body: {key: 'value'},
         })
       ).rejects.toThrow('Request failed');
     });
+
+    it('should forward a full URI and authorization option', async () => {
+      const mockResponse: IHttpResponse = {
+        statusCode: 200,
+        body: {message: 'Success'},
+        method: 'POST',
+        url: 'https://example.com/resource',
+      };
+
+      mockRequest.mockResolvedValueOnce(mockResponse);
+
+      await webexRequest.request({
+        uri: 'https://example.com/resource',
+        method: HTTP_METHODS.POST,
+        addAuthHeader: true,
+        body: {key: 'value'},
+      });
+
+      expect(mockRequest).toHaveBeenCalledWith({
+        uri: 'https://example.com/resource',
+        method: HTTP_METHODS.POST,
+        body: {key: 'value'},
+        addAuthHeader: true,
+      });
+    });
+
+    it('should preserve explicitly provided empty routing options', async () => {
+      mockRequest.mockResolvedValueOnce({});
+
+      await webexRequest.request({
+        service: '',
+        resource: '',
+        uri: '',
+        method: HTTP_METHODS.GET,
+      });
+
+      expect(mockRequest).toHaveBeenCalledWith({
+        service: '',
+        resource: '',
+        uri: '',
+        method: HTTP_METHODS.GET,
+        body: undefined,
+      });
+    });
+  });
+
+  it('should keep separate instances for different injected Webex clients', async () => {
+    const secondWebex = {
+      request: jest.fn().mockResolvedValue({}),
+    } as unknown as WebexSDK;
+    const secondWebexRequest = WebexRequest.getInstance({webex: secondWebex});
+
+    expect(secondWebexRequest).not.toBe(webexRequest);
+
+    await secondWebexRequest.request({method: HTTP_METHODS.GET});
+
+    expect(secondWebex.request).toHaveBeenCalledTimes(1);
+    expect(mockRequest).not.toHaveBeenCalled();
   });
 
   describe('uploadLogs', () => {
@@ -84,21 +142,20 @@ describe('WebexRequest', () => {
     beforeEach(() => {
       // Mock the crypto.randomUUID function
       global.crypto = {
-        randomUUID: jest.fn().mockReturnValue("mocked-uuid-12345")
+        randomUUID: jest.fn().mockReturnValue('mocked-uuid-12345'),
       } as unknown as Crypto;
 
       mockMetricsManager = {
         trackEvent: jest.fn(),
         timeEvent: jest.fn(),
       };
-      
+
       jest.spyOn(MetricsManager, 'getInstance').mockReturnValue(mockMetricsManager);
-      
     });
 
     it('should upload logs and return the response', async () => {
-      const mockMetaData = { key: 'value' };
-      const mockResponse = { trackingid: '1234'};
+      const mockMetaData = {key: 'value'};
+      const mockResponse = {trackingid: '1234'};
 
       mockWebex.internal = {
         support: {
@@ -108,23 +165,27 @@ describe('WebexRequest', () => {
 
       const result = await webexRequest.uploadLogs(mockMetaData);
 
-      expect(result).toEqual({...mockResponse, feedbackId: "mocked-uuid-12345"});
+      expect(result).toEqual({...mockResponse, feedbackId: 'mocked-uuid-12345'});
       expect(LoggerProxy.info).toHaveBeenCalledWith(
         `Logs uploaded successfully with feedbackId: mocked-uuid-12345`,
         {module: WEBEX_REQUEST_FILE, method: 'uploadLogs'}
       );
       expect(mockMetricsManager.trackEvent).toBeCalledWith(
-        "Upload Logs Success", 
-        {feedbackId: "mocked-uuid-12345", trackingId: '1234'}, 
-        ["behavioral"]
+        'Upload Logs Success',
+        {feedbackId: 'mocked-uuid-12345', trackingId: '1234'},
+        ['behavioral']
       );
-      expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledWith({... mockMetaData, feedbackId: "mocked-uuid-12345"}, undefined, {type: 'diff'});
+      expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledWith(
+        {...mockMetaData, feedbackId: 'mocked-uuid-12345'},
+        undefined,
+        {type: 'diff'}
+      );
     });
 
     it('should log and throw an error if the upload fails', async () => {
-      const mockMetaData = { key: 'value' , correlationId: 'correlation-id' };
+      const mockMetaData = {key: 'value', correlationId: 'correlation-id'};
       const mockError = new Error('Upload failed');
-      mockError.stack = "My stack"
+      mockError.stack = 'My stack';
       mockWebex.internal = {
         support: {
           submitLogs: jest.fn().mockRejectedValueOnce(mockError),
@@ -132,14 +193,14 @@ describe('WebexRequest', () => {
       };
 
       await expect(webexRequest.uploadLogs(mockMetaData)).rejects.toThrow('Upload failed');
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `Error uploading logs: ${mockError}`,
-        {module: WEBEX_REQUEST_FILE, method: 'uploadLogs'}
-      );
+      expect(LoggerProxy.error).toHaveBeenCalledWith(`Error uploading logs: ${mockError}`, {
+        module: WEBEX_REQUEST_FILE,
+        method: 'uploadLogs',
+      });
       expect(mockMetricsManager.trackEvent).toBeCalledWith(
-        "Upload Logs Failed", 
-        {stack: "My stack", feedbackId: "mocked-uuid-12345", correlationId: 'correlation-id'}, 
-        ["behavioral"]
+        'Upload Logs Failed',
+        {stack: 'My stack', feedbackId: 'mocked-uuid-12345', correlationId: 'correlation-id'},
+        ['behavioral']
       );
     });
   });

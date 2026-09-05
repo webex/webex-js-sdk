@@ -2,337 +2,276 @@
 
 > **Legacy/reference-only.** Canonical SDD: [`metrics-spec.md`](metrics-spec.md). Use the package [manifest](../../../.sdd/manifest.json) and [`SPEC_INDEX.md`](../../../ai-docs/SPEC_INDEX.md) for routing; code and tests remain the behavioral referee.
 
-> **Purpose**: Technical documentation for the metrics collection, batching, and submission system within the Contact Center SDK.
+> **Purpose**: Technical documentation for the metrics collection, batching, timing, payload preparation, and submission system within the Contact Center SDK.
 
 ---
 
 ## Component Overview
 
-| Component                | File                    | Responsibility                                                                 |
-| ------------------------ | ----------------------- | ------------------------------------------------------------------------------ |
-| `MetricsManager`         | `MetricsManager.ts`     | Singleton that manages event queuing, timing, payload preparation, and submission |
-| `BehavioralEventTaxonomy`| `behavioral-events.ts`  | Maps metric event names to structured taxonomy for behavioral analytics         |
-| `METRIC_EVENT_NAMES`     | `constants.ts`          | Canonical constant object of all tracked metric event names                     |
-
----
+| Component                 | File                   | Responsibility                                                                    |
+| ------------------------- | ---------------------- | --------------------------------------------------------------------------------- |
+| `MetricsManager`          | `MetricsManager.ts`    | Singleton that manages event queuing, timing, payload preparation, and submission |
+| `BehavioralEventTaxonomy` | `behavioral-events.ts` | Maps metric event names to structured taxonomy for behavioral analytics           |
+| `METRIC_EVENT_NAMES`      | `constants.ts`         | Canonical constant object of tracked metric event names                           |
 
 ## File Structure
 
-```
+```text
 src/metrics/
-├── MetricsManager.ts       # Singleton metrics manager
-├── behavioral-events.ts    # Behavioral event taxonomy mapping
-├── constants.ts            # METRIC_EVENT_NAMES constants
-└── ai-docs/
-    ├── AGENTS.md           # Usage documentation (see PR #4762)
-    └── ARCHITECTURE.md     # This file
+|-- MetricsManager.ts       # Singleton metrics manager
+|-- behavioral-events.ts    # Behavioral event taxonomy mapping
+|-- constants.ts            # METRIC_EVENT_NAMES constants
+`-- ai-docs/
+    |-- AGENTS.md           # Usage documentation
+    `-- ARCHITECTURE.md     # This file
 ```
-
----
 
 ## Singleton Pattern
 
-`MetricsManager` uses a private constructor with a static `getInstance` factory:
+`MetricsManager` uses a private constructor with a static `getInstance`
+factory. The Webex SDK instance is bound once through `getInstance({webex})`;
+subsequent callers retrieve the same manager with `getInstance()`.
 
 ```typescript
-// MetricsManager.ts
-export default class MetricsManager {
-  private static instance: MetricsManager;
-  private constructor() {}
+const metrics = MetricsManager.getInstance({webex});
+const sameMetrics = MetricsManager.getInstance();
 
-  public static getInstance(options?: {webex: WebexSDK}): MetricsManager {
-    if (!MetricsManager.instance) {
-      MetricsManager.instance = new MetricsManager();
-    }
-    if (!MetricsManager.instance.webex && options?.webex) {
-      MetricsManager.instance.setWebex(options.webex);
-    }
-    return MetricsManager.instance;
-  }
-
-  public static resetInstance() {
-    MetricsManager.instance = undefined;
-  }
-}
+MetricsManager.resetInstance(); // tests only
 ```
 
-- The Webex SDK instance is set once via `setWebex()`, which listens for the `ready` event before flushing pending queues.
-- `resetInstance()` sets the singleton to `undefined`, allowing a fresh instance to be created. Primarily used in tests.
+- `setWebex(...)` marks the manager ready immediately when `webex.ready` is already true.
+- `setWebex(...)` also registers a `webex.once('ready', ...)` callback for queued startup events.
+- `resetInstance()` clears the singleton so tests can start from a clean manager.
 
----
+## MetricsManager Overview
 
-## Data Flow
-
-### Event Submission Flow
+`MetricsManager` is a singleton that queues and submits behavioral,
+operational, and business metrics. Existing Contact Center operations may use
+the `timeEvent(...)` plus `trackEvent(...)` pattern, where `timeEvent(...)`
+stores start time by metric key and `trackEvent(...)` attaches `duration_ms`.
 
 ```mermaid
 flowchart TD
-    A[cc.ts calls metricsManager.timeEvent] --> B[Store startTime + keys in runningEvents]
-    B --> C[Operation executes]
-    C --> D{Success or Failure?}
-    D -->|Success| E[cc.ts calls metricsManager.trackEvent with success name]
-    D -->|Failure| F[cc.ts calls metricsManager.trackEvent with failure name]
-    E --> G[addDurationIfTimed attaches duration_ms]
-    F --> G
-    G --> H[preparePayload cleans and enriches]
-    H --> I{Metric type?}
-    I -->|behavioral| J[Push to pendingBehavioralEvents]
-    I -->|operational| K[Push to pendingOperationalEvents]
-    I -->|business| L[Push to pendingBusinessEvents]
-    J --> M[submitPendingBehavioralEvents]
-    K --> N[submitPendingOperationalEvents]
-    L --> O[submitPendingBusinessEvents]
-    M --> P[webex.internal.newMetrics.submitBehavioralEvent]
-    N --> Q[webex.internal.newMetrics.submitOperationalEvent]
-    O --> R[webex.internal.newMetrics.submitBusinessEvent]
+  Time[timeEvent for existing operations] --> Store[runningEvents]
+  Track[trackEvent] --> Prepare[preparePayload]
+  Store --> Prepare
+  Prepare --> Queues[pending metric queues]
+  Queues --> Submit[webex internal metrics]
 ```
 
----
+## Event Submission Flow
 
-## Sequence Diagrams
+```mermaid
+flowchart TD
+  A[Caller obtains MetricsManager.getInstance] --> B[timeEvent stores startTime and key set]
+  B --> C[Operation executes]
+  C --> D{Success or failure}
+  D -->|Success| E[trackEvent success metric]
+  D -->|Failure| F[trackEvent failure metric]
+  E --> G[addDurationIfTimed attaches duration_ms]
+  F --> G
+  G --> H[preparePayload removes empty fields and normalizes keys]
+  H --> I{Metric service}
+  I -->|behavioral| J[pendingBehavioralEvents]
+  I -->|operational| K[pendingOperationalEvents]
+  I -->|business| L[pendingBusinessEvents]
+  J --> M[submitBehavioralEvent]
+  K --> N[submitOperationalEvent]
+  L --> O[submitBusinessEvent]
+```
 
-### Track Event with Timing
+## Initialization And Readiness
 
 ```mermaid
 sequenceDiagram
-    participant CC as ContactCenter (cc.ts)
-    participant MM as MetricsManager
-    participant NM as webex.internal.newMetrics
+  participant CC as ContactCenter
+  participant Metrics as MetricsManager
+  participant Webex as WebexSDK
 
-    CC->>MM: timeEvent([SUCCESS_KEY, FAILURE_KEY])
-    Note over MM: Store startTime + key set in runningEvents
-    CC->>CC: Execute operation (e.g., stationLogin)
-    Note over MM: trackEvent defaults to ['behavioral'] only if no metricServices specified
-    alt Success
-        CC->>MM: trackEvent(SUCCESS_KEY, payload, ['behavioral', 'operational', 'business'])
-    else Failure
-        CC->>MM: trackEvent(FAILURE_KEY, payload, ['behavioral', 'operational', 'business'])
-    end
-    MM->>MM: addDurationIfTimed → attach duration_ms
-    MM->>MM: preparePayload → clean empty fields, add tabHidden
-    loop For each metric type
-        MM->>MM: Push to pending queue
-        alt readyToSubmitEvents
-            MM->>NM: submit[Behavioral|Operational|Business]Event
-        else not ready
-            Note over MM: Events stay queued until SDK ready
-        end
-    end
+  CC->>Metrics: MetricsManager.getInstance({webex})
+  Metrics->>Metrics: create singleton if needed
+  Metrics->>Metrics: setWebex(webex)
+  opt webex.ready is true
+    Metrics->>Metrics: setReadyToSubmitEvents()
+    Metrics->>Metrics: submitPendingEvents()
+  end
+  Metrics->>Webex: once('ready', callback)
+  Webex-->>Metrics: ready
+  Metrics->>Metrics: setReadyToSubmitEvents()
+  Metrics->>Metrics: submitPendingEvents()
 ```
 
-### Initialization and Readiness
+## Event Queuing And Submission
 
-```mermaid
-sequenceDiagram
-    participant CC as ContactCenter
-    participant MM as MetricsManager
-    participant Webex as WebexSDK
+MetricsManager maintains three independent queues:
 
-    CC->>MM: getInstance({webex})
-    MM->>MM: Create singleton (if needed)
-    MM->>MM: setWebex(webex)
-    opt webex.ready === true
-        MM->>MM: setReadyToSubmitEvents()
-        MM->>MM: submitPendingEvents()
-    end
-    MM->>Webex: webex.once('ready', callback)
-    Note over MM: 'ready' listener is always registered
-    Webex-->>MM: 'ready' event fires
-    MM->>MM: setReadyToSubmitEvents()
-    MM->>MM: submitPendingEvents()
-```
+| Queue                      | Type        | Submitted via                                      | Name transform                                                       | Extra metadata                    |
+| -------------------------- | ----------- | -------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------- |
+| `pendingBehavioralEvents`  | behavioral  | `webex.internal.newMetrics.submitBehavioralEvent`  | taxonomy fields from `behavioral-events.ts`                          | none                              |
+| `pendingOperationalEvents` | operational | `webex.internal.newMetrics.submitOperationalEvent` | `WXCC_SDK_` prefix plus uppercase, underscore-normalized metric name | none                              |
+| `pendingBusinessEvents`    | business    | `webex.internal.newMetrics.submitBusinessEvent`    | same as operational                                                  | `metadata: {appType: 'wxcc_sdk'}` |
 
----
+Submission guards:
 
-## Behavioral Event Taxonomy
+- `readyToSubmitEvents` is false until the Webex SDK is ready.
+- `submittingEvents` prevents concurrent queue flushes.
+- `metricsDisabled` drops new metrics and clears pending queues when enabled.
 
-Each metric event name maps to a `BehavioralEventTaxonomy` with four fields:
-
-```typescript
-type BehavioralEventTaxonomy = {
-  product: MetricEventProduct;  // Always PRODUCT_NAME ('wxcc_sdk')
-  agent: MetricEventAgent;      // 'user' or 'service'
-  target: string;               // e.g., 'station_login', 'task_accept'
-  verb: MetricEventVerb;        // 'complete' for success, 'fail' for failure
-};
-```
-
-The final behavioral event name is constructed as: `{product}.{agent}.{target}.{verb}`
-
-Example: `wxcc_sdk.user.station_login.complete`
-
-The mapping is defined in `behavioral-events.ts` via `eventTaxonomyMap` and accessed through `getEventTaxonomy(name)`.
-
----
-
-## Event Queuing and Submission
-
-### Three Parallel Queues
-
-MetricsManager maintains three independent pending event queues:
-
-| Queue                       | Type         | Submitted Via                                      | Name Transform                                  | Extra Metadata                   |
-| --------------------------- | ------------ | -------------------------------------------------- | ----------------------------------------------- | -------------------------------- |
-| `pendingBehavioralEvents`   | behavioral   | `webex.internal.newMetrics.submitBehavioralEvent`   | Taxonomy-based (`{product}.{agent}.{target}.{verb}`) | None                             |
-| `pendingOperationalEvents`  | operational  | `webex.internal.newMetrics.submitOperationalEvent`  | `WXCC_SDK_` prefix + uppercase (e.g. `WXCC_SDK_STATION_LOGIN_SUCCESS`) | None                             |
-| `pendingBusinessEvents`     | business     | `webex.internal.newMetrics.submitBusinessEvent`     | `WXCC_SDK_` prefix + uppercase (same as operational) | `metadata: {appType: 'wxcc_sdk'}` |
-
-### Submission Guards
-
-- **readyToSubmitEvents**: Set to `true` only after `webex.once('ready')` fires. Events queue until then.
-- **submittingEvents**: Lock flag to prevent concurrent `submitPendingEvents()` calls.
-- **metricsDisabled**: When `true`, all `track*` methods return early and `clearPendingEvents()` empties all queues.
-
----
-
-## Timing Pattern (`timeEvent` / `trackEvent`)
+## Timing Pattern
 
 ```mermaid
 flowchart LR
-    A[timeEvent keys] --> B[runningEvents stores startTime + key Set]
-    B --> C[trackEvent called with one of the keys]
-    C --> D[addDurationIfTimed matches key]
-    D --> E[Calculates duration_ms = now - startTime]
-    E --> F[Removes all keys for that operation]
-    F --> G[Attaches duration_ms to payload]
+  A[timeEvent keys] --> B[runningEvents stores startTime and key Set]
+  B --> C[trackEvent called with one key]
+  C --> D[addDurationIfTimed matches key]
+  D --> E[duration_ms equals Date.now minus startTime]
+  E --> F[delete stored timing entry]
+  F --> G[attach duration_ms to payload]
 ```
 
-Usage pattern from `cc.ts`:
+Standard callers time both terminal names before the operation. Whichever
+terminal metric is tracked consumes the shared duration.
 
 ```typescript
-// Before operation
-this.metricsManager.timeEvent([
+const metrics = MetricsManager.getInstance();
+
+metrics.timeEvent([
   METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
   METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
 ]);
 
-// On success
-this.metricsManager.trackEvent(
+metrics.trackEvent(
   METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
-  { ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp) },
-  ['behavioral', 'operational', 'business']
-);
-
-// On failure
-this.metricsManager.trackEvent(
-  METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
-  { ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure) },
+  {...MetricsManager.getCommonTrackingFieldForAQMResponse(response)},
   ['behavioral', 'operational', 'business']
 );
 ```
 
----
-
 ## Payload Preparation
 
-`preparePayload()` processes every event payload before submission:
+`preparePayload(...)` runs before submission:
 
-1. **Removes empty/null/undefined fields** — strips keys with `undefined`, `null`, `''`, any arrays, or empty objects
-2. **Converts spaces to underscores** — `spacesToUnderscore()` applied to all key names
-3. **Adds common metadata** — appends `tabHidden: document.hidden` in browser environments
+1. Removes values that are `undefined`, `null`, `''`, arrays, or empty objects.
+2. Converts payload keys with spaces to underscore-separated names.
+3. Adds `tabHidden: document.hidden` in browser environments.
 
----
+## Behavioral Event Taxonomy
 
-## Error Handling Strategy
+Behavioral metric names map to `BehavioralEventTaxonomy`:
 
-MetricsManager does not throw errors to callers. Instead:
+```typescript
+type BehavioralEventTaxonomy = {
+  product: MetricEventProduct;
+  agent: MetricEventAgent;
+  target: string;
+  verb: MetricEventVerb;
+};
+```
 
-- Invalid metric types are logged via `LoggerProxy.error`
-- Empty `timeEvent` key arrays are logged and ignored
-- Disabled state (`metricsDisabled`) silently drops events
-- The `submittingEvents` lock prevents race conditions during concurrent submissions
+The final behavioral event is represented as `{product}.{agent}.{target}.{verb}`.
+The mapping is defined in `behavioral-events.ts` and read through
+`getEventTaxonomy(name)`.
 
----
+Events without behavioral taxonomy, including `WEBSOCKET_DEREGISTER_SUCCESS`,
+`WEBSOCKET_DEREGISTER_FAIL`, `WEBSOCKET_EVENT_RECEIVED`, `AI_ASSISTANT_*`, and
+`AI_SUMMARY_*`, must be sent only to services they actually own. AI summary
+uses operational metrics explicitly.
 
 ## Common Tracking Field Extraction
 
-Two static helpers extract standardized fields from AQM responses for metric payloads:
+`MetricsManager.getCommonTrackingFieldForAQMResponse(response)` extracts
+`agentId`, `agentSessionId`, `teamId`, `siteId`, `orgId`, `eventType`,
+`trackingId`, and `notifTrackingId`.
 
-### `getCommonTrackingFieldForAQMResponse(response)`
+`MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failureResponse)`
+extracts `agentId`, `trackingId`, `notifTrackingId`, `orgId`, `failureType`,
+`failureReason`, and `reasonCode`.
 
-Extracts: `agentId`, `agentSessionId`, `teamId`, `siteId`, `orgId`, `eventType`, `trackingId`, `notifTrackingId`
+## AI Summary Timing Architecture
 
-### `getCommonTrackingFieldForAQMResponseFailed(failureResponse)`
+AI summary operations do not use the singleton timing store. Task captures
+`operationStartedAt = Date.now()` as the first public-method action before any
+validation, configuration check, or correlation lookup. It then passes a
+calculated `duration_ms` in the one final `trackEvent(...)`.
 
-Extracts: `agentId`, `trackingId`, `notifTrackingId`, `orgId`, `failureType`, `failureReason`, `reasonCode`
+```mermaid
+sequenceDiagram
+  actor App
+  participant Task
+  participant Metrics as MetricsManager
 
----
+  App->>Task: summary method
+  Task->>Task: operationStartedAt = Date.now() before validation
+  Task->>Task: validate, HTTP, RTD/result as applicable
+  alt success
+    Task->>Metrics: trackEvent(success, {duration_ms, ...})
+  else failure
+    Task->>Metrics: trackEvent(failure, {duration_ms, failureCode, ...})
+  end
+```
 
-## Metric Event Names
+This keeps overlapping invocations independent. An overlap failure emits its own
+bounded metric with `AI_SUMMARY_REQUEST_ALREADY_PENDING` before the accepted
+first request's later final metric, without restarting or consuming the first
+request's duration.
 
-All event names are defined in `constants.ts` as `METRIC_EVENT_NAMES`. Events follow a `{Domain} {Action} {Success|Failed}` naming convention:
+## AI Summary Metric Ownership
 
-| Category               | Success Event                          | Failure Event                          |
-| ---------------------- | -------------------------------------- | -------------------------------------- |
-| Station Login          | `STATION_LOGIN_SUCCESS`                | `STATION_LOGIN_FAILED`                 |
-| Station Logout         | `STATION_LOGOUT_SUCCESS`               | `STATION_LOGOUT_FAILED`                |
-| Station Relogin        | `STATION_RELOGIN_SUCCESS`              | `STATION_RELOGIN_FAILED`               |
-| State Change           | `AGENT_STATE_CHANGE_SUCCESS`           | `AGENT_STATE_CHANGE_FAILED`            |
-| Buddy Agents           | `FETCH_BUDDY_AGENTS_SUCCESS`           | `FETCH_BUDDY_AGENTS_FAILED`            |
-| WebSocket Register     | `WEBSOCKET_REGISTER_SUCCESS`           | `WEBSOCKET_REGISTER_FAILED`            |
-| Task Accept            | `TASK_ACCEPT_SUCCESS`                  | `TASK_ACCEPT_FAILED`                   |
-| Task Decline           | `TASK_DECLINE_SUCCESS`                 | `TASK_DECLINE_FAILED`                  |
-| Task End               | `TASK_END_SUCCESS`                     | `TASK_END_FAILED`                      |
-| Task Wrapup            | `TASK_WRAPUP_SUCCESS`                  | `TASK_WRAPUP_FAILED`                   |
-| Task Hold              | `TASK_HOLD_SUCCESS`                    | `TASK_HOLD_FAILED`                     |
-| Task Resume            | `TASK_RESUME_SUCCESS`                  | `TASK_RESUME_FAILED`                   |
-| Task Consult Start     | `TASK_CONSULT_START_SUCCESS`           | `TASK_CONSULT_START_FAILED`            |
-| Task Consult End       | `TASK_CONSULT_END_SUCCESS`             | `TASK_CONSULT_END_FAILED`              |
-| Task Transfer          | `TASK_TRANSFER_SUCCESS`                | `TASK_TRANSFER_FAILED`                 |
-| Task Resume Recording  | `TASK_RESUME_RECORDING_SUCCESS`        | `TASK_RESUME_RECORDING_FAILED`         |
-| Task Pause Recording   | `TASK_PAUSE_RECORDING_SUCCESS`         | `TASK_PAUSE_RECORDING_FAILED`          |
-| Task Accept Consult    | `TASK_ACCEPT_CONSULT_SUCCESS`          | `TASK_ACCEPT_CONSULT_FAILED`           |
-| Task Auto Answer       | `TASK_AUTO_ANSWER_SUCCESS`             | `TASK_AUTO_ANSWER_FAILED`              |
-| Conference Start       | `TASK_CONFERENCE_START_SUCCESS`        | `TASK_CONFERENCE_START_FAILED`         |
-| Conference End         | `TASK_CONFERENCE_END_SUCCESS`          | `TASK_CONFERENCE_END_FAILED`           |
-| Conference Transfer    | `TASK_CONFERENCE_TRANSFER_SUCCESS`     | `TASK_CONFERENCE_TRANSFER_FAILED`      |
-| Conference Exit        | `TASK_CONFERENCE_EXIT_SUCCESS`         | `TASK_CONFERENCE_EXIT_FAILED`          |
-| Switch Call            | `TASK_SWITCH_CALL_SUCCESS`             | `TASK_SWITCH_CALL_FAILED`              |
-| Outdial                | `TASK_OUTDIAL_SUCCESS`                 | `TASK_OUTDIAL_FAILED`                  |
-| Upload Logs            | `UPLOAD_LOGS_SUCCESS`                  | `UPLOAD_LOGS_FAILED`                   |
-| WebSocket Deregister   | `WEBSOCKET_DEREGISTER_SUCCESS`         | `WEBSOCKET_DEREGISTER_FAIL`            |
-| Device Type Update     | `AGENT_DEVICE_TYPE_UPDATE_SUCCESS`     | `AGENT_DEVICE_TYPE_UPDATE_FAILED`      |
-| EntryPoint             | `ENTRYPOINT_FETCH_SUCCESS`             | `ENTRYPOINT_FETCH_FAILED`              |
-| AddressBook            | `ADDRESSBOOK_FETCH_SUCCESS`            | `ADDRESSBOOK_FETCH_FAILED`             |
-| Queue                  | `QUEUE_FETCH_SUCCESS`                  | `QUEUE_FETCH_FAILED`                   |
-| Outdial ANI Entries    | `OUTDIAL_ANI_EP_FETCH_SUCCESS`         | `OUTDIAL_ANI_EP_FETCH_FAILED`          |
+| Owner                  | Metrics                                                                                                                                                                                                                                                                                                    |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Task`                 | `AI_SUMMARY_GET_POST_CALL_SUCCESS`, `AI_SUMMARY_GET_POST_CALL_FAILED`, `AI_SUMMARY_GET_MID_CALL_SUCCESS`, `AI_SUMMARY_GET_MID_CALL_FAILED`, `AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_POST_CALL_RESPONSE_FAILED`, `AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_MID_CALL_RESPONSE_FAILED` |
+| `TaskManager`          | `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED`, `AI_SUMMARY_INBOUND_EVENT_DROPPED`                                                                                                                                                                                                                               |
+| `ApiAIAssistant`       | No Task operation metric ownership; adapter tests prove bounded transport and privacy.                                                                                                                                                                                                                     |
+| `RtdRequestResolver` | No operation metric ownership; owns generic pending HTTP-to-RTD request timeout/cancellation state.                                                                                                                                                                                                                       |
 
-Special events (no success/failure pair):
-- `AGENT_RONA` — has behavioral taxonomy (`service.agent_rona.set`)
-- `AGENT_CONTACT_ASSIGN_FAILED` — has behavioral taxonomy (`service.agent_contact_assign.fail`)
-- `AGENT_INVITE_FAILED` — has behavioral taxonomy (`service.agent_invite.fail`)
-- `WEBSOCKET_EVENT_RECEIVED` — **no** behavioral taxonomy (not in `eventTaxonomyMap`)
+Request success is withheld until both the HTTP acknowledgement and matching RTD
+result fulfill. Response success is recorded when bounded HTTP acknowledgement
+fulfills because responses have no RTD result.
 
-Events **without** behavioral taxonomy (not in `eventTaxonomyMap`): `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, `WEBSOCKET_EVENT_RECEIVED`
+## Contract Boundary
 
----
+This architecture owns timing isolation and metric producer ownership. All
+emitted identifiers must be declared in `metrics/constants.ts`, which is the
+source of truth for the literals themselves.
 
-## Troubleshooting
+Exact AI-summary event names, owners, and success conditions are tabulated in
+[AGENTS.md — AI Summary Events](./AGENTS.md#ai-summary-events). In summary:
 
-### Issue: Metrics not being submitted
+- Task emits exactly one final success or failure event per public summary
+  operation — `AI_SUMMARY_GET_POST_CALL_*`, `AI_SUMMARY_GET_MID_CALL_*`,
+  `AI_SUMMARY_POST_CALL_RESPONSE_*`, and `AI_SUMMARY_MID_CALL_RESPONSE_*`.
+- TaskManager owns `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED` and
+  `AI_SUMMARY_INBOUND_EVENT_DROPPED`, the latter emitted once per terminal drop
+  path (unparseable, malformed envelope, unknown event, invalid payload,
+  late-or-uncorrelated, sdk-deregistered, ambiguous receiver, receiver-buffer
+  expired).
+- Failure metrics carry only a bounded `failureCode`.
 
-**Cause**: Webex SDK not yet ready when `trackEvent` is called
+## Privacy Boundary
 
-**Solution**: Events are automatically queued in `pending*Events` arrays and flushed once `webex.once('ready')` fires. Verify the SDK is initializing correctly.
+MetricsManager receives only upstream-sanitized, bounded AI-summary metadata.
 
-### Issue: Duration not attached to metric
+**Allowed**: bounded operation and event names, safe identifiers, counters,
+state, feedback, action type, validation outcomes, and bounded error codes.
 
-**Cause**: `timeEvent` was not called before `trackEvent`, or the event name does not match any key in `runningEvents`
+**Forbidden**: summary text, human-authored section keys or values, Adaptive
+Card bodies, agent names, raw envelopes or payloads, original HTTP error
+messages, stacks, request options, response bodies, details, and causes.
 
-**Solution**: Ensure `timeEvent([SUCCESS_KEY, FAILURE_KEY])` is called before the operation, and that the exact `METRIC_EVENT_NAMES` constant is used in both calls.
+## Error Handling Strategy
 
-### Issue: Metrics silently dropped
+MetricsManager does not throw to metric callers:
 
-**Cause**: `metricsDisabled` is set to `true`
+- Invalid metric services are logged through `LoggerProxy.error`.
+- Empty `timeEvent` key arrays are logged and ignored.
+- Disabled metrics silently drop new events.
+- Queues retain events until readiness and the submit lock prevents overlapping flushes.
 
-**Solution**: Check if `setMetricsDisabled(true)` was called. This clears all pending queues and causes all `track*` methods to return early.
+## Verification
 
----
+The focused Jest suites assert metric ownership, duration isolation, and privacy:
 
-## Related Files
-
-- [MetricsManager.ts](../MetricsManager.ts) — Singleton metrics manager
-- [behavioral-events.ts](../behavioral-events.ts) — Event taxonomy mapping
-- [constants.ts](../constants.ts) — METRIC_EVENT_NAMES definitions
-- [cc.ts](../../cc.ts) — Main plugin class (primary consumer)
-- [constants.ts](../../constants.ts) — PRODUCT_NAME used in event prefixing
+- `test/unit/spec/services/task/Task.ts`
+- `test/unit/spec/services/task/TaskManager.ts`
+- `test/unit/spec/services/ApiAiAssistant.ts`
+- `test/unit/spec/cc.ts`

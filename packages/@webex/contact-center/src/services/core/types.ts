@@ -48,3 +48,21 @@ export type ConfEmpty<TRes, TErr> = () => Req<TRes, TErr>;
 export type Res<TRes, TReq> = (p: TReq, cbRes?: CbRes<TRes>) => Promise<TRes>;
 export type ResEmpty<TRes> = (cbRes?: CbRes<TRes>) => Promise<TRes>;
 export type CbRes<TRes> = (res: any) => void | TRes;
+
+/** @internal Request configuration for operations completed by an RTD event. */
+export type RtdRequestOptions = Readonly<{
+  ownerId?: string;
+  correlationId: string;
+  eventType: string;
+  timeoutMs: number;
+  createDuplicateRequestError: () => Error;
+  createTimeoutError: () => Error;
+  createCancellationError: () => Error;
+  sendRequest: () => Promise<unknown>;
+}>;
+
+/** @internal Promise handle returned while an RTD request is pending. */
+export type RtdRequestRegistration<T> = Readonly<{
+  requestToken: symbol;
+  result: Promise<T>;
+}>;

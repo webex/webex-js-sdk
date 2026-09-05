@@ -13,10 +13,20 @@ import {
   WebSocketMessage,
   TaskEventActions,
   EventContext,
+  BufferedReceivingSummary,
+  FeatureEnablementEventPayload,
+  GeneratedSummaryFlagsAccessor,
+  AISummaryRealtimeEventType,
+  InteractionFeatureEnablementEntry,
+  MidCallSummaryEventPayload,
+  MidCallSummaryReceivingAgentPayload,
+  MidCallSummarySections,
+  PostCallSummaryEventPayload,
+  PostCallSummarySections,
 } from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
-import {METHODS, TRANSCRIPT_EVENT_MAP} from './constants';
-import {CC_EVENTS, WrapupData} from '../config/types';
+import {AI_SUMMARY_DURATION_MS, METHODS, TRANSCRIPT_EVENT_MAP} from './constants';
+import {CC_EVENTS, CC_TASK_EVENTS, WrapupData} from '../config/types';
 import {ConfigFlags, LoginOption, AIAssistantEventType, AIAssistantEventName} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import {
@@ -25,6 +35,7 @@ import {
   isCampaignPreviewReservation,
   isSecondaryEpDnAgent,
   shouldAutoAnswerTask,
+  tryGetAISummaryCorrelation,
 } from './TaskUtils';
 import TaskFactory from './TaskFactory';
 import AnswerCallOnWebexService from '../AnswerCallOnWebexService';
@@ -34,6 +45,10 @@ import {TaskEvent, type TaskEventPayload} from './state-machine';
 import {MEDIA_TYPE_MAIN_CALL} from './state-machine/constants';
 import {normalizeTaskData} from './taskDataNormalizer';
 import {ApiAIAssistant} from '../ApiAiAssistant';
+import RtdRequestResolver from '../core/RtdRequestResolver';
+import MetricsManager from '../../metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../../metrics/constants';
+import {isNonEmptyString} from '../AISummaryUtils';
 
 const CC_EVENT_SET = new Set<CC_EVENTS>(Object.values(CC_EVENTS) as CC_EVENTS[]);
 
@@ -43,6 +58,111 @@ const MAIN_INTERACTION_CORRELATED_EVENTS = new Set<CC_EVENTS>([
 ]);
 
 const isCcEvent = (value: string): value is CC_EVENTS => CC_EVENT_SET.has(value as CC_EVENTS);
+
+const AI_SUMMARY_EVENT_SET = new Set<string>([
+  CC_TASK_EVENTS.POST_CALL_SUMMARY,
+  CC_TASK_EVENTS.MID_CALL_SUMMARY,
+  CC_TASK_EVENTS.FEATURE_ENABLEMENT,
+  CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+]);
+const AI_SUMMARY_INBOUND_TYPE_BY_EVENT = {
+  [CC_TASK_EVENTS.POST_CALL_SUMMARY]: 'POST_CALL_SUMMARY',
+  [CC_TASK_EVENTS.MID_CALL_SUMMARY]: 'MID_CALL_SUMMARY',
+} as const;
+
+type AISummaryInboundDropReason =
+  | 'unparseable'
+  | 'malformed-envelope'
+  | 'unknown-event'
+  | 'invalid-payload'
+  | 'late-or-uncorrelated'
+  | 'sdk-deregistered'
+  | 'ambiguous-receiver'
+  | 'receiver-buffer-expired';
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+const hasValidOptionalString = (payload: Record<string, unknown>, key: string): boolean =>
+  payload[key] === undefined || typeof payload[key] === 'string';
+
+const hasValidOptionalBoolean = (payload: Record<string, unknown>, key: string): boolean =>
+  payload[key] === undefined || typeof payload[key] === 'boolean';
+
+const hasValidOptionalNumber = (payload: Record<string, unknown>, key: string): boolean =>
+  payload[key] === undefined || (typeof payload[key] === 'number' && Number.isFinite(payload[key]));
+
+const hasValidOptionalRecord = (payload: Record<string, unknown>, key: string): boolean =>
+  payload[key] === undefined || isRecord(payload[key]);
+
+const hasValidOptionalSectionStrings = (
+  payload: Record<string, unknown>,
+  knownSectionKeys: readonly string[]
+): boolean =>
+  knownSectionKeys.every((key) => payload[key] === undefined || typeof payload[key] === 'string');
+
+const POST_CALL_SUMMARY_SECTION_KEYS = [
+  'initialContactReason',
+  'additionalContactReasons',
+  'additionalContext',
+  'keyActionsTaken',
+  'nextSteps',
+] as const satisfies readonly (keyof PostCallSummarySections)[];
+
+const MID_CALL_SUMMARY_SECTION_KEYS = [
+  'reasonForTransferOrConsult',
+  'additionalContext',
+  'keyActionsTaken',
+] as const satisfies readonly (keyof MidCallSummarySections)[];
+
+const COMMON_INITIATOR_SUMMARY_STRING_FIELDS = [
+  'adaptiveCardId',
+  'editAdaptiveCardId',
+  'languageCode',
+  'summaryText',
+  'resolution',
+] as const;
+
+const hasValidOptionalInitiatorSummaryCommonFields = (
+  payload: Record<string, unknown>,
+  sectionKeys: readonly string[]
+): boolean =>
+  COMMON_INITIATOR_SUMMARY_STRING_FIELDS.every((key) => hasValidOptionalString(payload, key)) &&
+  hasValidOptionalRecord(payload, 'adaptiveCard') &&
+  hasValidOptionalRecord(payload, 'editAdaptiveCard') &&
+  hasValidOptionalBoolean(payload, 'areTranscriptsAvailable') &&
+  hasValidOptionalNumber(payload, 'timestamp') &&
+  (payload.sections === undefined ||
+    (isRecord(payload.sections) && hasValidOptionalSectionStrings(payload.sections, sectionKeys)));
+
+const hasValidOptionalSuggestedWrapUpCodes = (payload: Record<string, unknown>): boolean => {
+  const suggestedWrapUpCodes = payload.suggestedWrapUpCodes;
+
+  if (suggestedWrapUpCodes === undefined) {
+    return true;
+  }
+
+  return (
+    Array.isArray(suggestedWrapUpCodes) &&
+    suggestedWrapUpCodes.every(
+      (wrapUpCode) => isRecord(wrapUpCode) && typeof wrapUpCode.name === 'string'
+    )
+  );
+};
+
+const isPostCallSummaryEventPayload = (
+  payload: Record<string, unknown>
+): payload is PostCallSummaryEventPayload =>
+  isNonEmptyString(payload.conversationId) &&
+  hasValidOptionalInitiatorSummaryCommonFields(payload, POST_CALL_SUMMARY_SECTION_KEYS) &&
+  hasValidOptionalSuggestedWrapUpCodes(payload) &&
+  hasValidOptionalString(payload, 'suggestedWrapUpCodesMessage');
+
+const isMidCallSummaryEventPayload = (
+  payload: Record<string, unknown>
+): payload is MidCallSummaryEventPayload =>
+  isNonEmptyString(payload.conversationId) &&
+  hasValidOptionalInitiatorSummaryCommonFields(payload, MID_CALL_SUMMARY_SECTION_KEYS);
 
 /** @internal */
 export default class TaskManager extends EventEmitter {
@@ -56,15 +176,24 @@ export default class TaskManager extends EventEmitter {
   private taskCollection: Record<TaskId, ITask>;
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
-  private rtdWebSocketManager: WebSocketManager;
   // eslint-disable-next-line no-use-before-define
   private static taskManager: TaskManager;
   private configFlags?: ConfigFlags;
   private wrapupData: WrapupData;
   private agentId: string;
+  private agentName: string;
   private webRtcEnabled: boolean;
   private answerCallOnWebexService?: AnswerCallOnWebexService;
   private apiAIAssistant?: ApiAIAssistant;
+  private metricsManager: MetricsManager;
+  private rtdRequestResolver: RtdRequestResolver;
+  private receivingSummaryBuffer = new Map<string, BufferedReceivingSummary>();
+  private interactionFeatureEnablement = new Map<string, InteractionFeatureEnablementEntry>();
+  private readonly featureEnablementDeliveredTasks = new WeakSet<ITask>();
+  private aiSummaryInboundActive = true;
+  private readonly getGeneratedSummaryFlags: GeneratedSummaryFlagsAccessor = () =>
+    this.configFlags?.aiFeature?.generatedSummaries;
+
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
    * @param webCallingService - Webrtc Service Layer
@@ -74,52 +203,463 @@ export default class TaskManager extends EventEmitter {
     apiAIAssistant: ApiAIAssistant,
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
-    webSocketManager: WebSocketManager,
-    rtdWebSocketManager: WebSocketManager
+    webSocketManager: WebSocketManager
   ) {
     super();
     this.apiAIAssistant = apiAIAssistant;
     this.contact = contact;
     this.webCallingService = webCallingService;
     this.webSocketManager = webSocketManager;
-    this.rtdWebSocketManager = rtdWebSocketManager;
     this.taskCollection = {};
     this.webRtcEnabled = false;
+    this.metricsManager = MetricsManager.getInstance();
+    this.rtdRequestResolver = new RtdRequestResolver();
 
     this.registerTaskListeners();
     this.registerIncomingCallEvent();
   }
 
   public handleRealtimeWebsocketEvent(event: string) {
+    let payload: unknown;
+
     try {
-      const payload = JSON.parse(event);
-
-      const interactionId = payload?.data?.data?.conversationId;
-      if (!interactionId) return;
-
-      const task = this.taskCollection[interactionId];
-      if (!task) {
-        LoggerProxy.info(`Realtime transcription task not found`, {
-          module: TASK_MANAGER_FILE,
-          method: METHODS.HANDLE_REAL_TIME_WEBSOCKET_EVENT,
-          interactionId,
-        });
-
-        return;
-      }
-
-      switch (payload.type) {
-        case CC_EVENTS.REAL_TIME_TRANSCRIPTION:
-        case CC_EVENTS.SUGGESTED_RESPONSE:
-          task.emit(payload.type, payload.data);
-          break;
-      }
+      payload = JSON.parse(event);
     } catch (error) {
+      this.trackAISummaryInboundDrop('unparseable', 'unknown');
       LoggerProxy.error('Failed to parse RTD WebSocket message', {
         module: TASK_MANAGER_FILE,
         method: METHODS.HANDLE_REAL_TIME_WEBSOCKET_EVENT,
-        error,
+        data: {reason: 'unparseable', error},
       });
+
+      return;
+    }
+
+    try {
+      this.dispatchRealtimeWebsocketPayload(payload);
+    } catch {
+      this.logRealtimeDispatchFailure(payload);
+    }
+  }
+
+  private dispatchRealtimeWebsocketPayload(payload: unknown): void {
+    if (this.isAISummaryRealtimeFrame(payload)) {
+      this.handleAISummaryEvent(payload);
+
+      return;
+    }
+
+    if (this.isPossibleAISummaryRealtimeFrame(payload)) {
+      this.trackAISummaryInboundDrop('unknown-event', this.getRealtimeEventType(payload));
+
+      return;
+    }
+
+    if (!isRecord(payload)) {
+      return;
+    }
+
+    const interactionId = this.getRealtimeConversationId(payload);
+    if (!interactionId) return;
+
+    const task = this.taskCollection[interactionId];
+    if (!task) {
+      LoggerProxy.info(`Realtime transcription task not found`, {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.HANDLE_REAL_TIME_WEBSOCKET_EVENT,
+        interactionId,
+      });
+
+      return;
+    }
+
+    switch (payload.type) {
+      case CC_EVENTS.REAL_TIME_TRANSCRIPTION:
+      case CC_EVENTS.SUGGESTED_RESPONSE:
+        task.emit(payload.type, payload.data);
+        break;
+      default:
+        break;
+    }
+  }
+
+  private getRealtimeEventType(payload: unknown): string {
+    if (isRecord(payload) && isNonEmptyString(payload.type)) {
+      return payload.type;
+    }
+
+    return 'unknown';
+  }
+
+  private getRealtimeConversationId(payload: unknown): string | undefined {
+    if (!isRecord(payload) || !isRecord(payload.data) || !isRecord(payload.data.data)) {
+      return undefined;
+    }
+
+    return isNonEmptyString(payload.data.data.conversationId)
+      ? payload.data.data.conversationId
+      : undefined;
+  }
+
+  private removeTimedAISummaryEntry<T extends {timeoutId?: ReturnType<typeof setTimeout>}>(
+    entries: Map<string, T>,
+    key: string
+  ): T | undefined {
+    const entry = entries.get(key);
+
+    if (!entry) {
+      return undefined;
+    }
+
+    if (entry.timeoutId) {
+      clearTimeout(entry.timeoutId);
+    }
+
+    entries.delete(key);
+
+    return entry;
+  }
+
+  private logRealtimeDispatchFailure(payload: unknown): void {
+    const conversationId = this.getRealtimeConversationId(payload);
+
+    LoggerProxy.error('Failed to dispatch RTD WebSocket message', {
+      module: TASK_MANAGER_FILE,
+      method: METHODS.HANDLE_REAL_TIME_WEBSOCKET_EVENT,
+      data: {
+        reason: 'dispatch-error',
+        eventType: this.getRealtimeEventType(payload),
+        ...(conversationId ? {conversationId} : {}),
+      },
+    });
+  }
+
+  private isAISummaryRealtimeFrame(payload: unknown): payload is {
+    type: AISummaryRealtimeEventType;
+    data?: {data?: unknown};
+  } {
+    return (
+      isRecord(payload) &&
+      typeof payload.type === 'string' &&
+      AI_SUMMARY_EVENT_SET.has(payload.type)
+    );
+  }
+
+  private isPossibleAISummaryRealtimeFrame(payload: unknown): payload is {type: string} {
+    return (
+      isRecord(payload) &&
+      typeof payload.type === 'string' &&
+      (payload.type.includes('SUMMARY') || payload.type.includes('FEATURE_ENABLEMENT'))
+    );
+  }
+
+  private handleAISummaryEvent(payload: {
+    type: AISummaryRealtimeEventType;
+    data?: {data?: unknown};
+  }): void {
+    const eventType = payload.type;
+
+    if (!this.aiSummaryInboundActive) {
+      this.trackAISummaryInboundDrop('sdk-deregistered', eventType);
+
+      return;
+    }
+
+    const innerPayload = payload?.data?.data;
+
+    if (eventType === CC_TASK_EVENTS.FEATURE_ENABLEMENT) {
+      this.handleFeatureEnablementEvent(isRecord(innerPayload) ? innerPayload : {});
+
+      return;
+    }
+
+    if (!innerPayload || typeof innerPayload !== 'object' || Array.isArray(innerPayload)) {
+      this.trackAISummaryInboundDrop('malformed-envelope', eventType);
+
+      return;
+    }
+
+    switch (eventType) {
+      case CC_TASK_EVENTS.POST_CALL_SUMMARY:
+        this.handleInitiatorSummaryEvent(
+          eventType,
+          innerPayload as Record<string, unknown>,
+          isPostCallSummaryEventPayload
+        );
+        break;
+
+      case CC_TASK_EVENTS.MID_CALL_SUMMARY:
+        this.handleInitiatorSummaryEvent(
+          eventType,
+          innerPayload as Record<string, unknown>,
+          isMidCallSummaryEventPayload
+        );
+        break;
+
+      case CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT:
+        this.handleReceivingAgentSummaryEvent(innerPayload as Record<string, unknown>);
+        break;
+
+      default:
+        this.trackAISummaryInboundDrop('unknown-event', String(eventType));
+    }
+  }
+
+  private handleFeatureEnablementEvent(payload: Record<string, unknown>): void {
+    const validationOutcome = this.validateFeatureEnablementPayload(payload);
+
+    if (validationOutcome !== 'valid') {
+      this.trackFeatureEnablementReceived({validationOutcome});
+
+      return;
+    }
+
+    const featurePayload = payload as FeatureEnablementEventPayload;
+    const matchingTask = Object.values(this.taskCollection).find((task) => {
+      const correlation = this.getAISummaryCorrelationForTask(task, 'feature-presence-scan');
+
+      return correlation?.interactionId === featurePayload.interactionId;
+    });
+
+    this.trackFeatureEnablementReceived({
+      validationOutcome,
+      postCallEnabled:
+        featurePayload.postCallEnabled === undefined ? 'absent' : featurePayload.postCallEnabled,
+      midCallEnabled:
+        featurePayload.midCallEnabled === undefined ? 'absent' : featurePayload.midCallEnabled,
+    });
+    this.setFeatureEnablement(featurePayload, matchingTask !== undefined);
+
+    if (matchingTask) {
+      this.featureEnablementDeliveredTasks.add(matchingTask);
+      matchingTask.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featurePayload);
+    }
+  }
+
+  private validateFeatureEnablementPayload(payload: Record<string, unknown>): 'valid' | 'invalid' {
+    const actionTimestamp = payload.actionTimestamp;
+    const hasInvalidPostCall =
+      payload.postCallEnabled !== undefined && typeof payload.postCallEnabled !== 'boolean';
+    const hasInvalidMidCall =
+      payload.midCallEnabled !== undefined && typeof payload.midCallEnabled !== 'boolean';
+    const hasInvalidTimestamp =
+      actionTimestamp !== undefined &&
+      (typeof actionTimestamp !== 'number' ||
+        !Number.isFinite(actionTimestamp) ||
+        actionTimestamp < 0);
+
+    if (
+      !isNonEmptyString(payload.interactionId) ||
+      hasInvalidPostCall ||
+      hasInvalidMidCall ||
+      hasInvalidTimestamp
+    ) {
+      return 'invalid';
+    }
+
+    return 'valid';
+  }
+
+  private handleInitiatorSummaryEvent(
+    eventType: typeof CC_TASK_EVENTS.POST_CALL_SUMMARY | typeof CC_TASK_EVENTS.MID_CALL_SUMMARY,
+    payload: Record<string, unknown>,
+    isValidPayload: (payload: Record<string, unknown>) => boolean
+  ): void {
+    if (!isValidPayload(payload)) {
+      this.trackAISummaryInboundDrop('invalid-payload', eventType);
+
+      return;
+    }
+
+    const result = this.rtdRequestResolver.resolve(
+      AI_SUMMARY_INBOUND_TYPE_BY_EVENT[eventType],
+      payload.conversationId as string,
+      payload
+    );
+
+    if (result === 'not-found') {
+      this.trackAISummaryInboundDrop('late-or-uncorrelated', eventType, {
+        conversationId: payload.conversationId as string,
+      });
+    }
+  }
+
+  private handleReceivingAgentSummaryEvent(payload: Record<string, unknown>): void {
+    if (!isNonEmptyString(payload.conversationId) || !isNonEmptyString(payload.summaryText)) {
+      this.trackAISummaryInboundDrop(
+        'invalid-payload',
+        CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT
+      );
+
+      return;
+    }
+
+    const matchingTasks = this.selectReceivingSummaryTasks(payload.conversationId);
+    this.routeReceivingSummary(payload as MidCallSummaryReceivingAgentPayload, matchingTasks);
+  }
+
+  private setFeatureEnablement(
+    payload: FeatureEnablementEventPayload,
+    hasRegisteredTask: boolean
+  ): void {
+    const interactionId = payload.interactionId;
+
+    this.clearFeatureEnablement(interactionId);
+
+    const entry: InteractionFeatureEnablementEntry = {payload};
+
+    if (!hasRegisteredTask) {
+      entry.timeoutId = setTimeout(() => {
+        this.removeTimedAISummaryEntry(this.interactionFeatureEnablement, interactionId);
+      }, AI_SUMMARY_DURATION_MS);
+    }
+
+    this.interactionFeatureEnablement.set(interactionId, entry);
+  }
+
+  private retainFeatureEnablement(interactionId: string): void {
+    const entry = this.interactionFeatureEnablement.get(interactionId);
+
+    if (entry?.timeoutId) {
+      clearTimeout(entry.timeoutId);
+      entry.timeoutId = undefined;
+    }
+  }
+
+  private clearFeatureEnablement(interactionId: string): void {
+    this.removeTimedAISummaryEntry(this.interactionFeatureEnablement, interactionId);
+  }
+
+  private emitReceivingSummary(
+    task: Pick<ITask, 'data' | 'emit'>,
+    payload: MidCallSummaryReceivingAgentPayload
+  ): void {
+    try {
+      task.emit(TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT, payload);
+    } catch {
+      LoggerProxy.error('AI summary receiver listener failed', {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.HANDLE_AI_SUMMARY_EVENT,
+        data: {
+          reason: 'consumer-listener-error',
+          eventType: CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+          conversationId: payload.conversationId,
+        },
+      });
+    }
+  }
+
+  private deliverReceivingSummary(
+    conversationId: string,
+    task: Pick<ITask, 'data' | 'emit'>,
+    payload: MidCallSummaryReceivingAgentPayload
+  ): void {
+    this.removeTimedAISummaryEntry(this.receivingSummaryBuffer, conversationId);
+    this.emitReceivingSummary(task, payload);
+  }
+
+  private dropAmbiguousReceivingSummary(conversationId: string): void {
+    this.removeTimedAISummaryEntry(this.receivingSummaryBuffer, conversationId);
+    this.trackAISummaryInboundDrop(
+      'ambiguous-receiver',
+      CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+      {conversationId}
+    );
+  }
+
+  private routeReceivingSummary(
+    payload: MidCallSummaryReceivingAgentPayload,
+    matchingTasks: ReadonlyArray<Pick<ITask, 'data' | 'emit'>>
+  ): void {
+    const conversationId = payload.conversationId;
+
+    if (matchingTasks.length === 1) {
+      this.deliverReceivingSummary(conversationId, matchingTasks[0], payload);
+
+      return;
+    }
+
+    if (matchingTasks.length === 0) {
+      this.removeTimedAISummaryEntry(this.receivingSummaryBuffer, conversationId);
+      const entry: BufferedReceivingSummary = {payload};
+
+      entry.timeoutId = setTimeout(() => {
+        const removed = this.removeTimedAISummaryEntry(this.receivingSummaryBuffer, conversationId);
+        if (removed) {
+          this.trackAISummaryInboundDrop(
+            'receiver-buffer-expired',
+            CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT,
+            {conversationId}
+          );
+        }
+      }, AI_SUMMARY_DURATION_MS);
+      this.receivingSummaryBuffer.set(conversationId, entry);
+
+      return;
+    }
+
+    this.dropAmbiguousReceivingSummary(conversationId);
+  }
+
+  private flushReceivingSummary(
+    conversationId: string,
+    matchingTasks: ReadonlyArray<Pick<ITask, 'data' | 'emit'>>
+  ): void {
+    const entry = this.receivingSummaryBuffer.get(conversationId);
+
+    if (!entry || matchingTasks.length === 0) {
+      return;
+    }
+
+    if (matchingTasks.length === 1) {
+      this.deliverReceivingSummary(conversationId, matchingTasks[0], entry.payload);
+
+      return;
+    }
+
+    this.dropAmbiguousReceivingSummary(conversationId);
+  }
+
+  private trackFeatureEnablementReceived(payload: Record<string, unknown>): void {
+    try {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED,
+        payload as never,
+        ['operational']
+      );
+    } catch {
+      // Metrics are best effort and must not affect inbound event handling.
+    }
+  }
+
+  private trackAISummaryInboundDrop(
+    dropReason: AISummaryInboundDropReason,
+    eventType: string,
+    extra?: {conversationId?: string}
+  ): void {
+    const metadata = {
+      eventType,
+      dropReason,
+      ...(isNonEmptyString(extra?.conversationId) ? {conversationId: extra.conversationId} : {}),
+    };
+
+    LoggerProxy.warn('AI summary inbound event dropped', {
+      module: TASK_MANAGER_FILE,
+      method: METHODS.HANDLE_AI_SUMMARY_EVENT,
+      data: {
+        reason: metadata.dropReason,
+        eventType: metadata.eventType,
+        ...(metadata.conversationId ? {conversationId: metadata.conversationId} : {}),
+      },
+    });
+    try {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
+        metadata,
+        ['operational']
+      );
+    } catch {
+      // Metrics are best effort and must not affect inbound event handling.
     }
   }
 
@@ -128,6 +668,138 @@ export default class TaskManager extends EventEmitter {
    */
   public setConfigFlags(configFlags: ConfigFlags) {
     this.configFlags = configFlags;
+    this.aiSummaryInboundActive = true;
+  }
+
+  public clearAISummaryState(): void {
+    this.aiSummaryInboundActive = false;
+    this.rtdRequestResolver.clearAll();
+    Array.from(this.receivingSummaryBuffer.keys()).forEach((conversationId) => {
+      this.removeTimedAISummaryEntry(this.receivingSummaryBuffer, conversationId);
+    });
+    Array.from(this.interactionFeatureEnablement.keys()).forEach((interactionId) => {
+      this.removeTimedAISummaryEntry(this.interactionFeatureEnablement, interactionId);
+    });
+  }
+
+  private configureTaskAISummary(task: ITask): void {
+    task.configureAISummary?.(
+      this.apiAIAssistant,
+      this.rtdRequestResolver,
+      this.getGeneratedSummaryFlags,
+      (interactionId) => this.interactionFeatureEnablement.get(interactionId)?.payload
+    );
+  }
+
+  private getAISummaryCorrelationForTask(
+    task: ITask,
+    scanContext: string
+  ): ReturnType<typeof tryGetAISummaryCorrelation> {
+    const correlation = tryGetAISummaryCorrelation(task?.data);
+
+    if (!correlation) {
+      LoggerProxy.warn('Invalid AI summary task correlation', {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.HANDLE_AI_SUMMARY_EVENT,
+        data: {
+          reason: 'invalid-task-correlation',
+          scanContext,
+          taskId: task.data?.taskId ?? task.data?.interactionId ?? '',
+        },
+      });
+    }
+
+    return correlation;
+  }
+
+  private getConversationMatchingTasks(conversationId: string, scanContext: string): ITask[] {
+    return Object.values(this.taskCollection).filter((task) => {
+      const correlation = this.getAISummaryCorrelationForTask(task, scanContext);
+
+      return correlation?.conversationId === conversationId;
+    });
+  }
+
+  private selectReceivingSummaryTasks(conversationId: string): ITask[] {
+    const matchingTasks = this.getConversationMatchingTasks(
+      conversationId,
+      'receiver-candidate-scan'
+    );
+
+    if (matchingTasks.length <= 1) {
+      return matchingTasks;
+    }
+
+    const parentInteractionIds = new Set<string>();
+    matchingTasks.forEach((task) => {
+      const parentInteractionId =
+        task.data?.interaction?.callProcessingDetails?.parentInteractionId;
+
+      if (isNonEmptyString(parentInteractionId)) {
+        parentInteractionIds.add(parentInteractionId);
+      }
+    });
+
+    const leafTasks = matchingTasks.filter((task) => {
+      const interactionId = task.data?.interactionId;
+
+      return isNonEmptyString(interactionId) && !parentInteractionIds.has(interactionId);
+    });
+
+    return leafTasks.length === 1 ? leafTasks : matchingTasks;
+  }
+
+  private flushReceivingSummaryForConversation(conversationId: string): void {
+    const matchingTasks = this.selectReceivingSummaryTasks(conversationId);
+
+    this.flushReceivingSummary(conversationId, matchingTasks);
+  }
+
+  private flushReceivingSummaryForTask(task: ITask): void {
+    const correlation = this.getAISummaryCorrelationForTask(task, 'receiving-summary-flush');
+
+    if (correlation) {
+      this.flushReceivingSummaryForConversation(correlation.conversationId);
+    }
+  }
+
+  private retainFeatureEnablementForTask(task: ITask): void {
+    const correlation = this.getAISummaryCorrelationForTask(task, 'feature-retention');
+
+    if (correlation) {
+      this.retainFeatureEnablement(correlation.interactionId);
+    }
+  }
+
+  private deliverFeatureEnablementToTask(task: ITask): void {
+    if (this.featureEnablementDeliveredTasks.has(task)) {
+      return;
+    }
+
+    const correlation = this.getAISummaryCorrelationForTask(task, 'feature-delivery');
+
+    if (correlation) {
+      const featurePayload = this.interactionFeatureEnablement.get(
+        correlation.interactionId
+      )?.payload;
+
+      if (featurePayload) {
+        this.featureEnablementDeliveredTasks.add(task);
+        task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featurePayload);
+      }
+    }
+  }
+
+  private clearFeatureEnablementIfFinalTask(interactionId: string): void {
+    const hasRegisteredTask = Object.values(this.taskCollection).some((task) => {
+      const correlation = this.getAISummaryCorrelationForTask(task, 'feature-final-task-cleanup');
+
+      return correlation?.interactionId === interactionId;
+    });
+
+    if (!hasRegisteredTask) {
+      this.clearFeatureEnablement(interactionId);
+    }
   }
 
   /**
@@ -142,6 +814,10 @@ export default class TaskManager extends EventEmitter {
    */
   public setAgentId(agentId: string) {
     this.agentId = agentId;
+  }
+
+  public setAgentName(agentName: string) {
+    this.agentName = agentName;
   }
 
   /**
@@ -539,6 +1215,8 @@ export default class TaskManager extends EventEmitter {
         task.sendStateMachineEvent(stateMachineEvent);
       }
 
+      this.flushReceivingSummaryForTask(task);
+
       // Emit TASK_POST_CALL_ACTIVITY for ParticipantPostCallActivity events so
       // consumers (Widgets) can detect the interaction state change to post_call.
       if (eventContext.eventType === CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY) {
@@ -604,6 +1282,7 @@ export default class TaskManager extends EventEmitter {
         // Re-key the task under the new interaction ID and remove the old entry
         delete this.taskCollection[reservationInteractionId];
         this.taskCollection[interactionId] = task;
+        this.clearFeatureEnablement(reservationInteractionId);
       }
     }
 
@@ -981,9 +1660,11 @@ export default class TaskManager extends EventEmitter {
       this.configFlags,
       this.wrapupData,
       this.agentId,
+      this.agentName,
       this.answerCallOnWebexService
     );
 
+    this.configureTaskAISummary(task);
     this.taskCollection[stableInteractionId] = task;
 
     // Restore the actor before installing listeners so the internal hydrate does
@@ -995,6 +1676,7 @@ export default class TaskManager extends EventEmitter {
     } as TaskEventPayload);
 
     this.setupTaskListeners(task);
+    this.retainFeatureEnablementForTask(task);
     context.payload = taskData;
     context.stateMachineEvent = {
       type: TaskEvent.CONTACT_OWNER_CHANGED,
@@ -1092,10 +1774,13 @@ export default class TaskManager extends EventEmitter {
         this.configFlags,
         this.wrapupData,
         this.agentId,
+        this.agentName,
         this.answerCallOnWebexService
       );
+      this.configureTaskAISummary(task);
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
+      this.retainFeatureEnablementForTask(task);
     } else {
       task = this.updateTaskData(task, payload);
     }
@@ -1131,11 +1816,14 @@ export default class TaskManager extends EventEmitter {
       this.configFlags,
       this.wrapupData,
       this.agentId,
+      this.agentName,
       this.answerCallOnWebexService
     );
 
+    this.configureTaskAISummary(task);
     this.setupTaskListeners(task);
     this.taskCollection[payload.interactionId] = task;
+    this.retainFeatureEnablementForTask(task);
 
     return {task};
   }
@@ -1172,10 +1860,13 @@ export default class TaskManager extends EventEmitter {
         this.configFlags,
         this.wrapupData,
         this.agentId,
+        this.agentName,
         this.answerCallOnWebexService
       );
+      this.configureTaskAISummary(task);
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
+      this.retainFeatureEnablementForTask(task);
     }
 
     return {task};
@@ -1186,6 +1877,7 @@ export default class TaskManager extends EventEmitter {
       throw new Error('Task not found for update');
     }
 
+    const previousInteractionId = task.data?.interactionId;
     const snapshot = task.stateMachineService?.getSnapshot?.();
     const isConsultingFlow =
       snapshot?.value === 'CONSULTING' || taskData.interaction?.state === 'consulting';
@@ -1209,6 +1901,11 @@ export default class TaskManager extends EventEmitter {
       }
     });
     this.taskCollection[taskData.interactionId] = task;
+    this.retainFeatureEnablementForTask(task);
+    if (taskData.interactionId !== previousInteractionId) {
+      this.featureEnablementDeliveredTasks.delete(task);
+      this.deliverFeatureEnablementToTask(task);
+    }
 
     return task;
   }
@@ -1227,6 +1924,7 @@ export default class TaskManager extends EventEmitter {
       });
 
       this.emit(TASK_EVENTS.TASK_INCOMING, t);
+      this.deliverFeatureEnablementToTask(task);
     });
 
     task.on(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, (t: ITask) => {
@@ -1237,12 +1935,14 @@ export default class TaskManager extends EventEmitter {
       });
 
       this.emit(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, t);
+      this.deliverFeatureEnablementToTask(task);
     });
 
     // Listen for TASK_HYDRATE on the task and re-emit on TaskManager
     task.on(TASK_EVENTS.TASK_HYDRATE, (t: ITask) => {
       // Task data is already updated by the task itself before emitting
       this.emit(TASK_EVENTS.TASK_HYDRATE, t);
+      this.deliverFeatureEnablementToTask(task);
     });
 
     task.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, (t: ITask) => {
@@ -1264,6 +1964,9 @@ export default class TaskManager extends EventEmitter {
   }
 
   private removeTaskFromCollection(task: ITask) {
+    const correlation = this.getAISummaryCorrelationForTask(task, 'task-removal');
+    const ownerId = task.data?.taskId ?? task.data?.interactionId ?? '';
+
     if (typeof task.cancelAutoWrapupTimer === 'function') {
       task.cancelAutoWrapupTimer();
     }
@@ -1278,6 +1981,12 @@ export default class TaskManager extends EventEmitter {
         method: METHODS.REMOVE_TASK_FROM_COLLECTION,
         interactionId: task.data.interactionId,
       });
+    }
+
+    if (correlation) {
+      this.rtdRequestResolver.clear(ownerId, correlation.conversationId);
+      this.flushReceivingSummaryForConversation(correlation.conversationId);
+      this.clearFeatureEnablementIfFinalTask(correlation.interactionId);
     }
   }
 
@@ -1326,8 +2035,10 @@ export default class TaskManager extends EventEmitter {
         this.configFlags,
         this.wrapupData,
         this.agentId,
+        this.agentName,
         this.answerCallOnWebexService
       );
+      this.configureTaskAISummary(task);
       this.taskCollection[payload.interactionId] = task;
 
       // Transition the new task out of IDLE immediately so UI controls are
@@ -1342,10 +2053,13 @@ export default class TaskManager extends EventEmitter {
       } as TaskEventPayload);
 
       this.setupTaskListeners(task);
+      this.retainFeatureEnablementForTask(task);
     }
 
     if (task) {
       this.emit(TASK_EVENTS.TASK_MERGED, task);
+      this.deliverFeatureEnablementToTask(task);
+      this.flushReceivingSummaryForTask(task);
     }
 
     return {task};
@@ -1466,16 +2180,14 @@ export default class TaskManager extends EventEmitter {
     apiAIAssistant: ApiAIAssistant,
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
-    webSocketManager: WebSocketManager,
-    rtdWebSocketManager?: WebSocketManager
+    webSocketManager: WebSocketManager
   ): TaskManager {
     if (!TaskManager.taskManager) {
       TaskManager.taskManager = new TaskManager(
         apiAIAssistant,
         contact,
         webCallingService,
-        webSocketManager,
-        rtdWebSocketManager
+        webSocketManager
       );
     }
 
