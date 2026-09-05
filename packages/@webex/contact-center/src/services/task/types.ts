@@ -1692,9 +1692,16 @@ export type ParticipantBooleanKey =
  */
 export type TaskResponse = AgentContact | Error | void;
 
+/** AI-assisted mid-call summary action. @public */
 export type AISummaryActionType = 'CONSULT' | 'TRANSFER';
+
+/** Feedback value sent with an AI summary response. @public */
 export type AISummaryFeedback = 'none' | 'thumbs_up' | 'thumbs_down';
+
+/** Post-call summary response state. @public */
 export type PostCallSummaryState = 'DEFAULT' | 'IGNORED' | 'NOT_RECEIVED';
+
+/** Mid-call summary response state. @public */
 export type MidCallSummaryState =
   | 'DEFAULT'
   | 'EXCLUDED'
@@ -1702,6 +1709,7 @@ export type MidCallSummaryState =
   | 'MID_CALL_CANCELLED'
   | 'NOT_RECEIVED';
 
+/** Structured post-call summary fields. @public */
 export type PostCallSummarySections = {
   initialContactReason?: string;
   additionalContactReasons?: string;
@@ -1710,18 +1718,21 @@ export type PostCallSummarySections = {
   nextSteps?: string;
 };
 
+/** Structured mid-call summary fields. @public */
 export type MidCallSummarySections = {
   reasonForTransferOrConsult?: string;
   additionalContext?: string;
   keyActionsTaken?: string;
 };
 
+/** Summary interaction counters. @public */
 export type SummaryCounters = {
   numberOfTimesViewed: number;
   numberOfTimesEdited: number;
   numberOfTimesCopied: number;
 };
 
+/** RTD payload returned for a post-call summary request. @public */
 export type PostCallSummaryEventPayload = {
   conversationId: string;
   adaptiveCard?: Record<string, unknown>;
@@ -1739,6 +1750,7 @@ export type PostCallSummaryEventPayload = {
   [key: string]: unknown;
 };
 
+/** RTD payload returned for a mid-call summary request. @public */
 export type MidCallSummaryEventPayload = {
   conversationId: string;
   adaptiveCard?: Record<string, unknown>;
@@ -1754,6 +1766,7 @@ export type MidCallSummaryEventPayload = {
   [key: string]: unknown;
 };
 
+/** RTD payload delivered to the receiving agent for a mid-call summary. @public */
 export type MidCallSummaryReceivingAgentPayload = {
   conversationId: string;
   adaptiveCard?: Record<string, unknown>;
@@ -1765,6 +1778,7 @@ export type MidCallSummaryReceivingAgentPayload = {
   [key: string]: unknown;
 };
 
+/** RTD payload describing AI-summary feature enablement for an interaction. @public */
 export type FeatureEnablementEventPayload = {
   interactionId: string;
   midCallEnabled?: boolean;
@@ -1778,6 +1792,7 @@ export type SummaryResponseTimestamps = {
   publishTimestamp?: number;
 };
 
+/** Post-call response containing a received summary. @public */
 export type PostCallReceivedResponse = SummaryCounters &
   SummaryResponseTimestamps & {
     summary: PostCallSummarySections | string;
@@ -1786,6 +1801,7 @@ export type PostCallReceivedResponse = SummaryCounters &
     wrapUpCode: string;
   };
 
+/** Post-call response when no summary was received. @public */
 export type PostCallNotReceivedResponse = SummaryResponseTimestamps & {
   summary: '';
   numberOfTimesViewed: 0;
@@ -1796,8 +1812,10 @@ export type PostCallNotReceivedResponse = SummaryResponseTimestamps & {
   wrapUpCode: string;
 };
 
+/** Payload sent when reporting the result of a post-call summary. @public */
 export type PostCallSummaryResponsePayload = PostCallReceivedResponse | PostCallNotReceivedResponse;
 
+/** Mid-call response containing a received summary. @public */
 export type MidCallReceivedResponse = SummaryCounters &
   SummaryResponseTimestamps & {
     summaryReceived: true;
@@ -1806,6 +1824,7 @@ export type MidCallReceivedResponse = SummaryCounters &
     state: Exclude<MidCallSummaryState, 'NOT_RECEIVED'>;
   };
 
+/** Mid-call response when no summary was received. @public */
 export type MidCallUnavailableResponse = SummaryResponseTimestamps & {
   summaryReceived: false;
   summary: '';
@@ -1816,6 +1835,7 @@ export type MidCallUnavailableResponse = SummaryResponseTimestamps & {
   state: Extract<MidCallSummaryState, 'NOT_RECEIVED' | 'MID_CALL_CANCELLED' | 'IGNORED'>;
 };
 
+/** Payload sent when reporting the result of a mid-call summary. @public */
 export type MidCallSummaryResponsePayload = MidCallReceivedResponse | MidCallUnavailableResponse;
 
 export type AISummaryInboundType = 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY';

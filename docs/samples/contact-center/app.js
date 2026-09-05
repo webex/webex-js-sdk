@@ -1057,15 +1057,22 @@ function dismissAllSummaryUI() {
 }
 
 function getSummaryText(prefix) {
-  const fields = extractSummarySections(summaryOriginalPayload.get(prefix));
+  const original = summaryOriginalPayload.get(prefix);
+  const fields = extractSummarySections(original);
   if (fields.length > 0) {
     return fields
-      .map((f) => { const ta = document.getElementById(`${prefix}-${f.id}`); return ta ? ta.value.trim() : ''; })
+      .map((f) => {
+        const ta = document.getElementById(`${prefix}-${f.id}`);
+
+        return ta ? ta.value.trim() : f.value;
+      })
       .filter(Boolean)
       .join('\n\n');
   }
   const ta = document.getElementById(`${prefix}-text`);
-  return ta ? ta.value : '';
+  // Agent Desktop sends the original plain-text summary when it was not edited.
+  // The sample is in read-only mode until Edit is selected, so there may be no textarea yet.
+  return ta ? ta.value : renderSummaryText(original);
 }
 
 function buildSummaryPayload(prefix) {
@@ -1082,7 +1089,7 @@ function buildSummaryPayload(prefix) {
     return sections;
   }
   const ta = document.getElementById(`${prefix}-text`);
-  return ta ? ta.value : '';
+  return ta ? ta.value : renderSummaryText(original);
 }
 
 function isSummaryEdited(prefix, originalPayload) {
@@ -4445,7 +4452,7 @@ async function sendWrapupAndSummaryResponse() {
     if (postCallSummary.payload) {
       const postCallEdited = isSummaryEdited('postcall-summary', postCallSummary.payload);
       if (postCallEdited) postCallSummary.numberOfTimesEdited += 1;
-      const postCallSummaryPayload = postCallEdited ? buildSummaryPayload('postcall-summary') : {};
+      const postCallSummaryPayload = buildSummaryPayload('postcall-summary');
       try {
         await currentTask.sendPostCallSummaryResponse({
           summary: postCallSummaryPayload,
