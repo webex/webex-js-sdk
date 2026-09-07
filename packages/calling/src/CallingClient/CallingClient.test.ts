@@ -333,6 +333,7 @@ describe('CallingClient Tests', () => {
       expect(webex.request).nthCalledWith(2, {
         method: 'GET',
         ...getMockRequestTemplate(),
+        skipHostMap: true,
         uri: `${callingClient['mobiusHost']}${URL_ENDPOINT}?regionCode=${regionBody.clientRegion}&countryCode=${regionBody.countryCode}`,
       });
     });
@@ -397,6 +398,7 @@ describe('CallingClient Tests', () => {
 
       expect(webex.request).toBeCalledOnceWith({
         ...getMockRequestTemplate(),
+        skipHostMap: true,
         uri: `${callingClient['mobiusHost']}${URL_ENDPOINT}?regionCode=${regionBody.clientRegion}&countryCode=${regionBody.countryCode}`,
         method: 'GET',
       });
@@ -417,6 +419,7 @@ describe('CallingClient Tests', () => {
       expect(webex.request).nthCalledWith(2, {
         method: 'GET',
         ...getMockRequestTemplate(),
+        skipHostMap: true,
         uri: `${usMobiusServiceLink}${URL_ENDPOINT}?regionCode=US-EAST&countryCode=US`,
       });
 
@@ -457,6 +460,7 @@ describe('CallingClient Tests', () => {
       expect(webex.request).toBeCalledOnceWith({
         method: 'GET',
         ...getMockRequestTemplate(),
+        skipHostMap: true,
         uri: `${usMobiusServiceLink}${URL_ENDPOINT}?regionCode=EU-CENTRAL&countryCode=DE`,
       });
       expect(callingClient['mobiusHost']).toBe(usMobiusServiceLink);
@@ -500,6 +504,7 @@ describe('CallingClient Tests', () => {
       expect(webex.request).toBeCalledOnceWith({
         method: 'GET',
         ...getMockRequestTemplate(),
+        skipHostMap: true,
         uri: `${regionlessServiceLink}${URL_ENDPOINT}?regionCode=AP-SOUTHEAST&countryCode=SG`,
       });
       expect(callingClient['mobiusHost']).toBe(regionlessServiceLink);
@@ -524,16 +529,19 @@ describe('CallingClient Tests', () => {
       expect(webex.request).nthCalledWith(2, {
         method: 'GET',
         ...getMockRequestTemplate(),
+        skipHostMap: true,
         uri: `${usMobiusServiceLink}${URL_ENDPOINT}?regionCode=US-EAST&countryCode=US`,
       });
       expect(webex.request).nthCalledWith(3, {
         method: 'GET',
         ...getMockRequestTemplate(),
+        skipHostMap: true,
         uri: `https://mobius-ca-central-1.prod.infra.webex.com/api/v1${URL_ENDPOINT}?regionCode=US-EAST&countryCode=US`,
       });
       expect(webex.request).nthCalledWith(4, {
         method: 'GET',
         ...getMockRequestTemplate(),
+        skipHostMap: true,
         uri: `https://mobius-eu-central-1.prod.infra.webex.com/api/v1${URL_ENDPOINT}?regionCode=US-EAST&countryCode=US`,
       });
       expect(callingClient['mobiusHost']).toBe(

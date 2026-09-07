@@ -67,6 +67,7 @@ export type WebexRequestPayload = {
   statusCode?: number;
   json?: boolean;
   service?: ALLOWED_SERVICES;
+  skipHostMap?: boolean;
 };
 
 export type ErrorCode = string;

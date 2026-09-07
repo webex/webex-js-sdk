@@ -8,6 +8,8 @@ import {Interceptor} from '@webex/http-core';
  * This interceptor replaces the host in the request uri with the host from the hostmap
  * It will attempt to do this for every request, but not all URIs will be in the hostmap
  * URIs with hosts that are not in the hostmap will be left unchanged
+ * Set `options.skipHostMap` to keep the original host (for example when a caller
+ * has already chosen a specific catalog or service-link hostname).
  */
 export default class HostMapInterceptor extends Interceptor {
   /**
@@ -23,7 +25,7 @@ export default class HostMapInterceptor extends Interceptor {
    * @returns {Object}
    */
   onRequest(options) {
-    if (options.uri) {
+    if (options.uri && !options.skipHostMap) {
       try {
         options.uri = this.webex.internal.services.replaceHostFromHostmap(options.uri);
       } catch (error) {
