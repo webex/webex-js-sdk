@@ -1,3 +1,5 @@
+import {EventPayload} from '@webex/internal-plugin-metrics/src/metrics.types';
+
 import AnswerCallOnWebexService, {WxAppTelephonyError} from '../../AnswerCallOnWebexService';
 import LoggerProxy from '../../../logger-proxy';
 import {METHODS} from '../../../constants';
@@ -188,8 +190,8 @@ type AqmWrappedError = {
 function getWxAppOutdialDeclineFailurePayload(
   deps: WxAppVoiceDependencies,
   error: unknown
-): Record<string, unknown> {
-  const base = {
+): EventPayload {
+  const base: EventPayload = {
     taskId: getInteractionId(deps) ?? '',
     error: error instanceof Error ? error.toString() : String(error),
   };
