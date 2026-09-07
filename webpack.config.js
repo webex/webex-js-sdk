@@ -73,6 +73,15 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
         export: 'default',
       },
     },
+    'webexconnect-sw': {
+      import: [
+        `${path.resolve(__dirname)}/packages/webexconnect/src/mqttws31.js`,
+        `${path.resolve(__dirname)}/packages/webexconnect/sw/sw.js`,
+      ],
+      // Deliberately NO `library` option — a service worker isn't consumed as a UMD
+      // global; it's registered by URL and runs in its own worker scope (`self`,
+      // not `window`). Wrapping it in UMD would be inert at best, wrong at worst.
+      },
   },
   mode: env && env.NODE_ENV === 'development' ? 'development' : 'production',
   output: {
