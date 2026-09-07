@@ -633,64 +633,6 @@ export default class LocusInfo extends EventsScope {
         },
     onLocusSynced?: (locus: LocusDTO) => void
   ) {
-    // A duplicate Meeting object can exist for the same locus (e.g. syncMeetings() creates one
-    // proactively before this meeting's own join() resolves). MeetingCollection.getByKey() always
-    // returns the first match for a given locusUrl, so without this the duplicate would keep
-    // intercepting all future Locus/Mercury updates for this locus.
-    let duplicateMeetingContainer: any;
-    {
-      const incomingLocusUrl = (data as any).locus?.url;
-      if (incomingLocusUrl) {
-        const duplicateMeeting = Object.values(this.webex.meetings.meetingCollection.getAll()).find(
-          (candidate: any) =>
-            candidate.id !== this.meetingId && candidate.locusUrl === incomingLocusUrl
-        ) as any;
-
-        if (duplicateMeeting) {
-          // Only 'join-response' comes from the real join() flow (Meeting#setLocus()); both
-          // 'get-loci-response' and 'locus-message' are created reactively and can lose the race
-          // against it, so in those cases this meeting should destroy itself instead.
-          if (data.trigger !== 'join-response') {
-            const selfMeeting = this.webex.meetings.meetingCollection.get(this.meetingId);
-
-            if (!selfMeeting) {
-              // already destroyed by the winning meeting's initialSetup() call, nothing left to do
-              return;
-            }
-
-            LoggerProxy.logger.info(
-              'Locus-info:index#initialSetup --> this meeting is a reactively-created duplicate of an already set up meeting, destroying self instead of the other meeting'
-            );
-
-            this.webex.meetings.destroy(
-              selfMeeting,
-              MEETING_REMOVED_REASON.DUPLICATE_LOCUS_MEETING
-            );
-
-            return;
-          }
-
-          // this meeting itself may already be gone (e.g. a syncMeetings() cleanup destroyed it
-          // before locusUrl was set), so keep the duplicate instead of destroying both
-          if (!this.webex.meetings.meetingCollection.get(this.meetingId)) {
-            LoggerProxy.logger.warn(
-              'Locus-info:index#initialSetup --> this meeting was already removed from the collection, keeping the reactively-created duplicate instead of destroying it'
-            );
-
-            return;
-          }
-
-          // merged in below, after updateControls() has replaced this.controls, so it isn't lost
-          duplicateMeetingContainer = duplicateMeeting.locusInfo?.controls?.meetingContainer;
-
-          this.webex.meetings.destroy(
-            duplicateMeeting,
-            MEETING_REMOVED_REASON.DUPLICATE_LOCUS_MEETING
-          );
-        }
-      }
-    }
-
     let initialFullLocus: LocusDTO | null = null;
     switch (data.trigger) {
       case 'locus-message':
@@ -764,22 +706,6 @@ export default class LocusInfo extends EventsScope {
           this.onFullLocus('classic get-loci-response', data.locus, undefined);
           initialFullLocus = data.locus || null;
         }
-    }
-
-    if (
-      duplicateMeetingContainer?.meetingContainerUrl &&
-      !this.controls?.meetingContainer?.meetingContainerUrl
-    ) {
-      this.controls = {
-        ...this.controls,
-        meetingContainer: duplicateMeetingContainer,
-      };
-      this.parsedLocus.controls = ControlsUtils.parse(this.controls);
-      this.emitScoped(
-        {file: 'locus-info', function: 'initialSetup'},
-        LOCUSINFO.EVENTS.CONTROLS_MEETING_CONTAINER_UPDATED,
-        {meetingContainerUrl: duplicateMeetingContainer.meetingContainerUrl}
-      );
     }
 
     if (onLocusSynced) {
