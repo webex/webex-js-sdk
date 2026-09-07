@@ -44,6 +44,7 @@ import {
   _WAIT_,
   DESTINATION_TYPE,
   INITIAL_REGISTRATION_STATUS,
+  UNMATCHED_LOCUS_EVENT_JOIN_DEFERRAL_TIMEOUT,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import MeetingInfo from '../meeting-info';
@@ -636,12 +637,9 @@ export default class Meetings extends WebexPlugin {
         return;
       }
 
-      // A user-initiated join() creates its Meeting object up front but only assigns its
-      // locusUrl later, once the join HTTP response arrives (Meeting#setLocus()). During that
-      // window getCorrespondingMeetingByLocus() can't match this event to the joining meeting,
-      // so we would create a second Meeting object for the same locus. To avoid that, if any
-      // join is currently in flight, wait for it to settle and then reprocess this event once -
-      // by then the joining meeting has its locusUrl and the event gets routed to it instead.
+      // join() assigns locusUrl only once its HTTP response arrives, so while a join is in
+      // flight this event can't be matched to it; wait for it to settle (bounded by a timeout,
+      // since we can't tell whether this locus belongs to it) and reprocess this event once.
       if (!skipJoinDeferral) {
         const inFlightJoins = Object.values(this.meetingCollection.getAll())
           .map((inFlightMeeting: any) => inFlightMeeting.deferJoin)
@@ -652,10 +650,17 @@ export default class Meetings extends WebexPlugin {
             'Meetings:index#handleLocusEvent --> a join() is in progress, deferring processing of this locus event until it settles'
           );
 
-          // wait for every in-flight join to settle (ignoring rejections) before reprocessing
-          Promise.all(
+          // wait for in-flight joins to settle (ignoring rejections), capped by a timeout
+          const settleAllJoins = Promise.all(
             inFlightJoins.map((deferJoin) => Promise.resolve(deferJoin).catch(() => undefined))
-          ).then(() => this.handleLocusEvent(data, useRandomDelayForInfo, true));
+          );
+          const deferralTimeout = new Promise((resolve) => {
+            setTimeout(resolve, UNMATCHED_LOCUS_EVENT_JOIN_DEFERRAL_TIMEOUT);
+          });
+
+          Promise.race([settleAllJoins, deferralTimeout]).then(() =>
+            this.handleLocusEvent(data, useRandomDelayForInfo, true)
+          );
 
           return;
         }

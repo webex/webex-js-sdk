@@ -38,6 +38,7 @@ import {
   DESTINATION_TYPE,
   INITIAL_REGISTRATION_STATUS,
   MEETING_REMOVED_REASON,
+  UNMATCHED_LOCUS_EVENT_JOIN_DEFERRAL_TIMEOUT,
 } from '../../../../src/constants';
 import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error';
 import {forEach} from 'lodash';
@@ -2788,6 +2789,28 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(webex.meetings.create);
             assert.calledOnce(locusInfo.parse);
+          });
+
+          it('stops waiting and processes the event once the deferral timeout elapses, even if the join never settles', async () => {
+            const clock = sinon.useFakeTimers();
+            const deferJoin = new Promise(() => {}); // never resolves
+            webex.meetings.meetingCollection.getByKey = sinon.stub().returns(undefined);
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              joiningMeeting: {id: 'joining-id', locusUrl: undefined, deferJoin},
+            });
+
+            webex.meetings.handleLocusEvent(buildLocusEvent());
+
+            await clock.tickAsync(UNMATCHED_LOCUS_EVENT_JOIN_DEFERRAL_TIMEOUT);
+
+            assert.calledOnceWithExactly(
+              webex.meetings.create,
+              {url: url1, self: {devices: []}},
+              DESTINATION_TYPE.LOCUS_ID,
+              false
+            );
+
+            clock.restore();
           });
         });
       });
