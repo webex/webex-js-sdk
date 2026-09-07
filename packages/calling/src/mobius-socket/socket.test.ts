@@ -220,6 +220,16 @@ describe('plugin-mobius-socket', () => {
         return assert.isRejected(promise, /not in the Mobius WSS trusted allowlist/i);
       });
 
+      it('socket.open rejects when the url is unparseable (domain falls back to raw string)', () => {
+        const s = new Socket();
+        const promise = s.open('not a url', mockoptions);
+
+        return assert.isRejected(
+          promise,
+          /Host not a url is not in the Mobius WSS trusted allowlist/i
+        );
+      });
+
       it('socket.open accepts allowlisted host', () => {
         const s = new Socket();
         const promise = s.open('wss://mobius.webex.com', mockoptions);

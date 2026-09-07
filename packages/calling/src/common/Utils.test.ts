@@ -136,6 +136,21 @@ describe('Mobius service discovery tests', () => {
     expect(filteredUris.backupWss).toHaveLength(1);
     expect(filteredUris.backupWss[0]).toBe('wss://mobius-sjc.webex.com/socket');
   });
+
+  it('filterMobiusUris drops malformed/unparseable wss hosts', () => {
+    const defaultMobiusUrl = 'https://mobius.webex.com/api/v1/calling/web';
+    const discoveryResponse = getMobiusDiscoveryResponse();
+
+    discoveryResponse.primary.wss = ['wss://mobius-dfw.webex.com/socket', 'wss://', 'not a url'];
+    discoveryResponse.backup.wss = ['not a url', 'wss://mobius-sjc.webex.com/socket'];
+
+    const filteredUris = filterMobiusUris(discoveryResponse, defaultMobiusUrl);
+
+    expect(filteredUris.primaryWss).toHaveLength(1);
+    expect(filteredUris.primaryWss[0]).toBe('wss://mobius-dfw.webex.com/socket');
+    expect(filteredUris.backupWss).toHaveLength(1);
+    expect(filteredUris.backupWss[0]).toBe('wss://mobius-sjc.webex.com/socket');
+  });
 });
 
 describe('Call Tests - keepalive (handleCallEstablished) cases', () => {

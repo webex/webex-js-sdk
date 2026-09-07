@@ -44,7 +44,7 @@ const jestConfig = {
   coverageDirectory: 'coverage',
   coverageReporters: ['clover', 'json', 'lcov'],
   transformIgnorePatterns: [
-    '/node_modules/(?!(@webex/internal-media-core|@webex/media-helpers|@webex/test-helper-mock-web-socket|@webex/common-timers)/)/',
+    '/node_modules/(?!(@webex/internal-media-core|@webex/media-helpers|@webex/test-helper-mock-web-socket|@webex/common-timers)/)',
   ],
   testMatch: ['<rootDir>/src/**/*.test.[jt]s'],
   moduleNameMapper: {

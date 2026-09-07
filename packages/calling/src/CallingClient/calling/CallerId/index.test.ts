@@ -112,9 +112,9 @@ describe('CallerId tests', () => {
    * We will check whether the priority order is followed or not.
    */
   it(' When PA-ID, From header is present along with x-broad-works, ', async () => {
+    const injectionPayload = '69fde5ad-fb8b-4a1b-9998-b0999e95719b" or userName pr "';
     const dummyCallerId = {
-      'x-broadworks-remote-party-info':
-        'userId="nkjwuovmbo@64941297.int10.bcld.webex.com";userDn="tel:+12142865888;ext=5888;country-code=1";externalId=69fde5ad-fb8b-4a1b-9998-b0999e95719b',
+      'x-broadworks-remote-party-info': `userId="nkjwuovmbo@64941297.int10.bcld.webex.com";userDn="tel:+12142865888;ext=5888;country-code=1";externalId=${injectionPayload}`,
       'p-asserted-identity': '"John O\'Connor - ( Guest )" <sip:5888@10.155.4.7;user=phone>',
       from: '"Alice" <sip:5889@64941297.int10.bcld.webex.com>;tag=1932136170-1654008881246',
     };
@@ -131,6 +131,18 @@ describe('CallerId tests', () => {
     expect(callerId['callerInfo'].id).toStrictEqual(dummyScimResponse.Resources[0].id);
     expect(callerId['callerInfo'].name).toStrictEqual('Cathy');
     expect(callerId['callerInfo'].num).toStrictEqual('5008');
+
+    /* resolveCallerId must receive the escaped externalId, not the raw SCIM-injection payload (AC-1 / U-01) */
+    const lastCall = (webex.request as jest.Mock).mock.calls[
+      (webex.request as jest.Mock).mock.calls.length - 1
+    ];
+    const requestedUri: string = lastCall[0].uri;
+    const rawFilter = encodeURIComponent(`id eq "${injectionPayload}"`);
+    const escaped = injectionPayload.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const escapedFilter = encodeURIComponent(`id eq "${escaped}"`);
+
+    expect(requestedUri).not.toContain(rawFilter);
+    expect(requestedUri).toContain(escapedFilter);
   });
 
   it(' When PA-ID ,From header is present along with x-broad-works , but name in PAI is missing', async () => {
@@ -255,41 +267,5 @@ describe('CallerId tests', () => {
     expect(callerId['callerInfo'].id).toBe(undefined);
     expect(callerId['callerInfo'].name).toStrictEqual('Bob Marley');
     expect(callerId['callerInfo'].num).toStrictEqual('5888');
-  });
-
-  it('parseRemotePartyInfo escapes SCIM filter injection in externalId', async () => {
-    const injectionPayload = '69fde5ad-fb8b-4a1b-9998-b0999e95719b" or userName pr "';
-    const dummyCallerId = {
-      'x-broadworks-remote-party-info': `userId="nkjwuovmbo@64941297.int10.bcld.webex.com";userDn="tel:+12142865888;ext=5888;country-code=1";externalId=${injectionPayload}`,
-    };
-
-    webex.request.mockResolvedValue({
-      statusCode: 200,
-      body: dummyScimResponse,
-    });
-
-    const localCallerId = createCallerId(webex, () => {});
-
-    localCallerId['callerInfo'] = {} as DisplayInformation;
-    localCallerId.fetchCallerDetails(dummyCallerId);
-    await waitForMsecs(50);
-
-    // The request should have been made
-    expect(webex.request).toHaveBeenCalled();
-
-    // The raw unescaped injection payload must NOT appear in the request URI
-    const lastCall = (webex.request as jest.Mock).mock.calls[
-      (webex.request as jest.Mock).mock.calls.length - 1
-    ];
-    const requestedUri: string = lastCall[0].uri;
-    const rawFilter = encodeURIComponent(`id eq "${injectionPayload}"`);
-
-    expect(requestedUri).not.toContain(rawFilter);
-
-    // The escaped form must appear instead
-    const escaped = injectionPayload.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    const escapedFilter = encodeURIComponent(`id eq "${escaped}"`);
-
-    expect(requestedUri).toContain(escapedFilter);
   });
 });
