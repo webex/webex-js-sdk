@@ -561,9 +561,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       });
       clientRegion = this.sdkConfig?.discovery?.region;
       countryCode = this.sdkConfig?.discovery?.country;
-      this.mobiusHost =
-        this.webex.internal.services._serviceUrls?.mobius ||
-        this.webex.internal.services.get(this.webex.internal.services._activeServices.mobius);
     } else {
       log.log('Updating region and country through Region discovery', {
         file: CALLING_CLIENT_FILE,
@@ -584,8 +581,26 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         }
       );
 
-      for (const mobius of this.mobiusClusters) {
-        if (mobius.host) {
+      /* Irrespective of whether the region/country came from the SDK config or from
+       * region discovery, always check the main service link (resolved from the U2C
+       * hostmap) for reachability first, and only defer to the full catalog of Mobius
+       * clusters when that main service link has a problem.
+       */
+      const mainServiceLink =
+        this.webex.internal.services._serviceUrls?.mobius ||
+        this.webex.internal.services.get(this.webex.internal.services._activeServices.mobius);
+
+      const mainServiceLinkHost = mainServiceLink?.replace('https://', '').replace(API_V1, '');
+
+      const mobiusHostsToTry: Array<ServiceHost | string> = mainServiceLink
+        ? [
+            mainServiceLink,
+            ...this.mobiusClusters.filter((cluster) => cluster.host !== mainServiceLinkHost),
+          ]
+        : this.mobiusClusters;
+
+      for (const mobius of mobiusHostsToTry) {
+        if (typeof mobius !== 'string' && mobius.host) {
           this.mobiusHost = `https://${mobius.host}${API_V1}`;
         } else {
           this.mobiusHost = mobius as unknown as string;
