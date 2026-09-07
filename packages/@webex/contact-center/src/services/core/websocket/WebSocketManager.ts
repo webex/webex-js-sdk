@@ -12,6 +12,7 @@ import {
   ALLOWED_ROUTING_NOTIFS_DOMAINS,
 } from '../constants';
 import {WEB_SOCKET_MANAGER_FILE} from '../../../constants';
+import {isAllowedUrlHost} from '../Utils';
 
 /**
  * WebSocketManager handles the WebSocket connection for Contact Center operations.
@@ -106,20 +107,14 @@ export class WebSocketManager extends EventEmitter {
     }
 
     try {
-      const parsedUrl = new URL(url);
-
-      if (parsedUrl.protocol !== 'wss:') {
+      if (new URL(url).protocol !== 'wss:') {
         return false;
       }
-
-      const hostname = parsedUrl.hostname.toLowerCase();
-
-      return ALLOWED_ROUTING_NOTIFS_DOMAINS.some(
-        (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
-      );
     } catch (error) {
       return false;
     }
+
+    return isAllowedUrlHost(url, ALLOWED_ROUTING_NOTIFS_DOMAINS);
   }
 
   private async register(connectionConfig: SubscribeRequest, resource: string) {

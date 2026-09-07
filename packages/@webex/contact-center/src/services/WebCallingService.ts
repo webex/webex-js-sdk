@@ -21,6 +21,7 @@ import {
   DEREGISTER_WEBCALLING_LINE_MSG,
   METHODS,
 } from './constants';
+import {isAllowedUrlHost} from './core/Utils';
 
 /**
  * WebCallingService provides WebRTC calling functionality for Contact Center agents.
@@ -142,12 +143,9 @@ export default class WebCallingService extends EventEmitter {
     const rtmsURL = this.webex.internal.services.get(WCC_CALLING_RTMS_DOMAIN);
 
     try {
-      const url = new URL(rtmsURL);
-      const hostname = url.hostname.toLowerCase();
-      const isAllowedHost =
-        hostname === ALLOWED_RTMS_DOMAIN || hostname.endsWith(`.${ALLOWED_RTMS_DOMAIN}`);
+      const hostname = new URL(rtmsURL).hostname.toLowerCase();
 
-      if (!isAllowedHost) {
+      if (!isAllowedUrlHost(rtmsURL, [ALLOWED_RTMS_DOMAIN])) {
         LoggerProxy.error(
           `Non-allow-listed RTMS host from u2c catalogue: ${hostname} so falling back to default domain`,
           {

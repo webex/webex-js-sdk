@@ -99,6 +99,30 @@ export const isValidDialNumber = (
   });
 };
 
+/**
+ * Checks whether a URL's hostname is, or is a subdomain of, one of the allowed domains.
+ *
+ * @param url - The candidate URL to validate
+ * @param allowedDomains - Domains (or domain suffixes) the URL's hostname must match
+ * @returns true when the URL parses and its hostname matches an allowed domain, false otherwise
+ */
+export const isAllowedUrlHost = (
+  url: string | undefined | null,
+  allowedDomains: string[]
+): boolean => {
+  if (!url) {
+    return false;
+  }
+
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+
+    return allowedDomains.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
+  } catch (error) {
+    return false;
+  }
+};
+
 export const getStationLoginErrorData = (failure: Failure, loginOption: LoginOption) => {
   let duplicateLocationMessage = 'This value is already in use';
 
