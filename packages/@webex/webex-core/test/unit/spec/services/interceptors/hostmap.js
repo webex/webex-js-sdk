@@ -47,19 +47,6 @@ describe('webex-core', () => {
           assert.equal(options.uri, 'http://replaceduri.com');
         });
 
-        it('does not call replaceHostFromHostmap if options.skipHostMap is true', () => {
-          const options = {
-            uri: 'http://example.com',
-            skipHostMap: true,
-          };
-
-          interceptor.onRequest(options);
-
-          sinon.assert.notCalled(webex.internal.services.replaceHostFromHostmap);
-
-          assert.equal(options.uri, 'http://example.com');
-        });
-
         it('does not call replaceHostFromHostmap if options.uri is not defined', () => {
           const options = {};
 
