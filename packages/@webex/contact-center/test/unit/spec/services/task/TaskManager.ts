@@ -1372,7 +1372,7 @@ describe('TaskManager', () => {
     (_label, eventType, data) => {
       const resolveSpy = jest.spyOn(
         (taskManager as any).rtdRequestResolver,
-        'resolve'
+        'resolveFromRtdEvent'
       );
 
       taskManager.handleRealtimeWebsocketEvent(

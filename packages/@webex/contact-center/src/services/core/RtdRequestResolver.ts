@@ -83,7 +83,7 @@ class RtdRequestResolver {
    * Sends an HTTP request after registering its RTD response slot and resolves
    * with the matching RTD payload.
    */
-  public async request<T>(options: RtdRequestOptions): Promise<T> {
+  public async requestAndWaitForRtd<T>(options: RtdRequestOptions): Promise<T> {
     const registration = this.register<T>(options);
     const acknowledgement = Promise.resolve()
       .then(options.sendRequest)
@@ -98,7 +98,7 @@ class RtdRequestResolver {
   }
 
   /** Resolve a pending request from a parsed RTD event. */
-  public resolve<T>(
+  public resolveFromRtdEvent<T>(
     eventType: string,
     correlationId: string,
     payload: T

@@ -1038,12 +1038,12 @@ describe('Task AI summary APIs', () => {
       sendSummaryResponseEvent: jest.fn().mockResolvedValue(undefined),
     };
     const coordinator = {
-      request: jest.fn(async ({sendRequest}: {sendRequest: () => Promise<unknown>}) => {
+      requestAndWaitForRtd: jest.fn(async ({sendRequest}: {sendRequest: () => Promise<unknown>}) => {
         await sendRequest();
 
         return options.registrationResult ?? Promise.resolve(createPostCallSummaryPayload());
       }),
-      resolve: jest.fn(),
+      resolveFromRtdEvent: jest.fn(),
       cancel: jest.fn(),
       clear: jest.fn(),
       clearAll: jest.fn(),
@@ -1161,7 +1161,7 @@ describe('Task AI summary APIs', () => {
 
     expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(1);
     expect(getFeatureEnablement).toHaveBeenCalledWith('interaction-1');
-    expect(coordinator.request).toHaveBeenCalledWith(
+    expect(coordinator.requestAndWaitForRtd).toHaveBeenCalledWith(
       expect.objectContaining({
         ownerId: 'task-owner-1',
         correlationId: 'conversation-1',
@@ -1199,7 +1199,7 @@ describe('Task AI summary APIs', () => {
 
     await expect(consultTask.requestMidCallSummary('CONSULT')).resolves.toBe(consultResult);
 
-    expect(consultMocks.coordinator.request).toHaveBeenCalledWith(
+    expect(consultMocks.coordinator.requestAndWaitForRtd).toHaveBeenCalledWith(
       expect.objectContaining({
         ownerId: 'task-owner-1',
         correlationId: 'conversation-1',
@@ -1302,7 +1302,7 @@ describe('Task AI summary APIs', () => {
       );
       await Promise.resolve();
 
-      expect(coordinator.request).toHaveBeenCalledWith(
+      expect(coordinator.requestAndWaitForRtd).toHaveBeenCalledWith(
         expect.objectContaining({
           ownerId: 'task-owner-1',
           correlationId: 'conversation-1',
@@ -1429,7 +1429,7 @@ describe('Task AI summary APIs', () => {
       await expect(invoke(task)).rejects.toMatchObject(
         createAISummaryErrorExpectation(disabledCode)
       );
-      expect(coordinator.request).not.toHaveBeenCalled();
+      expect(coordinator.requestAndWaitForRtd).not.toHaveBeenCalled();
       expect(adapter.sendSummaryGetEvent).not.toHaveBeenCalled();
       expect(metrics.trackEvent).toHaveBeenCalledTimes(1);
       expect(metrics.trackEvent).toHaveBeenCalledWith(
@@ -1480,7 +1480,7 @@ describe('Task AI summary APIs', () => {
       );
       expect(getFeatureEnablement).toHaveBeenCalledWith('child-interaction-1');
       expect(getFeatureEnablement).not.toHaveBeenCalledWith('conversation-1');
-      expect(coordinator.request).not.toHaveBeenCalled();
+      expect(coordinator.requestAndWaitForRtd).not.toHaveBeenCalled();
       expect(adapter.sendSummaryGetEvent).not.toHaveBeenCalled();
     }
   );
@@ -1550,7 +1550,7 @@ describe('Task AI summary APIs', () => {
         sendSummaryResponseEvent: jest.fn().mockResolvedValue(undefined),
       };
     const coordinator = new RtdRequestResolver();
-      const registerSpy = jest.spyOn(coordinator, 'request');
+      const registerSpy = jest.spyOn(coordinator, 'requestAndWaitForRtd');
       const getGeneratedSummaryFlags = jest.fn(() => flags);
 
       task.configureAISummary(
@@ -1609,7 +1609,11 @@ describe('Task AI summary APIs', () => {
     await Promise.resolve();
     expect(adapter.sendSummaryGetEvent).toHaveBeenCalledTimes(1);
     expect(
-      coordinator.resolve('POST_CALL_SUMMARY', 'conversation-1', createPostCallSummaryPayload())
+      coordinator.resolveFromRtdEvent(
+        'POST_CALL_SUMMARY',
+        'conversation-1',
+        createPostCallSummaryPayload()
+      )
     ).toBe('resolved');
     await expect(request).resolves.toEqual(createPostCallSummaryPayload());
     expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(2);
@@ -1628,7 +1632,7 @@ describe('Task AI summary APIs', () => {
     adapter.sendSummaryGetEvent.mockRejectedValue(baseUrlError);
 
     await expect(task.requestPostCallSummary()).rejects.toBe(baseUrlError);
-    expect(coordinator.request).toHaveBeenCalled();
+    expect(coordinator.requestAndWaitForRtd).toHaveBeenCalled();
   });
 
   it.each([
@@ -1654,7 +1658,7 @@ describe('Task AI summary APIs', () => {
         sendSummaryResponseEvent: jest.fn().mockResolvedValue(undefined),
       };
       const coordinator = new RtdRequestResolver();
-      const requestSpy = jest.spyOn(coordinator, 'request');
+      const requestSpy = jest.spyOn(coordinator, 'requestAndWaitForRtd');
       const resultObserver = jest.fn();
       let requestToken: symbol | undefined;
       let requestOptions: any;
@@ -1700,7 +1704,11 @@ describe('Task AI summary APIs', () => {
       await Promise.resolve();
       expect(resultObserver).not.toHaveBeenCalled();
       expect(
-        coordinator.resolve('POST_CALL_SUMMARY', 'conversation-1', createPostCallSummaryPayload())
+        coordinator.resolveFromRtdEvent(
+          'POST_CALL_SUMMARY',
+          'conversation-1',
+          createPostCallSummaryPayload()
+        )
       ).toBe('not-found');
     }
   );
@@ -1786,7 +1794,7 @@ describe('Task AI summary APIs', () => {
       jest.advanceTimersByTime(85);
 
       expect(
-        coordinator.resolve('MID_CALL_SUMMARY', 'conversation-1', midCallResult)
+        coordinator.resolveFromRtdEvent('MID_CALL_SUMMARY', 'conversation-1', midCallResult)
       ).toBe('resolved');
       await expect(consultRequest).resolves.toBe(midCallResult);
 
@@ -1905,7 +1913,7 @@ describe('Task AI summary APIs', () => {
 
         expect(timeoutError).toMatchObject(createAISummaryErrorExpectation(timeoutCode));
         expect(
-          coordinator.resolve(inboundType, 'conversation-1', latePayload as any)
+          coordinator.resolveFromRtdEvent(inboundType, 'conversation-1', latePayload as any)
         ).toBe('not-found');
         await expect(publicRequest).rejects.toBe(timeoutError);
         expect(metrics.trackEvent).toHaveBeenCalledTimes(1);
@@ -1935,7 +1943,7 @@ describe('Task AI summary APIs', () => {
       const {adapter, coordinator} = createSummaryMocks(task);
 
       expect(firstPayload).not.toBe(secondPayload);
-      coordinator.request
+      coordinator.requestAndWaitForRtd
         .mockImplementationOnce(async ({sendRequest}: {sendRequest: () => Promise<unknown>}) => {
           await sendRequest();
 
@@ -1950,7 +1958,7 @@ describe('Task AI summary APIs', () => {
       await expect(invoke(task)).resolves.toBe(firstPayload);
       await expect(invoke(task)).resolves.toBe(secondPayload);
 
-      expect(coordinator.request).toHaveBeenCalledTimes(2);
+      expect(coordinator.requestAndWaitForRtd).toHaveBeenCalledTimes(2);
       expect(adapter.sendSummaryGetEvent).toHaveBeenCalledTimes(2);
       expect(adapter.sendSummaryGetEvent).toHaveBeenNthCalledWith(
         1,
@@ -2003,7 +2011,7 @@ describe('Task AI summary APIs', () => {
       AIAssistantEventName.GET_POST_CALL_SUMMARY
     );
     expect(
-      coordinator.resolve('POST_CALL_SUMMARY', 'conversation-1', postCallResult)
+      coordinator.resolveFromRtdEvent('POST_CALL_SUMMARY', 'conversation-1', postCallResult)
     ).toBe('resolved');
     await expect(postCallRequest).resolves.toBe(postCallResult);
     expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(1);
@@ -2107,7 +2115,11 @@ describe('Task AI summary APIs', () => {
 
     await flushEventLoopTurn();
     expect(
-      coordinator.resolve('MID_CALL_SUMMARY', 'conversation-1', createMidCallSummaryPayload())
+      coordinator.resolveFromRtdEvent(
+        'MID_CALL_SUMMARY',
+        'conversation-1',
+        createMidCallSummaryPayload()
+      )
     ).toBe('resolved');
     await expect(midCallRequest).resolves.toEqual(createMidCallSummaryPayload());
 
@@ -2939,7 +2951,7 @@ describe('Task AI summary APIs', () => {
       }),
       ['operational']
     );
-    expect(coordinator.request).not.toHaveBeenCalled();
+    expect(coordinator.requestAndWaitForRtd).not.toHaveBeenCalled();
     expect(adapter.sendSummaryGetEvent).not.toHaveBeenCalled();
   });
 
@@ -3004,14 +3016,6 @@ describe('Task AI summary APIs', () => {
       expectedCode: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD',
       configure: true,
       payload: createPostCallResponsePayload({wrapUpCode: ''}),
-      adapterError: undefined,
-      expectAdapterCall: false,
-    },
-    {
-      label: 'not initialized',
-      expectedCode: 'AI_SUMMARY_NOT_INITIALIZED',
-      configure: false,
-      payload: createPostCallResponsePayload(),
       adapterError: undefined,
       expectAdapterCall: false,
     },
@@ -3085,15 +3089,6 @@ describe('Task AI summary APIs', () => {
   );
 
   it.each([
-    {
-      label: 'not initialized',
-      expectedCode: 'AI_SUMMARY_NOT_INITIALIZED',
-      configure: false,
-      adapterError: undefined,
-      taskData: undefined,
-      expectAdapterCall: false,
-      includeActionType: false,
-    },
     {
       label: 'correlation unavailable',
       expectedCode: 'AI_SUMMARY_CORRELATION_NOT_AVAILABLE',

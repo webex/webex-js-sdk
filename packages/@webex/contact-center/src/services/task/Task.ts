@@ -269,15 +269,7 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.getGeneratedSummaryFlags = getGeneratedSummaryFlags;
   }
 
-  public requestPostCallSummary(): Promise<PostCallSummaryEventPayload> {
-    const operation = this.requestPostCallSummaryInternal();
-
-    operation.catch(() => undefined);
-
-    return operation;
-  }
-
-  private async requestPostCallSummaryInternal(): Promise<PostCallSummaryEventPayload> {
+  public async requestPostCallSummary(): Promise<PostCallSummaryEventPayload> {
     const metricFields: Record<string, unknown> = {
       operation: METHODS.REQUEST_POST_CALL_SUMMARY,
     };
@@ -287,7 +279,6 @@ export default abstract class Task extends EventEmitter implements ITask {
         METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
         METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
       ]);
-      this.requireAISummaryConfiguration();
       const {conversationId, interactionId} = getAISummaryCorrelation(this.data);
       Object.assign(metricFields, {conversationId, interactionId});
 
@@ -343,7 +334,6 @@ export default abstract class Task extends EventEmitter implements ITask {
         METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
         METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
       ]);
-      this.requireAISummaryConfiguration();
       Task.validatePostCallSummaryResponsePayload(payload);
       const context = this.postCallSummaryResponseContext ?? getAISummaryCorrelation(this.data);
       Object.assign(metricFields, {
@@ -393,17 +383,7 @@ export default abstract class Task extends EventEmitter implements ITask {
     }
   }
 
-  public requestMidCallSummary(
-    actionType: AISummaryActionType
-  ): Promise<MidCallSummaryEventPayload> {
-    const operation = this.requestMidCallSummaryInternal(actionType);
-
-    operation.catch(() => undefined);
-
-    return operation;
-  }
-
-  private async requestMidCallSummaryInternal(
+  public async requestMidCallSummary(
     actionType: AISummaryActionType
   ): Promise<MidCallSummaryEventPayload> {
     const metricFields: Record<string, unknown> = {
@@ -415,7 +395,6 @@ export default abstract class Task extends EventEmitter implements ITask {
         METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
         METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
       ]);
-      this.requireAISummaryConfiguration();
       if (!Task.isValidAISummaryActionType(actionType)) {
         throw createSummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
       }
@@ -481,7 +460,6 @@ export default abstract class Task extends EventEmitter implements ITask {
         METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
         METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
       ]);
-      this.requireAISummaryConfiguration();
       if (!Task.isValidAISummaryActionType(actionType)) {
         throw createSummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
       }
@@ -549,18 +527,6 @@ export default abstract class Task extends EventEmitter implements ITask {
     return AI_SUMMARY_TASK_ERROR_CODES.INVALID_RESPONSE_PAYLOAD;
   }
 
-  private requireAISummaryConfiguration(): void {
-    if (
-      !this.aiSummaryAdapter ||
-      !this.rtdRequestResolver ||
-      !this.getGeneratedSummaryFlags ||
-      !this.getFeatureEnablement ||
-      !isNonEmptyString(this.agentId)
-    ) {
-      throw createSummaryError(AI_SUMMARY_TASK_ERROR_CODES.NOT_INITIALIZED);
-    }
-  }
-
   private static isPlainSummary(value: unknown): value is string | Record<string, unknown> {
     return (
       typeof value === 'string' ||
@@ -623,7 +589,7 @@ export default abstract class Task extends EventEmitter implements ITask {
   ): Promise<AISummaryPayloadByInboundType[T]> {
     const taskId = this.data?.taskId ?? this.data?.interactionId ?? '';
 
-    return (this.rtdRequestResolver as RtdRequestResolver).request({
+    return (this.rtdRequestResolver as RtdRequestResolver).requestAndWaitForRtd({
       ownerId: taskId,
       correlationId: conversationId,
       eventType: inboundType,

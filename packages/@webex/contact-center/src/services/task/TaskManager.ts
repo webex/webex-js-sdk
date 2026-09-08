@@ -471,7 +471,7 @@ export default class TaskManager extends EventEmitter {
       return;
     }
 
-    const result = this.rtdRequestResolver.resolve(
+    const result = this.rtdRequestResolver.resolveFromRtdEvent(
       AI_SUMMARY_INBOUND_TYPE_BY_EVENT[eventType],
       payload.conversationId as string,
       payload

@@ -17,11 +17,13 @@ describe('RtdRequestResolver', () => {
   it('registers before sending HTTP and resolves from the matching RTD event', async () => {
     const resolver = new RtdRequestResolver();
     const sendRequest = jest.fn().mockImplementation(() => {
-      expect(resolver.resolve('AI_SUMMARY', 'conversation-1', {summary: 'ready'})).toBe('resolved');
+      expect(resolver.resolveFromRtdEvent('AI_SUMMARY', 'conversation-1', {summary: 'ready'})).toBe(
+        'resolved'
+      );
 
       return Promise.resolve();
     });
-    const request = resolver.request(
+    const request = resolver.requestAndWaitForRtd(
       createOptions({sendRequest, createTimeoutError: () => createError('TIMEOUT')})
     );
 
@@ -33,9 +35,11 @@ describe('RtdRequestResolver', () => {
 
   it('rejects duplicate requests with the same event and correlation key', async () => {
     const resolver = new RtdRequestResolver();
-    const first = resolver.request(createOptions({sendRequest: () => new Promise(() => undefined)}));
+    const first = resolver.requestAndWaitForRtd(
+      createOptions({sendRequest: () => new Promise(() => undefined)})
+    );
 
-    await expect(resolver.request(createOptions())).rejects.toThrow('DUPLICATE');
+    await expect(resolver.requestAndWaitForRtd(createOptions())).rejects.toThrow('DUPLICATE');
     resolver.clearAll();
     await expect(first).rejects.toThrow('CANCELLED');
   });
@@ -43,23 +47,25 @@ describe('RtdRequestResolver', () => {
   it('cancels a request when HTTP acknowledgement fails', async () => {
     const resolver = new RtdRequestResolver();
     const error = createError('HTTP_FAILED');
-    const request = resolver.request(createOptions({sendRequest: () => Promise.reject(error)}));
+    const request = resolver.requestAndWaitForRtd(
+      createOptions({sendRequest: () => Promise.reject(error)})
+    );
 
     await expect(request).rejects.toBe(error);
-    expect(resolver.resolve('AI_SUMMARY', 'conversation-1', {})).toBe('not-found');
+    expect(resolver.resolveFromRtdEvent('AI_SUMMARY', 'conversation-1', {})).toBe('not-found');
   });
 
   it('rejects on timeout and supports owner cleanup', async () => {
     jest.useFakeTimers();
     const resolver = new RtdRequestResolver();
-    const request = resolver.request(
+    const request = resolver.requestAndWaitForRtd(
       createOptions({ownerId: 'task-1', sendRequest: () => new Promise(() => undefined)})
     );
 
     jest.advanceTimersByTime(15000);
     await expect(request).rejects.toThrow('TIMEOUT');
 
-    const cleanupRequest = resolver.request(
+    const cleanupRequest = resolver.requestAndWaitForRtd(
       createOptions({ownerId: 'task-2', sendRequest: () => new Promise(() => undefined)})
     );
     resolver.clear('task-2');
