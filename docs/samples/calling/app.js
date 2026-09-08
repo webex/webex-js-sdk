@@ -500,6 +500,21 @@ function createDevice() {
     console.log('Error: ', error);
   });
 
+  line.on('unregistered', (error) => {
+    // An error is present only when the SDK will not re-register, currently when Mobius
+    // rejected the keepalive with 409 because this session was superseded by another
+    // registration for the same user (for example calling opened in another tab).
+    const reason = error?.getError();
+
+    console.log('Unregistered, reason: ', reason);
+    registerElm.disabled = false;
+    unregisterElm.disabled = true;
+    registrationStatusElm.innerText =
+      reason?.type === 'session_superseded'
+        ? 'Session superseded by another tab or device'
+        : 'Not Registered';
+  });
+
   // Start listening for incoming calls
   line.on('line:incoming_call', (callObj) => {
     call = callObj;

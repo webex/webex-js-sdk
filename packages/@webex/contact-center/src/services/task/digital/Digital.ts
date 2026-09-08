@@ -1,6 +1,6 @@
 import {CC_FILE, METHODS} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
-import {IDigital, TaskResponse, TaskData} from '../types';
+import {ConsultTransferDestinationConfig, IDigital, TaskResponse, TaskData} from '../types';
 import {WrapupData} from '../../config/types';
 import Task from '../Task';
 import routingContact from '../contact';
@@ -13,7 +13,8 @@ export default class Digital extends Task implements IDigital {
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
     wrapupData?: WrapupData,
-    agentId?: string
+    agentId?: string,
+    consultTransferConfig?: ConsultTransferDestinationConfig
   ) {
     super(
       contact,
@@ -22,6 +23,7 @@ export default class Digital extends Task implements IDigital {
         isEndTaskEnabled: true,
         isEndConsultEnabled: false,
         isRecordingEnabled: false,
+        consultTransferConfig,
       },
       wrapupData,
       agentId

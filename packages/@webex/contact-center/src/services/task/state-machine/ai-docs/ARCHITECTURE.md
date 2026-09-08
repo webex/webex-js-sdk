@@ -30,7 +30,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 2. `createActor(machine).start()`
 3. `TaskManager` and task APIs map external signals to `TaskEvent`
 4. Actor transitions update context and execute action overrides
-5. `Task` recomputes UI controls and emits task-level events
+5. `Task` recomputes per-leg controls plus ordered Consult/Transfer destination availability and emits task-level events when either changes
 
 ---
 
@@ -464,10 +464,10 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
   - Guard: none
   - Actions: `clearTransferConferenceRequested`
 - `PARTICIPANT_LEAVE` -> `WRAPPING_UP`
-  - Guard: `guards.didCurrentAgentLeaveConference && guards.shouldWrapUp`
+  - Guard: `guards.didCurrentAgentLeaveMainInteraction && guards.shouldWrapUp`
   - Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft`, `emitTaskWrapup`
 - `PARTICIPANT_LEAVE` -> `TERMINATED`
-  - Guard: `guards.didCurrentAgentLeaveConference`
+  - Guard: `guards.didCurrentAgentLeaveMainInteraction`
   - Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft`, `emitTaskEnd`
 - `PARTICIPANT_LEAVE` -> `CONNECTED`
   - Guard: `guards.shouldDowngradeConferenceToConnected`
@@ -475,6 +475,14 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 - `PARTICIPANT_LEAVE` -> stay `CONFERENCING` (default)
   - Guard: default
   - Actions: `updateTaskData`, `handleParticipantLeft`, `emitTaskParticipantLeft`
+
+`didCurrentAgentLeaveMainInteraction` treats an explicit self participant ID
+or absence from the updated participants map as terminal (EP-DN removal).
+Remaining in the map with `hasLeft`, or disappearing only from `mainCall` media,
+is not treated as departure. `PARTICIPANT_LEAVE` is handled in `HELD`,
+`RESUME_INITIATING`, `CONSULTING`, `CONSULT_INITIATING`, and `CONFERENCING`;
+`CONNECTED`, `HOLD_INITIATING`, and `CONF_INITIATING` ignore the event.
+
 - `CONFERENCE_END` -> `WRAPPING_UP`
   - Guard: `guards.shouldWrapUp`
   - Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup`
@@ -749,7 +757,7 @@ Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 | `PARTICIPANT_JOINED_CONFERENCE`    | `CONFERENCE_START`            | `CONSULTING` / `CONF_INITIATING` / `CONFERENCING`    | `CONFERENCING` / same                                                         | Conference participant joined     |
 | `AGENT_CONSULT_CONFERENCE_FAILED`  | `CONFERENCE_FAILED`           | `CONF_INITIATING`                                    | `CONSULTING`                                                                  | Merge fail fallback               |
 | `AGENT_CONSULT_CONFERENCE_ENDED`   | `CONFERENCE_END`              | `CONFERENCING`                                       | `WRAPPING_UP` / `CONNECTED` / `TERMINATED`                                    | Guard-driven                      |
-| `PARTICIPANT_LEFT_CONFERENCE`      | `PARTICIPANT_LEAVE`           | `CONFERENCING`                                       | `WRAPPING_UP` / `TERMINATED` / `CONNECTED` / same                             | Ownership + downgrade guards      |
+| `PARTICIPANT_LEFT_CONFERENCE`      | `PARTICIPANT_LEAVE`           | `HELD` / `RESUME_INITIATING` / `CONSULTING` / `CONSULT_INITIATING` / `CONFERENCING` | `WRAPPING_UP` / `TERMINATED` / `CONNECTED` / same | Named self or omitted from participant map; `CONNECTED` / `HOLD_INITIATING` / `CONF_INITIATING` ignore |
 | `AGENT_CONFERENCE_TRANSFERRED`     | `TRANSFER_CONFERENCE_SUCCESS` | `CONSULTING` / `CONFERENCING`                        | `WRAPPING_UP` / `CONFERENCING` / `TERMINATED` / same                          | Initiator/receiver dependent      |
 
 ### Explicitly not mapped to state machine
@@ -809,7 +817,7 @@ Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 | API `task.consultConference()`   | `MERGE_TO_CONFERENCE`         | CONSULTING → CONF_INITIATING                               | Starts merge flow                                                                             |
 | `AgentConsultConferenced`        | `CONFERENCE_START`            | CONSULTING/CONF_INITIATING → CONFERENCING                  | `handleConferenceStarted` path                                                                |
 | `ParticipantJoinedConference`    | `CONFERENCE_START`            | CONFERENCING → CONFERENCING                                | Refresh + emit conference started                                                             |
-| `ParticipantLeftConference`      | `PARTICIPANT_LEAVE`           | CONFERENCING → WRAPPING_UP / TERMINATED / CONNECTED / stay | Uses `didCurrentAgentLeaveConference`, `shouldWrapUp`, `shouldDowngradeConferenceToConnected` |
+| `ParticipantLeftConference`      | `PARTICIPANT_LEAVE`           | HELD / RESUME_INITIATING / CONSULTING / CONSULT_INITIATING / CONFERENCING → WRAPPING_UP / TERMINATED / CONNECTED / stay; CONNECTED / HOLD_INITIATING / CONF_INITIATING ignore | Uses `didCurrentAgentLeaveMainInteraction` (named self or omitted from participant map), `shouldWrapUp`, `shouldDowngradeConferenceToConnected` |
 | `AgentConsultConferenceEnded`    | `CONFERENCE_END`              | CONFERENCING → WRAPPING_UP / CONNECTED / TERMINATED        | Guard-based branch                                                                            |
 | `AgentConsultConferenceFailed`   | `CONFERENCE_FAILED`           | CONF_INITIATING → CONSULTING                               | Merge failed fallback                                                                         |
 | `AgentConferenceTransferred`     | `TRANSFER_CONFERENCE_SUCCESS` | CONSULTING/CONFERENCING branch logic                       | Initiator/receiver dependent                                                                  |
@@ -921,8 +929,8 @@ stateDiagram-v2
 
     %% CONFERENCING
     CONFERENCING --> CONSULT_INITIATING: CONSULT (State Machine Event)
-    CONFERENCING --> WRAPPING_UP: PARTICIPANT_LEAVE (CC Event) -> PARTICIPANT_LEAVE (State Machine Event) [didCurrentAgentLeaveConference && shouldWrapUp]
-    CONFERENCING --> TERMINATED: PARTICIPANT_LEAVE (CC Event) -> PARTICIPANT_LEAVE (State Machine Event) [didCurrentAgentLeaveConference]
+    CONFERENCING --> WRAPPING_UP: PARTICIPANT_LEAVE (CC Event) -> PARTICIPANT_LEAVE (State Machine Event) [didCurrentAgentLeaveMainInteraction && shouldWrapUp]
+    CONFERENCING --> TERMINATED: PARTICIPANT_LEAVE (CC Event) -> PARTICIPANT_LEAVE (State Machine Event) [didCurrentAgentLeaveMainInteraction]
     CONFERENCING --> CONNECTED: PARTICIPANT_LEAVE (CC Event) -> PARTICIPANT_LEAVE (State Machine Event) [shouldDowngradeConferenceToConnected]
     CONFERENCING --> WRAPPING_UP: CONFERENCE_END (CC Event) -> CONFERENCE_END (State Machine Event) [shouldWrapUp]
     CONFERENCING --> CONNECTED: CONFERENCE_END (CC Event) -> CONFERENCE_END (State Machine Event) [customerInCall]
@@ -1038,8 +1046,8 @@ stateDiagram-v2
     CONFERENCING --> CONFERENCING: AGENT_CONFERENCE_TRANSFERRED -> TRANSFER_CONFERENCE_SUCCESS
     CONFERENCING --> CONFERENCING: AGENT_CONFERENCE_TRANSFER_FAILED-> TRANSFER_CONFERENCE_FAILED
 
-    CONFERENCING --> WRAPPING_UP: PARTICIPANT_LEFT_CONFERENCE -> PARTICIPANT_LEAVE [didCurrentAgentLeaveConference && shouldWrapUp]
-    CONFERENCING --> TERMINATED: PARTICIPANT_LEFT_CONFERENCE -> PARTICIPANT_LEAVE [didCurrentAgentLeaveConference]
+    CONFERENCING --> WRAPPING_UP: PARTICIPANT_LEFT_CONFERENCE -> PARTICIPANT_LEAVE [didCurrentAgentLeaveMainInteraction && shouldWrapUp]
+    CONFERENCING --> TERMINATED: PARTICIPANT_LEFT_CONFERENCE -> PARTICIPANT_LEAVE [didCurrentAgentLeaveMainInteraction]
     CONFERENCING --> CONNECTED: PARTICIPANT_LEFT_CONFERENCE -> PARTICIPANT_LEAVE [shouldDowngradeConferenceToConnected]
     CONFERENCING --> WRAPPING_UP: AGENT_CONSULT_CONFERENCE_ENDED -> CONFERENCE_END [shouldWrapUp]
     CONFERENCING --> CONNECTED: AGENT_CONSULT_CONFERENCE_ENDED -> CONFERENCE_END [customerInCall]

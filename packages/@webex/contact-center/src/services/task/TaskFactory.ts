@@ -1,5 +1,6 @@
 import routingContact from './contact';
 import WebCallingService from '../WebCallingService';
+import AnswerCallOnWebexService from '../AnswerCallOnWebexService';
 import Task from './Task';
 import Voice from './voice/Voice';
 import WebRTC from './voice/WebRTC';
@@ -18,15 +19,19 @@ export default class TaskFactory {
     data: TaskData,
     configFlags: ConfigFlags,
     wrapupData?: WrapupData,
-    agentId?: string
+    agentId?: string,
+    answerCallOnWebexService?: AnswerCallOnWebexService
   ): Task {
     const mediaType = data.interaction.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
-    const {isEndTaskEnabled, isEndConsultEnabled} = configFlags;
+    const {isEndTaskEnabled, isEndConsultEnabled, consultTransfer} = configFlags;
     const recordingEnabled = data?.interaction?.callProcessingDetails?.pauseResumeEnabled ?? true;
     const voiceControlOptions = {
       isEndTaskEnabled,
       isEndConsultEnabled,
       isRecordingEnabled: recordingEnabled,
+      enableWxBetterTogether: configFlags.enableWxBetterTogether ?? false,
+      answerCallOnWebexService,
+      consultTransferConfig: consultTransfer,
     };
     switch (mediaType) {
       case MEDIA_CHANNEL.TELEPHONY:
@@ -46,7 +51,7 @@ export default class TaskFactory {
       case MEDIA_CHANNEL.CHAT:
       case MEDIA_CHANNEL.EMAIL:
       case MEDIA_CHANNEL.SOCIAL:
-        return new Digital(contact, data, wrapupData, agentId);
+        return new Digital(contact, data, wrapupData, agentId, consultTransfer);
 
       default:
         throw new Error(`Unknown media type: ${mediaType}`);

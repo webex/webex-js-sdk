@@ -51,6 +51,7 @@ describe('WebexRequest', () => {
         resource: 'resource',
         method: HTTP_METHODS.POST,
         body: { key: 'value' },
+        headers: {'x-test-header': 'test-value'},
       });
 
       expect(result).toEqual(mockResponse);
@@ -59,6 +60,7 @@ describe('WebexRequest', () => {
         resource: 'resource',
         method: HTTP_METHODS.POST,
         body: { key: 'value' },
+        headers: {'x-test-header': 'test-value'},
       });
     });
 

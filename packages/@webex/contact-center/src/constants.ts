@@ -15,6 +15,7 @@ export const WEBEX_REQUEST_FILE = 'WebexRequest';
 export const TASK_MANAGER_FILE = 'TaskManager';
 export const TASK_FILE = 'Task';
 // AGENT OUTDIAL CONSTANTS
+export const INBOUND_DIRECTION = 'INBOUND';
 export const OUTDIAL_DIRECTION = 'OUTBOUND';
 export const ATTRIBUTES = {};
 export const OUTDIAL_MEDIA_TYPE = 'telephony';
@@ -56,9 +57,11 @@ export const METHODS = {
   TRANSFER_CALL: 'transfer',
   CONSULT_TRANSFER: 'consultTransfer',
   CONSULT_CONFERENCE: 'consultConference',
+  DROP_CONFERENCE_PARTICIPANT: 'dropConferenceParticipant',
   EXIT_CONFERENCE: 'exitConference',
   TRANSFER_CONFERENCE: 'transferConference',
   TOGGLE_MUTE: 'toggleMute',
+  TRANSMIT_DTMF: 'transmitDtmf',
   COMPLETE_TRANSFER: 'completeTransfer',
   GET_OUTDIAL_ANI_ENTRIES: 'getOutdialAniEntries',
   ACCEPT_PREVIEW_CONTACT: 'acceptPreviewContact',
@@ -69,4 +72,9 @@ export const METHODS = {
   GET_REAL_TIME_ASSISTANCE: 'getRealTimeAssistance',
   SEND_REAL_TIME_ASSISTANCE_USER_ACTION: 'sendRealTimeAssistanceUserAction',
   FETCH_HISTORIC_TRANSCRIPTS: 'fetchHistoricTranscripts',
+  SET_MANAGE_WEBEX_CALLING_IN_WXCC: 'setManageWebexCallingInWxcc',
+  IS_WX_BETTER_TOGETHER_ENABLED: 'isWxBetterTogetherEnabled',
+  SYNC_WXAPP_MUTE_FROM_MERCURY: 'syncWxAppMuteFromMercury',
+  GET_CALL_DETAILS_ON_WEBEX: 'getCallDetailsOnWebex',
+  ENSURE_WXAPP_MERCURY_CONNECTED: 'ensureWxAppMercuryConnected',
 };

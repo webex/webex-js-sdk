@@ -34,14 +34,16 @@ class WebexRequest {
     resource: string;
     method: HTTP_METHODS;
     body?: RequestBody;
+    headers?: Record<string, string | null>;
   }): Promise<IHttpResponse> {
-    const {service, resource, method, body} = options;
+    const {service, resource, method, body, headers} = options;
 
     return this.webex.request({
       service,
       resource,
       method,
       body,
+      ...(headers ? {headers} : {}),
     });
   }
 

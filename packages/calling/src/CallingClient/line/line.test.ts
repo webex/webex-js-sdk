@@ -19,6 +19,8 @@ import {LINE_EVENTS} from './types';
 import Line from '.';
 import * as utils from '../../common/Utils';
 import SDKConnector from '../../SDKConnector';
+import {createLineError} from '../../Errors/catalog/LineError';
+import {ERROR_TYPE} from '../../Errors/types';
 import {REGISTRATION_FILE} from '../constants';
 import {LOGGER} from '../../Logger/types';
 import * as regUtils from '../registration/register';
@@ -210,7 +212,6 @@ describe('Line Tests', () => {
           method: 'triggerRegistration',
         },
         expect.anything(),
-        expect.anything(),
         expect.any(Number)
       );
     });
@@ -224,6 +225,65 @@ describe('Line Tests', () => {
 
       await line.deregister();
       expect(line.getStatus()).toEqual(RegistrationStatus.IDLE);
+    });
+  });
+
+  describe('Line event emission tests', () => {
+    let line;
+
+    beforeEach(() => {
+      line = new Line(
+        userId,
+        clientDeviceUri,
+        mutex,
+        primaryMobiusUris(),
+        backupMobiusUris(),
+        LOGGER.INFO
+      );
+    });
+
+    afterEach(() => {
+      jest.clearAllMocks();
+      line.removeAllListeners();
+    });
+
+    const supersededError = () =>
+      createLineError(
+        'session superseded',
+        {file: REGISTRATION_FILE, method: 'startKeepaliveTimer'},
+        ERROR_TYPE.SESSION_SUPERSEDED,
+        RegistrationStatus.INACTIVE
+      );
+
+    it.each([LINE_EVENTS.ERROR, LINE_EVENTS.UNREGISTERED])(
+      're-emits %s with the line error to the consumer',
+      (event) => {
+        const listener = jest.fn();
+        const lineError = supersededError();
+
+        line.on(event, listener);
+        line.lineEmitter(event, undefined, lineError);
+
+        expect(listener).toBeCalledOnceWith(lineError);
+      }
+    );
+
+    it('emits unregistered without a reason when no line error is provided', () => {
+      const listener = jest.fn();
+
+      line.on(LINE_EVENTS.UNREGISTERED, listener);
+      line.lineEmitter(LINE_EVENTS.UNREGISTERED);
+
+      expect(listener).toBeCalledOnceWith(undefined);
+    });
+
+    it('does not emit error when no line error is provided', () => {
+      const listener = jest.fn();
+
+      line.on(LINE_EVENTS.ERROR, listener);
+      line.lineEmitter(LINE_EVENTS.ERROR);
+
+      expect(listener).not.toBeCalled();
     });
   });
 

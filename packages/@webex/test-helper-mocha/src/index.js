@@ -90,6 +90,55 @@ module.exports = {
   },
 
   /**
+   * Retries a promise-returning function when it rejects with an HTTP 429
+   * (Too Many Requests) response, using exponential backoff between attempts.
+   * Any other rejection - or exhausting the retries - is re-thrown immediately
+   * so genuine failures still surface. Intended for integration tests that hit
+   * rate-limited backend endpoints (e.g. user activation / email verification).
+   *
+   * The `fn` is (re)invoked on every attempt, so callers that inspect spies
+   * should reset their history at the start of `fn`.
+   *
+   * Note: backoff is bounded by the mocha per-test timeout, so keep the delays
+   * modest relative to that budget.
+   *
+   * @param {Function} fn - Returns the promise to (re)execute; receives the
+   * zero-based attempt number.
+   * @param {object} [options]
+   * @param {number} [options.retries=3] - Max retries after the first attempt.
+   * @param {number} [options.initialDelay=1000] - Base backoff delay in ms.
+   * @param {number} [options.maxDelay=5000] - Upper bound for a single backoff in ms.
+   * @returns {Promise<mixed>} Resolves with the first successful attempt's value.
+   */
+  retryOn429: async function retryOn429(
+    fn,
+    {retries = 3, initialDelay = 1000, maxDelay = 5000} = {}
+  ) {
+    const is429 = (error) =>
+      Boolean(error) &&
+      (error.statusCode === 429 ||
+        (error.body && (error.body.statusCode === 429 || error.body.errorCode === 429)));
+
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        return await fn(attempt);
+      } catch (error) {
+        if (attempt >= retries || !is429(error)) {
+          throw error;
+        }
+
+        const backoff = Math.min(initialDelay * 2 ** attempt, maxDelay);
+
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => {
+          setTimeout(resolve, backoff);
+        });
+      }
+    }
+  },
+
+  /**
    * A lot of failures get produced by EventEmitters, which makes them difficult to
    * detect in tests (they just look like timeouts). This is a test helper that
    * captures that error and turns it into a rejected promise

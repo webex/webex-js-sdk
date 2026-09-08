@@ -219,19 +219,34 @@ export default class Meetings extends WebexPlugin {
    * @returns {void}
    */
   private emitWasmRuntimePerformance = once((correlationId: string): void => {
-    // This check is designed to swallow any probe/metrics failure so it can never break meeting
-    // creation, while still reporting the status so we can track browsers with WASM issues.
+    // Probe and telemetry failures must not prevent meeting creation.
     WasmRuntimeProbe.check()
       .then((result) => {
+        const {status, capability, reason, measurements} = result;
+        const {
+          divRatio = null,
+          sqrtRatio = null,
+          addNsPerOp = null,
+          addMedianMs = null,
+          divMedianMs = null,
+          sqrtMedianMs = null,
+        } = measurements ?? {};
+        const measurementsLog = JSON.stringify(measurements);
+
         LoggerProxy.logger.log(
-          `Meetings:index#emitWasmRuntimePerformance --> WASM runtime performance status: ${result.status}, ratio: ${result.ratio}, wasmMs: ${result.wasmMs}, jsMs: ${result.jsMs}`
+          `Meetings:index#emitWasmRuntimePerformance --> WASM runtime performance status: ${status}, capability: ${capability}, reason: ${reason}, measurements: ${measurementsLog}`
         );
 
         return Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.WASM_RUNTIME_PERFORMANCE, {
-          status: result.status,
-          ratio: result.ratio,
-          wasmMs: result.wasmMs,
-          jsMs: result.jsMs,
+          status,
+          capability,
+          reason,
+          divRatio,
+          sqrtRatio,
+          addNsPerOp,
+          addMedianMs,
+          divMedianMs,
+          sqrtMedianMs,
           correlation_id: correlationId,
         });
       })

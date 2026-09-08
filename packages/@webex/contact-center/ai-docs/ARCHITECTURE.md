@@ -97,7 +97,7 @@ flowchart TD
 | Agent/Profile | Remote WCC services; Config aggregates a local view | ContactCenter, Agent, Task |
 | Task/Interaction | Remote WCC services; Task owns client representation | ContactCenter consumers |
 | Metric event | Metrics module until submission; remote metrics backend after submit | Observability systems |
-| Cached page | Utils PageCache (ephemeral only) | AddressBook, EntryPoint, Queue |
+| Cached page | Utils PageCache (ephemeral only) | AddressBook, Queue |
 
 ## Caching Catalog
 

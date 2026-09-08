@@ -152,6 +152,24 @@ describe('metrics/behavioral-events', () => {
         verb: 'fail',
       });
 
+      expect(
+        getEventTaxonomy(METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS)
+      ).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_conference_participant_drop',
+        verb: 'complete',
+      });
+
+      expect(
+        getEventTaxonomy(METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED)
+      ).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_conference_participant_drop',
+        verb: 'fail',
+      });
+
       expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_AUTO_ANSWER_SUCCESS)).toEqual({
         product,
         agent: 'user',

@@ -1,6 +1,10 @@
 import 'jsdom-global/register';
 import TaskFactory from '../../../../../src/services/task/TaskFactory';
-import {MEDIA_CHANNEL, TaskData} from '../../../../../src/services/task/types';
+import {
+  CONSULT_TRANSFER_DESTINATION_TYPE,
+  MEDIA_CHANNEL,
+  TaskData,
+} from '../../../../../src/services/task/types';
 import {LoginOption} from '../../../../../src/types';
 import WebCallingService from '../../../../../src/services/WebCallingService';
 import {ConfigFlags} from '../../../../../src/types';
@@ -18,7 +22,7 @@ describe('TaskFactory', () => {
       loginOption,
       on: jest.fn(),
       off: jest.fn?.(),
-    } as unknown) as WebCallingService;
+    } as unknown as WebCallingService);
 
   const configFlags: ConfigFlags = {
     isEndTaskEnabled: true,
@@ -58,5 +62,38 @@ describe('TaskFactory', () => {
 
     const t2 = TaskFactory.createTask(dummyContact, svcExt, data, configFlags);
     expect(t2.constructor.name).toBe('Voice');
+  });
+
+  it('passes consult/transfer destination policy into created tasks', () => {
+    const svc = makeSvc(LoginOption.EXTENSION);
+    const data = {
+      ...baseData,
+      interaction: {
+        mediaType: MEDIA_CHANNEL.TELEPHONY,
+        contactDirection: {type: 'INBOUND'},
+      },
+    } as TaskData;
+    const task = TaskFactory.createTask(dummyContact, svc, data, {
+      ...configFlags,
+      consultTransfer: {
+        allowConsultToQueue: true,
+        accessQueue: 'ALL',
+        accessEntryPoint: 'NONE',
+        accessBuddyTeam: 'ALL',
+      },
+    });
+
+    expect(task.uiControls.consultTransferDestinations).toEqual({
+      consult: [
+        CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+        CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE,
+        CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER,
+      ],
+      transfer: [
+        CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+        CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE,
+        CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER,
+      ],
+    });
   });
 });

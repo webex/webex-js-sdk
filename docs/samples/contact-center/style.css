@@ -119,6 +119,86 @@ button.btn-code {
   overflow: auto;
 }
 
+.conference-roster {
+  max-width: 32rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #d5d5d5;
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.conference-roster h3,
+.conference-roster h4 {
+  margin: 0 0 0.75rem;
+}
+
+.conference-roster__section + .conference-roster__section {
+  margin-top: 1rem;
+}
+
+.conference-roster__heading {
+  font-weight: 700;
+}
+
+.conference-roster__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.conference-roster__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid #eeeeee;
+}
+
+.conference-roster__identity {
+  display: block;
+  min-width: 0;
+}
+
+.conference-roster__name {
+  overflow-wrap: anywhere;
+}
+
+.conference-roster__error {
+  min-height: 1.25rem;
+  color: #b00020;
+}
+
+.conference-roster__dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+#customer-drop-dialog {
+  max-width: 28rem;
+  border: 0;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.5rem 2rem rgb(0 0 0 / 25%);
+}
+
+#customer-drop-dialog::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 #events-list {
   max-height: 200px;
   overflow: auto;

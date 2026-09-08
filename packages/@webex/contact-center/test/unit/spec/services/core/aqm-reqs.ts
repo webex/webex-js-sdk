@@ -334,6 +334,28 @@ describe('AqmReqs', () => {
   });
 
   describe('Event tests', () => {
+    const participantDropConfig = (participantId: string, timeout?: number | 'disabled') => ({
+      host: 'fake-host',
+      url: `/v1/tasks/interaction/conference/participants/${participantId}/drop`,
+      data: {},
+      timeout,
+      redactSensitiveLogs: true,
+      err: (error: any) => error,
+      notifSuccess: {
+        bind: {
+          type: 'RoutingMessage',
+          data: {type: 'ParticipantLeftConference', interactionId: 'interaction'},
+        },
+      },
+      notifFail: {
+        bind: {
+          type: 'RoutingMessage',
+          data: {type: 'ParticipantDropConferenceFailed'},
+        },
+        errId: 'Service.aqm.task.dropConferenceParticipant' as const,
+      },
+    });
+
     it('should handle onMessage events', async () => {
       webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
     
@@ -563,6 +585,96 @@ describe('AqmReqs', () => {
     
       const result = await promise;
       expect(result).toEqual(eventData);
+    });
+
+    it('redacts sensitive routing failure payloads from logs', async () => {
+      const participantId = '+1/failure-secret';
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
+      const promise = aqm['createPromise'](participantDropConfig(participantId, 'disabled'));
+
+      webSocketManagerInstance.emit(
+        'message',
+        JSON.stringify({
+          type: 'RoutingMessage',
+          data: {type: 'ParticipantDropConferenceFailed', participantId},
+        })
+      );
+
+      await expect(promise).rejects.toBeDefined();
+      expect(LoggerProxy.log).toHaveBeenCalledTimes(1);
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        'Routing request failed (sensitive details redacted)',
+        expect.objectContaining({module: AQM_REQS_FILE})
+      );
+      expect(JSON.stringify((LoggerProxy.log as jest.Mock).mock.calls)).not.toContain(participantId);
+      expect(aqm['pendingRequests']).toEqual({});
+    });
+
+    it('resolves a correlated participant-left event and clears its binds', async () => {
+      jest.useFakeTimers();
+      (global.window as any).setTimeout = global.setTimeout;
+
+      try {
+        const participantId = '+1/success-secret';
+        webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
+        const promise = aqm['createPromise'](participantDropConfig(participantId));
+        const eventData = {
+          type: 'RoutingMessage',
+          data: {type: 'ParticipantLeftConference', interactionId: 'interaction'},
+        };
+
+        webSocketManagerInstance.emit('message', JSON.stringify(eventData));
+
+        await expect(promise).resolves.toEqual(eventData);
+        expect(aqm['pendingRequests']).toEqual({});
+      } finally {
+        jest.useRealTimers();
+        (global.window as any).setTimeout = global.setTimeout;
+      }
+    });
+
+    it('clears participant Drop binds after an HTTP failure without logging sensitive data', async () => {
+      jest.useFakeTimers();
+      (global.window as any).setTimeout = global.setTimeout;
+
+      try {
+        const participantId = '+1/http-secret';
+        const httpFailure = {headers: {Authorization: 'Bearer secret'}};
+        webexRequestInstance.request.mockRejectedValueOnce(httpFailure);
+        const promise = aqm['createPromise'](participantDropConfig(participantId));
+
+        await expect(promise).rejects.toBe(httpFailure);
+        expect(aqm['pendingRequests']).toEqual({});
+        expect(JSON.stringify([
+          (LoggerProxy.log as jest.Mock).mock.calls,
+          (LoggerProxy.error as jest.Mock).mock.calls,
+        ])).not.toContain(participantId);
+        expect(httpFailure.headers.Authorization).toBe('*');
+      } finally {
+        jest.useRealTimers();
+        (global.window as any).setTimeout = global.setTimeout;
+      }
+    });
+
+    it('uses the default timeout without logging a sensitive request URL', async () => {
+      jest.useFakeTimers();
+      (global.window as any).setTimeout = global.setTimeout;
+
+      try {
+        const participantId = '+1/timeout-secret';
+        webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
+        const promise = aqm['createPromise'](participantDropConfig(participantId));
+        const rejection = expect(promise).rejects.toBeDefined();
+
+        jest.advanceTimersByTime(20000);
+
+        await rejection;
+        expect(JSON.stringify((LoggerProxy.error as jest.Mock).mock.calls)).not.toContain(participantId);
+        expect(aqm['pendingRequests']).toEqual({});
+      } finally {
+        jest.useRealTimers();
+        (global.window as any).setTimeout = global.setTimeout;
+      }
     });
   });
 });

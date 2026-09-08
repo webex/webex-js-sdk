@@ -26,6 +26,8 @@ describe('plugin-encryption', () => {
 
   before('register with wdm', () => webex.internal.device.register());
 
+  after(() => webex && webex.internal.mercury.disconnect());
+
   describe('when a DRY response has an error', () => {
     it('decrypts the error message', () =>
       assert

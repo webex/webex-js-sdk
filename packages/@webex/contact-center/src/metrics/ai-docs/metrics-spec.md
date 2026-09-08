@@ -240,6 +240,7 @@ All event names are defined in `METRIC_EVENT_NAMES` (`constants.ts`). Events fol
 | `TASK_CONFERENCE_END_SUCCESS` / `FAILED` | `'Task Conference End ...'` | Conference end result |
 | `TASK_CONFERENCE_TRANSFER_SUCCESS` / `FAILED` | `'Task Conference Transfer ...'` | Conference transfer result |
 | `TASK_CONFERENCE_EXIT_SUCCESS` / `FAILED` | `'Task Conference Exit ...'` | Conference exit result |
+| `TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS` / `FAILED` | `'Task Conference Participant Drop ...'` | Participant Drop result |
 | `TASK_SWITCH_CALL_SUCCESS` / `FAILED` | `'Task Switch Call ...'` | Switch call result |
 | `WEBSOCKET_REGISTER_SUCCESS` / `FAILED` | `'Websocket Register ...'` | WebSocket registration result |
 | `WEBSOCKET_DEREGISTER_SUCCESS` / `FAIL` | `'Websocket Deregister ...'` | WebSocket deregistration result |
@@ -277,6 +278,7 @@ All event names are defined in `constants.ts` as `METRIC_EVENT_NAMES`. Events fo
 | Conference End         | `TASK_CONFERENCE_END_SUCCESS`          | `TASK_CONFERENCE_END_FAILED`           |
 | Conference Transfer    | `TASK_CONFERENCE_TRANSFER_SUCCESS`     | `TASK_CONFERENCE_TRANSFER_FAILED`      |
 | Conference Exit        | `TASK_CONFERENCE_EXIT_SUCCESS`         | `TASK_CONFERENCE_EXIT_FAILED`          |
+| Conference Participant Drop | `TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS` | `TASK_CONFERENCE_PARTICIPANT_DROP_FAILED` |
 | Switch Call            | `TASK_SWITCH_CALL_SUCCESS`             | `TASK_SWITCH_CALL_FAILED`              |
 | Outdial                | `TASK_OUTDIAL_SUCCESS`                 | `TASK_OUTDIAL_FAILED`                  |
 | Upload Logs            | `UPLOAD_LOGS_SUCCESS`                  | `UPLOAD_LOGS_FAILED`                   |
@@ -297,11 +299,11 @@ Special events (no success/failure pair):
 
 - `WEBSOCKET_EVENT_RECEIVED` — **no** behavioral taxonomy (not in `eventTaxonomyMap`)
 
-Of the 80 defined metric names, 71 have behavioral taxonomy and 9 do not. Events **without** an `eventTaxonomyMap` entry are the six `AI_ASSISTANT_*` names plus `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`.
+Of the 82 defined metric names, 73 have behavioral taxonomy and 9 do not. Events **without** an `eventTaxonomyMap` entry are the six `AI_ASSISTANT_*` names plus `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`.
 
 ### Complete METRIC_EVENT_NAMES catalog
 
-This table contains all 80 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 71 mapped and 9 unmapped.
+This table contains all 82 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 73 mapped and 9 unmapped.
 
 | Constant | Emitted name | Behavioral taxonomy? |
 |---|---|---|
@@ -354,6 +356,8 @@ This table contains all 80 names from `src/metrics/constants.ts`; taxonomy prese
 | `TASK_CONFERENCE_TRANSFER_FAILED` | `Task Conference Transfer Failed` | yes |
 | `TASK_CONFERENCE_EXIT_SUCCESS` | `Task Conference Exit Success` | yes |
 | `TASK_CONFERENCE_EXIT_FAILED` | `Task Conference Exit Failed` | yes |
+| `TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS` | `Task Conference Participant Drop Success` | yes |
+| `TASK_CONFERENCE_PARTICIPANT_DROP_FAILED` | `Task Conference Participant Drop Failed` | yes |
 | `TASK_SWITCH_CALL_SUCCESS` | `Task Switch Call Success` | yes |
 | `TASK_SWITCH_CALL_FAILED` | `Task Switch Call Failed` | yes |
 | `TASK_OUTDIAL_SUCCESS` | `Task Outdial Success` | yes |
@@ -462,6 +466,8 @@ The final behavioral event name is constructed as: `{product}.{agent}.{target}.{
 Example: `wxcc_sdk.user.station_login.complete`
 
 The mapping is defined in `behavioral-events.ts` via `eventTaxonomyMap` and accessed through `getEventTaxonomy(name)`.
+
+Participant Drop uses target `task_conference_participant_drop` with `complete` for success and `fail` for failure. Its metric payload is limited to task/request correlation and standard AQM tracking fields; participant IDs, numbers, names, URLs, headers, and raw routing payloads are excluded.
 
 ```mermaid
 flowchart LR
@@ -728,7 +734,7 @@ MetricsManager holds three pending queues, running timing entries, a readiness f
 
 ## Business Rules & Invariants
 - `timeEvent` and every tracking method return immediately while metrics are disabled.
-- Only names present in `eventTaxonomyMap` receive behavioral taxonomy; 71 of 80 names are mapped and the six AI Assistant plus three WebSocket names are intentionally catalogued as unmapped.
+- Only names present in `eventTaxonomyMap` receive behavioral taxonomy; 73 of 82 names are mapped and the six AI Assistant plus three WebSocket names are intentionally catalogued as unmapped.
 - `submittingEvents` prevents overlapping queue-drain executions.
 - Authentication is inherited from the host Webex SDK's metrics client; MetricsManager owns no credentials, tokens, or authorization policy.
 

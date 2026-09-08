@@ -4,9 +4,11 @@ import {
   DESTINATION_TYPE,
   TASK_EVENTS,
   TASK_CHANNEL_TYPE,
+  TransferPayLoad,
   VOICE_VARIANT,
 } from '../../../../../src/services/task/types';
 import {TaskEvent} from '../../../../../src/services/task/state-machine';
+import {ENTRY_POINT_TRANSFER_DESTINATION_TYPE} from '../../../../../src/services/task/constants';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import {createTaskData} from './taskTestUtils';
 
@@ -21,6 +23,20 @@ class DummyTask extends Task {
 
   public accept() {
     return Promise.resolve({} as any);
+  }
+}
+
+class ConferenceTask extends DummyTask {
+  protected override getChannelSpecificActionOverrides() {
+    return {
+      ...super.getChannelSpecificActionOverrides(),
+      emitTaskParticipantLeft: this.createEmitSelfAction(TASK_EVENTS.TASK_PARTICIPANT_LEFT, {
+        updateTaskData: true,
+      }),
+      emitTaskConferenceEnded: this.createEmitSelfAction(TASK_EVENTS.TASK_CONFERENCE_ENDED, {
+        updateTaskData: true,
+      }),
+    };
   }
 }
 
@@ -246,6 +262,7 @@ describe('Task (base class)', () => {
       () => voiceTask.endConsult({} as any),
       () => voiceTask.consultTransfer({} as any),
       () => voiceTask.consultConference(),
+      () => voiceTask.dropConferenceParticipant({participantId: 'participant-id'}),
       () => voiceTask.exitConference(),
       () => voiceTask.transferConference(),
       () => voiceTask.toggleMute(),
@@ -271,6 +288,171 @@ describe('Task (base class)', () => {
     });
 
     expect((voiceTask.data as any).foo).toBe('new');
+  });
+
+  it('syncs owner changes and emits task:hydrate without changing task state', () => {
+    const originalData = createTaskData({
+      interaction: {owner: 'agent-1'} as any,
+    });
+    const voiceTask = new DummyTask(dummyContact, originalData);
+    const hydrateHandler = jest.fn();
+
+    voiceTask.stateMachineService?.send({
+      type: TaskEvent.TASK_INCOMING,
+      taskData: originalData,
+    });
+    voiceTask.stateMachineService?.send({type: TaskEvent.ASSIGN, taskData: originalData});
+    const stateBeforeOwnerChange = voiceTask.stateMachineService?.getSnapshot().value;
+    voiceTask.on(TASK_EVENTS.TASK_HYDRATE, hydrateHandler);
+
+    const updatedData = createTaskData({
+      interaction: {owner: 'agent-2'} as any,
+    });
+    voiceTask.sendStateMachineEvent({
+      type: TaskEvent.CONTACT_OWNER_CHANGED,
+      taskData: updatedData,
+    });
+
+    expect(voiceTask.data.interaction.owner).toBe('agent-2');
+    expect(hydrateHandler).toHaveBeenCalledWith(voiceTask);
+    expect(voiceTask.stateMachineService?.getSnapshot().value).toBe(stateBeforeOwnerChange);
+  });
+
+  it('synchronizes the roster from PARTICIPANT_LEAVE without an unrelated state transition', () => {
+    const conferenceData = createTaskData({
+      agentId: 'agent-1',
+      interactionId: 'interaction-1',
+      interaction: {
+        state: 'conference',
+        owner: 'agent-1',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        participants: {
+          'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false},
+          'agent-2': {id: 'agent-2', pType: 'Agent', hasLeft: false},
+          'agent-3': {id: 'agent-3', pType: 'Agent', hasLeft: false},
+          customer: {id: 'customer', pType: 'Customer', hasLeft: false},
+        },
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            participants: ['agent-1', 'agent-2', 'agent-3', 'customer'],
+            isHold: false,
+          },
+        },
+      } as any,
+    });
+    const voiceTask = new ConferenceTask(dummyContact, conferenceData);
+    const participantLeftHandler = jest.fn();
+
+    voiceTask.sendStateMachineEvent({type: TaskEvent.TASK_INCOMING, taskData: conferenceData});
+    voiceTask.sendStateMachineEvent({type: TaskEvent.ASSIGN, taskData: conferenceData});
+    voiceTask.sendStateMachineEvent({type: TaskEvent.CONFERENCE_START, taskData: conferenceData});
+    const conferenceState = voiceTask.stateMachineService?.getSnapshot().value;
+    voiceTask.on(TASK_EVENTS.TASK_PARTICIPANT_LEFT, participantLeftHandler);
+
+    const updatedData = createTaskData({
+      ...conferenceData,
+      participantId: 'agent-2',
+      interaction: {
+        ...conferenceData.interaction,
+        participants: {
+          'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false},
+          'agent-3': {id: 'agent-3', pType: 'Agent', hasLeft: false},
+          customer: {id: 'customer', pType: 'Customer', hasLeft: false},
+        },
+        media: {
+          'interaction-1': {
+            ...conferenceData.interaction.media['interaction-1'],
+            participants: ['agent-1', 'agent-3', 'customer'],
+          },
+        },
+      } as any,
+    });
+
+    voiceTask.sendStateMachineEvent({
+      type: TaskEvent.PARTICIPANT_LEAVE,
+      taskData: updatedData,
+      participantId: 'agent-2',
+    });
+
+    expect(voiceTask.data.interaction.participants['agent-2']).toBeUndefined();
+    expect(participantLeftHandler).toHaveBeenCalledWith(voiceTask);
+    expect(voiceTask.stateMachineService?.getSnapshot().value).toBe(conferenceState);
+  });
+
+  it('keeps the conference participant controls after the customer leaves', () => {
+    const conferenceData = createTaskData({
+      agentId: 'agent-1',
+      interactionId: 'interaction-1',
+      isConferenceInProgress: true,
+      isConferencing: true,
+      interaction: {
+        state: 'conference',
+        mediaType: 'telephony',
+        owner: 'agent-1',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        callProcessingDetails: {isConferencing: true},
+        participants: {
+          'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false},
+          'agent-2': {id: 'agent-2', pType: 'Agent', hasLeft: false},
+          customer: {id: 'customer', pType: 'Customer', hasLeft: false},
+        },
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            participants: ['agent-1', 'agent-2', 'customer'],
+            isHold: false,
+          },
+        },
+      } as any,
+    });
+    const voiceTask = new ConferenceTask(dummyContact, conferenceData);
+    const participantLeftHandler = jest.fn();
+    const conferenceEndedHandler = jest.fn();
+
+    voiceTask.sendStateMachineEvent({type: TaskEvent.TASK_INCOMING, taskData: conferenceData});
+    voiceTask.sendStateMachineEvent({type: TaskEvent.ASSIGN, taskData: conferenceData});
+    voiceTask.sendStateMachineEvent({type: TaskEvent.CONFERENCE_START, taskData: conferenceData});
+    voiceTask.on(TASK_EVENTS.TASK_PARTICIPANT_LEFT, participantLeftHandler);
+    voiceTask.on(TASK_EVENTS.TASK_CONFERENCE_ENDED, conferenceEndedHandler);
+
+    const customerLeftData = createTaskData({
+      ...conferenceData,
+      participantId: 'customer',
+      interaction: {
+        ...conferenceData.interaction,
+        participants: {
+          'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false},
+          'agent-2': {id: 'agent-2', pType: 'Agent', hasLeft: false},
+        },
+        media: {
+          'interaction-1': {
+            ...conferenceData.interaction.media['interaction-1'],
+            participants: ['agent-1', 'agent-2'],
+          },
+        },
+      } as any,
+    });
+
+    voiceTask.sendStateMachineEvent({
+      type: TaskEvent.PARTICIPANT_LEAVE,
+      taskData: customerLeftData,
+      participantId: 'customer',
+    });
+
+    expect(voiceTask.data.interaction.participants.customer).toBeUndefined();
+    expect(voiceTask.data.interaction.participants['agent-2']).toBeDefined();
+    expect(voiceTask.stateMachineService?.getSnapshot().value).toBe('CONFERENCING');
+    expect(voiceTask.uiControls.main.exitConference).toEqual({
+      isVisible: true,
+      isEnabled: true,
+    });
+    expect(participantLeftHandler).toHaveBeenCalledWith(voiceTask);
+    expect(conferenceEndedHandler).not.toHaveBeenCalled();
   });
 
   it('stopStateMachine clears state snapshot access', () => {
@@ -395,6 +577,24 @@ describe('Task common methods', () => {
       interactionId: taskData.interactionId,
       data: payload,
     });
+    expect(result).toEqual({result: 'vt'});
+  });
+
+  it('transfer uses vteamTransfer with the backend destination type for entry-point destinations', async () => {
+    const payload: TransferPayLoad = {
+      to: 'entry-point-1',
+      destinationType: DESTINATION_TYPE.ENTRYPOINT,
+    };
+    const result = await task.transfer(payload);
+
+    expect(contact.vteamTransfer).toHaveBeenCalledWith({
+      interactionId: taskData.interactionId,
+      data: {
+        to: payload.to,
+        destinationType: ENTRY_POINT_TRANSFER_DESTINATION_TYPE,
+      },
+    });
+    expect(contact.blindTransfer).not.toHaveBeenCalled();
     expect(result).toEqual({result: 'vt'});
   });
 

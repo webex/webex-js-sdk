@@ -23,6 +23,15 @@ export type ClientUserNameInput = NonNullable<RawClientEvent['userNameInput']>;
 
 export type ClientEmailInput = NonNullable<RawClientEvent['emailInput']>;
 
+export type PrivacyAndSecurityPermission = NonNullable<
+  RawClientEvent['privacyAndSecurityPermission']
+>;
+
+export type PrivacyAndSecurityPermissionResource = keyof PrivacyAndSecurityPermission;
+
+export type PrivacyAndSecurityPermissionState =
+  PrivacyAndSecurityPermission[PrivacyAndSecurityPermissionResource];
+
 export type BrowserLaunchMethodType = NonNullable<
   RawEvent['origin']['clientInfo']
 >['browserLaunchMethod'];
