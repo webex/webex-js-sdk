@@ -68,9 +68,25 @@ const webex = Webex.init({
 
 Network request telemetry is disabled by default. Enable it with
 `metrics.networkTelemetry.enabled: true`. When enabled, the metrics plugin summarizes requests
-made through the Webex SDK request pipeline. It listens to the SDK-wide `request:start`,
+made through the Webex SDK request pipeline. The reporting interval is configurable with
+`metrics.networkTelemetry.intervalMs` and defaults to ten minutes. It listens to the SDK-wide `request:start`,
 `request:success`, and `request:failure` events, so individual plugins do not need to wrap or
 replace `webex.request()`.
+
+For example, to collect one-minute windows:
+
+```js
+const webex = Webex.init({
+  config: {
+    metrics: {
+      networkTelemetry: {
+        enabled: true,
+        intervalMs: 60 * 1_000,
+      },
+    },
+  },
+});
+```
 
 The listeners are installed once for each Webex instance when `webex.internal.metrics` is
 constructed and the feature is enabled. The metrics package must be imported before constructing
@@ -96,7 +112,7 @@ webex.request()
   -> request:success(options, response) or request:failure(options, reason)
   -> metrics request outcome listeners
   -> aggregate host, endpoint, response, and error counts
-  -> every ten minutes, submit JS_SDK_NETWORK_REQUEST_SUMMARY
+  -> every configured interval, submit JS_SDK_NETWORK_REQUEST_SUMMARY
 ````
 
 The listeners and ten-minute accumulator are registered during metrics plugin initialization:
@@ -114,12 +130,20 @@ initialize(...args) {
 }
 ```
 
-When the metrics plugin is stopped, any non-empty partial window is submitted once before the
-collector is disposed. Empty windows are not submitted during shutdown.
+The metrics plugin exposes `flushNetworkTelemetry()` for callers that need to submit the current
+non-empty window immediately, such as after an early call failure. When the metrics plugin is
+stopped, any non-empty partial window is submitted once before the collector is disposed. Empty
+windows are not submitted during shutdown, and the shutdown hook waits for the submission attempt
+to settle.
+
+```js
+await webex.internal.metrics.flushNetworkTelemetry();
+```
 
 ### Metric schema
 
-One operational client metric named `JS_SDK_NETWORK_REQUEST_SUMMARY` is submitted every ten minutes. Its `eventPayload` has this shape:
+One operational client metric named `JS_SDK_NETWORK_REQUEST_SUMMARY` is submitted at the configured
+interval. Its `eventPayload` has this shape:
 
 ```ts
 type NetworkTelemetry = {

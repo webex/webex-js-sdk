@@ -64,6 +64,7 @@ const Metrics = WebexPlugin.extend({
     }
 
     this.networkTelemetry = createNetworkTelemetryCollector({
+      intervalMs: this.webex.config.metrics.networkTelemetry.intervalMs,
       submitMetric: this.submitNetworkTelemetryMetric.bind(this),
       onSubmissionFailure: this.handleNetworkTelemetrySubmissionFailure.bind(this),
     });
@@ -101,6 +102,18 @@ const Metrics = WebexPlugin.extend({
   },
 
   /**
+   * Submits the current network telemetry window immediately.
+   * @returns
+   */
+  flushNetworkTelemetry() {
+    if (!this.networkTelemetry) {
+      return Promise.resolve();
+    }
+
+    return this.networkTelemetry.flush();
+  },
+
+  /**
    * Submits a completed network telemetry window through client metrics.
    * @param name
    * @param properties
@@ -124,13 +137,14 @@ const Metrics = WebexPlugin.extend({
    */
   stopNetworkTelemetry() {
     if (!this.networkTelemetry) {
-      return;
+      return Promise.resolve();
     }
 
     this.stopListening(this.webex, 'request:start', this.recordNetworkRequestStart);
     this.stopListening(this.webex, 'request:success', this.recordNetworkRequestSuccess);
     this.stopListening(this.webex, 'request:failure', this.recordNetworkRequestFailure);
-    this.networkTelemetry.stop();
+
+    return this.networkTelemetry.stop();
   },
 
   submit(key, value) {
