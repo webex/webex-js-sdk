@@ -364,10 +364,10 @@ export const guards = {
   /**
    * True when an updated lifecycle event shows that this agent left the main interaction.
    *
-   * Explicit self-participant evidence is authoritative. Main-call membership is used only
-   * for the from-conference nested-consult race where CONSULT_END still represents the agent as
-   * active on the consult leg after removing them from the main leg. Partial or ordinary call
-   * snapshots are not treated as a departure.
+   * Returns true when the event names this agent, or when this agent is absent from the
+   * updated participants map. EP-DN payloads remove the leaving participant instead of
+   * setting hasLeft. Remaining in the map with hasLeft, or disappearing only from
+   * mainCall media, is not treated as departure.
    */
   didCurrentAgentLeaveMainInteraction: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
@@ -383,10 +383,7 @@ export const guards = {
     if (Boolean(participantId) && participantId === selfAgentId) {
       return true;
     }
-    //    For EP-DN agents the backend removes the leaving participant entirely
-    //    from the participants map (rather than setting hasLeft). If this task
-    //    is in CONFERENCING (implied by the guard being evaluated here) but the
-    //    agent is absent from the updated participants, they have left.
+    // EP-DN payloads remove the leaving participant from the map instead of setting hasLeft.
     const participants = taskData?.interaction?.participants;
     if (participants && !(selfAgentId in participants)) {
       return true;
