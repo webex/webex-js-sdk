@@ -87,7 +87,8 @@ export class ApiAIAssistant {
       const {error: detailedError} = getErrorDetails(
         new Error('AI_ASSISTANT_BASE_URL_NOT_AVAILABLE'),
         METHODS.GET_BASE_URL,
-        CC_FILE
+        CC_FILE,
+        {webexRequest: this.webexRequest}
       );
       throw detailedError;
     }
@@ -391,7 +392,9 @@ export class ApiAIAssistant {
         ['operational']
       );
 
-      const {error: detailedError} = getErrorDetails(error, METHODS.SEND_EVENT, CC_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.SEND_EVENT, CC_FILE, {
+        webexRequest: this.webexRequest,
+      });
       throw detailedError;
     }
   }
@@ -432,7 +435,8 @@ export class ApiAIAssistant {
         const {error: detailedError} = getErrorDetails(
           new Error('SUGGESTED_RESPONSES_NOT_ENABLED'),
           METHODS.GET_REAL_TIME_ASSISTANCE,
-          CC_FILE
+          CC_FILE,
+          {webexRequest: this.webexRequest}
         );
         throw detailedError;
       }
@@ -481,7 +485,8 @@ export class ApiAIAssistant {
       const {error: detailedError} = getErrorDetails(
         error,
         METHODS.GET_REAL_TIME_ASSISTANCE,
-        CC_FILE
+        CC_FILE,
+        {webexRequest: this.webexRequest}
       );
       throw detailedError;
     }
@@ -522,7 +527,8 @@ export class ApiAIAssistant {
         const {error: detailedError} = getErrorDetails(
           new Error('SUGGESTED_RESPONSES_NOT_ENABLED'),
           METHODS.SEND_REAL_TIME_ASSISTANCE_USER_ACTION,
-          CC_FILE
+          CC_FILE,
+          {webexRequest: this.webexRequest}
         );
         throw detailedError;
       }
@@ -577,7 +583,8 @@ export class ApiAIAssistant {
       const {error: detailedError} = getErrorDetails(
         error,
         METHODS.SEND_REAL_TIME_ASSISTANCE_USER_ACTION,
-        CC_FILE
+        CC_FILE,
+        {webexRequest: this.webexRequest}
       );
       throw detailedError;
     }
@@ -606,7 +613,8 @@ export class ApiAIAssistant {
       const {error: detailedError} = getErrorDetails(
         new Error('REAL_TIME_TRANSCRIPTION_NOT_ENABLED'),
         METHODS.FETCH_HISTORIC_TRANSCRIPTS,
-        CC_FILE
+        CC_FILE,
+        {webexRequest: this.webexRequest}
       );
       throw detailedError;
     }
@@ -648,7 +656,8 @@ export class ApiAIAssistant {
       const {error: detailedError} = getErrorDetails(
         error,
         METHODS.FETCH_HISTORIC_TRANSCRIPTS,
-        CC_FILE
+        CC_FILE,
+        {webexRequest: this.webexRequest}
       );
       throw detailedError;
     }

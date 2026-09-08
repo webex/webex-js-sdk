@@ -1,3 +1,5 @@
+import type WebexRequest from './WebexRequest';
+
 /**
  * Generic message interface used throughout the plugin
  * @template T - Type of the data payload (defaults to any)
@@ -67,4 +69,5 @@ export interface AugmentedError extends Error {
  */
 export type GetErrorDetailsOptions = {
   uploadLogs?: boolean;
+  webexRequest?: Pick<WebexRequest, 'uploadLogs'>;
 };

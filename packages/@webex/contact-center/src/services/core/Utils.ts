@@ -20,8 +20,11 @@ import {DialPlan} from '../config/types';
  * Uploads diagnostic logs without allowing an upload failure to affect the original operation.
  * This is shared by the error helpers because both paths intentionally use best-effort logging.
  */
-const uploadLogsFireAndForget = (correlationId?: string) => {
-  const uploadLogsPromise = WebexRequest.getInstance().uploadLogs({
+const uploadLogsFireAndForget = (
+  webexRequest: Pick<WebexRequest, 'uploadLogs'> | undefined,
+  correlationId?: string
+) => {
+  const uploadLogsPromise = (webexRequest ?? WebexRequest.getInstance()).uploadLogs({
     correlationId,
   });
 
@@ -179,7 +182,7 @@ export const getErrorDetails = (
     });
     // we can add more conditions here if not needed for specific cases eg: silentReLogin
     if (shouldUploadLogs) {
-      uploadLogsFireAndForget(failure?.trackingId);
+      uploadLogsFireAndForget(options.webexRequest, failure?.trackingId);
     }
   }
 
@@ -245,7 +248,7 @@ export const generateTaskErrorObject = (
     method: methodName,
     trackingId,
   });
-  uploadLogsFireAndForget(trackingId);
+  uploadLogsFireAndForget(undefined, trackingId);
 
   const reason = `${errorType}: ${errorMessage}${errorData ? ` (${errorData})` : ''}`;
   const err: AugmentedError = new Error(reason);
