@@ -448,6 +448,7 @@ describe('plugin-meetings', () => {
             handleLLMOnline: sinon.stub(),
             llmChannel: createMockLLMChannel(),
             voiceaChannel: mockVoiceaChannel,
+            startTranscriptionIfNeeded: sinon.stub(),
             annotation: {registerChannel: sinon.stub()},
             trigger: sinon.stub(),
             transcription: {captions: []},
@@ -532,6 +533,7 @@ describe('plugin-meetings', () => {
           await webinar.cleanupPSDataChannel();
 
           assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, meeting.llmChannel);
+          assert.calledOnceWithExactly(meeting.startTranscriptionIfNeeded);
         });
 
         it('switches voicea to main channel even when not connected (defers caption restoration)', async () => {
@@ -612,6 +614,7 @@ describe('plugin-meetings', () => {
             processRelayEvent: sinon.stub(),
             processLocusLLMEvent: sinon.stub(),
             handleLLMOnline: sinon.stub(),
+            startTranscriptionIfNeeded: sinon.stub(),
             llmChannel: mockDefaultChannel,
             voiceaChannel: mockVoiceaChannel,
             annotation: {registerChannel: sinon.stub()},
@@ -784,6 +787,7 @@ describe('plugin-meetings', () => {
           await webinar.updatePSDataChannel();
 
           assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockPSChannel);
+          assert.calledOnceWithExactly(meeting.startTranscriptionIfNeeded);
         });
 
         it('does not call switchLLMChannel when meeting has no voiceaChannel', async () => {

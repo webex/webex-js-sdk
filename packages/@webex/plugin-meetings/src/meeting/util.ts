@@ -365,7 +365,7 @@ const MeetingUtil = {
       });
   },
 
-  cleanUp: (meeting) => {
+  cleanUp: (meeting, {preserveVoiceaChannel = true}: {preserveVoiceaChannel?: boolean} = {}) => {
     meeting.getWebexObject().internal.device.meetingEnded();
     meeting.stopPeriodicLogUpload();
 
@@ -396,7 +396,7 @@ const MeetingUtil = {
       .then(() => meeting.stopKeepAlive())
       .then(() => {
         if (meeting.config?.enableAutomaticLLM) {
-          return meeting.cleanupLLMConneciton({throwOnError: false, preserveVoiceaChannel: true});
+          return meeting.cleanupLLMConneciton({throwOnError: false, preserveVoiceaChannel});
         }
 
         return undefined;

@@ -262,14 +262,13 @@ const Webinar = WebexPlugin.extend({
       }
       this._practiceSessionLLMChannel = undefined;
 
-      // Switch voicea to current main channel. The reconciler pattern in switchLLMChannel
-      // handles all timing concerns:
+      // Switch voicea to current main channel. Switching after disconnect ensures:
       // - If main channel was replaced during disconnect (concurrent updateLLMConnection),
-      //   meeting.llmChannel will be the new channel, and reconciler binds to it
-      // - If channel is still connecting, reconciler defers caption restoration until 'online'
-      // - If same channel, reconciler is a no-op for rebind but still reconciles captions
+      //   meeting.llmChannel will be the new channel
+      // - If the channel is still connecting, switchLLMChannel waits for it to come online
       if (meeting?.voiceaChannel && meeting?.llmChannel) {
         await meeting.voiceaChannel.switchLLMChannel(meeting.llmChannel);
+        meeting.startTranscriptionIfNeeded();
       }
     }
   },
@@ -458,6 +457,7 @@ const Webinar = WebexPlugin.extend({
         // transcription is always initialized (reset to initial shape, never null).
         if (meeting.voiceaChannel) {
           await meeting.voiceaChannel.switchLLMChannel(psChannel);
+          meeting.startTranscriptionIfNeeded();
         }
 
         LoggerProxy.logger.info(

@@ -15089,6 +15089,7 @@ describe('plugin-meetings', () => {
             getIsCaptionBoxOn: sinon.stub().returns(false),
             updateSubchannelSubscriptions: sinon.stub(),
             switchLLMChannel: sinon.stub().resolves(),
+            isLLMConnected: sinon.stub().returns(true),
             getKeepTranscriptionSubscribed: sinon.stub().returns(false),
           };
 
@@ -15404,6 +15405,22 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockChannel);
         });
 
+        it('creates and binds a voiceaChannel after the previous channel was cleaned up', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.voiceaChannel = undefined;
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          await meeting.updateLLMConnection();
+
+          assert.calledOnceWithExactly(webex.internal.voicea.createChannel);
+          assert.strictEqual(meeting.voiceaChannel, mockVoiceaChannel);
+          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockChannel);
+        });
+
         it('skips switchLLMChannel when practice session is active', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.webinar.isPracticeSessionLLMChannelConnected = sinon.stub().returns(true);
@@ -15435,58 +15452,79 @@ describe('plugin-meetings', () => {
           assert.equal(result, 'something');
         });
 
-        it('starts pending transcription after LLM connects when _pendingTranscriptionStart is true', async () => {
+        it('starts transcription after LLM connects when Locus transcription is active', async () => {
           meeting.joinedWith = {state: 'JOINED'};
-          meeting._pendingTranscriptionStart = true;
           meeting.areVoiceaEventsSetup = false;
           meeting.startTranscription = sinon.stub().resolves();
           meeting.locusInfo = {
             syncAllHashTreeDatasets: sinon.stub().resolves(),
             url: 'a url',
             info: {datachannelUrl: 'a datachannel url'},
+            controls: {transcribe: {transcribing: true}},
           };
 
           await meeting.updateLLMConnection();
+          await mockVoiceaChannel.switchLLMChannel.firstCall.returnValue;
 
-          // Should call startTranscription for the pending request
           assert.calledOnce(meeting.startTranscription);
-          // Should clear the pending flag
-          assert.equal(meeting._pendingTranscriptionStart, false);
         });
 
-        it('does not start transcription when _pendingTranscriptionStart is false', async () => {
+        it('does not start transcription after LLM connects when Locus transcription is inactive', async () => {
           meeting.joinedWith = {state: 'JOINED'};
-          meeting._pendingTranscriptionStart = false;
           meeting.areVoiceaEventsSetup = false;
           meeting.startTranscription = sinon.stub().resolves();
           meeting.locusInfo = {
             syncAllHashTreeDatasets: sinon.stub().resolves(),
             url: 'a url',
             info: {datachannelUrl: 'a datachannel url'},
+            controls: {transcribe: {transcribing: false}},
           };
 
           await meeting.updateLLMConnection();
 
-          // Should NOT call startTranscription
           assert.notCalled(meeting.startTranscription);
         });
 
         it('does not start transcription when areVoiceaEventsSetup is already true', async () => {
           meeting.joinedWith = {state: 'JOINED'};
-          meeting._pendingTranscriptionStart = true;
           meeting.areVoiceaEventsSetup = true;
           meeting.startTranscription = sinon.stub().resolves();
           meeting.locusInfo = {
             syncAllHashTreeDatasets: sinon.stub().resolves(),
             url: 'a url',
             info: {datachannelUrl: 'a datachannel url'},
+            controls: {transcribe: {transcribing: true}},
           };
 
           await meeting.updateLLMConnection();
 
-          // Should NOT call startTranscription (already setup)
           assert.notCalled(meeting.startTranscription);
         });
+
+        forEach(
+          [
+            {
+              description: 'does not start transcription when voiceaChannel is disconnected',
+              voiceaChannel: {isLLMConnected: sinon.stub().returns(false)},
+            },
+            {
+              description: 'does not start transcription when voiceaChannel is unavailable',
+              voiceaChannel: undefined,
+            },
+          ],
+          ({description, voiceaChannel}) => {
+            it(description, () => {
+              meeting.areVoiceaEventsSetup = false;
+              meeting.locusInfo = {controls: {transcribe: {transcribing: true}}};
+              meeting.startTranscription = sinon.stub().resolves();
+              meeting.voiceaChannel = voiceaChannel;
+
+              meeting.startTranscriptionIfNeeded();
+
+              assert.notCalled(meeting.startTranscription);
+            });
+          }
+        );
 
         it('registers annotation channel when not in practice session', async () => {
           meeting.joinedWith = {state: 'JOINED'};

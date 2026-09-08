@@ -240,6 +240,10 @@ describe('plugin-meetings', () => {
 
         webex.meetings.destroy(meeting, test1);
 
+        assert.calledOnceWithExactly(MeetingUtil.cleanUp, meeting, {
+          preserveVoiceaChannel: false,
+        });
+
         // and it should still return the information after the meeting is destroyed
         assert.equal(
           webex.meetings.getBasicMeetingInformation(meetingIds.meetingId).id,
