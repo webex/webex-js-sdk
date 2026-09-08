@@ -227,16 +227,29 @@ describe('plugin-board', () => {
   });
 
   describe('#createChannel()', () => {
+    const clusterBoardServiceUrl = 'https://board-a.wbx2.com/board/api/v1';
     const channelRequestBody = {
       aclUrlLink: channel.aclUrlLink,
       kmsMessage: channel.kmsMessage,
     };
 
     beforeAll(() => {
-      webex.request.resetHistory();
       webex.request.returns(Promise.resolve({statusCode: 200, body: channelRes}));
+    });
 
-      
+    beforeEach(() => {
+      webex.request.resetHistory();
+      webex.internal.services = {
+        getClusterId: sinon.stub().returns('urn:TEAM:us-east-2_a:acl-write'),
+        getServiceFromClusterId: sinon.stub().returns({
+          name: 'board',
+          url: clusterBoardServiceUrl,
+        }),
+      };
+    });
+
+    afterEach(() => {
+      delete webex.internal.services;
     });
 
     afterAll(() => {
@@ -252,6 +265,7 @@ describe('plugin-board', () => {
     it('supports creating ambiguous channels for PMR support', () => {
       return webex.internal.board.createChannel()
         .then(() => {
+          assert.notCalled(webex.internal.services.getClusterId);
           assert.calledWith(
             webex.request,
             sinon.match({
@@ -271,7 +285,55 @@ describe('plugin-board', () => {
         })
     });
 
-    it('requests POST to channels service', () => {
+    it('resolves the board host from the conversation ACL cluster', () => {
+      return webex.internal.board.createChannel(conversation)
+        .then(() => {
+          assert.calledWith(webex.internal.services.getClusterId, conversation.aclUrl);
+          assert.calledWith(webex.internal.services.getServiceFromClusterId, {
+            clusterId: 'urn:TEAM:us-east-2_a:board',
+          });
+          assert.calledWith(
+            webex.request,
+            sinon.match({
+              method: 'POST',
+              uri: `${clusterBoardServiceUrl}/channels`,
+              body: channelRequestBody,
+            }),
+          );
+        });
+    });
+
+    it('does not target the home board cluster when a cluster host resolves', () => {
+      return webex.internal.board.createChannel(conversation)
+        .then(() => {
+          const [requestOptions] = webex.request.args[0];
+
+          assert.notProperty(requestOptions, 'api');
+          assert.notProperty(requestOptions, 'resource');
+        });
+    });
+
+    it('falls back to the home board service when the cluster cannot be resolved', () => {
+      webex.internal.services.getClusterId.returns(undefined);
+
+      return webex.internal.board.createChannel(conversation)
+        .then(() => {
+          assert.notCalled(webex.internal.services.getServiceFromClusterId);
+          assert.calledWith(
+            webex.request,
+            sinon.match({
+              method: 'POST',
+              api: 'board',
+              resource: '/channels',
+              body: channelRequestBody,
+            }),
+          );
+        });
+    });
+
+    it('falls back to the home board service when no board host exists for the cluster', () => {
+      webex.internal.services.getServiceFromClusterId.returns(undefined);
+
       return webex.internal.board.createChannel(conversation)
         .then(() => {
           assert.calledWith(
@@ -566,6 +628,108 @@ describe('plugin-board', () => {
 
     it('requires conversationId', () =>
       assert.isRejected(webex.internal.board.getChannels(), '`conversation` is required'));
+  });
+
+  describe('#getChannels()', () => {
+    const clusterBoardServiceUrl = 'https://board-a.wbx2.com/board/api/v1';
+
+    beforeEach(() => {
+      webex.request.resetHistory();
+      webex.internal.services = {
+        getClusterId: sinon.stub().returns('urn:TEAM:us-east-2_a:acl-write'),
+        getServiceFromClusterId: sinon.stub().returns({
+          name: 'board',
+          url: clusterBoardServiceUrl,
+        }),
+      };
+    });
+
+    afterEach(() => {
+      delete webex.internal.services;
+    });
+
+    it('resolves the board host from the conversation ACL cluster', () =>
+      webex.internal.board.getChannels(conversation).then(() => {
+        assert.calledWith(webex.internal.services.getClusterId, conversation.aclUrl);
+        assert.calledWith(webex.internal.services.getServiceFromClusterId, {
+          clusterId: 'urn:TEAM:us-east-2_a:board',
+        });
+        assert.calledWith(
+          webex.request,
+          sinon.match({
+            uri: `${clusterBoardServiceUrl}/channels`,
+            qs: {aclUrlLink: conversation.aclUrl},
+          })
+        );
+      }));
+
+    it('does not target the home board cluster when a cluster host resolves', () =>
+      webex.internal.board.getChannels(conversation).then(() => {
+        const [requestOptions] = webex.request.args[0];
+
+        assert.notProperty(requestOptions, 'api');
+        assert.notProperty(requestOptions, 'resource');
+      }));
+
+    it('forwards channelsLimit and type as query params', () =>
+      webex.internal.board
+        .getChannels(conversation, {channelsLimit: 25, type: 'annotated'})
+        .then(() => {
+          assert.calledWith(
+            webex.request,
+            sinon.match({
+              uri: `${clusterBoardServiceUrl}/channels`,
+              qs: {
+                aclUrlLink: conversation.aclUrl,
+                channelsLimit: 25,
+                type: 'annotated',
+              },
+            })
+          );
+        }));
+
+    it('falls back to the home board service when the conversation has no aclUrl', () =>
+      webex.internal.board.getChannels({id: 'no-acl'}).then(() => {
+        assert.notCalled(webex.internal.services.getClusterId);
+        assert.calledWith(
+          webex.request,
+          sinon.match({
+            api: 'board',
+            resource: '/channels',
+          })
+        );
+      }));
+
+    it('falls back to the home board service when the cluster cannot be resolved', () => {
+      webex.internal.services.getClusterId.returns(undefined);
+
+      return webex.internal.board.getChannels(conversation).then(() => {
+        assert.notCalled(webex.internal.services.getServiceFromClusterId);
+        assert.calledWith(
+          webex.request,
+          sinon.match({
+            api: 'board',
+            resource: '/channels',
+            qs: {aclUrlLink: conversation.aclUrl},
+          })
+        );
+      });
+    });
+
+    it('falls back to the home board service when no board host exists for the cluster', () => {
+      webex.internal.services.getServiceFromClusterId.returns(undefined);
+
+      return webex.internal.board.getChannels(conversation).then(() => {
+        assert.calledWith(
+          webex.request,
+          sinon.match({
+            api: 'board',
+            resource: '/channels',
+            qs: {aclUrlLink: conversation.aclUrl},
+          })
+        );
+      });
+    });
   });
 
   describe('#getContents()', () => {

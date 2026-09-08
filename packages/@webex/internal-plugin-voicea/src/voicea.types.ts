@@ -40,6 +40,21 @@ interface Transcription {
   csis: number[];
   last_packet_timestamp_ms: number;
   timestamp: string;
+  taggedSpeaker?: {
+    speakerId?: string[];
+    newName?: string;
+  };
+}
+
+interface TaggedSpeaker {
+  csiId: number;
+  speakerId: string;
+  newName: string;
+}
+
+interface SpeakerNameUpdatePayload {
+  id?: string;
+  taggedSpeakers: TaggedSpeaker[];
 }
 
 /**
@@ -109,6 +124,10 @@ type MeetingTranscripts = {
     [key: string]: string;
   };
   timestamp?: string;
+  taggedSpeaker?: {
+    speakerId?: string[];
+    newName?: string;
+  };
 };
 
 type MeetingTranscriptPayload = {
@@ -123,6 +142,8 @@ export type {
   TranscriptionResponse,
   Transcription,
   Highlight,
+  TaggedSpeaker,
+  SpeakerNameUpdatePayload,
   IVoiceaChannel,
   MeetingTranscriptPayload,
 };

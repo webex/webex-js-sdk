@@ -88,6 +88,16 @@ export default {
     validateDomains: true,
 
     /**
+     * When true, enables the CatalogUrlInterceptor which validates that all
+     * outbound request URLs are in the service catalog or allowed domains.
+     * This prevents SSRF attacks where attacker-controlled URLs could be
+     * sent to the SDK.
+     *
+     * @type {boolean}
+     */
+    validateCatalogUrls: false,
+
+    /**
      * services that don't need auth validation
      */
 

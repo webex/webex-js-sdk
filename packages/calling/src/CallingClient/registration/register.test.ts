@@ -2040,6 +2040,226 @@ describe('Registration Tests', () => {
           expect.anything()
         );
       });
+
+      it('stays terminal when the network recovers after a superseded session', async () => {
+        await beforeEachSetupForKeepalive();
+        lineEmitter.mockClear();
+
+        await sendKeepaliveFailure(conflictError, 1);
+
+        expect(reg.sessionSuperseded).toStrictEqual(true);
+        restoreSpy.mockClear();
+        restartSpy.mockClear();
+
+        postRegistrationSpy.mockClear();
+        failoverSpy.mockClear();
+
+        const retry = await reg.handleConnectionRestoration(true);
+
+        /* The restoration runs, but every registration attempt it makes is refused at the
+         * choke point, so nothing reaches Mobius and no failover is rescheduled. */
+        expect(retry).toStrictEqual(false);
+        expect(warnSpy).toHaveBeenCalledWith(
+          `Session superseded, skipping registration attempt - caller: ${METHODS.HANDLE_CONNECTION_RESTORATION}`,
+          {file: REGISTRATION_FILE, method: METHODS.HANDLE_CONNECTION_RESTORATION}
+        );
+        expect(postRegistrationSpy).not.toHaveBeenCalled();
+        expect(restartSpy).not.toHaveBeenCalled();
+        expect(failoverSpy).not.toHaveBeenCalled();
+        expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      });
+
+      it('abandons a restoration that was already queued when the session was superseded', async () => {
+        await beforeEachSetupForKeepalive();
+        lineEmitter.mockClear();
+        postRegistrationSpy.mockClear();
+        restartSpy.mockClear();
+        failoverSpy.mockClear();
+
+        /* Something else holds the mutex, so the restoration queues behind it having
+         * begun while the session was still valid. */
+        const release = await reg.mutex.acquire();
+        const restoration = reg.handleConnectionRestoration(true);
+
+        await flushPromises();
+
+        /* The 409 cleanup latches without the mutex, so the flip lands mid-wait. */
+        reg.sessionSuperseded = true;
+
+        release();
+
+        expect(await restoration).toStrictEqual(false);
+
+        /* The latch flipped after this restoration had already started, so the choke
+         * point is what stops it: no device is registered for the dead session. */
+        expect(warnSpy).toHaveBeenCalledWith(
+          `Session superseded, skipping registration attempt - caller: ${METHODS.HANDLE_CONNECTION_RESTORATION}`,
+          {file: REGISTRATION_FILE, method: METHODS.HANDLE_CONNECTION_RESTORATION}
+        );
+        expect(postRegistrationSpy).not.toHaveBeenCalled();
+        expect(restartSpy).not.toHaveBeenCalled();
+        expect(failoverSpy).not.toHaveBeenCalled();
+      });
+
+      it('stays terminal when all calls are cleared after a superseded session', async () => {
+        await beforeEachSetupForKeepalive();
+        lineEmitter.mockClear();
+
+        await sendKeepaliveFailure(conflictError, 1);
+
+        postRegistrationSpy.mockClear();
+        restartSpy.mockClear();
+        failoverSpy.mockClear();
+
+        await reg.reconnectOnFailure(CALLS_CLEARED_HANDLER_UTIL);
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          `Session superseded, skipping registration attempt - caller: ${CALLS_CLEARED_HANDLER_UTIL}`,
+          {file: REGISTRATION_FILE, method: CALLS_CLEARED_HANDLER_UTIL}
+        );
+        expect(postRegistrationSpy).not.toHaveBeenCalled();
+        expect(restartSpy).not.toHaveBeenCalled();
+        expect(failoverSpy).not.toHaveBeenCalled();
+        expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      });
+
+      it('lets an explicit registration by the consumer clear the superseded state', async () => {
+        await beforeEachSetupForKeepalive();
+        lineEmitter.mockClear();
+
+        await sendKeepaliveFailure(conflictError, 1);
+
+        expect(reg.sessionSuperseded).toStrictEqual(true);
+
+        postRegistrationSpy.mockResolvedValueOnce(successPayload);
+        await reg.triggerRegistration();
+
+        expect(reg.sessionSuperseded).toStrictEqual(false);
+        expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
+      });
+
+      it('latches the superseded state before waiting on the shared mutex', async () => {
+        await beforeEachSetupForKeepalive();
+        const worker = reg.webWorker;
+        lineEmitter.mockClear();
+        postRegistrationSpy.mockClear();
+
+        /* A recovery already holds the mutex, so the 409 cleanup queues behind it. */
+        const release = await reg.mutex.acquire();
+
+        const inFlight = worker.onmessage({
+          data: {
+            type: WorkerMessageType.KEEPALIVE_FAILURE,
+            err: conflictError,
+            keepAliveRetryCount: 1,
+          },
+        } as MessageEvent);
+
+        await flushPromises();
+
+        /* The latch and the worker teardown are visible before cleanup has run. */
+        expect(reg.sessionSuperseded).toStrictEqual(true);
+        expect(reg.webWorker).toBeUndefined();
+        expect(lineEmitter).not.toHaveBeenCalledWith(
+          LINE_EVENTS.UNREGISTERED,
+          undefined,
+          expect.anything()
+        );
+
+        /* A registration path starting now aborts instead of racing the queued cleanup. */
+        const abort = await reg.attemptRegistrationWithServers(FAILOVER_UTIL);
+
+        expect(abort).toStrictEqual(true);
+        expect(postRegistrationSpy).not.toHaveBeenCalled();
+        expect(warnSpy).toHaveBeenCalledWith(
+          `Session superseded, skipping registration attempt - caller: ${FAILOVER_UTIL}`,
+          {file: REGISTRATION_FILE, method: FAILOVER_UTIL}
+        );
+
+        release();
+        await inFlight;
+        await flushPromises();
+
+        expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      });
+
+      it('discards a 409 delivered by a keepalive worker that has been replaced', async () => {
+        await beforeEachSetupForKeepalive();
+        const staleWorker = reg.webWorker;
+        const staleWorkerPostSpy = jest.spyOn(staleWorker, 'postMessage');
+        const handle409Spy = jest.spyOn(reg, 'handle409KeepaliveFailure');
+        let failKeepalive;
+
+        jest.spyOn(reg, 'postKeepAlive').mockReturnValue(
+          new Promise((_, reject) => {
+            failKeepalive = reject;
+          })
+        );
+        lineEmitter.mockClear();
+
+        const inFlight = staleWorker.onmessage({
+          data: {type: WorkerMessageType.SEND_KEEPALIVE},
+        } as MessageEvent);
+
+        /* A re-registration (failback, connection restoration) swaps the worker while the
+         * keepalive of the previous registration is still in flight. */
+        const currentWorker = {postMessage: jest.fn(), terminate: jest.fn(), onmessage: null};
+        reg.webWorker = currentWorker;
+
+        failKeepalive(conflictError);
+        await inFlight;
+        await flushPromises();
+
+        expect(staleWorkerPostSpy).not.toHaveBeenCalledWith(
+          expect.objectContaining({type: WorkerMessageType.KEEPALIVE_RESULT})
+        );
+        expect(currentWorker.postMessage).not.toHaveBeenCalled();
+        expect(handle409Spy).not.toHaveBeenCalled();
+        expect(lineEmitter).not.toHaveBeenCalledWith(
+          LINE_EVENTS.UNREGISTERED,
+          undefined,
+          expect.anything()
+        );
+      });
+    });
+  });
+
+  describe('409 Conflict outside the keepalive flow', () => {
+    /* The registration flow passes no sessionSupersededCb, so a 409 there is logged and
+     * ignored: no consumer event, no registration-error metric, and non-final so the
+     * server loop and failover proceed as they would for any non-fatal status. */
+    it('ignores a 409 during registration without notifying the consumer', async () => {
+      jest.useFakeTimers();
+      const conflictPayload = {statusCode: 409, headers: {trackingid: 'tid-reg-409'}};
+      webex.request.mockRejectedValue(conflictPayload);
+      lineEmitter.mockClear();
+      metricSpy.mockClear();
+
+      await reg.triggerRegistration();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '409 Conflict: ignored, caller does not handle a superseded session',
+        {file: REGISTRATION_FILE, method: REGISTRATION_UTIL}
+      );
+
+      /* No consumer notification and no registration-error metric on this path. */
+      expect(lineEmitter).not.toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(lineEmitter).not.toHaveBeenCalledWith(LINE_EVENTS.ERROR, undefined, expect.anything());
+      expect(metricSpy).not.toHaveBeenCalledWith(
+        METRIC_EVENT.REGISTRATION_ERROR,
+        REG_ACTION.REGISTER,
+        METRIC_TYPE.BEHAVIORAL,
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything()
+      );
+
+      /* Non-final: every server was tried and failover was scheduled. */
+      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(reg.sessionSuperseded).toStrictEqual(false);
+      expect(failoverSpy).toHaveBeenCalled();
     });
   });
 

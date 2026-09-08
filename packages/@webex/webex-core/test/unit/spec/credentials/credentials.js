@@ -630,6 +630,37 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#getClientToken()', () => {
+      it('requests a client token without bypassing catalog URL validation', async () => {
+        const webex = new MockWebex();
+        const credentials = new Credentials(undefined, {parent: webex});
+        const uri = 'https://idbroker.webex.com/idb/oauth2/v1/access_token';
+        const scope = 'spark:all';
+
+        webex.request.resolves({body: {access_token: 'AT', token_type: 'Bearer'}});
+
+        const token = await credentials.getClientToken({uri, scope});
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri,
+          form: {
+            grant_type: 'client_credentials',
+            scope,
+            self_contained_token: true,
+          },
+          auth: {
+            user: 'fake',
+            pass: 'fake',
+            sendImmediately: true,
+          },
+          shouldRefreshAccessToken: false,
+        });
+        assert.instanceOf(token, Token);
+        assert.equal(token.access_token, 'AT');
+      });
+    });
+
     describe('#getUserToken()', () => {
       it('resolves with the supertoken if the supertoken matches the requested scopes', () => {
         const webex = new MockWebex();
