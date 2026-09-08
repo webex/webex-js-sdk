@@ -269,7 +269,15 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.getGeneratedSummaryFlags = getGeneratedSummaryFlags;
   }
 
-  public async requestPostCallSummary(): Promise<PostCallSummaryEventPayload> {
+  public requestPostCallSummary(): Promise<PostCallSummaryEventPayload> {
+    const operation = this.requestPostCallSummaryInternal();
+
+    operation.catch(() => undefined);
+
+    return operation;
+  }
+
+  private async requestPostCallSummaryInternal(): Promise<PostCallSummaryEventPayload> {
     const metricFields: Record<string, unknown> = {
       operation: METHODS.REQUEST_POST_CALL_SUMMARY,
     };
@@ -383,7 +391,17 @@ export default abstract class Task extends EventEmitter implements ITask {
     }
   }
 
-  public async requestMidCallSummary(
+  public requestMidCallSummary(
+    actionType: AISummaryActionType
+  ): Promise<MidCallSummaryEventPayload> {
+    const operation = this.requestMidCallSummaryInternal(actionType);
+
+    operation.catch(() => undefined);
+
+    return operation;
+  }
+
+  private async requestMidCallSummaryInternal(
     actionType: AISummaryActionType
   ): Promise<MidCallSummaryEventPayload> {
     const metricFields: Record<string, unknown> = {
