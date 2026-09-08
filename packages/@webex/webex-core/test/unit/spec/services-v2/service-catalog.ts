@@ -365,6 +365,37 @@ describe('webex-core', () => {
           assert.equal(service, exampleService);
         }
       );
+
+      it('rejects URLs with similar-looking hostnames (SECURITY)', () => {
+        // Attacker URL that looks like a catalog URL but has a different origin
+        const maliciousUrl = 'https://example.com.attacker.com/resource/id';
+
+        const exampleService = {
+          serviceUrls: [{baseUrl: 'https://example.com/resource'}],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        const service = catalog.findServiceDetailFromUrl(maliciousUrl);
+
+        // Should NOT match - origins are different
+        assert.isUndefined(service);
+      });
+
+      it('rejects URLs where catalog URL is a prefix but not at path boundary', () => {
+        // e.g., /api/v1 should not match /api/v1extra
+        const url = 'https://example.com/resourceextra/id';
+
+        const exampleService = {
+          serviceUrls: [{baseUrl: 'https://example.com/resource'}],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        const service = catalog.findServiceDetailFromUrl(url);
+
+        assert.isUndefined(service);
+      });
     });
   });
 });

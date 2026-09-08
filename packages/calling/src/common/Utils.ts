@@ -356,26 +356,10 @@ export async function handleRegistrationErrors(
 ): Promise<RegistrationErrorResult> {
   const {retry429Cb, restoreRegCb, sessionSupersededCb} = handlers;
   let shouldDisconnect = false;
-  let handledByCallback = false;
   const lineError = createLineError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
 
   const errorCode = Number(err.statusCode);
   let finalError = false;
-
-  /* Treatment for a status code this handler has no specific rule for: notify the
-   * consumer and leave the retry decision to the caller. */
-  const handleUnknownError = () => {
-    updateLineErrorContext(
-      loggerContext,
-      ERROR_TYPE.DEFAULT,
-      'Unknown error',
-      RegistrationStatus.INACTIVE,
-      lineError
-    );
-    log.warn(`Unknown Error`, loggerContext);
-    emitterCb(lineError, finalError);
-    shouldDisconnect = serverCount > 1;
-  };
 
   log.warn(`Status code: -> ${errorCode}`, loggerContext);
   switch (errorCode) {
@@ -434,14 +418,16 @@ export async function handleRegistrationErrors(
       /* Mobius answers 409 when this device is gone while the same user still holds an
        * active registration elsewhere, typically calling opened in another browser tab.
        * Only a flow that can hard stop the session opts into this handling; the remaining
-       * flows keep treating 409 as an unknown error. */
+       * flows have nothing to act on, so the error is logged and ignored. */
       if (!sessionSupersededCb) {
-        handleUnknownError();
+        log.warn(
+          `409 Conflict: ignored, caller does not handle a superseded session`,
+          loggerContext
+        );
         break;
       }
 
       finalError = true;
-      handledByCallback = true;
       log.warn(`409 Conflict: session superseded by another device for this user`, loggerContext);
 
       updateLineErrorContext(
@@ -523,7 +509,7 @@ export async function handleRegistrationErrors(
         emitterCb(lineError, finalError);
         shouldDisconnect = serverCount > 1;
 
-        return {finalError, shouldDisconnect, handledByCallback};
+        return {finalError, shouldDisconnect};
       }
 
       const code = Number(errorBody.errorCode);
@@ -589,11 +575,20 @@ export async function handleRegistrationErrors(
     }
 
     default: {
-      handleUnknownError();
+      updateLineErrorContext(
+        loggerContext,
+        ERROR_TYPE.DEFAULT,
+        'Unknown error',
+        RegistrationStatus.INACTIVE,
+        lineError
+      );
+      log.warn(`Unknown Error`, loggerContext);
+      emitterCb(lineError, finalError);
+      shouldDisconnect = serverCount > 1;
     }
   }
 
-  return {finalError, shouldDisconnect, handledByCallback};
+  return {finalError, shouldDisconnect};
 }
 
 /**
