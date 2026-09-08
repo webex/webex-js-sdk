@@ -19,18 +19,19 @@ export const createSummaryError = (
   context?: Partial<AISummaryFailureContext> & {statusCode?: number}
 ): AISummaryError => {
   if (methodName) {
+    const {statusCode, eventName, agentId, orgId, interactionId, conversationId} = context ?? {};
     const {error} = getErrorDetails(
       {
-        ...(context?.statusCode !== undefined ? {statusCode: context.statusCode} : {}),
+        ...(statusCode !== undefined ? {statusCode} : {}),
         details: {
           data: {
             reason: errorCode,
             methodName,
-            ...(context?.eventName ? {eventName: context.eventName} : {}),
-            ...(context?.agentId ? {agentId: context.agentId} : {}),
-            ...(context?.orgId ? {orgId: context.orgId} : {}),
-            ...(context?.interactionId ? {interactionId: context.interactionId} : {}),
-            ...(context?.conversationId ? {conversationId: context.conversationId} : {}),
+            ...(eventName ? {eventName} : {}),
+            ...(agentId ? {agentId} : {}),
+            ...(orgId ? {orgId} : {}),
+            ...(interactionId ? {interactionId} : {}),
+            ...(conversationId ? {conversationId} : {}),
           },
         },
       },
@@ -42,7 +43,7 @@ export const createSummaryError = (
     (error as AISummaryError).data = {
       ...((error as AISummaryError).data ?? {}),
       errorCode,
-      ...(context?.statusCode !== undefined ? {statusCode: context.statusCode} : {}),
+      ...(statusCode !== undefined ? {statusCode} : {}),
     };
 
     return error as AISummaryError;

@@ -136,13 +136,16 @@ export class ApiAIAssistant {
       data.feedback = input.payload.feedback;
       data.state = input.payload.state;
 
-      if (input.payload.eventName === AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE) {
-        if (input.payload.wrapUpCode !== undefined) {
-          data.wrapUpCode = input.payload.wrapUpCode;
-        }
-      } else if (input.payload.agentName !== undefined) {
-        data.agentName = input.payload.agentName;
-      }
+      Object.assign(data, {
+        ...(input.payload.eventName === AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE &&
+        input.payload.wrapUpCode !== undefined
+          ? {wrapUpCode: input.payload.wrapUpCode}
+          : {}),
+        ...(input.payload.eventName !== AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE &&
+        input.payload.agentName !== undefined
+          ? {agentName: input.payload.agentName}
+          : {}),
+      });
     }
 
     const body: Record<string, unknown> = {
