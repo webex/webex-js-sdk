@@ -109,6 +109,7 @@ type NetworkMetricProperties = {
 };
 
 type NetworkTelemetryCollectorOptions = {
+  intervalMs?: number;
   onSubmissionFailure: () => void;
   submitMetric: (name: string, properties: NetworkMetricProperties) => unknown;
 };
@@ -117,7 +118,8 @@ type NetworkTelemetryCollector = {
   recordRequest: (options?: RequestOptions) => void;
   recordResponse: (options?: RequestOptions) => void;
   recordFailure: (options?: RequestOptions, reason?: RequestFailure) => void;
-  stop: () => void;
+  flush: () => Promise<void>;
+  stop: () => Promise<void>;
 };
 
 /**
@@ -593,11 +595,12 @@ function hasNetworkTelemetry(telemetry: NetworkTelemetryState): boolean {
 }
 
 /**
- * Creates a network telemetry collector and starts its ten-minute timer.
+ * Creates a network telemetry collector and starts its periodic timer.
  * @param options Submission callbacks.
  * @returns The network telemetry collector.
  */
 export function createNetworkTelemetryCollector({
+  intervalMs,
   onSubmissionFailure,
   submitMetric,
 }: NetworkTelemetryCollectorOptions): NetworkTelemetryCollector {
@@ -673,9 +676,9 @@ export function createNetworkTelemetryCollector({
 
   /**
    * Submits the completed window and starts collecting the next one.
-   * @returns Nothing.
+   * @returns A promise that settles after submission succeeds or is reported as failed.
    */
-  function submitSummary(): void {
+  function submitSummary(): Promise<void> {
     const completedTelemetry = telemetry;
     const payload = serializeNetworkTelemetry(completedTelemetry);
 
@@ -684,33 +687,50 @@ export function createNetworkTelemetryCollector({
     telemetry = createEmptyNetworkTelemetry();
 
     try {
-      Promise.resolve(
+      return Promise.resolve(
         submitMetric(NETWORK_REQUEST_SUMMARY_METRIC, {
           type: 'operational',
           tags: {},
           fields: completedTelemetry.metricsSummary,
           eventPayload: payload,
         })
-      ).catch(onSubmissionFailure);
+      ).then(
+        () => undefined,
+        () => {
+          onSubmissionFailure();
+        }
+      );
     } catch {
       // submitMetric may throw before returning a promise.
       onSubmissionFailure();
+
+      return Promise.resolve();
     }
   }
 
-  const telemetryInterval = safeSetInterval(submitSummary, NETWORK_TELEMETRY_INTERVAL_MS);
+  const telemetryIntervalMs =
+    typeof intervalMs === 'number' && Number.isFinite(intervalMs) && intervalMs > 0
+      ? intervalMs
+      : NETWORK_TELEMETRY_INTERVAL_MS;
+  const telemetryInterval = safeSetInterval(submitSummary, telemetryIntervalMs);
+
+  /**
+   * Submits the current non-empty window immediately.
+   * @returns A promise that settles after submission succeeds or is reported as failed.
+   */
+  function flush(): Promise<void> {
+    return hasNetworkTelemetry(telemetry) ? submitSummary() : Promise.resolve();
+  }
 
   /**
    * Stops periodic submission and releases data from the current window.
-   * @returns Nothing.
+   * @returns A promise that settles after the final window is submitted or failure is reported.
    */
-  function stop(): void {
+  function stop(): Promise<void> {
     clearInterval(telemetryInterval);
 
-    if (hasNetworkTelemetry(telemetry)) {
-      submitSummary();
-    }
+    return flush();
   }
 
-  return {recordRequest, recordResponse, recordFailure, stop};
+  return {recordRequest, recordResponse, recordFailure, flush, stop};
 }

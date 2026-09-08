@@ -15,7 +15,10 @@ import {
 describe('network telemetry', function () {
   let clock: sinon.SinonFakeTimers;
 
-  function makeWebex(networkTelemetryEnabled = true) {
+  function makeWebex(
+    networkTelemetryEnabled = true,
+    networkTelemetryIntervalMs = config.metrics.networkTelemetry.intervalMs
+  ) {
     const warn = sinon.stub();
     const webex = new MockWebex({
       children: {
@@ -24,7 +27,10 @@ describe('network telemetry', function () {
       logger: {warn},
       config: {
         metrics: {
-          networkTelemetry: {enabled: networkTelemetryEnabled},
+          networkTelemetry: {
+            enabled: networkTelemetryEnabled,
+            intervalMs: networkTelemetryIntervalMs,
+          },
         },
       },
     });
@@ -34,6 +40,7 @@ describe('network telemetry', function () {
       networkTelemetry: {
         ...config.metrics.networkTelemetry,
         enabled: networkTelemetryEnabled,
+        intervalMs: networkTelemetryIntervalMs,
       },
     };
 
@@ -275,14 +282,47 @@ describe('network telemetry', function () {
     ]);
   });
 
-  it('flushes the current summary and stops collecting during cleanup', function () {
+  it('uses the configured interval for periodic submission', function () {
+    const {webex} = makeWebex(true, 1_000);
+    const submitClientMetrics = sinon
+      .stub(webex.internal.metrics, 'submitClientMetrics')
+      .resolves();
+
+    clock.tick(999);
+    assert.notCalled(submitClientMetrics);
+
+    clock.tick(1);
+
+    assert.calledOnce(submitClientMetrics);
+  });
+
+  it('flushes the current summary immediately and keeps collecting', async function () {
     const {webex} = makeWebex();
     const submitClientMetrics = sinon
       .stub(webex.internal.metrics, 'submitClientMetrics')
       .resolves();
 
     webex.emit('request:start', {service: 'hydra', resource: 'rooms'});
-    webex.internal.metrics.stopNetworkTelemetry();
+
+    await webex.internal.metrics.flushNetworkTelemetry();
+
+    assert.calledOnce(submitClientMetrics);
+
+    webex.emit('request:start', {service: 'identity', resource: 'people'});
+    await webex.internal.metrics.flushNetworkTelemetry();
+
+    assert.calledTwice(submitClientMetrics);
+    assert.equal(submitClientMetrics.secondCall.args[1].eventPayload.metrics[0].host, 'identity');
+  });
+
+  it('flushes the current summary and stops collecting during cleanup', async function () {
+    const {webex} = makeWebex();
+    const submitClientMetrics = sinon
+      .stub(webex.internal.metrics, 'submitClientMetrics')
+      .resolves();
+
+    webex.emit('request:start', {service: 'hydra', resource: 'rooms'});
+    await webex.internal.metrics.stopNetworkTelemetry();
     webex.emit('request:start', {service: 'identity', resource: 'people'});
     clock.tick(NETWORK_TELEMETRY_INTERVAL_MS * 2);
 

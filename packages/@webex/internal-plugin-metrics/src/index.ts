@@ -42,7 +42,7 @@ registerInternalPlugin('metrics', Metrics, {
    * @returns
    */
   onBeforeLogout() {
-    this.stopNetworkTelemetry();
+    return this.stopNetworkTelemetry();
   },
 });
 

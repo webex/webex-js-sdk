@@ -20,6 +20,7 @@ export default {
     },
     networkTelemetry: {
       enabled: false,
+      intervalMs: 10 * 60 * 1_000,
     },
     batcherWait: 500,
     batcherMaxCalls: 50,
