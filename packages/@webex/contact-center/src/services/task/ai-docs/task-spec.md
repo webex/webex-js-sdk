@@ -902,22 +902,21 @@ event so consumers can rebind to the surviving task object.
 
 Dropping an Agent while that Agent is consulting continues through the existing
 `PARTICIPANT_LEAVE` transition, which clears consult state and emits the normal
-participant-left and task-end lifecycle. This self-departure check applies in
-every active call-control state and uses an explicit self participant ID,
-`hasLeft`, or removal of a previously active Agent from the participant map. A
-participant-left event naming somebody else never infers self-departure from a
-partial media roster. A consulted Agent receiving
-`AgentConsultEnded` continues through `CONSULT_END`; current-agent departure is
-evaluated before consult-initiator recovery. For the from-conference nested-consult
-ordering race only, the guard also compares `mainCall` membership (located by
-`mType`) when the Agent remains active in the participant map and is still present
-on the consult leg. Missing, contradictory, or ordinary CONNECTED/HELD media snapshots
-are non-terminal. Accepted consultees emit
-`task:consultEnd` and `task:end`, while an unaccepted OFFERED consultee retains
-the existing consult-end-only signal. A surviving consult initiator still
-returns to the main-call state selected by the existing guards. Starting a
-consult preserves the prior task snapshot so this membership comparison remains
-available while the consult is initiating.
+participant-left and task-end lifecycle. `PARTICIPANT_LEAVE` is handled in
+`HELD`, `RESUME_INITIATING`, `CONSULTING`, `CONSULT_INITIATING`, and
+`CONFERENCING`; `CONNECTED`, `HOLD_INITIATING`, and `CONF_INITIATING` ignore the
+event. The current Agent is treated as departed only when the event names that
+Agent or the updated participants map omits that Agent (EP-DN removal). Remaining
+in the map with `hasLeft`, or disappearing only from `mainCall` media, is
+non-terminal. A consulted Agent receiving `AgentConsultEnded` continues through
+`CONSULT_END`; current-agent departure is evaluated before consult-initiator
+recovery and does not use mainCall membership as self-departure evidence.
+Accepted consultees emit `task:consultEnd` and `task:end`, while an unaccepted
+OFFERED consultee retains the existing consult-end-only signal. A surviving
+consult initiator still returns to the main-call state selected by the existing
+guards. The state-machine transition table lives in
+`src/services/task/state-machine/ai-docs/task-state-machine-spec.md`
+`TASK_STATE_MACHINE-R-008`.
 
 Primary-Agent promotion remains backend-authoritative and follows the two-event
 desktop contract. `ContactOwnerChanged` updates the promoted Agent; TaskManager

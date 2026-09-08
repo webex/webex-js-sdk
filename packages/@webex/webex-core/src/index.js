@@ -42,6 +42,7 @@ export {default as WebexHttpError} from './lib/webex-http-error';
 export {default as StatelessWebexPlugin} from './lib/stateless-webex-plugin';
 export {default as WebexPlugin} from './lib/webex-plugin';
 export {default as AuthInterceptor} from './interceptors/auth';
+export {default as CatalogUrlInterceptor} from './interceptors/catalog-url';
 export {default as NetworkTimingInterceptor} from './interceptors/network-timing';
 export {default as PayloadTransformerInterceptor} from './interceptors/payload-transformer';
 export {default as RedirectInterceptor} from './interceptors/redirect';

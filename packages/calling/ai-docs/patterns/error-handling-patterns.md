@@ -347,7 +347,7 @@ Handles registration and keepalive error flows by mapping HTTP status codes to `
 
 Signature: `handleRegistrationErrors(err, emitterCb, loggerContext, handlers?, serverCount?): Promise<RegistrationErrorResult>`
 
-The specialized handlers are opt-in per flow, which is how status codes that only one flow can act on stay scoped to that flow (`sessionSupersededCb` is passed by the keepalive path only). The result reports `finalError` (do not retry), `shouldDisconnect` (tear down the failed server's WSS), and `handledByCallback` (a handler already ran cleanup and notified the consumer, so the caller must skip its own failure handling).
+The specialized handlers are opt-in per flow, which is how status codes that only one flow can act on stay scoped to that flow (`sessionSupersededCb` is passed by the keepalive path only). The result reports `finalError` (do not retry) and `shouldDisconnect` (tear down the failed server's WSS). When a specialized handler owns the outcome the caller recognises it from `finalError` plus the status code — the keepalive path returns early on a final `409` because `handle409KeepaliveFailure` has already run cleanup and notified the consumer.
 
 ```typescript
 // Real usage from register.ts — initial registration error path
@@ -371,7 +371,7 @@ const {finalError, shouldDisconnect} = await handleRegistrationErrors(
 
 // Real usage from register.ts — keepalive failure path (web worker message handler)
 if (event.data.type === WorkerMessageType.KEEPALIVE_FAILURE) {
-  const {finalError: abort, handledByCallback} = await handleRegistrationErrors(
+  const {finalError: abort} = await handleRegistrationErrors(
     error,
     (clientError, finalError) => { ... },
     loggerContext,
@@ -382,7 +382,8 @@ if (event.data.type === WorkerMessageType.KEEPALIVE_FAILURE) {
     }
   );
 
-  if (handledByCallback) {
+  if (abort && Number(error.statusCode) === ERROR_CODE.CONFLICT) {
+    /* handle409KeepaliveFailure already ran cleanup and notified the consumer. */
     return;
   }
 }
@@ -393,7 +394,7 @@ Key behaviors by status code:
 - **401 Unauthorized** — final error, emits token error
 - **403 Forbidden** — inspects `errorCode` in body for device-limit-exceeded (triggers `restoreRegCb`), device-creation-disabled (final error), or device-creation-failed (non-final)
 - **404 Device Not Found** — final error; on keepalive, triggers `handle404KeepaliveFailure` which re-attempts registration
-- **409 Conflict (keepalive only)** — final error, because only the keepalive flow passes `sessionSupersededCb`: that handler owns the hard stop and `handledByCallback` is returned, so no event is emitted from here. Registration, restoration, failover, and failback do not pass the handler and keep the unknown-error treatment for `409`
+- **409 Conflict (keepalive only)** — final error, because only the keepalive flow passes `sessionSupersededCb`: that handler owns the hard stop and notifies the consumer, so no event is emitted from here. Registration, restoration, failover, and failback do not pass the handler, so for them a `409` is logged and ignored — non-final, no event, no metric
 - **429 Too Many Requests** — non-final, invokes `retry429Cb` with the `Retry-After` header value
 - **500 / 503** — non-final, emits error and allows retry
 
