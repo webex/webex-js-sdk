@@ -4,7 +4,7 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-22T15:21:29Z
+updated_at: 2026-09-08T00:00:00Z
 validation_status: pass-with-warnings
 -->
 # MEETING INFO — SPEC
@@ -21,7 +21,8 @@ validation_status: pass-with-warnings
 | Doc kind | Module spec |
 | Coverage score | 93% assessed 2026-08-22; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains; pending independent validation of the participant-role repair |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-22T15:21:29Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-09-08T00:00:00Z |
+| Revalidated against | `b7b93b443e` (manual diff review of `f9a29f61..b7b93b443e`; not a generator/validator tool run) |
 | Validation status | pass-with-warnings |
 
 ## Evidence Rules
@@ -108,7 +109,7 @@ Webex request/service access plus meeting, conversation, people, and webinar ser
 | `MEETING-INFO-R-001` | fetch meeting information for a destination/type. | Resolves meeting destinations into normalized meeting metadata and maps service-specific errors into caller-actionable failures. | `src/meeting-info/index.ts` | `test/unit/spec/meeting-info/index.js` | none | PRESENT |
 | `MEETING-INFO-R-002` | resolve, enable, and disable static meeting links. | Static-link lookup and mutation select different V2 endpoints and typed error outcomes. | `src/meeting-info/index.ts`, `src/meeting-info/meeting-info-v2.ts` | `test/unit/spec/meeting-info/index.js` | static-link conflict and in-progress error mappings need a complete V2 matrix | PRESENT |
 | `MEETING-INFO-R-003` | `MeetingInfoRequest.fetchMeetingInfo()` throws `ParameterError` synchronously when its options lack a type or destination. When the legacy facade invokes that helper inside its promise chain, the throw becomes the facade's returned rejection; V2 password, captcha, permission, and request failures also remain typed caller-visible promise outcomes. Request helpers own no persistent listeners or timers. | Callers must distinguish the direct request helper's synchronous validation boundary from facade/V2 promise failures while still retaining actionable typed errors. | `src/meeting-info/request.ts`, `src/meeting-info/index.ts`, `src/meeting-info/meeting-info-v2.ts` | `test/unit/spec/meeting-info/request.js`, `test/unit/spec/meeting-info/index.js`, `test/unit/spec/meeting-info/meetinginfov2.js` | none | PRESENT |
-| `MEETING-INFO-R-004` | Emit CA request/response events only when both `meetingId` and `sendCAevents` are supplied, and emit the operation-specific behavioral success/failure metric on V2 outcomes. | Conditional correlation avoids unscoped CA telemetry, while stable behavioral metrics preserve operation-level observability for lookup and link-management failures. | `src/meeting-info/index.ts`, `src/meeting-info/meeting-info-v2.ts`, `src/metrics/constants.ts` | `test/unit/spec/meeting-info/index.js`, `test/unit/spec/meeting-info/meetinginfov2.js` | none | PRESENT |
+| `MEETING-INFO-R-004` | Emit CA request/response events only when both `meetingId` and `sendCAevents` are supplied, and emit the operation-specific behavioral success/failure metric on V2 outcomes. `MeetingInfoV2.fetchMeetingInfo()` additionally accepts `options.correlationId` and sets the request header `{correlationId}` only when `meetingId`, `sendCAevents`, and `correlationId` are all present; any missing one leaves `requestOptions.headers` unset. `Meeting` supplies `this.correlationId` on that option. | Conditional correlation avoids unscoped CA telemetry, while stable behavioral metrics preserve operation-level observability for lookup and link-management failures. Propagating the correlation id as a header lets the service join its own trace to the client's CA events, and gating it on the same three inputs keeps the header from leaking on requests that emit no CA events. | `src/meeting-info/index.ts`, `src/meeting-info/meeting-info-v2.ts`, `src/metrics/constants.ts` | `test/unit/spec/meeting-info/index.js`, `test/unit/spec/meeting-info/meetinginfov2.js` | none | PRESENT |
 
 ## Design Overview
 
@@ -235,6 +236,7 @@ A small in-memory collection may retain resolved meeting-info objects; remote se
 | Direct `MeetingInfoRequest.fetchMeetingInfo()` options omit type or destination | The helper throws `ParameterError` synchronously before issuing a request. The legacy `MeetingInfo.fetchMeetingInfo()` promise chain converts that helper throw into its returned rejection. | Validate direct-helper inputs synchronously; when using the facade, handle its returned rejection. |
 | Service requires password/captcha, denies permission, or rejects the request | The module maps or propagates the typed caller-visible rejection. | Satisfy the challenge/permission requirement or handle the request failure. |
 | Meeting-info response is accepted | The returned promise resolves with normalized meeting metadata; V2 lookup does not claim a legacy collection-cache update. | Use the resolved response as the current operation result. |
+| `meetingId`, `sendCAevents`, or `correlationId` is absent on a V2 lookup | No `correlationId` request header is set and the lookup proceeds normally; this is not an error. | Supply all three when the service trace must be correlated to client CA events. |
 
 ## Pitfalls
 
@@ -251,7 +253,7 @@ Use the current mirrored suites: `test/unit/spec/meeting-info/index.js`, `test/u
 | `MEETING-INFO-R-001` | `test/unit/spec/meeting-info/index.js`, `test/unit/spec/meeting-info/meetinginfov2.js`, `test/unit/spec/meeting-info/request.js` | no mandatory coverage gap identified |
 | `MEETING-INFO-R-002` | `test/unit/spec/meeting-info/meetinginfov2.js` | no mandatory coverage gap identified |
 | `MEETING-INFO-R-003` | `test/unit/spec/meeting-info/meetinginfov2.js` | error-name inconsistencies are characterized as current behavior, not corrected here |
-| `MEETING-INFO-R-004` | `test/unit/spec/meeting-info/index.js`, `test/unit/spec/meeting-info/meetinginfov2.js` | no mandatory coverage gap identified |
+| `MEETING-INFO-R-004` | `test/unit/spec/meeting-info/index.js`, `test/unit/spec/meeting-info/meetinginfov2.js` | the `correlationId` header is covered by the table-driven cases asserting it is sent only for the all-three-present combination |
 
 ## Traceability
 

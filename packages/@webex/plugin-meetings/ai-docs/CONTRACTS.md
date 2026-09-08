@@ -4,7 +4,7 @@ generated_from: contracts@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-21T11:57:19Z
+updated_at: 2026-09-08T00:00:00Z
 validation_status: not-run
 -->
 # CONTRACTS — @webex/plugin-meetings
@@ -243,7 +243,7 @@ The package exposes no server endpoint or CLI of its own. It calls Webex service
 |---|---|---|---|---|---|
 | Webex SDK host | credentialed request, device, Mercury, discovery, logging, metrics | `src/index.ts`, `src/meetings/index.ts` | host initialized before meeting work | staged error/rejection; cleanup listeners | workspace version |
 | Webex Locus and meeting services | state, discovery, lifecycle, controls | owning request classes/specs | network service may fail or reject | preserve current projection; bounded retry only where implemented | service-discovered contract |
-| browser media and media libraries | WebRTC, streams, media-core negotiation | `src/media/`, `src/roap/`, `src/multistream/` | browser capability/permission dependent | media error and bounded recovery/rejoin | `@webex/internal-media-core` 2.28.2 |
+| browser media and media libraries | WebRTC, streams, media-core negotiation | `src/media/`, `src/roap/`, `src/multistream/` | browser capability/permission dependent | media error and bounded recovery/rejoin | `@webex/internal-media-core` at the exact version pinned in `package.json` |
 | workspace feature packages | identity, people/rooms, support, Voicea/LLM and helpers | `package.json` | resolved by Yarn workspace | caller-visible capability absence/error | `workspace:*` |
 
 ## Compatibility & Deprecation Policy

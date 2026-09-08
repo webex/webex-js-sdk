@@ -4,7 +4,7 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-22T15:21:29Z
+updated_at: 2026-09-08T00:00:00Z
 validation_status: pass-with-warnings
 -->
 # HASH TREE — SPEC
@@ -21,7 +21,8 @@ validation_status: pass-with-warnings
 | Doc kind | Module spec |
 | Coverage score | 93% assessed 2026-08-22; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains; pending independent validation of the participant-role repair |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-22T15:21:29Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-09-08T00:00:00Z |
+| Revalidated against | `b7b93b443e` (manual diff review of `f9a29f61..b7b93b443e`; not a generator/validator tool run) |
 | Validation status | pass-with-warnings |
 
 ## Evidence Rules
@@ -97,6 +98,7 @@ Hash-tree wire messages, dataset request function, Locus identifiers, checksum u
 | `HASH-TREE-R-001` | `HashTreeParser` parses hash-tree messages, tracks dataset versions, detects gaps, fetches datasets, and emits typed update callbacks; `HashTree` stores leaf items and computes leaf/tree hashes. | Parser synchronization behavior and the hash data structure have different ownership and must not be attributed to the same file. | `src/hashTree/hashTreeParser.ts`, `src/hashTree/hashTree.ts` | `test/unit/spec/hashTree/hashTreeParser.ts`, `test/unit/spec/hashTree/hashTree.ts` | none | PRESENT |
 | `HASH-TREE-R-002` | `HashTreeParser.parseMessage()` updates dataset metadata and applies message items; `handleMessage()` then invokes the object-update callback. `runSyncAlgorithm()` performs the root-hash comparison later after the configured idle/backoff delay and queues synchronization on mismatch. | Callers need the real callback-versus-reconciliation ordering and must not assume the callback waits for the deferred root-hash check. | `src/hashTree/hashTreeParser.ts`, `src/hashTree/hashTree.ts`, `src/hashTree/utils.ts` | `test/unit/spec/hashTree/hashTreeParser.ts`, `test/unit/spec/hashTree/hashTree.ts`, `test/unit/spec/hashTree/utils.ts` | none | PRESENT |
 | `HASH-TREE-R-003` | `performSync()` converts meeting-ended/not-found responses into their sentinel callback paths, catches and logs other synchronization failures, and prevents stopped-parser work from being applied. | Sentinel dataset outcomes, logged sync failure, and stopped work must remain distinct so no failed fetch is misreported as a caller-visible rejection or current state. | `src/hashTree/hashTreeParser.ts` | `test/unit/spec/hashTree/hashTreeParser.ts` | non-sentinel failure recovery after logging needs explicit queue coverage | PRESENT |
+| `HASH-TREE-R-004` | `resetHeartbeatWatchdogs()` clears and re-arms a per-dataset timer at `heartbeatIntervalMs + getWeightedBackoffTime(backoff)`, preferring the dataset-level `heartbeatIntervalMs` over `topLevelHeartbeatIntervalMs`. It skips any dataset without a `hashTree`, without a resolved interval, or that `isVisibleDataSet()` rejects, and skips a dataset in `LLM_DATASET_NAMES` when the injected `callbacks.isLlmExpected()` returns false. On expiry it emits `HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED`, saves the backoff latency, enqueues a sync for that dataset, and re-arms itself. `handleMessage()` re-arms the watchdogs *after* `callLocusInfoUpdateCallback()` on the state-elements path, and immediately after `handleRootHashHeartBeatMessage()` on the heartbeat-only path. | A watchdog armed for a dataset whose transport is not connected would fire on every interval and enqueue perpetual syncs, so visibility and LLM-expectation gating are part of the contract, not an optimization. Re-arming after the update callback keeps the timer anchored to the point the message was actually applied. | `src/hashTree/hashTreeParser.ts`, `src/hashTree/constants.ts` | `test/unit/spec/hashTree/hashTreeParser.ts` | the `isLlmExpected` callback is declared required on `HashTreeParserCallbacks` but is also guarded for absence at the call site; treat the guard as current behavior | PRESENT |
 
 ## Design Overview
 
@@ -212,6 +214,7 @@ Per-dataset sequence/hash metadata, pending synchronization work, and last appli
 ## Concurrency & Reactive Flow
 
 - State-elements work applies through `parseMessage()` and callbacks synchronously within `handleMessage()`, while root-hash reconciliation is deferred by dataset timers. `stop()` prevents queued or subsequently completed dataset work from mutating the stopped parser.
+- Heartbeat watchdog timers are per dataset and are re-armed after the owning message has been applied, so watchdog delay is measured from application rather than from receipt. `stopAllTimers()` clears them alongside the sync timers.
 
 ## State Machine
 
@@ -236,6 +239,7 @@ The parser stores only `active` or `stopped` in `src/hashTree/hashTreeParser.ts`
 | Sequence or hash comparison requires a missing/visible dataset | `hashTreeParser.ts` fetches the dataset through the injected request function before replacing the synchronized dataset. | Let the synchronization request settle; do not apply the incomplete delta directly. |
 | Dataset fetch returns 404 or the dataset has ended | The parser invokes its established not-found/ended callback path. | The owner decides whether to stop or establish a new dataset. |
 | Dataset fetch fails outside the ended/not-found sentinels, or queued work reaches a stopped parser | `performSync()` catches/logs the fetch failure; stopped-parser work is not applied. | Observe parser diagnostics and establish a new synchronization trigger if the owner still needs current state. |
+| No heartbeat arrives for a visible dataset within its interval plus backoff | The watchdog fires, emits `HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED`, enqueues a sync for that dataset, and re-arms. For an LLM dataset while `isLlmExpected()` is false, no watchdog is armed at all and the skip is logged instead. | Do not treat a missing watchdog metric as proof of a healthy transport; check whether the dataset is visible and whether LLM is expected. |
 
 ## Pitfalls
 
@@ -255,6 +259,7 @@ Use the current mirrored suites: `test/unit/spec/hashTree/hashTree.ts`, `test/un
 | `HASH-TREE-R-001` | `test/unit/spec/hashTree/hashTreeParser.ts` | cover versioned put/remove/resize/diff separately from parser synchronization |
 | `HASH-TREE-R-002` | `test/unit/spec/hashTree/hashTreeParser.ts` | non-sentinel synchronization failures are logged internally; verify queue behavior after that failure |
 | `HASH-TREE-R-003` | `test/unit/spec/hashTree/hashTreeParser.ts` | separate sentinel callback handling, logged non-sentinel sync failure, and stopped-parser suppression cases |
+| `HASH-TREE-R-004` | `test/unit/spec/hashTree/hashTreeParser.ts` | assert the dataset-level interval preference, the invisible-dataset and LLM-not-expected skips, expiry re-arming, and re-arm ordering relative to the update callback |
 
 ## Traceability
 

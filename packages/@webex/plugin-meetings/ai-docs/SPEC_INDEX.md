@@ -4,7 +4,7 @@ generated_from: spec-index@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-21T06:10:05Z
+updated_at: 2026-09-08T00:00:00Z
 validation_status: not-run
 -->
 # Spec Index — @webex/plugin-meetings
@@ -17,27 +17,27 @@ validation_status: not-run
 |---|---|---|---|
 | `src/meetings/` | Registered plugin, meeting discovery, registration, and collection coordination | Partial | [`src/meetings/ai-docs/meetings-spec.md`](../src/meetings/ai-docs/meetings-spec.md) |
 | `src/meeting/` | One meeting's lifecycle, media, controls, state, and events | Partial | [`src/meeting/ai-docs/meeting-spec.md`](../src/meeting/ai-docs/meeting-spec.md) |
-| `src/meeting-info/` | Destination resolution and validated meeting metadata | Untracked | [`src/meeting-info/ai-docs/meeting-info-spec.md`](../src/meeting-info/ai-docs/meeting-info-spec.md) |
-| `src/locus-info/` | Normalized Locus full, delta, and hash-tree state | Untracked | [`src/locus-info/ai-docs/locus-info-spec.md`](../src/locus-info/ai-docs/locus-info-spec.md) |
-| `src/hashTree/` | Incremental Locus dataset synchronization | Untracked | [`src/hashTree/ai-docs/hash-tree-spec.md`](../src/hashTree/ai-docs/hash-tree-spec.md) |
+| `src/meeting-info/` | Destination resolution and validated meeting metadata | Partial | [`src/meeting-info/ai-docs/meeting-info-spec.md`](../src/meeting-info/ai-docs/meeting-info-spec.md) |
+| `src/locus-info/` | Normalized Locus full, delta, and hash-tree state | Partial | [`src/locus-info/ai-docs/locus-info-spec.md`](../src/locus-info/ai-docs/locus-info-spec.md) |
+| `src/hashTree/` | Incremental Locus dataset synchronization | Partial | [`src/hashTree/ai-docs/hash-tree-spec.md`](../src/hashTree/ai-docs/hash-tree-spec.md) |
 | `src/member/` | Individual participant projection | Partial | [`src/member/ai-docs/member-spec.md`](../src/member/ai-docs/member-spec.md) |
 | `src/members/` | Participant roster, mutations, and member events | Partial | [`src/members/ai-docs/members-spec.md`](../src/members/ai-docs/members-spec.md) |
 | `src/media/` | Media connection construction and readiness | Partial | [`src/media/ai-docs/media-spec.md`](../src/media/ai-docs/media-spec.md) |
-| `src/multistream/` | Remote media groups and send/receive slot management | Untracked | [`src/multistream/ai-docs/multistream-spec.md`](../src/multistream/ai-docs/multistream-spec.md) |
-| `src/roap/` | ROAP signaling and TURN discovery | Untracked | [`src/roap/ai-docs/roap-spec.md`](../src/roap/ai-docs/roap-spec.md) |
-| `src/reachability/` | Cluster/protocol media reachability probing | Untracked | [`src/reachability/ai-docs/reachability-spec.md`](../src/reachability/ai-docs/reachability-spec.md) |
-| `src/reconnection-manager/` | Bounded media recovery and meeting rejoin | Untracked | [`src/reconnection-manager/ai-docs/reconnection-manager-spec.md`](../src/reconnection-manager/ai-docs/reconnection-manager-spec.md) |
+| `src/multistream/` | Remote media groups and send/receive slot management | Partial | [`src/multistream/ai-docs/multistream-spec.md`](../src/multistream/ai-docs/multistream-spec.md) |
+| `src/roap/` | ROAP signaling and TURN discovery | Partial | [`src/roap/ai-docs/roap-spec.md`](../src/roap/ai-docs/roap-spec.md) |
+| `src/reachability/` | Cluster/protocol media reachability probing | Partial | [`src/reachability/ai-docs/reachability-spec.md`](../src/reachability/ai-docs/reachability-spec.md) |
+| `src/reconnection-manager/` | Bounded media recovery and meeting rejoin | Partial | [`src/reconnection-manager/ai-docs/reconnection-manager-spec.md`](../src/reconnection-manager/ai-docs/reconnection-manager-spec.md) |
 | `src/breakouts/` | Breakout sessions, rosters, host operations, and events | Partial | [`src/breakouts/ai-docs/breakouts-spec.md`](../src/breakouts/ai-docs/breakouts-spec.md) |
 | `src/interpretation/` | Simultaneous-interpretation language and handoff workflows | Partial | [`src/interpretation/ai-docs/interpretation-spec.md`](../src/interpretation/ai-docs/interpretation-spec.md) |
-| `src/annotation/` | Annotation data-channel state and commands | Untracked | [`src/annotation/ai-docs/annotation-spec.md`](../src/annotation/ai-docs/annotation-spec.md) |
+| `src/annotation/` | Annotation data-channel state and commands | Partial | [`src/annotation/ai-docs/annotation-spec.md`](../src/annotation/ai-docs/annotation-spec.md) |
 | `src/aiEnableRequest/` | Host approval workflow for enabling AI Assistant | Partial | [`src/aiEnableRequest/ai-docs/ai-enable-request-spec.md`](../src/aiEnableRequest/ai-docs/ai-enable-request-spec.md) |
-| `src/webinar/` | Webinar practice-session and webcast controls | Untracked | [`src/webinar/ai-docs/webinar-spec.md`](../src/webinar/ai-docs/webinar-spec.md) |
+| `src/webinar/` | Webinar practice-session and webcast controls | Partial | [`src/webinar/ai-docs/webinar-spec.md`](../src/webinar/ai-docs/webinar-spec.md) |
 | `src/recording-controller/` | Meeting recording action orchestration | Partial | [`src/recording-controller/ai-docs/recording-controller-spec.md`](../src/recording-controller/ai-docs/recording-controller-spec.md) |
-| `src/controls-options-manager/` | Derivation and mutation of meeting control capabilities | Untracked | [`src/controls-options-manager/ai-docs/controls-options-manager-spec.md`](../src/controls-options-manager/ai-docs/controls-options-manager-spec.md) |
+| `src/controls-options-manager/` | Derivation and mutation of meeting control capabilities | Partial | [`src/controls-options-manager/ai-docs/controls-options-manager-spec.md`](../src/controls-options-manager/ai-docs/controls-options-manager-spec.md) |
 | `src/personal-meeting-room/` | Personal Meeting Room lookup and claim | Partial | [`src/personal-meeting-room/ai-docs/personal-meeting-room-spec.md`](../src/personal-meeting-room/ai-docs/personal-meeting-room-spec.md) |
-| `src/reactions/` | Reaction catalogs, wire values, and normalized reaction data | Untracked | [`src/reactions/ai-docs/reactions-spec.md`](../src/reactions/ai-docs/reactions-spec.md) |
-| `src/interceptors/` | Locus routing/retry and data-channel authentication middleware | Untracked | [`src/interceptors/ai-docs/interceptors-spec.md`](../src/interceptors/ai-docs/interceptors-spec.md) |
-| `src/metrics/` | Behavioral metric normalization and submission | Untracked | [`src/metrics/ai-docs/metrics-spec.md`](../src/metrics/ai-docs/metrics-spec.md) |
+| `src/reactions/` | Reaction catalogs, wire values, and normalized reaction data | Partial | [`src/reactions/ai-docs/reactions-spec.md`](../src/reactions/ai-docs/reactions-spec.md) |
+| `src/interceptors/` | Locus routing/retry and data-channel authentication middleware | Partial | [`src/interceptors/ai-docs/interceptors-spec.md`](../src/interceptors/ai-docs/interceptors-spec.md) |
+| `src/metrics/` | Behavioral metric normalization and submission | Partial | [`src/metrics/ai-docs/metrics-spec.md`](../src/metrics/ai-docs/metrics-spec.md) |
 
 ## Task Routing
 

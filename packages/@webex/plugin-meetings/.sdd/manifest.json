@@ -89,7 +89,7 @@
     "disposition_decided_at": "2026-08-18T15:33:39Z",
     "decided_by": "repository user",
     "decided_at": "2026-08-18T15:33:39Z",
-    "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+    "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
   },
   "spec_sources": [
     {
@@ -191,7 +191,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/meetings/index.js",
-      "last_assessed": "2026-08-18",
+      "last_assessed": "2026-09-08",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -216,7 +216,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -233,7 +233,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/meeting/index.js",
-      "last_assessed": "2026-08-18",
+      "last_assessed": "2026-09-08",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -261,7 +261,7 @@
           "UPGRADING.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -278,7 +278,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/meeting-info/index.js",
-      "last_assessed": "2026-08-22",
+      "last_assessed": "2026-09-08",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -303,7 +303,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -320,7 +320,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/locus-info/index.js",
-      "last_assessed": "2026-08-22",
+      "last_assessed": "2026-09-08",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -345,7 +345,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -362,7 +362,7 @@
         ]
       },
       "characterization_baseline": "test/unit/spec/hashTree/hashTreeParser.ts",
-      "last_assessed": "2026-08-22",
+      "last_assessed": "2026-09-08",
       "section_profile": {
         "has_ui": false,
         "crosses_service_boundaries": true,
@@ -387,7 +387,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -429,7 +429,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -471,7 +471,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -513,7 +513,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -555,7 +555,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -597,7 +597,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -639,7 +639,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -681,7 +681,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -726,7 +726,7 @@
           "src/breakouts/README.md"
         ],
         "conflict_status": "resolved",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -771,7 +771,7 @@
           "src/interpretation/README.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -813,7 +813,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -858,7 +858,7 @@
           "src/aiEnableRequest/README.md"
         ],
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -900,7 +900,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -942,7 +942,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -984,7 +984,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -1026,7 +1026,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -1067,7 +1067,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -1109,7 +1109,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     },
     {
@@ -1151,7 +1151,7 @@
       "source_policy": {
         "mode": "keep-separate",
         "conflict_status": "none",
-        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+        "decision_record": "ai-docs/adr/0001-migrate-existing-docs-into-sdd.md"
       }
     }
   ],
@@ -1213,13 +1213,35 @@
       "Blocking"
     ],
     "generator_run_id": "plugin-meetings-bootstrap-20260818T153339Z",
-    "source_commit": "f9a29f61cf5d0b0311c729bceaeb41ae648cf862",
-    "base_ref": "main",
-    "head_ref": "repo-annotation",
+    "source_commit": "b7b93b443e90d3707a886d8dd7f485bd23bc9cbc",
+    "base_ref": "next",
+    "head_ref": "repo-annotation-plugin-meetings",
     "validator_runtime": "runtime-b",
     "validator_runtime_source": "invocation-input",
     "validator_run_id": "plugin-meetings-participant-role-validation-20260822",
-    "runtime_fallback_tier": "different-runtime"
+    "runtime_fallback_tier": "different-runtime",
+    "previous_source_commit": "f9a29f61cf5d0b0311c729bceaeb41ae648cf862",
+    "revalidation": {
+      "revalidated_at": "2026-09-08",
+      "method": "manual-diff-review",
+      "method_note": "The repo-annotation tooling is not vendored in this repository, so this pass was a manual review of every source diff between previous_source_commit and source_commit against the owning module spec. It is not equivalent to a generator/validator tool run and does not claim different-runtime independence.",
+      "modules_with_source_changes": [
+        "src/meetings/",
+        "src/meeting/",
+        "src/meeting-info/",
+        "src/locus-info/",
+        "src/hashTree/"
+      ],
+      "modules_unchanged_since_previous_source_commit": 18,
+      "spec_updates_applied": [
+        "MEETINGS-R-007 \u2014 WasmRuntimeProbe telemetry payload, null measurement defaults, and swallowed failures",
+        "MEETING-R-009 \u2014 joinWithMedia retry classification and LOCUS_USER_FULL precedence over firstError",
+        "MEETING-R-010 \u2014 processNewCaptions final-only caption guard",
+        "MEETING-INFO-R-004 \u2014 correlationId request header gated on meetingId + sendCAevents + correlationId",
+        "LOCUS-INFO-R-007 \u2014 LocusErrorCodes catalogue and the isLlmExpected joinedWith gate",
+        "HASH-TREE-R-004 \u2014 heartbeat watchdog visibility/LLM gating and re-arm ordering"
+      ]
+    }
   },
   "layout": {
     "sdd_root": ".sdd",

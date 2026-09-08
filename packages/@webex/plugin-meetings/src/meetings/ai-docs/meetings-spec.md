@@ -4,7 +4,7 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-22T15:21:29Z
+updated_at: 2026-09-08T00:00:00Z
 validation_status: pass-with-warnings
 -->
 # MEETINGS — SPEC
@@ -21,7 +21,8 @@ validation_status: pass-with-warnings
 | Doc kind | Module spec |
 | Coverage score | 93% assessed 2026-08-22; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains; pending independent validation of the participant-role repair |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-22T15:21:29Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-09-08T00:00:00Z |
+| Revalidated against | `b7b93b443e` (manual diff review of `f9a29f61..b7b93b443e`; not a generator/validator tool run) |
 | Validation status | pass-with-warnings |
 
 ## Evidence Rules
@@ -113,6 +114,7 @@ Webex core host, device and Mercury plugins, meeting-info services, Meeting cons
 | `MEETINGS-R-002` | register/unregister device and Mercury lifecycle. | Registration owns device/listener readiness; active-meeting synchronization is a separate online-event flow. | `src/meetings/index.ts`, `src/meetings/request.ts` | `test/unit/spec/meetings/index.js` | unregister does not remove the OFFLINE listener; retain as a targeted teardown gap | PRESENT |
 | `MEETINGS-R-003` | `executeRegistrationStep()` marks a step `true` whenever its supplied promise resolves and rethrows a rejection without resetting other flags. `fetchUserPreferredWebexSite()` catches its own failures and resolves, while the `startReachability` registration callback catches that gather rejection and resolves; those two steps are therefore marked successful even when their underlying work failed. `unregister()` removes Locus, ROAP, and `ONLINE` Mercury listeners plus device state, but leaves the `OFFLINE` listener installed. | Registration status records wrapper settlement, not necessarily underlying site/reachability success; other rejected steps preserve partial progress until the next `register()` reset, and the residual `OFFLINE` listener must stay visible as a teardown gap. | `src/meetings/index.ts` | `test/unit/spec/meetings/index.js` | characterize absorbed site/reachability failures, partial status after a non-absorbed rejection, and the surviving `OFFLINE` callback | PRESENT |
 | `MEETINGS-R-004` | `register()` starts site, geo, reachability, device-registration, and H.264 work together through `Promise.all`; Mercury connect is chained after device registration. Each wrapper-resolved step updates its own status, including the failure-absorbing site and reachability wrappers. `syncMeetings()` runs later from the Mercury `ONLINE` handler installed by `listenForEvents()`. | Registration readiness and active-meeting synchronization are distinct phases, and preserving wrapper-level settlement and actual concurrency prevents callers from depending on a nonexistent success definition or serial order. | `src/meetings/index.ts`, `src/meetings/meetings.types.ts` | `test/unit/spec/meetings/index.js` | none | PRESENT |
+| `MEETINGS-R-007` | `emitWasmRuntimePerformance(correlationId)` is a `once()`-wrapped private probe that runs `WasmRuntimeProbe.check()` and reports `WASM_RUNTIME_PERFORMANCE` (`js_sdk_wasm_runtime_performance`) with `status`, `capability`, `reason`, the destructured measurements `divRatio`, `sqrtRatio`, `addNsPerOp`, `addMedianMs`, `divMedianMs`, `sqrtMedianMs`, and `correlation_id`. Each measurement defaults to `null` when `result.measurements` is absent or omits it. Both a probe rejection and a metric-submission rejection are caught and logged only. | The probe is diagnostic: it exists to find browsers where real-time WASM effects run poorly, so it must never be able to fail meeting creation. Explicit `null` defaults keep the metric schema fixed-width so the fields stay comparable across browsers that report partial measurements, and `once()` keeps one sample per plugin instance rather than one per meeting. | `src/meetings/index.ts`, `src/metrics/constants.ts` | `test/unit/spec/meetings/index.js` | none | PRESENT |
 | `MEETINGS-R-005` | Mercury/Locus events resolve an existing meeting by supported keys before creating or routing a new object. | Stable meeting identity prevents duplicate Meeting objects and misrouted realtime updates. | `src/meetings/index.ts`, `src/meetings/collection.ts` | `test/unit/spec/meetings/index.js`, `test/unit/spec/meetings/collection.js` | none | PRESENT |
 | `MEETINGS-R-006` | Reachability, geo hints, site preferences, PMR, and active-meeting queries delegate to their current request/controller boundaries. | Central plugin access must preserve host credentials, service discovery, and established response/error behavior. | `src/meetings/index.ts`, `src/meetings/request.ts` | `test/unit/spec/meetings/request.js` | none | PRESENT |
 
@@ -259,6 +261,7 @@ These labels summarize the concrete `registered`, registration-promise, registra
 | `fetchSitePreferencesMeViaSite()` has neither `options.siteUrl` nor `preferredWebexSite` | `MeetingRequest.fetchSitePreferencesMeViaSite()` throws `ParameterError` synchronously before returning a promise; the non-`async` facade returns that direct call, so `.catch()` on a nonexistent result cannot observe the error. | Supply either site URL and wrap the call boundary in synchronous error handling when inputs may be absent. |
 | Another destination or preference request rejects | Its returned request promise preserves the implemented rejection. | Supply supported input or handle the returned rejection for that specific operation. |
 | Meeting synchronization request rejects | That sync request rejects independently of plugin registration state. | Handle or repeat synchronization under the owning meeting workflow. |
+| The WASM runtime probe or its metric submission rejects | The rejection is caught and logged as an error; no event is emitted, no metric is retried, and meeting creation is unaffected. | Read the logged diagnostic; do not treat a missing `js_sdk_wasm_runtime_performance` metric as a meeting-creation failure. |
 
 ## Pitfalls
 
@@ -285,6 +288,7 @@ Use the current mirrored suites: `test/unit/spec/meetings/collection.js`, `test/
 | `MEETINGS-R-004` | `test/unit/spec/meetings/index.js` | verify `Promise.all` concurrency, device-before-Mercury ordering, wrapper-settlement flags, and non-absorbed rejection without a failure reset |
 | `MEETINGS-R-005` | `test/unit/spec/meetings/index.js`, `test/unit/spec/meetings/collection.js` | verify alternate-key collision cases |
 | `MEETINGS-R-006` | `test/unit/spec/meetings/request.js` | none |
+| `MEETINGS-R-007` | `test/unit/spec/meetings/index.js` | covered for the full-measurements payload, the `null` defaults when measurements are absent, and the swallowed probe rejection |
 
 ## Traceability
 

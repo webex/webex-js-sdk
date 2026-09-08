@@ -4,7 +4,7 @@ generated_from: architecture@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-21T06:10:05Z
+updated_at: 2026-09-08T00:00:00Z
 validation_status: not-run
 -->
 # ARCHITECTURE — @webex/plugin-meetings
@@ -165,7 +165,7 @@ flowchart TD
 | `@webex/webex-core` | plugin registration, request and service access, base plugin/interceptor classes | workspace version |
 | package `src/common/` | collections, events, logging, queue, errors, browser/config helpers | package-local |
 | `lodash` | guarded collection/object utilities | package manifest range |
-| `@webex/internal-media-core` | WebRTC/media primitives | `2.28.2` |
+| `@webex/internal-media-core` | WebRTC/media primitives | pinned exact version in `package.json` (`dependencies`) |
 
 ## Package Map & Inter-Package Dependencies
 

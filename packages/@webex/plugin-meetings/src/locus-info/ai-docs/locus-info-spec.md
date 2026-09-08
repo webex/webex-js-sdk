@@ -4,7 +4,7 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-22T15:21:29Z
+updated_at: 2026-09-08T00:00:00Z
 validation_status: pass-with-warnings
 -->
 # LOCUS INFO — SPEC
@@ -21,7 +21,8 @@ validation_status: pass-with-warnings
 | Doc kind | Module spec |
 | Coverage score | 93% assessed 2026-08-22; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains; pending independent validation of the participant-role repair |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-22T15:21:29Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-09-08T00:00:00Z |
+| Revalidated against | `b7b93b443e` (manual diff review of `f9a29f61..b7b93b443e`; not a generator/validator tool run) |
 | Validation status | pass-with-warnings |
 
 ## Evidence Rules
@@ -111,6 +112,7 @@ Locus payloads and fetch access, hash-tree parser, event scope utilities, member
 | `LOCUS-INFO-R-004` | Full-state, delta, API-response, and hash-tree inputs converge through parsers into the same current Locus projection. | Alternate synchronization transports must not expose divergent meeting state. | `src/locus-info/index.ts`, `src/locus-info/parser.ts` | `test/unit/spec/locus-info/index.js`, `test/unit/spec/locus-info/parser.js` | none | PRESENT |
 | `LOCUS-INFO-R-005` | Sequence/dataset gaps trigger synchronization rather than speculative application. `sendClassicVsHashTreeMismatchMetric()` reports an unexpected classic-Locus transport shape while hash-tree mode is enabled; it does not compare classic and hash-tree state values. | Applying stale or incomplete remote state can produce false meeting/member/control events, while the metric contract must not imply a state-diff computation that does not exist. | `src/locus-info/index.ts`, `src/hashTree/hashTreeParser.ts` | `test/unit/spec/locus-info/index.js`, `test/unit/spec/hashTree/hashTreeParser.ts` | none | PRESENT |
 | `LOCUS-INFO-R-006` | Normalized changes invoke the correct scoped callback/event for members, self, controls, media shares, host, embedded apps, and meeting lifecycle. | Parent Meeting and consumers need domain-specific deltas, not an undifferentiated Locus payload. | `src/locus-info/index.ts`, `src/locus-info/controlsUtils.ts`, `src/locus-info/selfUtils.ts` | `test/unit/spec/locus-info/index.js`, `test/unit/spec/locus-info/controlsUtils.js`, `test/unit/spec/locus-info/selfUtils.js` | none | PRESENT |
+| `LOCUS-INFO-R-007` | `LocusErrorCodes` is the shared catalogue of raw Locus `errorCode` values the client branches on: `LOCUS_INACTIVE` (`2403004`) and `LOCUS_USER_FULL` (`2423001`). When constructing the hash-tree parser, `LocusInfo` injects `isLlmExpected: () => this.parsedLocus.self?.joinedWith?.state === 'JOINED'`, so LLM-dataset heartbeat supervision is gated on the current device being joined rather than on `self` being joined from any device. | These numeric codes cross module boundaries and drive caller-visible decisions (see `MEETING-R-009`), so their values are contracts, not internal constants. Anchoring the LLM expectation on `joinedWith` prevents heartbeat watchdogs from supervising a transport this device does not hold. | `src/locus-info/types.ts`, `src/locus-info/index.ts` | `test/unit/spec/locus-info/index.js` | none | PRESENT |
 
 ## Design Overview
 
@@ -283,6 +285,7 @@ Use the current mirrored suites: `test/unit/spec/locus-info/controlsUtils.js`, `
 | `LOCUS-INFO-R-004` | `test/unit/spec/locus-info/index.js`, `test/unit/spec/locus-info/parser.js` | none |
 | `LOCUS-INFO-R-005` | `test/unit/spec/locus-info/index.js`, `test/unit/spec/hashTree/hashTreeParser.ts` | verify sequence/dataset recovery separately from the unexpected-transport-shape metric trigger |
 | `LOCUS-INFO-R-006` | `test/unit/spec/locus-info/controlsUtils.js`, `test/unit/spec/locus-info/selfUtils.js` | verify every callback family during focused changes |
+| `LOCUS-INFO-R-007` | `test/unit/spec/locus-info/index.js` | covered for the `isLlmExpected` joined and self-joined-but-device-not-joined cases; add a case per `LocusErrorCodes` value as new codes are added |
 
 ## Traceability
 

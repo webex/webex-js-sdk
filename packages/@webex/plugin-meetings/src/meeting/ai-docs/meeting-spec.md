@@ -4,7 +4,7 @@ generated_from: module-spec@0.2.2
 generator_plugin: repo-annotation@1.0.5+codex.20260818094939
 generated_by: codex
 approved_by: repository user
-updated_at: 2026-08-22T15:21:29Z
+updated_at: 2026-09-08T00:00:00Z
 validation_status: pass-with-warnings
 -->
 # MEETING — SPEC
@@ -21,7 +21,8 @@ validation_status: pass-with-warnings
 | Doc kind | Module spec |
 | Coverage score | 93% assessed 2026-08-22; 13/14 mandatory fields present; all critical and Important fields present; one noncritical polish gap remains; pending independent validation of the participant-role repair |
 | Generated from | `module-spec` @ SDLC template library `0.2.2` |
-| generated_by / approved_by / updated_at | codex / repository user / 2026-08-22T15:21:29Z |
+| generated_by / approved_by / updated_at | codex / repository user / 2026-09-08T00:00:00Z |
+| Revalidated against | `b7b93b443e` (manual diff review of `f9a29f61..b7b93b443e`; not a generator/validator tool run) |
 | Validation status | pass-with-warnings |
 
 ## Evidence Rules
@@ -181,6 +182,8 @@ Meetings host, LocusInfo, Members, meeting requests, media/ROAP/multistream, rec
 | `MEETING-R-006` | Locus updates refresh members, actions, lock/recording/share/self state, and composed feature controllers before scoped consumer events. | Consumers require one coherent per-meeting projection rather than unrelated raw event payloads. | `src/meeting/index.ts`, `src/locus-info/index.ts` | `test/unit/spec/meeting/index.js`, `test/unit/spec/locus-info/index.js` | none | PRESENT |
 | `MEETING-R-007` | Locking, host transfer, recording, mute, share, reactions, BRB, stage, DTMF, and end-for-all operations use current capability/role and request contracts. | These are privileged or state-sensitive mutations and invalid exposure leads to server rejection or incorrect UI actions. | `src/meeting/index.ts`, `src/meeting/request.ts`, `src/meeting/in-meeting-actions.ts` | `test/unit/spec/meeting/index.js`, `test/unit/spec/meeting/request.js`, `test/unit/spec/meeting/in-meeting-actions.ts` | none | PRESENT |
 | `MEETING-R-008` | `MeetingUtil.cleanUp()` closes remote streams and peer connections, detaches local streams, resets reconnection/media state, stops keepalive, and cleans breakout/webinar/interpretation/Locus/LLM resources. Before leave/end, `stopListeningForMeetingEvents()` removes only LLM, the meeting's bound Mercury `ONLINE`/`OFFLINE`, transcription, and annotation listeners; LocusInfo listeners remain until later cleanup. Meetings-owned destroy delegates to `MeetingUtil.cleanUp()`. | Partially initialized or recovered calls otherwise leak resources, while accurately scoping the pre-request subset avoids a false guarantee that no Locus-driven callback can run during leave/end. | `src/meeting/index.ts`, `src/meeting/util.ts`, `src/meetings/index.ts` | `test/unit/spec/meeting/index.js`, `test/unit/spec/meeting/connectionStateHandler.ts` | verify integration cleanup for every optional controller and the in-flight LocusInfo-listener window | PRESENT |
+| `MEETING-R-009` | `joinWithMedia()` retries only when the call is not 1-1 and either `retryCount < 1` or the error is a `UserNotJoinedError`/Locus-dropped-us error under `JOIN_WITH_MEDIA_RETRY_MAX_COUNT`. Retry is then forced off for definitively non-transient failures: SDP-offer-creation errors, WebRTC-API-not-available errors, browser media errors, and `LOCUS_USER_FULL` (`error.error.body.errorCode === 2423001`, matched by the private `isLocusUserFullError()`). On the terminal path the thrown error is the current `error` when it is `LOCUS_USER_FULL`, otherwise the retained `firstError ?? error`. | Retrying a full Locus consumes attempts and delays the caller for a failure that cannot change, and a capacity error must reach the consumer verbatim, so it deliberately outranks any earlier retryable error that would otherwise be surfaced as `firstError`. | `src/meeting/index.ts`, `src/locus-info/types.ts` | `test/unit/spec/meeting/index.js` | none | PRESENT |
+| `MEETING-R-010` | `processNewCaptions()` treats a final caption whose `transcriptId` has no recorded interim list as valid: it reads `transcriptData.interimCaptions[transcriptId] ?? []`, so no interim captions are spliced, the key is deleted, `captionData.id` becomes the bare `transcriptId`, and the final caption is appended. | A final-only transcript is a normal upstream case, not corrupt input; indexing the missing interim list directly would throw inside the caption pipeline and drop the caption for the consumer. | `src/meeting/voicea-meeting.ts` | `test/unit/spec/meeting/voicea-meeting.ts` | none | PRESENT |
 
 ## Design Overview
 
@@ -354,6 +357,8 @@ The diagram follows the `MEETING_STATE_MACHINE` values and transition table impl
 | Data-channel token inputs are missing or retrieval fails | `MeetingRequest.fetchDatachannelToken()` rejects for missing Locus/participant ids but catches transport failure and returns `null`; `refreshDataChannelToken()` also logs and returns `null`. | Branch on `null` before using token fields; do not handle transport failure as a rejected refresh promise. |
 | Post-meeting consent is requested | `setPostMeetingDataConsent()` forwards the supplied boolean and current Locus/device/self context without a local feature or capability check. | Treat server/request outcome as authoritative; do not rely on a client-side eligibility rejection. |
 | Successful leave or Meetings-owned destroy runs while media/listeners/controllers are owned | `MeetingUtil.cleanUp()` closes remote streams/peer connections and cleans feature/reconnection/keepalive state. Before leave/end, only the LLM, bound Mercury, transcription, and annotation subset is stopped; LocusInfo listeners can remain active until later cleanup. | Do not assume pre-request teardown suppresses every Locus-driven callback, and do not reuse a removed meeting instance. |
+| `joinWithMedia()` fails because the Locus is full | `isLocusUserFullError()` matches `errorCode` `2423001`, retry is suppressed, `leave()` runs if the join had succeeded, and that error is thrown in preference to any retained `firstError`. | Surface the capacity error to the user; do not re-issue `joinWithMedia()` expecting a different outcome. |
+| A final caption arrives with no preceding interim captions for its `transcriptId` | `processNewCaptions()` substitutes an empty interim list, appends the final caption under the bare `transcriptId`, and does not throw. | Consume the appended final caption normally. |
 
 ## Pitfalls
 
@@ -387,6 +392,8 @@ Use the current mirrored suites: `test/unit/spec/meeting/brbState.ts`, `test/uni
 | `MEETING-R-006` | `test/unit/spec/meeting/index.js`, `test/unit/spec/locus-info/index.js` | verify event ordering for each projection family |
 | `MEETING-R-007` | `test/unit/spec/meeting/request.js`, `test/unit/spec/meeting/in-meeting-actions.ts` | verify capability-denied cases for each control |
 | `MEETING-R-008` | `test/unit/spec/meeting/index.js` | verify every optional controller cleanup path |
+| `MEETING-R-009` | `test/unit/spec/meeting/index.js` | covered for `LOCUS_USER_FULL` suppressing retry and taking precedence over `firstError`; add a case per non-retryable classifier |
+| `MEETING-R-010` | `test/unit/spec/meeting/voicea-meeting.ts` | covered for the final-only caption path |
 
 ## Traceability
 
