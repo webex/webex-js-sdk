@@ -692,6 +692,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         for (const mobius of this.mobiusClusters) {
           if (typeof mobius !== 'string' && mobius.host) {
             if (mobius.host === triedHost) {
+              // eslint-disable-next-line no-continue
               continue;
             }
             this.mobiusHost = `https://${mobius.host}${API_V1}`;
