@@ -1,11 +1,11 @@
-import {CHANNEL_PATTERN, DEFAULT_CHANNEL} from '../core/constants';
+import {CHANNEL_PATTERN, DEFAULT_CHANNEL, MAX_PAYLOAD_BYTES_CEILING} from '../core/constants';
 import {BridgeError, fromWireError} from '../core/errors';
 import type {JsonValue} from '../core/json';
 import {readOwn} from '../core/json';
 import {ListenerSet} from '../core/listeners';
 import {createLogger} from '../core/logger';
 import type {LogSink} from '../core/logger';
-import {assertTopic} from '../core/serialize';
+import {assertPayload, assertTopic} from '../core/serialize';
 import {ClientCommand, asClientPushEvent} from './messages';
 import type {ClientCommandMessage} from './messages';
 import {resolveChrome} from './platform';
@@ -132,6 +132,23 @@ export function createExtensionClientWith(
       opts: RequestOptions = {}
     ): Promise<T> {
       assertTopic(topic);
+
+      // The worker enforces its own configured cap; this side only rejects what no cap
+      // could admit. Without it a cyclic object, a `BigInt` or a nested function reaches
+      // `runtime.sendMessage` directly, where Chrome either throws an uncoded transport
+      // error or coerces the value — so the worker's validation never sees what the
+      // caller actually passed, and the caller does not get the documented
+      // `INVALID_PAYLOAD` BridgeError.
+      assertPayload(payload, MAX_PAYLOAD_BYTES_CEILING, topic);
+
+      // An abort that arrived before the send is a cancellation, not a race: `send` is
+      // evaluated eagerly as `raceAbort`'s argument, so leaving this to the race would
+      // still start the worker request — and the page handler's side effects — for a
+      // caller that is already gone. The race covers only requests that were genuinely
+      // in flight when the abort landed.
+      if (opts.signal?.aborted) {
+        throw new BridgeError('ABORTED', undefined, topic);
+      }
 
       const command: ClientCommandMessage = {
         __webexBridgeClient: true,

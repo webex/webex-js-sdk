@@ -66,6 +66,16 @@ describe('extension review regressions', () => {
     });
   };
 
+  /**
+   * @param work - A request whose outcome is being asserted.
+   * @returns The `BridgeError` code it rejected with, or `'resolved'`.
+   */
+  const codeOf = (work: Promise<unknown>): Promise<string> =>
+    work.then(
+      () => 'resolved',
+      (reason: BridgeError) => reason.code
+    );
+
   const drain = async (): Promise<void> => {
     for (let round = 0; round < 6; round += 1) {
       // eslint-disable-next-line no-await-in-loop
@@ -300,6 +310,51 @@ describe('extension review regressions', () => {
       // Before the fix the record survived, so `listConnections()` and default
       // active-tab targeting kept pointing at a tab that could not receive anything.
       assert.lengthOf(await bridge.listConnections(), 0);
+    });
+
+    it('leaves a replacement session in place when the stale send finally rejects', async () => {
+      await attach('session-a');
+
+      // A send held open, standing in for the window between the worker handing a
+      // message to Chrome and Chrome reporting that there was no receiver. `sendStarted`
+      // pins the interleaving: without it the request's own storage reads can still be
+      // pending when session B attaches, so it would capture B's session and the test
+      // would pass for the wrong reason.
+      let failSend: () => void = () => undefined;
+      let sendReached: () => void = () => undefined;
+      const sendStarted = new Promise<void>((resolve) => {
+        sendReached = resolve;
+      });
+
+      sinon.stub(world.backgroundChrome.tabs!, 'sendMessage').callsFake(
+        () =>
+          new Promise((_resolve, reject) => {
+            failSend = () => reject(new Error(NO_RECEIVER));
+            sendReached();
+          })
+      );
+
+      const doomed = codeOf(bridge.request('demo.topic', undefined, {tabId: world.tabId}));
+
+      await sendStarted;
+
+      // The relay reloads and reconnects while session A's send is still outstanding.
+      await attach('session-b');
+      assert.lengthOf(await bridge.listConnections(), 1);
+
+      const onSessionB = codeOf(bridge.request('demo.topic', undefined, {tabId: world.tabId}));
+
+      failSend();
+      await drain();
+
+      // The failed send is still evidence about *its own* request.
+      assert.equal(await doomed, 'NOT_CONNECTED');
+
+      // Before the fix the cleanup removed by tab ID alone, so session A's rejection
+      // deleted session B's healthy record and settled its in-flight requests as
+      // `DISCONNECTED`.
+      assert.lengthOf(await bridge.listConnections(), 1);
+      assert.notEqual(await onSessionB, 'DISCONNECTED');
     });
   });
 
@@ -596,6 +651,56 @@ describe('extension review regressions', () => {
         );
 
       assert.equal(error.code, 'ABORTED');
+    });
+  });
+
+  describe('the client validates before it reaches the runtime', () => {
+    it('rejects a non-serialisable payload with INVALID_PAYLOAD', async () => {
+      const client = createExtensionClientWith(world.uiChrome, {logSink: log.sink});
+      const sent = sinon.spy(world.uiChrome.runtime, 'sendMessage');
+      const cyclic: Record<string, unknown> = {};
+
+      cyclic.self = cyclic;
+
+      const error: BridgeError = await client
+        .request('demo.topic', cyclic as unknown as JsonValue, {tabId: world.tabId})
+        .then(
+          () => {
+            throw new Error('expected a rejection');
+          },
+          (reason: BridgeError) => reason
+        );
+
+      // Before the fix the value went straight into `runtime.sendMessage`, so Chrome
+      // either threw an uncoded transport error or coerced the payload before the
+      // worker's own validation could see what the caller actually passed.
+      assert.equal(error.code, 'INVALID_PAYLOAD');
+      assert.equal(sent.callCount, 0);
+    });
+
+    it('does not start the worker request for an already-aborted signal', async () => {
+      const client = createExtensionClientWith(world.uiChrome, {logSink: log.sink});
+      const sent = sinon.spy(world.uiChrome.runtime, 'sendMessage');
+      const controller = new AbortController();
+
+      await attach();
+      controller.abort();
+
+      const error: BridgeError = await client
+        .request('demo.topic', undefined, {signal: controller.signal, tabId: world.tabId})
+        .then(
+          () => {
+            throw new Error('expected a rejection');
+          },
+          (reason: BridgeError) => reason
+        );
+
+      assert.equal(error.code, 'ABORTED');
+
+      // Before the fix `send(command)` was evaluated as `raceAbort`'s argument, so the
+      // command left for the worker — and the page handler ran its side effects — even
+      // though the caller was told `ABORTED`.
+      assert.equal(sent.callCount, 0);
     });
   });
 

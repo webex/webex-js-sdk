@@ -612,7 +612,7 @@ export function createExtensionBridgeWith(
       // no-op because correlation is single-use.
       void Promise.resolve(tabsApi.sendMessage(tabId, relayRequest)).then(
         (response) => settleFromRelay(id, topic, connection.session, response),
-        () => {
+        async () => {
           // This request first, so it reports why *it* failed. Dropping the connection
           // settles everything else on the tab as `DISCONNECTED`, and correlation is
           // single-use, so whichever runs first wins the code this caller sees.
@@ -625,8 +625,15 @@ export function createExtensionBridgeWith(
           // dead tab — and keep default active-tab targeting routing to it — until a
           // navigation or removal event happened along. The failed send *is* that
           // event, so it is treated as one.
+          //
+          // Scoped to the session this send targeted. Unlike a tab removal, a send
+          // failure is only evidence about the connection that was asked to receive it,
+          // and the rejection arrives asynchronously — a replacement relay can have
+          // connected on the same tab in the meantime. Dropping by tab ID alone would
+          // then tear down that healthy newer session and settle its in-flight requests
+          // as `DISCONNECTED`.
           logger.debug('dropping unreachable connection', {channel, tabId});
-          dropConnection(tabId, 'send-failed');
+          await removeConnectionForSession(tabId, connection.session, 'send-failed');
         }
       );
 

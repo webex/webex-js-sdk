@@ -30,26 +30,6 @@
       "import": "./dist/content-script.js",
       "require": "./dist/content-script.js"
     },
-    "./web": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.js"
-    },
-    "./extension/background": {
-      "types": "./dist/types/extension/index.d.ts",
-      "import": "./dist/extension/index.js",
-      "require": "./dist/extension/index.js"
-    },
-    "./extension/content": {
-      "types": "./dist/types/content-script.d.ts",
-      "import": "./dist/content-script.js",
-      "require": "./dist/content-script.js"
-    },
-    "./extension/client": {
-      "types": "./dist/types/extension/index.d.ts",
-      "import": "./dist/extension/index.js",
-      "require": "./dist/extension/index.js"
-    },
     "./package": "./package.json"
   },
   "files": [

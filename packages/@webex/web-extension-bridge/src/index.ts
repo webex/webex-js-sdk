@@ -18,9 +18,10 @@
  * when it is *called*, not when it is loaded, so the module graph stays safe to pull
  * into a service worker or into Node for type-checking.
  *
- * The earlier layout-shaped specifiers — `/web`, `/extension/background`,
- * `/extension/client`, `/extension/content` — still resolve, and are documented as
- * deprecated aliases of the surfaces above.
+ * Those two and this one are the whole published surface. Earlier drafts also exposed
+ * layout-shaped aliases (`/web`, `/extension/background`, `/extension/client`,
+ * `/extension/content`); they were removed before the first release rather than shipped
+ * deprecated, since there was no published version for them to stay compatible with.
  */
 
 export {createWebBridge} from './web/webBridge';

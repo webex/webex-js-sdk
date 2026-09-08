@@ -43,26 +43,18 @@ Only `/content-script` has a side effect. Importing the relay's API through
 `/extension` never starts one, so a popup or worker that pulls in `startContentRelay`
 does not acquire hidden startup behaviour along with it.
 
-<details>
-<summary>Deprecated specifiers</summary>
-
-The earlier layout-shaped specifiers still resolve, and map onto the entries above.
-They will be removed in the next major version.
-
-| Deprecated | Use instead |
-| --- | --- |
-| `@webex/web-extension-bridge/web` | `@webex/web-extension-bridge` |
-| `@webex/web-extension-bridge/extension/background` | `@webex/web-extension-bridge/extension` |
-| `@webex/web-extension-bridge/extension/client` | `@webex/web-extension-bridge/extension` |
-| `@webex/web-extension-bridge/extension/content` | `@webex/web-extension-bridge/content-script` |
+Those three, plus `./package`, are the whole published surface. Earlier drafts of this
+package also exposed layout-shaped specifiers (`/web`, `/extension/background`,
+`/extension/client`, `/extension/content`) as aliases; they are gone. The package has
+never been published, so there was no released contract for them to stay compatible with —
+keeping them would have shipped a deprecation on day one and left four extra paths to
+support.
 
 The `*With` test seams (`createExtensionBridgeWith`, `createExtensionClientWith`,
-`createContentRelay`) are no longer reachable through any published specifier. They
+`createContentRelay`) are not reachable through any published specifier either. They
 accept an injected platform object in place of the real `chrome`, which is what the
 sender-verification rules are built on, so a consumer able to reach them is a consumer
 able to construct a bridge that trusts whatever it is handed.
-
-</details>
 
 ### Web application
 
@@ -327,7 +319,7 @@ rather than throwing inside `postMessage`.
 | `channel` | `string` | `'webex-bridge'` | Must match the page and the client. |
 | `defaultTimeoutMs` | `number` | `5000` | Clamped to `[100, 30000]`. |
 | `maxPayloadBytes` | `number` | `262144` | Clamped to `[1, 1048576]`. |
-| `buffer` | `{maxEntries?, ttlMs?, maxBytes?}` | `{maxEntries: 200, ttlMs: 1800000, maxBytes: 4194304}` | FR8 buffer in `chrome.storage.session`. Oldest-out eviction against **both** the entry cap and the byte budget, plus TTL. |
+| `buffer` | `{maxEntries?, ttlMs?, maxBytes?}` | `{maxEntries: 200, ttlMs: 1800000, maxBytes: 4194304}` | FR8 buffer in `chrome.storage.session`. Oldest-out eviction against **both** the entry cap and the byte budget, plus TTL. `maxBytes` has one documented exception — see below. |
 | `rateLimit` | `{pushesPerSecond?, aggregatePushesPerSecond?, maxInFlightPerTab?}` | `{pushesPerSecond: 20, aggregatePushesPerSecond: 80, maxInFlightPerTab: 16}` | Token bucket per `(tabId, topic)` **and** per `tabId` across all topics; in-flight cap per tab. |
 | `debug` / `logSink` | | `false` / console | As above. |
 
@@ -335,6 +327,15 @@ Sizes and timeouts are *clamped* — a too-large value there is a safe intent, j
 unsupported one. Limiter and buffer bounds are *validated*: a non-integer, non-finite or
 out-of-range value throws `INSECURE_CONFIG` rather than being silently reinterpreted,
 because `Math.max(NaN, 1)` is `NaN` and a limiter holding `NaN` fails open.
+
+`buffer.maxBytes` bounds the *total* of the entries held, with one deliberate exception:
+the newest entry is never evicted to satisfy it. A single push larger than the whole
+budget — possible whenever `maxBytes` is configured below `maxPayloadBytes` — evicts
+everything older and is then kept on its own, so the buffer holds up to
+`max(maxBytes, one entry)` and not `maxBytes`. Size `chrome.storage.session` for
+`maxBytes + maxPayloadBytes` if you configure the two that way. The alternative is
+dropping the newest push to honour a budget nothing else is using, which turns a
+small buffer into no buffer at all rather than a small one.
 
 | Member | Signature | Notes |
 | --- | --- | --- |
@@ -353,9 +354,20 @@ is simply absent while `origin` remains available.
 ### `createExtensionClient(options?): ExtensionBridge`
 
 Same surface as `ExtensionBridge`, proxied to the worker; takes `{channel?, debug?,
-logSink?}`. `signal` is honoured locally — aborting stops your `await`, it cannot recall a
-request already in flight in the page. Only accepted by the worker from extension pages
-(`sender.id === chrome.runtime.id && sender.tab === undefined`).
+logSink?}`. Only accepted by the worker from extension pages (`sender.id ===
+chrome.runtime.id && sender.tab === undefined`).
+
+Two details follow from the command hop being `chrome.runtime.sendMessage` rather than a
+direct call:
+
+- **`signal`.** A signal already aborted when `request` is called rejects with `ABORTED`
+  without sending anything, so no page handler runs for a caller that has gone. A signal
+  that fires afterwards is honoured locally: it stops your `await`, but it cannot recall a
+  request already in flight in the page.
+- **Payloads** are checked here before the send, against the 1 MiB ceiling — the worker
+  still enforces its own (possibly smaller) `maxPayloadBytes`. A cyclic object, a `BigInt`
+  or a nested function therefore fails as `INVALID_PAYLOAD` rather than as an uncoded
+  Chrome transport error, or being silently coerced on the way across.
 
 ### Errors
 
