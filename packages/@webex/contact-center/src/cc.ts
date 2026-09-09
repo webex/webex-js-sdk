@@ -648,12 +648,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return null;
     }
 
-    if (!this.currentAgentSessionId || agentSessionId !== this.currentAgentSessionId) {
-      this.trackInvalidRTDEvent('stale_wellness_session');
-
-      return null;
-    }
-
     const interactionValue = sessionData.interactionId ?? sessionData.InteractionId;
     const actionText = notificationDetails.actionText;
     const trackingId = payload.trackingId;

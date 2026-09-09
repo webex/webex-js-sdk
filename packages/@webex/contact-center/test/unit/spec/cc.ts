@@ -1990,7 +1990,7 @@ describe('webex.cc', () => {
       ).rejects.toThrow('AGENT_CHANNEL_IDLE_CODE_REQUIRED');
     });
 
-    it('emits only validated active-session wellness events and keeps task RTD routing', () => {
+    it('emits agent-scoped wellness events regardless of notification session and keeps task RTD routing', () => {
       const emitSpy = jest.spyOn(webex.cc, 'emit');
       webex.cc['activeRtdGeneration'] = 2;
       const validPayload = {
@@ -2031,8 +2031,17 @@ describe('webex.cc', () => {
         }),
         2
       );
+      expect(emitSpy).toHaveBeenCalledWith(CC_EVENTS.WELLNESS_BREAK, {
+        agentId: 'agent-1',
+        orgId: 'mockOrgId',
+        agentSessionId: 'stale',
+        actionEvent: 'PROVIDE_WELLNESS_BREAK',
+        actionText: '<b>Take a break</b>',
+        interactionId: 'interaction-1',
+        trackingId: 'notification-tracking',
+      });
       webex.cc['handleRTDWebsocketMessage'](JSON.stringify(validPayload), 1);
-      expect(emitSpy).toHaveBeenCalledTimes(1);
+      expect(emitSpy).toHaveBeenCalledTimes(2);
 
       const taskPayload = JSON.stringify({type: 'RealTimeTranscript'});
       webex.cc['handleRTDWebsocketMessage'](taskPayload, 2);

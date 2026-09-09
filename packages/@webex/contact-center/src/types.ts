@@ -993,7 +993,7 @@ export interface WellnessBreakEvent {
   agentId: string;
   /** Organization identifier */
   orgId: string;
-  /** Current login/relogin session identifier */
+  /** Session identifier supplied by the notification; it may differ from the consumer's active session */
   agentSessionId: string;
   /** Backend wellness action */
   actionEvent: WellnessBreakNotificationAction;
