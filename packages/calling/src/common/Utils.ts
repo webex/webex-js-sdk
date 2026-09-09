@@ -1424,6 +1424,20 @@ export function getSortedVoicemailList(
 }
 
 /**
+ * Escape SCIM filter metacharacters in a value before it is interpolated into
+ * a SCIM filter clause (e.g. `id eq "<value>"`). Escapes the backslash (`\`)
+ * and double-quote (`"`) characters so a crafted value cannot break out of the
+ * surrounding quoted clause. A value with no metacharacters is returned
+ * unchanged.
+ *
+ * @param value - The raw value to be embedded in a SCIM filter clause.
+ * @returns The escaped value, safe to interpolate between double quotes.
+ */
+export function escapeScimValue(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+/**
  *  Handler to perform a SCIM Query.
  *
  * @param filter - A filter for the query.

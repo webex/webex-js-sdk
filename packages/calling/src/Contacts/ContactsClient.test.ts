@@ -1,7 +1,7 @@
 import {HTTP_METHODS, SCIMListResponse, WebexRequestPayload} from '../common/types';
 import {getTestUtilsWebex} from '../common/testUtil';
 import {LOGGER} from '../Logger/types';
-import {Contact, ContactResponse, IContacts} from './types';
+import {Contact, ContactResponse, ContactType, IContacts} from './types';
 import {createContactsClient} from './ContactsClient';
 import {
   FAILURE_MESSAGE,
@@ -22,6 +22,8 @@ import {
   GROUP_FILTER,
   CONTACTS_SCHEMA,
   METHODS,
+  OR,
+  SCIM_ID_FILTER,
 } from './constants';
 import * as utils from '../common/Utils';
 import {CISCO_DEVICE_URL} from '../CallingClient/constants';
@@ -1032,6 +1034,127 @@ describe('ContactClient Tests', () => {
     expect(logSpy).toBeCalledWith('Successfully fetched contacts and groups', {
       file: CONTACTS_CLIENT,
       method: METHODS.GET_CONTACTS,
+    });
+  });
+
+  describe('SCIM id-filter escaping', () => {
+    const buildScimUrl = (filter: string) =>
+      `${WEBEX_API_BTS}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${
+        webex.internal.device.orgId
+      }/${SCIM_USER_FILTER}${encodeURIComponent(filter)}`;
+    const scimHeaders = {
+      [CISCO_DEVICE_URL]: webex.internal.device.url,
+      'spark-user-agent': 'webex-calling/beta',
+    };
+
+    it('escapes crafted contactId in SCIM filter', async () => {
+      // (a) createContact: the CLOUD contactId returned by the create response contains
+      // SCIM filter metacharacters and must be escaped before scimQuery is invoked.
+      const craftedContactId = '801bb994-343b-4f6b-97ae-d13c91d4b877" or "1=1';
+      const escapedCraftedContactId = '801bb994-343b-4f6b-97ae-d13c91d4b877\\" or \\"1=1';
+
+      const mockContactResponse = {
+        ...mockContactResponseBodyOne.contacts[0],
+        contactId: craftedContactId,
+      };
+      const successResponsePayload = <WebexRequestPayload>{
+        statusCode: 201,
+        body: mockContactResponse,
+      };
+
+      webex.request
+        .mockResolvedValueOnce(successResponsePayload)
+        .mockResolvedValueOnce(mockSCIMListResponse);
+
+      contactClient['groups'] = mockContactGroupListOne;
+      contactClient['encryptionKeyUrl'] = mockContactGroupListOne[0].encryptionKeyUrl;
+
+      const contact = {
+        contactType: 'CLOUD',
+        contactId: craftedContactId,
+        groups: [],
+      } as unknown as Contact;
+
+      const res = await contactClient.createContact(contact);
+
+      expect(res.statusCode).toEqual(201);
+      expect(webex.request).toHaveBeenNthCalledWith(2, {
+        uri: buildScimUrl(`${SCIM_ID_FILTER} "${escapedCraftedContactId}"`),
+        method: HTTP_METHODS.GET,
+        headers: scimHeaders,
+      });
+
+      webex.request.mockClear();
+      jest.clearAllMocks();
+
+      // (b) getContacts: batching a contactId list that includes a crafted id must escape
+      // every generated `id eq "..."` clause so it cannot break out of the SCIM filter.
+      const normalContactId = 'a1b2c3d4-1111-2222-3333-444455556666';
+      const contactsPayload = {
+        contacts: [
+          {contactType: ContactType.CLOUD, contactId: normalContactId},
+          {contactType: ContactType.CLOUD, contactId: craftedContactId},
+        ],
+        groups: [],
+      };
+
+      webex.request
+        .mockResolvedValueOnce({statusCode: 200, body: contactsPayload})
+        .mockResolvedValueOnce(mockSCIMListResponse);
+
+      await contactClient.getContacts();
+
+      const expectedFilter = [
+        `${SCIM_ID_FILTER} "${normalContactId}"`,
+        `${SCIM_ID_FILTER} "${escapedCraftedContactId}"`,
+      ].join(OR);
+
+      expect(webex.request).toHaveBeenNthCalledWith(2, {
+        uri: buildScimUrl(expectedFilter),
+        method: HTTP_METHODS.GET,
+        headers: scimHeaders,
+      });
+    });
+
+    it('normal contactId resolves unchanged', async () => {
+      // escapeScimValue must be a no-op for a well-formed value with no metacharacters.
+      const normalContactId = '801bb994-343b-4f6b-97ae-d13c91d4b877';
+
+      expect(utils.escapeScimValue(normalContactId)).toEqual(normalContactId);
+
+      // End-to-end: createContact for a normal CLOUD contactId still produces the
+      // byte-identical SCIM filter/URL as before escaping was introduced.
+      const mockContactResponse = {
+        ...mockContactResponseBodyOne.contacts[0],
+        contactId: normalContactId,
+      };
+      const successResponsePayload = <WebexRequestPayload>{
+        statusCode: 201,
+        body: mockContactResponse,
+      };
+
+      webex.request
+        .mockResolvedValueOnce(successResponsePayload)
+        .mockResolvedValueOnce(mockSCIMListResponse);
+
+      contactClient['groups'] = mockContactGroupListOne;
+      contactClient['encryptionKeyUrl'] = mockContactGroupListOne[0].encryptionKeyUrl;
+
+      const contact = {
+        contactType: 'CLOUD',
+        contactId: normalContactId,
+        groups: [],
+      } as unknown as Contact;
+
+      const res = await contactClient.createContact(contact);
+
+      expect(res.statusCode).toEqual(201);
+      expect(res.data.contact?.contactId).toEqual(normalContactId);
+      expect(webex.request).toHaveBeenNthCalledWith(2, {
+        uri: buildScimUrl(`${SCIM_ID_FILTER} "${normalContactId}"`),
+        method: HTTP_METHODS.GET,
+        headers: scimHeaders,
+      });
     });
   });
 });
