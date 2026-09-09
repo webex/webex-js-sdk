@@ -424,7 +424,10 @@ export interface IContactCenter {
   /** Returns the system-managed WellbeingBreak idle code for the registered session. */
   getWellbeingBreakIdleCode(): Promise<Entity>;
 
-  /** Changes one or more Agent State Control channels and waits for WebSocket completion. */
+  /**
+   * Changes one or more Agent State Control channels for first-party feature compatibility.
+   * @internal
+   */
   setAgentChannelState(
     params: Agent.SetAgentChannelStateParams
   ): Promise<Agent.AgentChannelStateChangedEvent>;

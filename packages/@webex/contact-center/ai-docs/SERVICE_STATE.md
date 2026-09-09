@@ -12,7 +12,7 @@
 | realtime transcript/suggestion | consume/publish | RTD WebSocket → owning Task | `src/services/task/TaskManager.ts` |
 | `Wellness_Break_Handler` | consume/publish | Primary data-notification or RTD WebSocket → ContactCenter → `CC_AGENT_EVENTS.WELLNESS_BREAK` | `src/cc.ts`, `src/types.ts` |
 | `AIAssistantRTDStatusChanged` | publish | ContactCenter → application | `src/types.ts`, `src/services/config/types.ts` |
-| ASC agent-channel events | consume/publish | WCC WebSocket → ContactCenter/application/AqmReqs | `src/services/agent/types.ts`, `src/services/config/types.ts` |
+| State Control V2 agent-channel events (internal) | consume/normalize | WCC WebSocket → ContactCenter/AqmReqs first-party compatibility | `src/services/agent/types.ts`, `src/services/config/types.ts` |
 
 ## Data Stores
 

@@ -23,19 +23,13 @@ const CC_AGENT_EVENTS = Webex.CC_AGENT_EVENTS;
 const AGENT_EVENTS = Webex.AGENT_EVENTS;
 const {
   areAllTasksSafe,
-  buildAscRestoreGroups,
-  cloneChannelStates,
   createRecoveryMarker,
   getLegacyExternalTransitionDecision,
   getRecoveryDecision,
   getSelectableIdleCodes,
-  hasOwnedAscTransition,
-  isExternalSystemIdle,
-  isWellnessChannelDetail,
   parseRecoveryMarker,
 } = WellnessSampleUtils;
 const WELLNESS_OFFER_TIMEOUT_MS = 5 * 60 * 1000;
-const WELLNESS_STATE_CONFIRMATION_TIMEOUT_MS = 2 * 60 * 1000;
 const WELLNESS_STATE_SETTLE_DELAY_MS = 2 * 1000;
 const WELLNESS_SAFE_STATE_RECHECK_MS = 1000;
 const WELLNESS_BREAK_DURATION_MS = 60 * 1000;
@@ -44,7 +38,6 @@ const WELLNESS_RESTORE_RETRY_MS = 10 * 1000;
 const WELLNESS_LEGACY_RECOVERY_MAX_ATTEMPTS = 5;
 const WELLNESS_LEGACY_RECOVERY_RETRY_MS = 20 * 1000;
 const WELLNESS_RECOVERY_MARKER_KEY = 'webex-contact-center.wellness-break.v1';
-const WELLNESS_REFERENCE_CHANNEL_TYPES = ['telephony', 'chat', 'email', 'social'];
 const WELLNESS_COPY = {
   offerTitle: 'Well-being break scheduled',
   offer:
@@ -93,19 +86,11 @@ const wellnessState = {
   pendingManualRequest: false,
   offerEvent: undefined,
   offerTimer: undefined,
-  agentStateControl: false,
-  channelTypes: [],
-  channelStateDetails: {},
-  ascSnapshotKnown: false,
   legacyStateKnown: false,
   legacyAuxCodeId: undefined,
   validIdleCodeIds: [],
   defaultIdleCodeId: undefined,
-  pendingChannelState: undefined,
   stateConfirmed: false,
-  breakStateModel: undefined,
-  breakChannelTypes: [],
-  preBreakChannelStates: {},
   breakSummary: undefined,
   safeStateTimer: undefined,
   safeStateEligibleAt: undefined,
@@ -115,8 +100,6 @@ const wellnessState = {
   restorePromise: undefined,
   restoreRetryTimer: undefined,
   restoreRetryResolve: undefined,
-  restoreAfterReconnect: false,
-  ascReconnectRecoveryAttempted: false,
   legacyRecoveryAttempts: 0,
   operationGeneration: 0,
   recoveryMarker: parseRecoveryMarker(sessionStorage.getItem(WELLNESS_RECOVERY_MARKER_KEY)),
@@ -232,10 +215,6 @@ const wellnessLifecycleStatusElm = document.querySelector('#wellness-lifecycle-s
 const wellnessReadyBadgeElm = document.querySelector('#wellness-ready-badge');
 const wellnessMessageElm = document.querySelector('#wellness-message');
 const wellnessEventOutputElm = document.querySelector('#wellness-event-output');
-const wellnessStateModeElm = document.querySelector('#wellness-state-mode');
-const wellnessAscModeOptionElm = wellnessStateModeElm.querySelector('option[value="channel"]');
-const wellnessChannelTypesElm = document.querySelector('#wellness-channel-types');
-const wellnessChannelHelpElm = document.querySelector('#wellness-channel-help');
 const wellnessRequestBtn = document.querySelector('#wellness-request');
 const wellnessAcceptBtn = document.querySelector('#wellness-accept');
 const wellnessRejectBtn = document.querySelector('#wellness-reject');
@@ -3229,21 +3208,6 @@ function setWellnessMessage(message, isError = false) {
   wellnessMessageElm.dataset.error = String(isError);
 }
 
-function getWellnessChannelTypes() {
-  const configured = wellnessChannelTypesElm.value
-    .split(',')
-    .map((channelType) => channelType.trim())
-    .filter(Boolean);
-
-  return wellnessState.channelTypes.length > 0 ? wellnessState.channelTypes : configured;
-}
-
-function usesAgentStateControl() {
-  if (wellnessStateModeElm.value === 'channel') return wellnessState.agentStateControl;
-  if (wellnessStateModeElm.value === 'legacy') return false;
-  return wellnessState.agentStateControl;
-}
-
 function isWellnessReady() {
   return Boolean(
     wellnessState.enabled &&
@@ -3260,19 +3224,6 @@ function renderWellnessState() {
   const onBreak = ['OnBreak', 'ActionDeliveryFailed', 'RestoreFailed'].includes(
     wellnessState.lifecycle
   );
-  const lifecycleOwned = WELLNESS_OWNED_LIFECYCLES.has(wellnessState.lifecycle);
-  const ascUnavailable = Boolean(wellnessState.agentSessionId) && !wellnessState.agentStateControl;
-
-  wellnessAscModeOptionElm.disabled = ascUnavailable;
-  wellnessStateModeElm.disabled = lifecycleOwned;
-  if (ascUnavailable && wellnessStateModeElm.value === 'channel') {
-    wellnessStateModeElm.value = 'legacy';
-  }
-  wellnessChannelTypesElm.disabled = lifecycleOwned || !usesAgentStateControl();
-  wellnessChannelHelpElm.textContent = ascUnavailable
-    ? 'Agent State Control is not enabled for this session; legacy setAgentState will be used.'
-    : 'Comma-separated; used only for Agent State Control.';
-
   wellnessEnabledStatusElm.textContent = wellnessState.enabled ? 'Enabled' : 'Disabled';
   wellnessSessionStatusElm.textContent = wellnessState.agentSessionId || 'Not logged in';
   wellnessRtdStatusElm.textContent = wellnessState.rtdState;
@@ -3341,9 +3292,6 @@ function clearWellnessRecoveryMarker() {
 function persistWellnessRecoveryMarker() {
   const marker = createRecoveryMarker({
     agentSessionId: wellnessState.agentSessionId,
-    stateModel: wellnessState.breakStateModel,
-    channelTypes: wellnessState.breakChannelTypes,
-    preBreakChannelStates: wellnessState.preBreakChannelStates,
   });
   wellnessState.recoveryMarker = marker;
   sessionStorage.setItem(WELLNESS_RECOVERY_MARKER_KEY, JSON.stringify(marker));
@@ -3387,30 +3335,17 @@ function startWellnessBreakTimer(summary) {
   }, WELLNESS_BREAK_DURATION_MS);
 }
 
-function cancelWellnessChannelStateWait() {
-  if (!wellnessState.pendingChannelState) return;
-  clearTimeout(wellnessState.pendingChannelState.timer);
-  wellnessState.pendingChannelState.resolve(false);
-  wellnessState.pendingChannelState = undefined;
-}
-
 function clearWellnessLifecycleOwnership({clearMarker = true} = {}) {
   wellnessState.operationGeneration += 1;
   clearWellnessOffer();
   clearWellnessBreakTimer();
   clearWellnessSafeStateTimer();
-  cancelWellnessChannelStateWait();
   cancelWellnessRestoreRetry();
   wellnessState.pendingManualRequest = false;
   wellnessState.stateConfirmed = false;
-  wellnessState.breakStateModel = undefined;
-  wellnessState.breakChannelTypes = [];
-  wellnessState.preBreakChannelStates = {};
   wellnessState.breakSummary = undefined;
   wellnessState.safeStateEligibleAt = undefined;
   wellnessState.restorePromise = undefined;
-  wellnessState.restoreAfterReconnect = false;
-  wellnessState.ascReconnectRecoveryAttempted = false;
   wellnessState.legacyRecoveryAttempts = 0;
   if (clearMarker) {
     clearWellnessRecoveryMarker();
@@ -3422,10 +3357,6 @@ function resetWellnessSession(options = {}) {
   clearWellnessLifecycleOwnership();
   wellnessState.agentSessionId = undefined;
   wellnessState.canRequest = false;
-  wellnessState.agentStateControl = false;
-  wellnessState.channelTypes = [];
-  wellnessState.channelStateDetails = {};
-  wellnessState.ascSnapshotKnown = false;
   wellnessState.legacyStateKnown = false;
   wellnessState.legacyAuxCodeId = undefined;
   wellnessState.lifecycle = 'Unavailable';
@@ -3448,31 +3379,10 @@ function captureWellnessSession(event) {
   if (sessionRotated) {
     clearWellnessLifecycleOwnership();
     wellnessState.canRequest = false;
-    wellnessState.channelStateDetails = {};
-    wellnessState.ascSnapshotKnown = false;
     wellnessState.legacyStateKnown = false;
     wellnessState.legacyAuxCodeId = undefined;
   }
   wellnessState.agentSessionId = event.agentSessionId;
-  if (typeof event.agentStateControlEnabled === 'boolean') {
-    wellnessState.agentStateControl = event.agentStateControlEnabled;
-  }
-  if (event.agentChannelStateDetailMap) {
-    wellnessState.agentStateControl = true;
-    wellnessState.channelStateDetails = Object.fromEntries(
-      Object.entries(event.agentChannelStateDetailMap).map(([channelType, detail]) => [
-        channelType,
-        {...detail},
-      ])
-    );
-    wellnessState.ascSnapshotKnown = true;
-  }
-  if (event.channelsMap) {
-    wellnessState.channelTypes = Object.keys(event.channelsMap).filter(
-      (channelType) =>
-        Array.isArray(event.channelsMap[channelType]) && event.channelsMap[channelType].length > 0
-    );
-  }
   if (Object.prototype.hasOwnProperty.call(event, 'auxCodeId')) {
     wellnessState.legacyStateKnown = true;
     wellnessState.legacyAuxCodeId = event.auxCodeId?.trim() || '0';
@@ -3482,11 +3392,7 @@ function captureWellnessSession(event) {
   }
   setWellnessMessage(
     wellnessState.enabled
-      ? `Session captured. ${
-          wellnessState.agentStateControl
-            ? 'Agent State Control is available.'
-            : 'Agent State Control is unavailable; using legacy setAgentState.'
-        } Waiting for a live wellness suggestion or offer.`
+      ? 'Session captured. Waiting for a live wellness suggestion or offer.'
       : 'Session captured, but Agent Wellness Break is not enabled.'
   );
   renderWellnessState();
@@ -3616,116 +3522,11 @@ function handleWellnessBreak(event) {
   renderWellnessState();
 }
 
-function handleWellnessChannelStateChanged(event) {
-  if (event.agentSessionId !== wellnessState.agentSessionId) return;
-  wellnessState.channelStateDetails[event.channelType] = {
-    ...event.agentChannelStateDetail,
-  };
-
-  const pending = wellnessState.pendingChannelState;
-  if (pending?.channelTypes.has(event.channelType)) {
-    const detail = event.agentChannelStateDetail;
-    const isConfirmed =
-      pending.state === 'Idle'
-        ? detail.agentState === 'Idle' &&
-          detail.pendingIdle === false &&
-          detail.auxCodeId === pending.auxCodeId
-        : detail.agentState === 'Available' && detail.pendingIdle === false;
-
-    if (isConfirmed) {
-      pending.channelTypes.delete(event.channelType);
-      if (pending.channelTypes.size === 0) {
-        clearTimeout(pending.timer);
-        wellnessState.pendingChannelState = undefined;
-        pending.resolve(true);
-      }
-    } else {
-      setWellnessMessage(
-        `${event.channelType} is ${detail.agentState}${
-          detail.pendingIdle ? ' with an Idle transition pending' : ''
-        }. Waiting for the confirmed target state.`
-      );
-      renderWellnessState();
-    }
-  }
-
-  const ownedChannelTypes =
-    wellnessState.breakChannelTypes.length > 0
-      ? wellnessState.breakChannelTypes
-      : wellnessState.recoveryMarker?.channelTypes || [];
-  if (!ownedChannelTypes.includes(event.channelType)) {
-    return;
-  }
-
-  const isConfirmedWellness = isWellnessChannelDetail(
-    event.agentChannelStateDetail,
-    wellnessState.idleCode?.id
-  );
-  const isPendingWellness = event.agentChannelStateDetail.pendingIdle === true;
-  const isSystemIdle = isExternalSystemIdle(
-    event.agentChannelStateDetail,
-    wellnessState.idleCode?.id
-  );
-
-  if (
-    WELLNESS_PRE_PLAY_LIFECYCLES.has(wellnessState.lifecycle) &&
-    !isConfirmedWellness &&
-    !isPendingWellness
-  ) {
-    void cancelWellnessBeforePlayback(
-      `${event.channelType} entered an incompatible external state before the break started.`
-    );
-    return;
-  }
-
-  if (
-    wellnessState.lifecycle === 'OnBreak' &&
-    !isSystemIdle &&
-    !isConfirmedWellness &&
-    !isPendingWellness
-  ) {
-    const stillOwned = hasOwnedAscTransition(
-      ownedChannelTypes,
-      wellnessState.channelStateDetails,
-      wellnessState.idleCode?.id
-    );
-    if (!stillOwned) {
-      completeWellnessExternalTransition(
-        'Wellness break ended because all managed channels changed to Available.'
-      );
-      return;
-    }
-  }
-
-  if (wellnessState.lifecycle === 'RestoreFailed') {
-    const stillOwned = hasOwnedAscTransition(
-      ownedChannelTypes,
-      wellnessState.channelStateDetails,
-      wellnessState.idleCode?.id
-    );
-    if (!stillOwned) {
-      completeWellnessExternalTransition(
-        'Agent channel state was restored externally after wellness recovery failed.'
-      );
-      return;
-    }
-  }
-
-  if (['WaitingForSafeState', 'Starting'].includes(wellnessState.lifecycle)) {
-    reevaluateWellnessSafeState();
-  }
-}
-
 function handleWellnessLegacyStateChanged(event, nextAuxCodeId) {
   wellnessState.legacyStateKnown = true;
   wellnessState.legacyAuxCodeId = nextAuxCodeId;
-  const stateModel =
-    wellnessState.breakStateModel ||
-    wellnessState.recoveryMarker?.stateModel ||
-    (usesAgentStateControl() ? 'agent-state-control' : 'legacy');
   const stateName = nextAuxCodeId === '0' ? 'Available' : event.subStatus || 'another state';
   const decision = getLegacyExternalTransitionDecision({
-    stateModel,
     lifecycle: wellnessState.lifecycle,
     nextAuxCodeId,
     wellnessAuxCodeId: wellnessState.idleCode?.id,
@@ -3742,25 +3543,6 @@ function handleWellnessLegacyStateChanged(event, nextAuxCodeId) {
       `Wellness break ended because the authoritative agent state changed to ${stateName}.`
     );
   }
-}
-
-function createWellnessChannelStateWait(channelTypes, state, auxCodeId) {
-  cancelWellnessChannelStateWait();
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      if (wellnessState.pendingChannelState?.resolve === resolve) {
-        wellnessState.pendingChannelState = undefined;
-        resolve(false);
-      }
-    }, WELLNESS_STATE_CONFIRMATION_TIMEOUT_MS);
-    wellnessState.pendingChannelState = {
-      channelTypes: new Set(channelTypes),
-      state,
-      auxCodeId,
-      resolve,
-      timer,
-    };
-  });
 }
 
 async function requestWellnessBreak() {
@@ -3785,37 +3567,6 @@ async function requestWellnessBreak() {
 }
 
 async function setWellnessAgentState(state, options = {}) {
-  const stateModel =
-    options.stateModel ||
-    wellnessState.breakStateModel ||
-    (usesAgentStateControl() ? 'agent-state-control' : 'legacy');
-  if (stateModel === 'agent-state-control') {
-    const channelTypes = options.channelTypes || getWellnessChannelTypes();
-    if (!channelTypes.length) {
-      throw new Error('Enter at least one Agent State Control channel type.');
-    }
-    const auxCodeId =
-      state === 'Idle' ? options.auxCodeId || wellnessState.idleCode.id : undefined;
-    const stateConfirmed = createWellnessChannelStateWait(channelTypes, state, auxCodeId);
-    try {
-      const response = await webex.cc.setAgentChannelState({
-        channelTypes,
-        state,
-        ...(state === 'Idle' ? {auxCodeId} : {}),
-        reason:
-          options.reason ||
-          (state === 'Idle' ? 'wellness-break' : 'wellness-break-complete'),
-      });
-      if (!(await stateConfirmed)) {
-        throw new Error(`Timed out waiting for all channels to confirm ${state}.`);
-      }
-      return response;
-    } catch (error) {
-      cancelWellnessChannelStateWait();
-      throw error;
-    }
-  }
-
   return webex.cc.setAgentState({
     state,
     auxCodeId: state === 'Idle' ? options.auxCodeId || wellnessState.idleCode.id : '0',
@@ -3827,22 +3578,7 @@ async function setWellnessAgentState(state, options = {}) {
 }
 
 function captureWellnessBreakContext() {
-  const stateModel = usesAgentStateControl() ? 'agent-state-control' : 'legacy';
-  const channelTypes =
-    stateModel === 'agent-state-control' ? getWellnessChannelTypes() : [];
-  if (stateModel === 'agent-state-control' && channelTypes.length === 0) {
-    throw new Error('Enter at least one Agent State Control channel type.');
-  }
-
-  wellnessState.breakStateModel = stateModel;
-  wellnessState.breakChannelTypes = channelTypes;
-  wellnessState.preBreakChannelStates =
-    stateModel === 'agent-state-control'
-      ? cloneChannelStates(channelTypes, wellnessState.channelStateDetails)
-      : {};
   wellnessState.stateConfirmed = false;
-  wellnessState.restoreAfterReconnect = false;
-  wellnessState.ascReconnectRecoveryAttempted = false;
   wellnessState.legacyRecoveryAttempts = 0;
   persistWellnessRecoveryMarker();
 }
@@ -4020,63 +3756,10 @@ function waitForWellnessRestoreRetry(delay, operationGeneration) {
   });
 }
 
-function getWellnessRestoreContext() {
-  const marker = wellnessState.recoveryMarker;
-  const stateModel = wellnessState.breakStateModel || marker?.stateModel;
-  const markerChannelTypes = marker?.channelTypes || [];
-  return {
-    stateModel,
-    channelTypes:
-      wellnessState.breakChannelTypes.length > 0
-        ? wellnessState.breakChannelTypes
-        : markerChannelTypes.length > 0
-          ? markerChannelTypes
-          : stateModel === 'agent-state-control'
-            ? WELLNESS_REFERENCE_CHANNEL_TYPES
-            : [],
-    preBreakChannelStates:
-      Object.keys(wellnessState.preBreakChannelStates).length > 0
-        ? wellnessState.preBreakChannelStates
-        : marker?.preBreakChannelStates || {},
-  };
-}
-
-async function performSingleWellnessRestore({forceAvailableChannels = false} = {}) {
-  const {stateModel, channelTypes, preBreakChannelStates} = getWellnessRestoreContext();
-  if (stateModel !== 'agent-state-control') {
-    await setWellnessAgentState('Available', {
-      stateModel: 'legacy',
-      reason: 'wellness-break-complete',
-    });
-    return;
-  }
-
-  const restoreGroups = buildAscRestoreGroups({
-    channelTypes,
-    currentChannelStates: wellnessState.channelStateDetails,
-    preBreakChannelStates,
-    wellnessAuxCodeId: wellnessState.idleCode?.id,
-    validIdleCodeIds: wellnessState.validIdleCodeIds,
-    defaultIdleCodeId: wellnessState.defaultIdleCodeId,
-    includeUnconfirmedChannels: forceAvailableChannels,
+async function performSingleWellnessRestore() {
+  await setWellnessAgentState('Available', {
+    reason: 'wellness-break-complete',
   });
-
-  const failures = [];
-  for (const group of restoreGroups) {
-    try {
-      await setWellnessAgentState(group.state, {
-        stateModel: 'agent-state-control',
-        channelTypes: group.channelTypes,
-        auxCodeId: group.auxCodeId,
-        reason: 'wellness-break-complete',
-      });
-    } catch (error) {
-      failures.push(error);
-    }
-  }
-  if (failures.length > 0) {
-    throw failures[0];
-  }
 }
 
 function scheduleLegacyRestoreRecovery(operationGeneration) {
@@ -4120,10 +3803,8 @@ async function restoreWellnessState(options = {}) {
   const operationGeneration = wellnessState.operationGeneration;
   const sessionId = wellnessState.agentSessionId;
   const maxAttempts = options.maxAttempts || WELLNESS_RESTORE_MAX_ATTEMPTS;
-  const stateModel = getWellnessRestoreContext().stateModel;
   clearWellnessBreakTimer();
   clearWellnessSafeStateTimer();
-  cancelWellnessChannelStateWait();
   wellnessState.lifecycle = 'Restoring';
   setWellnessMessage('Restoring the previous agent state…');
   renderWellnessState();
@@ -4138,9 +3819,7 @@ async function restoreWellnessState(options = {}) {
         return false;
       }
       try {
-        await performSingleWellnessRestore({
-          forceAvailableChannels: options.forceAvailableChannels === true,
-        });
+        await performSingleWellnessRestore();
         if (
           wellnessState.operationGeneration !== operationGeneration ||
           wellnessState.agentSessionId !== sessionId
@@ -4174,8 +3853,6 @@ async function restoreWellnessState(options = {}) {
       return false;
     }
     wellnessState.lifecycle = 'RestoreFailed';
-    wellnessState.restoreAfterReconnect =
-      stateModel === 'agent-state-control' && options.reconnectRecovery !== true;
     setWellnessMessage(
       `${WELLNESS_COPY.restoreFailure} ${
         latestError?.message ||
@@ -4184,9 +3861,7 @@ async function restoreWellnessState(options = {}) {
       true
     );
     renderWellnessState();
-    if (stateModel !== 'agent-state-control') {
-      scheduleLegacyRestoreRecovery(operationGeneration);
-    }
+    scheduleLegacyRestoreRecovery(operationGeneration);
     return false;
   })();
 
@@ -4217,8 +3892,6 @@ async function recoverWellnessBreakIfNeeded() {
     wellnessAuxCodeId: wellnessState.idleCode.id,
     legacyStateKnown: wellnessState.legacyStateKnown,
     legacyAuxCodeId: wellnessState.legacyAuxCodeId,
-    ascSnapshotKnown: wellnessState.ascSnapshotKnown,
-    currentChannelStates: wellnessState.channelStateDetails,
   });
   if (decision === 'wait') return;
   if (decision === 'discard') {
@@ -4235,30 +3908,12 @@ async function recoverWellnessBreakIfNeeded() {
     return;
   }
 
-  wellnessState.breakStateModel = marker.stateModel;
-  wellnessState.breakChannelTypes =
-    marker.stateModel === 'agent-state-control'
-      ? marker.channelTypes?.length
-        ? marker.channelTypes
-        : WELLNESS_REFERENCE_CHANNEL_TYPES
-      : [];
-  wellnessState.preBreakChannelStates = marker.preBreakChannelStates || {};
-  const isReconnectRecovery =
-    wellnessState.lifecycle === 'RestoreFailed' && wellnessState.restoreAfterReconnect;
-  if (isReconnectRecovery && wellnessState.ascReconnectRecoveryAttempted) {
-    return;
-  }
-  if (isReconnectRecovery) {
-    wellnessState.ascReconnectRecoveryAttempted = true;
-    wellnessState.restoreAfterReconnect = false;
-  }
   wellnessState.lifecycle = 'Restoring';
   setWellnessMessage(
     'A matching refreshed session still owns WellbeingBreak. Restoring without replaying the offer or break.'
   );
   renderWellnessState();
   await restoreWellnessState({
-    ...(isReconnectRecovery ? {maxAttempts: 1, reconnectRecovery: true} : {}),
     completionMessage: 'Agent state restored after browser refresh.',
   });
 }
@@ -4268,15 +3923,11 @@ function attachWellnessSdkListeners() {
   webex.cc.off(CC_AGENT_EVENTS.AI_ASSISTANT_RTD_STATUS_CHANGED, handleWellnessRtdStatus);
   webex.cc.off(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, captureWellnessSession);
   webex.cc.off(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, captureWellnessSession);
-  webex.cc.off(CC_AGENT_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS, captureWellnessSession);
-  webex.cc.off(CC_AGENT_EVENTS.AGENT_CHANNEL_STATE_CHANGED, handleWellnessChannelStateChanged);
   webex.cc.off(AGENT_EVENTS.AGENT_LOGOUT_SUCCESS, resetWellnessSession);
   webex.cc.on(CC_AGENT_EVENTS.WELLNESS_BREAK, handleWellnessBreak);
   webex.cc.on(CC_AGENT_EVENTS.AI_ASSISTANT_RTD_STATUS_CHANGED, handleWellnessRtdStatus);
   webex.cc.on(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, captureWellnessSession);
   webex.cc.on(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, captureWellnessSession);
-  webex.cc.on(CC_AGENT_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS, captureWellnessSession);
-  webex.cc.on(CC_AGENT_EVENTS.AGENT_CHANNEL_STATE_CHANGED, handleWellnessChannelStateChanged);
   webex.cc.on(AGENT_EVENTS.AGENT_LOGOUT_SUCCESS, resetWellnessSession);
 }
 
@@ -4285,8 +3936,6 @@ function detachWellnessSdkListeners() {
   webex.cc.off(CC_AGENT_EVENTS.AI_ASSISTANT_RTD_STATUS_CHANGED, handleWellnessRtdStatus);
   webex.cc.off(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, captureWellnessSession);
   webex.cc.off(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, captureWellnessSession);
-  webex.cc.off(CC_AGENT_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS, captureWellnessSession);
-  webex.cc.off(CC_AGENT_EVENTS.AGENT_CHANNEL_STATE_CHANGED, handleWellnessChannelStateChanged);
   webex.cc.off(AGENT_EVENTS.AGENT_LOGOUT_SUCCESS, resetWellnessSession);
 }
 
@@ -4295,7 +3944,6 @@ wellnessAcceptBtn.addEventListener('click', () => respondToWellnessOffer('ACCEPT
 wellnessRejectBtn.addEventListener('click', () => respondToWellnessOffer('REJECTED'));
 wellnessNoResponseBtn.addEventListener('click', () => respondToWellnessOffer('NO_RESPONSE'));
 wellnessRestoreBtn.addEventListener('click', restoreWellnessState);
-wellnessStateModeElm.addEventListener('change', renderWellnessState);
 renderWellnessState();
 
 function register() {

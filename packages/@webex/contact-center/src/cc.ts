@@ -61,6 +61,7 @@ import {
   Profile,
   WelcomeEvent,
   CC_EVENTS,
+  INTERNAL_AGENT_STATE_CONTROL_EVENTS,
   OutdialAniEntriesResponse,
   OutdialAniParams,
   Entity,
@@ -1650,13 +1651,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @param params - Target channels, state, optional idle code and reason
    * @returns The normalized channel-state event without the routing envelope
    * @throws Structured Contact Center error for invalid input, routing failure, or timeout
-   * @example
-   * await webex.cc.setAgentChannelState({
-   *   channelTypes,
-   *   state: 'Idle',
-   *   auxCodeId: idleCode.id,
-   * });
-   * @public
+   * This is first-party plumbing for features that must remain compatible with
+   * State Control V2 sessions. It is not part of the public Contact Center API.
+   * @internal
    */
   public async setAgentChannelState(
     params: SetAgentChannelStateParams
@@ -1749,8 +1746,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const eventData = JSON.parse(event);
     const nestedEventType = eventData?.data?.type;
     const isNormalizedAgentChannelEvent =
-      nestedEventType === CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS ||
-      nestedEventType === CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED;
+      nestedEventType === INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS ||
+      nestedEventType === INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_STATE_CHANGED;
     // Re-emit all the events related to agent except keep-alives
     if (
       !eventData.keepalive &&
@@ -1833,7 +1830,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         break;
       }
       case CC_EVENTS.AGENT_RELOGIN_SUCCESS:
-      case CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS:
+      case INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS:
         {
           const {channelsMap, ...loginData} = eventData.data;
           this.updateWellnessSession(loginData.agentSessionId);
@@ -1860,11 +1857,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
               agentChannelStateDetailMap: loginData.agentChannelStateDetailMap,
             };
             // @ts-ignore - WebexPlugin emit is available at runtime but absent from its declaration.
-            this.emit(CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS, channelReloginEvent);
+            this.emit(
+              INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+              channelReloginEvent
+            );
           }
         }
         break;
-      case CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED: {
+      case INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_STATE_CHANGED: {
         const channelStateEvent: AgentChannelStateChangedEvent = {
           agentId: eventData.data.agentId,
           orgId: eventData.data.orgId,
@@ -1875,7 +1875,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           trackingId: eventData.data.trackingId || eventData.trackingId,
         };
         // @ts-ignore - WebexPlugin emit is available at runtime but absent from its declaration.
-        this.emit(CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED, channelStateEvent);
+        this.emit(
+          INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+          channelStateEvent
+        );
         break;
       }
       case CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS:
@@ -2417,7 +2420,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const reLoginResponse = await this.services.agent.reload();
       this.updateWellnessSession(reLoginResponse.data.agentSessionId);
 
-      if (reLoginResponse.data.type === CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS) {
+      if (
+        reLoginResponse.data.type ===
+        INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS
+      ) {
         const channelTypesToRestore = Object.entries(
           reLoginResponse.data.agentChannelStateDetailMap
         )

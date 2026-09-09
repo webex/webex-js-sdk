@@ -199,14 +199,6 @@ export type {
   BuddyDetails,
   /** Buddy agents success response */
   BuddyAgentsSuccess,
-  /** Agent State Control state detail */
-  AgentChannelStateDetail,
-  /** Agent State Control relogin snapshot */
-  AgentChannelReloginSuccessEvent,
-  /** Agent State Control state-change event */
-  AgentChannelStateChangedEvent,
-  /** Agent State Control state-change parameters */
-  SetAgentChannelStateParams,
 } from './services/agent/types';
 
 /** Config related types */

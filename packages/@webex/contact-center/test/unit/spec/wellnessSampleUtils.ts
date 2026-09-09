@@ -1,12 +1,9 @@
 const {
   areAllTasksSafe,
-  buildAscRestoreGroups,
   createRecoveryMarker,
   getLegacyExternalTransitionDecision,
   getRecoveryDecision,
   getSelectableIdleCodes,
-  hasOwnedAscTransition,
-  isExternalSystemIdle,
   parseRecoveryMarker,
 } = require('../../../../../../docs/samples/contact-center/wellness-utils');
 const {readFileSync} = require('fs');
@@ -55,151 +52,17 @@ describe('Contact Center wellness sample utilities', () => {
     });
   });
 
-  describe('Agent State Control restoration', () => {
-    it('groups exact captured idle targets and Available sequential targets', () => {
-      const groups = buildAscRestoreGroups({
-        channelTypes: ['telephony', 'chat', 'email', 'social'],
-        currentChannelStates: {
-          telephony: {
-            agentState: 'Idle',
-            pendingIdle: false,
-            auxCodeId: 'wellness',
-          },
-          chat: {
-            agentState: 'Idle',
-            pendingIdle: false,
-            auxCodeId: 'wellness',
-          },
-          email: {
-            agentState: 'Engaged',
-            pendingIdle: true,
-          },
-          social: {
-            agentState: 'Idle',
-            pendingIdle: false,
-            auxCodeId: 'rona-code',
-          },
-        },
-        preBreakChannelStates: {
-          telephony: {agentState: 'Idle', auxCodeId: 'training'},
-          chat: {agentState: 'Available', auxCodeId: null},
-          email: {agentState: 'Available', auxCodeId: null},
-          social: {agentState: 'Available', auxCodeId: null},
-        },
-        wellnessAuxCodeId: 'wellness',
-        validIdleCodeIds: ['training', 'default-idle'],
-        defaultIdleCodeId: 'default-idle',
-      });
-
-      expect(groups).toEqual([
-        {state: 'Idle', auxCodeId: 'training', channelTypes: ['telephony']},
-        {state: 'Available', channelTypes: ['chat', 'email']},
-      ]);
-    });
-
-    it('uses the default idle code only for a captured Idle state with an invalid target', () => {
-      const groups = buildAscRestoreGroups({
-        channelTypes: ['chat', 'email'],
-        currentChannelStates: {
-          chat: {agentState: 'Idle', pendingIdle: false, auxCodeId: 'wellness'},
-          email: {agentState: 'Idle', pendingIdle: false, auxCodeId: 'wellness'},
-        },
-        preBreakChannelStates: {
-          chat: {agentState: 'Idle', auxCodeId: 'system-idle'},
-          email: {agentState: 'Available', auxCodeId: null},
-        },
-        wellnessAuxCodeId: 'wellness',
-        validIdleCodeIds: ['default-idle'],
-        defaultIdleCodeId: 'default-idle',
-      });
-
-      expect(groups).toEqual([
-        {state: 'Idle', auxCodeId: 'default-idle', channelTypes: ['chat']},
-        {state: 'Available', channelTypes: ['email']},
-      ]);
-    });
-
-    it('leaves a channel already in RONA or another external idle state unchanged', () => {
-      expect(
-        isExternalSystemIdle(
-          {agentState: 'Idle', pendingIdle: false, auxCodeId: 'rona-code'},
-          'wellness'
-        )
-      ).toBe(true);
-      expect(
-        buildAscRestoreGroups({
-          channelTypes: ['telephony'],
-          currentChannelStates: {
-            telephony: {agentState: 'Idle', pendingIdle: false, auxCodeId: 'rona-code'},
-          },
-          preBreakChannelStates: {
-            telephony: {agentState: 'Available', auxCodeId: null},
-          },
-          wellnessAuxCodeId: 'wellness',
-          validIdleCodeIds: [],
-        })
-      ).toEqual([]);
-    });
-
-    it('restores unconfirmed channels after a failed state request without overwriting RONA', () => {
-      expect(
-        buildAscRestoreGroups({
-          channelTypes: ['telephony', 'chat', 'email'],
-          currentChannelStates: {
-            telephony: {agentState: 'Available', pendingIdle: false},
-            chat: {agentState: 'Available', pendingIdle: false},
-            email: {agentState: 'Idle', pendingIdle: false, auxCodeId: 'rona-code'},
-          },
-          preBreakChannelStates: {
-            telephony: {agentState: 'Idle', auxCodeId: 'training'},
-            chat: {agentState: 'Available', auxCodeId: null},
-            email: {agentState: 'Available', auxCodeId: null},
-          },
-          wellnessAuxCodeId: 'wellness',
-          validIdleCodeIds: ['training'],
-          includeUnconfirmedChannels: true,
-        })
-      ).toEqual([
-        {state: 'Idle', auxCodeId: 'training', channelTypes: ['telephony']},
-        {state: 'Available', channelTypes: ['chat']},
-      ]);
-    });
-
-    it('reports whether any managed channel still owns wellness or pending Idle', () => {
-      expect(
-        hasOwnedAscTransition(
-          ['chat', 'email'],
-          {
-            chat: {agentState: 'Available', pendingIdle: false},
-            email: {agentState: 'Engaged', pendingIdle: true},
-          },
-          'wellness'
-        )
-      ).toBe(true);
-      expect(
-        hasOwnedAscTransition(
-          ['chat'],
-          {chat: {agentState: 'Available', pendingIdle: false}},
-          'wellness'
-        )
-      ).toBe(false);
-    });
-  });
-
   describe('external state synchronization', () => {
     it.each([
-      ['agent-state-control', 'OnBreak', '0', 'complete'],
-      ['agent-state-control', 'OnBreak', 'rona-code', 'ignore'],
-      ['legacy', 'OnBreak', 'user-idle', 'complete'],
-      ['legacy', 'OnBreak', 'rona-code', 'ignore'],
-      ['legacy', 'WaitingForSafeState', 'rona-code', 'cancel'],
-      ['legacy', 'Ready', '0', 'ignore'],
+      ['OnBreak', 'user-idle', 'complete'],
+      ['OnBreak', 'rona-code', 'ignore'],
+      ['WaitingForSafeState', 'rona-code', 'cancel'],
+      ['Ready', '0', 'ignore'],
     ])(
-      'returns %s / %s / %s as %s',
-      (stateModel, lifecycle, nextAuxCodeId, expected) => {
+      'returns %s / %s as %s',
+      (lifecycle, nextAuxCodeId, expected) => {
         expect(
           getLegacyExternalTransitionDecision({
-            stateModel,
             lifecycle,
             nextAuxCodeId,
             wellnessAuxCodeId: 'wellness',
@@ -254,6 +117,19 @@ describe('Contact Center wellness sample utilities', () => {
       ].forEach((unsafeLog) => expect(appSource).not.toContain(unsafeLog));
     });
 
+    it('does not demonstrate State Control V2 APIs in the public sample', () => {
+      const sampleSource = [
+        resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
+        resolve(__dirname, '../../../../../../docs/samples/contact-center/index.html'),
+      ]
+        .map((path) => readFileSync(path, 'utf8'))
+        .join('\n');
+
+      ['setAgentChannelState', 'AGENT_CHANNEL_STATE_CHANGED', 'AGENT_CHANNEL_RELOGIN_SUCCESS'].forEach(
+        (surface) => expect(sampleSource).not.toContain(surface)
+      );
+    });
+
     it('keeps the intake v0.4 US English wellness copy in the sample surfaces', () => {
       const appSource = readFileSync(
         resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
@@ -291,28 +167,15 @@ describe('Contact Center wellness sample utilities', () => {
   });
 
   describe('browser recovery marker', () => {
-    it('round-trips only session ownership and minimal restore state', () => {
+    it('round-trips only legacy session ownership', () => {
       const marker = createRecoveryMarker({
         agentSessionId: 'session-1',
-        stateModel: 'agent-state-control',
-        channelTypes: ['chat'],
-        preBreakChannelStates: {
-          chat: {
-            agentState: 'Idle',
-            auxCodeId: 'training',
-            stateChangeReason: 'not-persisted',
-          },
-        },
       });
 
       expect(parseRecoveryMarker(JSON.stringify(marker))).toEqual({
         version: 1,
         agentSessionId: 'session-1',
-        stateModel: 'agent-state-control',
-        channelTypes: ['chat'],
-        preBreakChannelStates: {
-          chat: {agentState: 'Idle', auxCodeId: 'training'},
-        },
+        stateModel: 'legacy',
       });
     });
 
@@ -322,7 +185,6 @@ describe('Contact Center wellness sample utilities', () => {
         input: {
           marker: createRecoveryMarker({
             agentSessionId: 'session-1',
-            stateModel: 'legacy',
           }),
           agentSessionId: 'session-2',
         },
@@ -333,7 +195,6 @@ describe('Contact Center wellness sample utilities', () => {
         input: {
           marker: createRecoveryMarker({
             agentSessionId: 'session-1',
-            stateModel: 'legacy',
           }),
           agentSessionId: 'session-1',
           legacyStateKnown: false,
@@ -345,7 +206,6 @@ describe('Contact Center wellness sample utilities', () => {
         input: {
           marker: createRecoveryMarker({
             agentSessionId: 'session-1',
-            stateModel: 'legacy',
           }),
           agentSessionId: 'session-1',
           legacyStateKnown: true,
@@ -355,50 +215,15 @@ describe('Contact Center wellness sample utilities', () => {
         expected: 'restore',
       },
       {
-        name: 'restores an ASC pending idle transition',
-        input: {
-          marker: createRecoveryMarker({
-            agentSessionId: 'session-1',
-            stateModel: 'agent-state-control',
-            channelTypes: ['chat'],
-          }),
-          agentSessionId: 'session-1',
-          wellnessAuxCodeId: 'wellness',
-          ascSnapshotKnown: true,
-          currentChannelStates: {
-            chat: {agentState: 'Engaged', pendingIdle: true},
-          },
-        },
-        expected: 'restore',
-      },
-      {
         name: 'clears a legacy marker when the session already left wellness',
         input: {
           marker: createRecoveryMarker({
             agentSessionId: 'session-1',
-            stateModel: 'legacy',
           }),
           agentSessionId: 'session-1',
           legacyStateKnown: true,
           legacyAuxCodeId: '0',
           wellnessAuxCodeId: 'wellness',
-        },
-        expected: 'clear',
-      },
-      {
-        name: 'clears an ASC marker when every channel already left wellness',
-        input: {
-          marker: createRecoveryMarker({
-            agentSessionId: 'session-1',
-            stateModel: 'agent-state-control',
-            channelTypes: ['chat'],
-          }),
-          agentSessionId: 'session-1',
-          wellnessAuxCodeId: 'wellness',
-          ascSnapshotKnown: true,
-          currentChannelStates: {
-            chat: {agentState: 'Available', pendingIdle: false},
-          },
         },
         expected: 'clear',
       },
@@ -409,6 +234,11 @@ describe('Contact Center wellness sample utilities', () => {
     it('rejects malformed or unsupported recovery markers', () => {
       expect(parseRecoveryMarker('{')).toBeUndefined();
       expect(parseRecoveryMarker(JSON.stringify({version: 2}))).toBeUndefined();
+      expect(
+        parseRecoveryMarker(
+          JSON.stringify({version: 1, agentSessionId: 'session-1', stateModel: 'agent-state-control'})
+        )
+      ).toBeUndefined();
     });
   });
 });

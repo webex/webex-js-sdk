@@ -4,14 +4,23 @@ import * as Agent from './types';
 import AqmReqs from '../core/aqm-reqs';
 import {HTTP_METHODS} from '../../types';
 import {WCC_API_GATEWAY} from '../constants';
-import {CC_EVENTS} from '../config/types';
+import {CC_EVENTS, INTERNAL_AGENT_STATE_CONTROL_EVENTS} from '../config/types';
+import type {Res, ResEmpty} from '../core/types';
+
+interface PublicRoutingAgent {
+  reload: ResEmpty<Agent.ReloginSuccess>;
+  logout: Res<Agent.LogoutSuccess, {data: Agent.Logout}>;
+  stationLogin: Res<Agent.StationLoginSuccess, {data: Agent.UserStationLogin}>;
+  stateChange: Res<Agent.StateChangeSuccess, {data: Agent.StateChange}>;
+  buddyAgents: Res<Agent.BuddyAgentsSuccess, {data: Agent.BuddyAgents}>;
+}
 
 /**
  * Agent Service provides methods to manage agent states and operations
  * @param routing - AqmReqs instance for making API requests
  * @ignore
  */
-export default function routingAgent(routing: AqmReqs) {
+const createRoutingAgent = (routing: AqmReqs) => {
   return {
     /**
      * Reloads the agent session
@@ -24,8 +33,16 @@ export default function routingAgent(routing: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: [CC_EVENTS.AGENT_RELOGIN_SUCCESS, CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS],
-          data: {type: [CC_EVENTS.AGENT_RELOGIN_SUCCESS, CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS]},
+          type: [
+            CC_EVENTS.AGENT_RELOGIN_SUCCESS,
+            INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+          ],
+          data: {
+            type: [
+              CC_EVENTS.AGENT_RELOGIN_SUCCESS,
+              INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            ],
+          },
         },
         msg: {} as Agent.ReloginSuccess | Agent.AgentChannelReloginSuccess,
       },
@@ -123,7 +140,7 @@ export default function routingAgent(routing: AqmReqs) {
      * Changes state for one or more Agent State Control channels.
      * The promise settles from the matching WebSocket success/failure notification.
      * @param p.data - Normalized channel-state request payload
-     * @public
+     * @internal
      */
     stateChangeV2: routing.req((p: {data: Agent.StateChangeV2}) => ({
       url: '/v2/agents/session/state',
@@ -134,7 +151,7 @@ export default function routingAgent(routing: AqmReqs) {
       notifSuccess: {
         bind: {
           type: ['AgentRequestEvent', 'RoutingMessage', 'AgentChannelStateChange'],
-          data: {type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED},
+          data: {type: INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_STATE_CHANGED},
         },
         msg: {} as Agent.AgentChannelStateChanged,
       },
@@ -173,4 +190,13 @@ export default function routingAgent(routing: AqmReqs) {
       },
     })),
   };
+};
+
+/** Creates the complete agent routing surface used inside Contact Center. @internal */
+export const createInternalRoutingAgent = (routing: AqmReqs) => createRoutingAgent(routing);
+
+export default function routingAgent(routing: AqmReqs): PublicRoutingAgent {
+  const {stateChangeV2: _stateChangeV2, ...publicAgent} = createRoutingAgent(routing);
+
+  return publicAgent as PublicRoutingAgent;
 }

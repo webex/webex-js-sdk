@@ -18,7 +18,10 @@ import {SetStateResponse} from '../../../src/types';
 import {AGENT, SUBSCRIBE_API, WEB_RTC_PREFIX} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
-import {CC_EVENTS} from '../../../src/services/config/types';
+import {
+  CC_EVENTS,
+  INTERNAL_AGENT_STATE_CONTROL_EVENTS,
+} from '../../../src/services/config/types';
 import LoggerProxy from '../../../src/logger-proxy';
 import * as Utils from '../../../src/services/core/Utils';
 import {
@@ -3302,7 +3305,7 @@ describe('webex.cc', () => {
           trackingId: 'notification-track',
           type: 'AgentRequestEvent',
           data: {
-            type: CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            type: INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
             agentId: 'agent-1',
             orgId: 'org-id',
             agentSessionId: 'session-1',
@@ -3312,14 +3315,17 @@ describe('webex.cc', () => {
         })
       );
 
-      expect(emitSpy).toHaveBeenCalledWith(CC_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS, {
-        agentId: 'agent-1',
-        orgId: 'org-id',
-        agentSessionId: 'session-1',
-        trackingId: 'notification-track',
-        channelsMap,
-        agentChannelStateDetailMap,
-      });
+      expect(emitSpy).toHaveBeenCalledWith(
+        INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+        {
+          agentId: 'agent-1',
+          orgId: 'org-id',
+          agentSessionId: 'session-1',
+          trackingId: 'notification-track',
+          channelsMap,
+          agentChannelStateDetailMap,
+        }
+      );
       expect(emitSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -3335,7 +3341,7 @@ describe('webex.cc', () => {
           trackingId: 'notification-track',
           type: 'AgentChannelStateChange',
           data: {
-            type: CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+            type: INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
             agentId: 'agent-1',
             orgId: 'org-id',
             agentSessionId: 'session-1',
@@ -3346,15 +3352,18 @@ describe('webex.cc', () => {
         })
       );
 
-      expect(emitSpy).toHaveBeenCalledWith(CC_EVENTS.AGENT_CHANNEL_STATE_CHANGED, {
-        agentId: 'agent-1',
-        orgId: 'org-id',
-        agentSessionId: 'session-1',
-        channelType: 'chat',
-        agentChannelStateDetail,
-        connectedChannels: ['chat'],
-        trackingId: 'notification-track',
-      });
+      expect(emitSpy).toHaveBeenCalledWith(
+        INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
+        {
+          agentId: 'agent-1',
+          orgId: 'org-id',
+          agentSessionId: 'session-1',
+          channelType: 'chat',
+          agentChannelStateDetail,
+          connectedChannels: ['chat'],
+          trackingId: 'notification-track',
+        }
+      );
       expect(emitSpy).toHaveBeenCalledTimes(1);
     });
 

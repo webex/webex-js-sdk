@@ -1,4 +1,4 @@
-import routingAgent from './agent';
+import {createInternalRoutingAgent} from './agent';
 import routingContact from './task/contact';
 import AgentConfigService from './config';
 import AqmReqs from './core/aqm-reqs';
@@ -16,7 +16,8 @@ import aqmDialer from './task/dialer';
  */
 export default class Services {
   /** Agent services for managing agent state and capabilities */
-  public readonly agent: ReturnType<typeof routingAgent>;
+  /** @internal */
+  public readonly agent: ReturnType<typeof createInternalRoutingAgent>;
   /** Configuration services for agent settings */
   public readonly config: AgentConfigService;
   /** Contact services for managing customer interactions */
@@ -45,7 +46,7 @@ export default class Services {
     this.rtdWebSocketManager = new WebSocketManager({webex});
     const aqmReq = new AqmReqs(this.webSocketManager);
     this.config = new AgentConfigService();
-    this.agent = routingAgent(aqmReq);
+    this.agent = createInternalRoutingAgent(aqmReq);
     this.contact = routingContact(aqmReq);
     this.dialer = aqmDialer(aqmReq);
     this.connectionService = new ConnectionService({

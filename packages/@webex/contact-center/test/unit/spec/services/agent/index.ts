@@ -1,5 +1,5 @@
 import MetricsManager from '../../../../../src/metrics/MetricsManager';
-import routingAgent from '../../../../../src/services/agent';
+import routingAgent, {createInternalRoutingAgent} from '../../../../../src/services/agent';
 import AqmReqs from '../../../../../src/services/core/aqm-reqs';
 
 jest.mock('../../../../../src/services/core/Utils', () => ({
@@ -12,7 +12,7 @@ jest.mock('../../../../../src/services/core/aqm-reqs');
 describe('AQM routing agent', () => {
   let fakeAqm: jest.Mocked<AqmReqs>;
   let fakeMetricsManager: jest.Mocked<MetricsManager>;
-  let agent: ReturnType<typeof routingAgent>;
+  let agent: ReturnType<typeof createInternalRoutingAgent>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -25,7 +25,7 @@ describe('AQM routing agent', () => {
     } as unknown as jest.Mocked<MetricsManager>;
     fakeMetricsManager.trackEvent = jest.fn();
 
-    agent = routingAgent(fakeAqm);
+    agent = createInternalRoutingAgent(fakeAqm);
   });
 
   it('logout', async () => {
@@ -83,6 +83,9 @@ describe('AQM routing agent', () => {
         },
       },
     });
+  });
+  it('does not expose stateChangeV2 from the public routing factory', () => {
+    expect(routingAgent(fakeAqm)).not.toHaveProperty('stateChangeV2');
   });
   it('buddyAgents', async () => {
     const reqSpy = jest.spyOn(fakeAqm, 'req');

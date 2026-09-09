@@ -193,9 +193,16 @@ export const CC_AGENT_EVENTS = {
   WELLNESS_BREAK: 'WellnessBreak',
   /** AI Assistant RTD transport connection state changed */
   AI_ASSISTANT_RTD_STATUS_CHANGED: 'AIAssistantRTDStatusChanged',
-  /** Agent State Control relogin snapshot was received */
+} as const;
+
+/**
+ * Agent State Control events used internally to keep first-party features compatible
+ * with State Control V2 sessions. These are intentionally excluded from the public
+ * `CC_AGENT_EVENTS` and `CC_EVENTS` contracts.
+ * @internal
+ */
+export const INTERNAL_AGENT_STATE_CONTROL_EVENTS = {
   AGENT_CHANNEL_RELOGIN_SUCCESS: 'AgentChannelReloginSuccess',
-  /** Agent State Control channel state was changed */
   AGENT_CHANNEL_STATE_CHANGED: 'AgentChannelStateChanged',
 } as const;
 

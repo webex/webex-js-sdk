@@ -92,7 +92,7 @@ export type ReloginSuccess = Msg<{
 
 /**
  * Per-channel agent state detail returned by Agent State Control.
- * @public
+ * @internal
  */
 export interface AgentChannelStateDetail {
   /** Current state for the channel */
@@ -109,7 +109,7 @@ export interface AgentChannelStateDetail {
 
 /**
  * Agent State Control snapshot emitted after relogin.
- * @public
+ * @internal
  */
 export interface AgentChannelReloginSuccessEvent {
   /** Agent identifier */
@@ -127,8 +127,8 @@ export interface AgentChannelReloginSuccessEvent {
 }
 
 /**
- * Agent State Control channel-state event exposed by the SDK.
- * @public
+ * Agent State Control channel-state event used by first-party integrations.
+ * @internal
  */
 export interface AgentChannelStateChangedEvent {
   /** Agent identifier */
@@ -149,7 +149,7 @@ export interface AgentChannelStateChangedEvent {
 
 /**
  * Parameters for changing one or more Agent State Control channels.
- * @public
+ * @internal
  */
 export interface SetAgentChannelStateParams {
   /** Channel types to update. At least one non-empty value is required. */

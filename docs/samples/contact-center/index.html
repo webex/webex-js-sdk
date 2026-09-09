@@ -493,19 +493,6 @@
               <div><dt>Lifecycle</dt><dd id="wellness-lifecycle-status">Unavailable</dd></div>
             </dl>
 
-            <div class="wellness-routing-controls">
-              <label for="wellness-state-mode">State API</label>
-              <select id="wellness-state-mode">
-                <option value="auto">Auto (from relogin snapshot)</option>
-                <option value="legacy">Legacy setAgentState</option>
-                <option value="channel">Agent State Control</option>
-              </select>
-              <label for="wellness-channel-types">ASC channel types</label>
-              <input id="wellness-channel-types" type="text" value="telephony,chat,email,social"
-                aria-describedby="wellness-channel-help">
-              <small id="wellness-channel-help">Comma-separated; used only when Agent State Control is enabled for the current session.</small>
-            </div>
-
             <p id="wellness-message" class="wellness-message" aria-live="polite">
               Register and log in to test this feature.
             </p>
