@@ -33,23 +33,6 @@ export const TIMEOUT_PREVIEW_ACCEPT = 80000;
 /** RTD result deadline; the initiating HTTP acknowledgement uses the 20-second service timeout. */
 export const AI_SUMMARY_DURATION_MS = 15000;
 export const AI_SUMMARY_REQUEST_CANCELLED = 'AI_SUMMARY_REQUEST_CANCELLED' as const;
-export const AI_SUMMARY_TASK_ERROR_CODES = {
-  INVALID_RESPONSE_PAYLOAD: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD',
-  INVALID_ACTION_TYPE: 'AI_SUMMARY_INVALID_ACTION_TYPE',
-} as const;
-
-export const POST_CALL_SUMMARY_STATES = new Set(['DEFAULT', 'IGNORED', 'NOT_RECEIVED']);
-export const MID_CALL_SUMMARY_RECEIVED_STATES = new Set([
-  'DEFAULT',
-  'EXCLUDED',
-  'IGNORED',
-  'MID_CALL_CANCELLED',
-]);
-export const MID_CALL_SUMMARY_UNAVAILABLE_STATES = new Set([
-  'NOT_RECEIVED',
-  'MID_CALL_CANCELLED',
-  'IGNORED',
-]);
 
 export const TASK_MANAGER_FILE = 'taskManager';
 export const TASK_FILE = 'task';

@@ -63,12 +63,11 @@ At session boundaries, ContactCenter delegates summary cleanup to TaskManager:
 Cleanup rejects pending post-call and mid-call request Promises with
 `AI_SUMMARY_REQUEST_CANCELLED`, clears timers and summary state, and deactivates
 inbound summary handling. Late in-flight HTTP acknowledgements are consumed and
-cannot recreate state, resettle removed resolvers, emit a second final metric,
+cannot recreate state, resettle removed requests, emit a second final metric,
 or produce an unhandled rejection.
 
-After cleanup, a classified summary frame is a bounded `sdk-deregistered`
-inbound-drop metric only. The following `setConfigFlags(...)` call reactivates a
-clean lifecycle.
+After cleanup, classified summary frames are ignored until the following
+`setConfigFlags(...)` call reactivates a clean lifecycle.
 
 ## Metrics And Privacy
 

@@ -7,12 +7,12 @@
 Manage task lifecycle, task-scoped public APIs, and task event delivery for the
 Contact Center SDK. Task code remains the owner of AQM task operations; AI
 summary request/response methods are additive and compose the AI Assistant
-adapter plus the shared RTD request resolver.
+adapter.
 
 ## Source Files
 
 - `Task.ts`: base task implementation, public Task methods, state-machine
-  integration, AI summary request/response validation and metrics.
+  integration, AI summary request/response gating and metrics.
 - `TaskManager.ts`: task registry, websocket-to-task lifecycle routing, RTD AI
   frame parsing, task-aware summary state, feature forwarding, and cleanup.
 - `TaskUtils.ts`: task state helpers plus AI summary correlation helpers.
@@ -53,15 +53,14 @@ Keep this guide limited to task-layer implementation boundaries:
 - TaskManager injects `ApiAIAssistant`, the
   feature-enablement accessor, and the current generated-summary flags accessor
   through `configureAISummary(...)` before listener setup or registry insertion.
-- Task owns public request/response validation and final operation metrics; it
-  must not import TaskManager or configuration services. For mid-call response
-  validation, `summaryReceived: false` is accepted when `state` is one of
-  `NOT_RECEIVED`, `MID_CALL_CANCELLED`, or `IGNORED`; `summaryReceived: true`
-  accepts `DEFAULT`, `EXCLUDED`, `IGNORED`, or `MID_CALL_CANCELLED`.
-- Register pending RTD requests before HTTP. The resolver handles transport
-  cancellation, timeout, and lifecycle cleanup for live requests.
-- Use `getAISummaryCorrelation(...)` for caller-facing validation and
-  `tryGetAISummaryCorrelation(...)` while scanning registry/lifecycle state.
+- Task owns typed request/response forwarding, summary feature gating, and
+  final operation metrics; it must not import TaskManager or configuration
+  services.
+- `ApiAIAssistant` sends the summary event, keeps the correlation key, and
+  resolves the Promise from the matching RTD event or timeout.
+- Use the typed task fields directly for summary correlation: `interactionId`
+  identifies the task interaction and `interaction.mainInteractionId` identifies
+  the conversation when present.
 - Preserve request-time post-call response context across task-registry cleanup.
 - Receiving-agent delivery remains a read-only TaskManager path.
 - Never put summary content, human-authored keys, card bodies, agent names, raw

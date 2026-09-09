@@ -210,19 +210,15 @@ sequenceDiagram
   end
 ```
 
-This keeps overlapping invocations independent. An overlap failure emits its own
-bounded metric with `AI_SUMMARY_REQUEST_ALREADY_PENDING` before the accepted
-first request's later final metric, without restarting or consuming the first
-request's duration.
+Summary request correlation is owned by `ApiAIAssistant`; operation outcomes
+remain owned by `Task`.
 
 ## AI Summary Metric Ownership
 
 | Owner                  | Metrics                                                                                                                                                                                                                                                                                                    |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Task`                 | `AI_SUMMARY_GET_POST_CALL_SUCCESS`, `AI_SUMMARY_GET_POST_CALL_FAILED`, `AI_SUMMARY_GET_MID_CALL_SUCCESS`, `AI_SUMMARY_GET_MID_CALL_FAILED`, `AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_POST_CALL_RESPONSE_FAILED`, `AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_MID_CALL_RESPONSE_FAILED` |
-| `TaskManager`          | `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED`, `AI_SUMMARY_INBOUND_EVENT_DROPPED`                                                                                                                                                                                                                               |
-| `ApiAIAssistant`       | No Task operation metric ownership; adapter tests prove bounded transport and privacy.                                                                                                                                                                                                                     |
-| `ApiAIAssistant` | No operation metric ownership for RTD correlation; owns pending HTTP-to-RTD request timeout/cancellation state.                                                                                                                                                                                                                       |
+| `ApiAIAssistant`       | No Task operation metric ownership; owns summary request correlation and bounded transport/privacy behavior.                                                                                                                                                                                               |
 
 Request success is withheld until both the HTTP acknowledgement and matching RTD
 result fulfill. Response success is recorded when bounded HTTP acknowledgement
@@ -240,11 +236,6 @@ Exact AI-summary event names, owners, and success conditions are tabulated in
 - Task emits exactly one final success or failure event per public summary
   operation — `AI_SUMMARY_GET_POST_CALL_*`, `AI_SUMMARY_GET_MID_CALL_*`,
   `AI_SUMMARY_POST_CALL_RESPONSE_*`, and `AI_SUMMARY_MID_CALL_RESPONSE_*`.
-- TaskManager owns `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED` and
-  `AI_SUMMARY_INBOUND_EVENT_DROPPED`, the latter emitted once per terminal drop
-  path (unparseable, malformed envelope, unknown event, invalid payload,
-  late-or-uncorrelated, sdk-deregistered, ambiguous receiver, receiver-buffer
-  expired).
 - Failure metrics carry only a bounded `failureCode`.
 
 ## Privacy Boundary

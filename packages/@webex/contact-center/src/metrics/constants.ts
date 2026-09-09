@@ -195,8 +195,6 @@ export const METRIC_EVENT_NAMES = {
   AI_SUMMARY_POST_CALL_RESPONSE_FAILED: 'Post Call Summary Response Failed',
   AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS: 'Mid Call Summary Response Success',
   AI_SUMMARY_MID_CALL_RESPONSE_FAILED: 'Mid Call Summary Response Failed',
-  AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED: 'AI Summary Feature Enablement Received',
-  AI_SUMMARY_INBOUND_EVENT_DROPPED: 'AI Summary Inbound Event Dropped',
 
   // User Preference API Events
   USER_PREFERENCE_GET_SUCCESS: 'User Preference Get Success',

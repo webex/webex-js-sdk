@@ -48,16 +48,15 @@ summary cleanup. Full cleanup:
 - rejects live summary request Promises with `AI_SUMMARY_REQUEST_CANCELLED`
 - clears pending request timers, receiver buffers, feature snapshots, and their
   timers
-- makes queued classified summary frames metadata-only `sdk-deregistered` drops
+- ignores queued classified summary frames until the next session is configured
 
 The next `setConfigFlags(...)` call reactivates summary handling for the new
 session.
 
 ## Privacy
 
-Agent-facing AI summary lifecycle logs and metrics may include bounded event
-names, validation outcomes, boolean enablement values, and safe identifiers.
-They must not include summary text, section keys or values, Adaptive Card
+Agent-facing AI summary lifecycle logs may include bounded event names and safe
+identifiers. They must not include summary text, section keys or values, Adaptive Card
 bodies, agent names, raw payloads, or arbitrary exception text.
 
 ## Validation

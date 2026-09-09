@@ -259,17 +259,12 @@ Every identifier must also exist in `metrics/constants.ts`.
 | `AI_SUMMARY_GET_MID_CALL_SUCCESS` / `_FAILED` | Task | Mid-call request. Success once the HTTP acknowledgement and the matching RTD result both fulfill. |
 | `AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS` / `_FAILED` | Task | Post-call response. Success on bounded HTTP acknowledgement. |
 | `AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS` / `_FAILED` | Task | Mid-call response. Success on bounded HTTP acknowledgement. |
-| `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED` | TaskManager | Feature-enablement frame received. |
-| `AI_SUMMARY_INBOUND_EVENT_DROPPED` | TaskManager | Terminal inbound drop. |
+TaskManager routes feature-enablement and summary RTD frames; it does not emit
+AI-summary-specific receive or drop metrics. TaskManager and `ApiAIAssistant`
+never emit duplicate Task-owned request-timeout operation metrics.
 
-`AI_SUMMARY_INBOUND_EVENT_DROPPED` is emitted exactly once for each of the
-unparseable, malformed-envelope, unknown-event, invalid-payload,
-late-or-uncorrelated, sdk-deregistered, ambiguous-receiver, and
-receiver-buffer-expired paths. TaskManager and the coordinator never emit
-duplicate Task-owned request-timeout operation metrics.
-
-Response failure metrics carry only a bounded `failureCode`: local validation,
-configuration, correlation, and base-URL codes plus the three package-internal
+Response failure metrics carry only a bounded `failureCode`: configuration,
+correlation, and base-URL codes plus the three package-internal
 transport codes.
 
 
@@ -300,9 +295,9 @@ explicitly with `['operational']`.
   exactly one final success or failure event. Never call `timeEvent(...)` for
   these overlapping operations.
 - Task owns request/response operation outcomes. TaskManager owns feature
-  receive and terminal inbound-drop outcomes. The coordinator reports expiry
+  receive and terminal inbound-drop outcomes. TaskManager reports expiry
   through TaskManager rather than emitting operation metrics.
-- Pass only bounded codes, validated flags, safe identifiers, counters, state,
+- Pass only bounded codes, flags, safe identifiers, counters, state,
   feedback, and action type. Never pass summary/card content, human-authored
   keys, agent names, raw payloads, or arbitrary exception details.
 

@@ -160,7 +160,6 @@ jest.mock('../../../src/services/ApiAiAssistant', () => {
     public sendEvent = jest.fn();
     public requestAndWaitForRtd = jest.fn();
     public resolveFromRtdEvent = jest.fn();
-    public clearRtdRequests = jest.fn();
     public clearAllRtdRequests = jest.fn();
     public getSuggestedResponse = jest.fn();
     public fetchHistoricTranscripts = jest.fn();
@@ -1185,7 +1184,6 @@ describe('webex.cc', () => {
         pendingRequests.set(key, {
           eventType: options.rtdEventType,
           correlationId: options.correlationId,
-          ownerId: options.ownerId,
           resolve: resolveResult,
           reject: rejectResult,
           result,
@@ -1229,17 +1227,6 @@ describe('webex.cc', () => {
           request.reject(error);
         });
         pendingRequests.clear();
-      });
-      apiAIAssistant.clearRtdRequests = jest.fn((ownerId: string, correlationId?: string) => {
-        pendingRequests.forEach((request, key) => {
-          if (
-            request.ownerId === ownerId &&
-            (correlationId === undefined || request.correlationId === correlationId)
-          ) {
-            pendingRequests.delete(key);
-            request.reject(new Error(AI_SUMMARY_REQUEST_CANCELLED));
-          }
-        });
       });
       const taskManager = new ActualTaskManager(
         apiAIAssistant as any,
@@ -1286,11 +1273,11 @@ describe('webex.cc', () => {
       const dispatchRtdFrame = (type: string, data: Record<string, unknown>) => {
         webex.cc['handleRTDWebsocketMessage'](JSON.stringify({type, data: {data}}));
       };
-      const getResolver = () => apiAIAssistant as any;
+      const getApiAIAssistant = () => apiAIAssistant as any;
       const getSummaryMapCounts = () => {
-        const resolver = getResolver() as any;
+        const api = getApiAIAssistant() as any;
         const manager = taskManager as any;
-        const pendingRequests = Array.from(resolver.pendingRequests.values());
+        const pendingRequests = Array.from(api.pendingRequests.values());
 
         return {
           pendingPostCall: pendingRequests.filter(
@@ -1318,7 +1305,7 @@ describe('webex.cc', () => {
         dispatchRtdFrame,
         emitRtdFrame,
         expectSummaryStateCleared,
-        getResolver,
+        getApiAIAssistant,
         getSummaryMapCounts,
         rtdWebSocketManager,
         task,
@@ -1476,13 +1463,6 @@ describe('webex.cc', () => {
           },
         },
       } as any;
-      const featurePayload = {
-        interactionId: 'interaction-1',
-        postCallEnabled: true,
-        midCallEnabled: true,
-        actionTimestamp: 7,
-      };
-
       webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
       harness.webSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent-1'});
       jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(profile);
@@ -1501,41 +1481,9 @@ describe('webex.cc', () => {
         webex.cc['handleRTDWebsocketMessage']
       );
 
-      mockMetricsManager.trackEvent.mockClear();
-      LoggerProxy.warn.mockClear();
       triggerSpy.mockClear();
 
-      harness.emitRtdFrame('UNKNOWN_SUMMARY_EVENT', {
-        conversationId: 'unknown-conversation',
-      });
-      emitFeatureEnablement(harness, featurePayload);
-
-      const dropMetricCalls = mockMetricsManager.trackEvent.mock.calls.filter(
-        ([eventName]) => eventName === METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED
-      );
-      const featureMetricCalls = mockMetricsManager.trackEvent.mock.calls.filter(
-        ([eventName]) => eventName === METRIC_EVENT_NAMES.AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED
-      );
-      expect(dropMetricCalls).toHaveLength(1);
-      expect(dropMetricCalls[0]).toEqual([
-        METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
-        {
-          eventType: 'UNKNOWN_SUMMARY_EVENT',
-          dropReason: 'unknown-event',
-        },
-        ['operational'],
-      ]);
-      expect(LoggerProxy.warn).toHaveBeenCalledTimes(1);
-      expect(featureMetricCalls).toHaveLength(1);
-      expect(featureMetricCalls[0]).toEqual([
-        METRIC_EVENT_NAMES.AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED,
-        {
-          validationOutcome: 'valid',
-          postCallEnabled: true,
-          midCallEnabled: true,
-        },
-        ['operational'],
-      ]);
+      expect(triggerSpy).not.toHaveBeenCalled();
     });
 
     it('forwards task-manager handlers through ContactCenter trigger and delegates RTD messages', () => {
@@ -1643,14 +1591,6 @@ describe('webex.cc', () => {
         featureEnablement: 0,
       });
       expect(triggerSpy).not.toHaveBeenCalled();
-      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
-        {
-          eventType: CC_TASK_EVENTS.POST_CALL_SUMMARY,
-          dropReason: 'sdk-deregistered',
-        },
-        ['operational']
-      );
       expectSentinelsNotObserved();
     });
 
@@ -1767,7 +1707,7 @@ describe('webex.cc', () => {
       const harness = createSummaryHarness();
       const interactionId = 'post-call-cleanup-interaction';
       const conversationId = 'post-call-cleanup-conversation';
-      const resolver = harness.getResolver();
+      const apiAIAssistant = harness.getApiAIAssistant();
       let applicationTask: Task | undefined;
 
       harness.taskManager.on(TASK_EVENTS.TASK_INCOMING, (task: Task) => {
@@ -1844,7 +1784,7 @@ describe('webex.cc', () => {
       });
       expect(jest.getTimerCount()).toBe(0);
 
-      const requestCallsAfterRemoval = (resolver as any).pendingRequests.size;
+      const requestCallsAfterRemoval = (apiAIAssistant as any).pendingRequests.size;
 
       retainedTask.updateTaskData(
         createAISummaryLifecycleTaskData({
@@ -1870,7 +1810,7 @@ describe('webex.cc', () => {
         retainedTask.sendPostCallSummaryResponse(responsePayload)
       ).resolves.toBeUndefined();
 
-      expect((resolver as any).pendingRequests.size).toBe(requestCallsAfterRemoval);
+      expect((apiAIAssistant as any).pendingRequests.size).toBe(requestCallsAfterRemoval);
       expect(harness.apiAIAssistant.sendEvent).toHaveBeenCalledTimes(2);
       expect(harness.apiAIAssistant.sendEvent).toHaveBeenNthCalledWith(
         2,
@@ -1949,14 +1889,6 @@ describe('webex.cc', () => {
         expect(unhandledRejections).toHaveLength(0);
         expect(countAISummaryRequestFinalMetrics()).toBe(finalMetricCountAfterCancellation);
         harness.expectSummaryStateCleared();
-        expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-          METRIC_EVENT_NAMES.AI_SUMMARY_INBOUND_EVENT_DROPPED,
-          {
-            eventType: CC_TASK_EVENTS.POST_CALL_SUMMARY,
-            dropReason: 'sdk-deregistered',
-          },
-          ['operational']
-        );
         expectSentinelsNotObserved();
       } finally {
         process.off('unhandledRejection', unhandledRejectionListener);

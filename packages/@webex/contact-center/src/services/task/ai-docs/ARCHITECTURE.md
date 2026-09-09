@@ -9,7 +9,7 @@
 | Component        | File                                                                              | Responsibility                                                                                                                                                             |
 | ---------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `TaskManager`    | [TaskManager.ts](../TaskManager.ts)                                               | Singleton registry and lifecycle coordinator for websocket task events, task creation, WebRTC call mapping, RTD routing, task-aware AI summary state, and cleanup.         |
-| `Task`           | [Task.ts](../Task.ts)                                                             | Abstract task base class for public operations, state-machine integration, auto wrap-up setup, AI summary validation, request/response composition, and operation metrics. |
+| `Task`           | [Task.ts](../Task.ts)                                                             | Abstract task base class for public operations, state-machine integration, auto wrap-up setup, AI summary gating, request/response composition, and operation metrics. |
 | `Voice`          | [voice/Voice.ts](../voice/Voice.ts)                                               | Telephony task operations for hold/resume, recording controls, consult, transfer, conference, and switch-call behavior.                                                    |
 | `WebRTC`         | [voice/WebRTC.ts](../voice/WebRTC.ts)                                             | Browser-based voice task that binds calling media events to task events and answers or declines through `WebCallingService`.                                               |
 | `Digital`        | [digital/Digital.ts](../digital/Digital.ts)                                       | Digital task implementation for accept and task data refresh.                                                                                                              |
@@ -25,7 +25,7 @@
 
 `Task` owns the stable public task interface. It stores `data`, `webCallMap`,
 `stateMachineService`, the latest state snapshot, current UI controls, optional
-`autoWrapup`, wrap-up data, and the injected AI summary adapter/coordinator
+`autoWrapup`, wrap-up data, and the injected AI summary adapter
 runtime. It never imports `TaskManager`; `TaskManager` injects AI summary
 dependencies with `configureAISummary(...)` immediately after task creation.
 
@@ -361,10 +361,10 @@ producer uses nested `data.type === 'SUGGESTION'` as the final marker, that
 final-only filter belongs to the suggested-response producer contract feeding
 this branch and must not be moved into AI summary routing.
 
-AI summary RTD routing is stricter:
+AI summary RTD routing keeps only the guards needed for routing:
 
-- `FEATURE_ENABLEMENT` is classified before payload validation; valid frames are
-  counted, stored by top-level `interactionId`, and emitted through
+- `FEATURE_ENABLEMENT` is classified before correlation; frames with an
+  `interactionId` are counted, stored by top-level `interactionId`, and emitted through
   `TASK_EVENTS.TASK_FEATURE_ENABLEMENT` on the matching task object when the
   task is already registered. If the frame arrives before
   `AGENT_CONTACT_RESERVED` creates the task (orphan), it is stored; at task
@@ -373,9 +373,9 @@ AI summary RTD routing is stricter:
   once on the newly created task. Delivery is called only from task creation
   paths, not from `updateTaskData`, so consumers receive at most one emission
   per task per enablement frame.
-- `POST_CALL_SUMMARY` and `MID_CALL_SUMMARY` require non-empty
-  `conversationId` plus known optional fields and resolve a pending request by
-  `conversationId` and inbound type.
+- `POST_CALL_SUMMARY` and `MID_CALL_SUMMARY` require a non-empty
+  `conversationId` and resolve a pending request by `conversationId` and
+  inbound type. Other payload fields are forwarded according to their types.
 - `MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT` requires `conversationId` and is
   delivered only by the receiving-agent selector.
 - Unknown AI-summary-like frames, malformed envelopes, invalid payloads,
@@ -391,25 +391,22 @@ flowchart LR
   Task -->|request and await RTD| Api[ApiAIAssistant]
   Task -->|bounded HTTP event| API[ApiAIAssistant]
   RTD[Realtime websocket] --> TM[TaskManager]
-  TM -->|resolve pending request| Resolver
+  TM -->|resolve pending request| Api
   TM -->|emit selected receiving-task event| Task
-  Resolver -->|Promise result| Task
+  Api -->|Promise result| Task
 ```
 
-- `Task` owns caller validation, organization/interaction gating, retained
-  post-call response context, and one final metric per public invocation.
-  Mid-call response validation uses two internal state sets: the received branch
-  (`summaryReceived: true`) accepts `DEFAULT`, `EXCLUDED`, `IGNORED`, and
-  `MID_CALL_CANCELLED`; the unavailable branch (`summaryReceived: false`)
-  accepts `NOT_RECEIVED`, `MID_CALL_CANCELLED`, and `IGNORED`.
+- `Task` owns typed request/response forwarding, organization/interaction
+  gating, retained post-call response context, and one final metric per public
+  invocation.
 - `TaskManager` owns task registry integration, realtime classification,
   feature-state keys, receiving-task candidate discovery, and lifecycle hooks.
-- `ApiAIAssistant` owns pending HTTP-to-RTD request slots, timeout,
-  cancellation, and owner cleanup. It has no AI Summary or Task dependency.
+- `ApiAIAssistant` owns the pending HTTP-to-RTD request key, timeout, and
+  Promise resolution. It has no Task dependency.
 - `TaskManager` owns feature snapshots, receiving-agent buffers, and their timers.
 - `ApiAIAssistant` owns the bounded transport envelope and safe transport errors.
 
-Correlation, overlap, response, timeout, and cleanup rules are implemented in
+Correlation, response, timeout, and cleanup rules are implemented in
 `ApiAiAssistant.ts`, `TaskManager.ts`, and `constants.ts`; metric and privacy rules are in
 [metrics/ai-docs/AGENTS.md](../../../metrics/ai-docs/AGENTS.md#ai-summary-events).
 The consumer-facing sequences are in [AI Summary Flows](#ai-summary-flows)
@@ -429,7 +426,6 @@ sequenceDiagram
   actor App
   participant Task
   participant Api as ApiAIAssistant
-  participant API as ApiAIAssistant
   participant Backend
   participant TM as TaskManager
 
@@ -439,22 +435,20 @@ sequenceDiagram
     Task-->>App: reject POST_CALL_SUMMARY_DISABLED
   else enabled
     Task->>Task: capture {conversationId, interactionId}
-    Task->>Resolver: register POST_CALL_SUMMARY
-    Resolver-->>Task: pending Promise
-    Task->>API: sendEvent(GET_POST_CALL_SUMMARY)
+    Task->>Api: requestAndWaitForRtd(GET_POST_CALL_SUMMARY)
     Task->>Task: Promise.all(result, acknowledgement)
-    API->>Backend: POST /event
-    Backend-->>API: 2xx acknowledgement
+    Api->>Backend: POST /event
+    Backend-->>Api: 2xx acknowledgement
     Backend->>TM: RTD POST_CALL_SUMMARY
-    TM->>Resolver: resolve by conversationId + POST_CALL_SUMMARY
-    Resolver-->>Task: summary payload
+    TM->>Api: resolve by conversationId + POST_CALL_SUMMARY
+    Api-->>Task: summary payload
     Task-->>App: resolve summary payload
     App->>Task: wrapup(...)
     Task-->>App: wrap-up completed
     App->>Task: sendPostCallSummaryResponse(payload)
-    Task->>API: sendEvent(POST_CALL_SUMMARY_RESPONSE)
-    API->>Backend: POST /event
-    Backend-->>API: 2xx acknowledgement
+    Task->>Api: sendEvent(POST_CALL_SUMMARY_RESPONSE)
+    Api->>Backend: POST /event
+    Backend-->>Api: 2xx acknowledgement
     Task-->>App: resolve void
   end
 ```
@@ -475,7 +469,6 @@ sequenceDiagram
   actor App
   participant Task
   participant Api as ApiAIAssistant
-  participant API as ApiAIAssistant
   participant Backend
   participant TM as TaskManager
 
@@ -484,20 +477,18 @@ sequenceDiagram
   alt consultTransferSummariesEnabled !== true or midCallEnabled !== true
     Task-->>App: reject MID_CALL_SUMMARY_DISABLED
   else enabled
-    Task->>Resolver: register MID_CALL_SUMMARY
-    Resolver-->>Task: pending Promise
-    Task->>API: sendEvent(action-specific GET)
+    Task->>Api: requestAndWaitForRtd(action-specific GET)
     Task->>Task: Promise.all(result, acknowledgement)
-    API->>Backend: POST /event
-    Backend-->>API: 2xx acknowledgement
+    Api->>Backend: POST /event
+    Backend-->>Api: 2xx acknowledgement
     Backend->>TM: RTD MID_CALL_SUMMARY
-    TM->>Resolver: resolve by conversationId + MID_CALL_SUMMARY
-    Resolver-->>Task: summary payload
+    TM->>Api: resolve by conversationId + MID_CALL_SUMMARY
+    Api-->>Task: summary payload
     Task-->>App: resolve summary payload
     App->>Task: sendMidCallSummaryResponse(payload, actionType)
-    Task->>API: sendEvent(action-specific response)
-    API->>Backend: POST /event
-    Backend-->>API: 2xx acknowledgement
+    Task->>Api: sendEvent(action-specific response)
+    Api->>Backend: POST /event
+    Backend-->>Api: 2xx acknowledgement
     Task-->>App: response attempt fulfilled
     App->>Task: consult(...) or transfer(...)
   end
@@ -519,7 +510,7 @@ branch (`summaryReceived: false`) alongside `NOT_RECEIVED` and
 ### Mid-Call Receiver
 
 `MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT` is a realtime double-envelope
-frame. TaskManager validates it and forwards only the inner payload — the shared
+frame. TaskManager checks the envelope and forwards only the inner payload — the shared
 `conversationId`, optional card metadata, language/resolution metadata, optional
 `summaryText`, and optional timestamp — to the selected Task. This path has no
 public SDK request method and no outbound response: no counters, no feedback, no
@@ -536,11 +527,11 @@ flowchart LR
 
   Backend -->|push subsequent-agent frame| RTD
   RTD --> TM
-  TM -->|validated payload + selected task| Task
+  TM -->|correlated payload + selected task| Task
   Task --> App
 ```
 
-1. TaskManager validates the realtime double envelope and derives candidate
+1. TaskManager checks the realtime double envelope and derives candidate
    conversation IDs with the shared correlation helper.
 2. TaskManager delivers to one unique receiving-task leaf, buffers a zero-match
    payload on its original retention deadline, or drops an ambiguous match.
@@ -668,19 +659,11 @@ Consult, campaign, and auto-answer helpers:
 - `shouldAutoAnswerTask(...)`
 - `getConsultMediaResourceId(...)`
 
-AI summary helpers:
-
-- `tryGetAISummaryCorrelation(taskData)` returns `{conversationId,
-interactionId}` when both identifiers are available, using
-  `interaction.mainInteractionId ?? interactionId` as the conversation ID.
-- `getAISummaryCorrelation(taskData)` returns the same correlation or throws a
-  bounded `AI_SUMMARY_CORRELATION_NOT_AVAILABLE` error for public Task summary
-  validation.
-
-TaskManager scans and lifecycle cleanup use `tryGetAISummaryCorrelation(...)`
-so invalid registered tasks are skipped with bounded metadata. Task public
-summary methods use `getAISummaryCorrelation(...)` because invalid outbound
-correlation must reject the caller.
+AI summary correlation uses the typed task data directly. `interactionId`
+identifies the task interaction, and `interaction.mainInteractionId` identifies
+the conversation when present; otherwise `interactionId` is used for the
+conversation. Task and TaskManager use these fields directly for outbound
+summary requests, response context, RTD matching, and lifecycle cleanup.
 
 ## Metrics Tracking
 
@@ -710,22 +693,20 @@ AQM operation, then emit exactly one `trackEvent(...)` on success or failure.
 | Conference exit     | `TASK_CONFERENCE_EXIT_SUCCESS`     | `TASK_CONFERENCE_EXIT_FAILED`     |
 | Switch call         | `TASK_SWITCH_CALL_SUCCESS`         | `TASK_SWITCH_CALL_FAILED`         |
 
-AI summary metrics are an explicit exception because public summary methods can
-overlap on the same task and metric names. They do not use `timeEvent(...)`.
+AI summary metrics are an explicit exception because each public summary method
+records its own operation outcome. They do not use `timeEvent(...)`.
 
 | Owner                  | Metrics                                                                                                                                                                                                                                                                                                                    |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Task`                 | `AI_SUMMARY_POST_CALL_REQUEST_SUCCESS`, `AI_SUMMARY_POST_CALL_REQUEST_FAILED`, `AI_SUMMARY_MID_CALL_REQUEST_SUCCESS`, `AI_SUMMARY_MID_CALL_REQUEST_FAILED`, `AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_POST_CALL_RESPONSE_FAILED`, `AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_MID_CALL_RESPONSE_FAILED` |
-| `TaskManager`          | `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED`, `AI_SUMMARY_INBOUND_EVENT_DROPPED`                                                                                                                                                                                                                                               |
-| `ApiAIAssistant`       | Shared send-event, suggested-response, and historic-transcript transport metrics outside Task operation ownership.                                                                                                                                                                                                         |
-| `ApiAIAssistant` | No direct operation metric ownership for RTD correlation; receiver expiry reports through TaskManager.                                                                                                                                                                                                                                         |
+| `Task`                 | `AI_SUMMARY_GET_POST_CALL_SUCCESS`, `AI_SUMMARY_GET_POST_CALL_FAILED`, `AI_SUMMARY_GET_MID_CALL_SUCCESS`, `AI_SUMMARY_GET_MID_CALL_FAILED`, `AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_POST_CALL_RESPONSE_FAILED`, `AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_MID_CALL_RESPONSE_FAILED` |
+| `ApiAIAssistant`       | Shared send-event, suggested-response, historic-transcript, and transport metrics outside Task operation ownership.                                                                                                                                                                                                        |
 
 ## Metrics And Privacy Boundary
 
 Classic call-control operations use MetricsManager's shared timing pattern.
 AI-summary public operations instead supply method-local durations so concurrent
 requests cannot share timer state. Task owns operation outcomes; TaskManager
-owns receive/drop outcomes.
+routes inbound RTD frames and task events.
 
 Request success is withheld until both the HTTP acknowledgement and the matching
 RTD result fulfill; response success is recorded on bounded HTTP acknowledgement
@@ -778,8 +759,9 @@ await cc.stationLogin({loginOption: 'BROWSER'});
 ### Issue: AI summary request never resolves
 
 The request must pass organization flags, per-interaction feature enablement,
-and correlation validation before registration. The coordinator registers by
-`conversationId` and inbound type before HTTP, then waits for matching RTD. If
+and correlation validation before sending the HTTP event. `ApiAIAssistant` maps
+the `conversationId` and inbound type to the pending Promise, then waits for
+matching RTD. If
 RTD never arrives, the public Promise rejects with the corresponding summary
 timeout code; RTD lifecycle cleanup clears the pending request map.
 
@@ -787,15 +769,13 @@ timeout code; RTD lifecycle cleanup clears the pending request map.
 
 Check the receiving payload `conversationId`, registered task correlations, and
 parent/child interaction IDs. Zero matches are buffered temporarily. Multiple
-leaves or ambiguous self-parent situations are dropped with
-`AI_SUMMARY_INBOUND_EVENT_DROPPED` and `dropReason: 'ambiguous-receiver'`.
+leaves or ambiguous self-parent situations are not delivered to a task.
 
 ### Issue: AI summary metrics look duplicated or missing
 
 Each public summary invocation should emit exactly one success or failure
-operation metric from `Task`. TaskManager emits receive/drop metrics only.
-Overlap failure metrics are expected to appear before the accepted request's
-later success, timeout, cancellation, or transport failure metric.
+operation metric from `Task`. The matching RTD result or timeout determines the
+request outcome.
 
 ## Related Files
 
@@ -806,7 +786,7 @@ later success, timeout, cancellation, or transport failure metric.
 - [TaskFactory.ts](../TaskFactory.ts) - Concrete task selection.
 - [contact.ts](../contact.ts) - AQM task operation request definitions.
 - [TaskUtils.ts](../TaskUtils.ts) - Shared task and AI summary helpers.
-- [types.ts](../types.ts) - Task, event, AI summary, and coordinator types.
+- [types.ts](../types.ts) - Task, event, and AI summary types.
 - [constants.ts](../constants.ts) - Task endpoint suffixes, method names, transcript event mapping, and AI summary timeout constants.
 - [voice/Voice.ts](../voice/Voice.ts) - Telephony operation implementation.
 - [voice/WebRTC.ts](../voice/WebRTC.ts) - Browser WebRTC task implementation.

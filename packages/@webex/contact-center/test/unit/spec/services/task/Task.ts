@@ -22,7 +22,6 @@ import {
   AI_SUMMARY_REQUEST_CANCELLED,
   METHODS,
 } from '../../../../../src/services/task/constants';
-import {getAISummaryCorrelation} from '../../../../../src/services/task/TaskUtils';
 import {
   createAISummaryError,
   createAISummaryErrorExpectation,
@@ -223,26 +222,13 @@ jest.mock('../../../../../src/services/task/AutoWrapup', () => ({
 }));
 
 jest.mock('../../../../../src/services/task/TaskUtils', () => ({
-  getAISummaryCorrelation: jest.fn((taskData) => {
-    const interactionId = taskData?.interactionId;
-    const conversationId = taskData?.interaction?.mainInteractionId ?? interactionId;
+  createSummaryError: jest.fn((errorCode) => {
+    const error = new Error(errorCode) as Error & {data?: Record<string, unknown>};
+    error.data = {errorCode};
 
-    if (
-      typeof interactionId !== 'string' ||
-      interactionId.length === 0 ||
-      typeof conversationId !== 'string' ||
-      conversationId.length === 0
-    ) {
-      const error = new Error('AI_SUMMARY_CORRELATION_NOT_AVAILABLE') as Error & {
-        data?: Record<string, unknown>;
-      };
-
-      error.data = {errorCode: 'AI_SUMMARY_CORRELATION_NOT_AVAILABLE'};
-      throw error;
-    }
-
-    return {conversationId, interactionId};
+    return error;
   }),
+  isNonEmptyString: jest.fn((value) => typeof value === 'string' && value.length > 0),
 }));
 
 jest.mock('../../../../../src/services/core/Utils', () => ({
@@ -1044,8 +1030,6 @@ describe('Task AI summary APIs', () => {
           rejectResult = reject;
         });
         const pending = {
-          requestToken: Symbol('rtd-request'),
-          ownerId: requestOptions.ownerId,
           result,
           timeoutId: undefined as any,
           resolve: resolveResult,
@@ -1094,7 +1078,6 @@ describe('Task AI summary APIs', () => {
         pending.resolve(payload);
         return 'resolved';
       }),
-      clearRtdRequests: jest.fn(),
       clearAllRtdRequests: jest.fn(() => {
         pendingRequests.forEach((pending) => {
           clearTimeout(pending.timeoutId);
@@ -1762,176 +1745,6 @@ describe('Task AI summary APIs', () => {
     expect(coordinator.requestAndWaitForRtd).toHaveBeenCalled();
   });
 
-  it.skip.each([
-    {
-      label: 'base URL unavailable',
-      error: createAISummaryError(AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE),
-    },
-    {
-      label: 'HTTP status/network failure',
-      error: createAISummaryError(AI_SUMMARY_TRANSPORT_ERROR_CODES.HTTP_REQUEST_FAILED),
-    },
-    {
-      label: 'transport timeout',
-      error: createAISummaryError(AI_SUMMARY_TRANSPORT_ERROR_CODES.TIMEOUT),
-    },
-  ])(
-    'clears the exact real pending entry and timer without settling the RTD result on $label',
-    async ({error}) => {
-      jest.useFakeTimers();
-      const task = new DummyTask(dummyContact, createAISummaryTaskData());
-      const {adapter, coordinator} = createSummaryMocks(task, {
-        registrationResult: new Promise(() => undefined),
-      });
-      const requestSpy = jest.spyOn(coordinator, 'requestAndWaitForRtd');
-      const resultObserver = jest.fn();
-      let requestOptions: any;
-
-      task.configureAISummary(
-        adapter,
-        jest.fn(() => ({
-          wrapUpSummariesEnabled: true,
-          consultTransferSummariesEnabled: true,
-        })),
-        () => ({interactionId: 'interaction-1', postCallEnabled: true})
-      );
-      adapter.sendEvent.mockImplementation(async () => {
-        requestOptions = requestSpy.mock.calls[0][0];
-        const pendingEntry = getPendingRequest(coordinator, 'POST_CALL_SUMMARY', 'conversation-1');
-
-        const pendingResult = (pendingEntry as any)?.result;
-        pendingResult?.then(resultObserver, resultObserver);
-        expect(pendingEntry?.timeoutId).toBeDefined();
-        expect(jest.getTimerCount()).toBe(1);
-
-        throw error;
-      });
-
-      const publicRequest = task.requestPostCallSummary();
-
-      await expect(publicRequest).rejects.toBe(error);
-      expect(requestOptions).toEqual(
-        expect.objectContaining({
-          correlationId: 'conversation-1',
-          rtdEventType: 'POST_CALL_SUMMARY',
-        })
-      );
-      expect(getPendingRequest(coordinator, 'POST_CALL_SUMMARY', 'conversation-1')).toBeUndefined();
-      expect(jest.getTimerCount()).toBe(0);
-      await Promise.resolve();
-      expect(resultObserver).not.toHaveBeenCalled();
-      expect(
-        coordinator.resolveFromRtdEvent(
-          'POST_CALL_SUMMARY',
-          'conversation-1',
-          createPostCallSummaryPayload()
-        )
-      ).toBe('not-found');
-    }
-  );
-
-  it.skip('keeps same-conversation CONSULT and TRANSFER overlap isolated through the real coordinator slot', async () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(0);
-    const task = new DummyTask(dummyContact, createAISummaryTaskData());
-    const metrics = spyOnAISummaryMetrics(task);
-    const {adapter, coordinator} = createRealSummaryMocks(task);
-    const midCallResult = createMidCallSummaryPayload();
-    let consultSettled = false;
-
-    try {
-      const consultRequest = task.requestMidCallSummary('CONSULT');
-
-      consultRequest.then(
-        () => {
-          consultSettled = true;
-        },
-        () => {
-          consultSettled = true;
-        }
-      );
-
-      await Promise.resolve();
-      await Promise.resolve();
-
-      expect(adapter.sendEvent).toHaveBeenCalledTimes(1);
-      expectSummaryGetEvent(adapter, AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY);
-      expect(metrics.trackEvent).not.toHaveBeenCalled();
-      expect(consultSettled).toBe(false);
-      const firstPendingEntry = getPendingRequest(
-        coordinator,
-        'MID_CALL_SUMMARY',
-        'conversation-1'
-      );
-      const firstTimeoutId = firstPendingEntry?.timeoutId;
-
-      expect(firstPendingEntry?.ownerId).toBe('task-owner-1');
-      expect(firstPendingEntry?.requestToken).toEqual(expect.any(Symbol));
-      expect(firstTimeoutId).toBeDefined();
-      expect(jest.getTimerCount()).toBe(1);
-
-      jest.advanceTimersByTime(100);
-
-      const transferRequest = task.requestMidCallSummary('TRANSFER');
-
-      jest.advanceTimersByTime(15);
-
-      await expect(transferRequest).rejects.toMatchObject(
-        createAISummaryErrorExpectation(AI_SUMMARY_ERROR_CODES.AI_SUMMARY_REQUEST_ALREADY_PENDING)
-      );
-
-      expect(adapter.sendEvent).toHaveBeenCalledTimes(1);
-      expect(getPendingRequest(coordinator, 'MID_CALL_SUMMARY', 'conversation-1')).toBe(
-        firstPendingEntry
-      );
-      expect(getPendingRequest(coordinator, 'MID_CALL_SUMMARY', 'conversation-1')?.timeoutId).toBe(
-        firstTimeoutId
-      );
-      expect(jest.getTimerCount()).toBe(1);
-      expect(metrics.trackEvent).toHaveBeenCalledTimes(1);
-      expect(metrics.trackEvent).toHaveBeenNthCalledWith(
-        1,
-        METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
-        expect.objectContaining({
-          operation: METHODS.REQUEST_MID_CALL_SUMMARY,
-          actionType: 'TRANSFER',
-          conversationId: 'conversation-1',
-          interactionId: 'interaction-1',
-          failureCode: AI_SUMMARY_ERROR_CODES.AI_SUMMARY_REQUEST_ALREADY_PENDING,
-        }),
-        ['operational']
-      );
-      expect(consultSettled).toBe(false);
-
-      jest.advanceTimersByTime(85);
-
-      expect(
-        coordinator.resolveFromRtdEvent('MID_CALL_SUMMARY', 'conversation-1', midCallResult)
-      ).toBe('resolved');
-      await expect(consultRequest).resolves.toBe(midCallResult);
-
-      expect(metrics.trackEvent).toHaveBeenCalledTimes(2);
-      expect(metrics.trackEvent).toHaveBeenNthCalledWith(
-        2,
-        METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
-        expect.objectContaining({
-          operation: METHODS.REQUEST_MID_CALL_SUMMARY,
-          actionType: 'CONSULT',
-          conversationId: 'conversation-1',
-          interactionId: 'interaction-1',
-        }),
-        ['operational']
-      );
-      expect(metrics.trackEvent.mock.invocationCallOrder[0]).toBeLessThan(
-        metrics.trackEvent.mock.invocationCallOrder[1]
-      );
-      expect(metrics.timeEvent).toHaveBeenCalledTimes(2);
-    } finally {
-      coordinator.clearAll();
-      jest.useRealTimers();
-    }
-  });
-
   it.each(summaryRequestCases.map((testCase) => [testCase.label, testCase] as const))(
     '%s request sends one outbound adapter invocation when it later fails from inbound timeout',
     async (_label, {invoke, eventName, timeoutCode}) => {
@@ -1951,93 +1764,6 @@ describe('Task AI summary APIs', () => {
         message: timeoutCode,
         data: {errorCode: timeoutCode},
       });
-    }
-  );
-
-  it.skip.each([
-    {
-      label: 'post-call',
-      invoke: (task: DummyTask) => task.requestPostCallSummary(),
-      inboundType: 'POST_CALL_SUMMARY' as const,
-      timeoutCode: AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_TIMEOUT,
-      failureMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
-      operation: METHODS.REQUEST_POST_CALL_SUMMARY,
-      latePayload: createPostCallSummaryPayload(),
-    },
-    {
-      label: 'mid-call',
-      invoke: (task: DummyTask) => task.requestMidCallSummary('CONSULT'),
-      inboundType: 'MID_CALL_SUMMARY' as const,
-      timeoutCode: AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_TIMEOUT,
-      failureMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
-      operation: METHODS.REQUEST_MID_CALL_SUMMARY,
-      actionType: 'CONSULT',
-      latePayload: createMidCallSummaryPayload(),
-    },
-  ])(
-    'rejects $label public requests at AI_SUMMARY_DURATION_MS and drops late events',
-    async ({
-      invoke,
-      inboundType,
-      timeoutCode,
-      failureMetric,
-      operation,
-      actionType,
-      latePayload,
-    }) => {
-      jest.useFakeTimers();
-      const task = new DummyTask(dummyContact, createAISummaryTaskData());
-      const metrics = spyOnAISummaryMetrics(task);
-      const {adapter, coordinator} = createRealSummaryMocks(task);
-      let settled = false;
-
-      try {
-        const publicRequest = invoke(task);
-
-        publicRequest.then(
-          () => {
-            settled = true;
-          },
-          () => {
-            settled = true;
-          }
-        );
-
-        await Promise.resolve();
-        expect(adapter.sendEvent).toHaveBeenCalledTimes(1);
-
-        jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS - 1);
-        await Promise.resolve();
-        expect(settled).toBe(false);
-        expect(metrics.trackEvent).not.toHaveBeenCalled();
-
-        jest.advanceTimersByTime(1);
-        await Promise.resolve();
-        jest.useRealTimers();
-        await flushEventLoopTurn();
-
-        const timeoutError = await publicRequest.catch((error) => error);
-
-        expect(timeoutError).toMatchObject(createAISummaryErrorExpectation(timeoutCode));
-        expect(
-          coordinator.resolveFromRtdEvent(inboundType, 'conversation-1', latePayload as any)
-        ).toBe('not-found');
-        await expect(publicRequest).rejects.toBe(timeoutError);
-        expect(metrics.trackEvent).toHaveBeenCalledTimes(1);
-        expect(metrics.trackEvent).toHaveBeenCalledWith(
-          failureMetric,
-          expect.objectContaining({
-            operation,
-            ...(actionType ? {actionType} : {}),
-            failureCode: timeoutCode,
-          }),
-          ['operational']
-        );
-        expect(metrics.timeEvent).toHaveBeenCalled();
-      } finally {
-        coordinator.clearAll();
-        jest.useRealTimers();
-      }
     }
   );
 
@@ -2136,8 +1862,6 @@ describe('Task AI summary APIs', () => {
       }),
       true
     );
-    const correlationCallsAfterRequest = (getAISummaryCorrelation as jest.Mock).mock.calls.length;
-
     const responsePayload = createPostCallResponsePayload({
       summary: {humanAuthoredSectionKeySentinel: 'human-authored-section-value-sentinel'} as any,
     });
@@ -2147,7 +1871,6 @@ describe('Task AI summary APIs', () => {
     expect(taskRegistry['interaction-1']).toBeUndefined();
     expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(1);
     expect(getFeatureEnablement).toHaveBeenCalledTimes(1);
-    expect(getAISummaryCorrelation).toHaveBeenCalledTimes(correlationCallsAfterRequest);
     expect(adapter.sendEvent).toHaveBeenCalledTimes(2);
     expect(getSummaryEventPayload(adapter, 1)).toStrictEqual({
       agentId: 'agent-1',
@@ -2432,36 +2155,6 @@ describe('Task AI summary APIs', () => {
       state: 'NOT_RECEIVED',
     });
   });
-
-  it.each([
-    ['non-empty summary', {summary: 'summary unexpectedly arrived'}],
-    ['nonzero numberOfTimesViewed', {numberOfTimesViewed: 1}],
-    ['nonzero numberOfTimesEdited', {numberOfTimesEdited: 1}],
-    ['nonzero numberOfTimesCopied', {numberOfTimesCopied: 1}],
-  ] as const)(
-    'rejects post-call NOT_RECEIVED responses with %s before transport',
-    async (_label, overrides) => {
-      const task = new DummyTask(dummyContact, createAISummaryTaskData());
-      const {adapter} = createSummaryMocks(task);
-
-      await expect(
-        task.sendPostCallSummaryResponse(
-          createPostCallResponsePayload({
-            summary: '',
-            feedback: 'none',
-            state: 'NOT_RECEIVED',
-            numberOfTimesViewed: 0,
-            numberOfTimesEdited: 0,
-            numberOfTimesCopied: 0,
-            ...overrides,
-          } as any)
-        )
-      ).rejects.toMatchObject(
-        createAISummaryErrorExpectation('AI_SUMMARY_INVALID_RESPONSE_PAYLOAD')
-      );
-      expect(adapter.sendEvent).not.toHaveBeenCalled();
-    }
-  );
 
   it('serializes mid-call response branches without transport-only invalid fields', async () => {
     const consultTask = new DummyTask(dummyContact, createAISummaryTaskData());
@@ -2799,63 +2492,6 @@ describe('Task AI summary APIs', () => {
     }
   );
 
-  it.each(['thumbs_sideways', '', 'THUMBS_UP', undefined, null, 0])(
-    'rejects invalid %p feedback before either response transport',
-    async (feedback) => {
-      const postTask = new DummyTask(dummyContact, createAISummaryTaskData());
-      const postMocks = createSummaryMocks(postTask);
-      const midTask = new DummyTask(dummyContact, createAISummaryTaskData());
-      const midMocks = createSummaryMocks(midTask);
-
-      await expect(
-        postTask.sendPostCallSummaryResponse(
-          createPostCallResponsePayload({feedback: feedback as any})
-        )
-      ).rejects.toMatchObject(
-        createAISummaryErrorExpectation('AI_SUMMARY_INVALID_RESPONSE_PAYLOAD')
-      );
-      await expect(
-        midTask.sendMidCallSummaryResponse(
-          createMidCallResponsePayload({feedback: feedback as any}),
-          'CONSULT'
-        )
-      ).rejects.toMatchObject(
-        createAISummaryErrorExpectation('AI_SUMMARY_INVALID_RESPONSE_PAYLOAD')
-      );
-      expect(postMocks.adapter.sendEvent).not.toHaveBeenCalled();
-      expect(midMocks.adapter.sendEvent).not.toHaveBeenCalled();
-    }
-  );
-
-  it.each([
-    ['numberOfTimesViewed', '2'],
-    ['numberOfTimesEdited', -1],
-    ['numberOfTimesCopied', Number.NaN],
-    ['numberOfTimesViewed', Number.POSITIVE_INFINITY],
-  ] as const)(
-    'rejects invalid %s counter value %p before either response transport',
-    async (field, value) => {
-      const postTask = new DummyTask(dummyContact, createAISummaryTaskData());
-      const postMocks = createSummaryMocks(postTask);
-      const midTask = new DummyTask(dummyContact, createAISummaryTaskData());
-      const midMocks = createSummaryMocks(midTask);
-      const overrides = {[field]: value} as any;
-
-      await expect(
-        postTask.sendPostCallSummaryResponse(createPostCallResponsePayload(overrides))
-      ).rejects.toMatchObject(
-        createAISummaryErrorExpectation('AI_SUMMARY_INVALID_RESPONSE_PAYLOAD')
-      );
-      await expect(
-        midTask.sendMidCallSummaryResponse(createMidCallResponsePayload(overrides), 'CONSULT')
-      ).rejects.toMatchObject(
-        createAISummaryErrorExpectation('AI_SUMMARY_INVALID_RESPONSE_PAYLOAD')
-      );
-      expect(postMocks.adapter.sendEvent).not.toHaveBeenCalled();
-      expect(midMocks.adapter.sendEvent).not.toHaveBeenCalled();
-    }
-  );
-
   it('forwards valid non-zero counters unchanged for both response flows', async () => {
     const counters = {
       numberOfTimesViewed: 2,
@@ -2892,176 +2528,6 @@ describe('Task AI summary APIs', () => {
     );
   });
 
-  it.each([
-    ['actionTimeStamp', '123'],
-    ['actionTimeStamp', Number.NaN],
-    ['actionTimeStamp', Number.POSITIVE_INFINITY],
-    ['actionTimeStamp', -1],
-    ['publishTimestamp', '123'],
-    ['publishTimestamp', Number.NaN],
-    ['publishTimestamp', Number.POSITIVE_INFINITY],
-    ['publishTimestamp', -1],
-  ] as const)(
-    'rejects invalid response %s value %p before either response transport',
-    async (field, value) => {
-      const postTask = new DummyTask(dummyContact, createAISummaryTaskData());
-      const postMocks = createSummaryMocks(postTask);
-      const midTask = new DummyTask(dummyContact, createAISummaryTaskData());
-      const midMocks = createSummaryMocks(midTask);
-      const overrides = {[field]: value} as any;
-
-      await expect(
-        postTask.sendPostCallSummaryResponse(createPostCallResponsePayload(overrides))
-      ).rejects.toMatchObject({
-        message: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD',
-        data: {errorCode: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD'},
-      });
-      await expect(
-        midTask.sendMidCallSummaryResponse(createMidCallResponsePayload(overrides), 'CONSULT')
-      ).rejects.toMatchObject({
-        message: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD',
-        data: {errorCode: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD'},
-      });
-      expect(postMocks.adapter.sendEvent).not.toHaveBeenCalled();
-      expect(midMocks.adapter.sendEvent).not.toHaveBeenCalled();
-    }
-  );
-
-  it('rejects invalid response payloads and invalid mid-call actions before transport', async () => {
-    const midTask = new DummyTask(dummyContact, createAISummaryTaskData());
-    const midMocks = createSummaryMocks(midTask);
-
-    await expect(
-      midTask.sendMidCallSummaryResponse(
-        {...createMidCallResponsePayload(), summaryReceived: undefined} as any,
-        'CONSULT'
-      )
-    ).rejects.toMatchObject({message: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD'});
-    await expect(
-      midTask.sendMidCallSummaryResponse(
-        {...createMidCallResponsePayload(), wrapUpCode: undefined} as any,
-        'CONSULT'
-      )
-    ).rejects.toMatchObject({message: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD'});
-    await expect(
-      midTask.sendMidCallSummaryResponse(createMidCallResponsePayload(), 'INVALID' as any)
-    ).rejects.toMatchObject({message: 'AI_SUMMARY_INVALID_ACTION_TYPE'});
-    expect(midMocks.adapter.sendEvent).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    [
-      'summaryReceived true with NOT_RECEIVED state',
-      {
-        summaryReceived: true,
-        state: 'NOT_RECEIVED',
-        summary: 'received summary',
-        numberOfTimesViewed: 1,
-        numberOfTimesEdited: 0,
-        numberOfTimesCopied: 0,
-      },
-    ],
-    ['summaryReceived false with DEFAULT state', {summaryReceived: false, state: 'DEFAULT'}],
-    ['summaryReceived false with EXCLUDED state', {summaryReceived: false, state: 'EXCLUDED'}],
-    ['NOT_RECEIVED with non-empty summary', {summaryReceived: false, summary: 'summary'}],
-    [
-      'MID_CALL_CANCELLED with non-empty summary',
-      {summaryReceived: false, state: 'MID_CALL_CANCELLED', summary: 'summary'},
-    ],
-    ['NOT_RECEIVED with viewed counter', {summaryReceived: false, numberOfTimesViewed: 1}],
-    [
-      'MID_CALL_CANCELLED with viewed counter',
-      {summaryReceived: false, state: 'MID_CALL_CANCELLED', numberOfTimesViewed: 1},
-    ],
-    ['NOT_RECEIVED with edited counter', {summaryReceived: false, numberOfTimesEdited: 1}],
-    [
-      'MID_CALL_CANCELLED with edited counter',
-      {summaryReceived: false, state: 'MID_CALL_CANCELLED', numberOfTimesEdited: 1},
-    ],
-    ['NOT_RECEIVED with copied counter', {summaryReceived: false, numberOfTimesCopied: 1}],
-    [
-      'MID_CALL_CANCELLED with copied counter',
-      {summaryReceived: false, state: 'MID_CALL_CANCELLED', numberOfTimesCopied: 1},
-    ],
-  ] as const)('rejects mid-call runtime response mismatch: %s', async (_label, overrides) => {
-    const task = new DummyTask(dummyContact, createAISummaryTaskData());
-    const {adapter} = createSummaryMocks(task);
-
-    await expect(
-      task.sendMidCallSummaryResponse(
-        createMidCallResponsePayload({
-          summaryReceived: false,
-          summary: '',
-          feedback: 'none',
-          state: 'NOT_RECEIVED',
-          numberOfTimesViewed: 0,
-          numberOfTimesEdited: 0,
-          numberOfTimesCopied: 0,
-          ...overrides,
-        } as any),
-        'CONSULT'
-      )
-    ).rejects.toMatchObject(createAISummaryErrorExpectation('AI_SUMMARY_INVALID_RESPONSE_PAYLOAD'));
-    expect(adapter.sendEvent).not.toHaveBeenCalled();
-  });
-
-  it('keeps unvalidated mid-call request actionType out of failure metrics', async () => {
-    const task = new DummyTask(dummyContact, createAISummaryTaskData());
-    const metrics = spyOnAISummaryMetrics(task);
-    const {adapter, coordinator} = createSummaryMocks(task);
-    const unvalidatedActionType = 'caller-action-type-summary-section-value-sentinel';
-
-    await expect(task.requestMidCallSummary(unvalidatedActionType as any)).rejects.toMatchObject({
-      message: 'AI_SUMMARY_INVALID_ACTION_TYPE',
-      data: {errorCode: 'AI_SUMMARY_INVALID_ACTION_TYPE'},
-    });
-
-    const serializedMetricArguments = JSON.stringify(metrics.trackEvent.mock.calls);
-    const failureMetricFields = metrics.trackEvent.mock.calls[0][1] as Record<string, unknown>;
-
-    expect(serializedMetricArguments).not.toContain(unvalidatedActionType);
-    expect(failureMetricFields).not.toHaveProperty('actionType');
-    expect(metrics.trackEvent).toHaveBeenCalledWith(
-      METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
-      expect.objectContaining({
-        operation: METHODS.REQUEST_MID_CALL_SUMMARY,
-        failureCode: 'AI_SUMMARY_INVALID_ACTION_TYPE',
-      }),
-      ['operational']
-    );
-    expect(coordinator.requestAndWaitForRtd).not.toHaveBeenCalled();
-    expect(adapter.sendEvent).not.toHaveBeenCalled();
-  });
-
-  it('keeps unvalidated mid-call response actionType out of failure metrics', async () => {
-    const task = new DummyTask(dummyContact, createAISummaryTaskData());
-    const metrics = spyOnAISummaryMetrics(task);
-    const {adapter} = createSummaryMocks(task);
-    const unvalidatedActionType = 'caller-action-type-summary-section-value-sentinel';
-
-    await expect(
-      task.sendMidCallSummaryResponse(createMidCallResponsePayload(), unvalidatedActionType as any)
-    ).rejects.toMatchObject({
-      message: 'AI_SUMMARY_INVALID_ACTION_TYPE',
-      data: {errorCode: 'AI_SUMMARY_INVALID_ACTION_TYPE'},
-    });
-
-    const serializedMetricArguments = JSON.stringify(metrics.trackEvent.mock.calls);
-    const failureMetricFields = metrics.trackEvent.mock.calls[0][1] as Record<string, unknown>;
-
-    expect(serializedMetricArguments).not.toContain(unvalidatedActionType);
-    expect(failureMetricFields).not.toHaveProperty('actionType');
-    expect(metrics.trackEvent).toHaveBeenCalledWith(
-      METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
-      expect.objectContaining({
-        operation: METHODS.SEND_MID_CALL_SUMMARY_RESPONSE,
-        failureCode: 'AI_SUMMARY_INVALID_ACTION_TYPE',
-      }),
-      ['operational']
-    );
-    expect(adapter.sendEvent).not.toHaveBeenCalled();
-  });
-
   it('maps plain adapter errors to a bounded failure code and preserves rejection identity', async () => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
     const metrics = spyOnAISummaryMetrics(task);
@@ -3089,23 +2555,6 @@ describe('Task AI summary APIs', () => {
   });
 
   it.each([
-    {
-      label: 'invalid payload',
-      expectedCode: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD',
-      configure: true,
-      payload: createPostCallResponsePayload({wrapUpCode: ''}),
-      adapterError: undefined,
-      expectAdapterCall: false,
-    },
-    {
-      label: 'correlation unavailable',
-      expectedCode: 'AI_SUMMARY_CORRELATION_NOT_AVAILABLE',
-      configure: true,
-      taskData: createAISummaryTaskData({interactionId: ''}),
-      payload: createPostCallResponsePayload(),
-      adapterError: undefined,
-      expectAdapterCall: false,
-    },
     {
       label: 'summary base URL unavailable',
       expectedCode: AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE,
@@ -3168,15 +2617,6 @@ describe('Task AI summary APIs', () => {
 
   it.each([
     {
-      label: 'correlation unavailable',
-      expectedCode: 'AI_SUMMARY_CORRELATION_NOT_AVAILABLE',
-      configure: true,
-      adapterError: undefined,
-      taskData: createAISummaryTaskData({interactionId: ''}),
-      expectAdapterCall: false,
-      includeActionType: true,
-    },
-    {
       label: 'summary base URL unavailable',
       expectedCode: AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE,
       configure: true,
@@ -3208,7 +2648,6 @@ describe('Task AI summary APIs', () => {
       taskData,
       adapterError,
       expectAdapterCall,
-      includeActionType,
     }) => {
       const responseTask = new DummyTask(dummyContact, taskData ?? createAISummaryTaskData());
       const responseMetrics = spyOnAISummaryMetrics(responseTask);
@@ -3240,7 +2679,7 @@ describe('Task AI summary APIs', () => {
         METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
         expect.objectContaining({
           operation: METHODS.SEND_MID_CALL_SUMMARY_RESPONSE,
-          ...(includeActionType ? {actionType: 'CONSULT'} : {}),
+          actionType: 'CONSULT',
           failureCode: expectedCode,
         }),
         ['operational']

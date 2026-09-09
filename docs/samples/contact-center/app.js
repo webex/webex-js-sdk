@@ -20,8 +20,6 @@ let campaignPreviewAutoAction = null; // Auto-action on timeout: ACCEPT, SKIP, R
 let outdialANIId; // Store outdial ANI ID from agent profile
 const taskCreationTimes = new Map(); // Track when tasks first appear (taskId -> timestamp)
 const summaryFeatureMap = new Map(); // interactionId -> { midCallEnabled, postCallEnabled } (populated from task:featureEnablement)
-const summaryOriginalPayload = new Map(); // prefix -> original payload (for read-only/delta)
-let incomingMidCallSummaryPayload = null; // buffered until task:assigned (mirrors desktop behaviour)
 
 let midCallSummary = {
   actionType: null,
@@ -82,6 +80,13 @@ const participantDropErrorElm = document.querySelector('#participant-drop-error'
 const customerDropDialogElm = document.querySelector('#customer-drop-dialog');
 const confirmCustomerDropElm = document.querySelector('#confirm-customer-drop');
 const cancelCustomerDropElm = document.querySelector('#cancel-customer-drop');
+const userPrefResultElm = document.getElementById('userPrefResult');
+const getUserPrefBtn = document.getElementById('getUserPrefBtn');
+const createUserPrefBtn = document.getElementById('createUserPrefBtn');
+const updateUserPrefBtn = document.getElementById('updateUserPrefBtn');
+const deleteUserPrefBtn = document.getElementById('deleteUserPrefBtn');
+const userPrefCreateDialog = document.getElementById('userPrefCreateDialog');
+const userPrefUpdateDialog = document.getElementById('userPrefUpdateDialog');
 
 let participantDropTaskId;
 let pendingParticipantDrop;
@@ -829,13 +834,14 @@ function renderSummaryText(payload) {
 
 function wireSummaryListeners(task) {
   task.on('task:midCallSummaryForReceivingAgent', (payload) => {
-    if (!renderSummaryText(payload)) {
-      console.warn('[Receiving agent] Ignoring mid-call summary with no non-empty sections or summary text');
-      return;
-    }
+    const block = document.getElementById('incoming-summary-block');
+    const element = document.getElementById('incoming-summary-text');
+    const summaryText = renderSummaryText(payload);
 
-    console.info('[Receiving agent] mid-call summary buffered, waiting for task:assigned');
-    incomingMidCallSummaryPayload = payload;
+    if (block && element) {
+      element.textContent = summaryText;
+      block.style.display = summaryText ? '' : 'none';
+    }
   });
 
   task.on('task:featureEnablement', (payload) => {
@@ -956,7 +962,6 @@ function renderSummarySection(prefix, payload) {
   const container = document.getElementById(`${prefix}-sections`);
   if (!container) return;
   container.innerHTML = '';
-  summaryOriginalPayload.set(prefix, payload);
 
   const editBtn = document.createElement('button');
   editBtn.type = 'button';
@@ -1026,10 +1031,10 @@ function applySuggestedWrapUpCodes(suggestedCodes) {
 }
 
 function clearSummarySection(prefix) {
+  getSummaryState(prefix).payload = null;
   const container = document.getElementById(`${prefix}-sections`);
   if (!container) return;
   container.innerHTML = '';
-  summaryOriginalPayload.delete(prefix);
 }
 
 function dismissAllSummaryUI() {
@@ -1037,7 +1042,6 @@ function dismissAllSummaryUI() {
   clearSummarySection('transfer-summary');
   clearSummarySection('postcall-summary');
 
-  incomingMidCallSummaryPayload = null;
   const incomingText = document.getElementById('incoming-summary-text');
   if (incomingText) incomingText.textContent = '';
 
@@ -1057,7 +1061,7 @@ function dismissAllSummaryUI() {
 }
 
 function getSummaryText(prefix) {
-  const original = summaryOriginalPayload.get(prefix);
+  const original = getSummaryState(prefix).payload;
   const fields = extractSummarySections(original);
   if (fields.length > 0) {
     return fields
@@ -1076,7 +1080,7 @@ function getSummaryText(prefix) {
 }
 
 function buildSummaryPayload(prefix) {
-  const original = summaryOriginalPayload.get(prefix);
+  const original = getSummaryState(prefix).payload;
   const fields = extractSummarySections(original);
   if (fields.length > 0) {
     const originalFields = extractSummarySections(original);
@@ -1104,6 +1108,10 @@ function isSummaryEdited(prefix, originalPayload) {
   }
   const ta = document.getElementById(`${prefix}-text`);
   return ta ? ta.value !== renderSummaryText(originalPayload) : false;
+}
+
+function getSummaryState(prefix) {
+  return prefix === 'postcall-summary' ? postCallSummary : midCallSummary;
 }
 
 async function getQueueListForTelephonyChannel() {
@@ -2806,20 +2814,6 @@ function registerTaskListeners(task) {
     updateTaskList();
     console.info('Call has been accepted for task: ', task.data.interactionId);
     handleTaskSelect(task);
-
-    if (incomingMidCallSummaryPayload) {
-      const block = document.getElementById('incoming-summary-block');
-      const el = document.getElementById('incoming-summary-text');
-      const incomingSummaryText = renderSummaryText(incomingMidCallSummaryPayload);
-      if (block && el && incomingSummaryText) {
-        el.textContent = incomingSummaryText;
-        block.style.display = '';
-      } else if (block && el) {
-        el.textContent = '';
-        block.style.display = 'none';
-      }
-      incomingMidCallSummaryPayload = null;
-    }
   });
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
@@ -4873,14 +4867,6 @@ bindSummaryControls('postcall-summary', postCallSummary);
 updateApplyButtonState();
 
 // ==================== User Preferences API ====================
-
-const userPrefResultElm = document.getElementById('userPrefResult');
-const getUserPrefBtn = document.getElementById('getUserPrefBtn');
-const createUserPrefBtn = document.getElementById('createUserPrefBtn');
-const updateUserPrefBtn = document.getElementById('updateUserPrefBtn');
-const deleteUserPrefBtn = document.getElementById('deleteUserPrefBtn');
-const userPrefCreateDialog = document.getElementById('userPrefCreateDialog');
-const userPrefUpdateDialog = document.getElementById('userPrefUpdateDialog');
 
 function enableUserPreferenceButtons(enabled) {
   getUserPrefBtn.disabled = !enabled;

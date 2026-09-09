@@ -21,7 +21,6 @@ import {
   VOICE_VARIANT,
   CallId,
   AISummaryActionType,
-  AISummaryFeedback,
   PostCallSummaryEventPayload,
   MidCallSummaryEventPayload,
   PostCallSummaryResponsePayload,
@@ -30,21 +29,10 @@ import {
   GeneratedSummaryFlagsAccessor,
   AISummaryAdapter,
   AISummaryResponseContext,
-  AISummaryInboundType,
-  AISummaryPayloadByInboundType,
-  AISummaryTimeoutCodeByInboundType,
   TaskToggleMuteOptions,
   TaskTransmitDtmfOptions,
 } from './types';
-import {
-  AI_SUMMARY_TASK_ERROR_CODES,
-  AI_SUMMARY_DURATION_MS,
-  ENTRY_POINT_TRANSFER_DESTINATION_TYPE,
-  POST_CALL_SUMMARY_STATES,
-  MID_CALL_SUMMARY_RECEIVED_STATES,
-  MID_CALL_SUMMARY_UNAVAILABLE_STATES,
-  METHODS,
-} from './constants';
+import {AI_SUMMARY_DURATION_MS, ENTRY_POINT_TRANSFER_DESTINATION_TYPE, METHODS} from './constants';
 import {
   AI_ASSISTANT_CLIENT_TYPE,
   AI_SUMMARY_ERROR_CODES,
@@ -56,12 +44,6 @@ import routingContact from './contact';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import LoggerProxy from '../../logger-proxy';
-import {
-  AI_SUMMARY_FEEDBACK_VALUES,
-  createSummaryError,
-  isFiniteNonNegativeNumber,
-  isNonEmptyString,
-} from '../AISummaryUtils';
 import {createTaskStateMachine, TaskState} from './state-machine';
 import type {
   TaskEventPayload,
@@ -79,11 +61,13 @@ import {
 import AutoWrapup from './AutoWrapup';
 import {WrapupData} from '../config/types';
 import {AIAssistantEventName, AIAssistantEventType} from '../../types';
-import {getAISummaryCorrelation} from './TaskUtils';
+import {createSummaryError} from './TaskUtils';
 
 type UIControlConfigInput = Omit<UIControlConfig, 'channelType'> & {
   channelType?: UIControlConfig['channelType'];
 };
+
+const AI_SUMMARY_INVALID_RESPONSE_PAYLOAD = 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD';
 
 export default abstract class Task extends EventEmitter implements ITask {
   protected contact: ReturnType<typeof routingContact>;
@@ -286,7 +270,8 @@ export default abstract class Task extends EventEmitter implements ITask {
         METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
         METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
       ]);
-      const {conversationId, interactionId} = getAISummaryCorrelation(this.data);
+      const interactionId = this.data.interactionId;
+      const conversationId = this.data.interaction?.mainInteractionId || interactionId;
       Object.assign(metricFields, {conversationId, interactionId});
 
       const organizationEnabled =
@@ -300,13 +285,24 @@ export default abstract class Task extends EventEmitter implements ITask {
         throw createSummaryError(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED);
       }
 
-      const result = await this.requestAISummary(
-        'POST_CALL_SUMMARY',
-        'POST_CALL_SUMMARY_TIMEOUT',
-        conversationId,
+      const result = await (
+        this.aiSummaryAdapter as AISummaryAdapter
+      ).requestAndWaitForRtd<PostCallSummaryEventPayload>({
+        correlationId: conversationId,
+        rtdEventType: 'POST_CALL_SUMMARY',
+        timeoutMs: AI_SUMMARY_DURATION_MS,
+        createTimeoutError: () =>
+          createSummaryError(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_TIMEOUT),
+        agentId: this.agentId as string,
         interactionId,
-        AIAssistantEventName.GET_POST_CALL_SUMMARY
-      );
+        eventType: AIAssistantEventType.CTI_EVENT,
+        eventName: AIAssistantEventName.GET_POST_CALL_SUMMARY,
+        eventMetaData: {
+          conversationId,
+          clientType: AI_ASSISTANT_CLIENT_TYPE,
+        },
+        timeout: AI_SUMMARY_DURATION_MS,
+      });
 
       this.postCallSummaryResponseContext = {conversationId, interactionId};
 
@@ -341,8 +337,10 @@ export default abstract class Task extends EventEmitter implements ITask {
         METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
         METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
       ]);
-      Task.validatePostCallSummaryResponsePayload(payload);
-      const context = this.postCallSummaryResponseContext ?? getAISummaryCorrelation(this.data);
+      const context = this.postCallSummaryResponseContext ?? {
+        conversationId: this.data.interaction?.mainInteractionId || this.data.interactionId,
+        interactionId: this.data.interactionId,
+      };
       Object.assign(metricFields, {
         conversationId: context.conversationId,
         interactionId: context.interactionId,
@@ -416,12 +414,9 @@ export default abstract class Task extends EventEmitter implements ITask {
         METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
         METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
       ]);
-      if (!Task.isValidAISummaryActionType(actionType)) {
-        throw createSummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
-      }
-
       Object.assign(metricFields, {actionType});
-      const {conversationId, interactionId} = getAISummaryCorrelation(this.data);
+      const interactionId = this.data.interactionId;
+      const conversationId = this.data.interaction?.mainInteractionId || interactionId;
       Object.assign(metricFields, {conversationId, interactionId});
 
       const organizationEnabled =
@@ -435,15 +430,27 @@ export default abstract class Task extends EventEmitter implements ITask {
         throw createSummaryError(AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED);
       }
 
-      const result = await this.requestAISummary(
-        'MID_CALL_SUMMARY',
-        'MID_CALL_SUMMARY_TIMEOUT',
-        conversationId,
+      const result = await (
+        this.aiSummaryAdapter as AISummaryAdapter
+      ).requestAndWaitForRtd<MidCallSummaryEventPayload>({
+        correlationId: conversationId,
+        rtdEventType: 'MID_CALL_SUMMARY',
+        timeoutMs: AI_SUMMARY_DURATION_MS,
+        createTimeoutError: () =>
+          createSummaryError(AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_TIMEOUT),
+        agentId: this.agentId as string,
         interactionId,
-        actionType === 'CONSULT'
-          ? AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY
-          : AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY
-      );
+        eventType: AIAssistantEventType.CTI_EVENT,
+        eventName:
+          actionType === 'CONSULT'
+            ? AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY
+            : AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY,
+        eventMetaData: {
+          conversationId,
+          clientType: AI_ASSISTANT_CLIENT_TYPE,
+        },
+        timeout: AI_SUMMARY_DURATION_MS,
+      });
 
       this.midCallSummaryResponseContext = {conversationId, interactionId};
 
@@ -481,13 +488,11 @@ export default abstract class Task extends EventEmitter implements ITask {
         METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
         METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
       ]);
-      if (!Task.isValidAISummaryActionType(actionType)) {
-        throw createSummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_ACTION_TYPE);
-      }
-
       Object.assign(metricFields, {actionType});
-      Task.validateMidCallSummaryResponsePayload(payload);
-      const context = this.midCallSummaryResponseContext ?? getAISummaryCorrelation(this.data);
+      const context = this.midCallSummaryResponseContext ?? {
+        conversationId: this.data.interaction?.mainInteractionId || this.data.interactionId,
+        interactionId: this.data.interactionId,
+      };
       Object.assign(metricFields, {
         conversationId: context.conversationId,
         interactionId: context.interactionId,
@@ -550,155 +555,7 @@ export default abstract class Task extends EventEmitter implements ITask {
       return errorCode;
     }
 
-    return AI_SUMMARY_TASK_ERROR_CODES.INVALID_RESPONSE_PAYLOAD;
-  }
-
-  private static isPlainSummary(value: unknown): value is string | Record<string, unknown> {
-    return (
-      typeof value === 'string' ||
-      (Boolean(value) && typeof value === 'object' && !Array.isArray(value))
-    );
-  }
-
-  private static hasValidCounters(payload: Record<string, unknown>): boolean {
-    return (
-      isFiniteNonNegativeNumber(payload.numberOfTimesViewed) &&
-      isFiniteNonNegativeNumber(payload.numberOfTimesEdited) &&
-      isFiniteNonNegativeNumber(payload.numberOfTimesCopied)
-    );
-  }
-
-  private static hasZeroCounters(payload: Record<string, unknown>): boolean {
-    return (
-      payload.numberOfTimesViewed === 0 &&
-      payload.numberOfTimesEdited === 0 &&
-      payload.numberOfTimesCopied === 0
-    );
-  }
-
-  private static hasValidOptionalTimestamps(payload: Record<string, unknown>): boolean {
-    return (
-      (payload.actionTimeStamp === undefined ||
-        isFiniteNonNegativeNumber(payload.actionTimeStamp)) &&
-      (payload.publishTimestamp === undefined ||
-        isFiniteNonNegativeNumber(payload.publishTimestamp))
-    );
-  }
-
-  private static isSummaryResponseRecord(payload: unknown): payload is Record<string, unknown> {
-    return Boolean(payload) && typeof payload === 'object' && !Array.isArray(payload);
-  }
-
-  private static hasValidSummaryResponseCommonFields(payload: Record<string, unknown>): boolean {
-    return (
-      AI_SUMMARY_FEEDBACK_VALUES.has(payload.feedback as AISummaryFeedback) &&
-      Task.hasValidOptionalTimestamps(payload)
-    );
-  }
-
-  private static throwInvalidSummaryResponse(): never {
-    throw createSummaryError(AI_SUMMARY_TASK_ERROR_CODES.INVALID_RESPONSE_PAYLOAD);
-  }
-
-  private static isValidAISummaryActionType(
-    actionType: unknown
-  ): actionType is AISummaryActionType {
-    return actionType === 'CONSULT' || actionType === 'TRANSFER';
-  }
-
-  private async requestAISummary<T extends AISummaryInboundType>(
-    inboundType: T,
-    timeoutCode: AISummaryTimeoutCodeByInboundType[T],
-    conversationId: string,
-    interactionId: string,
-    eventName: AIAssistantEventName
-  ): Promise<AISummaryPayloadByInboundType[T]> {
-    return (this.aiSummaryAdapter as AISummaryAdapter).requestAndWaitForRtd({
-      correlationId: conversationId,
-      rtdEventType: inboundType,
-      timeoutMs: AI_SUMMARY_DURATION_MS,
-      createTimeoutError: () => createSummaryError(timeoutCode),
-      agentId: this.agentId as string,
-      interactionId,
-      eventType: AIAssistantEventType.CTI_EVENT,
-      eventName,
-      eventMetaData: {
-        conversationId,
-        clientType: AI_ASSISTANT_CLIENT_TYPE,
-      },
-      timeout: AI_SUMMARY_DURATION_MS,
-    });
-  }
-
-  private static validatePostCallSummaryResponsePayload(
-    payload: PostCallSummaryResponsePayload
-  ): void {
-    const candidate = payload as unknown as Record<string, unknown>;
-
-    if (!Task.isSummaryResponseRecord(candidate)) {
-      Task.throwInvalidSummaryResponse();
-    }
-
-    const hasValidCommonFields =
-      Task.hasValidSummaryResponseCommonFields(candidate) &&
-      POST_CALL_SUMMARY_STATES.has(candidate.state as string) &&
-      isNonEmptyString(candidate.wrapUpCode);
-
-    if (!hasValidCommonFields) {
-      Task.throwInvalidSummaryResponse();
-    }
-
-    if (candidate.state === 'NOT_RECEIVED') {
-      if (candidate.summary !== '' || !Task.hasZeroCounters(candidate)) {
-        Task.throwInvalidSummaryResponse();
-      }
-
-      return;
-    }
-
-    if (!Task.isPlainSummary(candidate.summary) || !Task.hasValidCounters(candidate)) {
-      Task.throwInvalidSummaryResponse();
-    }
-  }
-
-  private static validateMidCallSummaryResponsePayload(
-    payload: MidCallSummaryResponsePayload
-  ): void {
-    const candidate = payload as unknown as Record<string, unknown>;
-
-    if (
-      !Task.isSummaryResponseRecord(candidate) ||
-      Object.prototype.hasOwnProperty.call(candidate, 'wrapUpCode') ||
-      (candidate.summaryReceived !== true && candidate.summaryReceived !== false)
-    ) {
-      Task.throwInvalidSummaryResponse();
-    }
-
-    const hasValidCommonFields = Task.hasValidSummaryResponseCommonFields(candidate);
-
-    if (!hasValidCommonFields) {
-      Task.throwInvalidSummaryResponse();
-    }
-
-    if (candidate.summaryReceived === false) {
-      if (
-        !MID_CALL_SUMMARY_UNAVAILABLE_STATES.has(candidate.state as string) ||
-        candidate.summary !== '' ||
-        !Task.hasZeroCounters(candidate)
-      ) {
-        Task.throwInvalidSummaryResponse();
-      }
-
-      return;
-    }
-
-    if (
-      !MID_CALL_SUMMARY_RECEIVED_STATES.has(candidate.state as string) ||
-      !Task.isPlainSummary(candidate.summary) ||
-      !Task.hasValidCounters(candidate)
-    ) {
-      Task.throwInvalidSummaryResponse();
-    }
+    return AI_SUMMARY_INVALID_RESPONSE_PAYLOAD;
   }
 
   /**

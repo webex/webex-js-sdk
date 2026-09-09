@@ -13,7 +13,6 @@ The Core service provides the foundational infrastructure layer that all other s
 - **WebSocket Communication**: Real-time bidirectional messaging with the contact center backend, including automatic reconnection and keepalive management
 - **HTTP Request Handling**: Authenticated REST API calls to WCC API Gateway with built-in error handling and log upload support
 - **AQM Request/Response Pattern**: A structured pattern used by the routing and contact layers to send HTTP requests to the contact center backend and correlate responses/failures via WebSocket notifications
-- **RTD Request/Response Pattern**: A shared Promise resolver for HTTP acknowledgements completed by matching RTD events
 - **Error Handling & Logging**: Standardized error extraction, logging via `LoggerProxy`, and log upload utilities that all services use for consistent error reporting
 
 | Component | File | Description |
