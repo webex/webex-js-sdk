@@ -51,8 +51,6 @@ const jestConfig = {
     '^uuid$': 'uuid',
     '^@webex/media-helpers$': '<rootDir>/../../node_modules/@webex/media-helpers/src/index.ts',
     '^@webex/internal-plugin-metrics$': '<rootDir>/test/mocks/internal-plugin-metrics-stub.js',
-    '^@webex/internal-plugin-device$': '<rootDir>/test/mocks/empty-stub.js',
-    '^@webex/internal-plugin-feature$': '<rootDir>/test/mocks/empty-stub.js',
     '^@webex/(test-helper-[^/]+)$': '<rootDir>/../../node_modules/@webex/$1/src/index.js',
     '^@webex/common$': '<rootDir>/../../node_modules/@webex/common/src/index.js',
     '^@webex/common-timers$': '<rootDir>/../../node_modules/@webex/common-timers/src/index.ts',

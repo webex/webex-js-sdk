@@ -128,7 +128,7 @@ import {
   WEBEX_API_PROD,
   WEBEX_API_BTS,
   BW_XSI_ENDPOINT_VERSION_WITH_SLASH,
-  MOBIUS_WSS_ALLOWED_DOMAINS,
+  isMobiusWssHostAllowed,
 } from './constants';
 import {Model, WDMDevice, WebexSDK} from '../SDKConnector/types';
 import SDKConnector from '../SDKConnector';
@@ -144,11 +144,7 @@ import {LineError, createLineError} from '../Errors/catalog/LineError';
  */
 function isTrustedMobiusWssHost(wssUri: string): boolean {
   try {
-    const host = new URL(wssUri).hostname;
-
-    return MOBIUS_WSS_ALLOWED_DOMAINS.some(
-      (domain) => host === domain || host.endsWith(`.${domain}`)
-    );
+    return isMobiusWssHostAllowed(new URL(wssUri).hostname);
   } catch {
     return false;
   }

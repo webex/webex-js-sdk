@@ -62,6 +62,17 @@ export const MOBIUS_WSS_ALLOWED_DOMAINS: readonly string[] = [
   'webexapis.com',
   'cisco.com',
 ];
+
+/**
+ * Shared predicate for the Mobius WSS host allowlist (AC-2). Used by both
+ * `Socket#open` and `filterMobiusUris` so the two enforcement points cannot
+ * drift apart.
+ */
+export function isMobiusWssHostAllowed(host: string): boolean {
+  return MOBIUS_WSS_ALLOWED_DOMAINS.some(
+    (domain) => host === domain || host.endsWith(`.${domain}`)
+  );
+}
 export const WEBEX_API_CONFIG_INT_URL = `${WEBEX_API_BTS}/v1/uc/config`;
 export const WEBEX_API_CONFIG_PROD_URL = `${WEBEX_API_PROD}/v1/uc/config`;
 export const WEBEX_API_CONFIG_FEDRAMP_URL = `${WEBEX_API_FEDRAMP}/v1/uc/config`;
