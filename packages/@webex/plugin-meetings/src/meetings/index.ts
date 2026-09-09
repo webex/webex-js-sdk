@@ -1982,7 +1982,7 @@ export default class Meetings extends WebexPlugin {
       );
 
       // Locus rejects getActiveMeetings() for unverified guests, so the per-meeting sync below
-      // (with syncClassicLocus enabled) resyncs each classic meeting individually instead.
+      // (with canSyncClassicLocus enabled) resyncs each classic meeting individually instead.
     } else {
       try {
         const locusArray = await this.request.getActiveMeetings();
@@ -2046,8 +2046,8 @@ export default class Meetings extends WebexPlugin {
       if (meeting.locusInfo) {
         syncPromises.push(
           meeting.locusInfo.sync(meeting, {
-            syncClassicLocus: isUnverifiedGuest,
-            syncHashTree: !skipHashTreeSync,
+            canSyncClassicLocus: isUnverifiedGuest,
+            canSyncHashTree: !skipHashTreeSync,
           })
         );
       }

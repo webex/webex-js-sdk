@@ -321,6 +321,15 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
+   * Whether this meeting uses hash tree based Locus (as opposed to a classic, delta based Locus).
+   *
+   * @returns {boolean}
+   */
+  isUsingHashTrees(): boolean {
+    return this.hashTreeParsers.size > 0;
+  }
+
+  /**
    * Does a Locus sync. It tries to get the latest delta DTO or if it can't, it falls back to getting the full Locus DTO.
    * WARNING: This function must not be used for hash tree based Locus meetings.
    *
@@ -495,22 +504,24 @@ export default class LocusInfo extends EventsScope {
    *
    * The classic path is only needed when Meetings#syncMeetings() can't do its usual
    * getActiveMeetings() fetch (e.g. unverified guests, for whom Locus rejects that call); signed-in
-   * users resync classic meetings via getActiveMeetings() and pass syncClassicLocus as false.
+   * users resync classic meetings via getActiveMeetings() and pass canSyncClassicLocus as false.
    *
    * @param {Meeting} meeting
    * @param {Object} options
-   * @param {boolean} options.syncClassicLocus - fetch a standalone Locus DTO for classic meetings
-   * @param {boolean} options.syncHashTree - sync hash tree datasets for hash tree based meetings
+   * @param {boolean} options.canSyncClassicLocus - whether this sync is allowed to fetch a
+   *   standalone Locus DTO for classic meetings
+   * @param {boolean} options.canSyncHashTree - whether this sync is allowed to sync hash tree
+   *   datasets for hash tree based meetings
    * @returns {Promise<void>} resolves once the sync (hash tree or classic) completes; for the
    *   classic path it rejects if the sync fails, so the caller can retry
    */
   async sync(
     meeting: any,
-    {syncClassicLocus, syncHashTree}: {syncClassicLocus: boolean; syncHashTree: boolean}
+    {canSyncClassicLocus, canSyncHashTree}: {canSyncClassicLocus: boolean; canSyncHashTree: boolean}
   ): Promise<void> {
-    if (this.hashTreeParsers.size > 0) {
+    if (this.isUsingHashTrees()) {
       // hash tree based meeting: doLocusSync must not be used, sync the hash tree datasets instead
-      if (syncHashTree) {
+      if (canSyncHashTree) {
         await this.syncAllHashTreeDatasets();
       }
 
@@ -519,7 +530,7 @@ export default class LocusInfo extends EventsScope {
 
     // classic (non hash tree) meeting: only sync if there's a Locus URL to fetch against, otherwise
     // getLocusDTO() would reject and doLocusSync() would destroy the (e.g. not-yet-joined) meeting
-    if (syncClassicLocus && meeting.locusUrl) {
+    if (canSyncClassicLocus && meeting.locusUrl) {
       // Pause the parser so in-flight deltas don't race the DTO fetch; doLocusSync() resumes it.
       this.locusParser.pause();
       // destroyOnTransientFailure: false so a transient failure preserves the meeting and rejects,
@@ -851,7 +862,7 @@ export default class LocusInfo extends EventsScope {
       ? (responseBody as {locus: LocusDTO}).locus
       : (responseBody as LocusDTO);
 
-    if (this.hashTreeParsers.size > 0) {
+    if (this.isUsingHashTrees()) {
       // We are in hash tree mode. Check if we need to create/reactivate a parser for this locusUrl.
       if (!hashTreeParserEntry || hashTreeParserEntry.parser.state === 'stopped') {
         if (!locusUrl) {
@@ -1496,7 +1507,7 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   parse(meeting: any, data: any) {
-    if (this.hashTreeParsers.size > 0) {
+    if (this.isUsingHashTrees()) {
       if (data.eventType === LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS) {
         // sync meetings response follows the format of "not wrapped" locus API responses,
         // so has no dataSets nor Metadata

@@ -1480,7 +1480,7 @@ describe('plugin-meetings', () => {
         it('should have #syncMeetings', () => {
           assert.exists(webex.meetings.syncMeetings);
         });
-        it('should skip getActiveMeetings but still sync each meeting with syncClassicLocus enabled if unverified guest', async () => {
+        it('should skip getActiveMeetings but still sync each meeting with canSyncClassicLocus enabled if unverified guest', async () => {
           webex.meetings.request.getActiveMeetings = sinon.stub().returns(
             Promise.resolve({
               loci: [
@@ -1511,8 +1511,8 @@ describe('plugin-meetings', () => {
             'Meetings:index#syncMeetings --> user is unverified guest, skipping calling Locus for meeting sync'
           );
           assert.calledOnceWithExactly(mockLocusInfo.sync, meeting1, {
-            syncClassicLocus: true,
-            syncHashTree: true,
+            canSyncClassicLocus: true,
+            canSyncHashTree: true,
           });
         });
         describe('succesful requests', () => {
@@ -1545,7 +1545,7 @@ describe('plugin-meetings', () => {
               assert.calledOnceWithExactly(
                 locusInfo.sync,
                 {locusInfo, locusUrl: url1},
-                {syncClassicLocus: false, syncHashTree: true}
+                {canSyncClassicLocus: false, canSyncHashTree: true}
               );
             });
           });
@@ -1728,7 +1728,7 @@ describe('plugin-meetings', () => {
         });
 
         describe('skipHashTreeSync parameter', () => {
-          it('should pass syncHashTree:false to locusInfo.sync when skipHashTreeSync is true', async () => {
+          it('should pass canSyncHashTree:false to locusInfo.sync when skipHashTreeSync is true', async () => {
             const mockLocusInfo = {
               sync: sinon.stub().resolves(),
             };
@@ -1743,12 +1743,12 @@ describe('plugin-meetings', () => {
 
             assert.calledOnce(webex.meetings.request.getActiveMeetings);
             assert.calledOnceWithExactly(mockLocusInfo.sync, meeting1, {
-              syncClassicLocus: false,
-              syncHashTree: false,
+              canSyncClassicLocus: false,
+              canSyncHashTree: false,
             });
           });
 
-          it('should pass syncHashTree:true to locusInfo.sync when skipHashTreeSync is false (default)', async () => {
+          it('should pass canSyncHashTree:true to locusInfo.sync when skipHashTreeSync is false (default)', async () => {
             const mockLocusInfo = {
               sync: sinon.stub().resolves(),
             };
@@ -1763,8 +1763,8 @@ describe('plugin-meetings', () => {
 
             assert.calledOnce(webex.meetings.request.getActiveMeetings);
             assert.calledOnceWithExactly(mockLocusInfo.sync, meeting1, {
-              syncClassicLocus: false,
-              syncHashTree: true,
+              canSyncClassicLocus: false,
+              canSyncHashTree: true,
             });
           });
         });
@@ -1788,8 +1788,16 @@ describe('plugin-meetings', () => {
 
             await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false});
 
-            assert.calledOnce(mockLocusInfo1.sync);
-            assert.calledOnce(mockLocusInfo2.sync);
+            assert.calledOnceWithExactly(
+              mockLocusInfo1.sync,
+              {locusInfo: mockLocusInfo1},
+              {canSyncClassicLocus: false, canSyncHashTree: true}
+            );
+            assert.calledOnceWithExactly(
+              mockLocusInfo2.sync,
+              {locusInfo: mockLocusInfo2},
+              {canSyncClassicLocus: false, canSyncHashTree: true}
+            );
           });
 
           it('should not call locusInfo.sync when getActiveMeetings throws an error', async () => {
