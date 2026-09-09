@@ -523,8 +523,9 @@ describe('plugin-meetings', () => {
 
           await webinar.cleanupPSDataChannel();
 
-          // Should not throw and should complete successfully
           assert.notCalled(mockPSChannel.disconnect);
+          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, meeting.llmChannel);
+          assert.calledOnceWithExactly(meeting.startTranscriptionIfNeeded);
         });
 
         it('switches voicea channel back to main meeting LLM channel when main channel is connected', async () => {

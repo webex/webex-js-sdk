@@ -145,8 +145,8 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
     // Remove any pending online listener
     this.detachPendingOnline();
 
-    if (this.hasSubscribedToEvents && this.llmChannel) {
-      this.llmChannel.off('event:relay.event', this.eventProcessor);
+    if (this.hasSubscribedToEvents) {
+      this.llmChannel?.off('event:relay.event', this.eventProcessor);
       this.hasSubscribedToEvents = false;
     }
 
@@ -200,11 +200,11 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
    * This is idempotent - always re-reads targetLLMChannel and current state.
    * A deferred 'online' callback that fires late self-corrects automatically.
    * @private
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  private reconcile(): void {
+  private reconcile(): Promise<void> {
     const target = this.targetLLMChannel;
-    if (!target) return;
+    if (!target) return Promise.resolve();
 
     // 1. Rebind relay-event subscription if actual != desired
     if (this.llmChannel !== target) {
@@ -221,19 +221,25 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
     }
 
     // 2. Restore captions if pending
-    if (!this._pendingCaptionRestore) return;
+    if (!this._pendingCaptionRestore) return Promise.resolve();
 
     if (this.isLLMConnected()) {
       // Channel is connected, restore captions immediately
       this._pendingCaptionRestore = false;
-      this.turnOnCaptions(this.currentSpokenLanguage).catch(() => {
-        // Best-effort restoration
-      });
-    } else {
-      // Channel not yet connected - defer until 'online' then re-reconcile.
-      // If target changes meanwhile, reconcile() self-corrects.
-      this.attachPendingOnline(target, () => this.reconcile());
+
+      return this.turnOnCaptions(this.currentSpokenLanguage)
+        .then(() => undefined)
+        .catch(() => {
+          // Best-effort restoration
+        });
     }
+    // Channel not yet connected - defer until 'online' then re-reconcile.
+    // If target changes meanwhile, reconcile() self-corrects.
+    this.attachPendingOnline(target, () => {
+      this.reconcile();
+    });
+
+    return Promise.resolve();
   }
 
   /**
@@ -243,9 +249,10 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
    * @param {LLMChannel} newLLMChannel - The new LLM channel to switch to
    * @returns {Promise<void>}
    */
-  public async switchLLMChannel(newLLMChannel: LLMChannel): Promise<void> {
+  public switchLLMChannel(newLLMChannel: LLMChannel): Promise<void> {
     this.targetLLMChannel = newLLMChannel;
-    this.reconcile();
+
+    return this.reconcile();
   }
 
   /**
@@ -553,9 +560,9 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
         this.announce();
         this.updateSubchannelSubscriptionsAndSyncCaptionState({subscribe: ['transcription']}, true);
       })
-      .catch(() => {
+      .catch((error) => {
         this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
-        throw new Error('turn on captions fail');
+        throw new Error('turn on captions fail', {cause: error});
       });
   };
 
@@ -599,7 +606,7 @@ export class VoiceaChannel extends EventEmitter implements IVoiceaChannel {
    * @returns {Promise}
    */
   public turnOnCaptions = async (spokenLanguage?: string): Promise<void | undefined> => {
-    if (this.captionStatus === TURN_ON_CAPTION_STATUS.SENDING) return undefined;
+    if (this.isCaptionProcessing()) return undefined;
 
     if (!this.isLLMConnected()) {
       throw new Error('can not turn on captions before llm connected');

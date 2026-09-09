@@ -232,6 +232,7 @@ const Webinar = WebexPlugin.extend({
       // Even without PS channel, ensure voicea is bound to main channel
       if (meeting?.voiceaChannel && meeting?.llmChannel) {
         await meeting.voiceaChannel.switchLLMChannel(meeting.llmChannel);
+        meeting.startTranscriptionIfNeeded();
       }
 
       return;

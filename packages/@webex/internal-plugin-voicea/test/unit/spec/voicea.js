@@ -210,12 +210,14 @@ describe('plugin-voicea', () => {
         const channelWithoutLLM = new VoiceaChannel(undefined, requestStub);
         channelWithoutLLM.areCaptionsEnabled = true;
         channelWithoutLLM.keepTranscriptionSubscribed = true;
+        channelWithoutLLM.hasSubscribedToEvents = true;
 
         // Should not throw
         channelWithoutLLM.deregisterEvents();
 
         assert.equal(channelWithoutLLM.areCaptionsEnabled, false);
         assert.equal(channelWithoutLLM.keepTranscriptionSubscribed, false);
+        assert.equal(channelWithoutLLM.hasSubscribedToEvents, false);
       });
 
       it('deregisters voicea channel and resets state', () => {
@@ -413,10 +415,25 @@ describe('plugin-voicea', () => {
         assert.equal(result, undefined);
       });
 
-      it('throws error on request failure', async () => {
-        requestStub.rejects(new Error('Request failed'));
+      it('returns undefined when already enabled', async () => {
+        voiceaChannel.captionStatus = 'enabled';
 
-        await assert.isRejected(voiceaChannel.turnOnCaptions(), 'turn on captions fail');
+        const result = await voiceaChannel.turnOnCaptions();
+
+        assert.equal(result, undefined);
+        assert.notCalled(requestStub);
+      });
+
+      it('throws error on request failure', async () => {
+        const requestError = new Error('Request failed');
+        requestStub.rejects(requestError);
+
+        const error = await assert.isRejected(
+          voiceaChannel.turnOnCaptions(),
+          'turn on captions fail'
+        );
+
+        assert.equal(error.cause, requestError);
       });
 
       it('resets caption status to idle on error', async () => {
@@ -971,9 +988,6 @@ describe('plugin-voicea', () => {
 
         await voiceaChannel.switchLLMChannel(newMockLLMChannel);
 
-        // Wait for fire-and-forget turnOnCaptions to complete
-        await new Promise((resolve) => setTimeout(resolve, 0));
-
         // Should have unsubscribed from old channel
         assert.calledWith(mockLLMChannel.off, 'event:relay.event', sinon.match.func);
 
@@ -1001,6 +1015,32 @@ describe('plugin-voicea', () => {
           },
           trackingId: sinon.match.string,
         });
+      });
+
+      it('resolves after caption restoration completes', async () => {
+        let resolveRequest;
+        requestStub.returns(
+          new Promise((resolve) => {
+            resolveRequest = resolve;
+          })
+        );
+        voiceaChannel.keepTranscriptionSubscribed = true;
+
+        const newMockLLMChannel = createMockLLMChannel({locusUrl: 'newLocusUrl'});
+        const switchPromise = voiceaChannel.switchLLMChannel(newMockLLMChannel);
+        let hasSwitchResolved = false;
+        switchPromise.then(() => {
+          hasSwitchResolved = true;
+        });
+
+        await flushPromises();
+
+        assert.isFalse(hasSwitchResolved);
+
+        resolveRequest();
+        await switchPromise;
+
+        assert.isTrue(hasSwitchResolved);
       });
 
       it('skips switch when already on the same channel', async () => {
