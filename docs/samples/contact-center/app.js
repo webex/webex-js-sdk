@@ -19,7 +19,6 @@ let campaignCountdownInterval = null; // Campaign preview countdown timer
 let campaignPreviewAutoAction = null; // Auto-action on timeout: ACCEPT, SKIP, REMOVE
 let outdialANIId; // Store outdial ANI ID from agent profile
 const taskCreationTimes = new Map(); // Track when tasks first appear (taskId -> timestamp)
-const summaryFeatureMap = new Map(); // interactionId -> { midCallEnabled, postCallEnabled } (populated from task:featureEnablement)
 
 let midCallSummary = {
   actionType: null,
@@ -708,8 +707,7 @@ async function showInitiateConsultDialog() {
   const consultExclude = document.getElementById('consult-summary-exclude');
   if (consultExclude) consultExclude.checked = false;
   resetSummaryFeedbackUI('consult-summary');
-  const consultInteractionId = consultTask?.data?.interactionId;
-  const consultFeatures = summaryFeatureMap.get(consultInteractionId) || {};
+  const consultFeatures = consultTask?.aiSummaryCapabilities || {};
   if (!consultFeatures.midCallEnabled) {
     document.getElementById('consult-summary-block').style.display = 'none';
     return;
@@ -746,7 +744,7 @@ async function closeConsultDialog() {
   if (midCallSummary.actionType !== 'CONSULT') return;
   const consultTask = midCallSummary.task;
   const interactionId = consultTask?.data?.interactionId;
-  const features = summaryFeatureMap.get(interactionId) || {};
+  const features = consultTask?.aiSummaryCapabilities || {};
   if (!features.midCallEnabled || !interactionId) return;
   try {
     if (midCallSummary.payload) {
@@ -778,7 +776,7 @@ async function closeConsultDialog() {
 async function retrySummary(type) {
   const summaryTask = midCallSummary.task || currentTask;
   const interactionId = summaryTask?.data?.interactionId;
-  const features = summaryFeatureMap.get(interactionId) || {};
+  const features = summaryTask?.aiSummaryCapabilities || {};
   if (!features.midCallEnabled || !interactionId) return;
   const prefix = type === 'CONSULT' ? 'consult-summary' : 'transfer-summary';
   const statusEl = document.getElementById(`${prefix}-status`);
@@ -833,7 +831,7 @@ function renderSummaryText(payload) {
 }
 
 function wireSummaryListeners(task) {
-  task.on('task:midCallSummaryForReceivingAgent', (payload) => {
+  task.on('task:midCallSummaryReceived', (payload) => {
     const block = document.getElementById('incoming-summary-block');
     const element = document.getElementById('incoming-summary-text');
     const summaryText = renderSummaryText(payload);
@@ -844,15 +842,6 @@ function wireSummaryListeners(task) {
     }
   });
 
-  task.on('task:featureEnablement', (payload) => {
-    console.info('FEATURE_ENABLEMENT received on task');
-    if (payload?.interactionId) {
-      summaryFeatureMap.set(payload.interactionId, {
-        midCallEnabled: !!payload.midCallEnabled,
-        postCallEnabled: !!payload.postCallEnabled,
-      });
-    }
-  });
 }
 
 async function onWrapupEntry(task) {
@@ -868,8 +857,7 @@ async function onWrapupEntry(task) {
   resetSummaryFeedbackUI('postcall-summary');
   const block = document.getElementById('postcall-summary-block');
   const statusEl = document.getElementById('postcall-summary-status');
-  const wrapupInteractionId = task?.data?.interactionId;
-  const wrapupFeatures = summaryFeatureMap.get(wrapupInteractionId) || {};
+  const wrapupFeatures = task?.aiSummaryCapabilities || {};
   if (!wrapupFeatures.postCallEnabled) {
     if (block) block.style.display = 'none';
     return;
@@ -1455,7 +1443,7 @@ async function initiateConsult() {
   }
 
   const consultInteractionId = consultTask?.data?.interactionId;
-  const consultSendFeatures = summaryFeatureMap.get(consultInteractionId) || {};
+  const consultSendFeatures = consultTask?.aiSummaryCapabilities || {};
   if (midCallSummary.actionType === 'CONSULT' && consultSendFeatures.midCallEnabled && consultInteractionId) {
     if (midCallSummary.requestPending) {
       try {
@@ -1582,7 +1570,7 @@ async function initiateTransfer() {
   }
 
   const transferSummaryInteractionId = transferTask?.data?.interactionId;
-  const transferSummaryFeatures = summaryFeatureMap.get(transferSummaryInteractionId) || {};
+  const transferSummaryFeatures = transferTask?.aiSummaryCapabilities || {};
   if (midCallSummary.actionType === 'TRANSFER' && transferSummaryFeatures.midCallEnabled && transferSummaryInteractionId) {
     if (midCallSummary.requestPending) {
       try {
@@ -1758,7 +1746,7 @@ async function toggleTransferOptions() {
     const transferRetryBtn = document.getElementById('transfer-summary-retry');
     if (transferRetryBtn) transferRetryBtn.style.display = 'none';
     const transferInteractionId = transferTask?.data?.interactionId;
-    const transferFeatures = summaryFeatureMap.get(transferInteractionId) || {};
+    const transferFeatures = transferTask?.aiSummaryCapabilities || {};
     if (!transferFeatures.midCallEnabled) {
       document.getElementById('transfer-summary-block').style.display = 'none';
     } else {
@@ -1788,7 +1776,7 @@ async function toggleTransferOptions() {
     if (midCallSummary.actionType !== 'TRANSFER') return;
     const transferTask = midCallSummary.task || currentTask;
     const cancelInteractionId = transferTask?.data?.interactionId;
-    const cancelFeatures = summaryFeatureMap.get(cancelInteractionId) || {};
+    const cancelFeatures = transferTask?.aiSummaryCapabilities || {};
     if (!cancelFeatures.midCallEnabled || !cancelInteractionId) return;
     try {
       if (midCallSummary.payload) {
@@ -3006,12 +2994,11 @@ function registerTaskListeners(task) {
     // COMPLETED is a final state that emits only task:wrappedup — task:end never fires on the
     // wrapUpRequired path, so summaries must be dismissed here too (covers auto-wrapup, which
     // never goes through wrapupCall()). Wait out any in-flight wrapupCall first: it reads the
-    // edited fields out of the DOM and the flags out of summaryFeatureMap after wrapup() resolves.
+    // edited fields out of the DOM after wrapup() resolves.
     const wrappedupInteractionId = task.data.interactionId;
     const wrappedupIsCurrent = !currentTask || currentTask.data.interactionId === wrappedupInteractionId;
     Promise.resolve(wrapupResponsePending).catch(() => {}).then(() => {
       taskCreationTimes.delete(wrappedupInteractionId);
-      summaryFeatureMap.delete(wrappedupInteractionId);
       if (wrappedupIsCurrent) dismissAllSummaryUI();
     });
     if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
@@ -3029,7 +3016,6 @@ function registerTaskListeners(task) {
 
     // Clean up task creation time tracking
     taskCreationTimes.delete(task.data.interactionId);
-    summaryFeatureMap.delete(task.data.interactionId);
     dismissAllSummaryUI();
 
     // If this is the current task, clear all controls
@@ -4442,7 +4428,7 @@ async function sendWrapupAndSummaryResponse() {
     }
 
     const wrapupInteractionId = currentTask?.data?.interactionId;
-    const wrapupSummaryFeatures = summaryFeatureMap.get(wrapupInteractionId) || {};
+    const wrapupSummaryFeatures = currentTask?.aiSummaryCapabilities || {};
     if (postCallSummary.payload) {
       const postCallEdited = isSummaryEdited('postcall-summary', postCallSummary.payload);
       if (postCallEdited) postCallSummary.numberOfTimesEdited += 1;

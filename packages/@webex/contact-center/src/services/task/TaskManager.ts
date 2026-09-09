@@ -15,8 +15,8 @@ import {
   EventContext,
   BufferedReceivingSummary,
   FeatureEnablementEventPayload,
-  InteractionFeatureEnablementEntry,
   MidCallSummaryReceivingAgentPayload,
+  PendingFeatureEnablement,
 } from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
 import {AI_SUMMARY_DURATION_MS, METHODS, TRANSCRIPT_EVENT_MAP} from './constants';
@@ -71,8 +71,7 @@ export default class TaskManager extends EventEmitter {
   private answerCallOnWebexService?: AnswerCallOnWebexService;
   private apiAIAssistant?: ApiAIAssistant;
   private receivingSummaryBuffer = new Map<string, BufferedReceivingSummary>();
-  private interactionFeatureEnablement = new Map<string, InteractionFeatureEnablementEntry>();
-  private readonly featureEnablementDeliveredTasks = new WeakSet<ITask>();
+  private pendingFeatureEnablement = new Map<string, PendingFeatureEnablement>();
   private aiSummaryInboundActive = true;
 
   /**
@@ -195,31 +194,24 @@ export default class TaskManager extends EventEmitter {
       return task?.data?.interactionId === payload.interactionId;
     });
 
-    this.setFeatureEnablement(payload, matchingTask !== undefined);
-
     if (matchingTask) {
-      this.featureEnablementDeliveredTasks.add(matchingTask);
-      matchingTask.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, payload);
-    }
-  }
+      this.removeTimedAISummaryEntry(this.pendingFeatureEnablement, payload.interactionId);
+      if (matchingTask.setFeatureEnablement) {
+        matchingTask.setFeatureEnablement(payload);
+      } else {
+        matchingTask.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, payload);
+      }
 
-  private setFeatureEnablement(
-    payload: FeatureEnablementEventPayload,
-    hasRegisteredTask: boolean
-  ): void {
+      return;
+    }
+
     const interactionId = payload.interactionId;
-
-    this.removeTimedAISummaryEntry(this.interactionFeatureEnablement, interactionId);
-
-    const entry: InteractionFeatureEnablementEntry = {payload};
-
-    if (!hasRegisteredTask) {
-      entry.timeoutId = setTimeout(() => {
-        this.removeTimedAISummaryEntry(this.interactionFeatureEnablement, interactionId);
-      }, AI_SUMMARY_DURATION_MS);
-    }
-
-    this.interactionFeatureEnablement.set(interactionId, entry);
+    this.removeTimedAISummaryEntry(this.pendingFeatureEnablement, interactionId);
+    const entry: PendingFeatureEnablement = {payload};
+    entry.timeoutId = setTimeout(() => {
+      this.removeTimedAISummaryEntry(this.pendingFeatureEnablement, interactionId);
+    }, AI_SUMMARY_DURATION_MS);
+    this.pendingFeatureEnablement.set(interactionId, entry);
   }
 
   private deliverReceivingSummary(
@@ -234,7 +226,7 @@ export default class TaskManager extends EventEmitter {
     this.removeTimedAISummaryEntry(this.receivingSummaryBuffer, conversationId);
 
     if (matchingTasks.length === 1) {
-      matchingTasks[0].emit(TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT, payload);
+      matchingTasks[0].emit(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, payload);
     }
 
     return true;
@@ -283,19 +275,19 @@ export default class TaskManager extends EventEmitter {
   public clearAISummaryState(): void {
     this.aiSummaryInboundActive = false;
     this.apiAIAssistant?.clearAllRtdRequests();
+    Object.values(this.taskCollection).forEach((task) => task.clearFeatureEnablement?.());
     Array.from(this.receivingSummaryBuffer.keys()).forEach((conversationId) => {
       this.removeTimedAISummaryEntry(this.receivingSummaryBuffer, conversationId);
     });
-    Array.from(this.interactionFeatureEnablement.keys()).forEach((interactionId) => {
-      this.removeTimedAISummaryEntry(this.interactionFeatureEnablement, interactionId);
+    Array.from(this.pendingFeatureEnablement.keys()).forEach((interactionId) => {
+      this.removeTimedAISummaryEntry(this.pendingFeatureEnablement, interactionId);
     });
   }
 
   private configureTaskAISummary(task: ITask): void {
     task.configureAISummary?.(
       this.apiAIAssistant,
-      () => this.configFlags?.aiFeature?.generatedSummaries,
-      (interactionId) => this.interactionFeatureEnablement.get(interactionId)?.payload
+      () => this.configFlags?.aiFeature?.generatedSummaries
     );
   }
 
@@ -330,43 +322,16 @@ export default class TaskManager extends EventEmitter {
     return leafTasks.length === 1 ? leafTasks : matchingTasks;
   }
 
-  private retainFeatureEnablementForTask(task: ITask): void {
+  private applyPendingFeatureEnablement(task: ITask): void {
     const interactionId = task?.data?.interactionId;
 
-    if (interactionId) {
-      const entry = this.interactionFeatureEnablement.get(interactionId);
-
-      if (entry?.timeoutId) {
-        clearTimeout(entry.timeoutId);
-        entry.timeoutId = undefined;
-      }
-    }
-  }
-
-  private deliverFeatureEnablementToTask(task: ITask): void {
-    if (this.featureEnablementDeliveredTasks.has(task)) {
+    if (!interactionId) {
       return;
     }
 
-    const interactionId = task?.data?.interactionId;
-
-    if (interactionId) {
-      const featurePayload = this.interactionFeatureEnablement.get(interactionId)?.payload;
-
-      if (featurePayload) {
-        this.featureEnablementDeliveredTasks.add(task);
-        task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featurePayload);
-      }
-    }
-  }
-
-  private clearFeatureEnablementIfFinalTask(interactionId: string): void {
-    const hasRegisteredTask = Object.values(this.taskCollection).some((task) => {
-      return task?.data?.interactionId === interactionId;
-    });
-
-    if (!hasRegisteredTask) {
-      this.removeTimedAISummaryEntry(this.interactionFeatureEnablement, interactionId);
+    const entry = this.removeTimedAISummaryEntry(this.pendingFeatureEnablement, interactionId);
+    if (entry) {
+      task.setFeatureEnablement?.(entry.payload, false);
     }
   }
 
@@ -851,7 +816,7 @@ export default class TaskManager extends EventEmitter {
         // Re-key the task under the new interaction ID and remove the old entry
         delete this.taskCollection[reservationInteractionId];
         this.taskCollection[interactionId] = task;
-        this.removeTimedAISummaryEntry(this.interactionFeatureEnablement, reservationInteractionId);
+        this.removeTimedAISummaryEntry(this.pendingFeatureEnablement, reservationInteractionId);
       }
     }
 
@@ -1245,7 +1210,7 @@ export default class TaskManager extends EventEmitter {
     } as TaskEventPayload);
 
     this.setupTaskListeners(task);
-    this.retainFeatureEnablementForTask(task);
+    this.applyPendingFeatureEnablement(task);
     context.payload = taskData;
     context.stateMachineEvent = {
       type: TaskEvent.CONTACT_OWNER_CHANGED,
@@ -1349,7 +1314,7 @@ export default class TaskManager extends EventEmitter {
       this.configureTaskAISummary(task);
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
-      this.retainFeatureEnablementForTask(task);
+      this.applyPendingFeatureEnablement(task);
     } else {
       task = this.updateTaskData(task, payload);
     }
@@ -1392,7 +1357,7 @@ export default class TaskManager extends EventEmitter {
     this.configureTaskAISummary(task);
     this.setupTaskListeners(task);
     this.taskCollection[payload.interactionId] = task;
-    this.retainFeatureEnablementForTask(task);
+    this.applyPendingFeatureEnablement(task);
 
     return {task};
   }
@@ -1435,7 +1400,7 @@ export default class TaskManager extends EventEmitter {
       this.configureTaskAISummary(task);
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
-      this.retainFeatureEnablementForTask(task);
+      this.applyPendingFeatureEnablement(task);
     }
 
     return {task};
@@ -1446,7 +1411,6 @@ export default class TaskManager extends EventEmitter {
       throw new Error('Task not found for update');
     }
 
-    const previousInteractionId = task.data?.interactionId;
     const snapshot = task.stateMachineService?.getSnapshot?.();
     const isConsultingFlow =
       snapshot?.value === 'CONSULTING' || taskData.interaction?.state === 'consulting';
@@ -1470,11 +1434,7 @@ export default class TaskManager extends EventEmitter {
       }
     });
     this.taskCollection[taskData.interactionId] = task;
-    this.retainFeatureEnablementForTask(task);
-    if (taskData.interactionId !== previousInteractionId) {
-      this.featureEnablementDeliveredTasks.delete(task);
-      this.deliverFeatureEnablementToTask(task);
-    }
+    this.applyPendingFeatureEnablement(task);
 
     return task;
   }
@@ -1493,7 +1453,7 @@ export default class TaskManager extends EventEmitter {
       });
 
       this.emit(TASK_EVENTS.TASK_INCOMING, t);
-      this.deliverFeatureEnablementToTask(task);
+      task.emitPendingFeatureEnablement?.();
     });
 
     task.on(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, (t: ITask) => {
@@ -1504,14 +1464,18 @@ export default class TaskManager extends EventEmitter {
       });
 
       this.emit(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, t);
-      this.deliverFeatureEnablementToTask(task);
+      task.emitPendingFeatureEnablement?.();
     });
 
     // Listen for TASK_HYDRATE on the task and re-emit on TaskManager
     task.on(TASK_EVENTS.TASK_HYDRATE, (t: ITask) => {
       // Task data is already updated by the task itself before emitting
       this.emit(TASK_EVENTS.TASK_HYDRATE, t);
-      this.deliverFeatureEnablementToTask(task);
+      task.emitPendingFeatureEnablement?.();
+    });
+
+    task.on(TASK_EVENTS.TASK_ASSIGNED, () => {
+      task.emitPendingFeatureEnablement?.();
     });
 
     task.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, (t: ITask) => {
@@ -1552,7 +1516,6 @@ export default class TaskManager extends EventEmitter {
 
     if (conversationId) {
       this.flushReceivingSummary(conversationId);
-      this.clearFeatureEnablementIfFinalTask(task.data.interactionId);
     }
   }
 
@@ -1619,12 +1582,12 @@ export default class TaskManager extends EventEmitter {
       } as TaskEventPayload);
 
       this.setupTaskListeners(task);
-      this.retainFeatureEnablementForTask(task);
+      this.applyPendingFeatureEnablement(task);
     }
 
     if (task) {
       this.emit(TASK_EVENTS.TASK_MERGED, task);
-      this.deliverFeatureEnablementToTask(task);
+      task.emitPendingFeatureEnablement?.();
       const conversationId = task.data.interaction?.mainInteractionId || task.data.interactionId;
       this.flushReceivingSummary(conversationId);
     }

@@ -4,8 +4,7 @@ import {TaskEventPayload} from './state-machine';
 import {Msg} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
 import type {AIFeatureFlags, CollaborationAccess} from '../config/types';
-import type {AIAssistantEventName, AIAssistantEventType} from '../../types';
-import type {RtdRequestOptions} from '../core/types';
+import type ApiAIAssistant from '../ApiAiAssistant';
 
 /**
  * Unique identifier for a task in the contact center system
@@ -720,9 +719,9 @@ export enum TASK_EVENTS {
   TASK_CAMPAIGN_CONTACT_UPDATED = 'task:campaignContactUpdated',
 
   /**
-   * Triggered when a mid-call summary is available for the receiving agent.
+   * Triggered when a mid-call summary is received for the task.
    */
-  TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT = 'task:midCallSummaryForReceivingAgent',
+  TASK_MID_CALL_SUMMARY_RECEIVED = 'task:midCallSummaryReceived',
 
   /**
    * Triggered on the task object when AI feature enablement flags arrive for that task's interaction.
@@ -1725,8 +1724,8 @@ export type MidCallSummarySections = {
   keyActionsTaken?: string;
 };
 
-/** Summary interaction counters. @public */
-export type SummaryCounters = {
+/** Summary interaction counters used to compose summary response payloads. */
+type SummaryCounters = {
   numberOfTimesViewed: number;
   numberOfTimesEdited: number;
   numberOfTimesCopied: number;
@@ -1766,6 +1765,27 @@ export type MidCallSummaryEventPayload = {
   [key: string]: unknown;
 };
 
+/** @internal */
+export type AISummaryInboundType = 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY';
+
+/** @internal */
+export type AISummaryPayloadByInboundType = {
+  POST_CALL_SUMMARY: PostCallSummaryEventPayload;
+  MID_CALL_SUMMARY: MidCallSummaryEventPayload;
+};
+
+/** @internal */
+export type BufferedReceivingSummary = {
+  payload: MidCallSummaryReceivingAgentPayload;
+  timeoutId?: ReturnType<typeof setTimeout>;
+};
+
+/** @internal */
+export type PendingFeatureEnablement = {
+  payload: FeatureEnablementEventPayload;
+  timeoutId?: ReturnType<typeof setTimeout>;
+};
+
 /** RTD payload delivered to the receiving agent for a mid-call summary. @public */
 export type MidCallSummaryReceivingAgentPayload = {
   conversationId: string;
@@ -1787,13 +1807,19 @@ export type FeatureEnablementEventPayload = {
   [key: string]: unknown;
 };
 
-export type SummaryResponseTimestamps = {
+/** Current AI-summary capabilities for a task. @public */
+export type AISummaryCapabilities = {
+  midCallEnabled: boolean;
+  postCallEnabled: boolean;
+};
+
+type SummaryResponseTimestamps = {
   actionTimeStamp?: number;
   publishTimestamp?: number;
 };
 
 /** Post-call response containing a received summary. @public */
-export type PostCallReceivedResponse = SummaryCounters &
+type PostCallReceivedResponse = SummaryCounters &
   SummaryResponseTimestamps & {
     summary: PostCallSummarySections | string;
     feedback: AISummaryFeedback;
@@ -1802,7 +1828,7 @@ export type PostCallReceivedResponse = SummaryCounters &
   };
 
 /** Post-call response when no summary was received. @public */
-export type PostCallNotReceivedResponse = SummaryResponseTimestamps & {
+type PostCallNotReceivedResponse = SummaryResponseTimestamps & {
   summary: '';
   numberOfTimesViewed: 0;
   numberOfTimesEdited: 0;
@@ -1816,7 +1842,7 @@ export type PostCallNotReceivedResponse = SummaryResponseTimestamps & {
 export type PostCallSummaryResponsePayload = PostCallReceivedResponse | PostCallNotReceivedResponse;
 
 /** Mid-call response containing a received summary. @public */
-export type MidCallReceivedResponse = SummaryCounters &
+type MidCallReceivedResponse = SummaryCounters &
   SummaryResponseTimestamps & {
     summaryReceived: true;
     summary: MidCallSummarySections | string;
@@ -1825,7 +1851,7 @@ export type MidCallReceivedResponse = SummaryCounters &
   };
 
 /** Mid-call response when no summary was received. @public */
-export type MidCallUnavailableResponse = SummaryResponseTimestamps & {
+type MidCallUnavailableResponse = SummaryResponseTimestamps & {
   summaryReceived: false;
   summary: '';
   numberOfTimesViewed: 0;
@@ -1837,63 +1863,6 @@ export type MidCallUnavailableResponse = SummaryResponseTimestamps & {
 
 /** Payload sent when reporting the result of a mid-call summary. @public */
 export type MidCallSummaryResponsePayload = MidCallReceivedResponse | MidCallUnavailableResponse;
-
-export type AISummaryInboundType = 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY';
-
-export type AISummaryPayloadByInboundType = {
-  POST_CALL_SUMMARY: PostCallSummaryEventPayload;
-  MID_CALL_SUMMARY: MidCallSummaryEventPayload;
-};
-
-export type AISummaryTimeoutCodeByInboundType = {
-  POST_CALL_SUMMARY: typeof import('../../constants').AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_TIMEOUT;
-  MID_CALL_SUMMARY: typeof import('../../constants').AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_TIMEOUT;
-};
-
-export type GeneratedSummaryFlagsAccessor = () => AIFeatureFlags['generatedSummaries'] | undefined;
-
-export type FeatureEnablementAccessor = (
-  interactionId: string
-) => FeatureEnablementEventPayload | undefined;
-
-export type AISummaryAdapter = {
-  sendEvent: (
-    agentId: string,
-    interactionId: string,
-    eventType: AIAssistantEventType,
-    eventName: AIAssistantEventName,
-    eventMetaData?: Record<string, unknown>,
-    languageCode?: string,
-    trackingId?: string,
-    publishTimestamp?: number,
-    timeout?: number
-  ) => Promise<Record<string, unknown>>;
-  requestAndWaitForRtd: <T>(options: RtdRequestOptions) => Promise<T>;
-};
-
-export type AISummaryResponseContext = Readonly<{
-  conversationId: string;
-  interactionId: string;
-}>;
-
-/** @internal Buffered receiving-agent summary and its expiry timer. */
-export type BufferedReceivingSummary = {
-  payload: MidCallSummaryReceivingAgentPayload;
-  timeoutId?: ReturnType<typeof setTimeout>;
-};
-
-/** @internal Feature-enablement snapshot and its optional expiry timer. */
-export type InteractionFeatureEnablementEntry = {
-  payload: FeatureEnablementEventPayload;
-  timeoutId?: ReturnType<typeof setTimeout>;
-};
-
-/** @internal AI-summary event names handled by the realtime-delivery path. */
-export type AISummaryRealtimeEventType =
-  | typeof import('../config/types').CC_TASK_EVENTS.POST_CALL_SUMMARY
-  | typeof import('../config/types').CC_TASK_EVENTS.MID_CALL_SUMMARY
-  | typeof import('../config/types').CC_TASK_EVENTS.FEATURE_ENABLEMENT
-  | typeof import('../config/types').CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT;
 
 /**
  * Request payload for removing a supported participant from an active conference.
@@ -1942,6 +1911,12 @@ export interface ITask extends IEventEmitter {
    * and participant data as defined in {@link TaskData}
    */
   data: TaskData;
+
+  /**
+   * Current AI-summary capabilities for this task. Both flags are false until
+   * the matching feature-enablement event is received.
+   */
+  readonly aiSummaryCapabilities: Readonly<AISummaryCapabilities>;
 
   /**
    * Map associating tasks with their corresponding call identifiers.
@@ -2021,10 +1996,27 @@ export interface ITask extends IEventEmitter {
    * @internal
    */
   configureAISummary?(
-    apiAIAssistant: AISummaryAdapter | undefined,
-    getGeneratedSummaryFlags: GeneratedSummaryFlagsAccessor,
-    getFeatureEnablement: FeatureEnablementAccessor
+    apiAIAssistant: ApiAIAssistant | undefined,
+    getGeneratedSummaryFlags: () => AIFeatureFlags['generatedSummaries'] | undefined
   ): void;
+
+  /**
+   * Applies the AI-summary feature flags received for this task's interaction.
+   * @internal
+   */
+  setFeatureEnablement?(payload: FeatureEnablementEventPayload, emitEvent?: boolean): void;
+
+  /**
+   * Emits a feature-enablement event retained until the task lifecycle event was published.
+   * @internal
+   */
+  emitPendingFeatureEnablement?(): void;
+
+  /**
+   * Clears the task-local AI-summary feature flags during session cleanup.
+   * @internal
+   */
+  clearFeatureEnablement?(): void;
 
   /**
    * Requests an AI-generated post-call summary for this task.

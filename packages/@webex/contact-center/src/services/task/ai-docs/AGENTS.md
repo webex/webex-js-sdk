@@ -50,12 +50,12 @@ privacy in [metrics/ai-docs/AGENTS.md](../../../metrics/ai-docs/AGENTS.md#ai-sum
 
 Keep this guide limited to task-layer implementation boundaries:
 
-- TaskManager injects `ApiAIAssistant`, the
-  feature-enablement accessor, and the current generated-summary flags accessor
-  through `configureAISummary(...)` before listener setup or registry insertion.
-- Task owns typed request/response forwarding, summary feature gating, and
-  final operation metrics; it must not import TaskManager or configuration
-  services.
+- TaskManager injects `ApiAIAssistant` and the current generated-summary flags
+  accessor through `configureAISummary(...)` before listener setup or registry
+  insertion.
+- Task owns its AI-summary feature flags, typed request/response forwarding,
+  summary feature gating, and final operation metrics; it must not import
+  TaskManager or configuration services.
 - `ApiAIAssistant` sends the summary event, keeps the correlation key, and
   resolves the Promise from the matching RTD event or timeout.
 - Use the typed task fields directly for summary correlation: `interactionId`

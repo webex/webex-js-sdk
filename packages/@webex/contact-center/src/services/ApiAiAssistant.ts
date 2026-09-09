@@ -14,7 +14,6 @@ import {
   RealTimeAssistanceUserActionParams,
 } from '../types';
 import {getErrorDetails} from './core/Utils';
-import WebexRequest from './core/WebexRequest';
 import type {RtdRequestOptions} from './core/types';
 import {
   AI_ASSISTANT_BASE_URL_TEMPLATE,
@@ -38,14 +37,12 @@ type PendingRtdRequest<T> = {
  */
 export class ApiAIAssistant {
   private webex: WebexSDK;
-  private webexRequest: WebexRequest;
   private metricsManager: MetricsManager;
   private aiFeature: AIFeatureFlags;
   private pendingRtdRequests = new Map<string, PendingRtdRequest<unknown>>();
 
   constructor(webex: WebexSDK) {
     this.webex = webex;
-    this.webexRequest = WebexRequest.getInstance({webex});
     this.metricsManager = MetricsManager.getInstance({webex});
   }
 
@@ -53,11 +50,16 @@ export class ApiAIAssistant {
     this.aiFeature = aiFeature;
   }
 
-  private resolveBaseUrl(): string {
+  private getBaseUrl(): string {
     const wccApiGatewayUrl = this.webex.internal.services.get(WCC_API_GATEWAY) || '';
 
     if (!wccApiGatewayUrl) {
-      throw new Error(AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE);
+      const {error: detailedError} = getErrorDetails(
+        new Error(AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE),
+        METHODS.GET_BASE_URL,
+        CC_FILE
+      );
+      throw detailedError;
     }
 
     let hostname = '';
@@ -70,24 +72,15 @@ export class ApiAIAssistant {
     const resolvedEnv = AI_ASSISTANT_ENV_MAP[hostname];
 
     if (!resolvedEnv) {
-      throw new Error(AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE);
-    }
-
-    return AI_ASSISTANT_BASE_URL_TEMPLATE.replace('%s', resolvedEnv);
-  }
-
-  private getBaseUrl(): string {
-    try {
-      return this.resolveBaseUrl();
-    } catch (_error) {
       const {error: detailedError} = getErrorDetails(
-        new Error('AI_ASSISTANT_BASE_URL_NOT_AVAILABLE'),
+        new Error(AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE),
         METHODS.GET_BASE_URL,
-        CC_FILE,
-        {webexRequest: this.webexRequest}
+        CC_FILE
       );
       throw detailedError;
     }
+
+    return AI_ASSISTANT_BASE_URL_TEMPLATE.replace('%s', resolvedEnv);
   }
 
   private static getRtdRequestKey(rtdEventType: string, correlationId: string): string {
@@ -272,9 +265,7 @@ export class ApiAIAssistant {
         ['operational']
       );
 
-      const {error: detailedError} = getErrorDetails(error, METHODS.SEND_EVENT, CC_FILE, {
-        webexRequest: this.webexRequest,
-      });
+      const {error: detailedError} = getErrorDetails(error, METHODS.SEND_EVENT, CC_FILE);
       throw detailedError;
     }
   }
@@ -315,8 +306,7 @@ export class ApiAIAssistant {
         const {error: detailedError} = getErrorDetails(
           new Error('SUGGESTED_RESPONSES_NOT_ENABLED'),
           METHODS.GET_REAL_TIME_ASSISTANCE,
-          CC_FILE,
-          {webexRequest: this.webexRequest}
+          CC_FILE
         );
         throw detailedError;
       }
@@ -365,8 +355,7 @@ export class ApiAIAssistant {
       const {error: detailedError} = getErrorDetails(
         error,
         METHODS.GET_REAL_TIME_ASSISTANCE,
-        CC_FILE,
-        {webexRequest: this.webexRequest}
+        CC_FILE
       );
       throw detailedError;
     }
@@ -407,8 +396,7 @@ export class ApiAIAssistant {
         const {error: detailedError} = getErrorDetails(
           new Error('SUGGESTED_RESPONSES_NOT_ENABLED'),
           METHODS.SEND_REAL_TIME_ASSISTANCE_USER_ACTION,
-          CC_FILE,
-          {webexRequest: this.webexRequest}
+          CC_FILE
         );
         throw detailedError;
       }
@@ -463,8 +451,7 @@ export class ApiAIAssistant {
       const {error: detailedError} = getErrorDetails(
         error,
         METHODS.SEND_REAL_TIME_ASSISTANCE_USER_ACTION,
-        CC_FILE,
-        {webexRequest: this.webexRequest}
+        CC_FILE
       );
       throw detailedError;
     }
@@ -493,8 +480,7 @@ export class ApiAIAssistant {
       const {error: detailedError} = getErrorDetails(
         new Error('REAL_TIME_TRANSCRIPTION_NOT_ENABLED'),
         METHODS.FETCH_HISTORIC_TRANSCRIPTS,
-        CC_FILE,
-        {webexRequest: this.webexRequest}
+        CC_FILE
       );
       throw detailedError;
     }
@@ -536,8 +522,7 @@ export class ApiAIAssistant {
       const {error: detailedError} = getErrorDetails(
         error,
         METHODS.FETCH_HISTORIC_TRANSCRIPTS,
-        CC_FILE,
-        {webexRequest: this.webexRequest}
+        CC_FILE
       );
       throw detailedError;
     }

@@ -671,20 +671,20 @@ describe('Voice Task', () => {
     const configureAISummary = (
       voice: Voice,
       adapter = createSummaryAdapter(),
-      getFeatureEnablement = () => ({
+      featureEnablement = {
         interactionId: 'int1',
         postCallEnabled: true,
         midCallEnabled: true,
-      })
+      }
     ) => {
       voice.configureAISummary(
         adapter as any,
         jest.fn(() => ({
           wrapUpSummariesEnabled: true,
           consultTransferSummariesEnabled: true,
-        })),
-        getFeatureEnablement
+        }))
       );
+      voice.setFeatureEnablement(featureEnablement, false);
 
       return {adapter, coordinator: adapter};
     };

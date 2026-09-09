@@ -515,34 +515,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   /**
-   * Builds TaskManager feature flags from the retained agent profile.
-   * @private
-   * @param {Profile} agentConfig Agent profile used as the source of feature flags.
-   * @returns {ConfigFlags} TaskManager feature flag view.
-   */
-  private buildConfigFlags(agentConfig: Profile): ConfigFlags {
-    return {
-      isEndTaskEnabled: agentConfig.isEndTaskEnabled,
-      isEndConsultEnabled: agentConfig.isEndConsultEnabled,
-      webRtcEnabled: agentConfig.webRtcEnabled,
-      autoWrapup: agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
-      aiFeature: agentConfig.aiFeature,
-      consultTransfer: {
-        allowConsultToQueue: agentConfig.allowConsultToQueue,
-        accessQueue: agentConfig.accessQueue,
-        accessEntryPoint: agentConfig.accessEntryPoint,
-        accessBuddyTeam: agentConfig.accessBuddyTeam,
-      },
-      enableWxBetterTogether: this.isWxBetterTogetherEnabled(),
-    };
-  }
-
-  /**
    * Sets up event listeners for incoming tasks and task hydration
    * Subscribes to task events from the task manager
    * @private
    */
   private incomingTaskListener() {
+    this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+    this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+    this.taskManager.off(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
+    this.taskManager.off(TASK_EVENTS.TASK_MERGED, this.handleTaskMerged);
+    this.taskManager.off(
+      TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+      this.handleCampaignPreviewReservation
+    );
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
     this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
     this.taskManager.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
@@ -874,8 +859,22 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         method: METHODS.CONNECT_WEBSOCKET,
       });
 
-      this.taskManager.setConfigFlags(this.buildConfigFlags(this.agentConfig));
-      // Profile remains injected until a shared singleton is available throughout the app/SDK.
+      const configFlags: ConfigFlags = {
+        isEndTaskEnabled: this.agentConfig.isEndTaskEnabled,
+        isEndConsultEnabled: this.agentConfig.isEndConsultEnabled,
+        webRtcEnabled: this.agentConfig.webRtcEnabled,
+        autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
+        aiFeature: this.agentConfig.aiFeature,
+        consultTransfer: {
+          allowConsultToQueue: this.agentConfig.allowConsultToQueue,
+          accessQueue: this.agentConfig.accessQueue,
+          accessEntryPoint: this.agentConfig.accessEntryPoint,
+          accessBuddyTeam: this.agentConfig.accessBuddyTeam,
+        },
+        enableWxBetterTogether: this.isWxBetterTogetherEnabled(),
+      };
+      this.taskManager.setConfigFlags(configFlags);
+      // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
       this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
       this.taskManager.setAgentId(this.agentConfig.agentId);
       this.taskManager.setAgentName(this.agentConfig.agentName);
@@ -1928,7 +1927,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       );
       this.taskManager.clearAISummaryState();
       if (this.agentConfig) {
-        this.taskManager.setConfigFlags(this.buildConfigFlags(this.agentConfig));
+        const configFlags: ConfigFlags = {
+          isEndTaskEnabled: this.agentConfig.isEndTaskEnabled,
+          isEndConsultEnabled: this.agentConfig.isEndConsultEnabled,
+          webRtcEnabled: this.agentConfig.webRtcEnabled,
+          autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
+          aiFeature: this.agentConfig.aiFeature,
+          consultTransfer: {
+            allowConsultToQueue: this.agentConfig.allowConsultToQueue,
+            accessQueue: this.agentConfig.accessQueue,
+            accessEntryPoint: this.agentConfig.accessEntryPoint,
+            accessBuddyTeam: this.agentConfig.accessBuddyTeam,
+          },
+          enableWxBetterTogether: this.isWxBetterTogetherEnabled(),
+        };
+        this.taskManager.setConfigFlags(configFlags);
       }
       if (this.$config && this.$config.allowAutomatedRelogin) {
         await this.silentRelogin();

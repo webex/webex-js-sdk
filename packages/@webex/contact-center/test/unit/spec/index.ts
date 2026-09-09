@@ -9,7 +9,6 @@ const CONFIG_TYPES_PATH = path.join(SRC_ROOT, 'services/config/types.ts');
 
 const EXPECTED_ROOT_EXPORTS = Object.freeze([
   'AGENT_EVENTS',
-  'AIAssistantEventName',
   'AISummaryActionType',
   'AISummaryFeedback',
   'AI_SUMMARY_ERROR_CODES',
@@ -92,7 +91,6 @@ const EXPECTED_ROOT_EXPORTS = Object.freeze([
   'StationLoginSuccessResponse',
   'StationLogoutResponse',
   'SubscribeRequest',
-  'SummaryCounters',
   'TASK_EVENTS',
   'Task',
   'TaskData',
@@ -123,10 +121,10 @@ const EXPECTED_ROOT_EXPORTS = Object.freeze([
 ]);
 
 const INTERNAL_ROOT_EXPORTS = Object.freeze([
+  'AIAssistantEventName',
   'AISummaryInboundType',
   'AISummaryPayloadByInboundType',
   'AISummaryTimeoutCodeByInboundType',
-  'GeneratedSummaryFlagsAccessor',
   'SummaryResponseTimestamps',
   'PostCallReceivedResponse',
   'PostCallNotReceivedResponse',
@@ -169,13 +167,11 @@ const MISSING_EXPORT_DIAGNOSTIC_CODES = Object.freeze([2305, 2614, 2724]);
 
 const VALID_PUBLIC_CONTRACT_FIXTURE = `
 import {
-  AIAssistantEventName as AIAssistantEventNames,
   AI_SUMMARY_ERROR_CODES,
   CC_TASK_EVENTS,
   TASK_EVENTS,
 } from '../../../src';
 import type {
-  AIAssistantEventName,
   AISummaryActionType,
   AISummaryFeedback,
   FeatureEnablementEventPayload,
@@ -320,10 +316,8 @@ const taskSummaryMethods: Pick<
   },
 };
 
-const outboundGet: AIAssistantEventName = AIAssistantEventNames.GET_MID_CALL_CONSULT_SUMMARY;
-const outboundResponse: AIAssistantEventName = AIAssistantEventNames.MID_CALL_TRANSFER_SUMMARY_RESPONSE;
 const inboundPost = CC_TASK_EVENTS.POST_CALL_SUMMARY;
-const receivingEvent = TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT;
+const receivingEvent = TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED;
 const disabledCode = AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED;
 void action;
 void transferAction;
@@ -341,8 +335,6 @@ void textMidCall;
 void unavailableMidCall;
 void cancelledMidCall;
 void taskSummaryMethods;
-void outboundGet;
-void outboundResponse;
 void inboundPost;
 void receivingEvent;
 void disabledCode;
@@ -607,9 +599,27 @@ const getRootExportNames = (program: ts.Program) => {
 };
 
 const getRootExportSymbol = (program: ts.Program, exportName: string) => {
+  return getModuleExportSymbol(program, INDEX_PATH, exportName);
+};
+
+const getModuleExportSymbol = (
+  program: ts.Program,
+  modulePath: string,
+  exportName: string
+) => {
   const checker = program.getTypeChecker();
+  const sourceFile = program.getSourceFile(modulePath);
+  if (!sourceFile) {
+    throw new Error(`Missing source file ${modulePath}`);
+  }
+
+  const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
+  if (!moduleSymbol) {
+    throw new Error(`Unable to resolve module symbol ${modulePath}`);
+  }
+
   const exportSymbol = checker
-    .getExportsOfModule(getRootModuleSymbol(program))
+    .getExportsOfModule(moduleSymbol)
     .find((symbol) => symbol.getName() === exportName);
 
   if (!exportSymbol) {
@@ -823,7 +833,7 @@ describe('contact-center root public contract', () => {
     const aiAssistantEventNameLiterals = entriesToObject(
       getNamedStringLiteralObjectEntries(
         getObjectLiteralInitializer(
-          getRootExportSymbol(program, 'AIAssistantEventName'),
+          getModuleExportSymbol(program, TYPES_PATH, 'AIAssistantEventName'),
           'AIAssistantEventName'
         ),
         Object.keys(EXPECTED_AI_SUMMARY_WIRE_LITERALS.AIAssistantEventName),

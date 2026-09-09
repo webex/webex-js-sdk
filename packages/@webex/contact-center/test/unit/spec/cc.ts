@@ -1287,7 +1287,7 @@ describe('webex.cc', () => {
             (request: any) => request.eventType === 'MID_CALL_SUMMARY'
           ).length,
           receiving: manager.receivingSummaryBuffer.size,
-          featureEnablement: manager.interactionFeatureEnablement.size,
+          featureEnablement: manager.pendingFeatureEnablement.size,
         };
       };
       const expectSummaryStateCleared = () => {
@@ -1624,7 +1624,7 @@ describe('webex.cc', () => {
       harness.taskManager.on(TASK_EVENTS.TASK_INCOMING, (task: Task) => {
         publishedTask = task;
         receiverEmitSpy = jest.spyOn(task, 'emit');
-        task.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT, receiverHandler);
+        task.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, receiverHandler);
       });
 
       emitTaskLifecycleEvent(harness, CC_EVENTS.AGENT_CONTACT_RESERVED, {
@@ -1638,7 +1638,7 @@ describe('webex.cc', () => {
       expect(receiverHandler).toHaveBeenCalledWith(receivingPayload);
       expect(
         receiverEmitSpy?.mock.calls.filter(
-          ([eventName]) => eventName === TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT
+          ([eventName]) => eventName === TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED
         )
       ).toHaveLength(1);
       expect(harness.getSummaryMapCounts()).toEqual({
@@ -1685,7 +1685,7 @@ describe('webex.cc', () => {
         pendingPostCall: 0,
         pendingMidCall: 0,
         receiving: 0,
-        featureEnablement: 1,
+        featureEnablement: 0,
       });
       expect(jest.getTimerCount()).toBe(0);
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
@@ -1763,7 +1763,7 @@ describe('webex.cc', () => {
         pendingPostCall: 0,
         pendingMidCall: 0,
         receiving: 0,
-        featureEnablement: 1,
+        featureEnablement: 0,
       });
 
       emitTaskLifecycleEvent(harness, CC_EVENTS.AGENT_WRAPUP, {
@@ -1838,7 +1838,7 @@ describe('webex.cc', () => {
       );
     });
 
-    it('cancels initially unhandled real public requests on deregister and ignores late HTTP settlement', async () => {
+    it('cancels pending real public requests on deregister and ignores late HTTP settlement', async () => {
       const harness = createSummaryHarness();
       const unhandledRejections: unknown[] = [];
       const unhandledRejectionListener = jest.fn((reason) => {
@@ -1859,6 +1859,8 @@ describe('webex.cc', () => {
       try {
         const postCallRequest = harness.task.requestPostCallSummary();
         const midCallRequest = harness.task.requestMidCallSummary('CONSULT');
+        postCallRequest.catch(() => undefined);
+        midCallRequest.catch(() => undefined);
 
         await flushMicrotasks();
         expect(harness.transportDeferreds).toHaveLength(2);

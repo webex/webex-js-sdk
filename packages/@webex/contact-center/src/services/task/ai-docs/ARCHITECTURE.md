@@ -25,9 +25,10 @@
 
 `Task` owns the stable public task interface. It stores `data`, `webCallMap`,
 `stateMachineService`, the latest state snapshot, current UI controls, optional
-`autoWrapup`, wrap-up data, and the injected AI summary adapter
-runtime. It never imports `TaskManager`; `TaskManager` injects AI summary
-dependencies with `configureAISummary(...)` immediately after task creation.
+`autoWrapup`, wrap-up data, the injected AI summary adapter runtime, and the
+task-local AI-summary feature flags. It never imports `TaskManager`; `TaskManager`
+injects the adapter and generated-summary flags accessor with
+`configureAISummary(...)` immediately after task creation.
 
 Core methods:
 
@@ -363,16 +364,13 @@ this branch and must not be moved into AI summary routing.
 
 AI summary RTD routing keeps only the guards needed for routing:
 
-- `FEATURE_ENABLEMENT` is classified before correlation; frames with an
-  `interactionId` are counted, stored by top-level `interactionId`, and emitted through
-  `TASK_EVENTS.TASK_FEATURE_ENABLEMENT` on the matching task object when the
-  task is already registered. If the frame arrives before
-  `AGENT_CONTACT_RESERVED` creates the task (orphan), it is stored; at task
-  creation `retainFeatureEnablementForTask` clears the orphan timeout and
-  `deliverFeatureEnablementToTask` emits `task:featureEnablement` exactly
-  once on the newly created task. Delivery is called only from task creation
-  paths, not from `updateTaskData`, so consumers receive at most one emission
-  per task per enablement frame.
+- `FEATURE_ENABLEMENT` is classified before correlation. If the matching task
+  exists, the frame updates that task's local flags and emits
+  `TASK_EVENTS.TASK_FEATURE_ENABLEMENT`. If the frame arrives before the task
+  exists, it is retained by `interactionId` for the summary timeout window;
+  task creation applies the payload and emits it after the public task lifecycle
+  event so consumers do not miss the notification. Unmatched pending payloads
+  expire and are cleared during AI-summary cleanup.
 - `POST_CALL_SUMMARY` and `MID_CALL_SUMMARY` require a non-empty
   `conversationId` and resolve a pending request by `conversationId` and
   inbound type. Other payload fields are forwarded according to their types.
@@ -537,10 +535,10 @@ flowchart LR
    payload on its original retention deadline, or drops an ambiguous match.
 3. Task insertion, update, and removal re-evaluate buffered payloads; full SDK
    cleanup deactivates handling and clears buffers and timers.
-4. Delivery emits `task:midCallSummaryForReceivingAgent`.
+4. Delivery emits `task:midCallSummaryReceived`.
 
 ```typescript
-task.on('task:midCallSummaryForReceivingAgent', (payload) => {
+task.on('task:midCallSummaryReceived', (payload) => {
   renderReadOnlySummary(payload.adaptiveCard ?? payload.summaryText);
 });
 ```

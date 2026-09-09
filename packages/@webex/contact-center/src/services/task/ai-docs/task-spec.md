@@ -419,7 +419,7 @@ The public `TASK_EVENTS` enum contains 51 members; every member is listed below 
 | `TASK_CAMPAIGN_PREVIEW_SKIP_FAILED` | `task:campaignPreviewSkipFailed` |
 | `TASK_CAMPAIGN_PREVIEW_REMOVE_FAILED` | `task:campaignPreviewRemoveFailed` |
 | `TASK_CAMPAIGN_CONTACT_UPDATED` | `task:campaignContactUpdated` |
-| `TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT` | `task:midCallSummaryForReceivingAgent` |
+| `TASK_MID_CALL_SUMMARY_RECEIVED` | `task:midCallSummaryReceived` |
 | `TASK_FEATURE_ENABLEMENT` | `task:featureEnablement` |
 
 ## Requires (dependencies)

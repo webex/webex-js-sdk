@@ -28,7 +28,6 @@ export {default as Task} from './services/task/Task';
 // API exports (AddressBook is public, EntryPoint and Queue are accessed via cc wrappers)
 export {default as AddressBook} from './services/AddressBook';
 export {default as ApiAIAssistant} from './services/ApiAiAssistant';
-export {AIAssistantEventName} from './types';
 export {AI_SUMMARY_ERROR_CODES} from './constants';
 export {default as UserPreference} from './services/UserPreference';
 
@@ -156,7 +155,6 @@ export type {
   MidCallSummaryState,
   PostCallSummarySections,
   MidCallSummarySections,
-  SummaryCounters,
   PostCallSummaryEventPayload,
   MidCallSummaryEventPayload,
   MidCallSummaryReceivingAgentPayload,

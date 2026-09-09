@@ -228,7 +228,6 @@ jest.mock('../../../../../src/services/task/TaskUtils', () => ({
 
     return error;
   }),
-  isNonEmptyString: jest.fn((value) => typeof value === 'string' && value.length > 0),
 }));
 
 jest.mock('../../../../../src/services/core/Utils', () => ({
@@ -1108,19 +1107,19 @@ describe('Task AI summary APIs', () => {
       ? options.consultTransferSummariesEnabled
       : true;
 
-    const getFeatureEnablement = jest.fn(() => ({
-      interactionId: 'interaction-1',
-      postCallEnabled,
-      midCallEnabled,
-    }));
     const getGeneratedSummaryFlags = jest.fn(() => ({
       wrapUpSummariesEnabled,
       consultTransferSummariesEnabled,
     }));
 
-    task.configureAISummary(adapter, getGeneratedSummaryFlags, getFeatureEnablement);
+    task.setFeatureEnablement({
+      interactionId: task.data.interactionId,
+      postCallEnabled,
+      midCallEnabled,
+    });
+    task.configureAISummary(adapter, getGeneratedSummaryFlags);
 
-    return {adapter, coordinator, getGeneratedSummaryFlags, getFeatureEnablement};
+    return {adapter, coordinator, getGeneratedSummaryFlags};
   };
 
   const createRealSummaryMocks = (task: DummyTask) => {
@@ -1160,20 +1159,19 @@ describe('Task AI summary APIs', () => {
       clearAll: jest.fn(() => result.reject(new Error(AI_SUMMARY_REQUEST_CANCELLED))),
       clear: jest.fn(),
     } as any;
-    const featureEnablement = {
-      interactionId: 'interaction-1',
-      postCallEnabled: true,
-      midCallEnabled: true,
-    };
-    const getFeatureEnablement = jest.fn(() => featureEnablement);
     const getGeneratedSummaryFlags = jest.fn(() => ({
       wrapUpSummariesEnabled: true,
       consultTransferSummariesEnabled: true,
     }));
 
-    task.configureAISummary(adapter, getGeneratedSummaryFlags, getFeatureEnablement);
+    task.setFeatureEnablement({
+      interactionId: task.data.interactionId,
+      postCallEnabled: true,
+      midCallEnabled: true,
+    });
+    task.configureAISummary(adapter, getGeneratedSummaryFlags);
 
-    return {adapter, coordinator: adapter, result, getGeneratedSummaryFlags, getFeatureEnablement};
+    return {adapter, coordinator: adapter, result, getGeneratedSummaryFlags};
   };
 
   const expectSummaryGetEvent = (
@@ -1258,15 +1256,13 @@ describe('Task AI summary APIs', () => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
     const metrics = spyOnAISummaryMetrics(task);
     const postCallResult = createPostCallSummaryPayload();
-    const {adapter, coordinator, getGeneratedSummaryFlags, getFeatureEnablement} =
-      createSummaryMocks(task, {
+    const {adapter, coordinator, getGeneratedSummaryFlags} = createSummaryMocks(task, {
         registrationResult: Promise.resolve(postCallResult),
       });
 
     await expect(task.requestPostCallSummary()).resolves.toBe(postCallResult);
 
     expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(1);
-    expect(getFeatureEnablement).toHaveBeenCalledWith('interaction-1');
     expect(coordinator.requestAndWaitForRtd).toHaveBeenCalledWith(
       expect.objectContaining({
         correlationId: 'conversation-1',
@@ -1557,18 +1553,11 @@ describe('Task AI summary APIs', () => {
           interaction: {mainInteractionId: 'conversation-1'} as any,
         })
       );
-      const {adapter, coordinator, getFeatureEnablement} = createSummaryMocks(task);
-
-      getFeatureEnablement.mockImplementation((interactionId) => ({
-        interactionId,
-        ...featureEnablement,
-      }));
+      const {adapter, coordinator} = createSummaryMocks(task, featureEnablement);
 
       await expect(invoke(task)).rejects.toMatchObject(
         createAISummaryErrorExpectation(disabledCode)
       );
-      expect(getFeatureEnablement).toHaveBeenCalledWith('child-interaction-1');
-      expect(getFeatureEnablement).not.toHaveBeenCalledWith('conversation-1');
       expect(coordinator.requestAndWaitForRtd).not.toHaveBeenCalled();
       expect(adapter.sendEvent).not.toHaveBeenCalled();
     }
@@ -1645,10 +1634,12 @@ describe('Task AI summary APIs', () => {
 
       task.configureAISummary(
         adapter,
-        getGeneratedSummaryFlags,
-        (interactionId) =>
-          featureEnablement?.interactionId === interactionId ? featureEnablement : undefined
+        getGeneratedSummaryFlags
       );
+      task.setFeatureEnablement({
+        interactionId: task.data.interactionId,
+        ...(featureEnablement ?? {}),
+      });
 
       await expect(invoke(task)).rejects.toMatchObject(
         createAISummaryErrorExpectation(disabledCode)
@@ -1701,12 +1692,8 @@ describe('Task AI summary APIs', () => {
     });
     const getGeneratedSummaryFlags = jest.fn(() => generatedSummaryFlags);
 
-    task.configureAISummary(
-      adapter,
-      getGeneratedSummaryFlags,
-      (interactionId) =>
-        featureEnablement.interactionId === interactionId ? featureEnablement : undefined
-    );
+    task.configureAISummary(adapter, getGeneratedSummaryFlags);
+    task.setFeatureEnablement({interactionId: task.data.interactionId, ...featureEnablement});
 
     await expect(task.requestPostCallSummary()).rejects.toMatchObject(
       createAISummaryErrorExpectation(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED)
@@ -1841,8 +1828,7 @@ describe('Task AI summary APIs', () => {
     const taskRegistry: Record<string, DummyTask> = {'interaction-1': task};
     const metrics = spyOnAISummaryMetrics(task);
     const postCallResult = createPostCallSummaryPayload();
-    const {adapter, coordinator, result, getGeneratedSummaryFlags, getFeatureEnablement} =
-      createRealSummaryMocks(task);
+    const {adapter, coordinator, result, getGeneratedSummaryFlags} = createRealSummaryMocks(task);
 
     const postCallRequest = task.requestPostCallSummary();
     await flushEventLoopTurn();
@@ -1851,7 +1837,6 @@ describe('Task AI summary APIs', () => {
     result.resolve(postCallResult);
     await expect(postCallRequest).resolves.toBe(postCallResult);
     expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(1);
-    expect(getFeatureEnablement).toHaveBeenCalledTimes(1);
 
     delete taskRegistry['interaction-1'];
     coordinator.clear('task-owner-1', 'conversation-1');
@@ -1870,7 +1855,6 @@ describe('Task AI summary APIs', () => {
 
     expect(taskRegistry['interaction-1']).toBeUndefined();
     expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(1);
-    expect(getFeatureEnablement).toHaveBeenCalledTimes(1);
     expect(adapter.sendEvent).toHaveBeenCalledTimes(2);
     expect(getSummaryEventPayload(adapter, 1)).toStrictEqual({
       agentId: 'agent-1',

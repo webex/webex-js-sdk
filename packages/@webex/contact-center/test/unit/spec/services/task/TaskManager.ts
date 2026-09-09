@@ -296,6 +296,7 @@ describe('TaskManager', () => {
   const createEventEmitterTask = (data = taskDataMock) => {
     const task = new EventEmitter() as any;
     const originalOn = task.on.bind(task);
+    let pendingFeatureEnablement;
 
     const updateTaskData = jest.fn().mockImplementation((newData) => {
       task.data = {...task.data, ...newData};
@@ -309,6 +310,19 @@ describe('TaskManager', () => {
       decline: jest.fn(),
       updateTaskData,
       configureAISummary: jest.fn(),
+      setFeatureEnablement: jest.fn((payload, emitEvent = true) => {
+        pendingFeatureEnablement = emitEvent ? undefined : payload;
+        if (emitEvent) {
+          task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, payload);
+        }
+      }),
+      emitPendingFeatureEnablement: jest.fn(() => {
+        if (pendingFeatureEnablement) {
+          const payload = pendingFeatureEnablement;
+          pendingFeatureEnablement = undefined;
+          task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, payload);
+        }
+      }),
       unregisterWebCallListeners: jest.fn(),
       cancelAutoWrapupTimer: jest.fn(),
     });
@@ -753,7 +767,7 @@ describe('TaskManager', () => {
     expect(existingTaskEmitSpy).not.toHaveBeenCalled();
   });
 
-  it('should store and forward valid feature enablement frames', () => {
+  it('should update the matching task with the latest feature enablement frame', () => {
     const payload = {
       type: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
       data: {
@@ -780,7 +794,7 @@ describe('TaskManager', () => {
       })
     );
 
-    expect((taskManager as any).interactionFeatureEnablement.get(taskId)?.payload).toEqual({
+    expect((taskManager.getTask(taskId) as any).setFeatureEnablement).toHaveBeenLastCalledWith({
       interactionId: taskId,
       postCallEnabled: undefined,
       midCallEnabled: true,
@@ -859,7 +873,7 @@ describe('TaskManager', () => {
       })
     );
 
-    // Build and register the task, then spy before calling retain
+    // Build and register the task, then apply the pending payload.
     const orphanTask = createStateMachineTask({
       ...taskDataMock,
       interactionId: newInteractionId,
@@ -869,9 +883,8 @@ describe('TaskManager', () => {
     const taskEmitSpy = jest.spyOn(orphanTask, 'emit');
     taskManager.taskCollection[newInteractionId] = orphanTask;
 
-    // deliverFeatureEnablementToTask is called at task creation after retention
-    (taskManager as any).retainFeatureEnablementForTask(orphanTask);
-    (taskManager as any).deliverFeatureEnablementToTask(orphanTask);
+    (taskManager as any).applyPendingFeatureEnablement(orphanTask);
+    orphanTask.emitPendingFeatureEnablement();
 
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featurePayload);
 
@@ -895,14 +908,14 @@ describe('TaskManager', () => {
       })
     );
 
-    expect((taskManager as any).interactionFeatureEnablement.get(interactionId)?.payload).toEqual(
+    expect((taskManager as any).pendingFeatureEnablement.get(interactionId)?.payload).toEqual(
       featurePayload
     );
     expect(jest.getTimerCount()).toBe(1);
 
     jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS);
 
-    expect((taskManager as any).interactionFeatureEnablement.get(interactionId)).toBeUndefined();
+    expect((taskManager as any).pendingFeatureEnablement.get(interactionId)).toBeUndefined();
     expect(jest.getTimerCount()).toBe(0);
   });
 
@@ -937,11 +950,11 @@ describe('TaskManager', () => {
       })
     );
 
-    expect((taskManager as any).interactionFeatureEnablement.get(conversationId)?.payload).toEqual(
+    expect((taskManager as any).pendingFeatureEnablement.get(conversationId)?.payload).toEqual(
       featurePayload
     );
     expect(
-      (taskManager as any).interactionFeatureEnablement.get(childInteractionId)
+      (taskManager as any).pendingFeatureEnablement.get(childInteractionId)
     ).toBeUndefined();
 
     taskManager.clearAISummaryState();
@@ -1215,11 +1228,11 @@ describe('TaskManager', () => {
       );
 
       expect(childEmitSpy).toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+        TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
         receivingPayload
       );
       expect(parentEmitSpy).not.toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+        TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
         expect.anything()
       );
     }
@@ -1265,12 +1278,12 @@ describe('TaskManager', () => {
       );
 
       expect(childEmitSpy).toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+        TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
         receivingPayload
       );
       [grandparentEmitSpy, parentEmitSpy].forEach((emitSpy) => {
         expect(emitSpy).not.toHaveBeenCalledWith(
-          TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+          TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
           expect.anything()
         );
       });
@@ -1318,7 +1331,7 @@ describe('TaskManager', () => {
 
       receivingTaskEmitSpies.forEach((emitSpy) => {
         expect(emitSpy).not.toHaveBeenCalledWith(
-          TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+          TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
           expect.anything()
         );
       });
@@ -1372,11 +1385,11 @@ describe('TaskManager', () => {
     );
 
     expect(invalidEmitSpy).not.toHaveBeenCalledWith(
-      TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+      TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
       expect.anything()
     );
     expect(validPeerEmitSpy).toHaveBeenCalledWith(
-      TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+      TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
       receivingPayload
     );
 
@@ -1438,11 +1451,11 @@ describe('TaskManager', () => {
       );
 
       expect(selfEmitSpy).not.toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+        TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
         expect.anything()
       );
       expect(peerEmitSpy).toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+        TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
         {
           conversationId: 'conversation-1',
           summaryText: 'private-summary',
@@ -1479,7 +1492,7 @@ describe('TaskManager', () => {
     (taskManager as any).flushReceivingSummary('conversation-1');
 
     expect(taskEmitSpy).toHaveBeenCalledWith(
-      TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+      TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
       receivingPayload
     );
   });
@@ -1509,11 +1522,11 @@ describe('TaskManager', () => {
     (taskManager as any).flushReceivingSummary(conversationId);
 
     expect(firstTaskEmitSpy).not.toHaveBeenCalledWith(
-      TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+      TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
       expect.anything()
     );
     expect(secondTaskEmitSpy).not.toHaveBeenCalledWith(
-      TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+      TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
       expect.anything()
     );
     expect((taskManager as any).receivingSummaryBuffer.get(conversationId)).toBeUndefined();
@@ -1531,7 +1544,7 @@ describe('TaskManager', () => {
       summaryText: 'buffered unmapped update summary',
     };
 
-    task.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT, receiverHandler);
+    task.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, receiverHandler);
     sendStateMachineEventSpy.mockClear();
 
     taskManager.handleRealtimeWebsocketEvent(
@@ -1606,7 +1619,7 @@ describe('TaskManager', () => {
     );
 
     const reservationTask = taskManager.getTask(reservationInteractionId);
-    reservationTask.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT, receiverHandler);
+    reservationTask.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, receiverHandler);
     const featureHandler = jest.fn();
     reservationTask.on(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featureHandler);
 
@@ -1617,9 +1630,7 @@ describe('TaskManager', () => {
       })
     );
 
-    expect(
-      (taskManager as any).interactionFeatureEnablement.get(reservationInteractionId)?.payload
-    ).toEqual(featurePayload);
+    expect(reservationTask.setFeatureEnablement).toHaveBeenCalledWith(featurePayload);
     expect(jest.getTimerCount()).toBe(0);
 
     taskManager.handleRealtimeWebsocketEvent(
@@ -1629,9 +1640,9 @@ describe('TaskManager', () => {
       })
     );
 
-    expect(
-      (taskManager as any).interactionFeatureEnablement.get(assignedInteractionId)?.payload
-    ).toEqual(assignedFeaturePayload);
+    expect((taskManager as any).pendingFeatureEnablement.get(assignedInteractionId)?.payload).toEqual(
+      assignedFeaturePayload
+    );
     expect(jest.getTimerCount()).toBe(1);
 
     taskManager.handleRealtimeWebsocketEvent(
@@ -1663,9 +1674,7 @@ describe('TaskManager', () => {
 
     expect(taskManager.getTask(assignedInteractionId)).toBe(reservationTask);
     expect(taskManager.getTask(reservationInteractionId)).toBeUndefined();
-    expect(
-      (taskManager as any).interactionFeatureEnablement.get(reservationInteractionId)
-    ).toBeUndefined();
+    expect((taskManager as any).pendingFeatureEnablement.get(reservationInteractionId)).toBeUndefined();
     expect(featureHandler).toHaveBeenCalledWith(assignedFeaturePayload);
     expect(receiverHandler).toHaveBeenCalledTimes(1);
     expect(receiverHandler).toHaveBeenCalledWith(receivingPayload);
@@ -1692,11 +1701,11 @@ describe('TaskManager', () => {
     );
 
     expect(unmatchedTaskEmitSpy).not.toHaveBeenCalledWith(
-      TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+      TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
       expect.anything()
     );
     expect(taskManagerEmitSpy).not.toHaveBeenCalledWith(
-      TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+      TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
       expect.anything()
     );
     expect(jest.getTimerCount()).toBe(1);
@@ -1706,11 +1715,11 @@ describe('TaskManager', () => {
     jest.advanceTimersByTime(1);
 
     expect(unmatchedTaskEmitSpy).not.toHaveBeenCalledWith(
-      TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+      TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
       expect.anything()
     );
     expect(taskManagerEmitSpy).not.toHaveBeenCalledWith(
-      TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+      TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
       expect.anything()
     );
     expectNoSensitiveDiagnostics('private expired receiver summary');
@@ -1761,7 +1770,7 @@ describe('TaskManager', () => {
       taskManager.on(publicationEvent, (publishedTask) => {
         observedOrder.push('published');
         expect(publishedTask).toBe(taskManager.getTask(interactionId));
-        publishedTask.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT, (payload) => {
+        publishedTask.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, (payload) => {
           observedOrder.push('receiver-summary');
           deliveryHandler(payload);
         });
@@ -1813,7 +1822,7 @@ describe('TaskManager', () => {
     taskManager.on(TASK_EVENTS.TASK_MERGED, (publishedTask) => {
       observedOrder.push('published');
       expect(publishedTask).toBe(taskManager.getTask(interactionId));
-      publishedTask.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT, (payload) => {
+      publishedTask.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, (payload) => {
         observedOrder.push('receiver-summary');
         deliveryHandler(payload);
       });
@@ -1911,9 +1920,12 @@ describe('TaskManager', () => {
       'MID_CALL_SUMMARY_TIMEOUT'
     );
 
-    (taskManager as any).setFeatureEnablement(
-      {interactionId: taskId, postCallEnabled: true},
-      false
+    const pendingFeatureInteractionId = 'pending-feature-interaction';
+    taskManager.handleRealtimeWebsocketEvent(
+      JSON.stringify({
+        type: CC_TASK_EVENTS.FEATURE_ENABLEMENT,
+        data: {data: {interactionId: pendingFeatureInteractionId, postCallEnabled: true}},
+      })
     );
     (taskManager as any).routeReceivingSummary(
       {conversationId: 'conversation-1', summaryText: 'summary'},
@@ -1935,7 +1947,9 @@ describe('TaskManager', () => {
         data: {errorCode: AI_SUMMARY_REQUEST_CANCELLED},
       })
     );
-    expect((taskManager as any).interactionFeatureEnablement.get(taskId)).toBeUndefined();
+    expect(
+      (taskManager as any).pendingFeatureEnablement.get(pendingFeatureInteractionId)
+    ).toBeUndefined();
     expect(jest.getTimerCount()).toBe(0);
 
     const taskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
@@ -1976,8 +1990,8 @@ describe('TaskManager', () => {
     const expectCoordinatorStateCleared = () => {
       expect((coordinator as any).pendingRequests.size).toBe(0);
       expect((taskManager as any).receivingSummaryBuffer.size).toBe(0);
-      expect((taskManager as any).interactionFeatureEnablement.size).toBe(0);
-      expect((taskManager as any).interactionFeatureEnablement.get(taskId)).toBeUndefined();
+      expect((taskManager as any).pendingFeatureEnablement.size).toBe(0);
+      expect((taskManager as any).pendingFeatureEnablement.get(taskId)).toBeUndefined();
       expect(jest.getTimerCount()).toBe(0);
     };
     const expectNoPublicAISummaryEmission = () => {
@@ -1992,14 +2006,14 @@ describe('TaskManager', () => {
         }
       );
       expect(taskEmitSpy).not.toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT,
+        TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED,
         expect.anything()
       );
     };
 
     taskManager
       .getTask(taskId)
-      .on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_FOR_RECEIVING_AGENT, receiverSummaryHandler);
+      .on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, receiverSummaryHandler);
 
     postClearFrames.forEach(({eventType, data}) => {
       getLoggerProxy().warn.mockClear();
@@ -2018,7 +2032,7 @@ describe('TaskManager', () => {
       })
     );
 
-    expect((taskManager as any).interactionFeatureEnablement.get(taskId)?.payload).toEqual({
+    expect((taskManager.getTask(taskId) as any).setFeatureEnablement).toHaveBeenCalledWith({
       interactionId: taskId,
       postCallEnabled: true,
     });
@@ -2075,7 +2089,6 @@ describe('TaskManager', () => {
     expect(taskManager.getAgentId()).toBe('agent-id-1');
     expect(configuredTask.configureAISummary).toHaveBeenCalledWith(
       mockApiAIAssistant,
-      expect.any(Function),
       expect.any(Function)
     );
     const injectedGeneratedSummaryFlagsAccessor =
@@ -2235,7 +2248,6 @@ describe('TaskManager', () => {
     expect(task.configureAISummary).toHaveBeenCalledTimes(1);
     expect(task.configureAISummary).toHaveBeenCalledWith(
       mockApiAIAssistant,
-      expect.any(Function),
       expect.any(Function)
     );
     expect(task.on).toHaveBeenCalled();
