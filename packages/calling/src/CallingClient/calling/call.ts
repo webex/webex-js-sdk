@@ -3100,7 +3100,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           correlationId: this.correlationId,
         },
         callId: this.callId.includes(DEFAULT_LOCAL_CALL_ID)
-          ? this.callId.replace(DEFAULT_LOCAL_CALL_ID, '')
+          ? this.callId.replace(`${DEFAULT_LOCAL_CALL_ID}_`, '')
           : this.callId,
         metrics: disconnectMetrics,
         causecode: this.disconnectReason.code,

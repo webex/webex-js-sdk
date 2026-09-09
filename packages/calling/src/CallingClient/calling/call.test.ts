@@ -276,9 +276,10 @@ describe('Call Tests', () => {
     expect(parseMediaQualityStatisticsMock).toHaveBeenCalledTimes(1);
     expect(webex.request.mock.calls[0][0].body.metrics).toStrictEqual(disconnectStats);
     expect(webex.request.mock.calls[0][0].body.callId).toBe(
-      call.getCallId().replace(DEFAULT_LOCAL_CALL_ID, '')
+      call.getCallId().replace(`${DEFAULT_LOCAL_CALL_ID}_`, '')
     );
     expect(webex.request.mock.calls[0][0].body.callId).not.toContain(DEFAULT_LOCAL_CALL_ID);
+    expect(webex.request.mock.calls[0][0].body.callId).not.toMatch(/^_/);
     expect(call.getDisconnectReason().code).toBe(DisconnectCode.NORMAL);
     expect(call.getDisconnectReason().cause).toBe(DisconnectCause.NORMAL);
 
