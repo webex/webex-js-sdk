@@ -1963,7 +1963,8 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * Syncs all the meetings from server. Does nothing and returns immediately if unverified guest.
+   * Syncs all the meetings from server. For unverified guests it skips the getActiveMeetings() call
+   * (which Locus rejects for them) and instead resyncs each meeting individually via LocusInfo#sync.
    * @param {boolean} keepOnlyLocusMeetings - whether the sync should keep only locus meetings or any other meeting in meetingCollection
    * @returns {Promise<void>}
    * @public

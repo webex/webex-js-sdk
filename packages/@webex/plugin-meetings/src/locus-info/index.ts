@@ -434,7 +434,7 @@ export default class LocusInfo extends EventsScope {
           });
         }
 
-        return onFetchFailure(e, 'full sync failed');
+        return onFetchFailure(e, 'full sync failed', {terminal: e.statusCode === 403});
       })
       .then((res) => {
         if (isEmpty(res.body)) {
@@ -466,7 +466,10 @@ export default class LocusInfo extends EventsScope {
       })
       .catch((e) => {
         if (!fetchFailed) {
-          // the DTO was fetched successfully but applying it failed
+          // The DTO was fetched successfully but applying it failed. Retrying wouldn't help - it
+          // would re-fetch and re-apply the same unprocessable DTO and fail identically - so log and
+          // resume (swallow the error) instead of propagating it. Propagating here would make the
+          // reconnection flow (which treats a rejection as retryable) retry indefinitely.
           LoggerProxy.logger.info(
             `Locus-info:index#doLocusSync --> getLocusDTO succeeded but failed to handle result, locus parser will resume but not all data may be synced (${e.toString()})`
           );
@@ -479,10 +482,12 @@ export default class LocusInfo extends EventsScope {
             stack: e.stack,
             code: e.code,
           });
+
+          return;
         }
 
         if (!destroyOnTransientFailure && !meetingDestroyed) {
-          // caller-driven sync (e.g. reconnection): propagate a transient failure so it can be
+          // caller-driven sync (e.g. reconnection): propagate a transient fetch failure so it can be
           // retried. If the meeting was destroyed (terminal failure), there's nothing to retry.
           throw e;
         }
@@ -500,7 +505,8 @@ export default class LocusInfo extends EventsScope {
    * Syncs this meeting's Locus state (e.g. after a network reconnection), routing to whichever
    * mechanism the meeting uses (a meeting only ever uses one): hash tree datasets via
    * syncAllHashTreeDatasets() or a standalone Locus DTO fetch for classic meetings.
-   * It does not destroy the meeting if the sync fails.
+   * A transient failure preserves the meeting (so the caller can retry); only a terminal failure
+   * (e.g. a 403 meaning the meeting has ended) destroys it.
    *
    * The classic path is only needed when Meetings#syncMeetings() can't do its usual
    * getActiveMeetings() fetch (e.g. unverified guests, for whom Locus rejects that call); signed-in
@@ -513,7 +519,8 @@ export default class LocusInfo extends EventsScope {
    * @param {boolean} options.canSyncHashTree - whether this sync is allowed to sync hash tree
    *   datasets for hash tree based meetings
    * @returns {Promise<void>} resolves once the sync (hash tree or classic) completes; for the
-   *   classic path it rejects if the sync fails, so the caller can retry
+   *   classic path it rejects only on a transient failure, so the caller can retry (a terminal
+   *   failure destroys the meeting and resolves)
    */
   async sync(
     meeting: any,

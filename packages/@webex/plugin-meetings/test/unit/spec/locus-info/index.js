@@ -4532,6 +4532,35 @@ describe('plugin-meetings', () => {
           // meeting was destroyed, so the parser is not resumed
           assert.notCalled(locusInfo.locusParser.resume);
         });
+
+        it('destroys the meeting and resolves when the direct full sync (no delta syncUrl) gets a terminal 403, so the caller does not retry', async () => {
+          const fake403Error = new Error('meeting ended');
+          fake403Error.statusCode = 403;
+          const meeting = {
+            correlationId: 'correlationId',
+            meetingRequest: {
+              getLocusDTO: sandbox.stub().rejects(fake403Error),
+            },
+            locusInfo: {
+              onFullLocus: sandbox.stub(),
+            },
+            locusUrl: 'someLocusUrl',
+          };
+
+          locusInfo.locusParser.workingCopy = {}; // no syncUrl -> direct full sync, 403 is terminal
+          sandbox.stub(locusInfo.locusParser, 'pause');
+          sandbox.stub(locusInfo.locusParser, 'resume');
+          sandbox.stub(webex.meetings, 'destroy');
+
+          // a terminal 403 from the direct full sync means the meeting has ended, so the sync must
+          // resolve (not reject), otherwise the reconnection flow would retry indefinitely
+          await locusInfo.sync(meeting, {canSyncClassicLocus: true, canSyncHashTree: true});
+
+          assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'someLocusUrl'});
+          assert.calledOnceWithExactly(webex.meetings.destroy, meeting, 'LOCUS_DTO_SYNC_FAILED');
+          // meeting was destroyed, so the parser is not resumed
+          assert.notCalled(locusInfo.locusParser.resume);
+        });
       });
 
       describe('#doLocusSync', () => {
@@ -4557,6 +4586,40 @@ describe('plugin-meetings', () => {
           // apply must not reject or destroy the meeting - doLocusSync just resumes the parser and
           // resolves (the returned promise must not reject)
           await locusInfo.doLocusSync(meeting, false, undefined);
+
+          assert.calledOnceWithExactly(
+            meeting.locusInfo.onFullLocus,
+            'classic Locus sync',
+            fakeFullLocusDto
+          );
+          assert.notCalled(webex.meetings.destroy);
+          assert.calledOnce(locusInfo.locusParser.resume);
+        });
+
+        it('resolves (does not reject) when the DTO is fetched but applying it fails even when destroyOnTransientFailure is false, so the sync is not retried indefinitely', async () => {
+          const fakeFullLocusDto = {id: 'fake full locus dto'};
+          const applyError = new Error('failed to apply DTO');
+          const meeting = {
+            correlationId: 'correlationId',
+            meetingRequest: {
+              getLocusDTO: sandbox.stub().resolves({body: fakeFullLocusDto}),
+            },
+            locusInfo: {
+              onFullLocus: sandbox.stub().throws(applyError),
+            },
+            locusUrl: 'someLocusUrl',
+          };
+
+          locusInfo.locusParser.workingCopy = {}; // no syncUrl -> full sync
+          sandbox.stub(locusInfo.locusParser, 'resume');
+          sandbox.stub(webex.meetings, 'destroy');
+
+          // Even on the caller-driven (reconnection) path (destroyOnTransientFailure: false), an
+          // application failure must not reject: retrying would re-fetch and re-apply the same
+          // unprocessable DTO, so doLocusSync just resumes the parser and resolves.
+          await locusInfo.doLocusSync(meeting, false, undefined, {
+            destroyOnTransientFailure: false,
+          });
 
           assert.calledOnceWithExactly(
             meeting.locusInfo.onFullLocus,
