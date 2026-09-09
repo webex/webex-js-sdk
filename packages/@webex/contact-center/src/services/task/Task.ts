@@ -39,14 +39,18 @@ import {
 import {
   AI_SUMMARY_TASK_ERROR_CODES,
   AI_SUMMARY_DURATION_MS,
-  AI_SUMMARY_REQUEST_CANCELLED,
   ENTRY_POINT_TRANSFER_DESTINATION_TYPE,
   POST_CALL_SUMMARY_STATES,
   MID_CALL_SUMMARY_RECEIVED_STATES,
   MID_CALL_SUMMARY_UNAVAILABLE_STATES,
   METHODS,
 } from './constants';
-import {AI_SUMMARY_ERROR_CODES, CC_FILE, TASK_FILE} from '../../constants';
+import {
+  AI_ASSISTANT_CLIENT_TYPE,
+  AI_SUMMARY_ERROR_CODES,
+  CC_FILE,
+  TASK_FILE,
+} from '../../constants';
 import {getErrorDetails} from '../core/Utils';
 import routingContact from './contact';
 import MetricsManager from '../../metrics/MetricsManager';
@@ -74,10 +78,8 @@ import {
 } from './state-machine/uiControlsComputer';
 import AutoWrapup from './AutoWrapup';
 import {WrapupData} from '../config/types';
-import {AIAssistantEventName} from '../../types';
-import type {AISummaryResponseTransportPayload} from '../../types';
+import {AIAssistantEventName, AIAssistantEventType} from '../../types';
 import {getAISummaryCorrelation} from './TaskUtils';
-import type RtdRequestResolver from '../core/RtdRequestResolver';
 
 type UIControlConfigInput = Omit<UIControlConfig, 'channelType'> & {
   channelType?: UIControlConfig['channelType'];
@@ -98,7 +100,6 @@ export default abstract class Task extends EventEmitter implements ITask {
   protected agentId?: string;
   protected agentName?: string;
   private aiSummaryAdapter?: AISummaryAdapter;
-  private rtdRequestResolver?: RtdRequestResolver;
   private getFeatureEnablement?: FeatureEnablementAccessor;
   private getGeneratedSummaryFlags?: GeneratedSummaryFlagsAccessor;
   private postCallSummaryResponseContext?: AISummaryResponseContext;
@@ -259,12 +260,10 @@ export default abstract class Task extends EventEmitter implements ITask {
 
   public configureAISummary(
     apiAIAssistant: AISummaryAdapter | undefined,
-    rtdRequestResolver: RtdRequestResolver,
     getGeneratedSummaryFlags: GeneratedSummaryFlagsAccessor,
     getFeatureEnablement: FeatureEnablementAccessor
   ): void {
     this.aiSummaryAdapter = apiAIAssistant;
-    this.rtdRequestResolver = rtdRequestResolver;
     this.getFeatureEnablement = getFeatureEnablement;
     this.getGeneratedSummaryFlags = getGeneratedSummaryFlags;
   }
@@ -349,27 +348,31 @@ export default abstract class Task extends EventEmitter implements ITask {
         interactionId: context.interactionId,
       });
 
-      await (this.aiSummaryAdapter as AISummaryAdapter).sendSummaryResponseEvent(
+      const fallbackTimestamp = Date.now();
+      const actionTimeStamp = payload.actionTimeStamp ?? fallbackTimestamp;
+      const publishTimestamp = payload.publishTimestamp ?? fallbackTimestamp;
+      await (this.aiSummaryAdapter as AISummaryAdapter).sendEvent(
         this.agentId as string,
+        context.interactionId,
+        AIAssistantEventType.CTI_EVENT,
+        AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
         {
-          agentId: this.agentId as string,
-          interactionId: context.interactionId,
           conversationId: context.conversationId,
-          eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
-          feedback: payload.feedback,
-          wrapUpCode: payload.wrapUpCode,
+          clientType: AI_ASSISTANT_CLIENT_TYPE,
+          action: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+          actionTimeStamp,
           summary: payload.summary,
+          wrapUpCode: payload.wrapUpCode,
           numberOfTimesViewed: payload.numberOfTimesViewed,
           numberOfTimesEdited: payload.numberOfTimesEdited,
           numberOfTimesCopied: payload.numberOfTimesCopied,
+          feedback: payload.feedback,
           state: payload.state,
-          ...(payload.actionTimeStamp !== undefined
-            ? {actionTimeStamp: payload.actionTimeStamp}
-            : {}),
-          ...(payload.publishTimestamp !== undefined
-            ? {publishTimestamp: payload.publishTimestamp}
-            : {}),
-        } as AISummaryResponseTransportPayload
+        },
+        undefined,
+        undefined,
+        publishTimestamp,
+        AI_SUMMARY_DURATION_MS
       );
 
       this.metricsManager.trackEvent(
@@ -490,30 +493,35 @@ export default abstract class Task extends EventEmitter implements ITask {
         interactionId: context.interactionId,
       });
 
-      await (this.aiSummaryAdapter as AISummaryAdapter).sendSummaryResponseEvent(
+      const fallbackTimestamp = Date.now();
+      const actionTimeStamp = payload.actionTimeStamp ?? fallbackTimestamp;
+      const publishTimestamp = payload.publishTimestamp ?? fallbackTimestamp;
+      const eventName =
+        actionType === 'CONSULT'
+          ? AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE
+          : AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE;
+      await (this.aiSummaryAdapter as AISummaryAdapter).sendEvent(
         this.agentId as string,
+        context.interactionId,
+        AIAssistantEventType.CTI_EVENT,
+        eventName,
         {
-          agentId: this.agentId as string,
-          interactionId: context.interactionId,
           conversationId: context.conversationId,
-          eventName:
-            actionType === 'CONSULT'
-              ? AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE
-              : AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE,
-          feedback: payload.feedback,
-          agentName: this.agentName ?? '',
+          clientType: AI_ASSISTANT_CLIENT_TYPE,
+          action: eventName,
+          actionTimeStamp,
           summary: payload.summary,
+          agentName: this.agentName ?? '',
           numberOfTimesViewed: payload.numberOfTimesViewed,
           numberOfTimesEdited: payload.numberOfTimesEdited,
           numberOfTimesCopied: payload.numberOfTimesCopied,
+          feedback: payload.feedback,
           state: payload.state,
-          ...(payload.actionTimeStamp !== undefined
-            ? {actionTimeStamp: payload.actionTimeStamp}
-            : {}),
-          ...(payload.publishTimestamp !== undefined
-            ? {publishTimestamp: payload.publishTimestamp}
-            : {}),
-        } as AISummaryResponseTransportPayload
+        },
+        undefined,
+        undefined,
+        publishTimestamp,
+        AI_SUMMARY_DURATION_MS
       );
 
       this.metricsManager.trackEvent(
@@ -603,26 +611,22 @@ export default abstract class Task extends EventEmitter implements ITask {
     timeoutCode: AISummaryTimeoutCodeByInboundType[T],
     conversationId: string,
     interactionId: string,
-    eventName: Parameters<AISummaryAdapter['sendSummaryGetEvent']>[3]
+    eventName: AIAssistantEventName
   ): Promise<AISummaryPayloadByInboundType[T]> {
-    const taskId = this.data?.taskId ?? this.data?.interactionId ?? '';
-
-    return (this.rtdRequestResolver as RtdRequestResolver).requestAndWaitForRtd({
-      ownerId: taskId,
+    return (this.aiSummaryAdapter as AISummaryAdapter).requestAndWaitForRtd({
       correlationId: conversationId,
-      eventType: inboundType,
+      rtdEventType: inboundType,
       timeoutMs: AI_SUMMARY_DURATION_MS,
-      createDuplicateRequestError: () =>
-        createSummaryError(AI_SUMMARY_ERROR_CODES.AI_SUMMARY_REQUEST_ALREADY_PENDING),
       createTimeoutError: () => createSummaryError(timeoutCode),
-      createCancellationError: () => createSummaryError(AI_SUMMARY_REQUEST_CANCELLED),
-      sendRequest: () =>
-        (this.aiSummaryAdapter as AISummaryAdapter).sendSummaryGetEvent(
-          this.agentId as string,
-          interactionId,
-          conversationId,
-          eventName
-        ),
+      agentId: this.agentId as string,
+      interactionId,
+      eventType: AIAssistantEventType.CTI_EVENT,
+      eventName,
+      eventMetaData: {
+        conversationId,
+        clientType: AI_ASSISTANT_CLIENT_TYPE,
+      },
+      timeout: AI_SUMMARY_DURATION_MS,
     });
   }
 

@@ -81,8 +81,6 @@ import type {
   ContactServiceQueueSearchParams,
 } from './types';
 
-type DeregisterFailure = {captured: false; error?: never} | {captured: true; error: unknown};
-
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
  *
@@ -450,7 +448,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.services.webSocketManager
       );
       this.taskManager.setAnswerCallOnWebexService(this.answerCallOnWebexService);
-      this.refreshTaskManagerEventForwarders();
+      this.incomingTaskListener();
 
       // Initialize API instances
       // will have future function for indivdual fetch etc so better be in an object
@@ -516,60 +514,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.taskManager.handleRealtimeWebsocketEvent(event);
   };
 
-  private static getDeregisterErrorMessage(error: unknown): string {
-    if (error && typeof error === 'object' && 'message' in error) {
-      const {message} = error as {message?: unknown};
-
-      if (typeof message === 'string' && message.length > 0) {
-        return message;
-      }
-    }
-
-    return UNKNOWN_ERROR;
-  }
-
-  /**
-   * Runs deregistration cleanup independently so one failing cleanup step cannot prevent later
-   * resources from being released. The first cleanup failure is retained for reporting only when
-   * the main deregistration operation did not already fail; preserving the primary failure keeps
-   * the caller's original error and its associated diagnostics intact.
-   */
-  private runDeregisterCleanup(): DeregisterFailure {
-    let capturedFailure: DeregisterFailure = {captured: false};
-    const cleanupSteps = [
-      () => this.taskManager.clearAISummaryState(),
-      // Detach the RTD listener as part of the same guaranteed cleanup path as the socket close.
-      () => this.services.rtdWebSocketManager?.off('message', this.handleRTDWebsocketMessage),
-      () => {
-        // Keep one guarded RTD close here; the previous duplicate close could run after the
-        // socket was already closed and made cleanup behavior dependent on the socket implementation.
-        if (
-          this.services.rtdWebSocketManager &&
-          !this.services.rtdWebSocketManager.isSocketClosed
-        ) {
-          this.services.rtdWebSocketManager.close(false, 'Unregistering the SDK');
-        }
-      },
-    ];
-
-    cleanupSteps.forEach((cleanup) => {
-      try {
-        cleanup();
-      } catch (error) {
-        LoggerProxy.error(`Error during deregister cleanup: ${error}`, {
-          module: CC_FILE,
-          method: METHODS.DEREGISTER,
-        });
-
-        if (!capturedFailure.captured) {
-          capturedFailure = {captured: true, error};
-        }
-      }
-    });
-
-    return capturedFailure;
-  }
-
   /**
    * Builds TaskManager feature flags from the retained agent profile.
    * @private
@@ -594,31 +538,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Removes ContactCenter's task-manager event forwarders.
-   *
-   * This is intentionally separate from registration so the same bound handlers can be removed
-   * during deregistration and before a new registration cycle. Keeping refresh idempotent prevents
-   * duplicate task events when the SDK is registered more than once.
+   * Sets up event listeners for incoming tasks and task hydration
+   * Subscribes to task events from the task manager
    * @private
    */
-  private unregisterTaskManagerEventForwarders(): void {
-    this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
-    this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
-    this.taskManager.off(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
-    this.taskManager.off(TASK_EVENTS.TASK_MERGED, this.handleTaskMerged);
-    this.taskManager.off(
-      TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
-      this.handleCampaignPreviewReservation
-    );
-  }
-
-  /**
-   * Rebinds task-manager event forwarders for initialization and repeated registration cycles.
-   * Removing the existing bound handlers first makes each invocation idempotent.
-   * @private
-   */
-  private refreshTaskManagerEventForwarders(): void {
-    this.unregisterTaskManagerEventForwarders();
+  private incomingTaskListener() {
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
     this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
     this.taskManager.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
@@ -676,7 +600,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
       ]);
       this.taskManager.clearAISummaryState();
-      this.refreshTaskManagerEventForwarders();
+      this.incomingTaskListener();
       this.setupEventListeners();
       this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
@@ -750,19 +674,24 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
    */
   public async deregister(): Promise<void> {
-    let primaryFailure: DeregisterFailure = {captured: false};
-    let cleanupFailure: DeregisterFailure = {captured: false};
-
     try {
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
       ]);
 
-      this.unregisterTaskManagerEventForwarders();
+      this.taskManager.clearAISummaryState();
+      this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+      this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+      this.taskManager.off(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
+      this.taskManager.off(
+        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+        this.handleCampaignPreviewReservation
+      );
       this.taskManager.unregisterIncomingCallEvent();
 
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
+      this.services.rtdWebSocketManager.off('message', this.handleRTDWebsocketMessage);
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
 
       const {publishError: wxAppPublishError} = await this.teardownWxAppLocalState({
@@ -789,18 +718,31 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (!this.services.webSocketManager.isSocketClosed) {
         this.services.webSocketManager.close(false, 'Unregistering the SDK');
       }
+
+      if (this.services.rtdWebSocketManager && !this.services.rtdWebSocketManager.isSocketClosed) {
+        this.services.rtdWebSocketManager.close(false, 'Unregistering the SDK');
+      }
+
       // Clear any cached agent configuration
       this.agentConfig = null;
 
       if (wxAppPublishError) {
         throw wxAppPublishError;
       }
+
+      LoggerProxy.log('Deregistered successfully', {
+        module: CC_FILE,
+        method: METHODS.DEREGISTER,
+      });
+
+      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS, {}, [
+        'operational',
+      ]);
     } catch (error) {
-      primaryFailure = {captured: true, error};
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
         {
-          error: ContactCenter.getDeregisterErrorMessage(error),
+          error: error?.message || UNKNOWN_ERROR,
         },
         ['operational']
       );
@@ -809,36 +751,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         module: CC_FILE,
         method: METHODS.DEREGISTER,
       });
-    } finally {
-      // Cleanup must run even when a primary deregistration step fails. Preserve the primary
-      // failure below, while still surfacing a cleanup failure when deregistration otherwise succeeds.
-      cleanupFailure = this.runDeregisterCleanup();
+
+      throw error;
     }
-
-    if (primaryFailure.captured) {
-      throw primaryFailure.error;
-    }
-
-    if (cleanupFailure.captured) {
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
-        {
-          error: ContactCenter.getDeregisterErrorMessage(cleanupFailure.error),
-        },
-        ['operational']
-      );
-
-      throw cleanupFailure.error;
-    }
-
-    LoggerProxy.log('Deregistered successfully', {
-      module: CC_FILE,
-      method: METHODS.DEREGISTER,
-    });
-
-    this.metricsManager.trackEvent(METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS, {}, [
-      'operational',
-    ]);
   }
 
   /**

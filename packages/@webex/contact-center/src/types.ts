@@ -1011,64 +1011,6 @@ export const AIAssistantEventName = {
  */
 export type AIAssistantEventName = Enum<typeof AIAssistantEventName>;
 
-export type AISummaryGetEventName =
-  | typeof AIAssistantEventName.GET_POST_CALL_SUMMARY
-  | typeof AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY
-  | typeof AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY;
-
-type AISummaryResponseTransportIdentifiers = {
-  agentId: string;
-  interactionId: string;
-  conversationId: string;
-};
-
-type AISummaryMidCallResponseTransportPayload = (
-  | Omit<Contact.MidCallReceivedResponse, 'summaryReceived'>
-  | Omit<Contact.MidCallUnavailableResponse, 'summaryReceived'>
-) &
-  AISummaryResponseTransportIdentifiers & {
-    eventName:
-      | typeof AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE
-      | typeof AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE;
-    agentName: string;
-  };
-
-export type AISummaryResponseTransportPayload =
-  | (Contact.PostCallSummaryResponsePayload &
-      AISummaryResponseTransportIdentifiers & {
-        eventName: typeof AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE;
-      })
-  | AISummaryMidCallResponseTransportPayload;
-
-export type AISummaryEnvelopeInput =
-  | {
-      kind: 'get';
-      agentId: string;
-      orgId: string;
-      interactionId: string;
-      conversationId: string;
-      eventName: AISummaryGetEventName;
-      publishTimestamp: number;
-      actionTimeStamp: number;
-    }
-  | {
-      kind: 'response';
-      agentId: string;
-      orgId: string;
-      payload: AISummaryResponseTransportPayload;
-      publishTimestamp: number;
-      actionTimeStamp: number;
-    };
-
-export type AISummaryFailureContext = {
-  methodName: string;
-  eventName: string;
-  agentId: string;
-  orgId: string;
-  interactionId: string;
-  conversationId: string;
-};
-
 /**
  * A single transcript message entry returned by AI Assistant APIs.
  * @public

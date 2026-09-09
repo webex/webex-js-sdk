@@ -16,6 +16,8 @@ import {
   BufferedReceivingSummary,
   FeatureEnablementEventPayload,
   GeneratedSummaryFlagsAccessor,
+  AISummaryInboundType,
+  AISummaryPayloadByInboundType,
   AISummaryRealtimeEventType,
   InteractionFeatureEnablementEntry,
   MidCallSummaryEventPayload,
@@ -45,7 +47,6 @@ import {TaskEvent, type TaskEventPayload} from './state-machine';
 import {MEDIA_TYPE_MAIN_CALL} from './state-machine/constants';
 import {normalizeTaskData} from './taskDataNormalizer';
 import {ApiAIAssistant} from '../ApiAiAssistant';
-import RtdRequestResolver from '../core/RtdRequestResolver';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import {isNonEmptyString} from '../AISummaryUtils';
@@ -186,7 +187,6 @@ export default class TaskManager extends EventEmitter {
   private answerCallOnWebexService?: AnswerCallOnWebexService;
   private apiAIAssistant?: ApiAIAssistant;
   private metricsManager: MetricsManager;
-  private rtdRequestResolver: RtdRequestResolver;
   private receivingSummaryBuffer = new Map<string, BufferedReceivingSummary>();
   private interactionFeatureEnablement = new Map<string, InteractionFeatureEnablementEntry>();
   private readonly featureEnablementDeliveredTasks = new WeakSet<ITask>();
@@ -213,7 +213,6 @@ export default class TaskManager extends EventEmitter {
     this.taskCollection = {};
     this.webRtcEnabled = false;
     this.metricsManager = MetricsManager.getInstance();
-    this.rtdRequestResolver = new RtdRequestResolver();
 
     this.registerTaskListeners();
     this.registerIncomingCallEvent();
@@ -471,13 +470,13 @@ export default class TaskManager extends EventEmitter {
       return;
     }
 
-    const result = this.rtdRequestResolver.resolveFromRtdEvent(
+    const result = this.apiAIAssistant?.resolveFromRtdEvent(
       AI_SUMMARY_INBOUND_TYPE_BY_EVENT[eventType],
       payload.conversationId as string,
-      payload
+      payload as AISummaryPayloadByInboundType[AISummaryInboundType]
     );
 
-    if (result === 'not-found') {
+    if (result !== 'resolved') {
       this.trackAISummaryInboundDrop('late-or-uncorrelated', eventType, {
         conversationId: payload.conversationId as string,
       });
@@ -673,7 +672,7 @@ export default class TaskManager extends EventEmitter {
 
   public clearAISummaryState(): void {
     this.aiSummaryInboundActive = false;
-    this.rtdRequestResolver.clearAll();
+    this.apiAIAssistant?.clearAllRtdRequests();
     Array.from(this.receivingSummaryBuffer.keys()).forEach((conversationId) => {
       this.removeTimedAISummaryEntry(this.receivingSummaryBuffer, conversationId);
     });
@@ -685,7 +684,6 @@ export default class TaskManager extends EventEmitter {
   private configureTaskAISummary(task: ITask): void {
     task.configureAISummary?.(
       this.apiAIAssistant,
-      this.rtdRequestResolver,
       this.getGeneratedSummaryFlags,
       (interactionId) => this.interactionFeatureEnablement.get(interactionId)?.payload
     );
@@ -1965,8 +1963,6 @@ export default class TaskManager extends EventEmitter {
 
   private removeTaskFromCollection(task: ITask) {
     const correlation = this.getAISummaryCorrelationForTask(task, 'task-removal');
-    const ownerId = task.data?.taskId ?? task.data?.interactionId ?? '';
-
     if (typeof task.cancelAutoWrapupTimer === 'function') {
       task.cancelAutoWrapupTimer();
     }
@@ -1984,7 +1980,6 @@ export default class TaskManager extends EventEmitter {
     }
 
     if (correlation) {
-      this.rtdRequestResolver.clear(ownerId, correlation.conversationId);
       this.flushReceivingSummaryForConversation(correlation.conversationId);
       this.clearFeatureEnablementIfFinalTask(correlation.interactionId);
     }

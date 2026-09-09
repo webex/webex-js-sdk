@@ -1,4 +1,10 @@
-import {HTTP_METHODS, RequestBody, WebexRequestPayload} from '../../types';
+import {
+  AIAssistantEventName,
+  AIAssistantEventType,
+  HTTP_METHODS,
+  RequestBody,
+  WebexRequestPayload,
+} from '../../types';
 import * as Err from './Err';
 import {Msg} from './GlobalTypes';
 
@@ -49,20 +55,17 @@ export type Res<TRes, TReq> = (p: TReq, cbRes?: CbRes<TRes>) => Promise<TRes>;
 export type ResEmpty<TRes> = (cbRes?: CbRes<TRes>) => Promise<TRes>;
 export type CbRes<TRes> = (res: any) => void | TRes;
 
-/** @internal Request configuration for operations completed by an RTD event. */
+/** @internal Request configuration for an event completed by an RTD response. */
 export type RtdRequestOptions = Readonly<{
-  ownerId?: string;
   correlationId: string;
-  eventType: string;
+  rtdEventType: string;
   timeoutMs: number;
-  createDuplicateRequestError: () => Error;
   createTimeoutError: () => Error;
-  createCancellationError: () => Error;
-  sendRequest: () => Promise<unknown>;
-}>;
-
-/** @internal Promise handle returned while an RTD request is pending. */
-export type RtdRequestRegistration<T> = Readonly<{
-  requestToken: symbol;
-  result: Promise<T>;
+  agentId: string;
+  interactionId: string;
+  eventType: AIAssistantEventType;
+  eventName: AIAssistantEventName;
+  eventMetaData?: Record<string, unknown>;
+  publishTimestamp?: number;
+  timeout?: number;
 }>;

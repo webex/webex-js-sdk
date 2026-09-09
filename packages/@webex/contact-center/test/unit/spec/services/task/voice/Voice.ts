@@ -1,5 +1,4 @@
 import Voice from '../../../../../../src/services/task/voice/Voice';
-import RtdRequestResolver from '../../../../../../src/services/core/RtdRequestResolver';
 import LoggerProxy from '../../../../../../src/logger-proxy';
 import {
   TaskData,
@@ -640,15 +639,38 @@ describe('Voice Task', () => {
         consultTransfer: jest.fn().mockResolvedValue(operationResult),
       } as any);
 
-    const createSummaryAdapter = () => ({
-      sendSummaryGetEvent: jest.fn().mockResolvedValue(undefined),
-      sendSummaryResponseEvent: jest.fn().mockResolvedValue(undefined),
-    });
+    const createSummaryAdapter = () => {
+      let rejectPending: ((error: Error) => void) | undefined;
+      const adapter: any = {
+        sendEvent: jest.fn().mockResolvedValue(undefined),
+        requestAndWaitForRtd: jest.fn(async (options: any) => {
+          const result = new Promise((_resolve, reject) => {
+            rejectPending = reject;
+          });
+          await adapter.sendEvent(
+            options.agentId,
+            options.interactionId,
+            options.eventType,
+            options.eventName,
+            {...options.eventMetaData, actionTimeStamp: Date.now()},
+            undefined,
+            undefined,
+            Date.now(),
+            options.timeout
+          );
+          return result;
+        }),
+        clear: jest.fn(() =>
+          rejectPending?.(createAISummaryError(AI_SUMMARY_REQUEST_CANCELLED))
+        ),
+      };
+
+      return adapter;
+    };
 
     const configureAISummary = (
       voice: Voice,
       adapter = createSummaryAdapter(),
-      coordinator = new RtdRequestResolver(),
       getFeatureEnablement = () => ({
         interactionId: 'int1',
         postCallEnabled: true,
@@ -657,7 +679,6 @@ describe('Voice Task', () => {
     ) => {
       voice.configureAISummary(
         adapter as any,
-        coordinator as any,
         jest.fn(() => ({
           wrapUpSummariesEnabled: true,
           consultTransferSummariesEnabled: true,
@@ -665,7 +686,7 @@ describe('Voice Task', () => {
         getFeatureEnablement
       );
 
-      return {adapter, coordinator};
+      return {adapter, coordinator: adapter};
     };
 
     const normalizeEmitCalls = (emitSpy: jest.SpyInstance, voice: Voice) =>
@@ -789,12 +810,21 @@ describe('Voice Task', () => {
       adapter: ReturnType<typeof createSummaryAdapter>,
       summaryEventName: AIAssistantEventName
     ) => {
-      expect(adapter.sendSummaryGetEvent).toHaveBeenCalledTimes(1);
-      expect(adapter.sendSummaryGetEvent).toHaveBeenCalledWith(
+      expect(adapter.sendEvent).toHaveBeenCalledTimes(1);
+      expect(adapter.sendEvent).toHaveBeenCalledWith(
         summaryAgentId,
         'int1',
-        'int1',
-        summaryEventName
+        'CTI_EVENT',
+        summaryEventName,
+        expect.objectContaining({
+          conversationId: 'int1',
+          clientType: 'WxCC',
+          actionTimeStamp: expect.any(Number),
+        }),
+        undefined,
+        undefined,
+        expect.any(Number),
+        15000
       );
     };
 
@@ -849,7 +879,7 @@ describe('Voice Task', () => {
             AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE
           );
 
-          adapter.sendSummaryGetEvent.mockRejectedValueOnce(adapterError);
+          adapter.sendEvent.mockRejectedValueOnce(adapterError);
           configureAISummary(harness.voice, adapter);
 
           await expect(harness.testCase.requestSummary(harness.voice)).rejects.toBe(adapterError);

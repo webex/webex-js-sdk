@@ -15,7 +15,6 @@ adapter plus the shared RTD request resolver.
   integration, AI summary request/response validation and metrics.
 - `TaskManager.ts`: task registry, websocket-to-task lifecycle routing, RTD AI
   frame parsing, task-aware summary state, feature forwarding, and cleanup.
-- `../../core/RtdRequestResolver.ts`: shared pending HTTP-to-RTD request lifecycle.
 - `TaskUtils.ts`: task state helpers plus AI summary correlation helpers.
 - `types.ts`: `ITask`, task data types, public summary payloads, and internal
   summary payload types and RTD request contracts. The mid-call response payload is a discriminated union
@@ -51,7 +50,7 @@ privacy in [metrics/ai-docs/AGENTS.md](../../../metrics/ai-docs/AGENTS.md#ai-sum
 
 Keep this guide limited to task-layer implementation boundaries:
 
-- TaskManager injects `ApiAIAssistant`, `RtdRequestResolver`, the
+- TaskManager injects `ApiAIAssistant`, the
   feature-enablement accessor, and the current generated-summary flags accessor
   through `configureAISummary(...)` before listener setup or registry insertion.
 - Task owns public request/response validation and final operation metrics; it
@@ -69,7 +68,7 @@ Keep this guide limited to task-layer implementation boundaries:
   payloads, or arbitrary transport failures into logs or metrics.
 
 Focused task tests live in `test/unit/spec/services/task/Task.ts`,
-`TaskManager.ts`, `TaskUtils.ts`, and `../../core/RtdRequestResolver.ts`.
+`TaskManager.ts`, `TaskUtils.ts`, and `../ApiAiAssistant.ts`.
 
 ## Existing Task-Layer Reference
 
@@ -154,7 +153,7 @@ error data and must not be converted into successful state transitions.
 
 When auto wrap-up is enabled by the agent profile, `AutoWrapup` owns the timer and Task emits
 `task:wrappedup` after completion. AI-summary request timers are owned by
-the shared `RtdRequestResolver`; task-aware feature and receiver-buffer timers are owned by
+`ApiAIAssistant`; task-aware feature and receiver-buffer timers are owned by
 `TaskManager`. None may alter or reuse the auto-wrap-up timer.
 
 Related details remain in [ARCHITECTURE.md](ARCHITECTURE.md),

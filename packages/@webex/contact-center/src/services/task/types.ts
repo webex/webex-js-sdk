@@ -4,8 +4,8 @@ import {TaskEventPayload} from './state-machine';
 import {Msg} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
 import type {AIFeatureFlags, CollaborationAccess} from '../config/types';
-import type {AISummaryGetEventName, AISummaryResponseTransportPayload} from '../../types';
-import type RtdRequestResolver from '../core/RtdRequestResolver';
+import type {AIAssistantEventName, AIAssistantEventType} from '../../types';
+import type {RtdRequestOptions} from '../core/types';
 
 /**
  * Unique identifier for a task in the contact center system
@@ -1857,16 +1857,18 @@ export type FeatureEnablementAccessor = (
 ) => FeatureEnablementEventPayload | undefined;
 
 export type AISummaryAdapter = {
-  sendSummaryGetEvent: (
+  sendEvent: (
     agentId: string,
     interactionId: string,
-    conversationId: string,
-    eventName: AISummaryGetEventName
-  ) => Promise<void>;
-  sendSummaryResponseEvent: (
-    agentId: string,
-    payload: AISummaryResponseTransportPayload
-  ) => Promise<void>;
+    eventType: AIAssistantEventType,
+    eventName: AIAssistantEventName,
+    eventMetaData?: Record<string, unknown>,
+    languageCode?: string,
+    trackingId?: string,
+    publishTimestamp?: number,
+    timeout?: number
+  ) => Promise<Record<string, unknown>>;
+  requestAndWaitForRtd: <T>(options: RtdRequestOptions) => Promise<T>;
 };
 
 export type AISummaryResponseContext = Readonly<{
@@ -2020,7 +2022,6 @@ export interface ITask extends IEventEmitter {
    */
   configureAISummary?(
     apiAIAssistant: AISummaryAdapter | undefined,
-    rtdRequestResolver: RtdRequestResolver,
     getGeneratedSummaryFlags: GeneratedSummaryFlagsAccessor,
     getFeatureEnablement: FeatureEnablementAccessor
   ): void;

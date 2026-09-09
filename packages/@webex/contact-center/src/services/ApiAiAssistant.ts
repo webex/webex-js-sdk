@@ -2,7 +2,7 @@ import {v4 as uuidv4} from 'uuid';
 import LoggerProxy from '../logger-proxy';
 import MetricsManager from '../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
-import {AI_ASSISTANT_CLIENT_TYPE, AI_SUMMARY_ERROR_CODES, CC_FILE, METHODS} from '../constants';
+import {AI_SUMMARY_ERROR_CODES, CC_FILE, METHODS} from '../constants';
 import {
   HTTP_METHODS,
   WebexSDK,
@@ -10,32 +10,27 @@ import {
   AIAssistantEventType,
   AIAssistantEventName,
   HistoricTranscriptsResponse,
-  AISummaryEnvelopeInput,
-  AISummaryFailureContext,
-  AISummaryGetEventName,
-  AISummaryResponseTransportPayload,
   RealTimeAssistanceParams,
   RealTimeAssistanceUserActionParams,
 } from '../types';
 import {getErrorDetails} from './core/Utils';
 import WebexRequest from './core/WebexRequest';
+import type {RtdRequestOptions} from './core/types';
 import {
   AI_ASSISTANT_BASE_URL_TEMPLATE,
   AI_ASSISTANT_ENV_MAP,
   AI_ASSISTANT_API_URLS,
-  AI_SUMMARY_GET_EVENT_NAMES,
-  AI_SUMMARY_HTTP_TIMEOUT_MS,
-  AI_SUMMARY_RESPONSE_EVENT_NAMES,
-  AI_SUMMARY_TRANSPORT_ERROR_CODES,
   WCC_API_GATEWAY,
 } from './constants';
 import {AIFeatureFlags} from './config/types';
-import {
-  AI_SUMMARY_FEEDBACK_VALUES,
-  createSummaryError,
-  isFiniteNonNegativeNumber,
-  isNonEmptyString,
-} from './AISummaryUtils';
+
+type PendingRtdRequest<T> = {
+  correlationId: string;
+  rtdEventType: string;
+  timeoutId?: ReturnType<typeof setTimeout>;
+  resolve: (payload: T) => void;
+  reject: (error: Error) => void;
+};
 
 /**
  * ApiAIAssistant provides AI Assistant APIs for transcript controls.
@@ -46,6 +41,7 @@ export class ApiAIAssistant {
   private webexRequest: WebexRequest;
   private metricsManager: MetricsManager;
   private aiFeature: AIFeatureFlags;
+  private pendingRtdRequests = new Map<string, PendingRtdRequest<unknown>>();
 
   constructor(webex: WebexSDK) {
     this.webex = webex;
@@ -57,15 +53,11 @@ export class ApiAIAssistant {
     this.aiFeature = aiFeature;
   }
 
-  /**
-   * Resolve the base URL without throwing so each caller can preserve its own error contract.
-   * Generic AI Assistant requests and AI Summary requests expose different error details.
-   */
-  private resolveBaseUrl(): string | undefined {
+  private resolveBaseUrl(): string {
     const wccApiGatewayUrl = this.webex.internal.services.get(WCC_API_GATEWAY) || '';
 
     if (!wccApiGatewayUrl) {
-      return undefined;
+      throw new Error(AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE);
     }
 
     let hostname = '';
@@ -77,13 +69,17 @@ export class ApiAIAssistant {
 
     const resolvedEnv = AI_ASSISTANT_ENV_MAP[hostname];
 
-    return resolvedEnv ? AI_ASSISTANT_BASE_URL_TEMPLATE.replace('%s', resolvedEnv) : undefined;
+    if (!resolvedEnv) {
+      throw new Error(AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE);
+    }
+
+    return AI_ASSISTANT_BASE_URL_TEMPLATE.replace('%s', resolvedEnv);
   }
 
   private getBaseUrl(): string {
-    const baseUrl = this.resolveBaseUrl();
-
-    if (!baseUrl) {
+    try {
+      return this.resolveBaseUrl();
+    } catch (_error) {
       const {error: detailedError} = getErrorDetails(
         new Error('AI_ASSISTANT_BASE_URL_NOT_AVAILABLE'),
         METHODS.GET_BASE_URL,
@@ -92,231 +88,109 @@ export class ApiAIAssistant {
       );
       throw detailedError;
     }
-
-    return baseUrl;
   }
 
-  private getSummaryBaseUrl(): string {
-    try {
-      const baseUrl = this.resolveBaseUrl();
+  private static getRtdRequestKey(rtdEventType: string, correlationId: string): string {
+    return JSON.stringify([rtdEventType, correlationId]);
+  }
 
-      if (!baseUrl) {
-        throw new Error(AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE);
-      }
+  private removeRtdRequest<T>(
+    rtdEventType: string,
+    correlationId: string,
+    settle?: (request: PendingRtdRequest<T>) => void
+  ): PendingRtdRequest<T> | undefined {
+    const key = ApiAIAssistant.getRtdRequestKey(rtdEventType, correlationId);
+    const request = this.pendingRtdRequests.get(key) as PendingRtdRequest<T> | undefined;
 
-      return baseUrl;
-    } catch (_error) {
-      throw createSummaryError(
-        AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE,
-        METHODS.GET_BASE_URL
-      );
+    if (!request) {
+      return undefined;
     }
+
+    if (request.timeoutId) {
+      clearTimeout(request.timeoutId);
+    }
+
+    settle?.(request);
+    this.pendingRtdRequests.delete(key);
+
+    return request;
   }
 
-  private async sendSummaryEvent(
-    input: AISummaryEnvelopeInput,
-    context: AISummaryFailureContext
-  ): Promise<void> {
-    const eventName = input.kind === 'get' ? input.eventName : input.payload.eventName;
-    const interactionId = input.kind === 'get' ? input.interactionId : input.payload.interactionId;
-    const conversationId =
-      input.kind === 'get' ? input.conversationId : input.payload.conversationId;
-    const data: Record<string, unknown> = {
-      interactionId,
-      conversationId,
-      clientType: AI_ASSISTANT_CLIENT_TYPE,
-      actionTimeStamp: input.actionTimeStamp,
+  /** Sends an AI event and waits for its matching RTD response. @internal */
+  public async requestAndWaitForRtd<T>(options: RtdRequestOptions): Promise<T> {
+    const key = ApiAIAssistant.getRtdRequestKey(options.rtdEventType, options.correlationId);
+    let resolveResult: (payload: T) => void = () => undefined;
+    let rejectResult: (error: Error) => void = () => undefined;
+    const result = new Promise<T>((resolve, reject) => {
+      resolveResult = resolve;
+      rejectResult = reject;
+    });
+    const previousRequest = this.pendingRtdRequests.get(key);
+    if (previousRequest?.timeoutId) {
+      clearTimeout(previousRequest.timeoutId);
+    }
+    const request: PendingRtdRequest<T> = {
+      correlationId: options.correlationId,
+      rtdEventType: options.rtdEventType,
+      resolve: resolveResult,
+      reject: rejectResult,
     };
 
-    if (input.kind === 'response') {
-      data.action = eventName;
-      data.summary = input.payload.summary;
-      data.numberOfTimesViewed = input.payload.numberOfTimesViewed;
-      data.numberOfTimesEdited = input.payload.numberOfTimesEdited;
-      data.numberOfTimesCopied = input.payload.numberOfTimesCopied;
-      data.feedback = input.payload.feedback;
-      data.state = input.payload.state;
-
-      Object.assign(data, {
-        ...(input.payload.eventName === AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE &&
-        input.payload.wrapUpCode !== undefined
-          ? {wrapUpCode: input.payload.wrapUpCode}
-          : {}),
-        ...(input.payload.eventName !== AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE &&
-        input.payload.agentName !== undefined
-          ? {agentName: input.payload.agentName}
-          : {}),
+    request.timeoutId = setTimeout(() => {
+      this.removeRtdRequest<T>(options.rtdEventType, options.correlationId, (currentRequest) => {
+        currentRequest.reject(options.createTimeoutError());
       });
-    }
-
-    const body: Record<string, unknown> = {
-      agentId: input.agentId,
-      orgId: input.orgId,
-      eventType: AIAssistantEventType.CTI_EVENT,
-      eventName,
-      publishTimestamp: input.publishTimestamp,
-      eventDetails: {
-        data,
-      },
+    }, options.timeoutMs);
+    this.pendingRtdRequests.set(key, request as PendingRtdRequest<unknown>);
+    const publishTimestamp = options.publishTimestamp ?? Date.now();
+    const eventMetaData = {
+      ...options.eventMetaData,
+      actionTimeStamp: options.eventMetaData?.actionTimeStamp ?? publishTimestamp,
     };
-    const baseUrl = this.getSummaryBaseUrl();
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    const timeoutMarker = {code: AI_SUMMARY_TRANSPORT_ERROR_CODES.TIMEOUT};
+    const acknowledgement = Promise.resolve()
+      .then(() =>
+        this.sendEvent(
+          options.agentId,
+          options.interactionId,
+          options.eventType,
+          options.eventName,
+          eventMetaData,
+          undefined,
+          undefined,
+          publishTimestamp,
+          options.timeout
+        )
+      )
+      .catch((error) => {
+        this.removeRtdRequest(options.rtdEventType, options.correlationId);
+        throw error;
+      });
 
-    const timeoutPromise = new Promise<never>((_resolve, reject) => {
-      timeoutId = setTimeout(() => reject(timeoutMarker), AI_SUMMARY_HTTP_TIMEOUT_MS);
+    const [payload] = await Promise.all([result, acknowledgement]);
+
+    return payload;
+  }
+
+  /** Resolves a pending request from a parsed RTD event. @internal */
+  public resolveFromRtdEvent<T>(
+    rtdEventType: string,
+    correlationId: string,
+    payload: T
+  ): 'resolved' | 'not-found' {
+    const request = this.removeRtdRequest<T>(rtdEventType, correlationId, (currentRequest) => {
+      currentRequest.resolve(payload);
     });
 
-    try {
-      const requestPromise = this.webexRequest.request({
-        uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
-        method: HTTP_METHODS.POST,
-        addAuthHeader: true,
-        body,
-        timeout: AI_SUMMARY_HTTP_TIMEOUT_MS,
+    return request ? 'resolved' : 'not-found';
+  }
+
+  /** Clears pending RTD requests when the RTD lifecycle ends. @internal */
+  public clearAllRtdRequests(): void {
+    Array.from(this.pendingRtdRequests.values()).forEach((request) => {
+      this.removeRtdRequest(request.rtdEventType, request.correlationId, (currentRequest) => {
+        currentRequest.reject(new Error('RTD request cleared'));
       });
-      requestPromise.catch(() => undefined);
-
-      // The request adapter can resolve with an ETIMEDOUT response instead of rejecting.
-      const response = await Promise.race([requestPromise, timeoutPromise]);
-      if ((response as {code?: unknown})?.code === 'ETIMEDOUT') {
-        throw timeoutMarker;
-      }
-    } catch (error) {
-      if (error === timeoutMarker || (error as {code?: unknown})?.code === 'ETIMEDOUT') {
-        throw createSummaryError(
-          AI_SUMMARY_TRANSPORT_ERROR_CODES.TIMEOUT,
-          context.methodName,
-          context
-        );
-      }
-
-      const statusCode = isFiniteNonNegativeNumber((error as {statusCode?: unknown})?.statusCode)
-        ? (error as {statusCode: number}).statusCode
-        : undefined;
-
-      throw createSummaryError(
-        AI_SUMMARY_TRANSPORT_ERROR_CODES.HTTP_REQUEST_FAILED,
-        context.methodName,
-        {...context, ...(statusCode !== undefined ? {statusCode} : {})}
-      );
-    } finally {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    }
-  }
-
-  public async sendSummaryGetEvent(
-    agentId: string,
-    interactionId: string,
-    conversationId: string,
-    eventName: AISummaryGetEventName
-  ): Promise<void> {
-    let orgId: string;
-
-    try {
-      orgId = this.webex.credentials.getOrgId();
-    } catch (_error) {
-      throw createSummaryError(
-        AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED,
-        METHODS.SEND_SUMMARY_GET_EVENT
-      );
-    }
-
-    if (
-      !isNonEmptyString(agentId) ||
-      !isNonEmptyString(orgId) ||
-      !isNonEmptyString(interactionId) ||
-      !isNonEmptyString(conversationId) ||
-      !AI_SUMMARY_GET_EVENT_NAMES.has(eventName)
-    ) {
-      throw createSummaryError(
-        AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED,
-        METHODS.SEND_SUMMARY_GET_EVENT
-      );
-    }
-
-    const now = Date.now();
-    await this.sendSummaryEvent(
-      {
-        kind: 'get',
-        agentId,
-        orgId,
-        interactionId,
-        conversationId,
-        eventName,
-        publishTimestamp: now,
-        actionTimeStamp: now,
-      },
-      {
-        methodName: METHODS.SEND_SUMMARY_GET_EVENT,
-        eventName,
-        agentId,
-        orgId,
-        interactionId,
-        conversationId,
-      }
-    );
-  }
-
-  public async sendSummaryResponseEvent(
-    agentId: string,
-    payload: AISummaryResponseTransportPayload
-  ): Promise<void> {
-    let orgId: string;
-
-    try {
-      orgId = this.webex.credentials.getOrgId();
-    } catch (_error) {
-      throw createSummaryError(
-        AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED,
-        METHODS.SEND_SUMMARY_RESPONSE_EVENT
-      );
-    }
-
-    if (
-      !isNonEmptyString(agentId) ||
-      !isNonEmptyString(orgId) ||
-      !isNonEmptyString(payload?.interactionId) ||
-      !isNonEmptyString(payload?.conversationId) ||
-      !AI_SUMMARY_RESPONSE_EVENT_NAMES.has(payload?.eventName) ||
-      !isFiniteNonNegativeNumber(payload?.numberOfTimesViewed) ||
-      !isFiniteNonNegativeNumber(payload?.numberOfTimesEdited) ||
-      !isFiniteNonNegativeNumber(payload?.numberOfTimesCopied) ||
-      !AI_SUMMARY_FEEDBACK_VALUES.has(payload?.feedback) ||
-      (payload?.actionTimeStamp !== undefined &&
-        !isFiniteNonNegativeNumber(payload.actionTimeStamp)) ||
-      (payload?.publishTimestamp !== undefined &&
-        !isFiniteNonNegativeNumber(payload.publishTimestamp))
-    ) {
-      throw createSummaryError(
-        AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED,
-        METHODS.SEND_SUMMARY_RESPONSE_EVENT
-      );
-    }
-
-    const fallbackNow = Date.now();
-    const actionTimeStamp = payload.actionTimeStamp ?? fallbackNow;
-    const publishTimestamp = payload.publishTimestamp ?? fallbackNow;
-    await this.sendSummaryEvent(
-      {
-        kind: 'response',
-        agentId,
-        orgId,
-        payload,
-        publishTimestamp,
-        actionTimeStamp,
-      },
-      {
-        methodName: METHODS.SEND_SUMMARY_RESPONSE_EVENT,
-        eventName: payload.eventName,
-        agentId,
-        orgId,
-        interactionId: payload.interactionId,
-        conversationId: payload.conversationId,
-      }
-    );
+    });
   }
 
   /**
@@ -336,7 +210,9 @@ export class ApiAIAssistant {
     eventName: AIAssistantEventName,
     eventMetaData?: Record<string, unknown>,
     languageCode?: string,
-    trackingId?: string
+    trackingId?: string,
+    publishTimestamp?: number,
+    timeout?: number
   ): Promise<Record<string, unknown>> {
     LoggerProxy.info('Sending event', {
       module: CC_FILE,
@@ -352,23 +228,27 @@ export class ApiAIAssistant {
     try {
       const baseUrl = this.getBaseUrl();
       const orgId = this.webex.credentials.getOrgId();
+      const {actionTimeStamp, ...eventData} = eventMetaData ?? {};
+      const data = {
+        ...eventData,
+        interactionId,
+        actionTimeStamp: actionTimeStamp ?? String(Date.now()),
+        ...(languageCode !== undefined ? {languageCode} : {}),
+        ...(trackingId !== undefined ? {trackingId} : {}),
+      };
       const response = (await this.webex.request({
         uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
         method: HTTP_METHODS.POST,
         addAuthHeader: true,
+        ...(timeout !== undefined ? {timeout} : {}),
         body: {
           agentId,
           orgId,
           eventType,
           eventName,
+          ...(publishTimestamp !== undefined ? {publishTimestamp} : {}),
           eventDetails: {
-            data: {
-              ...eventMetaData,
-              interactionId,
-              actionTimeStamp: String(Date.now()),
-              languageCode,
-              trackingId,
-            },
+            data,
           },
         },
       })) as IHttpResponse;

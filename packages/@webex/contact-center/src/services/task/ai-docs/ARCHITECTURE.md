@@ -184,7 +184,7 @@ operation transport.
 `TaskManager` is a singleton obtained through `TaskManager.getTaskManager(...)`.
 It holds the websocket managers, `WebCallingService`, the `routingContact`
 request surface, config flags, wrap-up data, current agent ID, metrics manager,
-and one shared `RtdRequestResolver`.
+with RTD request correlation owned by `ApiAIAssistant`.
 
 Its responsibilities are:
 
@@ -388,7 +388,7 @@ AI summary RTD routing is stricter:
 ```mermaid
 flowchart LR
   App[Consumer] -->|request/response API| Task
-  Task -->|request and await RTD| Resolver[RtdRequestResolver]
+  Task -->|request and await RTD| Api[ApiAIAssistant]
   Task -->|bounded HTTP event| API[ApiAIAssistant]
   RTD[Realtime websocket] --> TM[TaskManager]
   TM -->|resolve pending request| Resolver
@@ -404,13 +404,13 @@ flowchart LR
   accepts `NOT_RECEIVED`, `MID_CALL_CANCELLED`, and `IGNORED`.
 - `TaskManager` owns task registry integration, realtime classification,
   feature-state keys, receiving-task candidate discovery, and lifecycle hooks.
-- `RtdRequestResolver` owns generic pending HTTP-to-RTD request slots, timeout,
+- `ApiAIAssistant` owns pending HTTP-to-RTD request slots, timeout,
   cancellation, and owner cleanup. It has no AI Summary or Task dependency.
 - `TaskManager` owns feature snapshots, receiving-agent buffers, and their timers.
 - `ApiAIAssistant` owns the bounded transport envelope and safe transport errors.
 
 Correlation, overlap, response, timeout, and cleanup rules are implemented in
-`RtdRequestResolver.ts`, `TaskManager.ts`, and `constants.ts`; metric and privacy rules are in
+`ApiAiAssistant.ts`, `TaskManager.ts`, and `constants.ts`; metric and privacy rules are in
 [metrics/ai-docs/AGENTS.md](../../../metrics/ai-docs/AGENTS.md#ai-summary-events).
 The consumer-facing sequences are in [AI Summary Flows](#ai-summary-flows)
 below; this section owns only module handoffs.
@@ -428,7 +428,7 @@ Promise. Only the receiving-agent path is event-delivered.
 sequenceDiagram
   actor App
   participant Task
-  participant Resolver as RtdRequestResolver
+  participant Api as ApiAIAssistant
   participant API as ApiAIAssistant
   participant Backend
   participant TM as TaskManager
@@ -441,7 +441,7 @@ sequenceDiagram
     Task->>Task: capture {conversationId, interactionId}
     Task->>Resolver: register POST_CALL_SUMMARY
     Resolver-->>Task: pending Promise
-    Task->>API: sendSummaryGetEvent(GET_POST_CALL_SUMMARY)
+    Task->>API: sendEvent(GET_POST_CALL_SUMMARY)
     Task->>Task: Promise.all(result, acknowledgement)
     API->>Backend: POST /event
     Backend-->>API: 2xx acknowledgement
@@ -452,7 +452,7 @@ sequenceDiagram
     App->>Task: wrapup(...)
     Task-->>App: wrap-up completed
     App->>Task: sendPostCallSummaryResponse(payload)
-    Task->>API: sendSummaryResponseEvent(POST_CALL_SUMMARY_RESPONSE)
+    Task->>API: sendEvent(POST_CALL_SUMMARY_RESPONSE)
     API->>Backend: POST /event
     Backend-->>API: 2xx acknowledgement
     Task-->>App: resolve void
@@ -474,7 +474,7 @@ completing wrapup.
 sequenceDiagram
   actor App
   participant Task
-  participant Resolver as RtdRequestResolver
+  participant Api as ApiAIAssistant
   participant API as ApiAIAssistant
   participant Backend
   participant TM as TaskManager
@@ -486,7 +486,7 @@ sequenceDiagram
   else enabled
     Task->>Resolver: register MID_CALL_SUMMARY
     Resolver-->>Task: pending Promise
-    Task->>API: sendSummaryGetEvent(action-specific GET)
+    Task->>API: sendEvent(action-specific GET)
     Task->>Task: Promise.all(result, acknowledgement)
     API->>Backend: POST /event
     Backend-->>API: 2xx acknowledgement
@@ -495,7 +495,7 @@ sequenceDiagram
     Resolver-->>Task: summary payload
     Task-->>App: resolve summary payload
     App->>Task: sendMidCallSummaryResponse(payload, actionType)
-    Task->>API: sendSummaryResponseEvent(action-specific response)
+    Task->>API: sendEvent(action-specific response)
     API->>Backend: POST /event
     Backend-->>API: 2xx acknowledgement
     Task-->>App: response attempt fulfilled
@@ -530,7 +530,7 @@ flowchart LR
   Backend[api-ai-assistant]
   RTD[Realtime websocket]
   TM[TaskManager]
-  Resolver[RtdRequestResolver]
+  Api[ApiAIAssistant]
   Task[Receiving Task]
   App[Consumer application]
 
@@ -717,8 +717,8 @@ overlap on the same task and metric names. They do not use `timeEvent(...)`.
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Task`                 | `AI_SUMMARY_POST_CALL_REQUEST_SUCCESS`, `AI_SUMMARY_POST_CALL_REQUEST_FAILED`, `AI_SUMMARY_MID_CALL_REQUEST_SUCCESS`, `AI_SUMMARY_MID_CALL_REQUEST_FAILED`, `AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_POST_CALL_RESPONSE_FAILED`, `AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS`, `AI_SUMMARY_MID_CALL_RESPONSE_FAILED` |
 | `TaskManager`          | `AI_SUMMARY_FEATURE_ENABLEMENT_RECEIVED`, `AI_SUMMARY_INBOUND_EVENT_DROPPED`                                                                                                                                                                                                                                               |
-| `ApiAIAssistant`       | Adapter send-event, suggested-response, historic-transcript, and summary transport metrics outside Task operation ownership.                                                                                                                                                                                               |
-| `RtdRequestResolver` | No direct operation metric ownership; receiver expiry reports through TaskManager.                                                                                                                                                                                                                                         |
+| `ApiAIAssistant`       | Shared send-event, suggested-response, and historic-transcript transport metrics outside Task operation ownership.                                                                                                                                                                                                         |
+| `ApiAIAssistant` | No direct operation metric ownership for RTD correlation; receiver expiry reports through TaskManager.                                                                                                                                                                                                                                         |
 
 ## Metrics And Privacy Boundary
 
@@ -781,7 +781,7 @@ The request must pass organization flags, per-interaction feature enablement,
 and correlation validation before registration. The coordinator registers by
 `conversationId` and inbound type before HTTP, then waits for matching RTD. If
 RTD never arrives, the public Promise rejects with the corresponding summary
-timeout code; lifecycle cleanup rejects with `AI_SUMMARY_REQUEST_CANCELLED`.
+timeout code; RTD lifecycle cleanup clears the pending request map.
 
 ### Issue: Receiving-agent mid-call summary is missing
 
@@ -802,7 +802,7 @@ later success, timeout, cancellation, or transport failure metric.
 - [cc.ts](../../../cc.ts) - Main Contact Center plugin that wires task and RTD events.
 - [TaskManager.ts](../TaskManager.ts) - Task registry, websocket routing, AI summary receive path, and cleanup.
 - [Task.ts](../Task.ts) - Base task operations, state-machine integration, AI summary outbound APIs, and metrics.
-- [RtdRequestResolver.ts](../../core/RtdRequestResolver.ts) - Shared HTTP-to-RTD request lifecycle and timers.
+- [ApiAiAssistant.ts](../ApiAiAssistant.ts) - AI request transport and HTTP-to-RTD request lifecycle.
 - [TaskFactory.ts](../TaskFactory.ts) - Concrete task selection.
 - [contact.ts](../contact.ts) - AQM task operation request definitions.
 - [TaskUtils.ts](../TaskUtils.ts) - Shared task and AI summary helpers.
@@ -816,5 +816,5 @@ later success, timeout, cancellation, or transport failure metric.
 - [metrics/ai-docs/AGENTS.md](../../../metrics/ai-docs/AGENTS.md) - Metrics usage rules, including the AI summary exception.
 - [metrics/ai-docs/ARCHITECTURE.md](../../../metrics/ai-docs/ARCHITECTURE.md) - Metrics architecture and ownership.
 - [AI Summary Flows](#ai-summary-flows) - Post-call, mid-call initiator, and receiving-agent sequences.
-- [RtdRequestResolver.ts](../../core/RtdRequestResolver.ts) - Request correlation and request timers.
+- [ApiAiAssistant.ts](../ApiAiAssistant.ts) - Request correlation and request timers.
 - [ApiAiAssistant.ts](../../ApiAiAssistant.ts) - Summary get/response transport envelope.

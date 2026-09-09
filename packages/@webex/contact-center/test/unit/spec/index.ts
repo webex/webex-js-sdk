@@ -127,7 +127,6 @@ const INTERNAL_ROOT_EXPORTS = Object.freeze([
   'AISummaryPayloadByInboundType',
   'AISummaryTimeoutCodeByInboundType',
   'GeneratedSummaryFlagsAccessor',
-  'AISummaryResponseTransportPayload',
   'SummaryResponseTimestamps',
   'PostCallReceivedResponse',
   'PostCallNotReceivedResponse',

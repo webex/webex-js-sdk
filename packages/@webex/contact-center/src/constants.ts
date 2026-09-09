@@ -72,8 +72,6 @@ export const METHODS = {
   GET_REAL_TIME_ASSISTANCE: 'getRealTimeAssistance',
   SEND_REAL_TIME_ASSISTANCE_USER_ACTION: 'sendRealTimeAssistanceUserAction',
   FETCH_HISTORIC_TRANSCRIPTS: 'fetchHistoricTranscripts',
-  SEND_SUMMARY_GET_EVENT: 'sendSummaryGetEvent',
-  SEND_SUMMARY_RESPONSE_EVENT: 'sendSummaryResponseEvent',
   SET_MANAGE_WEBEX_CALLING_IN_WXCC: 'setManageWebexCallingInWxcc',
   IS_WX_BETTER_TOGETHER_ENABLED: 'isWxBetterTogetherEnabled',
   SYNC_WXAPP_MUTE_FROM_MERCURY: 'syncWxAppMuteFromMercury',

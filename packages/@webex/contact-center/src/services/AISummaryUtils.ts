@@ -1,5 +1,4 @@
 import {CC_FILE} from '../constants';
-import type {AISummaryFailureContext} from '../types';
 import {getErrorDetails} from './core/Utils';
 
 export type AISummaryError = Error & {data?: Record<string, unknown>};
@@ -16,7 +15,14 @@ export const AI_SUMMARY_FEEDBACK_VALUES = new Set(['none', 'thumbs_up', 'thumbs_
 export const createSummaryError = (
   errorCode: string,
   methodName?: string,
-  context?: Partial<AISummaryFailureContext> & {statusCode?: number}
+  context?: {
+    statusCode?: number;
+    eventName?: string;
+    agentId?: string;
+    orgId?: string;
+    interactionId?: string;
+    conversationId?: string;
+  }
 ): AISummaryError => {
   if (methodName) {
     const {statusCode, eventName, agentId, orgId, interactionId, conversationId} = context ?? {};
