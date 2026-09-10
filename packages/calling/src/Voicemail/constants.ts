@@ -3,6 +3,25 @@ export const VOICEMAIL_FILE = 'VoicemailClient';
 export const BROADWORKS_VOICEMAIL_FILE = 'BroadworksBackendConnector';
 export const CALLS = 'calls';
 export const BW_TOKEN_FETCH_ENDPOINT = '/idp/bwtoken/fetch';
+/**
+ * Issuers whose JWKS the bwtoken signature is trusted to be verified against.
+ * A token whose `iss` claim is not in this allowlist is rejected before any
+ * key lookup or cryptographic verification is attempted.
+ */
+export const BW_TOKEN_TRUSTED_ISSUERS = [
+  'https://idbroker.webex.com/idb',
+  'https://idbrokerbts.webex.com/idb',
+];
+export const BW_TOKEN_JWKS_PATH = '/oauth2/v2/keys/verificationjwk';
+/**
+ * Maps a JWS `alg` header to the equivalent Web Crypto (SubtleCrypto) algorithm.
+ * Algorithms absent from this map (including `none`) are rejected.
+ */
+export const BW_TOKEN_JWS_ALG_TO_SUBTLE: Record<string, {name: string; hash: string}> = {
+  RS256: {name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256'},
+  RS384: {name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-384'},
+  RS512: {name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-512'},
+};
 export const JSON_FORMAT = '?format=json';
 export const LIMIT = '&limit';
 export const MARK_AS_READ = 'MarkAsRead';

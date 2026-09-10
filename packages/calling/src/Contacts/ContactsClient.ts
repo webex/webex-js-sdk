@@ -153,7 +153,8 @@ export class ContactsClient implements IContacts {
         method: METHODS.ENCRYPT_CONTACT,
       });
 
-      return contact;
+      /* Fail closed: the caller must not fall back to posting the plaintext contact. */
+      throw new Error('Untrusted encryptionKeyUrl rejected for encrypt');
     }
 
     const encryptedContact: Contact = {...contact};

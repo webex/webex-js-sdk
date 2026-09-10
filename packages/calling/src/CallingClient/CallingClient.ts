@@ -54,6 +54,7 @@ import {
   NETWORK_FLAP_TIMEOUT,
   DEVICES_ENDPOINT_RESOURCE,
   WCC_CALLING_RTMS_DOMAIN,
+  MOBIUS_TRUSTED_DOMAIN,
 } from './constants';
 import Line from './line';
 import {ILine} from './line/types';
@@ -533,11 +534,58 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   }
 
   /**
-   * Validates that a Mobius cluster host belongs to the trusted infra.webex.com domain.
-   * Hosts outside this domain must not receive bearer-authenticated requests.
+   * Returns whether `hostname` is exactly the trusted Mobius domain or a subdomain of it,
+   * using a `.`-bounded suffix check so `evil.com` cannot be mistaken for
+   * `evil.com.infra.webex.com`'s sibling `infra.webex.com`.
+   */
+  private isTrustedMobiusDomain(hostname: string): boolean {
+    return (
+      typeof hostname === 'string' &&
+      (hostname === MOBIUS_TRUSTED_DOMAIN || hostname.endsWith(`.${MOBIUS_TRUSTED_DOMAIN}`))
+    );
+  }
+
+  /**
+   * Validates that a Mobius cluster host (a bare host, not a URI) belongs to the trusted
+   * infra.webex.com domain. The candidate is parsed as a URL so a crafted value such as
+   * `evil.com/.infra.webex.com` - whose raw string merely *ends with* the trusted suffix -
+   * resolves to its real hostname (`evil.com`) instead of bypassing the check; the parsed
+   * URL must also carry no path/query/fragment, i.e. be host-only. Hosts outside this
+   * domain must not receive bearer-authenticated requests.
    */
   private isTrustedMobiusHost(host: string): boolean {
-    return typeof host === 'string' && host.endsWith('.infra.webex.com');
+    if (typeof host !== 'string' || !host) {
+      return false;
+    }
+
+    let parsed: URL;
+
+    try {
+      parsed = new URL(`https://${host}`);
+    } catch {
+      return false;
+    }
+
+    const isHostOnly = (parsed.pathname === '/' || parsed.pathname === '') && !parsed.search;
+
+    return isHostOnly && this.isTrustedMobiusDomain(parsed.hostname);
+  }
+
+  /**
+   * Validates that a full HTTP/WSS URI returned by Mobius discovery points at the trusted
+   * Mobius domain. Unlike `isTrustedMobiusHost`, a real path is expected here, so only the
+   * parsed hostname is checked.
+   */
+  private isTrustedMobiusUri(uri: string): boolean {
+    if (typeof uri !== 'string' || !uri) {
+      return false;
+    }
+
+    try {
+      return this.isTrustedMobiusDomain(new URL(uri).hostname);
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -637,12 +685,27 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
             response?.headers?.trackingid ?? ''
           );
 
-          /* update arrays of Mobius Uris. */
+          /* update arrays of Mobius Uris. Discovery-returned URIs are attacker-influenceable
+           * (a malformed/compromised response), so each one is re-validated against the
+           * trusted Mobius domain before it can be used for a registration/device request. */
           const mobiusUris = filterMobiusUris(mobiusServers, this.mobiusHost);
-          this.primaryMobiusUris = mobiusUris.primary;
-          this.backupMobiusUris = mobiusUris.backup;
-          this.primaryWssMobiusUris = mobiusUris.primaryWss;
-          this.backupWssMobiusUris = mobiusUris.backupWss;
+          const dropUntrustedUris = (uris: string[]) =>
+            uris.filter((uri) => {
+              if (this.isTrustedMobiusUri(uri)) {
+                return true;
+              }
+              log.warn(`Skipping untrusted Mobius URI from discovery response: ${uri}`, {
+                file: CALLING_CLIENT_FILE,
+                method: GET_MOBIUS_SERVERS_UTIL,
+              });
+
+              return false;
+            });
+
+          this.primaryMobiusUris = dropUntrustedUris(mobiusUris.primary);
+          this.backupMobiusUris = dropUntrustedUris(mobiusUris.backup);
+          this.primaryWssMobiusUris = dropUntrustedUris(mobiusUris.primaryWss);
+          this.backupWssMobiusUris = dropUntrustedUris(mobiusUris.backupWss);
 
           log.log(
             `Final list of Mobius Servers, primary: ${mobiusUris.primary} and backup: ${mobiusUris.backup}`,

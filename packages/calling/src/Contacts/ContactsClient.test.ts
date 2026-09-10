@@ -1094,5 +1094,28 @@ describe('ContactClient Tests', () => {
       // KMS must be called for a trusted kms:// encryptionKeyUrl
       expect(webex.internal.encryption.decryptText).toHaveBeenCalled();
     });
+
+    it('createContact rejects an untrusted encryptionKeyUrl and never posts the plaintext contact', async () => {
+      const errorSpy = jest.spyOn(log, 'error');
+
+      const contact = {
+        contactType: 'CUSTOM',
+        displayName: 'Plaintext Display Name',
+        encryptionKeyUrl: 'http://evil.com/keys/fake-key',
+        groups: ['group-1'],
+      } as Contact;
+
+      const res = await contactClient.createContact(contact);
+
+      // No request (and therefore no plaintext contact fields) must reach the backend
+      expect(webex.request).not.toHaveBeenCalled();
+      expect(webex.internal.encryption.encryptText).not.toHaveBeenCalled();
+      expect(res.statusCode).not.toBe(201);
+      expect(res.message).toBe(FAILURE_MESSAGE);
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Untrusted encryptionKeyUrl'),
+        expect.objectContaining({method: METHODS.ENCRYPT_CONTACT})
+      );
+    });
   });
 });

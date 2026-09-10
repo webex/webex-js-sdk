@@ -43,6 +43,7 @@ import {
   regionBody,
   regionPayload,
   primaryUrl,
+  discoveryBody,
   discoveryPayload,
   registrationPayload,
   mockEUServiceHosts,
@@ -440,6 +441,69 @@ describe('CallingClient Tests', () => {
           })
         );
         expect(callingClient.primaryMobiusUris).toEqual([primaryUrl]);
+      });
+
+      it('getMobiusServers rejects a cluster host that only ends with the trusted suffix as a raw string', async () => {
+        // 'evil.com/.infra.webex.com' ends with '.infra.webex.com' as a raw string, but its
+        // real hostname (once parsed as a URL) is 'evil.com'. A naive endsWith() suffix check
+        // would accept this and issue a bearer-authed request to evil.com.
+        const bypassHosts = [
+          {
+            host: 'evil.com/.infra.webex.com',
+            ttl: -1,
+            priority: 5,
+            id: 'urn:TEAM:test:mobius',
+          },
+        ];
+
+        webex.internal.services.getMobiusClusters = jest.fn().mockReturnValue(bypassHosts);
+        webex.internal.services['_hostCatalog'] = {'evil.com/.infra.webex.com': bypassHosts};
+
+        webex.request.mockResolvedValueOnce(regionPayload);
+
+        callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+        expect(webex.request).not.toHaveBeenCalledWith(
+          expect.objectContaining({
+            uri: expect.stringContaining('evil.com'),
+          })
+        );
+        expect(callingClient['mobiusHost']).toBe('');
+      });
+
+      it('getMobiusServers discards untrusted HTTP and WSS URIs returned by the discovery response', async () => {
+        const maliciousDiscoveryPayload = <WebexRequestPayload>(<unknown>{
+          statusCode: 200,
+          body: {
+            primary: {
+              region: 'US-EAST',
+              uris: ['https://evil.com/api/v1'],
+              wss: ['wss://evil.com/api/v1'],
+            },
+            backup: {
+              region: 'US-WEST',
+              uris: [discoveryBody.backup.uris[0]],
+            },
+          },
+        });
+
+        webex.request
+          .mockResolvedValueOnce(regionPayload)
+          .mockResolvedValueOnce(maliciousDiscoveryPayload);
+
+        callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+        // Neither the untrusted HTTP nor the untrusted WSS discovery URI may be retained
+        expect(callingClient.primaryMobiusUris).not.toEqual(
+          expect.arrayContaining([expect.stringContaining('evil.com')])
+        );
+        expect(callingClient['primaryWssMobiusUris']).not.toEqual(
+          expect.arrayContaining([expect.stringContaining('evil.com')])
+        );
+        // The trusted backup URI from the same response is retained
+        expect(callingClient.backupMobiusUris).toEqual(
+          expect.arrayContaining([expect.stringContaining(discoveryBody.backup.uris[0])])
+        );
       });
     });
   });

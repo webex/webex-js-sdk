@@ -1,4 +1,4 @@
-import {getMobiusDiscoveryResponse, getTestUtilsWebex} from '../common/testUtil';
+import {getTestUtilsWebex} from '../common/testUtil';
 import {MobiusServers, WebexRequestPayload} from '../common/types';
 import {URL_ENDPOINT} from './constants';
 import {mockPostResponse} from './registration/registerFixtures';
@@ -32,7 +32,18 @@ const regionPayload = <WebexRequestPayload>(<unknown>{
   body: regionBody,
 });
 
-const discoveryBody: MobiusServers = getMobiusDiscoveryResponse();
+// Uses a trusted `.infra.webex.com` host (unlike the generic `getMobiusDiscoveryResponse`
+// fixture) since CallingClient now discards any discovery-returned URI outside that domain.
+const discoveryBody: MobiusServers = {
+  primary: {
+    region: 'US-EAST',
+    uris: ['https://mobius-dfw.prod.infra.webex.com/api/v1'],
+  },
+  backup: {
+    region: 'US-WEST',
+    uris: ['https://mobius-sjc.prod.infra.webex.com/api/v1'],
+  },
+};
 const primaryUrl = `${discoveryBody.primary.uris[0]}/calling/web/`;
 const discoveryPayload = <WebexRequestPayload>(<unknown>{
   statusCode: 200,
@@ -177,6 +188,7 @@ export {
   regionBody,
   regionPayload,
   primaryUrl,
+  discoveryBody,
   discoveryPayload,
   registrationPayload,
   uri,

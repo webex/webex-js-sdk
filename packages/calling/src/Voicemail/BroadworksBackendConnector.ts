@@ -43,6 +43,9 @@ import log from '../Logger';
 import {
   BROADWORKS_VOICEMAIL_FILE,
   BW_TOKEN_FETCH_ENDPOINT,
+  BW_TOKEN_JWKS_PATH,
+  BW_TOKEN_JWS_ALG_TO_SUBTLE,
+  BW_TOKEN_TRUSTED_ISSUERS,
   JSON_FORMAT,
   MARK_AS_READ,
   MARK_AS_UNREAD,
@@ -119,6 +122,63 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
   }
 
   /**
+   * Verifies the bwtoken's signature against the JWKS published by its (allowlisted)
+   * issuer and returns the verified payload. Throws 401 for any structural, network,
+   * or cryptographic verification failure so an unsigned/forged token can never reach
+   * the claim checks in `getUserId`.
+   */
+  private async verifyBwTokenSignature(token: string): Promise<Record<string, unknown>> {
+    const [headerB64, payloadB64, signatureB64] = token.split('.');
+
+    let header: {alg?: string; kid?: string};
+    let payload: Record<string, unknown>;
+
+    try {
+      header = JSON.parse(Buffer.from(headerB64, 'base64url').toString(BINARY));
+      payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString(BINARY));
+    } catch {
+      throw new Error(`${ERROR_CODE.UNAUTHORIZED}`);
+    }
+
+    const subtleAlg = header.alg ? BW_TOKEN_JWS_ALG_TO_SUBTLE[header.alg] : undefined;
+
+    if (
+      !subtleAlg ||
+      typeof payload.iss !== 'string' ||
+      !BW_TOKEN_TRUSTED_ISSUERS.includes(payload.iss)
+    ) {
+      throw new Error(`${ERROR_CODE.UNAUTHORIZED}`);
+    }
+
+    const jwksResponse = await fetch(`${payload.iss}${BW_TOKEN_JWKS_PATH}`);
+
+    if (!jwksResponse.ok) {
+      throw new Error(`${ERROR_CODE.UNAUTHORIZED}`);
+    }
+
+    const {keys} = (await jwksResponse.json()) as {keys?: JsonWebKey[]};
+    const candidateKeys = (keys ?? []).filter((key) => !header.kid || key.kid === header.kid);
+    const signature = Buffer.from(signatureB64, 'base64url');
+    const signingInput = Buffer.from(`${headerB64}.${payloadB64}`, BINARY);
+
+    for (const jwk of candidateKeys) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const publicKey = await crypto.subtle.importKey('jwk', jwk, subtleAlg, false, ['verify']);
+
+        // eslint-disable-next-line no-await-in-loop
+        if (await crypto.subtle.verify(subtleAlg.name, publicKey, signature, signingInput)) {
+          return payload;
+        }
+      } catch {
+        /* Try the next candidate key */
+      }
+    }
+
+    throw new Error(`${ERROR_CODE.UNAUTHORIZED}`);
+  }
+
+  /**
    * Decoding the userId from the broadworks token.
    */
   private async getUserId() {
@@ -132,16 +192,17 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
       await this.getBwToken();
       /* istanbul ignore else */
       if (this.bwtoken && this.bwtoken.split('.').length === 3) {
-        const decodedString = Buffer.from(this.bwtoken.split('.')[1], 'base64url').toString(BINARY);
-        const payload = JSON.parse(decodedString);
+        const payload = await this.verifyBwTokenSignature(this.bwtoken);
         const nowInSeconds = Math.floor(Date.now() / 1000);
 
-        /* Validate sub (non-empty string) and exp (must be in the future) */
+        /* Validate sub, exp (must be in the future) and iat (must not be in the future) */
         if (
           typeof payload.sub !== 'string' ||
           !payload.sub ||
           typeof payload.exp !== 'number' ||
-          payload.exp <= nowInSeconds
+          payload.exp <= nowInSeconds ||
+          typeof payload.iat !== 'number' ||
+          payload.iat > nowInSeconds
         ) {
           throw new Error(`${ERROR_CODE.UNAUTHORIZED}`);
         }

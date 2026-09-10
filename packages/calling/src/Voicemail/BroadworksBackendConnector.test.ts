@@ -1,4 +1,5 @@
 /* eslint-disable dot-notation */
+import {webcrypto} from 'crypto';
 import {LOGGER} from '../Logger/types';
 import {getTestUtilsWebex} from '../common/testUtil';
 import {SORT, WebexRequestPayload} from '../common/types';
@@ -691,8 +692,71 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
   });
 
   describe('BroadworksBackendConnector getUserId', () => {
+    const TRUSTED_ISSUER = 'https://idbroker.webex.com/idb';
+    const KEY_ID = 'test-key-1';
+    const nowInSeconds = () => Math.floor(Date.now() / 1000);
+    const base64url = (obj: unknown) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+
+    let publicJwk: JsonWebKey;
+    let privateKey: CryptoKey;
+    let originalCrypto: Crypto;
+
+    const signBwToken = async (payload: Record<string, unknown>, signingKey = privateKey) => {
+      const header = {alg: 'RS256', typ: 'JWT', kid: KEY_ID};
+      const signingInput = `${base64url(header)}.${base64url(payload)}`;
+      const signature = await webcrypto.subtle.sign(
+        'RSASSA-PKCS1-v1_5',
+        signingKey,
+        Buffer.from(signingInput)
+      );
+
+      return `${signingInput}.${Buffer.from(signature).toString('base64url')}`;
+    };
+
+    beforeAll(async () => {
+      const keyPair = (await webcrypto.subtle.generateKey(
+        {
+          name: 'RSASSA-PKCS1-v1_5',
+          modulusLength: 2048,
+          publicExponent: new Uint8Array([1, 0, 1]),
+          hash: 'SHA-256',
+        },
+        true,
+        ['sign', 'verify']
+      )) as CryptoKeyPair;
+
+      privateKey = keyPair.privateKey;
+      publicJwk = {
+        ...(await webcrypto.subtle.exportKey('jwk', keyPair.publicKey)),
+        kid: KEY_ID,
+      };
+    });
+
+    beforeEach(() => {
+      originalCrypto = global.crypto;
+      // jsdom's `crypto` global is a non-writable accessor, so a plain assignment is a
+      // silent no-op; `defineProperty` is required to swap in Node's real WebCrypto
+      // implementation (used by both the connector under test and the token signer above).
+      Object.defineProperty(global, 'crypto', {
+        value: webcrypto,
+        configurable: true,
+        writable: true,
+      });
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({keys: [publicJwk]}),
+        })
+      ) as jest.Mock;
+    });
+
     afterEach(() => {
       jest.clearAllMocks();
+      Object.defineProperty(global, 'crypto', {
+        value: originalCrypto,
+        configurable: true,
+        writable: true,
+      });
     });
 
     it('getUserId rejects unsigned/tampered bwtoken', async () => {
@@ -710,19 +774,44 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
 
       const response = await broadworksBackendConnector.init();
 
-      // With hardened getUserId, expired exp must route to 401
+      // With hardened getUserId, a token with no trusted issuer must route to 401
       expect(response.statusCode).toBe(401);
       expect(response.message).toBe(FAILURE_MESSAGE);
       // The attacker-chosen sub must not be trusted
       expect(broadworksBackendConnector.userId).not.toBe('attacker@evil.com');
     });
 
+    it('getUserId rejects a forged token with a future expiry and no valid signature', async () => {
+      // Same shape as a legitimate token (trusted issuer, future exp, current iat) but
+      // signed with "anything" instead of a real signature - mirrors the documented bypass.
+      const forgedPayload = {
+        sub: 'attacker@evil.com',
+        iss: TRUSTED_ISSUER,
+        iat: nowInSeconds(),
+        exp: nowInSeconds() + 3600,
+      };
+      const header = {alg: 'RS256', typ: 'JWT', kid: KEY_ID};
+      const forgedToken = `${base64url(header)}.${base64url(forgedPayload)}.anything`;
+
+      webex.request.mockResolvedValueOnce({body: {token: {bearer: forgedToken}}});
+      webex.request.mockResolvedValueOnce(mockBWRKSData);
+
+      const response = await broadworksBackendConnector.init();
+
+      expect(response.statusCode).toBe(401);
+      expect(response.message).toBe(FAILURE_MESSAGE);
+      expect(broadworksBackendConnector.userId).not.toBe('attacker@evil.com');
+    });
+
     it('getUserId returns sub for a validly signed bwtoken', async () => {
       const expectedSub = 'testuser@broadworks.example.com';
-      const futureExp = 9999999999; // far in the future
-      const validPayload = {sub: expectedSub, exp: futureExp};
-      const payloadEncoded = Buffer.from(JSON.stringify(validPayload)).toString('base64url');
-      const validToken = `eyJhbGciOiJIUzI1NiJ9.${payloadEncoded}.fake-signature`;
+      const validPayload = {
+        sub: expectedSub,
+        iss: TRUSTED_ISSUER,
+        iat: nowInSeconds(),
+        exp: nowInSeconds() + 3600,
+      };
+      const validToken = await signBwToken(validPayload);
 
       const validTokenResponse = {
         body: {token: {bearer: validToken}},
@@ -733,8 +822,9 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
 
       await broadworksBackendConnector.init();
 
-      // With hardened getUserId, a valid token must return the correct sub
+      // With hardened getUserId, a genuinely signed token must return the correct sub
       expect(broadworksBackendConnector.userId).toBe(expectedSub);
+      expect(global.fetch).toHaveBeenCalledWith(`${TRUSTED_ISSUER}/oauth2/v2/keys/verificationjwk`);
     });
   });
 });
