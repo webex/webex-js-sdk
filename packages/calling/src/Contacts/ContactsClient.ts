@@ -502,14 +502,14 @@ export class ContactsClient implements IContacts {
     if (!this.encryptionKeyUrlPromise) {
       this.encryptionKeyUrlPromise = (async () => {
         try {
-          this.encryptionKeyUrl = await this.createNewEncryptionKeyUrl();
+          const newEncryptionKeyUrl = await this.createNewEncryptionKeyUrl();
           log.log(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
             file: CONTACTS_CLIENT,
             method: this.fetchEncryptionKeyUrl.name,
           });
           const response: ContactResponse = await this.createContactGroup(
             DEFAULT_GROUP_NAME,
-            this.encryptionKeyUrl
+            newEncryptionKeyUrl
           );
 
           if (response.data.group?.groupId) {
@@ -519,6 +519,11 @@ export class ContactsClient implements IContacts {
               method: this.fetchEncryptionKeyUrl.name,
             });
           }
+
+          // Publish the cache only once both the key and the default group
+          // exist, so callers arriving mid-flight keep awaiting the promise
+          // below instead of racing ahead of the group creation.
+          this.encryptionKeyUrl = newEncryptionKeyUrl;
 
           return this.encryptionKeyUrl;
         } catch (e) {

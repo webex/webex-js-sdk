@@ -1028,6 +1028,52 @@ describe('ContactClient Tests', () => {
     expect(webex.request).toHaveBeenCalledTimes(1);
   });
 
+  it('cached-key path awaits in-flight group creation instead of creating a duplicate default group', async () => {
+    const successGroupResponsePayload = <WebexRequestPayload>{
+      statusCode: 201,
+      body: mockGroupResponse,
+    };
+
+    // No existing encryptionKeyUrl and empty groups — forces the key/group creation path
+    contactClient['groups'] = [];
+    contactClient['encryptionKeyUrl'] = '';
+
+    webex.internal.encryption.kms.createUnboundKeys.mockResolvedValue([mockKmsKey]);
+    webex.internal.encryption.kms.createResource.mockResolvedValue(mockKmsKey);
+    webex.internal.encryption.encryptText.mockResolvedValue('Encrypted group name');
+
+    // Hold the default-group POST in flight so a second caller can arrive
+    // in the window between the KMS key resolving and the group being created.
+    let resolveGroupRequest: (value: WebexRequestPayload) => void = () => {};
+    const groupRequestPromise = new Promise<WebexRequestPayload>((resolve) => {
+      resolveGroupRequest = resolve;
+    });
+
+    webex.request.mockReturnValue(groupRequestPromise);
+
+    const firstCall = contactClient['fetchEncryptionKeyUrl']();
+
+    // Flush microtasks until the default-group POST has been issued, i.e. the
+    // KMS key has resolved but the group creation itself is still pending.
+    for (let i = 0; i < 20 && webex.request.mock.calls.length === 0; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.resolve();
+    }
+
+    expect(webex.request).toHaveBeenCalledTimes(1);
+
+    // A second caller arrives while the default-group creation is still in
+    // flight and must not race ahead to create a competing default group.
+    const secondCall = contactClient['fetchDefaultGroup']();
+
+    resolveGroupRequest(successGroupResponsePayload);
+
+    await Promise.all([firstCall, secondCall]);
+
+    // Only one default-group POST should ever be issued.
+    expect(webex.request).toHaveBeenCalledTimes(1);
+  });
+
   it('failed key resolution does not cache a rejected promise', async () => {
     const successGroupResponsePayload = <WebexRequestPayload>{
       statusCode: 201,
