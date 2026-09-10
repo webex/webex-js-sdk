@@ -425,9 +425,14 @@ export default class Voice extends Task implements IVoice {
         METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
       ]);
 
+      const declineAcceptReason = this.wxAppAnswerPending
+        ? 'wxApp_answer_pending'
+        : 'wxApp_offer_ready';
       this.setWxAppAnswerPending(false);
-      const response = await runWxAppOutdialDecline(this.getWxAppVoiceDependencies(), () =>
-        this.contact.cancelTask({interactionId})
+      const response = await runWxAppOutdialDecline(
+        this.getWxAppVoiceDependencies(),
+        () => this.contact.cancelTask({interactionId}),
+        {acceptReason: declineAcceptReason}
       );
 
       this.metricsManager.trackEvent(

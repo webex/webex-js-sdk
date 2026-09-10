@@ -97,7 +97,7 @@ export class WxAppOfferObservability {
 
     if (participantDiagnostics.hasValidWxAppParticipant || !usersubPublished) {
       this.cancelGraceTimer();
-    } else if (!this.lastLoggedWxAppParticipantMismatch) {
+    } else if (!ctx.isOutdial() && !this.lastLoggedWxAppParticipantMismatch) {
       this.scheduleGraceTimer(ctx);
     }
   }
@@ -129,6 +129,10 @@ export class WxAppOfferObservability {
 
   private emitParticipantMismatchIfStillNeeded(ctx: WxAppOfferObservabilityContext): void {
     if (!ctx.getEnableWxBetterTogether() || this.lastLoggedWxAppParticipantMismatch) {
+      return;
+    }
+
+    if (ctx.isOutdial()) {
       return;
     }
 

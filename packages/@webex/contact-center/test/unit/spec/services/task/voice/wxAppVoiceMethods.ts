@@ -529,6 +529,24 @@ describe('runWxAppOutdialDecline', () => {
     );
   });
 
+  it('tracks post-accept acceptReason on outdial cancel when provided', async () => {
+    const deps = makeDeps();
+    const cancelResult = {type: 'RoutingMessage', trackingId: 'track-1', data: {}};
+
+    await runWxAppOutdialDecline(deps, async () => cancelResult, {
+      acceptReason: 'wxApp_answer_pending',
+    });
+
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        acceptReason: 'wxApp_answer_pending',
+      }),
+      ['operational', 'behavioral']
+    );
+  });
+
   it('tracks wxApp decline failed metric and rethrows when cancel fails', async () => {
     const deps = makeDeps();
     const error = new Error('cancel failed');

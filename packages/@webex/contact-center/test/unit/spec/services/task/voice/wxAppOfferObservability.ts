@@ -52,6 +52,7 @@ function makeContext(
     wxAppAnswerPending?: boolean;
     voiceVariant?: typeof VOICE_VARIANT.PSTN;
     acceptEnabled?: boolean;
+    isOutdial?: boolean;
   } = {}
 ): WxAppOfferObservabilityContext & {setTaskData: (data: TaskData) => void; setTaskState: (s: TaskState) => void} {
   let taskData = overrides.taskData ?? makeTaskDataWithoutWxAppFields();
@@ -77,7 +78,7 @@ function makeContext(
       isEnabled: overrides.acceptEnabled ?? false,
     }),
     getVoiceVariant: () => overrides.voiceVariant ?? VOICE_VARIANT.PSTN,
-    isOutdial: () => false,
+    isOutdial: () => overrides.isOutdial ?? false,
     isWxAppInboundOffer: () => {
       const p = taskData.interaction?.participants?.['agent-1'] as
         | {deviceType?: string; deviceCallId?: string; deviceId?: string}
@@ -258,6 +259,22 @@ describe('WxAppOfferObservability', () => {
       jest.advanceTimersByTime(WXAPP_PARTICIPANT_MISMATCH_GRACE_MS);
 
       expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not warn or emit metric for outdial offers with missing wxApp fields', () => {
+      const warnSpy = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppOfferParticipantMismatch');
+      const observability = new WxAppOfferObservability();
+      const ctx = makeContext({isOutdial: true});
+
+      observability.handleUiControlsUpdate(ctx);
+      jest.advanceTimersByTime(WXAPP_PARTICIPANT_MISMATCH_GRACE_MS);
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(ctx.getMetricsManager().trackEvent).not.toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING,
+        expect.anything(),
+        expect.anything()
+      );
     });
   });
 });

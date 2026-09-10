@@ -335,7 +335,7 @@ Operational and business wire names are unchanged (`WXCC_SDK_WXAPP_*`).
 | `WXAPP_USERSUB_PUBLISH_FAILED` | `enableWxBetterTogether`, `usersubPublished`, optional `skipReason`, `error`. `usersubPublished` reflects **retained session state** (`answerCallsState`), not the requested enable value — a failed disable/refresh while usersub remains active reports `true`. |
 | `WXAPP_MERCURY_SUBSCRIBE_SUCCESS` | `mercurySubscribed: true` |
 | `WXAPP_MERCURY_SUBSCRIBE_FAILED` | `mercurySubscribed: false`, `error` |
-| `WXAPP_TASK_ACCEPT_*` / `DECLINE_*` | `taskId`, `hasDeviceCallId`, `hasDeviceId`, optional `acceptReason`; failures add `trackingId` when available. Outdial-cancel AQM failures (`error.details`) include the same participant context fields via `getWxAppTelephonyMetricContext` merged with AQM correlation fields. |
+| `WXAPP_TASK_ACCEPT_*` / `DECLINE_*` | `taskId`, `hasDeviceCallId`, `hasDeviceId`, optional `acceptReason`; failures add `trackingId` when available. Outdial-cancel AQM failures (`error.details`) include the same participant context fields via `getWxAppTelephonyMetricContext` merged with AQM correlation fields. Outdial cancel during post-accept pending phase may report `acceptReason: wxApp_answer_pending`. |
 | `WXAPP_TASK_MUTE_*` / `DTMF_*` | `taskId`, `hasDeviceCallId`, `hasDeviceId`; failures add `trackingId` when available |
 | `WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING` | `taskId`, `usersubPublished`, `hasDeviceCallId`, `hasDeviceId`, `acceptReason` |
 

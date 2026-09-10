@@ -17,6 +17,7 @@ import {
 import {
   logWxAppTelephonyAction,
   logWxAppValidationFailure,
+  type WxAppAcceptReason,
   type WxAppTelephonyAction,
 } from '../../wxAppDiagnosticLogging';
 
@@ -454,11 +455,17 @@ export async function runWxAppReject(
   }
 }
 
+export type WxAppOutdialDeclineOptions = {
+  acceptReason?: WxAppAcceptReason;
+};
+
 export async function runWxAppOutdialDecline<T>(
   deps: WxAppVoiceDependencies,
-  executeCancel: () => Promise<T>
+  executeCancel: () => Promise<T>,
+  options?: WxAppOutdialDeclineOptions
 ): Promise<T> {
   const taskId = getInteractionId(deps);
+  const acceptReason = options?.acceptReason ?? 'wxApp_offer_ready';
 
   deps.metricsManager.timeEvent([
     METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
@@ -470,7 +477,7 @@ export async function runWxAppOutdialDecline<T>(
 
     deps.metricsManager.trackEvent(
       METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
-      {taskId, acceptReason: 'wxApp_offer_ready', ...getWxAppTelephonyMetricContext(deps)},
+      {taskId, acceptReason, ...getWxAppTelephonyMetricContext(deps)},
       ['operational', 'behavioral']
     );
 
@@ -479,7 +486,7 @@ export async function runWxAppOutdialDecline<T>(
     logWxAppOutdialDeclineFailure(deps, error);
     deps.metricsManager.trackEvent(
       METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
-      getWxAppOutdialDeclineFailurePayload(deps, error),
+      {acceptReason, ...getWxAppOutdialDeclineFailurePayload(deps, error)},
       ['operational', 'behavioral']
     );
     throw error;
