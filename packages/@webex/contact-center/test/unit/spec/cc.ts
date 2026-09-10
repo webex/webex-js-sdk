@@ -1671,7 +1671,61 @@ describe('webex.cc', () => {
       );
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
-        expect.objectContaining({skipReason: 'user_id_unavailable'}),
+        expect.objectContaining({skipReason: 'user_id_unavailable', usersubPublished: false}),
+        ['operational', 'behavioral']
+      );
+      expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
+    });
+
+    it('should report retained usersub state when userId is missing during re-init', async () => {
+      webex.cc.$config = {...webex.cc.$config, enableWxBetterTogether: true};
+      webex.internal.device = {
+        url: 'https://wdm.example.com/devices/dev-1',
+        registered: true,
+        register: jest.fn().mockResolvedValue(undefined),
+      };
+      webex.internal.mercury = {
+        connected: true,
+        connect: jest.fn().mockResolvedValue(undefined),
+        on: jest.fn(),
+        off: jest.fn(),
+      };
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        webRtcEnabled: false,
+        loginVoiceOptions: ['EXTENSION'],
+      };
+      webex.cc.webCallingService.loginOption = LoginOption.EXTENSION;
+      mockTaskManager.applyEnableWxBetterTogether(true);
+
+      jest
+        .spyOn(webex.cc['webexCrossClientService'], 'isAnswerCallsStateActive')
+        .mockReturnValue(true);
+      const publishSpy = jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+      jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'isSubscribed').mockReturnValue(true);
+      const metricSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
+
+      jest.spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue({
+        data: {
+          agentId: 'agentId',
+          teamId: 'teamId',
+          channelsMap: {chat: [], email: [], social: [], telephony: []},
+        },
+        trackingId: 'track-1',
+      } as StationLoginSuccess);
+
+      await webex.cc.stationLogin({
+        teamId: 'teamId',
+        loginOption: LoginOption.EXTENSION,
+        dialNumber: '1001',
+      });
+
+      expect(publishSpy).not.toHaveBeenCalledWith(true, expect.anything());
+      expect(metricSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+        expect.objectContaining({skipReason: 'user_id_unavailable', usersubPublished: true}),
         ['operational', 'behavioral']
       );
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);

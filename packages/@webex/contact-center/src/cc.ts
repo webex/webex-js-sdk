@@ -2014,7 +2014,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
           {
             enableWxBetterTogether: true,
-            usersubPublished: false,
+            usersubPublished: this.webexCrossClientService.isAnswerCallsStateActive(),
             skipReason: 'user_id_unavailable',
             error: 'User ID is unavailable for cross-client publish',
           },
