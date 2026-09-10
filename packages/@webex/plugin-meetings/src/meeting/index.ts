@@ -6195,6 +6195,7 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Starts transcription when requested by the current Locus controls and an
    * active LLM channel is ready.
+   * @internal
    * @returns {void}
    */
   public startTranscriptionIfNeeded(): void {
