@@ -199,7 +199,7 @@ describe('Task state machine', () => {
       expect(emitTaskEnd).not.toHaveBeenCalled();
     });
 
-    it('terminates CONNECTED when an out-of-order participant leave identifies the current agent', () => {
+    it('ignores PARTICIPANT_LEAVE in CONNECTED even when it identifies the current agent', () => {
       const {service, emitTaskEnd} = startMachineWithEndSpy();
       const taskData = createActiveMainCallTaskData();
 
@@ -213,53 +213,71 @@ describe('Task state machine', () => {
         taskData: createPartialMainCallTaskData(false, true),
       });
 
+      expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+      expect(emitTaskEnd).not.toHaveBeenCalled();
+    });
+
+    it('ignores PARTICIPANT_LEAVE in HOLD_INITIATING when a remote Drop identifies the current agent', () => {
+      const {service, emitTaskEnd} = startMachineWithEndSpy();
+      const taskData = createActiveMainCallTaskData();
+
+      enterTransientHoldState(service, TaskState.HOLD_INITIATING, taskData);
+      service.send({
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        participantId: 'agent-1',
+        taskData: createPartialMainCallTaskData(false, true),
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.HOLD_INITIATING);
+      expect(emitTaskEnd).not.toHaveBeenCalled();
+    });
+
+    it('terminates RESUME_INITIATING when a remote Drop identifies the current agent', () => {
+      const {service, emitTaskEnd} = startMachineWithEndSpy();
+      const taskData = createActiveMainCallTaskData(true);
+
+      enterTransientHoldState(service, TaskState.RESUME_INITIATING, taskData);
+      service.send({
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        participantId: 'agent-1',
+        taskData: createPartialMainCallTaskData(true, true),
+      });
+
       expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
       expect(emitTaskEnd).toHaveBeenCalledTimes(1);
     });
 
-    it.each([TaskState.HOLD_INITIATING, TaskState.RESUME_INITIATING])(
-      'terminates %s when a remote Drop identifies the current agent',
-      (state) => {
-        const {service, emitTaskEnd} = startMachineWithEndSpy();
-        const taskData = createActiveMainCallTaskData(state === TaskState.RESUME_INITIATING);
+    it('keeps HOLD_INITIATING when ParticipantLeftConference identifies another participant', () => {
+      const {service, emitTaskEnd} = startMachineWithEndSpy();
+      const taskData = createActiveMainCallTaskData();
 
-        enterTransientHoldState(service, state, taskData);
-        service.send({
-          type: TaskEvent.PARTICIPANT_LEAVE,
-          participantId: 'agent-1',
-          taskData: createPartialMainCallTaskData(
-            state === TaskState.RESUME_INITIATING,
-            true
-          ),
-        });
+      enterTransientHoldState(service, TaskState.HOLD_INITIATING, taskData);
+      service.send({
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        participantId: 'agent-2',
+        taskData: createPartialMainCallTaskData(false, true),
+      });
 
-        expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
-        expect(emitTaskEnd).toHaveBeenCalledTimes(1);
-      }
-    );
+      expect(service.getSnapshot().value).toBe(TaskState.HOLD_INITIATING);
+      expect(emitTaskEnd).not.toHaveBeenCalled();
+    });
 
-    it.each([TaskState.HOLD_INITIATING, TaskState.RESUME_INITIATING])(
-      'keeps %s when ParticipantLeftConference identifies another participant',
-      (state) => {
-        const {service, emitTaskEnd} = startMachineWithEndSpy();
-        const taskData = createActiveMainCallTaskData(state === TaskState.RESUME_INITIATING);
+    it('terminates RESUME_INITIATING when another participant leave omits self from the roster', () => {
+      const {service, emitTaskEnd} = startMachineWithEndSpy();
+      const taskData = createActiveMainCallTaskData(true);
 
-        enterTransientHoldState(service, state, taskData);
-        service.send({
-          type: TaskEvent.PARTICIPANT_LEAVE,
-          participantId: 'agent-2',
-          taskData: createPartialMainCallTaskData(
-            state === TaskState.RESUME_INITIATING,
-            true
-          ),
-        });
+      enterTransientHoldState(service, TaskState.RESUME_INITIATING, taskData);
+      service.send({
+        type: TaskEvent.PARTICIPANT_LEAVE,
+        participantId: 'agent-2',
+        taskData: createPartialMainCallTaskData(true, true),
+      });
 
-        expect(service.getSnapshot().value).toBe(state);
-        expect(emitTaskEnd).not.toHaveBeenCalled();
-      }
-    );
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+      expect(emitTaskEnd).toHaveBeenCalledTimes(1);
+    });
 
-    it('keeps HELD when another participant leave event omits self from its roster', () => {
+    it('terminates HELD when another participant leave event omits self from its roster', () => {
       const {service, emitTaskEnd} = startMachineWithEndSpy();
       const taskData = createActiveMainCallTaskData(true);
 
@@ -275,8 +293,8 @@ describe('Task state machine', () => {
         taskData: createPartialMainCallTaskData(true, true),
       });
 
-      expect(service.getSnapshot().value).toBe(TaskState.HELD);
-      expect(emitTaskEnd).not.toHaveBeenCalled();
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+      expect(emitTaskEnd).toHaveBeenCalledTimes(1);
     });
 
     it('keeps HELD when CONSULT_END has a partial mainCall', () => {
@@ -2064,7 +2082,15 @@ describe('Task state machine', () => {
 
     it('transitions to CONNECTED on CONSULT_END without isTerminated during CONF_INITIATING', () => {
       const service = startMachine();
-      const taskData = createTaskData({consultingAgentId: 'agent-1'});
+      const taskData = createTaskData({
+        consultingAgentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false},
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+        } as any,
+      });
 
       service.send({type: TaskEvent.TASK_INCOMING, taskData});
       service.send({type: TaskEvent.ASSIGN, taskData});
