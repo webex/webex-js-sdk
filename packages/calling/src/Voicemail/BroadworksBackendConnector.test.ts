@@ -1,7 +1,7 @@
 /* eslint-disable dot-notation */
 import {LOGGER} from '../Logger/types';
 import {getTestUtilsWebex} from '../common/testUtil';
-import {SORT, WebexRequestPayload} from '../common/types';
+import {HTTP_METHODS, SORT, WebexRequestPayload} from '../common/types';
 import {BroadworksBackendConnector} from './BroadworksBackendConnector';
 import {
   broadworksTokenType,
@@ -685,6 +685,94 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
       const response = await broadworksBackendConnector.getVoicemailSummary();
 
       expect(response).toBeNull();
+    });
+  });
+
+  describe('XSI message path validation', () => {
+    const xsiBase = 'https://xsp-alpha.broadcloudpbx.net/com.broadsoft.xsi-actions';
+    const validMessageId =
+      '/v2.0/user/bgerman@wcslab.broadcloud.org/VoiceMessagingMessages/274a236c-9212-4679-8b40-2786ea460538';
+    const mediaXml =
+      '<messageMediaContent><a/><b>audio/wav</b><c>ZmFrZQ==</c></messageMediaContent>';
+
+    const methodCases: {
+      label: string;
+      invokeWith: (id: string) => Promise<unknown>;
+      httpMethod: string;
+      expectedUrl: (id: string) => string;
+    }[] = [
+      {
+        label: 'getVoicemailContent',
+        invokeWith: (id: string) => broadworksBackendConnector.getVoicemailContent(id),
+        httpMethod: HTTP_METHODS.GET,
+        expectedUrl: (id: string) => `${xsiBase}${id}`,
+      },
+      {
+        label: 'voicemailMarkAsRead',
+        invokeWith: (id: string) => broadworksBackendConnector.voicemailMarkAsRead(id),
+        httpMethod: HTTP_METHODS.PUT,
+        expectedUrl: (id: string) => `${xsiBase}${id}/${MARK_AS_READ}`,
+      },
+      {
+        label: 'voicemailMarkAsUnread',
+        invokeWith: (id: string) => broadworksBackendConnector.voicemailMarkAsUnread(id),
+        httpMethod: HTTP_METHODS.PUT,
+        expectedUrl: (id: string) => `${xsiBase}${id}/${MARK_AS_UNREAD}`,
+      },
+      {
+        label: 'deleteVoicemail',
+        invokeWith: (id: string) => broadworksBackendConnector.deleteVoicemail(id),
+        httpMethod: HTTP_METHODS.DELETE,
+        expectedUrl: (id: string) => `${xsiBase}${id}`,
+      },
+    ];
+
+    const craftedMessageIds = [
+      '../etc/passwd',
+      '%2e%2e%2f',
+      'https://evil.example.com/x',
+      '/v2.0/user/foo\\bar/VoiceMessagingMessages/1',
+      '',
+      '//v2.0/user/foo/VoiceMessagingMessages/1',
+    ];
+
+    beforeEach(() => {
+      broadworksBackendConnector.xsiEndpoint = xsiBase;
+      broadworksBackendConnector.xsiAccessToken = `bearer ${bwToken}`;
+    });
+
+    describe.each(methodCases)('$label', ({invokeWith, httpMethod, expectedUrl}) => {
+      it.each(craftedMessageIds)(
+        'rejects crafted message path before fetch: %j',
+        async (craftedId) => {
+          global.fetch = jest.fn() as jest.Mock;
+
+          const response = await invokeWith(craftedId);
+
+          expect(global.fetch).not.toHaveBeenCalled();
+          expect(response).toStrictEqual(responseDetails422);
+        }
+      );
+
+      it('valid full XSI path produces same URL', async () => {
+        global.fetch = jest.fn(() =>
+          Promise.resolve({
+            status: 200,
+            ok: true,
+            headers: {get: () => 'trackingid'},
+            text: () => Promise.resolve(mediaXml),
+            json: () => Promise.resolve({}),
+          })
+        ) as jest.Mock;
+
+        await invokeWith(validMessageId);
+
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+        const [calledUrl, calledOptions] = (global.fetch as jest.Mock).mock.calls[0];
+
+        expect(calledUrl).toEqual(expectedUrl(validMessageId));
+        expect(calledOptions.method).toEqual(httpMethod);
+      });
     });
   });
 });

@@ -134,11 +134,35 @@ export class CallerId implements ICallerId {
    */
   private parseSipUri(paid: string): DisplayInformation {
     const result = {} as DisplayInformation;
+    const SIP_SCHEME = 'sip:';
 
-    // Extract name
-    const nameMatch = paid.split('<')[0].replace(/"/g, '');
-    if (nameMatch) {
-      result.name = nameMatch.trim();
+    // The addr-spec is the content inside the angle brackets when present,
+    // otherwise the whole string is treated as the addr-spec (bare
+    // `sip:user@host` form with no display name).
+    const angleStart = paid.indexOf('<');
+    const hasAngleBracket = angleStart !== -1;
+    let addrSpec = paid;
+
+    if (hasAngleBracket) {
+      const angleEnd = paid.indexOf('>', angleStart + 1);
+
+      addrSpec =
+        angleEnd === -1 ? paid.slice(angleStart + 1) : paid.slice(angleStart + 1, angleEnd);
+    }
+
+    // Extract name: the substring before the first '<'. A bare
+    // `sip:user@host` string (no angle brackets) never carries a display
+    // name, even though it is non-empty.
+    let nameCandidate = '';
+
+    if (hasAngleBracket) {
+      nameCandidate = paid.slice(0, angleStart).replace(/"/g, '').trim();
+    } else if (!paid.trim().startsWith(SIP_SCHEME)) {
+      nameCandidate = paid.replace(/"/g, '').trim();
+    }
+
+    if (nameCandidate) {
+      result.name = nameCandidate;
     } else {
       log.warn(`Name field not found!`, {
         file: CALLER_ID_FILE,
@@ -146,13 +170,24 @@ export class CallerId implements ICallerId {
       });
     }
 
-    // Extract number
-    const data = paid.split('@')[0].replace(/"/g, '');
-    const num = data.substring(data.indexOf(':') + 1, data.length);
-    const phoneMatch = num.match(VALID_PHONE_REGEX);
+    // Extract number: anchor on a literal `sip:` scheme at the start of the
+    // addr-spec, then the user part is the text between `sip:` and the first
+    // '@' host delimiter (any trailing ';params' after the host is ignored
+    // because we only ever read up to the first '@').
+    let numCandidate = '';
 
-    if (phoneMatch && phoneMatch[0].length === num.length) {
-      result.num = num;
+    if (addrSpec.startsWith(SIP_SCHEME)) {
+      const atIndex = addrSpec.indexOf('@', SIP_SCHEME.length);
+
+      if (atIndex !== -1) {
+        numCandidate = addrSpec.slice(SIP_SCHEME.length, atIndex);
+      }
+    }
+
+    const phoneMatch = numCandidate.match(VALID_PHONE_REGEX);
+
+    if (numCandidate && phoneMatch && phoneMatch[0].length === numCandidate.length) {
+      result.num = numCandidate;
     } else {
       log.warn(`Number field not found!`, {
         file: CALLER_ID_FILE,
