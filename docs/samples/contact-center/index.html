@@ -64,11 +64,7 @@
           </p>
         </fieldset>
 
-        <button id="changeEnv" type="button" class="btn-code" onclick=changeEnv()>Production</button><span class="text-color"> ( Click to switch environments before webex.init() )</span>
-        <p class="note">
-          Select QA / Integration when using QA credentials. Service discovery will route a QA tenant to
-          api.qaus1.ciscoccservice.com.
-        </p>
+        <button id="changeEnv" type="button" class="btn-code" onclick=changeEnv()>In Production</button><span class="text-color"> ( Click to change the environment )</span>
         <div>
           <select name="auth-type" id="auth-type" onchange="changeAuthType()">
             <option value="accessToken">Access Token</option>

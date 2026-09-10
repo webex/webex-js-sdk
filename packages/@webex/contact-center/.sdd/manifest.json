@@ -47,11 +47,11 @@
     {
       "path": "src",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Agent Wellness Break public methods, exactly-once ASC events, effective gating, RTD lifecycle, session invalidation, recovery-safe sample flow, intake fidelity, and privacy were independently validated by claude-code on 2026-09-07; coverage remains Partial until the remaining baseline promotion criteria are satisfied.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
       "canonical_spec": "ai-docs/contact-center-spec.md",
       "contracts": {
         "provides": [
-          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task with ordered action-specific consult/transfer destination controls, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, existing getQueues/getEntryPoints methods with consult/transfer defaults, full Queue records, mapped EntryPoint records with optional numbers, user-preference and preview-campaign contracts, and Agent Wellness Break effective-profile, action, system-code, RTD event/status, and ASC channel-state APIs",
+          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task with ordered action-specific consult/transfer destination controls, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, existing getQueues/getEntryPoints methods with consult/transfer defaults, full Queue records, mapped EntryPoint records with optional numbers, user-preference and preview-campaign contracts, and Agent Wellness Break effective-profile, action, system-code, and RTD event/status APIs; Agent State Control V2 remains internal",
           "WXCC-6026 wxApp Better Together: enableWxBetterTogether init config, isWxBetterTogetherEnabled read API, unified task telephony (task.accept/decline/toggleMute/transmitDtmf), TASK_WXAPP_MUTE_STATE_UPDATED event, optional main.keypad uiControl, multi-login supported; runtime toggle deferred to Phase 2 (private)"
         ],
         "requires": [
@@ -91,7 +91,7 @@
     {
       "path": "src/metrics",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Agent Wellness Break operational metric names and call sites were independently validated by claude-code on 2026-09-07; coverage remains Partial until the remaining baseline promotion criteria are satisfied.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
       "canonical_spec": "src/metrics/ai-docs/metrics-spec.md",
       "contracts": {
         "provides": [
@@ -134,7 +134,7 @@
     {
       "path": "src/services",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Agent Wellness Break direct AI action, organization/session validation, and shared RTD routing behavior were independently validated by claude-code on 2026-09-07; coverage remains Partial until the remaining baseline promotion criteria are satisfied.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
       "canonical_spec": "src/services/ai-docs/services-spec.md",
       "contracts": {
         "provides": [
@@ -176,11 +176,11 @@
     {
       "path": "src/services/agent",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. ASC v2 state change, relogin, and exactly-once normalized event contracts were independently validated by claude-code on 2026-09-07; coverage remains Partial until the remaining baseline promotion criteria are satisfied.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
       "canonical_spec": "src/services/agent/ai-docs/agent-spec.md",
       "contracts": {
         "provides": [
-          "Agent request factory; station login/logout, legacy and ASC v2 channel state changes, buddy-agent and legacy/ASC relogin operations; AGENT_EVENTS and typed public channel-state contracts"
+          "Agent request factory; station login/logout, legacy state changes, buddy-agent and relogin operations; AGENT_EVENTS and internal ASC v2 channel-state compatibility"
         ],
         "requires": [
           "AqmReqs; WCC API gateway; correlated WebSocket notifications; ContactCenter registration/profile state"
@@ -219,7 +219,7 @@
     {
       "path": "src/services/config",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Agent Wellness Break effective profile gating and exact paginated system idle-code lookup were independently validated by claude-code on 2026-09-07; coverage remains Partial until the remaining baseline promotion criteria are satisfied.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
       "canonical_spec": "src/services/config/ai-docs/config-spec.md",
       "contracts": {
         "provides": [
@@ -262,7 +262,7 @@
     {
       "path": "src/services/core",
       "coverage_status": "Partial",
-      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. AQM settled-request timeout cancellation and its package-wide unit evidence were independently validated by claude-code on 2026-09-07; coverage remains Partial until the remaining baseline promotion criteria are satisfied.",
+      "coverage_evidence": "Canonical spec is structurally complete with 15/15 required documentation fields and source/test evidence mapped by requirement. Independent PR #5088 remediation validation completed on claude-code (2026-07-15); coverage remains Partial until post-baseline promotion criteria are satisfied.",
       "canonical_spec": "src/services/core/ai-docs/core-spec.md",
       "contracts": {
         "provides": [

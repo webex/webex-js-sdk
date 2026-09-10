@@ -423,14 +423,6 @@ export interface IContactCenter {
 
   /** Returns the system-managed WellbeingBreak idle code for the registered session. */
   getWellbeingBreakIdleCode(): Promise<Entity>;
-
-  /**
-   * Changes one or more Agent State Control channels for first-party feature compatibility.
-   * @internal
-   */
-  setAgentChannelState(
-    params: Agent.SetAgentChannelStateParams
-  ): Promise<Agent.AgentChannelStateChangedEvent>;
 }
 
 /**
@@ -1015,21 +1007,10 @@ export type WellnessBreakEventListener = (event: WellnessBreakEvent) => void;
 export type AIAssistantRTDStatusListener = (event: AIAssistantRTDStatusEvent) => void;
 
 /**
- * Parameters for requesting an Agent Wellness Break.
- * @public
- */
-export interface RequestWellnessBreakParams {
-  /** Agent identifier */
-  agentId: string;
-  /** Current login/relogin session identifier */
-  agentSessionId: string;
-}
-
-/**
  * Parameters for responding to a backend-provided wellness offer.
  * @public
  */
-export interface RespondToWellnessBreakParams extends RequestWellnessBreakParams {
+export interface RespondToWellnessBreakParams {
   /** Agent response; REQUESTED is available only through requestWellnessBreak */
   action: Exclude<WellnessBreakUserAction, 'REQUESTED'>;
 }

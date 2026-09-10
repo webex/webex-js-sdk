@@ -722,6 +722,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private handleRTDSocketClose = (): void => {
     this.activeRtdGeneration = undefined;
+    this.rtdConnectPromise = undefined;
     if (this.activeRtdMessageHandler) {
       this.services.rtdWebSocketManager.off('message', this.activeRtdMessageHandler);
       this.activeRtdMessageHandler = undefined;
@@ -744,6 +745,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return this.rtdConnectPromise;
     }
 
+    let connectPromise: Promise<void>;
     const connect = async (): Promise<void> => {
       try {
         await this.services.rtdWebSocketManager.initWebSocket({
@@ -792,11 +794,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         );
         this.scheduleRTDReconnect();
       } finally {
-        this.rtdConnectPromise = undefined;
+        if (this.rtdConnectPromise === connectPromise) {
+          this.rtdConnectPromise = undefined;
+        }
       }
     };
 
-    this.rtdConnectPromise = connect();
+    connectPromise = connect();
+    this.rtdConnectPromise = connectPromise;
 
     return this.rtdConnectPromise;
   }
@@ -1227,6 +1232,26 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return this.agentConfig;
     } catch (error) {
+      const shouldCloseRTD =
+        this.shouldReconnectRtd ||
+        Boolean(this.rtdConnectPromise) ||
+        Boolean(this.rtdReconnectTimer) ||
+        Boolean(this.activeRtdMessageHandler);
+      this.shouldReconnectRtd = false;
+      this.activeRtdGeneration = undefined;
+      this.rtdConnectPromise = undefined;
+      if (this.rtdReconnectTimer) {
+        clearTimeout(this.rtdReconnectTimer);
+        this.rtdReconnectTimer = undefined;
+      }
+      if (this.activeRtdMessageHandler) {
+        this.services.rtdWebSocketManager.off('message', this.activeRtdMessageHandler);
+        this.activeRtdMessageHandler = undefined;
+      }
+      this.services.rtdWebSocketManager.off('socketClose', this.handleRTDSocketClose);
+      if (shouldCloseRTD && !this.services.rtdWebSocketManager.isSocketClosed) {
+        this.services.rtdWebSocketManager.close(false, 'Contact Center registration failed');
+      }
       LoggerProxy.error(`Error during register: ${error}`, {
         module: CC_FILE,
         method: METHODS.CONNECT_WEBSOCKET,
@@ -1656,7 +1681,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * State Control V2 sessions. It is not part of the public Contact Center API.
    * @internal
    */
-  public async setAgentChannelState(
+  private async setAgentChannelState(
     params: SetAgentChannelStateParams
   ): Promise<AgentChannelStateChangedEvent> {
     const method = METHODS.SET_AGENT_CHANNEL_STATE;
@@ -1895,7 +1920,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_FAILED, eventData.data);
         break;
       case CC_EVENTS.AGENT_LOGOUT_SUCCESS:
-        this.updateWellnessSession();
+        if (
+          !eventData.data.agentSessionId ||
+          eventData.data.agentSessionId === this.currentAgentSessionId
+        ) {
+          this.updateWellnessSession();
+        }
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_LOGOUT_SUCCESS, eventData.data);
         break;

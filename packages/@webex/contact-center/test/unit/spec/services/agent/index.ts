@@ -21,7 +21,7 @@ describe('AQM routing agent', () => {
     fakeAqm.reqEmpty = jest.fn().mockImplementation((fn) => fn);
     fakeAqm.req = jest.fn().mockImplementation((fn) => fn);
     fakeMetricsManager = {
-      trackEvent: jest.fn(),
+      trackEvent: jest.fn()
     } as unknown as jest.Mocked<MetricsManager>;
     fakeMetricsManager.trackEvent = jest.fn();
 

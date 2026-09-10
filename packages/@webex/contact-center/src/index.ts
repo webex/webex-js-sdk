@@ -134,8 +134,6 @@ export type {
   WellnessBreakEventListener,
   /** AI Assistant RTD status listener */
   AIAssistantRTDStatusListener,
-  /** Wellness manual-request parameters */
-  RequestWellnessBreakParams,
   /** Wellness offer-response parameters */
   RespondToWellnessBreakParams,
 } from './types';

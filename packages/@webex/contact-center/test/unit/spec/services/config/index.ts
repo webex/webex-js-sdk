@@ -521,9 +521,7 @@ describe('AgentConfigService', () => {
       const networkError = new Error('Network Error');
       mockWebexRequest.request.mockRejectedValue(networkError);
 
-      await expect(agentConfigService.getAIFeatureFlags(mockOrgId)).rejects.toThrow(
-        'Network Error'
-      );
+      await expect(agentConfigService.getAIFeatureFlags(mockOrgId)).rejects.toThrow('Network Error');
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         'getAIFeatureFlags API call failed with Error: Network Error',
         {module: CONFIG_FILE_NAME, method: 'getAIFeatureFlags'}

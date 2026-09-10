@@ -78,12 +78,7 @@ export default class AqmReqs {
       }
 
       let isClear = false;
-      let timeoutId: number | undefined;
       const clear = () => {
-        if (timeoutId !== undefined) {
-          clearTimeout(timeoutId);
-          timeoutId = undefined;
-        }
         delete this.pendingRequests[keySuccess];
         if (keyFail) {
           delete this.pendingRequests[keyFail];
@@ -180,7 +175,7 @@ export default class AqmReqs {
         });
 
       if (c.timeout !== 'disabled') {
-        timeoutId = window.setTimeout(
+        window.setTimeout(
           () => {
             if (isClear) {
               return;

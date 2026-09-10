@@ -20,7 +20,6 @@ let campaignPreviewAutoAction = null; // Auto-action on timeout: ACCEPT, SKIP, R
 let outdialANIId; // Store outdial ANI ID from agent profile
 const taskCreationTimes = new Map(); // Track when tasks first appear (taskId -> timestamp)
 const CC_AGENT_EVENTS = Webex.CC_AGENT_EVENTS;
-const AGENT_EVENTS = Webex.AGENT_EVENTS;
 const {
   areAllTasksSafe,
   createRecoveryMarker,
@@ -30,6 +29,7 @@ const {
   parseRecoveryMarker,
 } = WellnessSampleUtils;
 const WELLNESS_OFFER_TIMEOUT_MS = 5 * 60 * 1000;
+const WELLNESS_REQUEST_DECISION_TIMEOUT_MS = 5 * 60 * 1000;
 const WELLNESS_STATE_SETTLE_DELAY_MS = 2 * 1000;
 const WELLNESS_SAFE_STATE_RECHECK_MS = 1000;
 const WELLNESS_BREAK_DURATION_MS = 60 * 1000;
@@ -84,6 +84,7 @@ const wellnessState = {
   lifecycle: 'Unavailable',
   canRequest: false,
   pendingManualRequest: false,
+  manualRequestTimer: undefined,
   offerEvent: undefined,
   offerTimer: undefined,
   legacyStateKnown: false,
@@ -228,7 +229,7 @@ let enableProd = true;
 
 function changeEnv() {
   enableProd = !enableProd;
-  changeEnvBtn.innerHTML = enableProd ? 'Production' : 'QA / Integration';
+  changeEnvBtn.innerHTML = enableProd ? 'In Production' : 'In Integration';
 }
 
 let isMultiLoginEnabled = localStorage.getItem('isMultiLoginEnabled') === 'true';
@@ -1236,7 +1237,7 @@ async function toggleTransferOptions() {
         return;
       }
 
-      console.log('Consult transfer is using the current task state');
+      console.log('pkesari_currentTask.data', currentTask.data);
       const transferTo = currentTask.data?.destAgentId || currentTask.data?.consultingAgentId;
       const transferDestinationType = currentTask.data?.destinationType || 'agent';
 
@@ -1879,12 +1880,12 @@ function updateTaskStateDisplay(task) {
 async function loadOutdialAniEntries(outdialANIId) {
 
   try {
-    console.log('Loading configured outdial ANI entries');
+    console.log('Using outdial ANI ID:', outdialANIId);
     // Call the getOutdialAniEntries method from the SDK
     const aniResponse = await webex.cc.getOutdialAniEntries({
       outdialANI: outdialANIId
     });
-    console.log('The request to get outdial ANI entries was successful');
+    console.log('The request to get outdial ANI entries was successful, the response is:', aniResponse)
 
     // Clear existing options except the first one
     outdialAniSelectElm.innerHTML = '<option value="">Select Outdial Ani...</option>';
@@ -1911,8 +1912,8 @@ async function loadOutdialAniEntries(outdialANIId) {
 
     console.log(`Loaded ${aniList.length} outdial ANI entries`);
 
-  } catch {
-    console.log('Failed to load outdial ANI entries');
+  } catch (error) {
+    console.log('Failed to load outdial ANI entries:', error);
     // Add error option to select
     outdialAniSelectElm.innerHTML = '<option value="">Select Caller ID...</option>';
     const errorOption = document.createElement('option');
@@ -1940,18 +1941,20 @@ async function startOutdial() {
 
   try {
     console.log('Making an outdial call');
+    console.log('Destination:', destination);
+    console.log('Selected ANI:', selectedAni || 'None selected, using default ANI');
 
     // Use selected ANI as the origin parameter
     if (selectedAni) {
       await webex.cc.startOutdial(destination, selectedAni);
-      console.log('Outdial call initiated successfully with a configured ANI');
+      console.log('Outdial call initiated successfully with ANI:', selectedAni);
     } else {
       await webex.cc.startOutdial(destination);
       console.log('Outdial call initiated successfully with default ANI');
     }
     
   } catch (error) {
-    console.error('Failed to initiate outdial call');
+    console.error('Failed to initiate outdial call', error);
     alert('Failed to initiate outdial call: ' + (error.message || error));
   }
 }
@@ -1961,9 +1964,9 @@ async function startOutdial() {
 function getCampaignPreviewPayload() {
   const interactionId = document.getElementById('campaign-interaction-id').value.trim();
   const campaignId = document.getElementById('campaign-id').value.trim();
-  console.log('[CampaignPreview] Building action payload');
+  console.log('[CampaignPreview] getCampaignPreviewPayload:', { interactionId, campaignId });
   if (!interactionId || !campaignId) {
-    console.warn('[CampaignPreview] Missing required action fields');
+    console.warn('[CampaignPreview] Missing required fields - interactionId:', interactionId, 'campaignId:', campaignId);
     alert('Interaction ID and Campaign ID are required');
     return null;
   }
@@ -2097,10 +2100,10 @@ function setupCampaignPreviewFromTask(task) {
 
 function onCampaignReservationReceived(task) {
   console.log('[CampaignPreview] === RESERVATION EVENT RECEIVED ===');
-  console.log('[CampaignPreview] Preparing accept action');
+  console.log('[CampaignPreview] Task data:', JSON.stringify(task.data, null, 2));
   const interactionId = task.data?.interactionId || '';
   const campaignId = task.data?.campaignId || task.data?.interaction?.callProcessingDetails?.campaignId || '';
-  console.log('[CampaignPreview] Required action fields resolved');
+  console.log('[CampaignPreview] Resolved interactionId:', interactionId, 'campaignId (name):', campaignId);
   document.getElementById('campaign-interaction-id').value = interactionId;
   document.getElementById('campaign-id').value = campaignId;
   document.getElementById('campaign-preview-status').innerText = 'Campaign preview contact received!';
@@ -2114,17 +2117,20 @@ async function acceptPreviewContact() {
   if (!payload) return;
   stopCampaignCountdown();
   console.log('[CampaignPreview] === ACCEPT PREVIEW CONTACT ===');
-  console.log('[CampaignPreview] Sending accept action');
+  console.log('[CampaignPreview] Sending payload:', JSON.stringify(payload));
   try {
     document.getElementById('acceptPreviewContact').disabled = true;
     document.getElementById('campaign-preview-status').innerText = 'Accepting preview contact...';
-    await webex.cc.acceptPreviewContact(payload);
-    console.log('[CampaignPreview] Accept succeeded');
+    const result = await webex.cc.acceptPreviewContact(payload);
+    console.log('[CampaignPreview] Accept SUCCESS - result:', JSON.stringify(result, null, 2));
     document.getElementById('campaign-preview-status').innerText = 'Preview contact accepted!';
     document.getElementById('campaign-interaction-id').value = '';
     document.getElementById('campaign-id').value = '';
   } catch (error) {
-    console.error('[CampaignPreview] Accept failed');
+    console.error('[CampaignPreview] Accept FAILED - error:', error);
+    console.error('[CampaignPreview] Error message:', error.message);
+    console.error('[CampaignPreview] Error details:', error.details);
+    console.error('[CampaignPreview] Error stack:', error.stack);
     document.getElementById('campaign-preview-status').innerText = 'Accept failed: ' + (error.message || error);
   } finally {
     document.getElementById('acceptPreviewContact').disabled = false;
@@ -2138,18 +2144,20 @@ async function skipPreviewContact() {
   // must keep running so the auto-action can still fire on timeout.
   // Consistent with Agent Desktop: timer runs independently of button clicks.
   console.log('[CampaignPreview] === SKIP PREVIEW CONTACT ===');
-  console.log('[CampaignPreview] Sending skip action');
+  console.log('[CampaignPreview] Sending payload:', JSON.stringify(payload));
   try {
     document.getElementById('skipPreviewContact').disabled = true;
     document.getElementById('campaign-preview-status').innerText = 'Skipping preview contact...';
-    await webex.cc.skipPreviewContact(payload);
-    console.log('[CampaignPreview] Skip succeeded');
+    const result = await webex.cc.skipPreviewContact(payload);
+    console.log('[CampaignPreview] Skip SUCCESS - result:', JSON.stringify(result, null, 2));
     stopCampaignCountdown(); // Only stop timer on success
     document.getElementById('campaign-preview-status').innerText = 'Preview contact skipped!';
     document.getElementById('campaign-interaction-id').value = '';
     document.getElementById('campaign-id').value = '';
   } catch (error) {
-    console.error('[CampaignPreview] Skip failed');
+    console.error('[CampaignPreview] Skip FAILED - error:', error);
+    console.error('[CampaignPreview] Error message:', error.message);
+    console.error('[CampaignPreview] Error details:', error.details);
     document.getElementById('campaign-preview-status').innerText = 'Skip failed: ' + (error.message || error);
   } finally {
     document.getElementById('skipPreviewContact').disabled = false;
@@ -2163,18 +2171,20 @@ async function removePreviewContact() {
   // must keep running so the auto-action can still fire on timeout.
   // Consistent with Agent Desktop: timer runs independently of button clicks.
   console.log('[CampaignPreview] === REMOVE PREVIEW CONTACT ===');
-  console.log('[CampaignPreview] Sending remove action');
+  console.log('[CampaignPreview] Sending payload:', JSON.stringify(payload));
   try {
     document.getElementById('removePreviewContact').disabled = true;
     document.getElementById('campaign-preview-status').innerText = 'Removing preview contact...';
-    await webex.cc.removePreviewContact(payload);
-    console.log('[CampaignPreview] Remove succeeded');
+    const result = await webex.cc.removePreviewContact(payload);
+    console.log('[CampaignPreview] Remove SUCCESS - result:', JSON.stringify(result, null, 2));
     stopCampaignCountdown(); // Only stop timer on success
     document.getElementById('campaign-preview-status').innerText = 'Preview contact removed!';
     document.getElementById('campaign-interaction-id').value = '';
     document.getElementById('campaign-id').value = '';
   } catch (error) {
-    console.error('[CampaignPreview] Remove failed');
+    console.error('[CampaignPreview] Remove FAILED - error:', error);
+    console.error('[CampaignPreview] Error message:', error.message);
+    console.error('[CampaignPreview] Error details:', error.details);
     document.getElementById('campaign-preview-status').innerText = 'Remove failed: ' + (error.message || error);
   } finally {
     document.getElementById('removePreviewContact').disabled = false;
@@ -2236,12 +2246,12 @@ function registerTaskListeners(task) {
   registeredTaskListeners.add(task);
 
   task.on('REAL_TIME_TRANSCRIPTION', (payload) => {
-    console.info('Received real-time transcription event');
+    console.info('Received real-time transcription:', payload);
     appendRealtimeTranscript(payload);
   });
 
   task.on('SUGGESTED_RESPONSE', (payload) => {
-    console.info('Received suggested-response event');
+    console.info('Received suggested response:', payload);
     setAssistantRawOutput(payload);
     const eventData = payload?.data || payload;
     const data = eventData?.data?.suggestion ? eventData.data : eventData;
@@ -2256,15 +2266,22 @@ function registerTaskListeners(task) {
 
   task.on('task:assigned', (task) => {
     updateTaskList(); // Update the task list UI to have latest tasks
-    console.info('A task was accepted');
+    console.info('Call has been accepted for task: ', task.data.interactionId);
     handleTaskSelect(task);
   });
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
-  task.on('task:end', () => {
+  task.on('task:end', (endedTask) => {
     updateTaskList();
-    console.log('[CampaignPreview] task:end — retaining campaign preview controls');
+    // Log campaign preview fields so we can verify values are retained through task:end
+    const cpd = endedTask?.data?.interaction?.callProcessingDetails || {};
+    console.log('[CampaignPreview] task:end — campaign preview fields:', {
+      campaignPreviewAutoAction: cpd.campaignPreviewAutoAction || 'N/A',
+      campaignPreviewOfferTimeout: cpd.campaignPreviewOfferTimeout || 'N/A',
+      campaignPreviewSkipDisabled: cpd.campaignPreviewSkipDisabled || 'N/A',
+      campaignPreviewRemoveDisabled: cpd.campaignPreviewRemoveDisabled || 'N/A',
+    });
 
     // Stop the countdown but keep displaying the last campaign values
     // (auto-action, skip/remove allowed) so the user can see the final state.
@@ -2396,13 +2413,13 @@ function registerTaskListeners(task) {
   });
   task.on('task:rejected', (reason) => {
     updateTaskList();
-    console.info('A task was rejected');
+    console.info('Task is rejected with reason:', reason);
     showAgentStatePopup(reason);
   });
 
   task.on('task:outdialFailed', (reason) => {
     updateTaskList();
-    console.info('Outdial failed');
+    console.info('Outdial failed with reason:', reason);
     showOutdialFailedPopup(reason);
   });
 
@@ -2498,7 +2515,13 @@ function registerTaskListeners(task) {
   // Campaign preview event listeners
   task.on('task:campaignContactUpdated', (updatedTask) => {
     console.log('[CampaignPreview] Campaign contact updated (next contact after skip/remove)');
-    console.log('[CampaignPreview] Campaign preview controls updated');
+    const cpd = updatedTask.data?.interaction?.callProcessingDetails || {};
+    console.log('[CampaignPreview] task:campaignContactUpdated — campaign preview fields:', {
+      campaignPreviewAutoAction: cpd.campaignPreviewAutoAction || 'N/A',
+      campaignPreviewOfferTimeout: cpd.campaignPreviewOfferTimeout || 'N/A',
+      campaignPreviewSkipDisabled: cpd.campaignPreviewSkipDisabled || 'N/A',
+      campaignPreviewRemoveDisabled: cpd.campaignPreviewRemoveDisabled || 'N/A',
+    });
     const interactionId = updatedTask.data?.interactionId || '';
     const campaignId = updatedTask.data?.campaignId || updatedTask.data?.interaction?.callProcessingDetails?.campaignId || '';
     document.getElementById('campaign-interaction-id').value = interactionId;
@@ -3039,7 +3062,7 @@ function updateIncomingCallDisplay(task) {
     if (agentDeviceType === 'BROWSER') {
       incomingDetailsElm.innerText = `Call from ${callerDisplay}`;
       if (task.data.isAutoAnswering) {
-        console.log('Auto-answer is in progress');
+        console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
       }
     } else {
       incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
@@ -3254,6 +3277,14 @@ function clearWellnessOffer() {
   wellnessState.offerEvent = undefined;
 }
 
+function clearWellnessManualRequest() {
+  if (wellnessState.manualRequestTimer) {
+    clearTimeout(wellnessState.manualRequestTimer);
+    wellnessState.manualRequestTimer = undefined;
+  }
+  wellnessState.pendingManualRequest = false;
+}
+
 function clearWellnessBreakTimer() {
   if (wellnessState.breakTimer) {
     clearTimeout(wellnessState.breakTimer);
@@ -3338,10 +3369,10 @@ function startWellnessBreakTimer(summary) {
 function clearWellnessLifecycleOwnership({clearMarker = true} = {}) {
   wellnessState.operationGeneration += 1;
   clearWellnessOffer();
+  clearWellnessManualRequest();
   clearWellnessBreakTimer();
   clearWellnessSafeStateTimer();
   cancelWellnessRestoreRetry();
-  wellnessState.pendingManualRequest = false;
   wellnessState.stateConfirmed = false;
   wellnessState.breakSummary = undefined;
   wellnessState.safeStateEligibleAt = undefined;
@@ -3464,7 +3495,7 @@ function handleWellnessRtdStatus(event) {
   if (event.state === 'disconnected') {
     if (['OfferPending', 'RequestPending'].includes(wellnessState.lifecycle)) {
       clearWellnessOffer();
-      wellnessState.pendingManualRequest = false;
+      clearWellnessManualRequest();
       wellnessState.lifecycle = isWellnessReady() ? 'Ready' : 'Unavailable';
       setWellnessMessage('RTD disconnected. The pending offer or request was cleared.');
     }
@@ -3494,7 +3525,7 @@ function handleWellnessBreak(event) {
 
   if (event.actionEvent === 'PROVIDE_WELLNESS_BREAK') {
     if (wellnessState.pendingManualRequest) {
-      wellnessState.pendingManualRequest = false;
+      clearWellnessManualRequest();
       clearWellnessOffer();
       setWellnessMessage('The manual request was approved. Changing agent state…');
       void enterWellnessBreak(false);
@@ -3503,19 +3534,19 @@ function handleWellnessBreak(event) {
 
     wellnessState.offerEvent = event;
     wellnessState.lifecycle = 'OfferPending';
-    startWellnessOfferTimer(event.agentSessionId);
+    startWellnessOfferTimer(wellnessState.agentSessionId);
     setWellnessMessage(
       `${WELLNESS_COPY.offerTitle}. ${event.actionText || WELLNESS_COPY.offer}`
     );
   } else if (event.actionEvent === 'SUGGEST_WELLNESS_BREAK') {
     clearWellnessOffer();
-    wellnessState.pendingManualRequest = false;
+    clearWellnessManualRequest();
     wellnessState.canRequest = true;
     wellnessState.lifecycle = isWellnessReady() ? 'Ready' : 'Unavailable';
     setWellnessMessage(event.actionText || 'You can request a wellness break.');
   } else if (event.actionEvent === 'WELLNESS_BREAK_NOT_ALLOWED') {
     clearWellnessOffer();
-    wellnessState.pendingManualRequest = false;
+    clearWellnessManualRequest();
     wellnessState.lifecycle = isWellnessReady() ? 'Ready' : 'Unavailable';
     setWellnessMessage(event.actionText || WELLNESS_COPY.requestNotAllowed);
   }
@@ -3548,18 +3579,36 @@ function handleWellnessLegacyStateChanged(event, nextAuxCodeId) {
 async function requestWellnessBreak() {
   if (!isWellnessReady() || wellnessState.pendingManualRequest) return;
 
+  clearWellnessManualRequest();
+  const sessionId = wellnessState.agentSessionId;
   wellnessState.pendingManualRequest = true;
   wellnessState.lifecycle = 'RequestPending';
   setWellnessMessage('Sending REQUESTED. Approval arrives as a separate live RTD event.');
   renderWellnessState();
   try {
-    await webex.cc.apiAIAssistant.requestWellnessBreak({
-      agentId,
-      agentSessionId: wellnessState.agentSessionId,
-    });
+    await webex.cc.apiAIAssistant.requestWellnessBreak();
     setWellnessMessage('REQUESTED accepted with HTTP 202. Waiting for the backend decision.');
+    if (
+      wellnessState.pendingManualRequest &&
+      wellnessState.lifecycle === 'RequestPending' &&
+      wellnessState.agentSessionId === sessionId
+    ) {
+      wellnessState.manualRequestTimer = setTimeout(() => {
+        wellnessState.manualRequestTimer = undefined;
+        if (
+          wellnessState.pendingManualRequest &&
+          wellnessState.lifecycle === 'RequestPending' &&
+          wellnessState.agentSessionId === sessionId
+        ) {
+          wellnessState.pendingManualRequest = false;
+          wellnessState.lifecycle = isWellnessReady() ? 'Ready' : 'Unavailable';
+          setWellnessMessage('The wellness request decision timed out. You can try again.', true);
+          renderWellnessState();
+        }
+      }, WELLNESS_REQUEST_DECISION_TIMEOUT_MS);
+    }
   } catch (error) {
-    wellnessState.pendingManualRequest = false;
+    clearWellnessManualRequest();
     wellnessState.lifecycle = 'Ready';
     setWellnessMessage(error?.message || 'The wellness request failed.', true);
   }
@@ -3691,11 +3740,7 @@ async function enterWellnessBreak(sendAccepted) {
   wellnessState.stateConfirmed = true;
   if (sendAccepted) {
     try {
-      await webex.cc.apiAIAssistant.respondToWellnessBreak({
-        agentId,
-        agentSessionId: wellnessState.agentSessionId,
-        action: 'ACCEPTED',
-      });
+      await webex.cc.apiAIAssistant.respondToWellnessBreak({action: 'ACCEPTED'});
     } catch (error) {
       if (wellnessState.operationGeneration !== operationGeneration) return;
       wellnessState.lifecycle = 'ActionDeliveryFailed';
@@ -3728,11 +3773,7 @@ async function respondToWellnessOffer(action) {
   wellnessState.lifecycle = 'Ready';
   renderWellnessState();
   try {
-    await webex.cc.apiAIAssistant.respondToWellnessBreak({
-      agentId,
-      agentSessionId: wellnessState.agentSessionId,
-      action,
-    });
+    await webex.cc.apiAIAssistant.respondToWellnessBreak({action});
     setWellnessMessage(
       action === 'REJECTED'
         ? WELLNESS_COPY.declined
@@ -3921,22 +3962,22 @@ async function recoverWellnessBreakIfNeeded() {
 function attachWellnessSdkListeners() {
   webex.cc.off(CC_AGENT_EVENTS.WELLNESS_BREAK, handleWellnessBreak);
   webex.cc.off(CC_AGENT_EVENTS.AI_ASSISTANT_RTD_STATUS_CHANGED, handleWellnessRtdStatus);
-  webex.cc.off(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, captureWellnessSession);
-  webex.cc.off(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, captureWellnessSession);
-  webex.cc.off(AGENT_EVENTS.AGENT_LOGOUT_SUCCESS, resetWellnessSession);
+  webex.cc.off('agent:stationLoginSuccess', captureWellnessSession);
+  webex.cc.off('agent:reloginSuccess', captureWellnessSession);
+  webex.cc.off('agent:logoutSuccess', resetWellnessSession);
   webex.cc.on(CC_AGENT_EVENTS.WELLNESS_BREAK, handleWellnessBreak);
   webex.cc.on(CC_AGENT_EVENTS.AI_ASSISTANT_RTD_STATUS_CHANGED, handleWellnessRtdStatus);
-  webex.cc.on(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, captureWellnessSession);
-  webex.cc.on(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, captureWellnessSession);
-  webex.cc.on(AGENT_EVENTS.AGENT_LOGOUT_SUCCESS, resetWellnessSession);
+  webex.cc.on('agent:stationLoginSuccess', captureWellnessSession);
+  webex.cc.on('agent:reloginSuccess', captureWellnessSession);
+  webex.cc.on('agent:logoutSuccess', resetWellnessSession);
 }
 
 function detachWellnessSdkListeners() {
   webex.cc.off(CC_AGENT_EVENTS.WELLNESS_BREAK, handleWellnessBreak);
   webex.cc.off(CC_AGENT_EVENTS.AI_ASSISTANT_RTD_STATUS_CHANGED, handleWellnessRtdStatus);
-  webex.cc.off(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, captureWellnessSession);
-  webex.cc.off(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, captureWellnessSession);
-  webex.cc.off(AGENT_EVENTS.AGENT_LOGOUT_SUCCESS, resetWellnessSession);
+  webex.cc.off('agent:stationLoginSuccess', captureWellnessSession);
+  webex.cc.off('agent:reloginSuccess', captureWellnessSession);
+  webex.cc.off('agent:logoutSuccess', resetWellnessSession);
 }
 
 wellnessRequestBtn.addEventListener('click', requestWellnessBreak);
@@ -3956,7 +3997,7 @@ function register() {
         uploadLogsButton.disabled = false;
         enableUserPreferenceButtons(true);
         updateUnregisterButtonState();
-        console.log('Event subscription successful');
+        console.log('Event subscription successful: ', agentProfile);
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
         const listTeams = agentProfile.teams;
         agentId = agentProfile.agentId;
@@ -4020,7 +4061,7 @@ function register() {
         });
         entryPointId = agentProfile.outDialEp;
         webex.cc.on('task:incoming', (task) => {
-          console.log('Incoming task received');
+          console.log('Incoming task received: ', task);
           updateTaskList();
           taskId = task.data.interactionId;
           registerTaskListeners(currentTask);
@@ -4054,14 +4095,16 @@ function register() {
 
     webex.cc.on('agent:multiLogin', (data) => {
       if (data && typeof data === 'object' && data.type === 'AgentMultiLoginCloseSession') {
-        resetWellnessSession();
+        if (!data.agentSessionId || data.agentSessionId === wellnessState.agentSessionId) {
+          resetWellnessSession();
+        }
         agentMultiLoginAlert.innerHTML = 'Multiple Agent Login Session Detected!';
-        agentMultiLoginAlert.style.color = 'red';
+        agentMultiLoginAlert.style.color = 'red';``
       }
     });
 
     webex.cc.on('agent:reloginSuccess', (data) => {
-      console.log('Agent re-login successful');
+      console.log('Agent re-login successful', data);
       loginAgentElm.disabled = true;
       logoutAgentElm.classList.remove('hidden');
       updateAgentProfileElm.classList.remove('hidden');
@@ -4080,7 +4123,7 @@ function register() {
     });
 
     webex.cc.on('agent:stationLoginSuccess', (data) => {
-      console.log('Agent station-login success');
+      console.log('Agent station-login success', data);
       loginAgentElm.disabled = true;
       logoutAgentElm.classList.remove('hidden');
       updateAgentProfileElm.classList.remove('hidden');
@@ -4197,7 +4240,7 @@ function doAgentLogin() {
     dialNumber: dialNumber.value
   })
   .then((response) => {
-    console.log('Agent logged in successfully');
+    console.log('Agent Logged in successfully', response);
     captureWellnessSession(response);
     loginAgentElm.disabled = true;
     logoutAgentElm.classList.remove('hidden');
@@ -4232,8 +4275,8 @@ async function handleAgentStatus(event) {
 function setAgentStatus() {
   let state = "Available";
   if(agentStatus !== 'Available') state = 'Idle';
-  webex.cc.setAgentState({state, auxCodeId, lastStateChangeReason: agentStatus, agentId}).then(() => {
-    console.log('Agent status set successfully');
+  webex.cc.setAgentState({state, auxCodeId, lastStateChangeReason: agentStatus, agentId}).then((response) => {
+    console.log('Agent status set successfully', response);
     updateTaskList();
   }).catch(error => {
     console.error('Agent status set failed', error);
@@ -4243,8 +4286,8 @@ function setAgentStatus() {
 
 function logoutAgent() {
   webex.cc.stationLogout({logoutReason: 'logout'})
-    .then(() => {
-      console.log('Agent logged out successfully');
+    .then((response) => {
+      console.log('Agent logged out successfully', response);
       resetWellnessSession();
       loginAgentElm.disabled = false;
       updateAgentProfileElm.classList.add('hidden');
@@ -4286,7 +4329,7 @@ async function applyupdateAgentProfile() {
   };
   try {
     const resp = await webex.cc.updateAgentProfile(payload);
-    console.log('Profile updated successfully');
+    console.log('Profile updated', resp);
     captureWellnessSession(resp);
     updateFieldsContainer.classList.add('hidden');
     // Reflect new values in main UI
@@ -4675,7 +4718,7 @@ function renderTaskList(taskList) {
 
     // Check for explicit terminal states (if backend sets these)
     if (state === 'ended' || state === 'disconnected' || state === 'terminated') {
-      console.warn(`Customer disconnect detected; filtering an orphaned task in state ${state}`);
+      console.warn(`⚠️ Customer disconnect detected - filtering orphaned task ${taskId} (state: ${state})`);
       taskCreationTimes.delete(taskId); // Clean up tracking
       return false;
     }
@@ -4688,7 +4731,7 @@ function renderTaskList(taskList) {
 
       if (taskAgeMs > ALERTING_STALE_THRESHOLD_MS) {
         console.warn(
-          'Customer disconnect in ALERTING detected; filtering a stale telephony task ' +
+          `⚠️ Customer disconnect in ALERTING detected - filtering stale telephony task ${taskId} ` +
           `(age: ${Math.round(taskAgeMs/1000)}s, threshold: ${ALERTING_STALE_THRESHOLD_MS/1000}s)`
         );
         taskCreationTimes.delete(taskId); // Clean up tracking
@@ -4804,7 +4847,7 @@ function renderTaskList(taskList) {
     const lastTaskElement = document.querySelector(`.task-item[data-task-id="${lastTaskId}"]`);
     if (lastTaskElement) {
       lastTaskElement.classList.add('selected');
-      console.log('Selecting the most recent task as default');
+      console.log('Selecting last task as default:', lastTaskId);
       currentTask = lastTask; // Update the current task
       handleTaskSelect(lastTask);
     }
@@ -4824,7 +4867,7 @@ function renderTaskList(taskList) {
         currentTask = task;
         await answer();
       }  else {
-        console.error('Selected task was not found');
+        console.error(`Task not found for ID: ${taskId}`);
         alert('Cannot accept task: The task may have been removed or is no longer available.');
       }
     });
@@ -4838,7 +4881,7 @@ function renderTaskList(taskList) {
         currentTask = task;
         decline();
       } else {
-        console.error('Selected task was not found');
+        console.error(`Task not found for ID: ${taskId}`);
         alert('Cannot decline task: The task may have been removed or is no longer available.');
       }
     });
@@ -4862,7 +4905,7 @@ function updateIncomingTaskDisplay(task) {
       
       // Log auto-answer status for debugging
       if (isAutoAnswering) {
-        console.log('Auto-answer is in progress');
+        console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
       }
     } else {
       incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
@@ -4873,7 +4916,7 @@ function updateIncomingTaskDisplay(task) {
     incomingDetailsElm.innerText = `Chat from ${callerDisplay}`;
     
     if (isAutoAnswering) {
-      console.log('Auto-answer is in progress');
+      console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
     }
   } else if (mediaType === 'email') {
     answerElm.disabled = !isNew || isAutoAnswering;
@@ -4881,19 +4924,19 @@ function updateIncomingTaskDisplay(task) {
     incomingDetailsElm.innerText = `Email from ${callerDisplay}`;
     
     if (isAutoAnswering) {
-      console.log('Auto-answer is in progress');
+      console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
     }
   }
   
   // Log auto-answer if in progress
   if (task.data.isAutoAnswering) {
-    console.log('Auto-answer is in progress');
+    console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
   }
 }
 
 function handleTaskSelect(task) {
   // Handle the task click event
-  console.log('Task selected');
+  console.log('Task clicked:', task);
   // Update incoming task display text and apply all button states from uiControls
   updateIncomingTaskDisplay(task);
   updateCallControlUI(task);

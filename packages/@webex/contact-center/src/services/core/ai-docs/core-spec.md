@@ -11,8 +11,8 @@
 | Doc kind | Module spec |
 | Coverage score | Partial (manifest-authoritative); 15/15 required document fields present |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved wellness remediation / 2026-09-03 |
-| Validation status | Agent Wellness Break v0.4 AQM timeout cleanup independently validated by claude-code on 2026-09-07; coverage remains Partial until the remaining baseline promotion criteria are satisfied |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved follow-up review remediation / 2026-07-21 |
+| Validation status | Follow-up validation passed (independent Claude fallback, 2026-07-21); coverage remains Partial |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -255,7 +255,7 @@ connectionService.on('connectionLost', (details: ConnectionLostDetails) => {
 |---|---|---|---|---|---|---|
 | CORE-R-001 | WebexRequest must delegate service/resource/method/body options to the authenticated host request API and return or reject with the host result unchanged. | All Contact Center REST clients share host-owned authentication and service routing without duplicating credential logic. | `src/services/core/WebexRequest.ts` | `test/unit/spec/services/core/WebexRequest.ts` | Authorization-header masking belongs to `AqmReqs` HTTP-failure handling, not `WebexRequest.request`. | PRESENT |
 | CORE-R-002 | `initWebSocket` requires `{body: SubscribeRequest, resource: string}` and resolves only after WebSocket welcome or rejects on register/connect failure. | Subscription resource selection and readiness are required for a valid realtime session. | `src/services/core/websocket/WebSocketManager.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
-| CORE-R-003 | AqmReqs must be constructed with the primary WebSocket manager, settle generated request promises from `notifSuccess`/`notifFail` binds or `TIMEOUT_REQ`, and cancel the scheduled timeout whenever another path settles the request. | HTTP acknowledgement alone does not represent backend operation completion, and settled requests must not retain timers that delay worker teardown. | `src/services/core/aqm-reqs.ts` | `test/unit/spec/services/core/aqm-reqs.ts` | Timeout cancellation is internal cleanup and does not change promise settlement semantics. | PRESENT |
+| CORE-R-003 | AqmReqs must be constructed with the primary WebSocket manager and settle generated request promises from `notifSuccess`/`notifFail` binds or `TIMEOUT_REQ`. | HTTP acknowledgement alone does not represent backend operation completion. | `src/services/core/aqm-reqs.ts` | `test/unit/spec/services/core/aqm-reqs.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CORE-R-004 | ConnectionService must emit transport-state details and retry `initWebSocket({body, resource})`; ContactCenter owns relogin policy. | Separating transport detection from agent recovery prevents Core from mutating package-level session state. | `src/services/core/websocket/connection-service.ts` | `test/unit/spec/services/core/websocket/connection-service.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CORE-R-005 | The keepalive worker must use the configured 4-second interval and 16-second close-socket timeout; AQM defaults to 20 seconds unless disabled/overridden. | Accurate timing is required for predictable recovery and request failure behavior. | `src/services/core/constants.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CORE-R-006 | Treat Core timeout, keepalive, and recovery constants as fixed behavior controls, not rollout flags; Core owns no feature-gate evaluation. | Conflating operational constants with rollout policy could disable transport or correlation paths unexpectedly. | `src/services/core/constants.ts`, `src/services/index.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None; rollout applicability is explicitly N/A for Core. | PRESENT |
@@ -719,7 +719,7 @@ export const generateTaskErrorObject = (
 - DO keep authentication and service resolution in the host Webex request layer; `WebexRequest.request` is a thin delegating wrapper.
 - DO mask authorization headers in the `AqmReqs` HTTP-error/timeout paths before those details are logged or surfaced.
 - DO enable `redactSensitiveLogs` for AQM requests whose dynamic URL or event payload can contain identity/PII.
-- DO clear success/failure/cancel bind entries and the scheduled timeout together when an AQM request settles.
+- DO clear success/failure/cancel bind entries together when an AQM request settles.
 - DON'T move silent-relogin policy into ConnectionService; it emits transport state only.
 - DON'T treat timeout constants as feature flags or reuse one timer for another lifecycle purpose.
 

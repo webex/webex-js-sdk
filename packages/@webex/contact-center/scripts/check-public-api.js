@@ -14,9 +14,11 @@ const declarationFiles = [
 const internalStateControlSymbols = [
   'setAgentChannelState',
   'stateChangeV2',
+  'StateChangeV2',
   'AgentChannelState',
   'AgentChannelRelogin',
   'AGENT_CHANNEL_',
+  'INTERNAL_AGENT_STATE_CONTROL_EVENTS',
 ];
 
 const declarationRoot = join(__dirname, '..', 'dist', 'types');

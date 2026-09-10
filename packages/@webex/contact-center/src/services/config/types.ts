@@ -1066,7 +1066,7 @@ export type AIFeatureFlags = {
   agentWellbeing?: {
     enable?: boolean;
     agentInclusionType?: string;
-    wellnessBreakReminders?: 'ENABLED' | 'DISABLED';
+    wellnessBreakReminders?: string;
   };
   autoCSAT?: {
     enable?: boolean;
@@ -1266,7 +1266,7 @@ export type Profile = {
    * This combines the organization wellbeing configuration with AI Assistant licensing;
    * server-side rollout remains enforced by the backend configuration and RTD delivery path.
    */
-  isWellnessBreakEnabled: boolean;
+  isWellnessBreakEnabled?: boolean;
 };
 
 /**

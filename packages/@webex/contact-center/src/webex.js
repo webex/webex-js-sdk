@@ -10,7 +10,6 @@ import './index';
 
 import config from './webex-config';
 import {CC_AGENT_EVENTS} from './services/config/types';
-import {AGENT_EVENTS} from './services/agent/types';
 
 export * from './index';
 
@@ -35,7 +34,6 @@ const Webex = WebexCore.extend({
 // The standalone UMD bundle exports the Webex constructor as its default value. Attach the
 // public agent-event contract so browser samples can use the same constants as module consumers.
 Webex.CC_AGENT_EVENTS = CC_AGENT_EVENTS;
-Webex.AGENT_EVENTS = AGENT_EVENTS;
 
 /**
  * Initializes a new Webex instance with merged configuration.

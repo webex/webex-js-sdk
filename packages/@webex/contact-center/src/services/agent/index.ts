@@ -24,7 +24,7 @@ const createRoutingAgent = (routing: AqmReqs) => {
   return {
     /**
      * Reloads the agent session
-     * @internal
+     * @public
      */
     reload: routing.reqEmpty(() => ({
       host: WCC_API_GATEWAY,

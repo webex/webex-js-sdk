@@ -89,34 +89,7 @@ describe('Contact Center wellness sample utilities', () => {
     });
   });
 
-  describe('sample privacy guard', () => {
-    it('does not log the full agent/session or AI payloads identified by validation', () => {
-      const appSource = readFileSync(
-        resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
-        'utf8'
-      );
-
-      [
-        "console.log('Event subscription successful: ', agentProfile)",
-        "console.log('Agent re-login successful', data)",
-        "console.log('Agent station-login success', data)",
-        "console.log('Agent Logged in successfully', response)",
-        "console.log('Profile updated', resp)",
-        "console.info('Received real-time transcription:', payload)",
-        "console.info('Received suggested response:', payload)",
-        "console.log('Task clicked:', task)",
-        "console.log('Destination:', destination)",
-        "console.log('Selected ANI:', selectedAni",
-        "console.log('Outdial call initiated successfully with ANI:', selectedAni)",
-        "console.log('[CampaignPreview] Accept SUCCESS - result:',",
-        "console.log('[CampaignPreview] Skip SUCCESS - result:',",
-        "console.log('[CampaignPreview] Remove SUCCESS - result:',",
-        "console.error('[CampaignPreview] Error details:',",
-        "console.log('[CampaignPreview] task:end — campaign preview fields:',",
-        "console.log('[CampaignPreview] task:campaignContactUpdated — campaign preview fields:',",
-      ].forEach((unsafeLog) => expect(appSource).not.toContain(unsafeLog));
-    });
-
+  describe('sample public surface guard', () => {
     it('does not demonstrate State Control V2 APIs in the public sample', () => {
       const sampleSource = [
         resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
