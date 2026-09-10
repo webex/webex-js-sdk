@@ -109,7 +109,7 @@ mobius-socket/
 │   ├── socket.shim.ts                  # Browser binding (uses global WebSocket / MozWebSocket)
 │   ├── socket-base.ts                  # Generalised Socket abstraction (open/close/send/sendRequest/authorize/refresh)
 │   ├── constants.ts                    # SOCKET_READY_STATE, MESSAGE_TYPES, MOBIUS_SOCKET_4001_EVENT
-│   └── types.ts                        # SocketCloseEvent, SocketResponse, SocketOpenOptions, PendingResponseEntry, ...
+│   └── types.ts                        # SocketCloseEvent, SocketResponse, SocketOpenOptions, PendingResponseEntry, isSocketResponse guard, ...
 ├── test/                               # Test-only helpers (mocha-helpers.ts, promise-tick.ts)
 ├── mobius-socket.test.ts               # Connect/disconnect/reconnect/dedup/token-refresh tests
 ├── mobius-socket-events.test.ts        # Event fan-out + emitter override tests
@@ -586,6 +586,10 @@ sequenceDiagram
 
     Mob-->>S: WebSocket message (JSON)
     S->>S: JSON.parse(event.data)
+    opt !isSocketResponse(parsed)
+        Note over S: malformed frame — log warning and drop;<br/>no ack, no correlation, no 'message' emit
+        S-->>S: return
+    end
     opt data.type === 'async_event'
         S->>Mob: send EVENT_ACK {trackingId, eventId}
     end
@@ -868,6 +872,7 @@ The singleton owns the active Socket, cached URL, connected/connecting flags, co
 
 - Reuse an in-flight connect promise and one process-wide MobiusSocket.
 - Correlate responses by trackingId and time out every pending request.
+- Validate every parsed inbound WSS frame with `isSocketResponse` and drop malformed frames (non-object, null, or array) without acknowledging, correlating, or emitting them.
 - Deduplicate async events by eventId with bounded LRU eviction.
 - Treat close codes according to the documented permanent/replaced/transient/auth/throttle matrix.
 - Authorization/token values exist only in socket metadata/refresh flows and must never be emitted or logged. Evidence: `src/mobius-socket/` implementation and tests.
@@ -893,7 +898,7 @@ Guards and invariants: only the active socket (`sourceSocket === this.socket`) m
 
 ## Protocol / Wire Format
 
-Messages are JSON objects serialized and parsed by `Socket`. The TypeScript envelope is intentionally extensible, but correlation and control-message fields have concrete behavior:
+Messages are JSON objects serialized and parsed by `Socket`. Each parsed incoming frame is validated at runtime by the `isSocketResponse(value: unknown): value is SocketResponse` guard (exported from `socket/types.ts`), which accepts only non-null, non-array objects and rejects primitives and arrays. Frames that fail the guard are logged as malformed and dropped before any acknowledgement, pending-response correlation, or `message` emission occurs, so an unexpected payload cannot corrupt request/response tracking. The TypeScript envelope is intentionally extensible, but correlation and control-message fields have concrete behavior:
 
 | Message | Implemented shape | Routing / handling |
 |---|---|---|
