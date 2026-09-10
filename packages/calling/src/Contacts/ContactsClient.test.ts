@@ -1028,6 +1028,28 @@ describe('ContactClient Tests', () => {
     expect(webex.request).toHaveBeenCalledTimes(1);
   });
 
+  it('clears the in-flight promise after successful resolution', async () => {
+    const successGroupResponsePayload = <WebexRequestPayload>{
+      statusCode: 201,
+      body: mockGroupResponse,
+    };
+
+    // No existing encryptionKeyUrl and empty groups — forces the key/group creation path
+    contactClient['groups'] = [];
+    contactClient['encryptionKeyUrl'] = '';
+
+    webex.internal.encryption.kms.createUnboundKeys.mockResolvedValue([mockKmsKey]);
+    webex.internal.encryption.kms.createResource.mockResolvedValue(mockKmsKey);
+    webex.internal.encryption.encryptText.mockResolvedValue('Encrypted group name');
+    webex.request.mockResolvedValue(successGroupResponsePayload);
+
+    await contactClient['fetchEncryptionKeyUrl']();
+
+    // The single-flight promise must not be left cached after success, so it
+    // can't be mistakenly re-read as fresh if encryptionKeyUrl is ever reset.
+    expect(contactClient['encryptionKeyUrlPromise']).toBeUndefined();
+  });
+
   it('cached-key path awaits in-flight group creation instead of creating a duplicate default group', async () => {
     const successGroupResponsePayload = <WebexRequestPayload>{
       statusCode: 201,

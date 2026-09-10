@@ -525,6 +525,11 @@ export class ContactsClient implements IContacts {
           // below instead of racing ahead of the group creation.
           this.encryptionKeyUrl = newEncryptionKeyUrl;
 
+          // Clear the in-flight promise now that the resolved value is cached
+          // on encryptionKeyUrl, so a future reset of encryptionKeyUrl can't
+          // cause this method to return a stale resolved promise.
+          this.encryptionKeyUrlPromise = undefined;
+
           return this.encryptionKeyUrl;
         } catch (e) {
           // Clear the in-flight promise on failure so subsequent callers can retry
