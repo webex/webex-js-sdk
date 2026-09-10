@@ -59,6 +59,7 @@ import WebCallingService from './services/WebCallingService';
 import AnswerCallOnWebexService from './services/AnswerCallOnWebexService';
 import WebexCrossClientService from './services/WebexCrossClientService';
 import WxAppTelephonyMercurySync from './services/WxAppTelephonyMercurySync';
+import {logWxAppSessionReadiness} from './services/wxAppDiagnosticLogging';
 import {
   ITask,
   TASK_EVENTS,
@@ -1562,25 +1563,120 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
+  private getWxAppTelephonyTaskType(): 'Voice' | 'WebRTC' | 'unknown' {
+    const loginOption = this.getCurrentStationLoginOption();
+
+    if (loginOption === LoginOption.BROWSER) {
+      return 'WebRTC';
+    }
+
+    if (loginOption === LoginOption.EXTENSION || loginOption === LoginOption.AGENT_DN) {
+      return 'Voice';
+    }
+
+    return 'unknown';
+  }
+
   private async ensureWxAppPostStationLogin(): Promise<void> {
-    if (this.getCurrentStationLoginOption() === LoginOption.BROWSER) {
+    const loginOption = this.getCurrentStationLoginOption();
+    const flagEnabled = this.isWxBetterTogetherEnabled();
+    const telephonyTaskType = this.getWxAppTelephonyTaskType();
+
+    if (loginOption === LoginOption.BROWSER) {
+      if (flagEnabled) {
+        logWxAppSessionReadiness({
+          enableWxBetterTogether: true,
+          loginOption,
+          wxAppHooksApplied: false,
+          usersubPublished: false,
+          mercurySubscribed: false,
+          telephonyTaskType,
+          skipReason: 'unsupported_browser_login',
+        });
+
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WXAPP_SESSION_SKIPPED,
+          {
+            loginOption,
+            enableWxBetterTogether: true,
+            skipReason: 'unsupported_browser_login',
+          },
+          ['operational', 'behavioral']
+        );
+      }
+
       return;
     }
 
     let publishedEnable = false;
+    let wxAppInitStage: 'mercury' | 'publish' = 'mercury';
 
     try {
-      if (this.isWxBetterTogetherEnabled()) {
+      if (flagEnabled) {
+        this.metricsManager.timeEvent([
+          METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS,
+          METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
+        ]);
+
         await this.ensureWxAppMercuryAndSubscribe();
+        wxAppInitStage = 'publish';
         await this.publishAnswerOnWebexCrossClientState(true);
         publishedEnable = true;
         this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
+
+        const mercurySubscribed = this.wxAppTelephonyMercurySync.isSubscribed();
+        const usersubPublished = this.webexCrossClientService.isAnswerCallsStateActive();
+
+        logWxAppSessionReadiness({
+          enableWxBetterTogether: true,
+          loginOption,
+          wxAppHooksApplied: true,
+          usersubPublished,
+          mercurySubscribed,
+          telephonyTaskType,
+        });
+
+        const sessionInitReady = mercurySubscribed && usersubPublished;
+
+        if (sessionInitReady) {
+          this.metricsManager.trackEvent(
+            METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS,
+            {loginOption, enableWxBetterTogether: true},
+            ['operational', 'behavioral']
+          );
+        } else {
+          this.metricsManager.trackEvent(
+            METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
+            {
+              loginOption,
+              enableWxBetterTogether: true,
+              skipReason: !usersubPublished ? 'usersub_not_published' : 'mercury_not_subscribed',
+            },
+            ['operational', 'behavioral']
+          );
+        }
       } else {
         await this.ensureWxAppDeviceRegistered();
         await this.publishAnswerOnWebexCrossClientState(false, {force: true});
         this.webexCrossClientService.teardown();
         this.wxAppTelephonyMercurySync.unsubscribe();
         await this.releaseWxAppMercuryResources();
+
+        logWxAppSessionReadiness({
+          enableWxBetterTogether: false,
+          loginOption,
+          wxAppHooksApplied: true,
+          usersubPublished: false,
+          mercurySubscribed: false,
+          telephonyTaskType,
+          skipReason: 'flag_disabled',
+        });
+
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WXAPP_SESSION_SKIPPED,
+          {loginOption, enableWxBetterTogether: false, skipReason: 'flag_disabled'},
+          ['operational', 'behavioral']
+        );
       }
     } catch (error) {
       LoggerProxy.error(`Failed to initialize wxApp post-station-login: ${error}`, {
@@ -1588,7 +1684,32 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         method: METHODS.STATION_LOGIN,
       });
 
-      if (this.isWxBetterTogetherEnabled()) {
+      if (flagEnabled) {
+        const sessionInitFailureReason =
+          wxAppInitStage === 'mercury' ? 'mercury_subscribe_failed' : 'publish_failed';
+
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
+          {
+            loginOption,
+            enableWxBetterTogether: true,
+            skipReason: sessionInitFailureReason,
+            error: error instanceof Error ? error.toString() : String(error),
+          },
+          ['operational', 'behavioral']
+        );
+
+        logWxAppSessionReadiness({
+          enableWxBetterTogether: true,
+          loginOption,
+          wxAppHooksApplied: false,
+          usersubPublished:
+            publishedEnable && this.webexCrossClientService.isAnswerCallsStateActive(),
+          mercurySubscribed: this.wxAppTelephonyMercurySync.isSubscribed(),
+          telephonyTaskType,
+          skipReason: sessionInitFailureReason,
+        });
+
         if (publishedEnable) {
           await this.revertWxAppCrossClientPublish();
         } else {
@@ -1829,6 +1950,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
       });
 
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED,
+        {error: 'agentId unavailable'},
+        ['operational', 'behavioral']
+      );
+
       return;
     }
 
@@ -1842,6 +1969,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         module: CC_FILE,
         method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
       });
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED,
+        {error: error instanceof Error ? error.toString() : String(error)},
+        ['operational', 'behavioral']
+      );
       this.wxAppTelephonyMercurySync.unsubscribe();
       await this.releaseWxAppMercuryResources();
       throw error;
@@ -1862,10 +1994,25 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     const userId = this.$webex.internal.device?.userId;
     if (!userId) {
+      if (enable && this.isWxBetterTogetherEnabled()) {
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+          {
+            enableWxBetterTogether: true,
+            skipReason: 'user_id_unavailable',
+            error: 'User ID is unavailable for cross-client publish',
+          },
+          ['operational', 'behavioral']
+        );
+      }
+
       return;
     }
 
-    await this.webexCrossClientService.setManageWebexCallingInWxcc(enable, {userId});
+    await this.webexCrossClientService.setManageWebexCallingInWxcc(enable, {
+      userId,
+      trackPublishMetrics: true,
+    });
 
     if (enable) {
       this.clearWxAppFalsePublishRetryTimer();

@@ -619,6 +619,8 @@ This keeps transcript and suggestion delivery aligned on the same per-task event
 
 **wxApp offer UI (`uiControlsComputer`):** `wxAppAcceptInFlight` disables accept/decline during the accept REST call. `wxAppAnswerPending` additionally disables accept and decline for **inbound** offers until ASSIGN; wxApp **outdial** keeps decline enabled during the post-accept "Calling…" phase so `cancelTask` remains available.
 
+**wxApp decline observability:** Inbound wxApp offers decline via telephony `rejectCall` (`runWxAppReject` → `WXAPP_TASK_DECLINE_*`). wxApp outdial cancellations use CC routing `cancelTask` (`runWxAppOutdialDecline` → additive `WXAPP_TASK_DECLINE_*` plus existing `TASK_DECLINE_*`).
+
 **wxApp mute backfill guard (`Voice.syncWxAppMuteFromCallDetails`):** Skips telephony `GET /calls/{callId}` when the interaction is terminated or the task is a pre-accept wxApp OFFERED offer (`wxAppAnswerPending` false). Post-accept OFFERED and engaged CONNECTED sync still run. `isWxAppEngagedForControls` and `getWebexCallingCallId` exclude `TERMINATED` and `COMPLETED`. Expected 400 / "Call not found" / `101002` responses are not logged as errors.
 
 For BROWSER login, TaskManager integrates with WebCalling:
