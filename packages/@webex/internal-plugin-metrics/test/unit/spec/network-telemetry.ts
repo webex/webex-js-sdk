@@ -342,6 +342,99 @@ describe('network telemetry', function () {
     ]);
   });
 
+  it('waits for a periodic submission that is already in flight before stopping', async function () {
+    const {webex} = makeWebex();
+    let resolveSubmission: () => void = () => {};
+    const pendingSubmission = new Promise<void>((resolve) => {
+      resolveSubmission = resolve;
+    });
+    const submitClientMetrics = sinon
+      .stub(webex.internal.metrics, 'submitClientMetrics')
+      .returns(pendingSubmission);
+
+    webex.emit('request:start', {service: 'hydra', resource: 'rooms'});
+    clock.tick(NETWORK_TELEMETRY_INTERVAL_MS);
+
+    const stopPromise = webex.internal.metrics.stopNetworkTelemetry();
+    let stopSettled = false;
+    void stopPromise.then(() => {
+      stopSettled = true;
+    });
+
+    await Promise.resolve();
+    assert.isFalse(stopSettled);
+
+    resolveSubmission();
+    await stopPromise;
+
+    assert.isTrue(stopSettled);
+    assert.calledOnce(submitClientMetrics);
+  });
+
+  it('waits for a manual flush that is already in flight before stopping', async function () {
+    const {webex} = makeWebex();
+    let resolveSubmission: () => void = () => {};
+    const pendingSubmission = new Promise<void>((resolve) => {
+      resolveSubmission = resolve;
+    });
+    const submitClientMetrics = sinon
+      .stub(webex.internal.metrics, 'submitClientMetrics')
+      .returns(pendingSubmission);
+
+    webex.emit('request:start', {service: 'hydra', resource: 'rooms'});
+    const flushPromise = webex.internal.metrics.flushNetworkTelemetry();
+    const stopPromise = webex.internal.metrics.stopNetworkTelemetry();
+    let stopSettled = false;
+    void stopPromise.then(() => {
+      stopSettled = true;
+    });
+
+    await Promise.resolve();
+    assert.isFalse(stopSettled);
+
+    resolveSubmission();
+    await Promise.all([flushPromise, stopPromise]);
+
+    assert.isTrue(stopSettled);
+    assert.calledOnce(submitClientMetrics);
+  });
+
+  it('waits for all overlapping submissions before stopping', async function () {
+    const {webex} = makeWebex();
+    const resolveSubmissions: Array<() => void> = [];
+    const submitClientMetrics = sinon
+      .stub(webex.internal.metrics, 'submitClientMetrics')
+      .callsFake(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveSubmissions.push(resolve);
+          })
+      );
+
+    webex.emit('request:start', {service: 'hydra', resource: 'rooms'});
+    const firstFlushPromise = webex.internal.metrics.flushNetworkTelemetry();
+    webex.emit('request:start', {service: 'identity', resource: 'people'});
+    const secondFlushPromise = webex.internal.metrics.flushNetworkTelemetry();
+    const stopPromise = webex.internal.metrics.stopNetworkTelemetry();
+    let stopSettled = false;
+    void stopPromise.then(() => {
+      stopSettled = true;
+    });
+
+    await Promise.resolve();
+    assert.equal(submitClientMetrics.callCount, 2);
+    assert.isFalse(stopSettled);
+
+    resolveSubmissions[0]();
+    await Promise.resolve();
+    assert.isFalse(stopSettled);
+
+    resolveSubmissions[1]();
+    await Promise.all([firstFlushPromise, secondFlushPromise, stopPromise]);
+
+    assert.isTrue(stopSettled);
+  });
+
   it('does not initialize network telemetry unless it is enabled', function () {
     const {webex} = makeWebex(false);
     const submitClientMetrics = sinon.stub(webex.internal.metrics, 'submitClientMetrics');

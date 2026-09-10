@@ -605,6 +605,23 @@ export function createNetworkTelemetryCollector({
   submitMetric,
 }: NetworkTelemetryCollectorOptions): NetworkTelemetryCollector {
   let telemetry = createEmptyNetworkTelemetry();
+  const inFlightSubmissions = new Set<Promise<void>>();
+
+  /**
+   * Tracks a submission until it settles so shutdown can wait for requests
+   * whose telemetry window has already been reset.
+   * @param submission Submission promise.
+   * @returns The tracked submission promise.
+   */
+  function trackSubmission(submission: Promise<void>): Promise<void> {
+    inFlightSubmissions.add(submission);
+    submission.then(
+      () => inFlightSubmissions.delete(submission),
+      () => inFlightSubmissions.delete(submission)
+    );
+
+    return submission;
+  }
 
   /**
    * Records a request being sent.
@@ -687,7 +704,7 @@ export function createNetworkTelemetryCollector({
     telemetry = createEmptyNetworkTelemetry();
 
     try {
-      return Promise.resolve(
+      const submission = Promise.resolve(
         submitMetric(NETWORK_REQUEST_SUMMARY_METRIC, {
           type: 'operational',
           tags: {},
@@ -700,6 +717,8 @@ export function createNetworkTelemetryCollector({
           onSubmissionFailure();
         }
       );
+
+      return trackSubmission(submission);
     } catch {
       // submitMetric may throw before returning a promise.
       onSubmissionFailure();
@@ -729,7 +748,9 @@ export function createNetworkTelemetryCollector({
   function stop(): Promise<void> {
     clearInterval(telemetryInterval);
 
-    return flush();
+    flush();
+
+    return Promise.all(inFlightSubmissions).then(() => undefined);
   }
 
   return {recordRequest, recordResponse, recordFailure, flush, stop};
