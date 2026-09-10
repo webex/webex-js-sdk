@@ -444,6 +444,18 @@ export class ContactsClient implements IContacts {
 
       await Promise.all(
         groups.map(async (group, idx) => {
+          if (!this.isValidEncryptionKeyUrl(group.encryptionKeyUrl)) {
+            log.error(
+              `Untrusted encryptionKeyUrl rejected for group decrypt: ${group.encryptionKeyUrl}`,
+              {
+                file: CONTACTS_CLIENT,
+                method: METHODS.GET_CONTACTS,
+              }
+            );
+
+            return;
+          }
+
           groups[idx].displayName = await this.webex.internal.encryption.decryptText(
             group.encryptionKeyUrl,
             group.displayName
@@ -643,6 +655,19 @@ export class ContactsClient implements IContacts {
           message: FAILURE_MESSAGE,
         } as ContactResponse;
       }
+    }
+
+    if (!this.isValidEncryptionKeyUrl(encryptionKeyUrlFinal)) {
+      log.error(
+        `Untrusted encryptionKeyUrl rejected for group encrypt: ${encryptionKeyUrlFinal}`,
+        loggerContext
+      );
+
+      return {
+        statusCode: 400 as number,
+        data: {error: 'Untrusted encryptionKeyUrl rejected for encrypt'},
+        message: FAILURE_MESSAGE,
+      } as ContactResponse;
     }
 
     const encryptedDisplayName = await this.webex.internal.encryption.encryptText(

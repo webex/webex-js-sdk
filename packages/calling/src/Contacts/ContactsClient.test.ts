@@ -1117,5 +1117,55 @@ describe('ContactClient Tests', () => {
         expect.objectContaining({method: METHODS.ENCRYPT_CONTACT})
       );
     });
+
+    it('getContacts rejects an untrusted encryptionKeyUrl on a server-returned group', async () => {
+      const errorSpy = jest.spyOn(log, 'error');
+
+      const untrustedGroup = {
+        ...mockGroupResponse,
+        encryptionKeyUrl: 'http://evil.com/keys/fake-key',
+        displayName: 'EncryptedGroupName',
+      };
+
+      webex.request.mockResolvedValueOnce({
+        statusCode: 200,
+        body: {
+          contacts: [],
+          groups: [untrustedGroup],
+        },
+      });
+
+      const contactsResponse = await contactClient.getContacts();
+
+      // KMS must NOT be called for an untrusted group encryptionKeyUrl
+      expect(webex.internal.encryption.decryptText).not.toHaveBeenCalled();
+      // The group displayName must remain untouched (not passed through decryptText)
+      expect(contactsResponse.data.groups?.[0].displayName).toBe('EncryptedGroupName');
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Untrusted encryptionKeyUrl'),
+        expect.objectContaining({method: METHODS.GET_CONTACTS})
+      );
+    });
+
+    it('createContactGroup rejects an untrusted encryptionKeyUrl and never posts the plaintext group name', async () => {
+      const errorSpy = jest.spyOn(log, 'error');
+
+      contactClient['groups'] = [];
+
+      const contactsResponse = await contactClient.createContactGroup(
+        'Top Contacts',
+        'http://evil.com/keys/fake-key'
+      );
+
+      // No request (and therefore no plaintext group name) must reach the backend
+      expect(webex.request).not.toHaveBeenCalled();
+      expect(webex.internal.encryption.encryptText).not.toHaveBeenCalled();
+      expect(contactsResponse.statusCode).toBe(400);
+      expect(contactsResponse.message).toBe(FAILURE_MESSAGE);
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Untrusted encryptionKeyUrl'),
+        expect.objectContaining({method: METHODS.CREATE_CONTACT_GROUP})
+      );
+    });
   });
 });
