@@ -95,7 +95,8 @@
       "canonical_spec": "src/metrics/ai-docs/metrics-spec.md",
       "contracts": {
         "provides": [
-          "MetricsManager timing, behavioral/operational/business event submission, taxonomy, queues, and tracking-field helpers"
+          "MetricsManager timing, behavioral/operational/business event submission, taxonomy, queues, and tracking-field helpers",
+          "WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING operational/behavioral telemetry event (contract metrics.wxapp-offer-participant-fields-missing; emit site voice/wxAppOfferObservability.ts)"
         ],
         "requires": [
           "Webex internal metrics service; Webex ready lifecycle; LoggerProxy; browser document visibility"

@@ -160,9 +160,51 @@ describe('WebexCrossClientService', () => {
 
     expect(trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
-      expect.objectContaining({enableWxBetterTogether: true}),
+      expect.objectContaining({enableWxBetterTogether: true, usersubPublished: false}),
       ['operational', 'behavioral']
     );
+  });
+
+  it('reports retained usersub state when disable publish fails after successful enable', async () => {
+    await service.setManageWebexCallingInWxcc(true, {trackPublishMetrics: true});
+    trackEvent.mockClear();
+
+    webex.request = jest.fn().mockRejectedValue(new Error('disable failed'));
+
+    await expect(
+      service.setManageWebexCallingInWxcc(false, {trackPublishMetrics: true})
+    ).rejects.toThrow('disable failed');
+
+    expect(trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+      expect.objectContaining({
+        enableWxBetterTogether: false,
+        usersubPublished: true,
+      }),
+      ['operational', 'behavioral']
+    );
+    expect(service.isAnswerCallsStateActive()).toBe(true);
+  });
+
+  it('reports retained usersub state when re-enable publish fails after successful enable', async () => {
+    await service.setManageWebexCallingInWxcc(true);
+    trackEvent.mockClear();
+
+    webex.request = jest.fn().mockRejectedValue(new Error('refresh failed'));
+
+    await expect(
+      service.setManageWebexCallingInWxcc(true, {trackPublishMetrics: true})
+    ).rejects.toThrow('refresh failed');
+
+    expect(trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+      expect.objectContaining({
+        enableWxBetterTogether: true,
+        usersubPublished: true,
+      }),
+      ['operational', 'behavioral']
+    );
+    expect(service.isAnswerCallsStateActive()).toBe(true);
   });
 
   it('tracks usersub publish success when trackPublishMetrics is enabled', async () => {

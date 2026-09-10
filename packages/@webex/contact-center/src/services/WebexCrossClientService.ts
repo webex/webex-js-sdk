@@ -213,7 +213,7 @@ export default class WebexCrossClientService {
             METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
             {
               enableWxBetterTogether: enable,
-              usersubPublished: false,
+              usersubPublished: this.answerCallsState,
               error: error instanceof Error ? error.toString() : String(error),
             },
             ['operational', 'behavioral']
@@ -277,7 +277,7 @@ export default class WebexCrossClientService {
       METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
       {
         enableWxBetterTogether: enable,
-        usersubPublished: false,
+        usersubPublished: this.answerCallsState,
         skipReason,
         error,
       },

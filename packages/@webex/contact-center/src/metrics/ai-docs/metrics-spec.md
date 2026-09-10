@@ -332,7 +332,7 @@ Operational and business wire names are unchanged (`WXCC_SDK_WXAPP_*`).
 | `WXAPP_SESSION_INIT_SUCCESS` | `loginOption`, `enableWxBetterTogether`, `usersubPublished`, `mercurySubscribed`, `telephonyTaskType` |
 | `WXAPP_SESSION_INIT_FAILED` | above + `skipReason` (`usersub_not_published`, `mercury_not_subscribed`, `mercury_subscribe_failed`, `publish_failed`) + optional `error` |
 | `WXAPP_USERSUB_PUBLISH_SUCCESS` | `enableWxBetterTogether`, `usersubPublished` |
-| `WXAPP_USERSUB_PUBLISH_FAILED` | `enableWxBetterTogether`, `usersubPublished`, optional `skipReason`, `error` |
+| `WXAPP_USERSUB_PUBLISH_FAILED` | `enableWxBetterTogether`, `usersubPublished`, optional `skipReason`, `error`. `usersubPublished` reflects **retained session state** (`answerCallsState`), not the requested enable value — a failed disable/refresh while usersub remains active reports `true`. |
 | `WXAPP_MERCURY_SUBSCRIBE_SUCCESS` | `mercurySubscribed: true` |
 | `WXAPP_MERCURY_SUBSCRIBE_FAILED` | `mercurySubscribed: false`, `error` |
 | `WXAPP_TASK_ACCEPT_*` / `DECLINE_*` | `taskId`, `hasDeviceCallId`, `hasDeviceId`, optional `acceptReason`; failures add `trackingId` when available. Outdial-cancel AQM failures (`error.details`) include the same participant context fields via `getWxAppTelephonyMetricContext` merged with AQM correlation fields. |
