@@ -1703,8 +1703,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           {
             loginOption,
             enableWxBetterTogether: true,
-            usersubPublished:
-              publishedEnable && this.webexCrossClientService.isAnswerCallsStateActive(),
+            usersubPublished: this.webexCrossClientService.isAnswerCallsStateActive(),
             mercurySubscribed: this.wxAppTelephonyMercurySync.isSubscribed(),
             telephonyTaskType,
             skipReason: sessionInitFailureReason,
@@ -1717,8 +1716,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           enableWxBetterTogether: true,
           loginOption,
           wxAppHooksApplied: false,
-          usersubPublished:
-            publishedEnable && this.webexCrossClientService.isAnswerCallsStateActive(),
+          usersubPublished: this.webexCrossClientService.isAnswerCallsStateActive(),
           mercurySubscribed: this.wxAppTelephonyMercurySync.isSubscribed(),
           telephonyTaskType,
           skipReason: sessionInitFailureReason,
