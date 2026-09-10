@@ -438,6 +438,7 @@ describe('plugin-meetings', () => {
           webinar._practiceSessionLLMChannel = mockPSChannel;
           mockVoiceaChannel = {
             switchLLMChannel: sinon.stub().resolves(),
+            getKeepTranscriptionSubscribed: sinon.stub().returns(false),
           };
           meeting = {
             id: 'meeting-id',
@@ -447,8 +448,10 @@ describe('plugin-meetings', () => {
             handleLLMOnline: sinon.stub(),
             llmChannel: createMockLLMChannel(),
             voiceaChannel: mockVoiceaChannel,
+            startTranscriptionIfNeeded: sinon.stub(),
             annotation: {registerChannel: sinon.stub()},
             trigger: sinon.stub(),
+            transcription: {captions: []},
           };
           webex.meetings.getMeetingByType = sinon.stub().returns(meeting);
         });
@@ -520,14 +523,53 @@ describe('plugin-meetings', () => {
 
           await webinar.cleanupPSDataChannel();
 
-          // Should not throw and should complete successfully
           assert.notCalled(mockPSChannel.disconnect);
+          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, meeting.llmChannel);
+          assert.calledOnceWithExactly(meeting.startTranscriptionIfNeeded);
         });
 
-        it('switches voicea channel back to main meeting LLM channel', async () => {
+        it('switches voicea channel back to main meeting LLM channel when main channel is connected', async () => {
+          meeting.llmChannel.isConnected.returns(true);
+
           await webinar.cleanupPSDataChannel();
 
           assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, meeting.llmChannel);
+          assert.calledOnceWithExactly(meeting.startTranscriptionIfNeeded);
+        });
+
+        it('switches voicea to main channel even when not connected (defers caption restoration)', async () => {
+          meeting.llmChannel.isConnected.returns(false);
+
+          await webinar.cleanupPSDataChannel();
+
+          // Should still switch voicea to main channel - switchLLMChannel handles
+          // the deferred case by registering an 'online' listener
+          assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, meeting.llmChannel);
+          // Should still disconnect the practice session channel
+          assert.calledOnce(mockPSChannel.disconnect);
+        });
+
+        it('switches voicea to final main channel after disconnect when main channel was replaced during practice disconnect', async () => {
+          // Main channel connected initially
+          meeting.llmChannel.isConnected.returns(true);
+
+          const newLLMChannel = {
+            isConnected: sinon.stub().returns(true),
+            on: sinon.stub(),
+            off: sinon.stub(),
+          };
+
+          // Simulate main channel being replaced during practice disconnect
+          mockPSChannel.disconnect.callsFake(async () => {
+            meeting.llmChannel = newLLMChannel;
+          });
+
+          await webinar.cleanupPSDataChannel();
+
+          // With reconciler pattern: single switch point after disconnect picks up the new channel
+          // (reconciler handles the actual rebinding internally)
+          assert.calledOnce(mockVoiceaChannel.switchLLMChannel);
+          assert.calledWith(mockVoiceaChannel.switchLLMChannel, newLLMChannel);
         });
 
         it('does not switch voicea channel when meeting has no voiceaChannel', async () => {
@@ -558,6 +600,7 @@ describe('plugin-meetings', () => {
           });
           mockVoiceaChannel = {
             switchLLMChannel: sinon.stub().resolves(),
+            getKeepTranscriptionSubscribed: sinon.stub().returns(false),
           };
 
           // Default session channel on the meeting
@@ -572,6 +615,7 @@ describe('plugin-meetings', () => {
             processRelayEvent: sinon.stub(),
             processLocusLLMEvent: sinon.stub(),
             handleLLMOnline: sinon.stub(),
+            startTranscriptionIfNeeded: sinon.stub(),
             llmChannel: mockDefaultChannel,
             voiceaChannel: mockVoiceaChannel,
             annotation: {registerChannel: sinon.stub()},
@@ -587,6 +631,7 @@ describe('plugin-meetings', () => {
             }),
             voiceaListenerCallbacks: {},
             trigger: sinon.stub(),
+            transcription: {captions: []},
           };
 
           webex.meetings.getMeetingByType = sinon.stub().returns(meeting);
@@ -743,6 +788,7 @@ describe('plugin-meetings', () => {
           await webinar.updatePSDataChannel();
 
           assert.calledOnceWithExactly(mockVoiceaChannel.switchLLMChannel, mockPSChannel);
+          assert.calledOnceWithExactly(meeting.startTranscriptionIfNeeded);
         });
 
         it('does not call switchLLMChannel when meeting has no voiceaChannel', async () => {
