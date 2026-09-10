@@ -617,6 +617,8 @@ This keeps transcript and suggestion delivery aligned on the same per-task event
 
 **wxApp consumer contract (WXCC-6026):** Hosts enable `enableWxBetterTogether` at init (Phase 1 init-only; re-init to change), bind UI to `task.uiControls` (including optional `main.keypad`), and call **`task.accept()`**, **`task.decline()`**, **`task.toggleMute({ muted? })`**, **`task.transmitDtmf({ dtmf })`**. SDK routes wxApp telephony internally on `Voice`. Shared-line `lineOwnerId` defaults from the wxApp agent participant when omitted.
 
+**wxApp OFFERED diagnostics:** `Voice.updateUiControls` delegates offer-decision logging and deferred participant-mismatch WARN/metric to `voice/wxAppOfferObservability.ts` (500 ms grace; observability only).
+
 **wxApp offer UI (`uiControlsComputer`):** `wxAppAcceptInFlight` disables accept/decline during the accept REST call. `wxAppAnswerPending` additionally disables accept and decline for **inbound** offers until ASSIGN; wxApp **outdial** keeps decline enabled during the post-accept "Calling…" phase so `cancelTask` remains available.
 
 **wxApp decline observability:** Inbound wxApp offers decline via telephony `rejectCall` (`runWxAppReject` → `WXAPP_TASK_DECLINE_*`). wxApp outdial cancellations use CC routing `cancelTask` (`runWxAppOutdialDecline` → additive `WXAPP_TASK_DECLINE_*` plus existing `TASK_DECLINE_*`).

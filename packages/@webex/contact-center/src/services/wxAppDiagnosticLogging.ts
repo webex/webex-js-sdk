@@ -31,16 +31,54 @@ export function callIdSuffix(callId: string | null | undefined): string | undefi
   return callId.length <= 8 ? callId : callId.slice(-8);
 }
 
-function logWxApp(message: string, method: string, data: WxAppLogData): void {
-  LoggerProxy.info(`${WXAPP_LOG_PREFIX} ${message}`, {
+function formatLogSuffix(data: WxAppLogData, keys?: string[]): string {
+  const entries = keys
+    ? keys.map((key) => [key, data[key]] as const)
+    : Object.entries(data).filter(([key]) => key !== 'feature' && key !== 'event');
+
+  const parts = entries
+    .filter(([, value]) => value !== undefined && value !== null && value !== '')
+    .map(([key, value]) => `${key}=${String(value)}`);
+
+  return parts.length > 0 ? ` ${parts.join(' ')}` : '';
+}
+
+function logWxApp(
+  message: string,
+  method: string,
+  data: WxAppLogData,
+  suffixKeys?: string[]
+): void {
+  const suffix = formatLogSuffix(data, suffixKeys);
+  LoggerProxy.log(`${WXAPP_LOG_PREFIX} ${message}${suffix}`, {
     module: 'wxAppDiagnosticLogging',
     method,
     data: {feature: WXAPP_LOG_FEATURE, ...data},
   });
 }
 
-function logWxAppError(message: string, method: string, data: WxAppLogData): void {
-  LoggerProxy.error(`${WXAPP_LOG_PREFIX} ${message}`, {
+function logWxAppWarn(
+  message: string,
+  method: string,
+  data: WxAppLogData,
+  suffixKeys?: string[]
+): void {
+  const suffix = formatLogSuffix(data, suffixKeys);
+  LoggerProxy.warn(`${WXAPP_LOG_PREFIX} ${message}${suffix}`, {
+    module: 'wxAppDiagnosticLogging',
+    method,
+    data: {feature: WXAPP_LOG_FEATURE, ...data},
+  });
+}
+
+function logWxAppError(
+  message: string,
+  method: string,
+  data: WxAppLogData,
+  suffixKeys?: string[]
+): void {
+  const suffix = formatLogSuffix(data, suffixKeys);
+  LoggerProxy.error(`${WXAPP_LOG_PREFIX} ${message}${suffix}`, {
     module: 'wxAppDiagnosticLogging',
     method,
     data: {feature: WXAPP_LOG_FEATURE, ...data},
@@ -56,7 +94,7 @@ export function logWxAppSessionReadiness(params: {
   telephonyTaskType: 'Voice' | 'WebRTC' | 'unknown';
   skipReason?: WxAppSessionSkipReason;
 }): void {
-  logWxApp('session readiness', 'logWxAppSessionReadiness', {
+  const data: WxAppLogData = {
     event: 'session_readiness',
     enableWxBetterTogether: params.enableWxBetterTogether,
     loginOption: params.loginOption,
@@ -65,7 +103,16 @@ export function logWxAppSessionReadiness(params: {
     mercurySubscribed: params.mercurySubscribed,
     telephonyTaskType: params.telephonyTaskType,
     skipReason: params.skipReason,
-  });
+  };
+
+  logWxApp('session readiness', 'logWxAppSessionReadiness', data, [
+    'usersubPublished',
+    'mercurySubscribed',
+    'loginOption',
+    'enableWxBetterTogether',
+    'telephonyTaskType',
+    'skipReason',
+  ]);
 }
 
 export function deriveWxAppAcceptReason(params: {
@@ -111,8 +158,10 @@ export function logWxAppOfferDecision(params: {
   acceptReason: WxAppAcceptReason;
   wxAppParticipantDeviceType?: string;
   hasDeviceCallId: boolean;
+  hasDeviceId?: boolean;
+  usersubPublished?: boolean;
 }): void {
-  logWxApp('offer decision', 'logWxAppOfferDecision', {
+  const data: WxAppLogData = {
     event: 'offer_decision',
     interactionId: params.interactionId,
     acceptVisible: params.acceptVisible,
@@ -120,7 +169,51 @@ export function logWxAppOfferDecision(params: {
     acceptReason: params.acceptReason,
     wxAppParticipantDeviceType: params.wxAppParticipantDeviceType,
     hasDeviceCallId: params.hasDeviceCallId,
-  });
+    hasDeviceId: params.hasDeviceId,
+    usersubPublished: params.usersubPublished,
+  };
+
+  logWxApp('offer decision', 'logWxAppOfferDecision', data, [
+    'acceptReason',
+    'hasDeviceCallId',
+    'hasDeviceId',
+    'usersubPublished',
+    'interactionId',
+    'acceptVisible',
+    'acceptEnabled',
+  ]);
+}
+
+export function logWxAppOfferParticipantMismatch(params: {
+  interactionId: string;
+  usersubPublished: boolean;
+  hasDeviceCallId: boolean;
+  hasDeviceId: boolean;
+  participantDeviceType?: string;
+  acceptVisible: boolean;
+  acceptEnabled: boolean;
+  acceptReason: WxAppAcceptReason;
+}): void {
+  const data: WxAppLogData = {
+    event: 'participant_fields_mismatch',
+    interactionId: params.interactionId,
+    usersubPublished: params.usersubPublished,
+    hasDeviceCallId: params.hasDeviceCallId,
+    hasDeviceId: params.hasDeviceId,
+    participantDeviceType: params.participantDeviceType ?? 'missing',
+    acceptVisible: params.acceptVisible,
+    acceptEnabled: params.acceptEnabled,
+    acceptReason: params.acceptReason,
+  };
+
+  logWxAppWarn('participant fields mismatch', 'logWxAppOfferParticipantMismatch', data, [
+    'usersubPublished',
+    'hasDeviceCallId',
+    'hasDeviceId',
+    'acceptReason',
+    'interactionId',
+    'participantDeviceType',
+  ]);
 }
 
 export function logWxAppTelephonyAction(params: {
@@ -142,18 +235,32 @@ export function logWxAppTelephonyAction(params: {
   };
 
   if (params.phase === 'failed') {
-    logWxAppError(`telephony ${params.action} ${params.phase}`, 'logWxAppTelephonyAction', payload);
+    logWxAppError(
+      `telephony ${params.action} ${params.phase}`,
+      'logWxAppTelephonyAction',
+      payload,
+      ['interactionId', 'trackingId', 'httpStatus', 'failureReason']
+    );
   } else {
-    logWxApp(`telephony ${params.action} ${params.phase}`, 'logWxAppTelephonyAction', payload);
+    logWxApp(`telephony ${params.action} ${params.phase}`, 'logWxAppTelephonyAction', payload, [
+      'interactionId',
+      'action',
+      'phase',
+    ]);
   }
 }
 
 export function logWxAppValidationFailure(reason: string, interactionId?: string): void {
-  logWxAppError('validation failed', 'logWxAppValidationFailure', {
-    event: 'validation_failed',
-    reason,
-    interactionId,
-  });
+  logWxAppError(
+    'validation failed',
+    'logWxAppValidationFailure',
+    {
+      event: 'validation_failed',
+      reason,
+      interactionId,
+    },
+    ['reason', 'interactionId']
+  );
 }
 
 export function logWxAppMercuryMuteSync(params: {
@@ -163,12 +270,17 @@ export function logWxAppMercuryMuteSync(params: {
   interactionId?: string;
   dropReason?: string;
 }): void {
-  logWxApp(`mercury mute sync ${params.phase}`, 'logWxAppMercuryMuteSync', {
-    event: 'mercury_mute_sync',
-    phase: params.phase,
-    muted: params.muted,
-    callIdSuffix: params.callIdSuffix,
-    interactionId: params.interactionId,
-    dropReason: params.dropReason,
-  });
+  logWxApp(
+    `mercury mute sync ${params.phase}`,
+    'logWxAppMercuryMuteSync',
+    {
+      event: 'mercury_mute_sync',
+      phase: params.phase,
+      muted: params.muted,
+      callIdSuffix: params.callIdSuffix,
+      interactionId: params.interactionId,
+      dropReason: params.dropReason,
+    },
+    ['phase', 'muted', 'callIdSuffix', 'interactionId', 'dropReason']
+  );
 }

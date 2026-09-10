@@ -48,13 +48,8 @@ import {
   WxAppVoiceDependencies,
   WxAppVoiceLifecycle,
 } from './wxAppVoiceMethods';
-import {
-  deriveWxAppAcceptReason,
-  logWxAppMercuryMuteSync,
-  logWxAppOfferDecision,
-  callIdSuffix,
-  WxAppAcceptReason,
-} from '../../wxAppDiagnosticLogging';
+import {logWxAppMercuryMuteSync, callIdSuffix} from '../../wxAppDiagnosticLogging';
+import {WxAppOfferObservability, WxAppOfferObservabilityContext} from './wxAppOfferObservability';
 
 export default class Voice extends Task implements IVoice {
   private static readonly WXAPP_MUTE_SYNC_RETRY_DELAY_MS = 50;
@@ -68,7 +63,9 @@ export default class Voice extends Task implements IVoice {
   private wxAppMuteSyncInFlight?: Promise<boolean | undefined>;
   private wxAppMuteToggleTail: Promise<void> = Promise.resolve();
   private wxAppDtmfTail: Promise<void> = Promise.resolve();
-  private lastLoggedWxAppAcceptReason?: WxAppAcceptReason;
+  /** Lazy — `super()` may call `updateUiControls` before field initializers run. */
+  private wxAppOfferObservability: WxAppOfferObservability | null = null;
+  private getUsersubPublished?: () => boolean;
 
   constructor(
     contact: ReturnType<typeof routingContact>,
@@ -98,6 +95,7 @@ export default class Voice extends Task implements IVoice {
 
     this.enableWxBetterTogether = resolvedOptions.enableWxBetterTogether;
     this.answerCallOnWebexService = callOptions?.answerCallOnWebexService;
+    this.getUsersubPublished = callOptions?.getUsersubPublished;
   }
 
   private getWxAppVoiceDependencies(): WxAppVoiceDependencies {
@@ -112,6 +110,7 @@ export default class Voice extends Task implements IVoice {
       setWxAppMuted: (muted: boolean) => {
         this.wxAppMuted = muted;
       },
+      getUsersubPublished: this.getUsersubPublished,
     };
   }
 
@@ -146,56 +145,37 @@ export default class Voice extends Task implements IVoice {
     this.updateUiControls(true);
   }
 
-  protected updateUiControls(forceEmit = false): void {
-    super.updateUiControls(forceEmit);
-    this.logWxAppOfferDecisionIfNeeded();
+  private getOrCreateWxAppOfferObservability(): WxAppOfferObservability {
+    if (!this.wxAppOfferObservability) {
+      this.wxAppOfferObservability = new WxAppOfferObservability();
+    }
+
+    return this.wxAppOfferObservability;
   }
 
-  private logWxAppOfferDecisionIfNeeded(): void {
-    if (!this.enableWxBetterTogether) {
-      return;
-    }
+  protected updateUiControls(forceEmit = false): void {
+    super.updateUiControls(forceEmit);
+    this.getOrCreateWxAppOfferObservability().handleUiControlsUpdate(
+      this.getWxAppOfferObservabilityContext()
+    );
+  }
 
-    const state = this.stateMachineService?.getSnapshot?.()?.value as TaskState | undefined;
-    if (state !== TaskState.OFFERED) {
-      return;
-    }
-
-    const accept = this.currentUiControls?.main?.accept;
-    if (!accept?.isVisible) {
-      return;
-    }
-
-    const deps = this.getWxAppVoiceDependencies();
-    const isOutdial = this.data?.interaction?.outboundType === 'OUTDIAL';
-    const isWxAppInboundOffer = this.isWebexAppInboundCallingOffer();
-    const isWxAppOutdialOffer = this.isWebexAppCallingOffer() && isOutdial;
-    const deviceDetails = getCallingDeviceDetails(deps);
-    const acceptReason = deriveWxAppAcceptReason({
-      isWxAppInboundOffer,
-      isWxAppOutdialOffer,
-      isWebrtc: this.uiControlConfig.voiceVariant === VOICE_VARIANT.WEBRTC,
-      isOutdial,
-      wxAppAcceptInFlight: this.wxAppAcceptInFlight,
-      wxAppAnswerPending: this.wxAppAnswerPending,
-      enableWxBetterTogether: this.enableWxBetterTogether,
-      hasDeviceCallId: Boolean(deviceDetails?.deviceCallId),
-    });
-
-    if (acceptReason === this.lastLoggedWxAppAcceptReason) {
-      return;
-    }
-
-    this.lastLoggedWxAppAcceptReason = acceptReason;
-
-    logWxAppOfferDecision({
-      interactionId: this.data.interactionId,
-      acceptVisible: accept.isVisible,
-      acceptEnabled: accept.isEnabled,
-      acceptReason,
-      wxAppParticipantDeviceType: deviceDetails?.deviceType,
-      hasDeviceCallId: Boolean(deviceDetails?.deviceCallId),
-    });
+  private getWxAppOfferObservabilityContext(): WxAppOfferObservabilityContext {
+    return {
+      getInteractionId: () => this.data.interactionId,
+      getTaskState: () => this.stateMachineService?.getSnapshot?.()?.value as TaskState | undefined,
+      getAcceptControl: () => this.currentUiControls?.main?.accept,
+      getVoiceVariant: () => this.uiControlConfig.voiceVariant ?? VOICE_VARIANT.PSTN,
+      isOutdial: () => this.data?.interaction?.outboundType === 'OUTDIAL',
+      isWxAppInboundOffer: () => this.isWebexAppInboundCallingOffer(),
+      isWxAppCallingOffer: () => this.isWebexAppCallingOffer(),
+      getWxAppAcceptInFlight: () => this.wxAppAcceptInFlight,
+      getWxAppAnswerPending: () => this.wxAppAnswerPending,
+      getEnableWxBetterTogether: () => this.enableWxBetterTogether,
+      getUsersubPublished: () => this.getUsersubPublished?.() ?? false,
+      getWxAppVoiceDependencies: () => this.getWxAppVoiceDependencies(),
+      getMetricsManager: () => this.metricsManager,
+    };
   }
 
   public applyWxAppMuteStateFromSync(incomingCallId: string, muted: boolean): void {

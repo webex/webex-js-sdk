@@ -404,20 +404,23 @@ describe('webex.cc', () => {
         module: CC_FILE,
         method: 'connectWebsocket',
       });
-      expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith({
-        isEndTaskEnabled: mockAgentProfile.isEndTaskEnabled,
-        isEndConsultEnabled: mockAgentProfile.isEndConsultEnabled,
-        webRtcEnabled: mockAgentProfile.webRtcEnabled,
-        autoWrapup: mockAgentProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
-        aiFeature: mockAgentProfile.aiFeature,
-        consultTransfer: {
-          allowConsultToQueue: mockAgentProfile.allowConsultToQueue,
-          accessQueue: mockAgentProfile.accessQueue,
-          accessEntryPoint: mockAgentProfile.accessEntryPoint,
-          accessBuddyTeam: mockAgentProfile.accessBuddyTeam,
-        },
-        enableWxBetterTogether: false,
-      });
+      expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isEndTaskEnabled: mockAgentProfile.isEndTaskEnabled,
+          isEndConsultEnabled: mockAgentProfile.isEndConsultEnabled,
+          webRtcEnabled: mockAgentProfile.webRtcEnabled,
+          autoWrapup: mockAgentProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
+          aiFeature: mockAgentProfile.aiFeature,
+          consultTransfer: {
+            allowConsultToQueue: mockAgentProfile.allowConsultToQueue,
+            accessQueue: mockAgentProfile.accessQueue,
+            accessEntryPoint: mockAgentProfile.accessEntryPoint,
+            accessBuddyTeam: mockAgentProfile.accessBuddyTeam,
+          },
+          enableWxBetterTogether: false,
+          getWxAppUsersubPublished: expect.any(Function),
+        })
+      );
       expect(reloadSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([

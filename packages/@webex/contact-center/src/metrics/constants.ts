@@ -156,6 +156,7 @@ export const METRIC_EVENT_NAMES = {
   WXAPP_USERSUB_PUBLISH_FAILED: 'WxApp Usersub Publish Failed',
   WXAPP_MERCURY_SUBSCRIBE_SUCCESS: 'WxApp Mercury Subscribe Success',
   WXAPP_MERCURY_SUBSCRIBE_FAILED: 'WxApp Mercury Subscribe Failed',
+  WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING: 'WxApp Offer Participant Fields Missing',
 
   UPLOAD_LOGS_SUCCESS: 'Upload Logs Success',
   UPLOAD_LOGS_FAILED: 'Upload Logs Failed',

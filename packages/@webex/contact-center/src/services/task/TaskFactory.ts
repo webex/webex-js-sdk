@@ -31,6 +31,7 @@ export default class TaskFactory {
       isRecordingEnabled: recordingEnabled,
       enableWxBetterTogether: configFlags.enableWxBetterTogether ?? false,
       answerCallOnWebexService,
+      getUsersubPublished: configFlags.getWxAppUsersubPublished,
       consultTransferConfig: consultTransfer,
     };
     switch (mediaType) {

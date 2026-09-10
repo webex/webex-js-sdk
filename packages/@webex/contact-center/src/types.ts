@@ -614,6 +614,8 @@ export type ConfigFlags = {
   isRecordingEnabled?: boolean;
   /** Whether wxApp thick-client answer controls/APIs are enabled (WXCC-6026) */
   enableWxBetterTogether?: boolean;
+  /** Read-only observability: live usersub answer-calls-on-wxcc state for wxApp offer diagnostics. */
+  getWxAppUsersubPublished?: () => boolean;
 };
 
 /**

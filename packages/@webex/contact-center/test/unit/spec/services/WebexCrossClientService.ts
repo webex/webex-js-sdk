@@ -174,7 +174,7 @@ describe('WebexCrossClientService', () => {
     ]);
     expect(trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS,
-      {enableWxBetterTogether: true},
+      {enableWxBetterTogether: true, usersubPublished: true},
       ['operational', 'behavioral']
     );
   });
@@ -243,7 +243,7 @@ describe('WebexCrossClientService', () => {
     expect(cancelTimedEvent).not.toHaveBeenCalled();
     expect(trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS,
-      {enableWxBetterTogether: false},
+      {enableWxBetterTogether: false, usersubPublished: false},
       ['operational', 'behavioral']
     );
   });
