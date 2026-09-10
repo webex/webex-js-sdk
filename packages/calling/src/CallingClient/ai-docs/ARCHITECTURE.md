@@ -201,10 +201,20 @@ sequenceDiagram
 
     CC->>CC: init()
     CC->>CC: windowsChromiumIceWarmup() [if Windows Chromium]
-    CC->>DS: getClientRegionInfo()
-    DS-->>CC: {region, countryCode}
-    CC->>Mobius: getMobiusServers(region)
-    Mobius-->>CC: {primary: [...], backup: [...],<br/>primaryWss: [...], backupWss: [...]}
+    Note over CC: discovery.region / country from SDK config<br/>are query params only; host is always U2C serviceLinks.mobius
+    alt no config region/country
+        CC->>DS: getClientRegionInfo()
+        DS-->>CC: {region, countryCode}
+    end
+    CC->>Mobius: GET U2C serviceLinks.mobius /calling/web/?regionCode&countryCode
+    alt service link succeeds
+        Mobius-->>CC: {primary: [...], backup: [...],<br/>primaryWss: [...], backupWss: [...]}
+    else non-final error (for example 500)
+        CC->>Mobius: remaining catalog clusters (same query)
+        Mobius-->>CC: {primary: [...], backup: [...],<br/>primaryWss: [...], backupWss: [...]}
+    else final error (for example 401)
+        Note over CC: abort; default to first catalog cluster
+    end
 
     opt apiRequest.isSocketEnabled()
         CC->>CC: connectToMobiusSocket()<br/>(walk primaryWssMobiusUris only;<br/>returns early if list is empty;<br/>backupWssMobiusUris never consulted here)
