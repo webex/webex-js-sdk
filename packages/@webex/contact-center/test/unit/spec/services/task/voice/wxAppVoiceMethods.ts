@@ -570,6 +570,8 @@ describe('runWxAppOutdialDecline', () => {
         trackingId: 'aqm-track-1',
         failureReason: 'TASK_NOT_FOUND',
         reasonCode: 404,
+        hasDeviceCallId: true,
+        hasDeviceId: true,
       }),
       ['operational', 'behavioral']
     );

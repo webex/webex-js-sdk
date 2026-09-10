@@ -27,6 +27,12 @@
 | `cc.events` | Config/Core | backend CC_EVENTS | consume/map | config/core specs | remote WebSocket delivery; AQM correlation where configured | backend contract | `src/services/config/types.ts` |
 | `rtd.events` | Task | realtime transcription/suggestion | consume then publish per task | task spec | websocket best-effort according to remote service | additive payloads | `src/services/task/TaskManager.ts` |
 
+### Telemetry / Metrics Events
+
+| Contract ID | Owner module | Event constant | Wire name | Payload schema link | Tags | Defined at |
+|---|---|---|---|---|---|---|
+| `metrics.wxapp-offer-participant-fields-missing` | Task / Metrics | `WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING` | `WxApp Offer Participant Fields Missing` | `src/metrics/ai-docs/metrics-spec.md` | operational, behavioral | `src/metrics/constants.ts`, `src/services/task/voice/wxAppOfferObservability.ts` |
+
 ## Requires — what this repo depends on
 
 | Dependency | What is consumed | Schema / detail link | Availability assumption | Fallback on failure | Version floor |

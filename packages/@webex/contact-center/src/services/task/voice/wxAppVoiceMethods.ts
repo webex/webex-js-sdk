@@ -236,7 +236,11 @@ function getWxAppOutdialDeclineFailurePayload(
   const aqmDetails = (error as AqmWrappedError).details;
 
   if (aqmDetails) {
-    return {...base, ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(aqmDetails)};
+    return {
+      ...base,
+      ...getWxAppTelephonyMetricContext(deps),
+      ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(aqmDetails),
+    };
   }
 
   return getWxAppTelephonyMetricFailurePayload(deps, error);

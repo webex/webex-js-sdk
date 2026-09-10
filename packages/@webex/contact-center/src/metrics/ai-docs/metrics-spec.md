@@ -335,7 +335,7 @@ Operational and business wire names are unchanged (`WXCC_SDK_WXAPP_*`).
 | `WXAPP_USERSUB_PUBLISH_FAILED` | `enableWxBetterTogether`, `usersubPublished`, optional `skipReason`, `error` |
 | `WXAPP_MERCURY_SUBSCRIBE_SUCCESS` | `mercurySubscribed: true` |
 | `WXAPP_MERCURY_SUBSCRIBE_FAILED` | `mercurySubscribed: false`, `error` |
-| `WXAPP_TASK_ACCEPT_*` / `DECLINE_*` | `taskId`, `hasDeviceCallId`, `hasDeviceId`, optional `acceptReason`; failures add `trackingId` when available |
+| `WXAPP_TASK_ACCEPT_*` / `DECLINE_*` | `taskId`, `hasDeviceCallId`, `hasDeviceId`, optional `acceptReason`; failures add `trackingId` when available. Outdial-cancel AQM failures (`error.details`) include the same participant context fields via `getWxAppTelephonyMetricContext` merged with AQM correlation fields. |
 | `WXAPP_TASK_MUTE_*` / `DTMF_*` | `taskId`, `hasDeviceCallId`, `hasDeviceId`; failures add `trackingId` when available |
 | `WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING` | `taskId`, `usersubPublished`, `hasDeviceCallId`, `hasDeviceId`, `acceptReason` |
 
