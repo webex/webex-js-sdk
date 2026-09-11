@@ -1,5 +1,6 @@
 import {assert} from '@webex/test-helper-chai';
 
+import config from '../../../src/config';
 import validateCert, {KMSError, validateCommonName, X509_SUBJECT_ALT_NAME_KEY} from '../../../src/kms-certificate-validation';
 
 const caroots = [
@@ -152,14 +153,29 @@ describe('internal-plugin-encryption', () => {
       return assert.isRejected(validate(jwt), KMSError);
     });
 
-    it('accepts self signed certificate if no CA roots.', () => {
+    it('rejects self-signed certificate when no CA roots are configured', () => {
       const jwt = {
         ...VALID_JWT,
         x5c: x5cSelfSigned,
         n: x5cSelfSignedModulus,
       };
 
-      return validateCert()(jwt).then((results) => assert.equal(results, jwt));
+      return assert.isRejected(validateCert([])(jwt), KMSError);
+    });
+
+    it('rejects self-signed certificate with default config caroots', () => {
+      const jwt = {
+        ...VALID_JWT,
+        x5c: x5cSelfSigned,
+        n: x5cSelfSignedModulus,
+      };
+
+      return assert.isRejected(validateCert(config.encryption.caroots)(jwt), KMSError);
+    });
+
+    it('ships default trusted CA roots in encryption config', () => {
+      assert.isArray(config.encryption.caroots);
+      assert.isAbove(config.encryption.caroots.length, 0);
     });
   });
 });
