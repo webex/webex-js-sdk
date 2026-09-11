@@ -3843,6 +3843,111 @@ describe('TaskManager', () => {
       expect(leftExcluded.wrapUpRequired).toBe(false);
     });
 
+    it('does not infer self-leave from a partial participant map when another participant is named', () => {
+      const remaining = stampWrapUp(CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE, {
+        ...taskDataMock,
+        participantId: 'other-agent-id',
+        agentsPendingWrapUp: [],
+        interaction: {
+          ...taskDataMock.interaction,
+          owner: 'test-agent-id',
+          participants: {
+            'other-agent-id': {id: 'other-agent-id', pType: 'Agent', hasLeft: true},
+          },
+        },
+      });
+
+      expect(remaining.wrapUpRequired).toBe(false);
+
+      class TimerTask extends Task {
+        public accept() {
+          return Promise.resolve({} as any);
+        }
+      }
+      const remainingTask = new TimerTask(
+        {},
+        {...taskDataMock, wrapUpRequired: false},
+        {channelType: 'voice', isEndTaskEnabled: true, isEndConsultEnabled: true},
+        {
+          wrapUpProps: {
+            autoWrapup: true,
+            autoWrapupInterval: 1000,
+            wrapUpReasonList: [{id: 'code-1', name: 'Default', isDefault: true, isSystem: false}],
+          },
+        },
+        'test-agent-id'
+      );
+      try {
+        remainingTask.updateTaskData(remaining);
+        expect(remainingTask.autoWrapup).toBeUndefined();
+      } finally {
+        remainingTask.cancelAutoWrapupTimer();
+      }
+    });
+
+    it('does not stamp wrapUpRequired when a consulted non-owner leaves with empty pending', () => {
+      const consulted = stampWrapUp(CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE, {
+        ...taskDataMock,
+        participantId: 'test-agent-id',
+        isConsulted: true,
+        agentsPendingWrapUp: [],
+        interaction: {
+          ...taskDataMock.interaction,
+          owner: 'other-agent-id',
+          participants: {},
+        },
+      });
+      const consultedFromTask = stampWrapUp(
+        CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+        {
+          ...taskDataMock,
+          participantId: 'test-agent-id',
+          agentsPendingWrapUp: [],
+          interaction: {
+            ...taskDataMock.interaction,
+            participants: {},
+          },
+        },
+        'test-agent-id',
+        {
+          data: {
+            isConsulted: true,
+            interaction: {owner: 'other-agent-id'},
+          },
+        }
+      );
+
+      expect(consulted.wrapUpRequired).toBe(false);
+      expect(consultedFromTask.wrapUpRequired).toBe(false);
+    });
+
+    it('stamps wrapUpRequired when EP-DN omits participantId and previous task included self', () => {
+      const epdn = stampWrapUp(
+        CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+        {
+          ...taskDataMock,
+          agentsPendingWrapUp: [],
+          interaction: {
+            ...taskDataMock.interaction,
+            owner: 'test-agent-id',
+            participants: {},
+          },
+        },
+        'test-agent-id',
+        {
+          data: {
+            interaction: {
+              participants: {
+                'test-agent-id': {id: 'test-agent-id', pType: 'Agent', hasLeft: false},
+              },
+            },
+          },
+        }
+      );
+
+      expect(epdn.wrapUpRequired).toBe(true);
+    });
+
     it('stamps wrapUpRequired on AGENT_CONFERENCE_TRANSFERRED for the initiator only', () => {
       const initiator = stampWrapUp(CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED, {
         ...taskDataMock,

@@ -203,19 +203,55 @@ export default class TaskManager extends EventEmitter {
   }
 
   /**
-   * True when this agent left on the current payload: participantId is self,
-   * or self is missing from participants (EP-DN). Does not use previous-task data.
+   * True when this agent left on the current payload.
+   * A named other participantId is never self-leave (even if the participants
+   * map is partial). Missing-map fallback is EP-DN only: participantId absent
+   * and self omitted now, with previous-task evidence when a prior map exists.
    */
-  private static didSelfLeaveConference(payload: WebSocketPayload, agentId?: string): boolean {
+  private static didSelfLeaveConference(
+    payload: WebSocketPayload,
+    agentId?: string,
+    task?: ITask
+  ): boolean {
     if (!agentId) {
       return false;
     }
     if (payload.participantId === agentId) {
       return true;
     }
-    const participants = payload.interaction?.participants;
+    if (payload.participantId && payload.participantId !== agentId) {
+      return false;
+    }
 
-    return Boolean(participants && !(agentId in participants));
+    const participants = payload.interaction?.participants;
+    if (!participants || agentId in participants) {
+      return false;
+    }
+
+    const previousParticipants = task?.data?.interaction?.participants;
+    if (previousParticipants && !(agentId in previousParticipants)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Consulted non-owner: Voice exitConference / shouldWrapUpForThisAgent stays
+   * false unless an explicit wrap-up signal includes this agent.
+   */
+  private static isConsultedNonOwner(
+    payload: WebSocketPayload,
+    agentId?: string,
+    task?: ITask
+  ): boolean {
+    const isConsulted = payload.isConsulted ?? task?.data?.isConsulted;
+    if (isConsulted !== true) {
+      return false;
+    }
+    const owner = payload.interaction?.owner ?? task?.data?.interaction?.owner;
+
+    return Boolean(agentId && owner && owner !== agentId);
   }
 
   private static hasNonemptyPendingWrapUp(payload: WebSocketPayload): boolean {
@@ -292,7 +328,7 @@ export default class TaskManager extends EventEmitter {
     }
 
     if (eventType === CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE) {
-      const left = TaskManager.didSelfLeaveConference(payload, agentId);
+      const left = TaskManager.didSelfLeaveConference(payload, agentId, task);
       if (!left) {
         return {
           ...payload,
@@ -306,7 +342,12 @@ export default class TaskManager extends EventEmitter {
         };
       }
 
-      return {...payload, wrapUpRequired: true};
+      return {
+        ...payload,
+        wrapUpRequired:
+          TaskManager.wrapUpRequiredFromExplicitSignals(payload, agentId) ||
+          !TaskManager.isConsultedNonOwner(payload, agentId, task),
+      };
     }
 
     // AGENT_CONFERENCE_TRANSFERRED — pending list wins; initiator only if empty/absent
