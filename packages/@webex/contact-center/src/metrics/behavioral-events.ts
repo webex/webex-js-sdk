@@ -313,6 +313,98 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     target: 'task_outdial',
     verb: 'fail',
   },
+  [METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_mute_webex_together',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_mute_webex_together',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_dtmf_webex_together',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_dtmf_webex_together',
+    verb: 'fail',
+  },
+
+  // Webex Together (wxApp)
+  [METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_accept_webex_together',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_accept_webex_together',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_reject_webex_together',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_reject_webex_together',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'webex_together_session_init',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'webex_together_session_init',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_SESSION_SKIPPED]: {
+    product,
+    agent: 'user',
+    target: 'webex_together_session_init',
+    verb: 'ignore',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'webex_together_usersub_publish',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'webex_together_usersub_publish',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'webex_together_mercury_subscribe',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'webex_together_mercury_subscribe',
+    verb: 'fail',
+  },
 
   // Conference Tasks
   [METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS]: {

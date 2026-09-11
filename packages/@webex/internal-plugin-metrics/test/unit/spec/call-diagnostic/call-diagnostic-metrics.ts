@@ -841,6 +841,60 @@ describe('internal-plugin-metrics', () => {
           userId: 'preLoginId',
         });
       });
+
+      it('should use the userId from credentials when no device userId is available', () => {
+        cd.device.userId = undefined;
+        webex.credentials.getUserId = sinon.stub().returns('credentials-user-id');
+
+        const res = cd.getIdentifiers({
+          correlationId: 'correlationId',
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          locusUrl: 'locus-url',
+          deviceId: 'deviceUrl',
+          orgId: 'orgId',
+          userId: 'credentials-user-id',
+        });
+      });
+
+      it('should prefer the device userId over the credentials userId', () => {
+        webex.credentials.getUserId = sinon.stub().returns('credentials-user-id');
+
+        const res = cd.getIdentifiers({
+          correlationId: 'correlationId',
+        });
+
+        assert.equal(res.userId, 'userId');
+        assert.notCalled(webex.credentials.getUserId);
+      });
+
+      it('should fall back to preLoginId when neither the device nor credentials provide a userId', () => {
+        cd.device.userId = undefined;
+        webex.credentials.getUserId = sinon.stub().throws(new Error('no user token available'));
+
+        const res = cd.getIdentifiers({
+          correlationId: 'correlationId',
+          preLoginId: 'preLoginId',
+        });
+
+        assert.equal(res.userId, 'preLoginId');
+      });
+    });
+
+    describe('#getUserIdFromCredentials', () => {
+      it('should return the userId from credentials', () => {
+        webex.credentials.getUserId = sinon.stub().returns('credentials-user-id');
+
+        assert.equal(cd.getUserIdFromCredentials(), 'credentials-user-id');
+      });
+
+      it('should return undefined when credentials cannot provide a userId', () => {
+        webex.credentials.getUserId = sinon.stub().throws(new Error('no user token available'));
+
+        assert.isUndefined(cd.getUserIdFromCredentials());
+      });
     });
 
     it('should prepare diagnostic event successfully', () => {
