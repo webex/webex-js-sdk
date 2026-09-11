@@ -57,6 +57,24 @@ import {
   WxAppAcceptReason,
 } from '../../wxAppDiagnosticLogging';
 
+const hasNonemptyPendingWrapUp = (taskData?: TaskData): boolean =>
+  Array.isArray(taskData?.agentsPendingWrapUp) && taskData.agentsPendingWrapUp.length > 0;
+
+/**
+ * Same consulted-non-owner rule as TaskManager leave stamp. Used only for the
+ * HTTP exitConference self-exit fallback (shouldWrapUpForThisAgent stays unchanged).
+ */
+const isConsultedNonOwner = (taskData: TaskData, fallback?: TaskData): boolean => {
+  const isConsulted = taskData.isConsulted ?? fallback?.isConsulted;
+  if (isConsulted !== true) {
+    return false;
+  }
+  const owner = taskData.interaction?.owner ?? fallback?.interaction?.owner;
+  const selfAgentId = taskData.agentId ?? fallback?.agentId;
+
+  return Boolean(selfAgentId && owner && owner !== selfAgentId);
+};
+
 export default class Voice extends Task implements IVoice {
   private static readonly WXAPP_MUTE_SYNC_RETRY_DELAY_MS = 50;
   private static readonly WXAPP_MUTE_SYNC_MAX_RETRIES = 3;
@@ -1433,10 +1451,15 @@ export default class Voice extends Task implements IVoice {
           uiControlConfig: this.uiControlConfig,
           taskData: this.data,
         }) as TaskContext;
-        const wrapUpRequired = shouldWrapUpForThisAgent(wrapUpContext, {
+        const mergedTaskData = {
           ...this.data,
           ...responseTaskData,
-        });
+        };
+        let wrapUpRequired = shouldWrapUpForThisAgent(wrapUpContext, mergedTaskData);
+        // Confirmed self-exit: empty/absent pending matches TaskManager leave stamp.
+        if (!wrapUpRequired && !hasNonemptyPendingWrapUp(mergedTaskData)) {
+          wrapUpRequired = !isConsultedNonOwner(mergedTaskData, this.data);
+        }
 
         this.stateMachineService.send({
           type: TaskEvent.EXIT_CONFERENCE_SUCCESS,

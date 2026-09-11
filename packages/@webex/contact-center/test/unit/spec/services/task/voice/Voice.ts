@@ -681,6 +681,34 @@ describe('Voice Task', () => {
 
       expect(successEvent?.taskData.wrapUpRequired).toBe(false);
     });
+
+    it('stamps wrapUpRequired true on owner-changed exit when isConsulted is omitted', async () => {
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        wrapUpRequired: false,
+        interaction: {
+          state: 'conference',
+          owner: 'agent-2',
+          mainInteractionId: 'int1',
+          interactionId: 'int1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            'agent-2': {id: 'agent-2', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-1');
+      primeConferencing(voice, taskData);
+      const sendSpy = jest.spyOn(voice.stateMachineService as any, 'send');
+
+      await voice.exitConference();
+
+      const successEvent = sendSpy.mock.calls
+        .map((call) => call[0])
+        .find((event) => event?.type === TaskEvent.EXIT_CONFERENCE_SUCCESS);
+
+      expect(successEvent?.taskData.wrapUpRequired).toBe(true);
+    });
   });
 
   describe('consultConference()', () => {
