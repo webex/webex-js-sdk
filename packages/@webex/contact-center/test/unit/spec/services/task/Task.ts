@@ -270,17 +270,21 @@ describe('Task (base class)', () => {
     );
 
     expect(enabled.autoWrapup).toBeUndefined();
-    enabled.updateTaskData(createTaskData({wrapUpRequired: true}) as TaskData);
-    expect(enabled.autoWrapup).toBeDefined();
+    try {
+      enabled.updateTaskData(createTaskData({wrapUpRequired: true}) as TaskData);
+      expect(enabled.autoWrapup).toBeDefined();
 
-    const disabled = new DummyTask(
-      dummyContact,
-      createTaskData({wrapUpRequired: false}) as TaskData,
-      {wrapUpProps: {...wrapUpProps, autoWrapup: false}},
-      'agent-1'
-    );
-    disabled.updateTaskData(createTaskData({wrapUpRequired: true}) as TaskData);
-    expect(disabled.autoWrapup).toBeUndefined();
+      const disabled = new DummyTask(
+        dummyContact,
+        createTaskData({wrapUpRequired: false}) as TaskData,
+        {wrapUpProps: {...wrapUpProps, autoWrapup: false}},
+        'agent-1'
+      );
+      disabled.updateTaskData(createTaskData({wrapUpRequired: true}) as TaskData);
+      expect(disabled.autoWrapup).toBeUndefined();
+    } finally {
+      enabled.cancelAutoWrapupTimer();
+    }
   });
 
   it('throws for unsupported voice operations in the base class', async () => {
