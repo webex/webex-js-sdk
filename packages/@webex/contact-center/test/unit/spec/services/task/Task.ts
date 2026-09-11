@@ -287,6 +287,37 @@ describe('Task (base class)', () => {
     }
   });
 
+  it('calls contact.wrapup when the auto wrap-up timer elapses after wrapUpRequired is stamped', async () => {
+    const wrapUpProps = {
+      autoWrapup: true,
+      autoWrapupInterval: 1000,
+      wrapUpReasonList: [{id: 'code-1', name: 'Default', isDefault: true, isSystem: false}],
+    };
+    const contact = {wrapup: jest.fn().mockResolvedValue({result: 'wrap'})};
+    const wrappingTask = new DummyTask(
+      contact,
+      createTaskData({wrapUpRequired: false}) as TaskData,
+      {wrapUpProps},
+      'agent-1'
+    );
+
+    jest.useFakeTimers();
+    try {
+      wrappingTask.updateTaskData(createTaskData({wrapUpRequired: true}) as TaskData);
+      expect(wrappingTask.autoWrapup).toBeDefined();
+
+      jest.advanceTimersByTime(1000);
+
+      expect(contact.wrapup).toHaveBeenCalledWith({
+        interactionId: 'interaction-1',
+        data: {wrapUpReason: 'Default', auxCodeId: 'code-1'},
+      });
+    } finally {
+      wrappingTask.cancelAutoWrapupTimer();
+      jest.useRealTimers();
+    }
+  });
+
   it('throws for unsupported voice operations in the base class', async () => {
     const fullData = createTaskData();
     const voiceTask = new DummyTask(dummyContact, fullData);
