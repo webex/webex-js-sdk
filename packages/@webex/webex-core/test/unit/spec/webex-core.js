@@ -264,6 +264,27 @@ describe('Webex', () => {
         ['PayloadTransformerInterceptor'],
       ],
       [
+        'does not include ConversationRetryAfterInterceptor by default',
+        {
+          interceptors: {
+            ConversationRetryAfterInterceptor: PayloadTransformerInterceptor.create,
+          },
+        },
+        0,
+        [],
+      ],
+      [
+        'includes ConversationRetryAfterInterceptor when enabled',
+        {
+          conversation: {enableRetryAfterInterceptor: true},
+          interceptors: {
+            ConversationRetryAfterInterceptor: PayloadTransformerInterceptor.create,
+          },
+        },
+        1,
+        ['PayloadTransformerInterceptor'],
+      ],
+      [
         'adds multiple interceptors',
         {
           interceptors: {
