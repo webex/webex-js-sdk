@@ -30,7 +30,7 @@ import TaskFactory from './TaskFactory';
 import AnswerCallOnWebexService from '../AnswerCallOnWebexService';
 import {getWebexCallingDeviceDetailsForAgent} from './WebexCallingUtils';
 import WebRTC from './voice/WebRTC';
-import {TaskEvent, type TaskEventPayload} from './state-machine';
+import {TaskEvent, TaskState, type TaskEventPayload} from './state-machine';
 import {MEDIA_TYPE_MAIN_CALL} from './state-machine/constants';
 import {normalizeTaskData} from './taskDataNormalizer';
 import {ApiAIAssistant} from '../ApiAiAssistant';
@@ -49,6 +49,14 @@ const WRAP_UP_STAMP_EVENTS = new Set<CC_EVENTS>([
   CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED,
   CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
   CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED,
+]);
+
+const PARTICIPANT_LEAVE_WRAP_STATES = new Set<TaskState>([
+  TaskState.HELD,
+  TaskState.RESUME_INITIATING,
+  TaskState.CONSULTING,
+  TaskState.CONSULT_INITIATING,
+  TaskState.CONFERENCING,
 ]);
 
 /** @internal */
@@ -328,6 +336,11 @@ export default class TaskManager extends EventEmitter {
     }
 
     if (eventType === CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE) {
+      const actorState = task?.stateMachineService?.getSnapshot?.()?.value;
+      if (actorState && !PARTICIPANT_LEAVE_WRAP_STATES.has(actorState as TaskState)) {
+        return payload;
+      }
+
       const left = TaskManager.didSelfLeaveConference(payload, agentId, task);
       if (!left) {
         return {

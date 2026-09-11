@@ -7,7 +7,7 @@ import TaskManager from '../../../../../src/services/task/TaskManager';
 import * as contact from '../../../../../src/services/task/contact';
 import Task from '../../../../../src/services/task/Task';
 import {TASK_EVENTS} from '../../../../../src/services/task/types';
-import {TaskEvent} from '../../../../../src/services/task/state-machine';
+import {TaskEvent, TaskState} from '../../../../../src/services/task/state-machine';
 import WebRTC from '../../../../../src/services/task/voice/WebRTC';
 import {Profile} from '../../../../../src/services/config/types';
 import WebCallingService from '../../../../../src/services/WebCallingService';
@@ -3946,6 +3946,78 @@ describe('TaskManager', () => {
       );
 
       expect(epdn.wrapUpRequired).toBe(true);
+    });
+
+    it('does not stamp wrapUpRequired on PARTICIPANT_LEFT_CONFERENCE when the actor ignores PARTICIPANT_LEAVE', () => {
+      const selfLeave = {
+        ...taskDataMock,
+        participantId: 'test-agent-id',
+        agentsPendingWrapUp: [],
+        interaction: {
+          ...taskDataMock.interaction,
+          owner: 'test-agent-id',
+          participants: {},
+        },
+      };
+      const snapshotTask = (state: TaskState) => ({
+        stateMachineService: {getSnapshot: () => ({value: state})},
+      });
+
+      const holdInitiating = stampWrapUp(
+        CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+        selfLeave,
+        'test-agent-id',
+        snapshotTask(TaskState.HOLD_INITIATING)
+      );
+      const connected = stampWrapUp(
+        CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+        selfLeave,
+        'test-agent-id',
+        snapshotTask(TaskState.CONNECTED)
+      );
+      const confInitiating = stampWrapUp(
+        CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+        selfLeave,
+        'test-agent-id',
+        snapshotTask(TaskState.CONF_INITIATING)
+      );
+      const conferencing = stampWrapUp(
+        CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+        selfLeave,
+        'test-agent-id',
+        snapshotTask(TaskState.CONFERENCING)
+      );
+
+      expect(holdInitiating).toBe(selfLeave);
+      expect(holdInitiating.wrapUpRequired).toBeUndefined();
+      expect(connected.wrapUpRequired).toBeUndefined();
+      expect(confInitiating.wrapUpRequired).toBeUndefined();
+      expect(conferencing.wrapUpRequired).toBe(true);
+
+      class TimerTask extends Task {
+        public accept() {
+          return Promise.resolve({} as any);
+        }
+      }
+      const holdTask = new TimerTask(
+        {},
+        {...taskDataMock, wrapUpRequired: false},
+        {channelType: 'voice', isEndTaskEnabled: true, isEndConsultEnabled: true},
+        {
+          wrapUpProps: {
+            autoWrapup: true,
+            autoWrapupInterval: 1000,
+            wrapUpReasonList: [{id: 'code-1', name: 'Default', isDefault: true, isSystem: false}],
+          },
+        },
+        'test-agent-id'
+      );
+      try {
+        holdTask.updateTaskData(holdInitiating);
+        expect(holdTask.autoWrapup).toBeUndefined();
+      } finally {
+        holdTask.cancelAutoWrapupTimer();
+      }
     });
 
     it('stamps wrapUpRequired on AGENT_CONFERENCE_TRANSFERRED for the initiator only', () => {
