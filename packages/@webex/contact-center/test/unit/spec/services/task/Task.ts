@@ -13,12 +13,18 @@ import LoggerProxy from '../../../../../src/logger-proxy';
 import {createTaskData} from './taskTestUtils';
 
 class DummyTask extends Task {
-  constructor(contact: any, data: TaskData) {
-    super(contact, data, {
-      channelType: 'voice',
-      isEndTaskEnabled: true,
-      isEndConsultEnabled: true,
-    });
+  constructor(contact: any, data: TaskData, wrapupData?: any, agentId?: string) {
+    super(
+      contact,
+      data,
+      {
+        channelType: 'voice',
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+      },
+      wrapupData,
+      agentId
+    );
   }
 
   public accept() {
@@ -248,6 +254,33 @@ describe('Task (base class)', () => {
     overrides.emitTaskWrapup({event: {type: TaskEvent.TASK_WRAPUP}});
 
     expect(emitSpy).not.toHaveBeenCalledWith(TASK_EVENTS.TASK_WRAPUP, task);
+  });
+
+  it('starts auto wrap-up only when wrapUpRequired is true and profile autoWrapup is enabled', () => {
+    const wrapUpProps = {
+      autoWrapup: true,
+      autoWrapupInterval: 25000,
+      wrapUpReasonList: [{id: 'code-1', name: 'Default', isDefault: true, isSystem: false}],
+    };
+    const enabled = new DummyTask(
+      dummyContact,
+      createTaskData({wrapUpRequired: false}) as TaskData,
+      {wrapUpProps},
+      'agent-1'
+    );
+
+    expect(enabled.autoWrapup).toBeUndefined();
+    enabled.updateTaskData(createTaskData({wrapUpRequired: true}) as TaskData);
+    expect(enabled.autoWrapup).toBeDefined();
+
+    const disabled = new DummyTask(
+      dummyContact,
+      createTaskData({wrapUpRequired: false}) as TaskData,
+      {wrapUpProps: {...wrapUpProps, autoWrapup: false}},
+      'agent-1'
+    );
+    disabled.updateTaskData(createTaskData({wrapUpRequired: true}) as TaskData);
+    expect(disabled.autoWrapup).toBeUndefined();
   });
 
   it('throws for unsupported voice operations in the base class', async () => {

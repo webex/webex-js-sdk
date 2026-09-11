@@ -1249,6 +1249,10 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
         // Only emit wrapup event on entry - task:end should only be emitted when COMPLETED
         entry: ['emitTaskWrapup'],
         on: {
+          // Late AgentWrapup after conference exit already entered WRAPPING_UP
+          [TaskEvent.TASK_WRAPUP]: {
+            actions: ['updateTaskData', 'emitTaskWrapup'],
+          },
           // AgentWrappedup Event
           [TaskEvent.WRAPUP_COMPLETE]: {
             target: TaskState.COMPLETED,

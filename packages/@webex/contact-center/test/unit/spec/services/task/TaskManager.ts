@@ -2617,6 +2617,22 @@ describe('TaskManager', () => {
     sendStateMachineEventSpy.mockRestore();
   });
 
+  it('stamps wrapUpRequired on AGENT_WRAPUP when the payload omits it', () => {
+    const payload = {
+      data: {
+        type: CC_EVENTS.AGENT_WRAPUP,
+        interactionId: taskId,
+      },
+    };
+    const task = taskManager.getTask(taskId);
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+    const stateMachineEvent = task.sendStateMachineEvent.mock.calls.at(-1)?.[0];
+
+    expect(stateMachineEvent?.type).toBe(TaskEvent.TASK_WRAPUP);
+    expect(stateMachineEvent?.taskData.wrapUpRequired).toBe(true);
+    expect(task.data.wrapUpRequired).toBe(true);
+  });
+
   it('should not attempt cleanup twice when AGENT_CONTACT_UNASSIGNED is followed by AGENT_WRAPUP', () => {
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
     const task = taskManager.getTask(taskId);
@@ -3714,6 +3730,86 @@ describe('TaskManager', () => {
         type: TaskEvent.ASSIGN,
         taskData: {...taskDataMock, type: CC_EVENTS.AGENT_CONTACT_ASSIGNED},
       });
+    });
+
+    it('stamps wrapUpRequired on AGENT_CONSULT_CONFERENCE_ENDED only from explicit signals', () => {
+      const wrapping = (TaskManager as any).mapEventToTaskStateMachineEvent(
+        CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED,
+        {
+          ...taskDataMock,
+          agentsPendingWrapUp: ['test-agent-id'],
+        },
+        'test-agent-id'
+      );
+      const remaining = (TaskManager as any).mapEventToTaskStateMachineEvent(
+        CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED,
+        {
+          ...taskDataMock,
+          owner: 'test-agent-id',
+          isConsulted: false,
+        },
+        'test-agent-id'
+      );
+
+      expect(wrapping.taskData.wrapUpRequired).toBe(true);
+      expect(remaining.taskData.wrapUpRequired).toBe(false);
+    });
+
+    it('stamps wrapUpRequired on PARTICIPANT_LEFT_CONFERENCE only when this agent left', () => {
+      const selfLeft = (TaskManager as any).mapEventToTaskStateMachineEvent(
+        CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+        {
+          ...taskDataMock,
+          participantId: 'test-agent-id',
+          interaction: {
+            ...taskDataMock.interaction,
+            owner: 'test-agent-id',
+            participants: {},
+          },
+        },
+        'test-agent-id'
+      );
+      const otherLeft = (TaskManager as any).mapEventToTaskStateMachineEvent(
+        CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+        {
+          ...taskDataMock,
+          participantId: 'other-agent-id',
+          interaction: {
+            ...taskDataMock.interaction,
+            owner: 'test-agent-id',
+            participants: {
+              'test-agent-id': {id: 'test-agent-id', pType: 'Agent', hasLeft: false},
+            },
+          },
+        },
+        'test-agent-id'
+      );
+
+      expect(selfLeft.taskData.wrapUpRequired).toBe(true);
+      expect(otherLeft.taskData.wrapUpRequired).toBe(false);
+    });
+
+    it('stamps wrapUpRequired on AGENT_CONFERENCE_TRANSFERRED for the initiator only', () => {
+      const initiator = (TaskManager as any).mapEventToTaskStateMachineEvent(
+        CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED,
+        {
+          ...taskDataMock,
+          consultingAgentId: 'test-agent-id',
+        },
+        'test-agent-id'
+      );
+      const observer = (TaskManager as any).mapEventToTaskStateMachineEvent(
+        CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED,
+        {
+          ...taskDataMock,
+          consultingAgentId: 'other-agent-id',
+          owner: 'test-agent-id',
+        },
+        'test-agent-id'
+      );
+
+      expect(initiator.taskData.wrapUpRequired).toBe(true);
+      expect(observer.taskData.wrapUpRequired).toBe(false);
     });
 
     it('sends mapped events to the task state machine service', () => {

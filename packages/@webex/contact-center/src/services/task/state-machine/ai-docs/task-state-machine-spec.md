@@ -1576,6 +1576,14 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 **Valid transitions from `WRAPPING_UP`**:
 
+- `TASK_WRAPUP` -> stay `WRAPPING_UP`
+
+- Guard: none
+
+- Actions: `updateTaskData`, `emitTaskWrapup`
+
+- Late AgentWrapup after conference exit already entered wrap-up; applies `wrapUpRequired` and re-emits wrapup
+
 - `WRAPUP_COMPLETE` -> `COMPLETED`
 
 - Guard: none

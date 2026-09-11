@@ -30,8 +30,9 @@ import TaskFactory from './TaskFactory';
 import AnswerCallOnWebexService from '../AnswerCallOnWebexService';
 import {getWebexCallingDeviceDetailsForAgent} from './WebexCallingUtils';
 import WebRTC from './voice/WebRTC';
-import {TaskEvent, type TaskEventPayload} from './state-machine';
+import {TaskEvent, type TaskEventPayload, type TaskContext} from './state-machine';
 import {MEDIA_TYPE_MAIN_CALL} from './state-machine/constants';
+import {guards, shouldWrapUpForThisAgent} from './state-machine/guards';
 import {normalizeTaskData} from './taskDataNormalizer';
 import {ApiAIAssistant} from '../ApiAiAssistant';
 
@@ -43,6 +44,13 @@ const MAIN_INTERACTION_CORRELATED_EVENTS = new Set<CC_EVENTS>([
 ]);
 
 const isCcEvent = (value: string): value is CC_EVENTS => CC_EVENT_SET.has(value as CC_EVENTS);
+
+const WRAP_UP_STAMP_EVENTS = new Set<CC_EVENTS>([
+  CC_EVENTS.AGENT_WRAPUP,
+  CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED,
+  CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+  CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED,
+]);
 
 /** @internal */
 export default class TaskManager extends EventEmitter {
@@ -193,6 +201,94 @@ export default class TaskManager extends EventEmitter {
 
   public unregisterIncomingCallEvent() {
     this.webCallingService.off(LINE_EVENTS.INCOMING_CALL, this.handleIncomingWebCall);
+  }
+
+  /**
+   * Minimal context so existing wrap-up / leave guards can run at ingress.
+   */
+  private static wrapUpGuardContext(payload: WebSocketPayload, agentId?: string): TaskContext {
+    return {
+      uiControlConfig: {agentId},
+      taskData: payload,
+    } as TaskContext;
+  }
+
+  /**
+   * Explicit wrap-up signals only (no owner / isConsulted fallback).
+   * Used for events that remaining conference agents also receive.
+   */
+  private static wrapUpRequiredFromExplicitSignals(
+    payload: WebSocketPayload,
+    agentId?: string
+  ): boolean {
+    if (payload.wrapUpRequired === true) {
+      return true;
+    }
+    if (!agentId) {
+      return false;
+    }
+    if (payload.agentsPendingWrapUp?.includes(agentId)) {
+      return true;
+    }
+
+    return payload.interaction?.participants?.[agentId]?.isWrapUp === true;
+  }
+
+  /**
+   * Stamp wrapUpRequired on conference-exit / wrap-up ingress so updateTaskData
+   * and the state machine see the same flag. Remaining agents stay false.
+   */
+  private static stampWrapUpRequiredForEvent(
+    eventType: CC_EVENTS,
+    payload: WebSocketPayload,
+    agentId?: string
+  ): WebSocketPayload {
+    if (!WRAP_UP_STAMP_EVENTS.has(eventType)) {
+      return payload;
+    }
+
+    if (eventType === CC_EVENTS.AGENT_WRAPUP) {
+      return {...payload, wrapUpRequired: true};
+    }
+
+    if (eventType === CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED) {
+      return {
+        ...payload,
+        wrapUpRequired: TaskManager.wrapUpRequiredFromExplicitSignals(payload, agentId),
+      };
+    }
+
+    if (eventType === CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE) {
+      const left = guards.didCurrentAgentLeaveMainInteraction({
+        context: TaskManager.wrapUpGuardContext(payload, agentId),
+        event: {
+          type: TaskEvent.PARTICIPANT_LEAVE,
+          taskData: payload,
+          participantId: payload.participantId,
+        },
+      });
+      if (!left) {
+        return {
+          ...payload,
+          wrapUpRequired: payload.wrapUpRequired === true,
+        };
+      }
+
+      return {
+        ...payload,
+        wrapUpRequired:
+          TaskManager.wrapUpRequiredFromExplicitSignals(payload, agentId) ||
+          shouldWrapUpForThisAgent(TaskManager.wrapUpGuardContext(payload, agentId), payload),
+      };
+    }
+
+    // AGENT_CONFERENCE_TRANSFERRED — initiator / explicit wrap-up only
+    return {
+      ...payload,
+      wrapUpRequired:
+        TaskManager.wrapUpRequiredFromExplicitSignals(payload, agentId) ||
+        payload.consultingAgentId === agentId,
+    };
   }
 
   /**
@@ -416,17 +512,23 @@ export default class TaskManager extends EventEmitter {
         return {type: TaskEvent.CONFERENCE_FAILED, reason: payload.reason, taskData: payload};
 
       case CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED:
-        return {type: TaskEvent.CONFERENCE_END, taskData: payload};
+        return {
+          type: TaskEvent.CONFERENCE_END,
+          taskData: TaskManager.stampWrapUpRequiredForEvent(ccEvent, payload, agentId),
+        };
 
       case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE:
         return {
           type: TaskEvent.PARTICIPANT_LEAVE,
-          taskData: payload,
+          taskData: TaskManager.stampWrapUpRequiredForEvent(ccEvent, payload, agentId),
           participantId: payload?.participantId,
         };
 
       case CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED:
-        return {type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS, taskData: payload};
+        return {
+          type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS,
+          taskData: TaskManager.stampWrapUpRequiredForEvent(ccEvent, payload, agentId),
+        };
 
       default:
         // Not all events need state machine mapping
@@ -643,6 +745,14 @@ export default class TaskManager extends EventEmitter {
 
     if (task && eventType === CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE) {
       adjustedPayload = TaskManager.preserveConfirmedOwner(task, adjustedPayload);
+    }
+
+    if (WRAP_UP_STAMP_EVENTS.has(eventType)) {
+      adjustedPayload = TaskManager.stampWrapUpRequiredForEvent(
+        eventType,
+        adjustedPayload,
+        this.agentId
+      );
     }
 
     const stateMachineEvent = TaskManager.mapEventToTaskStateMachineEvent(

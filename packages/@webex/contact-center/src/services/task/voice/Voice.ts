@@ -28,7 +28,8 @@ import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
-import {TaskState, TaskEvent, TaskActionArgs} from '../state-machine';
+import {TaskState, TaskEvent, TaskActionArgs, type TaskContext} from '../state-machine';
+import {shouldWrapUpForThisAgent} from '../state-machine/guards';
 import {WrapupData} from '../../config/types';
 import {getConsultMediaResourceId, getIsConferenceInProgress} from '../TaskUtils';
 import AnswerCallOnWebexService from '../../AnswerCallOnWebexService';
@@ -1426,9 +1427,23 @@ export default class Voice extends Task implements IVoice {
 
       // Send success event to transition state
       if (this.stateMachineService) {
+        const responseTaskData = (response?.data ?? {}) as TaskData;
+        const snapshot = this.stateMachineService.getSnapshot();
+        const wrapUpContext = (snapshot?.context ?? {
+          uiControlConfig: this.uiControlConfig,
+          taskData: this.data,
+        }) as TaskContext;
+        const wrapUpRequired = shouldWrapUpForThisAgent(wrapUpContext, {
+          ...this.data,
+          ...responseTaskData,
+        });
+
         this.stateMachineService.send({
           type: TaskEvent.EXIT_CONFERENCE_SUCCESS,
-          taskData: response.data,
+          taskData: {
+            ...responseTaskData,
+            wrapUpRequired,
+          },
         });
       }
 
