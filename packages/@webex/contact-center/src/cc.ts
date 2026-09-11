@@ -28,6 +28,7 @@ import {
   ConfigFlags,
   WellnessBreakEvent,
   WellnessBreakNotificationAction,
+  WELLNESS_BREAK_NOTIFICATION_ACTIONS,
   AIAssistantRTDStatusEvent,
 } from './types';
 import {
@@ -87,7 +88,7 @@ import {Failure} from './services/core/GlobalTypes';
 import {EntryPoint} from './services/EntryPoint';
 import {AddressBook} from './services/AddressBook';
 import {Queue} from './services/Queue';
-import {ApiAIAssistant} from './services/ApiAiAssistant';
+import {ApiAIAssistant, createInternalApiAIAssistant} from './services/ApiAiAssistant';
 import {UserPreference} from './services/UserPreference';
 import type {
   EntryPointListResponse,
@@ -97,11 +98,9 @@ import type {
 } from './types';
 
 const WELLNESS_BREAK_HANDLER = 'Wellness_Break_Handler';
-const WELLNESS_NOTIFICATION_ACTIONS = new Set<WellnessBreakNotificationAction>([
-  'PROVIDE_WELLNESS_BREAK',
-  'SUGGEST_WELLNESS_BREAK',
-  'WELLNESS_BREAK_NOT_ALLOWED',
-]);
+const WELLNESS_NOTIFICATION_ACTIONS = new Set<WellnessBreakNotificationAction>(
+  Object.values(WELLNESS_BREAK_NOTIFICATION_ACTIONS)
+);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -340,11 +339,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private updateWellnessSession(agentSessionId?: string): void {
     this.currentAgentSessionId = agentSessionId;
-    this.apiAIAssistant.setWellnessContext({
-      isWellnessBreakEnabled: this.agentConfig?.isWellnessBreakEnabled === true,
-      agentId: this.agentConfig?.agentId,
-      agentSessionId,
-    });
   }
 
   /**
@@ -491,7 +485,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.answerCallOnWebexService = new AnswerCallOnWebexService(this.$webex);
       this.webexCrossClientService = new WebexCrossClientService(this.$webex);
       this.wxAppTelephonyMercurySync = new WxAppTelephonyMercurySync(this.$webex);
-      this.apiAIAssistant = new ApiAIAssistant(this.$webex);
+      this.apiAIAssistant = createInternalApiAIAssistant(this.$webex, () => ({
+        isWellnessBreakEnabled: this.agentConfig?.isWellnessBreakEnabled === true,
+        agentId: this.agentConfig?.agentId,
+        agentSessionId: this.currentAgentSessionId,
+      }));
       this.metricsManager = MetricsManager.getInstance({webex: this.$webex});
       this.taskManager = TaskManager.getTaskManager(
         this.apiAIAssistant,

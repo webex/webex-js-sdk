@@ -954,16 +954,28 @@ export type RealTimeAssistanceUserActionParams = {
  * Wellness notification actions delivered by the AI Assistant RTD service.
  * @public
  */
-export type WellnessBreakNotificationAction =
-  | 'PROVIDE_WELLNESS_BREAK'
-  | 'SUGGEST_WELLNESS_BREAK'
-  | 'WELLNESS_BREAK_NOT_ALLOWED';
+export const WELLNESS_BREAK_NOTIFICATION_ACTIONS = {
+  PROVIDE_WELLNESS_BREAK: 'PROVIDE_WELLNESS_BREAK',
+  SUGGEST_WELLNESS_BREAK: 'SUGGEST_WELLNESS_BREAK',
+  WELLNESS_BREAK_NOT_ALLOWED: 'WELLNESS_BREAK_NOT_ALLOWED',
+} as const;
+
+/** Union of supported wellness notification actions. @public */
+export type WellnessBreakNotificationAction = Enum<typeof WELLNESS_BREAK_NOTIFICATION_ACTIONS>;
 
 /**
  * Agent actions accepted by the wellness action API.
  * @public
  */
-export type WellnessBreakUserAction = 'REQUESTED' | 'ACCEPTED' | 'REJECTED' | 'NO_RESPONSE';
+export const WELLNESS_BREAK_USER_ACTIONS = {
+  REQUESTED: 'REQUESTED',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  NO_RESPONSE: 'NO_RESPONSE',
+} as const;
+
+/** Union of supported wellness action API values. @public */
+export type WellnessBreakUserAction = Enum<typeof WELLNESS_BREAK_USER_ACTIONS>;
 
 /** AI Assistant RTD connection states exposed to consumers. @public */
 export type AIAssistantRTDConnectionState = 'connected' | 'disconnected';
@@ -1012,7 +1024,7 @@ export type AIAssistantRTDStatusListener = (event: AIAssistantRTDStatusEvent) =>
  */
 export interface RespondToWellnessBreakParams {
   /** Agent response; REQUESTED is available only through requestWellnessBreak */
-  action: Exclude<WellnessBreakUserAction, 'REQUESTED'>;
+  action: Exclude<WellnessBreakUserAction, typeof WELLNESS_BREAK_USER_ACTIONS.REQUESTED>;
 }
 
 /**

@@ -1,8 +1,15 @@
-import ApiAIAssistant from '../../../../src/services/ApiAiAssistant';
+import ApiAIAssistant, {
+  createInternalApiAIAssistant,
+} from '../../../../src/services/ApiAiAssistant';
 import MetricsManager from '../../../../src/metrics/MetricsManager';
 import LoggerProxy from '../../../../src/logger-proxy';
 import WebexRequest from '../../../../src/services/core/WebexRequest';
-import {HTTP_METHODS, RealTimeAssistanceUserActionId, WebexSDK} from '../../../../src/types';
+import {
+  HTTP_METHODS,
+  RealTimeAssistanceUserActionId,
+  WELLNESS_BREAK_USER_ACTIONS,
+  WebexSDK,
+} from '../../../../src/types';
 
 jest.mock('../../../../src/metrics/MetricsManager');
 jest.mock('../../../../src/logger-proxy');
@@ -11,6 +18,11 @@ describe('ApiAIAssistant', () => {
   let apiAIAssistant: ApiAIAssistant;
   let mockWebex: WebexSDK;
   let mockMetricsManager: jest.Mocked<MetricsManager>;
+  let wellnessContext: {
+    isWellnessBreakEnabled: boolean;
+    agentId?: string;
+    agentSessionId?: string;
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -43,7 +55,8 @@ describe('ApiAIAssistant', () => {
     } as unknown as jest.Mocked<MetricsManager>;
     (MetricsManager.getInstance as jest.Mock).mockReturnValue(mockMetricsManager);
 
-    apiAIAssistant = new ApiAIAssistant(mockWebex);
+    wellnessContext = {isWellnessBreakEnabled: false};
+    apiAIAssistant = createInternalApiAIAssistant(mockWebex, () => wellnessContext);
   });
 
   it('should send transcript start event successfully', async () => {
@@ -273,11 +286,15 @@ describe('ApiAIAssistant', () => {
 
   describe('Agent Wellness Break actions', () => {
     beforeEach(() => {
-      apiAIAssistant.setWellnessContext({
+      wellnessContext = {
         isWellnessBreakEnabled: true,
         agentId: 'test-agent-id',
         agentSessionId: 'session-1',
-      });
+      };
+    });
+
+    it('does not expose wellness context mutation on the public assistant instance', () => {
+      expect(apiAIAssistant).not.toHaveProperty('setWellnessContext');
     });
 
     it('sends the exact REQUESTED body and resolves only for HTTP 202', async () => {
@@ -306,7 +323,11 @@ describe('ApiAIAssistant', () => {
       });
     });
 
-    it.each(['ACCEPTED', 'REJECTED', 'NO_RESPONSE'] as const)(
+    it.each([
+      WELLNESS_BREAK_USER_ACTIONS.ACCEPTED,
+      WELLNESS_BREAK_USER_ACTIONS.REJECTED,
+      WELLNESS_BREAK_USER_ACTIONS.NO_RESPONSE,
+    ] as const)(
       'sends the %s offer action',
       async (action) => {
         (mockWebex.request as jest.Mock).mockResolvedValue({statusCode: 202});
@@ -320,26 +341,26 @@ describe('ApiAIAssistant', () => {
     );
 
     it('rejects disabled or incomplete internal session context before HTTP', async () => {
-      apiAIAssistant.setWellnessContext({
+      wellnessContext = {
         isWellnessBreakEnabled: false,
         agentId: 'test-agent-id',
         agentSessionId: 'session-1',
-      });
+      };
       await expect(apiAIAssistant.requestWellnessBreak()).rejects.toThrow(
         'WELLNESS_BREAK_NOT_ENABLED'
       );
 
-      apiAIAssistant.setWellnessContext({
+      wellnessContext = {
         isWellnessBreakEnabled: true,
-      });
+      };
       await expect(apiAIAssistant.requestWellnessBreak()).rejects.toThrow(
         'WELLNESS_BREAK_AGENT_ID_REQUIRED'
       );
 
-      apiAIAssistant.setWellnessContext({
+      wellnessContext = {
         isWellnessBreakEnabled: true,
         agentId: 'test-agent-id',
-      });
+      };
       await expect(apiAIAssistant.requestWellnessBreak()).rejects.toThrow(
         'WELLNESS_BREAK_AGENT_SESSION_REQUIRED'
       );

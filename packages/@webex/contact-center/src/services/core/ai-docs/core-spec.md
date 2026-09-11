@@ -254,7 +254,7 @@ connectionService.on('connectionLost', (details: ConnectionLostDetails) => {
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
 | CORE-R-001 | WebexRequest must delegate service/resource/method/body options to the authenticated host request API and return or reject with the host result unchanged. | All Contact Center REST clients share host-owned authentication and service routing without duplicating credential logic. | `src/services/core/WebexRequest.ts` | `test/unit/spec/services/core/WebexRequest.ts` | Authorization-header masking belongs to `AqmReqs` HTTP-failure handling, not `WebexRequest.request`. | PRESENT |
-| CORE-R-002 | `initWebSocket` requires `{body: SubscribeRequest, resource: string}` and resolves only after WebSocket welcome or rejects on register/connect failure. | Subscription resource selection and readiness are required for a valid realtime session. | `src/services/core/websocket/WebSocketManager.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| CORE-R-002 | `initWebSocket` requires `{body: SubscribeRequest, resource: string}` and resolves only after WebSocket Welcome. It rejects on register/connect failure or socket closure before Welcome. `close()` is safe before a browser socket exists and cancels the active initialization generation so a late register response cannot connect. | Subscription resource selection and an explicit readiness/cancellation boundary are required for a valid realtime session without orphaned sockets or permanently pending initialization promises. | `src/services/core/websocket/WebSocketManager.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None. | PRESENT |
 | CORE-R-003 | AqmReqs must be constructed with the primary WebSocket manager and settle generated request promises from `notifSuccess`/`notifFail` binds or `TIMEOUT_REQ`. | HTTP acknowledgement alone does not represent backend operation completion. | `src/services/core/aqm-reqs.ts` | `test/unit/spec/services/core/aqm-reqs.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CORE-R-004 | ConnectionService must emit transport-state details and retry `initWebSocket({body, resource})`; ContactCenter owns relogin policy. | Separating transport detection from agent recovery prevents Core from mutating package-level session state. | `src/services/core/websocket/connection-service.ts` | `test/unit/spec/services/core/websocket/connection-service.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CORE-R-005 | The keepalive worker must use the configured 4-second interval and 16-second close-socket timeout; AQM defaults to 20 seconds unless disabled/overridden. | Accurate timing is required for predictable recovery and request failure behavior. | `src/services/core/constants.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
@@ -265,7 +265,7 @@ connectionService.on('connectionLost', (details: ConnectionLostDetails) => {
 Core separates four responsibilities:
 
 1. `WebexRequest` wraps the authenticated host request API and service-catalog routing.
-2. `WebSocketManager` registers a subscription using both `body` and `resource`, connects the socket, owns the keepalive worker, and emits raw messages/socket lifecycle events.
+2. `WebSocketManager` registers a subscription using both `body` and `resource`, connects the socket, owns the keepalive worker, emits raw messages/socket lifecycle events, and provides generation-safe cancellation before or during connection.
 3. `AqmReqs` registers bind matchers on the primary WebSocket, sends HTTP through WebexRequest, and settles requests only from matching notifications, HTTP failure, or timeout.
 4. `ConnectionService` observes message/socket liveness, emits connection-state details, and retries socket initialization. ContactCenter listens to those details and owns optional silent relogin.
 
@@ -369,7 +369,7 @@ sequenceDiagram
   alt welcome
     WS-->>WSM: Welcome event
     WSM-->>Caller: WelcomeResponse
-  else register/connect failure
+  else register/connect failure, cancellation, or close before Welcome
     WSM-->>Caller: throw error
   end
 ```
@@ -439,7 +439,7 @@ classDiagram
 
 ## Use Cases
 - **UC-1 Authenticated REST:** pass the service key and request options to the host and return its response or rejection unchanged. Evidence: `src/services/core/WebexRequest.ts`, `test/unit/spec/services/core/WebexRequest.ts`.
-- **UC-2 Subscribe/connect:** register with `{body, resource}`, connect, and wait for welcome. Evidence: `src/services/core/websocket/WebSocketManager.ts`, `test/unit/spec/services/core/websocket/WebSocketManager.ts`.
+- **UC-2 Subscribe/connect:** register with `{body, resource}`, connect, and wait for Welcome; cancellation is safe before socket creation, and a close before Welcome rejects initialization. Evidence: `src/services/core/websocket/WebSocketManager.ts`, `test/unit/spec/services/core/websocket/WebSocketManager.ts`.
 - **UC-3 AQM correlation:** send HTTP but settle on matching notification/failure/timeout. Evidence: `src/services/core/aqm-reqs.ts`, `test/unit/spec/services/core/aqm-reqs.ts`.
 - **UC-4 Reconnect:** retry socket initialization and emit state for ContactCenter-owned recovery. Evidence: `src/services/core/websocket/connection-service.ts`, `test/unit/spec/services/core/websocket/connection-service.ts`.
 
@@ -449,6 +449,7 @@ WebSocketManager owns socket/welcome/worker state. AqmReqs owns pending success/
 ## Business Rules & Invariants
 - Core must preserve its typed public/event contracts and must not invent backend states or responses. Enforced in `src/services/core/WebexRequest.ts`.
 - Rollout applicability is N/A for Core: keepalive, timeout, and reconnect constants control behavior, while Services constructs Core without a feature gate.
+- `WebSocketManager.close()` must invalidate the active initialization generation even when subscription registration is still pending or no browser socket exists; any pending Welcome promise must reject exactly once.
 
 ## Concurrency & Reactive Flow
 The primary WebSocket fans messages to independent AqmReqs, ContactCenter, TaskManager, and ConnectionService listeners. AqmReqs clears all correlated bind entries on settlement. The keepalive worker posts status every 4000 ms and may request closure after 16000 ms offline; reconnect attempts use their separate interval. Listener registration/removal must preserve identity.
@@ -459,7 +460,7 @@ stateDiagram-v2
   [*] --> SocketClosed
   SocketClosed --> Connecting: initWebSocket(body, resource)
   Connecting --> Connected: welcome
-  Connecting --> SocketClosed: register/connect error
+  Connecting --> SocketClosed: register/connect error, cancellation, or close before Welcome
   Connected --> ConnectionSuspect: liveness timer expires
   ConnectionSuspect --> Reconnecting: socket close / retry
   Reconnecting --> Connected: reconnect + message
@@ -468,7 +469,7 @@ stateDiagram-v2
 ```
 
 ## Protocol / Wire Format
-`WebSocketManager.initWebSocket` accepts `{body: SubscribeRequest, resource: string}`. Subscription uses the host Webex request API; AqmReqs operational HTTP uses the WebexRequest wrapper. AQM request configs carry `host`, `url`, optional `method`/`data`, `notifSuccess.bind`, optional `notifFail.bind`, optional cancel bind, and optional timeout. HTTP acknowledgement never substitutes for the matching WebSocket operation result.
+`WebSocketManager.initWebSocket` accepts `{body: SubscribeRequest, resource: string}`. Subscription uses the host Webex request API. Initialization generations prevent a late subscription response from creating a socket after cancellation, and closure before Welcome rejects the pending initialization. AqmReqs operational HTTP uses the WebexRequest wrapper. AQM request configs carry `host`, `url`, optional `method`/`data`, `notifSuccess.bind`, optional `notifFail.bind`, optional cancel bind, and optional timeout. HTTP acknowledgement never substitutes for the matching WebSocket operation result.
 
 ## Error Handling & Failure Modes
 | Condition | Signal (error/code/result) | Caller recovery |

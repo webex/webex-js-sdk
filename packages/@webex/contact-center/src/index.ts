@@ -30,6 +30,9 @@ export {default as AddressBook} from './services/AddressBook';
 export {default as ApiAIAssistant} from './services/ApiAiAssistant';
 export {default as UserPreference} from './services/UserPreference';
 
+/** Agent Wellness Break notification and action wire values. */
+export {WELLNESS_BREAK_NOTIFICATION_ACTIONS, WELLNESS_BREAK_USER_ACTIONS} from './types';
+
 /** EntryPoint API types */
 export type {
   EntryPointRecord,

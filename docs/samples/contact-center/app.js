@@ -19,7 +19,11 @@ let campaignCountdownInterval = null; // Campaign preview countdown timer
 let campaignPreviewAutoAction = null; // Auto-action on timeout: ACCEPT, SKIP, REMOVE
 let outdialANIId; // Store outdial ANI ID from agent profile
 const taskCreationTimes = new Map(); // Track when tasks first appear (taskId -> timestamp)
-const CC_AGENT_EVENTS = Webex.CC_AGENT_EVENTS;
+const {
+  CC_AGENT_EVENTS,
+  WELLNESS_BREAK_NOTIFICATION_ACTIONS,
+  WELLNESS_BREAK_USER_ACTIONS,
+} = Webex;
 const {
   areAllTasksSafe,
   createRecoveryMarker,
@@ -3515,7 +3519,7 @@ function startWellnessOfferTimer(sessionId) {
       wellnessState.lifecycle === 'OfferPending' &&
       wellnessState.agentSessionId === sessionId
     ) {
-      void respondToWellnessOffer('NO_RESPONSE');
+      void respondToWellnessOffer(WELLNESS_BREAK_USER_ACTIONS.NO_RESPONSE);
     }
   }, WELLNESS_OFFER_TIMEOUT_MS);
 }
@@ -3523,7 +3527,7 @@ function startWellnessOfferTimer(sessionId) {
 function handleWellnessBreak(event) {
   wellnessEventOutputElm.textContent = JSON.stringify(event, null, 2);
 
-  if (event.actionEvent === 'PROVIDE_WELLNESS_BREAK') {
+  if (event.actionEvent === WELLNESS_BREAK_NOTIFICATION_ACTIONS.PROVIDE_WELLNESS_BREAK) {
     if (wellnessState.pendingManualRequest) {
       clearWellnessManualRequest();
       clearWellnessOffer();
@@ -3538,15 +3542,18 @@ function handleWellnessBreak(event) {
     setWellnessMessage(
       `${WELLNESS_COPY.offerTitle}. ${event.actionText || WELLNESS_COPY.offer}`
     );
-  } else if (event.actionEvent === 'SUGGEST_WELLNESS_BREAK') {
+  } else if (event.actionEvent === WELLNESS_BREAK_NOTIFICATION_ACTIONS.SUGGEST_WELLNESS_BREAK) {
     clearWellnessOffer();
     clearWellnessManualRequest();
     wellnessState.canRequest = true;
     wellnessState.lifecycle = isWellnessReady() ? 'Ready' : 'Unavailable';
     setWellnessMessage(event.actionText || 'You can request a wellness break.');
-  } else if (event.actionEvent === 'WELLNESS_BREAK_NOT_ALLOWED') {
+  } else if (
+    event.actionEvent === WELLNESS_BREAK_NOTIFICATION_ACTIONS.WELLNESS_BREAK_NOT_ALLOWED
+  ) {
     clearWellnessOffer();
     clearWellnessManualRequest();
+    wellnessState.canRequest = false;
     wellnessState.lifecycle = isWellnessReady() ? 'Ready' : 'Unavailable';
     setWellnessMessage(event.actionText || WELLNESS_COPY.requestNotAllowed);
   }
@@ -3740,7 +3747,9 @@ async function enterWellnessBreak(sendAccepted) {
   wellnessState.stateConfirmed = true;
   if (sendAccepted) {
     try {
-      await webex.cc.apiAIAssistant.respondToWellnessBreak({action: 'ACCEPTED'});
+      await webex.cc.apiAIAssistant.respondToWellnessBreak({
+        action: WELLNESS_BREAK_USER_ACTIONS.ACCEPTED,
+      });
     } catch (error) {
       if (wellnessState.operationGeneration !== operationGeneration) return;
       wellnessState.lifecycle = 'ActionDeliveryFailed';
@@ -3764,7 +3773,7 @@ async function enterWellnessBreak(sendAccepted) {
 async function respondToWellnessOffer(action) {
   if (!isWellnessReady() || wellnessState.lifecycle !== 'OfferPending') return;
 
-  if (action === 'ACCEPTED') {
+  if (action === WELLNESS_BREAK_USER_ACTIONS.ACCEPTED) {
     await enterWellnessBreak(true);
     return;
   }
@@ -3775,7 +3784,7 @@ async function respondToWellnessOffer(action) {
   try {
     await webex.cc.apiAIAssistant.respondToWellnessBreak({action});
     setWellnessMessage(
-      action === 'REJECTED'
+      action === WELLNESS_BREAK_USER_ACTIONS.REJECTED
         ? WELLNESS_COPY.declined
         : `${WELLNESS_COPY.noResponse} NO_RESPONSE was accepted with HTTP 202.`
     );
@@ -3981,9 +3990,15 @@ function detachWellnessSdkListeners() {
 }
 
 wellnessRequestBtn.addEventListener('click', requestWellnessBreak);
-wellnessAcceptBtn.addEventListener('click', () => respondToWellnessOffer('ACCEPTED'));
-wellnessRejectBtn.addEventListener('click', () => respondToWellnessOffer('REJECTED'));
-wellnessNoResponseBtn.addEventListener('click', () => respondToWellnessOffer('NO_RESPONSE'));
+wellnessAcceptBtn.addEventListener('click', () =>
+  respondToWellnessOffer(WELLNESS_BREAK_USER_ACTIONS.ACCEPTED)
+);
+wellnessRejectBtn.addEventListener('click', () =>
+  respondToWellnessOffer(WELLNESS_BREAK_USER_ACTIONS.REJECTED)
+);
+wellnessNoResponseBtn.addEventListener('click', () =>
+  respondToWellnessOffer(WELLNESS_BREAK_USER_ACTIONS.NO_RESPONSE)
+);
 wellnessRestoreBtn.addEventListener('click', restoreWellnessState);
 renderWellnessState();
 

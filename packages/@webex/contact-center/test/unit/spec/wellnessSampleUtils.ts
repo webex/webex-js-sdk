@@ -137,6 +137,21 @@ describe('Contact Center wellness sample utilities', () => {
         "We couldn't start your well-being break due to a system issue.",
       ].forEach((copy) => expect(sampleSource).toContain(copy));
     });
+
+    it('revokes manual request eligibility after a not-allowed decision', () => {
+      const appSource = readFileSync(
+        resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
+        'utf8'
+      );
+      const branchStart = appSource.indexOf(
+        'WELLNESS_BREAK_NOTIFICATION_ACTIONS.WELLNESS_BREAK_NOT_ALLOWED'
+      );
+      const branchEnd = appSource.indexOf('renderWellnessState();', branchStart);
+      const notAllowedBranch = appSource.slice(branchStart, branchEnd);
+
+      expect(branchStart).toBeGreaterThan(-1);
+      expect(notAllowedBranch).toContain('wellnessState.canRequest = false;');
+    });
   });
 
   describe('browser recovery marker', () => {

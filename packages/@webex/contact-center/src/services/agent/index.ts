@@ -150,15 +150,22 @@ const createRoutingAgent = (routing: AqmReqs) => {
       method: HTTP_METHODS.PUT,
       notifSuccess: {
         bind: {
-          type: ['AgentRequestEvent', 'RoutingMessage', 'AgentChannelStateChange'],
+          type: [
+            Agent.INTERNAL_AGENT_STATE_CONTROL_MESSAGE_TYPES.AGENT_REQUEST_EVENT,
+            Agent.INTERNAL_AGENT_STATE_CONTROL_MESSAGE_TYPES.ROUTING_MESSAGE,
+            Agent.INTERNAL_AGENT_STATE_CONTROL_MESSAGE_TYPES.AGENT_CHANNEL_STATE_CHANGE,
+          ],
           data: {type: INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_STATE_CHANGED},
         },
         msg: {} as Agent.AgentChannelStateChanged,
       },
       notifFail: {
         bind: {
-          type: 'AgentChannelStateChange',
-          data: {type: 'AgentChannelStateChangeFailed'},
+          type: Agent.INTERNAL_AGENT_STATE_CONTROL_MESSAGE_TYPES.AGENT_CHANNEL_STATE_CHANGE,
+          data: {
+            type: Agent.INTERNAL_AGENT_STATE_CONTROL_MESSAGE_TYPES
+              .AGENT_CHANNEL_STATE_CHANGE_FAILED,
+          },
         },
         errId: 'Service.aqm.agent.stateChange',
       },

@@ -1,5 +1,13 @@
 import {Msg} from '../core/GlobalTypes';
 
+/** Agent State Control request/notification envelope values. @internal */
+export const INTERNAL_AGENT_STATE_CONTROL_MESSAGE_TYPES = {
+  AGENT_REQUEST_EVENT: 'AgentRequestEvent',
+  ROUTING_MESSAGE: 'RoutingMessage',
+  AGENT_CHANNEL_STATE_CHANGE: 'AgentChannelStateChange',
+  AGENT_CHANNEL_STATE_CHANGE_FAILED: 'AgentChannelStateChangeFailed',
+} as const;
+
 /**
  * Response type received when an agent successfully logs out from the system
  * @public

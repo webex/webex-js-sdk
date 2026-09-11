@@ -51,7 +51,7 @@
       "canonical_spec": "ai-docs/contact-center-spec.md",
       "contracts": {
         "provides": [
-          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task with ordered action-specific consult/transfer destination controls, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, existing getQueues/getEntryPoints methods with consult/transfer defaults, full Queue records, mapped EntryPoint records with optional numbers, user-preference and preview-campaign contracts, and Agent Wellness Break effective-profile, action, system-code, and RTD event/status APIs; Agent State Control V2 remains internal",
+          "Published @webex/contact-center package; ContactCenter WebexPlugin; public SDK methods, events, types, Task with ordered action-specific consult/transfer destination controls, AddressBook, ApiAIAssistant, UserPreference, cc.userPreference, existing getQueues/getEntryPoints methods with consult/transfer defaults, full Queue records, mapped EntryPoint records with optional numbers, user-preference and preview-campaign contracts, and Agent Wellness Break effective-profile, exported action constants/types, internally sourced action context, system-code, and RTD event/status APIs; Agent State Control V2 remains internal",
           "WXCC-6026 wxApp Better Together: enableWxBetterTogether init config, isWxBetterTogetherEnabled read API, unified task telephony (task.accept/decline/toggleMute/transmitDtmf), TASK_WXAPP_MUTE_STATE_UPDATED event, optional main.keypad uiControl, multi-login supported; runtime toggle deferred to Phase 2 (private)"
         ],
         "requires": [
@@ -138,7 +138,7 @@
       "canonical_spec": "src/services/ai-docs/services-spec.md",
       "contracts": {
         "provides": [
-          "Services composition root; agent/config/contact/dialer factories; AddressBook, EntryPoint, Queue, UserPreference, ApiAiAssistant, and WebCalling integration; existing Queue/EntryPoint list methods with SDK-owned defaults and compatible existing-parameter overrides; Queue returns full records and EntryPoint maps profile-scoped dial-number rows to typed records with optional numbers; cc.userPreference exposes user-preference CRUD; ApiAiAssistant exposes session-validated direct wellness actions while ContactCenter shares RTD with TaskManager"
+          "Services composition root; agent/config/contact/dialer factories; AddressBook, EntryPoint, Queue, UserPreference, ApiAiAssistant, and WebCalling integration; existing Queue/EntryPoint list methods with SDK-owned defaults and compatible existing-parameter overrides; Queue returns full records and EntryPoint maps profile-scoped dial-number rows to typed records with optional numbers; cc.userPreference exposes user-preference CRUD; ApiAiAssistant exposes session-validated direct wellness actions through a live internal ContactCenter-owned context provider while ContactCenter shares RTD with TaskManager"
         ],
         "requires": [
           "Core HTTP/WebSocket/AQM infrastructure; WCC APIs; @webex/calling; MetricsManager; PageCache"
@@ -266,7 +266,7 @@
       "canonical_spec": "src/services/core/ai-docs/core-spec.md",
       "contracts": {
         "provides": [
-          "WebexRequest; WebSocketManager; ConnectionService; AqmReqs; shared error and request types/utilities"
+          "WebexRequest; generation-safe WebSocketManager initialization, pre-connect cancellation, and pre-Welcome rejection; ConnectionService; AqmReqs; shared error and request types/utilities"
         ],
         "requires": [
           "Webex SDK authenticated service routing; browser WebSocket/Worker/network APIs; LoggerProxy; metrics/log-upload infrastructure"

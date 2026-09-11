@@ -508,6 +508,33 @@ describe('webex.cc', () => {
       );
     });
 
+    it('should cancel an in-flight RTD connection when silent relogin fails', async () => {
+      const reloginError = new Error('Error while performing silentRelogin');
+      const wellnessProfile = {
+        ...mockAgentProfile,
+        aiFeature: undefined,
+        isWellnessBreakEnabled: true,
+        webRtcEnabled: false,
+      };
+      mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
+      jest
+        .spyOn(webex.cc.services.config, 'getAgentConfig')
+        .mockResolvedValue(wellnessProfile);
+      webex.cc.services.rtdWebSocketManager.initWebSocket.mockReturnValue(
+        new Promise(() => undefined)
+      );
+      webex.cc.services.agent.reload.mockRejectedValue(reloginError);
+
+      await expect(webex.cc.register()).rejects.toThrow('Error while performing silentRelogin');
+
+      expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenCalledWith(
+        false,
+        'Contact Center registration failed'
+      );
+      expect(webex.cc['shouldReconnectRtd']).toBe(false);
+      expect(webex.cc['rtdConnectPromise']).toBeUndefined();
+    });
+
     it('should log error if mercury connect fails but cc.register() should not fail', async () => {
       const mockError = new Error('Error while performing mercury connect');
       jest.spyOn(webex.internal.mercury, 'connect').mockRejectedValue(mockError);

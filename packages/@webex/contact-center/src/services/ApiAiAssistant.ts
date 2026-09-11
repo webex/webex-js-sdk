@@ -14,6 +14,7 @@ import {
   RealTimeAssistanceUserActionParams,
   RespondToWellnessBreakParams,
   WellnessBreakUserAction,
+  WELLNESS_BREAK_USER_ACTIONS,
   GenericError,
 } from '../types';
 import {getErrorDetails} from './core/Utils';
@@ -25,6 +26,21 @@ import {
 } from './constants';
 import {AIFeatureFlags} from './config/types';
 
+type WellnessContext = {
+  isWellnessBreakEnabled: boolean;
+  agentId?: string;
+  agentSessionId?: string;
+};
+
+type WellnessContextProvider = () => WellnessContext;
+
+const wellnessContextProviders = new WeakMap<object, WellnessContextProvider>();
+const WELLNESS_BREAK_RESPONSE_ACTIONS = new Set<WellnessBreakUserAction>([
+  WELLNESS_BREAK_USER_ACTIONS.ACCEPTED,
+  WELLNESS_BREAK_USER_ACTIONS.REJECTED,
+  WELLNESS_BREAK_USER_ACTIONS.NO_RESPONSE,
+]);
+
 /**
  * ApiAIAssistant provides AI Assistant APIs for transcript controls.
  * @public
@@ -33,9 +49,6 @@ export class ApiAIAssistant {
   private webex: WebexSDK;
   private metricsManager: MetricsManager;
   private aiFeature: AIFeatureFlags;
-  private isWellnessBreakEnabled = false;
-  private wellnessAgentId?: string;
-  private wellnessAgentSessionId?: string;
 
   private createWellnessError(reason: string): GenericError {
     const error = new Error(reason) as GenericError;
@@ -58,28 +71,14 @@ export class ApiAIAssistant {
     this.aiFeature = aiFeature;
   }
 
-  /**
-   * Updates the current registration/session values used to validate wellness actions.
-   * @param context - Effective enablement and current registered agent/session identifiers
-   * @internal
-   */
-  public setWellnessContext(context: {
-    isWellnessBreakEnabled: boolean;
-    agentId?: string;
-    agentSessionId?: string;
-  }): void {
-    this.isWellnessBreakEnabled = context.isWellnessBreakEnabled;
-    this.wellnessAgentId = context.agentId;
-    this.wellnessAgentSessionId = context.agentSessionId;
-  }
-
   private validateWellnessContext(): {agentId: string; agentSessionId: string; orgId: string} {
-    const agentId = this.wellnessAgentId?.trim();
-    const agentSessionId = this.wellnessAgentSessionId?.trim();
+    const context = wellnessContextProviders.get(this)?.();
+    const agentId = context?.agentId?.trim();
+    const agentSessionId = context?.agentSessionId?.trim();
     const orgId = this.webex.credentials.getOrgId()?.trim();
 
     let validationError: string | undefined;
-    if (!this.isWellnessBreakEnabled) {
+    if (context?.isWellnessBreakEnabled !== true) {
       validationError = 'WELLNESS_BREAK_NOT_ENABLED';
     } else if (!orgId) {
       validationError = 'WELLNESS_BREAK_ORG_ID_REQUIRED';
@@ -168,7 +167,10 @@ export class ApiAIAssistant {
    * @public
    */
   public async requestWellnessBreak(): Promise<void> {
-    return this.sendWellnessBreakAction('REQUESTED', METHODS.REQUEST_WELLNESS_BREAK);
+    return this.sendWellnessBreakAction(
+      WELLNESS_BREAK_USER_ACTIONS.REQUESTED,
+      METHODS.REQUEST_WELLNESS_BREAK
+    );
   }
 
   /**
@@ -180,13 +182,13 @@ export class ApiAIAssistant {
    * @throws Structured Contact Center error when disabled, stale, invalid, or delivery fails
    * @example
    * await webex.cc.apiAIAssistant.respondToWellnessBreak({
-   *   action: 'ACCEPTED',
+   *   action: WELLNESS_BREAK_USER_ACTIONS.ACCEPTED,
    * });
    * @public
    */
   public async respondToWellnessBreak(params: RespondToWellnessBreakParams): Promise<void> {
     const {action} = params;
-    if (action !== 'ACCEPTED' && action !== 'REJECTED' && action !== 'NO_RESPONSE') {
+    if (!WELLNESS_BREAK_RESPONSE_ACTIONS.has(action)) {
       const {error} = getErrorDetails(
         this.createWellnessError('WELLNESS_BREAK_ACTION_INVALID'),
         METHODS.RESPOND_TO_WELLNESS_BREAK,
@@ -566,5 +568,20 @@ export class ApiAIAssistant {
     }
   }
 }
+
+/**
+ * Creates the Contact Center-owned AI Assistant instance with live wellness context access.
+ * This factory is intentionally omitted from the public package façade and declarations.
+ * @internal
+ */
+export const createInternalApiAIAssistant = (
+  webex: WebexSDK,
+  wellnessContextProvider: WellnessContextProvider
+): ApiAIAssistant => {
+  const apiAIAssistant = new ApiAIAssistant(webex);
+  wellnessContextProviders.set(apiAIAssistant, wellnessContextProvider);
+
+  return apiAIAssistant;
+};
 
 export default ApiAIAssistant;

@@ -37,6 +37,9 @@ export const AGENT_STATE_AVAILABLE = 'Available';
 /** System idle-code name reserved for Agent Wellness Break. */
 export const WELLBEING_BREAK_IDLE_CODE = 'WellbeingBreak';
 
+/** Backend sentinel indicating wellness-break reminders are enabled. @internal */
+export const WELLNESS_BREAK_REMINDERS_ENABLED = 'ENABLED';
+
 /**
  * Description for the 'Available' agent state.
  * @type {string}
