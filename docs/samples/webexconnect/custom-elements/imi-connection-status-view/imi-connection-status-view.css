@@ -1,0 +1,42 @@
+imi-connection-status-view {
+  font-size: 0.5em;
+  text-align: right;
+  text-transform:uppercase;
+}
+imi-connection-status-view span{
+  margin-left: 14px;;
+}
+imi-connection-status-view div{
+  display: inline-block;
+    background-color:grey;
+    width: 10px;
+    height: 10px;
+    margin: 5px;
+    border-radius: 50%;
+    margin-left:10px ;
+}
+imi-connection-status-view div.error{
+    background-color:red;
+}
+imi-connection-status-view div.connected{
+    background-color:green;
+}
+imi-connection-status-view div.connecting{
+    background-color:yellow;
+}
+imi-connection-status-view div.none{
+    background-color:grey;
+}
+imi-connection-status-view div.refused{
+    background-color:orange;
+}
+
+.blink {
+    animation: blinker 1s linear infinite;
+  }
+  
+  @keyframes blinker {
+    50% {
+      opacity: 0;
+    }
+  }

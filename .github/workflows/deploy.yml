@@ -130,22 +130,25 @@ jobs:
         # Used for running node scripts against all changed packages since the last push to the target branch.
       - id: generate-package-matrix-node-changed
         name: Generate Package Matrix
-        run: echo "node-changed=$(yarn package-tools list --mode node --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
+        # webexconnect is a private package and is already omitted by `list` (--no-private is the default);
+        # this sed is an explicit second guard so `@webex/webexconnect` can never leak into the deploy matrix
+        # even if `private: true` is ever accidentally removed from its package.json.
+        run: echo "node-changed=$(yarn package-tools list --mode node --since ${{ github.event.before }} | sed -E 's#@webex/webexconnect##g; s#,+#,#g; s#\{,#{#g; s#,\}#}#g; s#  +# #g; s#^ ##; s# $##')" >> $GITHUB_OUTPUT
 
         # Used for running node scripts against all changed packages, and their dependents, since the last push to the target branch.
       - id: generate-package-matrix-node-recursive
         name: Generate Package Matrix
-        run: echo "node-recursive=$(yarn package-tools list --mode node --recursive --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
+        run: echo "node-recursive=$(yarn package-tools list --mode node --recursive --since ${{ github.event.before }} | sed -E 's#@webex/webexconnect##g; s#,+#,#g; s#\{,#{#g; s#,\}#}#g; s#  +# #g; s#^ ##; s# $##')" >> $GITHUB_OUTPUT
 
         # Used for running yarn tools against all changed packages since the last push to the target branch.
       - id: generate-package-matrix-yarn-changed
         name: Generate Package Matrix
-        run: echo "yarn-changed=$(yarn package-tools list --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
+        run: echo "yarn-changed=$(yarn package-tools list --since ${{ github.event.before }} | sed -E 's#@webex/webexconnect##g; s#,+#,#g; s#\{,#{#g; s#,\}#}#g; s#  +# #g; s#^ ##; s# $##')" >> $GITHUB_OUTPUT
 
         # Used for running yarn tools against all changed packages, and their dependents, since the last push to the target branch.
       - id: generate-package-matrix-yarn-recursive
         name: Generate Package Matrix
-        run: echo "yarn-recursive=$(yarn package-tools list --recursive --since ${{ github.event.before }})" >> $GITHUB_OUTPUT
+        run: echo "yarn-recursive=$(yarn package-tools list --recursive --since ${{ github.event.before }} | sed -E 's#@webex/webexconnect##g; s#,+#,#g; s#\{,#{#g; s#,\}#}#g; s#  +# #g; s#^ ##; s# $##')" >> $GITHUB_OUTPUT
 
       - name: Display Package Matrix
         run: |

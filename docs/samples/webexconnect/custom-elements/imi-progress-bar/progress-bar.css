@@ -1,0 +1,22 @@
+:root {
+  --progress-color: rgb(126, 90, 167);
+  --progress-height: 10px;
+  --progress-border-radius: 10px;
+}
+
+.progress-bar {
+  display: block;
+  min-height: 2px;
+  height: var(--progress-height);
+  max-width: 86%;
+  overflow: hidden;
+  margin-top: 1px;
+}
+.progress-bar .progress {
+  display: block;
+  width: 35%;
+  background-color: var(--progress-color);
+  position: absolute;
+  left: 0;
+  border-radius: var(--progress-border-radius);
+}
