@@ -871,6 +871,7 @@ The singleton owns the active Socket, cached URL, connected/connecting flags, co
 - Deduplicate async events by eventId with bounded LRU eviction.
 - Treat close codes according to the documented permanent/replaced/transient/auth/throttle matrix.
 - Authorization/token values exist only in socket metadata/refresh flows and must never be emitted or logged. Evidence: `src/mobius-socket/` implementation and tests.
+- **Trusted-host allowlist before token transmission (AC-2 / CAI-8461):** `Socket#open` (`socket-base.ts`) validates the target hostname against `MOBIUS_WSS_ALLOWED_DOMAINS` (`src/common/constants.ts`) before the WebSocket is created. If the host is not allowlisted the promise rejects with a typed `ConnectionError` and `authorize(token)` is never called, ensuring the bearer token cannot be exfiltrated to an arbitrary discovery-named host. `filterMobiusUris` (`src/common/Utils.ts`) provides a second layer by dropping non-allowlisted WSS entries from discovery responses before they reach the socket layer.
 
 ## Concurrency & Reactive Flow
 
