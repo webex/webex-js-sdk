@@ -2,7 +2,7 @@
  * Task State Machine Actions - Action implementations executed during state transitions
  */
 
-import {assign} from 'xstate';
+import {assign, enqueueActions, EventObject} from 'xstate';
 import {
   TaskContext,
   TaskEventPayload,
@@ -461,6 +461,28 @@ export const actions: TaskActionsMap = {
    */
   updateTaskData: assign(({context, event}: TaskActionArgs) => {
     return deriveTaskDataUpdates(context, getTaskDataFromEvent(event));
+  }),
+
+  /**
+   * Late AgentWrapup while already WRAPPING_UP: always refresh task data.
+   * Re-emit wrap-up only when wrapUpRequired was not already published.
+   */
+  applyLateAgentWrapup: enqueueActions<
+    TaskContext,
+    TaskEventPayload,
+    undefined,
+    TaskEventPayload,
+    never,
+    {type: string; params: undefined},
+    never,
+    never,
+    EventObject
+  >(({context, enqueue}) => {
+    const alreadyPublished = context.taskData?.wrapUpRequired === true;
+    enqueue('updateTaskData');
+    if (!alreadyPublished) {
+      enqueue('emitTaskWrapup');
+    }
   }),
 
   /**

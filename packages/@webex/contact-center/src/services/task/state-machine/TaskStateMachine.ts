@@ -8,7 +8,7 @@
  * This file imports and uses those guards via the `guards` object.
  */
 
-import {enqueueActions, setup} from 'xstate';
+import {setup} from 'xstate';
 import {TaskContext, TaskEventPayload, UIControlConfig, TaskActionsMap} from './types';
 import {TaskState, TaskEvent} from './constants';
 import {actions, createInitialContext} from './actions';
@@ -73,7 +73,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
         'markEnded',
         'clearConsultState',
         'emitTaskParticipantLeft',
-        'emitTaskWrapup',
       ],
     },
     {
@@ -95,13 +94,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
       guard: (params) =>
         guards.didCurrentAgentLeaveMainInteraction(params) && guards.shouldWrapUp(params),
       target: TaskState.WRAPPING_UP,
-      actions: [
-        'updateTaskData',
-        'markEnded',
-        'clearConsultState',
-        'emitTaskConsultEnd',
-        'emitTaskWrapup',
-      ],
+      actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskConsultEnd'],
     },
     {
       guard: guards.didCurrentAgentLeaveMainInteraction,
@@ -252,7 +245,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded'],
             },
             {
               target: TaskState.TERMINATED,
@@ -278,7 +271,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed'],
             },
             {
               target: TaskState.TERMINATED,
@@ -387,7 +380,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUpOrIsInitiator,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState'],
             },
             {
               // Receiver goes to connected as he receives transferSuccess event
@@ -434,7 +427,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               // Agent should wrap up → WRAPPING_UP
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup', 'requestCleanup'],
+              actions: ['updateTaskData', 'markEnded', 'requestCleanup'],
             },
             {
               // Consulted agent → TERMINATED
@@ -444,13 +437,13 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           ],
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
+            actions: ['updateTaskData', 'markEnded'],
           },
           [TaskEvent.OUTBOUND_FAILED]: [
             {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed'],
             },
             {
               target: TaskState.TERMINATED,
@@ -482,7 +475,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed'],
             },
             {
               target: TaskState.TERMINATED,
@@ -542,7 +535,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUpOrIsInitiator,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded'],
             },
             {
               target: TaskState.CONNECTED,
@@ -567,7 +560,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup', 'requestCleanup'],
+              actions: ['updateTaskData', 'markEnded', 'requestCleanup'],
             },
             {
               target: TaskState.TERMINATED,
@@ -586,13 +579,13 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // TODO: This may not be a valid transition, this needs to be checked as well
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
+            actions: ['updateTaskData', 'markEnded'],
           },
           [TaskEvent.OUTBOUND_FAILED]: [
             {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed'],
             },
             {
               target: TaskState.TERMINATED,
@@ -619,7 +612,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed'],
             },
             {
               target: TaskState.TERMINATED,
@@ -707,7 +700,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed'],
             },
             {
               target: TaskState.TERMINATED,
@@ -805,13 +798,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 );
               },
               target: TaskState.WRAPPING_UP,
-              actions: [
-                'updateTaskData',
-                'markEnded',
-                'clearConsultState',
-                'emitTaskWrapup',
-                'requestCleanup',
-              ],
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'requestCleanup'],
             },
             {
               // Initiator (no conference) → HELD
@@ -868,7 +855,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUpOrIsInitiator,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState'],
             },
             {
               target: TaskState.CONNECTED,
@@ -893,7 +880,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 'clearConsultState',
                 'handleTransferConferenceSuccess',
                 'clearTransferConferenceRequested',
-                'emitTaskWrapup',
               ],
             },
             {
@@ -931,23 +917,17 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentContactEnded
           [TaskEvent.CONTACT_ENDED]: {
             target: TaskState.WRAPPING_UP,
-            actions: [
-              'updateTaskData',
-              'markEnded',
-              'clearConsultState',
-              'emitTaskWrapup',
-              'requestCleanup',
-            ],
+            actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'requestCleanup'],
           },
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+            actions: ['updateTaskData', 'markEnded', 'clearConsultState'],
           },
           [TaskEvent.OUTBOUND_FAILED]: [
             {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed'],
             },
             {
               target: TaskState.TERMINATED,
@@ -997,7 +977,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 return taskData?.interaction?.isTerminated === true;
               },
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState'],
             },
             {
               target: TaskState.CONNECTED,
@@ -1008,7 +988,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed'],
             },
             {
               target: TaskState.TERMINATED,
@@ -1032,7 +1012,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState'],
             },
             {
               target: TaskState.TERMINATED,
@@ -1053,7 +1033,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 );
               },
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState'],
             },
             {
               actions: ['updateTaskData', 'clearConsultState'],
@@ -1156,7 +1136,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 'clearConsultState',
                 'handleTransferConferenceSuccess',
                 'clearTransferConferenceRequested',
-                'emitTaskWrapup',
               ],
             },
             {
@@ -1191,7 +1170,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               // Agent who should wrap up → WRAPPING_UP
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState'],
             },
             {
               // Customer still in call → CONNECTED
@@ -1229,13 +1208,13 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.TASK_WRAPUP]: {
             guard: guards.shouldWrapUp,
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+            actions: ['updateTaskData', 'markEnded', 'clearConsultState'],
           },
           [TaskEvent.OUTBOUND_FAILED]: [
             {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed'],
             },
             {
               target: TaskState.TERMINATED,
@@ -1251,13 +1230,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
         on: {
           // Late AgentWrapup after conference exit already entered WRAPPING_UP
           [TaskEvent.TASK_WRAPUP]: {
-            actions: enqueueActions(({context, enqueue}) => {
-              const alreadyPublished = context.taskData?.wrapUpRequired === true;
-              enqueue('updateTaskData');
-              if (!alreadyPublished) {
-                enqueue('emitTaskWrapup');
-              }
-            }),
+            actions: ['applyLateAgentWrapup'],
           },
           // AgentWrappedup Event
           [TaskEvent.WRAPUP_COMPLETE]: {
