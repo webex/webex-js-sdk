@@ -202,14 +202,14 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
       method: METHODS.GET_VOICEMAIL_CONTENT,
     };
 
-    log.info(`${METHOD_START_MESSAGE} with: messageId=${messageId}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with: messageId=[REDACTED]`, loggerContext);
 
     const response = await this.backendConnector.getVoicemailContent(messageId);
 
     this.submitMetric(response, VOICEMAIL_ACTION.GET_VOICEMAIL_CONTENT, messageId);
 
     log.log(
-      `Successfully retrieved voicemail content for messageId=${messageId}, statusCode=${response.statusCode}`,
+      `Successfully retrieved voicemail content for messageId=[REDACTED], statusCode=${response.statusCode}`,
       loggerContext
     );
 
