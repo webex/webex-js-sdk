@@ -1485,7 +1485,7 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   private destroy(meeting: Meeting, reason: object) {
-    MeetingUtil.cleanUp(meeting);
+    MeetingUtil.cleanUp(meeting, {preserveVoiceaChannel: false});
     // keep some basic info about the deleted meeting forever
     this.deletedMeetings.set(meeting.id, {
       id: meeting.id,

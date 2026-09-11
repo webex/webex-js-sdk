@@ -142,6 +142,7 @@ describe('plugin-meetings', () => {
 
       Object.assign(webex.internal, {
         llm: {on: sinon.stub()},
+        voicea: {createChannel: sinon.stub().returns({})},
         device: {
           deviceType: 'FAKE_DEVICE',
           register: sinon.stub().returns(Promise.resolve()),
@@ -238,6 +239,10 @@ describe('plugin-meetings', () => {
         );
 
         webex.meetings.destroy(meeting, test1);
+
+        assert.calledOnceWithExactly(MeetingUtil.cleanUp, meeting, {
+          preserveVoiceaChannel: false,
+        });
 
         // and it should still return the information after the meeting is destroyed
         assert.equal(
