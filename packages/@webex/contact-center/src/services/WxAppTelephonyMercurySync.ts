@@ -88,7 +88,7 @@ export default class WxAppTelephonyMercurySync {
 
       MetricsManager.getInstance().trackEvent(
         METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED,
-        {error: 'Mercury is unavailable for wxApp mute sync'},
+        {error: 'Mercury is unavailable for wxApp mute sync', mercurySubscribed: false},
         ['operational', 'behavioral']
       );
 
@@ -110,11 +110,11 @@ export default class WxAppTelephonyMercurySync {
 
     MetricsManager.getInstance().trackEvent(
       METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_SUCCESS,
-      {},
+      {mercurySubscribed: true},
       ['operational', 'behavioral']
     );
 
-    LoggerProxy.info('Subscribed to wxApp telephony Mercury mute sync', {
+    LoggerProxy.log('Subscribed to wxApp telephony Mercury mute sync', {
       module: WXAPP_TELEPHONY_MERCURY_SYNC_FILE,
       method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
     });
