@@ -1,13 +1,30 @@
 import WebexCrossClientService from '../../../../src/services/WebexCrossClientService';
+import MetricsManager from '../../../../src/metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../../../../src/metrics/constants';
+
+jest.mock('../../../../src/metrics/MetricsManager', () => ({
+  __esModule: true,
+  default: {
+    getInstance: jest.fn(),
+  },
+}));
 
 describe('WebexCrossClientService', () => {
   const userId = 'user-123';
   const deviceUrl = 'https://wdm.example.com/devices/device-abc';
+  const trackEvent = jest.fn();
+  const timeEvent = jest.fn();
+  const cancelTimedEvent = jest.fn();
 
   let webex: {request: jest.Mock; internal: {device: {userId: string; url: string}}};
   let service: WebexCrossClientService;
 
   beforeEach(() => {
+    trackEvent.mockClear();
+    timeEvent.mockClear();
+    cancelTimedEvent.mockClear();
+    (MetricsManager.getInstance as jest.Mock).mockReturnValue({trackEvent, timeEvent, cancelTimedEvent});
+
     webex = {
       request: jest.fn().mockResolvedValue({body: {}}),
       internal: {
@@ -82,6 +99,26 @@ describe('WebexCrossClientService', () => {
       'User ID is unavailable for cross-client publish'
     );
     expect(webex.request).not.toHaveBeenCalled();
+    expect(trackEvent).not.toHaveBeenCalled();
+  });
+
+  it('emits usersub publish failed when user ID is unavailable and trackPublishMetrics is true', async () => {
+    webex.internal.device.userId = undefined as unknown as string;
+
+    await expect(
+      service.setManageWebexCallingInWxcc(true, {trackPublishMetrics: true})
+    ).rejects.toThrow('User ID is unavailable for cross-client publish');
+
+    expect(trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+      expect.objectContaining({
+        enableWxBetterTogether: true,
+        skipReason: 'user_id_unavailable',
+      }),
+      ['operational', 'behavioral']
+    );
+    expect(timeEvent).not.toHaveBeenCalled();
+    expect(webex.request).not.toHaveBeenCalled();
   });
 
   it('throws when device URL is unavailable', async () => {
@@ -91,13 +128,182 @@ describe('WebexCrossClientService', () => {
       'Device URL is unavailable for cross-client publish'
     );
     expect(webex.request).not.toHaveBeenCalled();
+    expect(trackEvent).not.toHaveBeenCalled();
+  });
+
+  it('emits usersub publish failed when device URL is unavailable and trackPublishMetrics is true', async () => {
+    webex.internal.device.url = undefined as unknown as string;
+
+    await expect(
+      service.setManageWebexCallingInWxcc(true, {trackPublishMetrics: true})
+    ).rejects.toThrow('Device URL is unavailable for cross-client publish');
+
+    expect(trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+      expect.objectContaining({
+        enableWxBetterTogether: true,
+        skipReason: 'device_url_unavailable',
+      }),
+      ['operational', 'behavioral']
+    );
+    expect(timeEvent).not.toHaveBeenCalled();
+    expect(webex.request).not.toHaveBeenCalled();
   });
 
   it('rejects when usersub publish fails', async () => {
     const err = new Error('usersub failed');
     webex.request = jest.fn().mockRejectedValue(err);
 
-    await expect(service.setManageWebexCallingInWxcc(true)).rejects.toThrow('usersub failed');
+    await expect(
+      service.setManageWebexCallingInWxcc(true, {trackPublishMetrics: true})
+    ).rejects.toThrow('usersub failed');
+
+    expect(trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+      expect.objectContaining({enableWxBetterTogether: true}),
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('tracks usersub publish success when trackPublishMetrics is enabled', async () => {
+    await service.setManageWebexCallingInWxcc(true, {trackPublishMetrics: true});
+
+    expect(timeEvent).toHaveBeenCalledWith([
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS,
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+    ]);
+    expect(trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS,
+      {enableWxBetterTogether: true},
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('cancels usersub publish timer when publish completes after teardown bumps generation', async () => {
+    let resolvePublish: (value: {body: Record<string, never>}) => void;
+    const publishPromise = new Promise<{body: Record<string, never>}>((resolve) => {
+      resolvePublish = resolve;
+    });
+    webex.request = jest.fn().mockReturnValue(publishPromise);
+
+    const publishCall = service.setManageWebexCallingInWxcc(true, {trackPublishMetrics: true});
+    service.teardown();
+    resolvePublish!({body: {}});
+    await publishCall;
+
+    expect(cancelTimedEvent).toHaveBeenCalledWith([
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS,
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+    ]);
+    expect(trackEvent).not.toHaveBeenCalled();
+  });
+
+  it('cancels usersub publish timer when publish fails after teardown bumps generation', async () => {
+    let rejectPublish: (error: Error) => void;
+    const publishPromise = new Promise((_, reject) => {
+      rejectPublish = reject;
+    });
+    webex.request = jest.fn().mockReturnValue(publishPromise);
+
+    const publishCall = service.setManageWebexCallingInWxcc(true, {trackPublishMetrics: true});
+    service.teardown();
+    rejectPublish!(new Error('usersub failed'));
+    await expect(publishCall).rejects.toThrow('usersub failed');
+
+    expect(cancelTimedEvent).toHaveBeenCalledWith([
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS,
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+    ]);
+    expect(trackEvent).not.toHaveBeenCalled();
+  });
+
+  it('does not cancel newer publish timer when stale publish completes', async () => {
+    let resolveFirstPublish: (value: {body: Record<string, never>}) => void;
+    const firstPublishPromise = new Promise<{body: Record<string, never>}>((resolve) => {
+      resolveFirstPublish = resolve;
+    });
+    webex.request = jest
+      .fn()
+      .mockReturnValueOnce(firstPublishPromise)
+      .mockResolvedValueOnce({body: {}});
+
+    const firstPublishCall = service.setManageWebexCallingInWxcc(true, {
+      trackPublishMetrics: true,
+    });
+    const secondPublishCall = service.setManageWebexCallingInWxcc(false, {
+      trackPublishMetrics: true,
+    });
+
+    await secondPublishCall;
+
+    service.teardown();
+    resolveFirstPublish!({body: {}});
+    await firstPublishCall;
+
+    expect(cancelTimedEvent).not.toHaveBeenCalled();
+    expect(trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS,
+      {enableWxBetterTogether: false},
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('preserves duration_ms on newer publish when stale publish completes', async () => {
+    const {default: RealMetricsManager} = jest.requireActual(
+      '../../../../src/metrics/MetricsManager'
+    );
+    RealMetricsManager.resetInstance();
+    const realManager = RealMetricsManager.getInstance();
+    jest.spyOn(realManager as any, 'isMetricsDisabled').mockReturnValue(false);
+    const trackEventSpy = jest.spyOn(realManager, 'trackEvent');
+    (MetricsManager.getInstance as jest.Mock).mockReturnValue(realManager);
+
+    let resolveFirstPublish: (value: {body: Record<string, never>}) => void;
+    const firstPublishPromise = new Promise<{body: Record<string, never>}>((resolve) => {
+      resolveFirstPublish = resolve;
+    });
+    webex.request = jest
+      .fn()
+      .mockReturnValueOnce(firstPublishPromise)
+      .mockResolvedValueOnce({body: {}});
+
+    const firstPublishCall = service.setManageWebexCallingInWxcc(true, {
+      trackPublishMetrics: true,
+    });
+    const secondPublishCall = service.setManageWebexCallingInWxcc(false, {
+      trackPublishMetrics: true,
+    });
+
+    await secondPublishCall;
+    service.teardown();
+    resolveFirstPublish!({body: {}});
+    await firstPublishCall;
+
+    const successCall = trackEventSpy.mock.calls.find(
+      ([eventName, payload]) =>
+        eventName === METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS &&
+        (payload as {enableWxBetterTogether?: boolean}).enableWxBetterTogether === false
+    );
+    expect(successCall?.[1]).toEqual(
+      expect.objectContaining({
+        enableWxBetterTogether: false,
+        duration_ms: expect.any(Number),
+      })
+    );
+
+    RealMetricsManager.resetInstance();
+    (MetricsManager.getInstance as jest.Mock).mockReturnValue({
+      trackEvent,
+      timeEvent,
+      cancelTimedEvent,
+    });
+  });
+
+  it('does not track usersub metrics by default', async () => {
+    await service.setManageWebexCallingInWxcc(true);
+
+    expect(trackEvent).not.toHaveBeenCalled();
+    expect(timeEvent).not.toHaveBeenCalled();
   });
 
   it('uses custom ttl from options', async () => {

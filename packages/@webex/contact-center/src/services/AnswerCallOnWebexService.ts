@@ -12,19 +12,30 @@ export type WxAppTelephonyError = Error & {
   status?: number | string;
 };
 
+const extractWxAppTrackingId = (source: unknown): string | undefined => {
+  const sourceObj = source as {details?: {trackingId?: string}; trackingId?: string};
+
+  return sourceObj?.details?.trackingId || sourceObj?.trackingId;
+};
+
+const extractWxAppHttpStatus = (source: unknown): number | string | undefined => {
+  const obj = source as {
+    statusCode?: number;
+    status?: number | string;
+    details?: {status?: number | string};
+  };
+
+  return obj?.statusCode ?? obj?.status ?? obj?.details?.status;
+};
+
 const markWxAppTelephonyError = (error: Error, source: unknown): WxAppTelephonyError => {
   const marked = error as WxAppTelephonyError;
   marked.isWxAppTelephonyError = true;
-  const sourceObj = source as {
-    details?: {trackingId?: string; status?: number | string};
-    statusCode?: number;
-    status?: number | string;
-  };
-  const trackingId = sourceObj?.details?.trackingId;
+  const trackingId = extractWxAppTrackingId(source);
   if (trackingId) {
     marked.trackingId = trackingId;
   }
-  const status = sourceObj?.statusCode ?? sourceObj?.details?.status ?? sourceObj?.status;
+  const status = extractWxAppHttpStatus(source);
   if (status !== undefined) {
     marked.status = status;
   }
@@ -73,6 +84,10 @@ export default class AnswerCallOnWebexService {
     return `${hydraUrl.replace(/\/$/, '')}/telephony/calls`;
   }
 
+  private extractTrackingId(source: unknown): string | undefined {
+    return extractWxAppTrackingId(source);
+  }
+
   private async telephonyRequest(
     resource: string,
     method: HTTP_METHODS,
@@ -88,16 +103,29 @@ export default class AnswerCallOnWebexService {
         data: {uri, bodyKeys: Object.keys(body)},
       });
 
-      return (await this.webex.request({
+      const response = (await this.webex.request({
         uri,
         method,
         body,
         addAuthHeader: true,
       })) as IHttpResponse;
+
+      LoggerProxy.info(`AnswerCallOnWebexService.${logMethod} success`, {
+        module: ANSWER_CALL_ON_WEBEX_FILE,
+        method: logMethod,
+        data: {statusCode: response.statusCode},
+      });
+
+      return response;
     } catch (error) {
+      const trackingId = this.extractTrackingId(error);
       LoggerProxy.error(`AnswerCallOnWebexService.${logMethod} failed: ${error}`, {
         module: ANSWER_CALL_ON_WEBEX_FILE,
         method: logMethod,
+        data: {
+          trackingId,
+          status: extractWxAppHttpStatus(error),
+        },
       });
       const {error: detailedError} = getErrorDetails(error, logMethod, CC_FILE);
       throw markWxAppTelephonyError(detailedError, error);
@@ -191,9 +219,14 @@ export default class AnswerCallOnWebexService {
         throw markWxAppTelephonyError(err, error);
       }
 
+      const trackingId = this.extractTrackingId(error);
       LoggerProxy.error(`AnswerCallOnWebexService.getCallDetails failed: ${error}`, {
         module: ANSWER_CALL_ON_WEBEX_FILE,
         method: METHODS.GET_CALL_DETAILS_ON_WEBEX,
+        data: {
+          trackingId,
+          status: extractWxAppHttpStatus(error),
+        },
       });
       const {error: detailedError} = getErrorDetails(
         error,
