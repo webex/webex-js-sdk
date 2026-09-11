@@ -1455,9 +1455,13 @@ export default class Voice extends Task implements IVoice {
           ...this.data,
           ...responseTaskData,
         };
+        // Pending-list precedence is response-only; do not keep a cached snapshot list.
+        if (!Object.prototype.hasOwnProperty.call(responseTaskData, 'agentsPendingWrapUp')) {
+          delete mergedTaskData.agentsPendingWrapUp;
+        }
         let wrapUpRequired = shouldWrapUpForThisAgent(wrapUpContext, mergedTaskData);
-        // Confirmed self-exit: empty/absent pending matches TaskManager leave stamp.
-        if (!wrapUpRequired && !hasNonemptyPendingWrapUp(mergedTaskData)) {
+        // Confirmed self-exit: empty/absent response pending matches TaskManager leave stamp.
+        if (!wrapUpRequired && !hasNonemptyPendingWrapUp(responseTaskData)) {
           wrapUpRequired = !isConsultedNonOwner(mergedTaskData, this.data);
         }
 
