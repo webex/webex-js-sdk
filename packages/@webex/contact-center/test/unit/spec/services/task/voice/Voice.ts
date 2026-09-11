@@ -46,6 +46,10 @@ const dummyContact = {
   }),
   consultTransfer: jest.fn().mockResolvedValue('consultTransferred'),
   cancelTask: jest.fn().mockResolvedValue(undefined),
+  exitConference: jest.fn().mockResolvedValue({
+    trackingId: 'exit-tracking-id',
+    data: {},
+  }),
 } as any;
 
 const createBaseData = (overrides: Partial<TaskData> = {}): TaskData =>
@@ -591,6 +595,148 @@ describe('Voice Task', () => {
         data: {mediaResourceId: 'media1'},
       });
       expect(dummyContact.unHold).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('exitConference()', () => {
+    const conferenceTaskData = () =>
+      createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          state: 'conference',
+          owner: 'agent-1',
+          mainInteractionId: 'int1',
+          interactionId: 'int1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            'agent-2': {id: 'agent-2', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            c1: {id: 'c1', pType: 'Customer', type: 'Customer', hasJoined: true, hasLeft: false},
+          },
+          media: {
+            media1: {mediaResourceId: 'media1', isHold: false},
+            int1: {
+              mediaResourceId: 'int1',
+              mType: 'mainCall',
+              participants: ['agent-1', 'agent-2', 'c1'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+    const primeConferencing = (voice: Voice, taskData: TaskData) => {
+      primeConnectedState(voice, taskData);
+      voice.stateMachineService?.send({type: TaskEvent.CONFERENCE_START, taskData});
+      expect(voice.stateMachineService?.getSnapshot().value).toBe(TaskState.CONFERENCING);
+    };
+
+    it('stamps wrapUpRequired on EXIT_CONFERENCE_SUCCESS when this agent should wrap', async () => {
+      const taskData = conferenceTaskData();
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-1');
+      primeConferencing(voice, taskData);
+      const sendSpy = jest.spyOn(voice.stateMachineService as any, 'send');
+
+      await voice.exitConference();
+
+      const successEvent = sendSpy.mock.calls
+        .map((call) => call[0])
+        .find((event) => event?.type === TaskEvent.EXIT_CONFERENCE_SUCCESS);
+
+      expect(dummyContact.exitConference).toHaveBeenCalled();
+      expect(successEvent?.taskData.wrapUpRequired).toBe(true);
+    });
+
+    it('stamps wrapUpRequired false on EXIT_CONFERENCE_SUCCESS when this agent should not wrap', async () => {
+      const taskData = createBaseData({
+        agentId: 'agent-2',
+        isConsulted: true,
+        wrapUpRequired: false,
+        interaction: {
+          state: 'conference',
+          owner: 'agent-1',
+          mainInteractionId: 'int1',
+          interactionId: 'int1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            'agent-2': {
+              id: 'agent-2',
+              pType: 'Agent',
+              type: 'Agent',
+              hasJoined: true,
+              hasLeft: false,
+              isWrapUp: false,
+            },
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-2');
+      primeConferencing(voice, taskData);
+      const sendSpy = jest.spyOn(voice.stateMachineService as any, 'send');
+
+      await voice.exitConference();
+
+      const successEvent = sendSpy.mock.calls
+        .map((call) => call[0])
+        .find((event) => event?.type === TaskEvent.EXIT_CONFERENCE_SUCCESS);
+
+      expect(successEvent?.taskData.wrapUpRequired).toBe(false);
+    });
+
+    it('stamps wrapUpRequired true on owner-changed exit when isConsulted is omitted', async () => {
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        wrapUpRequired: false,
+        interaction: {
+          state: 'conference',
+          owner: 'agent-2',
+          mainInteractionId: 'int1',
+          interactionId: 'int1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            'agent-2': {id: 'agent-2', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-1');
+      primeConferencing(voice, taskData);
+      const sendSpy = jest.spyOn(voice.stateMachineService as any, 'send');
+
+      await voice.exitConference();
+
+      const successEvent = sendSpy.mock.calls
+        .map((call) => call[0])
+        .find((event) => event?.type === TaskEvent.EXIT_CONFERENCE_SUCCESS);
+
+      expect(successEvent?.taskData.wrapUpRequired).toBe(true);
+    });
+
+    it('ignores a stale cached pending list when the exit response omits it', async () => {
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        wrapUpRequired: false,
+        agentsPendingWrapUp: ['agent-2'],
+        interaction: {
+          state: 'conference',
+          owner: 'agent-2',
+          mainInteractionId: 'int1',
+          interactionId: 'int1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            'agent-2': {id: 'agent-2', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-1');
+      primeConferencing(voice, taskData);
+      const sendSpy = jest.spyOn(voice.stateMachineService as any, 'send');
+
+      await voice.exitConference();
+
+      const successEvent = sendSpy.mock.calls
+        .map((call) => call[0])
+        .find((event) => event?.type === TaskEvent.EXIT_CONFERENCE_SUCCESS);
+
+      expect(successEvent?.taskData.wrapUpRequired).toBe(true);
     });
   });
 

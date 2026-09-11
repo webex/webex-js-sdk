@@ -28,7 +28,8 @@ import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
-import {TaskState, TaskEvent, TaskActionArgs} from '../state-machine';
+import {TaskState, TaskEvent, TaskActionArgs, type TaskContext} from '../state-machine';
+import {shouldWrapUpForThisAgent} from '../state-machine/guards';
 import {WrapupData} from '../../config/types';
 import {getConsultMediaResourceId, getIsConferenceInProgress} from '../TaskUtils';
 import AnswerCallOnWebexService from '../../AnswerCallOnWebexService';
@@ -55,6 +56,24 @@ import {
   callIdSuffix,
   WxAppAcceptReason,
 } from '../../wxAppDiagnosticLogging';
+
+const hasNonemptyPendingWrapUp = (taskData?: TaskData): boolean =>
+  Array.isArray(taskData?.agentsPendingWrapUp) && taskData.agentsPendingWrapUp.length > 0;
+
+/**
+ * Same consulted-non-owner rule as TaskManager leave stamp. Used only for the
+ * HTTP exitConference self-exit fallback (shouldWrapUpForThisAgent stays unchanged).
+ */
+const isConsultedNonOwner = (taskData: TaskData, fallback?: TaskData): boolean => {
+  const isConsulted = taskData.isConsulted ?? fallback?.isConsulted;
+  if (isConsulted !== true) {
+    return false;
+  }
+  const owner = taskData.interaction?.owner ?? fallback?.interaction?.owner;
+  const selfAgentId = taskData.agentId ?? fallback?.agentId;
+
+  return Boolean(selfAgentId && owner && owner !== selfAgentId);
+};
 
 export default class Voice extends Task implements IVoice {
   private static readonly WXAPP_MUTE_SYNC_RETRY_DELAY_MS = 50;
@@ -1426,9 +1445,32 @@ export default class Voice extends Task implements IVoice {
 
       // Send success event to transition state
       if (this.stateMachineService) {
+        const responseTaskData = (response?.data ?? {}) as TaskData;
+        const snapshot = this.stateMachineService.getSnapshot();
+        const wrapUpContext = (snapshot?.context ?? {
+          uiControlConfig: this.uiControlConfig,
+          taskData: this.data,
+        }) as TaskContext;
+        const mergedTaskData = {
+          ...this.data,
+          ...responseTaskData,
+        };
+        // Pending-list precedence is response-only; do not keep a cached snapshot list.
+        if (!Object.prototype.hasOwnProperty.call(responseTaskData, 'agentsPendingWrapUp')) {
+          delete mergedTaskData.agentsPendingWrapUp;
+        }
+        let wrapUpRequired = shouldWrapUpForThisAgent(wrapUpContext, mergedTaskData);
+        // Confirmed self-exit: empty/absent response pending matches TaskManager leave stamp.
+        if (!wrapUpRequired && !hasNonemptyPendingWrapUp(responseTaskData)) {
+          wrapUpRequired = !isConsultedNonOwner(mergedTaskData, this.data);
+        }
+
         this.stateMachineService.send({
           type: TaskEvent.EXIT_CONFERENCE_SUCCESS,
-          taskData: response.data,
+          taskData: {
+            ...responseTaskData,
+            wrapUpRequired,
+          },
         });
       }
 

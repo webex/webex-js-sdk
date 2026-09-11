@@ -30,7 +30,7 @@ import TaskFactory from './TaskFactory';
 import AnswerCallOnWebexService from '../AnswerCallOnWebexService';
 import {getWebexCallingDeviceDetailsForAgent} from './WebexCallingUtils';
 import WebRTC from './voice/WebRTC';
-import {TaskEvent, type TaskEventPayload} from './state-machine';
+import {TaskEvent, TaskState, type TaskEventPayload} from './state-machine';
 import {MEDIA_TYPE_MAIN_CALL} from './state-machine/constants';
 import {normalizeTaskData} from './taskDataNormalizer';
 import {ApiAIAssistant} from '../ApiAiAssistant';
@@ -43,6 +43,21 @@ const MAIN_INTERACTION_CORRELATED_EVENTS = new Set<CC_EVENTS>([
 ]);
 
 const isCcEvent = (value: string): value is CC_EVENTS => CC_EVENT_SET.has(value as CC_EVENTS);
+
+const WRAP_UP_STAMP_EVENTS = new Set<CC_EVENTS>([
+  CC_EVENTS.AGENT_WRAPUP,
+  CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED,
+  CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+  CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED,
+]);
+
+const PARTICIPANT_LEAVE_WRAP_STATES = new Set<TaskState>([
+  TaskState.HELD,
+  TaskState.RESUME_INITIATING,
+  TaskState.CONSULTING,
+  TaskState.CONSULT_INITIATING,
+  TaskState.CONFERENCING,
+]);
 
 /** @internal */
 export default class TaskManager extends EventEmitter {
@@ -193,6 +208,175 @@ export default class TaskManager extends EventEmitter {
 
   public unregisterIncomingCallEvent() {
     this.webCallingService.off(LINE_EVENTS.INCOMING_CALL, this.handleIncomingWebCall);
+  }
+
+  /**
+   * True when this agent left on the current payload.
+   * A named other participantId is never self-leave (even if the participants
+   * map is partial). Missing-map fallback is EP-DN only: participantId absent
+   * and self omitted now, with previous-task evidence when a prior map exists.
+   */
+  private static didSelfLeaveConference(
+    payload: WebSocketPayload,
+    agentId?: string,
+    task?: ITask
+  ): boolean {
+    if (!agentId) {
+      return false;
+    }
+    if (payload.participantId === agentId) {
+      return true;
+    }
+    if (payload.participantId && payload.participantId !== agentId) {
+      return false;
+    }
+
+    const participants = payload.interaction?.participants;
+    if (!participants || agentId in participants) {
+      return false;
+    }
+
+    const previousParticipants = task?.data?.interaction?.participants;
+    if (previousParticipants && !(agentId in previousParticipants)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Consulted non-owner: Voice exitConference / shouldWrapUpForThisAgent stays
+   * false unless an explicit wrap-up signal includes this agent.
+   */
+  private static isConsultedNonOwner(
+    payload: WebSocketPayload,
+    agentId?: string,
+    task?: ITask
+  ): boolean {
+    const isConsulted = payload.isConsulted ?? task?.data?.isConsulted;
+    if (isConsulted !== true) {
+      return false;
+    }
+    const owner = payload.interaction?.owner ?? task?.data?.interaction?.owner;
+
+    return Boolean(agentId && owner && owner !== agentId);
+  }
+
+  private static hasNonemptyPendingWrapUp(payload: WebSocketPayload): boolean {
+    return Array.isArray(payload.agentsPendingWrapUp) && payload.agentsPendingWrapUp.length > 0;
+  }
+
+  /**
+   * Transfer initiator fallback: widgets set transferConferenceRequested on the
+   * actor; desktop success payloads may include consultingAgentId. Only used
+   * when agentsPendingWrapUp is empty or absent.
+   */
+  private static isSelfConferenceTransferInitiator(
+    payload: WebSocketPayload,
+    agentId?: string,
+    task?: ITask
+  ): boolean {
+    const snapshotContext = task?.stateMachineService?.getSnapshot?.()?.context as
+      | {transferConferenceRequested?: boolean}
+      | undefined;
+    if (snapshotContext?.transferConferenceRequested === true) {
+      return true;
+    }
+
+    return Boolean(agentId && payload.consultingAgentId === agentId);
+  }
+
+  /**
+   * Explicit wrap-up signals only (no owner / isConsulted fallback).
+   * Used for events that remaining conference agents also receive.
+   * nonempty agentsPendingWrapUp is authoritative, then wrapUpRequired / isWrapUp.
+   */
+  private static wrapUpRequiredFromExplicitSignals(
+    payload: WebSocketPayload,
+    agentId?: string
+  ): boolean {
+    const pending = payload.agentsPendingWrapUp;
+    if (Array.isArray(pending) && pending.length > 0) {
+      return Boolean(agentId && pending.includes(agentId));
+    }
+
+    if (payload.wrapUpRequired === true) {
+      return true;
+    }
+    if (!agentId) {
+      return false;
+    }
+
+    return payload.interaction?.participants?.[agentId]?.isWrapUp === true;
+  }
+
+  /**
+   * Stamp wrapUpRequired once at ingress (prepareEventContext) so updateTaskData
+   * and the mapper see the same flag. Remaining agents stay false.
+   */
+  private static stampWrapUpRequiredForEvent(
+    eventType: CC_EVENTS,
+    payload: WebSocketPayload,
+    agentId?: string,
+    task?: ITask
+  ): WebSocketPayload {
+    if (!WRAP_UP_STAMP_EVENTS.has(eventType)) {
+      return payload;
+    }
+
+    if (eventType === CC_EVENTS.AGENT_WRAPUP) {
+      return {...payload, wrapUpRequired: true};
+    }
+
+    if (eventType === CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED) {
+      return {
+        ...payload,
+        wrapUpRequired: TaskManager.wrapUpRequiredFromExplicitSignals(payload, agentId),
+      };
+    }
+
+    if (eventType === CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE) {
+      const actorState = task?.stateMachineService?.getSnapshot?.()?.value;
+      if (actorState && !PARTICIPANT_LEAVE_WRAP_STATES.has(actorState as TaskState)) {
+        return payload;
+      }
+
+      const left = TaskManager.didSelfLeaveConference(payload, agentId, task);
+      if (!left) {
+        return {
+          ...payload,
+          wrapUpRequired: TaskManager.wrapUpRequiredFromExplicitSignals(payload, agentId),
+        };
+      }
+      if (TaskManager.hasNonemptyPendingWrapUp(payload)) {
+        return {
+          ...payload,
+          wrapUpRequired: Boolean(agentId && payload.agentsPendingWrapUp?.includes(agentId)),
+        };
+      }
+
+      return {
+        ...payload,
+        wrapUpRequired:
+          TaskManager.wrapUpRequiredFromExplicitSignals(payload, agentId) ||
+          !TaskManager.isConsultedNonOwner(payload, agentId, task),
+      };
+    }
+
+    // AGENT_CONFERENCE_TRANSFERRED — pending list wins; initiator only if empty/absent
+    if (TaskManager.hasNonemptyPendingWrapUp(payload)) {
+      return {
+        ...payload,
+        wrapUpRequired: TaskManager.wrapUpRequiredFromExplicitSignals(payload, agentId),
+      };
+    }
+
+    return {
+      ...payload,
+      wrapUpRequired:
+        TaskManager.wrapUpRequiredFromExplicitSignals(payload, agentId) ||
+        TaskManager.isSelfConferenceTransferInitiator(payload, agentId, task),
+    };
   }
 
   /**
@@ -643,6 +827,15 @@ export default class TaskManager extends EventEmitter {
 
     if (task && eventType === CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE) {
       adjustedPayload = TaskManager.preserveConfirmedOwner(task, adjustedPayload);
+    }
+
+    if (WRAP_UP_STAMP_EVENTS.has(eventType)) {
+      adjustedPayload = TaskManager.stampWrapUpRequiredForEvent(
+        eventType,
+        adjustedPayload,
+        this.agentId,
+        task
+      );
     }
 
     const stateMachineEvent = TaskManager.mapEventToTaskStateMachineEvent(
