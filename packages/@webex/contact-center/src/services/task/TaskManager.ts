@@ -216,19 +216,23 @@ export default class TaskManager extends EventEmitter {
   /**
    * Explicit wrap-up signals only (no owner / isConsulted fallback).
    * Used for events that remaining conference agents also receive.
+   * Same first two priorities as shouldWrapUpForThisAgent:
+   * nonempty agentsPendingWrapUp is authoritative, then wrapUpRequired / isWrapUp.
    */
   private static wrapUpRequiredFromExplicitSignals(
     payload: WebSocketPayload,
     agentId?: string
   ): boolean {
+    const pending = payload.agentsPendingWrapUp;
+    if (Array.isArray(pending) && pending.length > 0) {
+      return Boolean(agentId && pending.includes(agentId));
+    }
+
     if (payload.wrapUpRequired === true) {
       return true;
     }
     if (!agentId) {
       return false;
-    }
-    if (payload.agentsPendingWrapUp?.includes(agentId)) {
-      return true;
     }
 
     return payload.interaction?.participants?.[agentId]?.isWrapUp === true;
@@ -270,7 +274,7 @@ export default class TaskManager extends EventEmitter {
       if (!left) {
         return {
           ...payload,
-          wrapUpRequired: payload.wrapUpRequired === true,
+          wrapUpRequired: TaskManager.wrapUpRequiredFromExplicitSignals(payload, agentId),
         };
       }
 

@@ -3812,6 +3812,80 @@ describe('TaskManager', () => {
       expect(observer.taskData.wrapUpRequired).toBe(false);
     });
 
+    it('does not stamp wrapUpRequired when a nonempty pending list excludes this agent', () => {
+      const conflictingPayload = {
+        ...taskDataMock,
+        wrapUpRequired: true,
+        agentsPendingWrapUp: ['other-agent-id'],
+      };
+
+      const conferenceEnded = (TaskManager as any).mapEventToTaskStateMachineEvent(
+        CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED,
+        conflictingPayload,
+        'test-agent-id'
+      );
+      const conferenceTransferred = (TaskManager as any).mapEventToTaskStateMachineEvent(
+        CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED,
+        {
+          ...conflictingPayload,
+          consultingAgentId: 'other-agent-id',
+        },
+        'test-agent-id'
+      );
+      const remainingOnLeave = (TaskManager as any).mapEventToTaskStateMachineEvent(
+        CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+        {
+          ...conflictingPayload,
+          participantId: 'other-agent-id',
+          interaction: {
+            ...taskDataMock.interaction,
+            owner: 'test-agent-id',
+            participants: {
+              'test-agent-id': {id: 'test-agent-id', pType: 'Agent', hasLeft: false},
+            },
+          },
+        },
+        'test-agent-id'
+      );
+
+      expect(conferenceEnded.taskData.wrapUpRequired).toBe(false);
+      expect(conferenceTransferred.taskData.wrapUpRequired).toBe(false);
+      expect(remainingOnLeave.taskData.wrapUpRequired).toBe(false);
+    });
+
+    it('stamps wrapUpRequired when pending includes this agent or pending is empty', () => {
+      const pendingIncludesSelf = (TaskManager as any).mapEventToTaskStateMachineEvent(
+        CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED,
+        {
+          ...taskDataMock,
+          wrapUpRequired: true,
+          agentsPendingWrapUp: ['test-agent-id'],
+        },
+        'test-agent-id'
+      );
+      const emptyPendingFallback = (TaskManager as any).mapEventToTaskStateMachineEvent(
+        CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED,
+        {
+          ...taskDataMock,
+          wrapUpRequired: true,
+          agentsPendingWrapUp: [],
+        },
+        'test-agent-id'
+      );
+      const missingPendingFallback = (TaskManager as any).mapEventToTaskStateMachineEvent(
+        CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED,
+        {
+          ...taskDataMock,
+          wrapUpRequired: true,
+        },
+        'test-agent-id'
+      );
+
+      expect(pendingIncludesSelf.taskData.wrapUpRequired).toBe(true);
+      expect(emptyPendingFallback.taskData.wrapUpRequired).toBe(true);
+      expect(missingPendingFallback.taskData.wrapUpRequired).toBe(true);
+    });
+
     it('sends mapped events to the task state machine service', () => {
       const payload = {...taskDataMock, type: CC_EVENTS.AGENT_CONTACT_ASSIGNED};
       const task = taskManager.getTask(taskId);
