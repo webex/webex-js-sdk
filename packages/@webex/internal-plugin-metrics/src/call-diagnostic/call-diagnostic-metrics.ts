@@ -386,6 +386,20 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
+   * Returns the signed-in user's CI ID derived from credentials tokens.
+   * Used as a fallback when no device is registered.
+   * @returns the userId, or undefined if it can't be determined
+   */
+  private getUserIdFromCredentials(): string | undefined {
+    try {
+      // @ts-ignore
+      return this.webex.credentials.getUserId();
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
    * Gather identifier details for call diagnostic payload.
    * @throws Error if initialization fails.
    * @param options
@@ -429,7 +443,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       const {device} = this;
       const {installationId} = device?.config || {};
 
-      identifiers.userId = device?.userId || preLoginId;
       identifiers.deviceId = device?.url;
       identifiers.orgId = device?.orgId;
       // @ts-ignore
@@ -439,6 +452,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         identifiers.machineId = installationId;
       }
     }
+
+    // Prefer the device's userId, but fall back to the signed-in user's ID from
+    // credentials when no device is registered, then to the pre-login ID.
+    identifiers.userId = this.device?.userId || this.getUserIdFromCredentials() || preLoginId;
 
     if (meeting?.locusInfo?.fullState) {
       identifiers.locusUrl = meeting.locusUrl;
