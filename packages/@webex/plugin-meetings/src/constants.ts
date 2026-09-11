@@ -296,6 +296,7 @@ export const EVENT_TRIGGERS = {
   MEETING_RECEIVE_REACTIONS: 'meeting:receiveReactions',
   MEETING_PAUSED_RECORDING: 'meeting:recording:paused',
   MEETING_RESUMED_RECORDING: 'meeting:recording:resumed',
+  MEETING_RECORDING_DURATION_UPDATED: 'meeting:recording:durationUpdated',
   MEETING_ADDED: 'meeting:added',
   MEETING_REMOVED: 'meeting:removed',
   MEETING_RINGING: 'meeting:ringing',
