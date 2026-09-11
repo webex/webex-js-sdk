@@ -446,8 +446,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.apiAIAssistant,
         this.services.contact,
         this.webCallingService,
-        this.services.webSocketManager,
-        this.services.rtdWebSocketManager
+        this.services.webSocketManager
       );
       this.taskManager.setAnswerCallOnWebexService(this.answerCallOnWebexService);
       this.incomingTaskListener();
@@ -522,6 +521,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private incomingTaskListener() {
+    this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+    this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+    this.taskManager.off(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
+    this.taskManager.off(TASK_EVENTS.TASK_MERGED, this.handleTaskMerged);
+    this.taskManager.off(
+      TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+      this.handleCampaignPreviewReservation
+    );
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
     this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
     this.taskManager.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
@@ -578,6 +585,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
       ]);
+      this.taskManager.clearAISummaryState();
+      this.incomingTaskListener();
       this.setupEventListeners();
       this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
@@ -657,6 +666,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
       ]);
 
+      this.taskManager.clearAISummaryState();
       this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
       this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
       this.taskManager.off(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
@@ -694,12 +704,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (!this.services.webSocketManager.isSocketClosed) {
         this.services.webSocketManager.close(false, 'Unregistering the SDK');
       }
-      if (this.services.rtdWebSocketManager && !this.services.rtdWebSocketManager.isSocketClosed) {
-        this.services.rtdWebSocketManager.close(false, 'Unregistering the SDK');
-      }
 
       if (this.services.rtdWebSocketManager && !this.services.rtdWebSocketManager.isSocketClosed) {
-        this.services.rtdWebSocketManager.close(false, 'Unregistering the RTD websocket');
+        this.services.rtdWebSocketManager.close(false, 'Unregistering the SDK');
       }
 
       // Clear any cached agent configuration
@@ -721,7 +728,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
         {
-          error: error.message || UNKNOWN_ERROR,
+          error: error?.message || UNKNOWN_ERROR,
         },
         ['operational']
       );
@@ -871,6 +878,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
       this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
       this.taskManager.setAgentId(this.agentConfig.agentId);
+      this.taskManager.setAgentName(this.agentConfig.agentName);
       this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
       this.apiAIAssistant.setAIFeatureFlags(this.agentConfig.aiFeature);
 
@@ -879,8 +887,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
        * Extend this condition when additional AI RTD features are introduced.
        */
       if (
-        this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||
-        this.agentConfig.aiFeature?.suggestedResponses?.enable
+        this.agentConfig.aiFeature?.realtimeTranscripts?.enable === true ||
+        this.agentConfig.aiFeature?.suggestedResponses?.enable === true ||
+        this.agentConfig.aiFeature?.generatedSummaries?.wrapUpSummariesEnabled === true ||
+        this.agentConfig.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled === true
       ) {
         LoggerProxy.info('Connecting to RTD websocket', {
           module: CC_FILE,
@@ -897,6 +907,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
               module: CC_FILE,
               method: METHODS.CONNECT_WEBSOCKET,
             });
+            this.services.rtdWebSocketManager.off('message', this.handleRTDWebsocketMessage);
             this.services.rtdWebSocketManager.on('message', this.handleRTDWebsocketMessage);
           })
           .catch((error) => {
@@ -2025,7 +2036,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private setupEventListeners() {
-    this.services.connectionService.on('connectionLost', this.handleConnectionLost.bind(this));
+    this.services.connectionService.off('connectionLost', this.handleConnectionLost);
+    this.services.connectionService.on('connectionLost', this.handleConnectionLost);
   }
 
   /**
@@ -2047,24 +2059,42 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @param {ConnectionLostDetails} msg Connection lost details
    * @private
    */
-  private async handleConnectionLost(msg: ConnectionLostDetails): Promise<void> {
+  private handleConnectionLost = async (msg: ConnectionLostDetails): Promise<void> => {
     if (msg.isConnectionLost) {
-      // TODO: Emit an event saying connection is lost
+      // Connection-loss event emission is not currently part of this callback contract.
       LoggerProxy.log('event=handleConnectionLost | Connection lost', {
         module: CC_FILE,
         method: METHODS.HANDLE_CONNECTION_LOST,
       });
     } else if (msg.isSocketReconnected) {
-      // TODO: Emit an event saying connection is re-estabilished
+      // Reconnection event emission is not currently part of this callback contract.
       LoggerProxy.log(
         'event=handleConnectionReconnect | Connection reconnected attempting to request silent relogin',
         {module: CC_FILE, method: METHODS.HANDLE_CONNECTION_LOST}
       );
+      this.taskManager.clearAISummaryState();
+      if (this.agentConfig) {
+        const configFlags: ConfigFlags = {
+          isEndTaskEnabled: this.agentConfig.isEndTaskEnabled,
+          isEndConsultEnabled: this.agentConfig.isEndConsultEnabled,
+          webRtcEnabled: this.agentConfig.webRtcEnabled,
+          autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
+          aiFeature: this.agentConfig.aiFeature,
+          consultTransfer: {
+            allowConsultToQueue: this.agentConfig.allowConsultToQueue,
+            accessQueue: this.agentConfig.accessQueue,
+            accessEntryPoint: this.agentConfig.accessEntryPoint,
+            accessBuddyTeam: this.agentConfig.accessBuddyTeam,
+          },
+          enableWxBetterTogether: this.isWxBetterTogetherEnabled(),
+        };
+        this.taskManager.setConfigFlags(configFlags);
+      }
       if (this.$config && this.$config.allowAutomatedRelogin) {
         await this.silentRelogin();
       }
     }
-  }
+  };
 
   /**
    * Handles silent relogin after registration completion

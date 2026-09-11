@@ -12,6 +12,19 @@ import {TaskContext} from './state-machine/types';
 import {CC_EVENTS} from '../config/types';
 import {OUTBOUND_TYPE, OUTDIAL_DIRECTION, OUTDIAL_MEDIA_TYPE} from '../../constants';
 
+type AISummaryError = Error & {data?: Record<string, unknown>};
+
+export const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === 'string' && value.length > 0;
+
+export const createSummaryError = (errorCode: string): AISummaryError => {
+  const error = new Error(errorCode) as AISummaryError;
+
+  error.data = {errorCode};
+
+  return error;
+};
+
 const CAMPAIGN_PREVIEW_OUTBOUND_TYPES = ['STANDARD_PREVIEW_CAMPAIGN', 'DIRECT_PREVIEW_CAMPAIGN'];
 const CAMPAIGN_PREVIEW_CAMPAIGN_TYPES = ['preview_standard', 'preview_direct'];
 

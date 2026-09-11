@@ -3,7 +3,8 @@ import type {AnyActorRef} from 'xstate';
 import {TaskEventPayload} from './state-machine';
 import {Msg} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
-import type {CollaborationAccess} from '../config/types';
+import type {AIFeatureFlags, CollaborationAccess} from '../config/types';
+import type ApiAIAssistant from '../ApiAiAssistant';
 
 /**
  * Unique identifier for a task in the contact center system
@@ -716,6 +717,27 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_CAMPAIGN_CONTACT_UPDATED = 'task:campaignContactUpdated',
+
+  /**
+   * Triggered when a mid-call summary is received for the task.
+   */
+  TASK_MID_CALL_SUMMARY_RECEIVED = 'task:midCallSummaryReceived',
+
+  /**
+   * Triggered on the task object when AI feature enablement flags arrive for that task's interaction.
+   * Fires immediately if the frame arrived after the task was registered, or at registration time
+   * if the frame arrived before the task (orphan retention). Consumers should use this event
+   * instead of the cc-level `FEATURE_ENABLEMENT` event so they do not need to maintain an
+   * interactionId → flags map manually.
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, (payload: FeatureEnablementEventPayload) => {
+   *   const { midCallEnabled, postCallEnabled } = payload;
+   *   // gate summary UI on these flags
+   * });
+   * ```
+   */
+  TASK_FEATURE_ENABLEMENT = 'task:featureEnablement',
 }
 
 /**
@@ -1669,6 +1691,179 @@ export type ParticipantBooleanKey =
  */
 export type TaskResponse = AgentContact | Error | void;
 
+/** AI-assisted mid-call summary action. @public */
+export type AISummaryActionType = 'CONSULT' | 'TRANSFER';
+
+/** Feedback value sent with an AI summary response. @public */
+export type AISummaryFeedback = 'none' | 'thumbs_up' | 'thumbs_down';
+
+/** Post-call summary response state. @public */
+export type PostCallSummaryState = 'DEFAULT' | 'IGNORED' | 'NOT_RECEIVED';
+
+/** Mid-call summary response state. @public */
+export type MidCallSummaryState =
+  | 'DEFAULT'
+  | 'EXCLUDED'
+  | 'IGNORED'
+  | 'MID_CALL_CANCELLED'
+  | 'NOT_RECEIVED';
+
+/** Structured post-call summary fields. @public */
+export type PostCallSummarySections = {
+  initialContactReason?: string;
+  additionalContactReasons?: string;
+  additionalContext?: string;
+  keyActionsTaken?: string;
+  nextSteps?: string;
+};
+
+/** Structured mid-call summary fields. @public */
+export type MidCallSummarySections = {
+  reasonForTransferOrConsult?: string;
+  additionalContext?: string;
+  keyActionsTaken?: string;
+};
+
+/** Summary interaction counters used to compose summary response payloads. */
+type SummaryCounters = {
+  numberOfTimesViewed: number;
+  numberOfTimesEdited: number;
+  numberOfTimesCopied: number;
+};
+
+/** RTD payload returned for a post-call summary request. @public */
+export type PostCallSummaryEventPayload = {
+  conversationId: string;
+  adaptiveCard?: Record<string, unknown>;
+  adaptiveCardId?: string;
+  editAdaptiveCard?: Record<string, unknown>;
+  editAdaptiveCardId?: string;
+  languageCode?: string;
+  summaryText?: string;
+  resolution?: string;
+  areTranscriptsAvailable?: boolean;
+  sections?: PostCallSummarySections;
+  suggestedWrapUpCodes?: Array<{name: string; [key: string]: unknown}>;
+  suggestedWrapUpCodesMessage?: string;
+  timestamp?: number;
+  [key: string]: unknown;
+};
+
+/** RTD payload returned for a mid-call summary request. @public */
+export type MidCallSummaryEventPayload = {
+  conversationId: string;
+  adaptiveCard?: Record<string, unknown>;
+  adaptiveCardId?: string;
+  editAdaptiveCard?: Record<string, unknown>;
+  editAdaptiveCardId?: string;
+  languageCode?: string;
+  summaryText?: string;
+  resolution?: string;
+  areTranscriptsAvailable?: boolean;
+  sections?: MidCallSummarySections;
+  timestamp?: number;
+  [key: string]: unknown;
+};
+
+/** @internal */
+export type AISummaryInboundType = 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY';
+
+/** @internal */
+export type AISummaryPayloadByInboundType = {
+  POST_CALL_SUMMARY: PostCallSummaryEventPayload;
+  MID_CALL_SUMMARY: MidCallSummaryEventPayload;
+};
+
+/** @internal */
+export type BufferedReceivingSummary = {
+  payload: MidCallSummaryReceivingAgentPayload;
+  timeoutId?: ReturnType<typeof setTimeout>;
+};
+
+/** @internal */
+export type PendingFeatureEnablement = {
+  payload: FeatureEnablementEventPayload;
+  timeoutId?: ReturnType<typeof setTimeout>;
+};
+
+/** RTD payload delivered to the receiving agent for a mid-call summary. @public */
+export type MidCallSummaryReceivingAgentPayload = {
+  conversationId: string;
+  adaptiveCard?: Record<string, unknown>;
+  adaptiveCardId?: string;
+  languageCode?: string;
+  resolution?: string;
+  summaryText: string;
+  timestamp?: number;
+  [key: string]: unknown;
+};
+
+/** RTD payload describing AI-summary feature enablement for an interaction. @public */
+export type FeatureEnablementEventPayload = {
+  interactionId: string;
+  midCallEnabled?: boolean;
+  postCallEnabled?: boolean;
+  actionTimestamp?: number;
+  [key: string]: unknown;
+};
+
+/** Current AI-summary capabilities for a task. @public */
+export type AISummaryCapabilities = {
+  midCallEnabled: boolean;
+  postCallEnabled: boolean;
+};
+
+type SummaryResponseTimestamps = {
+  actionTimeStamp?: number;
+  publishTimestamp?: number;
+};
+
+/** Post-call response containing a received summary. @public */
+type PostCallReceivedResponse = SummaryCounters &
+  SummaryResponseTimestamps & {
+    summary: PostCallSummarySections | string;
+    feedback: AISummaryFeedback;
+    state: Exclude<PostCallSummaryState, 'NOT_RECEIVED'>;
+    wrapUpCode: string;
+  };
+
+/** Post-call response when no summary was received. @public */
+type PostCallNotReceivedResponse = SummaryResponseTimestamps & {
+  summary: '';
+  numberOfTimesViewed: 0;
+  numberOfTimesEdited: 0;
+  numberOfTimesCopied: 0;
+  feedback: AISummaryFeedback;
+  state: Extract<PostCallSummaryState, 'NOT_RECEIVED'>;
+  wrapUpCode: string;
+};
+
+/** Payload sent when reporting the result of a post-call summary. @public */
+export type PostCallSummaryResponsePayload = PostCallReceivedResponse | PostCallNotReceivedResponse;
+
+/** Mid-call response containing a received summary. @public */
+type MidCallReceivedResponse = SummaryCounters &
+  SummaryResponseTimestamps & {
+    summaryReceived: true;
+    summary: MidCallSummarySections | string;
+    feedback: AISummaryFeedback;
+    state: Exclude<MidCallSummaryState, 'NOT_RECEIVED'>;
+  };
+
+/** Mid-call response when no summary was received. @public */
+type MidCallUnavailableResponse = SummaryResponseTimestamps & {
+  summaryReceived: false;
+  summary: '';
+  numberOfTimesViewed: 0;
+  numberOfTimesEdited: 0;
+  numberOfTimesCopied: 0;
+  feedback: AISummaryFeedback;
+  state: Extract<MidCallSummaryState, 'NOT_RECEIVED' | 'MID_CALL_CANCELLED' | 'IGNORED'>;
+};
+
+/** Payload sent when reporting the result of a mid-call summary. @public */
+export type MidCallSummaryResponsePayload = MidCallReceivedResponse | MidCallUnavailableResponse;
+
 /**
  * Request payload for removing a supported participant from an active conference.
  * @public
@@ -1716,6 +1911,12 @@ export interface ITask extends IEventEmitter {
    * and participant data as defined in {@link TaskData}
    */
   data: TaskData;
+
+  /**
+   * Current AI-summary capabilities for this task. Both flags are false until
+   * the matching feature-enablement event is received.
+   */
+  readonly aiSummaryCapabilities: Readonly<AISummaryCapabilities>;
 
   /**
    * Map associating tasks with their corresponding call identifiers.
@@ -1789,6 +1990,64 @@ export interface ITask extends IEventEmitter {
    * @returns void
    */
   cancelAutoWrapupTimer(): void;
+
+  /**
+   * Configure the shared AI Summary dependencies used by this task.
+   * @internal
+   */
+  configureAISummary?(
+    apiAIAssistant: ApiAIAssistant | undefined,
+    getGeneratedSummaryFlags: () => AIFeatureFlags['generatedSummaries'] | undefined
+  ): void;
+
+  /**
+   * Applies the AI-summary feature flags received for this task's interaction.
+   * @internal
+   */
+  setFeatureEnablement?(payload: FeatureEnablementEventPayload, emitEvent?: boolean): void;
+
+  /**
+   * Emits a feature-enablement event retained until the task lifecycle event was published.
+   * @internal
+   */
+  emitPendingFeatureEnablement?(): void;
+
+  /**
+   * Clears the task-local AI-summary feature flags during session cleanup.
+   * @internal
+   */
+  clearFeatureEnablement?(): void;
+
+  /**
+   * Requests an AI-generated post-call summary for this task.
+   * @returns Promise resolving with the matching post-call summary payload.
+   */
+  requestPostCallSummary(): Promise<PostCallSummaryEventPayload>;
+
+  /**
+   * Sends the consumer's post-call summary response.
+   * @param payload - Validated post-call response observations and summary state.
+   * @returns Promise resolving when AI Assistant acknowledges the response.
+   */
+  sendPostCallSummaryResponse(payload: PostCallSummaryResponsePayload): Promise<void>;
+
+  /**
+   * Requests an AI-generated mid-call summary for a consult or transfer flow.
+   * @param actionType - The consult or transfer flow requesting the summary.
+   * @returns Promise resolving with the matching mid-call summary payload.
+   */
+  requestMidCallSummary(actionType: AISummaryActionType): Promise<MidCallSummaryEventPayload>;
+
+  /**
+   * Sends the consumer's mid-call summary response for a consult or transfer flow.
+   * @param payload - Validated mid-call response observations and summary state.
+   * @param actionType - The consult or transfer flow responding to the summary.
+   * @returns Promise resolving when AI Assistant acknowledges the response.
+   */
+  sendMidCallSummaryResponse(
+    payload: MidCallSummaryResponsePayload,
+    actionType: AISummaryActionType
+  ): Promise<void>;
 
   /**
    * Deregisters all web call event listeners.

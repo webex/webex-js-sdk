@@ -14,7 +14,8 @@ export default class Digital extends Task implements IDigital {
     data: TaskData,
     wrapupData?: WrapupData,
     agentId?: string,
-    consultTransferConfig?: ConsultTransferDestinationConfig
+    consultTransferConfig?: ConsultTransferDestinationConfig,
+    agentName?: string
   ) {
     super(
       contact,
@@ -26,7 +27,8 @@ export default class Digital extends Task implements IDigital {
         consultTransferConfig,
       },
       wrapupData,
-      agentId
+      agentId,
+      agentName
     );
   }
 

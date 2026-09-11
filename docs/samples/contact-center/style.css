@@ -989,3 +989,35 @@ legend {
 #end {
   display: none !important;
 }
+
+/* AI summary thumbs feedback toggle */
+button[aria-pressed="true"] {
+  outline: 2px solid currentColor;
+  background-color: #e0f0ff;
+  font-weight: bold;
+}
+
+/* AI summary per-section editing */
+.summary-sections-container label {
+  display: block;
+  font-weight: bold;
+  margin-top: 8px;
+  margin-bottom: 2px;
+}
+
+.summary-sections-container textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Incoming (receiving agent) summary — read-only */
+.incoming-summary-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: inherit;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+}

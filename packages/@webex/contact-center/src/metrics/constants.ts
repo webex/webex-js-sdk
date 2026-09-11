@@ -204,6 +204,16 @@ export const METRIC_EVENT_NAMES = {
     'AI Assistant Fetch Historic Transcripts Success',
   AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED: 'AI Assistant Fetch Historic Transcripts Failed',
 
+  // AI summary events
+  AI_SUMMARY_GET_POST_CALL_SUCCESS: 'Post Call Summary Get Success',
+  AI_SUMMARY_GET_POST_CALL_FAILED: 'Post Call Summary Get Failed',
+  AI_SUMMARY_GET_MID_CALL_SUCCESS: 'Mid Call Summary Get Success',
+  AI_SUMMARY_GET_MID_CALL_FAILED: 'Mid Call Summary Get Failed',
+  AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS: 'Post Call Summary Response Success',
+  AI_SUMMARY_POST_CALL_RESPONSE_FAILED: 'Post Call Summary Response Failed',
+  AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS: 'Mid Call Summary Response Success',
+  AI_SUMMARY_MID_CALL_RESPONSE_FAILED: 'Mid Call Summary Response Failed',
+
   // User Preference API Events
   USER_PREFERENCE_GET_SUCCESS: 'User Preference Get Success',
   USER_PREFERENCE_GET_FAILED: 'User Preference Get Failed',

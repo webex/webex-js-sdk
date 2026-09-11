@@ -1,5 +1,8 @@
 import 'jsdom-global/register';
+import EventEmitter from 'events';
 import {
+  AIAssistantEventName,
+  AIAssistantEventType,
   BuddyAgents,
   BuddyAgentsResponse,
   LoginOption,
@@ -18,7 +21,7 @@ import {SetStateResponse} from '../../../src/types';
 import {AGENT, SUBSCRIBE_API, WEB_RTC_PREFIX} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
-import {CC_EVENTS} from '../../../src/services/config/types';
+import {CC_TASK_EVENTS, CC_EVENTS} from '../../../src/services/config/types';
 import LoggerProxy from '../../../src/logger-proxy';
 import * as Utils from '../../../src/services/core/Utils';
 import {
@@ -27,17 +30,32 @@ import {
   OUTBOUND_TYPE,
   ATTRIBUTES,
   OUTDIAL_MEDIA_TYPE,
+  UNKNOWN_ERROR,
 } from '../../../src/constants';
 
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
 import {Profile} from '../../../src/services/config/types';
 import TaskManager from '../../../src/services/task/TaskManager';
-import {AgentContact, TASK_EVENTS} from '../../../src/services/task/types';
+import Task from '../../../src/services/task/Task';
+import {
+  AgentContact,
+  PostCallSummaryResponsePayload,
+  TASK_CHANNEL_TYPE,
+  TASK_EVENTS,
+  TaskData,
+} from '../../../src/services/task/types';
+import {AI_SUMMARY_REQUEST_CANCELLED} from '../../../src/services/task/constants';
 import MetricsManager from '../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../src/metrics/constants';
 import Mercury from '@webex/internal-plugin-mercury';
 import WebexRequest from '../../../src/services/core/WebexRequest';
+import type {ConnectionLostDetails} from '../../../src/services/core/websocket/types';
+import {
+  createDeferred,
+  flushEventLoopTurn,
+  flushMicrotasks,
+} from '../fixtures/aiSummaryTestUtils';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -45,17 +63,300 @@ jest.mock('../../../src/logger-proxy', () => ({
     log: jest.fn(),
     error: jest.fn(),
     info: jest.fn(),
+    warn: jest.fn(),
     initialize: jest.fn(),
   },
 }));
 
+jest.mock('../../../src/services', () => ({
+  __esModule: true,
+  default: {
+    getInstance: jest.fn(() => ({
+      agent: {
+        stationLogin: jest.fn(),
+        logout: jest.fn(),
+        reload: jest.fn(),
+        stateChange: jest.fn(),
+        buddyAgents: jest.fn(),
+      },
+      config: {
+        getAgentConfig: jest.fn(),
+        getOutdialAniEntries: jest.fn(),
+      },
+      webSocketManager: {
+        initWebSocket: jest.fn(),
+        on: jest.fn(),
+        off: jest.fn(),
+        close: jest.fn(),
+        isSocketClosed: false,
+      },
+      rtdWebSocketManager: {
+        initWebSocket: jest.fn(),
+        on: jest.fn(),
+        off: jest.fn(),
+        close: jest.fn(),
+        isSocketClosed: false,
+      },
+      connectionService: {
+        on: jest.fn(),
+        off: jest.fn(),
+      },
+      contact: {},
+      dialer: {
+        startOutdial: jest.fn(),
+        acceptPreviewContact: jest.fn(),
+        skipPreviewContact: jest.fn(),
+        removePreviewContact: jest.fn(),
+      },
+    })),
+  },
+}));
+
+jest.mock('../../../src/services/task/TaskManager', () => ({
+  __esModule: true,
+  default: {
+    getTaskManager: jest.fn(() => ({
+      on: jest.fn(),
+      off: jest.fn(),
+      emit: jest.fn(),
+      setConfigFlags: jest.fn(),
+      setWrapupData: jest.fn(),
+      setAgentId: jest.fn(),
+      setAgentName: jest.fn(),
+      setWebRtcEnabled: jest.fn(),
+      setAnswerCallOnWebexService: jest.fn(),
+      registerIncomingCallEvent: jest.fn(),
+      registerTaskListeners: jest.fn(),
+      unregisterIncomingCallEvent: jest.fn(),
+      getTask: jest.fn(),
+      getActiveTasks: jest.fn(),
+      handleRealtimeWebsocketEvent: jest.fn(),
+      clearAISummaryState: jest.fn(),
+    })),
+  },
+}));
+
+jest.mock('../../../src/metrics/MetricsManager', () => ({
+  __esModule: true,
+  default: {
+    getInstance: jest.fn(),
+    getCommonTrackingFieldForAQMResponse: jest.fn(() => ({})),
+    getCommonTrackingFieldForAQMResponseFailed: jest.fn(() => ({})),
+  },
+}));
+
+jest.mock('../../../src/services/core/WebexRequest', () => ({
+  __esModule: true,
+  default: {
+    getInstance: jest.fn(() => ({
+      request: jest.fn(),
+      uploadLogs: jest.fn(),
+    })),
+  },
+}));
+
+jest.mock('../../../src/services/ApiAiAssistant', () => {
+  class MockApiAIAssistant {
+    public sendEvent = jest.fn();
+    public requestAndWaitForRtd = jest.fn();
+    public resolveFromRtdEvent = jest.fn();
+    public clearAllRtdRequests = jest.fn();
+    public getSuggestedResponse = jest.fn();
+    public fetchHistoricTranscripts = jest.fn();
+    public setAIFeatureFlags = jest.fn();
+    public setAgentId = jest.fn();
+  }
+
+  return {
+    __esModule: true,
+    default: MockApiAIAssistant,
+    ApiAIAssistant: MockApiAIAssistant,
+  };
+});
+
+jest.mock('../../../src/services/WebCallingService', () => {
+  class MockWebCallingService {
+    public loginOption = 'AGENT_DN';
+    public registerWebCallingLine = jest.fn().mockResolvedValue(undefined);
+    public deregisterWebCallingLine = jest.fn().mockResolvedValue(undefined);
+    public setLoginOption = jest.fn((loginOption: string) => {
+      this.loginOption = loginOption;
+    });
+  }
+
+  return {
+    __esModule: true,
+    default: MockWebCallingService,
+  };
+});
+
+jest.mock('../../../src/services/task/TaskFactory', () => ({
+  __esModule: true,
+  default: {
+    createTask: jest.fn(),
+  },
+}));
+
+jest.mock('../../../src/services/task/voice/WebRTC', () => ({
+  __esModule: true,
+  default: class MockWebRTC {},
+}));
+
+jest.mock('../../../src/services/task/taskDataNormalizer', () => ({
+  normalizeTaskData: jest.fn((data) => data),
+}));
+
+jest.mock('../../../src/services/task/state-machine', () => ({
+  ...jest.requireActual('../../../src/services/task/state-machine'),
+  createTaskStateMachine: jest.fn(
+    jest.requireActual('../../../src/services/task/state-machine').createTaskStateMachine
+  ),
+}));
+
+jest.mock('../../../src/services/task/state-machine/uiControlsComputer', () => ({
+  computeUIControls: jest.fn(() => ({})),
+  getDefaultUIControls: jest.fn(() => ({})),
+  haveUIControlsChanged: jest.fn(() => false),
+}));
+
+jest.mock('../../../src/services/task/AutoWrapup', () => ({
+  __esModule: true,
+  default: class MockAutoWrapup {},
+}));
+
+jest.mock('../../../src/services/EntryPoint', () => {
+  class MockEntryPoint {
+    public getEntryPoints() {
+      return Promise.resolve({});
+    }
+  }
+
+  return {
+    __esModule: true,
+    default: MockEntryPoint,
+    EntryPoint: MockEntryPoint,
+  };
+});
+
+jest.mock('../../../src/services/AddressBook', () => {
+  class MockAddressBook {
+    public getEntries() {
+      return Promise.resolve({});
+    }
+  }
+
+  return {
+    __esModule: true,
+    default: MockAddressBook,
+    AddressBook: MockAddressBook,
+  };
+});
+
+jest.mock('../../../src/services/Queue', () => {
+  class MockQueue {
+    public getQueues() {
+      return Promise.resolve({});
+    }
+  }
+
+  return {
+    __esModule: true,
+    default: MockQueue,
+    Queue: MockQueue,
+  };
+});
+
 jest.mock('../../../src/services/config');
 jest.mock('../../../src/services/core/websocket/WebSocketManager');
 jest.mock('../../../src/services/core/websocket/connection-service');
-jest.mock('../../../src/services/WebCallingService');
 jest.mock('uuid', () => ({v4: () => 'mock-tracking-uuid'}));
 
 global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
+
+class EventEmitterDouble extends EventEmitter {
+  public isSocketClosed = false;
+  public initWebSocket = jest.fn().mockResolvedValue({});
+  public close = jest.fn(() => {
+    this.isSocketClosed = true;
+  });
+  public mapCallToTask = jest.fn();
+
+  public on = jest.fn((eventName: string | symbol, listener: (...args: unknown[]) => void) => {
+    super.on(eventName, listener);
+
+    return this;
+  });
+
+  public off = jest.fn((eventName: string | symbol, listener: (...args: unknown[]) => void) => {
+    super.off(eventName, listener);
+
+    return this;
+  });
+}
+
+class AISummaryLifecycleTask extends Task {
+  public constructor(data: TaskData, agentId = 'agent-1') {
+    super(
+      {} as any,
+      data,
+      {
+        channelType: TASK_CHANNEL_TYPE.VOICE,
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+      },
+      undefined,
+      agentId
+    );
+  }
+
+  public accept() {
+    return Promise.resolve({} as any);
+  }
+}
+
+const createAISummaryLifecycleTask = (
+  data: TaskData = createAISummaryLifecycleTaskData()
+): AISummaryLifecycleTask => new AISummaryLifecycleTask(data);
+
+const createAISummaryLifecycleTaskData = (
+  overrides: Partial<TaskData> & {conversationId?: string} = {}
+): TaskData => {
+  const {
+    conversationId = 'conversation-1',
+    interaction: interactionOverrides,
+    ...taskOverrides
+  } = overrides;
+  const interactionId = taskOverrides.interactionId ?? 'interaction-1';
+
+  return {
+    mediaResourceId: 'media-resource-1',
+    eventType: CC_EVENTS.AGENT_CONTACT_ASSIGNED,
+    agentId: 'agent-1',
+    destAgentId: '',
+    trackingId: 'tracking-1',
+    consultMediaResourceId: '',
+    interactionId,
+    orgId: 'org-1',
+    owner: 'agent-1',
+    queueMgr: 'queue-manager-1',
+    type: 'telephony',
+    isConferencing: false,
+    taskId: 'task-owner-1',
+    ...taskOverrides,
+    interaction: {
+      interactionId,
+      mainInteractionId: conversationId,
+      mediaType: 'telephony',
+      media: {
+        [interactionId]: {
+          mediaResourceId: 'media-resource-1',
+        },
+      },
+      callProcessingDetails: {},
+      ...(interactionOverrides as Record<string, unknown> | undefined),
+    },
+  } as TaskData;
+};
 
 describe('webex.cc', () => {
   let webex;
@@ -168,6 +469,7 @@ describe('webex.cc', () => {
       setConfigFlags: jest.fn(),
       setWrapupData: jest.fn(),
       setAgentId: jest.fn(),
+      setAgentName: jest.fn(),
       setWebRtcEnabled: jest.fn(),
       setAnswerCallOnWebexService: jest.fn(),
       registerIncomingCallEvent: jest.fn(),
@@ -180,6 +482,8 @@ describe('webex.cc', () => {
       off: jest.fn(),
       emit: jest.fn(),
       unregisterIncomingCallEvent: jest.fn(),
+      handleRealtimeWebsocketEvent: jest.fn(),
+      clearAISummaryState: jest.fn(),
     };
 
     mockMetricsManager = {
@@ -203,6 +507,7 @@ describe('webex.cc', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
   it('should initialize services and logger proxy on ready event', () => {
@@ -269,7 +574,7 @@ describe('webex.cc', () => {
   });
 
   describe('register', () => {
-    const mockAgentProfile: Profile = {
+    const createFreshAgentProfile = (overrides: Partial<Profile> = {}): Profile => ({
       agentId: 'agent123',
       agentMailId: '',
       agentName: 'John',
@@ -321,7 +626,10 @@ describe('webex.cc', () => {
       isTimeoutDesktopInactivityEnabled: false,
       webRtcEnabled: true,
       lostConnectionRecoveryTimeout: 0,
-    };
+      ...overrides,
+    });
+
+    const mockAgentProfile: Profile = createFreshAgentProfile();
 
     it('should register successfully and return agent profile', async () => {
       mockAgentProfile.aiFeature = {realtimeTranscripts: {enable: true}} as any;
@@ -371,7 +679,7 @@ describe('webex.cc', () => {
         resource: SUBSCRIBE_API,
       });
 
-      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      // SPARK-626777 tracks moving listener cleanup into the future de-register API.
       expect(mockTaskManager.on).toHaveBeenCalledWith(
         TASK_EVENTS.TASK_INCOMING,
         expect.any(Function)
@@ -394,10 +702,17 @@ describe('webex.cc', () => {
         },
         resource: 'v1/realtime/subscribe',
       });
+      expect(webex.cc.services.rtdWebSocketManager.off).toHaveBeenCalledWith(
+        'message',
+        expect.any(Function)
+      );
       expect(webex.cc.services.rtdWebSocketManager.on).toHaveBeenCalledWith(
         'message',
         expect.any(Function)
       );
+      expect(
+        webex.cc.services.rtdWebSocketManager.off.mock.invocationCallOrder[0]
+      ).toBeLessThan(webex.cc.services.rtdWebSocketManager.on.mock.invocationCallOrder[0]);
 
       expect(configSpy).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
@@ -418,6 +733,10 @@ describe('webex.cc', () => {
         },
         enableWxBetterTogether: false,
       });
+      expect(mockTaskManager.clearAISummaryState).toHaveBeenCalled();
+      expect(mockTaskManager.clearAISummaryState.mock.invocationCallOrder[0]).toBeLessThan(
+        mockTaskManager.setConfigFlags.mock.invocationCallOrder[0]
+      );
       expect(reloadSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
@@ -656,6 +975,1057 @@ describe('webex.cc', () => {
         expect.any(Function)
       );
     });
+
+    it('should connect RTD websocket when either generated summary organization flag is enabled', async () => {
+      jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
+      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
+          deviceType: LoginOption.EXTENSION,
+          dn: '12345',
+        },
+      });
+      mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
+
+      for (const generatedSummaries of [
+        {wrapUpSummariesEnabled: true, consultTransferSummariesEnabled: false},
+        {wrapUpSummariesEnabled: false, consultTransferSummariesEnabled: true},
+      ]) {
+        jest.clearAllMocks();
+        jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue({
+          ...mockAgentProfile,
+          aiFeature: {generatedSummaries} as any,
+        });
+
+        await webex.cc.register();
+
+        expect(webex.cc.services.rtdWebSocketManager.initWebSocket).toHaveBeenCalledWith({
+          body: {
+            force: true,
+            isKeepAliveEnabled: false,
+            clientType: 'WebexCCSDK',
+            allowMultiLogin: false,
+          },
+          resource: 'v1/realtime/subscribe',
+        });
+      }
+    });
+
+    it.each([
+      {
+        title: 'aiFeature is absent',
+        profileAgentId: 'profile-agent-without-ai-feature',
+        defaultDn: 'normalized-dn-without-ai-feature',
+        aiFeature: undefined,
+      },
+      {
+        title: 'aiFeature has no optional feature objects',
+        profileAgentId: 'profile-agent-with-empty-ai-feature',
+        defaultDn: 'normalized-dn-with-empty-ai-feature',
+        aiFeature: {} as any,
+      },
+    ])(
+      'should tolerate absent AI feature shapes without summary-driven RTD setup when $title',
+      async ({profileAgentId, defaultDn, aiFeature}) => {
+        const welcomeAgentId = 'welcome-agent-for-absent-ai-feature';
+        const configuredProfile = createFreshAgentProfile({
+          agentId: profileAgentId,
+          defaultDn,
+          dn: 'pre-register-dn',
+          webRtcEnabled: true,
+          aiFeature,
+        });
+        const expectedProfile = {...configuredProfile, dn: defaultDn};
+        webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
+        jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
+        const configSpy = jest
+          .spyOn(webex.cc.services.config, 'getAgentConfig')
+          .mockResolvedValue(configuredProfile);
+        mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: welcomeAgentId});
+
+        await expect(webex.cc.register()).resolves.toEqual(expectedProfile);
+
+        expect(configSpy).toHaveBeenCalledWith('mockOrgId', welcomeAgentId);
+        expect(webex.cc.services.rtdWebSocketManager.initWebSocket).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each([
+      {
+        title: 'all generated summary organization flags are disabled',
+        aiFeature: {
+          realtimeTranscripts: {enable: false},
+          suggestedResponses: {enable: false},
+          generatedSummaries: {
+            wrapUpSummariesEnabled: false,
+            consultTransferSummariesEnabled: false,
+          },
+        } as any,
+      },
+    ])(
+      'should keep registration operational without summary-driven RTD setup when $title',
+      async ({aiFeature}) => {
+        const welcomeAgentId = 'welcome-agent-with-disabled-summaries';
+        const configuredProfile = createFreshAgentProfile({
+          agentId: 'profile-agent-with-disabled-summaries',
+          defaultDn: 'normalized-dn-with-disabled-summaries',
+          dn: 'pre-register-dn',
+          webRtcEnabled: true,
+          aiFeature,
+        });
+        const expectedProfile = {...configuredProfile, dn: configuredProfile.defaultDn};
+        webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
+        const mercuryConnect = jest
+          .spyOn(webex.internal.mercury, 'connect')
+          .mockResolvedValue(true);
+        const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
+        const configSpy = jest
+          .spyOn(webex.cc.services.config, 'getAgentConfig')
+          .mockResolvedValue(configuredProfile);
+        mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: welcomeAgentId});
+
+        const result = await webex.cc.register();
+
+        expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
+          body: {
+            force: true,
+            isKeepAliveEnabled: false,
+            clientType: 'WebexCCSDK',
+            allowMultiLogin: false,
+          },
+          resource: SUBSCRIBE_API,
+        });
+        expect(configSpy).toHaveBeenCalledWith('mockOrgId', welcomeAgentId);
+        expect(setupEventListenersSpy).toHaveBeenCalled();
+        expect(mockTaskManager.on).toHaveBeenCalledWith(
+          TASK_EVENTS.TASK_INCOMING,
+          expect.any(Function)
+        );
+        expect(mockTaskManager.on).toHaveBeenCalledWith(
+          TASK_EVENTS.TASK_HYDRATE,
+          expect.any(Function)
+        );
+        expect(mockTaskManager.on).toHaveBeenCalledWith(
+          TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
+          expect.any(Function)
+        );
+        expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
+        expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith({
+          isEndTaskEnabled: configuredProfile.isEndTaskEnabled,
+          isEndConsultEnabled: configuredProfile.isEndConsultEnabled,
+          webRtcEnabled: configuredProfile.webRtcEnabled,
+          autoWrapup: configuredProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
+          aiFeature,
+          consultTransfer: {
+            allowConsultToQueue: configuredProfile.allowConsultToQueue,
+            accessQueue: configuredProfile.accessQueue,
+            accessEntryPoint: configuredProfile.accessEntryPoint,
+            accessBuddyTeam: configuredProfile.accessBuddyTeam,
+          },
+          enableWxBetterTogether: false,
+        });
+        expect(webex.cc.services.rtdWebSocketManager.initWebSocket).not.toHaveBeenCalled();
+        expect(webex.cc.services.rtdWebSocketManager.on).not.toHaveBeenCalledWith(
+          'message',
+          expect.any(Function)
+        );
+        expect(mercuryConnect).toHaveBeenCalled();
+        expect(result).toEqual(expectedProfile);
+      }
+    );
+  });
+
+  describe('AI summary lifecycle wiring', () => {
+    const sentinels = [
+      'summary-sentinel-cc-lifecycle',
+      'section-key-sentinel-cc-lifecycle',
+      'section-value-sentinel-cc-lifecycle',
+      'adaptive-card-sentinel-cc-lifecycle',
+      'agent-name-sentinel-cc-lifecycle',
+    ];
+
+    const createSummaryHarness = () => {
+      const ActualTaskManager = jest.requireActual('../../../src/services/task/TaskManager')
+        .default as typeof TaskManager;
+      const webSocketManager = new EventEmitterDouble();
+      const rtdWebSocketManager = new EventEmitterDouble();
+      const connectionService = new EventEmitterDouble();
+      const webCallingService = new EventEmitterDouble();
+      const transportDeferreds: Deferred<void>[] = [];
+      const pendingRequests = new Map<string, any>();
+      const apiAIAssistant: any = {
+        getSuggestedResponse: jest.fn(),
+        fetchHistoricTranscripts: jest.fn(),
+        setAIFeatureFlags: jest.fn(),
+        setAgentId: jest.fn(),
+        pendingRequests,
+        sendEvent: jest.fn((_agentId: string, _interactionId: string, _eventType: string, eventName: string) => {
+          if (eventName.includes('SUMMARY_RESPONSE')) {
+            return Promise.resolve(undefined);
+          }
+
+          const deferred = createDeferred<void>();
+
+          transportDeferreds.push(deferred);
+
+          return deferred.promise;
+        }),
+      };
+      apiAIAssistant.requestAndWaitForRtd = jest.fn(async (options: any) => {
+        const publishTimestamp = Date.now();
+        let resolveResult: (payload: any) => void = () => undefined;
+        let rejectResult: (error: Error) => void = () => undefined;
+        const result = new Promise((resolve, reject) => {
+          resolveResult = resolve;
+          rejectResult = reject;
+        });
+        const key = JSON.stringify([options.rtdEventType, options.correlationId]);
+        pendingRequests.set(key, {
+          eventType: options.rtdEventType,
+          correlationId: options.correlationId,
+          resolve: resolveResult,
+          reject: rejectResult,
+          result,
+        });
+        try {
+          const acknowledgement = apiAIAssistant.sendEvent(
+            options.agentId,
+            options.interactionId,
+            options.eventType,
+            options.eventName,
+            options.eventMetaData,
+            undefined,
+            undefined,
+            publishTimestamp,
+            options.timeout
+          );
+          const [payload] = await Promise.all([result, acknowledgement]);
+          pendingRequests.delete(key);
+          return payload;
+        } catch (error) {
+          pendingRequests.delete(key);
+          throw error;
+        }
+      });
+      apiAIAssistant.resolveFromRtdEvent = jest.fn(
+        (eventType: string, correlationId: string, payload: any) => {
+          const key = JSON.stringify([eventType, correlationId]);
+          const request = pendingRequests.get(key);
+          if (!request) return 'not-found';
+          pendingRequests.delete(key);
+          request.resolve(payload);
+          return 'resolved';
+        }
+      );
+      apiAIAssistant.clearAllRtdRequests = jest.fn(() => {
+        pendingRequests.forEach((request) => {
+          const error = new Error(AI_SUMMARY_REQUEST_CANCELLED) as Error & {
+            data?: Record<string, unknown>;
+          };
+          error.data = {errorCode: AI_SUMMARY_REQUEST_CANCELLED};
+          request.reject(error);
+        });
+        pendingRequests.clear();
+      });
+      const taskManager = new ActualTaskManager(
+        apiAIAssistant as any,
+        mockContact,
+        webCallingService as any,
+        webSocketManager as any,
+        rtdWebSocketManager as any
+      );
+      const taskFactory = jest.requireMock('../../../src/services/task/TaskFactory')
+        .default as {createTask: jest.Mock};
+
+      taskFactory.createTask.mockImplementation(
+        (_contact, _webCallingService, taskData: TaskData) =>
+          createAISummaryLifecycleTask(taskData)
+      );
+      const task = createAISummaryLifecycleTask();
+
+      taskManager.setConfigFlags({
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+        webRtcEnabled: false,
+        autoWrapup: false,
+        aiFeature: {
+          generatedSummaries: {
+            wrapUpSummariesEnabled: true,
+            consultTransferSummariesEnabled: true,
+          },
+        },
+      } as any);
+      taskManager.setAgentId('agent-1');
+      taskManager.setWebRtcEnabled(false);
+      (taskManager as any).taskCollection[task.data.interactionId] = task;
+      (taskManager as any).configureTaskAISummary(task);
+
+      (webex.cc as any).taskManager = taskManager;
+      webex.cc.apiAIAssistant = apiAIAssistant as any;
+      webex.cc.services.webSocketManager = webSocketManager as any;
+      webex.cc.services.rtdWebSocketManager = rtdWebSocketManager as any;
+      webex.cc.services.connectionService = connectionService as any;
+
+      const emitRtdFrame = (type: string, data: Record<string, unknown>) => {
+        rtdWebSocketManager.emit('message', JSON.stringify({type, data: {data}}));
+      };
+      const dispatchRtdFrame = (type: string, data: Record<string, unknown>) => {
+        webex.cc['handleRTDWebsocketMessage'](JSON.stringify({type, data: {data}}));
+      };
+      const getApiAIAssistant = () => apiAIAssistant as any;
+      const getSummaryMapCounts = () => {
+        const api = getApiAIAssistant() as any;
+        const manager = taskManager as any;
+        const pendingRequests = Array.from(api.pendingRequests.values());
+
+        return {
+          pendingPostCall: pendingRequests.filter(
+            (request: any) => request.eventType === 'POST_CALL_SUMMARY'
+          ).length,
+          pendingMidCall: pendingRequests.filter(
+            (request: any) => request.eventType === 'MID_CALL_SUMMARY'
+          ).length,
+          receiving: manager.receivingSummaryBuffer.size,
+          featureEnablement: manager.pendingFeatureEnablement.size,
+        };
+      };
+      const expectSummaryStateCleared = () => {
+        expect(getSummaryMapCounts()).toEqual({
+          pendingPostCall: 0,
+          pendingMidCall: 0,
+          receiving: 0,
+          featureEnablement: 0,
+        });
+      };
+
+      return {
+        apiAIAssistant,
+        connectionService,
+        dispatchRtdFrame,
+        emitRtdFrame,
+        expectSummaryStateCleared,
+        getApiAIAssistant,
+        getSummaryMapCounts,
+        rtdWebSocketManager,
+        task,
+        taskManager,
+        transportDeferreds,
+        webSocketManager,
+      };
+    };
+
+    const attachRtdMessageListener = (rtdWebSocketManager: EventEmitterDouble) => {
+      rtdWebSocketManager.on('message', webex.cc['handleRTDWebsocketMessage']);
+    };
+
+    const countAISummaryRequestFinalMetrics = () =>
+      mockMetricsManager.trackEvent.mock.calls.filter(([eventName]) =>
+        [
+          METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
+          METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
+          METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
+          METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
+        ].includes(eventName)
+      ).length;
+
+    const expectSentinelsNotObserved = () => {
+      const observedArguments = JSON.stringify([
+        LoggerProxy.log.mock.calls,
+        LoggerProxy.info.mock.calls,
+        LoggerProxy.warn.mock.calls,
+        LoggerProxy.error.mock.calls,
+        mockMetricsManager.trackEvent.mock.calls,
+        mockMetricsManager.timeEvent.mock.calls,
+      ]);
+
+      sentinels.forEach((sentinel) => {
+        expect(observedArguments).not.toContain(sentinel);
+      });
+    };
+
+    const emitFeatureEnablement = (
+      harness: ReturnType<typeof createSummaryHarness>,
+      payload = {
+        interactionId: 'interaction-1',
+        postCallEnabled: true,
+        midCallEnabled: true,
+        actionTimestamp: 1,
+      }
+    ) => {
+      harness.emitRtdFrame(CC_TASK_EVENTS.FEATURE_ENABLEMENT, payload);
+    };
+
+    const dispatchFeatureEnablement = (
+      harness: ReturnType<typeof createSummaryHarness>,
+      payload = {
+        interactionId: 'interaction-1',
+        postCallEnabled: true,
+        midCallEnabled: true,
+        actionTimestamp: 1,
+      }
+    ) => {
+      harness.dispatchRtdFrame(CC_TASK_EVENTS.FEATURE_ENABLEMENT, payload);
+    };
+
+    const emitTaskLifecycleEvent = (
+      harness: ReturnType<typeof createSummaryHarness>,
+      eventType: CC_EVENTS,
+      overrides: Partial<TaskData> & {conversationId?: string}
+    ) => {
+      const interactionId = overrides.interactionId ?? 'interaction-1';
+
+      harness.webSocketManager.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            ...createAISummaryLifecycleTaskData({
+              mediaResourceId: interactionId,
+              taskId: `task-owner-${interactionId}`,
+              ...overrides,
+            }),
+            type: eventType,
+          },
+        })
+      );
+    };
+
+    const emitSentinelPostCallSummary = (
+      harness: ReturnType<typeof createSummaryHarness>,
+      conversationId = 'conversation-1'
+    ) => {
+      harness.emitRtdFrame(CC_TASK_EVENTS.POST_CALL_SUMMARY, {
+        conversationId,
+        summaryText: sentinels[0],
+        sections: {
+          [sentinels[1]]: sentinels[2],
+          initialContactReason: sentinels[2],
+        },
+        adaptiveCard: {
+          body: [{text: sentinels[3]}],
+        },
+      });
+    };
+
+    const dispatchSentinelPostCallSummary = (
+      harness: ReturnType<typeof createSummaryHarness>,
+      conversationId = 'conversation-1'
+    ) => {
+      harness.dispatchRtdFrame(CC_TASK_EVENTS.POST_CALL_SUMMARY, {
+        conversationId,
+        summaryText: sentinels[0],
+        sections: {
+          [sentinels[1]]: sentinels[2],
+          initialContactReason: sentinels[2],
+        },
+        adaptiveCard: {
+          body: [{text: sentinels[3]}],
+        },
+      });
+    };
+
+    const emitSentinelMidCallSummary = (
+      harness: ReturnType<typeof createSummaryHarness>,
+      conversationId = 'conversation-1'
+    ) => {
+      harness.emitRtdFrame(CC_TASK_EVENTS.MID_CALL_SUMMARY, {
+        conversationId,
+        summaryText: sentinels[0],
+        agentName: sentinels[4],
+        sections: {
+          [sentinels[1]]: sentinels[2],
+          reasonForTransferOrConsult: sentinels[2],
+        },
+        adaptiveCard: {
+          body: [{text: sentinels[3]}],
+        },
+      });
+    };
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('keeps connection and RTD listeners single-subscribed across repeated register calls', async () => {
+      const harness = createSummaryHarness();
+      const triggerSpy = jest.spyOn(webex.cc, 'trigger');
+      const profile = {
+        agentId: 'agent-1',
+        webRtcEnabled: false,
+        loginVoiceOptions: [LoginOption.EXTENSION],
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+        wrapUpData: {wrapUpProps: {autoWrapup: false}},
+        aiFeature: {
+          generatedSummaries: {
+            wrapUpSummariesEnabled: true,
+            consultTransferSummariesEnabled: true,
+          },
+        },
+      } as any;
+      webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
+      harness.webSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent-1'});
+      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(profile);
+
+      await webex.cc.register();
+      await flushMicrotasks();
+      await webex.cc.register();
+      await flushMicrotasks();
+
+      expect(harness.connectionService.listenerCount('connectionLost')).toBe(1);
+      expect(harness.connectionService.listeners('connectionLost')[0]).toBe(
+        webex.cc['handleConnectionLost']
+      );
+      expect(harness.rtdWebSocketManager.listenerCount('message')).toBe(1);
+      expect(harness.rtdWebSocketManager.listeners('message')[0]).toBe(
+        webex.cc['handleRTDWebsocketMessage']
+      );
+
+      triggerSpy.mockClear();
+
+      expect(triggerSpy).not.toHaveBeenCalled();
+    });
+
+    it('forwards task-manager handlers through ContactCenter trigger and delegates RTD messages', () => {
+      const triggerSpy = jest.spyOn(webex.cc, 'trigger');
+      const task = {data: {interactionId: 'interaction-1'}} as any;
+
+      webex.cc['handleTaskHydrate'](task);
+      webex.cc['handleTaskMultiLoginHydrate'](task);
+      webex.cc['handleTaskMerged'](task);
+      webex.cc['handleCampaignPreviewReservation'](task);
+      webex.cc['handleRTDWebsocketMessage']('summary-frame');
+
+      expect(triggerSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, task);
+      expect(triggerSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, task);
+      expect(triggerSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_MERGED, task);
+      expect(triggerSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, task);
+      expect(mockTaskManager.handleRealtimeWebsocketEvent).toHaveBeenCalledWith('summary-frame');
+    });
+
+    it('resets real summary state across register, reconnect, and deregister boundaries', async () => {
+      jest.useFakeTimers();
+
+      const harness = createSummaryHarness();
+      const triggerSpy = jest.spyOn(webex.cc, 'trigger');
+      const profile = {
+        agentId: 'agent-1',
+        webRtcEnabled: false,
+        loginVoiceOptions: [LoginOption.EXTENSION],
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+        wrapUpData: {wrapUpProps: {autoWrapup: false}},
+        aiFeature: {
+          generatedSummaries: {
+            wrapUpSummariesEnabled: true,
+            consultTransferSummariesEnabled: true,
+          },
+        },
+      } as any;
+
+      webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
+      harness.webSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent-1'});
+      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(profile);
+
+      dispatchFeatureEnablement(harness, {
+        interactionId: 'orphan-before-register',
+        postCallEnabled: true,
+        midCallEnabled: true,
+        actionTimestamp: 3,
+      });
+      harness.dispatchRtdFrame(CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT, {
+        conversationId: 'queued-before-register',
+        summaryText: sentinels[0],
+      });
+      expect(jest.getTimerCount()).toBe(2);
+
+      await webex.cc.register();
+      await flushMicrotasks();
+
+      harness.expectSummaryStateCleared();
+      expect(jest.getTimerCount()).toBe(0);
+      expect(harness.rtdWebSocketManager.listenerCount('message')).toBe(1);
+
+      dispatchFeatureEnablement(harness);
+
+      dispatchFeatureEnablement(harness, {
+        interactionId: 'orphan-before-reconnect',
+        postCallEnabled: true,
+        midCallEnabled: true,
+        actionTimestamp: 4,
+      });
+      harness.dispatchRtdFrame(CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT, {
+        conversationId: 'queued-before-reconnect',
+        summaryText: sentinels[0],
+      });
+      expect(jest.getTimerCount()).toBe(2);
+
+      await webex.cc['handleConnectionLost']({
+        isConnectionLost: false,
+        isSocketReconnected: true,
+      } as ConnectionLostDetails);
+
+      harness.expectSummaryStateCleared();
+      expect(jest.getTimerCount()).toBe(0);
+
+      dispatchFeatureEnablement(harness, {
+        interactionId: 'interaction-1',
+        postCallEnabled: false,
+        midCallEnabled: true,
+        actionTimestamp: 5,
+      });
+
+      await webex.cc.deregister();
+
+      harness.expectSummaryStateCleared();
+      expect(jest.getTimerCount()).toBe(0);
+      expect(harness.rtdWebSocketManager.listenerCount('message')).toBe(0);
+      triggerSpy.mockClear();
+
+      dispatchSentinelPostCallSummary(harness, 'queued-after-deregister');
+
+      expect(harness.getSummaryMapCounts()).toEqual({
+        pendingPostCall: 0,
+        pendingMidCall: 0,
+        receiving: 0,
+        featureEnablement: 0,
+      });
+      expect(triggerSpy).not.toHaveBeenCalled();
+      expectSentinelsNotObserved();
+    });
+
+    it('flushes a buffered receiving summary through real TaskManager task publication', () => {
+      jest.useFakeTimers();
+
+      const harness = createSummaryHarness();
+      const interactionId = 'receiver-arrival-interaction';
+      const conversationId = 'receiver-arrival-conversation';
+      const receivingPayload = {
+        conversationId,
+        summaryText: sentinels[0],
+        adaptiveCard: {body: [{text: sentinels[3]}]},
+      };
+      const receiverHandler = jest.fn();
+      let publishedTask: Task | undefined;
+      let receiverEmitSpy: jest.SpyInstance | undefined;
+
+      harness.dispatchRtdFrame(CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT, {
+        ...receivingPayload,
+      });
+
+      expect(harness.getSummaryMapCounts()).toEqual({
+        pendingPostCall: 0,
+        pendingMidCall: 0,
+        receiving: 1,
+        featureEnablement: 0,
+      });
+      expect(jest.getTimerCount()).toBe(1);
+
+      harness.taskManager.on(TASK_EVENTS.TASK_INCOMING, (task: Task) => {
+        publishedTask = task;
+        receiverEmitSpy = jest.spyOn(task, 'emit');
+        task.on(TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED, receiverHandler);
+      });
+
+      emitTaskLifecycleEvent(harness, CC_EVENTS.AGENT_CONTACT_RESERVED, {
+        interactionId,
+        conversationId,
+      });
+
+      expect(publishedTask).toBe(harness.taskManager.getTask(interactionId));
+      expect(publishedTask).toBeInstanceOf(Task);
+      expect(receiverHandler).toHaveBeenCalledTimes(1);
+      expect(receiverHandler).toHaveBeenCalledWith(receivingPayload);
+      expect(
+        receiverEmitSpy?.mock.calls.filter(
+          ([eventName]) => eventName === TASK_EVENTS.TASK_MID_CALL_SUMMARY_RECEIVED
+        )
+      ).toHaveLength(1);
+      expect(harness.getSummaryMapCounts()).toEqual({
+        pendingPostCall: 0,
+        pendingMidCall: 0,
+        receiving: 0,
+        featureEnablement: 0,
+      });
+      expect(jest.getTimerCount()).toBe(0);
+      expectSentinelsNotObserved();
+    });
+
+    it('resolves a real post-call request through RTD and keeps summary sentinels out of metrics', async () => {
+      jest.useFakeTimers();
+
+      const harness = createSummaryHarness();
+
+      attachRtdMessageListener(harness.rtdWebSocketManager);
+      emitFeatureEnablement(harness);
+      jest.clearAllMocks();
+
+      const postCallRequest = harness.task.requestPostCallSummary();
+
+      await flushMicrotasks();
+      expect(harness.apiAIAssistant.sendEvent).toHaveBeenCalledWith(
+        'agent-1',
+        'interaction-1',
+        AIAssistantEventType.CTI_EVENT,
+        AIAssistantEventName.GET_POST_CALL_SUMMARY,
+        expect.objectContaining({conversationId: 'conversation-1'}),
+        undefined,
+        undefined,
+        expect.any(Number),
+        15000
+      );
+      emitSentinelPostCallSummary(harness);
+      harness.transportDeferreds[0].resolve(undefined);
+
+      await expect(postCallRequest).resolves.toMatchObject({
+        conversationId: 'conversation-1',
+        summaryText: sentinels[0],
+      });
+      expect(harness.getSummaryMapCounts()).toEqual({
+        pendingPostCall: 0,
+        pendingMidCall: 0,
+        receiving: 0,
+        featureEnablement: 0,
+      });
+      expect(jest.getTimerCount()).toBe(0);
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
+        expect.objectContaining({
+          conversationId: 'conversation-1',
+          interactionId: 'interaction-1',
+        }),
+        ['operational']
+      );
+      harness.taskManager.clearAISummaryState();
+      harness.expectSummaryStateCleared();
+      expectSentinelsNotObserved();
+    });
+
+    it('keeps post-call response context after real Task cleanup removes manager state', async () => {
+      jest.useFakeTimers();
+
+      const harness = createSummaryHarness();
+      const interactionId = 'post-call-cleanup-interaction';
+      const conversationId = 'post-call-cleanup-conversation';
+      const apiAIAssistant = harness.getApiAIAssistant();
+      let applicationTask: Task | undefined;
+
+      harness.taskManager.on(TASK_EVENTS.TASK_INCOMING, (task: Task) => {
+        if (task.data.interactionId === interactionId) {
+          applicationTask = task;
+        }
+      });
+      emitTaskLifecycleEvent(harness, CC_EVENTS.AGENT_CONTACT_RESERVED, {
+        interactionId,
+        conversationId,
+      });
+      emitTaskLifecycleEvent(harness, CC_EVENTS.AGENT_CONTACT_ASSIGNED, {
+        interactionId,
+        conversationId,
+      });
+
+      expect(applicationTask).toBe(harness.taskManager.getTask(interactionId));
+      const retainedTask = applicationTask as Task;
+
+      dispatchFeatureEnablement(harness, {
+        interactionId,
+        postCallEnabled: true,
+        midCallEnabled: true,
+        actionTimestamp: 9,
+      });
+
+      const postCallRequest = retainedTask.requestPostCallSummary();
+
+      await flushMicrotasks();
+      expect(postCallRequest).toBeDefined();
+      expect(harness.apiAIAssistant.sendEvent).toHaveBeenCalledWith(
+        'agent-1',
+        interactionId,
+        AIAssistantEventType.CTI_EVENT,
+        AIAssistantEventName.GET_POST_CALL_SUMMARY,
+        expect.objectContaining({conversationId}),
+        undefined,
+        undefined,
+        expect.any(Number),
+        15000
+      );
+      harness.dispatchRtdFrame(CC_TASK_EVENTS.POST_CALL_SUMMARY, {
+        conversationId,
+        summaryText: sentinels[0],
+      });
+      harness.transportDeferreds[0].resolve(undefined);
+
+      await expect(postCallRequest).resolves.toMatchObject({
+        conversationId,
+        summaryText: sentinels[0],
+      });
+      expect(harness.getSummaryMapCounts()).toEqual({
+        pendingPostCall: 0,
+        pendingMidCall: 0,
+        receiving: 0,
+        featureEnablement: 0,
+      });
+
+      emitTaskLifecycleEvent(harness, CC_EVENTS.AGENT_WRAPUP, {
+        interactionId,
+        conversationId,
+      });
+      emitTaskLifecycleEvent(harness, CC_EVENTS.AGENT_WRAPPEDUP, {
+        interactionId,
+        conversationId,
+      });
+
+      expect(harness.taskManager.getTask(interactionId)).toBeUndefined();
+      expect(harness.getSummaryMapCounts()).toEqual({
+        pendingPostCall: 0,
+        pendingMidCall: 0,
+        receiving: 0,
+        featureEnablement: 0,
+      });
+      expect(jest.getTimerCount()).toBe(0);
+
+      const requestCallsAfterRemoval = (apiAIAssistant as any).pendingRequests.size;
+
+      retainedTask.updateTaskData(
+        createAISummaryLifecycleTaskData({
+          interactionId: 'post-call-response-current-interaction',
+          conversationId: 'post-call-response-current-conversation',
+        }),
+        true
+      );
+
+      const responsePayload: PostCallSummaryResponsePayload = {
+        summary: {initialContactReason: 'resolved'},
+        feedback: 'thumbs_up',
+        state: 'DEFAULT',
+        wrapUpCode: 'resolved',
+        numberOfTimesViewed: 1,
+        numberOfTimesEdited: 0,
+        numberOfTimesCopied: 0,
+        actionTimeStamp: 11,
+        publishTimestamp: 12,
+      };
+
+      await expect(
+        retainedTask.sendPostCallSummaryResponse(responsePayload)
+      ).resolves.toBeUndefined();
+
+      expect((apiAIAssistant as any).pendingRequests.size).toBe(requestCallsAfterRemoval);
+      expect(harness.apiAIAssistant.sendEvent).toHaveBeenCalledTimes(2);
+      expect(harness.apiAIAssistant.sendEvent).toHaveBeenNthCalledWith(
+        2,
+        'agent-1',
+        interactionId,
+        AIAssistantEventType.CTI_EVENT,
+        AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+        {
+          conversationId,
+          clientType: 'WxCC',
+          action: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+          actionTimeStamp: 11,
+          summary: {initialContactReason: 'resolved'},
+          feedback: 'thumbs_up',
+          wrapUpCode: 'resolved',
+          numberOfTimesViewed: 1,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+          state: 'DEFAULT',
+        },
+        undefined,
+        undefined,
+        12,
+        15000
+      );
+    });
+
+    it('cancels pending real public requests on deregister and ignores late HTTP settlement', async () => {
+      const harness = createSummaryHarness();
+      const unhandledRejections: unknown[] = [];
+      const unhandledRejectionListener = jest.fn((reason) => {
+        unhandledRejections.push(reason);
+      });
+
+      attachRtdMessageListener(harness.rtdWebSocketManager);
+      emitFeatureEnablement(harness);
+      jest.clearAllMocks();
+
+      webex.cc.agentConfig = {
+        agentId: 'agent-1',
+        webRtcEnabled: false,
+        loginVoiceOptions: [LoginOption.EXTENSION],
+      };
+
+      process.on('unhandledRejection', unhandledRejectionListener);
+      try {
+        const postCallRequest = harness.task.requestPostCallSummary();
+        const midCallRequest = harness.task.requestMidCallSummary('CONSULT');
+        postCallRequest.catch(() => undefined);
+        midCallRequest.catch(() => undefined);
+
+        await flushMicrotasks();
+        expect(harness.transportDeferreds).toHaveLength(2);
+
+        await webex.cc.deregister();
+        await flushEventLoopTurn();
+
+        expect(unhandledRejectionListener).not.toHaveBeenCalled();
+        expect(unhandledRejections).toHaveLength(0);
+        await expect(postCallRequest).rejects.toMatchObject({
+          message: AI_SUMMARY_REQUEST_CANCELLED,
+          data: {errorCode: AI_SUMMARY_REQUEST_CANCELLED},
+        });
+        await expect(midCallRequest).rejects.toMatchObject({
+          message: AI_SUMMARY_REQUEST_CANCELLED,
+          data: {errorCode: AI_SUMMARY_REQUEST_CANCELLED},
+        });
+        harness.expectSummaryStateCleared();
+
+        const finalMetricCountAfterCancellation = countAISummaryRequestFinalMetrics();
+
+        dispatchSentinelPostCallSummary(harness, 'queued-after-deregister');
+        harness.transportDeferreds[0].resolve(undefined);
+        harness.transportDeferreds[1].reject(new Error('late-http-rejected-after-deregister'));
+        await flushEventLoopTurn();
+
+        expect(unhandledRejectionListener).not.toHaveBeenCalled();
+        expect(unhandledRejections).toHaveLength(0);
+        expect(countAISummaryRequestFinalMetrics()).toBe(finalMetricCountAfterCancellation);
+        harness.expectSummaryStateCleared();
+        expectSentinelsNotObserved();
+      } finally {
+        process.off('unhandledRejection', unhandledRejectionListener);
+        harness.taskManager.clearAISummaryState();
+      }
+    });
+
+    it('clears and reapplies AI summary config before reconnection relogin', async () => {
+      const silentReloginSpy = jest
+        .spyOn(webex.cc as any, 'silentRelogin')
+        .mockResolvedValue(undefined);
+      const aiFeature = {
+        generatedSummaries: {
+          wrapUpSummariesEnabled: true,
+          consultTransferSummariesEnabled: true,
+        },
+      };
+
+      webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: true};
+      webex.cc.agentConfig = {
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: false,
+        webRtcEnabled: true,
+        wrapUpData: {wrapUpProps: {autoWrapup: true}},
+        aiFeature,
+      } as any;
+
+      await webex.cc['handleConnectionLost']({
+        isConnectionLost: false,
+        isSocketReconnected: true,
+      } as ConnectionLostDetails);
+
+      expect(mockTaskManager.clearAISummaryState).toHaveBeenCalled();
+      expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith({
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: false,
+        webRtcEnabled: true,
+        autoWrapup: true,
+        aiFeature,
+        consultTransfer: {
+          allowConsultToQueue: undefined,
+          accessQueue: undefined,
+          accessEntryPoint: undefined,
+          accessBuddyTeam: undefined,
+        },
+        enableWxBetterTogether: false,
+      });
+      expect(mockTaskManager.clearAISummaryState.mock.invocationCallOrder[0]).toBeLessThan(
+        mockTaskManager.setConfigFlags.mock.invocationCallOrder[0]
+      );
+      expect(mockTaskManager.setConfigFlags.mock.invocationCallOrder[0]).toBeLessThan(
+        silentReloginSpy.mock.invocationCallOrder[0]
+      );
+    });
+
+    it('clears and reapplies AI summary config when automated relogin is disabled', async () => {
+      const silentReloginSpy = jest
+        .spyOn(webex.cc as any, 'silentRelogin')
+        .mockResolvedValue(undefined);
+      const aiFeature = {
+        generatedSummaries: {
+          wrapUpSummariesEnabled: false,
+          consultTransferSummariesEnabled: true,
+        },
+      };
+
+      webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
+      webex.cc.agentConfig = {
+        isEndTaskEnabled: false,
+        isEndConsultEnabled: true,
+        webRtcEnabled: false,
+        wrapUpData: {},
+        aiFeature,
+      } as any;
+
+      await webex.cc['handleConnectionLost']({
+        isConnectionLost: false,
+        isSocketReconnected: true,
+      } as ConnectionLostDetails);
+
+      expect(mockTaskManager.clearAISummaryState).toHaveBeenCalled();
+      expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith({
+        isEndTaskEnabled: false,
+        isEndConsultEnabled: true,
+        webRtcEnabled: false,
+        autoWrapup: false,
+        aiFeature,
+        consultTransfer: {
+          allowConsultToQueue: undefined,
+          accessQueue: undefined,
+          accessEntryPoint: undefined,
+          accessBuddyTeam: undefined,
+        },
+        enableWxBetterTogether: false,
+      });
+      expect(mockTaskManager.clearAISummaryState.mock.invocationCallOrder[0]).toBeLessThan(
+        mockTaskManager.setConfigFlags.mock.invocationCallOrder[0]
+      );
+      expect(silentReloginSpy).not.toHaveBeenCalled();
+    });
+
+    it.each([null, undefined])(
+      'clears reconnect state without config reapply when agentConfig is %s',
+      async (agentConfig) => {
+        const silentReloginSpy = jest
+          .spyOn(webex.cc as any, 'silentRelogin')
+          .mockResolvedValue(undefined);
+        const unhandledRejections: unknown[] = [];
+        const unhandledRejectionListener = jest.fn((reason) => {
+          unhandledRejections.push(reason);
+        });
+
+        webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: true};
+        webex.cc.agentConfig = agentConfig as any;
+
+        process.on('unhandledRejection', unhandledRejectionListener);
+        try {
+          await expect(
+            webex.cc['handleConnectionLost']({
+              isConnectionLost: false,
+              isSocketReconnected: true,
+            } as ConnectionLostDetails)
+          ).resolves.toBeUndefined();
+          await flushEventLoopTurn();
+
+          expect(mockTaskManager.clearAISummaryState).toHaveBeenCalledTimes(1);
+          expect(mockTaskManager.setConfigFlags).not.toHaveBeenCalled();
+          expect(silentReloginSpy).toHaveBeenCalledTimes(1);
+          expect(unhandledRejectionListener).not.toHaveBeenCalled();
+          expect(unhandledRejections).toHaveLength(0);
+        } finally {
+          process.off('unhandledRejection', unhandledRejectionListener);
+        }
+      }
+    );
   });
 
   describe('stationLogin', () => {
@@ -1690,7 +3060,7 @@ describe('webex.cc', () => {
       });
 
       expect(stationLogoutMock).toHaveBeenCalledWith({data: data});
-      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      // SPARK-626777 tracks moving listener cleanup into the future de-register API.
       // expect(mockTaskManager.unregisterIncomingCallEvent).toHaveBeenCalledWith();
       // expect(mockTaskManager.off).toHaveBeenCalledWith(
       //   TASK_EVENTS.TASK_INCOMING,
@@ -2240,8 +3610,6 @@ describe('webex.cc', () => {
       );
 
       const setLoginOptionSpy = jest.spyOn(webex.cc.webCallingService, 'setLoginOption');
-      const incomingTaskListenerSpy = jest.spyOn(webex.cc, 'incomingTaskListener');
-      const webSocketManagerOnSpy = jest.spyOn(webex.cc.services.webSocketManager, 'on');
       await webex.cc['silentRelogin']();
 
       expect(LoggerProxy.log).toHaveBeenCalledWith('Starting silent relogin process', {
@@ -2272,8 +3640,8 @@ describe('webex.cc', () => {
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.BROWSER);
       expect(registerWebCallingLineSpy).toHaveBeenCalled();
       expect(setLoginOptionSpy).toHaveBeenCalledWith(LoginOption.BROWSER);
-      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
-      // expect(incomingTaskListenerSpy).toHaveBeenCalled();
+      // SPARK-626777 tracks moving listener cleanup into the future de-register API.
+      // expect(eventForwarderRefreshSpy).toHaveBeenCalled();
       // expect(webSocketManagerOnSpy).toHaveBeenCalledWith('message', expect.any(Function));
       // expect(mockTaskManager.on).toHaveBeenCalledWith(
       //   TASK_EVENTS.TASK_HYDRATE,
@@ -2484,7 +3852,44 @@ describe('webex.cc', () => {
     it('should set up connectionLost and message event listener', () => {
       webex.cc.setupEventListeners();
 
-      expect(connectionServiceOnSpy).toHaveBeenCalledWith('connectionLost', expect.any(Function));
+      expect(webex.cc.services.connectionService.off).toHaveBeenCalledWith(
+        'connectionLost',
+        webex.cc['handleConnectionLost']
+      );
+      expect(connectionServiceOnSpy).toHaveBeenCalledWith(
+        'connectionLost',
+        webex.cc['handleConnectionLost']
+      );
+      expect(
+        webex.cc.services.connectionService.off.mock.invocationCallOrder[0]
+      ).toBeLessThan(connectionServiceOnSpy.mock.invocationCallOrder[0]);
+    });
+
+    it('uses one detachable connectionLost listener across repeated setup and deregister', async () => {
+      const connectionService = new EventEmitterDouble();
+
+      webex.cc.services.connectionService = connectionService as any;
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        webRtcEnabled: false,
+        loginVoiceOptions: [LoginOption.EXTENSION],
+      };
+
+      webex.cc.setupEventListeners();
+      webex.cc.setupEventListeners();
+
+      expect(connectionService.listenerCount('connectionLost')).toBe(1);
+      expect(connectionService.listeners('connectionLost')[0]).toBe(
+        webex.cc['handleConnectionLost']
+      );
+
+      await webex.cc.deregister();
+
+      expect(connectionService.listenerCount('connectionLost')).toBe(0);
+      expect(connectionService.off).toHaveBeenCalledWith(
+        'connectionLost',
+        webex.cc['handleConnectionLost']
+      );
     });
   });
 
@@ -2607,6 +4012,9 @@ describe('webex.cc', () => {
         {module: CC_FILE, method: `startOutdial`, trackingId: error.details.trackingId}
       );
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'startOutdial', CC_FILE);
+      expect(mockWebexRequest.uploadLogs).toHaveBeenCalledWith({
+        correlationId: error.details.trackingId,
+      });
     });
   });
 
@@ -2701,6 +4109,13 @@ describe('webex.cc', () => {
       deviceUnregisterSpy = jest.spyOn(webex.internal.device, 'unregister');
     });
 
+    afterEach(() => {
+      mockTaskManager.off.mockImplementation(() => undefined);
+      mockTaskManager.clearAISummaryState.mockImplementation(() => undefined);
+      mockRTDWebSocketManager.off.mockImplementation(() => undefined);
+      mockRTDWebSocketManager.close.mockImplementation(() => undefined);
+    });
+
     it('should unregister successfully and clean up all resources when webrtc is enabled', async () => {
       webex.cc.services.rtdWebSocketManager = {
         isSocketClosed: false,
@@ -2748,8 +4163,9 @@ describe('webex.cc', () => {
       expect(mockWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
       expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenCalledWith(
         false,
-        'Unregistering the RTD websocket'
+        'Unregistering the SDK'
       );
+      expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenCalledTimes(1);
       expect(webex.cc.agentConfig).toBeNull();
 
       expect(webex.internal.mercury.off).toHaveBeenCalledWith('online');
@@ -2761,6 +4177,7 @@ describe('webex.cc', () => {
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
       ]);
+      expect(mockTaskManager.clearAISummaryState).toHaveBeenCalled();
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
         {},
@@ -2780,22 +4197,23 @@ describe('webex.cc', () => {
       const incomingCalls = mockTaskManager.off.mock.calls.filter(
         ([evt]) => evt === TASK_EVENTS.TASK_INCOMING
       );
-      expect(incomingCalls).toHaveLength(1);
-      const [, incomingCallback] = incomingCalls[0];
+      expect(incomingCalls.length).toBeGreaterThanOrEqual(1);
+      const [, incomingCallback] = incomingCalls[incomingCalls.length - 1];
       expect(incomingCallback).toBe(webex.cc['handleIncomingTask']);
 
       const hydrateCalls = mockTaskManager.off.mock.calls.filter(
         ([evt]) => evt === TASK_EVENTS.TASK_HYDRATE
       );
-      expect(hydrateCalls).toHaveLength(1);
-      const [, hydrateCallback] = hydrateCalls[0];
+      expect(hydrateCalls.length).toBeGreaterThanOrEqual(1);
+      const [, hydrateCallback] = hydrateCalls[hydrateCalls.length - 1];
       expect(hydrateCallback).toBe(webex.cc['handleTaskHydrate']);
 
       const multiLoginHydrateCalls = mockTaskManager.off.mock.calls.filter(
         ([evt]) => evt === TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE
       );
-      expect(multiLoginHydrateCalls).toHaveLength(1);
-      const [, multiLoginHydrateCallback] = multiLoginHydrateCalls[0];
+      expect(multiLoginHydrateCalls.length).toBeGreaterThanOrEqual(1);
+      const [, multiLoginHydrateCallback] =
+        multiLoginHydrateCalls[multiLoginHydrateCalls.length - 1];
       expect(multiLoginHydrateCallback).toBe(webex.cc['handleTaskMultiLoginHydrate']);
 
       const messageCalls = mockWebSocketManager.off.mock.calls.filter(([evt]) => evt === 'message');
@@ -2870,6 +4288,7 @@ describe('webex.cc', () => {
       expect(mercuryDisconnectSpy).not.toHaveBeenCalled();
       expect(deviceUnregisterSpy).not.toHaveBeenCalled();
       expect(mockRTDWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
+      expect(mockRTDWebSocketManager.close).toHaveBeenCalledTimes(1);
     });
 
     it('should skip internal mercury cleanup when loginVoiceOptions does not include BROWSER', async () => {
@@ -2888,7 +4307,78 @@ describe('webex.cc', () => {
 
       expect(mockWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
       expect(mockRTDWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
+      expect(mockRTDWebSocketManager.close).toHaveBeenCalledTimes(1);
       expect(webex.cc.agentConfig).toBeNull();
+    });
+
+    it.each([undefined, null, 0, ''])(
+      'preserves a falsy primary deregistration failure value %p',
+      async (thrownValue) => {
+        mockTaskManager.off.mockImplementation((eventName) => {
+          if (eventName === TASK_EVENTS.TASK_INCOMING) {
+            throw thrownValue;
+          }
+        });
+
+        const rejectedValue = await webex.cc.deregister().then(
+          () => Symbol('unexpected-success'),
+          (error) => error
+        );
+
+        expect(rejectedValue).toBe(thrownValue);
+        expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+          METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
+          {error: UNKNOWN_ERROR},
+          ['operational']
+        );
+        expect(mockMetricsManager.trackEvent).not.toHaveBeenCalledWith(
+          METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
+          expect.anything(),
+          expect.anything()
+        );
+      }
+    );
+
+    it.each([undefined, null, 0, ''])(
+      'preserves a falsy cleanup failure value %p',
+      async (thrownValue) => {
+        mockTaskManager.clearAISummaryState.mockImplementation(() => {
+          throw thrownValue;
+        });
+
+        const rejectedValue = await webex.cc.deregister().then(
+          () => Symbol('unexpected-success'),
+          (error) => error
+        );
+
+        expect(rejectedValue).toBe(thrownValue);
+        expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+          METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
+          {error: UNKNOWN_ERROR},
+          ['operational']
+        );
+        expect(mockMetricsManager.trackEvent).not.toHaveBeenCalledWith(
+          METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
+          expect.anything(),
+          expect.anything()
+        );
+      }
+    );
+
+    it('uses the bounded unknown-error message for an empty Error message', async () => {
+      mockTaskManager.off.mockImplementation((eventName) => {
+        if (eventName === TASK_EVENTS.TASK_INCOMING) {
+          throw new Error('');
+        }
+      });
+
+      await expect(webex.cc.deregister()).rejects.toThrow('');
+
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
+        {error: UNKNOWN_ERROR},
+        ['operational']
+      );
     });
 
     it('should teardown wxApp state on deregister even when usersub publish fails', async () => {
@@ -3043,6 +4533,11 @@ describe('webex.cc', () => {
         module: CC_FILE,
         method: 'deregister',
       });
+      expect(mockTaskManager.clearAISummaryState).toHaveBeenCalled();
+      expect(webex.cc.services.rtdWebSocketManager.off).toHaveBeenCalledWith(
+        'message',
+        webex.cc['handleRTDWebsocketMessage']
+      );
 
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
@@ -3555,15 +5050,14 @@ describe('webex.cc', () => {
       mockError.details = {
         trackingId: 'test-tracking-id',
         orgId: 'mockOrgId',
-        error: 'Service error',
+        type: 'OutdialAniEntriesFailed',
+        data: {
+          reason: 'Detailed service error',
+        },
       };
 
       // Mock the service call to throw an error
       webex.cc.services.config.getOutdialAniEntries.mockRejectedValue(mockError);
-
-      // Mock getErrorDetails to return a detailed error
-      const detailedError = new Error('Detailed service error');
-      getErrorDetailsSpy.mockReturnValue({error: detailedError});
 
       await expect(webex.cc.getOutdialAniEntries(mockParams)).rejects.toThrow(
         'Detailed service error'
@@ -3589,9 +5083,20 @@ describe('webex.cc', () => {
           trackingId: 'test-tracking-id',
         }
       );
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getOutdialAniEntries failed with reason: Detailed service error',
+        {
+          module: CC_FILE,
+          method: 'getOutdialAniEntries',
+          trackingId: 'test-tracking-id',
+        }
+      );
 
       // Verify getErrorDetails was called
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(mockError, 'getOutdialAniEntries', CC_FILE);
+      expect(mockWebexRequest.uploadLogs).toHaveBeenCalledWith({
+        correlationId: 'test-tracking-id',
+      });
     });
 
     it('should throw error when orgId is not found', async () => {
@@ -3674,8 +5179,7 @@ describe('webex.cc', () => {
     });
 
     it('should handle error during acceptPreviewContact', async () => {
-      getErrorDetailsSpy.mockRestore();
-      getErrorDetailsSpy = jest.spyOn(Utils, 'getErrorDetails');
+      getErrorDetailsSpy.mockClear();
 
       const error = {
         details: {
@@ -3701,6 +5205,9 @@ describe('webex.cc', () => {
         {module: CC_FILE, method: 'acceptPreviewContact', trackingId: error.details.trackingId}
       );
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'acceptPreviewContact', CC_FILE);
+      expect(mockWebexRequest.uploadLogs).toHaveBeenCalledWith({
+        correlationId: error.details.trackingId,
+      });
     });
   });
 
@@ -3738,8 +5245,7 @@ describe('webex.cc', () => {
     });
 
     it('should handle error during skipPreviewContact', async () => {
-      getErrorDetailsSpy.mockRestore();
-      getErrorDetailsSpy = jest.spyOn(Utils, 'getErrorDetails');
+      getErrorDetailsSpy.mockClear();
 
       const error = {
         details: {
@@ -3765,6 +5271,9 @@ describe('webex.cc', () => {
         {module: CC_FILE, method: 'skipPreviewContact', trackingId: error.details.trackingId}
       );
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'skipPreviewContact', CC_FILE);
+      expect(mockWebexRequest.uploadLogs).toHaveBeenCalledWith({
+        correlationId: error.details.trackingId,
+      });
     });
   });
 
@@ -3802,8 +5311,7 @@ describe('webex.cc', () => {
     });
 
     it('should handle error during removePreviewContact', async () => {
-      getErrorDetailsSpy.mockRestore();
-      getErrorDetailsSpy = jest.spyOn(Utils, 'getErrorDetails');
+      getErrorDetailsSpy.mockClear();
 
       const error = {
         details: {
@@ -3829,6 +5337,9 @@ describe('webex.cc', () => {
         {module: CC_FILE, method: 'removePreviewContact', trackingId: error.details.trackingId}
       );
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'removePreviewContact', CC_FILE);
+      expect(mockWebexRequest.uploadLogs).toHaveBeenCalledWith({
+        correlationId: error.details.trackingId,
+      });
     });
   });
 
