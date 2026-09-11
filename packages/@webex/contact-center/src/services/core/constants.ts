@@ -80,6 +80,14 @@ export const PARTICIPANT_TYPES = {
 /** Interaction state for consultation */
 export const STATE_CONSULT = 'consult';
 
+/**
+ * Trusted domains for the RoutingNotifs WebSocket connection. A `webSocketUrl` returned by the
+ * subscribe/register API is only opened when its hostname matches one of these domains exactly
+ * or is a subdomain of one of them.
+ * @ignore
+ */
+export const ALLOWED_ROUTING_NOTIFS_DOMAINS = ['cisco.com', 'ciscoccservice.com'];
+
 // Method names for core services
 export const METHODS = {
   // WebexRequest methods

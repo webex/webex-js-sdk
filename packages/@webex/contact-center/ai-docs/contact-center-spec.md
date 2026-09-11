@@ -102,6 +102,8 @@ Compatibility notes:
 
 Direct data/configuration and user-preference operations return authenticated REST responses. Enabled agent/task AQM operations, including preview-campaign accept/skip/remove, send authenticated HTTP requests but resolve or reject only after a matching WebSocket notification. Before delegating preview skip/remove, ContactCenter checks the task's campaign-disable flags and throws locally when the corresponding flag is `'true'`. TaskManager converts backend task events into Task instances and typed state-machine events. ContactCenter maps package-facing events through WebexPlugin `trigger` or its internal EventEmitter according to the published contract.
 
+Inbound primary-WebSocket messages are mapped through `handleWebsocketMessage`, which emits only event names on the typed `CC_EVENTS`/`AGENT_EVENTS` allow-list. A server-controlled `eventData.data.type` that is not a known allow-listed constant is ignored and never emitted as an application event name.
+
 Durable agent, task, and configuration records remain remote-system owned. The package owns only in-memory profile/task/listener/cache/connection state.
 
 ### wxApp Better Together (WXCC-6026)
@@ -291,6 +293,7 @@ ContactCenter retains in-memory `agentConfig`, collaborator references, event li
 - Collaborators are initialized after host READY and before their use; `register()` must not be documented as their constructor boundary. Evidence: `src/cc.ts`.
 - AQM promises complete only from correlated WebSocket success/failure or timeout, not from HTTP acknowledgement. Evidence: `src/services/core/aqm-reqs.ts`.
 - `skipPreviewContact` checks `campaignPreviewSkipDisabled` and `removePreviewContact` checks `campaignPreviewRemoveDisabled` on the matching task. When the applicable value is `'true'`, ContactCenter throws before initiating an HTTP or WebSocket-correlated AQM operation; `acceptPreviewContact` has no equivalent pre-guard. Evidence: `src/cc.ts`.
+- `handleWebsocketMessage` only re-emits event names that belong to the typed `CC_EVENTS`/`AGENT_EVENTS` allow-list; an untrusted `eventData.data.type` outside that allow-list is not emitted as an event name. Evidence: `src/cc.ts`.
 - ContactCenter owns automated relogin policy; ConnectionService owns transport-state detection/emission. Evidence: `src/cc.ts`, `src/services/core/websocket/connection-service.ts`.
 - Deregistration does not station-logout the agent. Evidence: `src/cc.ts`.
 - Published methods/types/events remain semver-sensitive through `src/index.ts`.

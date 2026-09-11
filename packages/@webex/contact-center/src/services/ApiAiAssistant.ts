@@ -40,6 +40,18 @@ export class ApiAIAssistant {
     this.aiFeature = aiFeature;
   }
 
+  /**
+   * Validates a caller-supplied identifier (agentId/interactionId) before it is used to
+   * construct a request. Accepts a non-empty alphanumeric identifier that may contain
+   * hyphens or underscores.
+   * @param value - the identifier to validate
+   * @returns {boolean} true when the identifier is a non-empty, well-formed string
+   * @private
+   */
+  private isValidTranscriptIdentifier(value: unknown): boolean {
+    return typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
+  }
+
   private getBaseUrl(): string {
     const wccApiGatewayUrl = this.webex.internal.services.get(WCC_API_GATEWAY) || '';
 
@@ -359,6 +371,18 @@ export class ApiAIAssistant {
     if (!this.aiFeature?.realtimeTranscripts?.enable) {
       const {error: detailedError} = getErrorDetails(
         new Error('REAL_TIME_TRANSCRIPTION_NOT_ENABLED'),
+        METHODS.FETCH_HISTORIC_TRANSCRIPTS,
+        CC_FILE
+      );
+      throw detailedError;
+    }
+
+    if (
+      !this.isValidTranscriptIdentifier(agentId) ||
+      !this.isValidTranscriptIdentifier(interactionId)
+    ) {
+      const {error: detailedError} = getErrorDetails(
+        new Error('INVALID_AGENT_ID_OR_INTERACTION_ID'),
         METHODS.FETCH_HISTORIC_TRANSCRIPTS,
         CC_FILE
       );

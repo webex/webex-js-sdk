@@ -33,6 +33,16 @@ export const WCC_CALLING_RTMS_DOMAIN = 'wcc-calling-rtms-domain';
 export const DEFAULT_RTMS_DOMAIN = 'rtw.prod-us1.rtmsprod.net';
 
 /**
+ * Trusted domain suffix for RTMS hosts returned by the u2c service catalog. A catalog-provided
+ * RTMS host is only used when its hostname is, or is a subdomain of, this domain; otherwise
+ * `DEFAULT_RTMS_DOMAIN` is used.
+ * @type {string}
+ * @public
+ * @ignore
+ */
+export const ALLOWED_RTMS_DOMAIN = 'rtmsprod.net';
+
+/**
  * Timeout in milliseconds for WebSocket events.
  * @type {number}
  * @public
