@@ -1,4 +1,6 @@
 /* eslint-disable no-underscore-dangle */
+import fs from 'fs';
+import path from 'path';
 import {v4 as uuid} from 'uuid';
 import {CallingPartyInfo, MessageInfo} from '../Voicemail/types';
 import {Call} from '../CallingClient/calling';
@@ -1671,6 +1673,38 @@ describe('Store and Fetch voicemail tests', () => {
       vmListStorage[key] = value;
     });
     global.Storage.prototype.getItem = jest.fn((key) => vmListStorage[key]);
+  });
+
+  it('storeVoicemailList/fetchVoicemailList JSDoc omits encrypted/decrypted labeling', () => {
+    const utilsSource = fs.readFileSync(path.resolve(__dirname, 'Utils.ts'), 'utf8');
+
+    const extractJsDoc = (functionName: string): string => {
+      const exportIndex = utilsSource.indexOf(`export function ${functionName}(`);
+
+      if (exportIndex === -1) {
+        return '';
+      }
+
+      const beforeExport = utilsSource.slice(0, exportIndex);
+      const jsDocStart = beforeExport.lastIndexOf('/**');
+      const jsDocEnd = beforeExport.lastIndexOf('*/');
+
+      if (jsDocStart === -1 || jsDocEnd === -1 || jsDocEnd < jsDocStart) {
+        return '';
+      }
+
+      return beforeExport.slice(jsDocStart, jsDocEnd + 2);
+    };
+
+    const storeJsDoc = extractJsDoc('storeVoicemailList');
+    const fetchJsDoc = extractJsDoc('fetchVoicemailList');
+
+    expect(storeJsDoc).not.toEqual('');
+    expect(fetchJsDoc).not.toEqual('');
+    expect(storeJsDoc.toLowerCase()).not.toContain('encrypted');
+    expect(storeJsDoc.toLowerCase()).not.toContain('decrypted');
+    expect(fetchJsDoc.toLowerCase()).not.toContain('encrypted');
+    expect(fetchJsDoc.toLowerCase()).not.toContain('decrypted');
   });
 
   it('verify saving Voicemails in session storage', () => {
