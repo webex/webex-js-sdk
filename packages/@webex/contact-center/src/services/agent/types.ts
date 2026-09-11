@@ -1,5 +1,13 @@
 import {Msg} from '../core/GlobalTypes';
 
+/** Agent State Control request/notification envelope values. @internal */
+export const INTERNAL_AGENT_STATE_CONTROL_MESSAGE_TYPES = {
+  AGENT_REQUEST_EVENT: 'AgentRequestEvent',
+  ROUTING_MESSAGE: 'RoutingMessage',
+  AGENT_CHANNEL_STATE_CHANGE: 'AgentChannelStateChange',
+  AGENT_CHANNEL_STATE_CHANGE_FAILED: 'AgentChannelStateChangeFailed',
+} as const;
+
 /**
  * Response type received when an agent successfully logs out from the system
  * @public
@@ -89,6 +97,120 @@ export type ReloginSuccess = Msg<{
   /** Type identifier for relogin success event */
   type: 'AgentReloginSuccess';
 }>;
+
+/**
+ * Per-channel agent state detail returned by Agent State Control.
+ * @internal
+ */
+export interface AgentChannelStateDetail {
+  /** Current state for the channel */
+  agentState: string;
+  /** Whether an Idle transition is queued until current work completes */
+  pendingIdle: boolean;
+  /** Auxiliary code associated with an Idle state */
+  auxCodeId?: string | null;
+  /** Epoch-millisecond timestamp for the latest state change */
+  stateChangeTimestamp: number;
+  /** Platform-provided reason for the latest state change */
+  stateChangeReason: string;
+}
+
+/**
+ * Agent State Control snapshot emitted after relogin.
+ * @internal
+ */
+export interface AgentChannelReloginSuccessEvent {
+  /** Agent identifier */
+  agentId: string;
+  /** Organization identifier */
+  orgId: string;
+  /** Current agent session identifier */
+  agentSessionId: string;
+  /** Notification tracking identifier */
+  trackingId: string;
+  /** Channel IDs grouped by channel type */
+  channelsMap: Record<string, string[]>;
+  /** Current state detail grouped by channel type */
+  agentChannelStateDetailMap: Record<string, AgentChannelStateDetail>;
+}
+
+/**
+ * Agent State Control channel-state event used by first-party integrations.
+ * @internal
+ */
+export interface AgentChannelStateChangedEvent {
+  /** Agent identifier */
+  agentId: string;
+  /** Organization identifier */
+  orgId: string;
+  /** Current agent session identifier */
+  agentSessionId: string;
+  /** Channel type whose state changed */
+  channelType: string;
+  /** New state detail for the channel */
+  agentChannelStateDetail: AgentChannelStateDetail;
+  /** Currently connected channel types */
+  connectedChannels: string[];
+  /** Notification tracking identifier */
+  trackingId: string;
+}
+
+/**
+ * Parameters for changing one or more Agent State Control channels.
+ * @internal
+ */
+export interface SetAgentChannelStateParams {
+  /** Channel types to update. At least one non-empty value is required. */
+  channelTypes: string[];
+  /** Target channel state */
+  state: 'Available' | 'Idle';
+  /** Required for Idle and omitted from Available requests */
+  auxCodeId?: string;
+  /** Optional state-change reason */
+  reason?: string;
+  /** Agent identifier; defaults to the registered agent */
+  agentId?: string;
+}
+
+/** Agent State Control routing request payload. @internal */
+export type StateChangeV2 = {
+  channelType: string[];
+  state: 'Available' | 'Idle';
+  auxCodeId?: string;
+  reason?: string;
+  agentId?: string;
+};
+
+/** Agent State Control channel-state routing envelope. @internal */
+export type AgentChannelStateChanged = Msg<
+  AgentChannelStateChangedEvent & {
+    type: 'AgentChannelStateChanged';
+    eventType: 'AgentDesktopMessage';
+  }
+>;
+
+/** Agent State Control relogin routing envelope. @internal */
+export type AgentChannelReloginSuccess = Msg<
+  AgentChannelReloginSuccessEvent & {
+    status?: string;
+    dn: string;
+    siteId: string;
+    teamId: string;
+    interactionIds: string[];
+    profileType: string;
+    isExtension: boolean;
+    eventTime: number;
+    deviceType?: string;
+    deviceId?: string | null;
+    reservedAgentChannelIds?: string[] | null;
+    auxCodeId?: string;
+    lastStateChangeTimestamp?: number;
+    lastIdleCodeChangeTimestamp?: number;
+    lastStateChangeReason?: string;
+    type: 'AgentChannelReloginSuccess';
+    eventType: 'AgentDesktopMessage';
+  }
+>;
 
 /**
  * Response type received when an agent's state is successfully changed

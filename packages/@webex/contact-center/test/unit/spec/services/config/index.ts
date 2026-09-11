@@ -705,6 +705,74 @@ describe('AgentConfigService', () => {
     });
   });
 
+  describe('getWellbeingBreakIdleCode', () => {
+    it('uses the system-code query and finds the exact code across pages', async () => {
+      (mockWebexRequest.request as jest.Mock)
+        .mockResolvedValueOnce({
+          statusCode: 200,
+          body: {
+            data: [
+              {id: 'other', name: 'Other', active: true, isSystemCode: true, defaultCode: false},
+            ],
+            meta: {totalPages: 2},
+          },
+        })
+        .mockResolvedValueOnce({
+          statusCode: 200,
+          body: {
+            data: [
+              {
+                id: 'wellbeing-code',
+                name: 'WellbeingBreak',
+                active: true,
+                isSystemCode: true,
+                defaultCode: false,
+              },
+            ],
+            meta: {totalPages: 2},
+          },
+        });
+
+      await expect(agentConfigService.getWellbeingBreakIdleCode(mockOrgId)).resolves.toEqual({
+        id: 'wellbeing-code',
+        name: 'WellbeingBreak',
+        isSystem: true,
+        isDefault: false,
+      });
+      expect(mockWebexRequest.request).toHaveBeenNthCalledWith(1, {
+        service: mockWccAPIURL,
+        resource:
+          `organization/${mockOrgId}/v2/auxiliary-code?page=0&pageSize=100` +
+          '&workType=IDLE_CODE&customFilter=isSystemCode==true&desktopProfileFilter=false',
+        method: 'GET',
+      });
+      expect(mockWebexRequest.request).toHaveBeenNthCalledWith(2, {
+        service: mockWccAPIURL,
+        resource:
+          `organization/${mockOrgId}/v2/auxiliary-code?page=1&pageSize=100` +
+          '&workType=IDLE_CODE&customFilter=isSystemCode==true&desktopProfileFilter=false',
+        method: 'GET',
+      });
+    });
+
+    it('rejects when the exact system code is unavailable', async () => {
+      (mockWebexRequest.request as jest.Mock).mockResolvedValue({
+        statusCode: 200,
+        body: {
+          data: [
+            {id: 'inactive', name: 'WellbeingBreak', active: false, isSystemCode: true},
+            {id: 'lookalike', name: 'wellbeingbreak', active: true, isSystemCode: true},
+          ],
+          meta: {totalPages: 1},
+        },
+      });
+
+      await expect(agentConfigService.getWellbeingBreakIdleCode(mockOrgId)).rejects.toThrow(
+        'WELLBEING_BREAK_IDLE_CODE_NOT_FOUND'
+      );
+    });
+  });
+
   describe('getAgentConfig', () => {
     const mockTeamData = [
       {id: 'team1', name: 'Support Team'},

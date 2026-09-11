@@ -30,6 +30,9 @@ export {default as AddressBook} from './services/AddressBook';
 export {default as ApiAIAssistant} from './services/ApiAiAssistant';
 export {default as UserPreference} from './services/UserPreference';
 
+/** Agent Wellness Break notification and action wire values. */
+export {WELLNESS_BREAK_NOTIFICATION_ACTIONS, WELLNESS_BREAK_USER_ACTIONS} from './types';
+
 /** EntryPoint API types */
 export type {
   EntryPointRecord,
@@ -120,6 +123,22 @@ export type {
   GenericError,
   /** Set state response */
   SetStateResponse,
+  /** Wellness notification action */
+  WellnessBreakNotificationAction,
+  /** Wellness action API value */
+  WellnessBreakUserAction,
+  /** AI Assistant RTD connection state */
+  AIAssistantRTDConnectionState,
+  /** AI Assistant RTD connection lifecycle event */
+  AIAssistantRTDStatusEvent,
+  /** Validated agent-scoped wellness notification */
+  WellnessBreakEvent,
+  /** Wellness notification listener */
+  WellnessBreakEventListener,
+  /** AI Assistant RTD status listener */
+  AIAssistantRTDStatusListener,
+  /** Wellness offer-response parameters */
+  RespondToWellnessBreakParams,
 } from './types';
 
 /** Task related types */
