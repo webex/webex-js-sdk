@@ -1926,6 +1926,7 @@ describe('Task state machine', () => {
       service.send({type: TaskEvent.EXIT_CONFERENCE_SUCCESS, taskData});
       expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
       expect(service.getSnapshot().context.taskData?.wrapUpRequired).not.toBe(true);
+      const emitCountAfterOwnershipEntry = emitTaskWrapup.mock.calls.length;
 
       service.send({
         type: TaskEvent.TASK_WRAPUP,
@@ -1934,7 +1935,49 @@ describe('Task state machine', () => {
 
       expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
       expect(service.getSnapshot().context.taskData?.wrapUpRequired).toBe(true);
-      expect(emitTaskWrapup).toHaveBeenCalled();
+      expect(emitTaskWrapup.mock.calls.length).toBeGreaterThan(emitCountAfterOwnershipEntry);
+    });
+
+    it('does not re-emit wrap-up on late TASK_WRAPUP when wrap-up was already published', () => {
+      const emitTaskWrapup = jest.fn();
+      const service = createActor(
+        createTaskStateMachine(createConfig(), {actions: {emitTaskWrapup}})
+      );
+      service.start();
+      const taskData = createTaskData({
+        wrapUpRequired: true,
+        interaction: {
+          owner: 'agent-1',
+          state: 'conference',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              type: 'Agent',
+              isWrapUp: true,
+              hasJoined: true,
+              hasLeft: true,
+            },
+          },
+        } as any,
+      });
+
+      primeConferencing(service, taskData);
+      service.send({type: TaskEvent.CONFERENCE_END, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+      expect(service.getSnapshot().context.taskData?.wrapUpRequired).toBe(true);
+      const emitCountAfterStampedEntry = emitTaskWrapup.mock.calls.length;
+
+      service.send({
+        type: TaskEvent.TASK_WRAPUP,
+        taskData: {...taskData, wrapUpRequired: true, wrapUpReason: 'late-agent-wrapup'},
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+      expect(service.getSnapshot().context.taskData?.wrapUpRequired).toBe(true);
+      expect(emitTaskWrapup.mock.calls.length).toBe(emitCountAfterStampedEntry);
     });
 
     it('enters WRAPPING_UP on CONFERENCE_END when wrapUpRequired is stamped', () => {

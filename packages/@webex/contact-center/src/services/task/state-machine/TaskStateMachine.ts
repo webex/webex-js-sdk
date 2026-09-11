@@ -8,7 +8,7 @@
  * This file imports and uses those guards via the `guards` object.
  */
 
-import {setup} from 'xstate';
+import {enqueueActions, setup} from 'xstate';
 import {TaskContext, TaskEventPayload, UIControlConfig, TaskActionsMap} from './types';
 import {TaskState, TaskEvent} from './constants';
 import {actions, createInitialContext} from './actions';
@@ -1251,7 +1251,13 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
         on: {
           // Late AgentWrapup after conference exit already entered WRAPPING_UP
           [TaskEvent.TASK_WRAPUP]: {
-            actions: ['updateTaskData', 'emitTaskWrapup'],
+            actions: enqueueActions(({context, enqueue}) => {
+              const alreadyPublished = context.taskData?.wrapUpRequired === true;
+              enqueue('updateTaskData');
+              if (!alreadyPublished) {
+                enqueue('emitTaskWrapup');
+              }
+            }),
           },
           // AgentWrappedup Event
           [TaskEvent.WRAPUP_COMPLETE]: {

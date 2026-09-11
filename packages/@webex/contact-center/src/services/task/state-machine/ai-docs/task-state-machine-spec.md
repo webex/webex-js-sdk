@@ -1580,9 +1580,9 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: none
 
-- Actions: `updateTaskData`, `emitTaskWrapup`
+- Actions: `updateTaskData`; `emitTaskWrapup` only when `wrapUpRequired` was not already true
 
-- Late AgentWrapup after conference exit already entered wrap-up; applies `wrapUpRequired` and re-emits wrapup
+- Late AgentWrapup after conference exit already entered wrap-up; applies `wrapUpRequired` and emits wrap-up only if wrap-up was not already published
 
 - `WRAPUP_COMPLETE` -> `COMPLETED`
 

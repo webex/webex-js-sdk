@@ -515,7 +515,7 @@ is not treated as departure. `PARTICIPANT_LEAVE` is handled in `HELD`,
 
 - `TASK_WRAPUP` -> stay `WRAPPING_UP`
   - Guard: none
-  - Actions: `updateTaskData`, `emitTaskWrapup`
+  - Actions: `updateTaskData`; `emitTaskWrapup` only when wrap-up was not already published
 - `WRAPUP_COMPLETE` -> `COMPLETED`
   - Guard: none
   - Actions: `updateTaskData`
