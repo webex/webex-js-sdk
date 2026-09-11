@@ -35,7 +35,7 @@ const createRoutingAgent = (routing: AqmReqs) => {
         bind: {
           type: [
             CC_EVENTS.AGENT_RELOGIN_SUCCESS,
-            INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
+            Agent.INTERNAL_AGENT_STATE_CONTROL_MESSAGE_TYPES.AGENT_REQUEST_EVENT,
           ],
           data: {
             type: [

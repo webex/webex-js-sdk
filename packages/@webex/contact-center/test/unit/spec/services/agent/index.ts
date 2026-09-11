@@ -39,7 +39,14 @@ describe('AQM routing agent', () => {
   it('reload', async () => {
     const reqSpy = jest.spyOn(fakeAqm, 'reqEmpty');
     const req = await agent.reload();
-    expect(req).toBeDefined();
+    expect(req).toMatchObject({
+      notifSuccess: {
+        bind: {
+          type: ['AgentReloginSuccess', 'AgentRequestEvent'],
+          data: {type: ['AgentReloginSuccess', 'AgentChannelReloginSuccess']},
+        },
+      },
+    });
     expect(reqSpy).toHaveBeenCalled();
   });
 
