@@ -6,19 +6,49 @@ import {
   TASK_CHANNEL_TYPE,
   TransferPayLoad,
   VOICE_VARIANT,
+  AISummaryActionType,
+  PostCallSummaryResponsePayload,
+  MidCallSummaryResponsePayload,
 } from '../../../../../src/services/task/types';
 import {TaskEvent} from '../../../../../src/services/task/state-machine';
 import {ENTRY_POINT_TRANSFER_DESTINATION_TYPE} from '../../../../../src/services/task/constants';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import {createTaskData} from './taskTestUtils';
+import {AIAssistantEventName} from '../../../../../src/types';
+import {AI_SUMMARY_ERROR_CODES} from '../../../../../src/constants';
+import {METRIC_EVENT_NAMES} from '../../../../../src/metrics/constants';
+import {
+  AI_SUMMARY_DURATION_MS,
+  AI_SUMMARY_REQUEST_CANCELLED,
+  METHODS,
+} from '../../../../../src/services/task/constants';
+import {
+  createAISummaryError,
+  createAISummaryErrorExpectation,
+  createDeferred,
+  flushEventLoopTurn,
+} from '../../../fixtures/aiSummaryTestUtils';
+
+const AI_SUMMARY_TRANSPORT_ERROR_CODES = {
+  VALIDATION_FAILED: 'AI_SUMMARY_TRANSPORT_VALIDATION_FAILED',
+  HTTP_REQUEST_FAILED: 'AI_SUMMARY_HTTP_REQUEST_FAILED',
+  TIMEOUT: 'AI_SUMMARY_TRANSPORT_TIMEOUT',
+} as const;
 
 class DummyTask extends Task {
-  constructor(contact: any, data: TaskData) {
-    super(contact, data, {
-      channelType: 'voice',
-      isEndTaskEnabled: true,
-      isEndConsultEnabled: true,
-    });
+  constructor(contact: any, data: TaskData, agentId = 'agent-1', agentName = 'Receiving Agent') {
+    super(
+      contact,
+      data,
+      {
+        channelType: 'voice',
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+      },
+      undefined,
+      agentId,
+      agentName
+    );
   }
 
   public accept() {
@@ -58,7 +88,170 @@ class SpyAcceptTask extends Task {
   }
 }
 
-const flushPromises = () => new Promise((resolve) => setImmediate(resolve));
+jest.mock('xstate', () => ({
+  createActor: jest.fn((machine) => {
+    let snapshot = {value: 'IDLE', context: {}, event: undefined as any};
+    const subscribers = new Set<any>();
+    const actions = machine?.options?.actions ?? {};
+    const notify = () => {
+      subscribers.forEach((subscriber) => subscriber(snapshot));
+    };
+    const transition = (value: string, event: any) => {
+      snapshot = {value, context: {}, event};
+      notify();
+    };
+
+    return {
+      subscribe: jest.fn((subscriber) => {
+        subscribers.add(subscriber);
+
+        return {unsubscribe: () => subscribers.delete(subscriber)};
+      }),
+      start: jest.fn(() => notify()),
+      stop: jest.fn(),
+      getSnapshot: jest.fn(() => snapshot),
+      send: jest.fn((event) => {
+        switch (event?.type) {
+          case 'TASK_INCOMING':
+            actions.emitTaskIncoming?.({event});
+            transition('OFFERED', event);
+            break;
+          case 'TASK_OFFERED':
+            actions.requestAutoAnswer?.({event});
+            transition('OFFERED', event);
+            break;
+          case 'ASSIGN':
+            actions.emitTaskAssigned?.({event});
+            transition('CONNECTED', event);
+            break;
+          case 'CONTACT_UPDATED':
+            actions.syncTaskDataFromEvent?.({event});
+            transition(snapshot.value, event);
+            break;
+          case 'CONTACT_OWNER_CHANGED':
+            actions.emitTaskHydrate?.({event});
+            transition(snapshot.value, event);
+            break;
+          case 'CONFERENCE_START':
+            transition('CONFERENCING', event);
+            break;
+          case 'PARTICIPANT_LEAVE':
+            actions.emitTaskParticipantLeft?.({event});
+            transition(snapshot.value, event);
+            break;
+          case 'CONTACT_ENDED':
+            actions.requestCleanup?.({event});
+            transition('WRAPUP', event);
+            break;
+          case 'RONA':
+            actions.cleanupResources?.({event});
+            transition('ENDED', event);
+            break;
+          default:
+            transition(snapshot.value, event);
+        }
+      }),
+    };
+  }),
+}));
+
+jest.mock('../../../../../src/services/task/state-machine', () => ({
+  __esModule: true,
+  TaskEvent: {
+    TASK_INCOMING: 'TASK_INCOMING',
+    TASK_OFFERED: 'TASK_OFFERED',
+    ASSIGN: 'ASSIGN',
+    CONTACT_UPDATED: 'CONTACT_UPDATED',
+    CONTACT_OWNER_CHANGED: 'CONTACT_OWNER_CHANGED',
+    CONFERENCE_START: 'CONFERENCE_START',
+    PARTICIPANT_LEAVE: 'PARTICIPANT_LEAVE',
+    CONTACT_ENDED: 'CONTACT_ENDED',
+    RONA: 'RONA',
+    TASK_WRAPUP: 'TASK_WRAPUP',
+  },
+  createTaskStateMachine: jest.fn((_config, options) => ({options})),
+}));
+
+jest.mock('../../../../../src/services/task/state-machine/uiControlsComputer', () => {
+  const createControl = () => ({isVisible: false, isEnabled: false});
+  const createLegControls = () => ({
+    accept: createControl(),
+    decline: createControl(),
+    hold: createControl(),
+    transfer: createControl(),
+    consult: createControl(),
+    end: createControl(),
+    recording: createControl(),
+    mute: createControl(),
+    consultTransfer: createControl(),
+    endConsult: createControl(),
+    conference: createControl(),
+    exitConference: createControl(),
+    transferConference: createControl(),
+    mergeToConference: createControl(),
+    wrapup: createControl(),
+    switch: createControl(),
+  });
+  const createDefaultControls = () => ({
+    main: createLegControls(),
+    consult: createLegControls(),
+    activeLeg: 'main',
+  });
+
+  return {
+    __esModule: true,
+    computeUIControls: jest.fn((state) => {
+      const controls = createDefaultControls();
+      if (state === 'CONFERENCING') {
+        controls.main.exitConference = {isVisible: true, isEnabled: true};
+      }
+
+      return controls;
+    }),
+    getDefaultUIControls: jest.fn(createDefaultControls),
+    haveUIControlsChanged: jest.fn(() => false),
+  };
+});
+
+jest.mock('../../../../../src/services/task/AutoWrapup', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => ({
+    start: jest.fn(),
+    clear: jest.fn(),
+  })),
+}));
+
+jest.mock('../../../../../src/services/task/TaskUtils', () => ({
+  createSummaryError: jest.fn((errorCode) => {
+    const error = new Error(errorCode) as Error & {data?: Record<string, unknown>};
+    error.data = {errorCode};
+
+    return error;
+  }),
+}));
+
+jest.mock('../../../../../src/services/core/Utils', () => ({
+  getErrorDetails: jest.fn((_error, method) => ({
+    error: new Error(`Error while performing ${method}`),
+  })),
+}));
+
+jest.mock('../../../../../src/metrics/MetricsManager', () => {
+  const metricsInstance = {
+    trackEvent: jest.fn(),
+    timeEvent: jest.fn(),
+  };
+  const MetricsManager = jest.fn();
+
+  (MetricsManager as any).getInstance = jest.fn(() => metricsInstance);
+  (MetricsManager as any).getCommonTrackingFieldForAQMResponse = jest.fn(() => ({}));
+  (MetricsManager as any).getCommonTrackingFieldForAQMResponseFailed = jest.fn(() => ({}));
+
+  return {
+    __esModule: true,
+    default: MetricsManager,
+  };
+});
 
 jest.mock('../../../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -76,6 +269,10 @@ jest.mock('../../../../../src/services/core/WebexRequest', () => ({
     getInstance: jest.fn().mockReturnValue({uploadLogs: jest.fn()}),
   },
 }));
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
 
 describe('Task (base class)', () => {
   const dummyContact = {} as any;
@@ -248,6 +445,33 @@ describe('Task (base class)', () => {
     overrides.emitTaskWrapup({event: {type: TaskEvent.TASK_WRAPUP}});
 
     expect(emitSpy).not.toHaveBeenCalledWith(TASK_EVENTS.TASK_WRAPUP, task);
+  });
+
+  it('adapts incoming, consulting, and rejection state-machine actions to task events', () => {
+    const actions = (task as any).getStateMachineActionOverrides();
+    const incomingData = createTaskData({interactionId: 'action-incoming'});
+    const emitSpy = jest.spyOn(task, 'emit');
+
+    actions.emitTaskIncoming({event: {type: 'TASK_INCOMING', taskData: incomingData}});
+    actions.emitTaskConsulting({
+      event: {
+        type: 'CONSULTING_ACTIVE',
+        taskData: {...incomingData, isConsulted: false},
+      },
+    });
+    actions.emitTaskConsulting({
+      event: {
+        type: 'CONSULTING_ACTIVE',
+        taskData: {...incomingData, isConsulted: true},
+      },
+    });
+    actions.emitTaskReject({event: {type: 'ASSIGN_FAILED', reason: 'busy'}});
+    actions.emitTaskReject({event: undefined});
+
+    expect(task.data.interactionId).toBe('action-incoming');
+    expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_CONSULTING, task);
+    expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_CONSULT_ACCEPTED, task);
+    expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_REJECT, 'busy');
   });
 
   it('throws for unsupported voice operations in the base class', async () => {
@@ -476,7 +700,7 @@ describe('Task (base class)', () => {
       taskData: {...data, isAutoAnswering: true} as any,
     });
 
-    await flushPromises();
+    await flushEventLoopTurn();
     expect(webrtcTask.acceptMock).toHaveBeenCalled();
     expect(autoAnsweredSpy).toHaveBeenCalledWith(webrtcTask);
   });
@@ -488,7 +712,7 @@ describe('Task (base class)', () => {
     webrtcTask.sendStateMachineEvent({type: TaskEvent.TASK_INCOMING, taskData: data});
     webrtcTask.sendStateMachineEvent({type: TaskEvent.TASK_OFFERED, taskData: data});
 
-    await flushPromises();
+    await flushEventLoopTurn();
     expect(webrtcTask.acceptMock).not.toHaveBeenCalled();
   });
 
@@ -499,7 +723,7 @@ describe('Task (base class)', () => {
     pstnTask.sendStateMachineEvent({type: TaskEvent.TASK_INCOMING, taskData: data});
     pstnTask.sendStateMachineEvent({type: TaskEvent.TASK_OFFERED, taskData: data});
 
-    await flushPromises();
+    await flushEventLoopTurn();
     expect(pstnTask.acceptMock).not.toHaveBeenCalled();
   });
 
@@ -511,7 +735,7 @@ describe('Task (base class)', () => {
     webrtcTask.sendStateMachineEvent({type: TaskEvent.TASK_INCOMING, taskData: data});
     webrtcTask.sendStateMachineEvent({type: TaskEvent.TASK_OFFERED, taskData: data});
 
-    await flushPromises();
+    await flushEventLoopTurn();
     expect(webrtcTask.data.isAutoAnswering).toBe(false);
   });
 
@@ -674,4 +898,1777 @@ describe('Task failure scenarios', () => {
 
     await expect(task.wrapup(payload)).rejects.toThrow('Error while performing wrapup');
   });
+});
+
+const createAISummaryTaskData = (overrides: Partial<TaskData> = {}): TaskData => {
+  const {interaction: interactionOverrides, ...taskOverrides} = overrides;
+  const interactionId = taskOverrides.interactionId ?? 'interaction-1';
+
+  return createTaskData({
+    taskId: 'task-owner-1',
+    ...taskOverrides,
+    interactionId,
+    interaction: {
+      interactionId,
+      mainInteractionId: 'conversation-1',
+      ...(interactionOverrides as Record<string, unknown> | undefined),
+    },
+  });
+};
+
+const createPostCallSummaryPayload = () => ({
+  conversationId: 'conversation-1',
+  summaryText: 'generated post-call summary',
+  sections: {initialContactReason: 'billing'},
+});
+
+const createMidCallSummaryPayload = () => ({
+  conversationId: 'conversation-1',
+  summaryText: 'generated mid-call summary',
+  sections: {reasonForTransferOrConsult: 'specialist'},
+});
+
+const createPostCallResponsePayloadWithoutTimestamps = (
+  overrides: Partial<PostCallSummaryResponsePayload> = {}
+): PostCallSummaryResponsePayload =>
+  ({
+    summary: {summarySectionKeySentinel: 'summary-section-value-sentinel'} as any,
+    feedback: 'thumbs_up',
+    state: 'DEFAULT',
+    wrapUpCode: 'resolved',
+    numberOfTimesViewed: 1,
+    numberOfTimesEdited: 0,
+    numberOfTimesCopied: 0,
+    ...overrides,
+  } as PostCallSummaryResponsePayload);
+
+const createPostCallResponsePayload = (
+  overrides: Partial<PostCallSummaryResponsePayload> = {}
+): PostCallSummaryResponsePayload =>
+  createPostCallResponsePayloadWithoutTimestamps({
+    actionTimeStamp: 11,
+    publishTimestamp: 12,
+    ...overrides,
+  });
+
+const createMidCallResponsePayloadWithoutTimestamps = (
+  overrides: Partial<MidCallSummaryResponsePayload> = {}
+): MidCallSummaryResponsePayload =>
+  ({
+    summaryReceived: true,
+    summary: {midCallSectionKeySentinel: 'mid-call-section-value-sentinel'} as any,
+    feedback: 'none',
+    state: 'DEFAULT',
+    numberOfTimesViewed: 1,
+    numberOfTimesEdited: 0,
+    numberOfTimesCopied: 0,
+    ...overrides,
+  } as MidCallSummaryResponsePayload);
+
+const createMidCallResponsePayload = (
+  overrides: Partial<MidCallSummaryResponsePayload> = {}
+): MidCallSummaryResponsePayload =>
+  createMidCallResponsePayloadWithoutTimestamps({
+    actionTimeStamp: 21,
+    publishTimestamp: 22,
+    ...overrides,
+  });
+
+const summaryRequestCases: Array<{
+  label: string;
+  invoke: (task: DummyTask) => Promise<any>;
+  eventName: AIAssistantEventName;
+  timeoutCode: string;
+  createPayload: () => any;
+}> = [
+  {
+    label: 'post-call',
+    invoke: (task) => task.requestPostCallSummary(),
+    eventName: AIAssistantEventName.GET_POST_CALL_SUMMARY,
+    timeoutCode: AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_TIMEOUT,
+    createPayload: createPostCallSummaryPayload,
+  },
+  {
+    label: 'consult mid-call',
+    invoke: (task) => task.requestMidCallSummary('CONSULT'),
+    eventName: AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY,
+    timeoutCode: AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_TIMEOUT,
+    createPayload: createMidCallSummaryPayload,
+  },
+  {
+    label: 'transfer mid-call',
+    invoke: (task) => task.requestMidCallSummary('TRANSFER'),
+    eventName: AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY,
+    timeoutCode: AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_TIMEOUT,
+    createPayload: createMidCallSummaryPayload,
+  },
+];
+
+describe('Task AI summary APIs', () => {
+  const dummyContact = {} as any;
+
+  const createSummaryMocks = (
+    task: DummyTask,
+    options: {
+      postCallEnabled?: boolean;
+      midCallEnabled?: boolean;
+      wrapUpSummariesEnabled?: boolean;
+      consultTransferSummariesEnabled?: boolean;
+      registrationResult?: Promise<any>;
+    } = {}
+  ) => {
+    const pendingRequests = new Map<string, any>();
+    const adapter: any = {
+      sendEvent: jest.fn().mockResolvedValue(undefined),
+      requestAndWaitForRtd: jest.fn(async (requestOptions: any) => {
+        const key = JSON.stringify([requestOptions.rtdEventType, requestOptions.correlationId]);
+        let resolveResult: (value: any) => void = () => undefined;
+        let rejectResult: (error: Error) => void = () => undefined;
+        const result = new Promise((resolve, reject) => {
+          resolveResult = resolve;
+          rejectResult = reject;
+        });
+        const pending = {
+          result,
+          timeoutId: undefined as any,
+          resolve: resolveResult,
+          reject: rejectResult,
+        };
+        pendingRequests.set(key, pending);
+        const publishTimestamp = Date.now();
+        const acknowledgement = adapter.sendEvent(
+          requestOptions.agentId,
+          requestOptions.interactionId,
+          requestOptions.eventType,
+          requestOptions.eventName,
+          {...requestOptions.eventMetaData, actionTimeStamp: publishTimestamp},
+          undefined,
+          undefined,
+          publishTimestamp,
+          requestOptions.timeout
+        );
+        const value = options.registrationResult ?? Promise.resolve(createPostCallSummaryPayload());
+        const timeout = new Promise((_resolve, reject) => {
+          pending.timeoutId = setTimeout(
+            () => reject(requestOptions.createTimeoutError()),
+            requestOptions.timeoutMs
+          );
+        });
+        try {
+          const [resolvedValue] = await Promise.all([
+            Promise.race([value, timeout]),
+            acknowledgement,
+          ]);
+          clearTimeout(pending.timeoutId);
+          pendingRequests.delete(key);
+          return resolvedValue;
+        } catch (error) {
+          clearTimeout(pending.timeoutId);
+          pendingRequests.delete(key);
+          throw error;
+        }
+      }),
+      resolveFromRtdEvent: jest.fn((rtdEventType: string, correlationId: string, payload: any) => {
+        const key = JSON.stringify([rtdEventType, correlationId]);
+        const pending = pendingRequests.get(key);
+        if (!pending) return 'not-found';
+        clearTimeout(pending.timeoutId);
+        pendingRequests.delete(key);
+        pending.resolve(payload);
+        return 'resolved';
+      }),
+      clearAllRtdRequests: jest.fn(() => {
+        pendingRequests.forEach((pending) => {
+          clearTimeout(pending.timeoutId);
+          pending.reject(new Error(AI_SUMMARY_REQUEST_CANCELLED));
+        });
+        pendingRequests.clear();
+      }),
+      clear: jest.fn(),
+      pendingRequests,
+    };
+    const coordinator = adapter;
+    const postCallEnabled = Object.prototype.hasOwnProperty.call(options, 'postCallEnabled')
+      ? options.postCallEnabled
+      : true;
+    const midCallEnabled = Object.prototype.hasOwnProperty.call(options, 'midCallEnabled')
+      ? options.midCallEnabled
+      : true;
+    const wrapUpSummariesEnabled = Object.prototype.hasOwnProperty.call(
+      options,
+      'wrapUpSummariesEnabled'
+    )
+      ? options.wrapUpSummariesEnabled
+      : true;
+    const consultTransferSummariesEnabled = Object.prototype.hasOwnProperty.call(
+      options,
+      'consultTransferSummariesEnabled'
+    )
+      ? options.consultTransferSummariesEnabled
+      : true;
+
+    const getGeneratedSummaryFlags = jest.fn(() => ({
+      wrapUpSummariesEnabled,
+      consultTransferSummariesEnabled,
+    }));
+
+    task.setFeatureEnablement({
+      interactionId: task.data.interactionId,
+      postCallEnabled,
+      midCallEnabled,
+    });
+    task.configureAISummary(adapter, getGeneratedSummaryFlags);
+
+    return {adapter, coordinator, getGeneratedSummaryFlags};
+  };
+
+  const createRealSummaryMocks = (task: DummyTask) => {
+    const result = createDeferred<any>();
+    const adapter = {
+      sendEvent: jest.fn().mockResolvedValue(undefined),
+      requestAndWaitForRtd: jest.fn(async (requestOptions: any) => {
+        const publishTimestamp = Date.now();
+        let timeoutId: ReturnType<typeof setTimeout>;
+        const timeout = new Promise((_resolve, reject) => {
+          timeoutId = setTimeout(
+            () => reject(requestOptions.createTimeoutError()),
+            requestOptions.timeoutMs
+          );
+        });
+        await adapter.sendEvent(
+          requestOptions.agentId,
+          requestOptions.interactionId,
+          requestOptions.eventType,
+          requestOptions.eventName,
+          {...requestOptions.eventMetaData, actionTimeStamp: publishTimestamp},
+          undefined,
+          undefined,
+          publishTimestamp,
+          requestOptions.timeout
+        );
+        try {
+          return await Promise.race([result.promise, timeout]);
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      }),
+      resolveFromRtdEvent: jest.fn((_eventType: string, _correlationId: string, payload: any) => {
+        result.resolve(payload);
+        return 'resolved';
+      }),
+      clearAll: jest.fn(() => result.reject(new Error(AI_SUMMARY_REQUEST_CANCELLED))),
+      clear: jest.fn(),
+    } as any;
+    const getGeneratedSummaryFlags = jest.fn(() => ({
+      wrapUpSummariesEnabled: true,
+      consultTransferSummariesEnabled: true,
+    }));
+
+    task.setFeatureEnablement({
+      interactionId: task.data.interactionId,
+      postCallEnabled: true,
+      midCallEnabled: true,
+    });
+    task.configureAISummary(adapter, getGeneratedSummaryFlags);
+
+    return {adapter, coordinator: adapter, result, getGeneratedSummaryFlags};
+  };
+
+  const expectSummaryGetEvent = (
+    adapter: {sendEvent: jest.Mock},
+    eventName: string,
+    callIndex?: number
+  ) => {
+    const expectedArgs = [
+      'agent-1',
+      'interaction-1',
+      'CTI_EVENT',
+      eventName,
+      expect.objectContaining({
+        conversationId: 'conversation-1',
+        clientType: 'WxCC',
+        actionTimeStamp: expect.any(Number),
+      }),
+      undefined,
+      undefined,
+      expect.any(Number),
+      AI_SUMMARY_DURATION_MS,
+    ];
+
+    if (callIndex === undefined) {
+      expect(adapter.sendEvent).toHaveBeenCalledWith(...expectedArgs);
+
+      return;
+    }
+
+    expect(adapter.sendEvent).toHaveBeenNthCalledWith(callIndex, ...expectedArgs);
+  };
+
+  const getSummaryEventPayload = (adapter: {sendEvent: jest.Mock}, callIndex = 0) => {
+    const [agentId, interactionId, , eventName, eventData, , , publishTimestamp] =
+      adapter.sendEvent.mock.calls[callIndex];
+    const {clientType: _clientType, action: _action, ...summaryData} = eventData;
+
+    return {
+      agentId,
+      interactionId,
+      eventName,
+      ...summaryData,
+      ...(publishTimestamp !== undefined ? {publishTimestamp} : {}),
+    };
+  };
+
+  const spyOnAISummaryMetrics = (task: DummyTask) => {
+    const metricsManager = (task as any).metricsManager;
+
+    return {
+      trackEvent: jest.spyOn(metricsManager, 'trackEvent').mockImplementation(() => undefined),
+      timeEvent: jest.spyOn(metricsManager, 'timeEvent').mockImplementation(() => undefined),
+    };
+  };
+
+  const getPendingRequest = (
+    coordinator: any,
+    eventType: 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY',
+    conversationId: string
+  ) =>
+    (coordinator as any).pendingRequests.get(JSON.stringify([eventType, conversationId]));
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  it('defines the exact AI summary operation metric names', () => {
+    expect(METRIC_EVENT_NAMES).toMatchObject({
+      AI_SUMMARY_GET_POST_CALL_SUCCESS: 'Post Call Summary Get Success',
+      AI_SUMMARY_GET_POST_CALL_FAILED: 'Post Call Summary Get Failed',
+      AI_SUMMARY_GET_MID_CALL_SUCCESS: 'Mid Call Summary Get Success',
+      AI_SUMMARY_GET_MID_CALL_FAILED: 'Mid Call Summary Get Failed',
+      AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS: 'Post Call Summary Response Success',
+      AI_SUMMARY_POST_CALL_RESPONSE_FAILED: 'Post Call Summary Response Failed',
+      AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS: 'Mid Call Summary Response Success',
+      AI_SUMMARY_MID_CALL_RESPONSE_FAILED: 'Mid Call Summary Response Failed',
+    });
+  });
+
+  it('requests a post-call summary through accepted registration, HTTP acknowledgement, and matching RTD result', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const metrics = spyOnAISummaryMetrics(task);
+    const postCallResult = createPostCallSummaryPayload();
+    const {adapter, coordinator, getGeneratedSummaryFlags} = createSummaryMocks(task, {
+        registrationResult: Promise.resolve(postCallResult),
+      });
+
+    await expect(task.requestPostCallSummary()).resolves.toBe(postCallResult);
+
+    expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(1);
+    expect(coordinator.requestAndWaitForRtd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        correlationId: 'conversation-1',
+        rtdEventType: 'POST_CALL_SUMMARY',
+        timeoutMs: AI_SUMMARY_DURATION_MS,
+      })
+    );
+    expectSummaryGetEvent(adapter, AIAssistantEventName.GET_POST_CALL_SUMMARY);
+    expect(metrics.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
+      expect.objectContaining({
+        conversationId: 'conversation-1',
+        interactionId: 'interaction-1',
+      }),
+      ['operational']
+    );
+    expect(metrics.timeEvent).toHaveBeenCalledWith([
+      METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
+      METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
+    ]);
+  });
+
+  it('maps consult and transfer mid-call summary requests to their exact outbound event names', async () => {
+    const consultTask = new DummyTask(dummyContact, createAISummaryTaskData());
+    const consultMetrics = spyOnAISummaryMetrics(consultTask);
+    const consultResult = createMidCallSummaryPayload();
+    const consultMocks = createSummaryMocks(consultTask, {
+      registrationResult: Promise.resolve(consultResult),
+    });
+
+    await expect(consultTask.requestMidCallSummary('CONSULT')).resolves.toBe(consultResult);
+
+    expect(consultMocks.coordinator.requestAndWaitForRtd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        correlationId: 'conversation-1',
+        rtdEventType: 'MID_CALL_SUMMARY',
+        timeoutMs: AI_SUMMARY_DURATION_MS,
+      })
+    );
+    expectSummaryGetEvent(
+      consultMocks.adapter,
+      AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY
+    );
+    expect(consultMetrics.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
+      expect.objectContaining({
+        operation: METHODS.REQUEST_MID_CALL_SUMMARY,
+        actionType: 'CONSULT',
+        conversationId: 'conversation-1',
+        interactionId: 'interaction-1',
+      }),
+      ['operational']
+    );
+
+    const transferTask = new DummyTask(dummyContact, createAISummaryTaskData());
+    const transferResult = createMidCallSummaryPayload();
+    const transferMocks = createSummaryMocks(transferTask, {
+      registrationResult: Promise.resolve(transferResult),
+    });
+
+    await expect(transferTask.requestMidCallSummary('TRANSFER')).resolves.toBe(transferResult);
+    expectSummaryGetEvent(
+      transferMocks.adapter,
+      AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY
+    );
+  });
+
+  it.each([
+    {
+      label: 'post-call registration first',
+      invoke: (task: DummyTask) => task.requestPostCallSummary(),
+      inboundType: 'POST_CALL_SUMMARY' as const,
+      timeoutCode: AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_TIMEOUT,
+      eventName: AIAssistantEventName.GET_POST_CALL_SUMMARY,
+      payload: createPostCallSummaryPayload(),
+      successMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS,
+      failureMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
+      operation: METHODS.REQUEST_POST_CALL_SUMMARY,
+      settleFirst: 'result' as const,
+    },
+    {
+      label: 'mid-call acknowledgement first',
+      invoke: (task: DummyTask) => task.requestMidCallSummary('CONSULT'),
+      inboundType: 'MID_CALL_SUMMARY' as const,
+      timeoutCode: AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_TIMEOUT,
+      eventName: AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY,
+      payload: createMidCallSummaryPayload(),
+      successMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS,
+      failureMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
+      operation: METHODS.REQUEST_MID_CALL_SUMMARY,
+      actionType: 'CONSULT',
+      settleFirst: 'acknowledgement' as const,
+    },
+  ])(
+    'sends the HTTP request and waits for both request branches on $label',
+    async ({
+      invoke,
+      inboundType,
+      timeoutCode,
+      eventName,
+      payload,
+      successMetric,
+      failureMetric,
+      operation,
+      actionType,
+      settleFirst,
+    }) => {
+      const task = new DummyTask(dummyContact, createAISummaryTaskData());
+      const metrics = spyOnAISummaryMetrics(task);
+      const acknowledgement = createDeferred<void>();
+      const result = createDeferred<any>();
+      const {adapter, coordinator} = createSummaryMocks(task, {
+        registrationResult: result.promise,
+      });
+      let publicSettled = false;
+
+      adapter.sendEvent.mockReturnValueOnce(acknowledgement.promise);
+
+      const publicRequest = invoke(task);
+
+      publicRequest.then(
+        () => {
+          publicSettled = true;
+        },
+        () => {
+          publicSettled = true;
+        }
+      );
+      await Promise.resolve();
+
+      expect(coordinator.requestAndWaitForRtd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          correlationId: 'conversation-1',
+          rtdEventType: inboundType,
+          timeoutMs: AI_SUMMARY_DURATION_MS,
+        })
+      );
+      expectSummaryGetEvent(adapter, eventName);
+      expect(publicSettled).toBe(false);
+
+      if (settleFirst === 'result') {
+        result.resolve(payload);
+        await Promise.resolve();
+        expect(publicSettled).toBe(false);
+        expect(metrics.trackEvent).not.toHaveBeenCalled();
+
+        acknowledgement.resolve(undefined);
+      } else {
+        acknowledgement.resolve(undefined);
+        await Promise.resolve();
+        expect(publicSettled).toBe(false);
+        expect(metrics.trackEvent).not.toHaveBeenCalled();
+
+        result.resolve(payload);
+      }
+
+      await expect(publicRequest).resolves.toBe(payload);
+      expect(metrics.trackEvent).toHaveBeenCalledTimes(1);
+      expect(metrics.trackEvent).toHaveBeenCalledWith(
+        successMetric,
+        expect.objectContaining({
+          operation,
+          ...(actionType ? {actionType} : {}),
+          conversationId: 'conversation-1',
+          interactionId: 'interaction-1',
+        }),
+        ['operational']
+      );
+      expect(metrics.timeEvent).toHaveBeenCalledWith([successMetric, failureMetric]);
+    }
+  );
+
+  it.each([
+    {
+      label: 'post-call organization false',
+      invoke: (task: DummyTask) => task.requestPostCallSummary(),
+      options: {wrapUpSummariesEnabled: false, postCallEnabled: true},
+      disabledCode: AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED,
+      failureMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
+      operation: METHODS.REQUEST_POST_CALL_SUMMARY,
+    },
+    {
+      label: 'post-call organization undefined',
+      invoke: (task: DummyTask) => task.requestPostCallSummary(),
+      options: {wrapUpSummariesEnabled: undefined, postCallEnabled: true},
+      disabledCode: AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED,
+      failureMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
+      operation: METHODS.REQUEST_POST_CALL_SUMMARY,
+    },
+    {
+      label: 'post-call interaction false',
+      invoke: (task: DummyTask) => task.requestPostCallSummary(),
+      options: {wrapUpSummariesEnabled: true, postCallEnabled: false},
+      disabledCode: AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED,
+      failureMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
+      operation: METHODS.REQUEST_POST_CALL_SUMMARY,
+    },
+    {
+      label: 'post-call interaction undefined',
+      invoke: (task: DummyTask) => task.requestPostCallSummary(),
+      options: {wrapUpSummariesEnabled: true, postCallEnabled: undefined},
+      disabledCode: AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED,
+      failureMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED,
+      operation: METHODS.REQUEST_POST_CALL_SUMMARY,
+    },
+    {
+      label: 'mid-call organization false',
+      invoke: (task: DummyTask) => task.requestMidCallSummary('CONSULT'),
+      options: {consultTransferSummariesEnabled: false, midCallEnabled: true},
+      disabledCode: AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED,
+      failureMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
+      operation: METHODS.REQUEST_MID_CALL_SUMMARY,
+      actionType: 'CONSULT',
+    },
+    {
+      label: 'mid-call organization undefined',
+      invoke: (task: DummyTask) => task.requestMidCallSummary('CONSULT'),
+      options: {consultTransferSummariesEnabled: undefined, midCallEnabled: true},
+      disabledCode: AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED,
+      failureMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
+      operation: METHODS.REQUEST_MID_CALL_SUMMARY,
+      actionType: 'CONSULT',
+    },
+    {
+      label: 'mid-call interaction false',
+      invoke: (task: DummyTask) => task.requestMidCallSummary('CONSULT'),
+      options: {consultTransferSummariesEnabled: true, midCallEnabled: false},
+      disabledCode: AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED,
+      failureMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
+      operation: METHODS.REQUEST_MID_CALL_SUMMARY,
+      actionType: 'CONSULT',
+    },
+    {
+      label: 'mid-call interaction undefined',
+      invoke: (task: DummyTask) => task.requestMidCallSummary('CONSULT'),
+      options: {consultTransferSummariesEnabled: true, midCallEnabled: undefined},
+      disabledCode: AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED,
+      failureMetric: METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED,
+      operation: METHODS.REQUEST_MID_CALL_SUMMARY,
+      actionType: 'CONSULT',
+    },
+  ])(
+    'rejects disabled $label summary requests before registration or HTTP',
+    async ({invoke, options, disabledCode, failureMetric, operation, actionType}) => {
+      const task = new DummyTask(dummyContact, createAISummaryTaskData());
+      const metrics = spyOnAISummaryMetrics(task);
+      const {adapter, coordinator} = createSummaryMocks(task, options);
+
+      await expect(invoke(task)).rejects.toMatchObject(
+        createAISummaryErrorExpectation(disabledCode)
+      );
+      expect(coordinator.requestAndWaitForRtd).not.toHaveBeenCalled();
+      expect(adapter.sendEvent).not.toHaveBeenCalled();
+      expect(metrics.trackEvent).toHaveBeenCalledTimes(1);
+      expect(metrics.trackEvent).toHaveBeenCalledWith(
+        failureMetric,
+        expect.objectContaining({
+          operation,
+          ...(actionType ? {actionType} : {}),
+          failureCode: disabledCode,
+        }),
+        ['operational']
+      );
+      expect(metrics.timeEvent).toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    {
+      label: 'post-call',
+      invoke: (task: DummyTask) => task.requestPostCallSummary(),
+      disabledCode: AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED,
+      featureEnablement: {postCallEnabled: false, midCallEnabled: true},
+    },
+    {
+      label: 'mid-call',
+      invoke: (task: DummyTask) => task.requestMidCallSummary('CONSULT'),
+      disabledCode: AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED,
+      featureEnablement: {postCallEnabled: true, midCallEnabled: false},
+    },
+  ])(
+    'uses the top-level interaction feature key only for $label requests',
+    async ({invoke, disabledCode, featureEnablement}) => {
+      const task = new DummyTask(
+        dummyContact,
+        createAISummaryTaskData({
+          interactionId: 'child-interaction-1',
+          interaction: {mainInteractionId: 'conversation-1'} as any,
+        })
+      );
+      const {adapter, coordinator} = createSummaryMocks(task, featureEnablement);
+
+      await expect(invoke(task)).rejects.toMatchObject(
+        createAISummaryErrorExpectation(disabledCode)
+      );
+      expect(coordinator.requestAndWaitForRtd).not.toHaveBeenCalled();
+      expect(adapter.sendEvent).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    {
+      label: 'post-call organization false',
+      invoke: (task: DummyTask) => task.requestPostCallSummary(),
+      inboundType: 'POST_CALL_SUMMARY' as const,
+      disabledCode: AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED,
+      flags: {wrapUpSummariesEnabled: false, consultTransferSummariesEnabled: true},
+      featureEnablement: {interactionId: 'interaction-1', postCallEnabled: true},
+    },
+    {
+      label: 'post-call raw undefined interaction flag',
+      invoke: (task: DummyTask) => task.requestPostCallSummary(),
+      inboundType: 'POST_CALL_SUMMARY' as const,
+      disabledCode: AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED,
+      flags: {wrapUpSummariesEnabled: true, consultTransferSummariesEnabled: true},
+    },
+    {
+      label: 'post-call mainInteractionId mismatch',
+      invoke: (task: DummyTask) => task.requestPostCallSummary(),
+      inboundType: 'POST_CALL_SUMMARY' as const,
+      disabledCode: AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED,
+      flags: {wrapUpSummariesEnabled: true, consultTransferSummariesEnabled: true},
+      taskData: createAISummaryTaskData({
+        interactionId: 'child-interaction-1',
+        interaction: {mainInteractionId: 'conversation-1'} as any,
+      }),
+      featureEnablement: {interactionId: 'conversation-1', postCallEnabled: true},
+    },
+    {
+      label: 'mid-call organization false',
+      invoke: (task: DummyTask) => task.requestMidCallSummary('CONSULT'),
+      inboundType: 'MID_CALL_SUMMARY' as const,
+      disabledCode: AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED,
+      flags: {wrapUpSummariesEnabled: true, consultTransferSummariesEnabled: false},
+      featureEnablement: {interactionId: 'interaction-1', midCallEnabled: true},
+    },
+    {
+      label: 'mid-call raw undefined interaction flag',
+      invoke: (task: DummyTask) => task.requestMidCallSummary('CONSULT'),
+      inboundType: 'MID_CALL_SUMMARY' as const,
+      disabledCode: AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED,
+      flags: {wrapUpSummariesEnabled: true, consultTransferSummariesEnabled: true},
+    },
+    {
+      label: 'mid-call mainInteractionId mismatch',
+      invoke: (task: DummyTask) => task.requestMidCallSummary('CONSULT'),
+      inboundType: 'MID_CALL_SUMMARY' as const,
+      disabledCode: AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED,
+      flags: {wrapUpSummariesEnabled: true, consultTransferSummariesEnabled: true},
+      taskData: createAISummaryTaskData({
+        interactionId: 'child-interaction-1',
+        interaction: {mainInteractionId: 'conversation-1'} as any,
+      }),
+      featureEnablement: {interactionId: 'conversation-1', midCallEnabled: true},
+    },
+  ])(
+    'leaves the real coordinator idle when $label disables a request',
+    async ({invoke, inboundType, disabledCode, flags, taskData, featureEnablement}) => {
+      jest.useFakeTimers();
+      const task = new DummyTask(dummyContact, taskData ?? createAISummaryTaskData());
+      const adapter: any = {
+        sendEvent: jest.fn().mockResolvedValue(undefined),
+        requestAndWaitForRtd: jest.fn(),
+        pendingRequests: new Map(),
+      };
+      const coordinator = adapter;
+      const registerSpy = jest.spyOn(coordinator, 'requestAndWaitForRtd');
+      const getGeneratedSummaryFlags = jest.fn(() => flags);
+
+      task.configureAISummary(
+        adapter,
+        getGeneratedSummaryFlags
+      );
+      task.setFeatureEnablement({
+        interactionId: task.data.interactionId,
+        ...(featureEnablement ?? {}),
+      });
+
+      await expect(invoke(task)).rejects.toMatchObject(
+        createAISummaryErrorExpectation(disabledCode)
+      );
+      expect(registerSpy).not.toHaveBeenCalled();
+      expect(adapter.sendEvent).not.toHaveBeenCalled();
+      expect(getPendingRequest(coordinator, inboundType, 'conversation-1')).toBeUndefined();
+      expect(jest.getTimerCount()).toBe(0);
+    }
+  );
+
+  it('calls the injected generated-summary accessor on each request so live config changes are observed', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const firstFlags = {
+      wrapUpSummariesEnabled: false,
+      consultTransferSummariesEnabled: true,
+    };
+    const secondFlags = {
+      wrapUpSummariesEnabled: true,
+      consultTransferSummariesEnabled: true,
+    };
+    let generatedSummaryFlags = firstFlags;
+    const adapter: any = {
+      sendEvent: jest.fn().mockResolvedValue(undefined),
+      pendingRequests: new Map(),
+    };
+    const featureEnablement = {interactionId: 'interaction-1', postCallEnabled: true};
+    const coordinator = adapter;
+    let resolveResult: (payload: any) => void = () => undefined;
+    adapter.requestAndWaitForRtd = jest.fn(async (requestOptions: any) => {
+      const result = new Promise((resolve) => {
+        resolveResult = resolve;
+      });
+      await adapter.sendEvent(
+        requestOptions.agentId,
+        requestOptions.interactionId,
+        requestOptions.eventType,
+        requestOptions.eventName,
+        {...requestOptions.eventMetaData, actionTimeStamp: Date.now()},
+        undefined,
+        undefined,
+        Date.now(),
+        requestOptions.timeout
+      );
+      return result;
+    });
+    coordinator.resolveFromRtdEvent = jest.fn(() => {
+      resolveResult(createPostCallSummaryPayload());
+      return 'resolved';
+    });
+    const getGeneratedSummaryFlags = jest.fn(() => generatedSummaryFlags);
+
+    task.configureAISummary(adapter, getGeneratedSummaryFlags);
+    task.setFeatureEnablement({interactionId: task.data.interactionId, ...featureEnablement});
+
+    await expect(task.requestPostCallSummary()).rejects.toMatchObject(
+      createAISummaryErrorExpectation(AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED)
+    );
+    expect(adapter.sendEvent).not.toHaveBeenCalled();
+
+    generatedSummaryFlags = secondFlags;
+    const request = task.requestPostCallSummary();
+
+    await Promise.resolve();
+    expect(adapter.sendEvent).toHaveBeenCalledTimes(1);
+    expect(
+      coordinator.resolveFromRtdEvent(
+        'POST_CALL_SUMMARY',
+        'conversation-1',
+        createPostCallSummaryPayload()
+      )
+    ).toBe('resolved');
+    await expect(request).resolves.toEqual(createPostCallSummaryPayload());
+    expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(2);
+  });
+
+  it('cleans up only the accepted request token when the request acknowledgement rejects', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const neverSettlingResult = createDeferred<any>();
+    const {adapter, coordinator} = createSummaryMocks(task, {
+      registrationResult: neverSettlingResult.promise,
+    });
+    const baseUrlError = createAISummaryError(
+      AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE
+    );
+
+    adapter.sendEvent.mockRejectedValue(baseUrlError);
+
+    await expect(task.requestPostCallSummary()).rejects.toBe(baseUrlError);
+    expect(coordinator.requestAndWaitForRtd).toHaveBeenCalled();
+  });
+
+  it.each(summaryRequestCases.map((testCase) => [testCase.label, testCase] as const))(
+    '%s request sends one outbound adapter invocation when it later fails from inbound timeout',
+    async (_label, {invoke, eventName, timeoutCode}) => {
+      const task = new DummyTask(dummyContact, createAISummaryTaskData());
+      const timeoutResult = createDeferred<any>();
+      const {adapter} = createSummaryMocks(task, {registrationResult: timeoutResult.promise});
+
+      const timedOutRequest = invoke(task);
+      await flushEventLoopTurn();
+
+      expect(adapter.sendEvent).toHaveBeenCalledTimes(1);
+      expectSummaryGetEvent(adapter, eventName);
+
+      timeoutResult.reject(createAISummaryError(timeoutCode));
+
+      await expect(timedOutRequest).rejects.toMatchObject({
+        message: timeoutCode,
+        data: {errorCode: timeoutCode},
+      });
+    }
+  );
+
+  it.each(summaryRequestCases.map((testCase) => [testCase.label, testCase] as const))(
+    'issues a fresh second adapter call when %s request is invoked again after settlement',
+    async (_label, {invoke, eventName, createPayload}) => {
+      const task = new DummyTask(dummyContact, createAISummaryTaskData());
+      const firstPayload = createPayload();
+      const secondPayload = createPayload();
+      const {adapter, coordinator} = createSummaryMocks(task);
+
+      expect(firstPayload).not.toBe(secondPayload);
+      coordinator.requestAndWaitForRtd
+        .mockImplementationOnce(async (requestOptions: any) => {
+          const publishTimestamp = Date.now();
+          await adapter.sendEvent(
+            requestOptions.agentId,
+            requestOptions.interactionId,
+            requestOptions.eventType,
+            requestOptions.eventName,
+            {...requestOptions.eventMetaData, actionTimeStamp: publishTimestamp},
+            undefined,
+            undefined,
+            publishTimestamp,
+            requestOptions.timeout
+          );
+
+          return firstPayload;
+        })
+        .mockImplementationOnce(async (requestOptions: any) => {
+          const publishTimestamp = Date.now();
+          await adapter.sendEvent(
+            requestOptions.agentId,
+            requestOptions.interactionId,
+            requestOptions.eventType,
+            requestOptions.eventName,
+            {...requestOptions.eventMetaData, actionTimeStamp: publishTimestamp},
+            undefined,
+            undefined,
+            publishTimestamp,
+            requestOptions.timeout
+          );
+
+          return secondPayload;
+        });
+
+      await expect(invoke(task)).resolves.toBe(firstPayload);
+      await expect(invoke(task)).resolves.toBe(secondPayload);
+
+      expect(coordinator.requestAndWaitForRtd).toHaveBeenCalledTimes(2);
+      expect(adapter.sendEvent).toHaveBeenCalledTimes(2);
+      expectSummaryGetEvent(adapter, eventName, 1);
+      expectSummaryGetEvent(adapter, eventName, 2);
+    }
+  );
+
+  it('settles public request promises when coordinator rejects owner cleanup results', async () => {
+    const cleanupTask = new DummyTask(dummyContact, createAISummaryTaskData());
+    const cleanupResult = createDeferred<any>();
+
+    createSummaryMocks(cleanupTask, {registrationResult: cleanupResult.promise});
+
+    const cancelledRequest = cleanupTask.requestMidCallSummary('CONSULT');
+    await flushEventLoopTurn();
+    cleanupResult.reject(createAISummaryError(AI_SUMMARY_REQUEST_CANCELLED));
+
+    await expect(cancelledRequest).rejects.toMatchObject({
+      message: AI_SUMMARY_REQUEST_CANCELLED,
+      data: {errorCode: AI_SUMMARY_REQUEST_CANCELLED},
+    });
+  });
+
+  it('serializes post-call responses from retained request context after TaskManager cleanup state is gone', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const taskRegistry: Record<string, DummyTask> = {'interaction-1': task};
+    const metrics = spyOnAISummaryMetrics(task);
+    const postCallResult = createPostCallSummaryPayload();
+    const {adapter, coordinator, result, getGeneratedSummaryFlags} = createRealSummaryMocks(task);
+
+    const postCallRequest = task.requestPostCallSummary();
+    await flushEventLoopTurn();
+
+    expectSummaryGetEvent(adapter, AIAssistantEventName.GET_POST_CALL_SUMMARY);
+    result.resolve(postCallResult);
+    await expect(postCallRequest).resolves.toBe(postCallResult);
+    expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(1);
+
+    delete taskRegistry['interaction-1'];
+    coordinator.clear('task-owner-1', 'conversation-1');
+    task.updateTaskData(
+      createAISummaryTaskData({
+        interactionId: 'current-interaction',
+        interaction: {mainInteractionId: 'current-conversation'} as any,
+      }),
+      true
+    );
+    const responsePayload = createPostCallResponsePayload({
+      summary: {humanAuthoredSectionKeySentinel: 'human-authored-section-value-sentinel'} as any,
+    });
+
+    await expect(task.sendPostCallSummaryResponse(responsePayload)).resolves.toBeUndefined();
+
+    expect(taskRegistry['interaction-1']).toBeUndefined();
+    expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(1);
+    expect(adapter.sendEvent).toHaveBeenCalledTimes(2);
+    expect(getSummaryEventPayload(adapter, 1)).toStrictEqual({
+      agentId: 'agent-1',
+      interactionId: 'interaction-1',
+      conversationId: 'conversation-1',
+      eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+      summary: {humanAuthoredSectionKeySentinel: 'human-authored-section-value-sentinel'},
+      feedback: 'thumbs_up',
+      wrapUpCode: 'resolved',
+      actionTimeStamp: 11,
+      publishTimestamp: 12,
+      numberOfTimesViewed: 1,
+      numberOfTimesEdited: 0,
+      numberOfTimesCopied: 0,
+      state: 'DEFAULT',
+    });
+    expect(metrics.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
+      expect.objectContaining({
+        operation: METHODS.SEND_POST_CALL_SUMMARY_RESPONSE,
+        conversationId: 'conversation-1',
+        interactionId: 'interaction-1',
+      }),
+      ['operational']
+    );
+    expect(JSON.stringify(metrics.trackEvent.mock.calls)).not.toContain(
+      'humanAuthoredSectionKeySentinel'
+    );
+    expect(JSON.stringify(metrics.trackEvent.mock.calls)).not.toContain(
+      'human-authored-section-value-sentinel'
+    );
+    expect(metrics.timeEvent).toHaveBeenCalledWith([
+      METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
+      METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
+    ]);
+  });
+
+  it('propagates a post-call response telemetry failure', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const metrics = spyOnAISummaryMetrics(task);
+    const {adapter} = createSummaryMocks(task);
+
+    metrics.trackEvent.mockImplementationOnce(() => {
+      throw new Error('metrics unavailable');
+    });
+
+    await expect(task.sendPostCallSummaryResponse(createPostCallResponsePayload())).rejects.toThrow(
+      'metrics unavailable'
+    );
+    expect(adapter.sendEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses current correlation for direct post-call responses that have no retained request context', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const {adapter} = createSummaryMocks(task);
+
+    await expect(
+      task.sendPostCallSummaryResponse(createPostCallResponsePayload())
+    ).resolves.toBeUndefined();
+
+    expect(getSummaryEventPayload(adapter)).toMatchObject({
+      interactionId: 'interaction-1',
+      conversationId: 'conversation-1',
+      eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+    });
+  });
+
+  it('serializes mid-call responses from retained request context after task data changes', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const {adapter, coordinator} = createRealSummaryMocks(task);
+    const midCallRequest = task.requestMidCallSummary('CONSULT');
+
+    await flushEventLoopTurn();
+    expect(
+      coordinator.resolveFromRtdEvent(
+        'MID_CALL_SUMMARY',
+        'conversation-1',
+        createMidCallSummaryPayload()
+      )
+    ).toBe('resolved');
+    await expect(midCallRequest).resolves.toEqual(createMidCallSummaryPayload());
+
+    task.updateTaskData(
+      createAISummaryTaskData({
+        interactionId: 'current-interaction',
+        interaction: {mainInteractionId: 'current-conversation'} as any,
+      }),
+      true
+    );
+
+    await expect(
+      task.sendMidCallSummaryResponse(createMidCallResponsePayload(), 'CONSULT')
+    ).resolves.toBeUndefined();
+
+    expect(getSummaryEventPayload(adapter, 1)).toMatchObject({
+      interactionId: 'interaction-1',
+      conversationId: 'conversation-1',
+      eventName: AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE,
+    });
+  });
+
+  it('does not retain correlation when a post-call summary request fails', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const {adapter} = createSummaryMocks(task);
+    const requestError = createAISummaryError(
+      AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE
+    );
+
+    adapter.sendEvent.mockRejectedValueOnce(requestError);
+
+    await expect(task.requestPostCallSummary()).rejects.toBe(requestError);
+
+    task.updateTaskData(
+      createAISummaryTaskData({
+        interactionId: 'current-interaction',
+        interaction: {mainInteractionId: 'current-conversation'} as any,
+      }),
+      true
+    );
+
+    await expect(
+      task.sendPostCallSummaryResponse(createPostCallResponsePayload())
+    ).resolves.toBeUndefined();
+    expect(getSummaryEventPayload(adapter, 1)).toMatchObject({
+      interactionId: 'current-interaction',
+      conversationId: 'current-conversation',
+    });
+  });
+
+  it.each([
+    {
+      label: 'post-call',
+      invoke: (task: DummyTask) =>
+        task.sendPostCallSummaryResponse(
+          createPostCallResponsePayload({
+            summary: 'Caller reported a billing discrepancy.',
+            numberOfTimesViewed: 2,
+            numberOfTimesEdited: 1,
+            numberOfTimesCopied: 3,
+          })
+        ),
+      expected: {
+        agentId: 'agent-1',
+        interactionId: 'interaction-1',
+        conversationId: 'conversation-1',
+        eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+        summary: 'Caller reported a billing discrepancy.',
+        feedback: 'thumbs_up',
+        wrapUpCode: 'resolved',
+        actionTimeStamp: 11,
+        publishTimestamp: 12,
+        numberOfTimesViewed: 2,
+        numberOfTimesEdited: 1,
+        numberOfTimesCopied: 3,
+        state: 'DEFAULT',
+      },
+    },
+    {
+      label: 'mid-call',
+      invoke: (task: DummyTask) =>
+        task.sendMidCallSummaryResponse(
+          createMidCallResponsePayload({
+            summary: 'Caller reported a billing discrepancy.',
+            numberOfTimesViewed: 2,
+            numberOfTimesEdited: 1,
+            numberOfTimesCopied: 3,
+          }),
+          'TRANSFER'
+        ),
+      expected: {
+        agentId: 'agent-1',
+        interactionId: 'interaction-1',
+        conversationId: 'conversation-1',
+        eventName: AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE,
+        summary: 'Caller reported a billing discrepancy.',
+        feedback: 'none',
+        agentName: 'Receiving Agent',
+        actionTimeStamp: 21,
+        publishTimestamp: 22,
+        numberOfTimesViewed: 2,
+        numberOfTimesEdited: 1,
+        numberOfTimesCopied: 3,
+        state: 'DEFAULT',
+      },
+    },
+  ])('forwards $label plain-text response summaries unchanged', async ({invoke, expected}) => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const {adapter} = createSummaryMocks(task);
+
+    await expect(invoke(task)).resolves.toBeUndefined();
+
+    expect(getSummaryEventPayload(adapter)).toStrictEqual(expected);
+  });
+
+  it.each([
+    {
+      label: 'post-call',
+      invoke: (task: DummyTask) =>
+        task.sendPostCallSummaryResponse(createPostCallResponsePayloadWithoutTimestamps()),
+      expected: {
+        agentId: 'agent-1',
+        interactionId: 'interaction-1',
+        conversationId: 'conversation-1',
+        eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+        summary: {summarySectionKeySentinel: 'summary-section-value-sentinel'},
+        feedback: 'thumbs_up',
+        wrapUpCode: 'resolved',
+        numberOfTimesViewed: 1,
+        numberOfTimesEdited: 0,
+        numberOfTimesCopied: 0,
+        state: 'DEFAULT',
+      },
+    },
+    {
+      label: 'mid-call',
+      invoke: (task: DummyTask) =>
+        task.sendMidCallSummaryResponse(createMidCallResponsePayloadWithoutTimestamps(), 'CONSULT'),
+      expected: {
+        agentId: 'agent-1',
+        interactionId: 'interaction-1',
+        conversationId: 'conversation-1',
+        eventName: AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE,
+        summary: {midCallSectionKeySentinel: 'mid-call-section-value-sentinel'},
+        feedback: 'none',
+        agentName: 'Receiving Agent',
+        numberOfTimesViewed: 1,
+        numberOfTimesEdited: 0,
+        numberOfTimesCopied: 0,
+        state: 'DEFAULT',
+      },
+    },
+  ])('adds timestamps when $label response payload omits them', async ({invoke, expected}) => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const {adapter} = createSummaryMocks(task);
+
+    await expect(invoke(task)).resolves.toBeUndefined();
+
+    const transportPayload = getSummaryEventPayload(adapter);
+
+    expect(getSummaryEventPayload(adapter)).toMatchObject({
+      ...expected,
+      actionTimeStamp: expect.any(Number),
+      publishTimestamp: expect.any(Number),
+    });
+    expect(Object.prototype.hasOwnProperty.call(transportPayload, 'actionTimeStamp')).toBe(true);
+    expect(Object.prototype.hasOwnProperty.call(transportPayload, 'publishTimestamp')).toBe(true);
+  });
+
+  it('sends the exact post-call NOT_RECEIVED response transport payload', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const {adapter} = createSummaryMocks(task);
+
+    await expect(
+      task.sendPostCallSummaryResponse(
+        createPostCallResponsePayload({
+          summary: '',
+          feedback: 'none',
+          state: 'NOT_RECEIVED',
+          wrapUpCode: 'resolved',
+          numberOfTimesViewed: 0,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+          actionTimeStamp: 31,
+          publishTimestamp: 32,
+        })
+      )
+    ).resolves.toBeUndefined();
+
+    expect(getSummaryEventPayload(adapter)).toStrictEqual({
+      agentId: 'agent-1',
+      interactionId: 'interaction-1',
+      conversationId: 'conversation-1',
+      eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+      summary: '',
+      feedback: 'none',
+      wrapUpCode: 'resolved',
+      actionTimeStamp: 31,
+      publishTimestamp: 32,
+      numberOfTimesViewed: 0,
+      numberOfTimesEdited: 0,
+      numberOfTimesCopied: 0,
+      state: 'NOT_RECEIVED',
+    });
+  });
+
+  it('serializes mid-call response branches without transport-only invalid fields', async () => {
+    const consultTask = new DummyTask(dummyContact, createAISummaryTaskData());
+    const consultMetrics = spyOnAISummaryMetrics(consultTask);
+    const consultMocks = createSummaryMocks(consultTask);
+
+    await expect(
+      consultTask.sendMidCallSummaryResponse(
+        createMidCallResponsePayload({
+          state: 'MID_CALL_CANCELLED',
+          numberOfTimesViewed: 0,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+        }),
+        'CONSULT'
+      )
+    ).resolves.toBeUndefined();
+
+    const consultPayload = getSummaryEventPayload(consultMocks.adapter);
+
+    expect(consultPayload).toMatchObject({
+      eventName: AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE,
+      interactionId: 'interaction-1',
+      conversationId: 'conversation-1',
+      agentName: 'Receiving Agent',
+      numberOfTimesViewed: 0,
+      actionTimeStamp: 21,
+      publishTimestamp: 22,
+    });
+    expect(consultPayload).not.toHaveProperty('summaryReceived');
+    expect(consultPayload).not.toHaveProperty('wrapUpCode');
+    expect(consultMetrics.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
+      expect.objectContaining({
+        operation: METHODS.SEND_MID_CALL_SUMMARY_RESPONSE,
+        actionType: 'CONSULT',
+        conversationId: 'conversation-1',
+        interactionId: 'interaction-1',
+      }),
+      ['operational']
+    );
+
+    const transferTask = new DummyTask(dummyContact, createAISummaryTaskData());
+    const transferMocks = createSummaryMocks(transferTask);
+
+    await expect(
+      transferTask.sendMidCallSummaryResponse(
+        createMidCallResponsePayload({
+          summaryReceived: false,
+          summary: '',
+          feedback: 'none',
+          state: 'NOT_RECEIVED',
+          numberOfTimesViewed: 0,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+        }),
+        'TRANSFER'
+      )
+    ).resolves.toBeUndefined();
+
+    expect(getSummaryEventPayload(transferMocks.adapter)).toMatchObject({
+      eventName: AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE,
+      interactionId: 'interaction-1',
+      conversationId: 'conversation-1',
+      summary: '',
+      numberOfTimesViewed: 0,
+    });
+  });
+
+  it.each([
+    {
+      label: 'post-call received',
+      invoke: (task: DummyTask) =>
+        task.sendPostCallSummaryResponse(createPostCallResponsePayload()),
+      eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+      expected: {wrapUpCode: 'resolved', state: 'DEFAULT'},
+      absent: ['agentName', 'summaryReceived'] as const,
+    },
+    {
+      label: 'post-call NOT_RECEIVED',
+      invoke: (task: DummyTask) =>
+        task.sendPostCallSummaryResponse(
+          createPostCallResponsePayload({
+            summary: '',
+            state: 'NOT_RECEIVED',
+            numberOfTimesViewed: 0,
+            numberOfTimesEdited: 0,
+            numberOfTimesCopied: 0,
+          })
+        ),
+      eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+      expected: {wrapUpCode: 'resolved', summary: '', state: 'NOT_RECEIVED'},
+      absent: ['agentName', 'summaryReceived'] as const,
+    },
+    {
+      label: 'mid-call received',
+      invoke: (task: DummyTask) =>
+        task.sendMidCallSummaryResponse(createMidCallResponsePayload(), 'CONSULT'),
+      eventName: AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE,
+      expected: {agentName: 'Receiving Agent', state: 'DEFAULT'},
+      absent: ['wrapUpCode', 'summaryReceived'] as const,
+    },
+    {
+      label: 'mid-call summaryReceived:false',
+      invoke: (task: DummyTask) =>
+        task.sendMidCallSummaryResponse(
+          createMidCallResponsePayload({
+            summaryReceived: false,
+            summary: '',
+            state: 'NOT_RECEIVED',
+            numberOfTimesViewed: 0,
+            numberOfTimesEdited: 0,
+            numberOfTimesCopied: 0,
+          }),
+          'TRANSFER'
+        ),
+      eventName: AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE,
+      expected: {agentName: 'Receiving Agent', summary: '', state: 'NOT_RECEIVED'},
+      absent: ['wrapUpCode', 'summaryReceived'] as const,
+    },
+  ])(
+    'populates both identifiers on $label response transport',
+    async ({invoke, eventName, expected, absent}) => {
+      const task = new DummyTask(
+        dummyContact,
+        createAISummaryTaskData({
+          interactionId: 'response-interaction-1',
+          interaction: {mainInteractionId: 'response-conversation-1'} as any,
+        })
+      );
+      const {adapter} = createSummaryMocks(task);
+
+      await expect(invoke(task)).resolves.toBeUndefined();
+
+      expect(adapter.sendEvent).toHaveBeenCalledTimes(1);
+      const transportPayload = getSummaryEventPayload(adapter);
+
+      expect(transportPayload.agentId).toBe('agent-1');
+      expect(transportPayload).toMatchObject({
+        agentId: 'agent-1',
+        interactionId: 'response-interaction-1',
+        conversationId: 'response-conversation-1',
+        eventName,
+        ...expected,
+      });
+      absent.forEach((propertyName) => {
+        expect(transportPayload).not.toHaveProperty(propertyName);
+      });
+    }
+  );
+
+  it.each(['CONSULT', 'TRANSFER'] as const)(
+    'sends a successful summary-not-received MID_CALL_CANCELLED %s response',
+    async (actionType) => {
+      const task = new DummyTask(dummyContact, createAISummaryTaskData());
+      const {adapter} = createSummaryMocks(task);
+
+      await expect(
+        task.sendMidCallSummaryResponse(
+          createMidCallResponsePayload({
+            summaryReceived: false,
+            summary: '',
+            feedback: 'none',
+            state: 'MID_CALL_CANCELLED',
+            numberOfTimesViewed: 0,
+            numberOfTimesEdited: 0,
+            numberOfTimesCopied: 0,
+          }),
+          actionType
+        )
+      ).resolves.toBeUndefined();
+
+      expect(getSummaryEventPayload(adapter)).toMatchObject({
+        eventName:
+          actionType === 'CONSULT'
+            ? AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE
+            : AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE,
+        summary: '',
+        state: 'MID_CALL_CANCELLED',
+        numberOfTimesViewed: 0,
+        numberOfTimesEdited: 0,
+        numberOfTimesCopied: 0,
+      });
+    }
+  );
+
+  it('preserves a received MID_CALL_CANCELLED summary and viewed counter', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const {adapter} = createSummaryMocks(task);
+    const summary = {
+      reasonForTransferOrConsult: 'Customer requested a specialist',
+      issueResolution: 'Warm transfer completed',
+    };
+
+    await expect(
+      task.sendMidCallSummaryResponse(
+        createMidCallResponsePayload({
+          summaryReceived: true,
+          summary,
+          state: 'MID_CALL_CANCELLED',
+          numberOfTimesViewed: 1,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+        }),
+        'CONSULT'
+      )
+    ).resolves.toBeUndefined();
+
+    expect(getSummaryEventPayload(adapter)).toMatchObject({
+      summary,
+      state: 'MID_CALL_CANCELLED',
+      numberOfTimesViewed: 1,
+    });
+  });
+
+  it.each([
+    {
+      actionType: 'CONSULT' as AISummaryActionType,
+      eventName: AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE,
+    },
+    {
+      actionType: 'TRANSFER' as AISummaryActionType,
+      eventName: AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE,
+    },
+  ])(
+    'sends MID_CALL_CANCELLED $actionType responses without invoking a handoff',
+    async ({actionType, eventName}) => {
+      const task = new DummyTask(dummyContact, createAISummaryTaskData());
+      const {adapter} = createSummaryMocks(task);
+      const consultSpy = jest.spyOn(task, 'consult').mockResolvedValue({} as any);
+      const transferSpy = jest.spyOn(task, 'transfer').mockResolvedValue({} as any);
+      const sendResponseThenHandoff = async (
+        payload: MidCallSummaryResponsePayload,
+        handoffActionType: AISummaryActionType
+      ) => {
+        await task.sendMidCallSummaryResponse(payload, handoffActionType);
+
+        if (payload.state === 'MID_CALL_CANCELLED') {
+          return;
+        }
+
+        if (handoffActionType === 'CONSULT') {
+          await task.consult({} as any);
+
+          return;
+        }
+
+        await task.transfer({} as any);
+      };
+
+      await expect(
+        sendResponseThenHandoff(
+          createMidCallResponsePayload({
+            state: 'MID_CALL_CANCELLED',
+            numberOfTimesViewed: 0,
+            numberOfTimesEdited: 0,
+            numberOfTimesCopied: 0,
+          }),
+          actionType
+        )
+      ).resolves.toBeUndefined();
+
+      expect(getSummaryEventPayload(adapter)).toMatchObject({
+        eventName,
+        state: 'MID_CALL_CANCELLED',
+      });
+      expect(consultSpy).not.toHaveBeenCalled();
+      expect(transferSpy).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    ['post-call IGNORED', 'post-call', 'IGNORED'],
+    ['mid-call EXCLUDED', 'mid-call', 'EXCLUDED'],
+    ['mid-call IGNORED', 'mid-call', 'IGNORED'],
+  ] as const)('accepts %s response states', async (_label, flow, state) => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const {adapter} = createSummaryMocks(task);
+
+    if (flow === 'post-call') {
+      await expect(
+        task.sendPostCallSummaryResponse(createPostCallResponsePayload({state: state as any}))
+      ).resolves.toBeUndefined();
+    } else {
+      await expect(
+        task.sendMidCallSummaryResponse(
+          createMidCallResponsePayload({state: state as any}),
+          'CONSULT'
+        )
+      ).resolves.toBeUndefined();
+    }
+
+    expect(getSummaryEventPayload(adapter)).toMatchObject({state});
+  });
+
+  it('accepts mid-call IGNORED on the unavailable branch (summaryReceived:false)', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const {adapter} = createSummaryMocks(task);
+
+    await expect(
+      task.sendMidCallSummaryResponse(
+        {
+          summaryReceived: false,
+          summary: '',
+          numberOfTimesViewed: 0,
+          numberOfTimesEdited: 0,
+          numberOfTimesCopied: 0,
+          feedback: 'none',
+          state: 'IGNORED',
+        },
+        'CONSULT'
+      )
+    ).resolves.toBeUndefined();
+
+    expect(getSummaryEventPayload(adapter)).toMatchObject({state: 'IGNORED'});
+  });
+
+  it.each(['none', 'thumbs_up', 'thumbs_down'] as const)(
+    'forwards valid %s feedback unchanged for both response flows',
+    async (feedback) => {
+      const postTask = new DummyTask(dummyContact, createAISummaryTaskData());
+      const postMocks = createSummaryMocks(postTask);
+      const midTask = new DummyTask(dummyContact, createAISummaryTaskData());
+      const midMocks = createSummaryMocks(midTask);
+
+      await expect(
+        postTask.sendPostCallSummaryResponse(createPostCallResponsePayload({feedback}))
+      ).resolves.toBeUndefined();
+      await expect(
+        midTask.sendMidCallSummaryResponse(createMidCallResponsePayload({feedback}), 'CONSULT')
+      ).resolves.toBeUndefined();
+
+      expect(getSummaryEventPayload(postMocks.adapter)).toMatchObject({feedback});
+      expect(getSummaryEventPayload(midMocks.adapter)).toMatchObject({feedback});
+    }
+  );
+
+  it('forwards valid non-zero counters unchanged for both response flows', async () => {
+    const counters = {
+      numberOfTimesViewed: 2,
+      numberOfTimesEdited: 1,
+      numberOfTimesCopied: 3,
+    };
+    const postTask = new DummyTask(dummyContact, createAISummaryTaskData());
+    const metrics = spyOnAISummaryMetrics(postTask);
+    const postMocks = createSummaryMocks(postTask);
+    const midTask = new DummyTask(dummyContact, createAISummaryTaskData());
+    const midMocks = createSummaryMocks(midTask);
+
+    await expect(
+      postTask.sendPostCallSummaryResponse(createPostCallResponsePayload(counters))
+    ).resolves.toBeUndefined();
+    await expect(
+      midTask.sendMidCallSummaryResponse(createMidCallResponsePayload(counters), 'TRANSFER')
+    ).resolves.toBeUndefined();
+
+    expect(getSummaryEventPayload(postMocks.adapter)).toMatchObject(counters);
+    expect(getSummaryEventPayload(midMocks.adapter)).toMatchObject(counters);
+    expect(metrics.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS,
+      expect.objectContaining({operation: METHODS.SEND_POST_CALL_SUMMARY_RESPONSE}),
+      ['operational']
+    );
+    expect(metrics.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS,
+      expect.objectContaining({
+        operation: METHODS.SEND_MID_CALL_SUMMARY_RESPONSE,
+        actionType: 'TRANSFER',
+      }),
+      ['operational']
+    );
+  });
+
+  it('maps plain adapter errors to a bounded failure code and preserves rejection identity', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const metrics = spyOnAISummaryMetrics(task);
+    const {adapter} = createSummaryMocks(task);
+    const adapterError = new Error('summary-section-value-sentinel');
+
+    adapter.sendEvent.mockRejectedValue(adapterError);
+
+    await expect(
+      task.sendMidCallSummaryResponse(createMidCallResponsePayload(), 'CONSULT')
+    ).rejects.toBe(adapterError);
+
+    expect(JSON.stringify(metrics.trackEvent.mock.calls)).not.toContain(
+      'summary-section-value-sentinel'
+    );
+    expect(metrics.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
+      expect.objectContaining({
+        operation: METHODS.SEND_MID_CALL_SUMMARY_RESPONSE,
+        actionType: 'CONSULT',
+        failureCode: 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD',
+      }),
+      ['operational']
+    );
+  });
+
+  it.each([
+    {
+      label: 'summary base URL unavailable',
+      expectedCode: AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE,
+      configure: true,
+      payload: createPostCallResponsePayload(),
+      adapterError: createAISummaryError(
+        AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE
+      ),
+      expectAdapterCall: true,
+    },
+    ...[
+      AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED,
+      AI_SUMMARY_TRANSPORT_ERROR_CODES.HTTP_REQUEST_FAILED,
+      AI_SUMMARY_TRANSPORT_ERROR_CODES.TIMEOUT,
+    ].map((expectedCode) => ({
+      label: expectedCode,
+      expectedCode,
+      configure: true,
+      payload: createPostCallResponsePayload(),
+      adapterError: createAISummaryError(expectedCode),
+      expectAdapterCall: true,
+    })),
+  ])(
+    'records bounded post-call response failure metric for $label',
+    async ({expectedCode, configure, taskData, payload, adapterError, expectAdapterCall}) => {
+      const responseTask = new DummyTask(dummyContact, taskData ?? createAISummaryTaskData());
+      const responseMetrics = spyOnAISummaryMetrics(responseTask);
+      const summaryMocks = configure ? createSummaryMocks(responseTask) : undefined;
+
+      if (adapterError) {
+        summaryMocks?.adapter.sendEvent.mockRejectedValue(adapterError);
+      }
+
+      const result = responseTask.sendPostCallSummaryResponse(payload);
+
+      if (adapterError) {
+        await expect(result).rejects.toBe(adapterError);
+      } else {
+        await expect(result).rejects.toMatchObject(createAISummaryErrorExpectation(expectedCode));
+      }
+
+      if (summaryMocks) {
+        if (expectAdapterCall) {
+          expect(summaryMocks.adapter.sendEvent).toHaveBeenCalledTimes(1);
+        } else {
+          expect(summaryMocks.adapter.sendEvent).not.toHaveBeenCalled();
+        }
+      }
+      expect(responseMetrics.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED,
+        expect.objectContaining({
+          operation: METHODS.SEND_POST_CALL_SUMMARY_RESPONSE,
+          failureCode: expectedCode,
+        }),
+        ['operational']
+      );
+      expect(responseMetrics.timeEvent).toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    {
+      label: 'summary base URL unavailable',
+      expectedCode: AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE,
+      configure: true,
+      adapterError: createAISummaryError(
+        AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE
+      ),
+      taskData: undefined,
+      expectAdapterCall: true,
+      includeActionType: true,
+    },
+    ...[
+      AI_SUMMARY_TRANSPORT_ERROR_CODES.VALIDATION_FAILED,
+      AI_SUMMARY_TRANSPORT_ERROR_CODES.HTTP_REQUEST_FAILED,
+      AI_SUMMARY_TRANSPORT_ERROR_CODES.TIMEOUT,
+    ].map((expectedCode) => ({
+      label: expectedCode,
+      expectedCode,
+      configure: true,
+      adapterError: createAISummaryError(expectedCode),
+      taskData: undefined,
+      expectAdapterCall: true,
+      includeActionType: true,
+    })),
+  ])(
+    'records bounded mid-call response failure metric for $label',
+    async ({
+      expectedCode,
+      configure,
+      taskData,
+      adapterError,
+      expectAdapterCall,
+    }) => {
+      const responseTask = new DummyTask(dummyContact, taskData ?? createAISummaryTaskData());
+      const responseMetrics = spyOnAISummaryMetrics(responseTask);
+      const summaryMocks = configure ? createSummaryMocks(responseTask) : undefined;
+
+      if (adapterError) {
+        summaryMocks?.adapter.sendEvent.mockRejectedValue(adapterError);
+      }
+
+      const result = responseTask.sendMidCallSummaryResponse(
+        createMidCallResponsePayload(),
+        'CONSULT'
+      );
+
+      if (adapterError) {
+        await expect(result).rejects.toBe(adapterError);
+      } else {
+        await expect(result).rejects.toMatchObject(createAISummaryErrorExpectation(expectedCode));
+      }
+
+      if (summaryMocks) {
+        if (expectAdapterCall) {
+          expect(summaryMocks.adapter.sendEvent).toHaveBeenCalledTimes(1);
+        } else {
+          expect(summaryMocks.adapter.sendEvent).not.toHaveBeenCalled();
+        }
+      }
+      expect(responseMetrics.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED,
+        expect.objectContaining({
+          operation: METHODS.SEND_MID_CALL_SUMMARY_RESPONSE,
+          actionType: 'CONSULT',
+          failureCode: expectedCode,
+        }),
+        ['operational']
+      );
+      expect(responseMetrics.timeEvent).toHaveBeenCalled();
+    }
+  );
 });

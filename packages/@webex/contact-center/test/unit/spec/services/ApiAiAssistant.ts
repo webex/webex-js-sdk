@@ -2,21 +2,61 @@ import ApiAIAssistant from '../../../../src/services/ApiAiAssistant';
 import MetricsManager from '../../../../src/metrics/MetricsManager';
 import LoggerProxy from '../../../../src/logger-proxy';
 import WebexRequest from '../../../../src/services/core/WebexRequest';
-import {HTTP_METHODS, RealTimeAssistanceUserActionId, WebexSDK} from '../../../../src/types';
+import {
+  HTTP_METHODS,
+  RealTimeAssistanceUserActionId,
+  WebexSDK,
+} from '../../../../src/types';
 
-jest.mock('../../../../src/metrics/MetricsManager');
-jest.mock('../../../../src/logger-proxy');
+jest.mock('../../../../src/metrics/MetricsManager', () => ({
+  __esModule: true,
+  default: {
+    getInstance: jest.fn(),
+  },
+}));
+jest.mock('../../../../src/logger-proxy', () => ({
+  __esModule: true,
+  default: {
+    log: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    trace: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+jest.mock('../../../../src/services/core/WebexRequest', () => ({
+  __esModule: true,
+  default: {
+    getInstance: jest.fn(),
+  },
+}));
+jest.mock('../../../../src/services/core/Utils', () => ({
+  __esModule: true,
+  getErrorDetails: jest.fn((error: any, methodName: string, moduleName: string) => {
+    const LoggerProxyMock = require('../../../../src/logger-proxy').default;
+    const reason = error?.details?.data?.reason ?? `Error while performing ${methodName}`;
+    const detailedError = new Error(reason) as Error & {data?: Record<string, unknown>};
+
+    detailedError.data = {};
+    LoggerProxyMock.error(`${methodName} failed with reason: ${reason}`, {
+      module: moduleName,
+      method: methodName,
+    });
+
+    return {error: detailedError, reason};
+  }),
+}));
 
 describe('ApiAIAssistant', () => {
   let apiAIAssistant: ApiAIAssistant;
   let mockWebex: WebexSDK;
   let mockMetricsManager: jest.Mocked<MetricsManager>;
+  let mockUploadLogs: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(WebexRequest, 'getInstance').mockReturnValue({
-      uploadLogs: jest.fn(),
-    } as any);
+    mockUploadLogs = jest.fn();
 
     mockWebex = {
       credentials: {
@@ -37,6 +77,11 @@ describe('ApiAIAssistant', () => {
       once: jest.fn(),
     } as unknown as WebexSDK;
 
+    jest.spyOn(WebexRequest, 'getInstance').mockReturnValue({
+      request: mockWebex.request,
+      uploadLogs: mockUploadLogs,
+    } as any);
+
     mockMetricsManager = {
       trackEvent: jest.fn(),
       timeEvent: jest.fn(),
@@ -45,6 +90,71 @@ describe('ApiAIAssistant', () => {
 
     apiAIAssistant = new ApiAIAssistant(mockWebex);
   });
+
+  it('sends a summary request and resolves it from the matching RTD event', async () => {
+    (mockWebex.request as jest.Mock).mockResolvedValue({body: {accepted: true}});
+
+    const request = apiAIAssistant.requestAndWaitForRtd({
+      correlationId: 'conversation-1',
+      rtdEventType: 'POST_CALL_SUMMARY',
+      timeoutMs: 15000,
+      createTimeoutError: () => new Error('TIMEOUT'),
+      agentId: 'agent-1',
+      interactionId: 'interaction-1',
+      eventType: 'CTI_EVENT' as any,
+      eventName: 'GET_POST_CALL_SUMMARY' as any,
+      eventMetaData: {conversationId: 'conversation-1'},
+      timeout: 15000,
+    });
+
+    await Promise.resolve();
+    expect(apiAIAssistant.resolveFromRtdEvent('POST_CALL_SUMMARY', 'conversation-1', {summary: 'ready'})).toBe(
+      'resolved'
+    );
+    await expect(request).resolves.toEqual({summary: 'ready'});
+    expect(mockWebex.request).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects an RTD request when its timeout expires', async () => {
+    jest.useFakeTimers();
+    (mockWebex.request as jest.Mock).mockResolvedValue({body: {accepted: true}});
+    const request = apiAIAssistant.requestAndWaitForRtd({
+      correlationId: 'conversation-1',
+      rtdEventType: 'POST_CALL_SUMMARY',
+      timeoutMs: 15000,
+      createTimeoutError: () => new Error('TIMEOUT'),
+      agentId: 'agent-1',
+      interactionId: 'interaction-1',
+      eventType: 'CTI_EVENT' as any,
+      eventName: 'GET_POST_CALL_SUMMARY' as any,
+    });
+
+    jest.advanceTimersByTime(15000);
+    await expect(request).rejects.toThrow('TIMEOUT');
+    jest.useRealTimers();
+  });
+
+  it('removes the pending RTD request when the HTTP request fails', async () => {
+    const error = new Error('HTTP_FAILED');
+    (mockWebex.request as jest.Mock).mockRejectedValue(error);
+
+    const request = apiAIAssistant.requestAndWaitForRtd({
+      correlationId: 'conversation-1',
+      rtdEventType: 'POST_CALL_SUMMARY',
+      timeoutMs: 15000,
+      createTimeoutError: () => new Error('TIMEOUT'),
+      agentId: 'agent-1',
+      interactionId: 'interaction-1',
+      eventType: 'CTI_EVENT' as any,
+      eventName: 'GET_POST_CALL_SUMMARY' as any,
+    });
+
+    await expect(request).rejects.toBeInstanceOf(Error);
+    expect(apiAIAssistant.resolveFromRtdEvent('POST_CALL_SUMMARY', 'conversation-1', {})).toBe(
+      'not-found'
+    );
+  });
+
 
   it('should send transcript start event successfully', async () => {
     (mockWebex.request as jest.Mock).mockResolvedValue({body: {ok: true}});

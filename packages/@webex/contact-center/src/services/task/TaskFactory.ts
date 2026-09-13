@@ -20,6 +20,7 @@ export default class TaskFactory {
     configFlags: ConfigFlags,
     wrapupData?: WrapupData,
     agentId?: string,
+    agentName?: string,
     answerCallOnWebexService?: AnswerCallOnWebexService
   ): Task {
     const mediaType = data.interaction.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
@@ -42,16 +43,17 @@ export default class TaskFactory {
             data,
             voiceControlOptions,
             wrapupData,
-            agentId
+            agentId,
+            agentName
           );
         }
 
-        return new Voice(contact, data, voiceControlOptions, wrapupData, agentId);
+        return new Voice(contact, data, voiceControlOptions, wrapupData, agentId, agentName);
 
       case MEDIA_CHANNEL.CHAT:
       case MEDIA_CHANNEL.EMAIL:
       case MEDIA_CHANNEL.SOCIAL:
-        return new Digital(contact, data, wrapupData, agentId, consultTransfer);
+        return new Digital(contact, data, wrapupData, agentId, consultTransfer, agentName);
 
       default:
         throw new Error(`Unknown media type: ${mediaType}`);

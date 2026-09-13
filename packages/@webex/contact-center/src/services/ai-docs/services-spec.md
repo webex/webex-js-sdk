@@ -250,7 +250,7 @@ ContactCenter READY callback
 │   ├── config + agent + contact + dialer
 │   └── ConnectionService(primary WebSocket)
 ├── WebCallingService + ApiAIAssistant + MetricsManager
-├── TaskManager(ApiAIAssistant, contact, calling, primary WS, RTD WS)
+├── TaskManager(ApiAIAssistant, contact, calling, primary WS)
 └── AddressBook + EntryPoint + Queue + UserPreference
 ```
 
@@ -260,7 +260,7 @@ ContactCenter READY callback
 | SERVICES-R-001 | Build the Services singleton with agent/config/contact/dialer, two WebSocket managers, AqmReqs, and ConnectionService after WebexRequest is initialized. | Every AQM and transport collaborator depends on one shared authenticated host and primary message stream. | `src/services/index.ts` | `test/unit/spec/cc.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | SERVICES-R-002 | Keep direct REST services, including UserPreference, separate from AQM request factories. | Direct data/config/user-preference calls complete from HTTP while AQM operations require correlated WebSocket completion. | `src/services/index.ts`, `src/services/UserPreference.ts` | `test/unit/spec/services/AddressBook.ts`, `test/unit/spec/services/UserPreference.ts` | None; UserPreference's direct-REST/no-PageCache behavior was independently validated by claude-code on 2026-07-15. | PRESENT |
 | SERVICES-R-003 | Construct TaskManager, UserPreference, and other non-Services collaborators in ContactCenter's READY callback, not in `register()`. | Registration is a connection boundary; changing construction timing can duplicate listeners or access uninitialized host services. | `src/cc.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/UserPreference.ts` | None; READY-time UserPreference ownership was independently validated by claude-code on 2026-07-15. | PRESENT |
-| SERVICES-R-004 | Pass ApiAIAssistant, contact routing, WebCallingService, primary WebSocket, and RTD WebSocket into TaskManager. | Voice, task, transcript, and suggestion behavior depend on the complete collaborator set. | `src/cc.ts` | `test/unit/spec/services/task/TaskManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| SERVICES-R-004 | Pass ApiAIAssistant, contact routing, WebCallingService, and the primary WebSocket into TaskManager; keep RTD ownership in ContactCenter and forward RTD messages to TaskManager. | TaskManager needs task/calling dependencies and a single entry point for RTD routing, while ContactCenter owns the RTD socket lifecycle. | `src/cc.ts` | `test/unit/spec/services/task/TaskManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | SERVICES-R-005 | Inherit authenticated request identity from the host Webex SDK through Core/WebexRequest; Services must not store, parse, or refresh credentials. | One host-owned authentication boundary avoids duplicate token handling and credential leakage across composed services. | `src/services/index.ts`, `src/services/core/WebexRequest.ts` | `test/unit/spec/services/core/WebexRequest.ts` | None; authentication ownership is explicit. | PRESENT |
 | SERVICES-R-006 | Treat Services composition as unconditionally created by the ContactCenter READY callback; Services owns no rollout or feature-flag decision. | Capability flags belong to the consuming config/task/calling collaborators, so the composition root must not silently gate construction. | `src/services/index.ts`, `src/cc.ts` | `test/unit/spec/cc.ts` | None; rollout applicability is explicitly N/A for Services. | PRESENT |
 | SERVICES-R-007 | Existing Queue and EntryPoint list methods must apply inbound, active, telephony, profile/agent-view, and `name,ASC` defaults while retaining their established parameter and full-record response types. Caller-supplied existing filter, sort, or profile inputs override defaults. Queue must also treat `sortOrder` without `sortBy` as a name sort and bypass the simple-page cache. | Defaults on the established methods let thin consumers request lists without a parallel API, while existing parameters preserve specialized behavior for other consumers and full-record types remain truthful because no field projection is requested. | `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/types.ts` | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/cc.ts` | The backend honors the view flags and combined CMS sort value. | PRESENT |
@@ -268,7 +268,7 @@ ContactCenter READY callback
 ## Design Overview
 `Services` is a singleton composition root for transport-facing capabilities only. It constructs two `WebSocketManager` instances (primary Contact Center and RTD), creates `AqmReqs` on the primary manager, then creates config, agent, contact, dialer, and ConnectionService collaborators.
 
-ContactCenter owns the broader READY-time graph: WebCallingService, ApiAIAssistant, MetricsManager, TaskManager, EntryPoint, AddressBook, Queue, and UserPreference. TaskManager receives ApiAIAssistant, contact routing, calling, and both WebSocket managers. None of these collaborators is created by `register()`; registration attaches runtime listeners and connects the primary socket after READY initialization.
+ContactCenter owns the broader READY-time graph: WebCallingService, ApiAIAssistant, MetricsManager, TaskManager, EntryPoint, AddressBook, Queue, and UserPreference. TaskManager receives ApiAIAssistant, contact routing, calling, and the primary WebSocket; ContactCenter owns the RTD socket and forwards its messages to TaskManager. None of these collaborators is created by `register()`; registration attaches runtime listeners and connects the primary socket after READY initialization.
 
 AQM factories return functions whose HTTP request is initiation and whose promise settles on correlated primary-WebSocket notifications. Direct config/data services return authenticated REST responses.
 
@@ -324,7 +324,7 @@ sequenceDiagram
   CC->>S: getInstance(webex, connectionConfig)
   S->>S: primary WS + RTD WS + AqmReqs + config/agent/contact/dialer + ConnectionService
   CC->>CC: create calling + AI assistant + metrics + data services + UserPreference
-  CC->>TM: getTaskManager(AI, contact, calling, primary WS, RTD WS)
+  CC->>TM: getTaskManager(AI, contact, calling, primary WS)
 ```
 
 ### Direct REST request
@@ -391,21 +391,21 @@ classDiagram
   ContactCenter --> TaskManager
   ContactCenter --> UserPreference
   TaskManager --> ApiAIAssistant
-  TaskManager --> WebSocketManager : primary + RTD
+  TaskManager --> WebSocketManager : primary
 ```
 
 ## Use Cases
 - **UC-1 Compose services:** create the transport/factory singleton once per SDK host. Evidence: `src/services/index.ts`, `test/unit/spec/cc.ts`.
 - **UC-2 Direct REST:** configuration, data, and user-preference services return authenticated HTTP results directly. Evidence: `src/services/config/index.ts`, `src/services/UserPreference.ts`, `test/unit/spec/services/config/index.ts`, `test/unit/spec/services/UserPreference.ts`.
 - **UC-3 AQM operation:** initiate HTTP and settle only on matching WebSocket notification or timeout. Evidence: `src/services/core/aqm-reqs.ts`, `test/unit/spec/services/core/aqm-reqs.ts`.
-- **UC-4 Task/AI realtime:** TaskManager consumes primary and RTD streams with ApiAIAssistant/calling collaborators. Evidence: `src/services/task/TaskManager.ts`, `test/unit/spec/services/task/TaskManager.ts`.
+- **UC-4 Task/AI realtime:** TaskManager consumes primary events and RTD messages forwarded by ContactCenter, with ApiAIAssistant/calling collaborators. Evidence: `src/services/task/TaskManager.ts`, `test/unit/spec/services/task/TaskManager.ts`.
 
 ## State Model
 `Services` is a process-local singleton. Its first `getInstance({webex, connectionConfig})` call synchronously constructs the two WebSocket managers, AqmReqs-backed factories, config service, and ConnectionService; later calls return that same composed graph. Socket lifecycle and domain records are owned by the corresponding collaborators, not by a Services state machine.
 
 ## Business Rules & Invariants
 - The first singleton construction fixes the host SDK and connection configuration for that Services instance.
-- The primary WebSocket manager is used for AQM correlation and Contact Center events; the RTD manager remains a distinct TaskManager dependency.
+- The primary WebSocket manager is used for AQM correlation and Contact Center events; ContactCenter owns the distinct RTD manager and forwards RTD messages to TaskManager.
 - ApiAIAssistant, TaskManager, and UserPreference are READY-time ContactCenter collaborators, not fields constructed by Services.
 - Authentication is inherited from the host SDK through Core/WebexRequest; Services owns no credential lifecycle.
 - Rollout applicability is N/A for the Services composition root: it is created at READY and does not evaluate a feature flag.
@@ -457,7 +457,7 @@ stateDiagram-v2
 
 ## Pitfalls
 - Direct REST services complete from HTTP, while agent/contact/dialer AQM factories complete from correlated WebSocket notifications; treating them as the same transport model returns too early.
-- The singleton must share one primary WebSocket with AqmReqs and a distinct RTD WebSocket with TaskManager; swapping or omitting either stream loses task or AI events.
+- The singleton must share one primary WebSocket with AqmReqs and expose a distinct RTD WebSocket to ContactCenter; ContactCenter forwards RTD messages to TaskManager so task or AI events are not lost.
 - TaskManager and calling/AI/data/UserPreference collaborators are created by ContactCenter after READY, not by the Services constructor or `register()`.
 
 ## Module Do's / Don'ts
