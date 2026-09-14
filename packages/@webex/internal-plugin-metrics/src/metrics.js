@@ -59,18 +59,29 @@ const Metrics = WebexPlugin.extend({
       return;
     }
 
-    if (this.webex?.config?.metrics?.networkTelemetry?.enabled !== true) {
-      return;
-    }
+    const initializeNetworkTelemetry = () => {
+      if (
+        this.networkTelemetry ||
+        this.webex?.config?.metrics?.networkTelemetry?.enabled !== true
+      ) {
+        return;
+      }
 
-    this.networkTelemetry = createNetworkTelemetryCollector({
-      intervalMs: this.webex.config.metrics.networkTelemetry.intervalMs,
-      submitMetric: this.submitNetworkTelemetryMetric.bind(this),
-      onSubmissionFailure: this.handleNetworkTelemetrySubmissionFailure.bind(this),
-    });
-    this.listenTo(this.webex, 'request:start', this.recordNetworkRequestStart);
-    this.listenTo(this.webex, 'request:success', this.recordNetworkRequestSuccess);
-    this.listenTo(this.webex, 'request:failure', this.recordNetworkRequestFailure);
+      this.networkTelemetry = createNetworkTelemetryCollector({
+        intervalMs: this.webex.config.metrics.networkTelemetry.intervalMs,
+        submitMetric: this.submitNetworkTelemetryMetric.bind(this),
+        onSubmissionFailure: this.handleNetworkTelemetrySubmissionFailure.bind(this),
+      });
+      this.listenTo(this.webex, 'request:start', this.recordNetworkRequestStart);
+      this.listenTo(this.webex, 'request:success', this.recordNetworkRequestSuccess);
+      this.listenTo(this.webex, 'request:failure', this.recordNetworkRequestFailure);
+    };
+
+    // Ampersand initializes children before WebexCore.initialize() populates
+    // webex.config. Run immediately for already-configured hosts (including
+    // MockWebex), and listen for the real core's post-initialization notification.
+    this.listenToOnce(this.webex, 'change:config', initializeNetworkTelemetry);
+    initializeNetworkTelemetry();
   },
 
   /**
