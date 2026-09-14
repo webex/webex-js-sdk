@@ -128,6 +128,11 @@ export default {
     cacheU2C: false,
   },
   payloadTransformer: {
+    /**
+     * When true, inbound payload transforms run at most once for the same response or error object.
+     * This supports request flows that pass a response through more than one interceptor pipeline.
+     */
+    skipRepeatedInboundTransforms: false,
     predicates: [],
     transforms: [],
   },
