@@ -17,6 +17,7 @@ import {
 import {
   logWxAppTelephonyAction,
   logWxAppValidationFailure,
+  type WxAppAcceptReason,
   type WxAppTelephonyAction,
 } from '../../wxAppDiagnosticLogging';
 
@@ -35,6 +36,15 @@ export type WxAppVoiceDependencies = {
   getTaskState: () => TaskState | undefined;
   getWxAppMuted: () => boolean;
   setWxAppMuted: (muted: boolean) => void;
+  /** Read-only observability: whether usersub answer-calls-on-wxcc is active this session. */
+  getUsersubPublished?: () => boolean;
+};
+
+export type WxAppParticipantDiagnostics = {
+  participantDeviceType?: string;
+  hasDeviceCallId: boolean;
+  hasDeviceId: boolean;
+  hasValidWxAppParticipant: boolean;
 };
 
 /** @deprecated Use {@link WxAppVoiceDependencies} */
@@ -74,6 +84,34 @@ function getWxAppAgentParticipant(deps: WxAppVoiceDependencies): unknown {
   return Object.values(participants).find(
     (participant) => (participant as {id?: string})?.id === agentId
   );
+}
+
+export function getWxAppParticipantDiagnostics(
+  deps: WxAppVoiceDependencies
+): WxAppParticipantDiagnostics {
+  const participant = getWxAppAgentParticipant(deps) as WxAppParticipant | undefined;
+  const hasDeviceCallId =
+    typeof participant?.deviceCallId === 'string' && participant.deviceCallId.trim() !== '';
+  const hasDeviceId =
+    typeof participant?.deviceId === 'string' && participant.deviceId.trim() !== '';
+
+  return {
+    participantDeviceType: participant?.deviceType,
+    hasDeviceCallId,
+    hasDeviceId,
+    hasValidWxAppParticipant: isWxAppParticipant(participant),
+  };
+}
+
+function getWxAppTelephonyMetricContext(
+  deps: WxAppVoiceDependencies
+): Record<string, boolean | string> {
+  const diagnostics = getWxAppParticipantDiagnostics(deps);
+
+  return {
+    hasDeviceCallId: diagnostics.hasDeviceCallId,
+    hasDeviceId: diagnostics.hasDeviceId,
+  };
 }
 
 export function getCallingDeviceDetails(
@@ -169,11 +207,12 @@ function logTelephonyFailure(
 function getWxAppTelephonyMetricFailurePayload(
   deps: WxAppVoiceDependencies,
   error: unknown
-): Record<string, string> {
+): Record<string, string | boolean> {
   const wxError = error as WxAppTelephonyError;
-  const payload: Record<string, string> = {
+  const payload: Record<string, string | boolean> = {
     taskId: getInteractionId(deps) ?? '',
     error: error instanceof Error ? error.toString() : String(error),
+    ...getWxAppTelephonyMetricContext(deps),
   };
 
   if (wxError.trackingId) {
@@ -198,7 +237,11 @@ function getWxAppOutdialDeclineFailurePayload(
   const aqmDetails = (error as AqmWrappedError).details;
 
   if (aqmDetails) {
-    return {...base, ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(aqmDetails)};
+    return {
+      ...base,
+      ...getWxAppTelephonyMetricContext(deps),
+      ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(aqmDetails),
+    };
   }
 
   return getWxAppTelephonyMetricFailurePayload(deps, error);
@@ -324,7 +367,7 @@ export async function transmitDtmfOnWebex(
     throw new Error('WxApp call ID is unavailable');
   }
 
-  LoggerProxy.info('transmitDtmf', {
+  LoggerProxy.log('transmitDtmf', {
     module: 'wxAppVoiceMethods',
     method: METHODS.TRANSMIT_DTMF,
     data: {
@@ -362,10 +405,11 @@ export async function runWxAppAccept(
     lifecycle.resetWxAppMuted();
     await lifecycle.syncWxAppMuteFromCallDetails();
 
-    deps.metricsManager.trackEvent(METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_SUCCESS, {taskId}, [
-      'operational',
-      'behavioral',
-    ]);
+    deps.metricsManager.trackEvent(
+      METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_SUCCESS,
+      {taskId, acceptReason: 'wxApp_offer_ready', ...getWxAppTelephonyMetricContext(deps)},
+      ['operational', 'behavioral']
+    );
   } catch (error) {
     lifecycle.setWxAppAnswerPending(false);
     logTelephonyFailure('accept', deps, error);
@@ -395,10 +439,11 @@ export async function runWxAppReject(
   try {
     await rejectOnWebex(deps, options);
 
-    deps.metricsManager.trackEvent(METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS, {taskId}, [
-      'operational',
-      'behavioral',
-    ]);
+    deps.metricsManager.trackEvent(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+      {taskId, acceptReason: 'wxApp_offer_ready', ...getWxAppTelephonyMetricContext(deps)},
+      ['operational', 'behavioral']
+    );
   } catch (error) {
     logTelephonyFailure('decline', deps, error);
     deps.metricsManager.trackEvent(
@@ -410,11 +455,17 @@ export async function runWxAppReject(
   }
 }
 
+export type WxAppOutdialDeclineOptions = {
+  acceptReason?: WxAppAcceptReason;
+};
+
 export async function runWxAppOutdialDecline<T>(
   deps: WxAppVoiceDependencies,
-  executeCancel: () => Promise<T>
+  executeCancel: () => Promise<T>,
+  options?: WxAppOutdialDeclineOptions
 ): Promise<T> {
   const taskId = getInteractionId(deps);
+  const acceptReason = options?.acceptReason ?? 'wxApp_offer_ready';
 
   deps.metricsManager.timeEvent([
     METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
@@ -424,17 +475,18 @@ export async function runWxAppOutdialDecline<T>(
   try {
     const result = await executeCancel();
 
-    deps.metricsManager.trackEvent(METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS, {taskId}, [
-      'operational',
-      'behavioral',
-    ]);
+    deps.metricsManager.trackEvent(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+      {taskId, acceptReason, ...getWxAppTelephonyMetricContext(deps)},
+      ['operational', 'behavioral']
+    );
 
     return result;
   } catch (error) {
     logWxAppOutdialDeclineFailure(deps, error);
     deps.metricsManager.trackEvent(
       METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
-      getWxAppOutdialDeclineFailurePayload(deps, error),
+      {acceptReason, ...getWxAppOutdialDeclineFailurePayload(deps, error)},
       ['operational', 'behavioral']
     );
     throw error;
@@ -458,7 +510,7 @@ export async function runWxAppToggleMute(
 
     deps.metricsManager.trackEvent(
       METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_SUCCESS,
-      {taskId, targetMuted: deps.getWxAppMuted()},
+      {taskId, targetMuted: deps.getWxAppMuted(), ...getWxAppTelephonyMetricContext(deps)},
       ['operational', 'behavioral']
     );
   } catch (error) {
@@ -489,7 +541,7 @@ export async function runWxAppTransmitDtmf(
 
     deps.metricsManager.trackEvent(
       METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_SUCCESS,
-      {taskId, dtmfLength: options.dtmf.length},
+      {taskId, dtmfLength: options.dtmf.length, ...getWxAppTelephonyMetricContext(deps)},
       ['operational', 'behavioral']
     );
   } catch (error) {

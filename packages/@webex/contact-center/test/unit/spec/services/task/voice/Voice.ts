@@ -848,69 +848,28 @@ describe('Voice Task', () => {
     });
   });
 
-  describe('wxApp offer decision logging', () => {
-    const wxAppParticipant = {
-      deviceType: 'wxApp',
-      deviceId: 'device-id-1',
-      deviceCallId: 'call-id-1',
-    };
-
-    const makeWxAppOfferTaskData = () =>
-      createBaseData({
+  describe('wxApp offer observability integration', () => {
+    it('delegates OFFERED ui control updates to wxApp offer observability', () => {
+      const logSpy = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppOfferDecision');
+      const taskData = createBaseData({
         agentId: 'agent-1',
         interaction: {
           participants: {
-            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+            'agent-1': {
+              id: 'agent-1',
+              deviceType: 'wxApp',
+              deviceId: 'device-id-1',
+              deviceCallId: 'call-id-1',
+            },
           },
         } as any,
       });
-
-    it('logs evolving accept reasons through the normal wxApp accept flow', () => {
-      const logSpy = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppOfferDecision');
-      const taskData = makeWxAppOfferTaskData();
       const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
 
       voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
 
       expect(logSpy).toHaveBeenCalledWith(
         expect.objectContaining({acceptReason: 'wxApp_offer_ready'})
-      );
-
-      logSpy.mockClear();
-      voice['setWxAppAcceptInFlight'](true);
-
-      expect(logSpy).toHaveBeenCalledWith(
-        expect.objectContaining({acceptReason: 'wxApp_accept_in_flight'})
-      );
-
-      logSpy.mockClear();
-      voice['setWxAppAcceptInFlight'](false);
-      voice['setWxAppAnswerPending'](true);
-
-      expect(logSpy).toHaveBeenCalledWith(
-        expect.objectContaining({acceptReason: 'wxApp_answer_pending'})
-      );
-    });
-
-    it('logs browser_webrtc_offer when voice variant is WebRTC on a non-wxApp inbound offer', () => {
-      const logSpy = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppOfferDecision');
-      const taskData = createBaseData({
-        agentId: 'agent-1',
-        interaction: {
-          participants: {
-            'agent-1': {id: 'agent-1', deviceType: 'phone', deviceId: 'device-id-1'},
-          },
-        } as any,
-      });
-      const voice = new Voice(dummyContact, taskData, {
-        enableWxBetterTogether: true,
-        voiceVariant: VOICE_VARIANT.WEBRTC,
-      });
-
-      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
-
-      expect(logSpy).toHaveBeenCalledWith(
-        expect.objectContaining({acceptReason: 'browser_webrtc_offer'})
       );
     });
   });

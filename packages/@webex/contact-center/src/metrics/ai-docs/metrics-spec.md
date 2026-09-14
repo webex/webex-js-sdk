@@ -246,6 +246,7 @@ All event names are defined in `METRIC_EVENT_NAMES` (`constants.ts`). Events fol
 | `WXAPP_SESSION_SKIPPED` | `'WxApp Session Skipped'` | Webex Together session skipped (`wxcc_sdk.user.webex_together_session_init.ignore`) |
 | `WXAPP_USERSUB_PUBLISH_SUCCESS` / `FAILED` | `'WxApp Usersub Publish ...'` | Cross-client usersub publish (`wxcc_sdk.user.webex_together_usersub_publish.complete\|fail`). Preflight failures (missing `userId` or device URL before HTTP publish) emit `WXAPP_USERSUB_PUBLISH_FAILED` with `skipReason` (`user_id_unavailable` / `device_url_unavailable`) and no `timeEvent` timer. Stale-generation discards (teardown or concurrent disable while HTTP publish is in flight) call `cancelTimedEvent` without emitting success/fail only when the completing publish still owns the active timer (`usersubPublishMetricsId` guard — a newer overlapping publish must not have its timer cleared). |
 | `WXAPP_MERCURY_SUBSCRIBE_SUCCESS` / `FAILED` | `'WxApp Mercury Subscribe ...'` | Telephony Mercury mute-sync subscribe (`wxcc_sdk.user.webex_together_mercury_subscribe.complete\|fail`) |
+| `WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING` | `'WxApp Offer Participant Fields Missing'` | Read-only observability when usersub is active but inbound OFFERED participant **still** lacks valid wxApp fields after a **500 ms grace period** (orchestrated in `voice/wxAppOfferObservability.ts`; avoids false alarms from transient WS ordering). Emitted with matching `[CC wxApp] participant fields mismatch` WARN (`wxcc_sdk.user.webex_together_offer_participant_fields.fail`) |
 | `TASK_CONFERENCE_START_SUCCESS` / `FAILED` | `'Task Conference Start ...'` | Conference start result |
 | `TASK_CONFERENCE_END_SUCCESS` / `FAILED` | `'Task Conference End ...'` | Conference end result |
 | `TASK_CONFERENCE_TRANSFER_SUCCESS` / `FAILED` | `'Task Conference Transfer ...'` | Conference transfer result |
@@ -298,6 +299,7 @@ All event names are defined in `constants.ts` as `METRIC_EVENT_NAMES`. Events fo
 | WxApp Session Init     | `WXAPP_SESSION_INIT_SUCCESS`           | `WXAPP_SESSION_INIT_FAILED`            |
 | WxApp Usersub Publish  | `WXAPP_USERSUB_PUBLISH_SUCCESS`        | `WXAPP_USERSUB_PUBLISH_FAILED`         |
 | WxApp Mercury Subscribe | `WXAPP_MERCURY_SUBSCRIBE_SUCCESS`     | `WXAPP_MERCURY_SUBSCRIBE_FAILED`       |
+| WxApp Offer Participant Fields | —                              | `WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING` |
 | Upload Logs            | `UPLOAD_LOGS_SUCCESS`                  | `UPLOAD_LOGS_FAILED`                   |
 | WebSocket Deregister   | `WEBSOCKET_DEREGISTER_SUCCESS`         | `WEBSOCKET_DEREGISTER_FAIL`            |
 | Device Type Update     | `AGENT_DEVICE_TYPE_UPDATE_SUCCESS`     | `AGENT_DEVICE_TYPE_UPDATE_FAILED`      |
@@ -319,8 +321,47 @@ Webex Together events (`WXAPP_*` constants) use `*_webex_together` compound targ
 | Usersub publish | `webex_together_usersub_publish` | `wxcc_sdk.user.webex_together_usersub_publish.complete` | `wxcc_sdk.user.webex_together_usersub_publish.fail` | — |
 | Mercury subscribe | `webex_together_mercury_subscribe` | `wxcc_sdk.user.webex_together_mercury_subscribe.complete` | `wxcc_sdk.user.webex_together_mercury_subscribe.fail` | — |
 | Session init | `webex_together_session_init` | `wxcc_sdk.user.webex_together_session_init.complete` | `wxcc_sdk.user.webex_together_session_init.fail` | `wxcc_sdk.user.webex_together_session_init.ignore` |
+| Offer participant fields | `webex_together_offer_participant_fields` | — | `wxcc_sdk.user.webex_together_offer_participant_fields.fail` | — |
 
 Operational and business wire names are unchanged (`WXCC_SDK_WXAPP_*`).
+
+### WxApp metric payload fields (operational / behavioral tags)
+
+| Event | Payload fields (booleans/enums; no raw IDs) |
+|---|---|
+| `WXAPP_SESSION_INIT_SUCCESS` | `loginOption`, `enableWxBetterTogether`, `usersubPublished`, `mercurySubscribed`, `telephonyTaskType` |
+| `WXAPP_SESSION_INIT_FAILED` | above + `skipReason` (`usersub_not_published`, `mercury_not_subscribed`, `mercury_subscribe_failed`, `publish_failed`) + optional `error`. `usersubPublished` reflects **retained session state** (`isAnswerCallsStateActive()` / `answerCallsState`), including on catch-path failures — not gated on the current init attempt's `publishedEnable`. |
+| `WXAPP_USERSUB_PUBLISH_SUCCESS` | `enableWxBetterTogether`, `usersubPublished` |
+| `WXAPP_USERSUB_PUBLISH_FAILED` | `enableWxBetterTogether`, `usersubPublished`, optional `skipReason`, `error`. `usersubPublished` reflects **retained session state** (`answerCallsState`), not the requested enable value — a failed disable/refresh while usersub remains active reports `true`. |
+| `WXAPP_MERCURY_SUBSCRIBE_SUCCESS` | `mercurySubscribed: true` |
+| `WXAPP_MERCURY_SUBSCRIBE_FAILED` | `mercurySubscribed: false`, `error` |
+| `WXAPP_TASK_ACCEPT_*` / `DECLINE_*` | `taskId`, `hasDeviceCallId`, `hasDeviceId`, optional `acceptReason`; failures add `trackingId` when available. Outdial-cancel AQM failures (`error.details`) include the same participant context fields via `getWxAppTelephonyMetricContext` merged with AQM correlation fields. Outdial cancel during post-accept pending phase may report `acceptReason: wxApp_answer_pending`. |
+| `WXAPP_TASK_MUTE_*` / `DTMF_*` | `taskId`, `hasDeviceCallId`, `hasDeviceId`; failures add `trackingId` when available |
+| `WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING` | `taskId`, `usersubPublished`, `hasDeviceCallId`, `hasDeviceId`, `acceptReason` |
+
+### Customer console log triage (MMT / support)
+
+Customers often embed with `logger.level: 'log'`. wxApp diagnostics use **`LoggerProxy.log`** / **`warn`** / **`error`** with prefix **`[CC wxApp]`** and grep-friendly `key=value` suffixes on the message string (fields also appear in structured `data`).
+
+| Search in browser console | Meaning |
+|---|---|
+| `[CC wxApp]` | All wxApp diagnostic lines (primary search) |
+| `WXCC_SDK_WXAPP` | Operational metric wire names (name only in console; payloads go to backend) |
+| `session readiness` | usersub + Mercury state after station login |
+| `offer decision` | Why Accept is visible/enabled; includes `acceptReason`, `hasDeviceCallId`, `usersubPublished` |
+| `participant fields mismatch` | usersub active but WS participant **still** missing wxApp triple after ~500 ms (transient gaps on first OFFERED tick are normal — look for `wxApp_offer_ready` within 1 s) |
+| `telephony accept failed` | REST answer failure; includes `trackingId` when available |
+
+Do **not** search `WXAPP` alone — it matches metric wire names but misses `[CC wxApp]` diagnostic lines.
+
+Example lines at `logger.level: 'log'`:
+
+```text
+PLUGIN_CC - [LOG]: ... [CC wxApp] session readiness usersubPublished=true mercurySubscribed=true loginOption=EXTENSION ...
+PLUGIN_CC - [LOG]: ... [CC wxApp] offer decision acceptReason=wxApp_offer_ready hasDeviceCallId=true usersubPublished=true interactionId=...
+PLUGIN_CC - [WARN]: ... [CC wxApp] participant fields mismatch usersubPublished=true hasDeviceCallId=false acceptReason=extension_non_wxApp_offer interactionId=...
+PLUGIN_CC - [LOG]: ... operational-events -> @submitEvent. Submit event: WXCC_SDK_WXAPP_TASK_ACCEPT_SUCCESS
+```
 
 Special events (no success/failure pair):
 
@@ -412,6 +453,7 @@ This table contains all 107 names from `src/metrics/constants.ts`; taxonomy pres
 | `WXAPP_USERSUB_PUBLISH_FAILED` | `WxApp Usersub Publish Failed` | yes |
 | `WXAPP_MERCURY_SUBSCRIBE_SUCCESS` | `WxApp Mercury Subscribe Success` | yes |
 | `WXAPP_MERCURY_SUBSCRIBE_FAILED` | `WxApp Mercury Subscribe Failed` | yes |
+| `WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING` | `WxApp Offer Participant Fields Missing` | yes |
 | `UPLOAD_LOGS_SUCCESS` | `Upload Logs Success` | yes |
 | `UPLOAD_LOGS_FAILED` | `Upload Logs Failed` | yes |
 | `WEBSOCKET_DEREGISTER_SUCCESS` | `Websocket Deregister Success` | no |

@@ -2070,6 +2070,8 @@ export type VoiceUIControlOptions = {
   enableWxBetterTogether?: boolean;
   consultTransferConfig?: ConsultTransferDestinationConfig;
   answerCallOnWebexService?: import('../AnswerCallOnWebexService').default;
+  /** Read-only observability: whether usersub answer-calls-on-wxcc is active this session. */
+  getUsersubPublished?: () => boolean;
 };
 
 /**
