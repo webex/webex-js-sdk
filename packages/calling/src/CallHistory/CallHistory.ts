@@ -32,6 +32,8 @@ import {
   FROM_DATE,
   HISTORY,
   LIMIT,
+  MAX_LIMIT,
+  MIN_LIMIT,
   NUMBER_OF_DAYS,
   UPDATE_MISSED_CALLS_ENDPOINT,
   SET_READ_STATE_SUCCESS_MESSAGE,
@@ -110,6 +112,27 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
   }
 
   /**
+   * Clamps/validates the `limit` parameter to a bounded integer range
+   * (`[MIN_LIMIT, MAX_LIMIT]`) before it is placed into the Janus query URL.
+   * A well-formed in-range integer (including the default `LIMIT`) is
+   * returned unchanged. Fractional values are floored before clamping.
+   * `NaN`/`Infinity`/`-Infinity`, or a runtime non-number reaching this path
+   * despite the typed signature, fall back to the default `LIMIT`.
+   *
+   * @param limit - The raw limit value to clamp.
+   * @returns The clamped/validated limit to use in the Janus query.
+   */
+  private clampLimit(limit: number): number {
+    if (typeof limit !== 'number' || Number.isNaN(limit) || !Number.isFinite(limit)) {
+      return LIMIT;
+    }
+
+    const flooredLimit = Math.floor(limit);
+
+    return Math.min(MAX_LIMIT, Math.max(MIN_LIMIT, flooredLimit));
+  }
+
+  /**
    * Function to display the Janus API response.
    * @param days - Number of days to fetch the call history data.
    * @param limit - Number of records to be fetched.
@@ -132,6 +155,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     this.fromDate = date.toISOString();
     const sortByParam = Object.values(SORT_BY).includes(sortBy) ? sortBy : SORT_BY.DEFAULT;
     const sortParam = Object.values(SORT).includes(sort) ? sort : SORT.DEFAULT;
+    const clampedLimit = this.clampLimit(limit);
 
     log.info(
       `${METHOD_START_MESSAGE} with days=${days}, limit=${limit}, sort=${sortParam}, sortBy=${sortByParam}`,
@@ -150,7 +174,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       }`,
       this.loggerContext
     );
-    const url = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}${FROM_DATE}=${this.fromDate}&limit=${limit}&includeNewSessionTypes=true&sort=${sortParam}${sharedSessionsParam}`;
+    const url = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}${FROM_DATE}=${this.fromDate}&limit=${clampedLimit}&includeNewSessionTypes=true&sort=${sortParam}${sharedSessionsParam}`;
 
     try {
       const janusResponse = <WebexRequestPayload>await this.webex.request({
@@ -476,13 +500,13 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
   }
 
   handleSessionEvents = async (event?: CallSessionEvent) => {
-    if (event && event.data.userSessions.userSessions) {
+    if (event?.data?.userSessions?.userSessions) {
       this.emit(COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO, event as CallSessionEvent);
     }
   };
 
   handleUserReadSessionEvents = async (event?: CallSessionViewedEvent) => {
-    if (event && event.data.userReadSessions.userReadSessions) {
+    if (event?.data?.userReadSessions?.userReadSessions) {
       this.emit(
         COMMON_EVENT_KEYS.CALL_HISTORY_USER_VIEWED_SESSIONS,
         event as CallSessionViewedEvent
@@ -491,7 +515,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
   };
 
   handleUserSessionsDeletedEvents = async (event?: CallSessionDeletedEvent) => {
-    if (event && event.data.deletedSessions) {
+    if (event?.data?.deletedSessions) {
       this.emit(
         COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSIONS_DELETED,
         event as CallSessionDeletedEvent
