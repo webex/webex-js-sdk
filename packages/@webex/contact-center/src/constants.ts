@@ -8,6 +8,7 @@ export const LOG_PREFIX = 'PLUGIN_CC';
 export const WEB_CALLING_SERVICE_FILE = 'WebCallingService';
 export const CONFIG_FILE_NAME = 'config-index';
 export const CC_FILE = 'cc';
+export const WELLNESS_BREAK_HANDLER = 'Wellness_Break_Handler';
 export const CONNECTION_SERVICE_FILE = 'connection-service';
 export const WEB_SOCKET_MANAGER_FILE = 'WebSocketManager';
 export const AQM_REQS_FILE = 'aqm-reqs';
@@ -72,6 +73,11 @@ export const METHODS = {
   GET_REAL_TIME_ASSISTANCE: 'getRealTimeAssistance',
   SEND_REAL_TIME_ASSISTANCE_USER_ACTION: 'sendRealTimeAssistanceUserAction',
   FETCH_HISTORIC_TRANSCRIPTS: 'fetchHistoricTranscripts',
+  REQUEST_WELLNESS_BREAK: 'requestWellnessBreak',
+  RESPOND_TO_WELLNESS_BREAK: 'respondToWellnessBreak',
+  GET_WELLBEING_BREAK_IDLE_CODE: 'getWellbeingBreakIdleCode',
+  CONNECT_RTD_WEBSOCKET: 'connectRTDWebsocket',
+  HANDLE_RTD_WEBSOCKET_MESSAGE: 'handleRTDWebsocketMessage',
   SET_MANAGE_WEBEX_CALLING_IN_WXCC: 'setManageWebexCallingInWxcc',
   IS_WX_BETTER_TOGETHER_ENABLED: 'isWxBetterTogetherEnabled',
   SYNC_WXAPP_MUTE_FROM_MERCURY: 'syncWxAppMuteFromMercury',

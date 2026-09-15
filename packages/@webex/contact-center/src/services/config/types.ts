@@ -150,8 +150,7 @@ export const CC_TASK_EVENTS = {
 /**
  * Events emitted on Contact Center agent operations
  * @enum {string}
- * @private
- * @ignore
+ * @public
  */
 export const CC_AGENT_EVENTS = {
   /** Welcome event when agent connects to websocket/backend */
@@ -190,6 +189,10 @@ export const CC_AGENT_EVENTS = {
   AGENT_BUDDY_AGENTS_RETRIEVE_FAILED: 'BuddyAgentsRetrieveFailed',
   /** Event emitted when contact is reserved for agent */
   AGENT_CONTACT_RESERVED: 'AgentContactReserved',
+  /** Agent-level Agent Wellness Break notification emitted by AI Assistant RTD */
+  WELLNESS_BREAK: 'WellnessBreak',
+  /** AI Assistant RTD transport connection state changed */
+  AI_ASSISTANT_RTD_STATUS_CHANGED: 'AIAssistantRTDStatusChanged',
 } as const;
 
 /**
@@ -729,6 +732,8 @@ export type OrgSettings = {
   maskSensitiveData: boolean;
   /** Whether campaign manager features are enabled */
   campaignManagerEnabled: boolean;
+  /** Number of AI Assistant licenses assigned to the organization */
+  aiAssistantQuantity?: number | null;
 };
 
 /**
@@ -1245,6 +1250,12 @@ export type Profile = {
   lastIdleCodeChangeTimestamp?: number;
   /** AI feature flags resolved from organization config */
   aiFeature?: AIFeatureFlags;
+  /**
+   * Whether Agent Wellness Break is effectively enabled for this profile.
+   * This combines the organization wellbeing configuration with AI Assistant licensing;
+   * server-side rollout remains enforced by the backend configuration and RTD delivery path.
+   */
+  isWellnessBreakEnabled?: boolean;
 };
 
 /**
