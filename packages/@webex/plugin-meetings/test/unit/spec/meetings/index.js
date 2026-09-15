@@ -39,6 +39,8 @@ import {
   INITIAL_REGISTRATION_STATUS,
   MEETING_REMOVED_REASON,
   UNMATCHED_LOCUS_EVENT_JOIN_DEFERRAL_TIMEOUT,
+  RECENTLY_DESTROYED_LOCUS_REJOIN_WINDOW,
+  RECENTLY_DESTROYED_LOCUS_REJOIN_POLL_INTERVAL,
 } from '../../../../src/constants';
 import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error';
 import {forEach} from 'lodash';
@@ -1753,6 +1755,20 @@ describe('plugin-meetings', () => {
             assert.notCalled(destroySpy);
           });
 
+          it('does not destroy a meeting that has no locusUrl yet while its meeting-info fetch is still pending', async () => {
+            const meetingCollectionMeetings = {
+              creatingMeeting: {locusUrl: undefined, deferMeetingInfo: Promise.resolve()},
+            };
+
+            webex.meetings.meetingCollection.getAll = sinon
+              .stub()
+              .returns(meetingCollectionMeetings);
+
+            await webex.meetings.syncMeetings();
+
+            assert.notCalled(destroySpy);
+          });
+
           it('destroys a meeting that has no locusUrl once its join() is no longer pending', async () => {
             const meetingCollectionMeetings = {
               staleMeeting: {locusUrl: undefined, deferJoin: undefined},
@@ -2812,6 +2828,141 @@ describe('plugin-meetings', () => {
 
             clock.restore();
           });
+
+          it('does not create or route the event while another meeting has a meeting-info fetch still pending', async () => {
+            const deferMeetingInfo = new Promise(() => {}); // never resolves - fetch stays in flight
+            webex.meetings.meetingCollection.getByKey = sinon.stub().returns(undefined);
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              creatingMeeting: {id: 'creating-id', locusUrl: undefined, deferMeetingInfo},
+            });
+
+            webex.meetings.handleLocusEvent(buildLocusEvent());
+
+            await Promise.resolve();
+
+            assert.notCalled(webex.meetings.create);
+            assert.notCalled(locusInfo.parse);
+          });
+
+          it('reprocesses the event and creates a meeting once the in-flight meeting-info fetch settles if still unmatched', async () => {
+            let resolveMeetingInfo;
+            const deferMeetingInfo = new Promise((resolve) => {
+              resolveMeetingInfo = resolve;
+            });
+            webex.meetings.meetingCollection.getByKey = sinon.stub().returns(undefined);
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              creatingMeeting: {id: 'creating-id', locusUrl: undefined, deferMeetingInfo},
+            });
+
+            webex.meetings.handleLocusEvent(buildLocusEvent());
+
+            await Promise.resolve();
+            assert.notCalled(webex.meetings.create);
+
+            resolveMeetingInfo();
+            await deferMeetingInfo;
+            await flushMicrotasks();
+
+            assert.calledOnceWithExactly(
+              webex.meetings.create,
+              {url: url1, self: {devices: []}},
+              DESTINATION_TYPE.LOCUS_ID,
+              false
+            );
+          });
+        });
+
+        describe("when a recently-destroyed meeting's locusUrl is reused", () => {
+          const buildLocusEvent = () => ({
+            locus: {url: url1, self: {devices: []}},
+            eventType: 'locus.difference',
+            locusUrl: url1,
+          });
+
+          beforeEach(() => {
+            sinon.stub(MeetingsUtil, 'isBreakoutLocusDTO').returns(false);
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({});
+            webex.meetings.create = sinon.stub().returns(
+              Promise.resolve({
+                id: 'meeting-id',
+                locusInfo: {initialSetup: sinon.stub().returns(true)},
+              })
+            );
+          });
+
+          it('polls for the rejoin to claim the locusUrl and routes the event to it once matched', async () => {
+            const clock = sinon.useFakeTimers();
+            let claimed = false;
+            const rejoinedMeeting = {id: 'rejoined-id', locusInfo};
+
+            webex.meetings.meetingCollection.getByKey = sinon
+              .stub()
+              .callsFake(() => (claimed ? rejoinedMeeting : undefined));
+            webex.meetings.deletedMeetings.set('destroyed-id', {
+              locusUrl: url1,
+              destroyedAt: Date.now(),
+            });
+
+            webex.meetings.handleLocusEvent(buildLocusEvent());
+
+            await clock.tickAsync(RECENTLY_DESTROYED_LOCUS_REJOIN_POLL_INTERVAL);
+            assert.notCalled(webex.meetings.create);
+            assert.notCalled(locusInfo.parse);
+
+            claimed = true;
+            await clock.tickAsync(RECENTLY_DESTROYED_LOCUS_REJOIN_POLL_INTERVAL);
+
+            assert.notCalled(webex.meetings.create);
+            assert.calledOnce(locusInfo.parse);
+
+            clock.restore();
+          });
+
+          it('gives up polling and creates a new meeting once the deferral timeout elapses without a match', async function () {
+            // this test relies on real elapsed time (rather than sinon fake timers) because the
+            // deadline check in the source uses Date.now(), which babel/corejs2 compiles to a
+            // captured native reference that fake timers cannot intercept in this test environment
+            this.timeout(UNMATCHED_LOCUS_EVENT_JOIN_DEFERRAL_TIMEOUT + 3000);
+
+            webex.meetings.meetingCollection.getByKey = sinon.stub().returns(undefined);
+            webex.meetings.deletedMeetings.set('destroyed-id', {
+              locusUrl: url1,
+              destroyedAt: Date.now(),
+            });
+
+            webex.meetings.handleLocusEvent(buildLocusEvent());
+
+            await new Promise((resolve) => {
+              setTimeout(
+                resolve,
+                UNMATCHED_LOCUS_EVENT_JOIN_DEFERRAL_TIMEOUT + RECENTLY_DESTROYED_LOCUS_REJOIN_POLL_INTERVAL
+              );
+            });
+
+            assert.calledOnceWithExactly(
+              webex.meetings.create,
+              {url: url1, self: {devices: []}},
+              DESTINATION_TYPE.LOCUS_ID,
+              false
+            );
+          });
+
+          it('does not poll and creates the meeting immediately once the recently-destroyed window has expired', async () => {
+            webex.meetings.meetingCollection.getByKey = sinon.stub().returns(undefined);
+            webex.meetings.deletedMeetings.set('destroyed-id', {
+              locusUrl: url1,
+              destroyedAt: Date.now() - RECENTLY_DESTROYED_LOCUS_REJOIN_WINDOW - 1000,
+            });
+
+            await webex.meetings.handleLocusEvent(buildLocusEvent());
+
+            assert.calledOnceWithExactly(
+              webex.meetings.create,
+              {url: url1, self: {devices: []}},
+              DESTINATION_TYPE.LOCUS_ID,
+              false
+            );
+          });
         });
       });
       describe('#createMeeting', () => {
@@ -2822,6 +2973,29 @@ describe('plugin-meetings', () => {
           MeetingsUtil.getMeetingAddedType = sinon.stub().returns('test meeting added type');
           TriggerProxy.trigger.reset();
         });
+
+        describe('deferMeetingInfo', () => {
+          it('is set while fetchMeetingInfo is in flight and cleared once it settles', async () => {
+            let resolveFetchMeetingInfo;
+
+            webex.meetings.meetingInfo.fetchMeetingInfo = sinon.stub().returns(
+              new Promise((resolve) => {
+                resolveFetchMeetingInfo = resolve;
+              })
+            );
+
+            const createPromise = webex.meetings.createMeeting('test destination', 'test type');
+            const [meeting] = Object.values(webex.meetings.meetingCollection.getAll());
+
+            assert.instanceOf(meeting.deferMeetingInfo, Promise);
+
+            resolveFetchMeetingInfo({body: {}});
+            const createdMeeting = await createPromise;
+
+            assert.equal(createdMeeting.deferMeetingInfo, undefined);
+          });
+        });
+
         describe('successful MeetingInfo.#fetchMeetingInfo', () => {
           let clock, setTimeoutSpy, fakeMeetingStartTimeString, FAKE_TIME_TO_START;
           const FAKE_INFO_EXTRA_PARAMS = {
@@ -3572,6 +3746,11 @@ describe('plugin-meetings', () => {
             assert.equal(
               webex.meetings.deletedMeetings.get(meeting.id).correlationId,
               meetingIds.correlationId
+            );
+            assert.approximately(
+              webex.meetings.deletedMeetings.get(meeting.id).destroyedAt,
+              Date.now(),
+              1000
             );
 
             assert.equal(webex.meetings.meetingCollection.get(meeting.id), undefined);

@@ -647,6 +647,7 @@ export default class Meeting extends StatelessWebexPlugin {
   callEvents: any[];
   datachannelUrl: string;
   deferJoin: Promise<any>;
+  deferMeetingInfo: Promise<any>;
   dialInDeviceStatus: string;
   dialInUrl: string;
   dialOutDeviceStatus: string;
@@ -1456,6 +1457,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.deferJoin = undefined;
+
+    /**
+     * Promise that exists while Meetings#createMeeting() is fetching meeting info for this meeting.
+     * @instance
+     * @type {Promise}
+     * @private
+     * @memberof Meeting
+     */
+    this.deferMeetingInfo = undefined;
 
     /**
      * Staus of websocket connection/mercury connection.
