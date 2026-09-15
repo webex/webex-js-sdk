@@ -201,6 +201,9 @@ export const ICE_FAIL_TIMEOUT = 3000;
 
 export const RETRY_TIMEOUT = 3000;
 
+// max time an unmatched locus event waits on in-flight join() calls before being processed anyway
+export const UNMATCHED_LOCUS_EVENT_JOIN_DEFERRAL_TIMEOUT = 5000;
+
 export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 20000;
 export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 35000;
 export const WEBINAR_ERROR_WEBCAST = [403026];
