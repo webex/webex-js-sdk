@@ -786,6 +786,49 @@ describe('plugin-mobius-socket', () => {
         });
         assert.notCalled(socket.acknowledge);
       });
+
+      it('onmessage drops non-object/malformed frame', () => {
+        sinon.spy(socket, 'acknowledge');
+        const warnSpy = sinon.spy(socket.logger, 'warn');
+
+        mockWebSocket.emit('message', {data: JSON.stringify(42)});
+        assert.notCalled(spy);
+        assert.notCalled(socket.acknowledge);
+        assert.called(warnSpy);
+
+        warnSpy.restore();
+      });
+
+      it('onmessage routes a valid async_event frame', () => {
+        sinon.spy(socket, 'acknowledge');
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            type: 'async_event',
+            eventId: 'event-route-1',
+            trackingId: 'tracking-route-1',
+          }),
+        });
+        assert.called(spy);
+        assert.called(socket.acknowledge);
+      });
+
+      it('onmessage correlates a valid response frame', (done) => {
+        const trackingId = 'tracking-correlate-1';
+        const request = socket.sendRequest({trackingId, type: 'test'});
+
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            trackingId,
+            subtype: 'test',
+            statusCode: 200,
+          }),
+        });
+
+        request.then(() => {
+          assert.called(spy);
+          done();
+        }).catch(done);
+      });
     });
 
     describe('#acknowledge', () => {
