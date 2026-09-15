@@ -874,7 +874,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `markEnded`
+- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
 
 - `TASK_WRAPUP` -> `TERMINATED`
 
@@ -952,7 +952,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUpOrIsInitiator`
 
-- Actions: `updateTaskData`, `markEnded`
+- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
 
 - `TRANSFER_SUCCESS` -> Stay `CONNECTED` (receiver/default branch)
 
@@ -976,7 +976,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `markEnded`, `requestCleanup`
+- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`, `requestCleanup`
 
 - `CONTACT_ENDED` -> `TERMINATED` (default branch)
 
@@ -988,7 +988,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: none
 
-- Actions: `updateTaskData`, `markEnded`
+- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
 
 - `PAUSE_RECORDING` / `RESUME_RECORDING` -> Stay `CONNECTED`
 
@@ -1054,7 +1054,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUpOrIsInitiator`
 
-- Actions: `updateTaskData`, `markEnded`
+- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
 
 - `TRANSFER_SUCCESS` -> `CONNECTED` (receiver/default branch)
 
@@ -1078,7 +1078,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `markEnded`, `requestCleanup`
+- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`, `requestCleanup`
 
 - `CONTACT_ENDED` -> `TERMINATED` (default branch)
 
@@ -1090,7 +1090,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: none
 
-- Actions: `updateTaskData`, `markEnded`
+- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
 
 **Description**: Hold request has been sent and is awaiting backend confirmation.
 
@@ -1282,7 +1282,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUpOrIsInitiator`
 
-- Actions: `updateTaskData`, `markEnded`
+- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
 
 - `TRANSFER_SUCCESS` -> `CONNECTED` (receiver/default branch)
 
@@ -1306,7 +1306,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`, `emitTaskWrapup`
 
 - `TRANSFER_CONFERENCE_SUCCESS` -> `CONFERENCING`
 
@@ -1330,7 +1330,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.didCurrentAgentLeaveMainInteraction && guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft`
+- Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft` (entry emits `task:wrapup`)
 
 - `PARTICIPANT_LEAVE` -> `TERMINATED`
 
@@ -1360,13 +1360,13 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: none
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `requestCleanup`
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup`, `requestCleanup`
 
 - `TASK_WRAPUP` -> `WRAPPING_UP`
 
 - Guard: none
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup`
 
 - `MERGE_TO_CONFERENCE` -> `CONF_INITIATING`
 
@@ -1486,7 +1486,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`, `emitTaskWrapup`
 
 - `TRANSFER_CONFERENCE_SUCCESS` -> `CONFERENCING`
 
@@ -1510,7 +1510,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.didCurrentAgentLeaveMainInteraction && guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft`
+- Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft` (entry emits `task:wrapup`)
 
 - `PARTICIPANT_LEAVE` -> `TERMINATED`
 
@@ -1542,7 +1542,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup`
 
 - `CONFERENCE_END` -> `CONNECTED`
 
@@ -1568,7 +1568,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Reached from `CONNECTED`, `HELD`, `CONSULTING`, or `CONFERENCING` via `CONTACT_ENDED`, `TASK_WRAPUP`, `TRANSFER_SUCCESS`, `TRANSFER_CONFERENCE_SUCCESS`, `PARTICIPANT_LEAVE`, or `CONFERENCE_END` branches
 
-- Entry is the sole `emitTaskWrapup` publisher (`task:wrapup` once on enter)
+- Entry always emits wrapup event after transition
 
 **Entry Actions**:
 
@@ -1580,9 +1580,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: none
 
-- Actions: `updateTaskData`; `emitTaskWrapup` only when `wrapUpRequired` was not already true
-
-- Late AgentWrapup after conference exit already entered wrap-up; applies `wrapUpRequired` and emits wrap-up only if wrap-up was not already published
+- Actions: `updateTaskData`, `emitTaskWrapup`
 
 - `WRAPUP_COMPLETE` -> `COMPLETED`
 
