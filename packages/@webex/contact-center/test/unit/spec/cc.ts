@@ -768,7 +768,7 @@ describe('webex.cc', () => {
       expect(registerWebCallingLineSpy).toHaveBeenCalled();
       expect(stationLoginMock).toHaveBeenCalledWith({
         data: {
-          dialNumber: 'agentId',
+          dialNumber: `${WEB_RTC_PREFIX}agentId`,
           teamId: 'teamId',
           deviceType: LoginOption.BROWSER,
           isExtension: false,
@@ -928,7 +928,7 @@ describe('webex.cc', () => {
       expect(registerWebCallingLineSpy).not.toHaveBeenCalled();
       expect(stationLoginSpy).toHaveBeenCalledWith({
         data: {
-          dialNumber: 'agentId',
+          dialNumber: `${WEB_RTC_PREFIX}agentId`,
           teamId: 'teamId',
           deviceType: LoginOption.BROWSER,
           isExtension: false,
