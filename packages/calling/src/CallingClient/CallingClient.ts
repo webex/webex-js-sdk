@@ -533,6 +533,46 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   }
 
   /**
+   * Requests Mobius discovery from `this.mobiusHost`.
+   *
+   * @returns The Mobius server list when the request succeeds.
+   */
+  private async requestMobiusServers(
+    clientRegion: string,
+    countryCode: string
+  ): Promise<MobiusServers> {
+    const response = <WebexRequestPayload>await this.webex.request({
+      uri: `${this.mobiusHost}${URL_ENDPOINT}?regionCode=${clientRegion}&countryCode=${countryCode}`,
+      method: HTTP_METHODS.GET,
+      headers: {
+        [CISCO_DEVICE_URL]: this.webex.internal.device.url,
+        [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+      },
+      service: ALLOWED_SERVICES.MOBIUS,
+    });
+
+    log.log(
+      `Mobius Server found for the region. Response trackingId: ${response?.headers?.trackingid}`,
+      {
+        file: CALLING_CLIENT_FILE,
+        method: GET_MOBIUS_SERVERS_UTIL,
+      }
+    );
+
+    const mobiusServers = response.body as MobiusServers;
+
+    this.metricManager.submitMobiusServersMetric(
+      METRIC_EVENT.MOBIUS_DISCOVERY,
+      MOBIUS_SERVER_ACTION.MOBIUS_SERVERS,
+      METRIC_TYPE.BEHAVIORAL,
+      mobiusServers,
+      response?.headers?.trackingid ?? ''
+    );
+
+    return mobiusServers;
+  }
+
+  /**
    * Local method for finding the mobius servers.
    */
   private async getMobiusServers() {
@@ -554,6 +594,14 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     let clientRegion: string;
     let countryCode: string;
 
+    /* Resolve the U2C Mobius service link once, independent of how region/country
+     * were obtained. Request that host directly, and only walk remaining catalog
+     * clusters if that request fails with a non-final error.
+     */
+    this.mobiusHost =
+      this.webex.internal.services._serviceUrls?.mobius ||
+      this.webex.internal.services.get(this.webex.internal.services._activeServices.mobius);
+
     if (this.sdkConfig?.discovery?.country && this.sdkConfig?.discovery?.region) {
       log.log('Updating region and country from the SDK config', {
         file: CALLING_CLIENT_FILE,
@@ -561,9 +609,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       });
       clientRegion = this.sdkConfig?.discovery?.region;
       countryCode = this.sdkConfig?.discovery?.country;
-      this.mobiusHost =
-        this.webex.internal.services._serviceUrls?.mobius ||
-        this.webex.internal.services.get(this.webex.internal.services._activeServices.mobius);
     } else {
       log.log('Updating region and country through Region discovery', {
         file: CALLING_CLIENT_FILE,
@@ -584,89 +629,96 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         }
       );
 
-      for (const mobius of this.mobiusClusters) {
-        if (mobius.host) {
-          this.mobiusHost = `https://${mobius.host}${API_V1}`;
-        } else {
-          this.mobiusHost = mobius as unknown as string;
-        }
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          const response = <WebexRequestPayload>await this.webex.request({
-            uri: `${this.mobiusHost}${URL_ENDPOINT}?regionCode=${clientRegion}&countryCode=${countryCode}`,
-            method: HTTP_METHODS.GET,
-            headers: {
-              [CISCO_DEVICE_URL]: this.webex.internal.device.url,
-              [SPARK_USER_AGENT]: CALLING_USER_AGENT,
-            },
-            service: ALLOWED_SERVICES.MOBIUS,
-          });
+      const applyMobiusServers = (mobiusServers: MobiusServers) => {
+        const mobiusUris = filterMobiusUris(mobiusServers, this.mobiusHost);
+        this.primaryMobiusUris = mobiusUris.primary;
+        this.backupMobiusUris = mobiusUris.backup;
+        this.primaryWssMobiusUris = mobiusUris.primaryWss;
+        this.backupWssMobiusUris = mobiusUris.backupWss;
 
-          log.log(
-            `Mobius Server found for the region. Response trackingId: ${response?.headers?.trackingid}`,
-            {
-              file: CALLING_CLIENT_FILE,
-              method: GET_MOBIUS_SERVERS_UTIL,
-            }
-          );
-
-          const mobiusServers = response.body as MobiusServers;
-
-          // Metrics for mobius servers
-          this.metricManager.submitMobiusServersMetric(
-            METRIC_EVENT.MOBIUS_DISCOVERY,
-            MOBIUS_SERVER_ACTION.MOBIUS_SERVERS,
-            METRIC_TYPE.BEHAVIORAL,
-            mobiusServers,
-            response?.headers?.trackingid ?? ''
-          );
-
-          /* update arrays of Mobius Uris. */
-          const mobiusUris = filterMobiusUris(mobiusServers, this.mobiusHost);
-          this.primaryMobiusUris = mobiusUris.primary;
-          this.backupMobiusUris = mobiusUris.backup;
-          this.primaryWssMobiusUris = mobiusUris.primaryWss;
-          this.backupWssMobiusUris = mobiusUris.backupWss;
-
-          log.log(
-            `Final list of Mobius Servers, primary: ${mobiusUris.primary} and backup: ${mobiusUris.backup}`,
-            {
-              file: CALLING_CLIENT_FILE,
-              method: GET_MOBIUS_SERVERS_UTIL,
-            }
-          );
-
-          break;
-        } catch (err: unknown) {
-          log.error(`Failed to get Mobius servers: ${JSON.stringify(err)}`, {
-            method: METHODS.GET_MOBIUS_SERVERS,
+        log.log(
+          `Final list of Mobius Servers, primary: ${mobiusUris.primary} and backup: ${mobiusUris.backup}`,
+          {
             file: CALLING_CLIENT_FILE,
-          });
+            method: GET_MOBIUS_SERVERS_UTIL,
+          }
+        );
+      };
 
-          // eslint-disable-next-line no-await-in-loop
-          const abort = await handleCallingClientErrors(
-            err as WebexRequestPayload,
-            (clientError) => {
-              this.metricManager.submitRegistrationMetric(
-                METRIC_EVENT.REGISTRATION_ERROR,
-                REG_ACTION.REGISTER,
-                METRIC_TYPE.BEHAVIORAL,
-                GET_MOBIUS_SERVERS_UTIL,
-                'UNKNOWN',
-                (err as WebexRequestPayload).headers?.trackingId ?? '',
-                undefined,
-                clientError
-              );
-              this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
-            },
-            {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
-          );
+      const handleDiscoveryError = async (err: unknown): Promise<boolean> => {
+        log.error(`Failed to get Mobius servers: ${JSON.stringify(err)}`, {
+          method: METHODS.GET_MOBIUS_SERVERS,
+          file: CALLING_CLIENT_FILE,
+        });
 
-          if (abort) {
-            useDefault = true;
+        const abort = await handleCallingClientErrors(
+          err as WebexRequestPayload,
+          (clientError) => {
+            this.metricManager.submitRegistrationMetric(
+              METRIC_EVENT.REGISTRATION_ERROR,
+              REG_ACTION.REGISTER,
+              METRIC_TYPE.BEHAVIORAL,
+              GET_MOBIUS_SERVERS_UTIL,
+              'UNKNOWN',
+              (err as WebexRequestPayload).headers?.trackingId ?? '',
+              undefined,
+              clientError
+            );
+            this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
+          },
+          {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
+        );
+
+        if (abort) {
+          await uploadLogs();
+        }
+
+        return abort;
+      };
+
+      if (this.mobiusHost) {
+        try {
+          const mobiusServers = await this.requestMobiusServers(clientRegion, countryCode);
+
+          applyMobiusServers(mobiusServers);
+        } catch (err: unknown) {
+          useDefault = await handleDiscoveryError(err);
+        }
+      }
+
+      if (!this.primaryMobiusUris.length && !useDefault) {
+        for (const mobius of this.mobiusClusters) {
+          if (typeof mobius !== 'string' && mobius.host) {
+            const nextHost = `https://${mobius.host}${API_V1}`;
+
+            if (nextHost === this.mobiusHost) {
+              // eslint-disable-next-line no-continue
+              continue;
+            }
+            this.mobiusHost = nextHost;
+          } else {
+            const nextHost = mobius as unknown as string;
+
+            if (nextHost === this.mobiusHost) {
+              // eslint-disable-next-line no-continue
+              continue;
+            }
+            this.mobiusHost = nextHost;
+          }
+
+          try {
             // eslint-disable-next-line no-await-in-loop
-            await uploadLogs();
+            const mobiusServers = await this.requestMobiusServers(clientRegion, countryCode);
+
+            applyMobiusServers(mobiusServers);
             break;
+          } catch (err: unknown) {
+            // eslint-disable-next-line no-await-in-loop
+            useDefault = await handleDiscoveryError(err);
+
+            if (useDefault) {
+              break;
+            }
           }
         }
       }
