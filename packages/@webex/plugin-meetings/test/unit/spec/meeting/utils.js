@@ -797,7 +797,11 @@ describe('plugin-meetings', () => {
 
         beforeEach(() => {
           meeting.id = 'realMeetingId';
-          meeting.locusInfo = {handleLocusAPIResponse: sinon.stub()};
+          meeting.locusInfo = {
+            updateControls: sinon.stub(),
+            controls: {mute: true},
+            parsedLocus: {self: {id: 'selfId'}},
+          };
 
           duplicateMeeting = {
             id: 'duplicateMeetingId',
@@ -810,14 +814,19 @@ describe('plugin-meetings', () => {
           sinon.stub(webex.meetings, 'destroy');
         });
 
-        it('replays the duplicate meeting locus data onto the real meeting before destroying it', async () => {
-          duplicateMeeting.unmatchedLocusEventDto = {url: 'locusUrl', controls: {}};
+        it('merges the duplicate meeting controls onto the real meeting before destroying it', async () => {
+          duplicateMeeting.unmatchedLocusEventDto = {
+            url: 'locusUrl',
+            controls: {mute: false, meetingContainer: {url: 'container-url'}},
+          };
 
           await MeetingUtil.joinMeeting(meeting, {});
 
-          assert.calledOnceWithExactly(meeting.locusInfo.handleLocusAPIResponse, meeting, {
-            locus: duplicateMeeting.unmatchedLocusEventDto,
-          });
+          assert.calledOnceWithExactly(
+            meeting.locusInfo.updateControls,
+            {mute: true, meetingContainer: {url: 'container-url'}},
+            meeting.locusInfo.parsedLocus.self
+          );
           assert.calledOnceWithExactly(
             webex.meetings.destroy,
             duplicateMeeting,
@@ -825,10 +834,10 @@ describe('plugin-meetings', () => {
           );
         });
 
-        it('destroys the duplicate meeting without replaying data when it has none', async () => {
+        it('destroys the duplicate meeting without merging when it has no controls', async () => {
           await MeetingUtil.joinMeeting(meeting, {});
 
-          assert.notCalled(meeting.locusInfo.handleLocusAPIResponse);
+          assert.notCalled(meeting.locusInfo.updateControls);
           assert.calledOnceWithExactly(
             webex.meetings.destroy,
             duplicateMeeting,
@@ -836,9 +845,9 @@ describe('plugin-meetings', () => {
           );
         });
 
-        it('still destroys the duplicate meeting if replaying its locus data throws', async () => {
-          duplicateMeeting.unmatchedLocusEventDto = {url: 'locusUrl', controls: {}};
-          meeting.locusInfo.handleLocusAPIResponse.throws(new Error('merge failed'));
+        it('still destroys the duplicate meeting if merging its controls throws', async () => {
+          duplicateMeeting.unmatchedLocusEventDto = {url: 'locusUrl', controls: {mute: false}};
+          meeting.locusInfo.updateControls.throws(new Error('merge failed'));
 
           await MeetingUtil.joinMeeting(meeting, {});
 
@@ -854,7 +863,7 @@ describe('plugin-meetings', () => {
 
           await MeetingUtil.joinMeeting(meeting, {});
 
-          assert.notCalled(meeting.locusInfo.handleLocusAPIResponse);
+          assert.notCalled(meeting.locusInfo.updateControls);
           assert.notCalled(webex.meetings.destroy);
         });
       });

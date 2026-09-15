@@ -719,13 +719,6 @@ export default class Meetings extends WebexPlugin {
                 meeting.finalizeMeetingAfterInitialLocusSetup(locus);
               }
             );
-
-            // preserve the raw DTO (classic Locus only, hash tree ones are often partial) so
-            // MeetingUtil.joinMeeting can replay it onto the real meeting if this turns out to be
-            // a duplicate created by the join-deferral timeout
-            if (data.eventType !== LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
-              meeting.unmatchedLocusEventDto = data.locus;
-            }
           } catch (error) {
             LoggerProxy.logger.warn(
               `Meetings:index#handleLocusEvent --> Error initializing locus data: ${error.message}`
@@ -1886,6 +1879,13 @@ export default class Meetings extends WebexPlugin {
         this.meetingCollection.set(newMeeting);
       }
     );
+
+    if (type === DESTINATION_TYPE.LOCUS_ID) {
+      // stash synchronously, before fetchMeetingInfo()/initialSetup() below settle, so a
+      // duplicate destroyed by MeetingUtil.joinMeeting's self-heal in the meantime doesn't
+      // lose this data
+      meeting.unmatchedLocusEventDto = destination;
+    }
 
     // Resolved once fetchMeetingInfo() (or the equivalent injectMeetingInfo/parseMeetingInfo path
     // below) settles, so handleLocusEvent() can defer matching against this meeting until its

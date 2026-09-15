@@ -334,16 +334,23 @@ const MeetingUtil = {
         );
 
         if (duplicateMeeting) {
-          // the placeholder may have processed a locus DTO carrying data (e.g. controls) that
-          // this join() response didn't; replay it onto the real meeting before losing it
-          if (duplicateMeeting.unmatchedLocusEventDto) {
+          // the placeholder may have picked up controls (e.g. meetingContainer) that this join()
+          // response didn't include; back-fill them onto the real meeting before losing them.
+          // Duplicate's controls go first so this join()'s own (fresher) values always win -
+          // handleLocusAPIResponse can't be used here since it discards the whole DTO as stale
+          // whenever its sequence isn't newer than what setLocus() above just installed.
+          if (duplicateMeeting.unmatchedLocusEventDto?.controls) {
             try {
-              meeting.locusInfo.handleLocusAPIResponse(meeting, {
-                locus: duplicateMeeting.unmatchedLocusEventDto,
-              });
+              meeting.locusInfo.updateControls(
+                {
+                  ...duplicateMeeting.unmatchedLocusEventDto.controls,
+                  ...meeting.locusInfo.controls,
+                },
+                meeting.locusInfo.parsedLocus.self
+              );
             } catch (mergeError) {
               LoggerProxy.logger.warn(
-                `Meeting:util#joinMeeting --> failed to replay duplicate meeting's locus data onto meeting ${meeting.id}: ${mergeError}`
+                `Meeting:util#joinMeeting --> failed to merge duplicate meeting's controls onto meeting ${meeting.id}: ${mergeError}`
               );
             }
           }

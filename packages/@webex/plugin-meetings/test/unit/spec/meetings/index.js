@@ -3042,6 +3042,41 @@ describe('plugin-meetings', () => {
           });
         });
 
+        describe('unmatchedLocusEventDto', () => {
+          it('is stashed synchronously (before fetchMeetingInfo settles) when created with a locus destination', async () => {
+            const locusDto = {fullState: {type: 'CALL'}, controls: {mute: true}};
+
+            let resolveFetchMeetingInfo;
+
+            webex.meetings.meetingInfo.fetchMeetingInfo = sinon.stub().returns(
+              new Promise((resolve) => {
+                resolveFetchMeetingInfo = resolve;
+              })
+            );
+
+            const createPromise = webex.meetings.createMeeting(locusDto, DESTINATION_TYPE.LOCUS_ID);
+            const [meeting] = Object.values(webex.meetings.meetingCollection.getAll());
+
+            assert.equal(meeting.unmatchedLocusEventDto, locusDto);
+
+            resolveFetchMeetingInfo({body: {}});
+            await createPromise;
+          });
+
+          it('is not stashed when created with a non-locus destination', async () => {
+            webex.meetings.meetingInfo.fetchMeetingInfo = sinon
+              .stub()
+              .returns(Promise.resolve({body: {}}));
+
+            const createdMeeting = await webex.meetings.createMeeting(
+              'test destination',
+              'test type'
+            );
+
+            assert.equal(createdMeeting.unmatchedLocusEventDto, undefined);
+          });
+        });
+
         describe('successful MeetingInfo.#fetchMeetingInfo', () => {
           let clock, setTimeoutSpy, fakeMeetingStartTimeString, FAKE_TIME_TO_START;
           const FAKE_INFO_EXTRA_PARAMS = {
