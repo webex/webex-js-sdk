@@ -44,8 +44,7 @@ import {
   _WAIT_,
   DESTINATION_TYPE,
   INITIAL_REGISTRATION_STATUS,
-  UNMATCHED_LOCUS_EVENT_JOIN_DEFERRAL_TIMEOUT,
-  RECENTLY_DESTROYED_LOCUS_REJOIN_WINDOW,
+  UNMATCHED_LOCUS_EVENT_RESOLUTION_TIMEOUT,
   RECENTLY_DESTROYED_LOCUS_REJOIN_POLL_INTERVAL,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
@@ -637,16 +636,13 @@ export default class Meetings extends WebexPlugin {
         return;
       }
 
-      // join() assigns locusUrl only once its HTTP response arrives, and createMeeting() only
-      // populates conversationUrl/sipUri/meetingNumber once fetchMeetingInfo() resolves, so while
-      // either is in flight this event can't be matched to the meeting it belongs to; wait for them
-      // to settle (bounded by a timeout, since we can't tell whether this locus belongs to one of
-      // them) and reprocess this event once.
+      // join() and createMeeting() only assign locusUrl/conversationUrl/etc once their requests
+      // resolve, so an unmatched event during that window might belong to one of them; wait for
+      // in-flight work to settle (bounded by a timeout) and reprocess this event once.
       //
-      // Trade-off: this waits on ALL in-flight work, not just work that could plausibly match this
-      // event (no correlation is possible pre-locusUrl), so unrelated events can be delayed too;
-      // accepted since MeetingUtil.joinMeeting's post-join self-heal check cleans up any duplicate
-      // created if the wait times out anyway.
+      // Trade-off: waits on ALL in-flight work, not just plausibly-matching work (no correlation
+      // is possible pre-locusUrl), delaying unrelated events too; accepted since
+      // MeetingUtil.joinMeeting's post-join self-heal cleans up any duplicate created on timeout.
       if (!skipDeferral) {
         const pendingMeetingWork = Object.values(this.meetingCollection.getAll()).flatMap(
           (inFlightMeeting: any) => [inFlightMeeting.deferJoin, inFlightMeeting.deferMeetingInfo]
@@ -663,7 +659,7 @@ export default class Meetings extends WebexPlugin {
             inFlightWork.map((deferred) => Promise.resolve(deferred).catch(() => undefined))
           );
           const deferralTimeout = new Promise((resolve) => {
-            setTimeout(resolve, UNMATCHED_LOCUS_EVENT_JOIN_DEFERRAL_TIMEOUT);
+            setTimeout(resolve, UNMATCHED_LOCUS_EVENT_RESOLUTION_TIMEOUT);
           });
 
           Promise.race([settleAllWork, deferralTimeout]).then(() =>
@@ -681,14 +677,14 @@ export default class Meetings extends WebexPlugin {
           ? Array.from(this.deletedMeetings.values()).find(
               (deleted) =>
                 deleted.locusUrl === eventLocusUrl &&
-                Date.now() - deleted.destroyedAt < RECENTLY_DESTROYED_LOCUS_REJOIN_WINDOW
+                Date.now() - deleted.destroyedAt < UNMATCHED_LOCUS_EVENT_RESOLUTION_TIMEOUT
             )
           : undefined;
 
         if (recentlyDestroyedMeeting) {
           // poll for the rejoin claiming this locusUrl instead of blindly waiting out the full window,
           // so the event (and any meetingContainer/etc info it carries) reaches the real meeting asap
-          const pollDeadline = Date.now() + UNMATCHED_LOCUS_EVENT_JOIN_DEFERRAL_TIMEOUT;
+          const pollDeadline = Date.now() + UNMATCHED_LOCUS_EVENT_RESOLUTION_TIMEOUT;
           const pollForRejoinMatch = () => {
             if (this.getCorrespondingMeetingByLocus(data) || Date.now() >= pollDeadline) {
               this.handleLocusEvent(data, useRandomDelayForInfo, true);
@@ -723,6 +719,13 @@ export default class Meetings extends WebexPlugin {
                 meeting.finalizeMeetingAfterInitialLocusSetup(locus);
               }
             );
+
+            // preserve the raw DTO (classic Locus only, hash tree ones are often partial) so
+            // MeetingUtil.joinMeeting can replay it onto the real meeting if this turns out to be
+            // a duplicate created by the join-deferral timeout
+            if (data.eventType !== LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
+              meeting.unmatchedLocusEventDto = data.locus;
+            }
           } catch (error) {
             LoggerProxy.logger.warn(
               `Meetings:index#handleLocusEvent --> Error initializing locus data: ${error.message}`

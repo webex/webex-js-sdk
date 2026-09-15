@@ -3,7 +3,11 @@ import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import Meetings from '@webex/plugin-meetings';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
-import {LOCAL_SHARE_ERRORS, PASSWORD_STATUS} from '@webex/plugin-meetings/src/constants';
+import {
+  LOCAL_SHARE_ERRORS,
+  PASSWORD_STATUS,
+  MEETING_REMOVED_REASON,
+} from '@webex/plugin-meetings/src/constants';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import {SELF_POLICY, IP_VERSION} from '@webex/plugin-meetings/src/constants';
@@ -786,6 +790,73 @@ describe('plugin-meetings', () => {
             options: {meetingId: meeting.id, rawError: joinError},
           });
         }
+      });
+
+      describe('duplicate meeting self-heal', () => {
+        let duplicateMeeting;
+
+        beforeEach(() => {
+          meeting.id = 'realMeetingId';
+          meeting.locusInfo = {handleLocusAPIResponse: sinon.stub()};
+
+          duplicateMeeting = {
+            id: 'duplicateMeetingId',
+            locusUrl: 'locusUrl',
+          };
+
+          sinon.stub(webex.meetings.meetingCollection, 'getAll').returns({
+            [duplicateMeeting.id]: duplicateMeeting,
+          });
+          sinon.stub(webex.meetings, 'destroy');
+        });
+
+        it('replays the duplicate meeting locus data onto the real meeting before destroying it', async () => {
+          duplicateMeeting.unmatchedLocusEventDto = {url: 'locusUrl', controls: {}};
+
+          await MeetingUtil.joinMeeting(meeting, {});
+
+          assert.calledOnceWithExactly(meeting.locusInfo.handleLocusAPIResponse, meeting, {
+            locus: duplicateMeeting.unmatchedLocusEventDto,
+          });
+          assert.calledOnceWithExactly(
+            webex.meetings.destroy,
+            duplicateMeeting,
+            MEETING_REMOVED_REASON.DUPLICATE_LOCUS_URL
+          );
+        });
+
+        it('destroys the duplicate meeting without replaying data when it has none', async () => {
+          await MeetingUtil.joinMeeting(meeting, {});
+
+          assert.notCalled(meeting.locusInfo.handleLocusAPIResponse);
+          assert.calledOnceWithExactly(
+            webex.meetings.destroy,
+            duplicateMeeting,
+            MEETING_REMOVED_REASON.DUPLICATE_LOCUS_URL
+          );
+        });
+
+        it('still destroys the duplicate meeting if replaying its locus data throws', async () => {
+          duplicateMeeting.unmatchedLocusEventDto = {url: 'locusUrl', controls: {}};
+          meeting.locusInfo.handleLocusAPIResponse.throws(new Error('merge failed'));
+
+          await MeetingUtil.joinMeeting(meeting, {});
+
+          assert.calledOnceWithExactly(
+            webex.meetings.destroy,
+            duplicateMeeting,
+            MEETING_REMOVED_REASON.DUPLICATE_LOCUS_URL
+          );
+        });
+
+        it('does not touch other meetings sharing a different locusUrl', async () => {
+          duplicateMeeting.locusUrl = 'someOtherLocusUrl';
+
+          await MeetingUtil.joinMeeting(meeting, {});
+
+          assert.notCalled(meeting.locusInfo.handleLocusAPIResponse);
+          assert.notCalled(webex.meetings.destroy);
+        });
       });
     });
 

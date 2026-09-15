@@ -329,15 +329,27 @@ const MeetingUtil = {
         // The unmatched-locus-event deferral in Meetings#handleLocusEvent gives up and creates a
         // placeholder meeting for this locusUrl if this join() takes longer than its timeout; now
         // that join() has actually completed, get rid of that duplicate if one was created for us.
-        const duplicateMeeting = Object.values(webex.meetings.meetingCollection.getAll()).find(
+        const duplicateMeeting: any = Object.values(webex.meetings.meetingCollection.getAll()).find(
           (candidate: any) => candidate.id !== meeting.id && candidate.locusUrl === meeting.locusUrl
         );
 
         if (duplicateMeeting) {
+          // the placeholder may have processed a locus DTO carrying data (e.g. controls) that
+          // this join() response didn't; replay it onto the real meeting before losing it
+          if (duplicateMeeting.unmatchedLocusEventDto) {
+            try {
+              meeting.locusInfo.handleLocusAPIResponse(meeting, {
+                locus: duplicateMeeting.unmatchedLocusEventDto,
+              });
+            } catch (mergeError) {
+              LoggerProxy.logger.warn(
+                `Meeting:util#joinMeeting --> failed to replay duplicate meeting's locus data onto meeting ${meeting.id}: ${mergeError}`
+              );
+            }
+          }
+
           LoggerProxy.logger.warn(
-            `Meeting:util#joinMeeting --> destroying duplicate meeting (${
-              (duplicateMeeting as any).id
-            }) created for locusUrl ${meeting.locusUrl} while this join() was still in flight`
+            `Meeting:util#joinMeeting --> destroying duplicate meeting (${duplicateMeeting.id}) created for locusUrl ${meeting.locusUrl} while this join() was still in flight`
           );
           webex.meetings.destroy(duplicateMeeting, MEETING_REMOVED_REASON.DUPLICATE_LOCUS_URL);
         }

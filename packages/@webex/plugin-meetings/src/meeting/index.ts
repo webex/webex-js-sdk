@@ -648,6 +648,7 @@ export default class Meeting extends StatelessWebexPlugin {
   datachannelUrl: string;
   deferJoin: Promise<any>;
   deferMeetingInfo: Promise<any>;
+  unmatchedLocusEventDto?: LocusDTO;
   dialInDeviceStatus: string;
   dialInUrl: string;
   dialOutDeviceStatus: string;
@@ -1466,6 +1467,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.deferMeetingInfo = undefined;
+
+    /**
+     * Raw locus DTO from the join-deferral-timeout fallback in Meetings#handleLocusEvent, replayed by MeetingUtil.joinMeeting if this meeting turns out to be a duplicate.
+     * @instance
+     * @type {LocusDTO}
+     * @private
+     * @memberof Meeting
+     */
+    this.unmatchedLocusEventDto = undefined;
 
     /**
      * Staus of websocket connection/mercury connection.

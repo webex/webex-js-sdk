@@ -38,8 +38,7 @@ import {
   DESTINATION_TYPE,
   INITIAL_REGISTRATION_STATUS,
   MEETING_REMOVED_REASON,
-  UNMATCHED_LOCUS_EVENT_JOIN_DEFERRAL_TIMEOUT,
-  RECENTLY_DESTROYED_LOCUS_REJOIN_WINDOW,
+  UNMATCHED_LOCUS_EVENT_RESOLUTION_TIMEOUT,
   RECENTLY_DESTROYED_LOCUS_REJOIN_POLL_INTERVAL,
 } from '../../../../src/constants';
 import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error';
@@ -2817,7 +2816,7 @@ describe('plugin-meetings', () => {
 
             webex.meetings.handleLocusEvent(buildLocusEvent());
 
-            await clock.tickAsync(UNMATCHED_LOCUS_EVENT_JOIN_DEFERRAL_TIMEOUT);
+            await clock.tickAsync(UNMATCHED_LOCUS_EVENT_RESOLUTION_TIMEOUT);
 
             assert.calledOnceWithExactly(
               webex.meetings.create,
@@ -2922,7 +2921,7 @@ describe('plugin-meetings', () => {
             // this test relies on real elapsed time (rather than sinon fake timers) because the
             // deadline check in the source uses Date.now(), which babel/corejs2 compiles to a
             // captured native reference that fake timers cannot intercept in this test environment
-            this.timeout(UNMATCHED_LOCUS_EVENT_JOIN_DEFERRAL_TIMEOUT + 3000);
+            this.timeout(UNMATCHED_LOCUS_EVENT_RESOLUTION_TIMEOUT + 3000);
 
             webex.meetings.meetingCollection.getByKey = sinon.stub().returns(undefined);
             webex.meetings.deletedMeetings.set('destroyed-id', {
@@ -2935,7 +2934,7 @@ describe('plugin-meetings', () => {
             await new Promise((resolve) => {
               setTimeout(
                 resolve,
-                UNMATCHED_LOCUS_EVENT_JOIN_DEFERRAL_TIMEOUT + RECENTLY_DESTROYED_LOCUS_REJOIN_POLL_INTERVAL
+                UNMATCHED_LOCUS_EVENT_RESOLUTION_TIMEOUT + RECENTLY_DESTROYED_LOCUS_REJOIN_POLL_INTERVAL
               );
             });
 
@@ -2951,7 +2950,7 @@ describe('plugin-meetings', () => {
             webex.meetings.meetingCollection.getByKey = sinon.stub().returns(undefined);
             webex.meetings.deletedMeetings.set('destroyed-id', {
               locusUrl: url1,
-              destroyedAt: Date.now() - RECENTLY_DESTROYED_LOCUS_REJOIN_WINDOW - 1000,
+              destroyedAt: Date.now() - UNMATCHED_LOCUS_EVENT_RESOLUTION_TIMEOUT - 1000,
             });
 
             await webex.meetings.handleLocusEvent(buildLocusEvent());

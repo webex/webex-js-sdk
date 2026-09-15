@@ -201,10 +201,9 @@ export const ICE_FAIL_TIMEOUT = 3000;
 
 export const RETRY_TIMEOUT = 3000;
 
-// max time an unmatched locus event waits on in-flight join()/creation work before being reprocessed anyway.
-// The REJOIN_WINDOW/POLL_INTERVAL pair below detect and poll for a rejoin reusing a just-destroyed meeting's locusUrl.
-export const UNMATCHED_LOCUS_EVENT_JOIN_DEFERRAL_TIMEOUT = 5000;
-export const RECENTLY_DESTROYED_LOCUS_REJOIN_WINDOW = 10000;
+// max time an unmatched locus event waits on in-flight join()/creation work (or a just-destroyed
+// meeting's locusUrl being reclaimed by a rejoin) before being reprocessed anyway.
+export const UNMATCHED_LOCUS_EVENT_RESOLUTION_TIMEOUT = 5000;
 export const RECENTLY_DESTROYED_LOCUS_REJOIN_POLL_INTERVAL = 300;
 
 export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 20000;
