@@ -1572,7 +1572,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`; `WRAPPING_UP` entry emits `task:wrapup`
 
 - `CONFERENCE_END` -> `CONNECTED`
 

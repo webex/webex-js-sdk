@@ -1208,7 +1208,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               // Agent who should wrap up → WRAPPING_UP
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState'],
             },
             {
               // Customer still in call → CONNECTED

@@ -2135,6 +2135,38 @@ describe('Task state machine', () => {
       expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
     });
 
+    it('emits wrap-up once on CONFERENCE_END when wrap-up is required', () => {
+      const {emitTaskWrapup, publishWrapup} = createPublishAwareEmitTaskWrapupMock();
+      const service = createActor(
+        createTaskStateMachine(createConfig(), {actions: {emitTaskWrapup}})
+      );
+      service.start();
+      const taskData = createTaskData({
+        wrapUpRequired: true,
+        interaction: {
+          owner: 'agent-1',
+          state: 'conference',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              type: 'Agent',
+              isWrapUp: true,
+              hasJoined: true,
+              hasLeft: true,
+            },
+          },
+        } as any,
+      });
+
+      primeConferencing(service, taskData);
+      service.send({type: TaskEvent.CONFERENCE_END, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+      expect(publishWrapup).toHaveBeenCalledTimes(1);
+    });
+
     it('enters WRAPPING_UP on PARTICIPANT_LEAVE when this agent left and wrap-up is required', () => {
       const service = startMachine();
       const conferenceData = createTaskData({
