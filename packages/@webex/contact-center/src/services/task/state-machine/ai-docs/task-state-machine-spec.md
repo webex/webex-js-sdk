@@ -996,6 +996,12 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Actions: `updateTaskData`, `setRecordingState`, `emitTaskRecordingPaused` / `emitTaskRecordingResumed`
 
+- `EXIT_CONFERENCE_SUCCESS` -> `WRAPPING_UP` or `TERMINATED`
+
+- Guard: `guards.shouldWrapUp` (wrap-up branch) or default (terminate)
+
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup` or `emitTaskEnd` (same as `CONFERENCING`; used when Voice `exitConference()` succeeds while the actor is still `CONNECTED` but conference is active in task data)
+
 **Description**: Main call is on hold.
 
 **How this state is reached (incoming transitions)**:
@@ -1091,6 +1097,12 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 - Guard: none
 
 - Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
+
+- `EXIT_CONFERENCE_SUCCESS` -> `WRAPPING_UP` or `TERMINATED`
+
+- Guard: `guards.shouldWrapUp` or default
+
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup` or `emitTaskEnd`
 
 **Description**: Hold request has been sent and is awaiting backend confirmation.
 
@@ -1458,6 +1470,12 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Actions: `updateTaskData`, `clearConsultState`, `emitTaskConferenceStarted`
 
+- `EXIT_CONFERENCE_SUCCESS` -> `WRAPPING_UP` or `TERMINATED`
+
+- Guard: `guards.shouldWrapUp` or default
+
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup` or `emitTaskEnd` (shared with `CONNECTED` / `HELD`)
+
 - `CONSULT_END` -> stay `CONFERENCING`
 
 - Guard: none
@@ -1578,9 +1596,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - `TASK_WRAPUP` -> stay `WRAPPING_UP`
 
-- Guard: none
-
-- Actions: `updateTaskData`, `emitTaskWrapup`
+- Guard: if `context.taskData.wrapUpRequired === true` before the event, actions are `updateTaskData` only; otherwise `updateTaskData`, `emitTaskWrapup` (late AgentWrapup after wrap-up was already published)
 
 - `WRAPUP_COMPLETE` -> `COMPLETED`
 

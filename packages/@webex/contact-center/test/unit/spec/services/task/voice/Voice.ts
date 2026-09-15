@@ -630,6 +630,18 @@ describe('Voice Task', () => {
       expect(voice.stateMachineService?.getSnapshot().value).toBe(TaskState.CONFERENCING);
     };
 
+    it('transitions to WRAPPING_UP after exitConference when the actor stays CONNECTED', async () => {
+      const taskData = conferenceTaskData();
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-1');
+      primeConnectedState(voice, taskData);
+      expect(voice.stateMachineService?.getSnapshot().value).toBe(TaskState.CONNECTED);
+
+      await voice.exitConference();
+
+      expect(dummyContact.exitConference).toHaveBeenCalled();
+      expect(voice.stateMachineService?.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
     it('stamps wrapUpRequired on EXIT_CONFERENCE_SUCCESS when this agent should wrap', async () => {
       const taskData = conferenceTaskData();
       const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-1');

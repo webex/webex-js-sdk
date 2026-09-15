@@ -483,6 +483,9 @@ is not treated as departure. `PARTICIPANT_LEAVE` is handled in `HELD`,
 `RESUME_INITIATING`, `CONSULTING`, `CONSULT_INITIATING`, and `CONFERENCING`;
 `CONNECTED`, `HOLD_INITIATING`, and `CONF_INITIATING` ignore the event.
 
+- `EXIT_CONFERENCE_SUCCESS` -> `WRAPPING_UP` or `TERMINATED`
+  - Guard: `guards.shouldWrapUp` or default
+  - Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup` or `emitTaskEnd` (shared helper also wired on `CONNECTED` and `HELD` for Voice HTTP exit)
 - `CONFERENCE_END` -> `WRAPPING_UP`
   - Guard: `guards.shouldWrapUp`
   - Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup`
@@ -514,8 +517,7 @@ is not treated as departure. `PARTICIPANT_LEAVE` is handled in `HELD`,
 **Valid transitions from `WRAPPING_UP`**:
 
 - `TASK_WRAPUP` -> stay `WRAPPING_UP`
-  - Guard: none
-  - Actions: `updateTaskData`, `emitTaskWrapup`
+  - Guard: if `context.taskData.wrapUpRequired === true`, `updateTaskData` only; else `updateTaskData`, `emitTaskWrapup`
 - `WRAPUP_COMPLETE` -> `COMPLETED`
   - Guard: none
   - Actions: `updateTaskData`

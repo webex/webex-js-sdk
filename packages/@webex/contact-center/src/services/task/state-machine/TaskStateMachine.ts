@@ -89,6 +89,18 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
     },
   ];
 
+  const exitConferenceSuccessTransitions = () => [
+    {
+      guard: guards.shouldWrapUp,
+      target: TaskState.WRAPPING_UP,
+      actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+    },
+    {
+      target: TaskState.TERMINATED,
+      actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
+    },
+  ];
+
   const currentAgentConsultEndTransitions = () => [
     {
       guard: (params) =>
@@ -462,6 +474,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.RESUME_RECORDING]: {
             actions: ['updateTaskData', 'setRecordingState', 'emitTaskRecordingResumed'],
           },
+          [TaskEvent.EXIT_CONFERENCE_SUCCESS]: exitConferenceSuccessTransitions(),
         },
       },
 
@@ -598,6 +611,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
             },
           ],
+          [TaskEvent.EXIT_CONFERENCE_SUCCESS]: exitConferenceSuccessTransitions(),
         },
       },
 
@@ -1027,17 +1041,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               'emitTaskConferenceStarted',
             ],
           },
-          [TaskEvent.EXIT_CONFERENCE_SUCCESS]: [
-            {
-              guard: guards.shouldWrapUp,
-              target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
-            },
-            {
-              target: TaskState.TERMINATED,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
-            },
-          ],
+          [TaskEvent.EXIT_CONFERENCE_SUCCESS]: exitConferenceSuccessTransitions(),
 
           // Needed as all agents in conference get this event, hence we need to clear the consult state
           [TaskEvent.CONSULT_END]: [
@@ -1249,9 +1253,15 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
         entry: ['emitTaskWrapup'],
         on: {
           // Late AgentWrapup after conference exit already entered WRAPPING_UP
-          [TaskEvent.TASK_WRAPUP]: {
-            actions: ['updateTaskData', 'emitTaskWrapup'],
-          },
+          [TaskEvent.TASK_WRAPUP]: [
+            {
+              guard: ({context}) => context.taskData?.wrapUpRequired === true,
+              actions: ['updateTaskData'],
+            },
+            {
+              actions: ['updateTaskData', 'emitTaskWrapup'],
+            },
+          ],
           // AgentWrappedup Event
           [TaskEvent.WRAPUP_COMPLETE]: {
             target: TaskState.COMPLETED,
