@@ -274,10 +274,8 @@ didCurrentAgentLeaveMainInteraction(context, event) {
   const participantIdFromEvent = 'participantId' in event ? event.participantId : undefined;
   const participantId = participantIdFromEvent ?? event.taskData?.participantId;
   if (Boolean(participantId) && participantId === selfAgentId) return true;
-  // Explicit hasLeft or removal of a previously active self from the participant map is terminal.
-  // PARTICIPANT_LEAVE naming another participant does not infer self departure from media.
-  // Only a from-conference CONSULT_END may compare mainCall membership, and only when self
-  // remains active in the participant map and on the consult leg. Partial ordinary calls are false.
+  // Self missing from the updated participants map is terminal (EP-DN removal).
+  // Remaining in the map with hasLeft, or disappearing only from mainCall media, is not.
 }
 ```
 

@@ -6,6 +6,48 @@ import {union} from 'lodash';
 import ServiceUrl from './service-url';
 import {matchAllowedDomain, normalizeAllowedDomains} from '../domains';
 
+/**
+ * Check if a candidate URL matches a catalog URL with proper origin validation.
+ * This prevents bypasses like https://trusted.example.attacker.com matching https://trusted.example
+ *
+ * @param {string} candidateUrlString - The URL to validate
+ * @param {string} catalogUrlString - The catalog URL to compare against
+ * @returns {boolean} - True if the candidate URL is under the catalog URL's origin and path
+ */
+export function matchesCatalogUrl(candidateUrlString, catalogUrlString) {
+  try {
+    const candidateUrl = new URL(candidateUrlString);
+    const catalogUrl = new URL(catalogUrlString);
+
+    // Origins must match exactly (scheme + host + port)
+    if (candidateUrl.origin !== catalogUrl.origin) {
+      return false;
+    }
+
+    // Normalize paths by removing trailing slashes (except root "/")
+    const catalogPath = catalogUrl.pathname.replace(/\/$/, '') || '/';
+    const candidatePath = candidateUrl.pathname;
+
+    if (catalogPath === '/') {
+      // Root path matches everything under this origin
+      return true;
+    }
+
+    if (candidatePath.startsWith(catalogPath)) {
+      // Ensure we're at a path boundary, not mid-segment
+      // e.g., /api/v1 should match /api/v1/foo but not /api/v1extra
+      // nextChar is undefined for exact match, '/' for valid extension
+      const nextChar = candidatePath[catalogPath.length];
+
+      return nextChar === '/' || nextChar === undefined;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 /* eslint-disable no-underscore-dangle */
 /**
  * @class
@@ -246,20 +288,26 @@ const ServiceCatalog = AmpState.extend({
       ...this.serviceGroups.override,
     ];
 
+    // Invalid URLs cannot match any service
+    try {
+      // eslint-disable-next-line no-new
+      new URL(url);
+    } catch {
+      return undefined;
+    }
+
     return serviceUrls.find((serviceUrl) => {
-      // Check to see if the URL we are checking starts with the default URL
-      if (url.startsWith(serviceUrl.defaultUrl)) {
+      // Check if the URL matches the default URL with proper origin validation
+      if (matchesCatalogUrl(url, serviceUrl.defaultUrl)) {
         return true;
       }
 
-      // If not, we check to see if the alternate URLs match
-      // These are made by swapping the host of the default URL
-      // with that of an alternate host
+      // Check alternate URLs (built by swapping host with alternate hosts)
       for (const host of serviceUrl.hosts) {
         const alternateUrl = new URL(serviceUrl.defaultUrl);
         alternateUrl.host = host.host;
 
-        if (url.startsWith(alternateUrl.toString())) {
+        if (matchesCatalogUrl(url, alternateUrl.toString())) {
           return true;
         }
       }

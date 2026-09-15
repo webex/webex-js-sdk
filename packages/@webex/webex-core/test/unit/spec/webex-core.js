@@ -179,7 +179,7 @@ describe('Webex', () => {
 
   describe('initializes with interceptors', () => {
     [
-      // 4 pre, 4 post, 10 remaining default = 18
+      // 4 pre (CatalogUrlInterceptor is opt-in), 4 post, 10 remaining default = 18
       [
         'defaults to existing interceptors if undefined',
         undefined,
@@ -189,6 +189,58 @@ describe('Webex', () => {
           'RequestEventInterceptor',
           'WebexTrackingIdInterceptor',
           'RateLimitInterceptor',
+          'ServiceInterceptor',
+          'UserAgentInterceptor',
+          'ProxyInterceptor',
+          'WebexUserAgentInterceptor',
+          'AuthInterceptor',
+          'PayloadTransformerInterceptor',
+          'RedirectInterceptor',
+          'DefaultOptionsInterceptor',
+          'HostMapInterceptor',
+          'ServerErrorInterceptor',
+          'HttpStatusInterceptor',
+          'NetworkTimingInterceptor',
+          'EmbargoInterceptor',
+          'RateLimitInterceptor',
+        ],
+      ],
+      [
+        'does not include CatalogUrlInterceptor for a truthy non-boolean value',
+        {services: {validateCatalogUrls: 'true'}},
+        18,
+        [
+          'RequestTimingInterceptor',
+          'RequestEventInterceptor',
+          'WebexTrackingIdInterceptor',
+          'RateLimitInterceptor',
+          'ServiceInterceptor',
+          'UserAgentInterceptor',
+          'ProxyInterceptor',
+          'WebexUserAgentInterceptor',
+          'AuthInterceptor',
+          'PayloadTransformerInterceptor',
+          'RedirectInterceptor',
+          'DefaultOptionsInterceptor',
+          'HostMapInterceptor',
+          'ServerErrorInterceptor',
+          'HttpStatusInterceptor',
+          'NetworkTimingInterceptor',
+          'EmbargoInterceptor',
+          'RateLimitInterceptor',
+        ],
+      ],
+      // CatalogUrlInterceptor is opt-in via services.validateCatalogUrls
+      [
+        'includes CatalogUrlInterceptor when validateCatalogUrls is enabled',
+        {services: {validateCatalogUrls: true}},
+        19,
+        [
+          'RequestTimingInterceptor',
+          'RequestEventInterceptor',
+          'WebexTrackingIdInterceptor',
+          'RateLimitInterceptor',
+          'CatalogUrlInterceptor',
           'ServiceInterceptor',
           'UserAgentInterceptor',
           'ProxyInterceptor',
