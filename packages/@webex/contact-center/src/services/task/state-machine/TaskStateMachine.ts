@@ -263,7 +263,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded'],
             },
             {
               target: TaskState.TERMINATED,
@@ -965,7 +965,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+            actions: ['updateTaskData', 'markEnded', 'clearConsultState'],
           },
           [TaskEvent.OUTBOUND_FAILED]: [
             {
@@ -1246,7 +1246,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.TASK_WRAPUP]: {
             guard: guards.shouldWrapUp,
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+            actions: ['updateTaskData', 'markEnded', 'clearConsultState'],
           },
           [TaskEvent.OUTBOUND_FAILED]: [
             {

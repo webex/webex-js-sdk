@@ -2167,6 +2167,54 @@ describe('Task state machine', () => {
       expect(publishWrapup).toHaveBeenCalledTimes(1);
     });
 
+    it('emits wrap-up once on TASK_WRAPUP from CONSULTING when wrap-up is required', () => {
+      const {emitTaskWrapup, publishWrapup} = createPublishAwareEmitTaskWrapupMock();
+      const service = createActor(
+        createTaskStateMachine(createConfig(), {actions: {emitTaskWrapup}})
+      );
+      service.start();
+      const taskData = createTaskData({
+        interaction: {owner: 'agent-1', state: 'connected'} as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.CONSULT, destination: 'agent-2', destinationType: 'agent'});
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
+
+      service.send({
+        type: TaskEvent.TASK_WRAPUP,
+        taskData: {...taskData, wrapUpRequired: true},
+      });
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+      expect(publishWrapup).toHaveBeenCalledTimes(1);
+    });
+
+    it('emits wrap-up once on TASK_WRAPUP from CONFERENCING when wrap-up is required', () => {
+      const {emitTaskWrapup, publishWrapup} = createPublishAwareEmitTaskWrapupMock();
+      const service = createActor(
+        createTaskStateMachine(createConfig(), {actions: {emitTaskWrapup}})
+      );
+      service.start();
+      const taskData = createTaskData({
+        interaction: {
+          owner: 'agent-1',
+          state: 'conference',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+        } as any,
+      });
+
+      primeConferencing(service, taskData);
+      service.send({
+        type: TaskEvent.TASK_WRAPUP,
+        taskData: {...taskData, wrapUpRequired: true},
+      });
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+      expect(publishWrapup).toHaveBeenCalledTimes(1);
+    });
+
     it('enters WRAPPING_UP on PARTICIPANT_LEAVE when this agent left and wrap-up is required', () => {
       const service = startMachine();
       const conferenceData = createTaskData({
@@ -2895,6 +2943,28 @@ describe('Task state machine', () => {
       });
       service.send({type: TaskEvent.TASK_WRAPUP, taskData: wrapupTaskData});
       expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
+    it('emits wrap-up once on TASK_WRAPUP from OFFERED when wrapup is required', () => {
+      const {emitTaskWrapup, publishWrapup} = createPublishAwareEmitTaskWrapupMock();
+      const service = createActor(
+        createTaskStateMachine(createConfig(), {actions: {emitTaskWrapup}})
+      );
+      service.start();
+      const offerTaskData = createTaskData({
+        interaction: {outboundType: 'OUTDIAL'} as any,
+      });
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: offerTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.OFFERED);
+
+      const wrapupTaskData = createTaskData({
+        agentId: 'agent-1',
+        wrapUpRequired: true,
+        interaction: {outboundType: 'OUTDIAL', state: 'wrapUp', isTerminated: true} as any,
+      });
+      service.send({type: TaskEvent.TASK_WRAPUP, taskData: wrapupTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+      expect(publishWrapup).toHaveBeenCalledTimes(1);
     });
   });
 

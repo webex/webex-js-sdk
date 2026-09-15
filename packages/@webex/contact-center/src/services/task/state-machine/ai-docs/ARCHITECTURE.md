@@ -94,8 +94,11 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 - `CONSULTING_ACTIVE` -> `CONSULTING`
   - Guard: none
   - Actions: `updateTaskData`, `setConsultAgentJoined`, `emitTaskConsultAccepted`, `emitTaskConsulting`
-- `TASK_WRAPUP` -> `TERMINATED`
-  - Guard: none
+- `TASK_WRAPUP` -> `WRAPPING_UP`
+  - Guard: `guards.shouldWrapUp`
+  - Actions: `updateTaskData`, `markEnded`; `WRAPPING_UP` entry emits `task:wrapup`
+- `TASK_WRAPUP` -> `TERMINATED` (default branch)
+  - Guard: default
   - Actions: `updateTaskData`, `markEnded`, `emitTaskEnd`
 - `RONA` / `ASSIGN_FAILED` / `INVITE_FAILED` / `OUTBOUND_FAILED` -> `TERMINATED`
   - Guard: none
@@ -159,7 +162,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
   - Actions: `updateTaskData`, `markEnded`, `emitTaskEnd`
 - `TASK_WRAPUP` -> `WRAPPING_UP`
   - Guard: none
-  - Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
+  - Actions: `updateTaskData`, `markEnded`; `WRAPPING_UP` entry emits `task:wrapup`
 - `PAUSE_RECORDING` / `RESUME_RECORDING` -> Stay `CONNECTED`
   - Guard: none
   - Actions: `updateTaskData`, `setRecordingState`, `emitTaskRecordingPaused` / `emitTaskRecordingResumed`
@@ -384,7 +387,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
   - Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup`, `requestCleanup`
 - `TASK_WRAPUP` -> `WRAPPING_UP`
   - Guard: none
-  - Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup`
+  - Actions: `updateTaskData`, `markEnded`, `clearConsultState`; `WRAPPING_UP` entry emits `task:wrapup`
 - `MERGE_TO_CONFERENCE` -> `CONF_INITIATING`
   - Guard: none
   - Actions: none
@@ -495,6 +498,9 @@ is not treated as departure. `PARTICIPANT_LEAVE` is handled in `HELD`,
 - `CONFERENCE_END` -> `TERMINATED` (default branch)
   - Guard: default
   - Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskEnd`
+- `TASK_WRAPUP` -> `WRAPPING_UP`
+  - Guard: `guards.shouldWrapUp`
+  - Actions: `updateTaskData`, `markEnded`, `clearConsultState`; `WRAPPING_UP` entry emits `task:wrapup`
 - `CONTACT_ENDED` -> stay `CONFERENCING`
   - Guard: none
   - Actions: `updateTaskData`, `requestCleanup`

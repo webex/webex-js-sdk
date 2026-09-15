@@ -874,7 +874,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`; `WRAPPING_UP` entry emits `task:wrapup`
 
 - `TASK_WRAPUP` -> `TERMINATED`
 
@@ -1390,7 +1390,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: none
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`; `WRAPPING_UP` entry emits `task:wrapup`
 
 - `MERGE_TO_CONFERENCE` -> `CONF_INITIATING`
 
@@ -1591,6 +1591,12 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 - Guard: none
 
 - Actions: `updateTaskData`, `requestCleanup`
+
+- `TASK_WRAPUP` -> `WRAPPING_UP`
+
+- Guard: `guards.shouldWrapUp`
+
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`; `WRAPPING_UP` entry emits `task:wrapup`
 
 **Description**: Post-interaction work (ACW) is in progress.
 
