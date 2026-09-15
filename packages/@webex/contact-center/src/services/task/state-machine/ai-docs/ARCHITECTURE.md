@@ -485,7 +485,7 @@ is not treated as departure. `PARTICIPANT_LEAVE` is handled in `HELD`,
 
 - `EXIT_CONFERENCE_SUCCESS` -> `WRAPPING_UP` or `TERMINATED`
   - Guard: `guards.shouldWrapUp` or default
-  - Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup` or `emitTaskEnd` (shared helper also wired on `CONNECTED` and `HELD` for Voice HTTP exit)
+  - Actions: `updateTaskData`, `markEnded`, `clearConsultState`, or `emitTaskEnd` on terminate; `WRAPPING_UP` entry emits `task:wrapup` (shared helper on `CONNECTED`, `HELD`, and `CONFERENCING` for Voice HTTP exit)
 - `CONFERENCE_END` -> `WRAPPING_UP`
   - Guard: `guards.shouldWrapUp`
   - Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup`

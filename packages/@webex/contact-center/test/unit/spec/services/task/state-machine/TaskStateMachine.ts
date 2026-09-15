@@ -217,6 +217,24 @@ describe('Task state machine', () => {
       expect(emitTaskEnd).not.toHaveBeenCalled();
     });
 
+    it('enters WRAPPING_UP on TASK_WRAPUP while HOLD_INITIATING and emits wrap-up once', () => {
+      const emitTaskWrapup = jest.fn();
+      const service = createActor(
+        createTaskStateMachine({...createConfig(), agentId: 'agent-1'}, {actions: {emitTaskWrapup}})
+      );
+      service.start();
+      const taskData = createActiveMainCallTaskData();
+
+      enterTransientHoldState(service, TaskState.HOLD_INITIATING, taskData);
+      service.send({
+        type: TaskEvent.TASK_WRAPUP,
+        taskData: {...taskData, wrapUpRequired: true},
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+      expect(emitTaskWrapup).toHaveBeenCalledTimes(1);
+    });
+
     it('ignores PARTICIPANT_LEAVE in HOLD_INITIATING when a remote Drop identifies the current agent', () => {
       const {service, emitTaskEnd} = startMachineWithEndSpy();
       const taskData = createActiveMainCallTaskData();
@@ -1895,10 +1913,24 @@ describe('Task state machine', () => {
       expect(service.getSnapshot().context.taskData?.wrapUpRequired).toBe(true);
     });
 
+    it('emits wrap-up once on EXIT_CONFERENCE_SUCCESS while CONNECTED', () => {
+      const emitTaskWrapup = jest.fn();
+      const service = createActor(
+        createTaskStateMachine(createConfig(), {actions: {emitTaskWrapup}})
+      );
+      service.start();
+      const taskData = conferenceInProgressTaskData();
+
+      primeConnectedWithConferenceTaskData(service, taskData);
+      service.send({type: TaskEvent.EXIT_CONFERENCE_SUCCESS, taskData});
+
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+      expect(emitTaskWrapup).toHaveBeenCalledTimes(1);
+    });
+
     it('terminates on EXIT_CONFERENCE_SUCCESS while CONNECTED when wrap-up is not required', () => {
       const service = startMachine();
       const taskData = conferenceInProgressTaskData({
-        isConsulted: true,
         wrapUpRequired: false,
         interaction: {
           owner: 'other-agent',
@@ -1912,6 +1944,7 @@ describe('Task state machine', () => {
               type: 'Agent',
               hasJoined: true,
               hasLeft: false,
+              isWrapUp: false,
             },
             'agent-2': {
               id: 'agent-2',

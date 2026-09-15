@@ -1000,7 +1000,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp` (wrap-up branch) or default (terminate)
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup` or `emitTaskEnd` (same as `CONFERENCING`; used when Voice `exitConference()` succeeds while the actor is still `CONNECTED` but conference is active in task data)
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, or `emitTaskEnd`; `WRAPPING_UP` entry emits `task:wrapup` (same as `CONFERENCING`; Voice `exitConference()` while actor stays `CONNECTED` with conference in task data)
 
 **Description**: Main call is on hold.
 
@@ -1128,6 +1128,12 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Actions: `updateTaskData`
 
+- `TASK_WRAPUP` -> `WRAPPING_UP`
+
+- Guard: none
+
+- Actions: `updateTaskData`, `markEnded` (`WRAPPING_UP` entry emits `task:wrapup`)
+
 **Description**: Resume/unhold request has been sent and is awaiting backend confirmation.
 
 **How this state is reached (incoming transitions)**:
@@ -1151,6 +1157,12 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 - Guard: none
 
 - Actions: none
+
+- `TASK_WRAPUP` -> `WRAPPING_UP`
+
+- Guard: none
+
+- Actions: `updateTaskData`, `markEnded` (`WRAPPING_UP` entry emits `task:wrapup`)
 
 **Description**: Consult request is in-flight.
 
@@ -1474,7 +1486,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp` or default
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup` or `emitTaskEnd` (shared with `CONNECTED` / `HELD`)
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, or `emitTaskEnd`; `WRAPPING_UP` entry emits `task:wrapup` (shared with `CONNECTED` / `HELD`)
 
 - `CONSULT_END` -> stay `CONFERENCING`
 
