@@ -133,10 +133,6 @@ export type {
   AIAssistantRTDStatusEvent,
   /** Validated agent-scoped wellness notification */
   WellnessBreakEvent,
-  /** Wellness notification listener */
-  WellnessBreakEventListener,
-  /** AI Assistant RTD status listener */
-  AIAssistantRTDStatusListener,
   /** Wellness offer-response parameters */
   RespondToWellnessBreakParams,
 } from './types';

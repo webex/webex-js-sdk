@@ -558,7 +558,6 @@ export type RequestBody =
   | Agent.Logout
   | Agent.UserStationLogin
   | Agent.StateChange
-  | Agent.StateChangeV2
   | Agent.BuddyAgents
   | Contact.HoldResumePayload
   | Contact.ResumeRecordingPayload
@@ -1012,11 +1011,15 @@ export interface WellnessBreakEvent {
   trackingId?: string;
 }
 
-/** Listener for validated wellness notifications. @public */
-export type WellnessBreakEventListener = (event: WellnessBreakEvent) => void;
-
-/** Listener for AI Assistant RTD connection lifecycle events. @public */
-export type AIAssistantRTDStatusListener = (event: AIAssistantRTDStatusEvent) => void;
+/**
+ * Supplies the live, Contact Center-owned context used for wellness action requests.
+ * @internal
+ */
+export type WellnessBreakContextProvider = () => {
+  isWellnessBreakEnabled: boolean;
+  agentId?: string;
+  agentSessionId?: string;
+};
 
 /**
  * Parameters for responding to a backend-provided wellness offer.

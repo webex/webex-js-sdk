@@ -18,10 +18,7 @@ import {SetStateResponse} from '../../../src/types';
 import {AGENT, SUBSCRIBE_API, WEB_RTC_PREFIX} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
-import {
-  CC_EVENTS,
-  INTERNAL_AGENT_STATE_CONTROL_EVENTS,
-} from '../../../src/services/config/types';
+import {CC_EVENTS} from '../../../src/services/config/types';
 import LoggerProxy from '../../../src/logger-proxy';
 import * as Utils from '../../../src/services/core/Utils';
 import {
@@ -129,7 +126,6 @@ describe('webex.cc', () => {
         logout: jest.fn(),
         reload: jest.fn(),
         stateChange: jest.fn(),
-        stateChangeV2: jest.fn(),
         buddyAgents: jest.fn(),
       },
       config: {
@@ -2170,97 +2166,6 @@ describe('webex.cc', () => {
       expect(webex.cc['currentAgentSessionId']).toBeUndefined();
     });
 
-    it('normalizes an Idle Agent State Control request and response', async () => {
-      jest.spyOn(webex.cc.services.agent, 'stateChangeV2').mockResolvedValue({
-        type: 'RoutingMessage',
-        orgId: 'mockOrgId',
-        trackingId: 'envelope-tracking',
-        data: {
-          agentId: 'agent-1',
-          orgId: 'mockOrgId',
-          agentSessionId: 'session-1',
-          channelType: 'telephony',
-          agentChannelStateDetail: {
-            agentState: 'Idle',
-            pendingIdle: false,
-            auxCodeId: 'wellbeing-code',
-            stateChangeTimestamp: 1787640000000,
-            stateChangeReason: 'wellness-break',
-          },
-          connectedChannels: ['telephony'],
-          trackingId: 'event-tracking',
-          type: 'AgentChannelStateChanged',
-          eventType: 'AgentDesktopMessage',
-        },
-      });
-
-      await expect(
-        webex.cc['setAgentChannelState']({
-          channelTypes: [' telephony ', 'chat'],
-          state: 'Idle',
-          auxCodeId: ' wellbeing-code ',
-          reason: ' wellness-break ',
-        })
-      ).resolves.toEqual({
-        agentId: 'agent-1',
-        orgId: 'mockOrgId',
-        agentSessionId: 'session-1',
-        channelType: 'telephony',
-        agentChannelStateDetail: expect.objectContaining({agentState: 'Idle'}),
-        connectedChannels: ['telephony'],
-        trackingId: 'event-tracking',
-      });
-      expect(webex.cc.services.agent.stateChangeV2).toHaveBeenCalledWith({
-        data: {
-          channelType: ['telephony', 'chat'],
-          state: 'Idle',
-          auxCodeId: 'wellbeing-code',
-          reason: 'wellness-break',
-          agentId: 'agent-1',
-        },
-      });
-    });
-
-    it('omits auxCodeId for Available and validates channel state input locally', async () => {
-      jest.spyOn(webex.cc.services.agent, 'stateChangeV2').mockResolvedValue({
-        type: 'AgentChannelStateChange',
-        orgId: 'mockOrgId',
-        trackingId: 'event-tracking',
-        data: {
-          agentId: 'agent-1',
-          orgId: 'mockOrgId',
-          agentSessionId: 'session-1',
-          channelType: 'chat',
-          agentChannelStateDetail: {
-            agentState: 'Available',
-            pendingIdle: false,
-            stateChangeTimestamp: 1787640000000,
-            stateChangeReason: 'restore',
-          },
-          connectedChannels: ['chat'],
-          trackingId: 'event-tracking',
-          type: 'AgentChannelStateChanged',
-          eventType: 'AgentDesktopMessage',
-        },
-      });
-
-      await webex.cc['setAgentChannelState']({
-        channelTypes: ['chat'],
-        state: 'Available',
-        auxCodeId: 'must-not-be-sent',
-      });
-      expect(webex.cc.services.agent.stateChangeV2).toHaveBeenCalledWith({
-        data: {channelType: ['chat'], state: 'Available', agentId: 'agent-1'},
-      });
-
-      await expect(
-        webex.cc['setAgentChannelState']({channelTypes: [], state: 'Available'})
-      ).rejects.toThrow('AGENT_CHANNEL_TYPES_REQUIRED');
-      await expect(
-        webex.cc['setAgentChannelState']({channelTypes: ['chat'], state: 'Idle'})
-      ).rejects.toThrow('AGENT_CHANNEL_IDLE_CODE_REQUIRED');
-    });
-
     it('emits agent-scoped wellness events regardless of notification session and keeps task RTD routing', () => {
       const emitSpy = jest.spyOn(webex.cc, 'emit');
       webex.cc['activeRtdGeneration'] = 2;
@@ -3558,84 +3463,6 @@ describe('webex.cc', () => {
         notifsTrackingId: 'trk-relogin',
         type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
       });
-    });
-
-    it('should emit a normalized Agent State Control relogin snapshot', () => {
-      const channelsMap = {chat: ['chat-1'], telephony: ['voice-1']};
-      const agentChannelStateDetailMap = {
-        chat: {
-          agentState: 'Idle',
-          pendingIdle: false,
-          auxCodeId: 'wellness-code',
-          stateChangeTimestamp: 123,
-          stateChangeReason: 'wellness-break',
-        },
-      };
-      messageCallback(
-        JSON.stringify({
-          trackingId: 'notification-track',
-          type: 'AgentRequestEvent',
-          data: {
-            type: INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
-            agentId: 'agent-1',
-            orgId: 'org-id',
-            agentSessionId: 'session-1',
-            channelsMap,
-            agentChannelStateDetailMap,
-          },
-        })
-      );
-
-      expect(emitSpy).toHaveBeenCalledWith(
-        INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
-        {
-          agentId: 'agent-1',
-          orgId: 'org-id',
-          agentSessionId: 'session-1',
-          trackingId: 'notification-track',
-          channelsMap,
-          agentChannelStateDetailMap,
-        }
-      );
-      expect(emitSpy).toHaveBeenCalledTimes(1);
-    });
-
-    it('should emit a normalized Agent State Control channel-state event', () => {
-      const agentChannelStateDetail = {
-        agentState: 'Available',
-        pendingIdle: false,
-        stateChangeTimestamp: 456,
-        stateChangeReason: 'wellness-break-complete',
-      };
-      messageCallback(
-        JSON.stringify({
-          trackingId: 'notification-track',
-          type: 'AgentChannelStateChange',
-          data: {
-            type: INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
-            agentId: 'agent-1',
-            orgId: 'org-id',
-            agentSessionId: 'session-1',
-            channelType: 'chat',
-            agentChannelStateDetail,
-            connectedChannels: ['chat'],
-          },
-        })
-      );
-
-      expect(emitSpy).toHaveBeenCalledWith(
-        INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
-        {
-          agentId: 'agent-1',
-          orgId: 'org-id',
-          agentSessionId: 'session-1',
-          channelType: 'chat',
-          agentChannelStateDetail,
-          connectedChannels: ['chat'],
-          trackingId: 'notification-track',
-        }
-      );
-      expect(emitSpy).toHaveBeenCalledTimes(1);
     });
 
     [

@@ -7,6 +7,7 @@ import {
   WCC_API_GATEWAY,
 } from '../../../../../../src/services/constants';
 import {WEB_SOCKET_MANAGER_FILE} from '../../../../../../src/constants';
+import {CC_EVENTS} from '../../../../../../src/services/config/types';
 import LoggerProxy from '../../../../../../src/logger-proxy';
 
 jest.mock('../../../../../../src/services/core/WebexRequest');
@@ -22,6 +23,7 @@ jest.mock('../../../../../../src/logger-proxy', () => ({
 
 class MockWebSocket {
   static inst: MockWebSocket;
+  static instances: MockWebSocket[] = [];
   onopen: () => void = () => {};
   onerror: (event: any) => void = () => {};
   onclose: (event: any) => void = () => {};
@@ -31,6 +33,7 @@ class MockWebSocket {
 
   constructor() {
     MockWebSocket.inst = this;
+    MockWebSocket.instances.push(this);
     setTimeout(() => {
       this.onopen();
     }, 10);
@@ -77,6 +80,7 @@ describe('WebSocketManager', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     MockWebSocket.inst = undefined as unknown as MockWebSocket;
+    MockWebSocket.instances = [];
     shouldAutoWelcome = true;
 
     mockWebex = {
@@ -322,6 +326,59 @@ it('should register and connect to WebSocket without X-ORGANIZATION-ID header fo
 
       await rejection;
       expect(socketCloseListener).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('should ignore a stale close from a replaced WebSocket generation', async () => {
+    jest.useFakeTimers();
+    try {
+      shouldAutoWelcome = false;
+      const subscribeResponse = {
+        body: {
+          webSocketUrl: 'wss://fake-url',
+        },
+      };
+      (mockWebex.request as jest.Mock)
+        .mockResolvedValueOnce(subscribeResponse)
+        .mockResolvedValueOnce(subscribeResponse);
+      const socketCloseListener = jest.fn();
+      webSocketManager.on('socketClose', socketCloseListener);
+
+      const firstInitialization = webSocketManager.initWebSocket({
+        body: fakeSubscribeRequest,
+        resource: RTD_SUBSCRIBE_API,
+      });
+      const firstRejection = expect(firstInitialization).rejects.toThrow(
+        'WebSocket closed before Welcome: replace connection'
+      );
+
+      for (let attempt = 0; attempt < 10 && MockWebSocket.instances.length < 1; attempt += 1) {
+        await Promise.resolve();
+      }
+      expect(MockWebSocket.instances).toHaveLength(1);
+      const firstSocket = MockWebSocket.instances[0];
+      webSocketManager.close(false, 'replace connection');
+      await firstRejection;
+
+      const secondInitialization = webSocketManager.initWebSocket({
+        body: fakeSubscribeRequest,
+        resource: RTD_SUBSCRIBE_API,
+      });
+      for (let attempt = 0; attempt < 10 && MockWebSocket.instances.length < 2; attempt += 1) {
+        await Promise.resolve();
+      }
+      expect(MockWebSocket.instances).toHaveLength(2);
+      const secondSocket = MockWebSocket.instances[1];
+
+      firstSocket.onclose({code: 1000, reason: 'late close'});
+      secondSocket.onmessage({
+        data: JSON.stringify({type: CC_EVENTS.WELCOME, data: {agentId: 'agent-1'}}),
+      });
+
+      await expect(secondInitialization).resolves.toEqual({agentId: 'agent-1'});
+      expect(socketCloseListener).not.toHaveBeenCalled();
     } finally {
       jest.useRealTimers();
     }

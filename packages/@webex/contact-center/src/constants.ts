@@ -8,6 +8,7 @@ export const LOG_PREFIX = 'PLUGIN_CC';
 export const WEB_CALLING_SERVICE_FILE = 'WebCallingService';
 export const CONFIG_FILE_NAME = 'config-index';
 export const CC_FILE = 'cc';
+export const WELLNESS_BREAK_HANDLER = 'Wellness_Break_Handler';
 export const CONNECTION_SERVICE_FILE = 'connection-service';
 export const WEB_SOCKET_MANAGER_FILE = 'WebSocketManager';
 export const AQM_REQS_FILE = 'aqm-reqs';
@@ -75,7 +76,6 @@ export const METHODS = {
   REQUEST_WELLNESS_BREAK: 'requestWellnessBreak',
   RESPOND_TO_WELLNESS_BREAK: 'respondToWellnessBreak',
   GET_WELLBEING_BREAK_IDLE_CODE: 'getWellbeingBreakIdleCode',
-  SET_AGENT_CHANNEL_STATE: 'setAgentChannelState',
   CONNECT_RTD_WEBSOCKET: 'connectRTDWebsocket',
   HANDLE_RTD_WEBSOCKET_MESSAGE: 'handleRTDWebsocketMessage',
   SET_MANAGE_WEBEX_CALLING_IN_WXCC: 'setManageWebexCallingInWxcc',

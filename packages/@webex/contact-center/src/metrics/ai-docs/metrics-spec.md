@@ -264,7 +264,6 @@ All event names are defined in `METRIC_EVENT_NAMES` (`constants.ts`). Events fol
 | `AI_ASSISTANT_RTD_CONNECTED` / `DISCONNECTED` | `'AI Assistant RTD ...'` | Wellness-capable RTD connection state |
 | `AI_ASSISTANT_RTD_EVENT_INVALID` | `'AI Assistant RTD Event Invalid'` | Malformed, mismatched, stale, or superseded RTD event ignored |
 | `WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS` / `FAILED` | `'Wellbeing Break Idle Code Fetch ...'` | System wellness idle-code lookup result |
-| `AGENT_CHANNEL_STATE_CHANGE_SUCCESS` / `FAILED` | `'Agent Channel State Change ...'` | ASC v2 state-change result |
 
 All event names are defined in `constants.ts` as `METRIC_EVENT_NAMES`. Events follow a `{Domain} {Action} {Success|Failed}` naming convention:
 
@@ -453,8 +452,6 @@ This table contains all 116 names from `src/metrics/constants.ts`; taxonomy pres
 | `AI_ASSISTANT_RTD_EVENT_INVALID` | `AI Assistant RTD Event Invalid` | no |
 | `WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS` | `Wellbeing Break Idle Code Fetch Success` | no |
 | `WELLBEING_BREAK_IDLE_CODE_FETCH_FAILED` | `Wellbeing Break Idle Code Fetch Failed` | no |
-| `AGENT_CHANNEL_STATE_CHANGE_SUCCESS` | `Agent Channel State Change Success` | no |
-| `AGENT_CHANNEL_STATE_CHANGE_FAILED` | `Agent Channel State Change Failed` | no |
 | `USER_PREFERENCE_GET_SUCCESS` | `User Preference Get Success` | yes |
 | `USER_PREFERENCE_GET_FAILED` | `User Preference Get Failed` | yes |
 | `USER_PREFERENCE_CREATE_SUCCESS` | `User Preference Create Success` | yes |

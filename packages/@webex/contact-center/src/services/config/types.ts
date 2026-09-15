@@ -196,17 +196,6 @@ export const CC_AGENT_EVENTS = {
 } as const;
 
 /**
- * Agent State Control events used internally to keep first-party features compatible
- * with State Control V2 sessions. These are intentionally excluded from the public
- * `CC_AGENT_EVENTS` and `CC_EVENTS` contracts.
- * @internal
- */
-export const INTERNAL_AGENT_STATE_CONTROL_EVENTS = {
-  AGENT_CHANNEL_RELOGIN_SUCCESS: 'AgentChannelReloginSuccess',
-  AGENT_CHANNEL_STATE_CHANGED: 'AgentChannelStateChanged',
-} as const;
-
-/**
  * Combined Contact Center events including both agent and task events
  * @enum {string}
  * @public

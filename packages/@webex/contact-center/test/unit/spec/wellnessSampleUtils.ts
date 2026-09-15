@@ -90,16 +90,21 @@ describe('Contact Center wellness sample utilities', () => {
   });
 
   describe('sample public surface guard', () => {
-    it('does not demonstrate State Control V2 APIs in the public sample', () => {
-      const sampleSource = [
+    it('attaches the wellness constants consumed by the standalone browser sample', () => {
+      const webexSource = readFileSync(
+        resolve(__dirname, '../../../src/webex.js'),
+        'utf8'
+      );
+      const appSource = readFileSync(
         resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
-        resolve(__dirname, '../../../../../../docs/samples/contact-center/index.html'),
-      ]
-        .map((path) => readFileSync(path, 'utf8'))
-        .join('\n');
+        'utf8'
+      );
 
-      ['setAgentChannelState', 'AGENT_CHANNEL_STATE_CHANGED', 'AGENT_CHANNEL_RELOGIN_SUCCESS'].forEach(
-        (surface) => expect(sampleSource).not.toContain(surface)
+      ['WELLNESS_BREAK_NOTIFICATION_ACTIONS', 'WELLNESS_BREAK_USER_ACTIONS'].forEach(
+        (surface) => {
+          expect(webexSource).toContain(`Webex.${surface} = ${surface};`);
+          expect(appSource).toContain(surface);
+        }
       );
     });
 

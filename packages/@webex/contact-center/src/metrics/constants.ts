@@ -210,8 +210,6 @@ export const METRIC_EVENT_NAMES = {
   AI_ASSISTANT_RTD_EVENT_INVALID: 'AI Assistant RTD Event Invalid',
   WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS: 'Wellbeing Break Idle Code Fetch Success',
   WELLBEING_BREAK_IDLE_CODE_FETCH_FAILED: 'Wellbeing Break Idle Code Fetch Failed',
-  AGENT_CHANNEL_STATE_CHANGE_SUCCESS: 'Agent Channel State Change Success',
-  AGENT_CHANNEL_STATE_CHANGE_FAILED: 'Agent Channel State Change Failed',
 
   // User Preference API Events
   USER_PREFERENCE_GET_SUCCESS: 'User Preference Get Success',

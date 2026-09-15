@@ -14,6 +14,7 @@ import {
   RealTimeAssistanceUserActionParams,
   RespondToWellnessBreakParams,
   WellnessBreakUserAction,
+  WellnessBreakContextProvider,
   WELLNESS_BREAK_USER_ACTIONS,
   GenericError,
 } from '../types';
@@ -26,20 +27,7 @@ import {
 } from './constants';
 import {AIFeatureFlags} from './config/types';
 
-type WellnessContext = {
-  isWellnessBreakEnabled: boolean;
-  agentId?: string;
-  agentSessionId?: string;
-};
-
-type WellnessContextProvider = () => WellnessContext;
-
-const wellnessContextProviders = new WeakMap<object, WellnessContextProvider>();
-const WELLNESS_BREAK_RESPONSE_ACTIONS = new Set<WellnessBreakUserAction>([
-  WELLNESS_BREAK_USER_ACTIONS.ACCEPTED,
-  WELLNESS_BREAK_USER_ACTIONS.REJECTED,
-  WELLNESS_BREAK_USER_ACTIONS.NO_RESPONSE,
-]);
+const wellnessContextProviders = new WeakMap<object, WellnessBreakContextProvider>();
 
 /**
  * ApiAIAssistant provides AI Assistant APIs for transcript controls.
@@ -71,30 +59,6 @@ export class ApiAIAssistant {
     this.aiFeature = aiFeature;
   }
 
-  private validateWellnessContext(): {agentId: string; agentSessionId: string; orgId: string} {
-    const context = wellnessContextProviders.get(this)?.();
-    const agentId = context?.agentId?.trim();
-    const agentSessionId = context?.agentSessionId?.trim();
-    const orgId = this.webex.credentials.getOrgId()?.trim();
-
-    let validationError: string | undefined;
-    if (context?.isWellnessBreakEnabled !== true) {
-      validationError = 'WELLNESS_BREAK_NOT_ENABLED';
-    } else if (!orgId) {
-      validationError = 'WELLNESS_BREAK_ORG_ID_REQUIRED';
-    } else if (!agentId) {
-      validationError = 'WELLNESS_BREAK_AGENT_ID_REQUIRED';
-    } else if (!agentSessionId) {
-      validationError = 'WELLNESS_BREAK_AGENT_SESSION_REQUIRED';
-    }
-
-    if (validationError) {
-      throw this.createWellnessError(validationError);
-    }
-
-    return {agentId, agentSessionId, orgId};
-  }
-
   private async sendWellnessBreakAction(
     action: WellnessBreakUserAction,
     method: string
@@ -105,7 +69,24 @@ export class ApiAIAssistant {
     ]);
 
     try {
-      const {agentId, agentSessionId, orgId} = this.validateWellnessContext();
+      const context = wellnessContextProviders.get(this)?.();
+      const agentId = context?.agentId?.trim();
+      const agentSessionId = context?.agentSessionId?.trim();
+      const orgId = this.webex.credentials.getOrgId()?.trim();
+
+      if (context?.isWellnessBreakEnabled !== true) {
+        throw this.createWellnessError('WELLNESS_BREAK_NOT_ENABLED');
+      }
+      if (!orgId) {
+        throw this.createWellnessError('WELLNESS_BREAK_ORG_ID_REQUIRED');
+      }
+      if (!agentId) {
+        throw this.createWellnessError('WELLNESS_BREAK_AGENT_ID_REQUIRED');
+      }
+      if (!agentSessionId) {
+        throw this.createWellnessError('WELLNESS_BREAK_AGENT_SESSION_REQUIRED');
+      }
+
       const baseUrl = this.getBaseUrl();
       const response = (await this.webex.request({
         uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
@@ -188,7 +169,13 @@ export class ApiAIAssistant {
    */
   public async respondToWellnessBreak(params: RespondToWellnessBreakParams): Promise<void> {
     const {action} = params;
-    if (!WELLNESS_BREAK_RESPONSE_ACTIONS.has(action)) {
+    if (
+      ![
+        WELLNESS_BREAK_USER_ACTIONS.ACCEPTED,
+        WELLNESS_BREAK_USER_ACTIONS.REJECTED,
+        WELLNESS_BREAK_USER_ACTIONS.NO_RESPONSE,
+      ].includes(action)
+    ) {
       const {error} = getErrorDetails(
         this.createWellnessError('WELLNESS_BREAK_ACTION_INVALID'),
         METHODS.RESPOND_TO_WELLNESS_BREAK,
@@ -576,7 +563,7 @@ export class ApiAIAssistant {
  */
 export const createInternalApiAIAssistant = (
   webex: WebexSDK,
-  wellnessContextProvider: WellnessContextProvider
+  wellnessContextProvider: WellnessBreakContextProvider
 ): ApiAIAssistant => {
   const apiAIAssistant = new ApiAIAssistant(webex);
   wellnessContextProviders.set(apiAIAssistant, wellnessContextProvider);

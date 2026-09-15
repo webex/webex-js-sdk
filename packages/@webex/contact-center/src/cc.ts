@@ -42,27 +42,19 @@ import {
   UNKNOWN_ERROR,
   MERCURY_DISCONNECTED_SUCCESS,
   METHODS,
+  WELLNESS_BREAK_HANDLER,
 } from './constants';
 import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
 import {AGENT, RTD_SUBSCRIBE_API, SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
-import {
-  StateChange,
-  Logout,
-  StateChangeSuccess,
-  AGENT_EVENTS,
-  SetAgentChannelStateParams,
-  AgentChannelStateChangedEvent,
-  AgentChannelReloginSuccessEvent,
-} from './services/agent/types';
-import {getErrorDetails, isValidDialNumber} from './services/core/Utils';
+import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
+import {getErrorDetails, isRecord, isValidDialNumber} from './services/core/Utils';
 import {
   Profile,
   WelcomeEvent,
   CC_EVENTS,
-  INTERNAL_AGENT_STATE_CONTROL_EVENTS,
   OutdialAniEntriesResponse,
   OutdialAniParams,
   Entity,
@@ -96,14 +88,6 @@ import type {
   ContactServiceQueuesResponse,
   ContactServiceQueueSearchParams,
 } from './types';
-
-const WELLNESS_BREAK_HANDLER = 'Wellness_Break_Handler';
-const WELLNESS_NOTIFICATION_ACTIONS = new Set<WellnessBreakNotificationAction>(
-  Object.values(WELLNESS_BREAK_NOTIFICATION_ACTIONS)
-);
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
 
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
@@ -607,7 +591,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return null;
     }
 
-    if (!WELLNESS_NOTIFICATION_ACTIONS.has(actionEvent as WellnessBreakNotificationAction)) {
+    if (
+      !Object.values(WELLNESS_BREAK_NOTIFICATION_ACTIONS).includes(
+        actionEvent as WellnessBreakNotificationAction
+      )
+    ) {
       this.trackInvalidRTDEvent('unknown_wellness_action');
 
       return null;
@@ -1362,7 +1350,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const {channelsMap, ...loginData} = resp.data;
       this.updateWellnessSession(resp.data.agentSessionId);
       this.agentConfig.currentTeamId = resp.data.teamId;
-      this.agentConfig.isAgentLoggedIn = true;
       const response = {
         ...loginData,
         mmProfile: {
@@ -1478,9 +1465,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       await this.teardownWxAppLocalState();
       this.updateWellnessSession();
-      if (this.agentConfig) {
-        this.agentConfig.isAgentLoggedIn = false;
-      }
 
       LoggerProxy.log(`Agent station logout completed successfully`, {
         module: CC_FILE,
@@ -1671,96 +1655,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Changes one or more Agent State Control channels and resolves from the matching
-   * `AgentChannelStateChanged` WebSocket completion event.
-   * @param params - Target channels, state, optional idle code and reason
-   * @returns The normalized channel-state event without the routing envelope
-   * @throws Structured Contact Center error for invalid input, routing failure, or timeout
-   * This is first-party plumbing for features that must remain compatible with
-   * State Control V2 sessions. It is not part of the public Contact Center API.
-   * @internal
-   */
-  private async setAgentChannelState(
-    params: SetAgentChannelStateParams
-  ): Promise<AgentChannelStateChangedEvent> {
-    const method = METHODS.SET_AGENT_CHANNEL_STATE;
-    const channelTypes =
-      params.channelTypes?.map((channelType) => channelType.trim()).filter(Boolean) ?? [];
-    const auxCodeId = params.auxCodeId?.trim();
-    const reason = params.reason?.trim();
-
-    try {
-      let validationReason: string | undefined;
-      if (!channelTypes.length) {
-        validationReason = 'AGENT_CHANNEL_TYPES_REQUIRED';
-      } else if (params.state !== 'Available' && params.state !== 'Idle') {
-        validationReason = 'AGENT_CHANNEL_STATE_INVALID';
-      } else if (params.state === 'Idle' && !auxCodeId) {
-        validationReason = 'AGENT_CHANNEL_IDLE_CODE_REQUIRED';
-      }
-
-      if (validationReason) {
-        const validationError = new Error(validationReason) as GenericError;
-        validationError.details = {
-          type: 'SDK_VALIDATION_ERROR',
-          orgId: this.$webex.credentials.getOrgId(),
-          trackingId: EMPTY_STRING,
-          data: {reason: validationReason},
-        };
-        throw validationError;
-      }
-
-      this.metricsManager.timeEvent([
-        METRIC_EVENT_NAMES.AGENT_CHANNEL_STATE_CHANGE_SUCCESS,
-        METRIC_EVENT_NAMES.AGENT_CHANNEL_STATE_CHANGE_FAILED,
-      ]);
-      const response = await this.services.agent.stateChangeV2({
-        data: {
-          channelType: channelTypes,
-          state: params.state,
-          ...(params.state === 'Idle' ? {auxCodeId} : {}),
-          ...(reason ? {reason} : {}),
-          agentId: params.agentId || this.agentConfig?.agentId,
-        },
-      });
-      const event: AgentChannelStateChangedEvent = {
-        agentId: response.data.agentId,
-        orgId: response.data.orgId,
-        agentSessionId: response.data.agentSessionId,
-        channelType: response.data.channelType,
-        agentChannelStateDetail: response.data.agentChannelStateDetail,
-        connectedChannels: response.data.connectedChannels,
-        trackingId: response.data.trackingId || response.trackingId,
-      };
-
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.AGENT_CHANNEL_STATE_CHANGE_SUCCESS,
-        {
-          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-          state: params.state,
-          channelCount: channelTypes.length,
-        },
-        ['operational']
-      );
-
-      return event;
-    } catch (error) {
-      const failure = (error as GenericError).details as Failure;
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.AGENT_CHANNEL_STATE_CHANGE_FAILED,
-        {
-          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
-          state: params.state,
-          channelCount: channelTypes.length,
-        },
-        ['operational']
-      );
-      const {error: detailedError} = getErrorDetails(error, method, CC_FILE);
-      throw detailedError;
-    }
-  }
-
-  /**
    * Processes incoming websocket messages and emits corresponding events
    * Handles various event types including agent state changes, login events,
    * and other agent-related notifications
@@ -1769,19 +1663,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   private handleWebsocketMessage = (event: string) => {
     const eventData = JSON.parse(event);
-    const nestedEventType = eventData?.data?.type;
-    const isNormalizedAgentChannelEvent =
-      nestedEventType === INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS ||
-      nestedEventType === INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_STATE_CHANGED;
     // Re-emit all the events related to agent except keep-alives
-    if (
-      !eventData.keepalive &&
-      eventData.data &&
-      nestedEventType &&
-      !isNormalizedAgentChannelEvent
-    ) {
+    if (!eventData.keepalive && eventData.data && eventData.data.type) {
       // @ts-ignore
-      this.emit(nestedEventType, eventData.data);
+      this.emit(eventData.data.type, eventData.data);
     }
 
     if (!eventData.type) {
@@ -1795,7 +1680,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     // Emit metrics for all websocket events except keepalive and welcome
     const topLevelType = eventData.type;
-    const nestedType = nestedEventType;
+    const nestedType = eventData?.data?.type;
     if (topLevelType !== CC_EVENTS.WELCOME && eventData.keepalive !== 'true') {
       const metricsPayload: Record<string, any> = {
         ws_event_type: nestedType || topLevelType,
@@ -1854,56 +1739,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, stationLoginData);
         break;
       }
-      case CC_EVENTS.AGENT_RELOGIN_SUCCESS:
-      case INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS:
-        {
-          const {channelsMap, ...loginData} = eventData.data;
-          this.updateWellnessSession(loginData.agentSessionId);
-          const stationReLoginData = {
-            ...loginData,
-            mmProfile: {
-              chat: channelsMap.chat?.length,
-              email: channelsMap.email?.length,
-              social: channelsMap.social?.length,
-              telephony: channelsMap.telephony?.length,
-            },
-            notifsTrackingId: eventData.trackingId,
-          };
-          if (eventData.data.type === CC_EVENTS.AGENT_RELOGIN_SUCCESS) {
-            // @ts-ignore - WebexPlugin emit is available at runtime but absent from its declaration.
-            this.emit(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, stationReLoginData);
-          } else {
-            const channelReloginEvent: AgentChannelReloginSuccessEvent = {
-              agentId: loginData.agentId,
-              orgId: loginData.orgId,
-              agentSessionId: loginData.agentSessionId,
-              trackingId: loginData.trackingId || eventData.trackingId,
-              channelsMap,
-              agentChannelStateDetailMap: loginData.agentChannelStateDetailMap,
-            };
-            // @ts-ignore - WebexPlugin emit is available at runtime but absent from its declaration.
-            this.emit(
-              INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS,
-              channelReloginEvent
-            );
-          }
-        }
-        break;
-      case INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_STATE_CHANGED: {
-        const channelStateEvent: AgentChannelStateChangedEvent = {
-          agentId: eventData.data.agentId,
-          orgId: eventData.data.orgId,
-          agentSessionId: eventData.data.agentSessionId,
-          channelType: eventData.data.channelType,
-          agentChannelStateDetail: eventData.data.agentChannelStateDetail,
-          connectedChannels: eventData.data.connectedChannels,
-          trackingId: eventData.data.trackingId || eventData.trackingId,
+      case CC_EVENTS.AGENT_RELOGIN_SUCCESS: {
+        const {channelsMap, ...loginData} = eventData.data;
+        this.updateWellnessSession(loginData.agentSessionId);
+        const stationReLoginData = {
+          ...loginData,
+          mmProfile: {
+            chat: channelsMap.chat?.length,
+            email: channelsMap.email?.length,
+            social: channelsMap.social?.length,
+            telephony: channelsMap.telephony?.length,
+          },
+          notifsTrackingId: eventData.trackingId,
         };
-        // @ts-ignore - WebexPlugin emit is available at runtime but absent from its declaration.
-        this.emit(
-          INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_STATE_CHANGED,
-          channelStateEvent
-        );
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, stationReLoginData);
         break;
       }
       case CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS:
@@ -2595,50 +2445,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     try {
       const reLoginResponse = await this.services.agent.reload();
       this.updateWellnessSession(reLoginResponse.data.agentSessionId);
-
-      if (
-        reLoginResponse.data.type ===
-        INTERNAL_AGENT_STATE_CONTROL_EVENTS.AGENT_CHANNEL_RELOGIN_SUCCESS
-      ) {
-        const channelTypesToRestore = Object.entries(
-          reLoginResponse.data.agentChannelStateDetailMap
-        )
-          .filter(([, detail]) => detail.stateChangeReason === 'agent-wss-disconnect')
-          .map(([channelType]) => channelType);
-
-        this.agentConfig.currentTeamId = reLoginResponse.data.teamId;
-        if (reLoginResponse.data.deviceType) {
-          await this.handleDeviceType(
-            reLoginResponse.data.deviceType as LoginOption,
-            reLoginResponse.data.dn
-          );
-        }
-        if (channelTypesToRestore.length > 0) {
-          try {
-            await this.setAgentChannelState({
-              channelTypes: channelTypesToRestore,
-              state: 'Available',
-              reason: 'agent-wss-disconnect',
-              agentId: reLoginResponse.data.agentId,
-            });
-          } catch (error) {
-            LoggerProxy.error(
-              `event=requestAutoChannelStateChange | Error requesting channel state change to available on socket reconnect: ${error}`,
-              {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
-            );
-          }
-        }
-
-        this.agentConfig.isAgentLoggedIn = true;
-        await this.ensureWxAppPostStationLogin();
-        LoggerProxy.log('Silent Agent State Control relogin completed successfully', {
-          module: CC_FILE,
-          method: METHODS.SILENT_RELOGIN,
-          trackingId: reLoginResponse.trackingId,
-        });
-
-        return;
-      }
 
       const {
         agentId,
