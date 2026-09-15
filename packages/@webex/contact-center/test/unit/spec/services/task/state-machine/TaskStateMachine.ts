@@ -15,6 +15,18 @@ const createConfig = () => ({
   isRecordingEnabled: true,
 });
 
+/** Mirrors Task.emitTaskWrapup: publishWrapup spy only runs when context would emit task:wrapup. */
+function createPublishAwareEmitTaskWrapupMock() {
+  const publishWrapup = jest.fn();
+  const emitTaskWrapup = ({context}: {context: {taskData?: {wrapUpRequired?: boolean}}}) => {
+    if (context.taskData?.wrapUpRequired) {
+      publishWrapup();
+    }
+  };
+
+  return {emitTaskWrapup, publishWrapup};
+}
+
 describe('Task state machine', () => {
   const startMachine = () => {
     const actor = createActor(createTaskStateMachine(createConfig()));
@@ -1973,7 +1985,7 @@ describe('Task state machine', () => {
     });
 
     it('does not re-emit wrap-up on late TASK_WRAPUP when wrap-up was already published', () => {
-      const emitTaskWrapup = jest.fn();
+      const {emitTaskWrapup, publishWrapup} = createPublishAwareEmitTaskWrapupMock();
       const service = createActor(
         createTaskStateMachine(createConfig(), {actions: {emitTaskWrapup}})
       );
@@ -1988,17 +2000,17 @@ describe('Task state machine', () => {
       expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
       expect(service.getSnapshot().context.taskData?.wrapUpRequired).toBe(true);
 
-      const emitCountAfterExit = emitTaskWrapup.mock.calls.length;
+      const emitCountAfterExit = publishWrapup.mock.calls.length;
       service.send({
         type: TaskEvent.TASK_WRAPUP,
         taskData: {...taskData, wrapUpRequired: true},
       });
 
-      expect(emitTaskWrapup.mock.calls.length).toBe(emitCountAfterExit);
+      expect(publishWrapup.mock.calls.length).toBe(emitCountAfterExit);
     });
 
     it('emits wrap-up on late TASK_WRAPUP when wrap-up was not yet published', () => {
-      const emitTaskWrapup = jest.fn();
+      const {emitTaskWrapup, publishWrapup} = createPublishAwareEmitTaskWrapupMock();
       const service = createActor(
         createTaskStateMachine(createConfig(), {actions: {emitTaskWrapup}})
       );
@@ -2027,14 +2039,14 @@ describe('Task state machine', () => {
       service.send({type: TaskEvent.TASK_WRAPUP, taskData});
       expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
       expect(service.getSnapshot().context.taskData?.wrapUpRequired).not.toBe(true);
-      expect(emitTaskWrapup).not.toHaveBeenCalled();
+      expect(publishWrapup).not.toHaveBeenCalled();
 
       service.send({
         type: TaskEvent.TASK_WRAPUP,
         taskData: {...taskData, wrapUpRequired: true},
       });
 
-      expect(emitTaskWrapup).toHaveBeenCalledTimes(1);
+      expect(publishWrapup).toHaveBeenCalledTimes(1);
     });
 
     it('terminates when EXIT_CONFERENCE_SUCCESS is received in conferencing and wrapup is not required', () => {
@@ -3597,6 +3609,79 @@ describe('Task state machine', () => {
       });
 
       expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+    });
+
+    it('emits wrap-up once on TRANSFER_CONFERENCE_SUCCESS from CONSULTING when wrap-up is required', () => {
+      const {emitTaskWrapup, publishWrapup} = createPublishAwareEmitTaskWrapupMock();
+      const service = createActor(
+        createTaskStateMachine({...createConfig(), agentId: 'agent-1'}, {actions: {emitTaskWrapup}})
+      );
+      service.start();
+      const taskData = createTaskData({
+        agentId: 'agent-1',
+        consultingAgentId: 'agent-1',
+        interaction: {
+          owner: 'agent-1',
+          state: 'conference',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            'agent-2': {id: 'agent-2', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+          },
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.CONSULT, destination: 'agent-2', destinationType: 'agent'});
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
+
+      service.send({type: TaskEvent.TRANSFER_CONFERENCE});
+      service.send({
+        type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS,
+        taskData: {...taskData, wrapUpRequired: true},
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+      expect(publishWrapup).toHaveBeenCalledTimes(1);
+    });
+
+    it('emits wrap-up once on TRANSFER_CONFERENCE_SUCCESS from CONFERENCING when wrap-up is required', () => {
+      const {emitTaskWrapup, publishWrapup} = createPublishAwareEmitTaskWrapupMock();
+      const service = createActor(
+        createTaskStateMachine({...createConfig(), agentId: 'agent-1'}, {actions: {emitTaskWrapup}})
+      );
+      service.start();
+      const taskData = createTaskData({
+        agentId: 'agent-1',
+        interaction: {
+          owner: 'agent-1',
+          state: 'conference',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            'agent-2': {id: 'agent-2', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+          },
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      service.send({type: TaskEvent.TRANSFER_CONFERENCE});
+      service.send({
+        type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS,
+        taskData: {...taskData, wrapUpRequired: true},
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+      expect(publishWrapup).toHaveBeenCalledTimes(1);
     });
 
     it('terminates secondary agent on PARTICIPANT_LEAVE while in CONSULTING during conference', () => {

@@ -455,7 +455,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           ],
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
+            actions: ['updateTaskData', 'markEnded'],
           },
           [TaskEvent.OUTBOUND_FAILED]: [
             {
@@ -602,7 +602,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // TODO: This may not be a valid transition, this needs to be checked as well
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
+            actions: ['updateTaskData', 'markEnded'],
           },
           [TaskEvent.OUTBOUND_FAILED]: [
             {
@@ -918,7 +918,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 'clearConsultState',
                 'handleTransferConferenceSuccess',
                 'clearTransferConferenceRequested',
-                'emitTaskWrapup',
               ],
             },
             {
@@ -1175,7 +1174,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 'clearConsultState',
                 'handleTransferConferenceSuccess',
                 'clearTransferConferenceRequested',
-                'emitTaskWrapup',
               ],
             },
             {

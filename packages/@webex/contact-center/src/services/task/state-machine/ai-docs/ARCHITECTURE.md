@@ -366,7 +366,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
   - Actions: `updateTaskData`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`
 - `TRANSFER_CONFERENCE_SUCCESS` -> `WRAPPING_UP`
   - Guard: `guards.shouldWrapUp`
-  - Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`, `emitTaskWrapup`
+  - Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`; `WRAPPING_UP` entry emits `task:wrapup`
 - `TRANSFER_CONFERENCE_SUCCESS` -> `CONFERENCING`
   - Guard: inline `!context.consultInitiator`
   - Actions: `updateTaskData`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`
