@@ -108,6 +108,40 @@ describe('Contact Center wellness sample utilities', () => {
       );
     });
 
+    it('limits logout cleanup to the active wellness session', () => {
+      const appSource = readFileSync(
+        resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
+        'utf8'
+      );
+      const handlerStart = appSource.indexOf('function handleWellnessLogout(event)');
+      const handlerEnd = appSource.indexOf('function attachWellnessSdkListeners()', handlerStart);
+      const handler = appSource.slice(handlerStart, handlerEnd);
+
+      expect(handlerStart).toBeGreaterThan(-1);
+      expect(handler).toContain(
+        '!event?.agentSessionId || event.agentSessionId === wellnessState.agentSessionId'
+      );
+      expect(appSource).toContain("webex.cc.on('agent:logoutSuccess', handleWellnessLogout);");
+      expect(appSource).toContain("webex.cc.off('agent:logoutSuccess', handleWellnessLogout);");
+    });
+
+    it('cleans up the sample after an SDK-complete deregistration reports a deferred error', () => {
+      const appSource = readFileSync(
+        resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
+        'utf8'
+      );
+      const deregisterStart = appSource.indexOf('function doDeRegister()');
+      const deregisterEnd = appSource.indexOf(
+        "deregisterBtn.addEventListener('click', doDeRegister);",
+        deregisterStart
+      );
+      const deregister = appSource.slice(deregisterStart, deregisterEnd);
+
+      expect(deregisterStart).toBeGreaterThan(-1);
+      expect(deregister).toContain('if (!webex.cc.agentConfig)');
+      expect(deregister.match(/resetDeregisteredSampleState\(\);/g)).toHaveLength(2);
+    });
+
     it('keeps the intake v0.4 US English wellness copy in the sample surfaces', () => {
       const appSource = readFileSync(
         resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),

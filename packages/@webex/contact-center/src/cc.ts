@@ -309,6 +309,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /** Registered-session cache for the system WellbeingBreak idle code. */
   private wellbeingBreakIdleCode?: Entity;
 
+  /** Registration generation that owns the wellness idle-code cache and in-flight lookups. */
+  private wellnessRegistrationGeneration = 0;
+
   /** Successful AI Assistant RTD subscription generation. */
   private rtdGeneration = 0;
 
@@ -845,6 +848,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async register(): Promise<Profile> {
+    this.wellnessRegistrationGeneration += 1;
+    this.wellbeingBreakIdleCode = undefined;
     LoggerProxy.log('Starting CC SDK registration', {
       module: CC_FILE,
       method: METHODS.REGISTER,
@@ -927,6 +932,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
    */
   public async deregister(): Promise<void> {
+    this.wellnessRegistrationGeneration += 1;
+    this.wellbeingBreakIdleCode = undefined;
     try {
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
@@ -1633,16 +1640,35 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS,
         METRIC_EVENT_NAMES.WELLBEING_BREAK_IDLE_CODE_FETCH_FAILED,
       ]);
-      this.wellbeingBreakIdleCode = await this.services.config.getWellbeingBreakIdleCode(
-        this.$webex.credentials.getOrgId()
-      );
+      const registrationGeneration = this.wellnessRegistrationGeneration;
+      const orgId = this.$webex.credentials.getOrgId();
+      const idleCode = await this.services.config.getWellbeingBreakIdleCode(orgId);
+
+      if (
+        registrationGeneration !== this.wellnessRegistrationGeneration ||
+        orgId !== this.$webex.credentials.getOrgId() ||
+        !this.agentConfig?.isWellnessBreakEnabled
+      ) {
+        const staleRegistrationError = new Error(
+          'WELLNESS_BREAK_REGISTRATION_CHANGED'
+        ) as GenericError;
+        staleRegistrationError.details = {
+          type: 'SDK_VALIDATION_ERROR',
+          orgId,
+          trackingId: EMPTY_STRING,
+          data: {reason: 'WELLNESS_BREAK_REGISTRATION_CHANGED'},
+        };
+        throw staleRegistrationError;
+      }
+
+      this.wellbeingBreakIdleCode = idleCode;
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS,
         {},
         ['operational']
       );
 
-      return this.wellbeingBreakIdleCode;
+      return idleCode;
     } catch (error) {
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WELLBEING_BREAK_IDLE_CODE_FETCH_FAILED,

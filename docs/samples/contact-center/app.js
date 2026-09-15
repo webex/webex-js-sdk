@@ -1956,7 +1956,7 @@ async function startOutdial() {
       await webex.cc.startOutdial(destination);
       console.log('Outdial call initiated successfully with default ANI');
     }
-    
+
   } catch (error) {
     console.error('Failed to initiate outdial call', error);
     alert('Failed to initiate outdial call: ' + (error.message || error));
@@ -3968,17 +3968,23 @@ async function recoverWellnessBreakIfNeeded() {
   });
 }
 
+function handleWellnessLogout(event) {
+  if (!event?.agentSessionId || event.agentSessionId === wellnessState.agentSessionId) {
+    resetWellnessSession();
+  }
+}
+
 function attachWellnessSdkListeners() {
   webex.cc.off(CC_AGENT_EVENTS.WELLNESS_BREAK, handleWellnessBreak);
   webex.cc.off(CC_AGENT_EVENTS.AI_ASSISTANT_RTD_STATUS_CHANGED, handleWellnessRtdStatus);
   webex.cc.off('agent:stationLoginSuccess', captureWellnessSession);
   webex.cc.off('agent:reloginSuccess', captureWellnessSession);
-  webex.cc.off('agent:logoutSuccess', resetWellnessSession);
+  webex.cc.off('agent:logoutSuccess', handleWellnessLogout);
   webex.cc.on(CC_AGENT_EVENTS.WELLNESS_BREAK, handleWellnessBreak);
   webex.cc.on(CC_AGENT_EVENTS.AI_ASSISTANT_RTD_STATUS_CHANGED, handleWellnessRtdStatus);
   webex.cc.on('agent:stationLoginSuccess', captureWellnessSession);
   webex.cc.on('agent:reloginSuccess', captureWellnessSession);
-  webex.cc.on('agent:logoutSuccess', resetWellnessSession);
+  webex.cc.on('agent:logoutSuccess', handleWellnessLogout);
 }
 
 function detachWellnessSdkListeners() {
@@ -3986,7 +3992,7 @@ function detachWellnessSdkListeners() {
   webex.cc.off(CC_AGENT_EVENTS.AI_ASSISTANT_RTD_STATUS_CHANGED, handleWellnessRtdStatus);
   webex.cc.off('agent:stationLoginSuccess', captureWellnessSession);
   webex.cc.off('agent:reloginSuccess', captureWellnessSession);
-  webex.cc.off('agent:logoutSuccess', resetWellnessSession);
+  webex.cc.off('agent:logoutSuccess', handleWellnessLogout);
 }
 
 wellnessRequestBtn.addEventListener('click', requestWellnessBreak);
@@ -4167,42 +4173,49 @@ function register() {
     })
 }
 
+function resetDeregisteredSampleState() {
+    detachWellnessSdkListeners();
+    resetWellnessSession({clearEnablement: true});
+    registerStatus.innerHTML = 'Unregistered';
+    // Reset button states after unregister
+    registerBtn.disabled = false;
+    deregisterBtn.disabled = true;
+    uploadLogsButton.disabled = true;
+    enableUserPreferenceButtons(false);
+
+    // Clear all dropdowns that are populated during registration
+    teamsDropdown.innerHTML = '';
+    idleCodesDropdown.innerHTML = '';
+    agentLogin.innerHTML = '<option value="" selected>Choose Agent Login ...</option>';
+
+    // Clear timer display
+    if (stateTimer) {
+        clearInterval(stateTimer);
+        stateTimer = null;
+    }
+    if (timerElm) {
+        timerElm.innerHTML = '';
+    }
+
+    // Reset other elements
+    dialNumber.value = '';
+    dialNumber.disabled = true;
+    loginAgentElm.disabled = true;
+    setAgentStatusButton.disabled = true;
+
+    // Hide logout button if visible
+    logoutAgentElm.classList.add('hidden');
+}
+
 // New function to handle unregistration
 function doDeRegister() {
     webex.cc.deregister().then(() => {
-        detachWellnessSdkListeners();
-        resetWellnessSession({clearEnablement: true});
+        resetDeregisteredSampleState();
         console.log('Deregistered successfully');
-        registerStatus.innerHTML = 'Unregistered';
-        // Reset button states after unregister
-        registerBtn.disabled = false;
-        deregisterBtn.disabled = true;
-        uploadLogsButton.disabled = true;
-        enableUserPreferenceButtons(false);
-        
-        // Clear all dropdowns that are populated during registration
-        teamsDropdown.innerHTML = '';
-        idleCodesDropdown.innerHTML = '';
-        agentLogin.innerHTML = '<option value="" selected>Choose Agent Login ...</option>';
-        
-        // Clear timer display
-        if (stateTimer) {
-            clearInterval(stateTimer);
-            stateTimer = null;
-        }
-        if (timerElm) {
-            timerElm.innerHTML = '';
-        }
-        
-        // Reset other elements
-        dialNumber.value = '';
-        dialNumber.disabled = true;
-        loginAgentElm.disabled = true;
-        setAgentStatusButton.disabled = true;
-        
-        // Hide logout button if visible
-        logoutAgentElm.classList.add('hidden');
     }).catch((error) => {
+        if (!webex.cc.agentConfig) {
+            resetDeregisteredSampleState();
+        }
         console.error('Unregister failed', error);
     });
 }

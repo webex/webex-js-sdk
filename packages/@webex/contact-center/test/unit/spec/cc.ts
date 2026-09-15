@@ -2133,6 +2133,32 @@ describe('webex.cc', () => {
       expect(lookup).toHaveBeenCalledWith('mockOrgId');
     });
 
+    it('does not cache an idle-code lookup that completes after a new registration starts', async () => {
+      let resolveLookup: (idleCode: typeof wellbeingCode) => void = () => undefined;
+      jest
+        .spyOn(webex.cc.services.config, 'getWellbeingBreakIdleCode')
+        .mockImplementation(
+          () =>
+            new Promise((resolve) => {
+              resolveLookup = resolve;
+            })
+        );
+
+      const lookupPromise = webex.cc.getWellbeingBreakIdleCode();
+      const staleLookup = expect(lookupPromise).rejects.toThrow(
+        'WELLNESS_BREAK_REGISTRATION_CHANGED'
+      );
+      jest
+        .spyOn(webex.cc, 'connectWebsocket')
+        .mockRejectedValue(new Error('replacement registration failed'));
+
+      await expect(webex.cc.register()).rejects.toThrow('replacement registration failed');
+      resolveLookup(wellbeingCode);
+
+      await staleLookup;
+      expect(webex.cc['wellbeingBreakIdleCode']).toBeUndefined();
+    });
+
     it('rejects the system idle-code lookup when wellness is disabled', async () => {
       webex.cc.agentConfig.isWellnessBreakEnabled = false;
 

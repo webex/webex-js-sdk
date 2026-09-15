@@ -224,7 +224,7 @@
       "canonical_spec": "src/services/config/ai-docs/config-spec.md",
       "contracts": {
         "provides": [
-          "Agent profile aggregation including fail-closed Agent Wellness Break enablement; config endpoint methods including exact system wellness idle-code lookup; CC event/type contracts; outdial ANI access"
+          "Agent profile aggregation including fail-closed Agent Wellness Break enablement; config endpoint methods including exact, registration-owned system wellness idle-code lookup; CC event/type contracts; outdial ANI access"
         ],
         "requires": [
           "WebexRequest; WCC organization, team, profile, AI-feature, aux-code, dial-plan, site, tenant, and URL-mapping APIs"
