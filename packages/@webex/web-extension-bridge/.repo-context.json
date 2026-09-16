@@ -1,0 +1,303 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/web-extension-bridge",
+    "purpose": "Secure TypeScript SDK that bridges a web application and a Chrome MV3 extension over a validated postMessage and chrome.runtime protocol."
+  },
+  "commands": {
+    "install": "yarn",
+    "compile": "yarn workspace @webex/web-extension-bridge typecheck",
+    "unit-test": "yarn workspace @webex/web-extension-bridge test:unit",
+    "lint": "yarn workspace @webex/web-extension-bridge test:style",
+    "build": "yarn workspace @webex/web-extension-bridge build:src"
+  },
+  "source_of_truth": [
+    {
+      "surface": "published-sdk-exports",
+      "paths": ["package.json", "src/index.ts", "src/extension/index.ts", "src/content-script.ts", "src/types.ts"],
+      "generated_artifacts": ["dist/index.js", "dist/extension/index.js", "dist/content-script.js"],
+      "refresh_with": ["yarn workspace @webex/web-extension-bridge build:src"],
+      "validate_with": ["yarn workspace @webex/web-extension-bridge test:unit"]
+    },
+    {
+      "surface": "wire-protocol",
+      "paths": ["src/core/protocol.ts", "src/core/validate.ts", "src/core/errors.ts"],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": ["yarn workspace @webex/web-extension-bridge test:unit"]
+    },
+    {
+      "surface": "security-policy",
+      "paths": ["SECURITY.md", "src/web/config.ts", "src/extension/senders.ts", "src/extension/content.ts"],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": ["yarn workspace @webex/web-extension-bridge test:unit"]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "repo-annotation setup-skills.sh --sdd-root packages/@webex/web-extension-bridge"
+    },
+    {
+      "path": "dist/",
+      "generated_from": "src/",
+      "refresh_with": "yarn workspace @webex/web-extension-bridge build:src"
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": ["src/**/*.ts"],
+      "minimum": ["yarn workspace @webex/web-extension-bridge test:unit"],
+      "recommended": ["yarn workspace @webex/web-extension-bridge test:style", "yarn workspace @webex/web-extension-bridge typecheck"]
+    },
+    {
+      "paths": ["docs/**/*.md", "src/**/docs/README.md", "AGENTS.md", ".sdd/manifest.json"],
+      "minimum": ["yarn workspace @webex/web-extension-bridge test:unit"],
+      "recommended": []
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "src/core",
+      "owner": "Webex JS SDK",
+      "edit_boundary": "Env-agnostic protocol and safety primitives; no window or chrome."
+    },
+    {
+      "surface": "src/web",
+      "owner": "Webex JS SDK",
+      "edit_boundary": "Page postMessage adapter and createWebBridge."
+    },
+    {
+      "surface": "src/extension",
+      "owner": "Webex JS SDK",
+      "edit_boundary": "Relay, worker bridge, UI client, and content-script entry."
+    },
+    {
+      "surface": "SECURITY.md",
+      "owner": "Webex JS SDK",
+      "edit_boundary": "Reuse existing disclosure policy; do not overwrite during SDD generation."
+    }
+  ],
+  "do_not_edit": [
+    "dist/",
+    ".sdd/templates/repo-standards/",
+    "SECURITY.md"
+  ],
+  "marker_scopes": {
+    "sdd-generated": ["AGENTS.md", "docs/", "src/core/docs/", "src/web/docs/", "src/extension/docs/"]
+  },
+  "fallback_rules": [
+    "If a public API, chrome permission, envelope field, or BridgeError code is not in src/ or package.json, do not invent it.",
+    "If intake and implementation diverge, treat src/ and tests as source of truth and mark the intake statement stale.",
+    "If a command is missing from package.json, write NEEDS HUMAN INPUT instead of guessing."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": ["README.md", "SECURITY.md", "docs/architecture.md"],
+    "required_agent_operational_surfaces": ["AGENTS.md", "docs/specs/README.md", ".sdd/manifest.json"],
+    "required_machine_readable_surface": ".repo-context.json",
+    "recommended_machine_readable_sections": [
+      "task_playbooks",
+      "public_interfaces",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  },
+  "task_playbooks": [
+    {
+      "task": "change-public-sdk",
+      "reference": "docs/specs/README.md",
+      "when_to_use": "Any change to published exports or caller-visible BridgeError codes.",
+      "start_with": ["package.json", "src/index.ts", "src/extension/index.ts", "src/types.ts"],
+      "evidence_required": ["src/", "test/unit/"],
+      "allowed_edits": ["src/", "test/unit/", "docs/", "src/core/docs/", "src/web/docs/", "src/extension/docs/"],
+      "refresh_with": ["yarn workspace @webex/web-extension-bridge build:src"],
+      "validate_with": ["yarn workspace @webex/web-extension-bridge test:unit"],
+      "fallback": "Stop if the requested export is not in package.json."
+    }
+  ],
+  "public_interfaces": [
+    {
+      "name": "web-page-sdk",
+      "kind": "package_export",
+      "source": "package.json",
+      "entrypoints": ["@webex/web-extension-bridge"],
+      "audience": "Host web applications",
+      "notes": "createWebBridge plus BridgeError types from src/index.ts."
+    },
+    {
+      "name": "extension-sdk",
+      "kind": "package_export",
+      "source": "package.json",
+      "entrypoints": ["@webex/web-extension-bridge/extension"],
+      "audience": "MV3 service worker, popup, options, side panel",
+      "notes": "createExtensionBridge, createExtensionClient, startContentRelay."
+    },
+    {
+      "name": "content-script-entry",
+      "kind": "package_export",
+      "source": "package.json",
+      "entrypoints": ["@webex/web-extension-bridge/content-script"],
+      "audience": "MV3 content_scripts.js list",
+      "notes": "Side-effect start of the default-channel relay when window and chrome exist."
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": ["src/core/**"],
+      "affects": ["src/web", "src/extension", "wire protocol"],
+      "refresh_with": ["yarn workspace @webex/web-extension-bridge build:src"],
+      "validate_with": ["yarn workspace @webex/web-extension-bridge test:unit"],
+      "avoid_direct_edits": ["dist/"],
+      "notes": "Core changes affect every hop."
+    },
+    {
+      "paths": ["package.json"],
+      "affects": ["published specifiers", "docs/architecture.md"],
+      "validate_with": ["yarn workspace @webex/web-extension-bridge test:unit"],
+      "avoid_direct_edits": ["dist/"],
+      "notes": "Export map is the published SDK contract."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "Envelope",
+      "definition": "The single message shape that crosses every hop, marked with __webexBridge.",
+      "notes": "Defined in src/core/protocol.ts."
+    },
+    {
+      "term": "Isolated-world relay",
+      "definition": "Content-script hop that is the only component allowed to speak to the service worker.",
+      "notes": "Implemented in src/extension/content.ts."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": ["package.json"],
+      "requirement": "Every command claimed in docs must appear as a script in package.json or be marked NEEDS HUMAN INPUT."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": ["package.json", "src/index.ts", "src/extension/index.ts"],
+      "requirement": "Published specifiers must match package.json exports."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": ["src/", "test/unit/"],
+      "requirement": "Security and protocol claims must be backed by source or tests."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not document layout-shaped export aliases as current public API.",
+      "why": "src/index.ts states those aliases were removed before first release."
+    },
+    {
+      "rule": "Do not claim the worker allowedOrigins is optional.",
+      "why": "ExtensionBridgeOptions.allowedOrigins is required in src/types.ts."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "Source and tests agree; update spec and code together."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Cite the file and mark remaining gaps instead of generalizing."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Stop and report NEEDS HUMAN INPUT rather than invent APIs."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "page-entry",
+        "path": "src/index.ts",
+        "purpose": "Published page API.",
+        "notes": "Re-exports createWebBridge and BridgeError."
+      },
+      {
+        "name": "extension-entry",
+        "path": "src/extension/index.ts",
+        "purpose": "Published extension facade."
+      },
+      {
+        "name": "content-script-entry",
+        "path": "src/content-script.ts",
+        "purpose": "Manifest wiring side-effect entry."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/web-extension-bridge",
+        "paths": ["."],
+        "notes": "This SDD root is the package itself; sibling workspace packages are out of scope."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "typescript-src",
+        "paths": ["src/"],
+        "notes": "Runtime TypeScript. SDD may add only source-local docs/README.md files under modules."
+      },
+      {
+        "name": "unit-tests",
+        "paths": ["test/unit/"],
+        "notes": "Mocha specs including security/threats.ts."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "repo-standards-templates",
+        "paths": [".sdd/templates/repo-standards"],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "repo-annotation setup-skills.sh",
+        "notes": "Materialized snapshot; do not hand-edit."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [".sdd/templates/repo-standards"],
+        "mechanism": "setup-skills.sh resolve_templates.py",
+        "notes": "Plugin-owned snapshot copied into this package."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit-tests",
+        "command": "yarn workspace @webex/web-extension-bridge test:unit",
+        "scope": "test/unit",
+        "notes": "Includes core, web, extension, security, and in-process integration."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": ["Purpose and boundary", "Public surface", "Requirements", "Verification"],
+    "rules": ["Module specs live at source-local docs/README.md under src/core, src/web, and src/extension and must stay evidence-backed."],
+    "example_policy": "Use short call-flow examples only when they match src/ and tests.",
+    "fallback": "Omit unverified examples rather than invent APIs."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "Security test in test/unit/spec/security/threats.ts fails",
+      "required_followups": [
+        "Treat as a trust-boundary regression",
+        "Update the owning module spec if behavior changed intentionally"
+      ],
+      "notes": "T1-T14 are the in-scope threat list referenced by SECURITY.md."
+    }
+  ]
+}
