@@ -9,6 +9,14 @@ import {Interceptor} from '@webex/http-core';
  */
 export default class PayloadTransformerInterceptor extends Interceptor {
   /**
+   * @param {Object} attrs
+   */
+  constructor(attrs) {
+    super(attrs);
+    this.successfullyTransformedInbound = new WeakSet();
+  }
+
+  /**
    * @param {Object} options
    * @returns {PayloadTransformerInterceptor}
    */
@@ -40,7 +48,7 @@ export default class PayloadTransformerInterceptor extends Interceptor {
       return response;
     }
 
-    return this.webex.transform('inbound', response);
+    return this.applyInboundTransforms(response);
   }
 
   /**
@@ -50,6 +58,30 @@ export default class PayloadTransformerInterceptor extends Interceptor {
    * @returns {Object}
    */
   onResponseError(options, reason) {
-    return this.webex.transform('inbound', reason).then((r) => Promise.reject(r || reason));
+    return this.applyInboundTransforms(reason).then((r) => Promise.reject(r || reason));
+  }
+
+  /**
+   * Applies inbound payload transforms, optionally skipping objects that completed transformation earlier.
+   * A WeakSet prevents repeated mutation without retaining response or error objects after callers release them.
+   *
+   * @param {Object} value
+   * @returns {Promise<Object>}
+   */
+  applyInboundTransforms(value) {
+    const shouldSkipRepeatedTransforms =
+      this.webex.config.payloadTransformer.skipRepeatedInboundTransforms;
+
+    if (shouldSkipRepeatedTransforms && this.successfullyTransformedInbound.has(value)) {
+      return Promise.resolve(value);
+    }
+
+    return this.webex.transform('inbound', value).then((result) => {
+      if (shouldSkipRepeatedTransforms) {
+        this.successfullyTransformedInbound.add(value);
+      }
+
+      return result;
+    });
   }
 }
