@@ -52,3 +52,13 @@
 ## Reporting & Review
 
 - Security-sensitive changes require explicit plan approval and independent review. Follow the parent repository vulnerability-reporting policy and `REVIEW_CHECKLIST.md`.
+
+## ADDED Requirements
+
+- **What:** `handleMediaRoapEvent` in `src/CallingClient/calling/call.ts` must never log the ROAP `sdp` payload (which carries ICE `ufrag`/`pwd` credentials); only `messageType`/`seq`/`version` are logged for outgoing ROAP media events.
+  **Why:** SDP carries ICE credentials, a secret; logging it at any level violates the Credentials/secrets ("never log") and Call/media metadata ("log only approved identifiers/context") rules above (CAI-8594).
+  **Provenance:** `AGENTS.md` rule 6 (never log tokens/credentials/PII/raw sensitive payloads); `src/CallingClient/calling/call.test.ts` (`Call media ROAP event handling` → `handleMediaRoapEvent does not log SDP/ICE credentials`).
+
+- **What:** `resolveCallerIdByName` in `src/common/Utils.ts` must never log the resolved caller's display name, phone number, avatar URL, or id; only a non-identifying directory-match status is logged. The returned `DisplayInformation` is unchanged.
+  **Why:** Name/number/avatar/id are caller PII; logging them violates the PII ("never log raw payloads") rule above (CAI-8594).
+  **Provenance:** `AGENTS.md` rule 6; `src/common/Utils.test.ts` (`resolveCallerIdByName` → `resolveCallerIdByName does not log caller PII`).
