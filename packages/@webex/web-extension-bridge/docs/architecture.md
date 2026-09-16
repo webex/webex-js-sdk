@@ -116,7 +116,7 @@ Layout aliases `/web` and `/extension/{background,client,content}` are not publi
 | -------------- | ----- | ------------------- | ----------------------------- |
 | Page connection + pending handlers | web | HELLO/HELLO_ACK/BYE, `destroy()` | In-memory; lost on navigation |
 | Relay session token | extension content | Minted at relay start | Isolated world; new token per load |
-| Tab connections + FR8 buffer | extension background | HELLO, tab removed/updated, buffer TTL/bytes/entries | `chrome.storage.session` via `sessionStore.ts`; cleared when the worker's session store is cleared |
+| Tab connections + FR8 buffer | extension background | CONNECT / DISCONNECT, tab removed/updated; FR8 read-time TTL filter plus lazy write-time eviction, maxEntries / maxBytes (one newest entry may exceed `maxBytes`) | `chrome.storage.session` via `sessionStore.ts`; cleared when the worker's session store is cleared |
 | Extension UI proxy listeners | extension client | subscribe / worker push events | In-memory for the lifetime of the popup/options/side panel |
 
 ## Cross-cutting architecture
