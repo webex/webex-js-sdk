@@ -134,10 +134,16 @@ Core is a library of pure-ish helpers. Adapters own platform listeners. `Pending
 
 ```mermaid
 flowchart LR
-  Adapter[web or extension adapter] --> Create[createEnvelope]
-  Create --> Validate[validateEnvelope]
-  Validate -->|ok| Send[platform send]
-  Validate -->|DropReason| Drop[increment dropped counter]
+  subgraph outbound [Outbound]
+    Adapter[adapter] --> Assert[assertTopic and assertPayload]
+    Assert --> Create[createEnvelope]
+    Create --> Send[platform send]
+  end
+  subgraph inbound [Inbound]
+    Recv[untrusted message] --> Validate[validateEnvelope]
+    Validate -->|ok| Dispatch[adapter dispatch]
+    Validate -->|DropReason| Drop[increment dropped counter]
+  end
 ```
 
 ## Class and component relationships
@@ -156,7 +162,7 @@ classDiagram
 
 | Use case | Actor or caller | Primary steps and outcome | Failure or boundary behavior | Evidence |
 | -------- | --------------- | ------------------------- | ---------------------------- | -------- |
-| `UC-001` | Adapter sending | Build envelope, validate locally, send | Invalid topic/payload throws before send (`assertTopic` / `assertPayload`) | `src/core/serialize.ts` |
+| `UC-001` | Adapter sending | `assertTopic` / `assertPayload`, `createEnvelope`, send | Invalid topic/payload throws before send. Outbound does not run `validateEnvelope`. | `src/core/serialize.ts`, `src/web/webBridge.ts` |
 | `UC-002` | Adapter receiving | validateEnvelope with allowed kinds and session | Drop with DropReason; do not dispatch | `src/core/validate.ts` |
 | `UC-003` | Extension request | PendingRequests tracks one correlation id | Timeout/abort/disconnect settle once | `src/core/correlation.ts` |
 

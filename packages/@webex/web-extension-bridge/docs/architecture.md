@@ -75,7 +75,7 @@ flowchart LR
   Relay -->|postMessage documentOrigin| Page
   Page -->|INSECURE_CONFIG| PageCfg[reject empty wildcard or missing documentOrigin]
   Relay -->|drop| Drop[other window, origin not allow-listed, or invalid envelope]
-  Worker -->|NO_TAB TIMEOUT DISCONNECTED| WorkerErr[coded BridgeError]
+  Worker -->|NO_TAB NOT_CONNECTED TIMEOUT DISCONNECTED| WorkerErr[coded BridgeError]
 ```
 
 FR1: the web application sends a message to the Chrome extension addressed by a topic string. FR2: the extension fetches a value from the web application on demand. FR6: extension UI surfaces use FR1/FR2 results without duplicating transport. FR8: push messages received while no extension UI is open are retained in a bounded buffer.
@@ -84,7 +84,7 @@ FR1: the web application sends a message to the Chrome extension addressed by a 
 | ---- | -- | ------------------------ | ------- | --------------------------------- |
 | web | extension content relay | `window.postMessage` with `targetOrigin = documentOrigin` | FR1 push, handshake, FR2/FR3 response | Drop if `event.source` is not this window, origin not allow-listed, or envelope invalid |
 | content relay | background | `chrome.runtime.sendMessage` | Forward validated page envelopes; session-bound | After three consecutive notify failures the relay stops treating the worker as connected |
-| background | content relay | `chrome.tabs.sendMessage` | FR2 `REQUEST` only | Missing tab → `NO_TAB`; disconnected peer → `DISCONNECTED` |
+| background | content relay | `chrome.tabs.sendMessage` | FR2 `REQUEST` only | Send reject (stale relay) → `NOT_CONNECTED` for this request; other in-flight on that connection → `DISCONNECTED`; no resolvable tab → `NO_TAB` in `resolveTargetTab` before this hop |
 | extension UI | background | internal `__webexBridgeClient` commands | FR6 proxy without duplicating transport | Worker gone → raw transport `Error` (not a coded `BridgeError`) |
 | all hops | core | import | Shared envelope, validation, limits | Protocol mismatch → counted drop `VERSION_MISMATCH`; `PROTOCOL_MISMATCH` is declared but not thrown |
 

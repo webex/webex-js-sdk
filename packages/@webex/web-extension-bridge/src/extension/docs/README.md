@@ -146,7 +146,7 @@ flowchart LR
   UI[client.ts] -->|client commands| Worker
   Worker -->|tabs.sendMessage| Relay
   Ctor[createExtensionBridge] -->|INSECURE_CONFIG| CfgFail[missing empty or wildcard allowedOrigins]
-  Worker -->|NO_TAB TIMEOUT DISCONNECTED| Err[coded BridgeError]
+  Worker -->|NO_TAB NOT_CONNECTED TIMEOUT DISCONNECTED| Err[coded BridgeError]
   Relay -->|drop| Drop[page REQUEST or origin mismatch]
 ```
 
