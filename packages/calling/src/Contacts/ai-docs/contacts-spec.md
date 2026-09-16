@@ -701,7 +701,7 @@ ContactsClient owns in-memory contact/group maps, the selected contacts-service 
 
 ## Concurrency & Reactive Flow
 
-Contact-service, KMS, and SCIM calls are asynchronous. Batch resolution is awaited before returning the enriched result; local map mutations occur after successful service operations so rejected requests do not leave optimistic stale state. Evidence: `src/Contacts/ContactsClient.ts`.
+Contact-service, KMS, and SCIM calls are asynchronous. Batch resolution is awaited before returning the enriched result; local map mutations occur after successful service operations so rejected requests do not leave optimistic stale state. Check-then-act mutations of the shared `groups`/`contacts`/`defaultGroupId` state run under a private `Mutex` so concurrent flows cannot duplicate or corrupt that state: `getContacts`'s `this.groups`/`this.contacts` assignment and `createContactGroup`'s uniqueness-scan-then-push each execute inside a single `mutex.runExclusive` scoped to that mutation, and `fetchDefaultGroup` treats `createContactGroup`'s "already exists" rejection as a signal to re-read the concurrently created default group's id rather than taking a nested lock. Evidence: `src/Contacts/ContactsClient.ts`.
 
 ## Error Handling & Failure Modes
 
