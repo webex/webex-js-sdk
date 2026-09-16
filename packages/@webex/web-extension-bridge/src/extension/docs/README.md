@@ -177,7 +177,7 @@ The extension MUST be able to target a specific tab for FR2, defaulting to the a
 | State or slice | Owner | Initial state | Transition triggers | Reset or persistence boundary |
 | -------------- | ----- | ------------- | ------------------- | ----------------------------- |
 | Relay session | content relay | minted id | start / destroy | Isolated world; new per load |
-| Connections | worker session store | empty | HELLO / tab removed / BYE | `chrome.storage.session` |
+| Connections | worker session store | empty | CONNECT / DISCONNECT / tab removed / navigation | `chrome.storage.session` |
 | UI listeners | extension client | empty | subscribe | Popup lifetime |
 
 ## Business rules and invariants
@@ -209,8 +209,8 @@ Retention: TTL and maxEntries/maxBytes eviction. Not a product database.
 ```mermaid
 stateDiagram-v2
   [*] --> NoTab
-  NoTab --> Connected: HELLO from allowed origin
-  Connected --> NoTab: BYE or tabs.onRemoved or navigation
+  NoTab --> Connected: CONNECT from allowed origin
+  Connected --> NoTab: DISCONNECT or tabs.onRemoved or navigation
 ```
 
 Rejected: accepting a content-script message whose origin is not in `allowedOrigins`.
@@ -229,7 +229,7 @@ Rejected: accepting a content-script message whose origin is not in `allowedOrig
 | --------- | ---------------- | --------------- | ----------------- | -------- |
 | Missing allow-list | `INSECURE_CONFIG` | Pass exact origins | Recreate bridge | `src/types.ts` |
 | No tab | `NO_TAB` | Pass `tabId` or activate a tab | Retry | `src/core/errors.ts` |
-| Not connected | `NOT_CONNECTED` | Wait for HELLO | Retry | `src/core/errors.ts` |
+| Not connected | `NOT_CONNECTED` | Wait for CONNECT | Retry | `src/core/errors.ts` |
 | Timeout | `TIMEOUT` | Increase timeout within clamp or retry | New request | `src/types.ts` |
 | Missing storage | throw at construct | Add `"storage"` permission | Reload extension | `src/extension/platform.ts` |
 

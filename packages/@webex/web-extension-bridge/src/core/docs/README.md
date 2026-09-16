@@ -85,7 +85,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `src/core/errors.ts` | `BridgeError`, codes, `toWireError` / `fromWireError` |
 | `src/core/correlation.ts` | Single-use in-flight map with timeout/abort |
 | `src/core/rateLimit.ts` | Token buckets and in-flight limiter |
-| `src/core/replay.ts` | Seen-id LRU/TTL plus clock-skew helper |
+| `src/core/replay.ts` | Seen-id insertion-order/FIFO plus lazy TTL, and clock-skew helper |
 | `src/core/ids.ts` | CSPRNG id factory |
 | `src/core/logger.ts` | Metadata-only logger |
 | `src/core/counters.ts` | In-memory telemetry names |
