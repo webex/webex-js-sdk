@@ -49,7 +49,7 @@ A web page and a Chrome extension run in different execution contexts with no di
 Three execution worlds cooperate over one envelope:
 
 1. Page world — `createWebBridge` posts envelopes with `window.postMessage` and a concrete `targetOrigin`.
-2. Isolated content-script world — `startContentRelay` (or the `./content-script` side-effect entry) is the only hop that talks to the service worker. It mints the session token and refuses page-originated `REQUEST` envelopes.
+2. Isolated content-script world — `startContentRelay` (or the `./content-script` side-effect entry) is the only **page-to-worker** relay. It mints the session token and refuses page-originated `REQUEST` envelopes. Popup, options, and side-panel UIs talk to the worker through `createExtensionClient` (`chrome.runtime.sendMessage`), not through the content script.
 3. Extension privileged world — `createExtensionBridge` in the service worker validates senders and origins, rate-limits, buffers FR8 pushes, and answers `createExtensionClient` proxies from popup/options/side panel.
 
 `src/core` is env-agnostic: no `window`, no `chrome`. Adapters in `src/web` and `src/extension` import it.
@@ -86,7 +86,7 @@ FR1: the web application sends a message to the Chrome extension addressed by a 
 | content relay | background | `chrome.runtime.sendMessage` | Forward validated page envelopes; session-bound | After three consecutive notify failures the relay stops treating the worker as connected |
 | background | content relay | `chrome.tabs.sendMessage` | FR2 request, HELLO/BYE, worker-originated envelopes | Missing tab → `NO_TAB`; disconnected peer → `DISCONNECTED` |
 | extension UI | background | internal `__webexBridgeClient` commands | FR6 proxy without duplicating transport | Worker gone → coded `BridgeError` |
-| all hops | core | import | Shared envelope, validation, limits | Protocol mismatch → drop `VERSION_MISMATCH` / `PROTOCOL_MISMATCH` |
+| all hops | core | import | Shared envelope, validation, limits | Protocol mismatch → counted drop `VERSION_MISMATCH`; `PROTOCOL_MISMATCH` is declared but not thrown |
 
 ## Dependency topology
 
@@ -172,7 +172,7 @@ flowchart LR
 | Cache | Owner | Backend | Contents | TTL or bound | Invalidation trigger | Failure behavior |
 | ----- | ----- | ------- | -------- | ------------ | -------------------- | ---------------- |
 | SeenIds | core, used by web and relay | in-memory LRU | envelope ids | 500 entries / 60 s | TTL or cap | Duplicate id dropped as `REPLAYED_ID` |
-| FR8 buffer | extension background | `chrome.storage.session` | recent pushes | default 200 entries / 30 min / 4 MiB | subscribe drains for UI; eviction on bound | Construction throws if session storage missing |
+| FR8 buffer | extension background | `chrome.storage.session` | recent pushes | default 200 entries / 30 min / 4 MiB | TTL / maxEntries / maxBytes eviction only; `subscribe` does not drain | Construction throws if session storage missing |
 | Rate limiter buckets | core RateLimiter | in-memory | tokens per (tab, topic) and aggregate per tab | 256 topic keys / 64 aggregate keys | tab gone | Excess push dropped / `RATE_LIMITED` |
 
 ## Observability patterns

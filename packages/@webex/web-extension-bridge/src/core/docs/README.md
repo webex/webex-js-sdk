@@ -195,7 +195,7 @@ classDiagram
 | Abort | `ABORTED` | Honor AbortSignal | Do not reuse correlation id | `src/core/correlation.ts` |
 | Rate limit | `RATE_LIMITED` | Back off | Token refill | `src/core/rateLimit.ts` |
 
-Codes also defined here and thrown by adapters: `NOT_CONNECTED`, `NO_TAB`, `NO_HANDLER`, `DISCONNECTED`, `HANDLER_ERROR`, `PROTOCOL_MISMATCH`, `INSECURE_CONFIG`. Public BridgeError codes matching `BRIDGE_ERROR_CODES`.
+Codes also defined here and thrown by adapters: `NOT_CONNECTED`, `NO_TAB`, `NO_HANDLER`, `DISCONNECTED`, `HANDLER_ERROR`, `INSECURE_CONFIG`. `PROTOCOL_MISMATCH` is on `BRIDGE_ERROR_CODES` with a redacted wire message, but adapters do not throw it: a peer with a different `v` is a counted `VERSION_MISMATCH` drop. Public BridgeError codes matching `BRIDGE_ERROR_CODES`.
 
 ## Pitfalls and constraints
 

@@ -40,7 +40,7 @@ Start with the [package architecture](../architecture.md). There is no deployabl
 
 ### Module registry
 
-One row per module in `.sdd/manifest.json`, which stays authoritative; this table is its human-readable mirror and the reconciliation surface for `scripts/check_spec_index.py`.
+One row per module in `.sdd/manifest.json`, which stays authoritative; this table is its human-readable mirror. Reconcile it with the Repo Annotation plugin checker `scripts/check_spec_index.py --repo-root <this-package>` (the script is not vendored in this JS SDK tree).
 
 | Module | Responsibility | Manifest coverage state | Start here |
 | --- | --- | --- | --- |

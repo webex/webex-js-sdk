@@ -34,6 +34,16 @@
       "command": "yarn workspace @webex/web-extension-bridge build:src",
       "source_file": "package.json",
       "role": "package"
+    },
+    "build:samples": {
+      "command": "yarn workspace @webex/web-extension-bridge build:samples",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "deploy:npm": {
+      "command": "yarn workspace @webex/web-extension-bridge deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
     }
   },
   "toolchain": [

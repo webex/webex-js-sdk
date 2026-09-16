@@ -118,13 +118,13 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 
 | ID | WHAT | WHY | Source evidence | Test or example evidence | Assumptions or gaps | Confidence |
 | -- | ---- | --- | --------------- | ------------------------ | ------------------- | ---------- |
-| `EXT-001` | Content script is the only hop that talks to the service worker | Page must not reach `chrome` through the SDK | `src/extension/content.ts` | `test/unit/spec/extension/content.ts` | none | Present |
+| `EXT-001` | Content script is the only **page-to-worker** relay; the page must not reach `chrome` through the SDK. Popup/options/side panel use `createExtensionClient` to the worker. | Page must not reach `chrome` through the SDK | `src/extension/content.ts`, `src/extension/client.ts` | `test/unit/spec/extension/content.ts` | none | Present |
 | `EXT-002` | Relay drops page-originated REQUEST kinds | T8: page cannot mint pull requests | `src/extension/content.ts` `ACCEPTED_FROM_PAGE` | `test/unit/spec/security/threats.ts` | none | Present |
 | `EXT-003` | Relay accepts page postMessage only from same window and `documentOrigin` | Isolated world still shares the document | `src/extension/content.ts` | `test/unit/spec/extension/content.ts` | none | Present |
 | `EXT-004` | Worker `allowedOrigins` is required; missing/empty/wildcard → `INSECURE_CONFIG` | Manifest `matches` is not a sender check | `src/types.ts`, `src/extension/background.ts` | `test/unit/spec/extension/background.ts` | none | Present |
 | `EXT-005` | Worker refuses senders that fail `isOwnExtension` / content-script tab / `isOriginAllowed` | Provenance is data, not trust | `src/extension/senders.ts` | `test/unit/spec/extension/senders.ts` | none | Present |
 | `EXT-006` | `createExtensionClient` proxies FR1/FR2 results for UI surfaces | FR6 without duplicating transport | `src/extension/client.ts` | `test/unit/spec/extension/client.ts` | none | Present |
-| `EXT-007` | Pushes received with no UI listener are stored in a bounded session buffer | FR8 | `src/extension/background.ts`, `src/extension/sessionStore.ts` | `test/unit/spec/extension/sessionStore.ts` | none | Present |
+| `EXT-007` | Pushes received with no UI listener are stored in a bounded session buffer. `subscribe` does not drain it; `getBufferedMessages` is read-only. Eviction is TTL / maxEntries / maxBytes. | FR8 | `src/extension/background.ts`, `src/extension/sessionStore.ts` | `test/unit/spec/extension/sessionStore.ts` | none | Present |
 
 ## Design overview
 

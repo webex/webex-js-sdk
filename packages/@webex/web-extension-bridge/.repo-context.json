@@ -10,7 +10,9 @@
     "compile": "yarn workspace @webex/web-extension-bridge typecheck",
     "unit-test": "yarn workspace @webex/web-extension-bridge test:unit",
     "lint": "yarn workspace @webex/web-extension-bridge test:style",
-    "build": "yarn workspace @webex/web-extension-bridge build:src"
+    "build": "yarn workspace @webex/web-extension-bridge build:src",
+    "build:samples": "yarn workspace @webex/web-extension-bridge build:samples",
+    "deploy:npm": "yarn workspace @webex/web-extension-bridge deploy:npm"
   },
   "source_of_truth": [
     {

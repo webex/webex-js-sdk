@@ -160,7 +160,7 @@ The web application MUST be able to register a named handler that produces the v
 
 | State or slice | Owner | Initial state | Transition triggers | Reset or persistence boundary |
 | -------------- | ----- | ------------- | ------------------- | ----------------------------- |
-| `isConnected` | WebBridge instance | false | HELLO_ACK / BYE / destroy | In-memory; navigation clears |
+| `isConnected` | WebBridge instance | false | HELLO or HELLO_ACK / BYE / destroy | In-memory; navigation clears |
 | Handler map | WebBridge instance | empty | requestHandler register/unregister | destroy clears |
 | Connection listeners | WebBridge instance | empty | onConnected / onDisconnected | destroy clears |
 
@@ -187,7 +187,7 @@ Origin allow-list, no postMessage with a wildcard target origin.
 ```mermaid
 stateDiagram-v2
   [*] --> Disconnected
-  Disconnected --> Connected: HELLO_ACK
+  Disconnected --> Connected: HELLO or HELLO_ACK
   Connected --> Disconnected: BYE or destroy
 ```
 
