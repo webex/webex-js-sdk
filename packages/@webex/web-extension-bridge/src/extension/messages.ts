@@ -60,11 +60,9 @@ export interface ClientCommandMessage {
   channel: string;
   command: ClientCommand;
   /**
-   * The request topic for `REQUEST`, and the buffer filter for `GET_BUFFERED`.
-   *
-   * `GET_BUFFERED` carries it so the worker can filter before applying `limit`. The
-   * client used to send `limit` alone and filter the reply itself, which meant the
-   * limit truncated across all topics first and the requested topic came back short.
+   * The request topic for `REQUEST`, and the buffer filter for `GET_BUFFERED` (carried
+   * here so the worker can filter before applying `limit` — see the `GET_BUFFERED`
+   * handler in `background.ts`).
    */
   topic?: string;
   payload?: JsonValue;
@@ -95,8 +93,8 @@ export interface ClientPushEvent {
 const CLIENT_COMMANDS = new Set<string>(Object.values(ClientCommand));
 
 /**
- * @param value - Untrusted runtime message.
- * @param channel - Channel this side is configured for.
+ * @param value - Candidate message.
+ * @param channel - Channel this hop is configured for.
  * @returns The relay message, or `undefined` when the value is not one for us.
  */
 export function asRelayToWorker(value: unknown, channel: string): RelayToWorker | undefined {
@@ -118,8 +116,8 @@ export function asRelayToWorker(value: unknown, channel: string): RelayToWorker 
 }
 
 /**
- * @param value - Untrusted runtime message.
- * @param channel - Channel this side is configured for.
+ * @param value - Candidate message.
+ * @param channel - Channel this hop is configured for.
  * @returns The relay request, or `undefined` when the value is not one for us.
  */
 export function asRelayRequest(value: unknown, channel: string): RelayRequest | undefined {
@@ -141,8 +139,8 @@ export function asRelayRequest(value: unknown, channel: string): RelayRequest | 
 }
 
 /**
- * @param value - Untrusted runtime message.
- * @param channel - Channel this side is configured for.
+ * @param value - Candidate message.
+ * @param channel - Channel this hop is configured for.
  * @returns The command, or `undefined` when the value is not one for us.
  */
 export function asClientCommand(value: unknown, channel: string): ClientCommandMessage | undefined {
@@ -160,8 +158,8 @@ export function asClientCommand(value: unknown, channel: string): ClientCommandM
 }
 
 /**
- * @param value - Untrusted runtime message.
- * @param channel - Channel this side is configured for.
+ * @param value - Candidate message.
+ * @param channel - Channel this hop is configured for.
  * @returns The push event, or `undefined` when the value is not one for us.
  */
 export function asClientPushEvent(value: unknown, channel: string): ClientPushEvent | undefined {
