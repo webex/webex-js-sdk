@@ -84,8 +84,8 @@ FR1: the web application sends a message to the Chrome extension addressed by a 
 | ---- | -- | ------------------------ | ------- | --------------------------------- |
 | web | extension content relay | `window.postMessage` with `targetOrigin = documentOrigin` | FR1 push, handshake, FR2/FR3 response | Drop if `event.source` is not this window, origin not allow-listed, or envelope invalid |
 | content relay | background | `chrome.runtime.sendMessage` | Forward validated page envelopes; session-bound | After three consecutive notify failures the relay stops treating the worker as connected |
-| background | content relay | `chrome.tabs.sendMessage` | FR2 request, HELLO/BYE, worker-originated envelopes | Missing tab → `NO_TAB`; disconnected peer → `DISCONNECTED` |
-| extension UI | background | internal `__webexBridgeClient` commands | FR6 proxy without duplicating transport | Worker gone → coded `BridgeError` |
+| background | content relay | `chrome.tabs.sendMessage` | FR2 `REQUEST` only | Missing tab → `NO_TAB`; disconnected peer → `DISCONNECTED` |
+| extension UI | background | internal `__webexBridgeClient` commands | FR6 proxy without duplicating transport | Worker gone → raw transport `Error` (not a coded `BridgeError`) |
 | all hops | core | import | Shared envelope, validation, limits | Protocol mismatch → counted drop `VERSION_MISMATCH`; `PROTOCOL_MISMATCH` is declared but not thrown |
 
 ## Dependency topology
@@ -173,7 +173,7 @@ flowchart LR
 | ----- | ----- | ------- | -------- | ------------ | -------------------- | ---------------- |
 | SeenIds | core, used by web and relay | in-memory LRU | envelope ids | 500 entries / 60 s | TTL or cap | Duplicate id dropped as `REPLAYED_ID` |
 | FR8 buffer | extension background | `chrome.storage.session` | recent pushes | default 200 entries / 30 min / 4 MiB | TTL / maxEntries / maxBytes eviction only; `subscribe` does not drain | Construction throws if session storage missing |
-| Rate limiter buckets | core RateLimiter | in-memory | tokens per (tab, topic) and aggregate per tab | 256 topic keys / 64 aggregate keys | tab gone | Excess push dropped / `RATE_LIMITED` |
+| Rate limiter buckets | core RateLimiter | in-memory | tokens per (tab, topic) and aggregate per tab | 256 topic keys / 64 aggregate keys | TTL / key-cap eviction; tab gone does not reset `pushLimiter` | Excess push dropped / `RATE_LIMITED` |
 
 ## Observability patterns
 

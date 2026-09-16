@@ -21,7 +21,7 @@ Onboarding for **@webex/web-extension-bridge**. Commands are run from the `webex
 
 | Tool or access                         | Version or requirement |
 | -------------------------------------- | ---------------------- |
-| Node.js                                | `>=18` (`package.json` engines); workspace `AGENTS.md` uses 22.14 |
+| Node.js                                | Published engine `>=18` (`package.json`); local workspace requires **22.14** (`nvm use 22.14`) |
 | Yarn                                   | workspace package manager |
 | Chrome / Chromium MV3                  | required to load the sample extension; not required for unit tests |
 | Git clone of `webex/webex-js-sdk`      | this package is not a standalone git repo |
