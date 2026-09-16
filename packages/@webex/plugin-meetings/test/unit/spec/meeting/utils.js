@@ -811,6 +811,7 @@ describe('plugin-meetings', () => {
           sinon.stub(webex.meetings.meetingCollection, 'getAll').returns({
             [duplicateMeeting.id]: duplicateMeeting,
           });
+          sinon.stub(webex.meetings.meetingCollection, 'get').returns(meeting);
           sinon.stub(webex.meetings, 'destroy');
         });
 
@@ -881,6 +882,16 @@ describe('plugin-meetings', () => {
             });
           }
         );
+
+        it('does not destroy anything when the meeting itself has already been removed from meetingCollection', async () => {
+          webex.meetings.meetingCollection.get.returns(null);
+          duplicateMeeting.locusInfo = {controls: {mute: false}};
+
+          await MeetingUtil.joinMeeting(meeting, {});
+
+          assert.notCalled(meeting.locusInfo.updateControls);
+          assert.notCalled(webex.meetings.destroy);
+        });
       });
     });
 

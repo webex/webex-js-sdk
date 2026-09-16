@@ -267,6 +267,11 @@ const MeetingUtil = {
    * @returns {void}
    */
   selfHealDuplicateMeeting: (webex: any, meeting: any) => {
+    // meeting may itself have already been destroyed by a concurrent self-heal call.
+    if (!webex.meetings.meetingCollection.get(meeting.id)) {
+      return;
+    }
+
     const duplicateMeeting: any = Object.values(webex.meetings.meetingCollection.getAll()).find(
       (candidate: any) => candidate.id !== meeting.id && candidate.locusUrl === meeting.locusUrl
     );
