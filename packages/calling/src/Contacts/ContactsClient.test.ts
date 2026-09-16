@@ -652,6 +652,55 @@ describe('ContactClient Tests', () => {
     });
   });
 
+  describe('encryptContact', () => {
+    it('encryptContact rejects an untrusted caller-supplied encryptionKeyUrl', async () => {
+      contactClient['groups'] = mockContactGroupListOne;
+      contactClient['encryptionKeyUrl'] = mockContactGroupListOne[0].encryptionKeyUrl;
+
+      webex.internal.encryption.encryptText.mockResolvedValue('Encrypted contact name');
+
+      const untrustedKeyUrl = 'kms://attacker.example.com/keys/untrusted-key';
+      const contact = {
+        ...mockContactListTwo[0],
+        encryptionKeyUrl: untrustedKeyUrl,
+      } as Contact;
+
+      await contactClient['encryptContact'](contact);
+
+      /* The attacker-controlled key must never be used to encrypt contact fields. */
+      expect(webex.internal.encryption.encryptText).not.toHaveBeenCalledWith(
+        untrustedKeyUrl,
+        expect.anything()
+      );
+      /* A validated/known key is used instead of the untrusted caller-supplied one. */
+      expect(webex.internal.encryption.encryptText).toHaveBeenCalledWith(
+        mockContactGroupListOne[0].encryptionKeyUrl,
+        contact.displayName
+      );
+    });
+
+    it('encryptContact uses a validated key for a trusted contact', async () => {
+      contactClient['groups'] = mockContactGroupListOne;
+      contactClient['encryptionKeyUrl'] = mockContactGroupListOne[0].encryptionKeyUrl;
+
+      webex.internal.encryption.encryptText.mockResolvedValue('Encrypted contact name');
+
+      const contact = {
+        ...mockContactListTwo[0],
+        encryptionKeyUrl: mockContactGroupListOne[0].encryptionKeyUrl,
+      } as Contact;
+
+      const encryptedContact = await contactClient['encryptContact'](contact);
+
+      expect(webex.internal.encryption.encryptText).toHaveBeenCalledWith(
+        mockContactGroupListOne[0].encryptionKeyUrl,
+        contact.displayName
+      );
+      expect(encryptedContact.displayName).toEqual('Encrypted contact name');
+      expect(encryptedContact.encryptionKeyUrl).toEqual(mockContactGroupListOne[0].encryptionKeyUrl);
+    });
+  });
+
   it('create a contact without a group and encryptionKey', async () => {
     const mockContactResponse = mockContactResponseBodyOne.contacts[1];
 

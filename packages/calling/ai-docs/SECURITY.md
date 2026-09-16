@@ -45,7 +45,7 @@
 | Area | Risk | Mitigation | Owner |
 |---|---|---|---|
 | SDKConnector singleton | replacing/mutating authenticated SDK reference | one-time validated initialization and frozen exported connector | Calling SDK maintainers |
-| Contact encryption/SCIM | exposing PII or mishandling keys | KMS-backed encryption plus code-reviewed mappings | Contacts maintainers |
+| Contact encryption/SCIM | exposing PII or mishandling keys; encrypting under a caller-supplied, unvalidated `encryptionKeyUrl` | KMS-backed encryption plus code-reviewed mappings; `encryptContact` validates `encryptionKeyUrl` against a known/trusted key (client cache or a loaded group's key) before encrypting, substituting the validated key for an untrusted caller-supplied one | Contacts maintainers |
 | Mobius token refresh/reconnect | stale/expired token or event loss | explicit auth-close handling, refresh, retry, and reconnect lifecycle | mobius-socket maintainers |
 | Logging/metrics | leaking sensitive payloads | contextual logging and approved metric fields only | package maintainers |
 
@@ -62,3 +62,7 @@
 - **What:** `resolveCallerIdByName` in `src/common/Utils.ts` must never log the resolved caller's display name, phone number, avatar URL, or id; only a non-identifying directory-match status is logged. The returned `DisplayInformation` is unchanged.
   **Why:** Name/number/avatar/id are caller PII; logging them violates the PII ("never log raw payloads") rule above (CAI-8594).
   **Provenance:** `AGENTS.md` rule 6; `src/common/Utils.test.ts` (`resolveCallerIdByName` → `resolveCallerIdByName does not log caller PII`).
+
+- **What:** `ContactsClient.encryptContact` in `src/Contacts/ContactsClient.ts` must validate a caller-supplied `contact.encryptionKeyUrl` against a known/trusted key (the client's cached key or a loaded group's key) before encrypting; an untrusted key is ignored and replaced with the validated key from `fetchEncryptionKeyUrl()`.
+  **Why:** Trusting a caller-supplied key verbatim would let a caller encrypt contact fields under an attacker-controlled KMS key, defeating the confidentiality the encryption is meant to provide (CAI-8594). This is `external-validation-required`: reject-vs-substitute policy needs confirmation against expected KMS key provisioning.
+  **Provenance:** `AGENTS.md` rule 7; `src/Contacts/ContactsClient.test.ts` (`encryptContact` → `encryptContact rejects an untrusted caller-supplied encryptionKeyUrl`, `encryptContact uses a validated key for a trusted contact`).

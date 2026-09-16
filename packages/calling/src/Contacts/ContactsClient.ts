@@ -134,11 +134,47 @@ export class ContactsClient implements IContacts {
   }
 
   /**
+   * Resolves a trusted encryption key URL for a contact. A caller-supplied
+   * `contact.encryptionKeyUrl` is only trusted when it matches a key this client
+   * already knows about (its own cached key or one of the loaded groups' keys);
+   * otherwise it is ignored and replaced with the validated key returned by
+   * `fetchEncryptionKeyUrl()`, so encryption never runs under an attacker-controlled
+   * key URL.
+   */
+  private async resolveTrustedEncryptionKeyUrl(contact: Contact): Promise<string> {
+    const {encryptionKeyUrl} = contact;
+    const knownEncryptionKeyUrls = new Set<string>();
+
+    if (this.encryptionKeyUrl) {
+      knownEncryptionKeyUrls.add(this.encryptionKeyUrl);
+    }
+
+    this.groups?.forEach((group) => {
+      if (group.encryptionKeyUrl) {
+        knownEncryptionKeyUrls.add(group.encryptionKeyUrl);
+      }
+    });
+
+    if (encryptionKeyUrl && knownEncryptionKeyUrls.has(encryptionKeyUrl)) {
+      return encryptionKeyUrl;
+    }
+
+    if (encryptionKeyUrl) {
+      log.warn('Ignoring untrusted caller-supplied encryptionKeyUrl; using a validated key', {
+        file: CONTACTS_CLIENT,
+        method: METHODS.ENCRYPT_CONTACT,
+      });
+    }
+
+    return this.fetchEncryptionKeyUrl();
+  }
+
+  /**
    * Encrypts a given contact.
    */
   private async encryptContact(contact: Contact): Promise<Contact> {
-    const {encryptionKeyUrl} = contact;
-    const encryptedContact: Contact = {...contact};
+    const encryptionKeyUrl = await this.resolveTrustedEncryptionKeyUrl(contact);
+    const encryptedContact: Contact = {...contact, encryptionKeyUrl};
 
     const encryptionPromises = Object.values(encryptedFields).map(async (field) => {
       switch (field) {

@@ -223,6 +223,14 @@ The `encryptContact()` method is called for **both** `CUSTOM` and `CLOUD` contac
 | CONTACTS-R-007 | Resolves CLOUD contacts via SCIM to fetch display names, phone numbers, SIP addresses, department, manager, and avatar information. Processes in batches of 50. | Batching SCIM resolution limits request size while enriching cloud contacts with directory-authoritative profile data. | `src/Contacts/ContactsClient.ts` | `src/Contacts/ContactsClient.test.ts` | none identified | PRESENT |
 | CONTACTS-R-008 | Automatically creates a default "Other contacts" group when no groups exist. | An automatic default group gives ungrouped contacts a valid service container and avoids special-case handling by consumers. | `src/Contacts/ContactsClient.ts` | `src/Contacts/ContactsClient.test.ts` | none identified | PRESENT |
 
+## ADDED Requirements
+
+| ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
+|---|---|---|---|---|---|---|
+| CONTACTS-R-009 | `encryptContact` validates `contact.encryptionKeyUrl` against a known/trusted key (the client's cached `this.encryptionKeyUrl` or a loaded group's `encryptionKeyUrl`) before encrypting; an untrusted caller-supplied key is ignored and replaced with the validated key from `fetchEncryptionKeyUrl()`. A matching/trusted key is used unchanged. | Trusting a caller-supplied `encryptionKeyUrl` verbatim would let a caller encrypt contact fields under an attacker-controlled KMS key, defeating the confidentiality `encryptedFields` encryption is meant to provide (CAI-8594). | `src/Contacts/ContactsClient.ts` | `src/Contacts/ContactsClient.test.ts` (`encryptContact` → `encryptContact rejects an untrusted caller-supplied encryptionKeyUrl`, `encryptContact uses a validated key for a trusted contact`) | Reject-vs-substitute provisioning policy for an untrusted key is external-validation-required — confirm against expected KMS key provisioning; this implementation substitutes the validated key rather than rejecting the request. | PRESENT |
+
+**Provenance:** `AGENTS.md` rule 8 (positive+negative tests, keep specs current in the same merge); `SECURITY.md` Contact-encryption row; Triage boundary impact (ContactsClient encryption-key trust, `external-validation-required`) and risk R3.
+
 ### Key Capabilities
 
 | Capability | Description |
