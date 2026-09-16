@@ -106,7 +106,7 @@ No runtime dependency cycles. Page never imports `chrome`. Worker never posts to
 | `@webex/web-extension-bridge` | SDK | web | Host web applications | Semver of the npm package; protocol version is independent (`PROTOCOL_VERSION`) | `package.json` export `.` |
 | `@webex/web-extension-bridge/extension` | SDK | extension | Service worker, popup, options, side panel, optional content-script API | Same package semver | `package.json` export `./extension` |
 | `@webex/web-extension-bridge/content-script` | SDK | extension | MV3 `content_scripts[].js` | Side-effect start of default-channel relay | `package.json` export `./content-script` |
-| Envelope | Event | core | All hops | Additive optional fields need a protocol minor bump; other shape changes a major bump | `src/core/protocol.ts` |
+| Envelope | Event | core | Page protocol hops (page, content-relay, worker) | Additive optional fields need a protocol minor bump; other shape changes a major bump | `src/core/protocol.ts` |
 
 Layout aliases `/web` and `/extension/{background,client,content}` are not published. Those three, plus `./package`, are the whole published surface. Test seams `createWebBridgeWith`, `createExtensionBridgeWith`, `createExtensionClientWith`, and `createContentRelay` are not on any published specifier.
 
@@ -165,14 +165,14 @@ flowchart LR
 | Envelope | Producer hop using `createEnvelope` | The hop that sends it | Peer hop after validation | Dropped on any `DropReason`; never partially applied |
 | Session token | content relay | relay at start | page and worker as envelope `session` | Bound to this page load |
 | Connection | worker `sessionStore` | worker on HELLO | `listConnections`, client proxy | Removed on tab close/navigate/BYE |
-| BufferedMessage | worker FR8 buffer | worker when no UI listener | `getBufferedMessages` | Evicted by maxEntries, maxBytes, or ttlMs |
+| BufferedMessage | worker FR8 buffer | worker on every accepted push | `getBufferedMessages` | Non-draining history; lazy TTL on next write; maxEntries / maxBytes (one newest entry may exceed `maxBytes`) |
 
 ## Caching catalog
 
 | Cache | Owner | Backend | Contents | TTL or bound | Invalidation trigger | Failure behavior |
 | ----- | ----- | ------- | -------- | ------------ | -------------------- | ---------------- |
 | SeenIds | core, used by web and relay | in-memory LRU | envelope ids | 500 entries / 60 s | TTL or cap | Duplicate id dropped as `REPLAYED_ID` |
-| FR8 buffer | extension background | `chrome.storage.session` | recent pushes | default 200 entries / 30 min / 4 MiB | TTL / maxEntries / maxBytes eviction; `subscribe` does not drain; one newest entry may exceed `maxBytes` | Construction throws if session storage missing |
+| FR8 buffer | extension background | `chrome.storage.session` | recent pushes | default 200 entries / 30 min / 4 MiB | Read-time TTL filter; lazy write-time eviction; maxEntries / maxBytes; `subscribe` does not drain; one newest entry may exceed `maxBytes` | Construction throws if session storage missing |
 | Rate limiter buckets | core RateLimiter | in-memory | tokens per (tab, topic) and aggregate per tab | 256 topic keys / 64 aggregate keys | Token refill + LRU key-cap eviction; tab gone does not reset `pushLimiter` | Excess push dropped / `RATE_LIMITED` |
 
 ## Observability patterns
@@ -223,8 +223,8 @@ Describe trust boundaries, identity and token flow, encryption boundaries, and t
 ```mermaid
 flowchart LR
   PageWorld[Untrusted page] -->|postMessage same window plus origin allow-list| Isolated[Isolated content script]
-  Isolated -->|session token plus runtime id check| Worker[Privileged service worker]
-  Worker -->|isOriginAllowed plus sender checks| Isolated
+  Isolated -->|"session token plus isFromContentScript and isOriginAllowed"| Worker[Privileged service worker]
+  Worker -->|"isFromExtensionPage plus envelope/session"| Isolated
 ```
 
 Threat model T1–T14 covers origin allow-listing, wildcard postMessage, unguessable ids, and redacted wire errors. Controls verified in code:
@@ -243,7 +243,7 @@ Accepted risks remain those documented in README §6 and SECURITY.md out-of-scop
 
 | Term | Package-specific meaning | Authoritative source |
 | ---- | ------------------------ | -------------------- |
-| Envelope | The single message shape that crosses every hop | `src/core/protocol.ts` |
+| Envelope | Page-protocol frame (`__webexBridge`); UI and relay-control use `messages.ts` wrappers | `src/core/protocol.ts` |
 | Channel | Namespace so multiple bridges can share a page; default `webex-bridge` | `src/core/constants.ts` |
 | Session | Isolated-world token binding page and relay for this load | `src/extension/content.ts` |
 | Topic | Routing key matching `^[a-zA-Z0-9._:-]{1,128}$` | `src/core/constants.ts` |
