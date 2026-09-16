@@ -96,7 +96,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | Surface | Consumer | Compatibility commitment | Source |
 | ------- | -------- | ------------------------ | ------ |
 | `BridgeError`, `BRIDGE_ERROR_CODES`, `isBridgeError` | Page and extension callers | Codes must not change meaning within a major version | `src/core/errors.ts` via `src/index.ts` |
-| `PROTOCOL_VERSION`, `DEFAULT_CHANNEL` | Both sides of a bridge | Independent of npm semver; mismatch is refused | `src/core/constants.ts` |
+| `PROTOCOL_VERSION`, `DEFAULT_CHANNEL` | Both sides of a bridge | Independent of npm semver; mismatch is refused | `src/core/constants.ts` via `src/index.ts` |
 | `EnvelopeKind`, `EnvelopeSource` | Callers that inspect kinds | Frozen for protocol v1 | `src/core/protocol.ts` |
 | `bridge-envelope` contract | web and extension modules | Internal; exact fields in `Envelope` | `src/core/protocol.ts` |
 
@@ -195,7 +195,7 @@ classDiagram
 | Abort | `ABORTED` | Honor AbortSignal | Do not reuse correlation id | `src/core/correlation.ts` |
 | Rate limit | `RATE_LIMITED` | Back off | Token refill | `src/core/rateLimit.ts` |
 
-Codes also defined here and thrown by adapters: `NOT_CONNECTED`, `NO_TAB`, `NO_HANDLER`, `DISCONNECTED`, `HANDLER_ERROR`, `PROTOCOL_MISMATCH`, `INSECURE_CONFIG`.
+Codes also defined here and thrown by adapters: `NOT_CONNECTED`, `NO_TAB`, `NO_HANDLER`, `DISCONNECTED`, `HANDLER_ERROR`, `PROTOCOL_MISMATCH`, `INSECURE_CONFIG`. Public BridgeError codes matching `BRIDGE_ERROR_CODES`.
 
 ## Pitfalls and constraints
 
@@ -215,7 +215,7 @@ Codes also defined here and thrown by adapters: `NOT_CONNECTED`, `NO_TAB`, `NO_H
 | Export or entry point | Consumer | Stability | Versioning and deprecation rule | Declaration or API report |
 | --------------------- | -------- | --------- | ------------------------------- | ------------------------- |
 | `BridgeError` / codes | npm root specifier | public | Meaning-stable within a major | `src/index.ts` |
-| `PROTOCOL_VERSION` | both sides | public | Independent of npm version | `src/core/constants.ts` |
+| `PROTOCOL_VERSION` | both sides | public | Independent of npm version | `src/core/constants.ts` via `src/index.ts` |
 | Other core helpers | web/extension adapters | internal | Not on `package.json` exports | `src/core/index.ts` |
 
 ## Key design trade-off

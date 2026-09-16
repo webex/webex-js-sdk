@@ -44,7 +44,7 @@ This SDD root is the npm package only. Sibling `@webex/*` packages are out of sc
 
 ## Design overview
 
-A web page cannot call `chrome.runtime`, and an MV3 service worker cannot reach a page's JavaScript heap. This package owns that channel as a zero-runtime-dependency TypeScript SDK.
+A web page and a Chrome extension run in different execution contexts with no direct communication path. A web page cannot call `chrome.runtime`, and an MV3 service worker cannot reach a page's JavaScript heap. This package owns that channel as a zero-runtime-dependency TypeScript SDK.
 
 Three execution worlds cooperate over one envelope:
 
@@ -54,7 +54,7 @@ Three execution worlds cooperate over one envelope:
 
 `src/core` is env-agnostic: no `window`, no `chrome`. Adapters in `src/web` and `src/extension` import it.
 
-Intake `WEB-EXTENSION-BRIDGE-INTAKE-SPEC.md` (JS SDK repo root) described unscoped name `web-extension-bridge` and layout-shaped export aliases. Code and `package.json` win: scoped name, exports `.` / `./extension` / `./content-script` / `./package`.
+Intake `WEB-EXTENSION-BRIDGE-INTAKE-SPEC.md` (JS SDK repo root) described unscoped name `web-extension-bridge` and layout-shaped export aliases. Code and `package.json` win: scoped name, exports `.` / `./extension` / `./content-script` / `./package`. A secure, framework-agnostic bridge between a web application and a Chromium MV3 extension.
 
 ## Resource inventory and responsibilities
 
@@ -73,7 +73,12 @@ flowchart LR
   Popup[createExtensionClient] -->|runtime commands| Worker
   Worker -->|tabs.sendMessage| Relay
   Relay -->|postMessage documentOrigin| Page
+  Page -->|INSECURE_CONFIG| PageCfg[reject empty wildcard or missing documentOrigin]
+  Relay -->|drop| Drop[other window, origin not allow-listed, or invalid envelope]
+  Worker -->|NO_TAB TIMEOUT DISCONNECTED| WorkerErr[coded BridgeError]
 ```
+
+FR1: the web application sends a message to the Chrome extension addressed by a topic string. FR2: the extension fetches a value from the web application on demand. FR6: extension UI surfaces use FR1/FR2 results without duplicating transport. FR8: push messages received while no extension UI is open are retained in a bounded buffer.
 
 | From | To | Interaction or transport | Purpose | Failure or compatibility behavior |
 | ---- | -- | ------------------------ | ------- | --------------------------------- |
@@ -103,7 +108,7 @@ No runtime dependency cycles. Page never imports `chrome`. Worker never posts to
 | `@webex/web-extension-bridge/content-script` | SDK | extension | MV3 `content_scripts[].js` | Side-effect start of default-channel relay | `package.json` export `./content-script` |
 | Envelope | Event | core | All hops | Additive optional fields need a protocol minor bump; other shape changes a major bump | `src/core/protocol.ts` |
 
-Layout aliases `/web` and `/extension/{background,client,content}` are not published. Test seams `createWebBridgeWith`, `createExtensionBridgeWith`, `createExtensionClientWith`, and `createContentRelay` are not on any published specifier.
+Layout aliases `/web` and `/extension/{background,client,content}` are not published. Those three, plus `./package`, are the whole published surface. Test seams `createWebBridgeWith`, `createExtensionBridgeWith`, `createExtensionClientWith`, and `createContentRelay` are not on any published specifier.
 
 ## Client state model
 
@@ -222,7 +227,7 @@ flowchart LR
   Worker -->|isOriginAllowed plus sender checks| Isolated
 ```
 
-Controls verified in code:
+Threat model T1–T14 covers origin allow-listing, wildcard postMessage, unguessable ids, and redacted wire errors. Controls verified in code:
 
 - Exact-origin allow-list; wildcards rejected (`src/web/config.ts`, background `resolveAllowedOrigins`)
 - `event.source === window` (page and relay)

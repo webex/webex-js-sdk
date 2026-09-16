@@ -145,6 +145,9 @@ flowchart LR
   Relay -->|runtime.sendMessage| Worker[background.ts]
   UI[client.ts] -->|client commands| Worker
   Worker -->|tabs.sendMessage| Relay
+  Ctor[createExtensionBridge] -->|INSECURE_CONFIG| CfgFail[missing empty or wildcard allowedOrigins]
+  Worker -->|NO_TAB TIMEOUT DISCONNECTED| Err[coded BridgeError]
+  Relay -->|drop| Drop[page REQUEST or origin mismatch]
 ```
 
 ## Class and component relationships
@@ -166,6 +169,8 @@ classDiagram
 | `UC-002` | Service worker | `request` FR2 from active or specified tab | `NO_TAB` / `NO_HANDLER` / `TIMEOUT` | `src/types.ts` |
 | `UC-003` | Popup | `createExtensionClient().request` | Proxied; popup teardown does not own the bridge | `src/extension/client.ts` |
 | `UC-004` | Manifest | load the published content-script specifier | Starts default-channel relay at document_start | `src/content-script.ts` |
+
+The extension MUST be able to target a specific tab for FR2, defaulting to the active tab.
 
 ## Client state model
 

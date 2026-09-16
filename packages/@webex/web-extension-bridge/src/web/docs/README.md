@@ -128,9 +128,11 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 ```mermaid
 flowchart LR
   App[Host app] --> Bridge[createWebBridge]
+  Bridge -->|INSECURE_CONFIG| CfgFail[wildcard empty list or missing documentOrigin]
   Bridge -->|postMessage documentOrigin| Relay[Content relay]
   Relay -->|REQUEST| Bridge
   Bridge --> Handler[requestHandler]
+  Bridge -->|drop inbound| Drop[other window or origin not allow-listed]
 ```
 
 ## Class and component relationships
@@ -152,6 +154,8 @@ classDiagram
 | `UC-002` | Host page | `requestHandler` answers FR2 | Missing handler → coded handler error path | `src/web/webBridge.ts` |
 | `UC-003` | Host page | `onConnected` when relay/worker attach | Fires immediately if already connected | `src/types.ts` |
 
+The web application MUST be able to register a named handler that produces the value returned for FR2, and MUST be able to observe when the extension attaches and detaches.
+
 ## Client state model
 
 | State or slice | Owner | Initial state | Transition triggers | Reset or persistence boundary |
@@ -167,6 +171,8 @@ classDiagram
 | `INV-001` | `targetOrigin` equals `documentOrigin` | Content script shares the document; wildcard is forbidden | `src/web/config.ts` | `test/unit/spec/web/config.ts` |
 | `INV-002` | Allow-list entries match `^https?:\/\/[a-zA-Z0-9.-]+(:\d{1,5})?$` | Exact origins only | `src/web/config.ts` | `test/unit/spec/web/config.ts` |
 | `INV-003` | Re-registering a topic throws unless `opts.replace === true` | One handler per topic | `src/types.ts`, `src/web/webBridge.ts` | `test/unit/spec/web/webBridge.ts` |
+
+Origin allow-list, no postMessage with a wildcard target origin.
 
 ## Concurrency and reactive flow
 
