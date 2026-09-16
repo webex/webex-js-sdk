@@ -23,7 +23,7 @@ Doc map for developers and agents working in this package. SDD root is the packa
 
 ## Decisions
 
-- [adr/](adr/) — architectural decision records (none registered yet)
+- [adr/](adr/) — architectural decision records ([ADR-0001](adr/0001-spec-source-policy.md) spec-source policy)
 
 ## Specifications and contracts
 

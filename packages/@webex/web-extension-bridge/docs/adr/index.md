@@ -13,7 +13,11 @@ Numbered, append-only records of structural decisions affecting this package and
 
 ## Index
 
-No architectural decisions are registered yet. Intake and README already record several product decisions (no HMAC, accepted XSS risk, required worker allow-list); promote those to numbered ADRs only when the team wants a durable supersession trail.
+| ADR | Title | Status |
+| --- | ----- | ------ |
+| [0001](0001-spec-source-policy.md) | Reconcile existing docs; retain README and SECURITY | Accepted |
+
+Product README still records several product decisions (no HMAC, accepted XSS risk, required worker allow-list); promote those to numbered ADRs only when the team wants a durable supersession trail.
 
 Add new entries as ADRs are accepted. Keep this list in numeric order.
 

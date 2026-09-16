@@ -137,7 +137,7 @@ One published `/extension` facade rather than layout-shaped subpaths. Bundlers t
 | Relay page→worker | postMessage → runtime.sendMessage | `src/extension/content.ts` | Three consecutive notify failures stop connected signaling |
 | Worker request | `request(topic)` → tabs.sendMessage REQUEST | `src/extension/background.ts` | `NO_TAB`, `TIMEOUT`, `NOT_CONNECTED` |
 | UI proxy | client command → worker | `src/extension/client.ts` | Worker gone → raw transport `Error` |
-| Buffer | push with no subscriber → session store | `sessionStore.ts` | entry/TTL/byte caps |
+| Buffer | every accepted push → session store (non-draining) | `sessionStore.ts` | read-time TTL filter; lazy write-time eviction; maxEntries / maxBytes (one newest entry may exceed `maxBytes`) |
 
 ```mermaid
 flowchart LR

@@ -91,7 +91,7 @@
     "disposition_decided_at": "2026-09-16T10:06:00Z",
     "decided_by": "SPARK-853132 ticket owner",
     "decided_at": "2026-09-16T10:06:00Z",
-    "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+    "decision_record": "docs/adr/0001-spec-source-policy.md"
   },
   "spec_sources": [
     {
@@ -260,7 +260,7 @@
         "publication": "internal",
         "source_kind": "repository-path",
         "source": "src/core/protocol.ts",
-        "summary": "Null-prototype Envelope shape and kinds that cross every page, content-script, and worker hop."
+        "summary": "Null-prototype Envelope shape and kinds for page-protocol hops (page, content-relay, worker). UI uses ClientCommandMessage / ClientPushEvent; relay CONNECT/DISCONNECT uses RelayToWorker."
       }
     }
   },

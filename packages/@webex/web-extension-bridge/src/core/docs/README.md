@@ -70,7 +70,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 
 ## Purpose and boundary
 
-- Responsibility: Own the env-agnostic protocol and safety primitives used by every hop.
+- Responsibility: Own the env-agnostic protocol and safety primitives used by page-protocol hops (page, content-relay, worker).
 - In scope: envelope shape, validation, ids, correlation map, rate limiting, replay cache, JSON/serialize/limits, logger, counters, coded errors.
 - Out of scope: `window.postMessage`, `chrome.*`, published factory functions.
 - Consumers: `src/web`, `src/extension`.
