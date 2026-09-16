@@ -10,7 +10,7 @@ generated_from: module-spec@0.3.0
 generated_by: cursor
 approved_by: pending
 updated_at: 2026-09-16T10:06:00Z
-validation_status: not-run
+validation_status: pass
 -->
 
 # web
@@ -32,7 +32,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | Parent spec   | — |
 | Doc kind      | Module spec |
 | Coverage score | 88% assessed 2026-09-16 |
-| Validation status | not-run |
+| Validation status | pass |
 
 ## Applicability
 

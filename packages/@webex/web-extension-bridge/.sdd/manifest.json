@@ -275,7 +275,10 @@
       "Blocking"
     ],
     "generator_run_id": "spark-853132-sdd-stage0-2026-09-16",
-    "source_commit": "9745d5577c990bb04ef013df8987b18b7b1d7148",
+    "validator_runtime": "codex",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime",
+    "source_commit": "de45c0d889b536ce6362359dc11eac056359dc63",
     "base_ref": "next",
     "head_ref": "WEB-EXTENSION-BRIDGE_SDD_ANNOTATION"
   },

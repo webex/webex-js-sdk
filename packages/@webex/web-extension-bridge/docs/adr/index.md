@@ -4,7 +4,7 @@ generated_from: adr-index@0.3.0
 generated_by: cursor
 approved_by: pending
 updated_at: 2026-09-16T10:06:00Z
-validation_status: not-run
+validation_status: pass
 -->
 
 # Architectural decision records
