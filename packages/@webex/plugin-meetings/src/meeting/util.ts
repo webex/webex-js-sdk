@@ -16,6 +16,7 @@ import {
   EVENT_TRIGGERS,
   LOCAL_SHARE_ERRORS,
   IP_VERSION,
+  MEETING_REMOVED_REASON,
 } from '../constants';
 import BrowserDetection from '../common/browser-detection';
 import IntentToJoinError from '../common/errors/intent-to-join';
@@ -324,6 +325,42 @@ const MeetingUtil = {
       .then((res) => {
         const parsed = MeetingUtil.parseLocusJoin(res);
         meeting.setLocus(parsed);
+
+        // The unmatched-locus-event deferral in Meetings#handleLocusEvent gives up and creates a
+        // placeholder meeting for this locusUrl if this join() takes longer than its timeout; now
+        // that join() has actually completed, get rid of that duplicate if one was created for us.
+        const duplicateMeeting: any = Object.values(webex.meetings.meetingCollection.getAll()).find(
+          (candidate: any) => candidate.id !== meeting.id && candidate.locusUrl === meeting.locusUrl
+        );
+
+        if (duplicateMeeting) {
+          // the placeholder may have picked up controls (e.g. meetingContainer) that this join()
+          // response didn't include; back-fill them onto the real meeting before losing them.
+          // Duplicate's controls go first so this join()'s own (fresher) values always win -
+          // handleLocusAPIResponse can't be used here since it discards the whole DTO as stale
+          // whenever its sequence isn't newer than what setLocus() above just installed.
+          if (duplicateMeeting.unmatchedLocusEventDto?.controls) {
+            try {
+              meeting.locusInfo.updateControls(
+                {
+                  ...duplicateMeeting.unmatchedLocusEventDto.controls,
+                  ...meeting.locusInfo.controls,
+                },
+                meeting.locusInfo.parsedLocus.self
+              );
+            } catch (mergeError) {
+              LoggerProxy.logger.warn(
+                `Meeting:util#joinMeeting --> failed to merge duplicate meeting's controls onto meeting ${meeting.id}: ${mergeError}`
+              );
+            }
+          }
+
+          LoggerProxy.logger.warn(
+            `Meeting:util#joinMeeting --> destroying duplicate meeting (${duplicateMeeting.id}) created for locusUrl ${meeting.locusUrl} while this join() was still in flight`
+          );
+          webex.meetings.destroy(duplicateMeeting, MEETING_REMOVED_REASON.DUPLICATE_LOCUS_URL);
+        }
+
         meeting.isoLocalClientMeetingJoinTime = res?.headers?.date; // read from header if exist, else fall back to system clock : https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-555657
         const socketUrlInfo = MeetingUtil.getSocketUrlInfo(webex);
         webex.internal.newMetrics.submitClientEvent({
