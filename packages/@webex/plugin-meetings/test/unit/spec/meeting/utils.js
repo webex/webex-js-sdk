@@ -814,58 +814,76 @@ describe('plugin-meetings', () => {
           sinon.stub(webex.meetings, 'destroy');
         });
 
-        it('merges the duplicate meeting controls onto the real meeting before destroying it', async () => {
-          duplicateMeeting.unmatchedLocusEventDto = {
-            url: 'locusUrl',
-            controls: {mute: false, meetingContainer: {url: 'container-url'}},
-          };
+        [
+          {
+            name: 'merges the duplicate meeting controls onto the real meeting before destroying it',
+            unmatchedLocusEventDto: {
+              url: 'locusUrl',
+              controls: {mute: false, meetingContainer: {url: 'container-url'}},
+            },
+            expectedMergedControls: {mute: true, meetingContainer: {url: 'container-url'}},
+            expectDestroy: true,
+          },
+          {
+            name: 'destroys the duplicate meeting without merging when it has no controls',
+            unmatchedLocusEventDto: undefined,
+            expectedMergedControls: undefined,
+            expectDestroy: true,
+          },
+          {
+            name: 'still destroys the duplicate meeting if merging its controls throws',
+            unmatchedLocusEventDto: {url: 'locusUrl', controls: {mute: false}},
+            updateControlsThrows: true,
+            expectedMergedControls: {mute: true},
+            expectDestroy: true,
+          },
+          {
+            name: 'does not touch other meetings sharing a different locusUrl',
+            duplicateLocusUrl: 'someOtherLocusUrl',
+            unmatchedLocusEventDto: undefined,
+            expectedMergedControls: undefined,
+            expectDestroy: false,
+          },
+        ].forEach(
+          ({
+            name,
+            unmatchedLocusEventDto,
+            duplicateLocusUrl,
+            updateControlsThrows,
+            expectedMergedControls,
+            expectDestroy,
+          }) => {
+            it(name, async () => {
+              duplicateMeeting.locusUrl = duplicateLocusUrl || duplicateMeeting.locusUrl;
+              duplicateMeeting.unmatchedLocusEventDto = unmatchedLocusEventDto;
+              if (updateControlsThrows) {
+                meeting.locusInfo.updateControls.throws(new Error('merge failed'));
+              }
 
-          await MeetingUtil.joinMeeting(meeting, {});
+              await MeetingUtil.joinMeeting(meeting, {});
 
-          assert.calledOnceWithExactly(
-            meeting.locusInfo.updateControls,
-            {mute: true, meetingContainer: {url: 'container-url'}},
-            meeting.locusInfo.parsedLocus.self
-          );
-          assert.calledOnceWithExactly(
-            webex.meetings.destroy,
-            duplicateMeeting,
-            MEETING_REMOVED_REASON.DUPLICATE_LOCUS_URL
-          );
-        });
+              if (expectedMergedControls) {
+                assert.calledOnceWithExactly(
+                  meeting.locusInfo.updateControls,
+                  expectedMergedControls,
+                  meeting.locusInfo.parsedLocus.self
+                );
+              } else {
+                assert.notCalled(meeting.locusInfo.updateControls);
+              }
 
-        it('destroys the duplicate meeting without merging when it has no controls', async () => {
-          await MeetingUtil.joinMeeting(meeting, {});
-
-          assert.notCalled(meeting.locusInfo.updateControls);
-          assert.calledOnceWithExactly(
-            webex.meetings.destroy,
-            duplicateMeeting,
-            MEETING_REMOVED_REASON.DUPLICATE_LOCUS_URL
-          );
-        });
-
-        it('still destroys the duplicate meeting if merging its controls throws', async () => {
-          duplicateMeeting.unmatchedLocusEventDto = {url: 'locusUrl', controls: {mute: false}};
-          meeting.locusInfo.updateControls.throws(new Error('merge failed'));
-
-          await MeetingUtil.joinMeeting(meeting, {});
-
-          assert.calledOnceWithExactly(
-            webex.meetings.destroy,
-            duplicateMeeting,
-            MEETING_REMOVED_REASON.DUPLICATE_LOCUS_URL
-          );
-        });
-
-        it('does not touch other meetings sharing a different locusUrl', async () => {
-          duplicateMeeting.locusUrl = 'someOtherLocusUrl';
-
-          await MeetingUtil.joinMeeting(meeting, {});
-
-          assert.notCalled(meeting.locusInfo.updateControls);
-          assert.notCalled(webex.meetings.destroy);
-        });
+              if (expectDestroy) {
+                assert.calledOnceWithExactly(
+                  webex.meetings.destroy,
+                  duplicateMeeting,
+                  MEETING_REMOVED_REASON.DUPLICATE_LOCUS_URL
+                );
+              } else {
+                assert.notCalled(webex.meetings.destroy);
+              }
+            });
+          }
+        );
       });
     });
 
