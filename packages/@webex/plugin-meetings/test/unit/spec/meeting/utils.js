@@ -842,18 +842,37 @@ describe('plugin-meetings', () => {
             expectedMergedControls: undefined,
             expectDestroy: false,
           },
+          {
+            name: 'prefers the duplicate meeting controls when its locus sequence is newer',
+            duplicateControls: {mute: false, meetingContainer: {url: 'container-url'}},
+            meetingSequence: {entries: [1]},
+            duplicateSequence: {entries: [2]},
+            expectedMergedControls: {mute: false, meetingContainer: {url: 'container-url'}},
+            expectDestroy: true,
+          },
+          {
+            name: 'still prefers the real meeting controls when its own locus sequence is newer than the duplicate',
+            duplicateControls: {mute: false, meetingContainer: {url: 'container-url'}},
+            meetingSequence: {entries: [5]},
+            duplicateSequence: {entries: [3]},
+            expectedMergedControls: {mute: true, meetingContainer: {url: 'container-url'}},
+            expectDestroy: true,
+          },
         ].forEach(
           ({
             name,
             duplicateControls,
             duplicateLocusUrl,
             updateControlsThrows,
+            meetingSequence,
+            duplicateSequence,
             expectedMergedControls,
             expectDestroy,
           }) => {
             it(name, async () => {
               duplicateMeeting.locusUrl = duplicateLocusUrl || duplicateMeeting.locusUrl;
-              duplicateMeeting.locusInfo = {controls: duplicateControls};
+              duplicateMeeting.locusInfo = {controls: duplicateControls, sequence: duplicateSequence};
+              meeting.locusInfo.sequence = meetingSequence;
               if (updateControlsThrows) {
                 meeting.locusInfo.updateControls.throws(new Error('merge failed'));
               }

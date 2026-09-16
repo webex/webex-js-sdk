@@ -19,6 +19,7 @@ import {
   MEETING_REMOVED_REASON,
 } from '../constants';
 import BrowserDetection from '../common/browser-detection';
+import LocusDeltaParser from '../locus-info/parser';
 import IntentToJoinError from '../common/errors/intent-to-join';
 import JoinMeetingError from '../common/errors/join-meeting';
 import ParameterError from '../common/errors/parameter';
@@ -281,16 +282,23 @@ const MeetingUtil = {
     }
 
     // merge the placeholder's accumulated controls (not just its creation-time snapshot) onto
-    // the real meeting before losing them; duplicate's go first so this meeting's own (fresher)
-    // values win - handleLocusAPIResponse can't be used here since it discards the whole DTO as
-    // stale whenever its sequence isn't newer than what's already installed.
+    // the real meeting before losing them - handleLocusAPIResponse can't be used here since it
+    // discards the whole DTO as stale whenever its sequence isn't newer than what's installed.
+    // Use locus sequencing (rather than assuming the survivor is always freshest) to decide
+    // which side's values should win, since the duplicate may have kept receiving live locus
+    // events while the survivor's join()/fetchMeetingInfo() response was still in flight.
     if (duplicateMeeting.locusInfo?.controls) {
       try {
+        const duplicateIsNewer =
+          !!meeting.locusInfo.sequence &&
+          !!duplicateMeeting.locusInfo.sequence &&
+          LocusDeltaParser.compareFullDtoSequence(meeting.locusInfo, duplicateMeeting.locusInfo) ===
+            LocusDeltaParser.loci.USE_INCOMING;
+
         meeting.locusInfo.updateControls(
-          {
-            ...duplicateMeeting.locusInfo.controls,
-            ...meeting.locusInfo.controls,
-          },
+          duplicateIsNewer
+            ? {...meeting.locusInfo.controls, ...duplicateMeeting.locusInfo.controls}
+            : {...duplicateMeeting.locusInfo.controls, ...meeting.locusInfo.controls},
           meeting.locusInfo.parsedLocus.self
         );
       } catch (mergeError) {
