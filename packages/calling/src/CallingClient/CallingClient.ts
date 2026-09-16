@@ -645,44 +645,39 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         );
       };
 
-      const handleDiscoveryError = async (err: unknown): Promise<boolean> => {
-        log.error(`Failed to get Mobius servers: ${JSON.stringify(err)}`, {
-          method: METHODS.GET_MOBIUS_SERVERS,
-          file: CALLING_CLIENT_FILE,
-        });
-
-        const abort = await handleCallingClientErrors(
-          err as WebexRequestPayload,
-          (clientError) => {
-            this.metricManager.submitRegistrationMetric(
-              METRIC_EVENT.REGISTRATION_ERROR,
-              REG_ACTION.REGISTER,
-              METRIC_TYPE.BEHAVIORAL,
-              GET_MOBIUS_SERVERS_UTIL,
-              'UNKNOWN',
-              (err as WebexRequestPayload).headers?.trackingId ?? '',
-              undefined,
-              clientError
-            );
-            this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
-          },
-          {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
-        );
-
-        if (abort) {
-          await uploadLogs();
-        }
-
-        return abort;
-      };
-
       if (this.mobiusHost) {
         try {
           const mobiusServers = await this.requestMobiusServers(clientRegion, countryCode);
 
           applyMobiusServers(mobiusServers);
         } catch (err: unknown) {
-          useDefault = await handleDiscoveryError(err);
+          log.error(`Failed to get Mobius servers: ${JSON.stringify(err)}`, {
+            method: METHODS.GET_MOBIUS_SERVERS,
+            file: CALLING_CLIENT_FILE,
+          });
+
+          const abort = await handleCallingClientErrors(
+            err as WebexRequestPayload,
+            (clientError) => {
+              this.metricManager.submitRegistrationMetric(
+                METRIC_EVENT.REGISTRATION_ERROR,
+                REG_ACTION.REGISTER,
+                METRIC_TYPE.BEHAVIORAL,
+                GET_MOBIUS_SERVERS_UTIL,
+                'UNKNOWN',
+                (err as WebexRequestPayload).headers?.trackingId ?? '',
+                undefined,
+                clientError
+              );
+              this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
+            },
+            {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
+          );
+
+          if (abort) {
+            useDefault = true;
+            await uploadLogs();
+          }
         }
       }
 
@@ -713,10 +708,34 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
             applyMobiusServers(mobiusServers);
             break;
           } catch (err: unknown) {
-            // eslint-disable-next-line no-await-in-loop
-            useDefault = await handleDiscoveryError(err);
+            log.error(`Failed to get Mobius servers: ${JSON.stringify(err)}`, {
+              method: METHODS.GET_MOBIUS_SERVERS,
+              file: CALLING_CLIENT_FILE,
+            });
 
-            if (useDefault) {
+            // eslint-disable-next-line no-await-in-loop
+            const abort = await handleCallingClientErrors(
+              err as WebexRequestPayload,
+              (clientError) => {
+                this.metricManager.submitRegistrationMetric(
+                  METRIC_EVENT.REGISTRATION_ERROR,
+                  REG_ACTION.REGISTER,
+                  METRIC_TYPE.BEHAVIORAL,
+                  GET_MOBIUS_SERVERS_UTIL,
+                  'UNKNOWN',
+                  (err as WebexRequestPayload).headers?.trackingId ?? '',
+                  undefined,
+                  clientError
+                );
+                this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
+              },
+              {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
+            );
+
+            if (abort) {
+              useDefault = true;
+              // eslint-disable-next-line no-await-in-loop
+              await uploadLogs();
               break;
             }
           }
