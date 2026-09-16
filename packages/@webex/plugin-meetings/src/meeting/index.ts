@@ -835,6 +835,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private logUploadIntervalIndex: number;
   private mediaServerIp: string;
   private llmHealthCheckTimer?: ReturnType<typeof setTimeout>;
+  private llmConnectionAttempt?: object;
 
   /**
    * The LLM channel owned by this meeting for datachannel communication.
@@ -6706,16 +6707,20 @@ export default class Meeting extends StatelessWebexPlugin {
    * by events received while leaving (per Locus team recommendation).
    * Idempotent: safe to call multiple times; .off() is a no-op when no
    * matching listener is registered.
+   * @param {LLMChannel} llmChannel channel whose listeners should be removed
    * @private
    * @returns {void}
    */
-  private stopListeningForLLMEvents() {
-    this.llmChannel?.off('event:relay.event', this.processRelayEvent);
-    this.llmChannel?.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
-    this.llmChannel?.off('online', this.handleLLMOnline);
-    this.breakouts?.unregisterLLMChannel();
-    // voiceaChannel persists across LLM reconnects; switchLLMChannel() handles re-subscribing
-    this.clearLLMHealthCheckTimer();
+  private stopListeningForLLMEvents(llmChannel = this.llmChannel) {
+    llmChannel?.off('event:relay.event', this.processRelayEvent);
+    llmChannel?.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+    llmChannel?.off('online', this.handleLLMOnline);
+
+    if (this.llmChannel === llmChannel) {
+      this.breakouts?.unregisterLLMChannel();
+      // voiceaChannel persists across LLM reconnects; switchLLMChannel() handles re-subscribing
+      this.clearLLMHealthCheckTimer();
+    }
   }
 
   /**
@@ -6735,6 +6740,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {void}
    */
   private stopListeningForMeetingEvents() {
+    this.llmConnectionAttempt = undefined;
     this.stopListeningForLLMEvents();
     this.stopListeningForMercuryEvents();
     if (this.areVoiceaEventsSetup) {
@@ -6760,6 +6766,10 @@ export default class Meeting extends StatelessWebexPlugin {
     throwOnError?: boolean;
     preserveVoiceaChannel?: boolean;
   } = {}): Promise<void> => {
+    const {llmChannel} = this;
+
+    this.llmConnectionAttempt = undefined;
+
     // Always clear the timer, even if there's no channel
     this.clearLLMHealthCheckTimer();
 
@@ -6771,12 +6781,12 @@ export default class Meeting extends StatelessWebexPlugin {
       this.voiceaChannel = undefined;
     }
 
-    if (!this.llmChannel) {
+    if (!llmChannel) {
       return;
     }
 
     try {
-      await this.llmChannel.disconnect({
+      await llmChannel.disconnect({
         code: 3050,
         reason: 'done (permanent)',
       });
@@ -6790,8 +6800,10 @@ export default class Meeting extends StatelessWebexPlugin {
         throw error;
       }
     } finally {
-      this.stopListeningForLLMEvents();
-      this.llmChannel = undefined;
+      this.stopListeningForLLMEvents(llmChannel);
+      if (this.llmChannel === llmChannel) {
+        this.llmChannel = undefined;
+      }
     }
   };
 
@@ -6917,44 +6929,70 @@ export default class Meeting extends StatelessWebexPlugin {
       return undefined;
     }
 
+    const llmConnectionAttempt = {};
+
+    this.llmConnectionAttempt = llmConnectionAttempt;
+
     // Create a new LLM channel for this meeting
     // @ts-ignore - Fix type
-    this.llmChannel = this.webex.internal.llm.createChannel();
+    const llmChannel = this.webex.internal.llm.createChannel();
+
+    this.llmChannel = llmChannel;
 
     // Get token from pending (saved from join response) or channel
-    const datachannelToken = this._pendingDatachannelToken ?? this.llmChannel.getDatachannelToken();
+    const datachannelToken = this._pendingDatachannelToken ?? llmChannel.getDatachannelToken();
 
     // Set up refresh handler before registration so interceptor-triggered token
     // refresh during register POST can resolve a valid handler.
-    this.llmChannel.setRefreshHandler(() => this.refreshDataChannelToken());
+    llmChannel.setRefreshHandler(() => this.refreshDataChannelToken());
 
     // If we have a pending token, store it on the channel
     if (this._pendingDatachannelToken) {
-      this.llmChannel.setDatachannelToken(this._pendingDatachannelToken);
+      llmChannel.setDatachannelToken(this._pendingDatachannelToken);
       this._pendingDatachannelToken = undefined;
     }
 
-    return this.llmChannel
+    return llmChannel
       .registerAndConnect(url, dataChannelUrl, datachannelToken)
-      .then((registerAndConnectResult) => {
+      .then(async (registerAndConnectResult) => {
+        if (this.llmConnectionAttempt !== llmConnectionAttempt || this.llmChannel !== llmChannel) {
+          try {
+            await llmChannel.disconnect({
+              code: 3050,
+              reason: 'superseded',
+            });
+          } catch (error) {
+            LoggerProxy.logger.warn(
+              'Meeting:index#updateLLMConnection --> Failed to disconnect stale LLM channel',
+              error
+            );
+          }
+
+          if (this.llmChannel === llmChannel) {
+            this.llmChannel = undefined;
+          }
+
+          return registerAndConnectResult;
+        }
+
         this.locusInfo.syncAllHashTreeDatasets({onlyLLM: true});
 
         // Register event listeners on the channel
-        this.llmChannel.off('event:relay.event', this.processRelayEvent);
-        this.llmChannel.on('event:relay.event', this.processRelayEvent);
-        this.llmChannel.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
-        this.llmChannel.on(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
-        this.llmChannel.off('online', this.handleLLMOnline);
-        this.llmChannel.on('online', this.handleLLMOnline);
+        llmChannel.off('event:relay.event', this.processRelayEvent);
+        llmChannel.on('event:relay.event', this.processRelayEvent);
+        llmChannel.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+        llmChannel.on(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+        llmChannel.off('online', this.handleLLMOnline);
+        llmChannel.on('online', this.handleLLMOnline);
 
         // Register annotation channel only if not in practice session
         // (practice session manages its own annotation channel via updatePSDataChannel)
         if (!this.webinar?.isJoinPracticeSessionDataChannel()) {
-          this.annotation.registerChannel(this.llmChannel);
+          this.annotation.registerChannel(llmChannel);
         }
 
         // Register breakouts channel
-        this.breakouts.registerLLMChannel(this.llmChannel);
+        this.breakouts.registerLLMChannel(llmChannel);
 
         LoggerProxy.logger.info(
           'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
@@ -6977,7 +7015,7 @@ export default class Meeting extends StatelessWebexPlugin {
           // transcription is always initialized (reset to initial shape, never null),
           // so no re-init needed here.
           this.voiceaChannel
-            .switchLLMChannel(this.llmChannel)
+            .switchLLMChannel(llmChannel)
             .then(() => {
               this.startTranscriptionIfNeeded();
             })
@@ -7020,8 +7058,12 @@ export default class Meeting extends StatelessWebexPlugin {
           error,
         });
 
-        // Clean up the channel on failure
-        this.llmChannel = undefined;
+        if (this.llmChannel === llmChannel) {
+          if (this.llmConnectionAttempt === llmConnectionAttempt) {
+            this.llmConnectionAttempt = undefined;
+          }
+          this.llmChannel = undefined;
+        }
 
         return Promise.reject(error);
       });

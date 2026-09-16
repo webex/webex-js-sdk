@@ -15449,6 +15449,70 @@ describe('plugin-meetings', () => {
           assert.isUndefined(meeting.llmChannel);
         });
 
+        it('does not restore LLM behavior when connection completes after meeting teardown', async () => {
+          const registerAndConnect = new Defer();
+          const registerLLMChannel = sinon.spy(meeting.breakouts, 'registerLLMChannel');
+
+          mockChannel.registerAndConnect.returns(registerAndConnect.promise);
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          const updateLLMConnection = meeting.updateLLMConnection();
+
+          meeting.stopListeningForMeetingEvents();
+          mockChannel.off.resetHistory();
+          registerAndConnect.resolve('connection timings');
+
+          const result = await updateLLMConnection;
+
+          assert.equal(result, 'connection timings');
+          assert.calledOnceWithExactly(mockChannel.disconnect, {
+            code: 3050,
+            reason: 'superseded',
+          });
+          assert.isUndefined(meeting.llmChannel);
+          assert.notCalled(meeting.locusInfo.syncAllHashTreeDatasets);
+          assert.notCalled(mockChannel.on);
+          assert.notCalled(mockChannel.off);
+          assert.notCalled(meeting.annotation.registerChannel);
+          assert.notCalled(registerLLMChannel);
+          assert.notCalled(meeting.startLLMHealthCheckTimer);
+          assert.notCalled(mockVoiceaChannel.switchLLMChannel);
+        });
+
+        it('does not clear a newer channel when an older connection attempt fails', async () => {
+          const registerAndConnect = new Defer();
+          const registerError = new Error('registration failed');
+          const newerChannel = createMockLLMChannel();
+
+          mockChannel.registerAndConnect.returns(registerAndConnect.promise);
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          const updateLLMConnection = meeting.updateLLMConnection();
+
+          meeting.llmChannel = newerChannel;
+          meeting.llmConnectionAttempt = {};
+          registerAndConnect.reject(registerError);
+
+          try {
+            await updateLLMConnection;
+            assert.fail('Expected updateLLMConnection to reject');
+          } catch (error) {
+            assert.equal(error, registerError);
+          }
+
+          assert.strictEqual(meeting.llmChannel, newerChannel);
+        });
+
         it('starts LLM health check timer after successful connection', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {
