@@ -1,4 +1,5 @@
 /* eslint-disable no-await-in-loop */
+import {Mutex} from 'async-mutex';
 import {
   FAILURE_MESSAGE,
   METHOD_START_MESSAGE,
@@ -65,6 +66,17 @@ export class ContactsClient implements IContacts {
   private contactsServiceUrl: string;
 
   /**
+   * Serializes check-then-act mutations of `groups`/`contacts`/`defaultGroupId`
+   * (`getContacts` assignment, `createContactGroup` uniqueness-scan-then-push,
+   * and the write side of `fetchDefaultGroup`'s check-then-create) so concurrent
+   * flows cannot race and duplicate or corrupt this shared state. Mirrors
+   * `src/CallingClient/registration/register.ts`. Each lock is scoped to a single
+   * mutation and never held across a nested call that itself acquires it (e.g.
+   * `createContactGroup` releases before returning to `fetchEncryptionKeyUrl`).
+   */
+  private mutex: Mutex;
+
+  /**
    * @ignore
    */
   constructor(webex: WebexSDK, logger: LoggerInterface) {
@@ -80,6 +92,7 @@ export class ContactsClient implements IContacts {
     this.groups = undefined;
     this.contacts = undefined;
     this.defaultGroupId = '';
+    this.mutex = new Mutex();
     this.contactsServiceUrl =
       this.webex.internal.services._serviceUrls?.contactsService ||
       this.webex.internal.services.get(
@@ -458,8 +471,10 @@ export class ContactsClient implements IContacts {
         })
       );
 
-      this.groups = groups;
-      this.contacts = contactList;
+      await this.mutex.runExclusive(async () => {
+        this.groups = groups;
+        this.contacts = contactList;
+      });
       const contactResponse: ContactResponse = {
         statusCode: Number(response[STATUS_CODE]),
         data: {
@@ -608,6 +623,26 @@ export class ContactsClient implements IContacts {
       return groupId;
     }
 
+    /*
+     * createContactGroup rejects with "already exists" when a concurrent caller's
+     * mutex-serialized create already committed the default group (R2/AC-5): use
+     * that group's id instead of returning '', so both callers converge on the
+     * same defaultGroupId.
+     */
+    const existingDefaultGroup = this.groups?.find(
+      (candidate) => candidate.displayName === DEFAULT_GROUP_NAME
+    );
+
+    if (existingDefaultGroup) {
+      this.defaultGroupId = existingDefaultGroup.groupId;
+      log.log(`Using default group created concurrently with ID: ${this.defaultGroupId}`, {
+        file: CONTACTS_CLIENT,
+        method: this.fetchDefaultGroup.name,
+      });
+
+      return this.defaultGroupId;
+    }
+
     return '';
   }
 
@@ -636,67 +671,76 @@ export class ContactsClient implements IContacts {
       await this.getContacts();
     }
 
-    if (this.groups && this.groups.length) {
-      const isExistingGroup = this.groups.find((group) => {
-        return group.displayName === displayName;
-      });
+    /*
+     * The uniqueness check and the eventual `this.groups.push(group)` below must be
+     * atomic, or two concurrent callers with the same displayName can both pass the
+     * check and create duplicate groups (R2). Nothing in this critical section calls
+     * back into a method that acquires this same mutex, so it is safe to hold across
+     * the awaited encrypt/create request.
+     */
+    return this.mutex.runExclusive(async (): Promise<ContactResponse> => {
+      if (this.groups && this.groups.length) {
+        const isExistingGroup = this.groups.find((group) => {
+          return group.displayName === displayName;
+        });
 
-      if (isExistingGroup) {
-        log.warn(`Group name ${displayName} already exists.`, loggerContext);
+        if (isExistingGroup) {
+          log.warn(`Group name ${displayName} already exists.`, loggerContext);
 
-        return {
-          statusCode: 400 as number,
-          data: {error: 'Group displayName already exists'},
-          message: FAILURE_MESSAGE,
-        } as ContactResponse;
+          return {
+            statusCode: 400 as number,
+            data: {error: 'Group displayName already exists'},
+            message: FAILURE_MESSAGE,
+          } as ContactResponse;
+        }
       }
-    }
 
-    const encryptedDisplayName = await this.webex.internal.encryption.encryptText(
-      encryptionKeyUrlFinal,
-      displayName
-    );
+      const encryptedDisplayName = await this.webex.internal.encryption.encryptText(
+        encryptionKeyUrlFinal,
+        displayName
+      );
 
-    const groupInfo = {
-      schemas: CONTACTS_SCHEMA,
-      displayName: encryptedDisplayName,
-      groupType: groupType || GroupType.NORMAL,
-      encryptionKeyUrl: encryptionKeyUrlFinal,
-    };
-
-    try {
-      const response = <WebexRequestPayload>await this.webex.request({
-        // eslint-disable-next-line no-underscore-dangle
-        uri: `${this.contactsServiceUrl}/${ENCRYPT_FILTER}/${USERS}/${GROUP_FILTER}`,
-        method: HTTP_METHODS.POST,
-        body: groupInfo,
-      });
-
-      log.log(`Response code: ${response.statusCode}`, loggerContext);
-      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
-
-      const group = response.body as ContactGroup;
-
-      group.displayName = displayName;
-      const contactResponse: ContactResponse = {
-        statusCode: Number(response[STATUS_CODE]),
-        data: {
-          group,
-        },
-        message: SUCCESS_MESSAGE,
+      const groupInfo = {
+        schemas: CONTACTS_SCHEMA,
+        displayName: encryptedDisplayName,
+        groupType: groupType || GroupType.NORMAL,
+        encryptionKeyUrl: encryptionKeyUrlFinal,
       };
 
-      this.groups?.push(group);
-      log.log(`Contact group ${displayName} successfully created`, loggerContext);
+      try {
+        const response = <WebexRequestPayload>await this.webex.request({
+          // eslint-disable-next-line no-underscore-dangle
+          uri: `${this.contactsServiceUrl}/${ENCRYPT_FILTER}/${USERS}/${GROUP_FILTER}`,
+          method: HTTP_METHODS.POST,
+          body: groupInfo,
+        });
 
-      return contactResponse;
-    } catch (err: unknown) {
-      log.error(`Unable to create contact group: ${JSON.stringify(err)}`, loggerContext);
-      const errorStatus = serviceErrorCodeHandler(err as WebexRequestPayload, loggerContext);
-      await uploadLogs();
+        log.log(`Response code: ${response.statusCode}`, loggerContext);
+        log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
 
-      return errorStatus;
-    }
+        const group = response.body as ContactGroup;
+
+        group.displayName = displayName;
+        const contactResponse: ContactResponse = {
+          statusCode: Number(response[STATUS_CODE]),
+          data: {
+            group,
+          },
+          message: SUCCESS_MESSAGE,
+        };
+
+        this.groups?.push(group);
+        log.log(`Contact group ${displayName} successfully created`, loggerContext);
+
+        return contactResponse;
+      } catch (err: unknown) {
+        log.error(`Unable to create contact group: ${JSON.stringify(err)}`, loggerContext);
+        const errorStatus = serviceErrorCodeHandler(err as WebexRequestPayload, loggerContext);
+        await uploadLogs();
+
+        return errorStatus;
+      }
+    });
   }
 
   /**

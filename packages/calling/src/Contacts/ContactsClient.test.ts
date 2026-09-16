@@ -1,7 +1,7 @@
 import {HTTP_METHODS, SCIMListResponse, WebexRequestPayload} from '../common/types';
-import {getTestUtilsWebex} from '../common/testUtil';
+import {getTestUtilsWebex, flushPromises} from '../common/testUtil';
 import {LOGGER} from '../Logger/types';
-import {Contact, ContactResponse, IContacts} from './types';
+import {Contact, ContactGroup, ContactResponse, GroupType, IContacts} from './types';
 import {createContactsClient} from './ContactsClient';
 import {
   FAILURE_MESSAGE,
@@ -1081,6 +1081,179 @@ describe('ContactClient Tests', () => {
     expect(logSpy).toBeCalledWith('Successfully fetched contacts and groups', {
       file: CONTACTS_CLIENT,
       method: METHODS.GET_CONTACTS,
+    });
+  });
+
+  describe('ContactsClient concurrency', () => {
+    /*
+     * Several fixtures used elsewhere in this file (e.g. mockGroupResponse,
+     * mockContactGroupListOne) are shared object/array references that other
+     * tests mutate in place (createContactGroup does `group.displayName =
+     * displayName` on the response body, and `this.groups?.push(group)` can
+     * leak a created group into a shared array). These concurrency tests build
+     * their own independent response payloads and groups arrays so they are
+     * not affected by, and do not contribute to, that cross-test state.
+     */
+    const buildGroupResponsePayload = (): WebexRequestPayload =>
+      (<WebexRequestPayload>{
+        statusCode: 201,
+        body: {
+          meta: {created: '2024-01-01T00:00:00.000Z', lastModified: '2024-01-01T00:00:00.000Z'},
+          groupId: 'concurrency-test-group-id',
+          groupType: 'NORMAL',
+          ownerId: 'concurrency-test-owner',
+          displayName: 'placeholder',
+          members: [] as string[],
+          encryptionKeyUrl: 'kms://cisco.com/keys/concurrency-test-key',
+          isMigration: false,
+        },
+      }) as WebexRequestPayload;
+
+    it('createContactGroup uniqueness is race-safe', async () => {
+      contactClient['groups'] = [];
+
+      webex.request.mockReset();
+      webex.request.mockImplementation(() => Promise.resolve(buildGroupResponsePayload()));
+      webex.internal.encryption.encryptText.mockReset();
+      webex.internal.encryption.encryptText.mockResolvedValue('Encrypted Concurrency Group');
+
+      /* Two concurrent calls for the same displayName race the check-then-push;
+       * only one may create the group (R2/AC-5). */
+      const concurrencyGroupName = 'Concurrency Test Group';
+      const firstCall = contactClient.createContactGroup(
+        concurrencyGroupName,
+        'kms://cisco.com/keys/concurrency-test-key'
+      );
+      const secondCall = contactClient.createContactGroup(
+        concurrencyGroupName,
+        'kms://cisco.com/keys/concurrency-test-key'
+      );
+
+      const responses = await Promise.all([firstCall, secondCall]);
+
+      expect(responses.filter((res) => res.statusCode === 201)).toHaveLength(1);
+      const duplicateResponse = responses.find((res) => res.statusCode === 400);
+
+      expect(duplicateResponse?.data).toEqual({error: 'Group displayName already exists'});
+      expect(webex.request).toHaveBeenCalledTimes(1);
+      expect(contactClient['groups']).toHaveLength(1);
+    });
+
+    it('getContacts does not overwrite concurrent updates', async () => {
+      /* webex.request/encryptText/decryptText are shared mocks across this
+       * file's tests and mockClear()/clearAllMocks() (afterEach, jest.config.js
+       * clearMocks) do not drop queued once-implementations left over from an
+       * earlier test; reset them so this test's exact call sequence is
+       * deterministic. */
+      webex.request.mockReset();
+      webex.internal.encryption.encryptText.mockReset();
+      webex.internal.encryption.decryptText.mockReset();
+
+      const initialGroups: ContactGroup[] = [
+        {
+          meta: {created: '2024-01-01T00:00:00.000Z', lastModified: '2024-01-01T00:00:00.000Z'},
+          groupId: 'concurrency-initial-group-id',
+          groupType: GroupType.NORMAL,
+          ownerId: 'concurrency-test-owner',
+          displayName: 'Initial Group',
+          members: [],
+          encryptionKeyUrl: 'kms://cisco.com/keys/concurrency-test-key',
+        } as ContactGroup,
+      ];
+
+      contactClient['groups'] = initialGroups;
+      contactClient['contacts'] = [];
+
+      /* createContactGroup's check-then-push holds the shared mutex across its
+       * awaited network request. Keep that request pending so its critical
+       * section stays open while a concurrent getContacts() is exercised. */
+      let resolveGroupRequest: (value: WebexRequestPayload) => void = () => {};
+      const pendingGroupRequest = new Promise<WebexRequestPayload>((resolve) => {
+        resolveGroupRequest = resolve;
+      });
+
+      webex.request.mockImplementationOnce(() => pendingGroupRequest);
+      webex.internal.encryption.encryptText.mockResolvedValue('Encrypted Concurrency Group');
+
+      const groupCall = contactClient.createContactGroup(
+        'Concurrency Test Group',
+        'kms://cisco.com/keys/concurrency-test-key'
+      );
+
+      /* Let createContactGroup reach its awaited (still-pending) request while
+       * holding the mutex for its check-then-push critical section. Advance the
+       * microtask queue one tick at a time - flushPromises(N) awaits N
+       * already-resolved promises together and settles in ~1-2 ticks regardless
+       * of N, it does not step through N sequential awaits. */
+      const advanceMicrotasks = async (steps: number) => {
+        for (let i = 0; i < steps; i += 1) {
+          await flushPromises(1);
+        }
+      };
+
+      await advanceMicrotasks(5);
+
+      const respPayload = <WebexRequestPayload>{
+        statusCode: 200,
+        body: mockContactResponseBodyTwo,
+      };
+
+      webex.request.mockResolvedValueOnce(respPayload);
+      webex.internal.encryption.decryptText
+        .mockResolvedValueOnce(mockDisplayNameTwo)
+        .mockResolvedValueOnce(mockGroupName);
+
+      const getContactsCall = contactClient.getContacts();
+
+      await advanceMicrotasks(20);
+
+      /* getContacts has fetched and decrypted its response but must not have
+       * overwritten this.groups/this.contacts yet - createContactGroup's
+       * critical section still holds the mutex (R2/AC-5). */
+      expect(contactClient['groups']).toEqual(initialGroups);
+      expect(contactClient['contacts']).toEqual([]);
+
+      resolveGroupRequest(buildGroupResponsePayload());
+      await groupCall;
+      const getContactsResponse = await getContactsCall;
+
+      /* Spot-check stable fields rather than deep-equal against
+       * mockContactGroupListTwo/mockContactListTwo: those fixtures are shared,
+       * mutable object references that other tests in this file modify in
+       * place (e.g. slicing then reassigning a contact's `groups`), so a full
+       * snapshot comparison here would be order-dependent on unrelated tests. */
+      expect(getContactsResponse.statusCode).toEqual(200);
+      expect(contactClient['groups']).toHaveLength(1);
+      expect(contactClient['groups']?.[0].displayName).toEqual(mockGroupName);
+      expect(contactClient['contacts']).toHaveLength(1);
+      expect(contactClient['contacts']?.[0].displayName).toEqual(mockDisplayNameTwo);
+      expect(contactClient['contacts']?.[0].contactId).toEqual(
+        mockContactResponseBodyTwo.contacts[0].contactId
+      );
+    });
+
+    it('fetchDefaultGroup does not create duplicate default groups', async () => {
+      contactClient['groups'] = [];
+      contactClient['defaultGroupId'] = '';
+      contactClient['encryptionKeyUrl'] = 'kms://cisco.com/keys/concurrency-test-key';
+
+      webex.request.mockReset();
+      webex.request.mockImplementation(() => Promise.resolve(buildGroupResponsePayload()));
+      webex.internal.encryption.encryptText.mockReset();
+      webex.internal.encryption.encryptText.mockResolvedValue('Encrypted Other');
+
+      /* Two concurrent callers with no default group yet race the
+       * check-then-create; both must converge on the same defaultGroupId
+       * rather than creating two default groups (R2/AC-5). */
+      const [firstGroupId, secondGroupId] = await Promise.all([
+        contactClient['fetchDefaultGroup'](),
+        contactClient['fetchDefaultGroup'](),
+      ]);
+
+      expect(firstGroupId).toEqual(secondGroupId);
+      expect(firstGroupId).not.toEqual('');
+      expect(webex.request).toHaveBeenCalledTimes(1);
+      expect(contactClient['groups']).toHaveLength(1);
     });
   });
 });
