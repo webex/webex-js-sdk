@@ -111,7 +111,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 
 | ID | WHAT | WHY | Source evidence | Test or example evidence | Assumptions or gaps | Confidence |
 | -- | ---- | --- | --------------- | ------------------------ | ------------------- | ---------- |
-| `CORE-001` | Every hop uses one Envelope with `__webexBridge`, `v`, `channel`, `kind`, `source`, `topic`, `id`, `correlationId`, `session`, optional `payload`/`ok`/`error`, and `ts` | One audited channel instead of ad-hoc postMessage | `src/core/protocol.ts` | `test/unit/spec/core/protocol.ts` | none | Present |
+| `CORE-001` | Page protocol hops (page, content-relay, worker) use one Envelope with `__webexBridge`, `v`, `channel`, `kind`, `source`, `topic`, `id`, `correlationId`, `session`, optional `payload`/`ok`/`error`, and `ts`. UI-to-worker uses `ClientCommandMessage` / `ClientPushEvent`; relay connect/disconnect uses `RelayToWorker`. | One audited page channel; internal IPC is a separate wrapper protocol | `src/core/protocol.ts`, `src/extension/messages.ts` | `test/unit/spec/core/protocol.ts` | none | Present |
 | `CORE-002` | `createEnvelope` builds a null-prototype object | Prototype pollution must not ride the wire | `src/core/protocol.ts` | `test/unit/spec/core/protocol.ts` | none | Present |
 | `CORE-003` | Unknown, mismatched, replayed, oversized, or reserved-key envelopes are dropped with a `DropReason` | Countable drops without logging payloads | `src/core/validate.ts` | `test/unit/spec/core/validate.ts` | none | Present |
 | `CORE-004` | Public `BridgeErrorCode` values are exactly the thirteen codes in `BRIDGE_ERROR_CODES` | Callers and wire errors share one taxonomy | `src/core/errors.ts` | `test/unit/spec/core/errors.ts` | none | Present |

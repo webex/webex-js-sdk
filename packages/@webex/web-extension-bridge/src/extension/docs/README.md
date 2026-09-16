@@ -124,7 +124,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `EXT-004` | Worker `allowedOrigins` is required; missing/empty/wildcard → `INSECURE_CONFIG` | Manifest `matches` is not a sender check | `src/types.ts`, `src/extension/background.ts` | `test/unit/spec/extension/background.ts` | none | Present |
 | `EXT-005` | Worker refuses senders that fail `isOwnExtension` / content-script tab / `isOriginAllowed` | Provenance is data, not trust | `src/extension/senders.ts` | `test/unit/spec/extension/senders.ts` | none | Present |
 | `EXT-006` | `createExtensionClient` proxies FR1/FR2 results for UI surfaces | FR6 without duplicating transport | `src/extension/client.ts` | `test/unit/spec/extension/client.ts` | none | Present |
-| `EXT-007` | Pushes received with no UI listener are stored in a bounded session buffer. `subscribe` does not drain it; `getBufferedMessages` is read-only. Eviction is TTL / maxEntries / maxBytes. | FR8 | `src/extension/background.ts`, `src/extension/sessionStore.ts` | `test/unit/spec/extension/sessionStore.ts` | none | Present |
+| `EXT-007` | Pushes received with no UI listener are stored in a bounded session buffer. `subscribe` does not drain it; `getBufferedMessages` is read-only. Eviction is TTL / maxEntries / maxBytes, except a single newest entry may exceed `maxBytes`. | FR8 | `src/extension/background.ts`, `src/extension/sessionStore.ts` | `test/unit/spec/extension/sessionStore.ts` | none | Present |
 
 ## Design overview
 

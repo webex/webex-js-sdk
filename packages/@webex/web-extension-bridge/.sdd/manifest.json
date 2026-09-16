@@ -54,6 +54,12 @@
       "source_file": "package.json"
     },
     {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "AGENTS.md"
+    },
+    {
       "name": "typescript",
       "version": "^4.9.5",
       "origin": "repo-config",

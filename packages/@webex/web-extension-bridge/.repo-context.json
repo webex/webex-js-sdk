@@ -172,13 +172,13 @@
   "glossary": [
     {
       "term": "Envelope",
-      "definition": "The single message shape that crosses every hop, marked with __webexBridge.",
+      "definition": "The page-protocol message shape marked with __webexBridge. UI-to-worker and relay-control traffic use wrappers in src/extension/messages.ts, not Envelope.",
       "notes": "Defined in src/core/protocol.ts."
     },
     {
       "term": "Isolated-world relay",
-      "definition": "Content-script hop that is the only component allowed to speak to the service worker.",
-      "notes": "Implemented in src/extension/content.ts."
+      "definition": "Content-script hop that is the only page-to-worker relay.",
+      "notes": "Implemented in src/extension/content.ts. Popup/options/side panel use createExtensionClient."
     }
   ],
   "evidence_rules": [

@@ -172,8 +172,8 @@ flowchart LR
 | Cache | Owner | Backend | Contents | TTL or bound | Invalidation trigger | Failure behavior |
 | ----- | ----- | ------- | -------- | ------------ | -------------------- | ---------------- |
 | SeenIds | core, used by web and relay | in-memory LRU | envelope ids | 500 entries / 60 s | TTL or cap | Duplicate id dropped as `REPLAYED_ID` |
-| FR8 buffer | extension background | `chrome.storage.session` | recent pushes | default 200 entries / 30 min / 4 MiB | TTL / maxEntries / maxBytes eviction only; `subscribe` does not drain | Construction throws if session storage missing |
-| Rate limiter buckets | core RateLimiter | in-memory | tokens per (tab, topic) and aggregate per tab | 256 topic keys / 64 aggregate keys | TTL / key-cap eviction; tab gone does not reset `pushLimiter` | Excess push dropped / `RATE_LIMITED` |
+| FR8 buffer | extension background | `chrome.storage.session` | recent pushes | default 200 entries / 30 min / 4 MiB | TTL / maxEntries / maxBytes eviction; `subscribe` does not drain; one newest entry may exceed `maxBytes` | Construction throws if session storage missing |
+| Rate limiter buckets | core RateLimiter | in-memory | tokens per (tab, topic) and aggregate per tab | 256 topic keys / 64 aggregate keys | Token refill + LRU key-cap eviction; tab gone does not reset `pushLimiter` | Excess push dropped / `RATE_LIMITED` |
 
 ## Observability patterns
 
