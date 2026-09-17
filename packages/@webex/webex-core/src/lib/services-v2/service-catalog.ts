@@ -210,7 +210,10 @@ const ServiceCatalog = AmpState.extend({
 
     return serviceDetails.find(({serviceUrls}) => {
       for (const serviceUrl of serviceUrls) {
-        if (matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(serviceUrl.baseUrl))) {
+        if (
+          (!serviceUrl.host || serviceUrl.host === candidateUrl.host) &&
+          matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(serviceUrl.baseUrl))
+        ) {
           return true;
         }
       }

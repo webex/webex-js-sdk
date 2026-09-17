@@ -350,17 +350,22 @@ const ServiceCatalog = AmpState.extend({
 
     return serviceUrls.find((serviceUrl) => {
       // Check if the URL matches the default URL with proper origin validation
-      if (matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(serviceUrl.defaultUrl))) {
+      if (
+        (!serviceUrl.defaultHost || serviceUrl.defaultHost === candidateUrl.host) &&
+        matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(serviceUrl.defaultUrl))
+      ) {
         return true;
       }
 
       // Check alternate URLs (built by swapping host with alternate hosts)
       for (const host of serviceUrl.hosts) {
-        const alternateUrl = new URL(serviceUrl.defaultUrl);
-        alternateUrl.host = host.host;
+        if (!host.host || host.host === candidateUrl.host) {
+          const alternateUrl = new URL(serviceUrl.defaultUrl);
+          alternateUrl.host = host.host;
 
-        if (matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(alternateUrl.toString()))) {
-          return true;
+          if (matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(alternateUrl.toString()))) {
+            return true;
+          }
         }
       }
 
@@ -497,6 +502,7 @@ const ServiceCatalog = AmpState.extend({
       const service = this._getUrl(serviceObj.name, serviceGroup);
 
       if (service) {
+        service.defaultHost = serviceObj.defaultHost;
         service.defaultUrl = serviceObj.defaultUrl;
         service.hosts = serviceObj.hosts || [];
       } else {

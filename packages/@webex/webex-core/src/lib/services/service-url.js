@@ -10,6 +10,7 @@ const ServiceUrl = AmpState.extend({
   namespace: 'ServiceUrl',
 
   props: {
+    defaultHost: ['string', false, ''],
     defaultUrl: ['string', true, undefined],
     hosts: ['array', false, () => []],
     name: ['string', true, undefined],
