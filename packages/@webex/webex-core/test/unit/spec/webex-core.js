@@ -91,6 +91,30 @@ describe('Webex', () => {
       assert.isFalse(webex.canAuthorize);
     });
 
+    it('initializes network telemetry after applying the configured metrics options', async () => {
+      const configuredWebex = new WebexCore({
+        config: {
+          metrics: {
+            networkTelemetry: {
+              enabled: true,
+              intervalMs: 60 * 1_000,
+            },
+          },
+        },
+      });
+      const submitClientMetrics = sinon
+        .stub(configuredWebex.internal.metrics, 'submitClientMetrics')
+        .resolves();
+
+      assert.exists(configuredWebex.internal.metrics.networkTelemetry);
+      configuredWebex.trigger('request:start', {service: 'hydra', resource: 'rooms'});
+      await configuredWebex.internal.metrics.flushNetworkTelemetry();
+
+      assert.calledOnce(submitClientMetrics);
+
+      await configuredWebex.internal.metrics.stopNetworkTelemetry();
+    });
+
     [
       'data',
       'data.access_token',
@@ -179,7 +203,7 @@ describe('Webex', () => {
 
   describe('initializes with interceptors', () => {
     [
-      // 4 pre, 4 post, 10 remaining default = 18
+      // 4 pre (CatalogUrlInterceptor is opt-in), 4 post, 10 remaining default = 18
       [
         'defaults to existing interceptors if undefined',
         undefined,
@@ -189,6 +213,58 @@ describe('Webex', () => {
           'RequestEventInterceptor',
           'WebexTrackingIdInterceptor',
           'RateLimitInterceptor',
+          'ServiceInterceptor',
+          'UserAgentInterceptor',
+          'ProxyInterceptor',
+          'WebexUserAgentInterceptor',
+          'AuthInterceptor',
+          'PayloadTransformerInterceptor',
+          'RedirectInterceptor',
+          'DefaultOptionsInterceptor',
+          'HostMapInterceptor',
+          'ServerErrorInterceptor',
+          'HttpStatusInterceptor',
+          'NetworkTimingInterceptor',
+          'EmbargoInterceptor',
+          'RateLimitInterceptor',
+        ],
+      ],
+      [
+        'does not include CatalogUrlInterceptor for a truthy non-boolean value',
+        {services: {validateCatalogUrls: 'true'}},
+        18,
+        [
+          'RequestTimingInterceptor',
+          'RequestEventInterceptor',
+          'WebexTrackingIdInterceptor',
+          'RateLimitInterceptor',
+          'ServiceInterceptor',
+          'UserAgentInterceptor',
+          'ProxyInterceptor',
+          'WebexUserAgentInterceptor',
+          'AuthInterceptor',
+          'PayloadTransformerInterceptor',
+          'RedirectInterceptor',
+          'DefaultOptionsInterceptor',
+          'HostMapInterceptor',
+          'ServerErrorInterceptor',
+          'HttpStatusInterceptor',
+          'NetworkTimingInterceptor',
+          'EmbargoInterceptor',
+          'RateLimitInterceptor',
+        ],
+      ],
+      // CatalogUrlInterceptor is opt-in via services.validateCatalogUrls
+      [
+        'includes CatalogUrlInterceptor when validateCatalogUrls is enabled',
+        {services: {validateCatalogUrls: true}},
+        19,
+        [
+          'RequestTimingInterceptor',
+          'RequestEventInterceptor',
+          'WebexTrackingIdInterceptor',
+          'RateLimitInterceptor',
+          'CatalogUrlInterceptor',
           'ServiceInterceptor',
           'UserAgentInterceptor',
           'ProxyInterceptor',
