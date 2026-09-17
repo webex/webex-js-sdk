@@ -36,7 +36,13 @@ const AI_SUMMARY_TRANSPORT_ERROR_CODES = {
 } as const;
 
 class DummyTask extends Task {
-  constructor(contact: any, data: TaskData, agentId = 'agent-1', agentName = 'Receiving Agent') {
+  constructor(
+    contact: any,
+    data: TaskData,
+    wrapupData?: any,
+    agentId = 'agent-1',
+    agentName = 'Receiving Agent'
+  ) {
     super(
       contact,
       data,
@@ -45,7 +51,7 @@ class DummyTask extends Task {
         isEndTaskEnabled: true,
         isEndConsultEnabled: true,
       },
-      undefined,
+      wrapupData,
       agentId,
       agentName
     );
@@ -472,6 +478,67 @@ describe('Task (base class)', () => {
     expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_CONSULTING, task);
     expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_CONSULT_ACCEPTED, task);
     expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_REJECT, 'busy');
+  });
+
+  it('starts auto wrap-up only when wrapUpRequired is true and profile autoWrapup is enabled', () => {
+    const wrapUpProps = {
+      autoWrapup: true,
+      autoWrapupInterval: 25000,
+      wrapUpReasonList: [{id: 'code-1', name: 'Default', isDefault: true, isSystem: false}],
+    };
+    const enabled = new DummyTask(
+      dummyContact,
+      createTaskData({wrapUpRequired: false}) as TaskData,
+      {wrapUpProps},
+      'agent-1'
+    );
+
+    expect(enabled.autoWrapup).toBeUndefined();
+    try {
+      enabled.updateTaskData(createTaskData({wrapUpRequired: true}) as TaskData);
+      expect(enabled.autoWrapup).toBeDefined();
+
+      const disabled = new DummyTask(
+        dummyContact,
+        createTaskData({wrapUpRequired: false}) as TaskData,
+        {wrapUpProps: {...wrapUpProps, autoWrapup: false}},
+        'agent-1'
+      );
+      disabled.updateTaskData(createTaskData({wrapUpRequired: true}) as TaskData);
+      expect(disabled.autoWrapup).toBeUndefined();
+    } finally {
+      enabled.cancelAutoWrapupTimer();
+    }
+  });
+
+  it('calls contact.wrapup when the auto wrap-up timer elapses after wrapUpRequired is stamped', async () => {
+    const wrapUpProps = {
+      autoWrapup: true,
+      autoWrapupInterval: 1000,
+      wrapUpReasonList: [{id: 'code-1', name: 'Default', isDefault: true, isSystem: false}],
+    };
+    const contact = {wrapup: jest.fn().mockResolvedValue({result: 'wrap'})};
+    const wrappingTask = new DummyTask(
+      contact,
+      createTaskData({wrapUpRequired: false}) as TaskData,
+      {wrapUpProps},
+      'agent-1'
+    );
+
+    try {
+      wrappingTask.updateTaskData(createTaskData({wrapUpRequired: true}) as TaskData);
+      expect(wrappingTask.autoWrapup).toBeDefined();
+
+      const onComplete = (wrappingTask.autoWrapup as any).start.mock.calls[0][0];
+      await onComplete();
+
+      expect(contact.wrapup).toHaveBeenCalledWith({
+        interactionId: 'interaction-1',
+        data: {wrapUpReason: 'Default', auxCodeId: 'code-1'},
+      });
+    } finally {
+      wrappingTask.cancelAutoWrapupTimer();
+    }
   });
 
   it('throws for unsupported voice operations in the base class', async () => {

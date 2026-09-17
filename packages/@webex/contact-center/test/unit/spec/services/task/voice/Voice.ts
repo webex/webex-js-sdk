@@ -5,6 +5,7 @@ import {
   CONSULT_TRANSFER_DESTINATION_TYPE,
   DESTINATION_TYPE,
   TASK_EVENTS,
+  VOICE_VARIANT,
 } from '../../../../../../src/services/task/types';
 import {CC_EVENTS} from '../../../../../../src/services/config/types';
 import {TaskEvent, TaskState} from '../../../../../../src/services/task/state-machine';
@@ -17,6 +18,7 @@ import {AI_SUMMARY_REQUEST_CANCELLED} from '../../../../../../src/services/task/
 import {createAISummaryError, flushMicrotasks} from '../../../../fixtures/aiSummaryTestUtils';
 import MetricsManager from '../../../../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../../../../src/metrics/constants';
+import * as wxAppDiagnosticLogging from '../../../../../../src/services/wxAppDiagnosticLogging';
 
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
@@ -49,6 +51,10 @@ const dummyContact = {
   }),
   consultTransfer: jest.fn().mockResolvedValue('consultTransferred'),
   cancelTask: jest.fn().mockResolvedValue(undefined),
+  exitConference: jest.fn().mockResolvedValue({
+    trackingId: 'exit-tracking-id',
+    data: {},
+  }),
 } as any;
 
 const createBaseData = (overrides: Partial<TaskData> = {}): TaskData =>
@@ -931,6 +937,160 @@ describe('Voice Task', () => {
     });
   });
 
+  describe('exitConference()', () => {
+    const conferenceTaskData = () =>
+      createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          state: 'conference',
+          owner: 'agent-1',
+          mainInteractionId: 'int1',
+          interactionId: 'int1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            'agent-2': {id: 'agent-2', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            c1: {id: 'c1', pType: 'Customer', type: 'Customer', hasJoined: true, hasLeft: false},
+          },
+          media: {
+            media1: {mediaResourceId: 'media1', isHold: false},
+            int1: {
+              mediaResourceId: 'int1',
+              mType: 'mainCall',
+              participants: ['agent-1', 'agent-2', 'c1'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+    const primeConferencing = (voice: Voice, taskData: TaskData) => {
+      primeConnectedState(voice, taskData);
+      voice.stateMachineService?.send({type: TaskEvent.CONFERENCE_START, taskData});
+      expect(voice.stateMachineService?.getSnapshot().value).toBe(TaskState.CONFERENCING);
+    };
+
+    it('transitions to WRAPPING_UP after exitConference when the actor stays CONNECTED', async () => {
+      const taskData = conferenceTaskData();
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-1');
+      primeConnectedState(voice, taskData);
+      expect(voice.stateMachineService?.getSnapshot().value).toBe(TaskState.CONNECTED);
+
+      await voice.exitConference();
+
+      expect(dummyContact.exitConference).toHaveBeenCalled();
+      expect(voice.stateMachineService?.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
+    it('stamps wrapUpRequired on EXIT_CONFERENCE_SUCCESS when this agent should wrap', async () => {
+      const taskData = conferenceTaskData();
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-1');
+      primeConferencing(voice, taskData);
+      const sendSpy = jest.spyOn(voice.stateMachineService as any, 'send');
+
+      await voice.exitConference();
+
+      const successEvent = sendSpy.mock.calls
+        .map((call) => call[0])
+        .find((event) => event?.type === TaskEvent.EXIT_CONFERENCE_SUCCESS);
+
+      expect(dummyContact.exitConference).toHaveBeenCalled();
+      expect(successEvent?.taskData.wrapUpRequired).toBe(true);
+    });
+
+    it('stamps wrapUpRequired false on EXIT_CONFERENCE_SUCCESS when this agent should not wrap', async () => {
+      const taskData = createBaseData({
+        agentId: 'agent-2',
+        isConsulted: true,
+        wrapUpRequired: false,
+        interaction: {
+          state: 'conference',
+          owner: 'agent-1',
+          mainInteractionId: 'int1',
+          interactionId: 'int1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            'agent-2': {
+              id: 'agent-2',
+              pType: 'Agent',
+              type: 'Agent',
+              hasJoined: true,
+              hasLeft: false,
+              isWrapUp: false,
+            },
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-2');
+      primeConferencing(voice, taskData);
+      const sendSpy = jest.spyOn(voice.stateMachineService as any, 'send');
+
+      await voice.exitConference();
+
+      const successEvent = sendSpy.mock.calls
+        .map((call) => call[0])
+        .find((event) => event?.type === TaskEvent.EXIT_CONFERENCE_SUCCESS);
+
+      expect(successEvent?.taskData.wrapUpRequired).toBe(false);
+    });
+
+    it('stamps wrapUpRequired true on owner-changed exit when isConsulted is omitted', async () => {
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        wrapUpRequired: false,
+        interaction: {
+          state: 'conference',
+          owner: 'agent-2',
+          mainInteractionId: 'int1',
+          interactionId: 'int1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            'agent-2': {id: 'agent-2', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-1');
+      primeConferencing(voice, taskData);
+      const sendSpy = jest.spyOn(voice.stateMachineService as any, 'send');
+
+      await voice.exitConference();
+
+      const successEvent = sendSpy.mock.calls
+        .map((call) => call[0])
+        .find((event) => event?.type === TaskEvent.EXIT_CONFERENCE_SUCCESS);
+
+      expect(successEvent?.taskData.wrapUpRequired).toBe(true);
+    });
+
+    it('ignores a stale cached pending list when the exit response omits it', async () => {
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        wrapUpRequired: false,
+        agentsPendingWrapUp: ['agent-2'],
+        interaction: {
+          state: 'conference',
+          owner: 'agent-2',
+          mainInteractionId: 'int1',
+          interactionId: 'int1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+            'agent-2': {id: 'agent-2', pType: 'Agent', type: 'Agent', hasJoined: true, hasLeft: false},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {}, undefined, 'agent-1');
+      primeConferencing(voice, taskData);
+      const sendSpy = jest.spyOn(voice.stateMachineService as any, 'send');
+
+      await voice.exitConference();
+
+      const successEvent = sendSpy.mock.calls
+        .map((call) => call[0])
+        .find((event) => event?.type === TaskEvent.EXIT_CONFERENCE_SUCCESS);
+
+      expect(successEvent?.taskData.wrapUpRequired).toBe(true);
+    });
+  });
+
   describe('consultConference()', () => {
     afterEach(() => {
       jest.restoreAllMocks();
@@ -1175,6 +1335,73 @@ describe('Voice Task', () => {
       expect(emitSpy).toHaveBeenCalledWith(
         TASK_EVENTS.TASK_UI_CONTROLS_UPDATED,
         expect.any(Object)
+      );
+    });
+  });
+
+  describe('wxApp offer decision logging', () => {
+    const wxAppParticipant = {
+      deviceType: 'wxApp',
+      deviceId: 'device-id-1',
+      deviceCallId: 'call-id-1',
+    };
+
+    const makeWxAppOfferTaskData = () =>
+      createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+
+    it('logs evolving accept reasons through the normal wxApp accept flow', () => {
+      const logSpy = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppOfferDecision');
+      const taskData = makeWxAppOfferTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
+
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({acceptReason: 'wxApp_offer_ready'})
+      );
+
+      logSpy.mockClear();
+      voice['setWxAppAcceptInFlight'](true);
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({acceptReason: 'wxApp_accept_in_flight'})
+      );
+
+      logSpy.mockClear();
+      voice['setWxAppAcceptInFlight'](false);
+      voice['setWxAppAnswerPending'](true);
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({acceptReason: 'wxApp_answer_pending'})
+      );
+    });
+
+    it('logs browser_webrtc_offer when voice variant is WebRTC on a non-wxApp inbound offer', () => {
+      const logSpy = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppOfferDecision');
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', deviceType: 'phone', deviceId: 'device-id-1'},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        voiceVariant: VOICE_VARIANT.WEBRTC,
+      });
+
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({acceptReason: 'browser_webrtc_offer'})
       );
     });
   });
@@ -1640,6 +1867,66 @@ describe('Voice Task', () => {
       expect(dummyContact.cancelTask).toHaveBeenCalledWith({interactionId: 'int1'});
     });
 
+    it('emits TASK_DECLINE and WXAPP_TASK_DECLINE success metrics for wxApp outdial decline', async () => {
+      const taskData = makeWxAppOutdialTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+      const metricsManager = MetricsManager.getInstance();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent');
+
+      await voice.decline();
+
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+        expect.objectContaining({taskId: 'int1'}),
+        ['operational', 'behavioral']
+      );
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
+        expect.objectContaining({taskId: 'int1'}),
+        ['operational', 'behavioral']
+      );
+    });
+
+    it('emits TASK_DECLINE and WXAPP_TASK_DECLINE failed metrics when outdial cancel fails', async () => {
+      const cancelError = Object.assign(new Error('AQM failed'), {
+        details: {
+          trackingId: 'aqm-track-1',
+          orgId: 'org-1',
+          type: 'Service.aqm.task.cancel',
+          data: {reason: 'TASK_NOT_FOUND', reasonCode: 404, agentId: 'agent-1'},
+        },
+      });
+      dummyContact.cancelTask = jest.fn().mockRejectedValue(cancelError);
+      const taskData = makeWxAppOutdialTaskData();
+      const voice = new Voice(dummyContact, taskData, {enableWxBetterTogether: true});
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
+      const metricsManager = MetricsManager.getInstance();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent');
+
+      await expect(voice.decline()).rejects.toThrow('AQM failed');
+
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
+        expect.objectContaining({
+          taskId: 'int1',
+          trackingId: 'aqm-track-1',
+          failureReason: 'TASK_NOT_FOUND',
+        }),
+        ['operational', 'behavioral']
+      );
+      expect(trackEventSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
+        expect.objectContaining({
+          taskId: 'int1',
+          trackingId: 'aqm-track-1',
+          failureReason: 'TASK_NOT_FOUND',
+        }),
+        ['operational', 'behavioral']
+      );
+      dummyContact.cancelTask = jest.fn().mockResolvedValue(undefined);
+    });
+
     it('clears wxAppAnswerPending when declining outdial', async () => {
       const mockSvc = {
         answerCall: jest.fn().mockResolvedValue(undefined),
@@ -1791,12 +2078,109 @@ describe('Voice Task', () => {
       const firstToggle = voice.toggleMute();
       const secondToggle = voice.toggleMute();
 
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(mockSvc.muteCall).toHaveBeenCalledTimes(1);
+      expect(mockSvc.unmuteCall).not.toHaveBeenCalled();
+
       resolveMute!();
       await Promise.all([firstToggle, secondToggle]);
 
       expect(mockSvc.muteCall).toHaveBeenCalledTimes(1);
       expect(mockSvc.unmuteCall).toHaveBeenCalledTimes(1);
       expect(voice.getWxAppMuted()).toBe(false);
+    });
+
+    it('queues three concurrent no-arg toggleMute() calls in order', async () => {
+      let resolveFirstMute: () => void;
+      const firstMuteGate = new Promise<void>((resolve) => {
+        resolveFirstMute = resolve;
+      });
+      const mockSvc = {
+        muteCall: jest
+          .fn()
+          .mockImplementationOnce(() => firstMuteGate)
+          .mockResolvedValue(undefined),
+        unmuteCall: jest.fn().mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+      expect(voice.getWxAppMuted()).toBe(false);
+
+      const firstToggle = voice.toggleMute();
+      const secondToggle = voice.toggleMute();
+      const thirdToggle = voice.toggleMute();
+
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(mockSvc.muteCall).toHaveBeenCalledTimes(1);
+      expect(mockSvc.unmuteCall).not.toHaveBeenCalled();
+
+      resolveFirstMute!();
+      await Promise.all([firstToggle, secondToggle, thirdToggle]);
+
+      expect(mockSvc.muteCall).toHaveBeenCalledTimes(2);
+      expect(mockSvc.unmuteCall).toHaveBeenCalledTimes(1);
+      expect(voice.getWxAppMuted()).toBe(true);
+    });
+
+    it('records duration_ms on each serialized toggleMute success metric', async () => {
+      let resolveFirstMute: () => void;
+      const firstMuteGate = new Promise<void>((resolve) => {
+        resolveFirstMute = resolve;
+      });
+      const mockSvc = {
+        muteCall: jest.fn().mockImplementationOnce(() => firstMuteGate),
+        unmuteCall: jest.fn().mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+      const metricsManager = MetricsManager.getInstance();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent');
+
+      const firstToggle = voice.toggleMute();
+      const secondToggle = voice.toggleMute();
+
+      resolveFirstMute!();
+      await Promise.all([firstToggle, secondToggle]);
+
+      const successCalls = trackEventSpy.mock.calls.filter(
+        ([eventName]) => eventName === METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_SUCCESS
+      );
+      expect(successCalls).toHaveLength(2);
+      successCalls.forEach(([, payload]) => {
+        expect(payload).toEqual(
+          expect.objectContaining({
+            duration_ms: expect.any(Number),
+          })
+        );
+      });
     });
 
     it('continues queued toggleMute after predecessor failure', async () => {
@@ -1853,6 +2237,160 @@ describe('Voice Task', () => {
         dtmf: '5',
         lineOwnerId: undefined,
       });
+    });
+
+    it('serializes concurrent transmitDtmf() so each digit completes before the next', async () => {
+      let resolveFirst: () => void;
+      const firstGate = new Promise<void>((resolve) => {
+        resolveFirst = resolve;
+      });
+      const mockSvc = {
+        transmitDtmf: jest
+          .fn()
+          .mockImplementationOnce(() => firstGate)
+          .mockResolvedValueOnce(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      const firstDtmf = voice.transmitDtmf({dtmf: '1'});
+      const secondDtmf = voice.transmitDtmf({dtmf: '2'});
+
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledTimes(1);
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledWith({
+        callId: 'call-id-1',
+        dtmf: '1',
+        lineOwnerId: undefined,
+      });
+
+      resolveFirst!();
+      await Promise.all([firstDtmf, secondDtmf]);
+
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledTimes(2);
+      expect(mockSvc.transmitDtmf).toHaveBeenNthCalledWith(2, {
+        callId: 'call-id-1',
+        dtmf: '2',
+        lineOwnerId: undefined,
+      });
+    });
+
+    it('queues three concurrent transmitDtmf() calls in order', async () => {
+      let resolveFirst: () => void;
+      const firstGate = new Promise<void>((resolve) => {
+        resolveFirst = resolve;
+      });
+      const mockSvc = {
+        transmitDtmf: jest
+          .fn()
+          .mockImplementationOnce(() => firstGate)
+          .mockResolvedValue(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+
+      const firstDtmf = voice.transmitDtmf({dtmf: '1'});
+      const secondDtmf = voice.transmitDtmf({dtmf: '2'});
+      const thirdDtmf = voice.transmitDtmf({dtmf: '3'});
+
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledTimes(1);
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledWith({
+        callId: 'call-id-1',
+        dtmf: '1',
+        lineOwnerId: undefined,
+      });
+
+      resolveFirst!();
+      await Promise.all([firstDtmf, secondDtmf, thirdDtmf]);
+
+      expect(mockSvc.transmitDtmf).toHaveBeenCalledTimes(3);
+      expect(mockSvc.transmitDtmf).toHaveBeenNthCalledWith(2, {
+        callId: 'call-id-1',
+        dtmf: '2',
+        lineOwnerId: undefined,
+      });
+      expect(mockSvc.transmitDtmf).toHaveBeenNthCalledWith(3, {
+        callId: 'call-id-1',
+        dtmf: '3',
+        lineOwnerId: undefined,
+      });
+    });
+
+    it('records duration_ms on each serialized transmitDtmf success metric', async () => {
+      let resolveFirst: () => void;
+      const firstGate = new Promise<void>((resolve) => {
+        resolveFirst = resolve;
+      });
+      const mockSvc = {
+        transmitDtmf: jest
+          .fn()
+          .mockImplementationOnce(() => firstGate)
+          .mockResolvedValueOnce(undefined),
+      };
+      const taskData = createBaseData({
+        agentId: 'agent-1',
+        interaction: {
+          participants: {
+            'agent-1': {id: 'agent-1', ...wxAppParticipant},
+          },
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {
+        enableWxBetterTogether: true,
+        answerCallOnWebexService: mockSvc as any,
+      });
+      primeConnectedState(voice, taskData);
+      const metricsManager = MetricsManager.getInstance();
+      const trackEventSpy = jest.spyOn(metricsManager, 'trackEvent');
+
+      const firstDtmf = voice.transmitDtmf({dtmf: '1'});
+      const secondDtmf = voice.transmitDtmf({dtmf: '2'});
+
+      resolveFirst!();
+      await Promise.all([firstDtmf, secondDtmf]);
+
+      const successCalls = trackEventSpy.mock.calls.filter(
+        ([eventName]) => eventName === METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_SUCCESS
+      );
+      expect(successCalls).toHaveLength(2);
+      successCalls.forEach(([, payload]) => {
+        expect(payload).toEqual(
+          expect.objectContaining({
+            duration_ms: expect.any(Number),
+          })
+        );
+      });
+
+      trackEventSpy.mockRestore();
     });
   });
 });

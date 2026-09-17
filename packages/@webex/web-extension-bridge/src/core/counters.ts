@@ -50,6 +50,7 @@ export class Counters {
     return Object.assign(nullPrototypeRecord<number>(), this.values);
   }
 
+  /** Clear every counter back to zero. */
   public reset(): void {
     this.values = nullPrototypeRecord<number>();
   }
