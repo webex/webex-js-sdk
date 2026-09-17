@@ -51,6 +51,11 @@ export interface IServiceDetail {
   get(): string;
 }
 
+export type ServiceMatch = {
+  serviceDetail: IServiceDetail;
+  serviceUrl: ServiceUrl;
+};
+
 export interface IServiceCatalog {
   serviceGroups: {
     discovery: Array<IServiceDetail>;
@@ -75,6 +80,7 @@ export interface IServiceCatalog {
     serviceGroup?: ServiceGroup;
   }): {name: string; url: string} | undefined;
   findServiceDetailFromUrl(url: string): IServiceDetail | undefined;
+  findServiceMatchFromUrl(url: string): ServiceMatch | undefined;
   findAllowedDomain(url: string): string | undefined;
   get(clusterId: ClusterId, serviceGroup?: ServiceGroup): string | undefined;
   getAllowedDomains(): string[];

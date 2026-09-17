@@ -2,7 +2,7 @@ import AmpState from 'ampersand-state';
 
 import {union} from 'lodash';
 import ServiceDetail from './service-detail';
-import {IServiceDetail, ServiceGroup} from './types';
+import {IServiceDetail, ServiceGroup, ServiceMatch, ServiceUrl} from './types';
 import {matchAllowedDomain, normalizeAllowedDomains} from '../domains';
 import {matchesParsedCatalogUrl, parseCatalogUrl} from '../services/service-catalog';
 
@@ -198,6 +198,15 @@ const ServiceCatalog = AmpState.extend({
    * @returns {IServiceDetail} - ServiceDetail assocated with provided url
    */
   findServiceDetailFromUrl(url: string): IServiceDetail | undefined {
+    return this.findServiceMatchFromUrl(url)?.serviceDetail;
+  },
+
+  /**
+   * Find a service and its matching catalog URL in a single scan.
+   * @param {string} url - Must be parsable by `URL`
+   * @returns {ServiceMatch} - Matched service detail and catalog URL
+   */
+  findServiceMatchFromUrl(url: string): ServiceMatch | undefined {
     const serviceDetails = this._getAllServiceDetails();
 
     let candidateUrl: URL;
@@ -208,18 +217,20 @@ const ServiceCatalog = AmpState.extend({
       return undefined;
     }
 
-    return serviceDetails.find(({serviceUrls}) => {
-      for (const serviceUrl of serviceUrls) {
-        if (
+    let matchedServiceUrl: ServiceUrl | undefined;
+    const serviceDetail = serviceDetails.find(({serviceUrls}) => {
+      matchedServiceUrl = serviceUrls.find(
+        (serviceUrl) =>
           (!serviceUrl.host || serviceUrl.host === candidateUrl.host) &&
           matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(serviceUrl.baseUrl))
-        ) {
-          return true;
-        }
-      }
+      );
 
-      return false;
+      return Boolean(matchedServiceUrl);
     });
+
+    return serviceDetail && matchedServiceUrl
+      ? {serviceDetail, serviceUrl: matchedServiceUrl}
+      : undefined;
   },
 
   /**
