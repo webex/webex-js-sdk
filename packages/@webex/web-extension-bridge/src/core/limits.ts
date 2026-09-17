@@ -10,17 +10,16 @@ import {BridgeError} from './errors';
 /**
  * Validate a numeric option, or fall back to the default when it was not supplied.
  *
- * Clamping is right for payload size and timeouts — a too-large value there is still
- * a safe intent, just an unsupported one. It is wrong for limiter and buffer bounds:
- * `Math.max(NaN, 1)` is `NaN`, and every subsequent `tokens < 1` comparison against
- * `NaN` is `false`, so a single stray `NaN` fails *open* and disables rate limiting
- * altogether. `Infinity` is the same defect wearing a different hat. Those must be
- * refused loudly at construction, which is what this does.
+ * Used for limiter and buffer bounds, where clamping (as {@link clampMaxPayloadBytes}
+ * and {@link clampTimeoutMs} do) would be wrong: `Math.max(NaN, 1)` is `NaN`, and every
+ * later `tokens < 1` comparison against `NaN` is `false`, so a stray `NaN` (or
+ * `Infinity`) would fail *open* and silently disable rate limiting. Refused loudly
+ * at construction instead.
  *
  * @param value - Supplied value, or `undefined` to take the default.
- * @param name - Option name, for the error message.
+ * @param name - Option name, used in the thrown error's message.
  * @param bounds - Inclusive `[min, max]` range and the default.
- * @returns A finite integer inside the range.
+ * @returns The validated value, or `bounds.fallback` when `value` is `undefined`.
  * @throws BridgeError `INSECURE_CONFIG` when the value is not a finite integer in range.
  */
 export function requireBoundedInteger(
@@ -47,8 +46,8 @@ export function requireBoundedInteger(
 }
 
 /**
- * Clamp rather than reject, so a consumer cannot accidentally configure an
- * unbounded payload size, and cannot disable the cap by passing a huge number.
+ * Clamps (rather than rejects) so a consumer can't configure an unbounded payload
+ * size or disable the cap by passing a huge number.
  *
  * @param value - Requested maximum, or `undefined` for the default.
  * @returns A size within `[1, 1 MiB]`.

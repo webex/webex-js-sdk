@@ -76,38 +76,34 @@ function isPlainObject(node: object): boolean {
 
 /**
  * Recursively check a value against the {@link JsonValue} grammar, the reserved-key
- * rule, and the depth bound — in one walk, so no path through the value escapes any
- * of the three checks.
+ * rule, and the depth bound — in one walk, so no path escapes any of the three checks.
  *
- * Validating the value itself rather than inspecting `JSON.stringify` output is
- * deliberate. `JSON.stringify` silently drops function/`undefined`/symbol properties
- * and rewrites `NaN` and `Infinity` to `null`, so a "successful" stringify says
- * nothing about whether the *original* object is transportable. The page hop clones
- * the original via `postMessage`, where a nested function throws `DataCloneError`
- * instead of the documented `BridgeError`; the runtime hop would deliver `null` where
- * the sender wrote `NaN`. Both are avoided by rejecting up front.
+ * Validates the value itself rather than inspecting `JSON.stringify` output, because
+ * stringify silently drops function/`undefined`/symbol properties and rewrites `NaN`
+ * and `Infinity` to `null` — so a "successful" stringify says nothing about whether
+ * the *original* object is transportable (a nested function throws `DataCloneError`
+ * on the page hop instead of the documented `BridgeError`; the runtime hop would
+ * silently turn a sent `NaN` into a received `null`).
  *
- * Rejecting reserved keys is likewise deliberate rather than sanitising: a payload
- * that carries `__proto__` is either an attack or a bug, and silently rewriting it
- * would hide both. Consumers who legitimately need such a key can nest it in a string.
+ * Reserved keys are rejected rather than sanitised: a payload carrying `__proto__` is
+ * either an attack or a bug, and silently rewriting it would hide both.
  *
- * Depth overflow is a rejection, not a clean result. Returning "no problem found" for
- * a value that was never fully walked would let a `__proto__` key buried below the
- * bound bypass the reserved-key rule entirely.
+ * Depth overflow is a rejection, not a clean result — treating an unfinished walk as
+ * "no problem found" would let a `__proto__` key buried below the bound bypass the
+ * reserved-key rule entirely.
  *
- * `maxExpandedNodes` bounds the walk, and — more importantly — bounds the
- * `JSON.stringify` the caller runs afterwards. JSON has no way to express a shared
- * reference, so stringify writes a shared subtree once per path that reaches it. Sixty
- * levels of `{a: child, b: child}` is a sixty-object value in memory and 2^60 nodes on
- * the way out, and structured clone *preserves* shared references, so such a value
- * survives `postMessage` intact and arrives at a validator that runs before any rate
- * limiter. Counting expanded nodes as the walk proceeds, with a memo and saturating
- * arithmetic, is what makes both this function and the caller's stringify safe.
+ * `maxExpandedNodes` bounds the walk and, more importantly, bounds the caller's
+ * `JSON.stringify` afterwards: JSON has no way to express a shared reference, so
+ * stringify writes a shared subtree once per path that reaches it — 60 levels of
+ * `{a: child, b: child}` is 2^60 nodes on the way out, and structured clone preserves
+ * such sharing, so the value survives `postMessage` intact. Counting expanded nodes
+ * with a memo and saturating arithmetic is what keeps both this walk and the
+ * caller's stringify bounded.
  *
  * @param value - Value to inspect.
- * @param reserved - Key names to reject.
- * @param maxExpandedNodes - Cap on expanded node count. Every node costs at least one
- *   byte of output, so passing the byte cap is a sound and conservative bound.
+ * @param reserved - Key names to reject, at any depth.
+ * @param maxExpandedNodes - Cap on expanded node count (every node costs at least one
+ *   byte of output, so the byte cap is a sound, conservative bound).
  * @returns `{ok: true}`, or the reason the value was refused.
  */
 export function inspectJson(
@@ -115,21 +111,16 @@ export function inspectJson(
   reserved: readonly string[],
   maxExpandedNodes = Number.MAX_SAFE_INTEGER
 ): JsonInspection {
-  // Ancestors only, not every object ever seen: a DAG that repeats a shared child is
-  // legal JSON input, and both `JSON.stringify` and structured clone expand it. Only a
+  // Ancestors only, not every object ever seen: a shared child repeated in a DAG is
+  // legal JSON input (both `JSON.stringify` and structured clone expand it); only a
   // true back-reference is a cycle, so a node is removed again once its branch is done.
   const ancestors = new Set<object>();
 
-  // Because ancestors are forgotten, a shared subtree would otherwise be re-walked once
-  // per path that reaches it, which is the 2^60 case described above. This memo makes
-  // the walk linear in *distinct* nodes.
-  //
-  // It records the shallowest depth at which a node was cleared, together with the
-  // expanded weight measured there. Reusing an entry at a shallower or equal depth is
-  // sound: less depth consumed means at least as much remaining, so a subtree that
-  // fitted before still fits, and its weight does not depend on where it sits. The
-  // reverse is not true — a subtree that fitted at depth 5 can overflow at depth 40 —
-  // which is why the depth is stored rather than a bare "seen" flag.
+  // Memoizes a cleared subtree's expanded weight, keyed with the shallowest depth it
+  // was cleared at (not a bare "seen" flag): a subtree that fit at depth 5 can overflow
+  // at depth 40, but one that fit at some depth still fits at any shallower depth. This
+  // is what keeps the walk linear in distinct nodes instead of re-walking a shared
+  // subtree once per path that reaches it (the 2^60 case described above).
   const cleared = new Map<object, {depth: number; weight: number}>();
 
   /** Weight of a leaf. Every JSON node costs at least one byte of output. */
@@ -151,8 +142,8 @@ export function inspectJson(
     const type = typeof node;
 
     if (type === 'string') {
-      // A long string is one node but many bytes, so it is charged by length. The
-      // caller's byte cap is the authority; this only has to be a lower bound.
+      // Charged by length (a long string is one node but many bytes); the caller's
+      // byte cap is the authority, this only has to be a lower bound.
       return {ok: true, weight: Math.min((node as string).length + 2, cap)};
     }
 
@@ -222,12 +213,10 @@ export function inspectJson(
       let weight = LEAF;
 
       for (let index = 0; index < items.length; index += 1) {
-        // Read through the descriptor, exactly as the object branch does. Indexing with
-        // `items[index]` would invoke an accessor, and an array index can carry one just
-        // as an object key can — which defeats every check below it, because the value
-        // validated is then not the value sent. A sparse array's holes surface here as a
-        // missing descriptor; they stringify to `null`, so they are treated as the
-        // missing values they are rather than silently substituted.
+        // Read through the descriptor rather than `items[index]`, which would invoke an
+        // accessor and validate a value other than the one actually sent. A sparse
+        // array's holes surface here as a missing descriptor — treated as absent rather
+        // than silently substituted, matching how they stringify to `null`.
         const descriptor = Object.getOwnPropertyDescriptor(items, index);
 
         if (!descriptor || descriptor.get || descriptor.set || !descriptor.enumerable) {
@@ -242,15 +231,14 @@ export function inspectJson(
 
         weight = add(weight, found.weight);
 
-        // Checked inside the loop, not only at the end, so a value already over budget
-        // stops being walked at the moment that becomes known.
+        // Checked inside the loop so an over-budget value stops being walked immediately.
         if (weight > maxExpandedNodes) {
           return {ok: false, rejection: JsonRejection.TOO_LARGE};
         }
       }
 
-      // An array may carry extra string keys as well as symbol keys, and both are
-      // dropped in transit. `length` plus the indices is the whole of a JSON array.
+      // An array may carry extra string keys, dropped in transit; `length` plus the
+      // indices is the whole of a JSON array.
       if (Object.getOwnPropertyNames(items).length !== items.length + 1) {
         return {ok: false, rejection: JsonRejection.NOT_JSON};
       }
@@ -271,15 +259,12 @@ export function inspectJson(
 
       const descriptor = Object.getOwnPropertyDescriptor(object, key);
 
-      // Accessors are refused without ever being invoked. Reading one would run
-      // arbitrary caller code inside a message handler — where it can throw straight
-      // past the `BridgeError` contract — and a getter is read twice on the way out
-      // (once here, once by `JSON.stringify` or the structured clone), so one returning
-      // a different value each time could pass validation and send something else.
-      //
-      // Non-enumerable data properties are refused for the same fidelity reason as
-      // symbol keys: `JSON.stringify` and structured clone both drop them, so the
-      // payload would arrive different from what was sent.
+      // Accessors are refused without ever being invoked: reading one would run
+      // arbitrary caller code here, and a getter is read again by `JSON.stringify` or
+      // structured clone, so one returning a different value each time could pass
+      // validation and then send something else. Non-enumerable properties are refused
+      // for the same fidelity reason as symbol keys below — both are dropped in
+      // transit, so the payload would arrive different from what was sent.
       if (!descriptor || descriptor.get || descriptor.set || !descriptor.enumerable) {
         return {ok: false, rejection: JsonRejection.NOT_JSON};
       }
@@ -321,15 +306,7 @@ function symbolCheck(
     : {ok: true, weight};
 }
 
-/*
- * `findReservedKey` used to live here, returning the offending key or `undefined`.
- * It is deliberately gone rather than kept as a wrapper around `inspectJson`.
- *
- * The whole point of the change above is that "no reserved key found" and "I could not
- * finish looking" must not be the same answer — that collision was the bypass. A
- * boolean-ish shim over the new result would reintroduce it for every caller who
- * reached for the convenient signature, since `TOO_DEEP`, `CYCLE` and `NOT_JSON` would
- * all flatten back to `undefined`.
- *
- * Use `inspectJson` and handle the rejection you get.
- */
+// Note: don't reintroduce a `findReservedKey(value) => key | undefined` wrapper around
+// `inspectJson`. "No reserved key found" and "the walk didn't finish" must stay
+// distinguishable — collapsing `TOO_DEEP`/`CYCLE`/`NOT_JSON` into one `undefined` is
+// exactly the bypass this function exists to close. Handle the rejection you get.
