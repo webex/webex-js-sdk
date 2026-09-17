@@ -6768,8 +6768,6 @@ export default class Meeting extends StatelessWebexPlugin {
   } = {}): Promise<void> => {
     const {llmChannel} = this;
 
-    this.llmConnectionAttempt = undefined;
-
     // Always clear the timer, even if there's no channel
     this.clearLLMHealthCheckTimer();
 
@@ -6905,6 +6903,16 @@ export default class Meeting extends StatelessWebexPlugin {
     const isJoined = this.isJoined();
     const dataChannelUrl = datachannelUrl;
 
+    if (!isJoined) {
+      this.llmConnectionAttempt = undefined;
+
+      if (this.llmChannel) {
+        await this.cleanupLLMConneciton({preserveVoiceaChannel: true});
+      }
+
+      return undefined;
+    }
+
     // If we have an existing channel, check if we should reuse it or clean it up
     if (this.llmChannel) {
       const isSameUrls =
@@ -6920,18 +6928,20 @@ export default class Meeting extends StatelessWebexPlugin {
       if (this.llmChannel.isConnecting() && isSameUrls && isJoined) {
         return undefined;
       }
-
-      // URLs changed or not joined, disconnect existing channel
-      await this.cleanupLLMConneciton({preserveVoiceaChannel: true});
-    }
-
-    if (!isJoined) {
-      return undefined;
     }
 
     const llmConnectionAttempt = {};
 
     this.llmConnectionAttempt = llmConnectionAttempt;
+
+    if (this.llmChannel) {
+      // URLs changed or not joined, disconnect existing channel
+      await this.cleanupLLMConneciton({preserveVoiceaChannel: true});
+
+      if (this.llmConnectionAttempt !== llmConnectionAttempt) {
+        return undefined;
+      }
+    }
 
     // Create a new LLM channel for this meeting
     // @ts-ignore - Fix type
@@ -10550,6 +10560,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   clearMeetingData = async () => {
+    this.llmConnectionAttempt = undefined;
     this.audio = null;
     this.video = null;
     this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
@@ -10561,7 +10572,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // Listener teardown (transcription, annotation, llm/mercury) runs in
     // stopListeningForMeetingEvents() before /leave and /end so events
     // received mid-teardown do not trigger Locus syncs.
-    // Token cleanup happens automatically when cleanupLLMConneciton destroys the channel.
+    // Connection attempts are invalidated above before cleanup destroys the channel.
     // A new voiceaChannel is created on the next join. In-session LLM reconnects and
     // practice-session transitions use their own cleanup paths and preserve the channel.
 

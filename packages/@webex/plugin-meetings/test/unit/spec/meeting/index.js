@@ -15320,6 +15320,41 @@ describe('plugin-meetings', () => {
           assert.notCalled(mockVoiceaChannel.deregisterEvents);
         });
 
+        it('does not reconnect when meeting teardown starts during channel cleanup', async () => {
+          const disconnect = new Defer();
+          const existingChannel = {
+            isConnected: sinon.stub().returns(true),
+            isConnecting: sinon.stub().returns(false),
+            getLocusUrl: sinon.stub().returns('old url'),
+            getDatachannelUrl: sinon.stub().returns('a datachannel url'),
+            disconnect: sinon.stub().returns(disconnect.promise),
+            off: sinon.stub(),
+          };
+
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.llmChannel = existingChannel;
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a different url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          const updateLLMConnection = meeting.updateLLMConnection();
+
+          meeting.stopListeningForMeetingEvents();
+          disconnect.resolve();
+
+          const result = await updateLLMConnection;
+
+          assert.isUndefined(result);
+          assert.calledOnceWithExactly(existingChannel.disconnect, {
+            code: 3050,
+            reason: 'done (permanent)',
+          });
+          assert.notCalled(webex.internal.llm.createChannel);
+          assert.isUndefined(meeting.llmChannel);
+        });
+
         it('disconnects and reconnects when datachannel URL changes', async () => {
           meeting.joinedWith = {state: 'JOINED'};
 
