@@ -794,10 +794,15 @@ const Services = WebexPlugin.extend({
     }
 
     const priorityUrl = this.get(name, true);
+
+    if (priorityUrl) {
+      return Promise.resolve(priorityUrl);
+    }
+
     const priorityUrlObj = this.getServiceFromUrl(url);
 
-    if (priorityUrl || priorityUrlObj) {
-      return Promise.resolve(priorityUrl || priorityUrlObj.priorityUrl);
+    if (priorityUrlObj) {
+      return Promise.resolve(priorityUrlObj.priorityUrl);
     }
 
     if (catalog.isReady) {
@@ -821,10 +826,17 @@ const Services = WebexPlugin.extend({
           .waitForCatalog(catalogGroup, timeout)
           .then(() => {
             const scopedPriorityUrl = this.get(name, true);
-            const scopedPrioriryUrlObj = this.getServiceFromUrl(url);
 
-            if (scopedPriorityUrl || scopedPrioriryUrlObj) {
-              resolve(scopedPriorityUrl || scopedPrioriryUrlObj.priorityUrl);
+            if (scopedPriorityUrl) {
+              resolve(scopedPriorityUrl);
+
+              return;
+            }
+
+            const scopedPriorityUrlObj = this.getServiceFromUrl(url);
+
+            if (scopedPriorityUrlObj) {
+              resolve(scopedPriorityUrlObj.priorityUrl);
             }
           })
           .catch(() => undefined);

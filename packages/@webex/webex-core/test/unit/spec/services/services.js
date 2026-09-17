@@ -876,6 +876,40 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#waitForService()', () => {
+      beforeEach(() => {
+        services.webex.config.services = {servicesNotNeedValidation: []};
+      });
+
+      it('does not scan by URL when the service name resolves', async () => {
+        sinon.stub(services, 'get').returns('https://example.com/api/v1');
+        const getServiceFromUrl = sinon.stub(services, 'getServiceFromUrl');
+
+        const result = await services.waitForService({
+          name: 'example',
+          url: 'https://example.com/api/v1/resource',
+        });
+
+        assert.equal(result, 'https://example.com/api/v1');
+        assert.notCalled(getServiceFromUrl);
+      });
+
+      it('scans by URL when the service name does not resolve', async () => {
+        sinon.stub(services, 'get').returns(undefined);
+        const getServiceFromUrl = sinon.stub(services, 'getServiceFromUrl').returns({
+          priorityUrl: 'https://example.com/api/v1',
+        });
+
+        const result = await services.waitForService({
+          name: 'missing',
+          url: 'https://example.com/api/v1/resource',
+        });
+
+        assert.equal(result, 'https://example.com/api/v1');
+        assert.calledOnceWithExactly(getServiceFromUrl, 'https://example.com/api/v1/resource');
+      });
+    });
+
     describe('#_formatReceivedHostmap()', () => {
       let serviceHostmap;
       let formattedHM;
