@@ -1,0 +1,38 @@
+:root {
+  --quick-reply-button-background-color: var(--message-received-background);
+  --quick-reply-button-border-color: var(--message-received-color);
+}
+
+.acme .quick-replies-container {
+  position: absolute;
+  bottom: 16px;
+  left: 5px;
+  width: 99%;
+  overflow-y: hidden;
+  overflow-x: scroll;
+  scrollbar-width: none;
+  height: 40px;
+  margin-bottom: 40px;
+}
+
+.acme .quick-replies-container::-webkit-scrollbar {
+  display: none;
+}
+
+.acme .quick-replies-scroller {
+  min-width: 98%;
+  text-align: right;
+}
+.quick-replies-container .quick-reply-button {
+  padding: 10px;
+  padding-left: 15px;
+  padding-right: 15px;
+  margin: 5px;
+  background-color: var(--quick-reply-button-background-color);
+  color: var(--quick-reply-button-border-color);
+  border-radius: 8px;
+  border: none;
+  font-size: 0.75em;
+}
+
+
