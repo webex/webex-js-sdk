@@ -13,6 +13,7 @@
     "./packages/calling",
     "./packages/byods",
     "./packages/byods-demo-server",
+    "./packages/webexconnect",
     "./packages/config/*",
     "./packages/legacy/*",
     "./packages/tools/*"
