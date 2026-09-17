@@ -1544,6 +1544,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         await this.publishAnswerOnWebexCrossClientState(true);
         publishedEnable = true;
         this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
+        this.taskManager.refreshWxAppOfferObservabilityForAllTasks();
       } else {
         await this.publishAnswerOnWebexCrossClientState(false);
         this.wxAppTelephonyMercurySync.unsubscribe();
@@ -1625,6 +1626,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         await this.publishAnswerOnWebexCrossClientState(true);
         publishedEnable = true;
         this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
+        this.taskManager.refreshWxAppOfferObservabilityForAllTasks();
 
         const mercurySubscribed = this.wxAppTelephonyMercurySync.isSubscribed();
         const usersubPublished = this.webexCrossClientService.isAnswerCallsStateActive();

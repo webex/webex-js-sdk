@@ -1457,6 +1457,7 @@ export default class TaskManager extends EventEmitter {
   }
 
   private removeTaskFromCollection(task: ITask) {
+    task.disposeWxAppOfferObservability?.();
     if (typeof task.cancelAutoWrapupTimer === 'function') {
       task.cancelAutoWrapupTimer();
     }
@@ -1652,6 +1653,16 @@ export default class TaskManager extends EventEmitter {
   public syncWxAppMuteFromCallDetailsForAllTasks(): void {
     Object.values(this.taskCollection).forEach((task) => {
       TaskManager.syncWxAppMuteFromCallDetailsForTask(task);
+    });
+  }
+
+  /**
+   * Re-run OFFERED wxApp offer diagnostics for collected voice tasks.
+   * Used after usersub publish so pre-publish offers can schedule mismatch grace.
+   */
+  public refreshWxAppOfferObservabilityForAllTasks(): void {
+    Object.values(this.taskCollection).forEach((task) => {
+      task.refreshWxAppOfferObservability?.();
     });
   }
 

@@ -176,6 +176,7 @@ describe('webex.cc', () => {
       getActiveTasks: jest.fn(),
       applyEnableWxBetterTogether: jest.fn(),
       syncWxAppMuteFromCallDetailsForAllTasks: jest.fn(),
+      refreshWxAppOfferObservabilityForAllTasks: jest.fn(),
       on: jest.fn(),
       off: jest.fn(),
       emit: jest.fn(),
@@ -1079,6 +1080,7 @@ describe('webex.cc', () => {
 
       expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
       expect(subscribeSpy).toHaveBeenCalledWith('agentId', expect.any(Function));
+      expect(mockTaskManager.refreshWxAppOfferObservabilityForAllTasks).toHaveBeenCalled();
     });
 
     it('should rollback wxApp config when post-station-login init fails', async () => {
@@ -2543,6 +2545,7 @@ describe('webex.cc', () => {
 
       expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
       expect(subscribeSpy).toHaveBeenCalledWith('agentId', expect.any(Function));
+      expect(mockTaskManager.refreshWxAppOfferObservabilityForAllTasks).toHaveBeenCalled();
     });
 
     it('should force-publish usersub false on silent relogin when enableWxBetterTogether is false at init', async () => {
@@ -3979,6 +3982,7 @@ describe('webex.cc', () => {
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
       expect(mockTaskManager.applyEnableWxBetterTogether).toHaveBeenCalledWith(true);
       expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
+      expect(mockTaskManager.refreshWxAppOfferObservabilityForAllTasks).toHaveBeenCalled();
     });
 
     it('should publish false and update config when disabled after wxApp was enabled', async () => {

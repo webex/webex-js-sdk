@@ -54,9 +54,14 @@ function makeContext(
     acceptEnabled?: boolean;
     isOutdial?: boolean;
   } = {}
-): WxAppOfferObservabilityContext & {setTaskData: (data: TaskData) => void; setTaskState: (s: TaskState) => void} {
+): WxAppOfferObservabilityContext & {
+  setTaskData: (data: TaskData) => void;
+  setTaskState: (s: TaskState) => void;
+  setUsersubPublished: (value: boolean) => void;
+} {
   let taskData = overrides.taskData ?? makeTaskDataWithoutWxAppFields();
   let taskState = overrides.taskState ?? TaskState.OFFERED;
+  let usersubPublished = overrides.usersubPublished ?? true;
   const metricsManager = makeMockMetricsManager() as unknown as MetricsManager;
 
   const deps = (): WxAppVoiceDependencies => ({
@@ -67,7 +72,7 @@ function makeContext(
     getTaskState: () => taskState,
     getWxAppMuted: () => false,
     setWxAppMuted: jest.fn(),
-    getUsersubPublished: () => overrides.usersubPublished ?? true,
+    getUsersubPublished: () => usersubPublished,
   });
 
   return {
@@ -106,7 +111,7 @@ function makeContext(
     getWxAppAcceptInFlight: () => overrides.wxAppAcceptInFlight ?? false,
     getWxAppAnswerPending: () => overrides.wxAppAnswerPending ?? false,
     getEnableWxBetterTogether: () => true,
-    getUsersubPublished: () => overrides.usersubPublished ?? true,
+    getUsersubPublished: () => usersubPublished,
     getWxAppVoiceDependencies: deps,
     getMetricsManager: () => metricsManager,
     setTaskData: (data: TaskData) => {
@@ -114,6 +119,9 @@ function makeContext(
     },
     setTaskState: (state: TaskState) => {
       taskState = state;
+    },
+    setUsersubPublished: (value: boolean) => {
+      usersubPublished = value;
     },
   };
 }
@@ -266,6 +274,60 @@ describe('WxAppOfferObservability', () => {
       const observability = new WxAppOfferObservability();
       const ctx = makeContext({isOutdial: true});
 
+      observability.handleUiControlsUpdate(ctx);
+      jest.advanceTimersByTime(WXAPP_PARTICIPANT_MISMATCH_GRACE_MS);
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(ctx.getMetricsManager().trackEvent).not.toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING,
+        expect.anything(),
+        expect.anything()
+      );
+    });
+
+    it('does not schedule mismatch while usersub is unpublished, then emits after refresh when usersub becomes active', () => {
+      const warnSpy = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppOfferParticipantMismatch');
+      const observability = new WxAppOfferObservability();
+      const ctx = makeContext({usersubPublished: false});
+
+      observability.handleUiControlsUpdate(ctx);
+      jest.advanceTimersByTime(WXAPP_PARTICIPANT_MISMATCH_GRACE_MS);
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      ctx.setUsersubPublished(true);
+      observability.handleUiControlsUpdate(ctx);
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      jest.advanceTimersByTime(WXAPP_PARTICIPANT_MISMATCH_GRACE_MS);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          usersubPublished: true,
+          hasDeviceCallId: false,
+          hasDeviceId: false,
+        })
+      );
+      expect(ctx.getMetricsManager().trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING,
+        expect.objectContaining({
+          usersubPublished: true,
+          hasDeviceCallId: false,
+          hasDeviceId: false,
+        }),
+        ['operational', 'behavioral']
+      );
+    });
+
+    it('does not emit mismatch after usersub refresh when participant fields are already valid', () => {
+      const warnSpy = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppOfferParticipantMismatch');
+      const observability = new WxAppOfferObservability();
+      const ctx = makeContext({
+        taskData: makeTaskDataWithWxAppFields(),
+        usersubPublished: false,
+      });
+
+      observability.handleUiControlsUpdate(ctx);
+      ctx.setUsersubPublished(true);
       observability.handleUiControlsUpdate(ctx);
       jest.advanceTimersByTime(WXAPP_PARTICIPANT_MISMATCH_GRACE_MS);
 

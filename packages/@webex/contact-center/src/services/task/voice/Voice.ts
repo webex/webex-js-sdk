@@ -179,6 +179,23 @@ export default class Voice extends Task implements IVoice {
     );
   }
 
+  /**
+   * Re-run OFFERED wxApp diagnostics without emitting UI controls.
+   * Used after usersub publish so a pre-publish offer can schedule mismatch grace.
+   */
+  public refreshWxAppOfferObservability(): void {
+    this.getOrCreateWxAppOfferObservability().handleUiControlsUpdate(
+      this.getWxAppOfferObservabilityContext()
+    );
+  }
+
+  /**
+   * Cancel pending participant-mismatch grace timer. Observability only.
+   */
+  public disposeWxAppOfferObservability(): void {
+    this.wxAppOfferObservability?.dispose();
+  }
+
   private getWxAppOfferObservabilityContext(): WxAppOfferObservabilityContext {
     return {
       getInteractionId: () => this.data.interactionId,

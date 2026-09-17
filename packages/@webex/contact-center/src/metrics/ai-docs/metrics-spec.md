@@ -246,7 +246,7 @@ All event names are defined in `METRIC_EVENT_NAMES` (`constants.ts`). Events fol
 | `WXAPP_SESSION_SKIPPED` | `'WxApp Session Skipped'` | Webex Together session skipped (`wxcc_sdk.user.webex_together_session_init.ignore`) |
 | `WXAPP_USERSUB_PUBLISH_SUCCESS` / `FAILED` | `'WxApp Usersub Publish ...'` | Cross-client usersub publish (`wxcc_sdk.user.webex_together_usersub_publish.complete\|fail`). Preflight failures (missing `userId` or device URL before HTTP publish) emit `WXAPP_USERSUB_PUBLISH_FAILED` with `skipReason` (`user_id_unavailable` / `device_url_unavailable`) and no `timeEvent` timer. Stale-generation discards (teardown or concurrent disable while HTTP publish is in flight) call `cancelTimedEvent` without emitting success/fail only when the completing publish still owns the active timer (`usersubPublishMetricsId` guard — a newer overlapping publish must not have its timer cleared). |
 | `WXAPP_MERCURY_SUBSCRIBE_SUCCESS` / `FAILED` | `'WxApp Mercury Subscribe ...'` | Telephony Mercury mute-sync subscribe (`wxcc_sdk.user.webex_together_mercury_subscribe.complete\|fail`) |
-| `WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING` | `'WxApp Offer Participant Fields Missing'` | Read-only observability when usersub is active but inbound OFFERED participant **still** lacks valid wxApp fields after a **500 ms grace period** (orchestrated in `voice/wxAppOfferObservability.ts`; avoids false alarms from transient WS ordering). Emitted with matching `[CC wxApp] participant fields mismatch` WARN (`wxcc_sdk.user.webex_together_offer_participant_fields.fail`) |
+| `WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING` | `'WxApp Offer Participant Fields Missing'` | Read-only observability when usersub is active but inbound OFFERED participant **still** lacks valid wxApp fields after a **500 ms grace period** (orchestrated in `voice/wxAppOfferObservability.ts`; avoids false alarms from transient WS ordering). After usersub publish, `TaskManager.refreshWxAppOfferObservabilityForAllTasks()` re-runs the observer so a pre-publish OFFERED task can still schedule grace. Task removal calls `disposeWxAppOfferObservability()` so a pending timer cannot emit after `CONTACT_MERGED` / collection drop. Emitted with matching `[CC wxApp] participant fields mismatch` WARN (`wxcc_sdk.user.webex_together_offer_participant_fields.fail`) |
 | `TASK_CONFERENCE_START_SUCCESS` / `FAILED` | `'Task Conference Start ...'` | Conference start result |
 | `TASK_CONFERENCE_END_SUCCESS` / `FAILED` | `'Task Conference End ...'` | Conference end result |
 | `TASK_CONFERENCE_TRANSFER_SUCCESS` / `FAILED` | `'Task Conference Transfer ...'` | Conference transfer result |
@@ -375,11 +375,11 @@ Special events (no success/failure pair):
 
 - `WXAPP_SESSION_SKIPPED` — has behavioral taxonomy (`wxcc_sdk.user.webex_together_session_init.ignore`)
 
-Of the 107 defined metric names, 96 have behavioral taxonomy and 11 do not. Events **without** an `eventTaxonomyMap` entry are the eight `AI_ASSISTANT_*` names plus `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`.
+Of the 108 defined metric names, 97 have behavioral taxonomy and 11 do not. Events **without** an `eventTaxonomyMap` entry are the eight `AI_ASSISTANT_*` names plus `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, and `WEBSOCKET_EVENT_RECEIVED`.
 
 ### Complete METRIC_EVENT_NAMES catalog
 
-This table contains all 107 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 96 mapped and 11 unmapped.
+This table contains all 108 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 97 mapped and 11 unmapped.
 
 | Constant | Emitted name | Behavioral taxonomy? |
 |---|---|---|
