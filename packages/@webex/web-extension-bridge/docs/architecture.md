@@ -114,9 +114,9 @@ Layout aliases `/web` and `/extension/{background,client,content}` are not publi
 
 | State or slice | Owner | Transition triggers | Persistence or reset boundary |
 | -------------- | ----- | ------------------- | ----------------------------- |
-| Page connection + pending handlers | web | HELLO/HELLO_ACK/BYE, `destroy()` | In-memory; lost on navigation |
+| Page connection + pending handlers | web | HELLO/HELLO_ACK/BYE, `destroy()`, `pagehide` | In-memory; lost on navigation |
 | Relay session token | extension content | Minted at relay start | Isolated world; new token per load |
-| Tab connections + FR8 buffer | extension background | CONNECT / DISCONNECT, tab removed/updated; FR8 read-time TTL filter plus lazy write-time eviction, maxEntries / maxBytes (one newest entry may exceed `maxBytes`) | `chrome.storage.session` via `sessionStore.ts`; cleared when the worker's session store is cleared |
+| Tab connections + FR8 buffer | extension background | CONNECT / DISCONNECT, tab removed/updated; FR8 read-time TTL filter plus lazy write-time eviction, maxEntries / maxBytes of `{topic, payload}` only (one newest entry may exceed `maxBytes`); refused write increments `storageWriteFailed.buffer` | `chrome.storage.session` via `sessionStore.ts`; cleared when the worker's session store is cleared |
 | Extension UI proxy listeners | extension client | subscribe / worker push events | In-memory for the lifetime of the popup/options/side panel |
 
 ## Cross-cutting architecture
@@ -165,14 +165,14 @@ flowchart LR
 | Envelope | Producer hop using `createEnvelope` | The hop that sends it | Peer hop after validation | Dropped on any `DropReason`; never partially applied |
 | Session token | content relay | relay at start | page and worker as envelope `session` | Bound to this page load |
 | Connection | worker `sessionStore` | worker on CONNECT | `listConnections`, client proxy | Removed on DISCONNECT / tab close / navigation |
-| BufferedMessage | worker FR8 buffer | worker on every accepted push | `getBufferedMessages` | Non-draining history; lazy TTL on next write; maxEntries / maxBytes (one newest entry may exceed `maxBytes`) |
+| BufferedMessage | worker FR8 buffer | worker on every accepted push (best-effort persist) | `getBufferedMessages` | Non-draining history; lazy TTL on next write; maxEntries / maxBytes of `{topic, payload}` only (one newest entry may exceed `maxBytes`; stored `meta` / `storedAt` / `bytes` are extra) |
 
 ## Caching catalog
 
 | Cache | Owner | Backend | Contents | TTL or bound | Invalidation trigger | Failure behavior |
 | ----- | ----- | ------- | -------- | ------------ | -------------------- | ---------------- |
 | SeenIds | core, used by web and relay | in-memory insertion-order/FIFO | envelope ids | 500 entries / 60 s | Lazy TTL on next `accept`/`has`; FIFO cap (existing ids do not refresh) | Duplicate id dropped as `REPLAYED_ID` |
-| FR8 buffer | extension background | `chrome.storage.session` | recent pushes | default 200 entries / 30 min / 4 MiB | Read-time TTL filter; lazy write-time eviction; maxEntries / maxBytes; `subscribe` does not drain; one newest entry may exceed `maxBytes` | Construction throws if session storage missing |
+| FR8 buffer | extension background | `chrome.storage.session` | recent pushes | default 200 entries / 30 min / 4 MiB of `{topic, payload}` (not `meta` / `storedAt` / `bytes`) | Read-time TTL filter; lazy write-time eviction; maxEntries / maxBytes of `{topic, payload}` only; `subscribe` does not drain; one newest entry may exceed `maxBytes` | Missing session storage throws at construct; refused write increments `storageWriteFailed.buffer` and does not throw; live notify still happens |
 | Rate limiter buckets | core RateLimiter | in-memory | tokens per (tab, topic) and aggregate per tab | 256 topic keys / 64 aggregate keys | Token refill + LRU key-cap eviction; tab gone does not reset `pushLimiter` | Excess push dropped / `RATE_LIMITED` |
 
 ## Observability patterns

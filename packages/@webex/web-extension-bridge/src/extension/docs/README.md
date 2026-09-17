@@ -124,7 +124,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `EXT-004` | Worker `allowedOrigins` is required; missing/empty/wildcard → `INSECURE_CONFIG` | Manifest `matches` is not a sender check | `src/types.ts`, `src/extension/background.ts` | `test/unit/spec/extension/background.ts` | none | Present |
 | `EXT-005` | Worker refuses senders that fail `isOwnExtension` / content-script tab / `isOriginAllowed` | Provenance is data, not trust | `src/extension/senders.ts` | `test/unit/spec/extension/senders.ts` | none | Present |
 | `EXT-006` | `createExtensionClient` proxies FR1/FR2 results for UI surfaces | FR6 without duplicating transport | `src/extension/client.ts` | `test/unit/spec/extension/client.ts` | none | Present |
-| `EXT-007` | Every accepted push is stored in a bounded session buffer (even when UI listeners are active). `subscribe` does not drain it; `getBufferedMessages` is read-only (TTL is a read-time filter). Expired entries leave storage on the next append. Eviction is also maxEntries / maxBytes, except a single newest entry may exceed `maxBytes`. | FR8 | `src/extension/background.ts`, `src/extension/sessionStore.ts` | `test/unit/spec/extension/sessionStore.ts` | none | Present |
+| `EXT-007` | Every accepted push is appended best-effort to a bounded session buffer (even when UI listeners are active). A refused `chrome.storage.session` write increments `storageWriteFailed.buffer` and does not throw; listeners still fire. `subscribe` does not drain it; `getBufferedMessages` is read-only (TTL is a read-time filter). Expired entries leave storage on the next append. Eviction is also maxEntries / maxBytes measured on `{topic, payload}` only (not `meta` / `storedAt` / `bytes`); a single newest entry may exceed `maxBytes`. | FR8 | `src/extension/background.ts`, `src/extension/sessionStore.ts` | `test/unit/spec/extension/sessionStore.ts` | none | Present |
 
 ## Design overview
 
@@ -137,7 +137,7 @@ One published `/extension` facade rather than layout-shaped subpaths. Bundlers t
 | Relay page→worker | postMessage → runtime.sendMessage | `src/extension/content.ts` | Three consecutive notify failures stop connected signaling |
 | Worker request | `request(topic)` → tabs.sendMessage REQUEST | `src/extension/background.ts` | `NO_TAB`, `TIMEOUT`, `NOT_CONNECTED` |
 | UI proxy | client command → worker | `src/extension/client.ts` | Worker gone → raw transport `Error` |
-| Buffer | every accepted push → session store (non-draining) | `sessionStore.ts` | read-time TTL filter; lazy write-time eviction; maxEntries / maxBytes (one newest entry may exceed `maxBytes`) |
+| Buffer | every accepted push → session store (non-draining, best-effort persist) | `sessionStore.ts` | read-time TTL filter; lazy write-time eviction; maxEntries / maxBytes of `{topic, payload}` only (one newest entry may exceed `maxBytes`); refused write → `storageWriteFailed.buffer` |
 
 ```mermaid
 flowchart LR
@@ -177,7 +177,7 @@ The extension MUST be able to target a specific tab for FR2, defaulting to the a
 | State or slice | Owner | Initial state | Transition triggers | Reset or persistence boundary |
 | -------------- | ----- | ------------- | ------------------- | ----------------------------- |
 | Relay session | content relay | minted id | start / destroy | Isolated world; new per load |
-| Connections | worker session store | empty | CONNECT / DISCONNECT / tab removed / navigation | `chrome.storage.session` |
+| Connections | worker session store | empty set of tabs | CONNECT adds one tab; DISCONNECT / tab removed / navigation remove that tab | `chrome.storage.session` |
 | UI listeners | extension client | empty | subscribe | Popup lifetime |
 
 ## Business rules and invariants
@@ -208,10 +208,12 @@ Retention: TTL and maxEntries/maxBytes eviction. Not a product database.
 
 ```mermaid
 stateDiagram-v2
-  [*] --> NoTab
-  NoTab --> Connected: CONNECT from allowed origin
-  Connected --> NoTab: DISCONNECT or tabs.onRemoved or navigation
+  [*] --> Absent
+  Absent --> Present: CONNECT from allowed origin
+  Present --> Absent: DISCONNECT or tabs.onRemoved or navigation
 ```
+
+This machine is **per tab**. CONNECT adds that tab to the worker connection set; DISCONNECT / `tabs.onRemoved` / navigation remove only that tab. Other connected tabs stay Present.
 
 Rejected: accepting a content-script message whose origin is not in `allowedOrigins`.
 

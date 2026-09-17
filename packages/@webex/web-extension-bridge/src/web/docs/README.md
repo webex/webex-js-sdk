@@ -160,7 +160,7 @@ The web application MUST be able to register a named handler that produces the v
 
 | State or slice | Owner | Initial state | Transition triggers | Reset or persistence boundary |
 | -------------- | ----- | ------------- | ------------------- | ----------------------------- |
-| `isConnected` | WebBridge instance | false | HELLO or HELLO_ACK / BYE / destroy | In-memory; navigation clears |
+| `isConnected` | WebBridge instance | false | HELLO or HELLO_ACK / BYE / destroy / pagehide | In-memory; navigation clears |
 | Handler map | WebBridge instance | empty | requestHandler register/unregister | destroy clears |
 | Connection listeners | WebBridge instance | empty | onConnected / onDisconnected | destroy clears |
 
@@ -188,7 +188,7 @@ Origin allow-list, no postMessage with a wildcard target origin.
 stateDiagram-v2
   [*] --> Disconnected
   Disconnected --> Connected: HELLO or HELLO_ACK
-  Connected --> Disconnected: BYE or destroy
+  Connected --> Disconnected: BYE or destroy or pagehide
 ```
 
 Rejected: treating a message from another window or a non-allow-listed origin as connected.
