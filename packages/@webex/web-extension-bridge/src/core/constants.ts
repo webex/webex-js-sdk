@@ -31,7 +31,7 @@ export const MAX_TIMEOUT_MS = 30000;
 /** Envelopes timestamped outside this window are treated as replayed captures. */
 export const CLOCK_SKEW_TOLERANCE_MS = 30000;
 
-/** Seen-id cache bounds. Unbounded replay caches are a leak in a long-lived worker. */
+// Seen-id cache bounds — unbounded replay caches are a leak in a long-lived worker.
 export const SEEN_ID_MAX_ENTRIES = 500;
 export const SEEN_ID_TTL_MS = 60000;
 
@@ -45,23 +45,16 @@ export const DEFAULT_MAX_IN_FLIGHT_PER_TAB = 16;
 export const RATE_LIMIT_MAX_KEYS = 256;
 
 /**
- * The per-topic bucket map is bounded, so a page that cycles unique topic names gets
- * a brand-new full token budget on every push. An aggregate bucket per tab closes
- * that: the per-topic limit shapes one topic, this one caps the tab as a whole.
- *
- * The multiplier keeps a legitimately multi-topic page working — a tab may burst
- * across several topics at once — while still bounding the total.
+ * Bounds the per-tab aggregate rate as a multiple of the per-topic rate, so a page
+ * cycling unique topic names (each getting a fresh bucket) is still capped overall.
  */
 export const RATE_LIMIT_AGGREGATE_MULTIPLIER = 4;
 
 /** Aggregate buckets are keyed per tab, so this map is far smaller than the topic map. */
 export const RATE_LIMIT_AGGREGATE_MAX_KEYS = 64;
 
-/**
- * Bounds every numeric option the bridge accepts. Values outside these are rejected
- * at construction rather than clamped, because a limiter silently reinterpreting a
- * misconfigured number is how rate limiting ends up disabled in production.
- */
+// Numeric option bounds. Rejected at construction rather than clamped, since silently
+// reinterpreting a misconfigured number is how rate limiting ends up disabled.
 export const MIN_RATE_PER_SECOND = 1;
 export const MAX_RATE_PER_SECOND = 10000;
 export const MIN_BUFFER_ENTRIES = 1;
@@ -72,10 +65,9 @@ export const MIN_IN_FLIGHT_PER_TAB = 1;
 export const MAX_IN_FLIGHT_PER_TAB = 1024;
 
 /**
- * Total serialised bytes the replay buffer may hold. `chrome.storage.session` has a
- * fixed quota (10 MiB at time of writing) and its write failures are asynchronous, so
- * an entry cap alone is not a bound: 200 entries at the 1 MiB payload ceiling is
- * 200 MiB. This budget is enforced alongside the entry cap.
+ * Total serialised bytes the replay buffer may hold, enforced alongside the entry cap.
+ * `chrome.storage.session`'s quota (10 MiB) is fixed and its write failures are async,
+ * so an entry cap alone isn't a bound (200 entries at the 1 MiB ceiling is 200 MiB).
  */
 export const DEFAULT_BUFFER_MAX_BYTES = 4194304;
 export const MIN_BUFFER_MAX_BYTES = 1024;

@@ -70,11 +70,9 @@ interface StoredBufferEntry {
   meta: PushMeta;
   storedAt: number;
   /**
-   * Serialised size of this entry, measured once on the way in.
-   *
-   * Carried on the record rather than recomputed on every append: eviction has to
-   * total the whole buffer, and re-stringifying 200 payloads per push would make the
-   * byte cap itself the performance problem it was added to prevent.
+   * Serialised size, measured once on the way in and carried on the record — eviction
+   * has to total the whole buffer, and re-stringifying every payload on each append
+   * would make the byte cap itself the performance problem it was added to prevent.
    */
   bytes: number;
 }
@@ -107,9 +105,8 @@ export function createExtensionBridgeWith(
   chromeApi: ChromeLike,
   options: ExtensionBridgeOptions
 ): ExtensionBridge {
-  // Guarded rather than defaulted: `allowedOrigins` is required, so a call with no
-  // options at all is a configuration error and should say so, not fail on a property
-  // read of `undefined`.
+  // Guarded rather than defaulted: a call with no options is a configuration error
+  // and should say so, not fail on a property read of `undefined`.
   if (typeof options !== 'object' || options === null) {
     throw new BridgeError('INSECURE_CONFIG', 'Bridge options with allowedOrigins are required');
   }
@@ -207,14 +204,13 @@ export function createExtensionBridgeWith(
   /**
    * Remove a tab's connection record.
    *
-   * `expectedSession` guards the tab-level match. Connections are replaced by `tabId`
-   * alone, so a relay that reloads mints session B while a `DISCONNECT` from session A
-   * may still be in flight behind it. Removing on `tabId` alone lets that late message
-   * delete the live connection. When a session is supplied, the record is removed only
-   * if it is still that session's.
+   * `expectedSession`, when given, guards against removing a *newer* connection: a
+   * relay that reloads mints session B while a `DISCONNECT` from session A may still
+   * be in flight behind it, and removing by `tabId` alone would let that late message
+   * delete the live connection.
    *
-   * @param tabId - Tab whose record should go.
-   * @param expectedSession - Session that must still own the record, when known.
+   * @param tabId - Tab whose connection record should be removed.
+   * @param expectedSession - Only remove the record if its session matches this.
    * @returns Whether a record was actually removed.
    */
   const removeConnection = async (tabId: number, expectedSession?: string): Promise<boolean> => {
@@ -239,7 +235,12 @@ export function createExtensionBridgeWith(
     return removed;
   };
 
-  /** Release a tab's in-flight slots and settle anything still waiting on it. */
+  /**
+   * Release a tab's in-flight slots and settle anything still waiting on it.
+   *
+   * @param tabId - Tab to settle.
+   * @param reason - Logged reason for the settlement.
+   */
   const settleTab = (tabId: number, reason: string): void => {
     inFlight.releaseAll(tabId);
 
@@ -251,13 +252,11 @@ export function createExtensionBridgeWith(
   };
 
   /**
-   * Tear down everything held for a tab, regardless of session.
+   * Tear down everything held for a tab, regardless of session. For events about the
+   * tab itself (removed, navigated, unreachable), where the document is gone either way.
    *
-   * Used for events that are about the tab itself — removed, navigated, unreachable —
-   * where no session can be in question because the document is gone either way.
-   *
-   * @param tabId - Tab that went away.
-   * @param reason - Why, for logs.
+   * @param tabId - Tab to tear down.
+   * @param reason - Logged reason.
    */
   const dropConnection = (tabId: number, reason: string): void => {
     void removeConnection(tabId);
@@ -267,13 +266,13 @@ export function createExtensionBridgeWith(
   /**
    * Session-scoped disconnect, for a goodbye that came from a relay.
    *
-   * Awaited by its caller so the removal is durable before the worker may suspend, and
-   * scoped to the disconnecting relay's own session so a late goodbye from a previous
-   * document cannot tear down the session that has since replaced it.
+   * Awaited so the removal is durable before the worker may suspend, and scoped to the
+   * disconnecting relay's own session so a late goodbye from a previous document can't
+   * tear down the session that has since replaced it.
    *
-   * @param tabId - Tab that said goodbye.
-   * @param session - Session the goodbye came from.
-   * @param reason - Why, for logs.
+   * @param tabId - Tab to disconnect.
+   * @param session - Session the stored connection must match.
+   * @param reason - Logged reason.
    */
   const removeConnectionForSession = async (
     tabId: number,
@@ -295,9 +294,8 @@ export function createExtensionBridgeWith(
 
   /**
    * @param topic - Push topic.
-   * @param payload - Validated payload.
-   * @returns Serialised size of the buffer entry this will become, measured once so
-   *   eviction can total the buffer without re-stringifying every payload.
+   * @param payload - Push payload.
+   * @returns Serialised size of the buffer entry this will become.
    */
   const measureEntryBytes = (topic: string, payload: JsonValue): number => {
     try {
@@ -313,14 +311,12 @@ export function createExtensionBridgeWith(
    * Append to the replay buffer, evicting oldest-first until the entry cap *and* the
    * total-byte budget both hold.
    *
-   * The entry cap alone is not a bound on size. `maxPayloadBytes` is configurable up
-   * to 1 MiB, so 200 entries is a 200 MiB buffer in the worst case, against a
-   * `chrome.storage.session` quota an order of magnitude smaller. Writes past the
-   * quota are rejected asynchronously, so without a byte budget the buffer stops
-   * accepting anything and the failure surfaces nowhere.
+   * The entry cap alone isn't a size bound — `maxPayloadBytes` goes up to 1 MiB, so 200
+   * entries can be a 200 MiB buffer against a much smaller `chrome.storage.session`
+   * quota, and writes past quota fail silently (async) without the byte budget.
    *
-   * @param entry - Entry to store.
-   * @returns The resulting buffer.
+   * @param entry - Buffer entry to append.
+   * @returns The buffer's contents after eviction.
    */
   const appendToBuffer = (entry: StoredBufferEntry): Promise<StoredBufferEntry[]> =>
     buffer.update((current) => {
@@ -328,8 +324,7 @@ export function createExtensionBridgeWith(
 
       fresh.push(entry);
 
-      // Oldest-out: the buffer is a bounded convenience, so a chatty page evicts its
-      // own history rather than growing the worker's footprint.
+      // Oldest-out: a chatty page evicts its own history rather than growing the worker.
       let start = Math.max(fresh.length - bufferMaxEntries, 0);
       let bytes = 0;
 
@@ -337,9 +332,9 @@ export function createExtensionBridgeWith(
         bytes += fresh[index]?.bytes ?? 0;
       }
 
-      // A single entry larger than the whole budget is still kept: it is already
-      // inside `maxPayloadBytes`, and dropping the newest push to satisfy a budget
-      // nothing else is using would be worse than holding one oversized entry.
+      // A single entry larger than the whole budget is kept anyway (it's already
+      // inside `maxPayloadBytes`) rather than dropped to satisfy a budget nothing
+      // else is using.
       while (bytes > bufferMaxBytes && start < fresh.length - 1) {
         bytes -= fresh[start]?.bytes ?? 0;
         start += 1;
@@ -427,15 +422,14 @@ export function createExtensionBridgeWith(
   /**
    * Handle one relay message to completion, including its storage write.
    *
-   * Returning a promise — rather than firing the work off with `void` — is what makes
-   * the caller able to hold the message channel open until persistence has settled. An
-   * MV3 service worker may be suspended as soon as the last event handler returns, and
-   * `chrome.storage.session` writes are asynchronous, so `void`-ing this work meant a
-   * `CONNECT`, `DISCONNECT` or buffered `PUSH` could be lost between the handler
-   * returning and the write landing.
+   * Returns a promise (rather than firing the work off with `void`) so the caller can
+   * hold the message channel open until persistence has settled — an MV3 worker may
+   * suspend as soon as the last handler returns, and `void`-ing this work risked losing
+   * a `CONNECT`, `DISCONNECT` or buffered `PUSH` between the handler returning and the
+   * write landing.
    *
-   * @param relay - Validated relay message.
-   * @param sender - Verified sender.
+   * @param relay - Relay message to handle.
+   * @param sender - Verified sender of the message.
    */
   const handleRelay = async (relay: RelayToWorker, sender: ChromeSender): Promise<void> => {
     const tabId = sender.tab?.id;
@@ -446,11 +440,9 @@ export function createExtensionBridgeWith(
 
     switch (relay.kind) {
       case RelayKind.CONNECT: {
-        // Always present: the sender-verification gate ahead of this refuses any relay
-        // message whose reported origin is not on the allow-list, and an absent origin
-        // is not on any list. There is no derive-from-tab-url fallback any more,
-        // because a fallback here would be a second, weaker way to pass the check the
-        // allow-list exists to be.
+        // Always present: the sender-verification gate ahead of this refuses any
+        // message whose reported origin isn't on the allow-list. No derive-from-tab-url
+        // fallback, since that would be a second, weaker way to pass the same check.
         const origin = sender.origin ?? '';
         const record: StoredConnection = {
           tabId,
@@ -470,8 +462,6 @@ export function createExtensionBridgeWith(
 
       case RelayKind.DISCONNECT:
         logger.debug('tab detached', {channel, tabId, reason: relay.reason});
-        // Scoped to the disconnecting relay's own session, so a late goodbye from a
-        // previous document cannot tear down the session that replaced it.
         await removeConnectionForSession(tabId, relay.session, relay.reason ?? 'bye');
         break;
 
@@ -613,25 +603,17 @@ export function createExtensionBridgeWith(
       void Promise.resolve(tabsApi.sendMessage(tabId, relayRequest)).then(
         (response) => settleFromRelay(id, topic, connection.session, response),
         async () => {
-          // This request first, so it reports why *it* failed. Dropping the connection
-          // settles everything else on the tab as `DISCONNECTED`, and correlation is
-          // single-use, so whichever runs first wins the code this caller sees.
+          // Reject this request first, so it reports why *it* failed (dropping the
+          // connection settles everything else on the tab as `DISCONNECTED`, and
+          // correlation is single-use, so whichever runs first wins).
           pending.reject(id, new BridgeError('NOT_CONNECTED', undefined, topic));
 
-          // A rejection here means the tab has no listener: the content script is gone
-          // after an extension reload, a discarded tab, or a failed injection, while
-          // the stored record still says otherwise. Rejecting this one request and
-          // leaving the record in place would keep `listConnections()` advertising a
-          // dead tab — and keep default active-tab targeting routing to it — until a
-          // navigation or removal event happened along. The failed send *is* that
-          // event, so it is treated as one.
-          //
-          // Scoped to the session this send targeted. Unlike a tab removal, a send
-          // failure is only evidence about the connection that was asked to receive it,
-          // and the rejection arrives asynchronously — a replacement relay can have
-          // connected on the same tab in the meantime. Dropping by tab ID alone would
-          // then tear down that healthy newer session and settle its in-flight requests
-          // as `DISCONNECTED`.
+          // A send failure means the tab has no listener (reloaded extension, discarded
+          // tab, failed injection) even though the stored record says otherwise; treated
+          // as the missing navigation/removal event that should have told us. Scoped to
+          // the session this send targeted, not the bare tab ID, because a replacement
+          // relay may have connected on the same tab by the time this async rejection
+          // arrives — dropping by tab ID alone would tear down that healthy session too.
           logger.debug('dropping unreachable connection', {channel, tabId});
           await removeConnectionForSession(tabId, connection.session, 'send-failed');
         }
@@ -671,11 +653,9 @@ export function createExtensionBridgeWith(
           return {ok: true, value: await bridge.listConnections()};
 
         case ClientCommand.GET_BUFFERED: {
-          // The topic filter is applied here, in the worker, before the limit. Passing
-          // only the limit and letting the client filter afterwards means the limit
-          // truncates across *all* topics first, so a topic whose entries sit behind
-          // newer pushes on other topics comes back short — or empty — even though the
-          // entries the caller asked for are still in the buffer.
+          // Topic filter applied here, before the limit — otherwise the limit truncates
+          // across all topics first, and a topic behind newer pushes on other topics
+          // comes back short even though its entries are still in the buffer.
           if (command.topic !== undefined && !isValidTopic(command.topic)) {
             throw new BridgeError('INVALID_TOPIC');
           }
@@ -740,9 +720,7 @@ export function createExtensionBridgeWith(
       }
 
       // `true` holds the message channel — and with it the worker — open until the
-      // relay's storage writes have settled. MV3 may suspend a service worker as soon
-      // as its last handler returns, so returning `undefined` here (and `void`-ing the
-      // async work) risked losing CONNECT, DISCONNECT and buffered PUSH state.
+      // relay's storage writes have settled (see `handleRelay`'s doc comment).
       void handleRelay(relay, sender).then(
         () => sendResponse({ok: true}),
         (error: unknown) => {
@@ -852,18 +830,15 @@ export function createExtensionBridgeWith(
 }
 
 /**
- * Resolve the runtime origin allow-list.
+ * Resolve the runtime origin allow-list, which is required rather than optional.
  *
- * The list is required, not optional. A manifest `matches` pattern says where a
- * content script is *injected*; it says nothing about who sent the message currently
- * being handled, and it is routinely broadened during development and never narrowed
- * again. Treating an absent list as "trust whatever the manifest allows" meant the
- * privileged hop's own origin check passed unconditionally — the one place T1 is
- * supposed to be enforced at runtime. Making it mandatory turns a silent weakening
- * into a startup failure, which is the only version of this a reviewer can audit.
+ * A manifest `matches` pattern says where a content script is *injected*, not who sent
+ * the message currently being handled, and it's routinely broadened during development
+ * and never narrowed again. Making the list mandatory turns a silent weakening of T1
+ * into an auditable startup failure instead.
  *
- * @param origins - Runtime origin allow-list.
- * @returns A set of exact origins.
+ * @param origins - Configured `allowedOrigins` option.
+ * @returns The allow-list as a set of exact origins.
  * @throws BridgeError `INSECURE_CONFIG` when absent, empty, wildcarded, or not an
  *   exact http(s) origin.
  */
