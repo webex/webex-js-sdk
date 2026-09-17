@@ -701,9 +701,28 @@ export default class Meetings extends WebexPlugin {
         }
       }
 
+      let rerouted = false;
+
       this.create(data.locus, DESTINATION_TYPE.LOCUS_ID, useRandomDelayForInfo)
         .then(async (newMeeting) => {
           meeting = newMeeting;
+
+          // newMeeting may already have been destroyed by Meeting#selfHealDuplicateMeeting
+          // (e.g. another meeting's join()/fetchMeetingInfo() completed in the meantime and this
+          // turned out to be its duplicate); it's no longer safe to initialize, so re-route this
+          // event to whatever meeting now actually matches it instead of losing it.
+          if (!this.meetingCollection.get(meeting.id)) {
+            LoggerProxy.logger.warn(
+              'Meetings:index#handleLocusEvent --> newly created meeting was destroyed before it could be initialized, rerouting event to its survivor'
+            );
+            rerouted = true;
+            const survivor = this.getCorrespondingMeetingByLocus(data);
+
+            survivor?.locusInfo.parse(survivor, data);
+
+            return;
+          }
+
           try {
             // It's a new meeting so initialize the locus data
             await meeting.locusInfo.initialSetup(
@@ -733,6 +752,10 @@ export default class Meetings extends WebexPlugin {
           LoggerProxy.logger.error(e);
         })
         .finally(() => {
+          if (rerouted) {
+            return;
+          }
+
           // There will be cases where locus event comes in gets created and deleted because its a 1:1 and meeting gets deleted
           // because the other user left so before sending 'added' event make sure it exists in the collection
 
@@ -1880,13 +1903,6 @@ export default class Meetings extends WebexPlugin {
       }
     );
 
-    if (type === DESTINATION_TYPE.LOCUS_ID) {
-      // stash synchronously, before fetchMeetingInfo()/initialSetup() below settle, so a
-      // duplicate destroyed by MeetingUtil.joinMeeting's self-heal in the meantime doesn't
-      // lose this data
-      meeting.unmatchedLocusEventDto = destination;
-    }
-
     // Resolved once fetchMeetingInfo() (or the equivalent injectMeetingInfo/parseMeetingInfo path
     // below) settles, so handleLocusEvent() can defer matching against this meeting until its
     // conversationUrl/sipUri/meetingNumber are actually populated.
@@ -2013,8 +2029,7 @@ export default class Meetings extends WebexPlugin {
       // this createMeeting() call may have taken longer than handleLocusEvent's deferral
       // timeout, in which case a duplicate placeholder meeting could have been created for
       // this locusUrl in the meantime; clean it up now that we're done.
-      // @ts-ignore
-      MeetingUtil.selfHealDuplicateMeeting(this.webex, meeting);
+      meeting.selfHealDuplicateMeeting();
     }
 
     return meeting;

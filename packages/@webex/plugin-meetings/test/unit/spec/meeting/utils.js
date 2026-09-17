@@ -3,11 +3,7 @@ import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import Meetings from '@webex/plugin-meetings';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
-import {
-  LOCAL_SHARE_ERRORS,
-  PASSWORD_STATUS,
-  MEETING_REMOVED_REASON,
-} from '@webex/plugin-meetings/src/constants';
+import {LOCAL_SHARE_ERRORS, PASSWORD_STATUS} from '@webex/plugin-meetings/src/constants';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import {SELF_POLICY, IP_VERSION} from '@webex/plugin-meetings/src/constants';
@@ -533,6 +529,7 @@ describe('plugin-meetings', () => {
           },
           getWebexObject: sinon.stub().returns(webex),
           setLocus: sinon.stub(),
+          selfHealDuplicateMeeting: sinon.stub(),
         };
       });
 
@@ -793,123 +790,10 @@ describe('plugin-meetings', () => {
       });
 
       describe('duplicate meeting self-heal', () => {
-        let duplicateMeeting;
-
-        beforeEach(() => {
-          meeting.id = 'realMeetingId';
-          meeting.locusInfo = {
-            updateControls: sinon.stub(),
-            controls: {mute: true},
-            parsedLocus: {self: {id: 'selfId'}},
-          };
-
-          duplicateMeeting = {
-            id: 'duplicateMeetingId',
-            locusUrl: 'locusUrl',
-          };
-
-          sinon.stub(webex.meetings.meetingCollection, 'getAll').returns({
-            [duplicateMeeting.id]: duplicateMeeting,
-          });
-          sinon.stub(webex.meetings.meetingCollection, 'get').returns(meeting);
-          sinon.stub(webex.meetings, 'destroy');
-        });
-
-        [
-          {
-            name: 'merges the duplicate meeting controls onto the real meeting before destroying it',
-            duplicateControls: {mute: false, meetingContainer: {url: 'container-url'}},
-            expectedMergedControls: {mute: true, meetingContainer: {url: 'container-url'}},
-            expectDestroy: true,
-          },
-          {
-            name: 'destroys the duplicate meeting without merging when it has no controls',
-            duplicateControls: undefined,
-            expectedMergedControls: undefined,
-            expectDestroy: true,
-          },
-          {
-            name: 'still destroys the duplicate meeting if merging its controls throws',
-            duplicateControls: {mute: false},
-            updateControlsThrows: true,
-            expectedMergedControls: {mute: true},
-            expectDestroy: true,
-          },
-          {
-            name: 'does not touch other meetings sharing a different locusUrl',
-            duplicateLocusUrl: 'someOtherLocusUrl',
-            duplicateControls: undefined,
-            expectedMergedControls: undefined,
-            expectDestroy: false,
-          },
-          {
-            name: 'prefers the duplicate meeting controls when its locus sequence is newer',
-            duplicateControls: {mute: false, meetingContainer: {url: 'container-url'}},
-            meetingSequence: {entries: [1]},
-            duplicateSequence: {entries: [2]},
-            expectedMergedControls: {mute: false, meetingContainer: {url: 'container-url'}},
-            expectDestroy: true,
-          },
-          {
-            name: 'still prefers the real meeting controls when its own locus sequence is newer than the duplicate',
-            duplicateControls: {mute: false, meetingContainer: {url: 'container-url'}},
-            meetingSequence: {entries: [5]},
-            duplicateSequence: {entries: [3]},
-            expectedMergedControls: {mute: true, meetingContainer: {url: 'container-url'}},
-            expectDestroy: true,
-          },
-        ].forEach(
-          ({
-            name,
-            duplicateControls,
-            duplicateLocusUrl,
-            updateControlsThrows,
-            meetingSequence,
-            duplicateSequence,
-            expectedMergedControls,
-            expectDestroy,
-          }) => {
-            it(name, async () => {
-              duplicateMeeting.locusUrl = duplicateLocusUrl || duplicateMeeting.locusUrl;
-              duplicateMeeting.locusInfo = {controls: duplicateControls, sequence: duplicateSequence};
-              meeting.locusInfo.sequence = meetingSequence;
-              if (updateControlsThrows) {
-                meeting.locusInfo.updateControls.throws(new Error('merge failed'));
-              }
-
-              await MeetingUtil.joinMeeting(meeting, {});
-
-              if (expectedMergedControls) {
-                assert.calledOnceWithExactly(
-                  meeting.locusInfo.updateControls,
-                  expectedMergedControls,
-                  meeting.locusInfo.parsedLocus.self
-                );
-              } else {
-                assert.notCalled(meeting.locusInfo.updateControls);
-              }
-
-              if (expectDestroy) {
-                assert.calledOnceWithExactly(
-                  webex.meetings.destroy,
-                  duplicateMeeting,
-                  MEETING_REMOVED_REASON.DUPLICATE_LOCUS_URL
-                );
-              } else {
-                assert.notCalled(webex.meetings.destroy);
-              }
-            });
-          }
-        );
-
-        it('does not destroy anything when the meeting itself has already been removed from meetingCollection', async () => {
-          webex.meetings.meetingCollection.get.returns(null);
-          duplicateMeeting.locusInfo = {controls: {mute: false}};
-
+        it("invokes the meeting's selfHealDuplicateMeeting once join() resolves", async () => {
           await MeetingUtil.joinMeeting(meeting, {});
 
-          assert.notCalled(meeting.locusInfo.updateControls);
-          assert.notCalled(webex.meetings.destroy);
+          assert.calledOnceWithExactly(meeting.selfHealDuplicateMeeting);
         });
       });
     });

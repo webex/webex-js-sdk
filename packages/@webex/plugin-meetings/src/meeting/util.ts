@@ -16,10 +16,8 @@ import {
   EVENT_TRIGGERS,
   LOCAL_SHARE_ERRORS,
   IP_VERSION,
-  MEETING_REMOVED_REASON,
 } from '../constants';
 import BrowserDetection from '../common/browser-detection';
-import LocusDeltaParser from '../locus-info/parser';
 import IntentToJoinError from '../common/errors/intent-to-join';
 import JoinMeetingError from '../common/errors/join-meeting';
 import ParameterError from '../common/errors/parameter';
@@ -259,61 +257,6 @@ const MeetingUtil = {
     }
   },
 
-  /**
-   * Finds any other meeting sharing this meeting's locusUrl (a placeholder created while this
-   * meeting's own join()/fetchMeetingInfo() was still in flight), merges its accumulated controls
-   * onto this meeting, and destroys it.
-   * @param {any} webex webex instance
-   * @param {any} meeting the real/surviving meeting
-   * @returns {void}
-   */
-  selfHealDuplicateMeeting: (webex: any, meeting: any) => {
-    // meeting may itself have already been destroyed by a concurrent self-heal call.
-    if (!webex.meetings.meetingCollection.get(meeting.id)) {
-      return;
-    }
-
-    const duplicateMeeting: any = Object.values(webex.meetings.meetingCollection.getAll()).find(
-      (candidate: any) => candidate.id !== meeting.id && candidate.locusUrl === meeting.locusUrl
-    );
-
-    if (!duplicateMeeting) {
-      return;
-    }
-
-    // merge the placeholder's accumulated controls (not just its creation-time snapshot) onto
-    // the real meeting before losing them - handleLocusAPIResponse can't be used here since it
-    // discards the whole DTO as stale whenever its sequence isn't newer than what's installed.
-    // Use locus sequencing (rather than assuming the survivor is always freshest) to decide
-    // which side's values should win, since the duplicate may have kept receiving live locus
-    // events while the survivor's join()/fetchMeetingInfo() response was still in flight.
-    if (duplicateMeeting.locusInfo?.controls) {
-      try {
-        const duplicateIsNewer =
-          !!meeting.locusInfo.sequence &&
-          !!duplicateMeeting.locusInfo.sequence &&
-          LocusDeltaParser.compareFullDtoSequence(meeting.locusInfo, duplicateMeeting.locusInfo) ===
-            LocusDeltaParser.loci.USE_INCOMING;
-
-        meeting.locusInfo.updateControls(
-          duplicateIsNewer
-            ? {...meeting.locusInfo.controls, ...duplicateMeeting.locusInfo.controls}
-            : {...duplicateMeeting.locusInfo.controls, ...meeting.locusInfo.controls},
-          meeting.locusInfo.parsedLocus.self
-        );
-      } catch (mergeError) {
-        LoggerProxy.logger.warn(
-          `Meeting:util#selfHealDuplicateMeeting --> failed to merge duplicate meeting's controls onto meeting ${meeting.id}: ${mergeError}`
-        );
-      }
-    }
-
-    LoggerProxy.logger.warn(
-      `Meeting:util#selfHealDuplicateMeeting --> destroying duplicate meeting (${duplicateMeeting.id}) created for locusUrl ${meeting.locusUrl}`
-    );
-    webex.meetings.destroy(duplicateMeeting, MEETING_REMOVED_REASON.DUPLICATE_LOCUS_URL);
-  },
-
   joinMeeting: async (meeting, options) => {
     if (!meeting) {
       return Promise.reject(new ParameterError('You need a meeting object.'));
@@ -385,7 +328,7 @@ const MeetingUtil = {
         // The unmatched-locus-event deferral in Meetings#handleLocusEvent gives up and creates a
         // placeholder meeting for this locusUrl if this join() takes longer than its timeout; now
         // that join() has actually completed, get rid of that duplicate if one was created for us.
-        MeetingUtil.selfHealDuplicateMeeting(webex, meeting);
+        meeting.selfHealDuplicateMeeting();
 
         meeting.isoLocalClientMeetingJoinTime = res?.headers?.date; // read from header if exist, else fall back to system clock : https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-555657
         const socketUrlInfo = MeetingUtil.getSocketUrlInfo(webex);

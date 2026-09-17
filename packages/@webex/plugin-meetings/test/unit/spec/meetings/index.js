@@ -1558,6 +1558,7 @@ describe('plugin-meetings', () => {
             beforeEach(() => {
               initialSetup = sinon.stub().returns(true);
               webex.meetings.meetingCollection.getByKey = sinon.stub().returns(null);
+              webex.meetings.meetingCollection.get = sinon.stub().returns(true);
               webex.meetings.create = sinon.stub().returns(
                 Promise.resolve({
                   locusInfo: {
@@ -2449,6 +2450,7 @@ describe('plugin-meetings', () => {
           beforeEach(() => {
             initialSetup = sinon.stub().returns(true);
             webex.meetings.meetingCollection.getByKey = sinon.stub().returns(undefined);
+            webex.meetings.meetingCollection.get = sinon.stub().returns(true);
             webex.meetings.create = sinon.stub().returns(
               Promise.resolve({
                 id: 'meeting-id',
@@ -3042,42 +3044,6 @@ describe('plugin-meetings', () => {
           });
         });
 
-        describe('unmatchedLocusEventDto', () => {
-          it('is stashed synchronously (before fetchMeetingInfo settles) when created with a locus destination', async () => {
-            // non-1:1 locus with `info` so createMeeting() actually awaits fetchMeetingInfo()
-            const locusDto = {info: {webExMeetingId: 'locusMeetingId'}, controls: {mute: true}};
-
-            let resolveFetchMeetingInfo;
-
-            webex.meetings.meetingInfo.fetchMeetingInfo = sinon.stub().returns(
-              new Promise((resolve) => {
-                resolveFetchMeetingInfo = resolve;
-              })
-            );
-
-            const createPromise = webex.meetings.createMeeting(locusDto, DESTINATION_TYPE.LOCUS_ID);
-            const [meeting] = Object.values(webex.meetings.meetingCollection.getAll());
-
-            assert.equal(meeting.unmatchedLocusEventDto, locusDto);
-
-            resolveFetchMeetingInfo({body: {}});
-            await createPromise;
-          });
-
-          it('is not stashed when created with a non-locus destination', async () => {
-            webex.meetings.meetingInfo.fetchMeetingInfo = sinon
-              .stub()
-              .returns(Promise.resolve({body: {}}));
-
-            const createdMeeting = await webex.meetings.createMeeting(
-              'test destination',
-              'test type'
-            );
-
-            assert.equal(createdMeeting.unmatchedLocusEventDto, undefined);
-          });
-        });
-
         describe('duplicate meeting self-heal', () => {
           beforeEach(() => {
             webex.meetings.meetingInfo.fetchMeetingInfo = sinon
@@ -3087,19 +3053,20 @@ describe('plugin-meetings', () => {
             webex.internal.llm.isConnected = sinon.stub().returns(false);
           });
 
-          it('invokes MeetingUtil.selfHealDuplicateMeeting once the meeting is created with a locus destination', async () => {
-            const selfHealSpy = sinon.stub(MeetingUtil, 'selfHealDuplicateMeeting');
+          it("invokes the created meeting's selfHealDuplicateMeeting once created with a locus destination", async () => {
+            const selfHealSpy = sinon.stub(Meeting.prototype, 'selfHealDuplicateMeeting');
 
             const createdMeeting = await webex.meetings.createMeeting(
               {url: 'locusUrl'},
               DESTINATION_TYPE.LOCUS_ID
             );
 
-            assert.calledOnceWithExactly(selfHealSpy, webex, createdMeeting);
+            assert.calledOnceWithExactly(selfHealSpy);
+            assert.equal(selfHealSpy.thisValues[0], createdMeeting);
           });
 
-          it('does not invoke MeetingUtil.selfHealDuplicateMeeting when created with a non-locus destination', async () => {
-            const selfHealSpy = sinon.stub(MeetingUtil, 'selfHealDuplicateMeeting');
+          it("does not invoke the created meeting's selfHealDuplicateMeeting when created with a non-locus destination", async () => {
+            const selfHealSpy = sinon.stub(Meeting.prototype, 'selfHealDuplicateMeeting');
 
             await webex.meetings.createMeeting('test destination', 'test type');
 

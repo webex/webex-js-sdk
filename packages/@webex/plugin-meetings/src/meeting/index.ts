@@ -81,6 +81,7 @@ import {type FailureResult as MediaConnectionAwaiterFailureResult} from '../medi
 import MeetingStateMachine from './state';
 import {createMuteState} from './muteState';
 import LocusInfo, {LocusLLMEvent} from '../locus-info';
+import LocusDeltaParser from '../locus-info/parser';
 import Metrics from '../metrics';
 import ReconnectionManager from '../reconnection-manager';
 import ReconnectionNotStartedError from '../common/errors/reconnection-not-started';
@@ -648,7 +649,6 @@ export default class Meeting extends StatelessWebexPlugin {
   datachannelUrl: string;
   deferJoin: Promise<any>;
   deferMeetingInfo: Promise<any>;
-  unmatchedLocusEventDto?: LocusDTO;
   dialInDeviceStatus: string;
   dialInUrl: string;
   dialOutDeviceStatus: string;
@@ -1467,15 +1467,6 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.deferMeetingInfo = undefined;
-
-    /**
-     * Raw locus DTO from the join-deferral-timeout fallback in Meetings#handleLocusEvent, replayed by MeetingUtil.joinMeeting if this meeting turns out to be a duplicate.
-     * @instance
-     * @type {LocusDTO}
-     * @private
-     * @memberof Meeting
-     */
-    this.unmatchedLocusEventDto = undefined;
 
     /**
      * Staus of websocket connection/mercury connection.
@@ -4968,6 +4959,67 @@ export default class Meeting extends StatelessWebexPlugin {
       dataSets: data.dataSets,
       metadata: data.metadata,
     });
+  }
+
+  /**
+   * Finds any other meeting sharing this meeting's locusUrl (a placeholder created while this
+   * meeting's own join()/fetchMeetingInfo() was still in flight), adopts its accumulated controls
+   * onto this meeting if it turns out to be the newer one, and destroys it.
+   * @returns {void}
+   * @public
+   * @memberof Meeting
+   */
+  selfHealDuplicateMeeting() {
+    // this meeting may itself have already been destroyed by a concurrent self-heal call.
+    if (!this.webex.meetings.meetingCollection.get(this.id)) {
+      return;
+    }
+
+    const duplicateMeeting: any = Object.values(
+      this.webex.meetings.meetingCollection.getAll()
+    ).find((candidate: any) => candidate.id !== this.id && candidate.locusUrl === this.locusUrl);
+
+    if (!duplicateMeeting) {
+      return;
+    }
+
+    // handleLocusAPIResponse can't be used here since it discards the whole DTO as stale
+    // whenever its sequence isn't newer than what's installed, so update controls directly.
+    if (duplicateMeeting.locusInfo?.controls) {
+      try {
+        const duplicateIsNewer =
+          !!this.locusInfo.sequence &&
+          !!duplicateMeeting.locusInfo.sequence &&
+          LocusDeltaParser.compareFullDtoSequence(this.locusInfo, duplicateMeeting.locusInfo) ===
+            LocusDeltaParser.loci.USE_INCOMING;
+
+        if (duplicateIsNewer) {
+          this.locusInfo.updateControls(
+            duplicateMeeting.locusInfo.controls,
+            this.locusInfo.parsedLocus.self
+          );
+        }
+      } catch (mergeError) {
+        LoggerProxy.logger.warn(
+          `Meeting:index#selfHealDuplicateMeeting --> failed to merge duplicate meeting's controls onto meeting ${this.id}: ${mergeError}`
+        );
+      }
+    }
+
+    // hash tree DTOs (e.g. webinars) have no comparable sequence, so resync from the server
+    // instead of guessing which side is newer.
+    if (this.locusInfo.isUsingHashTrees?.()) {
+      this.locusInfo.syncAllHashTreeDatasets().catch((syncError) => {
+        LoggerProxy.logger.warn(
+          `Meeting:index#selfHealDuplicateMeeting --> failed to resync hash tree datasets for meeting ${this.id}: ${syncError}`
+        );
+      });
+    }
+
+    LoggerProxy.logger.warn(
+      `Meeting:index#selfHealDuplicateMeeting --> destroying duplicate meeting (${duplicateMeeting.id}) created for locusUrl ${this.locusUrl}`
+    );
+    this.webex.meetings.destroy(duplicateMeeting, MEETING_REMOVED_REASON.DUPLICATE_LOCUS_URL);
   }
 
   /**
