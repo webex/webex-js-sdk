@@ -292,7 +292,8 @@ then reload the page.
 | --- | --- | --- | --- |
 | `allowedOrigins` | `string[]` | `[location.origin]` | Non-empty list of exact origins. `'*'`, an empty array, a wildcard pattern, or a list that omits the document's own origin all throw `INSECURE_CONFIG` at construction. |
 | `channel` | `string` | `'webex-bridge'` | Namespace, must match the extension. `^[a-zA-Z0-9._:-]{1,128}$`. |
-| `debug` | `boolean` | `false` | Metadata-only logging. There is no option that logs payloads or tokens. |
+| `logLevel` | `'silent' \| 'error' \| 'warn' \| 'info' \| 'debug'` | `'warn'` | Lowest severity to emit. Metadata only at every level — there is no option that logs payloads or tokens. |
+| `debug` | `boolean` | `false` | Alias for `logLevel: 'debug'`. Ignored when `logLevel` is given. |
 | `maxPayloadBytes` | `number` | `262144` | Clamped to `[1, 1048576]`. |
 | `logSink` | `LogSink` | console | Receives `{level, message, context}` with metadata only. |
 
@@ -321,7 +322,7 @@ rather than throwing inside `postMessage`.
 | `maxPayloadBytes` | `number` | `262144` | Clamped to `[1, 1048576]`. |
 | `buffer` | `{maxEntries?, ttlMs?, maxBytes?}` | `{maxEntries: 200, ttlMs: 1800000, maxBytes: 4194304}` | FR8 buffer in `chrome.storage.session`. Oldest-out eviction against **both** the entry cap and the byte budget, plus TTL. `maxBytes` has one documented exception — see below. |
 | `rateLimit` | `{pushesPerSecond?, aggregatePushesPerSecond?, maxInFlightPerTab?}` | `{pushesPerSecond: 20, aggregatePushesPerSecond: 80, maxInFlightPerTab: 16}` | Token bucket per `(tabId, topic)` **and** per `tabId` across all topics; in-flight cap per tab. |
-| `debug` / `logSink` | | `false` / console | As above. |
+| `logLevel` / `debug` / `logSink` | | `'warn'` / `false` / console | As above. |
 
 Sizes and timeouts are *clamped* — a too-large value there is a safe intent, just an
 unsupported one. Limiter and buffer bounds are *validated*: a non-integer, non-finite or
@@ -353,7 +354,7 @@ is simply absent while `origin` remains available.
 
 ### `createExtensionClient(options?): ExtensionBridge`
 
-Same surface as `ExtensionBridge`, proxied to the worker; takes `{channel?, debug?,
+Same surface as `ExtensionBridge`, proxied to the worker; takes `{channel?, logLevel?, debug?,
 logSink?}`. Only accepted by the worker from extension pages (`sender.id ===
 chrome.runtime.id && sender.tab === undefined`).
 
@@ -426,6 +427,23 @@ Logging is metadata only: `{channel, kind, topic, id, correlationId, tabId, reas
 count}`, never payloads and never the session token. That is enforced by construction —
 there is no field a payload would fit in — not by convention.
 
+`logLevel` is a threshold, so each level has a defined job:
+
+| Level | Carries | Volume |
+| --- | --- | --- |
+| `error` | Nothing. The bridge fails closed by throwing a coded `BridgeError` instead. | — |
+| `warn` | A failure no caller will observe: a refused `chrome.storage.session` write, a `runtime.sendMessage` that never arrived, a consumer listener that threw, a message refused by a sender check. | Bounded — none of it is reachable by a web page. |
+| `info` | Lifecycle: bridge, relay and client start and stop; connect and disconnect; tab and page attach and detach. | One per connection. |
+| `debug` | Per-message detail: pushes, requests issued/served/failed, timeouts, correlation misses, dropped envelopes. | Proportional to traffic. |
+
+A failure already reported to a caller — anything `request()` rejects with, including
+`ABORTED` and `TIMEOUT` — is logged at `debug`, not `error`: the caller decides whether it
+was a fault, and a library that both throws and writes to the console reports it twice.
+
+`'silent'` suppresses `warn` and `error` too, for a host that routes diagnostics entirely
+through its own channel. Below `'silent'`, anything the threshold admits goes to `logSink`
+when one is given and to `console` at its own level otherwise.
+
 ## 6. Security architecture
 
 ### Controls
@@ -485,7 +503,7 @@ needs a new failing test before the fix is accepted.
 | Extension resources | No `web_accessible_resources`. If unavoidable, a single named file with `use_dynamic_url: true`. |
 | Permissions | `permissions` is `["storage"]` or narrower. No `tabs`. No `externally_connectable`. |
 | CSP | `extension_pages` CSP set on the extension; a strict CSP, ideally with Trusted Types, on the web app. |
-| Logging | `debug: false`. Verify no payloads or tokens reach any log sink. |
+| Logging | `logLevel` at `'warn'` or below (`debug: false`). Verify no payloads or tokens reach any log sink. |
 | Payload validation | Every `requestHandler` topic validates its payload against a strict schema, and every push topic is validated on receipt. |
 | Data classification | No secrets, tokens or credentials traverse the bridge. Where authenticity matters, sign server-side. |
 | Rendering | Extension and web UI render untrusted values with `textContent` only. |
