@@ -438,6 +438,7 @@ The public `TASK_EVENTS` enum contains 49 members; every member is listed below 
 | TASK-R-008 | Voice `dropConferenceParticipant` must validate the public target, resolve the latest main interaction, POST an empty body to the encoded participant-drop route, and settle only from `ParticipantLeftConference`, `ParticipantDropConferenceFailed`, HTTP failure, or the existing AQM timeout. | Participant removal is backend-authoritative and must preserve event-driven roster/state synchronization without exposing participant identifiers through telemetry or logs. | `src/services/task/voice/Voice.ts`, `src/services/task/contact.ts`, `src/services/task/types.ts` | `test/unit/spec/services/task/voice/Voice.ts`, `test/unit/spec/services/task/contact.ts`, `test/unit/spec/services/core/aqm-reqs.ts` | Backend authorization and media removal are remote-service responsibilities. | PRESENT |
 | TASK-R-009 | ContactCenter must inject Desktop Profile collaboration policy into TaskFactory, and every created voice/digital Task must expose ordered Consult and Transfer destination categories through `TaskUIControls.consultTransferDestinations`. | Task consumers need one already-computed policy surface and must not fetch profile flags or duplicate destination decisions. | `src/cc.ts`, `src/services/task/TaskFactory.ts`, `src/services/task/types.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/TaskFactory.ts` | Host-specific UI options may only further hide an SDK-allowed category. | PRESENT |
 | TASK-R-010 | TaskManager must propagate backend owner promotion without electing an owner locally. `ContactOwnerChanged` resolves an exact task first, then one unique related task whose existing snapshot proves that the current Agent is active on `mainCall`, or whose incoming snapshot both names that Agent as `interaction.owner` and proves the same active-main-leg membership. Active membership requires a participant entry with `hasLeft !== true`. If no task exists, recovery is limited to that incoming owner=current-Agent proof: create the normal Task under the stable main interaction ID, silently HYDRATE its actor before listener installation, then process the original owner-change event so consumers receive one `task:hydrate` and no `task:incoming`. An owner-changing `ContactUpdated` uses the existing owner-change hydrate path only for an existing task, and a late `ParticipantLeftConference` cannot replace a confirmed active owner with the departed participant. | Every surviving agent must observe the backend-selected primary Agent immediately, including stale child-keyed and narrowly recoverable desynchronization cases, without duplicating tasks or exposing an uninitialized actor. | `src/services/task/TaskManager.ts` | `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/services/task/Task.ts` | Backend owner selection and delivery of a complete owner-bearing `ContactOwnerChanged` payload remain remote responsibilities; missing-task `ContactUpdated` remains update-only. | PRESENT |
+| TASK-R-011 | TaskManager must stamp `wrapUpRequired` once in `prepareEventContext` on `AGENT_WRAPUP`, `AGENT_CONSULT_CONFERENCE_ENDED`, `PARTICIPANT_LEFT_CONFERENCE`, and `AGENT_CONFERENCE_TRANSFERRED` before `updateTaskData` / mapper (mapper passes the already-stamped payload through). Voice `exitConference` stamps the same flag on `EXIT_CONFERENCE_SUCCESS` (that HTTP path skips TaskManager) using `shouldWrapUpForThisAgent`, then the same empty-pending self-exit fallback as leave (true unless this agent is a consulted non-owner). Voice pending-list precedence uses the correlated HTTP response only (a cached `agentsPendingWrapUp` is ignored when the response omits the list). `AGENT_WRAPUP` is always `true`. Conference-end uses explicit signals only (`agentsPendingWrapUp`, then `wrapUpRequired` / `isWrapUp`). A nonempty `agentsPendingWrapUp` is authoritative and wins over initiator fallback: `consultingAgentId === self` and actor `transferConferenceRequested` are honored only when the list is empty or absent. On participant leave: do not stamp when the actor ignores `PARTICIPANT_LEAVE` (`CONNECTED`, `HOLD_INITIATING`, `CONF_INITIATING`); stamp only in `HELD`, `RESUME_INITIATING`, `CONSULTING`, `CONSULT_INITIATING`, or `CONFERENCING` (or when no actor snapshot exists). A named other `participantId` is never self-leave (do not infer leave from a partial `participants` map); missing-map fallback applies only when `participantId` is absent (EP-DN), and when a previous task map exists it must have contained self. Remaining agents use explicit signals only; this agent left + nonempty pending uses `includes(self)`; this agent left + empty/absent pending stamps `true` unless this agent is a consulted non-owner. Remaining conference agents stay `false`. `setupAutoWrapupTimer()` still requires profile `autoWrapup !== false`, a valid interval, and a default reason. `PARTICIPANT_LEAVE` and Voice `EXIT_CONFERENCE_SUCCESS` into `WRAPPING_UP` do not transition-emit; the `WRAPPING_UP` entry still emits `task:wrapup`. `EXIT_CONFERENCE_SUCCESS` is handled in `CONNECTED`, `HELD`, and `CONFERENCING`. `TASK_WRAPUP` is handled in `HOLD_INITIATING`, `RESUME_INITIATING`, `CONSULT_INITIATING`, and `CONF_INITIATING` (transition `updateTaskData` + `markEnded` only). Late `TASK_WRAPUP` in `WRAPPING_UP` always runs `updateTaskData` and runs `emitTaskWrapup` only when `context.taskData.wrapUpRequired` was not already `true`. | Consumers rely on `task:wrapup` and `task.autoWrapup` when wrap-up starts; those surfaces only activate when ingress task data already has `wrapUpRequired === true`. | `src/services/task/TaskManager.ts`, `src/services/task/voice/Voice.ts`, `src/services/task/Task.ts`, `src/services/task/state-machine/TaskStateMachine.ts` | `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/services/task/voice/Voice.ts`, `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | Profile auto wrap-up, interval, and default reason remain agent-config responsibilities. | PRESENT |
 
 ## Design Overview
 Task separates its stable consumption boundary from collaborators so ownership and failure behavior stay explicit. A shared Task base preserves a stable API while media-specific subclasses and a separate state engine enforce capability differences.
@@ -452,7 +453,7 @@ Task separates its stable consumption boundary from collaborators so ownership a
 | `facebook` | Unsupported by TaskFactory; throws `Unknown media type` |
 | `whatsapp` | Unsupported by TaskFactory; throws `Unknown media type` |
 
-If enabled in agent profile, wrapup completes automatically after timeout:
+If enabled in agent profile, wrapup completes automatically after timeout. The timer starts only when ingress task data has `wrapUpRequired === true` (TASK-R-011).
 
 > **Host-application example:** `updateWrapupStatus` is a consumer-owned UI callback, not SDK package logging.
 
@@ -618,6 +619,8 @@ This keeps transcript and suggestion delivery aligned on the same per-task event
 **wxApp consumer contract (WXCC-6026):** Hosts enable `enableWxBetterTogether` at init (Phase 1 init-only; re-init to change), bind UI to `task.uiControls` (including optional `main.keypad`), and call **`task.accept()`**, **`task.decline()`**, **`task.toggleMute({ muted? })`**, **`task.transmitDtmf({ dtmf })`**. SDK routes wxApp telephony internally on `Voice`. Shared-line `lineOwnerId` defaults from the wxApp agent participant when omitted.
 
 **wxApp offer UI (`uiControlsComputer`):** `wxAppAcceptInFlight` disables accept/decline during the accept REST call. `wxAppAnswerPending` additionally disables accept and decline for **inbound** offers until ASSIGN; wxApp **outdial** keeps decline enabled during the post-accept "Calling…" phase so `cancelTask` remains available.
+
+**wxApp decline observability:** Inbound wxApp offers decline via telephony `rejectCall` (`runWxAppReject` → `WXAPP_TASK_DECLINE_*`). wxApp outdial cancellations use CC routing `cancelTask` (`runWxAppOutdialDecline` → additive `WXAPP_TASK_DECLINE_*` plus existing `TASK_DECLINE_*`).
 
 **wxApp mute backfill guard (`Voice.syncWxAppMuteFromCallDetails`):** Skips telephony `GET /calls/{callId}` when the interaction is terminated or the task is a pre-accept wxApp OFFERED offer (`wxAppAnswerPending` false). Post-accept OFFERED and engaged CONNECTED sync still run. `isWxAppEngagedForControls` and `getWebexCallingCallId` exclude `TERMINATED` and `COMPLETED`. Expected 400 / "Call not found" / `101002` responses are not logged as errors.
 
@@ -902,22 +905,21 @@ event so consumers can rebind to the surviving task object.
 
 Dropping an Agent while that Agent is consulting continues through the existing
 `PARTICIPANT_LEAVE` transition, which clears consult state and emits the normal
-participant-left and task-end lifecycle. This self-departure check applies in
-every active call-control state and uses an explicit self participant ID,
-`hasLeft`, or removal of a previously active Agent from the participant map. A
-participant-left event naming somebody else never infers self-departure from a
-partial media roster. A consulted Agent receiving
-`AgentConsultEnded` continues through `CONSULT_END`; current-agent departure is
-evaluated before consult-initiator recovery. For the from-conference nested-consult
-ordering race only, the guard also compares `mainCall` membership (located by
-`mType`) when the Agent remains active in the participant map and is still present
-on the consult leg. Missing, contradictory, or ordinary CONNECTED/HELD media snapshots
-are non-terminal. Accepted consultees emit
-`task:consultEnd` and `task:end`, while an unaccepted OFFERED consultee retains
-the existing consult-end-only signal. A surviving consult initiator still
-returns to the main-call state selected by the existing guards. Starting a
-consult preserves the prior task snapshot so this membership comparison remains
-available while the consult is initiating.
+participant-left and task-end lifecycle. `PARTICIPANT_LEAVE` is handled in
+`HELD`, `RESUME_INITIATING`, `CONSULTING`, `CONSULT_INITIATING`, and
+`CONFERENCING`; `CONNECTED`, `HOLD_INITIATING`, and `CONF_INITIATING` ignore the
+event. The current Agent is treated as departed only when the event names that
+Agent or the updated participants map omits that Agent (EP-DN removal). Remaining
+in the map with `hasLeft`, or disappearing only from `mainCall` media, is
+non-terminal. A consulted Agent receiving `AgentConsultEnded` continues through
+`CONSULT_END`; current-agent departure is evaluated before consult-initiator
+recovery and does not use mainCall membership as self-departure evidence.
+Accepted consultees emit `task:consultEnd` and `task:end`, while an unaccepted
+OFFERED consultee retains the existing consult-end-only signal. A surviving
+consult initiator still returns to the main-call state selected by the existing
+guards. The state-machine transition table lives in
+`src/services/task/state-machine/ai-docs/task-state-machine-spec.md`
+`TASK_STATE_MACHINE-R-008`.
 
 Primary-Agent promotion remains backend-authoritative and follows the two-event
 desktop contract. `ContactOwnerChanged` updates the promoted Agent; TaskManager
@@ -1431,6 +1433,7 @@ Use `test/unit/spec/services/task/Task.ts`, `TaskFactory.ts`, `TaskManager.ts`, 
 | `TASK-R-008` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/voice/Voice.ts`, `test/unit/spec/services/task/contact.ts`, `test/unit/spec/services/core/aqm-reqs.ts`, `test/unit/spec/services/task/TaskManager.ts` | None. |
 | `TASK-R-009` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/TaskFactory.ts`, `test/unit/spec/services/task/state-machine/uiControlsComputer.ts` | None. |
 | `TASK-R-010` | `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/services/task/Task.ts` | None. |
+| `TASK-R-011` | `test/unit/spec/services/task/TaskManager.ts`, `test/unit/spec/services/task/voice/Voice.ts`, `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/state-machine/TaskStateMachine.ts` | None. |
 
 ## Traceability
 - Repo architecture: `../../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../../ai-docs/SPEC_INDEX.md`

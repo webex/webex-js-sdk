@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "web-extension-bridge sample",
+  "version": "1.0.0",
+  "description": "Sample MV3 extension for @webex/web-extension-bridge. Local testing only.",
+  "minimum_chrome_version": "116",
+  "permissions": ["storage"],
+  "host_permissions": ["__SAMPLE_ORIGIN__/*"],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "action": {
+    "default_title": "web-extension-bridge sample",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["__SAMPLE_ORIGIN__/*"],
+      "js": ["vendor/web-extension-bridge-content.js"],
+      "run_at": "document_start",
+      "all_frames": false,
+      "world": "ISOLATED"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; base-uri 'none'"
+  }
+}

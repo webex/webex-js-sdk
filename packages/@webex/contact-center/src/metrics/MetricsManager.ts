@@ -413,6 +413,22 @@ export default class MetricsManager {
   }
 
   /**
+   * Clears a running timed event without emitting a metric.
+   * @param keys - A string or array of strings representing event keys (same as timeEvent).
+   * @public
+   */
+  public cancelTimedEvent(keys: string | string[]): void {
+    if (this.isMetricsDisabled()) {
+      return;
+    }
+    const keyArray = Array.isArray(keys) ? keys : [keys];
+    if (keyArray.length === 0) {
+      return;
+    }
+    delete this.runningEvents[keyArray[0]];
+  }
+
+  /**
    * Sets the Webex SDK instance and marks the manager as ready when the SDK is ready.
    * @param webex - The Webex SDK instance.
    * @private
