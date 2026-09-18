@@ -461,6 +461,60 @@ describe('webex-core', () => {
         }
       );
 
+      it('matches the base url when host metadata disagrees', () => {
+        const exampleService = {
+          serviceUrls: [
+            {
+              host: 'stale.example.com',
+              baseUrl: 'https://actual.example.com/resource',
+            },
+          ],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceDetailFromUrl('https://actual.example.com/resource/id'),
+          exampleService
+        );
+      });
+
+      it('matches a non-default port when host metadata omits the port', () => {
+        const exampleService = {
+          serviceUrls: [
+            {
+              host: 'example.com',
+              baseUrl: 'https://example.com:8443/resource',
+            },
+          ],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceDetailFromUrl('https://example.com:8443/resource/id'),
+          exampleService
+        );
+      });
+
+      it('matches a canonicalized base url when host metadata is not canonical', () => {
+        const exampleService = {
+          serviceUrls: [
+            {
+              host: 'B\u00dcCHER.EXAMPLE',
+              baseUrl: 'https://b\u00fccher.example/resource',
+            },
+          ],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceDetailFromUrl('https://xn--bcher-kva.example/resource/id'),
+          exampleService
+        );
+      });
+
       it('rejects URLs with similar-looking hostnames (SECURITY)', () => {
         // Attacker URL that looks like a catalog URL but has a different origin
         const maliciousUrl = 'https://example.com.attacker.com/resource/id';
