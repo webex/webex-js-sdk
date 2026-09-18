@@ -948,6 +948,28 @@ describe('webex-core', () => {
           defaultUrl: baseUrl,
         });
       });
+
+      it('returns the exact matching catalog URL when a service has multiple URLs', () => {
+        const priorityBaseUrl = 'https://priority.example.com/api/v1';
+        const matchedBaseUrl = 'https://matched.example.com/api/v2';
+
+        catalog.updateServiceGroups('postauth', [
+          {
+            id: 'example',
+            serviceName: 'example',
+            serviceUrls: [
+              {host: 'priority.example.com', baseUrl: priorityBaseUrl, priority: 1},
+              {host: 'matched.example.com', baseUrl: matchedBaseUrl, priority: 2},
+            ],
+          },
+        ]);
+
+        assert.deepEqual(services.getServiceFromUrl(`${matchedBaseUrl}/resource`), {
+          name: 'example',
+          priorityUrl: priorityBaseUrl,
+          defaultUrl: matchedBaseUrl,
+        });
+      });
     });
 
     describe('#_formatReceivedHostmap()', () => {

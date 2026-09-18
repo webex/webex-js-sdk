@@ -326,6 +326,84 @@ describe('webex-core', () => {
         ],
       };
 
+      it('parses the candidate URL once for the full catalog scan', () => {
+        const candidate = 'https://example.com/resource/id';
+        const OriginalURL = globalThis.URL;
+        let candidateParseCount = 0;
+
+        class CountingURL extends OriginalURL {
+          constructor(input: string | URL, base?: string | URL) {
+            if (input === candidate) {
+              candidateParseCount += 1;
+            }
+
+            super(input, base);
+          }
+        }
+
+        globalThis.URL = CountingURL as typeof URL;
+
+        try {
+          catalog.serviceGroups.postauth.push(otherService, {
+            serviceUrls: [{baseUrl: 'https://example.com/resource'}],
+          });
+
+          catalog.findServiceDetailFromUrl(candidate);
+        } finally {
+          globalThis.URL = OriginalURL;
+        }
+
+        assert.equal(candidateParseCount, 1);
+      });
+
+      it('does not parse catalog URLs whose host metadata cannot match', () => {
+        const skippedService = {
+          serviceUrls: [
+            {
+              host: 'other.example.com',
+              get baseUrl() {
+                throw new Error('mismatched catalog URL should not be parsed');
+              },
+            },
+          ],
+        };
+        const expectedService = {
+          serviceUrls: [
+            {
+              host: 'example.com',
+              baseUrl: 'https://example.com/resource',
+            },
+          ],
+        };
+
+        catalog.serviceGroups.postauth.push(skippedService, expectedService);
+
+        assert.equal(
+          catalog.findServiceDetailFromUrl('https://example.com/resource/id'),
+          expectedService
+        );
+      });
+
+      it('returns the service detail and exact catalog URL from one scan', () => {
+        const expectedServiceUrl = {
+          host: 'example2.com',
+          baseUrl: 'https://example2.com/resource',
+        };
+        const expectedService = {
+          serviceUrls: [
+            {host: 'example.com', baseUrl: 'https://example.com/resource'},
+            expectedServiceUrl,
+          ],
+        };
+
+        catalog.serviceGroups.postauth.push(expectedService);
+
+        const match = catalog.findServiceMatchFromUrl('https://example2.com/resource/id');
+
+        assert.equal(match.serviceDetail, expectedService);
+        assert.equal(match.serviceUrl, expectedServiceUrl);
+      });
+
       it.each(['discovery', 'preauth', 'signin', 'postauth', 'override'])(
         'matches a default url correctly',
         (serviceGroup) => {

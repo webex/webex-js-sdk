@@ -462,6 +462,59 @@ describe('webex-core', () => {
         hosts: [{host: 'example1.com'}, {host: 'example2.com'}],
       };
 
+      it('parses the candidate URL once for the full catalog scan', () => {
+        const candidate = 'https://example.com/resource/id';
+        const OriginalURL = globalThis.URL;
+        let candidateParseCount = 0;
+
+        class CountingURL extends OriginalURL {
+          constructor(input, base) {
+            if (input === candidate) {
+              candidateParseCount += 1;
+            }
+
+            super(input, base);
+          }
+        }
+
+        globalThis.URL = CountingURL;
+
+        try {
+          catalog.serviceGroups.postauth.push(otherService, {
+            defaultUrl: 'https://example.com/resource',
+            hosts: [],
+          });
+
+          catalog.findServiceUrlFromUrl(candidate);
+        } finally {
+          globalThis.URL = OriginalURL;
+        }
+
+        assert.equal(candidateParseCount, 1);
+      });
+
+      it('does not parse catalog URLs whose host metadata cannot match', () => {
+        const skippedService = {
+          defaultHost: 'other.example.com',
+          get defaultUrl() {
+            throw new Error('mismatched catalog URL should not be parsed');
+          },
+          hosts: [],
+        };
+        const expectedService = {
+          defaultHost: 'example.com',
+          defaultUrl: 'https://example.com/resource',
+          hosts: [],
+        };
+
+        catalog.serviceGroups.postauth.push(skippedService, expectedService);
+
+        assert.equal(
+          catalog.findServiceUrlFromUrl('https://example.com/resource/id'),
+          expectedService
+        );
+      });
+
       it.each([
         'discovery',
         'preauth',
