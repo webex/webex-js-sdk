@@ -15,7 +15,13 @@ From the repository root:
 yarn workspace @webex/webex-core benchmark:service-url-lookups
 ```
 
-The default command benchmarks legacy and V2 lookups using a balanced 500-operation trace:
+The default command benchmarks legacy and V2 with three separate measurements:
+
+- catalog ingestion only;
+- a warmed, balanced 500-operation lookup trace;
+- ingestion followed by that lookup trace in a fresh process.
+
+The balanced trace contains:
 
 - 100 service-name hits;
 - 100 early direct-URL matches;
@@ -23,26 +29,25 @@ The default command benchmarks legacy and V2 lookups using a balanced 500-operat
 - 100 late direct-URL matches;
 - 100 late shared-gateway matches.
 
-It reports diagnostics, warmed timings, and cold-cache timings collected in fresh Node.js
-processes. This synthetic mix is intentionally independent of any particular application flow.
+Each measurement reports median and p95 duration across 15 fresh-process samples. It also runs an
+untimed diagnostic sample that counts catalog ingestion calls, service-name lookups, URL lookups,
+catalog scans, catalog URL reads, alternate-host reads, and `URL` constructor attempts. Process
+startup and module loading are excluded from the measured duration. This synthetic mix is
+intentionally independent of any particular application flow.
 
 Useful focused runs:
 
 ```sh
-# Machine-readable results for the balanced trace
+# Machine-readable results for all three measurements
 yarn workspace @webex/webex-core benchmark:service-url-lookups --json
 
-# A shared gateway host whose matching service is late in the catalog
+# Measure only warmed V2 lookup behavior
 yarn workspace @webex/webex-core benchmark:service-url-lookups \
-  --implementation v2 --scenario gateway-late
+  --implementation v2 --phase lookup
 
-# A known host with no matching path
+# Run a quicker local survey
 yarn workspace @webex/webex-core benchmark:service-url-lookups \
-  --implementation both --scenario known-host-wrong-path
-
-# Run every scenario with fewer samples for a quick local survey
-yarn workspace @webex/webex-core benchmark:service-url-lookups \
-  --scenario all --iterations 5
+  --iterations 5
 ```
 
 Run `yarn workspace @webex/webex-core benchmark:service-url-lookups --help` for every option and
@@ -67,12 +72,13 @@ built `@webex/webex-core` code. The checkout path is not included in benchmark o
 
 ## Interpreting results
 
-- `diagnostic` counts service lookups, catalog scans, catalog URL reads, alternate-host reads, and
-  `URL` constructor attempts. Instrumentation is kept separate from timing runs.
-- `warm` measures repeated operations after three warm-up runs.
-- `cold` runs every sample in a fresh Node.js process so module-level caches start empty.
-- `trace-hot` repeats a small set of URLs, while `trace-varied` uses unique resource paths and query
-  strings with the same lookup distribution.
+- `ingestion` measures loading 3,000 URLs through the public catalog update methods.
+- `lookup` loads the catalog outside the timer, performs three warm-up traces, then measures one
+  500-operation trace. This includes the steady-state effect of lazy caches.
+- `combined` measures catalog ingestion plus the first 500 operations in a fresh process. This
+  includes lazy work deferred from ingestion to the first lookups.
+- `diagnostic` counters are collected separately from timing runs so instrumentation does not skew
+  duration results.
 
 Wall-clock results vary by machine and should be compared using the same Node.js version and
 hardware. This benchmark intentionally defines no pass/fail timing threshold and is not a required

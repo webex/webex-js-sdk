@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /* eslint-disable require-jsdoc -- This executable keeps its small helpers local. */
-/* eslint-disable no-await-in-loop -- Benchmark samples must run serially. */
+/* eslint-disable no-await-in-loop -- Benchmark operations and samples intentionally run serially. */
 /* eslint-disable @typescript-eslint/no-var-requires -- The benchmark is a CommonJS CLI. */
 
 const assert = require('node:assert/strict');
@@ -12,24 +12,12 @@ const {performance} = require('node:perf_hooks');
 
 const DEFAULT_CATALOG_SIZE = 3000;
 const DEFAULT_ITERATIONS = 15;
+const DEFAULT_OPERATIONS = 500;
 const DEFAULT_SEED = 5230;
-const DEFAULT_TARGET_SAMPLE_MS = 100;
 const URLS_PER_SERVICE = 2;
 const SERVICES_PER_GATEWAY = 50;
-const TRACE_OPERATIONS_PER_CATEGORY = 100;
+const PHASES = ['ingestion', 'lookup', 'combined'];
 const DEFAULT_SDK_ROOT = path.resolve(__dirname, '../../../..');
-const SCENARIOS = [
-  'name-hit',
-  'invalid-url',
-  'direct-early',
-  'direct-middle',
-  'direct-late',
-  'gateway-late',
-  'unknown-host',
-  'known-host-wrong-path',
-  'trace-hot',
-  'trace-varied',
-];
 
 function parseArguments(argv) {
   const argumentsByName = {};
@@ -115,6 +103,7 @@ function makeUrlDescriptor(index) {
 
   return {
     direct: `https://service-${index}.example.com${pathName}`,
+    directHost: `service-${index}.example.com`,
     gateway: `https://gateway-${gatewayIndex}.example.com${pathName}`,
     gatewayHost: `gateway-${gatewayIndex}.example.com`,
     name: `service-${index}`,
@@ -124,6 +113,7 @@ function makeUrlDescriptor(index) {
 
 function makeCounters() {
   return {
+    catalogIngestionCalls: 0,
     waitForServiceCalls: 0,
     getServiceFromUrlCalls: 0,
     catalogLookupCalls: 0,
@@ -134,10 +124,18 @@ function makeCounters() {
   };
 }
 
+function resetCounters(counters) {
+  Object.keys(counters).forEach((counterName) => {
+    counters[counterName] = 0;
+  });
+}
+
 function countedObject(target, counters, propertyCounters) {
   return new Proxy(target, {
     get(object, property, receiver) {
-      const counterName = propertyCounters[property];
+      const counterName = Object.hasOwn(propertyCounters, property)
+        ? propertyCounters[property]
+        : undefined;
 
       if (counterName) {
         counters[counterName] += 1;
@@ -145,6 +143,59 @@ function countedObject(target, counters, propertyCounters) {
 
       return Reflect.get(object, property, receiver);
     },
+  });
+}
+
+function makeCatalogInput({implementation, descriptors, counters, instrumented}) {
+  if (implementation === 'v2') {
+    return descriptors.map((descriptor) => {
+      const serviceUrls = [
+        {
+          baseUrl: descriptor.direct,
+          host: descriptor.directHost,
+          priority: 1,
+          failed: false,
+        },
+        {
+          baseUrl: descriptor.gateway,
+          host: descriptor.gatewayHost,
+          priority: 2,
+          failed: false,
+        },
+      ];
+
+      return {
+        id: descriptor.id,
+        serviceName: descriptor.name,
+        serviceUrls: instrumented
+          ? serviceUrls.map((serviceUrl) =>
+              countedObject(serviceUrl, counters, {baseUrl: 'catalogBaseUrlReads'})
+            )
+          : serviceUrls,
+      };
+    });
+  }
+
+  return descriptors.map((descriptor) => {
+    const alternateHost = {
+      host: descriptor.gatewayHost,
+      priority: 2,
+      homeCluster: false,
+      failed: false,
+    };
+    const serviceUrl = {
+      name: descriptor.name,
+      defaultUrl: descriptor.direct,
+      hosts: [
+        instrumented
+          ? countedObject(alternateHost, counters, {host: 'alternateHostReads'})
+          : alternateHost,
+      ],
+    };
+
+    return instrumented
+      ? countedObject(serviceUrl, counters, {defaultUrl: 'catalogBaseUrlReads'})
+      : serviceUrl;
   });
 }
 
@@ -159,77 +210,63 @@ function buildFixture({sdkRoot, implementation, instrumented, catalogSize}) {
   const counters = makeCounters();
   const serviceCount = catalogSize / URLS_PER_SERVICE;
   const descriptors = Array.from({length: serviceCount}, (_, index) => makeUrlDescriptor(index));
-  const isV2 = implementation === 'v2';
-  const ServicesClass = isV2 ? core.ServicesV2 : core.Services;
+  const ServicesClass = implementation === 'v2' ? core.ServicesV2 : core.Services;
   const webex = new MockWebex({children: {services: ServicesClass}});
 
   webex.config.services = {servicesNotNeedValidation: []};
 
   const {services} = webex.internal;
   const catalog = services._getCatalog();
+  const catalogInput = makeCatalogInput({implementation, descriptors, counters, instrumented});
 
-  if (isV2) {
-    const serviceDetails = descriptors.map((descriptor) => {
-      const direct = {
-        baseUrl: descriptor.direct,
-        host: new URL(descriptor.direct).host,
-        priority: 1,
-        failed: false,
-      };
-      const gateway = {
-        baseUrl: descriptor.gateway,
-        host: descriptor.gatewayHost,
-        priority: 2,
-        failed: false,
-      };
-      const serviceUrls = instrumented
-        ? [direct, gateway].map((serviceUrl) =>
-            countedObject(serviceUrl, counters, {baseUrl: 'catalogBaseUrlReads'})
-          )
-        : [direct, gateway];
+  return {services, catalog, catalogInput, descriptors, counters, implementation};
+}
 
-      return new core.ServiceDetail({
-        id: descriptor.id,
-        serviceName: descriptor.name,
-        serviceUrls,
-      });
-    });
+function ingestCatalog(fixture) {
+  const {catalog, catalogInput, counters, descriptors, implementation, services} = fixture;
 
-    catalog.serviceGroups.postauth = serviceDetails;
+  counters.catalogIngestionCalls += 1;
+
+  if (implementation === 'v2') {
+    catalog.updateServiceGroups('postauth', catalogInput);
     services._activeServices = Object.fromEntries(
       descriptors.map((descriptor) => [descriptor.name, descriptor.id])
     );
   } else {
-    const serviceUrls = descriptors.map((descriptor) => {
-      const alternateHost = instrumented
-        ? countedObject(
-            {host: descriptor.gatewayHost, priority: 2, homeCluster: false, failed: false},
-            counters,
-            {host: 'alternateHostReads'}
-          )
-        : {host: descriptor.gatewayHost, priority: 2, homeCluster: false, failed: false};
-      const serviceUrl = new core.ServiceUrl({
-        name: descriptor.name,
-        defaultHost: new URL(descriptor.direct).host,
-        defaultUrl: descriptor.direct,
-        hosts: [alternateHost],
-      });
-
-      return instrumented
-        ? countedObject(serviceUrl, counters, {defaultUrl: 'catalogBaseUrlReads'})
-        : serviceUrl;
-    });
-
-    catalog.serviceGroups.postauth = serviceUrls;
+    catalog.updateServiceUrls('postauth', catalogInput);
   }
 
   catalog.isReady = true;
+}
 
-  return {services, catalog, descriptors, counters, implementation};
+function instrumentStoredCatalog(fixture) {
+  const {catalog, counters, implementation} = fixture;
+
+  if (implementation === 'v2') {
+    catalog.serviceGroups.postauth.forEach((serviceDetail) => {
+      serviceDetail.serviceUrls = serviceDetail.serviceUrls.map((serviceUrl) =>
+        countedObject(serviceUrl, counters, {baseUrl: 'catalogBaseUrlReads'})
+      );
+    });
+
+    return;
+  }
+
+  catalog.serviceGroups.postauth = catalog.serviceGroups.postauth.map((serviceUrl) => {
+    serviceUrl.hosts = serviceUrl.hosts.map((host) =>
+      countedObject(host, counters, {host: 'alternateHostReads'})
+    );
+
+    return countedObject(serviceUrl, counters, {defaultUrl: 'catalogBaseUrlReads'});
+  });
 }
 
 function wrapMethod(target, methodName, counters, counterName) {
   const originalMethod = target[methodName];
+
+  if (typeof originalMethod !== 'function') {
+    return () => undefined;
+  }
 
   target[methodName] = function wrappedMethod(...args) {
     counters[counterName] += 1;
@@ -242,10 +279,17 @@ function wrapMethod(target, methodName, counters, counterName) {
   };
 }
 
-function installDiagnostics(fixture, implementation) {
-  const {services, catalog, counters} = fixture;
-  const catalogMethod =
-    implementation === 'v2' ? 'findServiceMatchFromUrl' : 'findServiceUrlFromUrl';
+function installDiagnostics(fixture) {
+  const {services, catalog, counters, implementation} = fixture;
+  let catalogMethod = 'findServiceUrlFromUrl';
+
+  if (implementation === 'v2') {
+    catalogMethod =
+      typeof catalog.findServiceMatchFromUrl === 'function'
+        ? 'findServiceMatchFromUrl'
+        : 'findServiceDetailFromUrl';
+  }
+
   const NativeURL = global.URL;
   const restoreMethods = [
     wrapMethod(services, 'waitForService', counters, 'waitForServiceCalls'),
@@ -272,15 +316,16 @@ function installDiagnostics(fixture, implementation) {
   };
 }
 
-function assertLookupResult(result, descriptor, matchedBaseUrl) {
+function assertLookupResult(result, descriptor, matchedBaseUrl, implementation) {
   assert.ok(result, `Expected ${descriptor.name} to resolve`);
   assert.equal(result.name, descriptor.name);
-  assert.equal(result.defaultUrl, matchedBaseUrl);
+  assert.equal(result.defaultUrl, implementation === 'v2' ? matchedBaseUrl : descriptor.direct);
   assert.equal(typeof result.priorityUrl, 'string');
 }
 
-function createTraceOperations(descriptors, varied, seed) {
+function createBalancedOperations(descriptors, operationCount, seed) {
   const operations = [];
+  const operationsPerCategory = operationCount / 5;
   const lastIndex = descriptors.length - 1;
   const middleIndex = Math.floor(descriptors.length / 2);
   const lookupGroups = [
@@ -290,17 +335,17 @@ function createTraceOperations(descriptors, varied, seed) {
     {descriptor: descriptors[lastIndex], baseUrl: descriptors[lastIndex].gateway},
   ];
 
-  for (let index = 0; index < TRACE_OPERATIONS_PER_CATEGORY; index += 1) {
-    operations.push({kind: 'wait', descriptor: descriptors[lastIndex]});
+  for (let index = 0; index < operationsPerCategory; index += 1) {
+    operations.push({kind: 'name', descriptor: descriptors[lastIndex]});
   }
 
-  lookupGroups.forEach(({descriptor, baseUrl}, group) => {
-    for (let index = 0; index < TRACE_OPERATIONS_PER_CATEGORY; index += 1) {
+  lookupGroups.forEach(({descriptor, baseUrl}, groupIndex) => {
+    for (let index = 0; index < operationsPerCategory; index += 1) {
       operations.push({
-        kind: 'lookup',
+        kind: 'url',
         descriptor,
         baseUrl,
-        suffix: varied ? `/resource-${group}-${index}?request=${index}` : '/resource',
+        candidate: `${baseUrl}/resource-${groupIndex}-${index}?request=${index}`,
       });
     }
   });
@@ -308,218 +353,113 @@ function createTraceOperations(descriptors, varied, seed) {
   return shuffle(operations, seed);
 }
 
-function makeScenario(name, fixture, seed) {
-  const {services, descriptors, implementation} = fixture;
-  const lastIndex = descriptors.length - 1;
-  const midpoint = Math.floor(descriptors.length / 2);
-  const runLookup = (descriptor, baseUrl, suffix = '/resource') => {
-    const result = services.getServiceFromUrl(`${baseUrl}${suffix}`);
-    const expectedDefaultUrl = implementation === 'v2' ? baseUrl : descriptor.direct;
-
-    assertLookupResult(result, descriptor, expectedDefaultUrl);
-
-    return 1;
-  };
-
-  switch (name) {
-    case 'name-hit': {
-      const descriptor = descriptors[lastIndex];
-
-      return {
-        operationsPerRun: 1,
-        async run() {
-          const result = await services.waitForService({name: descriptor.name});
-
-          assert.equal(result, descriptor.direct);
-
-          return 1;
-        },
-      };
-    }
-    case 'invalid-url':
-      return {
-        operationsPerRun: 1,
-        run() {
-          assert.equal(services.getServiceFromUrl(''), undefined);
-
-          return 0;
-        },
-      };
-    case 'direct-early':
-      return {
-        operationsPerRun: 1,
-        run: () => runLookup(descriptors[0], descriptors[0].direct),
-      };
-    case 'direct-middle':
-      return {
-        operationsPerRun: 1,
-        run: () => runLookup(descriptors[midpoint], descriptors[midpoint].direct),
-      };
-    case 'direct-late':
-      return {
-        operationsPerRun: 1,
-        run: () => runLookup(descriptors[lastIndex], descriptors[lastIndex].direct),
-      };
-    case 'gateway-late':
-      return {
-        operationsPerRun: 1,
-        run: () => runLookup(descriptors[lastIndex], descriptors[lastIndex].gateway),
-      };
-    case 'unknown-host':
-      return {
-        operationsPerRun: 1,
-        run() {
-          assert.equal(
-            services.getServiceFromUrl('https://unknown.example.com/resource'),
-            undefined
-          );
-
-          return 0;
-        },
-      };
-    case 'known-host-wrong-path':
-      return {
-        operationsPerRun: 1,
-        run() {
-          assert.equal(
-            services.getServiceFromUrl(`https://${descriptors[lastIndex].gatewayHost}/wrong/path`),
-            undefined
-          );
-
-          return 0;
-        },
-      };
-    case 'trace-hot':
-    case 'trace-varied': {
-      const operations = createTraceOperations(descriptors, name === 'trace-varied', seed);
-
-      return {
-        operationsPerRun: operations.length,
-        async run() {
-          let checksum = 0;
-
-          for (const operation of operations) {
-            if (operation.kind === 'wait') {
-              const expectedUrl = await services.waitForService({name: operation.descriptor.name});
-
-              assert.equal(expectedUrl, operation.descriptor.direct);
-              checksum += 1;
-            } else {
-              checksum += runLookup(operation.descriptor, operation.baseUrl, operation.suffix);
-            }
-          }
-
-          return checksum;
-        },
-      };
-    }
-    default:
-      throw new Error(`Unknown scenario: ${name}`);
-  }
-}
-
-async function timeWarmScenario(scenario, iterations, targetSampleMs) {
+async function runBalancedOperations(fixture, operations) {
+  const {services, implementation} = fixture;
   let checksum = 0;
 
-  for (let index = 0; index < 3; index += 1) {
-    checksum += await scenario.run();
-  }
+  for (const operation of operations) {
+    if (operation.kind === 'name') {
+      const result = await services.waitForService({name: operation.descriptor.name});
 
-  const calibrationStart = performance.now();
+      assert.equal(result, operation.descriptor.direct);
+    } else {
+      const result = services.getServiceFromUrl(operation.candidate);
 
-  checksum += await scenario.run();
-
-  const calibrationMs = Math.max(performance.now() - calibrationStart, 0.01);
-  const batchSize = Math.max(1, Math.min(10000, Math.ceil(targetSampleMs / calibrationMs)));
-  const samples = [];
-
-  for (let sample = 0; sample < iterations; sample += 1) {
-    const start = performance.now();
-
-    for (let iteration = 0; iteration < batchSize; iteration += 1) {
-      checksum += await scenario.run();
+      assertLookupResult(result, operation.descriptor, operation.baseUrl, implementation);
     }
 
-    samples.push((performance.now() - start) / batchSize);
+    checksum += 1;
   }
 
-  const summary = summarize(samples);
-
-  return {
-    ...summary,
-    medianPerOperationMs: summary.medianMs / scenario.operationsPerRun,
-    p95PerOperationMs: summary.p95Ms / scenario.operationsPerRun,
-    batchSize,
-    samples: iterations,
-    checksum,
-  };
+  return checksum;
 }
 
 async function runWorker(args) {
   const sdkRoot = path.resolve(args['sdk-root'] || DEFAULT_SDK_ROOT);
-  const {implementation, scenario: scenarioName, mode} = args;
+  const {implementation, phase, mode} = args;
   const catalogSize = readPositiveInteger(
     args['catalog-size'],
     DEFAULT_CATALOG_SIZE,
     'catalog-size'
   );
-  const iterations = readPositiveInteger(args.iterations, DEFAULT_ITERATIONS, 'iterations');
+  const operationCount = readPositiveInteger(args.operations, DEFAULT_OPERATIONS, 'operations');
   const seed = readPositiveInteger(args.seed, DEFAULT_SEED, 'seed');
-  const targetSampleMs = readPositiveInteger(
-    args['target-sample-ms'],
-    DEFAULT_TARGET_SAMPLE_MS,
-    'target-sample-ms'
-  );
 
   if (!['legacy', 'v2'].includes(implementation)) {
     throw new Error('--implementation must be legacy or v2 in worker mode');
   }
 
-  if (!SCENARIOS.includes(scenarioName)) {
-    throw new Error(`Unknown scenario: ${scenarioName}`);
+  if (!PHASES.includes(phase)) {
+    throw new Error(`--phase must be one of: ${PHASES.join(', ')}`);
+  }
+
+  if (!['diagnostic', 'timing'].includes(mode)) {
+    throw new Error('--mode must be diagnostic or timing in worker mode');
   }
 
   if (catalogSize % URLS_PER_SERVICE !== 0) {
     throw new Error(`--catalog-size must be divisible by ${URLS_PER_SERVICE}`);
   }
 
-  const fixture = buildFixture({
-    sdkRoot,
-    implementation,
-    instrumented: mode === 'diagnostic',
-    catalogSize,
-  });
-  const scenario = makeScenario(scenarioName, fixture, seed);
-  const result = {
-    implementation,
-    scenario: scenarioName,
-    mode,
-    catalogSize,
-    operationsPerRun: scenario.operationsPerRun,
-  };
-
-  if (mode === 'diagnostic') {
-    const uninstallDiagnostics = installDiagnostics(fixture, implementation);
-
-    try {
-      result.checksum = await scenario.run();
-      result.counters = fixture.counters;
-    } finally {
-      uninstallDiagnostics();
-    }
-  } else if (mode === 'cold') {
-    const start = performance.now();
-
-    result.checksum = await scenario.run();
-    result.elapsedMs = performance.now() - start;
-    result.elapsedPerOperationMs = result.elapsedMs / scenario.operationsPerRun;
-  } else if (mode === 'warm') {
-    Object.assign(result, await timeWarmScenario(scenario, iterations, targetSampleMs));
-  } else {
-    throw new Error('--mode must be diagnostic, cold, or warm in worker mode');
+  if (operationCount % 5 !== 0) {
+    throw new Error('--operations must be divisible by 5');
   }
 
-  return result;
+  const instrumented = mode === 'diagnostic';
+  const fixture = buildFixture({sdkRoot, implementation, instrumented, catalogSize});
+  const operations = createBalancedOperations(fixture.descriptors, operationCount, seed);
+  let uninstallDiagnostics = () => undefined;
+
+  if (phase === 'lookup') {
+    ingestCatalog(fixture);
+
+    // Warm both the engine and #5230's lazy catalog-URL cache before measuring steady-state lookup.
+    if (mode === 'timing') {
+      for (let index = 0; index < 3; index += 1) {
+        await runBalancedOperations(fixture, operations);
+      }
+    }
+
+    if (instrumented) {
+      resetCounters(fixture.counters);
+      instrumentStoredCatalog(fixture);
+      uninstallDiagnostics = installDiagnostics(fixture);
+    }
+  } else if (instrumented) {
+    uninstallDiagnostics = installDiagnostics(fixture);
+  }
+
+  const start = performance.now();
+  let checksum = 0;
+  let elapsedMs;
+
+  try {
+    if (phase === 'ingestion' || phase === 'combined') {
+      ingestCatalog(fixture);
+    }
+
+    if (phase === 'lookup' || phase === 'combined') {
+      if (phase === 'combined' && instrumented) {
+        instrumentStoredCatalog(fixture);
+      }
+
+      checksum = await runBalancedOperations(fixture, operations);
+    }
+  } finally {
+    elapsedMs = performance.now() - start;
+    uninstallDiagnostics();
+  }
+
+  return {
+    implementation,
+    phase,
+    mode,
+    catalogSize,
+    operationCount: phase === 'ingestion' ? 0 : operationCount,
+    elapsedMs,
+    checksum,
+    ...(instrumented ? {counters: fixture.counters} : {}),
+  };
 }
 
 function runChild(argumentsList) {
@@ -534,63 +474,53 @@ function runChild(argumentsList) {
   return JSON.parse(child.stdout);
 }
 
-function makeWorkerArguments(options, implementation, scenario, mode) {
+function makeWorkerArguments(options, implementation, phase, mode) {
   return [
     '--sdk-root',
     options.sdkRoot,
     '--implementation',
     implementation,
-    '--scenario',
-    scenario,
+    '--phase',
+    phase,
     '--mode',
     mode,
     '--catalog-size',
     String(options.catalogSize),
-    '--iterations',
-    String(options.iterations),
+    '--operations',
+    String(options.operationCount),
     '--seed',
     String(options.seed),
-    '--target-sample-ms',
-    String(options.targetSampleMs),
   ];
 }
 
-function runCase(options, implementation, scenario) {
-  const result = {implementation, scenario};
-  const modes = options.mode === 'all' ? ['diagnostic', 'warm', 'cold'] : [options.mode];
+function runCase(options, implementation, phase) {
+  const diagnostic = runChild(makeWorkerArguments(options, implementation, phase, 'diagnostic'));
+  const samples = [];
+  let lastTiming;
 
-  if (modes.includes('diagnostic')) {
-    result.diagnostic = runChild(
-      makeWorkerArguments(options, implementation, scenario, 'diagnostic')
-    );
+  // Each sample uses a fresh process. Process startup and module loading happen before the timer.
+  for (let iteration = 0; iteration < options.iterations; iteration += 1) {
+    lastTiming = runChild(makeWorkerArguments(options, implementation, phase, 'timing'));
+    samples.push(lastTiming.elapsedMs);
   }
 
-  if (modes.includes('warm')) {
-    result.warm = runChild(makeWorkerArguments(options, implementation, scenario, 'warm'));
-  }
+  const duration = summarize(samples);
 
-  if (modes.includes('cold')) {
-    const samples = [];
-    let lastColdResult;
-
-    for (let iteration = 0; iteration < options.iterations; iteration += 1) {
-      lastColdResult = runChild(makeWorkerArguments(options, implementation, scenario, 'cold'));
-      samples.push(lastColdResult.elapsedMs);
-    }
-
-    const summary = summarize(samples);
-
-    result.cold = {
-      ...summary,
-      medianPerOperationMs: summary.medianMs / lastColdResult.operationsPerRun,
-      p95PerOperationMs: summary.p95Ms / lastColdResult.operationsPerRun,
+  return {
+    implementation,
+    phase,
+    catalogSize: lastTiming.catalogSize,
+    operationCount: lastTiming.operationCount,
+    diagnostic: diagnostic.counters,
+    duration: {
+      ...duration,
+      medianPerOperationMs:
+        lastTiming.operationCount > 0 ? duration.medianMs / lastTiming.operationCount : undefined,
+      p95PerOperationMs:
+        lastTiming.operationCount > 0 ? duration.p95Ms / lastTiming.operationCount : undefined,
       samples: options.iterations,
-      checksum: lastColdResult.checksum,
-      operationsPerRun: lastColdResult.operationsPerRun,
-    };
-  }
-
-  return result;
+    },
+  };
 }
 
 function getCommit(sdkRoot) {
@@ -613,16 +543,16 @@ function printHelp() {
   );
   process.stdout.write('Options:\n');
   process.stdout.write('  --implementation legacy|v2|both  Default: both\n');
-  process.stdout.write('  --scenario <name>|all             Default: trace-hot\n');
-  process.stdout.write('  --mode diagnostic|warm|cold|all   Default: all\n');
+  process.stdout.write('  --phase ingestion|lookup|combined|all  Default: all\n');
   process.stdout.write('  --catalog-size <number>            Default: 3000 URLs\n');
+  process.stdout.write(
+    '  --operations <number>              Default: 500; must be divisible by 5\n'
+  );
   process.stdout.write('  --iterations <number>              Default: 15\n');
   process.stdout.write('  --seed <number>                    Default: 5230\n');
-  process.stdout.write('  --target-sample-ms <number>        Default: 100\n');
   process.stdout.write('  --sdk-root <trusted-checkout>      Default: current checkout\n');
   process.stdout.write('  --json                             Emit machine-readable JSON\n');
-  process.stdout.write('  --help                             Show this help\n\n');
-  process.stdout.write(`Scenarios:\n  ${SCENARIOS.join('\n  ')}\n`);
+  process.stdout.write('  --help                             Show this help\n');
 }
 
 function formatMilliseconds(value) {
@@ -636,32 +566,22 @@ function printHumanResult(report) {
       `platform=${report.environment.platform} cpu=${report.environment.cpu}\n`
   );
   process.stdout.write(
-    `catalog=${report.options.catalogSize} URLs seed=${report.options.seed} ` +
-      `iterations=${report.options.iterations}\n`
+    `catalog=${report.options.catalogSize} URLs operations=${report.options.operationCount} ` +
+      `seed=${report.options.seed} iterations=${report.options.iterations}\n`
   );
 
   report.results.forEach((result) => {
-    process.stdout.write(`\n${result.implementation} / ${result.scenario}\n`);
+    const perOperation =
+      result.duration.medianPerOperationMs === undefined
+        ? ''
+        : ` per-op=${formatMilliseconds(result.duration.medianPerOperationMs)}`;
 
-    if (result.diagnostic) {
-      process.stdout.write(`  diagnostic ${JSON.stringify(result.diagnostic.counters)}\n`);
-    }
-
-    if (result.warm) {
-      process.stdout.write(
-        `  warm median=${formatMilliseconds(result.warm.medianMs)} ` +
-          `p95=${formatMilliseconds(result.warm.p95Ms)} ` +
-          `per-op=${formatMilliseconds(result.warm.medianPerOperationMs)}\n`
-      );
-    }
-
-    if (result.cold) {
-      process.stdout.write(
-        `  cold median=${formatMilliseconds(result.cold.medianMs)} ` +
-          `p95=${formatMilliseconds(result.cold.p95Ms)} ` +
-          `per-op=${formatMilliseconds(result.cold.medianPerOperationMs)}\n`
-      );
-    }
+    process.stdout.write(`\n${result.implementation} / ${result.phase}\n`);
+    process.stdout.write(`  diagnostic ${JSON.stringify(result.diagnostic)}\n`);
+    process.stdout.write(
+      `  duration median=${formatMilliseconds(result.duration.medianMs)} ` +
+        `p95=${formatMilliseconds(result.duration.p95Ms)}${perOperation}\n`
+    );
   });
 }
 
@@ -683,41 +603,36 @@ async function main() {
   }
 
   const implementation = args.implementation || 'both';
-  const scenario = args.scenario || 'trace-hot';
-  const mode = args.mode || 'all';
+  const phase = args.phase || 'all';
   const catalogSize = readPositiveInteger(
     args['catalog-size'],
     DEFAULT_CATALOG_SIZE,
     'catalog-size'
   );
+  const operationCount = readPositiveInteger(args.operations, DEFAULT_OPERATIONS, 'operations');
   const iterations = readPositiveInteger(args.iterations, DEFAULT_ITERATIONS, 'iterations');
   const seed = readPositiveInteger(args.seed, DEFAULT_SEED, 'seed');
-  const targetSampleMs = readPositiveInteger(
-    args['target-sample-ms'],
-    DEFAULT_TARGET_SAMPLE_MS,
-    'target-sample-ms'
-  );
   const sdkRoot = path.resolve(args['sdk-root'] || DEFAULT_SDK_ROOT);
 
   if (!['legacy', 'v2', 'both'].includes(implementation)) {
     throw new Error('--implementation must be legacy, v2, or both');
   }
 
-  if (scenario !== 'all' && !SCENARIOS.includes(scenario)) {
-    throw new Error(`--scenario must be one of: all, ${SCENARIOS.join(', ')}`);
-  }
-
-  if (!['diagnostic', 'warm', 'cold', 'all'].includes(mode)) {
-    throw new Error('--mode must be diagnostic, warm, cold, or all');
+  if (phase !== 'all' && !PHASES.includes(phase)) {
+    throw new Error(`--phase must be one of: all, ${PHASES.join(', ')}`);
   }
 
   if (catalogSize % URLS_PER_SERVICE !== 0) {
     throw new Error(`--catalog-size must be divisible by ${URLS_PER_SERVICE}`);
   }
 
-  const options = {sdkRoot, catalogSize, iterations, seed, targetSampleMs, mode};
+  if (operationCount % 5 !== 0) {
+    throw new Error('--operations must be divisible by 5');
+  }
+
+  const options = {sdkRoot, catalogSize, operationCount, iterations, seed};
   const implementations = implementation === 'both' ? ['legacy', 'v2'] : [implementation];
-  const scenarios = scenario === 'all' ? SCENARIOS : [scenario];
+  const phases = phase === 'all' ? PHASES : [phase];
   const cpu = os.cpus()[0];
   const report = {
     environment: {
@@ -726,13 +641,13 @@ async function main() {
       platform: `${process.platform}-${process.arch}`,
       cpu: cpu ? cpu.model : 'unknown',
     },
-    options: {catalogSize, iterations, seed, mode},
+    options: {catalogSize, operationCount, iterations, seed},
     results: [],
   };
 
   implementations.forEach((implementationName) => {
-    scenarios.forEach((scenarioName) => {
-      report.results.push(runCase(options, implementationName, scenarioName));
+    phases.forEach((phaseName) => {
+      report.results.push(runCase(options, implementationName, phaseName));
     });
   });
 
