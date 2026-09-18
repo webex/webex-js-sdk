@@ -1,5 +1,12 @@
 # Documentation
 packages/**/docs/
+# SDD Stage 0 for @webex/web-extension-bridge (SPARK-853132): standing docs + source-local module specs
+!packages/@webex/web-extension-bridge/docs/
+!packages/@webex/web-extension-bridge/docs/**
+!packages/@webex/web-extension-bridge/src/**/docs/
+!packages/@webex/web-extension-bridge/src/**/docs/**
+!packages/@webex/web-extension-bridge/.sdd/**/docs/
+!packages/@webex/web-extension-bridge/.sdd/**/docs/**
 
 /**/.generated/
 
