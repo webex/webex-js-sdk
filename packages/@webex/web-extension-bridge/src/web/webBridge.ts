@@ -85,11 +85,10 @@ export function createWebBridgeWith(
       win.postMessage(envelope, config.targetOrigin);
     } catch (error) {
       // Payload validation should have caught anything the structured clone algorithm
-      // will refuse, so reaching here means validation and the clone disagree. Rather
-      // than let a raw `DataCloneError` — or, for an exotic object, an error thrown from
-      // inside the caller's own code during cloning — escape as the only exception
-      // `publish()` ever raises that is not a `BridgeError`, it is normalised. The
-      // documented contract is that every failure out of this API is coded.
+      // refuses, so reaching here means validation and the clone disagree. Normalised
+      // rather than let a raw `DataCloneError` escape as the one exception `publish()`
+      // would otherwise raise that isn't a `BridgeError` — every failure out of this
+      // API is documented to be coded.
       counters.increment(CounterName.DROPPED, 'CLONE_FAILED');
       logger.warn('postMessage refused the envelope', {
         channel: config.channel,
@@ -125,7 +124,7 @@ export function createWebBridgeWith(
     }
 
     if (connected && session !== token) {
-      // A new token means a new content script: the old peer is gone.
+      // A new token means a new content script — the old peer is gone.
       markDisconnected('session-replaced');
     }
 
@@ -218,8 +217,8 @@ export function createWebBridgeWith(
     try {
       const result = await entry.handler(payload, meta);
 
-      // The handler's own output is checked too: an oversized or circular return
-      // value must fail as INVALID_PAYLOAD rather than throwing inside postMessage.
+      // Handler output is checked too: oversized or circular must fail as
+      // INVALID_PAYLOAD rather than throw inside postMessage.
       assertPayload(result, config.maxPayloadBytes, request.topic);
       counters.increment(CounterName.REQUEST_SERVED, request.topic);
       respond(request, {ok: true, payload: result ?? null});

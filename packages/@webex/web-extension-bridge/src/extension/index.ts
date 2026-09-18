@@ -1,26 +1,22 @@
 /*!
  * `@webex/web-extension-bridge/extension`
  *
- * The single facade for everything that runs inside the extension. Import
+ * The single facade for everything that runs inside the extension: import
  * `createExtensionBridge` in the service worker, `createExtensionClient` in a popup,
  * options page or side panel, and `startContentRelay` in a content script that needs a
- * non-default channel — all from this one specifier.
+ * non-default channel — all from this one specifier, rather than three subpaths named
+ * after this package's own source layout. Bundlers tree-shake what isn't called, so a
+ * single entry costs nothing in a built extension.
  *
- * One facade rather than three subpaths named after execution directories. Which of
- * these a consumer calls is already determined by where their code runs, and a
- * `/background` or `/client` specifier only restates that in the import while coupling
- * them to this package's source layout. Bundlers tree-shake what is not called, so the
- * cost of a single entry is nothing that reaches a built extension.
- *
- * The manifest wiring entry is deliberately *not* re-exported here:
- * `@webex/web-extension-bridge/content-script` starts a relay as a side effect of
- * being loaded, and importing an API should never be the thing that starts one.
+ * The manifest wiring entry is deliberately *not* re-exported here: importing an API
+ * should never be the thing that starts a relay, which is what
+ * `@webex/web-extension-bridge/content-script` does as a side effect.
  *
  * Test seams (`createExtensionBridgeWith`, `createExtensionClientWith`,
- * `createContentRelay`) are also absent by design. They accept an injected platform
+ * `createContentRelay`) are absent by design too — they accept an injected platform
  * object in place of the real `chrome`, which is exactly what the sender-verification
- * rules are built on — so a consumer able to reach them is a consumer able to
- * construct a bridge that trusts whatever they hand it.
+ * rules are built on, so a consumer able to reach them could construct a bridge that
+ * trusts whatever it's handed.
  */
 
 export {createExtensionBridge} from './background';
