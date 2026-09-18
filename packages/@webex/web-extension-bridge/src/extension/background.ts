@@ -723,7 +723,6 @@ export function createExtensionBridgeWith(
   ): boolean | void => {
     if (!isOwnExtension(chromeApi, sender)) {
       counters.increment(CounterName.DROPPED, 'FOREIGN_SENDER');
-      logger.warn('dropped message from foreign sender', {channel, reason: 'FOREIGN_SENDER'});
 
       return undefined;
     }

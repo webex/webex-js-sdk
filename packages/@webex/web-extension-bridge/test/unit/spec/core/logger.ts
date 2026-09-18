@@ -127,7 +127,13 @@ describe('core/logger', () => {
   });
 
   describe('an unrecognised logLevel', () => {
+    // Every case here builds a misconfigured logger, which reports itself on the
+    // console by design. Stubbed so it does not land in the test output.
+    afterEach(() => sinon.restore());
+
     it('falls back to the default rather than refusing to build a logger', () => {
+      sinon.stub(console, 'warn');
+
       const target = sink();
       const logger = createLogger({logLevel: 'verbose' as LogLevelSetting, sink: target});
 
@@ -138,16 +144,96 @@ describe('core/logger', () => {
       assert.calledWith(target.warn, '[web-extension-bridge] loud');
     });
 
-    it('says so, so it cannot be mistaken for logging that is merely quiet', () => {
-      const target = sink();
-
-      createLogger({logLevel: 'verbose' as LogLevelSetting, sink: target});
+    it('says so on the console, bypassing the sink, so a typo is never silent', () => {
+      const consoleWarn = sinon.stub(console, 'warn');
+      // A sink wired for `debug` only. Under strict routing a warning would otherwise
+      // be dropped, which is exactly the silence this diagnostic has to defeat.
+      const logger = createLogger({
+        logLevel: 'verbose' as LogLevelSetting,
+        sink: {debug: sinon.stub()},
+      });
 
       assert.calledOnceWithExactly(
-        target.warn,
-        '[web-extension-bridge] unrecognised logLevel, falling back',
-        {reason: DEFAULT_LOG_LEVEL}
+        consoleWarn,
+        `[web-extension-bridge] unrecognised logLevel, falling back to '${DEFAULT_LOG_LEVEL}'`,
+        {reason: 'UNRECOGNISED_LOG_LEVEL'}
       );
+
+      // And the fallback threshold really is in force.
+      logger.info('quiet');
+      assert.calledOnce(consoleWarn);
+    });
+
+    it('never echoes the rejected value, which may come from untrusted config', () => {
+      const consoleWarn = sinon.stub(console, 'warn');
+
+      createLogger({logLevel: 'verbose-LEAK-CANARY' as LogLevelSetting});
+
+      assert.notInclude(JSON.stringify(consoleWarn.firstCall.args), 'LEAK-CANARY');
+    });
+  });
+
+  describe('a partial sink', () => {
+    afterEach(() => sinon.restore());
+
+    const consoleStubs = () => ({
+      debug: sinon.stub(console, 'debug'),
+      info: sinon.stub(console, 'info'),
+      warn: sinon.stub(console, 'warn'),
+      error: sinon.stub(console, 'error'),
+    });
+
+    it('routes a wired level to the sink', () => {
+      const wired = sinon.stub();
+
+      createLogger({logLevel: 'debug', sink: {debug: wired}}).debug('a');
+
+      assert.calledOnceWithExactly(wired, '[web-extension-bridge] a', undefined);
+    });
+
+    // Every level the host left unwired, including warn and error, which a supplied
+    // sink used to let through to the console.
+    (['info', 'warn', 'error'] as const).forEach((level) => {
+      it(`drops an unwired ${level} instead of diverting it to the console`, () => {
+        const stubs = consoleStubs();
+        const logger = createLogger({logLevel: 'debug', sink: {debug: sinon.stub()}});
+
+        logger[level]('m');
+
+        assert.notCalled(stubs[level]);
+      });
+    });
+
+    it('treats an empty sink as owning every level, so nothing reaches the console', () => {
+      const stubs = consoleStubs();
+      const logger = createLogger({logLevel: 'debug', sink: {}});
+
+      logger.debug('a');
+      logger.info('b');
+      logger.warn('c');
+      logger.error('d');
+
+      assert.notCalled(stubs.debug);
+      assert.notCalled(stubs.info);
+      assert.notCalled(stubs.warn);
+      assert.notCalled(stubs.error);
+    });
+
+    it('never mixes sink output with console output for one logger', () => {
+      const stubs = consoleStubs();
+      const wired = sinon.stub();
+      const logger = createLogger({logLevel: 'debug', sink: {warn: wired}});
+
+      logger.debug('a');
+      logger.info('b');
+      logger.warn('c');
+      logger.error('d');
+
+      assert.calledOnceWithExactly(wired, '[web-extension-bridge] c', undefined);
+      assert.notCalled(stubs.debug);
+      assert.notCalled(stubs.info);
+      assert.notCalled(stubs.warn);
+      assert.notCalled(stubs.error);
     });
   });
 

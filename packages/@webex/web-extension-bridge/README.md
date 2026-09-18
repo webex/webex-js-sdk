@@ -295,7 +295,7 @@ then reload the page.
 | `logLevel` | `'silent' \| 'error' \| 'warn' \| 'info' \| 'debug'` | `'warn'` | Lowest severity to emit. Metadata only at every level — there is no option that logs payloads or tokens. |
 | `debug` | `boolean` | `false` | Alias for `logLevel: 'debug'`. Ignored when `logLevel` is given. |
 | `maxPayloadBytes` | `number` | `262144` | Clamped to `[1, 1048576]`. |
-| `logSink` | `LogSink` | console | Receives `{level, message, context}` with metadata only. |
+| `logSink` | `LogSink` | console | Receives `(message, context)` with metadata only. Replaces the console entirely — see below. |
 
 | Member | Signature | Notes |
 | --- | --- | --- |
@@ -431,6 +431,7 @@ there is no field a payload would fit in — not by convention.
 
 | Level | Carries | Volume |
 | --- | --- | --- |
+| `silent` | Nothing at all. | — |
 | `error` | Nothing. The bridge fails closed by throwing a coded `BridgeError` instead. | — |
 | `warn` | A failure no caller will observe: a refused `chrome.storage.session` write, a `runtime.sendMessage` that never arrived, a consumer listener that threw, a message refused by a sender check. | Bounded — none of it is reachable by a web page. |
 | `info` | Lifecycle: bridge, relay and client start and stop; connect and disconnect; tab and page attach and detach. | One per connection. |
@@ -440,9 +441,31 @@ A failure already reported to a caller — anything `request()` rejects with, in
 `ABORTED` and `TIMEOUT` — is logged at `debug`, not `error`: the caller decides whether it
 was a fault, and a library that both throws and writes to the console reports it twice.
 
-`'silent'` suppresses `warn` and `error` too, for a host that routes diagnostics entirely
-through its own channel. Below `'silent'`, anything the threshold admits goes to `logSink`
-when one is given and to `console` at its own level otherwise.
+### Where a line goes
+
+Supplying a `logSink` hands it the **whole** destination. Every method on it is optional,
+and a level left unwired is dropped — it is *not* diverted to the console:
+
+```js
+createWebBridge({logLevel: 'debug', logSink: {warn: myWarn}});
+// warn  -> myWarn
+// debug, info, error -> dropped
+```
+
+This keeps a host's chosen destination the only one in play. Per-missing-method console
+fallback would put bridge metadata on a surface the host never asked for, and at `debug`
+or `info` that surface is the page console. A host that wants both writes to the console
+from inside its own sink.
+
+With **no** `logSink`, anything the threshold admits goes to `console` at its own level.
+
+One exception: an unrecognised `logLevel` is reported on `console.warn` regardless of
+sink, because a logger that cannot report its own misconfiguration is the silence the
+threshold is supposed to make impossible.
+
+> **Note on `debug: true`** — with no `logSink`, `debug` and `info` lines now reach
+> `console.debug` / `console.info`. They were previously discarded unless a sink was
+> supplied, so `debug: true` on its own produced no output at all.
 
 ## 6. Security architecture
 
@@ -503,7 +526,7 @@ needs a new failing test before the fix is accepted.
 | Extension resources | No `web_accessible_resources`. If unavoidable, a single named file with `use_dynamic_url: true`. |
 | Permissions | `permissions` is `["storage"]` or narrower. No `tabs`. No `externally_connectable`. |
 | CSP | `extension_pages` CSP set on the extension; a strict CSP, ideally with Trusted Types, on the web app. |
-| Logging | `logLevel` at `'warn'` or below (`debug: false`). Verify no payloads or tokens reach any log sink. |
+| Logging | `logLevel` at `'warn'` or quieter (`'silent'` / `'error'`); never `'info'`, `'debug'` or `debug: true`. Verify no payloads or tokens reach any log sink. |
 | Payload validation | Every `requestHandler` topic validates its payload against a strict schema, and every push topic is validated on receipt. |
 | Data classification | No secrets, tokens or credentials traverse the bridge. Where authenticity matters, sign server-side. |
 | Rendering | Extension and web UI render untrusted values with `textContent` only. |

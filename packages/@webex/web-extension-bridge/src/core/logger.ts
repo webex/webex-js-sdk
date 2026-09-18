@@ -11,7 +11,13 @@ export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
  */
 export type LogLevelSetting = LogLevel | 'silent';
 
-/** Sink the SDK writes to. Defaults to the console. */
+/**
+ * Sink the SDK writes to, in place of the console.
+ *
+ * Every method is optional, and supplying the sink at all hands it the whole
+ * destination: a level left unwired is dropped rather than diverted to the console.
+ * A host that wants both writes to the console from inside its own sink.
+ */
 export interface LogSink {
   debug?: (message: string, context?: LogContext) => void;
   info?: (message: string, context?: LogContext) => void;
@@ -124,6 +130,7 @@ export interface CreateLoggerOptions {
   logLevel?: LogLevelSetting;
   /** Alias for `logLevel: 'debug'`. Ignored when `logLevel` is given. */
   debug?: boolean;
+  /** Replaces the console entirely when given. See {@link LogSink}. */
   sink?: LogSink;
   /** Prefixed to every message so bridge logs are greppable in a shared console. */
   prefix?: string;
@@ -170,30 +177,31 @@ export function createLogger(options: CreateLoggerOptions = {}): BridgeLogger {
 
     const picked = pickLogContext(context);
     const line = `${prefix} ${message}`;
-    const destination = sink?.[target];
 
-    if (destination) {
-      destination(line, picked);
+    if (sink) {
+      // A supplied sink owns the destination; consoling an unwired level would leak to the page.
+      sink[target]?.(line, picked);
 
       return;
     }
 
-    // The threshold has already decided this line should be emitted, so with no sink
-    // it goes to the console at its own level instead of being discarded.
+    // No sink: the threshold already admitted this line, so it goes to the console.
     // eslint-disable-next-line no-console
     console[target](line, picked ?? '');
   };
 
-  const logger: BridgeLogger = {
+  if (invalid) {
+    // Bypasses `sink`: a host with no `warn` method would otherwise never learn of the typo.
+    // eslint-disable-next-line no-console
+    console.warn(`${prefix} unrecognised logLevel, falling back to '${DEFAULT_LOG_LEVEL}'`, {
+      reason: 'UNRECOGNISED_LOG_LEVEL',
+    });
+  }
+
+  return {
     debug: (message, context) => write('debug', message, context),
     info: (message, context) => write('info', message, context),
     warn: (message, context) => write('warn', message, context),
     error: (message, context) => write('error', message, context),
   };
-
-  if (invalid) {
-    logger.warn('unrecognised logLevel, falling back', {reason: DEFAULT_LOG_LEVEL});
-  }
-
-  return logger;
 }
