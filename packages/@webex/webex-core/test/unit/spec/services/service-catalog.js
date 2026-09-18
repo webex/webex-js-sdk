@@ -505,6 +505,48 @@ describe('webex-core', () => {
         assert.equal(service, exampleService);
       });
 
+      it('matches an alternate host using the non-default port from the default url', () => {
+        const exampleService = {
+          defaultUrl: 'https://example.com:8443/resource',
+          hosts: [{host: 'alternate.example.com'}],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceUrlFromUrl('https://alternate.example.com:8443/resource/id'),
+          exampleService
+        );
+      });
+
+      it('normalizes the case of an alternate hostname before matching', () => {
+        const exampleService = {
+          defaultUrl: 'https://example.com/resource',
+          hosts: [{host: 'ALTERNATE.EXAMPLE.COM'}],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceUrlFromUrl('https://alternate.example.com/resource/id'),
+          exampleService
+        );
+      });
+
+      it('normalizes an internationalized alternate hostname before matching', () => {
+        const exampleService = {
+          defaultUrl: 'https://example.com/resource',
+          hosts: [{host: 'b\u00fccher.example'}],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceUrlFromUrl('https://xn--bcher-kva.example/resource/id'),
+          exampleService
+        );
+      });
+
       describe('security: origin validation', () => {
         it('rejects URLs where the catalog host is a prefix of the candidate host (SECURITY)', () => {
           // Attack: https://trusted.example.attacker.com should NOT match https://trusted.example
