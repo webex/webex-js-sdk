@@ -15320,6 +15320,41 @@ describe('plugin-meetings', () => {
           assert.notCalled(mockVoiceaChannel.deregisterEvents);
         });
 
+        it('does not reconnect when meeting teardown starts during channel cleanup', async () => {
+          const disconnect = new Defer();
+          const existingChannel = {
+            isConnected: sinon.stub().returns(true),
+            isConnecting: sinon.stub().returns(false),
+            getLocusUrl: sinon.stub().returns('old url'),
+            getDatachannelUrl: sinon.stub().returns('a datachannel url'),
+            disconnect: sinon.stub().returns(disconnect.promise),
+            off: sinon.stub(),
+          };
+
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.llmChannel = existingChannel;
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a different url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          const updateLLMConnection = meeting.updateLLMConnection();
+
+          meeting.stopListeningForMeetingEvents();
+          disconnect.resolve();
+
+          const result = await updateLLMConnection;
+
+          assert.isUndefined(result);
+          assert.calledOnceWithExactly(existingChannel.disconnect, {
+            code: 3050,
+            reason: 'done (permanent)',
+          });
+          assert.notCalled(webex.internal.llm.createChannel);
+          assert.isUndefined(meeting.llmChannel);
+        });
+
         it('disconnects and reconnects when datachannel URL changes', async () => {
           meeting.joinedWith = {state: 'JOINED'};
 
@@ -15447,6 +15482,192 @@ describe('plugin-meetings', () => {
           }
 
           assert.isUndefined(meeting.llmChannel);
+        });
+
+        it('does not restore LLM behavior when connection completes after meeting teardown', async () => {
+          const registerAndConnect = new Defer();
+          const registerLLMChannel = sinon.spy(meeting.breakouts, 'registerLLMChannel');
+
+          mockChannel.registerAndConnect.returns(registerAndConnect.promise);
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          const updateLLMConnection = meeting.updateLLMConnection();
+
+          meeting.stopListeningForMeetingEvents();
+          mockChannel.off.resetHistory();
+          registerAndConnect.resolve('connection timings');
+
+          const result = await updateLLMConnection;
+
+          assert.equal(result, 'connection timings');
+          assert.calledOnceWithExactly(mockChannel.disconnect, {
+            code: 3050,
+            reason: 'superseded',
+          });
+          assert.isUndefined(meeting.llmChannel);
+          assert.notCalled(meeting.locusInfo.syncAllHashTreeDatasets);
+          assert.notCalled(mockChannel.on);
+          assert.notCalled(mockChannel.off);
+          assert.notCalled(meeting.annotation.registerChannel);
+          assert.notCalled(registerLLMChannel);
+          assert.notCalled(meeting.startLLMHealthCheckTimer);
+          assert.notCalled(mockVoiceaChannel.switchLLMChannel);
+        });
+
+        it('sets up the current connection before a subsequently queued teardown', async () => {
+          const registerAndConnect = new Defer();
+          const registerLLMChannel = sinon.spy(meeting.breakouts, 'registerLLMChannel');
+          const stopListeningForMeetingEvents = sinon.spy(meeting, 'stopListeningForMeetingEvents');
+
+          mockChannel.registerAndConnect.returns(registerAndConnect.promise);
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          const updateLLMConnection = meeting.updateLLMConnection();
+
+          registerAndConnect.resolve('connection timings');
+          queueMicrotask(() => meeting.stopListeningForMeetingEvents());
+
+          await updateLLMConnection;
+
+          assert.callOrder(registerLLMChannel, stopListeningForMeetingEvents);
+        });
+
+        it('clears the current connection attempt without clearing a newer channel after connecting', async () => {
+          const registerAndConnect = new Defer();
+          const newerChannel = createMockLLMChannel();
+
+          mockChannel.registerAndConnect.returns(registerAndConnect.promise);
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          const updateLLMConnection = meeting.updateLLMConnection();
+          const currentConnectionAttempt = meeting.llmConnectionAttempt;
+
+          assert.isDefined(currentConnectionAttempt);
+          meeting.llmChannel = newerChannel;
+          registerAndConnect.resolve('connection timings');
+
+          const result = await updateLLMConnection;
+
+          assert.equal(result, 'connection timings');
+          assert.isUndefined(meeting.llmConnectionAttempt);
+          assert.strictEqual(meeting.llmChannel, newerChannel);
+          assert.calledOnceWithExactly(mockChannel.disconnect, {
+            code: 3050,
+            reason: 'superseded',
+          });
+        });
+
+        it('clears the current connection attempt without clearing a newer channel', async () => {
+          const registerAndConnect = new Defer();
+          const registerError = new Error('registration failed');
+          const newerChannel = createMockLLMChannel();
+
+          mockChannel.registerAndConnect.returns(registerAndConnect.promise);
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          const updateLLMConnection = meeting.updateLLMConnection();
+          const currentConnectionAttempt = meeting.llmConnectionAttempt;
+
+          assert.isDefined(currentConnectionAttempt);
+          meeting.llmChannel = newerChannel;
+          registerAndConnect.reject(registerError);
+
+          try {
+            await updateLLMConnection;
+            assert.fail('Expected updateLLMConnection to reject');
+          } catch (error) {
+            assert.equal(error, registerError);
+          }
+
+          assert.isUndefined(meeting.llmConnectionAttempt);
+          assert.strictEqual(meeting.llmChannel, newerChannel);
+        });
+
+        it('clears the stale channel when connection fails after meeting teardown', async () => {
+          const registerAndConnect = new Defer();
+          const registerError = new Error('registration failed');
+
+          mockChannel.registerAndConnect.returns(registerAndConnect.promise);
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          const updateLLMConnection = meeting.updateLLMConnection();
+
+          meeting.stopListeningForMeetingEvents();
+          registerAndConnect.reject(registerError);
+
+          try {
+            await updateLLMConnection;
+            assert.fail('Expected updateLLMConnection to reject');
+          } catch (error) {
+            assert.equal(error, registerError);
+          }
+
+          assert.isUndefined(meeting.llmChannel);
+          assert.calledOnceWithExactly(mockChannel.disconnect, {
+            code: 3050,
+            reason: 'superseded',
+          });
+        });
+
+        it('does not clear a newer channel when an older connection attempt fails', async () => {
+          const registerAndConnect = new Defer();
+          const registerError = new Error('registration failed');
+          const newerChannel = createMockLLMChannel();
+          const triggerBreakouts = sinon.spy(meeting.breakouts, 'trigger');
+
+          mockChannel.registerAndConnect.returns(registerAndConnect.promise);
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          const updateLLMConnection = meeting.updateLLMConnection({isInitialJoinPhase: true});
+
+          meeting.llmChannel = newerChannel;
+          meeting.llmConnectionAttempt = {};
+          registerAndConnect.reject(registerError);
+
+          try {
+            await updateLLMConnection;
+            assert.fail('Expected updateLLMConnection to reject');
+          } catch (error) {
+            assert.equal(error, registerError);
+          }
+
+          assert.strictEqual(meeting.llmChannel, newerChannel);
+          assert.calledOnceWithExactly(mockChannel.disconnect, {
+            code: 3050,
+            reason: 'superseded',
+          });
+          assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+          assert.notCalled(triggerBreakouts);
         });
 
         it('starts LLM health check timer after successful connection', async () => {
