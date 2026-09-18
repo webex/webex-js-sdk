@@ -26,6 +26,9 @@ import {
   UpdateDeviceTypeResponse,
   GenericError,
   ConfigFlags,
+  WellnessBreakEvent,
+  WellnessBreakNotificationAction,
+  WELLNESS_BREAK_NOTIFICATION_ACTIONS,
 } from './types';
 import {
   READY,
@@ -38,6 +41,7 @@ import {
   UNKNOWN_ERROR,
   MERCURY_DISCONNECTED_SUCCESS,
   METHODS,
+  WELLNESS_BREAK_HANDLER,
 } from './constants';
 import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
 import {AGENT, RTD_SUBSCRIBE_API, SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
@@ -45,13 +49,14 @@ import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
-import {getErrorDetails, isValidDialNumber} from './services/core/Utils';
+import {getErrorDetails, isRecord, isValidDialNumber} from './services/core/Utils';
 import {
   Profile,
   WelcomeEvent,
   CC_EVENTS,
   OutdialAniEntriesResponse,
   OutdialAniParams,
+  Entity,
 } from './services/config/types';
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
@@ -296,6 +301,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   private metricsManager: MetricsManager;
 
+  /** Current login/relogin session used for agent-scoped wellness validation. */
+  private currentAgentSessionId?: string;
+
+  /** Registered-session cache for the system WellbeingBreak idle code. */
+  private wellbeingBreakIdleCode?: Entity;
+
+  /** Registration generation that owns the wellness idle-code cache and in-flight lookups. */
+  private wellnessRegistrationGeneration = 0;
+
+  private updateWellnessSession(agentSessionId?: string): void {
+    this.currentAgentSessionId = agentSessionId;
+  }
+
   /**
    * API instance for managing Webex Contact Center entry points
    * Provides functionality to fetch entry points with caching support
@@ -440,7 +458,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.answerCallOnWebexService = new AnswerCallOnWebexService(this.$webex);
       this.webexCrossClientService = new WebexCrossClientService(this.$webex);
       this.wxAppTelephonyMercurySync = new WxAppTelephonyMercurySync(this.$webex);
-      this.apiAIAssistant = new ApiAIAssistant(this.$webex);
+      this.apiAIAssistant = new ApiAIAssistant(this.$webex, () => ({
+        isWellnessBreakEnabled: this.agentConfig?.isWellnessBreakEnabled === true,
+        agentId: this.agentConfig?.agentId,
+        agentSessionId: this.currentAgentSessionId,
+      }));
       this.metricsManager = MetricsManager.getInstance({webex: this.$webex});
       this.taskManager = TaskManager.getTaskManager(
         this.apiAIAssistant,
@@ -512,6 +534,114 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.trigger(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, task);
   };
 
+  private trackInvalidWellnessEvent(reason: string): void {
+    this.metricsManager.trackEvent(
+      METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_EVENT_INVALID,
+      {reason},
+      ['operational']
+    );
+  }
+
+  private normalizeWellnessBreakEvent(payload: Record<string, unknown>): WellnessBreakEvent | null {
+    if (this.agentConfig?.isWellnessBreakEnabled !== true) {
+      this.trackInvalidWellnessEvent('wellness_disabled');
+
+      return null;
+    }
+
+    const notificationData = isRecord(payload.data) ? payload.data : null;
+    const notificationDetails =
+      notificationData && isRecord(notificationData.notifDetails)
+        ? notificationData.notifDetails
+        : null;
+    const sessionData =
+      notificationData && isRecord(notificationData.data) ? notificationData.data : null;
+    const actionEvent = notificationDetails?.actionEvent;
+
+    if (
+      payload.type !== WELLNESS_BREAK_HANDLER ||
+      notificationData?.notifType !== WELLNESS_BREAK_HANDLER ||
+      typeof actionEvent !== 'string'
+    ) {
+      this.trackInvalidWellnessEvent('malformed_wellness_event');
+
+      return null;
+    }
+
+    if (
+      !Object.values(WELLNESS_BREAK_NOTIFICATION_ACTIONS).includes(
+        actionEvent as WellnessBreakNotificationAction
+      )
+    ) {
+      this.trackInvalidWellnessEvent('unknown_wellness_action');
+
+      return null;
+    }
+
+    const agentId = notificationData.agentId;
+    const eventOrgId = notificationData.orgId;
+    const sessionOrgId = sessionData?.orgId;
+    const envelopeOrgId = payload.orgId;
+    const agentSessionId = sessionData?.agentSessionId;
+    const currentOrgId = this.$webex.credentials.getOrgId();
+
+    if (
+      typeof agentId !== 'string' ||
+      typeof eventOrgId !== 'string' ||
+      typeof sessionOrgId !== 'string' ||
+      typeof envelopeOrgId !== 'string' ||
+      typeof agentSessionId !== 'string' ||
+      !agentId ||
+      !eventOrgId ||
+      !sessionOrgId ||
+      !envelopeOrgId ||
+      !agentSessionId
+    ) {
+      this.trackInvalidWellnessEvent('missing_wellness_identity');
+
+      return null;
+    }
+
+    if (
+      agentId !== this.agentConfig?.agentId ||
+      eventOrgId !== currentOrgId ||
+      sessionOrgId !== currentOrgId ||
+      envelopeOrgId !== currentOrgId
+    ) {
+      this.trackInvalidWellnessEvent('mismatched_wellness_identity');
+
+      return null;
+    }
+
+    const interactionValue = sessionData.interactionId ?? sessionData.InteractionId;
+    const actionText = notificationDetails.actionText;
+    const trackingId = payload.trackingId;
+
+    return {
+      agentId,
+      orgId: currentOrgId,
+      agentSessionId,
+      actionEvent: actionEvent as WellnessBreakNotificationAction,
+      ...(typeof actionText === 'string' ? {actionText} : {}),
+      ...(typeof interactionValue === 'string' ? {interactionId: interactionValue} : {}),
+      ...(typeof trackingId === 'string' ? {trackingId} : {}),
+    };
+  }
+
+  private handleWellnessBreakWebsocketPayload(payload: Record<string, unknown>): boolean {
+    if (payload.type !== WELLNESS_BREAK_HANDLER) {
+      return false;
+    }
+
+    const wellnessEvent = this.normalizeWellnessBreakEvent(payload);
+    if (wellnessEvent) {
+      // @ts-ignore - WebexPlugin emit is available at runtime but absent from its declaration.
+      this.emit(CC_EVENTS.WELLNESS_BREAK, wellnessEvent);
+    }
+
+    return true;
+  }
+
   private handleRTDWebsocketMessage = (event: string) => {
     this.taskManager.handleRealtimeWebsocketEvent(event);
   };
@@ -569,6 +699,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async register(): Promise<Profile> {
+    this.wellnessRegistrationGeneration += 1;
+    this.wellbeingBreakIdleCode = undefined;
     LoggerProxy.log('Starting CC SDK registration', {
       module: CC_FILE,
       method: METHODS.REGISTER,
@@ -651,6 +783,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
    */
   public async deregister(): Promise<void> {
+    this.wellnessRegistrationGeneration += 1;
+    this.wellbeingBreakIdleCode = undefined;
+    this.updateWellnessSession();
     try {
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
@@ -703,7 +838,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
 
       // Clear any cached agent configuration
+      this.wellbeingBreakIdleCode = undefined;
       this.agentConfig = null;
+      this.updateWellnessSession();
 
       if (wxAppPublishError) {
         throw wxAppPublishError;
@@ -873,6 +1010,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.taskManager.setAgentId(this.agentConfig.agentId);
       this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
       this.apiAIAssistant.setAIFeatureFlags(this.agentConfig.aiFeature);
+      this.wellbeingBreakIdleCode = undefined;
+      this.updateWellnessSession();
 
       /**
        * RTD websocket currently supports realtime transcripts and suggested responses.
@@ -945,6 +1084,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return this.agentConfig;
     } catch (error) {
+      this.updateWellnessSession();
       LoggerProxy.error(`Error during register: ${error}`, {
         module: CC_FILE,
         method: METHODS.CONNECT_WEBSOCKET,
@@ -1055,6 +1195,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       const resp = await loginResponse;
       const {channelsMap, ...loginData} = resp.data;
+      this.updateWellnessSession(resp.data.agentSessionId);
       this.agentConfig.currentTeamId = resp.data.teamId;
       const response = {
         ...loginData,
@@ -1170,6 +1311,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
 
       await this.teardownWxAppLocalState();
+      this.updateWellnessSession();
 
       LoggerProxy.log(`Agent station logout completed successfully`, {
         module: CC_FILE,
@@ -1308,6 +1450,77 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
+   * Returns the system-managed `WellbeingBreak` idle code for the current registration.
+   * The value is fetched outside Desktop Profile filtering and cached until deregistration.
+   * @returns The normalized system idle-code entity
+   * @throws Structured Contact Center error when wellness is disabled or the code is unavailable
+   * @example
+   * const idleCode = await webex.cc.getWellbeingBreakIdleCode();
+   * @public
+   */
+  public async getWellbeingBreakIdleCode(): Promise<Entity> {
+    const method = METHODS.GET_WELLBEING_BREAK_IDLE_CODE;
+    try {
+      if (!this.agentConfig?.isWellnessBreakEnabled) {
+        const validationError = new Error('WELLNESS_BREAK_NOT_ENABLED') as GenericError;
+        validationError.details = {
+          type: 'SDK_VALIDATION_ERROR',
+          orgId: this.$webex.credentials.getOrgId(),
+          trackingId: EMPTY_STRING,
+          data: {reason: 'WELLNESS_BREAK_NOT_ENABLED'},
+        };
+        throw validationError;
+      }
+
+      if (this.wellbeingBreakIdleCode) {
+        return this.wellbeingBreakIdleCode;
+      }
+
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS,
+        METRIC_EVENT_NAMES.WELLBEING_BREAK_IDLE_CODE_FETCH_FAILED,
+      ]);
+      const registrationGeneration = this.wellnessRegistrationGeneration;
+      const orgId = this.$webex.credentials.getOrgId();
+      const idleCode = await this.services.config.getWellbeingBreakIdleCode(orgId);
+
+      if (
+        registrationGeneration !== this.wellnessRegistrationGeneration ||
+        orgId !== this.$webex.credentials.getOrgId() ||
+        !this.agentConfig?.isWellnessBreakEnabled
+      ) {
+        const staleRegistrationError = new Error(
+          'WELLNESS_BREAK_REGISTRATION_CHANGED'
+        ) as GenericError;
+        staleRegistrationError.details = {
+          type: 'SDK_VALIDATION_ERROR',
+          orgId,
+          trackingId: EMPTY_STRING,
+          data: {reason: 'WELLNESS_BREAK_REGISTRATION_CHANGED'},
+        };
+        throw staleRegistrationError;
+      }
+
+      this.wellbeingBreakIdleCode = idleCode;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS,
+        {},
+        ['operational']
+      );
+
+      return idleCode;
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WELLBEING_BREAK_IDLE_CODE_FETCH_FAILED,
+        {reason: error instanceof Error ? error.message : UNKNOWN_ERROR},
+        ['operational']
+      );
+      const {error: detailedError} = getErrorDetails(error, method, CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  /**
    * Processes incoming websocket messages and emits corresponding events
    * Handles various event types including agent state changes, login events,
    * and other agent-related notifications
@@ -1345,8 +1558,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       ]);
     }
 
+    if (this.handleWellnessBreakWebsocketPayload(eventData)) {
+      return;
+    }
+
     switch (eventData.type) {
       case CC_EVENTS.AGENT_MULTI_LOGIN:
+        if (
+          eventData.data?.type === 'AgentMultiLoginCloseSession' &&
+          (!eventData.data.agentSessionId ||
+            eventData.data.agentSessionId === this.currentAgentSessionId)
+        ) {
+          this.updateWellnessSession();
+        }
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_MULTI_LOGIN, eventData.data);
         break;
@@ -1365,6 +1589,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     switch (eventData.data.type) {
       case CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS: {
         const {channelsMap, ...loginData} = eventData.data;
+        this.updateWellnessSession(loginData.agentSessionId);
         const stationLoginData = {
           ...loginData,
           mmProfile: {
@@ -1380,23 +1605,23 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, stationLoginData);
         break;
       }
-      case CC_EVENTS.AGENT_RELOGIN_SUCCESS:
-        {
-          const {channelsMap, ...loginData} = eventData.data;
-          const stationReLoginData = {
-            ...loginData,
-            mmProfile: {
-              chat: channelsMap.chat?.length,
-              email: channelsMap.email?.length,
-              social: channelsMap.social?.length,
-              telephony: channelsMap.telephony?.length,
-            },
-            notifsTrackingId: eventData.trackingId,
-          };
-          // @ts-ignore
-          this.emit(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, stationReLoginData);
-        }
+      case CC_EVENTS.AGENT_RELOGIN_SUCCESS: {
+        const {channelsMap, ...loginData} = eventData.data;
+        this.updateWellnessSession(loginData.agentSessionId);
+        const stationReLoginData = {
+          ...loginData,
+          mmProfile: {
+            chat: channelsMap.chat?.length,
+            email: channelsMap.email?.length,
+            social: channelsMap.social?.length,
+            telephony: channelsMap.telephony?.length,
+          },
+          notifsTrackingId: eventData.trackingId,
+        };
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, stationReLoginData);
         break;
+      }
       case CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS:
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, eventData.data);
@@ -1410,6 +1635,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_FAILED, eventData.data);
         break;
       case CC_EVENTS.AGENT_LOGOUT_SUCCESS:
+        if (
+          !eventData.data.agentSessionId ||
+          eventData.data.agentSessionId === this.currentAgentSessionId
+        ) {
+          this.updateWellnessSession();
+        }
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_LOGOUT_SUCCESS, eventData.data);
         break;
@@ -2079,6 +2310,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     try {
       const reLoginResponse = await this.services.agent.reload();
+      this.updateWellnessSession(reLoginResponse.data.agentSessionId);
+
       const {
         agentId,
         lastStateChangeReason,
