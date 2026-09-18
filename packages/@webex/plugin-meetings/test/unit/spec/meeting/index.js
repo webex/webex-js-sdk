@@ -15519,7 +15519,7 @@ describe('plugin-meetings', () => {
           assert.notCalled(mockVoiceaChannel.switchLLMChannel);
         });
 
-        it('does not clear a newer channel when an older connection attempt fails', async () => {
+        it('clears the current connection attempt without clearing a newer channel', async () => {
           const registerAndConnect = new Defer();
           const registerError = new Error('registration failed');
           const newerChannel = createMockLLMChannel();
@@ -15533,6 +15533,38 @@ describe('plugin-meetings', () => {
           };
 
           const updateLLMConnection = meeting.updateLLMConnection();
+          const currentConnectionAttempt = meeting.llmConnectionAttempt;
+
+          assert.isDefined(currentConnectionAttempt);
+          meeting.llmChannel = newerChannel;
+          registerAndConnect.reject(registerError);
+
+          try {
+            await updateLLMConnection;
+            assert.fail('Expected updateLLMConnection to reject');
+          } catch (error) {
+            assert.equal(error, registerError);
+          }
+
+          assert.isUndefined(meeting.llmConnectionAttempt);
+          assert.strictEqual(meeting.llmChannel, newerChannel);
+        });
+
+        it('does not clear a newer channel when an older connection attempt fails', async () => {
+          const registerAndConnect = new Defer();
+          const registerError = new Error('registration failed');
+          const newerChannel = createMockLLMChannel();
+          const triggerBreakouts = sinon.spy(meeting.breakouts, 'trigger');
+
+          mockChannel.registerAndConnect.returns(registerAndConnect.promise);
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          const updateLLMConnection = meeting.updateLLMConnection({isInitialJoinPhase: true});
 
           meeting.llmChannel = newerChannel;
           meeting.llmConnectionAttempt = {};
@@ -15546,6 +15578,12 @@ describe('plugin-meetings', () => {
           }
 
           assert.strictEqual(meeting.llmChannel, newerChannel);
+          assert.calledOnceWithExactly(mockChannel.disconnect, {
+            code: 3050,
+            reason: 'superseded',
+          });
+          assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+          assert.notCalled(triggerBreakouts);
         });
 
         it('starts LLM health check timer after successful connection', async () => {

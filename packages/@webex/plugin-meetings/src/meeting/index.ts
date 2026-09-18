@@ -7050,7 +7050,27 @@ export default class Meeting extends StatelessWebexPlugin {
 
         return Promise.resolve(registerAndConnectResult);
       })
-      .catch((error) => {
+      .catch(async (error) => {
+        if (this.llmConnectionAttempt !== llmConnectionAttempt || this.llmChannel !== llmChannel) {
+          try {
+            await llmChannel.disconnect({
+              code: 3050,
+              reason: 'superseded',
+            });
+          } catch (disconnectError) {
+            LoggerProxy.logger.warn(
+              'Meeting:index#updateLLMConnection --> Failed to disconnect stale LLM channel',
+              disconnectError
+            );
+          }
+
+          if (this.llmConnectionAttempt === llmConnectionAttempt) {
+            this.llmConnectionAttempt = undefined;
+          }
+
+          return Promise.reject(error);
+        }
+
         // Prefer the partial timing registerAndConnect attaches when register succeeded but the
         // websocket connect() failed, so a ws failure isn't misreported as register never completing.
         const llmLatency = {
@@ -7068,10 +7088,11 @@ export default class Meeting extends StatelessWebexPlugin {
           error,
         });
 
+        if (this.llmConnectionAttempt === llmConnectionAttempt) {
+          this.llmConnectionAttempt = undefined;
+        }
+
         if (this.llmChannel === llmChannel) {
-          if (this.llmConnectionAttempt === llmConnectionAttempt) {
-            this.llmConnectionAttempt = undefined;
-          }
           this.llmChannel = undefined;
         }
 
