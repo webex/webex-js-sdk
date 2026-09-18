@@ -19,7 +19,6 @@ describe('webex-core', () => {
       const services = new Services(undefined, {parent: webex});
 
       template = {
-        defaultHost: 'example.com',
         defaultUrl: 'https://example.com/api/v1',
         hosts: [
           {
@@ -58,6 +57,7 @@ describe('webex-core', () => {
             homeCluster: true,
           },
         ],
+        matchHost: 'example.com',
         name: 'example',
       };
       serviceUrl = new ServiceUrl({...template});
@@ -76,9 +76,9 @@ describe('webex-core', () => {
       });
     });
 
-    describe('#defaultHost', () => {
-      it('is retained for catalog lookup prefiltering', () => {
-        assert.equal(serviceUrl.defaultHost, 'example.com');
+    describe('#matchHost', () => {
+      it('retains canonical catalog lookup metadata', () => {
+        assert.equal(serviceUrl.matchHost, 'example.com');
       });
     });
 
