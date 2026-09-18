@@ -124,11 +124,12 @@ describe('parseCatalogUrl()', () => {
     assert.isNull(parseCatalogUrl('not-a-url'));
   });
 
-  it('memoizes results, returning the same reference for repeated calls', () => {
-    const first = parseCatalogUrl('https://memoized.example.com/api/v1');
-    const second = parseCatalogUrl('https://memoized.example.com/api/v1');
+  it('does not retain parsed results between calls', () => {
+    const first = parseCatalogUrl('https://example.com/api/v1');
+    const second = parseCatalogUrl('https://example.com/api/v1');
 
-    assert.strictEqual(first, second);
+    assert.deepEqual(first, second);
+    assert.notStrictEqual(first, second);
   });
 });
 

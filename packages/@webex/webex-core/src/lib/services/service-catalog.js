@@ -6,23 +6,16 @@ import {union} from 'lodash';
 import ServiceUrl from './service-url';
 import {matchAllowedDomain, normalizeAllowedDomains} from '../domains';
 
-// Catalog base URLs are a small, stable set, so their parsed origin/path is
-// memoized to avoid repeated `new URL()` work when scanning the catalog on the
-// request hot path.
-const catalogUrlCache = new Map();
-
 /**
- * Parse a catalog URL into the origin and normalized path used for matching,
- * memoizing the result. Returns null when the URL is unparsable.
+ * Parse a catalog URL into the origin and normalized path used for matching.
+ * Results are not retained because host prefiltering limits parsing to plausible
+ * matches and catalogs can introduce new URLs throughout a session.
+ * Returns null when the URL is unparsable.
  *
  * @param {string} catalogUrlString - The catalog URL to parse
  * @returns {{origin: string, path: string} | null} - Parsed catalog URL, or null
  */
 export function parseCatalogUrl(catalogUrlString) {
-  if (catalogUrlCache.has(catalogUrlString)) {
-    return catalogUrlCache.get(catalogUrlString);
-  }
-
   let parsed = null;
 
   try {
@@ -33,8 +26,6 @@ export function parseCatalogUrl(catalogUrlString) {
   } catch {
     parsed = null;
   }
-
-  catalogUrlCache.set(catalogUrlString, parsed);
 
   return parsed;
 }
