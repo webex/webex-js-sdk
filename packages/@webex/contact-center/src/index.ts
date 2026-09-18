@@ -127,10 +127,6 @@ export type {
   WellnessBreakNotificationAction,
   /** Wellness action API value */
   WellnessBreakUserAction,
-  /** AI Assistant RTD connection state */
-  AIAssistantRTDConnectionState,
-  /** AI Assistant RTD connection lifecycle event */
-  AIAssistantRTDStatusEvent,
   /** Validated agent-scoped wellness notification */
   WellnessBreakEvent,
   /** Wellness offer-response parameters */

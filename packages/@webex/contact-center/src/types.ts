@@ -950,7 +950,7 @@ export type RealTimeAssistanceUserActionParams = {
 };
 
 /**
- * Wellness notification actions delivered by the AI Assistant RTD service.
+ * Wellness notification actions delivered by the Contact Center notification service.
  * @public
  */
 export const WELLNESS_BREAK_NOTIFICATION_ACTIONS = {
@@ -975,20 +975,6 @@ export const WELLNESS_BREAK_USER_ACTIONS = {
 
 /** Union of supported wellness action API values. @public */
 export type WellnessBreakUserAction = Enum<typeof WELLNESS_BREAK_USER_ACTIONS>;
-
-/** AI Assistant RTD connection states exposed to consumers. @public */
-export type AIAssistantRTDConnectionState = 'connected' | 'disconnected';
-
-/**
- * AI Assistant RTD connection lifecycle event.
- * @public
- */
-export interface AIAssistantRTDStatusEvent {
-  /** Current connection state */
-  state: AIAssistantRTDConnectionState;
-  /** Monotonically increases for each successful RTD subscription */
-  generation: number;
-}
 
 /**
  * Validated, agent-scoped wellness notification emitted by Contact Center.

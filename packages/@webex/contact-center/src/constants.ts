@@ -76,8 +76,6 @@ export const METHODS = {
   REQUEST_WELLNESS_BREAK: 'requestWellnessBreak',
   RESPOND_TO_WELLNESS_BREAK: 'respondToWellnessBreak',
   GET_WELLBEING_BREAK_IDLE_CODE: 'getWellbeingBreakIdleCode',
-  CONNECT_RTD_WEBSOCKET: 'connectRTDWebsocket',
-  HANDLE_RTD_WEBSOCKET_MESSAGE: 'handleRTDWebsocketMessage',
   SET_MANAGE_WEBEX_CALLING_IN_WXCC: 'setManageWebexCallingInWxcc',
   IS_WX_BETTER_TOGETHER_ENABLED: 'isWxBetterTogetherEnabled',
   SYNC_WXAPP_MUTE_FROM_MERCURY: 'syncWxAppMuteFromMercury',

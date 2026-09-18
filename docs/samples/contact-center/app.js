@@ -84,7 +84,6 @@ const wellnessState = {
   enabled: false,
   agentSessionId: undefined,
   idleCode: undefined,
-  rtdState: 'disconnected',
   lifecycle: 'Unavailable',
   canRequest: false,
   pendingManualRequest: false,
@@ -214,7 +213,6 @@ const aiAssistantRawOutputPanelElm = document.querySelector('#assistant-raw-outp
 const aiAssistantRawOutputContentElm = document.querySelector('#assistant-raw-output-content');
 const wellnessEnabledStatusElm = document.querySelector('#wellness-enabled-status');
 const wellnessSessionStatusElm = document.querySelector('#wellness-session-status');
-const wellnessRtdStatusElm = document.querySelector('#wellness-rtd-status');
 const wellnessCodeStatusElm = document.querySelector('#wellness-code-status');
 const wellnessLifecycleStatusElm = document.querySelector('#wellness-lifecycle-status');
 const wellnessReadyBadgeElm = document.querySelector('#wellness-ready-badge');
@@ -3253,7 +3251,6 @@ function renderWellnessState() {
   );
   wellnessEnabledStatusElm.textContent = wellnessState.enabled ? 'Enabled' : 'Disabled';
   wellnessSessionStatusElm.textContent = wellnessState.agentSessionId || 'Not logged in';
-  wellnessRtdStatusElm.textContent = wellnessState.rtdState;
   wellnessCodeStatusElm.textContent = wellnessState.idleCode
     ? `${wellnessState.idleCode.name} (${wellnessState.idleCode.id})`
     : 'Not loaded';
@@ -3264,7 +3261,6 @@ function renderWellnessState() {
   wellnessRequestBtn.disabled =
     !ready ||
     wellnessState.lifecycle !== 'Ready' ||
-    wellnessState.rtdState !== 'connected' ||
     !wellnessState.canRequest ||
     requestPending;
   wellnessAcceptBtn.disabled = !ready || !offerPending;
@@ -3400,7 +3396,6 @@ function resetWellnessSession(options = {}) {
     wellnessState.idleCode = undefined;
     wellnessState.validIdleCodeIds = [];
     wellnessState.defaultIdleCodeId = undefined;
-    wellnessState.rtdState = 'disconnected';
   }
   setWellnessMessage('Register and log in to test this feature.');
   renderWellnessState();
@@ -3494,22 +3489,6 @@ async function initializeWellnessProfile(agentProfile) {
   void recoverWellnessBreakIfNeeded();
 }
 
-function handleWellnessRtdStatus(event) {
-  wellnessState.rtdState = event.state;
-  if (event.state === 'disconnected') {
-    if (['OfferPending', 'RequestPending'].includes(wellnessState.lifecycle)) {
-      clearWellnessOffer();
-      clearWellnessManualRequest();
-      wellnessState.lifecycle = isWellnessReady() ? 'Ready' : 'Unavailable';
-      setWellnessMessage('RTD disconnected. The pending offer or request was cleared.');
-    }
-  } else if (wellnessState.lifecycle === 'Unavailable' && isWellnessReady()) {
-    wellnessState.lifecycle = 'Ready';
-    setWellnessMessage(`RTD generation ${event.generation} connected.`);
-  }
-  renderWellnessState();
-}
-
 function startWellnessOfferTimer(sessionId) {
   if (wellnessState.offerTimer) {
     clearTimeout(wellnessState.offerTimer);
@@ -3590,7 +3569,7 @@ async function requestWellnessBreak() {
   const sessionId = wellnessState.agentSessionId;
   wellnessState.pendingManualRequest = true;
   wellnessState.lifecycle = 'RequestPending';
-  setWellnessMessage('Sending REQUESTED. Approval arrives as a separate live RTD event.');
+  setWellnessMessage('Sending REQUESTED. Approval arrives as a separate live notification.');
   renderWellnessState();
   try {
     await webex.cc.apiAIAssistant.requestWellnessBreak();
@@ -3976,12 +3955,10 @@ function handleWellnessLogout(event) {
 
 function attachWellnessSdkListeners() {
   webex.cc.off(CC_AGENT_EVENTS.WELLNESS_BREAK, handleWellnessBreak);
-  webex.cc.off(CC_AGENT_EVENTS.AI_ASSISTANT_RTD_STATUS_CHANGED, handleWellnessRtdStatus);
   webex.cc.off('agent:stationLoginSuccess', captureWellnessSession);
   webex.cc.off('agent:reloginSuccess', captureWellnessSession);
   webex.cc.off('agent:logoutSuccess', handleWellnessLogout);
   webex.cc.on(CC_AGENT_EVENTS.WELLNESS_BREAK, handleWellnessBreak);
-  webex.cc.on(CC_AGENT_EVENTS.AI_ASSISTANT_RTD_STATUS_CHANGED, handleWellnessRtdStatus);
   webex.cc.on('agent:stationLoginSuccess', captureWellnessSession);
   webex.cc.on('agent:reloginSuccess', captureWellnessSession);
   webex.cc.on('agent:logoutSuccess', handleWellnessLogout);
@@ -3989,7 +3966,6 @@ function attachWellnessSdkListeners() {
 
 function detachWellnessSdkListeners() {
   webex.cc.off(CC_AGENT_EVENTS.WELLNESS_BREAK, handleWellnessBreak);
-  webex.cc.off(CC_AGENT_EVENTS.AI_ASSISTANT_RTD_STATUS_CHANGED, handleWellnessRtdStatus);
   webex.cc.off('agent:stationLoginSuccess', captureWellnessSession);
   webex.cc.off('agent:reloginSuccess', captureWellnessSession);
   webex.cc.off('agent:logoutSuccess', handleWellnessLogout);

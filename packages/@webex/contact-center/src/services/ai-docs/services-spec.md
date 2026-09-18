@@ -55,7 +55,7 @@ The `src/services/` directory is the service layer of the `@webex/contact-center
 | **Utilities** | [`src/utils/PageCache.ts`](../../utils/PageCache.ts) | Shared `PageCache<T>` generic class for pagination caching, plus `BaseSearchParams`, `PaginatedResponse`, and `PaginationMeta` types used by all data services |
 | **WebRTC Calling** | [`WebCallingService.ts`](../WebCallingService.ts) | Browser-based voice calling via `@webex/calling`, line registration, call answer/mute/decline |
 | **WxApp Better Together** | [`WebexCrossClientService.ts`](../WebexCrossClientService.ts), [`AnswerCallOnWebexService.ts`](../AnswerCallOnWebexService.ts), [`WxAppTelephonyMercurySync.ts`](../WxAppTelephonyMercurySync.ts) | usersub cross-client publish (`answer-calls-on-wxcc`), Hydra telephony REST (answer/reject/mute/DTMF/GET call), Mercury mute sync — orchestrated from `cc.ts` when `enableWxBetterTogether` is active |
-| **AI Assistant / Wellness** | [`ApiAiAssistant.ts`](../ApiAiAssistant.ts) | Existing transcript/suggestion requests plus direct, session-validated wellness custom-event reporting; ContactCenter owns wellness RTD routing and reconnect policy. |
+| **AI Assistant / Wellness** | [`ApiAiAssistant.ts`](../ApiAiAssistant.ts) | Existing transcript/suggestion requests plus direct, session-validated wellness custom-event reporting. |
 
 Each service folder contains its own `ai-docs/` with detailed documentation. **Always load the relevant service docs before making changes.**
 
@@ -267,7 +267,6 @@ ContactCenter READY callback
 | SERVICES-R-006 | Treat Services composition as unconditionally created by the ContactCenter READY callback; Services owns no rollout or feature-flag decision. | Capability flags belong to the consuming config/task/calling collaborators, so the composition root must not silently gate construction. | `src/services/index.ts`, `src/cc.ts` | `test/unit/spec/cc.ts` | None; rollout applicability is explicitly N/A for Services. | PRESENT |
 | SERVICES-R-007 | Existing Queue and EntryPoint list methods must apply inbound, active, telephony, profile/agent-view, and `name,ASC` defaults while retaining their established parameter and full-record response types. Caller-supplied existing filter, sort, or profile inputs override defaults. Queue must also treat `sortOrder` without `sortBy` as a name sort and bypass the simple-page cache. | Defaults on the established methods let thin consumers request lists without a parallel API, while existing parameters preserve specialized behavior for other consumers and full-record types remain truthful because no field projection is requested. | `src/services/Queue.ts`, `src/services/EntryPoint.ts`, `src/types.ts` | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/cc.ts` | The backend honors the view flags and combined CMS sort value. | PRESENT |
 | SERVICES-R-008 | ApiAIAssistant wellness requests must accept no public identity or context-mutating input, read effective enablement and non-empty SDK-owned organization/agent/session context from a live internal ContactCenter-owned provider, then POST the exact `WellnessBreakAction` custom-event body directly to `/event`; only HTTP 202 resolves successfully. Public action unions derive from exported `as const` action-value objects. | SDK-owned live context prevents callers from supplying or installing stale/different login identities, one value/type source prevents wire drift, and direct HTTP matches the AI event endpoint rather than AQM completion semantics. | `src/services/ApiAiAssistant.ts`, `src/types.ts`, `src/index.ts`, `src/cc.ts` | `test/unit/spec/services/ApiAiAssistant.ts`, `test/unit/spec/cc.ts` | None. | PRESENT |
-| SERVICES-R-009 | The shared RTD WebSocket remains usable by TaskManager for non-wellness messages while ContactCenter intercepts only validated `Wellness_Break_Handler` messages and owns wellness reconnect/status policy. | Adding wellness must not duplicate the socket or regress transcript and suggestion routing. | `src/cc.ts`, `src/services/index.ts`, `src/services/task/TaskManager.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/TaskManager.ts` | RTD delivery is best-effort. | PRESENT |
 
 ## Design Overview
 `Services` is a singleton composition root for transport-facing capabilities only. It constructs two `WebSocketManager` instances (primary Contact Center and RTD), creates `AqmReqs` on the primary manager, then creates config, agent, contact, dialer, and ConnectionService collaborators.
@@ -276,7 +275,7 @@ ContactCenter owns the broader READY-time graph: WebCallingService, ApiAIAssista
 
 AQM factories return functions whose HTTP request is initiation and whose promise settles on correlated primary-WebSocket notifications. Direct config/data services return authenticated REST responses.
 
-ApiAIAssistant wellness reporting is also direct REST, but it reads live context through an internal provider owned by ContactCenter rather than exposing a context setter. It fails closed unless wellness is effectively enabled and the SDK owns a current organization, agent, and session; public action calls do not accept identity fields. The existing Services RTD manager is shared: ContactCenter handles wellness messages first and forwards all other messages to TaskManager unchanged.
+ApiAIAssistant wellness reporting is also direct REST, but it reads live context through an internal provider owned by ContactCenter rather than exposing a context setter. It fails closed unless wellness is effectively enabled and the SDK owns a current organization, agent, and session; public action calls do not accept identity fields.
 
 ## Data Flow
 ```mermaid
@@ -404,7 +403,7 @@ classDiagram
 - **UC-1 Compose services:** create the transport/factory singleton once per SDK host. Evidence: `src/services/index.ts`, `test/unit/spec/cc.ts`.
 - **UC-2 Direct REST:** configuration, data, and user-preference services return authenticated HTTP results directly. Evidence: `src/services/config/index.ts`, `src/services/UserPreference.ts`, `test/unit/spec/services/config/index.ts`, `test/unit/spec/services/UserPreference.ts`.
 - **UC-3 AQM operation:** initiate HTTP and settle only on matching WebSocket notification or timeout. Evidence: `src/services/core/aqm-reqs.ts`, `test/unit/spec/services/core/aqm-reqs.ts`.
-- **UC-4 Task/AI realtime:** ContactCenter consumes wellness RTD messages while TaskManager continues consuming non-wellness RTD streams with ApiAIAssistant/calling collaborators. Evidence: `src/cc.ts`, `src/services/task/TaskManager.ts`, `test/unit/spec/cc.ts`, `test/unit/spec/services/task/TaskManager.ts`.
+- **UC-4 Task/AI realtime:** TaskManager consumes primary and RTD streams with ApiAIAssistant/calling collaborators. Evidence: `src/services/task/TaskManager.ts`, `test/unit/spec/services/task/TaskManager.ts`.
 - **UC-5 Wellness action reporting:** validate the current profile/session context and submit a direct AI custom event that completes only on HTTP 202. Evidence: `src/services/ApiAiAssistant.ts`, `test/unit/spec/services/ApiAiAssistant.ts`.
 
 ## State Model
@@ -417,7 +416,6 @@ classDiagram
 - Authentication is inherited from the host SDK through Core/WebexRequest; Services owns no credential lifecycle.
 - Rollout applicability is N/A for the Services composition root: it is created at READY and does not evaluate a feature flag.
 - ApiAIAssistant evaluates the current effective wellness flag and identities through a live internal ContactCenter-owned provider; the public object exposes no context mutator, and the Services singleton itself remains unconditionally composed.
-- Wellness RTD interception is narrow: every non-wellness message reaches TaskManager with the original payload.
 
 ## Concurrency & Reactive Flow
 - `getInstance` composition is synchronous in the JavaScript execution turn. Direct REST promises can proceed independently, while each AQM promise remains pending until its matching primary-WebSocket notification, HTTP failure, or timeout.
@@ -456,7 +454,7 @@ stateDiagram-v2
 ```
 
 ## Protocol / Wire Format
-- Request, response, and event payload ownership is anchored in `src/services/index.ts`. HTTP initiates backend work where applicable; WebSocket messages provide realtime events and, for AQM flows, correlated completion. Wellness actions POST `CUSTOM_EVENT` / `WellnessBreakAction` bodies directly to `/event` and accept only status 202; wellness offers arrive as `Wellness_Break_Handler` RTD messages.
+- Request, response, and event payload ownership is anchored in `src/services/index.ts`. HTTP initiates backend work where applicable; WebSocket messages provide realtime events and, for AQM flows, correlated completion. Wellness actions POST `CUSTOM_EVENT` / `WellnessBreakAction` bodies directly to `/event` and accept only status 202; wellness offers arrive as primary `Wellness_Break_Handler` notifications.
 
 ## Error Handling & Failure Modes
 | Condition | Signal (error/code/result) | Caller recovery |
@@ -491,7 +489,6 @@ Unit tests mirror module paths under `test/unit/spec/services`. Preserve positiv
 | `SERVICES-R-006` | `test/unit/spec/cc.ts` | None. |
 | `SERVICES-R-007` | `test/unit/spec/services/Queue.ts`, `test/unit/spec/services/EntryPoint.ts`, `test/unit/spec/cc.ts` | None. |
 | `SERVICES-R-008` | `test/unit/spec/services/ApiAiAssistant.ts` | None. |
-| `SERVICES-R-009` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/TaskManager.ts` | None. |
 
 ## Traceability
 - Repo architecture: `../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../ai-docs/SPEC_INDEX.md`

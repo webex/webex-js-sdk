@@ -15,20 +15,17 @@ import {WEB_SOCKET_MANAGER_FILE} from '../../../constants';
  * @ignore
  */
 export class WebSocketManager extends EventEmitter {
-  private websocket?: WebSocket;
+  private websocket: WebSocket;
   shouldReconnect: boolean;
   isSocketClosed: boolean;
   private isWelcomeReceived: boolean;
-
-  private initializationGeneration = 0;
+  private url: string | null = null;
   private forceCloseWebSocketOnTimeout: boolean;
   private isConnectionLost: boolean;
   private webex: WebexSDK;
   private welcomePromiseResolve:
     | ((value: WelcomeResponse | PromiseLike<WelcomeResponse>) => void)
     | null = null;
-
-  private welcomePromiseReject: ((reason?: unknown) => void) | null = null;
 
   private keepaliveWorker: Worker;
 
@@ -37,7 +34,8 @@ export class WebSocketManager extends EventEmitter {
     const {webex} = options;
     this.webex = webex;
     this.shouldReconnect = true;
-    this.isSocketClosed = true;
+    this.websocket = {} as WebSocket;
+    this.isSocketClosed = false;
     this.isWelcomeReceived = false;
     this.forceCloseWebSocketOnTimeout = false;
     this.isConnectionLost = false;
@@ -51,74 +49,45 @@ export class WebSocketManager extends EventEmitter {
     resource: string;
   }): Promise<WelcomeResponse> {
     const {body: connectionConfig, resource} = options;
-    const initializationGeneration = this.initializationGeneration + 1;
-    this.initializationGeneration = initializationGeneration;
-    this.shouldReconnect = true;
-    this.isSocketClosed = false;
-    this.isWelcomeReceived = false;
     try {
-      const url = await this.register(connectionConfig, resource);
-
-      if (initializationGeneration !== this.initializationGeneration) {
-        throw new Error('WebSocket initialization cancelled before connect');
-      }
-
-      return new Promise((resolve, reject) => {
-        this.welcomePromiseResolve = resolve;
-        this.welcomePromiseReject = reject;
-        this.connect(url, initializationGeneration).catch((error) => {
-          if (initializationGeneration !== this.initializationGeneration) {
-            return;
-          }
-          LoggerProxy.error(`[WebSocketStatus] | Error in connecting Websocket ${error}`, {
-            module: WEB_SOCKET_MANAGER_FILE,
-            method: METHODS.INIT_WEB_SOCKET,
-          });
-          this.rejectPendingWelcome(
-            error instanceof Error ? error : new Error('WebSocket connection failed')
-          );
-        });
-      });
+      await this.register(connectionConfig, resource);
     } catch (error) {
-      if (initializationGeneration === this.initializationGeneration) {
-        this.isSocketClosed = true;
-      }
       LoggerProxy.error(`[WebSocketStatus] | Error in registering Websocket ${error}`, {
         module: WEB_SOCKET_MANAGER_FILE,
         method: METHODS.INIT_WEB_SOCKET,
       });
       throw error;
     }
+
+    return new Promise((resolve, reject) => {
+      this.welcomePromiseResolve = resolve;
+      this.connect().catch((error) => {
+        LoggerProxy.error(`[WebSocketStatus] | Error in connecting Websocket ${error}`, {
+          module: WEB_SOCKET_MANAGER_FILE,
+          method: METHODS.INIT_WEB_SOCKET,
+        });
+        reject(error);
+      });
+    });
   }
 
   close(shouldReconnect: boolean, reason = 'Unknown') {
-    this.shouldReconnect = shouldReconnect;
-    if (!this.isSocketClosed && this.websocket) {
+    if (!this.isSocketClosed && this.shouldReconnect) {
+      this.shouldReconnect = shouldReconnect;
       this.websocket.close();
-    } else if (!this.websocket) {
-      this.initializationGeneration += 1;
+      this.keepaliveWorker.postMessage({type: 'terminate'});
+      LoggerProxy.log(
+        `[WebSocketStatus] | event=webSocketClose | WebSocket connection closed manually REASON: ${reason}`,
+        {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CLOSE}
+      );
     }
-    this.isSocketClosed = true;
-    this.keepaliveWorker.postMessage({type: 'terminate'});
-    this.rejectPendingWelcome(new Error(`WebSocket closed before Welcome: ${reason}`));
-    LoggerProxy.log(
-      `[WebSocketStatus] | event=webSocketClose | WebSocket connection closed manually REASON: ${reason}`,
-      {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CLOSE}
-    );
-  }
-
-  private rejectPendingWelcome(error: Error): void {
-    const reject = this.welcomePromiseReject;
-    this.welcomePromiseResolve = null;
-    this.welcomePromiseReject = null;
-    reject?.(error);
   }
 
   handleConnectionLost(event: ConnectionLostDetails) {
     this.isConnectionLost = event.isConnectionLost;
   }
 
-  private async register(connectionConfig: SubscribeRequest, resource: string): Promise<string> {
+  private async register(connectionConfig: SubscribeRequest, resource: string) {
     try {
       // X-ORGANIZATION-ID header is only required for INT environments
       const isIntEnv = this.webex.internal?.services?.isIntegrationEnvironment() || false;
@@ -138,8 +107,7 @@ export class WebSocketManager extends EventEmitter {
         body: connectionConfig,
         headers: isIntEnv && orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,
       });
-
-      return subscribeResponse.body.webSocketUrl;
+      this.url = subscribeResponse.body.webSocketUrl;
     } catch (e) {
       LoggerProxy.error(
         `Register API Failed, Request to RoutingNotifs websocket registration API failed ${e}`,
@@ -149,32 +117,25 @@ export class WebSocketManager extends EventEmitter {
     }
   }
 
-  private async connect(url: string, initializationGeneration: number) {
+  private async connect() {
+    if (!this.url) {
+      return undefined;
+    }
     LoggerProxy.log(
-      `[WebSocketStatus] | event=webSocketConnecting | Connecting to WebSocket: ${url}`,
+      `[WebSocketStatus] | event=webSocketConnecting | Connecting to WebSocket: ${this.url}`,
       {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
     );
-    const websocket = new WebSocket(url);
-    this.websocket = websocket;
-
-    const isCurrentSocket = () =>
-      this.websocket === websocket && this.initializationGeneration === initializationGeneration;
+    this.websocket = new WebSocket(this.url);
 
     return new Promise((resolve, reject) => {
-      websocket.onopen = () => {
-        if (!isCurrentSocket()) {
-          return;
-        }
+      this.websocket.onopen = () => {
         this.isSocketClosed = false;
         this.shouldReconnect = true;
 
-        websocket.send(JSON.stringify({keepalive: 'true'}));
+        this.websocket.send(JSON.stringify({keepalive: 'true'}));
         this.keepaliveWorker.onmessage = (keepAliveEvent: {data: any}) => {
-          if (!isCurrentSocket()) {
-            return;
-          }
           if (keepAliveEvent?.data?.type === 'keepalive') {
-            websocket.send(JSON.stringify({keepalive: 'true'}));
+            this.websocket.send(JSON.stringify({keepalive: 'true'}));
           }
 
           if (keepAliveEvent?.data?.type === 'closeSocket' && this.isConnectionLost) {
@@ -195,10 +156,7 @@ export class WebSocketManager extends EventEmitter {
         });
       };
 
-      websocket.onerror = (event: any) => {
-        if (!isCurrentSocket()) {
-          return;
-        }
+      this.websocket.onerror = (event: any) => {
         LoggerProxy.error(
           `[WebSocketStatus] | event=socketConnectionFailed | WebSocket connection failed ${event}`,
           {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
@@ -206,24 +164,19 @@ export class WebSocketManager extends EventEmitter {
         reject();
       };
 
-      websocket.onclose = async (event: any) => {
-        this.webSocketOnCloseHandler(event, websocket, initializationGeneration);
+      this.websocket.onclose = async (event: any) => {
+        this.webSocketOnCloseHandler(event);
       };
 
-      websocket.onmessage = (e: MessageEvent) => {
-        if (!isCurrentSocket()) {
-          return;
-        }
+      this.websocket.onmessage = (e: MessageEvent) => {
         this.emit('message', e.data);
         const eventData = JSON.parse(e.data);
 
         if (eventData.type === CC_EVENTS.WELCOME) {
           this.isWelcomeReceived = true;
           if (this.welcomePromiseResolve) {
-            const welcomeResolve = this.welcomePromiseResolve;
+            this.welcomePromiseResolve(eventData.data as WelcomeResponse);
             this.welcomePromiseResolve = null;
-            this.welcomePromiseReject = null;
-            welcomeResolve(eventData.data as WelcomeResponse);
           }
         }
 
@@ -239,23 +192,9 @@ export class WebSocketManager extends EventEmitter {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private async webSocketOnCloseHandler(
-    event: any,
-    websocket: WebSocket,
-    initializationGeneration: number
-  ) {
-    if (
-      this.websocket !== websocket ||
-      this.initializationGeneration !== initializationGeneration
-    ) {
-      return;
-    }
-
-    this.initializationGeneration += 1;
-    this.websocket = undefined;
+  private async webSocketOnCloseHandler(event: any) {
     this.isSocketClosed = true;
     this.keepaliveWorker.postMessage({type: 'terminate'});
-    this.rejectPendingWelcome(new Error('WebSocket closed before Welcome'));
     if (this.shouldReconnect) {
       this.emit('socketClose');
       let issueReason;

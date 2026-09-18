@@ -261,8 +261,7 @@ All event names are defined in `METRIC_EVENT_NAMES` (`constants.ts`). Events fol
 | `QUEUE_FETCH_SUCCESS` / `FAILED` | `'Queue Fetch ...'` | Queue fetch result |
 | `OUTDIAL_ANI_EP_FETCH_SUCCESS` / `FAILED` | `'Outdial ANI Entries Fetch ...'` | Outdial ANI entries fetch result |
 | `AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED` / `FAILED` | `'AI Assistant Wellness Action ...'` | Direct wellness custom-event result |
-| `AI_ASSISTANT_RTD_CONNECTED` / `DISCONNECTED` | `'AI Assistant RTD ...'` | Wellness-capable RTD connection state |
-| `AI_ASSISTANT_RTD_EVENT_INVALID` | `'AI Assistant RTD Event Invalid'` | Malformed, mismatched, stale, or superseded RTD event ignored |
+| `AI_ASSISTANT_WELLNESS_EVENT_INVALID` | `'AI Assistant Wellness Event Invalid'` | Malformed or mismatched wellness notification ignored |
 | `WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS` / `FAILED` | `'Wellbeing Break Idle Code Fetch ...'` | System wellness idle-code lookup result |
 
 All event names are defined in `constants.ts` as `METRIC_EVENT_NAMES`. Events follow a `{Domain} {Action} {Success|Failed}` naming convention:
@@ -447,9 +446,7 @@ This table contains all 116 names from `src/metrics/constants.ts`; taxonomy pres
 | `AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED` | `AI Assistant Fetch Historic Transcripts Failed` | no |
 | `AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED` | `AI Assistant Wellness Action Accepted` | no |
 | `AI_ASSISTANT_WELLNESS_ACTION_FAILED` | `AI Assistant Wellness Action Failed` | no |
-| `AI_ASSISTANT_RTD_CONNECTED` | `AI Assistant RTD Connected` | no |
-| `AI_ASSISTANT_RTD_DISCONNECTED` | `AI Assistant RTD Disconnected` | no |
-| `AI_ASSISTANT_RTD_EVENT_INVALID` | `AI Assistant RTD Event Invalid` | no |
+| `AI_ASSISTANT_WELLNESS_EVENT_INVALID` | `AI Assistant Wellness Event Invalid` | no |
 | `WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS` | `Wellbeing Break Idle Code Fetch Success` | no |
 | `WELLBEING_BREAK_IDLE_CODE_FETCH_FAILED` | `Wellbeing Break Idle Code Fetch Failed` | no |
 | `USER_PREFERENCE_GET_SUCCESS` | `User Preference Get Success` | yes |
@@ -461,7 +458,7 @@ This table contains all 116 names from `src/metrics/constants.ts`; taxonomy pres
 | `USER_PREFERENCE_DELETE_SUCCESS` | `User Preference Delete Success` | yes |
 | `USER_PREFERENCE_DELETE_FAILED` | `User Preference Delete Failed` | yes |
 
-Defined names without an `eventTaxonomyMap` entry: `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, `WEBSOCKET_EVENT_RECEIVED`, all eight AI Assistant request names, and the nine Agent Wellness Break/RTD/system-code/ASC names listed above.
+Defined names without an `eventTaxonomyMap` entry: `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, `WEBSOCKET_EVENT_RECEIVED`, all eight AI Assistant request names, and the seven Agent Wellness Break notification/action/system-code/ASC names listed above.
 
 ## Requires (dependencies)
 - `webex.internal.newMetrics` submission APIs
@@ -484,7 +481,7 @@ Defined names without an `eventTaxonomyMap` entry: `WEBSOCKET_DEREGISTER_SUCCESS
 | METRICS-R-003 | When metrics are disabled, clear pending events and make `timeEvent` plus all tracking methods return without recording/submitting. | Telemetry must never block or alter product behavior and disablement must be comprehensive. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | METRICS-R-004 | Queue submissions until the host SDK is ready and flush through the correct behavioral/operational/business service. | Early lifecycle telemetry must not be lost solely because the host is not ready. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | METRICS-R-005 | Submit through the host SDK's `webex.internal.newMetrics` client without storing credentials or implementing authorization policy in MetricsManager. | Host-owned authentication keeps telemetry credential handling outside the Contact Center metrics module. | `src/metrics/MetricsManager.ts` | `test/unit/spec/metrics/MetricsManager.ts` | None; authentication is inherited and credential ownership is explicitly N/A. | PRESENT |
-| METRICS-R-006 | Track wellness action, RTD state/invalid input, system-code lookup, and ASC state-change outcomes as operational metrics using fixed names and reason-only/context-minimized payloads. | The feature needs diagnosable lifecycle signals without logging wellness payloads or agent PII. | `src/metrics/constants.ts`, `src/cc.ts`, `src/services/ApiAiAssistant.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/ApiAiAssistant.ts` | These names intentionally have no behavioral taxonomy. | PRESENT |
+| METRICS-R-006 | Track wellness action, invalid notification, system-code lookup, and ASC state-change outcomes as operational metrics using fixed names and reason-only/context-minimized payloads. | The feature needs diagnosable lifecycle signals without logging wellness payloads or agent PII. | `src/metrics/constants.ts`, `src/cc.ts`, `src/services/ApiAiAssistant.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/ApiAiAssistant.ts` | These names intentionally have no behavioral taxonomy. | PRESENT |
 
 ## Design Overview
 Metrics separates its stable consumption boundary from collaborators so ownership and failure behavior stay explicit. Telemetry is deliberately non-blocking and queue-backed so product behavior never waits for metrics; failures are logged rather than propagated.

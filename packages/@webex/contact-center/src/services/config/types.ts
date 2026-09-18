@@ -189,10 +189,8 @@ export const CC_AGENT_EVENTS = {
   AGENT_BUDDY_AGENTS_RETRIEVE_FAILED: 'BuddyAgentsRetrieveFailed',
   /** Event emitted when contact is reserved for agent */
   AGENT_CONTACT_RESERVED: 'AgentContactReserved',
-  /** Agent-level Agent Wellness Break notification emitted by AI Assistant RTD */
+  /** Agent-level Agent Wellness Break notification */
   WELLNESS_BREAK: 'WellnessBreak',
-  /** AI Assistant RTD transport connection state changed */
-  AI_ASSISTANT_RTD_STATUS_CHANGED: 'AIAssistantRTDStatusChanged',
 } as const;
 
 /**
@@ -1253,7 +1251,7 @@ export type Profile = {
   /**
    * Whether Agent Wellness Break is effectively enabled for this profile.
    * This combines the organization wellbeing configuration with AI Assistant licensing;
-   * server-side rollout remains enforced by the backend configuration and RTD delivery path.
+   * Server-side rollout remains enforced by the backend configuration and notification delivery.
    */
   isWellnessBreakEnabled?: boolean;
 };

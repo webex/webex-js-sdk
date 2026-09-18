@@ -140,7 +140,7 @@ export class ApiAIAssistant {
   /**
    * Requests an Agent Wellness Break.
    * The promise resolves when the HTTP request is accepted with status 202; the later
-   * approval or denial is delivered independently through the wellness RTD event.
+   * approval or denial is delivered independently through a wellness notification.
    * @returns A promise that resolves with no value after HTTP acceptance
    * @throws Structured Contact Center error when disabled, stale, invalid, or delivery fails
    * @example

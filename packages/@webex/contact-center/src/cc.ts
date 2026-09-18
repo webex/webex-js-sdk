@@ -29,7 +29,6 @@ import {
   WellnessBreakEvent,
   WellnessBreakNotificationAction,
   WELLNESS_BREAK_NOTIFICATION_ACTIONS,
-  AIAssistantRTDStatusEvent,
 } from './types';
 import {
   READY,
@@ -60,7 +59,6 @@ import {
   Entity,
 } from './services/config/types';
 import {ConnectionLostDetails} from './services/core/websocket/types';
-import {CONNECTIVITY_CHECK_INTERVAL} from './services/core/constants';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
 import AnswerCallOnWebexService from './services/AnswerCallOnWebexService';
@@ -312,18 +310,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /** Registration generation that owns the wellness idle-code cache and in-flight lookups. */
   private wellnessRegistrationGeneration = 0;
 
-  /** Successful AI Assistant RTD subscription generation. */
-  private rtdGeneration = 0;
-
-  /** Generation currently allowed to emit realtime notifications. */
-  private activeRtdGeneration?: number;
-
-  private shouldReconnectRtd = false;
-  private rtdReconnectTimer?: ReturnType<typeof setTimeout>;
-  private rtdConnectPromise?: Promise<void>;
-  private activeRtdMessageHandler?: (event: string) => void;
-  private rtdConnectionState?: AIAssistantRTDStatusEvent['state'];
-
   private updateWellnessSession(agentSessionId?: string): void {
     this.currentAgentSessionId = agentSessionId;
   }
@@ -548,29 +534,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.trigger(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, task);
   };
 
-  private emitRTDStatus(state: AIAssistantRTDStatusEvent['state']): void {
-    if (this.rtdConnectionState === state) {
-      return;
-    }
-
-    this.rtdConnectionState = state;
-    const statusEvent: AIAssistantRTDStatusEvent = {
-      state,
-      generation: this.rtdGeneration,
-    };
-    // @ts-ignore - WebexPlugin emit is available at runtime but absent from its declaration.
-    this.emit(CC_EVENTS.AI_ASSISTANT_RTD_STATUS_CHANGED, statusEvent);
-  }
-
-  private trackInvalidRTDEvent(reason: string): void {
-    this.metricsManager.trackEvent(METRIC_EVENT_NAMES.AI_ASSISTANT_RTD_EVENT_INVALID, {reason}, [
-      'operational',
-    ]);
+  private trackInvalidWellnessEvent(reason: string): void {
+    this.metricsManager.trackEvent(
+      METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_EVENT_INVALID,
+      {reason},
+      ['operational']
+    );
   }
 
   private normalizeWellnessBreakEvent(payload: Record<string, unknown>): WellnessBreakEvent | null {
     if (this.agentConfig?.isWellnessBreakEnabled !== true) {
-      this.trackInvalidRTDEvent('wellness_disabled');
+      this.trackInvalidWellnessEvent('wellness_disabled');
 
       return null;
     }
@@ -589,7 +563,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       notificationData?.notifType !== WELLNESS_BREAK_HANDLER ||
       typeof actionEvent !== 'string'
     ) {
-      this.trackInvalidRTDEvent('malformed_wellness_event');
+      this.trackInvalidWellnessEvent('malformed_wellness_event');
 
       return null;
     }
@@ -599,7 +573,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         actionEvent as WellnessBreakNotificationAction
       )
     ) {
-      this.trackInvalidRTDEvent('unknown_wellness_action');
+      this.trackInvalidWellnessEvent('unknown_wellness_action');
 
       return null;
     }
@@ -623,7 +597,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       !envelopeOrgId ||
       !agentSessionId
     ) {
-      this.trackInvalidRTDEvent('missing_wellness_identity');
+      this.trackInvalidWellnessEvent('missing_wellness_identity');
 
       return null;
     }
@@ -634,7 +608,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       sessionOrgId !== currentOrgId ||
       envelopeOrgId !== currentOrgId
     ) {
-      this.trackInvalidRTDEvent('mismatched_wellness_identity');
+      this.trackInvalidWellnessEvent('mismatched_wellness_identity');
 
       return null;
     }
@@ -668,132 +642,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     return true;
   }
 
-  private handleRTDWebsocketMessage(event: string, generation: number): void {
-    if (generation !== this.activeRtdGeneration) {
-      this.trackInvalidRTDEvent('superseded_rtd_generation');
-
-      return;
-    }
-
-    try {
-      const payload: unknown = JSON.parse(event);
-      if (!isRecord(payload)) {
-        this.trackInvalidRTDEvent('malformed_rtd_event');
-
-        return;
-      }
-
-      if (this.handleWellnessBreakWebsocketPayload(payload)) {
-        return;
-      }
-
-      this.taskManager.handleRealtimeWebsocketEvent(event);
-    } catch (error) {
-      LoggerProxy.error('Failed to parse RTD WebSocket message', {
-        module: CC_FILE,
-        method: METHODS.HANDLE_RTD_WEBSOCKET_MESSAGE,
-        error,
-      });
-      this.trackInvalidRTDEvent('malformed_rtd_json');
-    }
-  }
-
-  private scheduleRTDReconnect(): void {
-    if (!this.shouldReconnectRtd || this.rtdReconnectTimer) {
-      return;
-    }
-
-    this.rtdReconnectTimer = setTimeout(() => {
-      this.rtdReconnectTimer = undefined;
-      this.connectRTDWebsocket().catch(() => undefined);
-    }, CONNECTIVITY_CHECK_INTERVAL);
-  }
-
-  private handleRTDSocketClose = (): void => {
-    this.activeRtdGeneration = undefined;
-    this.rtdConnectPromise = undefined;
-    if (this.activeRtdMessageHandler) {
-      this.services.rtdWebSocketManager.off('message', this.activeRtdMessageHandler);
-      this.activeRtdMessageHandler = undefined;
-    }
-
-    this.emitRTDStatus('disconnected');
-    this.metricsManager.trackEvent(
-      METRIC_EVENT_NAMES.AI_ASSISTANT_RTD_DISCONNECTED,
-      {generation: this.rtdGeneration},
-      ['operational']
-    );
-    this.scheduleRTDReconnect();
+  private handleRTDWebsocketMessage = (event: string) => {
+    this.taskManager.handleRealtimeWebsocketEvent(event);
   };
-
-  private connectRTDWebsocket(): Promise<void> {
-    if (!this.shouldReconnectRtd) {
-      return Promise.resolve();
-    }
-    if (this.rtdConnectPromise) {
-      return this.rtdConnectPromise;
-    }
-
-    let connectPromise: Promise<void>;
-    const connect = async (): Promise<void> => {
-      try {
-        await this.services.rtdWebSocketManager.initWebSocket({
-          body: this.getConnectionConfig(),
-          resource: RTD_SUBSCRIBE_API,
-        });
-
-        if (!this.shouldReconnectRtd) {
-          this.services.rtdWebSocketManager.close(false, 'RTD connection no longer required');
-
-          return;
-        }
-
-        this.rtdGeneration += 1;
-        const generation = this.rtdGeneration;
-        this.activeRtdGeneration = generation;
-        if (this.activeRtdMessageHandler) {
-          this.services.rtdWebSocketManager.off('message', this.activeRtdMessageHandler);
-        }
-        this.activeRtdMessageHandler = (event: string) =>
-          this.handleRTDWebsocketMessage(event, generation);
-        this.services.rtdWebSocketManager.on('message', this.activeRtdMessageHandler);
-
-        LoggerProxy.log('RTD websocket connected successfully', {
-          module: CC_FILE,
-          method: METHODS.CONNECT_RTD_WEBSOCKET,
-        });
-        this.emitRTDStatus('connected');
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.AI_ASSISTANT_RTD_CONNECTED,
-          {generation},
-          ['operational']
-        );
-      } catch (error) {
-        this.activeRtdGeneration = undefined;
-        this.emitRTDStatus('disconnected');
-        LoggerProxy.error('Error connecting to RTD websocket', {
-          module: CC_FILE,
-          method: METHODS.CONNECT_RTD_WEBSOCKET,
-          error,
-        });
-        this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.AI_ASSISTANT_RTD_DISCONNECTED,
-          {generation: this.rtdGeneration, reason: 'connection_failed'},
-          ['operational']
-        );
-        this.scheduleRTDReconnect();
-      } finally {
-        if (this.rtdConnectPromise === connectPromise) {
-          this.rtdConnectPromise = undefined;
-        }
-      }
-    };
-
-    connectPromise = connect();
-    this.rtdConnectPromise = connectPromise;
-
-    return this.rtdConnectPromise;
-  }
 
   /**
    * Sets up event listeners for incoming tasks and task hydration
@@ -950,17 +801,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.taskManager.unregisterIncomingCallEvent();
 
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
-      this.shouldReconnectRtd = false;
-      this.activeRtdGeneration = undefined;
-      if (this.rtdReconnectTimer) {
-        clearTimeout(this.rtdReconnectTimer);
-        this.rtdReconnectTimer = undefined;
-      }
-      if (this.activeRtdMessageHandler) {
-        this.services.rtdWebSocketManager.off('message', this.activeRtdMessageHandler);
-        this.activeRtdMessageHandler = undefined;
-      }
-      this.services.rtdWebSocketManager.off('socketClose', this.handleRTDSocketClose);
+      this.services.rtdWebSocketManager.off('message', this.handleRTDWebsocketMessage);
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
 
       const {publishError: wxAppPublishError} = await this.teardownWxAppLocalState({
@@ -991,9 +832,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.services.rtdWebSocketManager.close(false, 'Unregistering the SDK');
       }
 
+      if (this.services.rtdWebSocketManager && !this.services.rtdWebSocketManager.isSocketClosed) {
+        this.services.rtdWebSocketManager.close(false, 'Unregistering the RTD websocket');
+      }
+
       // Clear any cached agent configuration
       this.wellbeingBreakIdleCode = undefined;
-      this.rtdConnectionState = undefined;
       this.agentConfig = null;
       this.updateWellnessSession();
 
@@ -1169,22 +1013,36 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.updateWellnessSession();
 
       /**
-       * RTD websocket supports task-scoped AI features and agent-scoped wellness events.
+       * RTD websocket currently supports realtime transcripts and suggested responses.
+       * Extend this condition when additional AI RTD features are introduced.
        */
-      const needsRealtimeData =
+      if (
         this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||
-        this.agentConfig.aiFeature?.suggestedResponses?.enable ||
-        this.agentConfig.isWellnessBreakEnabled;
-      this.shouldReconnectRtd = needsRealtimeData === true;
-
-      if (needsRealtimeData) {
+        this.agentConfig.aiFeature?.suggestedResponses?.enable
+      ) {
         LoggerProxy.info('Connecting to RTD websocket', {
           module: CC_FILE,
           method: METHODS.CONNECT_WEBSOCKET,
         });
-        this.services.rtdWebSocketManager.off('socketClose', this.handleRTDSocketClose);
-        this.services.rtdWebSocketManager.on('socketClose', this.handleRTDSocketClose);
-        this.connectRTDWebsocket().catch(() => undefined);
+
+        this.services.rtdWebSocketManager
+          .initWebSocket({
+            body: this.getConnectionConfig(),
+            resource: RTD_SUBSCRIBE_API,
+          })
+          .then(() => {
+            LoggerProxy.log('RTD websocket connected successfully', {
+              module: CC_FILE,
+              method: METHODS.CONNECT_WEBSOCKET,
+            });
+            this.services.rtdWebSocketManager.on('message', this.handleRTDWebsocketMessage);
+          })
+          .catch((error) => {
+            LoggerProxy.error(`Error connecting to RTD websocket ${error}`, {
+              module: CC_FILE,
+              method: METHODS.CONNECT_WEBSOCKET,
+            });
+          });
       }
 
       if (
@@ -1225,26 +1083,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return this.agentConfig;
     } catch (error) {
-      const shouldCloseRTD =
-        this.shouldReconnectRtd ||
-        Boolean(this.rtdConnectPromise) ||
-        Boolean(this.rtdReconnectTimer) ||
-        Boolean(this.activeRtdMessageHandler);
-      this.shouldReconnectRtd = false;
-      this.activeRtdGeneration = undefined;
-      this.rtdConnectPromise = undefined;
-      if (this.rtdReconnectTimer) {
-        clearTimeout(this.rtdReconnectTimer);
-        this.rtdReconnectTimer = undefined;
-      }
-      if (this.activeRtdMessageHandler) {
-        this.services.rtdWebSocketManager.off('message', this.activeRtdMessageHandler);
-        this.activeRtdMessageHandler = undefined;
-      }
-      this.services.rtdWebSocketManager.off('socketClose', this.handleRTDSocketClose);
-      if (shouldCloseRTD && !this.services.rtdWebSocketManager.isSocketClosed) {
-        this.services.rtdWebSocketManager.close(false, 'Contact Center registration failed');
-      }
+      this.updateWellnessSession();
       LoggerProxy.error(`Error during register: ${error}`, {
         module: CC_FILE,
         method: METHODS.CONNECT_WEBSOCKET,
