@@ -16,6 +16,7 @@ const DEFAULT_SEED = 5230;
 const DEFAULT_TARGET_SAMPLE_MS = 100;
 const URLS_PER_SERVICE = 2;
 const SERVICES_PER_GATEWAY = 50;
+const TRACE_OPERATIONS_PER_CATEGORY = 100;
 const DEFAULT_SDK_ROOT = path.resolve(__dirname, '../../../..');
 const SCENARIOS = [
   'name-hit',
@@ -280,31 +281,28 @@ function assertLookupResult(result, descriptor, matchedBaseUrl) {
 
 function createTraceOperations(descriptors, varied, seed) {
   const operations = [];
-  const indexes = [
-    descriptors.length - 1,
-    Math.floor(descriptors.length / 2),
-    Math.floor(descriptors.length * 0.075),
-    Math.floor(descriptors.length * 0.225),
+  const lastIndex = descriptors.length - 1;
+  const middleIndex = Math.floor(descriptors.length / 2);
+  const lookupGroups = [
+    {descriptor: descriptors[0], baseUrl: descriptors[0].direct},
+    {descriptor: descriptors[middleIndex], baseUrl: descriptors[middleIndex].direct},
+    {descriptor: descriptors[lastIndex], baseUrl: descriptors[lastIndex].direct},
+    {descriptor: descriptors[lastIndex], baseUrl: descriptors[lastIndex].gateway},
   ];
 
-  for (let index = 0; index < 62; index += 1) {
-    operations.push({kind: 'wait', descriptor: descriptors[indexes[0]]});
+  for (let index = 0; index < TRACE_OPERATIONS_PER_CATEGORY; index += 1) {
+    operations.push({kind: 'wait', descriptor: descriptors[lastIndex]});
   }
 
-  for (let group = 0; group < 3; group += 1) {
-    for (let index = 0; index < 147; index += 1) {
+  lookupGroups.forEach(({descriptor, baseUrl}, group) => {
+    for (let index = 0; index < TRACE_OPERATIONS_PER_CATEGORY; index += 1) {
       operations.push({
         kind: 'lookup',
-        descriptor: descriptors[indexes[group]],
+        descriptor,
+        baseUrl,
         suffix: varied ? `/resource-${group}-${index}?request=${index}` : '/resource',
       });
     }
-  }
-
-  operations.push({
-    kind: 'lookup',
-    descriptor: descriptors[indexes[3]],
-    suffix: varied ? '/resource-final?request=final' : '/resource',
   });
 
   return shuffle(operations, seed);
@@ -407,11 +405,7 @@ function makeScenario(name, fixture, seed) {
               assert.equal(expectedUrl, operation.descriptor.direct);
               checksum += 1;
             } else {
-              checksum += runLookup(
-                operation.descriptor,
-                operation.descriptor.direct,
-                operation.suffix
-              );
+              checksum += runLookup(operation.descriptor, operation.baseUrl, operation.suffix);
             }
           }
 

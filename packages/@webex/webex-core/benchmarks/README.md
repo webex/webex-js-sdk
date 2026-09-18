@@ -15,13 +15,21 @@ From the repository root:
 yarn workspace @webex/webex-core benchmark:service-url-lookups
 ```
 
-The default command benchmarks legacy and V2 lookups using a representative repeated trace. It
-reports diagnostics, warmed timings, and cold-cache timings collected in fresh Node.js processes.
+The default command benchmarks legacy and V2 lookups using a balanced 500-operation trace:
+
+- 100 service-name hits;
+- 100 early direct-URL matches;
+- 100 middle direct-URL matches;
+- 100 late direct-URL matches;
+- 100 late shared-gateway matches.
+
+It reports diagnostics, warmed timings, and cold-cache timings collected in fresh Node.js
+processes. This synthetic mix is intentionally independent of any particular application flow.
 
 Useful focused runs:
 
 ```sh
-# Machine-readable results for the representative trace
+# Machine-readable results for the balanced trace
 yarn workspace @webex/webex-core benchmark:service-url-lookups --json
 
 # A shared gateway host whose matching service is late in the catalog
