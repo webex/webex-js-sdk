@@ -4,7 +4,8 @@
 
 import {assert} from '@webex/test-helper-chai';
 import {capitalize} from 'lodash';
-import WebexCore from '@webex/webex-core';
+import sinon from 'sinon';
+import WebexCore, {PayloadTransformerInterceptor} from '@webex/webex-core';
 // TODO:  fix circular dependency core->metrics->core https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-515520
 require('@webex/internal-plugin-metrics');
 
@@ -151,6 +152,67 @@ describe('webex-core', () => {
                 },
               })
             ));
+      });
+
+      describe('disableTransform', () => {
+        const createInterceptor = () => {
+          const transform = sinon.stub().callsFake((direction, value) => Promise.resolve(value));
+          const interceptor = new PayloadTransformerInterceptor({
+            webex: {transform},
+          });
+
+          return {interceptor, transform};
+        };
+
+        describe('#onResponse()', () => {
+          it('returns successful responses without transforming when disabled', async () => {
+            const {interceptor, transform} = createInterceptor();
+            const response = {};
+
+            assert.equal(
+              await interceptor.onResponse({disableTransform: true}, response),
+              response
+            );
+            assert.notCalled(transform);
+          });
+
+          it('transforms successful responses by default', async () => {
+            const {interceptor, transform} = createInterceptor();
+            const response = {};
+
+            assert.equal(await interceptor.onResponse({}, response), response);
+            assert.calledOnceWithExactly(transform, 'inbound', response);
+          });
+        });
+
+        describe('#onResponseError()', () => {
+          it('rejects errors without transforming when disabled', async () => {
+            const {interceptor, transform} = createInterceptor();
+            const reason = new Error('request failed');
+
+            assert.equal(
+              await assert.isRejected(
+                interceptor.onResponseError({disableTransform: true}, reason)
+              ),
+              reason
+            );
+            assert.notCalled(transform);
+          });
+
+          it('transforms errors before rejecting by default', async () => {
+            const {interceptor, transform} = createInterceptor();
+            const reason = new Error('request failed');
+            const transformedReason = new Error('transformed request failed');
+
+            transform.resolves(transformedReason);
+
+            assert.equal(
+              await assert.isRejected(interceptor.onResponseError({}, reason)),
+              transformedReason
+            );
+            assert.calledOnceWithExactly(transform, 'inbound', reason);
+          });
+        });
       });
     });
   });
