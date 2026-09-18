@@ -793,6 +793,8 @@ const Services = WebexPlugin.extend({
       return Promise.resolve(this._serviceUrls[name]);
     }
 
+    // Service-name matches already take precedence over URL matches, so avoid a catalog scan
+    // whose result would be discarded.
     const priorityUrl = this.get(name, true);
 
     if (priorityUrl) {
@@ -825,6 +827,8 @@ const Services = WebexPlugin.extend({
         catalog
           .waitForCatalog(catalogGroup, timeout)
           .then(() => {
+            // Preserve name-first resolution after each catalog becomes ready before falling back
+            // to the more expensive URL lookup.
             const scopedPriorityUrl = this.get(name, true);
 
             if (scopedPriorityUrl) {

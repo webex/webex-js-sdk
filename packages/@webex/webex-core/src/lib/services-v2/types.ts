@@ -51,6 +51,7 @@ export interface IServiceDetail {
   get(): string;
 }
 
+// Carries the exact matching URL out of the catalog scan so consumers do not scan it again.
 export type ServiceMatch = {
   serviceDetail: IServiceDetail;
   serviceUrl: ServiceUrl;

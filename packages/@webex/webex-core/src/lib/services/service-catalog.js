@@ -339,7 +339,7 @@ const ServiceCatalog = AmpState.extend({
       ...this.serviceGroups.override,
     ];
 
-    // Invalid URLs cannot match any service
+    // Parse the candidate once so invalid URLs fail before scanning thousands of catalog entries.
     let candidateUrl;
 
     try {
@@ -349,6 +349,8 @@ const ServiceCatalog = AmpState.extend({
     }
 
     return serviceUrls.find((serviceUrl) => {
+      // Host metadata is a cheap rejection check. Missing metadata falls through to the full
+      // origin and path-boundary comparison for compatibility with older catalog entries.
       // Check if the URL matches the default URL with proper origin validation
       if (
         (!serviceUrl.defaultHost || serviceUrl.defaultHost === candidateUrl.host) &&
@@ -359,6 +361,7 @@ const ServiceCatalog = AmpState.extend({
 
       // Check alternate URLs (built by swapping host with alternate hosts)
       for (const host of serviceUrl.hosts) {
+        // Avoid constructing an alternate URL when its known host cannot match the candidate.
         if (!host.host || host.host === candidateUrl.host) {
           const alternateUrl = new URL(serviceUrl.defaultUrl);
           alternateUrl.host = host.host;
@@ -502,6 +505,7 @@ const ServiceCatalog = AmpState.extend({
       const service = this._getUrl(serviceObj.name, serviceGroup);
 
       if (service) {
+        // Keep the host prefilter metadata synchronized when an existing catalog entry changes.
         service.defaultHost = serviceObj.defaultHost;
         service.defaultUrl = serviceObj.defaultUrl;
         service.hosts = serviceObj.hosts || [];

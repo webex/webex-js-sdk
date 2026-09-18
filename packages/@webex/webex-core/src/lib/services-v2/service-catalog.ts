@@ -209,6 +209,7 @@ const ServiceCatalog = AmpState.extend({
   findServiceMatchFromUrl(url: string): ServiceMatch | undefined {
     const serviceDetails = this._getAllServiceDetails();
 
+    // Parse the candidate once because a catalog lookup may inspect thousands of entries.
     let candidateUrl: URL;
 
     try {
@@ -217,8 +218,11 @@ const ServiceCatalog = AmpState.extend({
       return undefined;
     }
 
+    // Retain the exact matching URL so callers can reuse it without scanning the service again.
     let matchedServiceUrl: ServiceUrl | undefined;
     const serviceDetail = serviceDetails.find(({serviceUrls}) => {
+      // Host metadata is a cheap rejection check. Missing metadata falls through to the full
+      // origin and path-boundary comparison for compatibility with older catalog entries.
       matchedServiceUrl = serviceUrls.find(
         (serviceUrl) =>
           (!serviceUrl.host || serviceUrl.host === candidateUrl.host) &&

@@ -10,6 +10,7 @@ const ServiceUrl = AmpState.extend({
   namespace: 'ServiceUrl',
 
   props: {
+    // Retain catalog host metadata so lookups can reject mismatches before parsing full URLs.
     defaultHost: ['string', false, ''],
     defaultUrl: ['string', true, undefined],
     hosts: ['array', false, () => []],
