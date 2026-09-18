@@ -562,6 +562,53 @@ describe('webex-core', () => {
         );
       });
 
+      it('replaces refreshed URLs and removes stale legacy matches', () => {
+        const serviceName = 'refreshable-service';
+        const oldDefaultUrl = 'https://old.example.com:8443/resource';
+        const oldAlternateUrl = 'https://old-alternate.example.com:8443/resource';
+        const newDefaultUrl = 'https://new.example.com:9443/resource';
+        const newAlternateUrl = 'https://new-alternate.example.com:9443/resource';
+
+        catalog.updateServiceUrls('postauth', [
+          {
+            name: serviceName,
+            defaultUrl: oldDefaultUrl,
+            hosts: [{host: 'old-alternate.example.com'}],
+          },
+        ]);
+
+        const service = catalog._getUrl(serviceName, 'postauth');
+
+        assert.equal(catalog.findServiceUrlFromUrl(`${oldDefaultUrl}/id`), service);
+        assert.equal(catalog.findServiceUrlFromUrl(`${oldAlternateUrl}/id`), service);
+
+        catalog.updateServiceUrls('postauth', [
+          {
+            name: serviceName,
+            defaultUrl: newDefaultUrl,
+            hosts: [{host: 'new-alternate.example.com'}],
+          },
+        ]);
+
+        assert.equal(catalog._getUrl(serviceName, 'postauth'), service);
+        assert.equal(catalog.findServiceUrlFromUrl(`${newDefaultUrl}/id`), service);
+        assert.equal(catalog.findServiceUrlFromUrl(`${newAlternateUrl}/id`), service);
+        assert.isUndefined(catalog.findServiceUrlFromUrl(`${oldDefaultUrl}/id`));
+        assert.isUndefined(catalog.findServiceUrlFromUrl(`${oldAlternateUrl}/id`));
+
+        catalog.updateServiceUrls('postauth', [
+          {name: serviceName, defaultUrl: newDefaultUrl, hosts: []},
+        ]);
+
+        assert.equal(catalog.findServiceUrlFromUrl(`${newDefaultUrl}/id`), service);
+        assert.isUndefined(catalog.findServiceUrlFromUrl(`${newAlternateUrl}/id`));
+
+        catalog.updateServiceUrls('postauth', []);
+
+        assert.isUndefined(catalog._getUrl(serviceName, 'postauth'));
+        assert.isUndefined(catalog.findServiceUrlFromUrl(`${newDefaultUrl}/id`));
+      });
+
       describe('security: origin validation', () => {
         it('rejects URLs where the catalog host is a prefix of the candidate host (SECURITY)', () => {
           // Attack: https://trusted.example.attacker.com should NOT match https://trusted.example
