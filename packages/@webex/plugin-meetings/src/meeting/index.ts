@@ -6962,25 +6962,36 @@ export default class Meeting extends StatelessWebexPlugin {
       this._pendingDatachannelToken = undefined;
     }
 
+    const isStaleLLMConnection = () =>
+      this.llmConnectionAttempt !== llmConnectionAttempt || this.llmChannel !== llmChannel;
+
+    const cleanupStaleLLMConnection = async (): Promise<void> => {
+      try {
+        await llmChannel.disconnect({
+          code: 3050,
+          reason: 'superseded',
+        });
+      } catch (error) {
+        LoggerProxy.logger.warn(
+          'Meeting:index#updateLLMConnection --> Failed to disconnect stale LLM channel',
+          error
+        );
+      }
+
+      if (this.llmConnectionAttempt === llmConnectionAttempt) {
+        this.llmConnectionAttempt = undefined;
+      }
+
+      if (this.llmChannel === llmChannel) {
+        this.llmChannel = undefined;
+      }
+    };
+
     return llmChannel
       .registerAndConnect(url, dataChannelUrl, datachannelToken)
       .then(async (registerAndConnectResult) => {
-        if (this.llmConnectionAttempt !== llmConnectionAttempt || this.llmChannel !== llmChannel) {
-          try {
-            await llmChannel.disconnect({
-              code: 3050,
-              reason: 'superseded',
-            });
-          } catch (error) {
-            LoggerProxy.logger.warn(
-              'Meeting:index#updateLLMConnection --> Failed to disconnect stale LLM channel',
-              error
-            );
-          }
-
-          if (this.llmChannel === llmChannel) {
-            this.llmChannel = undefined;
-          }
+        if (isStaleLLMConnection()) {
+          await cleanupStaleLLMConnection();
 
           return registerAndConnectResult;
         }
@@ -7051,22 +7062,8 @@ export default class Meeting extends StatelessWebexPlugin {
         return Promise.resolve(registerAndConnectResult);
       })
       .catch(async (error) => {
-        if (this.llmConnectionAttempt !== llmConnectionAttempt || this.llmChannel !== llmChannel) {
-          try {
-            await llmChannel.disconnect({
-              code: 3050,
-              reason: 'superseded',
-            });
-          } catch (disconnectError) {
-            LoggerProxy.logger.warn(
-              'Meeting:index#updateLLMConnection --> Failed to disconnect stale LLM channel',
-              disconnectError
-            );
-          }
-
-          if (this.llmConnectionAttempt === llmConnectionAttempt) {
-            this.llmConnectionAttempt = undefined;
-          }
+        if (isStaleLLMConnection()) {
+          await cleanupStaleLLMConnection();
 
           return Promise.reject(error);
         }
