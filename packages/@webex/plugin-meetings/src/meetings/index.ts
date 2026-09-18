@@ -44,6 +44,8 @@ import {
   _WAIT_,
   DESTINATION_TYPE,
   INITIAL_REGISTRATION_STATUS,
+  UNMATCHED_LOCUS_EVENT_RESOLUTION_TIMEOUT,
+  RECENTLY_DESTROYED_LOCUS_REJOIN_POLL_INTERVAL,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import MeetingInfo from '../meeting-info';
@@ -173,6 +175,8 @@ export type BasicMeetingInformation = {
   environment: string;
   id: string;
   locusUrl: string;
+  // when this meeting was destroyed locally, used to detect a rejoin reusing the same locusUrl
+  destroyedAt: number;
   locusInfo: {
     // it's only a very small subset of the locus info, to avoid using much memory
     url: string;
@@ -534,11 +538,12 @@ export default class Meetings extends WebexPlugin {
    * @param {Object} data.locus
    * @param {Boolean} useRandomDelayForInfo whether a random delay should be added to fetching meeting info
    * @param {String} data.eventType
+   * @param {Boolean} skipDeferral internal flag used when reprocessing an event after in-flight joins/meeting creations settled, to avoid deferring again
    * @returns {undefined}
    * @private
    * @memberof Meetings
    */
-  private handleLocusEvent(data: LocusEvent, useRandomDelayForInfo = false) {
+  private handleLocusEvent(data: LocusEvent, useRandomDelayForInfo = false, skipDeferral = false) {
     let meeting = this.getCorrespondingMeetingByLocus(data);
     // @ts-ignore
     if (this.config.experimental.storeLocusHashTreeEventsForDebugging) {
@@ -631,9 +636,93 @@ export default class Meetings extends WebexPlugin {
         return;
       }
 
+      // join() and createMeeting() only assign locusUrl/conversationUrl/etc once their requests
+      // resolve, so an unmatched event during that window might belong to one of them; wait for
+      // in-flight work to settle (bounded by a timeout) and reprocess this event once.
+      //
+      // Trade-off: waits on ALL in-flight work, not just plausibly-matching work (no correlation
+      // is possible pre-locusUrl), delaying unrelated events too; accepted since
+      // MeetingUtil.joinMeeting's post-join self-heal cleans up any duplicate created on timeout.
+      if (!skipDeferral) {
+        const pendingMeetingWork = Object.values(this.meetingCollection.getAll()).flatMap(
+          (inFlightMeeting: any) => [inFlightMeeting.deferJoin, inFlightMeeting.deferMeetingInfo]
+        );
+        const inFlightWork = pendingMeetingWork.filter((deferred) => !!deferred);
+
+        if (inFlightWork.length > 0) {
+          LoggerProxy.logger.info(
+            'Meetings:index#handleLocusEvent --> a join() or meeting creation is in progress, deferring processing of this locus event until it settles'
+          );
+
+          // wait for in-flight work to settle (ignoring rejections), capped by a timeout
+          const settleAllWork = Promise.all(
+            inFlightWork.map((deferred) => Promise.resolve(deferred).catch(() => undefined))
+          );
+          const deferralTimeout = new Promise((resolve) => {
+            setTimeout(resolve, UNMATCHED_LOCUS_EVENT_RESOLUTION_TIMEOUT);
+          });
+
+          Promise.race([settleAllWork, deferralTimeout]).then(() =>
+            this.handleLocusEvent(data, useRandomDelayForInfo, true)
+          );
+
+          return;
+        }
+
+        // The backend can reuse a locusUrl for a rejoin shortly after the previous meeting was
+        // destroyed, before the rejoin's own in-flight work is registered above; use the
+        // recently-destroyed-meeting cache to give it a chance to claim this locusUrl first.
+        const eventLocusUrl = data.locusUrl || data.locus?.url;
+        const recentlyDestroyedMeeting = eventLocusUrl
+          ? Array.from(this.deletedMeetings.values()).find(
+              (deleted) =>
+                deleted.locusUrl === eventLocusUrl &&
+                Date.now() - deleted.destroyedAt < UNMATCHED_LOCUS_EVENT_RESOLUTION_TIMEOUT
+            )
+          : undefined;
+
+        if (recentlyDestroyedMeeting) {
+          // poll for the rejoin claiming this locusUrl instead of blindly waiting out the full window,
+          // so the event (and any meetingContainer/etc info it carries) reaches the real meeting asap
+          const pollDeadline = Date.now() + UNMATCHED_LOCUS_EVENT_RESOLUTION_TIMEOUT;
+          const pollForRejoinMatch = () => {
+            if (this.getCorrespondingMeetingByLocus(data) || Date.now() >= pollDeadline) {
+              this.handleLocusEvent(data, useRandomDelayForInfo, true);
+
+              return;
+            }
+
+            setTimeout(pollForRejoinMatch, RECENTLY_DESTROYED_LOCUS_REJOIN_POLL_INTERVAL);
+          };
+
+          setTimeout(pollForRejoinMatch, RECENTLY_DESTROYED_LOCUS_REJOIN_POLL_INTERVAL);
+
+          return;
+        }
+      }
+
+      let rerouted = false;
+
       this.create(data.locus, DESTINATION_TYPE.LOCUS_ID, useRandomDelayForInfo)
         .then(async (newMeeting) => {
           meeting = newMeeting;
+
+          // newMeeting may already have been destroyed by Meeting#selfHealDuplicateMeeting
+          // (e.g. another meeting's join()/fetchMeetingInfo() completed in the meantime and this
+          // turned out to be its duplicate); it's no longer safe to initialize, so re-route this
+          // event to whatever meeting now actually matches it instead of losing it.
+          if (!this.meetingCollection.get(meeting.id)) {
+            LoggerProxy.logger.warn(
+              'Meetings:index#handleLocusEvent --> newly created meeting was destroyed before it could be initialized, rerouting event to its survivor'
+            );
+            rerouted = true;
+            const survivor = this.getCorrespondingMeetingByLocus(data);
+
+            survivor?.locusInfo.parse(survivor, data);
+
+            return;
+          }
+
           try {
             // It's a new meeting so initialize the locus data
             await meeting.locusInfo.initialSetup(
@@ -663,6 +752,10 @@ export default class Meetings extends WebexPlugin {
           LoggerProxy.logger.error(e);
         })
         .finally(() => {
+          if (rerouted) {
+            return;
+          }
+
           // There will be cases where locus event comes in gets created and deleted because its a 1:1 and meeting gets deleted
           // because the other user left so before sending 'added' event make sure it exists in the collection
 
@@ -1501,6 +1594,7 @@ export default class Meetings extends WebexPlugin {
       sessionCorrelationId: meeting.sessionCorrelationId,
       environment: meeting.environment,
       locusUrl: meeting.locusUrl,
+      destroyedAt: Date.now(),
       meetingInfo: cloneDeep(meeting.meetingInfo),
       locusInfo: {
         // locusInfo can be quite big, so keep just the minimal info
@@ -1809,6 +1903,15 @@ export default class Meetings extends WebexPlugin {
       }
     );
 
+    // Resolved once fetchMeetingInfo() (or the equivalent injectMeetingInfo/parseMeetingInfo path
+    // below) settles, so handleLocusEvent() can defer matching against this meeting until its
+    // conversationUrl/sipUri/meetingNumber are actually populated.
+    let resolveMeetingInfoInFlight;
+
+    meeting.deferMeetingInfo = new Promise((resolve) => {
+      resolveMeetingInfoInFlight = resolve;
+    });
+
     try {
       // if no participant has joined the scheduled meeting (meaning meeting is not active) and we get a locusEvent,
       // it means the meeting will start in 5-6 min. In that case, we want to fetchMeetingInfo
@@ -1917,6 +2020,16 @@ export default class Meetings extends WebexPlugin {
           }
         );
       }
+
+      resolveMeetingInfoInFlight();
+      meeting.deferMeetingInfo = undefined;
+    }
+
+    if (type === DESTINATION_TYPE.LOCUS_ID && meeting.locusUrl) {
+      // this createMeeting() call may have taken longer than handleLocusEvent's deferral
+      // timeout, in which case a duplicate placeholder meeting could have been created for
+      // this locusUrl in the meantime; clean it up now that we're done.
+      meeting.selfHealDuplicateMeeting();
     }
 
     return meeting;
@@ -2022,6 +2135,15 @@ export default class Meetings extends WebexPlugin {
                 // don't destroy the meeting as Locus API still returned some Locus that shares
                 // the same globalMeetingId - that happens for example if a webinar user (who hasn't scheduled it)
                 // is in a breakout and gets moved to a different breakout while we were offline
+                // @ts-ignore
+              } else if (meeting.deferJoin || meeting.deferMeetingInfo) {
+                // meeting.join() or its meeting-info fetch is still in flight and will set
+                // locusUrl/conversationUrl once it completes, so don't destroy it based on
+                // fields it doesn't have populated yet
+                LoggerProxy.logger.info(
+                  // @ts-ignore
+                  `Meetings:index#syncMeetings --> not destroying meeting ${meeting.id}, its join() or meeting-info fetch is still in progress`
+                );
               } else {
                 // destroy function also uploads logs
                 // @ts-ignore

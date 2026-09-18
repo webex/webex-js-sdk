@@ -15913,6 +15913,161 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#selfHealDuplicateMeeting', () => {
+        let duplicateMeeting;
+
+        beforeEach(() => {
+          meeting.locusInfo = {
+            updateControls: sinon.stub(),
+            controls: {mute: true},
+            parsedLocus: {self: {id: 'selfId'}},
+            isUsingHashTrees: sinon.stub().returns(false),
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+          };
+
+          duplicateMeeting = {
+            id: 'duplicateMeetingId',
+            locusUrl: meeting.locusUrl,
+          };
+
+          sinon.stub(webex.meetings.meetingCollection, 'getAll').returns({
+            [duplicateMeeting.id]: duplicateMeeting,
+          });
+          sinon.stub(webex.meetings.meetingCollection, 'get').returns(meeting);
+          sinon.stub(webex.meetings, 'destroy');
+        });
+
+        [
+          {
+            name: 'adopts the duplicate meeting controls when its locus sequence is newer',
+            duplicateControls: {mute: false, meetingContainer: {url: 'container-url'}},
+            meetingSequence: {entries: [1]},
+            duplicateSequence: {entries: [2]},
+            expectedControls: {mute: false, meetingContainer: {url: 'container-url'}},
+            expectDestroy: true,
+          },
+          {
+            name: 'does not touch controls when the meeting has no comparable sequence',
+            duplicateControls: {mute: false, meetingContainer: {url: 'container-url'}},
+            expectedControls: undefined,
+            expectDestroy: true,
+          },
+          {
+            name: 'does not touch controls when the meeting itself has the newer locus sequence',
+            duplicateControls: {mute: false, meetingContainer: {url: 'container-url'}},
+            meetingSequence: {entries: [5]},
+            duplicateSequence: {entries: [3]},
+            expectedControls: undefined,
+            expectDestroy: true,
+          },
+          {
+            name: 'destroys the duplicate meeting without touching controls when it has none',
+            duplicateControls: undefined,
+            expectedControls: undefined,
+            expectDestroy: true,
+          },
+          {
+            name: 'still destroys the duplicate meeting if adopting its controls throws',
+            duplicateControls: {mute: false},
+            meetingSequence: {entries: [1]},
+            duplicateSequence: {entries: [2]},
+            updateControlsThrows: true,
+            expectedControls: {mute: false},
+            expectDestroy: true,
+          },
+          {
+            name: 'does not touch other meetings sharing a different locusUrl',
+            duplicateLocusUrl: 'someOtherLocusUrl',
+            duplicateControls: undefined,
+            expectedControls: undefined,
+            expectDestroy: false,
+          },
+        ].forEach(
+          ({
+            name,
+            duplicateControls,
+            duplicateLocusUrl,
+            updateControlsThrows,
+            meetingSequence,
+            duplicateSequence,
+            expectedControls,
+            expectDestroy,
+          }) => {
+            it(name, () => {
+              duplicateMeeting.locusUrl = duplicateLocusUrl || duplicateMeeting.locusUrl;
+              duplicateMeeting.locusInfo = {controls: duplicateControls, sequence: duplicateSequence};
+              meeting.locusInfo.sequence = meetingSequence;
+              if (updateControlsThrows) {
+                meeting.locusInfo.updateControls.throws(new Error('merge failed'));
+              }
+
+              meeting.selfHealDuplicateMeeting();
+
+              if (expectedControls) {
+                assert.calledOnceWithExactly(
+                  meeting.locusInfo.updateControls,
+                  expectedControls,
+                  meeting.locusInfo.parsedLocus.self
+                );
+              } else {
+                assert.notCalled(meeting.locusInfo.updateControls);
+              }
+
+              if (expectDestroy) {
+                assert.calledOnceWithExactly(
+                  webex.meetings.destroy,
+                  duplicateMeeting,
+                  MEETING_REMOVED_REASON.DUPLICATE_LOCUS_URL
+                );
+              } else {
+                assert.notCalled(webex.meetings.destroy);
+              }
+            });
+          }
+        );
+
+        it('does not destroy anything when the meeting itself has already been removed from meetingCollection', () => {
+          webex.meetings.meetingCollection.get.returns(null);
+          duplicateMeeting.locusInfo = {controls: {mute: false}};
+
+          meeting.selfHealDuplicateMeeting();
+
+          assert.notCalled(meeting.locusInfo.updateControls);
+          assert.notCalled(webex.meetings.destroy);
+        });
+
+        it('resyncs hash tree datasets when the meeting is using hash trees', () => {
+          meeting.locusInfo.isUsingHashTrees.returns(true);
+          duplicateMeeting.locusInfo = {controls: undefined};
+
+          meeting.selfHealDuplicateMeeting();
+
+          assert.calledOnceWithExactly(meeting.locusInfo.syncAllHashTreeDatasets);
+        });
+
+        it('does not resync hash tree datasets when the meeting is not using hash trees', () => {
+          duplicateMeeting.locusInfo = {controls: undefined};
+
+          meeting.selfHealDuplicateMeeting();
+
+          assert.notCalled(meeting.locusInfo.syncAllHashTreeDatasets);
+        });
+
+        it('logs a warning but does not throw when the hash tree resync fails', async () => {
+          const syncError = new Error('sync failed');
+
+          meeting.locusInfo.isUsingHashTrees.returns(true);
+          meeting.locusInfo.syncAllHashTreeDatasets.rejects(syncError);
+          duplicateMeeting.locusInfo = {controls: undefined};
+          LoggerProxy.logger.warn = sinon.stub();
+
+          meeting.selfHealDuplicateMeeting();
+          await testUtils.flushPromises();
+
+          assert.called(LoggerProxy.logger.warn);
+        });
+      });
+
       describe('#waitForSelfUrlChange', () => {
         let waitForSelfUrlChange;
         let locusMediaRequestStub;
