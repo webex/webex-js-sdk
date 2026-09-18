@@ -1019,6 +1019,83 @@ describe('webex-core', () => {
           defaultUrl: matchedBaseUrl,
         });
       });
+
+      it('keeps the matched URL separate from the current non-failed priority URL', () => {
+        const priorityBaseUrl = 'https://priority.example.com/api/v1';
+        const matchedBaseUrl = 'https://matched.example.com/api/v2';
+
+        catalog.updateServiceGroups('postauth', [
+          {
+            id: 'example',
+            serviceName: 'example',
+            serviceUrls: [
+              {
+                host: 'priority.example.com',
+                baseUrl: priorityBaseUrl,
+                priority: 1,
+                failed: true,
+              },
+              {host: 'matched.example.com', baseUrl: matchedBaseUrl, priority: 2},
+            ],
+          },
+        ]);
+
+        assert.deepEqual(services.getServiceFromUrl(`${priorityBaseUrl}/resource`), {
+          name: 'example',
+          priorityUrl: matchedBaseUrl,
+          defaultUrl: priorityBaseUrl,
+        });
+      });
+
+      it('preserves all-failed recovery while returning the URL that matched', () => {
+        const firstBaseUrl = 'https://first.example.com/api/v1';
+        const matchedBaseUrl = 'https://matched.example.com/api/v2';
+
+        catalog.updateServiceGroups('postauth', [
+          {
+            id: 'example',
+            serviceName: 'example',
+            serviceUrls: [
+              {
+                host: 'first.example.com',
+                baseUrl: firstBaseUrl,
+                priority: 1,
+                failed: true,
+              },
+              {
+                host: 'matched.example.com',
+                baseUrl: matchedBaseUrl,
+                priority: 2,
+                failed: true,
+              },
+            ],
+          },
+        ]);
+
+        assert.deepEqual(services.getServiceFromUrl(`${matchedBaseUrl}/resource`), {
+          name: 'example',
+          priorityUrl: firstBaseUrl,
+          defaultUrl: matchedBaseUrl,
+        });
+      });
+
+      it('normalizes the exact matching catalog URL without dropping its query or fragment', () => {
+        const baseUrl = 'https://example.com:8443/api/v1?region=west#catalog';
+
+        catalog.updateServiceGroups('postauth', [
+          {
+            id: 'example',
+            serviceName: 'example',
+            serviceUrls: [{host: 'example.com', baseUrl, priority: 1}],
+          },
+        ]);
+
+        assert.deepEqual(services.getServiceFromUrl('https://example.com:8443/api/v1/resource'), {
+          name: 'example',
+          priorityUrl: baseUrl,
+          defaultUrl: baseUrl,
+        });
+      });
     });
 
     describe('#_formatReceivedHostmap()', () => {

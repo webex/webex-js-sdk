@@ -18,6 +18,7 @@ export type ServiceHost = {
 export type ServiceUrl = {
   baseUrl: string;
   host: string;
+  matchHost?: string;
   priority: number;
   failed?: boolean;
 };

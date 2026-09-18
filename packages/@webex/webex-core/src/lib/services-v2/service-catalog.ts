@@ -6,6 +6,14 @@ import {IServiceDetail, ServiceGroup, ServiceMatch, ServiceUrl} from './types';
 import {matchAllowedDomain, normalizeAllowedDomains} from '../domains';
 import {matchesParsedCatalogUrl, parseCatalogUrl} from '../services/service-catalog';
 
+const getMatchHost = (baseUrl: string): string | undefined => {
+  try {
+    return new URL(baseUrl).host;
+  } catch {
+    return undefined;
+  }
+};
+
 /**
  * @class
  */
@@ -221,11 +229,11 @@ const ServiceCatalog = AmpState.extend({
     // Retain the exact matching URL so callers can reuse it without scanning the service again.
     let matchedServiceUrl: ServiceUrl | undefined;
     const serviceDetail = serviceDetails.find(({serviceUrls}) => {
-      // Host metadata is a cheap rejection check. Missing metadata falls through to the full
-      // origin and path-boundary comparison for compatibility with older catalog entries.
+      // Trusted host metadata is a cheap rejection check. Missing metadata falls through to the
+      // full comparison for older, invalid, or directly injected catalog entries.
       matchedServiceUrl = serviceUrls.find(
         (serviceUrl) =>
-          (!serviceUrl.host || serviceUrl.host === candidateUrl.host) &&
+          (!serviceUrl.matchHost || serviceUrl.matchHost === candidateUrl.host) &&
           matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(serviceUrl.baseUrl))
       );
 
@@ -341,7 +349,13 @@ const ServiceCatalog = AmpState.extend({
 
     serviceDetails?.forEach((serviceObj) => {
       const serviceDetail = this._getServiceDetail(serviceObj.id, serviceGroup);
-      serviceObj?.serviceUrls?.sort((a, b) => {
+      // Derive canonical metadata from baseUrl instead of trusting the separate host field.
+      const serviceUrls = (serviceObj.serviceUrls || []).map((serviceUrl) => ({
+        ...serviceUrl,
+        matchHost: getMatchHost(serviceUrl.baseUrl),
+      }));
+
+      serviceUrls.sort((a, b) => {
         if (a.priority < 0 && b.priority < 0) return 0;
         if (a.priority < 0) return 1;
         if (b.priority < 0) return -1;
@@ -349,9 +363,9 @@ const ServiceCatalog = AmpState.extend({
         return a.priority - b.priority;
       });
       if (serviceDetail) {
-        serviceDetail.serviceUrls = serviceObj.serviceUrls || [];
+        serviceDetail.serviceUrls = serviceUrls;
       } else {
-        this._loadServiceDetails(serviceGroup, [new ServiceDetail(serviceObj)]);
+        this._loadServiceDetails(serviceGroup, [new ServiceDetail({...serviceObj, serviceUrls})]);
       }
     });
 

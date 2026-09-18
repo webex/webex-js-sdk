@@ -361,6 +361,7 @@ describe('webex-core', () => {
           serviceUrls: [
             {
               host: 'other.example.com',
+              matchHost: 'other.example.com',
               get baseUrl() {
                 throw new Error('mismatched catalog URL should not be parsed');
               },
@@ -371,6 +372,7 @@ describe('webex-core', () => {
           serviceUrls: [
             {
               host: 'example.com',
+              matchHost: 'example.com',
               baseUrl: 'https://example.com/resource',
             },
           ],
@@ -381,6 +383,31 @@ describe('webex-core', () => {
         assert.equal(
           catalog.findServiceDetailFromUrl('https://example.com/resource/id'),
           expectedService
+        );
+      });
+
+      it('derives canonical match hosts from base urls during ingestion', () => {
+        catalog.updateServiceGroups('postauth', [
+          {
+            id: 'example',
+            serviceName: 'example',
+            serviceUrls: [
+              {
+                host: 'stale.example.com',
+                baseUrl: 'https://B\u00dcCHER.EXAMPLE:8443/resource',
+                priority: 1,
+              },
+            ],
+          },
+        ]);
+
+        const service = catalog._getServiceDetail('example', 'postauth');
+
+        assert.equal(service.serviceUrls[0].host, 'stale.example.com');
+        assert.equal(service.serviceUrls[0].matchHost, 'xn--bcher-kva.example:8443');
+        assert.equal(
+          catalog.findServiceDetailFromUrl('https://xn--bcher-kva.example:8443/resource/id'),
+          service
         );
       });
 
@@ -419,6 +446,62 @@ describe('webex-core', () => {
 
         assert.equal(match.serviceDetail, expectedService);
         assert.equal(match.serviceUrl, expectedServiceUrl);
+      });
+
+      it('preserves service group precedence when multiple services match', () => {
+        const postauthService = {
+          serviceUrls: [{baseUrl: 'https://example.com/resource'}],
+        };
+        const overrideService = {
+          serviceUrls: [{baseUrl: 'https://example.com/resource'}],
+        };
+
+        catalog.serviceGroups.postauth.push(postauthService);
+        catalog.serviceGroups.override.push(overrideService);
+
+        const match = catalog.findServiceMatchFromUrl('https://example.com/resource/id');
+
+        assert.equal(match.serviceDetail, overrideService);
+        assert.equal(match.serviceUrl, overrideService.serviceUrls[0]);
+      });
+
+      it('returns the first matching URL within the selected service', () => {
+        const broadMatch = {baseUrl: 'https://example.com/resource'};
+        const narrowMatch = {baseUrl: 'https://example.com/resource/nested'};
+        const expectedService = {serviceUrls: [broadMatch, narrowMatch]};
+
+        catalog.serviceGroups.postauth.push(expectedService);
+
+        const match = catalog.findServiceMatchFromUrl('https://example.com/resource/nested/id');
+
+        assert.equal(match.serviceDetail, expectedService);
+        assert.equal(match.serviceUrl, broadMatch);
+      });
+
+      it('continues past a malformed catalog URL to the first valid match', () => {
+        const malformedServiceUrl = {baseUrl: 'not-a-valid-url'};
+        const expectedServiceUrl = {baseUrl: 'https://example.com/resource'};
+        const expectedService = {serviceUrls: [malformedServiceUrl, expectedServiceUrl]};
+
+        catalog.serviceGroups.postauth.push(expectedService);
+
+        const match = catalog.findServiceMatchFromUrl('https://example.com/resource/id');
+
+        assert.equal(match.serviceDetail, expectedService);
+        assert.equal(match.serviceUrl, expectedServiceUrl);
+      });
+
+      it('keeps findServiceDetailFromUrl as a compatible service-only wrapper', () => {
+        const expectedService = {
+          serviceUrls: [{baseUrl: 'https://example.com/resource'}],
+        };
+
+        catalog.serviceGroups.postauth.push(expectedService);
+
+        assert.equal(
+          catalog.findServiceDetailFromUrl('https://example.com/resource/id'),
+          expectedService
+        );
       });
 
       it.each(['discovery', 'preauth', 'signin', 'postauth', 'override'])(

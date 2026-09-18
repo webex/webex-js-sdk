@@ -496,14 +496,14 @@ describe('webex-core', () => {
 
       it('does not parse catalog URLs whose host metadata cannot match', () => {
         const skippedService = {
-          defaultHost: 'other.example.com',
+          matchHost: 'other.example.com',
           get defaultUrl() {
             throw new Error('mismatched catalog URL should not be parsed');
           },
           hosts: [],
         };
         const expectedService = {
-          defaultHost: 'example.com',
+          matchHost: 'example.com',
           defaultUrl: 'https://example.com/resource',
           hosts: [],
         };
@@ -522,7 +522,6 @@ describe('webex-core', () => {
         catalog.updateServiceUrls('postauth', [
           {
             name: serviceName,
-            defaultHost: 'old.example.com',
             defaultUrl: 'https://old.example.com/resource',
             hosts: [],
           },
@@ -533,15 +532,32 @@ describe('webex-core', () => {
         catalog.updateServiceUrls('postauth', [
           {
             name: serviceName,
-            defaultHost: 'new.example.com',
             defaultUrl: 'https://new.example.com/resource',
             hosts: [],
           },
         ]);
 
         assert.equal(catalog._getUrl(serviceName, 'postauth'), service);
-        assert.equal(service.defaultHost, 'new.example.com');
+        assert.equal(service.matchHost, 'new.example.com');
         assert.equal(catalog.findServiceUrlFromUrl('https://new.example.com/resource/id'), service);
+      });
+
+      it('derives canonical default and alternate match hosts during ingestion', () => {
+        catalog.updateServiceUrls('postauth', [
+          {
+            name: 'example',
+            defaultUrl: 'https://BASE.EXAMPLE.COM:8443/resource',
+            hosts: [{host: 'ALTERNATE.EXAMPLE.COM'}, {host: 'b\u00fccher.example'}],
+          },
+        ]);
+
+        const service = catalog._getUrl('example', 'postauth');
+
+        assert.equal(service.matchHost, 'base.example.com:8443');
+        assert.deepEqual(
+          service.hosts.map(({matchHost}) => matchHost),
+          ['alternate.example.com:8443', 'xn--bcher-kva.example:8443']
+        );
       });
 
       it.each([
