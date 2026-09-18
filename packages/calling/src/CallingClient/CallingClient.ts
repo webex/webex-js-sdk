@@ -554,6 +554,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     let clientRegion: string;
     let countryCode: string;
 
+    this.mobiusHost =
+      this.webex.internal.services._serviceUrls?.mobius ||
+      this.webex.internal.services.get(this.webex.internal.services._activeServices.mobius);
+
     if (this.sdkConfig?.discovery?.country && this.sdkConfig?.discovery?.region) {
       log.log('Updating region and country from the SDK config', {
         file: CALLING_CLIENT_FILE,
@@ -561,9 +565,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       });
       clientRegion = this.sdkConfig?.discovery?.region;
       countryCode = this.sdkConfig?.discovery?.country;
-      this.mobiusHost =
-        this.webex.internal.services._serviceUrls?.mobius ||
-        this.webex.internal.services.get(this.webex.internal.services._activeServices.mobius);
     } else {
       log.log('Updating region and country through Region discovery', {
         file: CALLING_CLIENT_FILE,
@@ -584,14 +585,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         }
       );
 
-      for (const mobius of this.mobiusClusters) {
-        if (mobius.host) {
-          this.mobiusHost = `https://${mobius.host}${API_V1}`;
-        } else {
-          this.mobiusHost = mobius as unknown as string;
-        }
+      /* When the Mobius host is available from the service link, make a request to
+       * it directly and only fall back to the catalog clusters if that request fails.
+       */
+      if (this.mobiusHost) {
         try {
-          // eslint-disable-next-line no-await-in-loop
           const response = <WebexRequestPayload>await this.webex.request({
             uri: `${this.mobiusHost}${URL_ENDPOINT}?regionCode=${clientRegion}&countryCode=${countryCode}`,
             method: HTTP_METHODS.GET,
@@ -636,14 +634,13 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
             }
           );
 
-          break;
+          return;
         } catch (err: unknown) {
           log.error(`Failed to get Mobius servers: ${JSON.stringify(err)}`, {
             method: METHODS.GET_MOBIUS_SERVERS,
             file: CALLING_CLIENT_FILE,
           });
 
-          // eslint-disable-next-line no-await-in-loop
           const abort = await handleCallingClientErrors(
             err as WebexRequestPayload,
             (clientError) => {
@@ -664,9 +661,103 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
           if (abort) {
             useDefault = true;
-            // eslint-disable-next-line no-await-in-loop
             await uploadLogs();
+          }
+        }
+      }
+
+      if (!useDefault) {
+        for (const mobius of this.mobiusClusters) {
+          const nextHost = mobius.host
+            ? `https://${mobius.host}${API_V1}`
+            : (mobius as unknown as string);
+
+          /* Skip the catalog cluster that matches the host we already tried above. */
+          if (nextHost === this.mobiusHost) {
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+
+          this.mobiusHost = nextHost;
+
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            const response = <WebexRequestPayload>await this.webex.request({
+              uri: `${this.mobiusHost}${URL_ENDPOINT}?regionCode=${clientRegion}&countryCode=${countryCode}`,
+              method: HTTP_METHODS.GET,
+              headers: {
+                [CISCO_DEVICE_URL]: this.webex.internal.device.url,
+                [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+              },
+              service: ALLOWED_SERVICES.MOBIUS,
+            });
+
+            log.log(
+              `Mobius Server found for the region. Response trackingId: ${response?.headers?.trackingid}`,
+              {
+                file: CALLING_CLIENT_FILE,
+                method: GET_MOBIUS_SERVERS_UTIL,
+              }
+            );
+
+            const mobiusServers = response.body as MobiusServers;
+
+            // Metrics for mobius servers
+            this.metricManager.submitMobiusServersMetric(
+              METRIC_EVENT.MOBIUS_DISCOVERY,
+              MOBIUS_SERVER_ACTION.MOBIUS_SERVERS,
+              METRIC_TYPE.BEHAVIORAL,
+              mobiusServers,
+              response?.headers?.trackingid ?? ''
+            );
+
+            /* update arrays of Mobius Uris. */
+            const mobiusUris = filterMobiusUris(mobiusServers, this.mobiusHost);
+            this.primaryMobiusUris = mobiusUris.primary;
+            this.backupMobiusUris = mobiusUris.backup;
+            this.primaryWssMobiusUris = mobiusUris.primaryWss;
+            this.backupWssMobiusUris = mobiusUris.backupWss;
+
+            log.log(
+              `Final list of Mobius Servers, primary: ${mobiusUris.primary} and backup: ${mobiusUris.backup}`,
+              {
+                file: CALLING_CLIENT_FILE,
+                method: GET_MOBIUS_SERVERS_UTIL,
+              }
+            );
+
             break;
+          } catch (err: unknown) {
+            log.error(`Failed to get Mobius servers: ${JSON.stringify(err)}`, {
+              method: METHODS.GET_MOBIUS_SERVERS,
+              file: CALLING_CLIENT_FILE,
+            });
+
+            // eslint-disable-next-line no-await-in-loop
+            const abort = await handleCallingClientErrors(
+              err as WebexRequestPayload,
+              (clientError) => {
+                this.metricManager.submitRegistrationMetric(
+                  METRIC_EVENT.REGISTRATION_ERROR,
+                  REG_ACTION.REGISTER,
+                  METRIC_TYPE.BEHAVIORAL,
+                  GET_MOBIUS_SERVERS_UTIL,
+                  'UNKNOWN',
+                  (err as WebexRequestPayload).headers?.trackingId ?? '',
+                  undefined,
+                  clientError
+                );
+                this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
+              },
+              {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
+            );
+
+            if (abort) {
+              useDefault = true;
+              // eslint-disable-next-line no-await-in-loop
+              await uploadLogs();
+              break;
+            }
           }
         }
       }
