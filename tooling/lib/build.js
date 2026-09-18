@@ -10,7 +10,7 @@ const capitalize = require('lodash');
 const humanize = require('humanize-string');
 const {writeFile} = require('fs-extra');
 
-const {mkdirp, rimraf, transformFile} = require('../lib/async');
+const {exec, mkdirp, rimraf, transformFile} = require('../lib/async');
 const g = require('../lib/async').glob;
 const {glob} = require('../util/package');
 
@@ -95,6 +95,19 @@ exports.buildSamples = async function buildSamples() {
       debug(e);
     }
   });
+
+  /**
+   * The web-extension-bridge sample loads bundles that are generated rather than
+   * committed (see .gitignore), so the sample page 404s unless the package's own
+   * esbuild step runs. It bundles straight from src, so it does not depend on the
+   * webpack build above.
+   */
+  debug('building web-extension-bridge samples');
+  const {stdout: bridgeLog} = await exec(
+    'yarn workspace @webex/web-extension-bridge run build:samples'
+  );
+
+  console.log(`web-extension-bridge samples:\n${bridgeLog}`);
 
   const samples = await g('browser-*', {
     cwd: path.resolve(process.cwd(), 'docs/samples'),
