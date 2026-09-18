@@ -601,6 +601,21 @@ describe('webex-core', () => {
         );
       });
 
+      it('matches the default url when separate host metadata disagrees', () => {
+        const exampleService = {
+          defaultHost: 'stale.example.com',
+          defaultUrl: 'https://actual.example.com/resource',
+          hosts: [],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.equal(
+          catalog.findServiceUrlFromUrl('https://actual.example.com/resource/id'),
+          exampleService
+        );
+      });
+
       it('normalizes the case of an alternate hostname before matching', () => {
         const exampleService = {
           defaultUrl: 'https://example.com/resource',
