@@ -874,7 +874,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`; `WRAPPING_UP` entry emits `task:wrapup`
 
 - `TASK_WRAPUP` -> `TERMINATED`
 
@@ -988,13 +988,19 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: none
 
-- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`; `WRAPPING_UP` entry emits `task:wrapup`
 
 - `PAUSE_RECORDING` / `RESUME_RECORDING` -> Stay `CONNECTED`
 
 - Guard: none
 
 - Actions: `updateTaskData`, `setRecordingState`, `emitTaskRecordingPaused` / `emitTaskRecordingResumed`
+
+- `EXIT_CONFERENCE_SUCCESS` -> `WRAPPING_UP` or `TERMINATED`
+
+- Guard: `guards.shouldWrapUp` (wrap-up branch) or default (terminate)
+
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, or `emitTaskEnd`; `WRAPPING_UP` entry emits `task:wrapup` (same as `CONFERENCING`; Voice `exitConference()` while actor stays `CONNECTED` with conference in task data)
 
 **Description**: Main call is on hold.
 
@@ -1090,7 +1096,13 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: none
 
-- Actions: `updateTaskData`, `markEnded`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`; `WRAPPING_UP` entry emits `task:wrapup`
+
+- `EXIT_CONFERENCE_SUCCESS` -> `WRAPPING_UP` or `TERMINATED`
+
+- Guard: `guards.shouldWrapUp` or default
+
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, or `emitTaskEnd`; `WRAPPING_UP` entry emits `task:wrapup` (shared with `CONNECTED` / `CONFERENCING`)
 
 **Description**: Hold request has been sent and is awaiting backend confirmation.
 
@@ -1116,6 +1128,12 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Actions: `updateTaskData`
 
+- `TASK_WRAPUP` -> `WRAPPING_UP`
+
+- Guard: none
+
+- Actions: `updateTaskData`, `markEnded` (`WRAPPING_UP` entry emits `task:wrapup`)
+
 **Description**: Resume/unhold request has been sent and is awaiting backend confirmation.
 
 **How this state is reached (incoming transitions)**:
@@ -1139,6 +1157,12 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 - Guard: none
 
 - Actions: none
+
+- `TASK_WRAPUP` -> `WRAPPING_UP`
+
+- Guard: none
+
+- Actions: `updateTaskData`, `markEnded` (`WRAPPING_UP` entry emits `task:wrapup`)
 
 **Description**: Consult request is in-flight.
 
@@ -1306,7 +1330,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`; `WRAPPING_UP` entry emits `task:wrapup`
 
 - `TRANSFER_CONFERENCE_SUCCESS` -> `CONFERENCING`
 
@@ -1330,7 +1354,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.didCurrentAgentLeaveMainInteraction && guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft` (entry emits `task:wrapup`)
 
 - `PARTICIPANT_LEAVE` -> `TERMINATED`
 
@@ -1366,7 +1390,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: none
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`; `WRAPPING_UP` entry emits `task:wrapup`
 
 - `MERGE_TO_CONFERENCE` -> `CONF_INITIATING`
 
@@ -1458,6 +1482,12 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Actions: `updateTaskData`, `clearConsultState`, `emitTaskConferenceStarted`
 
+- `EXIT_CONFERENCE_SUCCESS` -> `WRAPPING_UP` or `TERMINATED`
+
+- Guard: `guards.shouldWrapUp` or default
+
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, or `emitTaskEnd`; `WRAPPING_UP` entry emits `task:wrapup` (shared with `CONNECTED` / `HELD`)
+
 - `CONSULT_END` -> stay `CONFERENCING`
 
 - Guard: none
@@ -1486,7 +1516,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `handleTransferConferenceSuccess`, `clearTransferConferenceRequested`; `WRAPPING_UP` entry emits `task:wrapup`
 
 - `TRANSFER_CONFERENCE_SUCCESS` -> `CONFERENCING`
 
@@ -1510,7 +1540,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.didCurrentAgentLeaveMainInteraction && guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `handleParticipantLeft`, `markEnded`, `clearConsultState`, `emitTaskParticipantLeft` (entry emits `task:wrapup`)
 
 - `PARTICIPANT_LEAVE` -> `TERMINATED`
 
@@ -1542,7 +1572,7 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Guard: `guards.shouldWrapUp`
 
-- Actions: `updateTaskData`, `markEnded`, `clearConsultState`, `emitTaskWrapup`
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`; `WRAPPING_UP` entry emits `task:wrapup`
 
 - `CONFERENCE_END` -> `CONNECTED`
 
@@ -1562,6 +1592,12 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 - Actions: `updateTaskData`, `requestCleanup`
 
+- `TASK_WRAPUP` -> `WRAPPING_UP`
+
+- Guard: `guards.shouldWrapUp`
+
+- Actions: `updateTaskData`, `markEnded`, `clearConsultState`; `WRAPPING_UP` entry emits `task:wrapup`
+
 **Description**: Post-interaction work (ACW) is in progress.
 
 **How this state is reached (incoming transitions)**:
@@ -1575,6 +1611,10 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 - `emitTaskWrapup`
 
 **Valid transitions from `WRAPPING_UP`**:
+
+- `TASK_WRAPUP` -> stay `WRAPPING_UP`
+
+- Guard: if `context.taskData.wrapUpRequired === true` before the event, actions are `updateTaskData` only; otherwise `updateTaskData`, `emitTaskWrapup` (late AgentWrapup after wrap-up was already published)
 
 - `WRAPUP_COMPLETE` -> `COMPLETED`
 

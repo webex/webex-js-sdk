@@ -22,7 +22,10 @@ export class SeenIds {
 
   private readonly now: () => number;
 
-  public constructor(options: SeenIdsOptions = {}) {
+  /**
+   * @param options - Cache bounds and clock. Defaults come from `core/constants`.
+   */
+  constructor(options: SeenIdsOptions = {}) {
     this.maxEntries = options.maxEntries ?? SEEN_ID_MAX_ENTRIES;
     this.ttlMs = options.ttlMs ?? SEEN_ID_TTL_MS;
     this.now = options.now ?? (() => Date.now());
@@ -70,14 +73,21 @@ export class SeenIds {
     return this.entries.has(id);
   }
 
+  /** Forget every cached id. */
   public clear(): void {
     this.entries.clear();
   }
 
+  /** Number of currently cached ids. */
   public get size(): number {
     return this.entries.size;
   }
 
+  /**
+   * Drop every entry older than the TTL, oldest first.
+   *
+   * @param at - Current time.
+   */
   private evictExpired(at: number): void {
     for (const [id, seenAt] of this.entries) {
       if (at - seenAt < this.ttlMs) {
