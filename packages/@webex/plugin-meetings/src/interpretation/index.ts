@@ -33,6 +33,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
     meetingSIEnabled: 'boolean', // appears the meeting support SI feature
     hostSIEnabled: 'boolean', // appears the meeting host/interpreter feature of SI enabled
     selfIsInterpreter: 'boolean', // current user is interpreter or not
+    siEnabled: 'boolean', // appears SI is currently enabled in the meeting (from locus controls)
   },
   derived: {
     shouldQuerySupportLanguages: {
@@ -118,6 +119,11 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    */
   updateInterpretation(interpretation) {
     this.siLanguages.set(interpretation?.siLanguages || []);
+    // Only update siEnabled when it's actually provided. The meeting-info path calls this with
+    // just {siLanguages}, and an unconditional set would wipe the siEnabled carried by locus controls.
+    if (interpretation && 'siEnabled' in interpretation) {
+      this.set('siEnabled', !!interpretation.siEnabled);
+    }
   },
   /**
    * Update self's interpretation information (self is interpreter)
@@ -203,6 +209,37 @@ const SimultaneousInterpretation = WebexPlugin.extend({
       })
       .catch((error) => {
         LoggerProxy.logger.error('Meeting:interpretation#updateInterpreters failed', error);
+        throw error;
+      });
+  },
+  /**
+   * End simultaneous interpretation in the meeting. Only the host is allowed to call this api.
+   * Locus clears SI subscriptions, removes interpreters and their interpreter roles.
+   * It cannot be re-enabled during the current meeting.
+   * @returns {Promise}
+   */
+  endSimultaneousInterpretation() {
+    const meeting = this.webex.meetings.meetingCollection.getByKey('locusUrl', this.locusUrl);
+
+    return this.request({
+      method: HTTP_VERBS.PATCH,
+      uri: `${this.locusUrl}/controls`,
+      body: {
+        interpretation: {
+          siEnabled: false,
+        },
+      },
+    })
+      .then((response) => {
+        MeetingUtil.updateLocusFromApiResponse(meeting, response);
+
+        return response;
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error(
+          'Meeting:interpretation#endSimultaneousInterpretation failed',
+          error
+        );
         throw error;
       });
   },
