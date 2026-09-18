@@ -94,7 +94,8 @@ export default class Voice extends Task implements IVoice {
     data: TaskData,
     callOptions?: VoiceUIControlOptions,
     wrapupData?: WrapupData,
-    agentId?: string
+    agentId?: string,
+    agentName?: string
   ) {
     const resolvedOptions = {
       isEndTaskEnabled: callOptions?.isEndTaskEnabled ?? true,
@@ -112,7 +113,8 @@ export default class Voice extends Task implements IVoice {
         consultTransferConfig: callOptions?.consultTransferConfig,
       },
       wrapupData,
-      agentId
+      agentId,
+      agentName
     );
 
     this.enableWxBetterTogether = resolvedOptions.enableWxBetterTogether;
