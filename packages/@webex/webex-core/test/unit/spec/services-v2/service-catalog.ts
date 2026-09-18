@@ -384,6 +384,23 @@ describe('webex-core', () => {
         );
       });
 
+      it('rejects an invalid candidate before reading catalog URLs', () => {
+        const unreadService = {
+          serviceUrls: [
+            {
+              host: 'example.com',
+              get baseUrl() {
+                throw new Error('catalog URL should not be read');
+              },
+            },
+          ],
+        };
+
+        catalog.serviceGroups.postauth.push(unreadService);
+
+        assert.isUndefined(catalog.findServiceMatchFromUrl('not-a-valid-url'));
+      });
+
       it('returns the service detail and exact catalog URL from one scan', () => {
         const expectedServiceUrl = {
           host: 'example2.com',

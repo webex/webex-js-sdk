@@ -515,6 +515,34 @@ describe('webex-core', () => {
         );
       });
 
+      it('uses refreshed host metadata when an existing service URL is updated', () => {
+        const serviceName = 'example';
+
+        catalog.updateServiceUrls('postauth', [
+          {
+            name: serviceName,
+            defaultHost: 'old.example.com',
+            defaultUrl: 'https://old.example.com/resource',
+            hosts: [],
+          },
+        ]);
+
+        const service = catalog._getUrl(serviceName, 'postauth');
+
+        catalog.updateServiceUrls('postauth', [
+          {
+            name: serviceName,
+            defaultHost: 'new.example.com',
+            defaultUrl: 'https://new.example.com/resource',
+            hosts: [],
+          },
+        ]);
+
+        assert.equal(catalog._getUrl(serviceName, 'postauth'), service);
+        assert.equal(service.defaultHost, 'new.example.com');
+        assert.equal(catalog.findServiceUrlFromUrl('https://new.example.com/resource/id'), service);
+      });
+
       it.each([
         'discovery',
         'preauth',

@@ -928,6 +928,55 @@ describe('webex-core', () => {
         assert.equal(result, 'https://example.com/api/v1');
         assert.calledOnceWithExactly(getServiceFromUrl, 'https://example.com/api/v1/resource');
       });
+
+      it('does not rescan by URL when the name resolves after waiting for a catalog', async () => {
+        const priorityUrl = 'https://example.com/api/v1';
+        const candidateUrl = `${priorityUrl}/resource`;
+        const get = sinon.stub(services, 'get').onFirstCall().returns(undefined);
+
+        get.returns(priorityUrl);
+
+        const getServiceFromUrl = sinon.stub(services, 'getServiceFromUrl').returns(undefined);
+        const pendingCatalog = new Promise(() => undefined);
+
+        sinon
+          .stub(catalog, 'waitForCatalog')
+          .callsFake((serviceGroup) =>
+            serviceGroup === 'preauth' ? Promise.resolve() : pendingCatalog
+          );
+
+        const result = await services.waitForService({name: 'example', url: candidateUrl});
+
+        assert.equal(result, priorityUrl);
+        assert.calledOnceWithExactly(getServiceFromUrl, candidateUrl);
+      });
+
+      it('scans by URL when the name remains unresolved after waiting for a catalog', async () => {
+        const priorityUrl = 'https://example.com/api/v1';
+        const candidateUrl = `${priorityUrl}/resource`;
+
+        sinon.stub(services, 'get').returns(undefined);
+
+        const getServiceFromUrl = sinon
+          .stub(services, 'getServiceFromUrl')
+          .onFirstCall()
+          .returns(undefined);
+
+        getServiceFromUrl.returns({priorityUrl});
+
+        const pendingCatalog = new Promise(() => undefined);
+
+        sinon
+          .stub(catalog, 'waitForCatalog')
+          .callsFake((serviceGroup) =>
+            serviceGroup === 'preauth' ? Promise.resolve() : pendingCatalog
+          );
+
+        const result = await services.waitForService({name: 'missing', url: candidateUrl});
+
+        assert.equal(result, priorityUrl);
+        assert.calledTwice(getServiceFromUrl);
+      });
     });
 
     describe('#getServiceFromUrl()', () => {
