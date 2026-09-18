@@ -4,7 +4,10 @@ const {
   getLegacyExternalTransitionDecision,
   getRecoveryDecision,
   getSelectableIdleCodes,
+  getWellnessTransition,
   parseRecoveryMarker,
+  shouldResetForSessionEvent,
+  shouldResetSampleAfterDeregister,
 } = require('../../../../../../docs/samples/contact-center/wellness-utils');
 const {readFileSync} = require('fs');
 const {resolve} = require('path');
@@ -108,40 +111,6 @@ describe('Contact Center wellness sample utilities', () => {
       );
     });
 
-    it('limits logout cleanup to the active wellness session', () => {
-      const appSource = readFileSync(
-        resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
-        'utf8'
-      );
-      const handlerStart = appSource.indexOf('function handleWellnessLogout(event)');
-      const handlerEnd = appSource.indexOf('function attachWellnessSdkListeners()', handlerStart);
-      const handler = appSource.slice(handlerStart, handlerEnd);
-
-      expect(handlerStart).toBeGreaterThan(-1);
-      expect(handler).toContain(
-        '!event?.agentSessionId || event.agentSessionId === wellnessState.agentSessionId'
-      );
-      expect(appSource).toContain("webex.cc.on('agent:logoutSuccess', handleWellnessLogout);");
-      expect(appSource).toContain("webex.cc.off('agent:logoutSuccess', handleWellnessLogout);");
-    });
-
-    it('cleans up the sample after an SDK-complete deregistration reports a deferred error', () => {
-      const appSource = readFileSync(
-        resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
-        'utf8'
-      );
-      const deregisterStart = appSource.indexOf('function doDeRegister()');
-      const deregisterEnd = appSource.indexOf(
-        "deregisterBtn.addEventListener('click', doDeRegister);",
-        deregisterStart
-      );
-      const deregister = appSource.slice(deregisterStart, deregisterEnd);
-
-      expect(deregisterStart).toBeGreaterThan(-1);
-      expect(deregister).toContain('if (!webex.cc.agentConfig)');
-      expect(deregister.match(/resetDeregisteredSampleState\(\);/g)).toHaveLength(2);
-    });
-
     it('keeps the intake v0.4 US English wellness copy in the sample surfaces', () => {
       const appSource = readFileSync(
         resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
@@ -177,20 +146,68 @@ describe('Contact Center wellness sample utilities', () => {
       ].forEach((copy) => expect(sampleSource).toContain(copy));
     });
 
-    it('revokes manual request eligibility after a not-allowed decision', () => {
-      const appSource = readFileSync(
-        resolve(__dirname, '../../../../../../docs/samples/contact-center/app.js'),
-        'utf8'
-      );
-      const branchStart = appSource.indexOf(
-        'WELLNESS_BREAK_NOTIFICATION_ACTIONS.WELLNESS_BREAK_NOT_ALLOWED'
-      );
-      const branchEnd = appSource.indexOf('renderWellnessState();', branchStart);
-      const notAllowedBranch = appSource.slice(branchStart, branchEnd);
+  });
 
-      expect(branchStart).toBeGreaterThan(-1);
-      expect(notAllowedBranch).toContain('wellnessState.canRequest = false;');
+  describe('lifecycle transitions', () => {
+    it('revokes manual request eligibility after a not-allowed decision', () => {
+      expect(
+        getWellnessTransition(
+          {lifecycle: 'RequestPending', hasOffer: false, isReady: true},
+          {type: 'NOT_ALLOWED'}
+        )
+      ).toEqual({
+        lifecycle: 'Ready',
+        canRequest: false,
+        clearOffer: true,
+        clearManualRequest: true,
+      });
     });
+
+    it('keeps an offer retryable when response delivery fails', () => {
+      expect(
+        getWellnessTransition(
+          {lifecycle: 'OfferPending', hasOffer: true, isReady: true},
+          {type: 'OFFER_RESPONSE_STARTED'}
+        )
+      ).toEqual({lifecycle: 'OfferResponding', allowed: true});
+      expect(
+        getWellnessTransition(
+          {lifecycle: 'OfferResponding', hasOffer: true, isReady: true},
+          {type: 'OFFER_RESPONSE_FAILED'}
+        )
+      ).toEqual({lifecycle: 'OfferPending', rearmOffer: true});
+    });
+
+    it('clears an offer only after its response succeeds', () => {
+      expect(
+        getWellnessTransition(
+          {lifecycle: 'OfferResponding', hasOffer: true, isReady: true},
+          {type: 'OFFER_RESPONSE_SUCCEEDED'}
+        )
+      ).toEqual({lifecycle: 'Ready', clearOffer: true});
+    });
+
+    it.each([
+      [undefined, 'session-1', true],
+      ['session-1', 'session-1', true],
+      ['session-2', 'session-1', false],
+    ])(
+      'scopes session cleanup for event session %s',
+      (eventSessionId, activeSessionId, expected) => {
+        expect(shouldResetForSessionEvent(eventSessionId, activeSessionId)).toBe(expected);
+      }
+    );
+
+    it.each([
+      [true, true, true],
+      [false, false, true],
+      [false, true, false],
+    ])(
+      'decides deregistration cleanup for success=%s config=%s',
+      (succeeded, hasAgentConfig, expected) => {
+        expect(shouldResetSampleAfterDeregister({succeeded, hasAgentConfig})).toBe(expected);
+      }
+    );
   });
 
   describe('browser recovery marker', () => {

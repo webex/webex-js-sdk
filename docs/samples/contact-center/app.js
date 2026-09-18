@@ -30,7 +30,10 @@ const {
   getLegacyExternalTransitionDecision,
   getRecoveryDecision,
   getSelectableIdleCodes,
+  getWellnessTransition,
   parseRecoveryMarker,
+  shouldResetForSessionEvent,
+  shouldResetSampleAfterDeregister,
 } = WellnessSampleUtils;
 const WELLNESS_OFFER_TIMEOUT_MS = 5 * 60 * 1000;
 const WELLNESS_REQUEST_DECISION_TIMEOUT_MS = 5 * 60 * 1000;
@@ -3277,6 +3280,32 @@ function clearWellnessOffer() {
   wellnessState.offerEvent = undefined;
 }
 
+function applyWellnessTransition(transition) {
+  if (transition.clearOffer) {
+    clearWellnessOffer();
+  }
+  if (transition.clearManualRequest) {
+    clearWellnessManualRequest();
+  }
+  if (typeof transition.canRequest === 'boolean') {
+    wellnessState.canRequest = transition.canRequest;
+  }
+  wellnessState.lifecycle = transition.lifecycle;
+}
+
+function transitionWellness(type) {
+  const transition = getWellnessTransition(
+    {
+      lifecycle: wellnessState.lifecycle,
+      hasOffer: Boolean(wellnessState.offerEvent),
+      isReady: isWellnessReady(),
+    },
+    {type}
+  );
+  applyWellnessTransition(transition);
+  return transition;
+}
+
 function clearWellnessManualRequest() {
   if (wellnessState.manualRequestTimer) {
     clearTimeout(wellnessState.manualRequestTimer);
@@ -3522,18 +3551,12 @@ function handleWellnessBreak(event) {
       `${WELLNESS_COPY.offerTitle}. ${event.actionText || WELLNESS_COPY.offer}`
     );
   } else if (event.actionEvent === WELLNESS_BREAK_NOTIFICATION_ACTIONS.SUGGEST_WELLNESS_BREAK) {
-    clearWellnessOffer();
-    clearWellnessManualRequest();
-    wellnessState.canRequest = true;
-    wellnessState.lifecycle = isWellnessReady() ? 'Ready' : 'Unavailable';
+    transitionWellness('SUGGESTED');
     setWellnessMessage(event.actionText || 'You can request a wellness break.');
   } else if (
     event.actionEvent === WELLNESS_BREAK_NOTIFICATION_ACTIONS.WELLNESS_BREAK_NOT_ALLOWED
   ) {
-    clearWellnessOffer();
-    clearWellnessManualRequest();
-    wellnessState.canRequest = false;
-    wellnessState.lifecycle = isWellnessReady() ? 'Ready' : 'Unavailable';
+    transitionWellness('NOT_ALLOWED');
     setWellnessMessage(event.actionText || WELLNESS_COPY.requestNotAllowed);
   }
   renderWellnessState();
@@ -3750,25 +3773,58 @@ async function enterWellnessBreak(sendAccepted) {
 }
 
 async function respondToWellnessOffer(action) {
-  if (!isWellnessReady() || wellnessState.lifecycle !== 'OfferPending') return;
+  if (
+    !isWellnessReady() ||
+    wellnessState.lifecycle !== 'OfferPending' ||
+    !wellnessState.offerEvent
+  ) {
+    return;
+  }
 
   if (action === WELLNESS_BREAK_USER_ACTIONS.ACCEPTED) {
     await enterWellnessBreak(true);
     return;
   }
 
-  clearWellnessOffer();
-  wellnessState.lifecycle = 'Ready';
+  const offerEvent = wellnessState.offerEvent;
+  const sessionId = wellnessState.agentSessionId;
+  const startTransition = transitionWellness('OFFER_RESPONSE_STARTED');
+  if (!startTransition.allowed) return;
+
+  if (wellnessState.offerTimer) {
+    clearTimeout(wellnessState.offerTimer);
+    wellnessState.offerTimer = undefined;
+  }
   renderWellnessState();
   try {
     await webex.cc.apiAIAssistant.respondToWellnessBreak({action});
+    if (
+      wellnessState.offerEvent !== offerEvent ||
+      wellnessState.agentSessionId !== sessionId
+    ) {
+      return;
+    }
+    transitionWellness('OFFER_RESPONSE_SUCCEEDED');
     setWellnessMessage(
       action === WELLNESS_BREAK_USER_ACTIONS.REJECTED
         ? WELLNESS_COPY.declined
         : `${WELLNESS_COPY.noResponse} NO_RESPONSE was accepted with HTTP 202.`
     );
   } catch (error) {
-    setWellnessMessage(error?.message || `${action} delivery failed.`, true);
+    if (
+      wellnessState.offerEvent !== offerEvent ||
+      wellnessState.agentSessionId !== sessionId
+    ) {
+      return;
+    }
+    const failureTransition = transitionWellness('OFFER_RESPONSE_FAILED');
+    if (failureTransition.rearmOffer) {
+      startWellnessOfferTimer(sessionId);
+    }
+    setWellnessMessage(
+      `${error?.message || `${action} delivery failed.`} The offer remains available to retry.`,
+      true
+    );
   }
   renderWellnessState();
 }
@@ -3948,7 +4004,7 @@ async function recoverWellnessBreakIfNeeded() {
 }
 
 function handleWellnessLogout(event) {
-  if (!event?.agentSessionId || event.agentSessionId === wellnessState.agentSessionId) {
+  if (shouldResetForSessionEvent(event?.agentSessionId, wellnessState.agentSessionId)) {
     resetWellnessSession();
   }
 }
@@ -4092,7 +4148,7 @@ function register() {
 
     webex.cc.on('agent:multiLogin', (data) => {
       if (data && typeof data === 'object' && data.type === 'AgentMultiLoginCloseSession') {
-        if (!data.agentSessionId || data.agentSessionId === wellnessState.agentSessionId) {
+        if (shouldResetForSessionEvent(data.agentSessionId, wellnessState.agentSessionId)) {
           resetWellnessSession();
         }
         agentMultiLoginAlert.innerHTML = 'Multiple Agent Login Session Detected!';
@@ -4184,16 +4240,27 @@ function resetDeregisteredSampleState() {
 }
 
 // New function to handle unregistration
-function doDeRegister() {
-    webex.cc.deregister().then(() => {
-        resetDeregisteredSampleState();
-        console.log('Deregistered successfully');
-    }).catch((error) => {
-        if (!webex.cc.agentConfig) {
-            resetDeregisteredSampleState();
-        }
+async function doDeRegister() {
+    let succeeded = false;
+    try {
+        await webex.cc.deregister();
+        succeeded = true;
+    } catch (error) {
         console.error('Unregister failed', error);
-    });
+    } finally {
+      if (
+        shouldResetSampleAfterDeregister({
+          succeeded,
+          hasAgentConfig: Boolean(webex.cc.agentConfig),
+        })
+      ) {
+        resetDeregisteredSampleState();
+      }
+    }
+
+    if (succeeded) {
+        console.log('Deregistered successfully');
+    }
 }
 
 deregisterBtn.addEventListener('click', doDeRegister);

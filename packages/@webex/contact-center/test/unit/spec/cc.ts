@@ -2943,6 +2943,32 @@ describe('webex.cc', () => {
       deviceUnregisterSpy = jest.spyOn(webex.internal.device, 'unregister');
     });
 
+    it('invalidates wellness context before deregistration cleanup can fail', async () => {
+      const cleanupError = new Error('cleanup failed');
+      let rejectCleanup: (error: Error) => void = () => undefined;
+      const cleanup = new Promise((resolve, reject) => {
+        rejectCleanup = reject;
+      });
+      webex.cc.agentConfig = {
+        ...webex.cc.agentConfig,
+        isWellnessBreakEnabled: true,
+      };
+      webex.cc['updateWellnessSession']('session-1');
+      jest.spyOn(webex.cc as any, 'teardownWxAppLocalState').mockReturnValue(cleanup);
+
+      const deregistration = webex.cc.deregister();
+      const rejection = expect(deregistration).rejects.toThrow(cleanupError);
+
+      expect(webex.cc['currentAgentSessionId']).toBeUndefined();
+      await expect(webex.cc.apiAIAssistant.requestWellnessBreak()).rejects.toThrow(
+        'WELLNESS_BREAK_AGENT_SESSION_REQUIRED'
+      );
+
+      rejectCleanup(cleanupError);
+      await rejection;
+      expect(webex.cc['currentAgentSessionId']).toBeUndefined();
+    });
+
     it('should unregister successfully and clean up all resources when webrtc is enabled', async () => {
       webex.cc.services.rtdWebSocketManager = {
         isSocketClosed: false,

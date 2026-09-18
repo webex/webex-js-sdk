@@ -139,7 +139,7 @@
       "canonical_spec": "src/services/ai-docs/services-spec.md",
       "contracts": {
         "provides": [
-          "Services composition root; agent/config/contact/dialer factories; AddressBook, EntryPoint, Queue, UserPreference, ApiAiAssistant, and WebCalling integration; existing Queue/EntryPoint list methods with SDK-owned defaults and compatible existing-parameter overrides; Queue returns full records and EntryPoint maps profile-scoped dial-number rows to typed records with optional numbers; cc.userPreference exposes user-preference CRUD; ApiAiAssistant exposes session-validated direct wellness actions through a live internal ContactCenter-owned context provider"
+          "Services composition root; agent/config/contact/dialer factories; AddressBook, EntryPoint, Queue, UserPreference, ApiAiAssistant, and WebCalling integration; existing Queue/EntryPoint list methods with SDK-owned defaults and compatible existing-parameter overrides; Queue returns full records and EntryPoint maps profile-scoped dial-number rows to typed records with optional numbers; cc.userPreference exposes user-preference CRUD; ApiAiAssistant exposes session-validated direct wellness actions through a read-only context provider supplied at construction"
         ],
         "requires": [
           "Core HTTP/WebSocket/AQM infrastructure; WCC APIs; @webex/calling; MetricsManager; PageCache"

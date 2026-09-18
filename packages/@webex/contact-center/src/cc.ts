@@ -78,7 +78,7 @@ import {Failure} from './services/core/GlobalTypes';
 import {EntryPoint} from './services/EntryPoint';
 import {AddressBook} from './services/AddressBook';
 import {Queue} from './services/Queue';
-import {ApiAIAssistant, createInternalApiAIAssistant} from './services/ApiAiAssistant';
+import {ApiAIAssistant} from './services/ApiAiAssistant';
 import {UserPreference} from './services/UserPreference';
 import type {
   EntryPointListResponse,
@@ -458,7 +458,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.answerCallOnWebexService = new AnswerCallOnWebexService(this.$webex);
       this.webexCrossClientService = new WebexCrossClientService(this.$webex);
       this.wxAppTelephonyMercurySync = new WxAppTelephonyMercurySync(this.$webex);
-      this.apiAIAssistant = createInternalApiAIAssistant(this.$webex, () => ({
+      this.apiAIAssistant = new ApiAIAssistant(this.$webex, () => ({
         isWellnessBreakEnabled: this.agentConfig?.isWellnessBreakEnabled === true,
         agentId: this.agentConfig?.agentId,
         agentSessionId: this.currentAgentSessionId,
@@ -785,6 +785,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   public async deregister(): Promise<void> {
     this.wellnessRegistrationGeneration += 1;
     this.wellbeingBreakIdleCode = undefined;
+    this.updateWellnessSession();
     try {
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,

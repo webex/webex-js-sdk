@@ -102,14 +102,58 @@
     return legacyAuxCodeId === wellnessAuxCodeId ? 'restore' : 'clear';
   }
 
+  function shouldResetForSessionEvent(eventSessionId, activeSessionId) {
+    return !eventSessionId || eventSessionId === activeSessionId;
+  }
+
+  function shouldResetSampleAfterDeregister({succeeded, hasAgentConfig}) {
+    return succeeded || !hasAgentConfig;
+  }
+
+  function getWellnessTransition(state, event) {
+    const readyLifecycle = state.isReady ? 'Ready' : 'Unavailable';
+
+    switch (event.type) {
+      case 'SUGGESTED':
+        return {
+          lifecycle: readyLifecycle,
+          canRequest: true,
+          clearOffer: true,
+          clearManualRequest: true,
+        };
+      case 'NOT_ALLOWED':
+        return {
+          lifecycle: readyLifecycle,
+          canRequest: false,
+          clearOffer: true,
+          clearManualRequest: true,
+        };
+      case 'OFFER_RESPONSE_STARTED':
+        return state.lifecycle === 'OfferPending' && state.hasOffer
+          ? {lifecycle: 'OfferResponding', allowed: true}
+          : {lifecycle: state.lifecycle, allowed: false};
+      case 'OFFER_RESPONSE_SUCCEEDED':
+        return {lifecycle: readyLifecycle, clearOffer: true};
+      case 'OFFER_RESPONSE_FAILED':
+        return state.hasOffer
+          ? {lifecycle: 'OfferPending', rearmOffer: true}
+          : {lifecycle: readyLifecycle, clearOffer: true};
+      default:
+        return {lifecycle: state.lifecycle};
+    }
+  }
+
   return {
     areAllTasksSafe,
     createRecoveryMarker,
     getLegacyExternalTransitionDecision,
     getRecoveryDecision,
     getSelectableIdleCodes,
+    getWellnessTransition,
     isTaskBlockingWellness,
     normalizeState,
     parseRecoveryMarker,
+    shouldResetForSessionEvent,
+    shouldResetSampleAfterDeregister,
   };
 });

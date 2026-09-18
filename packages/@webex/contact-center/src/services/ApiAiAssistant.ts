@@ -14,7 +14,6 @@ import {
   RealTimeAssistanceUserActionParams,
   RespondToWellnessBreakParams,
   WellnessBreakUserAction,
-  WellnessBreakContextProvider,
   WELLNESS_BREAK_USER_ACTIONS,
   GenericError,
 } from '../types';
@@ -27,7 +26,11 @@ import {
 } from './constants';
 import {AIFeatureFlags} from './config/types';
 
-const wellnessContextProviders = new WeakMap<object, WellnessBreakContextProvider>();
+type WellnessBreakContextProvider = () => {
+  isWellnessBreakEnabled: boolean;
+  agentId?: string;
+  agentSessionId?: string;
+};
 
 /**
  * ApiAIAssistant provides AI Assistant APIs for transcript controls.
@@ -37,6 +40,7 @@ export class ApiAIAssistant {
   private webex: WebexSDK;
   private metricsManager: MetricsManager;
   private aiFeature: AIFeatureFlags;
+  private readonly wellnessContextProvider?: WellnessBreakContextProvider;
 
   private createWellnessError(reason: string): GenericError {
     const error = new Error(reason) as GenericError;
@@ -50,8 +54,9 @@ export class ApiAIAssistant {
     return error;
   }
 
-  constructor(webex: WebexSDK) {
+  constructor(webex: WebexSDK, wellnessContextProvider?: WellnessBreakContextProvider) {
     this.webex = webex;
+    this.wellnessContextProvider = wellnessContextProvider;
     this.metricsManager = MetricsManager.getInstance({webex});
   }
 
@@ -69,7 +74,7 @@ export class ApiAIAssistant {
     ]);
 
     try {
-      const context = wellnessContextProviders.get(this)?.();
+      const context = this.wellnessContextProvider?.();
       const agentId = context?.agentId?.trim();
       const agentSessionId = context?.agentSessionId?.trim();
       const orgId = this.webex.credentials.getOrgId()?.trim();
@@ -555,20 +560,5 @@ export class ApiAIAssistant {
     }
   }
 }
-
-/**
- * Creates the Contact Center-owned AI Assistant instance with live wellness context access.
- * This factory is intentionally omitted from the public package façade and declarations.
- * @internal
- */
-export const createInternalApiAIAssistant = (
-  webex: WebexSDK,
-  wellnessContextProvider: WellnessBreakContextProvider
-): ApiAIAssistant => {
-  const apiAIAssistant = new ApiAIAssistant(webex);
-  wellnessContextProviders.set(apiAIAssistant, wellnessContextProvider);
-
-  return apiAIAssistant;
-};
 
 export default ApiAIAssistant;

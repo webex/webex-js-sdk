@@ -1,6 +1,4 @@
-import ApiAIAssistant, {
-  createInternalApiAIAssistant,
-} from '../../../../src/services/ApiAiAssistant';
+import ApiAIAssistant from '../../../../src/services/ApiAiAssistant';
 import MetricsManager from '../../../../src/metrics/MetricsManager';
 import LoggerProxy from '../../../../src/logger-proxy';
 import WebexRequest from '../../../../src/services/core/WebexRequest';
@@ -56,7 +54,7 @@ describe('ApiAIAssistant', () => {
     (MetricsManager.getInstance as jest.Mock).mockReturnValue(mockMetricsManager);
 
     wellnessContext = {isWellnessBreakEnabled: false};
-    apiAIAssistant = createInternalApiAIAssistant(mockWebex, () => wellnessContext);
+    apiAIAssistant = new ApiAIAssistant(mockWebex, () => wellnessContext);
   });
 
   it('should send transcript start event successfully', async () => {

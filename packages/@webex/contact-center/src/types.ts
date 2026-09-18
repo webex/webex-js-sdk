@@ -998,16 +998,6 @@ export interface WellnessBreakEvent {
 }
 
 /**
- * Supplies the live, Contact Center-owned context used for wellness action requests.
- * @internal
- */
-export type WellnessBreakContextProvider = () => {
-  isWellnessBreakEnabled: boolean;
-  agentId?: string;
-  agentSessionId?: string;
-};
-
-/**
  * Parameters for responding to a backend-provided wellness offer.
  * @public
  */
