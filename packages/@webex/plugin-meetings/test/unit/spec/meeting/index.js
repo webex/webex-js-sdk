@@ -12916,13 +12916,16 @@ describe('plugin-meetings', () => {
                 }
               );
 
-              assert.deepEqual(meeting.recording, {
-                state: expectedRecordingState,
-                modifiedBy,
-                lastModified,
-                modifiedByServiceAppName: undefined,
-                modifiedByServiceAppId: undefined,
-              });
+            assert.deepEqual(meeting.recording, {
+              state: expectedRecordingState,
+              modifiedBy,
+              lastModified,
+              modifiedByServiceAppName: undefined,
+              modifiedByServiceAppId: undefined,
+              lastDuration: undefined,
+              lastTime: undefined,
+              needCalculate: undefined,
+            });
 
               assert.calledWith(
                 TriggerProxy.trigger,
@@ -12959,6 +12962,9 @@ describe('plugin-meetings', () => {
             lastModified,
             modifiedByServiceAppName,
             modifiedByServiceAppId,
+            lastDuration: undefined,
+            lastTime: undefined,
+            needCalculate: undefined,
           });
 
           assert.calledWith(
@@ -12968,6 +12974,285 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_STARTED_RECORDING,
             meeting.recording
           );
+        });
+
+        describe('recording duration metadata', () => {
+          beforeEach(() => {
+            meeting.recordingController = {
+              getServiceUrl: sinon.stub().returns(undefined),
+              getLocusId: sinon.stub().returns(undefined),
+              getRecordingStatus: sinon.stub().resolves(undefined),
+            };
+          });
+
+          it('passes through duration fields from the event onto meeting.recording', async () => {
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {
+                state: RECORDING_STATE.RECORDING,
+                modifiedBy: 'u',
+                lastModified: 't',
+                modifiedByServiceAppName: undefined,
+                modifiedByServiceAppId: undefined,
+                lastDuration: 5000,
+                lastTime: '2026-06-03T10:00:00Z',
+                needCalculate: true,
+              }
+            );
+
+            assert.equal(meeting.recording.lastDuration, 5000);
+            assert.equal(meeting.recording.lastTime, '2026-06-03T10:00:00Z');
+            assert.equal(meeting.recording.needCalculate, true);
+          });
+
+          it('preserves prior duration metadata across deltas that omit them (non-IDLE)', async () => {
+            meeting.recording = {
+              state: RECORDING_STATE.RECORDING,
+              lastDuration: 9999,
+              lastTime: 'prev-time',
+              needCalculate: true,
+            };
+
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {
+                state: RECORDING_STATE.PAUSED,
+                modifiedBy: 'u',
+                lastModified: 't',
+                modifiedByServiceAppName: undefined,
+                modifiedByServiceAppId: undefined,
+                lastDuration: undefined,
+                lastTime: undefined,
+                needCalculate: undefined,
+              }
+            );
+
+            assert.equal(meeting.recording.lastDuration, 9999);
+            assert.equal(meeting.recording.lastTime, 'prev-time');
+            assert.equal(meeting.recording.needCalculate, true);
+            assert.equal(meeting.recording.state, RECORDING_STATE.PAUSED);
+          });
+
+          it('clears duration metadata when transitioning to IDLE', async () => {
+            meeting.recording = {
+              state: RECORDING_STATE.RECORDING,
+              lastDuration: 9999,
+              lastTime: 'prev-time',
+              needCalculate: true,
+            };
+
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {
+                state: RECORDING_STATE.IDLE,
+                modifiedBy: 'u',
+                lastModified: 't',
+                modifiedByServiceAppName: undefined,
+                modifiedByServiceAppId: undefined,
+                lastDuration: undefined,
+                lastTime: undefined,
+                needCalculate: undefined,
+              }
+            );
+
+            assert.isUndefined(meeting.recording.lastDuration);
+            assert.isUndefined(meeting.recording.lastTime);
+            assert.isUndefined(meeting.recording.needCalculate);
+            assert.equal(meeting.recording.state, RECORDING_STATE.IDLE);
+          });
+
+          it('defers hydration when serviceUrl/locusId are unavailable on RECORDING', async () => {
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {
+                state: RECORDING_STATE.RECORDING,
+                modifiedBy: 'u',
+                lastModified: 't',
+                modifiedByServiceAppName: undefined,
+                modifiedByServiceAppId: undefined,
+              }
+            );
+
+            assert.notCalled(meeting.recordingController.getRecordingStatus);
+            assert.equal(meeting.pendingRecordingHydrationEvent, EVENT_TRIGGERS.MEETING_STARTED_RECORDING);
+          });
+
+          it('hydrates immediately when serviceUrl/locusId are available and merges the response', async () => {
+            meeting.recordingController.getServiceUrl.returns('svc');
+            meeting.recordingController.getLocusId.returns('locus-id');
+            meeting.recordingController.getRecordingStatus.resolves({
+              status: 'paused',
+              lastDuration: 12345,
+              lastTime: '2026-06-03T10:00:00Z',
+              needCalculate: true,
+            });
+
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {
+                state: RECORDING_STATE.PAUSED,
+                modifiedBy: 'u',
+                lastModified: 't',
+                modifiedByServiceAppName: undefined,
+                modifiedByServiceAppId: undefined,
+              }
+            );
+            // allow microtask queue to flush hydrate promise
+            await new Promise((r) => setImmediate(r));
+
+            assert.calledOnce(meeting.recordingController.getRecordingStatus);
+            assert.equal(meeting.recording.lastDuration, 12345);
+            assert.equal(meeting.recording.lastTime, '2026-06-03T10:00:00Z');
+            assert.equal(meeting.recording.needCalculate, true);
+            assert.isUndefined(meeting.pendingRecordingHydrationEvent);
+
+            // Hydration should fire the dedicated duration-updated event,
+            // NOT replay the original transition event.
+            assert.calledWith(
+              TriggerProxy.trigger,
+              meeting,
+              {file: 'meeting/index', function: 'hydrateRecordingDuration'},
+              EVENT_TRIGGERS.MEETING_RECORDING_DURATION_UPDATED,
+              meeting.recording
+            );
+          });
+
+          it('does not hydrate when transitioning into IDLE', async () => {
+            meeting.recordingController.getServiceUrl.returns('svc');
+            meeting.recordingController.getLocusId.returns('locus-id');
+
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {
+                state: RECORDING_STATE.IDLE,
+                modifiedBy: 'u',
+                lastModified: 't',
+                modifiedByServiceAppName: undefined,
+                modifiedByServiceAppId: undefined,
+              }
+            );
+
+            assert.notCalled(meeting.recordingController.getRecordingStatus);
+          });
+
+          it('drops a hydrate response whose status does not match the current recording state', async () => {
+            meeting.recordingController.getServiceUrl.returns('svc');
+            meeting.recordingController.getLocusId.returns('locus-id');
+
+            // Resource service still reports the previous segment's PAUSED
+            // status while Locus has already transitioned to RECORDING.
+            meeting.recordingController.getRecordingStatus.resolves({
+              status: 'paused',
+              lastDuration: 99999,
+              lastTime: '2026-06-03T10:00:00Z',
+              needCalculate: true,
+            });
+
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {
+                state: RECORDING_STATE.RECORDING,
+                modifiedBy: 'u',
+                lastModified: 't',
+                modifiedByServiceAppName: undefined,
+                modifiedByServiceAppId: undefined,
+              }
+            );
+            await new Promise((r) => setImmediate(r));
+
+            assert.calledOnce(meeting.recordingController.getRecordingStatus);
+            assert.equal(meeting.recording.state, RECORDING_STATE.RECORDING);
+            assert.isUndefined(meeting.recording.lastDuration);
+            assert.isUndefined(meeting.recording.lastTime);
+
+            assert.neverCalledWith(
+              TriggerProxy.trigger,
+              meeting,
+              {file: 'meeting/index', function: 'hydrateRecordingDuration'},
+              EVENT_TRIGGERS.MEETING_RECORDING_DURATION_UPDATED,
+              sinon.match.any
+            );
+          });
+
+          it('drops a stale hydrate response when the recording state changes mid-flight', async () => {
+            meeting.recordingController.getServiceUrl.returns('svc');
+            meeting.recordingController.getLocusId.returns('locus-id');
+
+            // First request: hangs until we resolve it.
+            let resolveFirst;
+            const firstPending = new Promise((resolve) => {
+              resolveFirst = resolve;
+            });
+            meeting.recordingController.getRecordingStatus.onFirstCall().returns(firstPending);
+
+            // Kick off the first hydration (segment A).
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {
+                state: RECORDING_STATE.RECORDING,
+                modifiedBy: 'u',
+                lastModified: 't1',
+                modifiedByServiceAppName: undefined,
+                modifiedByServiceAppId: undefined,
+              }
+            );
+
+            // Stop, then start a fresh segment B before A's response resolves.
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {
+                state: RECORDING_STATE.IDLE,
+                modifiedBy: 'u',
+                lastModified: 't2',
+                modifiedByServiceAppName: undefined,
+                modifiedByServiceAppId: undefined,
+              }
+            );
+
+            meeting.recordingController.getRecordingStatus.onSecondCall().resolves({
+              status: 'recording',
+              lastDuration: 0,
+              lastTime: '2026-06-03T11:00:00Z',
+              needCalculate: true,
+            });
+
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {
+                state: RECORDING_STATE.RECORDING,
+                modifiedBy: 'u',
+                lastModified: 't3',
+                modifiedByServiceAppName: undefined,
+                modifiedByServiceAppId: undefined,
+              }
+            );
+            // allow segment B's hydrate to flush
+            await new Promise((r) => setImmediate(r));
+
+            // Now resolve segment A's stale response with a large duration —
+            // it must NOT overwrite segment B.
+            resolveFirst({
+              status: 'recording',
+              lastDuration: 99999,
+              lastTime: '2026-06-03T10:00:00Z',
+              needCalculate: true,
+            });
+            await new Promise((r) => setImmediate(r));
+
+            assert.equal(meeting.recording.state, RECORDING_STATE.RECORDING);
+            assert.equal(meeting.recording.lastDuration, 0);
+            assert.equal(meeting.recording.lastTime, '2026-06-03T11:00:00Z');
+          });
         });
 
         it('listens to the locus interpretation update event', () => {

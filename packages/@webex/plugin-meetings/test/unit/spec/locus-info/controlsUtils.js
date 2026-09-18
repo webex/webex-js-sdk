@@ -274,6 +274,60 @@ describe('plugin-meetings', () => {
         assert.isUndefined(parsedControls.record.modifiedByServiceAppId);
       });
 
+      it('should passthrough recording duration metadata from record.meta.duration', () => {
+        const newControls = {
+          record: {
+            recording: true,
+            paused: false,
+            meta: {
+              duration: {
+                lastDuration: 12345,
+                lastTime: '2026-06-03T10:00:00Z',
+                needCalculate: true,
+              },
+            },
+          },
+        };
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.record.lastDuration, 12345);
+        assert.equal(parsedControls.record.lastTime, '2026-06-03T10:00:00Z');
+        assert.equal(parsedControls.record.needCalculate, true);
+      });
+
+      it('should fall back to record.duration when record.meta.duration is absent', () => {
+        const newControls = {
+          record: {
+            recording: false,
+            paused: true,
+            duration: {
+              lastDuration: 7777,
+              lastTime: '2026-06-03T11:00:00Z',
+              needCalculate: false,
+            },
+          },
+        };
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.record.lastDuration, 7777);
+        assert.equal(parsedControls.record.lastTime, '2026-06-03T11:00:00Z');
+        assert.equal(parsedControls.record.needCalculate, false);
+      });
+
+      it('should leave duration fields undefined when neither source is present', () => {
+        const newControls = {
+          record: {recording: true, paused: false, meta: {lastModified: '2026-01-01'}},
+        };
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.isUndefined(parsedControls.record.lastDuration);
+        assert.isUndefined(parsedControls.record.lastTime);
+        assert.isUndefined(parsedControls.record.needCalculate);
+      });
+
       describe('videoEnabled', () => {
         it('returns expected', () => {
           const result = ControlsUtils.parse({video: {enabled: true}});
