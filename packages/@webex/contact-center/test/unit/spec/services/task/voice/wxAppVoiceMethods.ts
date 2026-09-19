@@ -431,7 +431,12 @@ describe('runWxAppAccept', () => {
     ]);
     expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_SUCCESS,
-      {taskId: 'interaction-1'},
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        acceptReason: 'wxApp_offer_ready',
+        hasDeviceCallId: true,
+        hasDeviceId: true,
+      }),
       ['operational', 'behavioral']
     );
     expect(lifecycle.setWxAppAcceptInFlight).toHaveBeenNthCalledWith(1, true);
@@ -473,7 +478,12 @@ describe('runWxAppReject', () => {
 
     expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
-      {taskId: 'interaction-1'},
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        acceptReason: 'wxApp_offer_ready',
+        hasDeviceCallId: true,
+        hasDeviceId: true,
+      }),
       ['operational', 'behavioral']
     );
   });
@@ -509,7 +519,30 @@ describe('runWxAppOutdialDecline', () => {
     ]);
     expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
-      {taskId: 'interaction-1'},
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        acceptReason: 'wxApp_offer_ready',
+        hasDeviceCallId: true,
+        hasDeviceId: true,
+      }),
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('tracks post-accept acceptReason on outdial cancel when provided', async () => {
+    const deps = makeDeps();
+    const cancelResult = {type: 'RoutingMessage', trackingId: 'track-1', data: {}};
+
+    await runWxAppOutdialDecline(deps, async () => cancelResult, {
+      acceptReason: 'wxApp_answer_pending',
+    });
+
+    expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        acceptReason: 'wxApp_answer_pending',
+      }),
       ['operational', 'behavioral']
     );
   });
@@ -555,6 +588,8 @@ describe('runWxAppOutdialDecline', () => {
         trackingId: 'aqm-track-1',
         failureReason: 'TASK_NOT_FOUND',
         reasonCode: 404,
+        hasDeviceCallId: true,
+        hasDeviceId: true,
       }),
       ['operational', 'behavioral']
     );
@@ -596,7 +631,12 @@ describe('runWxAppTransmitDtmf metrics', () => {
 
     expect(deps.metricsManager.trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_SUCCESS,
-      {taskId: 'interaction-1', dtmfLength: 3},
+      expect.objectContaining({
+        taskId: 'interaction-1',
+        dtmfLength: 3,
+        hasDeviceCallId: true,
+        hasDeviceId: true,
+      }),
       ['operational', 'behavioral']
     );
   });

@@ -3,13 +3,15 @@ import {
   callIdSuffix,
   deriveWxAppAcceptReason,
   logWxAppOfferDecision,
+  logWxAppOfferParticipantMismatch,
   logWxAppSessionReadiness,
   logWxAppTelephonyAction,
   WXAPP_LOG_PREFIX,
 } from '../../../../src/services/wxAppDiagnosticLogging';
 
 jest.mock('../../../../src/logger-proxy', () => ({
-  info: jest.fn(),
+  log: jest.fn(),
+  warn: jest.fn(),
   error: jest.fn(),
 }));
 
@@ -76,7 +78,7 @@ describe('wxAppDiagnosticLogging', () => {
   });
 
   describe('log helpers', () => {
-    it('logs session readiness with feature prefix', () => {
+    it('logs session readiness at log level with grep-friendly suffix', () => {
       logWxAppSessionReadiness({
         enableWxBetterTogether: true,
         loginOption: 'EXTENSION',
@@ -86,8 +88,8 @@ describe('wxAppDiagnosticLogging', () => {
         telephonyTaskType: 'Voice',
       });
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith(
-        `${WXAPP_LOG_PREFIX} session readiness`,
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        expect.stringContaining(`${WXAPP_LOG_PREFIX} session readiness`),
         expect.objectContaining({
           module: 'wxAppDiagnosticLogging',
           method: 'logWxAppSessionReadiness',
@@ -95,27 +97,61 @@ describe('wxAppDiagnosticLogging', () => {
             feature: 'wxApp',
             event: 'session_readiness',
             loginOption: 'EXTENSION',
+            usersubPublished: true,
+            mercurySubscribed: true,
           }),
         })
       );
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        expect.stringContaining('usersubPublished=true'),
+        expect.anything()
+      );
     });
 
-    it('logs offer decision with acceptReason', () => {
+    it('logs offer decision at log level with acceptReason suffix', () => {
       logWxAppOfferDecision({
         interactionId: 'task-1',
         acceptVisible: true,
         acceptEnabled: false,
         acceptReason: 'extension_non_wxApp_offer',
         hasDeviceCallId: false,
+        hasDeviceId: false,
+        usersubPublished: true,
       });
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith(
-        `${WXAPP_LOG_PREFIX} offer decision`,
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        expect.stringContaining('acceptReason=extension_non_wxApp_offer'),
         expect.objectContaining({
           data: expect.objectContaining({
             event: 'offer_decision',
             acceptReason: 'extension_non_wxApp_offer',
             interactionId: 'task-1',
+            usersubPublished: true,
+          }),
+        })
+      );
+    });
+
+    it('logs participant mismatch at warn level', () => {
+      logWxAppOfferParticipantMismatch({
+        interactionId: 'task-1',
+        usersubPublished: true,
+        hasDeviceCallId: false,
+        hasDeviceId: false,
+        participantDeviceType: 'wxApp',
+        acceptVisible: true,
+        acceptEnabled: false,
+        acceptReason: 'extension_non_wxApp_offer',
+      });
+
+      expect(LoggerProxy.warn).toHaveBeenCalledWith(
+        expect.stringContaining('participant fields mismatch'),
+        expect.objectContaining({
+          method: 'logWxAppOfferParticipantMismatch',
+          data: expect.objectContaining({
+            event: 'participant_fields_mismatch',
+            usersubPublished: true,
+            hasDeviceCallId: false,
           }),
         })
       );
@@ -131,7 +167,7 @@ describe('wxAppDiagnosticLogging', () => {
       });
 
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `${WXAPP_LOG_PREFIX} telephony accept failed`,
+        expect.stringContaining('telephony accept failed'),
         expect.objectContaining({
           data: expect.objectContaining({
             trackingId: 'track-abc',

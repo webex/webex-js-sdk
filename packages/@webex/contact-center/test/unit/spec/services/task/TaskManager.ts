@@ -3626,6 +3626,15 @@ describe('TaskManager', () => {
       expect(taskManager.taskCollection['task-alias']).toBeUndefined();
     });
 
+    it('disposes wxApp offer observability when removing a task from the collection', () => {
+      const disposeWxAppOfferObservability = jest.fn();
+      task.disposeWxAppOfferObservability = disposeWxAppOfferObservability;
+
+      (taskManager as any).removeTaskFromCollection(task);
+
+      expect(disposeWxAppOfferObservability).toHaveBeenCalledTimes(1);
+    });
+
     it('replaces an EP-DN child task with a hydrated main task on CONTACT_MERGED', () => {
       const childTaskId = 'ep-dn-child-interaction-id';
       const childTask = createMockTask({
@@ -4184,6 +4193,22 @@ describe('TaskManager', () => {
 
       expect(taskOne.applyWxAppMuteStateFromSync).toHaveBeenCalledWith('call-1', true);
       expect(taskTwo.applyWxAppMuteStateFromSync).toHaveBeenCalledWith('call-1', true);
+    });
+  });
+
+  describe('refreshWxAppOfferObservabilityForAllTasks', () => {
+    it('invokes refresh on collected tasks that implement it', () => {
+      const taskOne = {refreshWxAppOfferObservability: jest.fn()};
+      const taskTwo = {};
+
+      taskManager['taskCollection'] = {
+        [taskId]: taskOne,
+        'task-2': taskTwo,
+      };
+
+      taskManager.refreshWxAppOfferObservabilityForAllTasks();
+
+      expect(taskOne.refreshWxAppOfferObservability).toHaveBeenCalledTimes(1);
     });
   });
 });
