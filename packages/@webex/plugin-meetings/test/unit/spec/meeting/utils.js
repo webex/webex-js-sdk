@@ -75,7 +75,7 @@ describe('plugin-meetings', () => {
     });
 
     describe('#cleanup', () => {
-      it('do clean up on meeting object with LLM enabled', async () => {
+      it('cleans up an LLM-enabled meeting while preserving Voicea by default', async () => {
         meeting.config = {enableAutomaticLLM: true};
         await MeetingUtil.cleanUp(meeting);
         assert.calledOnce(meeting.cleanupLocalStreams);
@@ -87,7 +87,10 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.unsetPeerConnections);
         assert.calledOnce(meeting.reconnectionManager.cleanUp);
         assert.calledOnce(meeting.stopKeepAlive);
-        assert.calledOnceWithExactly(meeting.cleanupLLMConneciton, {throwOnError: false});
+        assert.calledOnceWithExactly(meeting.cleanupLLMConneciton, {
+          throwOnError: false,
+          preserveVoiceaChannel: true,
+        });
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
         assert.calledOnce(meeting.locusInfo.cleanUp);
@@ -96,6 +99,17 @@ describe('plugin-meetings', () => {
           meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId,
           meeting.correlationId
         );
+      });
+
+      it('cleans up an LLM-enabled meeting without preserving Voicea when requested', async () => {
+        meeting.config = {enableAutomaticLLM: true};
+
+        await MeetingUtil.cleanUp(meeting, {preserveVoiceaChannel: false});
+
+        assert.calledOnceWithExactly(meeting.cleanupLLMConneciton, {
+          throwOnError: false,
+          preserveVoiceaChannel: false,
+        });
       });
 
       it('do clean up on meeting object with LLM disabled', async () => {
