@@ -7,7 +7,6 @@ import METRICS from '../metrics';
 import ServiceCatalog from './service-catalog';
 import fedRampServices from './service-fed-ramp';
 import {COMMERCIAL_ALLOWED_DOMAINS} from '../constants';
-import {matchesCatalogUrl} from '../services/service-catalog';
 import {
   ActiveServices,
   IServiceCatalog,
@@ -16,7 +15,6 @@ import {
   ServiceHostmap,
   ServiceGroup,
   ServiceHost,
-  ServiceUrl,
   SelectionMeta,
 } from './types';
 
@@ -815,11 +813,18 @@ const Services = WebexPlugin.extend({
       return Promise.resolve(this.get(clusterId));
     }
 
+    // Service-name matches already take precedence over URL matches, so avoid a catalog scan
+    // whose result would be discarded.
     const priorityUrl = this.get(name);
+
+    if (priorityUrl) {
+      return Promise.resolve(priorityUrl);
+    }
+
     const priorityUrlObj = this.getServiceFromUrl(url);
 
-    if (priorityUrl || priorityUrlObj) {
-      return Promise.resolve(priorityUrl || priorityUrlObj.priorityUrl);
+    if (priorityUrlObj) {
+      return Promise.resolve(priorityUrlObj.priorityUrl);
     }
 
     if (catalog.isReady) {
@@ -842,11 +847,20 @@ const Services = WebexPlugin.extend({
         catalog
           .waitForCatalog(catalogGroup, timeout)
           .then(() => {
+            // Preserve name-first resolution after each catalog becomes ready before falling back
+            // to the more expensive URL lookup.
             const scopedPriorityUrl = this.get(name);
-            const scopedPrioriryUrlObj = this.getServiceFromUrl(url);
 
-            if (scopedPriorityUrl || scopedPrioriryUrlObj) {
-              resolve(scopedPriorityUrl || scopedPrioriryUrlObj.priorityUrl);
+            if (scopedPriorityUrl) {
+              resolve(scopedPriorityUrl);
+
+              return;
+            }
+
+            const scopedPriorityUrlObj = this.getServiceFromUrl(url);
+
+            if (scopedPriorityUrlObj) {
+              resolve(scopedPriorityUrlObj.priorityUrl);
             }
           })
           .catch(() => undefined);
@@ -982,18 +996,16 @@ const Services = WebexPlugin.extend({
    * @returns {object.defaultUrl} - The default url of the found service.
    */
   getServiceFromUrl(url = ''): {name: string; priorityUrl: string; defaultUrl: string} | undefined {
-    const service = this._getCatalog().findServiceDetailFromUrl(url);
+    const match = this._getCatalog().findServiceMatchFromUrl(url);
 
-    if (!service) {
+    if (!match) {
       return undefined;
     }
 
+    // Reuse the exact URL found by the catalog scan instead of scanning the matched service again.
+    const {serviceDetail: service, serviceUrl} = match;
     const priorityUrl = service.get();
-    const defaultUrl = new URL(
-      service.serviceUrls.find((serviceUrl: ServiceUrl) =>
-        matchesCatalogUrl(url, serviceUrl.baseUrl)
-      ).baseUrl
-    ).href;
+    const defaultUrl = new URL(serviceUrl.baseUrl).href;
 
     return {
       name: service.serviceName,

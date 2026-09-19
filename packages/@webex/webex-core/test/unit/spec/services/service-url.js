@@ -57,6 +57,7 @@ describe('webex-core', () => {
             homeCluster: true,
           },
         ],
+        matchHost: 'example.com',
         name: 'example',
       };
       serviceUrl = new ServiceUrl({...template});
@@ -72,6 +73,12 @@ describe('webex-core', () => {
       it('is valid value', () => {
         assert.typeOf(serviceUrl.defaultUrl, 'string');
         assert.equal(serviceUrl.defaultUrl, 'https://example.com/api/v1');
+      });
+    });
+
+    describe('#matchHost', () => {
+      it('retains canonical catalog lookup metadata', () => {
+        assert.equal(serviceUrl.matchHost, 'example.com');
       });
     });
 
