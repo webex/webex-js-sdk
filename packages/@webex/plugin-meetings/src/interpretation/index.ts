@@ -115,14 +115,14 @@ const SimultaneousInterpretation = WebexPlugin.extend({
   /**
    * Update the interpretation languages channels which user can choose to subscribe
    * @param {Object} interpretation
+   * @param {Object} [options]
+   * @param {boolean} [options.preserveSiEnabled] keep the current siEnabled untouched (meeting-info path)
    * @returns {void}
    */
-  updateInterpretation(interpretation) {
+  updateInterpretation(interpretation, {preserveSiEnabled = false} = {}) {
     this.siLanguages.set(interpretation?.siLanguages || []);
-    // Only update siEnabled when it's actually provided. The meeting-info path calls this with
-    // just {siLanguages}, and an unconditional set would wipe the siEnabled carried by locus controls.
-    if (interpretation && 'siEnabled' in interpretation) {
-      this.set('siEnabled', !!interpretation.siEnabled);
+    if (!preserveSiEnabled) {
+      this.set('siEnabled', !!interpretation?.siEnabled);
     }
   },
   /**

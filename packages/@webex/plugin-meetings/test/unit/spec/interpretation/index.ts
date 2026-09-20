@@ -166,19 +166,31 @@ describe('plugin-meetings', () => {
         interpretation.updateInterpretation({siEnabled: false, siLanguages: []});
         assert.equal(interpretation.siEnabled, false);
       });
-      it('leaves siEnabled untouched when the key is not provided', () => {
+      it('preserves siEnabled when preserveSiEnabled is set (meeting-info path)', () => {
         interpretation.updateInterpretation({siEnabled: true, siLanguages: []});
         assert.equal(interpretation.siEnabled, true);
 
-        // The meeting-info path passes only siLanguages; siEnabled must not be clobbered to false.
-        interpretation.updateInterpretation({siLanguages: [{languageName: 'en', languageCode: 1}]});
+        // The meeting-info path passes only siLanguages; siEnabled must survive.
+        interpretation.updateInterpretation(
+          {siLanguages: [{languageName: 'en', languageCode: 1}]},
+          {preserveSiEnabled: true}
+        );
         assert.equal(interpretation.siEnabled, true);
+      });
 
-        interpretation.updateInterpretation({});
+      it('resets siEnabled and siLanguages consistently for a delta without interpretation', () => {
+        interpretation.updateInterpretation({
+          siEnabled: true,
+          siLanguages: [{languageName: 'en', languageCode: 1}],
+        });
         assert.equal(interpretation.siEnabled, true);
+        assert.equal(interpretation.siLanguages.length, 1);
 
+        // A locus delta carrying no interpretation resets both fields together, so we never
+        // land in the "SI on with zero languages" state.
         interpretation.updateInterpretation(undefined);
-        assert.equal(interpretation.siEnabled, true);
+        assert.equal(interpretation.siEnabled, false);
+        assert.equal(interpretation.siLanguages.length, 0);
       });
     });
 
