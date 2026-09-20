@@ -421,6 +421,25 @@ describe('plugin-meetings', () => {
           mockError
         );
       });
+
+      it('resolves without touching locusInfo when the meeting is not found', async () => {
+        webex.meetings.meetingCollection.getByKey.returns(undefined);
+        const mockResponse = {body: {locus: {url: 'locusUrl'}}};
+        webex.request.returns(Promise.resolve(mockResponse));
+
+        await interpretation.endSimultaneousInterpretation();
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PATCH',
+          uri: 'locusUrl/controls',
+          body: {
+            interpretation: {
+              siEnabled: false,
+            },
+          },
+        });
+        assert.notCalled(mockMeeting.locusInfo.handleLocusAPIResponse);
+      });
     });
 
     describe('#changeDirection', () => {
