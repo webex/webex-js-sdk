@@ -140,6 +140,7 @@ export function createExtensionBridgeWith(
   });
   const logger = createLogger({
     debug: options.debug === true,
+    ...(options.logLevel === undefined ? {} : {logLevel: options.logLevel}),
     prefix: '[web-extension-bridge:background]',
     ...(options.logSink ? {sink: options.logSink} : {}),
   });
@@ -259,6 +260,7 @@ export function createExtensionBridgeWith(
    * @param reason - Logged reason.
    */
   const dropConnection = (tabId: number, reason: string): void => {
+    logger.info('dropping connection', {channel, tabId, reason});
     void removeConnection(tabId);
     settleTab(tabId, reason);
   };
@@ -387,6 +389,12 @@ export function createExtensionBridgeWith(
     // token; its pushes are not this connection's pushes.
     if (!connection || connection.session !== relay.session) {
       counters.increment(CounterName.DROPPED, 'SESSION_MISMATCH');
+      logger.warn('dropped push for stale session', {
+        channel,
+        tabId,
+        topic: envelope.topic,
+        reason: connection ? 'SESSION_MISMATCH' : 'NOT_CONNECTED',
+      });
 
       return;
     }
@@ -455,13 +463,13 @@ export function createExtensionBridgeWith(
           record.url = sender.tab.url;
         }
 
-        logger.debug('tab attached', {channel, tabId, origin});
+        logger.info('tab attached', {channel, tabId, origin});
         await upsertConnection(record);
         break;
       }
 
       case RelayKind.DISCONNECT:
-        logger.debug('tab detached', {channel, tabId, reason: relay.reason});
+        logger.info('tab detached', {channel, tabId, reason: relay.reason});
         await removeConnectionForSession(tabId, relay.session, relay.reason ?? 'bye');
         break;
 
@@ -485,6 +493,8 @@ export function createExtensionBridgeWith(
     const tabId = found[0]?.id;
 
     if (typeof tabId !== 'number') {
+      logger.debug('no active tab to target', {channel});
+
       throw new BridgeError('NO_TAB');
     }
 
@@ -556,11 +566,15 @@ export function createExtensionBridgeWith(
       const connection = await findConnection(tabId);
 
       if (!connection) {
+        logger.debug('request to an unattached tab', {channel, tabId, topic});
+
         throw new BridgeError('NOT_CONNECTED', undefined, topic);
       }
 
       if (!inFlight.acquire(tabId)) {
         counters.increment(CounterName.RATE_LIMITED, topic);
+        logger.warn('request rate limited', {channel, tabId, topic});
+
         throw new BridgeError('RATE_LIMITED', undefined, topic);
       }
 
@@ -586,6 +600,7 @@ export function createExtensionBridgeWith(
       };
 
       counters.increment(CounterName.REQUEST_ISSUED, topic);
+      logger.debug('request issued', {channel, tabId, topic, id});
 
       const settled = pending.create(
         id,
@@ -621,10 +636,16 @@ export function createExtensionBridgeWith(
 
       return await settled;
     } catch (error) {
-      counters.increment(
-        CounterName.REQUEST_FAILED,
-        error instanceof BridgeError ? error.code : 'HANDLER_ERROR'
-      );
+      const reason = error instanceof BridgeError ? error.code : 'HANDLER_ERROR';
+
+      counters.increment(CounterName.REQUEST_FAILED, reason);
+      logger.debug('request failed', {
+        channel,
+        topic,
+        reason,
+        ...(acquiredTab === undefined ? {} : {tabId: acquiredTab}),
+      });
+
       throw error;
     } finally {
       if (acquiredTab !== undefined) {
@@ -676,10 +697,19 @@ export function createExtensionBridgeWith(
           throw new BridgeError('INVALID_PAYLOAD');
       }
     } catch (error) {
+      const code = error instanceof BridgeError ? error.code : 'HANDLER_ERROR';
+
+      logger.debug('client command failed', {
+        channel,
+        kind: command.command,
+        ...(command.topic === undefined ? {} : {topic: command.topic}),
+        reason: code,
+      });
+
       return {
         ok: false,
         error: {
-          code: error instanceof BridgeError ? error.code : 'HANDLER_ERROR',
+          code,
           message: error instanceof BridgeError ? error.message : 'The command failed',
         },
       };
@@ -704,6 +734,11 @@ export function createExtensionBridgeWith(
       // when one is configured. The manifest is not a substitute for this check.
       if (!isFromContentScript(chromeApi, sender)) {
         counters.increment(CounterName.DROPPED, 'NOT_A_CONTENT_SCRIPT');
+        logger.warn('dropped relay from non-content-script', {
+          channel,
+          kind: relay.kind,
+          reason: 'NOT_A_CONTENT_SCRIPT',
+        });
 
         return undefined;
       }
@@ -747,6 +782,12 @@ export function createExtensionBridgeWith(
       // Extension pages only. A content script must never reach the command surface.
       if (!isFromExtensionPage(chromeApi, sender)) {
         counters.increment(CounterName.DROPPED, 'NOT_AN_EXTENSION_PAGE');
+        logger.warn('dropped command from non-extension-page', {
+          channel,
+          kind: command.command,
+          ...(typeof sender.tab?.id === 'number' ? {tabId: sender.tab.id} : {}),
+          reason: 'NOT_AN_EXTENSION_PAGE',
+        });
 
         return undefined;
       }
@@ -762,6 +803,7 @@ export function createExtensionBridgeWith(
   };
 
   chromeApi.runtime.onMessage.addListener(onRuntimeMessage);
+  logger.info('extension bridge started', {channel, count: allowedOrigins.size});
   tabsApi.onRemoved.addListener((tabId) => dropConnection(tabId, 'tab-removed'));
   tabsApi.onUpdated.addListener((tabId, changeInfo) => {
     // A killed or navigating page cannot send BYE, so navigation is its own signal.
