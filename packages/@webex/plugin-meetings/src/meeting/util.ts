@@ -372,7 +372,10 @@ const MeetingUtil = {
     meeting.breakouts.cleanUp();
     meeting.webinar.cleanUp();
     meeting.simultaneousInterpretation.cleanUp();
-    meeting.locusInfo.cleanUp();
+    // NOTE: locusInfo.cleanUp() (which tears down hash tree parsers) is intentionally NOT called
+    // here. This runs after leave/endMeetingForAll too, but for hash tree meetings we still rely on
+    // the parsers to consume the final sentinel END message from Locus that triggers destroy. The
+    // parsers are torn down only when the meeting is actually destroyed (see Meetings#destroy).
     meeting.locusMediaRequest = undefined;
 
     meeting.webex?.internal?.newMetrics?.callDiagnosticMetrics?.clearEventLimitsForCorrelationId(
