@@ -48,8 +48,15 @@ export default {
     batcherMaxWait: 150,
 
     /**
-     * PEM encoded CA root bundle used to validate the KMS certificate chain.
-     * When omitted, the KMS certificate chain signature is not verified.
+     * CA root bundle used to validate the KMS certificate chain, as an array of
+     * raw base64-encoded certificates (the DER body, without the
+     * -----BEGIN/END CERTIFICATE----- lines). When omitted, the KMS certificate
+     * chain signature is not verified.
+     *
+     * Supplied by the consuming application; the SDK does not ship a bundle.
+     * Cisco first-party clients should source these roots from the Cisco Trusted
+     * Root Store Union bundle. See the plugin README and
+     * https://www.cisco.com/security/pki/trs/readme.html for details.
      * @type {?string[]}
      */
     caroots: undefined,
