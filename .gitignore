@@ -1,5 +1,9 @@
 # Documentation
 packages/**/docs/
+# SDD: @webex/common publishes its canonical specs under docs/ and src/docs/;
+# keep them tracked while every other package's generated docs stay ignored.
+!packages/@webex/common/docs/
+!packages/@webex/common/src/docs/
 
 /**/.generated/
 
