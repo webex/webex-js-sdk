@@ -1,4 +1,5 @@
 import {LOST_CONNECTION_RECOVERY_TIMEOUT} from '../core/constants';
+import {WELLNESS_BREAK_REMINDERS_ENABLED} from './constants';
 import {
   AgentResponse,
   AuxCode,
@@ -186,6 +187,10 @@ function parseAgentConfigs(profileData: {
   const defaultWrapUpData = getDefaultWrapUpCode(wrapupCodes);
   const aiFeature: AIFeatureFlags | undefined =
     aiFeatureFlags?.data?.length > 0 ? aiFeatureFlags.data[0] : undefined;
+  const isWellnessConfigured =
+    aiFeature?.agentWellbeing?.enable === true &&
+    aiFeature.agentWellbeing.wellnessBreakReminders === WELLNESS_BREAK_REMINDERS_ENABLED;
+  const hasAIAssistantLicense = (orgSettingsData.aiAssistantQuantity ?? 0) > 0;
 
   const finalData = {
     teams: teamData,
@@ -264,6 +269,7 @@ function parseAgentConfigs(profileData: {
     lostConnectionRecoveryTimeout:
       tenantData.lostConnectionRecoveryTimeout || LOST_CONNECTION_RECOVERY_TIMEOUT,
     aiFeature,
+    isWellnessBreakEnabled: isWellnessConfigured && hasAIAssistantLicense,
   };
 
   return finalData;
