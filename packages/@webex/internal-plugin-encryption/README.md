@@ -31,17 +31,22 @@ webex.internal.encryption.WHATEVER;
 
 ## KMS certificate validation
 
-When the SDK negotiates an ECDH key with the KMS, it can validate the KMS
-certificate chain against a set of trusted CA roots. This is controlled by two
+When the SDK negotiates an ECDH key with the KMS, it validates the KMS
+certificate chain against a set of trusted CA roots. This is controlled by these
 configuration options on the `encryption` config:
 
-- `caroots` — an array of PEM-encoded CA root certificates. When provided, the
-  KMS certificate chain must validate against this bundle or the ECDH
-  negotiation fails. When omitted, the chain signature is **not** verified.
-- `carootsReportOnly` — an additional array of PEM-encoded CA roots validated
-  alongside `caroots`. A failure here is only reported as a metric instead of
-  failing the negotiation, which lets a new bundle be trialled in parallel with
-  the enforced `caroots`.
+- `shouldValidateKMSCertificate` — whether to validate the KMS certificate
+  chain. Defaults to `true` as a secure default. When enabled the SDK **fails
+  closed**: a `caroots` bundle must be configured and the chain must validate
+  against it, otherwise the ECDH negotiation fails. Set to `false` to
+  temporarily opt out of validation, for example while upgrading and wiring up
+  the CA root bundle.
+- `caroots` — an array of raw base64-encoded CA root certificates. Required when
+  `shouldValidateKMSCertificate` is `true`.
+- `carootsReportOnly` — an additional array of CA roots validated alongside
+  `caroots`. A failure here is only reported as a metric instead of failing the
+  negotiation, which lets a new bundle be trialled in parallel with the enforced
+  `caroots`.
 
 Supplying the CA roots is the responsibility of the consuming application. The
 SDK does not ship a bundle. Cisco first-party clients should source their roots

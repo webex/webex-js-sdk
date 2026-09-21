@@ -48,10 +48,20 @@ export default {
     batcherMaxWait: 150,
 
     /**
+     * Whether to validate the KMS certificate chain against `caroots`. Defaults
+     * to true as a secure default: when enabled the KMS certificate must
+     * validate against a configured `caroots` bundle, and a missing bundle
+     * fails closed. Set to false to temporarily opt out of validation, e.g.
+     * while upgrading and wiring up the CA root bundle.
+     * @type {boolean}
+     */
+    shouldValidateKMSCertificate: true,
+
+    /**
      * CA root bundle used to validate the KMS certificate chain, as an array of
      * raw base64-encoded certificates (the DER body, without the
-     * -----BEGIN/END CERTIFICATE----- lines). When omitted, the KMS certificate
-     * chain signature is not verified.
+     * -----BEGIN/END CERTIFICATE----- lines). Required when
+     * `shouldValidateKMSCertificate` is true.
      *
      * Supplied by the consuming application; the SDK does not ship a bundle.
      * Cisco first-party clients should source these roots from the Cisco Trusted
