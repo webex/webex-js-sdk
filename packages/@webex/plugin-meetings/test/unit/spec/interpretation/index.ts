@@ -159,6 +159,39 @@ describe('plugin-meetings', () => {
         interpretation.updateInterpretation({siLanguages: [{languageName: 'en', languageCode: 1}]});
         checkSILanguage(interpretation.siLanguages.en, {languageName: 'en', languageCode: 1});
       });
+      it('stores siEnabled from the interpretation control', () => {
+        interpretation.updateInterpretation({siEnabled: true, siLanguages: []});
+        assert.equal(interpretation.siEnabled, true);
+
+        interpretation.updateInterpretation({siEnabled: false, siLanguages: []});
+        assert.equal(interpretation.siEnabled, false);
+      });
+      it('preserves siEnabled when preserveSiEnabled is set (meeting-info path)', () => {
+        interpretation.updateInterpretation({siEnabled: true, siLanguages: []});
+        assert.equal(interpretation.siEnabled, true);
+
+        // The meeting-info path passes only siLanguages; siEnabled must survive.
+        interpretation.updateInterpretation(
+          {siLanguages: [{languageName: 'en', languageCode: 1}]},
+          {preserveSiEnabled: true}
+        );
+        assert.equal(interpretation.siEnabled, true);
+      });
+
+      it('resets siEnabled and siLanguages consistently for a delta without interpretation', () => {
+        interpretation.updateInterpretation({
+          siEnabled: true,
+          siLanguages: [{languageName: 'en', languageCode: 1}],
+        });
+        assert.equal(interpretation.siEnabled, true);
+        assert.equal(interpretation.siLanguages.length, 1);
+
+        // A locus delta carrying no interpretation resets both fields together, so we never
+        // land in the "SI on with zero languages" state.
+        interpretation.updateInterpretation(undefined);
+        assert.equal(interpretation.siEnabled, false);
+        assert.equal(interpretation.siLanguages.length, 0);
+      });
     });
 
     describe('#updateSelfInterpretation', () => {
@@ -358,6 +391,66 @@ describe('plugin-meetings', () => {
           'Meeting:interpretation#updateInterpreters failed',
           mockError
         );
+      });
+    });
+
+    describe('#endSimultaneousInterpretation', () => {
+      it('makes the request as expected', async () => {
+        const mockResponse = {body: {locus: {url: 'locusUrl'}}};
+        webex.request.returns(Promise.resolve(mockResponse));
+
+        await interpretation.endSimultaneousInterpretation();
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PATCH',
+          uri: 'locusUrl/controls',
+          body: {
+            interpretation: {
+              siEnabled: false,
+            },
+          },
+        });
+        assert.calledOnceWithExactly(
+          mockMeeting.locusInfo.handleLocusAPIResponse,
+          mockMeeting,
+          mockResponse.body
+        );
+      });
+
+      it('rejects with error', async () => {
+        const mockError = new Error('something wrong');
+        webex.request.returns(Promise.reject(mockError));
+        LoggerProxy.logger.error = sinon.stub();
+
+        await assert.isRejected(
+          interpretation.endSimultaneousInterpretation(),
+          mockError,
+          'something wrong'
+        );
+
+        assert.calledOnceWithExactly(
+          LoggerProxy.logger.error,
+          'Meeting:interpretation#endSimultaneousInterpretation failed',
+          mockError
+        );
+      });
+
+      it('resolves without touching locusInfo when the meeting is not found', async () => {
+        webex.meetings.meetingCollection.getByKey.returns(undefined);
+        const mockResponse = {body: {locus: {url: 'locusUrl'}}};
+        webex.request.returns(Promise.resolve(mockResponse));
+
+        await interpretation.endSimultaneousInterpretation();
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'PATCH',
+          uri: 'locusUrl/controls',
+          body: {
+            interpretation: {
+              siEnabled: false,
+            },
+          },
+        });
+        assert.notCalled(mockMeeting.locusInfo.handleLocusAPIResponse);
       });
     });
 

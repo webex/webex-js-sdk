@@ -1,7 +1,7 @@
 import {CHANNEL_PATTERN, DEFAULT_CHANNEL} from '../core/constants';
 import {BridgeError} from '../core/errors';
 import {clampMaxPayloadBytes} from '../core/limits';
-import type {LogSink} from '../core/logger';
+import type {LogLevelSetting, LogSink} from '../core/logger';
 import type {PageWindowLike} from './pageWindow';
 import type {WebBridgeOptions} from '../types';
 
@@ -15,19 +15,20 @@ export interface ResolvedWebConfig {
   targetOrigin: string;
   maxPayloadBytes: number;
   debug: boolean;
+  logLevel?: LogLevelSetting;
   logSink?: LogSink;
 }
 
 /**
  * Validate and normalise the page-side options.
  *
- * Everything here fails closed at construction. There is no development mode and no
- * wildcard escape hatch, because that is exactly how `localhost` and `'*'` end up in
- * production builds (spec 8.8).
+ * Everything here fails closed at construction — no development mode, no wildcard
+ * escape hatch, since that's exactly how `localhost` and `'*'` end up in production
+ * builds.
  *
  * @param win - Page window, used for the default origin list and the target origin.
- * @param options - Caller options.
- * @returns Normalised configuration.
+ * @param options - Raw `WebBridgeOptions` supplied by the caller.
+ * @returns The resolved, validated configuration.
  * @throws BridgeError `INSECURE_CONFIG` for any rejected value.
  */
 export function resolveWebConfig(
@@ -70,8 +71,7 @@ export function resolveWebConfig(
   const allowedOrigins = new Set(origins);
 
   // The content script posts from within this document, so its `event.origin` is the
-  // document's own origin. An allow-list without it can never connect; failing here
-  // turns a silent no-op into a diagnosable error.
+  // document's own origin — an allow-list without it can never connect.
   if (!allowedOrigins.has(documentOrigin)) {
     throw new BridgeError(
       'INSECURE_CONFIG',
@@ -86,6 +86,10 @@ export function resolveWebConfig(
     maxPayloadBytes: clampMaxPayloadBytes(options.maxPayloadBytes),
     debug: options.debug === true,
   };
+
+  if (options.logLevel !== undefined) {
+    config.logLevel = options.logLevel;
+  }
 
   if (options.logSink) {
     config.logSink = options.logSink;

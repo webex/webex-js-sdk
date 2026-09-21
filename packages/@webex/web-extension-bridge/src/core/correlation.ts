@@ -26,30 +26,32 @@ export interface PendingRequestsOptions {
 }
 
 /**
- * Registry of in-flight requests, keyed by envelope id.
- *
- * This is the single place that guarantees AC9: every entry is created with a timer
- * already armed, every settle path deletes the entry before resolving, and
- * `settleAll` exists so a disconnect cannot leave a promise pending. A `Map` is used
- * rather than an object so a forged correlation id cannot collide with a prototype
- * member.
+ * Registry of in-flight requests, keyed by envelope id (AC9: every entry is created
+ * with a timer already armed, every settle path deletes before resolving, and
+ * `settleAll` ensures a disconnect can't leave a promise pending). A `Map` is used
+ * rather than an object so a forged correlation id can't collide with a prototype member.
  */
 export class PendingRequests {
   private readonly entries = new Map<string, PendingEntry>();
 
   private readonly maxInFlight: number;
 
-  public constructor(options: PendingRequestsOptions = {}) {
+  /**
+   * @param options - Registry options. Concurrency is unbounded when omitted.
+   */
+  constructor(options: PendingRequestsOptions = {}) {
     this.maxInFlight = options.maxInFlight ?? Number.POSITIVE_INFINITY;
   }
 
   /**
-   * Register a request and return its promise.
+   * Register a request and return its promise, which always settles.
    *
    * @param id - Envelope id, which the peer must echo as `correlationId`.
-   * @param options - Timeout, topic, optional abort signal.
+   * @param options - Timeout, topic and optional abort signal for the request.
    * @param tabId - Tab the request was sent to, for disconnect filtering.
-   * @returns A promise that always settles.
+   * @returns A promise settling on response, timeout, abort or disconnect.
+   * @throws BridgeError `RATE_LIMITED` when `maxInFlight` is reached, or when `id` is
+   *   already in flight.
    */
   public create(id: string, options: PendingOptions, tabId?: number): Promise<JsonValue> {
     if (this.entries.size >= this.maxInFlight) {
@@ -92,10 +94,10 @@ export class PendingRequests {
   }
 
   /**
-   * @param id - Correlation id from an inbound response.
-   * @param value - Value to resolve with.
-   * @returns `true` when a live request was settled. `false` means the id was
-   *   unknown or already settled, so a stale or forged response is a no-op.
+   * @param id - Envelope id to settle.
+   * @param value - Value to resolve the request with.
+   * @returns Whether a live request was settled — `false` means the id was unknown
+   *   or already settled, so a stale or forged response is a no-op.
    */
   public resolve(id: string, value: JsonValue): boolean {
     const entry = this.take(id);
@@ -110,8 +112,8 @@ export class PendingRequests {
   }
 
   /**
-   * @param id - Correlation id.
-   * @param error - Coded failure.
+   * @param id - Envelope id to settle.
+   * @param error - Error to reject the request with.
    * @returns Whether a live request was settled.
    */
   public reject(id: string, error: BridgeError): boolean {
@@ -129,7 +131,7 @@ export class PendingRequests {
   /**
    * Settle every matching in-flight request, used on disconnect and teardown.
    *
-   * @param code - Code to reject with.
+   * @param code - Error code every settled request is rejected with.
    * @param tabId - When given, only requests sent to that tab are settled.
    * @returns How many requests were settled.
    */
@@ -147,14 +149,23 @@ export class PendingRequests {
     return settled;
   }
 
+  /**
+   * @param id - Envelope id.
+   * @returns Whether `id` is a live, unsettled request.
+   */
   public has(id: string): boolean {
     return this.entries.has(id);
   }
 
+  /** Number of in-flight requests. */
   public get size(): number {
     return this.entries.size;
   }
 
+  /**
+   * @param tabId - Tab to count for.
+   * @returns How many in-flight requests were sent to `tabId`.
+   */
   public countForTab(tabId: number): number {
     let count = 0;
 
@@ -167,6 +178,10 @@ export class PendingRequests {
     return count;
   }
 
+  /**
+   * @param id - Envelope id.
+   * @returns The entry, removed from the map with its timer and abort listener cleared.
+   */
   private take(id: string): PendingEntry | undefined {
     const entry = this.entries.get(id);
 
