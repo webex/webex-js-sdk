@@ -1007,7 +1007,11 @@ const MeetingUtil = {
         renameKey(language, 'languageGroupId', 'languageCode');
       }
       if (!meeting.simultaneousInterpretation?.siLanguages?.length) {
-        meeting.simultaneousInterpretation.updateInterpretation({siLanguages: lanuagesInfo});
+        // Meeting-info only carries siLanguages; preserve siEnabled owned by locus controls.
+        meeting.simultaneousInterpretation.updateInterpretation(
+          {siLanguages: lanuagesInfo},
+          {preserveSiEnabled: true}
+        );
       }
     }
     Trigger.trigger(

@@ -1415,12 +1415,16 @@ describe('plugin-meetings', () => {
         MeetingUtil.parseInterpretationInfo(meeting, meetingInfo);
         assert.calledWith(meeting.simultaneousInterpretation.updateMeetingSIEnabled, true, true);
         assert.calledWith(meeting.simultaneousInterpretation.updateHostSIEnabled, true);
-        assert.calledWith(meeting.simultaneousInterpretation.updateInterpretation, {
-          siLanguages: [
-            {languageName: 'en', languageCode: 1},
-            {languageName: 'es', languageCode: 2},
-          ],
-        });
+        assert.calledWith(
+          meeting.simultaneousInterpretation.updateInterpretation,
+          {
+            siLanguages: [
+              {languageName: 'en', languageCode: 1},
+              {languageName: 'es', languageCode: 2},
+            ],
+          },
+          {preserveSiEnabled: true}
+        );
       });
 
       it('should update simultaneous interpretation settings with host SI disabled', () => {
@@ -1429,12 +1433,16 @@ describe('plugin-meetings', () => {
         MeetingUtil.parseInterpretationInfo(meeting, meetingInfo);
         assert.calledWith(meeting.simultaneousInterpretation.updateMeetingSIEnabled, true, false);
         assert.calledWith(meeting.simultaneousInterpretation.updateHostSIEnabled, false);
-        assert.calledWith(meeting.simultaneousInterpretation.updateInterpretation, {
-          siLanguages: [
-            {languageName: 'en', languageCode: 1},
-            {languageName: 'es', languageCode: 2},
-          ],
-        });
+        assert.calledWith(
+          meeting.simultaneousInterpretation.updateInterpretation,
+          {
+            siLanguages: [
+              {languageName: 'en', languageCode: 1},
+              {languageName: 'es', languageCode: 2},
+            ],
+          },
+          {preserveSiEnabled: true}
+        );
       });
       it('should update simultaneous interpretation settings with SI disabled', () => {
         meetingInfo.turnOnSimultaneousInterpretation = false;
