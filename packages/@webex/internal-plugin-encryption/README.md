@@ -68,17 +68,16 @@ yarn caroots:generate
 node tooling/generate-kms-caroots.js --stdout
 ```
 
-It requires the `openssl` binary on `PATH`. The output can be passed directly as
-`config.encryption.caroots`, or exposed via the `WEBEX_KMS_CAROOTS` environment
-variable (a JSON array), which the SDK reads as the default for `caroots`:
+It requires the `openssl` binary on `PATH`. The output is a JSON array that you
+pass to `config.encryption.caroots` when constructing the SDK. The SDK itself
+does no file or network I/O to obtain roots — supplying them is a build/config
+concern for the consuming application (which is important since a prebuilt
+library cannot read files in the browser).
 
-```bash
-export WEBEX_KMS_CAROOTS="$(node tooling/generate-kms-caroots.js --stdout)"
-```
-
-The `tooling/with-kms-caroots.sh` wrapper generates the roots and sets that
-environment variable for a command, which is how CI runs the integration tests
-against the real KMS with validation enabled:
+For this repo's own tests, the `tooling/with-kms-caroots.sh` wrapper generates
+the roots into a test-only fixture that the encryption integration/browser tests
+bundle, then restores the placeholder afterwards. This is how CI runs those
+tests against the real KMS with validation enabled:
 
 ```bash
 tooling/with-kms-caroots.sh yarn workspace @webex/internal-plugin-encryption test:integration

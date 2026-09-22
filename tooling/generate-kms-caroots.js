@@ -122,6 +122,23 @@ function download(url) {
   });
 }
 
+// Downloads with a few retries to tolerate transient network errors in CI.
+async function downloadWithRetry(url, attempts = 4) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      return await download(url);
+    } catch (error) {
+      if (attempt >= attempts) {
+        throw error;
+      }
+
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+    }
+  }
+}
+
 function pemToDer(pem) {
   return Buffer.from(pem.replace(/-----[^-]+-----/g, '').replace(/\s+/g, ''), 'base64');
 }
@@ -150,7 +167,7 @@ async function fetchVerifiedAnchors(verbose) {
   const pems = [];
 
   for (const anchor of TRUST_ANCHORS) {
-    const pem = (await download(anchor.url)).toString('utf8');
+    const pem = (await downloadWithRetry(anchor.url)).toString('utf8');
     const actual = fingerprintOf(pemToDer(pem));
 
     if (actual !== anchor.fingerprint) {
@@ -238,7 +255,7 @@ async function generate(options) {
   ensureOpenssl();
 
   log(options.verbose, `Downloading bundle: ${options.bundleUrl}`);
-  const bundle = await download(options.bundleUrl);
+  const bundle = await downloadWithRetry(options.bundleUrl);
 
   const anchorsPem = await fetchVerifiedAnchors(options.verbose);
 
