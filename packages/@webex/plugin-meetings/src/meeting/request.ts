@@ -183,6 +183,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       allowMultiDevice: true,
       ensureConversation: ensureConversation || false,
       supportsNativeLobby: 1,
+      supportsV2E2EEncryption: true,
       clientMediaPreferences,
     };
 
