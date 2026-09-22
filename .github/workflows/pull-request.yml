@@ -144,7 +144,7 @@ jobs:
         run: yarn workspaces foreach --parallel --topological --verbose run build:src
 
       - name: Test - Browser
-        run: tooling/with-kms-caroots.sh yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.changed }}' run test:browser
+        run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.changed }}' run test:browser
 
 
   test-coverage:
@@ -235,7 +235,7 @@ jobs:
         run: yarn workspaces foreach --parallel --topological --verbose run build:src
 
       - name: Test - Integration
-        run: tooling/with-kms-caroots.sh yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.changed }}' run test:integration
+        run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.changed }}' run test:integration
 
 
   test-style:
