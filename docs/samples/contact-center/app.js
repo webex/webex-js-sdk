@@ -34,17 +34,29 @@ let midCallSummary = {
   requestPending: null,
 };
 
-let postCallSummary = {
-  payload: null,
-  numberOfTimesViewed: 0,
-  numberOfTimesEdited: 0,
-  numberOfTimesCopied: 0,
-  feedback: 'none',
-  _viewCounted: false,
-  requestFailed: false,
-};
-let postCallSummaryPending = null; // Promise from requestPostCallSummary, awaited by wrapupCall
-let wrapupResponsePending = null; // In-flight wrapupCall(), awaited before summaries are dismissed
+function createPostCallSummaryState() {
+  return {
+    payload: null,
+    numberOfTimesViewed: 0,
+    numberOfTimesEdited: 0,
+    numberOfTimesCopied: 0,
+    feedback: 'none',
+    _viewCounted: false,
+    requestFailed: false,
+  };
+}
+
+function createPostCallSummaryContext() {
+  return {
+    state: createPostCallSummaryState(),
+    summaryRequest: null,
+    wrapupRequest: null,
+  };
+}
+
+const postCallSummaryContexts = new Map(); // interactionId -> task-scoped summary context
+const defaultPostCallSummaryState = createPostCallSummaryState();
+let activePostCallSummaryInteractionId = null;
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -845,14 +857,13 @@ function wireSummaryListeners(task) {
 }
 
 async function onWrapupEntry(task) {
-  postCallSummaryPending = null;
-  postCallSummary.payload = null;
-  postCallSummary.numberOfTimesViewed = 0;
-  postCallSummary.numberOfTimesEdited = 0;
-  postCallSummary.numberOfTimesCopied = 0;
-  postCallSummary.feedback = 'none';
-  postCallSummary._viewCounted = false;
-  postCallSummary.requestFailed = false;
+  const interactionId = task?.data?.interactionId;
+  if (!interactionId) return;
+
+  const context = createPostCallSummaryContext();
+  postCallSummaryContexts.set(interactionId, context);
+  activePostCallSummaryInteractionId = interactionId;
+  const summaryState = context.state;
   clearSummarySection('postcall-summary');
   resetSummaryFeedbackUI('postcall-summary');
   const block = document.getElementById('postcall-summary-block');
@@ -864,25 +875,29 @@ async function onWrapupEntry(task) {
   }
   if (block) block.style.display = '';
   if (statusEl) statusEl.textContent = 'Waiting for summary…';
-  postCallSummaryPending = task.requestPostCallSummary().then((summary) => {
-    if (statusEl) statusEl.textContent = 'Summary ready.';
-    if (!postCallSummary.payload) {
-      postCallSummary.payload = summary;
+  const summaryRequest = task.requestPostCallSummary().then((summary) => {
+    summaryState.payload = summary;
+    if (activePostCallSummaryInteractionId === interactionId) {
+      if (statusEl) statusEl.textContent = 'Summary ready.';
       renderSummarySection('postcall-summary', summary);
-    }
-    if (!postCallSummary._viewCounted) {
-      postCallSummary.numberOfTimesViewed += 1;
-      postCallSummary._viewCounted = true;
+      if (!summaryState._viewCounted) {
+        summaryState.numberOfTimesViewed += 1;
+        summaryState._viewCounted = true;
+      }
     }
   }).catch((e) => {
-    postCallSummary.requestFailed = true;
-    if (statusEl) statusEl.textContent = `Summary unavailable: ${e?.message || e}`;
+    summaryState.requestFailed = true;
+    if (activePostCallSummaryInteractionId === interactionId && statusEl) {
+      statusEl.textContent = `Summary unavailable: ${e?.message || e}`;
+    }
   }).finally(() => {
-    postCallSummaryPending = null;
+    if (context.summaryRequest === summaryRequest) context.summaryRequest = null;
   });
+  context.summaryRequest = summaryRequest;
 }
 
 function bindSummaryControls(prefix, stateRef) {
+  const getState = typeof stateRef === 'function' ? stateRef : () => stateRef;
   const thumbsUp = document.getElementById(`${prefix}-thumbs-up`);
   const thumbsDown = document.getElementById(`${prefix}-thumbs-down`);
   const copyBtn = document.getElementById(`${prefix}-copy`);
@@ -890,22 +905,22 @@ function bindSummaryControls(prefix, stateRef) {
 
   if (thumbsUp && thumbsDown) {
     thumbsUp.addEventListener('click', () => {
-      stateRef.feedback = 'thumbs_up';
+      getState().feedback = 'thumbs_up';
       thumbsUp.setAttribute('aria-pressed', 'true');
       thumbsDown.setAttribute('aria-pressed', 'false');
     });
     thumbsDown.addEventListener('click', () => {
-      stateRef.feedback = 'thumbs_down';
+      getState().feedback = 'thumbs_down';
       thumbsDown.setAttribute('aria-pressed', 'true');
       thumbsUp.setAttribute('aria-pressed', 'false');
     });
   }
   if (copyBtn) copyBtn.addEventListener('click', () => {
     navigator.clipboard.writeText(getSummaryText(prefix)).catch(() => {});
-    stateRef.numberOfTimesCopied += 1;
+    getState().numberOfTimesCopied += 1;
   });
   if (excludeChk) excludeChk.addEventListener('change', (e) => {
-    stateRef.excluded = e.target.checked;
+    getState().excluded = e.target.checked;
   });
 }
 
@@ -1098,8 +1113,21 @@ function isSummaryEdited(prefix, originalPayload) {
   return ta ? ta.value !== renderSummaryText(originalPayload) : false;
 }
 
+function getActivePostCallSummaryContext() {
+  return postCallSummaryContexts.get(activePostCallSummaryInteractionId);
+}
+
+function clearPostCallSummaryContext(interactionId) {
+  postCallSummaryContexts.delete(interactionId);
+  if (activePostCallSummaryInteractionId === interactionId) {
+    activePostCallSummaryInteractionId = null;
+  }
+}
+
 function getSummaryState(prefix) {
-  return prefix === 'postcall-summary' ? postCallSummary : midCallSummary;
+  return prefix === 'postcall-summary'
+    ? getActivePostCallSummaryContext()?.state || defaultPostCallSummaryState
+    : midCallSummary;
 }
 
 async function getQueueListForTelephonyChannel() {
@@ -2996,9 +3024,11 @@ function registerTaskListeners(task) {
     // never goes through wrapupCall()). Wait out any in-flight wrapupCall first: it reads the
     // edited fields out of the DOM after wrapup() resolves.
     const wrappedupInteractionId = task.data.interactionId;
-    const wrappedupIsCurrent = !currentTask || currentTask.data.interactionId === wrappedupInteractionId;
-    Promise.resolve(wrapupResponsePending).catch(() => {}).then(() => {
+    const context = postCallSummaryContexts.get(wrappedupInteractionId);
+    Promise.resolve(context?.wrapupRequest).catch(() => {}).then(() => {
       taskCreationTimes.delete(wrappedupInteractionId);
+      clearPostCallSummaryContext(wrappedupInteractionId);
+      const wrappedupIsCurrent = !currentTask || currentTask.data.interactionId === wrappedupInteractionId;
       if (wrappedupIsCurrent) dismissAllSummaryUI();
     });
     if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
@@ -3015,8 +3045,11 @@ function registerTaskListeners(task) {
     console.info('🔚 Task ended (TERMINATED) - clearing ALL UI controls');
 
     // Clean up task creation time tracking
-    taskCreationTimes.delete(task.data.interactionId);
-    dismissAllSummaryUI();
+    const endedInteractionId = task.data.interactionId;
+    taskCreationTimes.delete(endedInteractionId);
+    const shouldDismissSummaryUI = activePostCallSummaryInteractionId === endedInteractionId;
+    clearPostCallSummaryContext(endedInteractionId);
+    if (shouldDismissSummaryUI) dismissAllSummaryUI();
 
     // If this is the current task, clear all controls
     if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
@@ -4405,50 +4438,64 @@ function endCall() {
 }
 
 function wrapupCall() {
-  // Published so task:wrappedup can hold off dismissing summaries until the response is sent.
-  wrapupResponsePending = sendWrapupAndSummaryResponse().finally(() => {
-    wrapupResponsePending = null;
-  });
+  const wrapupTask = currentTask;
+  const interactionId = wrapupTask?.data?.interactionId;
+  if (!wrapupTask || !interactionId) return Promise.resolve();
 
-  return wrapupResponsePending;
+  const context = postCallSummaryContexts.get(interactionId) || createPostCallSummaryContext();
+  postCallSummaryContexts.set(interactionId, context);
+
+  // Published so task:wrappedup can hold off dismissing summaries until the response is sent.
+  const wrapupRequest = sendWrapupAndSummaryResponse(wrapupTask, context).finally(() => {
+    if (context.wrapupRequest === wrapupRequest) {
+      context.wrapupRequest = null;
+    }
+  });
+  context.wrapupRequest = wrapupRequest;
+
+  return wrapupRequest;
 }
 
-async function sendWrapupAndSummaryResponse() {
+async function sendWrapupAndSummaryResponse(wrapupTask, context) {
   // Button states will be updated by task.uiControls after operation completes
   const wrapupReason = wrapupCodesDropdownElm.options[wrapupCodesDropdownElm.selectedIndex].text;
   const auxCodeId = wrapupCodesDropdownElm.options[wrapupCodesDropdownElm.selectedIndex].value;
+  const wrapupInteractionId = wrapupTask?.data?.interactionId;
+  const summaryState = context.state;
   try {
-    await currentTask.wrapup({wrapUpReason: wrapupReason, auxCodeId: auxCodeId});
+    await wrapupTask.wrapup({wrapUpReason: wrapupReason, auxCodeId: auxCodeId});
     console.info('Call wrapped up successfully');
 
     // Wait for any in-flight requestPostCallSummary to resolve before sending response.
     // This handles the race where the agent wraps up before the summary arrives.
-    if (postCallSummaryPending) {
-      await postCallSummaryPending.catch(() => {});
+    if (context.summaryRequest) {
+      await context.summaryRequest.catch(() => {});
     }
 
-    const wrapupInteractionId = currentTask?.data?.interactionId;
-    const wrapupSummaryFeatures = currentTask?.aiSummaryCapabilities || {};
-    if (postCallSummary.payload) {
-      const postCallEdited = isSummaryEdited('postcall-summary', postCallSummary.payload);
-      if (postCallEdited) postCallSummary.numberOfTimesEdited += 1;
-      const postCallSummaryPayload = buildSummaryPayload('postcall-summary');
+    const wrapupSummaryFeatures = wrapupTask?.aiSummaryCapabilities || {};
+    if (summaryState.payload) {
+      const isActiveSummary = activePostCallSummaryInteractionId === wrapupInteractionId;
+      const postCallEdited = isActiveSummary && isSummaryEdited('postcall-summary', summaryState.payload);
+      if (postCallEdited) summaryState.numberOfTimesEdited += 1;
+      const postCallSummaryPayload = isActiveSummary
+        ? buildSummaryPayload('postcall-summary')
+        : renderSummaryText(summaryState.payload);
       try {
-        await currentTask.sendPostCallSummaryResponse({
+        await wrapupTask.sendPostCallSummaryResponse({
           summary: postCallSummaryPayload,
-          numberOfTimesViewed: postCallSummary.numberOfTimesViewed,
-          numberOfTimesEdited: postCallSummary.numberOfTimesEdited,
-          numberOfTimesCopied: postCallSummary.numberOfTimesCopied,
-          feedback: postCallSummary.feedback,
+          numberOfTimesViewed: summaryState.numberOfTimesViewed,
+          numberOfTimesEdited: summaryState.numberOfTimesEdited,
+          numberOfTimesCopied: summaryState.numberOfTimesCopied,
+          feedback: summaryState.feedback,
           state: 'DEFAULT',
           wrapUpCode: wrapupReason,
         });
       } catch (e) {
         console.error('Failed to send post-call summary response', e);
       }
-    } else if (postCallSummary.requestFailed && wrapupSummaryFeatures.postCallEnabled && wrapupInteractionId) {
+    } else if (summaryState.requestFailed && wrapupSummaryFeatures.postCallEnabled && wrapupInteractionId) {
       try {
-        await currentTask.sendPostCallSummaryResponse({
+        await wrapupTask.sendPostCallSummaryResponse({
           summary: '',
           numberOfTimesViewed: 0,
           numberOfTimesEdited: 0,
@@ -4462,7 +4509,7 @@ async function sendWrapupAndSummaryResponse() {
       }
     } else if (wrapupSummaryFeatures.postCallEnabled && wrapupInteractionId) {
       try {
-        await currentTask.sendPostCallSummaryResponse({
+        await wrapupTask.sendPostCallSummaryResponse({
           summary: '',
           numberOfTimesViewed: 0,
           numberOfTimesEdited: 0,
@@ -4475,8 +4522,10 @@ async function sendWrapupAndSummaryResponse() {
         console.error('Failed to send post-call IGNORED response', e);
       }
     }
-    const postcallBlock = document.getElementById('postcall-summary-block');
-    if (postcallBlock) postcallBlock.style.display = 'none';
+    if (activePostCallSummaryInteractionId === wrapupInteractionId) {
+      const postcallBlock = document.getElementById('postcall-summary-block');
+      if (postcallBlock) postcallBlock.style.display = 'none';
+    }
   } catch (error) {
     console.error('Failed to wrap up the call', error);
   } finally {
@@ -4848,7 +4897,7 @@ updateDialNumberElm.addEventListener('input', updateApplyButtonState);
 
 bindSummaryControls('consult-summary', midCallSummary);
 bindSummaryControls('transfer-summary', midCallSummary);
-bindSummaryControls('postcall-summary', postCallSummary);
+bindSummaryControls('postcall-summary', () => getSummaryState('postcall-summary'));
 
 updateApplyButtonState();
 
