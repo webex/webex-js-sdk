@@ -49,16 +49,46 @@ configuration options on the `encryption` config:
   `caroots`.
 
 Supplying the CA roots is the responsibility of the consuming application. The
-SDK does not ship a bundle. Cisco first-party clients should source their roots
-from the Cisco Trusted Root Store, using the **Union** bundle:
+SDK does not ship a bundle, so that certificate updates don't require an SDK
+upgrade. Cisco first-party clients should source their roots from the Cisco
+Trusted Root Store, using the **Union** bundle:
 <https://www.cisco.com/security/pki/trs/readme.html>
 
-The referenced page is authoritative for how to download, verify, and extract
-the bundle; follow it for current instructions. In short, the application
-downloads the signed Union bundle (`ios_union.p7b`), extracts each certificate,
-and passes them as the `caroots` array. Each entry is the raw base64-encoded
-certificate (the DER body, without the `-----BEGIN/END CERTIFICATE-----` lines
-or newlines):
+### Generating the CA roots
+
+This repo ships a tool that downloads the Cisco Union bundle, verifies its
+signature against the pinned Cisco trust anchors, and decodes it into the
+`caroots` format (an array of raw base64-encoded certificates):
+
+```bash
+# Write ./.kms-caroots.json
+yarn caroots:generate
+
+# Or print the JSON array to stdout
+node tooling/generate-kms-caroots.js --stdout
+```
+
+It requires the `openssl` binary on `PATH`. The output can be passed directly as
+`config.encryption.caroots`, or exposed via the `WEBEX_KMS_CAROOTS` environment
+variable (a JSON array), which the SDK reads as the default for `caroots`:
+
+```bash
+export WEBEX_KMS_CAROOTS="$(node tooling/generate-kms-caroots.js --stdout)"
+```
+
+The `tooling/with-kms-caroots.sh` wrapper generates the roots and sets that
+environment variable for a command, which is how CI runs the integration tests
+against the real KMS with validation enabled:
+
+```bash
+tooling/with-kms-caroots.sh yarn workspace @webex/internal-plugin-encryption test:integration
+```
+
+### Configuring manually
+
+The referenced Cisco page is authoritative for how to download, verify, and
+extract the bundle. Each `caroots` entry is the raw base64-encoded certificate
+(the DER body, without the `-----BEGIN/END CERTIFICATE-----` lines or newlines):
 
 ```js
 import '@webex/internal-plugin-encryption';

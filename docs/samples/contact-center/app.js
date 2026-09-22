@@ -3096,6 +3096,10 @@ function generateWebexConfig({credentials}) {
       disableWebRTCRegistration: isWebRTCRegistrationDisabled,
       enableWxBetterTogether: isWxBetterTogetherEnabled,
     },
+    // Samples don't ship a KMS CA root bundle, so disable cert validation.
+    encryption: {
+      shouldValidateKMSCertificate: false,
+    },
     credentials,
   };
 }
