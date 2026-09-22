@@ -292,7 +292,12 @@ jobs:
         run: |
           # Check if there's anything to commit before committing
           if [ -n "$(git status --porcelain)" ]; then
-            git add -f docs/
+            git add docs/
+            # The web sample's bundle is generated rather than committed (see
+            # .gitignore), so a plain `git add` skips it and the hosted page 404s.
+            # Force only this path: the extension half stays unpublished because its
+            # manifest is origin-baked for local testing and must not ship.
+            git add -f docs/samples/web-extension-bridge/vendor
             git commit -m "chore(docs): update docs"
             git push origin HEAD:documentation --force
           fi
