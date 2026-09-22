@@ -14248,6 +14248,11 @@ describe('plugin-meetings', () => {
               requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
             },
             {
+              actionName: 'isSupportParticipantList',
+              requiredDisplayHints: [],
+              requiredPolicies: [SELF_POLICY.SUPPORT_PARTICIPANT_LIST],
+            },
+            {
               actionName: 'canPollingAndQA',
               requiredDisplayHints: [],
               requiredPolicies: [SELF_POLICY.SUPPORT_POLLING_AND_QA],
