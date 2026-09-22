@@ -1493,10 +1493,8 @@ export default class Meetings extends WebexPlugin {
    */
   private destroy(meeting: Meeting, reason: object) {
     MeetingUtil.cleanUp(meeting);
-    // Tear down hash tree parsers only now that the meeting is actually being destroyed.
-    // MeetingUtil.cleanUp (which also runs after leave/endMeetingForAll) no longer does this, so
-    // that for hash tree meetings the parsers stay alive long enough to consume the final sentinel
-    // END message from Locus that drives us here in the first place.
+    // Tear down hash tree parsers here (and not in MeetingUtil.cleanUp) so they survive
+    // leave/endMeetingForAll to consume the final sentinel END message from Locus.
     meeting.locusInfo?.cleanUp();
     // keep some basic info about the deleted meeting forever
     this.deletedMeetings.set(meeting.id, {
