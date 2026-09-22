@@ -396,6 +396,16 @@ describe('webex-core', () => {
 
         assert.isUndefined(service);
       });
+
+      it('returns undefined for an unparsable url', () => {
+        const exampleService = {
+          serviceUrls: [{baseUrl: 'https://example.com/resource'}],
+        };
+
+        catalog.serviceGroups.postauth.push(exampleService);
+
+        assert.isUndefined(catalog.findServiceDetailFromUrl('not-a-url'));
+      });
     });
   });
 });

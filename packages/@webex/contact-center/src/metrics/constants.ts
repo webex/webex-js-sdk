@@ -203,6 +203,11 @@ export const METRIC_EVENT_NAMES = {
   AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS:
     'AI Assistant Fetch Historic Transcripts Success',
   AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED: 'AI Assistant Fetch Historic Transcripts Failed',
+  AI_ASSISTANT_WELLNESS_ACTION_ACCEPTED: 'AI Assistant Wellness Action Accepted',
+  AI_ASSISTANT_WELLNESS_ACTION_FAILED: 'AI Assistant Wellness Action Failed',
+  AI_ASSISTANT_WELLNESS_EVENT_INVALID: 'AI Assistant Wellness Event Invalid',
+  WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS: 'Wellbeing Break Idle Code Fetch Success',
+  WELLBEING_BREAK_IDLE_CODE_FETCH_FAILED: 'Wellbeing Break Idle Code Fetch Failed',
 
   // AI summary events
   AI_SUMMARY_GET_POST_CALL_SUCCESS: 'Post Call Summary Get Success',

@@ -23,6 +23,7 @@ import {
   OutdialAniEntriesResponse,
   OutdialAniParams,
   AIFeatureFlagsResponse,
+  Entity,
 } from './types';
 import WebexRequest from '../core/WebexRequest';
 import {WCC_API_GATEWAY} from '../constants';
@@ -34,6 +35,7 @@ import {
   DEFAULT_PAGE_SIZE,
   endPointMap,
   METHODS,
+  WELLBEING_BREAK_IDLE_CODE,
 } from './constants';
 
 /**
@@ -465,6 +467,69 @@ export default class AgentConfigService {
       LoggerProxy.error(`getAllAuxCodes API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
         method: METHODS.GET_ALL_AUX_CODES,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieves the exact system-managed WellbeingBreak idle code.
+   * This query intentionally bypasses Desktop Profile filtering so the system code does not
+   * need to appear in the normal agent-selectable idle-code list.
+   * @param orgId - Organization identifier
+   * @returns The normalized WellbeingBreak entity
+   * @throws When the request fails or the exact system code is unavailable
+   * @internal
+   */
+  public async getWellbeingBreakIdleCode(orgId: string): Promise<Entity> {
+    LoggerProxy.info('Fetching WellbeingBreak system idle code', {
+      module: CONFIG_FILE_NAME,
+      method: METHODS.GET_WELLBEING_BREAK_IDLE_CODE,
+    });
+
+    try {
+      let page = DEFAULT_PAGE;
+      let totalPages = 1;
+
+      do {
+        // Pagination is intentionally sequential so the lookup can stop as soon as the code is found.
+        // eslint-disable-next-line no-await-in-loop
+        const response = await this.webexReq.request({
+          service: WCC_API_GATEWAY,
+          resource: endPointMap.systemIdleCodes(orgId, page, DEFAULT_PAGE_SIZE),
+          method: HTTP_METHODS.GET,
+        });
+
+        if (response.statusCode !== 200) {
+          throw new Error(`API call failed with ${response.statusCode}`);
+        }
+
+        const result = response.body as ListAuxCodesResponse;
+        const wellbeingCode = result.data?.find(
+          (code) =>
+            code.active === true &&
+            code.isSystemCode === true &&
+            code.name === WELLBEING_BREAK_IDLE_CODE
+        );
+
+        if (wellbeingCode) {
+          return {
+            id: wellbeingCode.id,
+            name: wellbeingCode.name,
+            isSystem: true,
+            isDefault: wellbeingCode.defaultCode,
+          };
+        }
+
+        totalPages = result.meta?.totalPages ?? 1;
+        page += 1;
+      } while (page < totalPages);
+
+      throw new Error('WELLBEING_BREAK_IDLE_CODE_NOT_FOUND');
+    } catch (error) {
+      LoggerProxy.error(`getWellbeingBreakIdleCode API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: METHODS.GET_WELLBEING_BREAK_IDLE_CODE,
       });
       throw error;
     }
