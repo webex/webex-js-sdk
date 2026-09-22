@@ -372,7 +372,6 @@ const MeetingUtil = {
     meeting.breakouts.cleanUp();
     meeting.webinar.cleanUp();
     meeting.simultaneousInterpretation.cleanUp();
-    meeting.locusInfo.cleanUp();
     meeting.locusMediaRequest = undefined;
 
     meeting.webex?.internal?.newMetrics?.callDiagnosticMetrics?.clearEventLimitsForCorrelationId(
