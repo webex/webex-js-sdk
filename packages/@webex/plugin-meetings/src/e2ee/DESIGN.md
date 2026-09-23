@@ -540,7 +540,10 @@ to surface the meeting's zero-trust state.
 
 ## Test strategy
 
-Per `AGENTS.md`: colocated `*.test.ts`, jest, `import { it } from '@jest/globals'`.
+Per the webex-js-sdk conventions: specs live under `test/unit/spec/e2ee/**` (mirroring `src/`),
+run with mocha (`yarn workspace @webex/plugin-meetings test:unit`), using `sinon` for
+stubs/spies, `assert` from `@webex/test-helper-chai`, and `@webex/test-helper-mock-webex` for a
+mock webex. (Filenames below are illustrative — each maps to a spec under `test/unit/spec/e2ee/`.)
 
 - `WasmLoader.test.ts` — `preload` caches, `get()` awaits/returns cache, idempotent, error resets.
 - `E2eeManager.test.ts` — `isEnabled` from config; `preload` warms WASM only, only when

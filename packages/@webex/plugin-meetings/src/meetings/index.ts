@@ -21,6 +21,7 @@ import LoggerRequest from '../common/logs/request';
 import Trigger from '../common/events/trigger-proxy';
 import Media from '../media';
 import MeetingUtil from '../meeting/util';
+import E2eeManager from '../e2ee/E2eeManager';
 import {
   MEETINGS,
   EVENTS,
@@ -210,6 +211,7 @@ export default class Meetings extends WebexPlugin {
   breakoutLocusForHandleLater: any;
   namespace = MEETINGS;
   registrationStatus: MeetingRegistrationStatus;
+  e2eeManager: E2eeManager;
 
   /**
    * Emits a metric describing how well this browser runs WebAssembly, used to spot browsers
@@ -317,6 +319,16 @@ export default class Meetings extends WebexPlugin {
      */
     // @ts-ignore
     this.reachability = new Reachability(this.webex);
+
+    /**
+     * The Meetings-plugin-level E2EE manager, owning shared session-scoped E2EE resources.
+     * @instance
+     * @type {E2eeManager}
+     * @private
+     * @memberof Meetings
+     */
+    // @ts-ignore
+    this.e2eeManager = new E2eeManager({config: this.config});
 
     /**
      * If the meetings plugin has been registered and listening via {@link Meetings#register}
@@ -1125,6 +1137,13 @@ export default class Meetings extends WebexPlugin {
         );
         this.registered = true;
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_SUCCESS);
+
+        // Warm E2EE resources (e.g. WASM) off the join path; must never affect registration.
+        this.e2eeManager.preload().catch((error) => {
+          LoggerProxy.logger.warn(
+            `Meetings:index#register --> E2EE preload failed: ${error?.message || error}`
+          );
+        });
       })
       .catch((error) => {
         LoggerProxy.logger.error(

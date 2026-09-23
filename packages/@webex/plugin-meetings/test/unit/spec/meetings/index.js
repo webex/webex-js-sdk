@@ -459,6 +459,24 @@ describe('plugin-meetings', () => {
           assert.isTrue(webex.meetings.registered);
         });
 
+        it('warms E2EE resources via e2eeManager.preload on successful register', async () => {
+          webex.canAuthorize = true;
+          const preloadStub = sinon.stub(webex.meetings.e2eeManager, 'preload').resolves();
+
+          await webex.meetings.register();
+
+          assert.calledOnce(preloadStub);
+        });
+
+        it('does not fail register when e2eeManager.preload rejects', async () => {
+          webex.canAuthorize = true;
+          sinon.stub(webex.meetings.e2eeManager, 'preload').rejects(new Error('fake e2ee error'));
+
+          await webex.meetings.register();
+
+          assert.isTrue(webex.meetings.registered);
+        });
+
         it('rejects when SDK canAuthorize is false', async () => {
           webex.canAuthorize = false;
           await assert.isRejected(webex.meetings.register());
