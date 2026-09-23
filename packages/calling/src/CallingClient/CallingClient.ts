@@ -554,6 +554,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     let clientRegion: string;
     let countryCode: string;
 
+    this.mobiusHost =
+      this.webex.internal.services._serviceUrls?.mobius ||
+      this.webex.internal.services.get(this.webex.internal.services._activeServices.mobius);
+
     if (this.sdkConfig?.discovery?.country && this.sdkConfig?.discovery?.region) {
       log.log('Updating region and country from the SDK config', {
         file: CALLING_CLIENT_FILE,
@@ -561,9 +565,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       });
       clientRegion = this.sdkConfig?.discovery?.region;
       countryCode = this.sdkConfig?.discovery?.country;
-      this.mobiusHost =
-        this.webex.internal.services._serviceUrls?.mobius ||
-        this.webex.internal.services.get(this.webex.internal.services._activeServices.mobius);
     } else {
       log.log('Updating region and country through Region discovery', {
         file: CALLING_CLIENT_FILE,
@@ -584,12 +585,22 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         }
       );
 
-      for (const mobius of this.mobiusClusters) {
-        if (mobius.host) {
-          this.mobiusHost = `https://${mobius.host}${API_V1}`;
-        } else {
-          this.mobiusHost = mobius as unknown as string;
-        }
+      /* Attempt the Mobius host from the service link first (when available) and then
+       * fall back to the catalog clusters. Duplicate candidates are removed so the same
+       * host is never queried twice.
+       */
+      const candidateHosts = [
+        ...new Set([
+          ...(this.mobiusHost ? [this.mobiusHost] : []),
+          ...this.mobiusClusters.map((mobius) =>
+            mobius.host ? `https://${mobius.host}${API_V1}` : (mobius as unknown as string)
+          ),
+        ]),
+      ];
+
+      for (const host of candidateHosts) {
+        this.mobiusHost = host;
+
         try {
           // eslint-disable-next-line no-await-in-loop
           const response = <WebexRequestPayload>await this.webex.request({
