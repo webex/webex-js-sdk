@@ -64,6 +64,7 @@ export function createWebBridgeWith(
   const nextId: IdFactory = createIdFactory();
   const logger: BridgeLogger = createLogger({
     debug: config.debug,
+    ...(config.logLevel === undefined ? {} : {logLevel: config.logLevel}),
     ...(config.logSink ? {sink: config.logSink} : {}),
   });
   const counters = new Counters();
@@ -131,7 +132,7 @@ export function createWebBridgeWith(
     session = token;
     seenIds.clear();
     connected = true;
-    logger.debug('connected', {channel: config.channel});
+    logger.info('connected', {channel: config.channel});
     onConnectedListeners.emit();
   };
 
@@ -142,7 +143,7 @@ export function createWebBridgeWith(
 
     connected = false;
     session = null;
-    logger.debug('disconnected', {channel: config.channel, reason});
+    logger.info('disconnected', {channel: config.channel, reason});
     onDisconnectedListeners.emit(reason);
   }
 
@@ -181,6 +182,11 @@ export function createWebBridgeWith(
 
     if (!entry) {
       counters.increment(CounterName.REQUEST_FAILED, 'NO_HANDLER');
+      logger.debug('no handler registered for request', {
+        channel: config.channel,
+        topic: request.topic,
+        id: request.id,
+      });
       respond(request, {ok: false, cause: new BridgeError('NO_HANDLER', undefined, request.topic)});
 
       return;
@@ -199,6 +205,11 @@ export function createWebBridgeWith(
 
       if (!valid) {
         counters.increment(CounterName.REQUEST_FAILED, 'INVALID_PAYLOAD');
+        logger.debug('request rejected by handler validate', {
+          channel: config.channel,
+          topic: request.topic,
+          id: request.id,
+        });
         respond(request, {
           ok: false,
           cause: new BridgeError('INVALID_PAYLOAD', undefined, request.topic),
@@ -221,10 +232,21 @@ export function createWebBridgeWith(
       // INVALID_PAYLOAD rather than throw inside postMessage.
       assertPayload(result, config.maxPayloadBytes, request.topic);
       counters.increment(CounterName.REQUEST_SERVED, request.topic);
+      logger.debug('request served', {
+        channel: config.channel,
+        topic: request.topic,
+        id: request.id,
+      });
       respond(request, {ok: true, payload: result ?? null});
     } catch (cause) {
       counters.increment(CounterName.REQUEST_FAILED, request.topic);
-      logger.debug('handler failed', {topic: request.topic, id: request.id});
+      // `warn`: the cause is flattened to HANDLER_ERROR for the extension, so this is
+      // the only signal page-side. Not `error` — request-driven, so floodable.
+      logger.warn('request handler threw', {
+        channel: config.channel,
+        topic: request.topic,
+        id: request.id,
+      });
       respond(request, {ok: false, cause});
     }
   };
@@ -310,6 +332,11 @@ export function createWebBridgeWith(
   win.addEventListener('message', onMessage);
   win.addEventListener('pagehide', onPageHide);
 
+  logger.info('web bridge started', {
+    channel: config.channel,
+    origin: config.targetOrigin,
+  });
+
   // Announce ourselves in case the content script was injected before this bridge
   // existed. HELLO is the one kind that may carry an empty session, since it is what
   // asks for one.
@@ -340,6 +367,7 @@ export function createWebBridgeWith(
         })
       );
       counters.increment(CounterName.PUSH_SENT, topic);
+      logger.debug('push sent', {channel: config.channel, topic});
     },
 
     requestHandler(topic: string, handler: RequestHandler, opts: HandlerOptions = {}): () => void {
@@ -364,10 +392,12 @@ export function createWebBridgeWith(
       }
 
       handlers.set(topic, entry);
+      logger.debug('request handler registered', {channel: config.channel, topic});
 
       return () => {
         if (handlers.get(topic) === entry) {
           handlers.delete(topic);
+          logger.debug('request handler removed', {channel: config.channel, topic});
         }
       };
     },
@@ -415,6 +445,7 @@ export function createWebBridgeWith(
       onDisconnectedListeners.clear();
       handlers.clear();
       seenIds.clear();
+      logger.info('web bridge destroyed', {channel: config.channel});
     },
   };
 
