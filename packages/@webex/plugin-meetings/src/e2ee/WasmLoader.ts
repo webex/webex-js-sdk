@@ -3,37 +3,33 @@
  */
 
 import LoggerProxy from '../common/logs/logger-proxy';
+import type {ModuleFactory, ModuleInstance} from './wasm';
 
 const DEFAULT_WASM_URL = '/wasm/e2ee.wasm';
-
-/**
- * The WebAssembly module produced by the e2ee module factory. The full WebE2EE surface is typed
- * in wasm.d.ts once the protocol engine lands; here we only need the module shape to cache it.
- */
-export interface WebE2EEModule {
-  WebE2EE: new () => unknown;
-}
-
-type ModuleFactory = (moduleOverrides?: {
-  locateFile?: (path: string) => string;
-}) => Promise<WebE2EEModule>;
 
 type ModuleImporter = (jsPath: string) => Promise<{default: ModuleFactory}>;
 
 const defaultImporter: ModuleImporter = (jsPath) => import(/* webpackIgnore: true */ jsPath);
 
+/** The subset of WasmLoader consumed by the MLS engine, so it can be injected/faked in tests. */
+export interface IWasmLoader {
+  preload(): Promise<void>;
+  get(): Promise<ModuleInstance>;
+  isLoaded(): boolean;
+}
+
 /**
  * Loads and caches the e2ee WebAssembly module. Instantiated once per session so the slow load
  * can be warmed ahead of the first meeting join instead of on the join path.
  */
-export default class WasmLoader {
+export default class WasmLoader implements IWasmLoader {
   private readonly wasmUrl: string;
 
   private readonly importModule: ModuleImporter;
 
-  private moduleInstance: WebE2EEModule | null = null;
+  private moduleInstance: ModuleInstance | null = null;
 
-  private moduleLoadPromise: Promise<WebE2EEModule> | null = null;
+  private moduleLoadPromise: Promise<ModuleInstance> | null = null;
 
   /**
    * @param {Object} [options]
@@ -62,9 +58,9 @@ export default class WasmLoader {
 
   /**
    * Returns the cached module, loading it if necessary.
-   * @returns {Promise<WebE2EEModule>}
+   * @returns {Promise<ModuleInstance>}
    */
-  get(): Promise<WebE2EEModule> {
+  get(): Promise<ModuleInstance> {
     if (this.moduleInstance) {
       return Promise.resolve(this.moduleInstance);
     }
@@ -76,9 +72,9 @@ export default class WasmLoader {
   }
 
   /**
-   * @returns {Promise<WebE2EEModule>}
+   * @returns {Promise<ModuleInstance>}
    */
-  private async load(): Promise<WebE2EEModule> {
+  private async load(): Promise<ModuleInstance> {
     const {wasmUrl} = this;
     const jsPath = wasmUrl.replace('.wasm', '.js');
 
