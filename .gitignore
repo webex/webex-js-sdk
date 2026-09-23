@@ -1,5 +1,11 @@
 # Documentation
 packages/**/docs/
+# SDD specifications are authored sources, not build output. They are generated into docs/
+# folders by the repo-annotation workflow and routed by each package's .sdd/manifest.json.
+!packages/@webex/http-core/docs/
+!packages/@webex/http-core/src/docs/
+!packages/@webex/http-core/src/request/docs/
+!packages/@webex/http-core/.sdd/templates/repo-standards/docs/
 
 /**/.generated/
 
