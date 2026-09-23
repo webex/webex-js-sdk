@@ -1,0 +1,362 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/http-core",
+    "purpose": "Promise-based core HTTP client for the Cisco Webex JS SDK: request execution through an interceptor pipeline, interchangeable Node and browser transports, an HTTP status to error-class taxonomy, upload/download progress events, and buffer file-type detection.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript",
+      "typescript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "compile": {
+      "command": "yarn workspace @webex/http-core build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/http-core build:src",
+      "source_file": "package.json",
+      "role": "build"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/http-core test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "integration-test": {
+      "command": "yarn workspace @webex/http-core test:integration",
+      "source_file": "package.json",
+      "role": "integration-test"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/http-core test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/http-core test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "test-all": {
+      "command": "yarn workspace @webex/http-core test",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/http-core deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit",
+      "framework": "jest"
+    },
+    "integration": {
+      "command_ref": "integration-test",
+      "dir": "test/integration",
+      "framework": "mocha",
+      "external_deps": [
+        "local fixture HTTP server via @webex/test-helper-make-local-url",
+        "provisioned Webex test users via @webex/test-helper-test-users"
+      ]
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rarajes2@cisco.com via bootstrap questionnaire"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "modules": [
+    {
+      "path": "src",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-09-23; critical field coverage 16/16. Outstanding: no characterization baseline. Independent validation by codex returned pass-with-warnings on 2026-09-23 with 0 Blocking, 1 Important, and 1 Medium finding at repository scope; promotion to Specced remains held pending the characterization baseline.",
+      "canonical_spec": "src/docs/README.md",
+      "contracts": {
+        "provides": [
+          "http-core-sdk",
+          "http-core-progress-events",
+          "http-core-xhr-fork"
+        ],
+        "requires": [
+          "http-core-request-transport",
+          "webex-common-sdk"
+        ]
+      },
+      "last_assessed": "2026-09-23",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": false,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "holds_client_state": false,
+        "resolved_by": "claude-code/claude-opus-5 (host metadata; bootstrap questionnaire)",
+        "resolved_at": "2026-09-23T00:00:00Z",
+        "has_submodules": true,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-09-23T04:52:28Z"
+      }
+    },
+    {
+      "path": "src/request",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Field coverage 93.3% (14/15) assessed 2026-09-23; critical field coverage 16/16. Outstanding: no characterization baseline; browser-transport behavior remains the least test-covered area. Independent validation by codex returned pass-with-warnings on 2026-09-23 with 0 Blocking, 1 Important, and 1 Medium finding at repository scope; promotion to Specced remains held pending the characterization baseline.",
+      "canonical_spec": "src/request/docs/README.md",
+      "contracts": {
+        "provides": [
+          "http-core-request-transport"
+        ],
+        "requires": [
+          "http-core-sdk",
+          "http-core-progress-events",
+          "http-core-xhr-fork",
+          "webex-common-sdk",
+          "nodejs-request-library"
+        ]
+      },
+      "last_assessed": "2026-09-23",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": false,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": false,
+        "embedded_in_host": false,
+        "holds_client_state": false,
+        "resolved_by": "claude-code/claude-opus-5 (host metadata; bootstrap questionnaire)",
+        "resolved_at": "2026-09-23T00:00:00Z",
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-09-23T04:52:28Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "http-core-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package export surface declared by main/devMain/browser: the request and defaults clients, protoprepareFetchOptions and setTimingsAndFetch, the Interceptor extension contract subclasses implement, HttpStatusInterceptor, the HttpError taxonomy and its status-to-class select(), ProgressEvent, and detect. Per-export detail lives in the owning module spec Public surface."
+      },
+      "http-core-progress-events": {
+        "kind": "event",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "src/progress-event.js",
+        "summary": "progress events emitted on the caller-visible options.download and options.upload emitters, carrying a ProgressEvent with loaded, total, and lengthComputable."
+      },
+      "http-core-xhr-fork": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/lib/xhr.js",
+        "summary": "Vendored fork of naugtur/xhr held deliberately close to upstream so it keeps working in fully object-frozen environments."
+      },
+      "http-core-request-transport": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/request/index.js",
+        "summary": "Internal transport interface used by the package entry point: applies request interceptors, dispatches to the platform transport or a caller-supplied options.request, then applies response interceptors in reverse order."
+      },
+      "webex-common-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "@webex/common (workspace package; Exception and isBuffer exports)",
+        "summary": "Shared SDK primitives: the Exception base class HttpError extends, and the isBuffer predicate used for body and response detection."
+      },
+      "nodejs-request-library": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "request@^2.88.0 (npm)",
+        "summary": "Third-party Node HTTP client used as the Node transport; option names are passed through largely unchanged, which is why the public option shape mirrors it."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md",
+      "src/request/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5",
+    "generator_run_id": "55d96b7f-265b-4b23-a9d7-e83dbf0dd321",
+    "generator_runtime_source": "host-metadata",
+    "validator_runtime": "codex",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ]
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No module-local documentation convention exists in this package, so the repo-standards source-local default applies unchanged.",
+      "decided_by": "claude-code (bootstrap questionnaire)",
+      "decided_at": "2026-09-23T00:00:00Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the operational context nor its schema exists in this package; both are created from the bundled Repo Standards templates and verified repository evidence.",
+      "decided_by": "claude-code (bootstrap questionnaire)",
+      "decided_at": "2026-09-23T00:00:00Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "This package is a published library, not a deployable service; no deployment descriptor, container, or runtime entry point exists.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-23T00:00:00Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level documentation build exists; documentation is published by the surrounding workspace pipeline.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-23T00:00:00Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package is an HTTP client and serves no routes; its published surface is the npm package export described by http-core-sdk.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-23T00:00:00Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "Absent at both package and workspace root; a per-package security policy would be the wrong home and no reporting contact is established.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-23T00:00:00Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the workspace root and already linked from this package README.md.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-23T00:00:00Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Changelog generation is owned at the workspace root; no package-level changelog exists.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-23T00:00:00Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness workflow applies to deployable services; this package is a published library.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-23T00:00:00Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Selected together with CTO_CHECKLIST.yml, which is omitted.",
+        "decided_by": "claude-code (bootstrap questionnaire)",
+        "decided_at": "2026-09-23T00:00:00Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "@webex/eslint-config-legacy via .eslintrc.js",
+      "@webex/babel-config-legacy via babel.config.js",
+      "@webex/jest-config-legacy via jest.config.js",
+      "@webex/legacy-tools build and test runner via package.json",
+      "package README.md"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": false,
+      "components_interact": true,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": false,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": false
+    },
+    "resolved_by": "claude-code/claude-opus-5 (host metadata; bootstrap questionnaire)",
+    "resolved_at": "2026-09-23T00:00:00Z"
+  }
+}
