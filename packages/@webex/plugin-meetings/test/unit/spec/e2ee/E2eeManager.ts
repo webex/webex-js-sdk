@@ -9,6 +9,7 @@ import WasmLoader from '@webex/plugin-meetings/src/e2ee/WasmLoader';
 
 describe('plugin-meetings', () => {
   describe('E2eeManager', () => {
+    const webex = {internal: {device: {}}};
     let preloadStub;
 
     beforeEach(() => {
@@ -21,15 +22,15 @@ describe('plugin-meetings', () => {
 
     describe('isEnabled', () => {
       it('reflects config.enableE2ee', () => {
-        assert.isTrue(new E2eeManager({config: {enableE2ee: true}}).isEnabled);
-        assert.isFalse(new E2eeManager({config: {enableE2ee: false}}).isEnabled);
-        assert.isFalse(new E2eeManager({config: {}}).isEnabled);
+        assert.isTrue(new E2eeManager({webex, config: {enableE2ee: true}}).isEnabled);
+        assert.isFalse(new E2eeManager({webex, config: {enableE2ee: false}}).isEnabled);
+        assert.isFalse(new E2eeManager({webex, config: {}}).isEnabled);
       });
     });
 
     describe('preload', () => {
       it('warms the WASM module when enabled', async () => {
-        const manager = new E2eeManager({config: {enableE2ee: true}});
+        const manager = new E2eeManager({webex, config: {enableE2ee: true}});
 
         await manager.preload();
 
@@ -37,11 +38,24 @@ describe('plugin-meetings', () => {
       });
 
       it('does nothing when disabled', async () => {
-        const manager = new E2eeManager({config: {enableE2ee: false}});
+        const manager = new E2eeManager({webex, config: {enableE2ee: false}});
 
         await manager.preload();
 
         assert.notCalled(preloadStub);
+      });
+    });
+
+    describe('createE2eeMeeting', () => {
+      it('returns a per-meeting E2EE facade', () => {
+        const manager = new E2eeManager({webex, config: {enableE2ee: true}});
+        const meeting = {};
+
+        const e2eeMeeting = manager.createE2eeMeeting(meeting);
+
+        assert.isDefined(e2eeMeeting);
+        assert.equal(e2eeMeeting.state, 'disabled');
+        assert.isTrue(e2eeMeeting.isEnabled);
       });
     });
   });

@@ -6,6 +6,29 @@
  * SDK-facing E2EE types (camelCase), mapped from the raw WASM boundary shapes in wasm.d.ts.
  */
 
+/** E2EE feature config (a slice of the meetings plugin config). */
+export interface E2eeConfig {
+  enableE2ee?: boolean;
+}
+
+/** Lifecycle state of a per-meeting MLS session. */
+export type E2eeState =
+  | 'disabled'
+  | 'initializing'
+  | 'joining'
+  | 'joined'
+  | 'failed'
+  | 'evicted'
+  | 'left';
+
+/** The meeting's overall E2EE trust state, surfaced to the app for its UI indicator. */
+export type E2eeTrustState =
+  | 'Calculating'
+  | 'Strong'
+  | 'ZeroTrust'
+  | 'AdaptiveStrong'
+  | 'AdaptiveZeroTrust';
+
 /** A media-encryption (SFrame) key for a given MLS epoch. */
 export interface E2eeKey {
   epoch: number;

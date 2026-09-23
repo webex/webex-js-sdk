@@ -1818,6 +1818,7 @@ export default class Meetings extends WebexPlugin {
         destination,
         destinationType: type,
         callStateForMetrics,
+        e2eeManager: this.e2eeManager,
       },
       {
         // @ts-ignore

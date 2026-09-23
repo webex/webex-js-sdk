@@ -86,6 +86,8 @@ import ReconnectionManager from '../reconnection-manager';
 import ReconnectionNotStartedError from '../common/errors/reconnection-not-started';
 import MeetingRequest from './request';
 import Members from '../members/index';
+import E2eeMeeting from '../e2ee/E2eeMeeting';
+import type {E2eeTrustState} from '../e2ee/types';
 import MeetingUtil from './util';
 import MeetingsUtil from '../meetings/util';
 import RecordingUtil from '../recording-controller/util';
@@ -630,6 +632,7 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingInfo: any;
   meetingRequest: MeetingRequest;
   members: Members;
+  e2ee?: E2eeMeeting;
   options: object;
   orgId: string;
   owner: string;
@@ -1104,6 +1107,15 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     // @ts-ignore - Fix type
     this.roap = new Roap({}, {parent: this.webex});
+
+    /**
+     * The per-meeting E2EE facade (undefined when no E2EE manager is provided).
+     * @instance
+     * @type {E2eeMeeting}
+     * @private
+     * @memberof Meeting
+     */
+    this.e2ee = attrs.e2eeManager?.createE2eeMeeting(this);
     /**
      * indicates if an SDP exchange is happening
      *
@@ -4379,6 +4391,61 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Returns the meeting security code (E2EE), once available.
+   * @returns {String|undefined}
+   * @public
+   * @memberof Meeting
+   */
+  public getSecurityCode(): string | undefined {
+    return this.e2ee?.getSecurityCode();
+  }
+
+  /**
+   * The E2EE lifecycle state for this meeting.
+   * @returns {String}
+   * @public
+   * @memberof Meeting
+   */
+  public get e2eeState(): string {
+    return this.e2ee?.state ?? 'disabled';
+  }
+
+  /**
+   * Whether the MLS roster contains a media service (drives the zero-trust UI indicator).
+   * @returns {Boolean}
+   * @public
+   * @memberof Meeting
+   */
+  public get e2eeHasMediaServices(): boolean {
+    return this.e2ee?.hasMediaServices ?? false;
+  }
+
+  /**
+   * The meeting's overall E2EE trust state, derived from the Locus E2EE flags, the MLS join state
+   * and media-service presence.
+   * @returns {E2eeTrustState}
+   * @public
+   * @memberof Meeting
+   */
+  public get e2eeTrustState(): E2eeTrustState {
+    const info: any = this.locusInfo?.info;
+    const adaptive = !!info?.isBestEffortE2EEncryption;
+    const isV2 = !!info?.isV2E2EEncrypted;
+
+    if (isV2 && this.e2ee?.state !== 'joined') {
+      return 'Calculating';
+    }
+
+    const zeroTrust = isV2 && !this.e2ee?.hasMediaServices;
+
+    if (adaptive) {
+      return zeroTrust ? 'AdaptiveZeroTrust' : 'AdaptiveStrong';
+    }
+
+    return zeroTrust ? 'ZeroTrust' : 'Strong';
+  }
+
+  /**
    * Sets the meeting info on the class instance
    * @param {Object} meetingInfo
    * @param {String} meetingInfo.conversationUrl
@@ -6618,6 +6685,10 @@ export default class Meeting extends StatelessWebexPlugin {
               );
             });
         }
+
+        this.e2ee?.start().catch((error) => {
+          LoggerProxy.logger.error('Meeting:index#join --> E2EE start failed', error);
+        });
 
         return join;
       });
@@ -10546,6 +10617,8 @@ export default class Meeting extends StatelessWebexPlugin {
     this.clearDataChannelToken();
 
     await this.cleanupLLMConneciton({throwOnError: false});
+
+    await this.e2ee?.stop();
   };
 
   /**
