@@ -7710,29 +7710,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/event-dictionary-ts@npm:^1.0.2215":
-  version: 1.0.2215
-  resolution: "@webex/event-dictionary-ts@npm:1.0.2215"
+"@webex/event-dictionary-ts@npm:^1.0.2276":
+  version: 1.0.2278
+  resolution: "@webex/event-dictionary-ts@npm:1.0.2278"
   dependencies:
     amf-client-js: ^5.2.6
     json-schema-to-typescript: ^15.0.4
     minimist: ^1.2.8
     shelljs: ^0.8.5
     webapi-parser: ^0.5.0
-  checksum: 941869702638d760977e3e38530bbaca9cb72b7ee6d95895a5c434554cb65bf7ac2991fa5a1686a0eb7e939597307f3345ad6000b49e2d540ea06a1a6e9cc393
-  languageName: node
-  linkType: hard
-
-"@webex/event-dictionary-ts@npm:^1.0.2220":
-  version: 1.0.2220
-  resolution: "@webex/event-dictionary-ts@npm:1.0.2220"
-  dependencies:
-    amf-client-js: ^5.2.6
-    json-schema-to-typescript: ^15.0.4
-    minimist: ^1.2.8
-    shelljs: ^0.8.5
-    webapi-parser: ^0.5.0
-  checksum: 63078dff6261a170db655f06615ad53d7bf7c049b39e442743a42f74db6df9f32b4be77c1cbf6fcf17c13739979411d30ad90ba80000ce2254c44ccef7022f58
+  checksum: b91dd6af13d1a264e4c233261eb4ae1b8a4c10710149498c98a681b5bed0e18c7f8182d8c197e1b10851a6f79cc596e1f533f629600891584eb150ff96275f76
   languageName: node
   linkType: hard
 
@@ -8272,7 +8259,7 @@ __metadata:
     "@webex/common": "workspace:*"
     "@webex/common-timers": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/event-dictionary-ts": ^1.0.2220
+    "@webex/event-dictionary-ts": ^1.0.2276
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -8927,7 +8914,7 @@ __metadata:
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/event-dictionary-ts": ^1.0.2215
+    "@webex/event-dictionary-ts": ^1.0.2276
     "@webex/internal-media-core": 2.30.2
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
