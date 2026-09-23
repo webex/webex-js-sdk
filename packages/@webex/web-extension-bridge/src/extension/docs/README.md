@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: cursor
 approved_by: pending
-updated_at: 2026-09-16T10:06:00Z
-validation_status: pass
+updated_at: 2026-09-23T06:36:39Z
+validation_status: pending
 -->
 
 # extension
@@ -27,12 +27,12 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | Source path   | `src/extension` |
 | Resource kind | module |
 | Status        | Draft |
-| Last verified | 2026-09-16 at `9745d5577c` |
+| Last verified | 2026-09-23 at `95ac542e54` |
 | Module id     | `src/extension` |
 | Parent spec   | — |
 | Doc kind      | Module spec |
 | Coverage score | 81% assessed 2026-09-16 |
-| Validation status | pass |
+| Validation status | pending |
 
 ## Applicability
 
@@ -102,6 +102,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `createExtensionBridge` | Service worker | `allowedOrigins` required | `src/extension/background.ts` |
 | `createExtensionClient` | Popup / options / side panel | Mirrors worker methods over runtime commands | `src/extension/client.ts` |
 | `startContentRelay` | Content script needing a non-default channel | Does not start on import of `/extension` | `src/extension/content.ts` |
+| `logLevel` / `debug` / `logSink` on worker, client, and relay options | Extension hosts | Same threshold and alias rules as `WebBridgeOptions`; passed to `createLogger` | `src/types.ts`, `src/extension/background.ts`, `src/extension/client.ts`, `src/extension/content.ts` |
 | content-script specifier | Manifest `content_scripts[].js` | Side effect starts default channel | `src/content-script.ts` |
 | `extension-sdk` / `content-script-entry` | npm | `package.json` exports | `package.json` |
 
@@ -125,6 +126,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `EXT-005` | Worker refuses senders that fail `isOwnExtension` / content-script tab / `isOriginAllowed` | Provenance is data, not trust | `src/extension/senders.ts` | `test/unit/spec/extension/senders.ts` | none | Present |
 | `EXT-006` | `createExtensionClient` proxies FR1/FR2 results for UI surfaces | FR6 without duplicating transport | `src/extension/client.ts` | `test/unit/spec/extension/client.ts` | none | Present |
 | `EXT-007` | Every accepted push is appended best-effort to a bounded session buffer (even when UI listeners are active). A refused `chrome.storage.session` write increments `storageWriteFailed.buffer` and does not throw; listeners still fire. `subscribe` does not drain it; `getBufferedMessages` is read-only (TTL is a read-time filter). Expired entries leave storage on the next append. Eviction is also maxEntries / maxBytes measured on `{topic, payload}` only (not `meta` / `storedAt` / `bytes`); a single newest entry may exceed `maxBytes`. | FR8 | `src/extension/background.ts`, `src/extension/sessionStore.ts` | `test/unit/spec/extension/sessionStore.ts` | none | Present |
+| `EXT-008` | `createExtensionBridge`, `createExtensionClient`, and `startContentRelay` accept `logLevel`, `debug`, and `logSink` and pass them to `createLogger`. Invalid `logLevel` does not throw `INSECURE_CONFIG`. | Same logger contract as the page factory; a mistyped log setting must not refuse the extension | `src/types.ts`, `src/extension/background.ts`, `src/extension/client.ts`, `src/extension/content.ts` | `test/unit/spec/core/logger.ts` | none | Present |
 
 ## Design overview
 
@@ -279,4 +281,5 @@ Rejected: accepting a content-script message whose origin is not in `allowedOrig
 | `EXT-004` | Unit | `test/unit/spec/extension/background.ts` | wildcard origins | none |
 | `EXT-005` | Unit | `test/unit/spec/extension/senders.ts` | missing origin | none |
 | `EXT-006` | Unit | `test/unit/spec/extension/client.ts` | none found beyond unit | no e2e suite |
+| `EXT-008` | Unit | `test/unit/spec/core/logger.ts` | unrecognised `logLevel` does not throw | none |
 | End-to-end hops | Integration (in mocha unit runner) | `test/unit/spec/integration/bridge.ts` | fake chrome/window | no browser e2e |

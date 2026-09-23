@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: cursor
 approved_by: pending
-updated_at: 2026-09-16T10:06:00Z
-validation_status: pass
+updated_at: 2026-09-23T06:36:39Z
+validation_status: pending
 -->
 
 # Getting started
@@ -48,7 +48,7 @@ Local samples (outside this SDD root) are built with:
 yarn workspace @webex/web-extension-bridge build:samples
 ```
 
-Sample steps and load-unpacked instructions remain in `README.md`. Do not invent a `dev` or `verify` script; those names exist only in the draft intake spec.
+Sample steps and load-unpacked instructions remain in `README.md`. After `build:samples`, the page sample is listed on the JS SDK samples index at `docs/index.html`. Do not invent a `dev` or `verify` script; those names exist only in the draft intake spec.
 
 ## Tests
 

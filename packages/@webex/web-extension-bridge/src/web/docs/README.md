@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: cursor
 approved_by: pending
-updated_at: 2026-09-16T10:06:00Z
-validation_status: pass
+updated_at: 2026-09-23T06:36:39Z
+validation_status: pending
 -->
 
 # web
@@ -27,12 +27,12 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | Source path   | `src/web` |
 | Resource kind | module |
 | Status        | Draft |
-| Last verified | 2026-09-16 at `9745d5577c` |
+| Last verified | 2026-09-23 at `95ac542e54` |
 | Module id     | `src/web` |
 | Parent spec   | — |
 | Doc kind      | Module spec |
 | Coverage score | 88% assessed 2026-09-16 |
-| Validation status | pass |
+| Validation status | pending |
 
 ## Applicability
 
@@ -90,6 +90,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | Surface | Consumer | Compatibility commitment | Source |
 | ------- | -------- | ------------------------ | ------ |
 | `createWebBridge` | Host page | Semver; throws `INSECURE_CONFIG` on bad options | `src/web/webBridge.ts` |
+| `WebBridgeOptions.logLevel` / `debug` / `logSink` | Host page | `logLevel` threshold (default `'warn'`); `debug: true` aliases `'debug'` and is ignored when `logLevel` is set; `logSink` replaces console | `src/types.ts`, `src/web/config.ts`, `src/core/logger.ts` |
 | `WebBridge.publish` | Host page | Throws on invalid topic/payload; fire-and-forget | `src/types.ts` |
 | `WebBridge.requestHandler` | Host page | One handler per topic unless `replace`; returns unregister | `src/types.ts` |
 | `WebBridge.onConnected` / `onDisconnected` / `isConnected` / `getCounters` / `destroy` | Host page | `getCounters` is synchronous on the page | `src/types.ts` |
@@ -112,6 +113,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `WEB-004` | Inbound events are dropped unless `event.source` is this window and `event.origin` is allow-listed | T1/T2 same-window and origin | `src/web/webBridge.ts` | `test/unit/spec/web/webBridge.ts`, `test/unit/spec/security/threats.ts` | none | Present |
 | `WEB-005` | Page accepted kinds are HELLO, HELLO_ACK, REQUEST, BYE — not PUSH or RESPONSE | Page is not the push consumer | `src/web/webBridge.ts` | `test/unit/spec/web/webBridge.ts` | none | Present |
 | `WEB-006` | `publish` throws rather than silently dropping invalid topic/payload | FR1 must be diagnosable | `src/types.ts`, `src/web/webBridge.ts` | `test/unit/spec/web/webBridge.ts` | none | Present |
+| `WEB-007` | `createWebBridge` accepts `logLevel`, `debug`, and `logSink` and passes them to `createLogger` (`debug` plus optional `logLevel`). Invalid `logLevel` does not throw `INSECURE_CONFIG`. | Hosts must be able to set verbosity without changing origin/channel fail-closed rules | `src/types.ts`, `src/web/config.ts`, `src/web/webBridge.ts` | `test/unit/spec/core/logger.ts` | none | Present |
 
 ## Design overview
 
@@ -249,3 +251,4 @@ Rejected: treating a message from another window or a non-allow-listed origin as
 | `WEB-002` | Unit | `test/unit/spec/web/config.ts` | wildcard / missing document origin | none |
 | `WEB-003` | Unit | `test/unit/spec/web/webBridge.ts` | eslint-security-rules.js | none |
 | `WEB-004` | Unit / Security | `test/unit/spec/web/webBridge.ts` | `test/unit/spec/security/threats.ts` | none |
+| `WEB-007` | Unit | `test/unit/spec/core/logger.ts` | unrecognised `logLevel` does not throw | none |

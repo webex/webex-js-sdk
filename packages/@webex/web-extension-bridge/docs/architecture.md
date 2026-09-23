@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: cursor
 approved_by: pending
-updated_at: 2026-09-16T10:06:00Z
-validation_status: pass
+updated_at: 2026-09-23T06:36:39Z
+validation_status: pending
 -->
 
 # @webex/web-extension-bridge architecture
@@ -104,6 +104,7 @@ No runtime dependency cycles. Page never imports `chrome`. Worker never posts to
 | Surface | Type | Owner | Consumers | Compatibility policy | Source |
 | ------- | ---- | ----- | --------- | -------------------- | ------ |
 | `@webex/web-extension-bridge` | SDK | web | Host web applications | Semver of the npm package; protocol version is independent (`PROTOCOL_VERSION`) | `package.json` export `.` |
+| `LogLevel`, `LogLevelSetting` | Type | core | Hosts configuring `logLevel` on any factory | Root specifier re-exports; not a new export path | `src/core/logger.ts` via `src/index.ts` |
 | `@webex/web-extension-bridge/extension` | SDK | extension | Service worker, popup, options, side panel, optional content-script API | Same package semver | `package.json` export `./extension` |
 | `@webex/web-extension-bridge/content-script` | SDK | extension | MV3 `content_scripts[].js` | Side-effect start of default-channel relay | `package.json` export `./content-script` |
 | Envelope | Event | core | Page protocol hops (page, content-relay, worker) | Additive optional fields need a protocol minor bump; other shape changes a major bump | `src/core/protocol.ts` |
@@ -129,7 +130,7 @@ Layout aliases `/web` and `/extension/{background,client,content}` are not publi
 
 ### Observability and operations
 
-- Logging and correlation: `createLogger` records metadata, never payloads or session tokens (`src/core/logger.ts`). Envelope `id` / `correlationId` stay on the wire, not in default logs.
+- Logging and correlation: `createLogger` is a threshold (`logLevel`: `'silent' | 'error' | 'warn' | 'info' | 'debug'`, default `'warn'`). `debug: true` is an alias for `'debug'` and is ignored when `logLevel` is set. A supplied `logSink` owns the destination (unwired levels are dropped). Invalid `logLevel` falls back to `'warn'` and `console.warn`s `{reason: 'UNRECOGNISED_LOG_LEVEL'}` — that string is not a `BridgeErrorCode`. Metadata only; never payloads or session tokens (`src/core/logger.ts`). Envelope `id` / `correlationId` stay on the wire, not in default logs.
 - Metrics, traces, and audit signals: in-memory `Counters` (`src/core/counters.ts`); `getCounters()` on page is sync, on the worker is async. No network telemetry.
 - Ownership and operational entry points: unit tests and SECURITY.md reporting channels.
 
@@ -179,7 +180,7 @@ flowchart LR
 
 | Signal | Convention or required fields | Propagation or naming rule | Primary evidence |
 | ------ | ----------------------------- | -------------------------- | ---------------- |
-| Logs | Metadata only; debug flag | No payload/session fields | `src/core/logger.ts` |
+| Logs | Metadata only; `logLevel` threshold (default `'warn'`); `debug` is an alias | No payload/session fields; sink owns destination when supplied | `src/core/logger.ts` |
 | Metrics | Flat counter names | `getCounters()` | `src/core/counters.ts` |
 | Traces | N/A | SDK performs no distributed tracing | none |
 | Audit | Security tests T1–T14 | Threat ids in test titles | `test/unit/spec/security/threats.ts` |

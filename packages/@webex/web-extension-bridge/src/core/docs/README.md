@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: cursor
 approved_by: pending
-updated_at: 2026-09-16T10:06:00Z
-validation_status: pass
+updated_at: 2026-09-23T06:36:39Z
+validation_status: pending
 -->
 
 # core
@@ -27,12 +27,12 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | Source path   | `src/core` |
 | Resource kind | module |
 | Status        | Draft |
-| Last verified | 2026-09-16 at `9745d5577c` |
+| Last verified | 2026-09-23 at `95ac542e54` |
 | Module id     | `src/core` |
 | Parent spec   | — |
 | Doc kind      | Module spec |
 | Coverage score | 88% assessed 2026-09-16 |
-| Validation status | pass |
+| Validation status | pending |
 
 ## Applicability
 
@@ -65,7 +65,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `src/core/errors.ts` | `BridgeErrorCode` list and wire redaction |
 | `src/core/constants.ts` | Protocol version, patterns, limits |
 | `src/core/ids.ts` | CSPRNG ids; `CRYPTO_UNAVAILABLE` |
-| `test/unit/spec/core/` | Unit coverage of protocol, validate, errors, rateLimit, replay, correlation |
+| `test/unit/spec/core/` | Unit coverage of protocol, validate, errors, rateLimit, replay, correlation, logger |
 | `test/unit/spec/security/threats.ts` | T1–T14 threat tests that depend on core checks |
 
 ## Purpose and boundary
@@ -87,7 +87,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `src/core/rateLimit.ts` | Token buckets and in-flight limiter |
 | `src/core/replay.ts` | Seen-id insertion-order/FIFO plus lazy TTL, and clock-skew helper |
 | `src/core/ids.ts` | CSPRNG id factory |
-| `src/core/logger.ts` | Metadata-only logger |
+| `src/core/logger.ts` | Metadata-only logger; `logLevel` threshold |
 | `src/core/counters.ts` | In-memory telemetry names |
 | `src/core/json.ts` / `serialize.ts` / `limits.ts` / `listeners.ts` / `constants.ts` | JSON walk, topic/payload checks, clamps, listener set, constants |
 
@@ -98,6 +98,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `BridgeError`, `BRIDGE_ERROR_CODES`, `isBridgeError` | Page and extension callers | Codes must not change meaning within a major version | `src/core/errors.ts` via `src/index.ts` |
 | `PROTOCOL_VERSION`, `DEFAULT_CHANNEL` | Both sides of a bridge | Independent of npm semver; mismatch is refused | `src/core/constants.ts` via `src/index.ts` |
 | `EnvelopeKind`, `EnvelopeSource` | Callers that inspect kinds | Frozen for protocol v1 | `src/core/protocol.ts` |
+| `LogLevel`, `LogLevelSetting`, `LogContext`, `LogSink` | Hosts configuring factories | Types on the root specifier; `DEFAULT_LOG_LEVEL` and `createLogger` are not re-exported from `src/index.ts` | `src/core/logger.ts` via `src/index.ts` |
 | `bridge-envelope` contract | web and extension modules | Internal; exact fields in `Envelope` | `src/core/protocol.ts` |
 
 ## Dependencies
@@ -118,10 +119,11 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | `CORE-005` | `toWireError` emits fixed redacted messages, never handler/payload/stack text | T6: no leak across the trust boundary | `src/core/errors.ts` | `test/unit/spec/core/errors.ts` | none | Present |
 | `CORE-006` | Ids require CSPRNG; there is no `Math.random` fallback | T3: correlation ids must be unguessable | `src/core/ids.ts` | `test/unit/spec/core/ids.ts` | none | Present |
 | `CORE-007` | Rate limiter bounds per-(tab,topic) and aggregate-per-tab pushes; numeric options outside documented min/max are rejected rather than clamped | Silent clamp would disable limiting | `src/core/rateLimit.ts`, `src/core/limits.ts`, `src/core/constants.ts` | `test/unit/spec/core/rateLimit.ts` | none | Present |
+| `CORE-008` | `createLogger` emits at or below a `logLevel` threshold (`'silent' \| 'error' \| 'warn' \| 'info' \| 'debug'`, default `'warn'`). `debug: true` is an alias for `'debug'` and is ignored when `logLevel` is set. An unrecognised `logLevel` does not throw: it falls back to `'warn'` and `console.warn`s `{reason: 'UNRECOGNISED_LOG_LEVEL'}` (not a `BridgeErrorCode`), bypassing `logSink`. A supplied sink owns the destination — unwired levels are dropped. With no sink, admitted lines go to `console` at their own level. `LogContext` has no payload or session-token fields. | A mistyped log setting must not refuse to start a bridge; payloads must stay off the log path | `src/core/logger.ts` | `test/unit/spec/core/logger.ts` | none | Present |
 
 ## Design overview
 
-Core is a library of pure-ish helpers. Adapters own platform listeners. `PendingRequests` is a single-use map: a correlation id settles once. `SeenIds` is a bounded cache, not durable storage. Logger never accepts payload fields.
+Core is a library of pure-ish helpers. Adapters own platform listeners. `PendingRequests` is a single-use map: a correlation id settles once. `SeenIds` is a bounded cache, not durable storage. Logger never accepts payload fields and emits by `logLevel` threshold, not a boolean flag.
 
 ## Data flow and sequence coverage
 
@@ -207,6 +209,7 @@ Codes also defined here and thrown by adapters: `NOT_CONNECTED`, `NO_TAB`, `NO_H
 
 - Do not add `Math.random` as an id fallback.
 - Do not log payloads or session tokens through `createLogger`.
+- Do not treat `UNRECOGNISED_LOG_LEVEL` as a `BridgeErrorCode`; it is a console reason on invalid `logLevel`.
 - Do not silently clamp rate/buffer integers that are out of range; `requireBoundedInteger` fails closed.
 - Intake Appendix A is stale where it omits codes or fields that exist in `errors.ts` / `types.ts`.
 
@@ -222,6 +225,7 @@ Codes also defined here and thrown by adapters: `NOT_CONNECTED`, `NO_TAB`, `NO_H
 | --------------------- | -------- | --------- | ------------------------------- | ------------------------- |
 | `BridgeError` / codes | npm root specifier | public | Meaning-stable within a major | `src/index.ts` |
 | `PROTOCOL_VERSION` | both sides | public | Independent of npm version | `src/core/constants.ts` via `src/index.ts` |
+| `LogLevel` / `LogLevelSetting` | npm root specifier | public | Types only; `createLogger` stays internal | `src/index.ts` |
 | Other core helpers | web/extension adapters | internal | Not on `package.json` exports | `src/core/index.ts` |
 
 ## Key design trade-off
@@ -239,3 +243,4 @@ Codes also defined here and thrown by adapters: `NOT_CONNECTED`, `NO_TAB`, `NO_H
 | `CORE-004` | Unit | `test/unit/spec/core/errors.ts` | unknown code rejected | none |
 | `CORE-006` | Unit | `test/unit/spec/core/ids.ts` | missing crypto throws | none |
 | `CORE-007` | Unit | `test/unit/spec/core/rateLimit.ts` | over-budget rejected | none |
+| `CORE-008` | Unit | `test/unit/spec/core/logger.ts` | unrecognised `logLevel` fallback; sink owns destination | none |
