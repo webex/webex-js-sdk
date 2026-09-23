@@ -78,6 +78,7 @@
     "@webex/web-capabilities": "^1.13.1",
     "@webex/webex-core": "workspace:*",
     "ampersand-collection": "^2.0.2",
+    "asn1js": "3.0.10",
     "bowser": "^2.11.0",
     "btoa": "^1.2.1",
     "dotenv": "^4.0.0",
@@ -87,6 +88,7 @@
     "jose": "^5.8.0",
     "jwt-decode": "3.1.2",
     "lodash": "^4.17.21",
+    "pkijs": "3.3.3",
     "uuid": "^3.3.2",
     "webrtc-adapter": "^8.1.2",
     "xxh3-ts": "^2.0.1"

@@ -29,6 +29,19 @@ export interface E2eeRosterMember {
   validationResult: number;
 }
 
+/** X.509 credentials (private key + certificate chain) used to join the MLS group. */
+export interface E2eeCredentials {
+  privateKey: Uint8Array;
+  certChain: ArrayBuffer[];
+}
+
+/** Trust anchors (PEM) used to validate member certificates. */
+export interface E2eeTrustAnchors {
+  webexCaRoots?: string;
+  domainNameRoots?: string;
+  userIdentityRoots?: string;
+}
+
 /** Configuration for initializing an MLS group session. */
 export interface MlsGroupSessionConfig {
   participantId: string;
@@ -37,15 +50,8 @@ export interface MlsGroupSessionConfig {
   correlationId: string;
   displayName: string;
   serviceUrl: string;
-  credentials?: {
-    privateKey: Uint8Array;
-    certChain: ArrayBuffer[];
-  };
-  trustAnchors?: {
-    webexCaRoots?: string;
-    domainNameRoots?: string;
-    userIdentityRoots?: string;
-  };
+  credentials?: E2eeCredentials;
+  trustAnchors?: E2eeTrustAnchors;
   joinTimeout?: number;
   coalesceWindow?: number;
 }
