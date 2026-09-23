@@ -177,6 +177,9 @@ class HashTreeParser {
   private syncQueueProcessingPromise: Promise<void> = Promise.resolve();
   // top-level heartbeat interval from the most recent message, used as fallback when dataset-level value is missing
   private topLevelHeartbeatIntervalMs?: number;
+  // LLM data sets that were received while LLM was not expected, so their heartbeat watchdog was
+  // skipped; reevaluateLlmWatchdogs() arms these once LLM becomes expected and then clears this set
+  private pendingLlmWatchdogDataSetNames: Set<string> = new Set();
   /**
    * Constructor for HashTreeParser
    * @param {Object} options
@@ -1891,6 +1894,8 @@ class HashTreeParser {
           `HashTreeParser#resetHeartbeatWatchdogs --> ${this.debugId} skipping heartbeat watchdog timer for data set "${dataSet.name}" because LLM is disconnected`
         );
 
+        // remember it so reevaluateLlmWatchdogs() can arm the watchdog once LLM becomes expected
+        this.pendingLlmWatchdogDataSetNames.add(dataSet.name);
         // eslint-disable-next-line no-continue
         continue;
       }
@@ -1915,6 +1920,50 @@ class HashTreeParser {
         this.enqueueSyncForDataset(dataSet.name, `heartbeat watchdog expired`);
         this.resetHeartbeatWatchdogs([dataSet]);
       }, delay);
+    }
+  }
+
+  /**
+   * Re-evaluates heartbeat watchdog timers for LLM data sets. While LLM is not expected,
+   * resetHeartbeatWatchdogs skips setting watchdog timers for LLM data sets and records them in
+   * pendingLlmWatchdogDataSetNames. This must be called when LLM transitions to expected (e.g. self
+   * reports JOINED) to arm the watchdogs for those pending data sets (avoids a timing issue where
+   * the "main"/"atd-active"/"atd-unmuted" data set arrives before the self update). The pending set
+   * is consumed and cleared here.
+   * @returns {void}
+   */
+  reevaluateLlmWatchdogs(): void {
+    if (this.state === 'stopped') {
+      return;
+    }
+
+    if (this.pendingLlmWatchdogDataSetNames.size === 0) {
+      return;
+    }
+
+    // consume the pending set - these LLM data sets were received while LLM was not expected
+    const pendingDataSetNames = [...this.pendingLlmWatchdogDataSetNames];
+    this.pendingLlmWatchdogDataSetNames.clear();
+
+    const dataSetsNeedingWatchdog = pendingDataSetNames
+      .map((name) => this.dataSets[name])
+      .filter((dataSet): dataSet is InternalDataSet => {
+        if (!dataSet?.hashTree || dataSet.heartbeatWatchdogTimer) {
+          return false;
+        }
+
+        return this.isVisibleDataSet(dataSet.name);
+      });
+
+    if (dataSetsNeedingWatchdog.length > 0) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#reevaluateLlmWatchdogs --> ${
+          this.debugId
+        } LLM became expected, setting heartbeat watchdog timers for data sets: ${dataSetsNeedingWatchdog
+          .map((ds) => ds.name)
+          .join(', ')}`
+      );
+      this.resetHeartbeatWatchdogs(dataSetsNeedingWatchdog);
     }
   }
 
@@ -1950,6 +1999,7 @@ class HashTreeParser {
     this.topLevelHeartbeatIntervalMs = undefined;
     this.syncAllBackoffType = SyncAllBackoffType.NONE;
     this.dataSetsSyncedDuringBackoff = new Set();
+    this.pendingLlmWatchdogDataSetNames = new Set();
     Object.values(this.dataSets).forEach((dataSet) => {
       dataSet.syncAbortController?.abort();
       dataSet.syncAbortController = undefined;

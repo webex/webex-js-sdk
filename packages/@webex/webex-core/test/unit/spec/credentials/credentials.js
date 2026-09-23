@@ -7,7 +7,7 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {Credentials, Token, grantErrors} from '@webex/webex-core';
-import {inBrowser} from '@webex/common';
+import {inBrowser, base64} from '@webex/common';
 import FakeTimers from '@sinonjs/fake-timers';
 import {skipInBrowser} from '@webex/test-helper-mocha';
 import Logger from '@webex/plugin-logger';
@@ -506,6 +506,88 @@ describe('webex-core', () => {
         expect(() => credentials.extractOrgIdFromUserToken()).toThrow());
     });
 
+    describe('#extractUserIdFromToken()', () => {
+      let credentials;
+      let webex;
+
+      beforeEach(() => {
+        webex = new MockWebex();
+        credentials = new Credentials(undefined, {parent: webex});
+      });
+
+      const buildToken = (payload) =>
+        `header.${base64.toBase64Url(JSON.stringify(payload))}.signature`;
+
+      it('should return the cis_uuid from the provided token', () => {
+        const token = buildToken({cis_uuid: 'my-user-id'});
+
+        assert.equal(credentials.extractUserIdFromToken(token), 'my-user-id');
+      });
+
+      it('should throw if the token does not contain a cis_uuid', () => {
+        const token = buildToken({foo: 'bar'});
+
+        expect(() => credentials.extractUserIdFromToken(token)).toThrow(
+          'the provided token does not contain a user ID'
+        );
+      });
+
+      it('should throw when provided an unparseable token', () =>
+        expect(() => credentials.extractUserIdFromToken('not-a-valid-token')).toThrow());
+
+      it('should throw when no token is provided', () =>
+        expect(() => credentials.extractUserIdFromToken()).toThrow());
+    });
+
+    describe('#getUserId()', () => {
+      let credentials;
+      let webex;
+
+      const buildToken = (userId) =>
+        `header.${base64.toBase64Url(JSON.stringify({cis_uuid: userId}))}.signature`;
+
+      beforeEach(() => {
+        webex = new MockWebex();
+        credentials = new Credentials(undefined, {parent: webex});
+      });
+
+      it('should return the userId from the supertoken', () => {
+        credentials.supertoken = makeToken(webex, {
+          access_token: buildToken('supertoken-user-id'),
+        });
+
+        assert.equal(credentials.getUserId(), 'supertoken-user-id');
+      });
+
+      it('should fall back to a user token when the supertoken has no userId', () => {
+        credentials.supertoken = makeToken(webex, {access_token: 'AT'});
+        credentials.userTokens.add(
+          makeToken(webex, {access_token: buildToken('user-token-user-id'), scope: 'scope1'})
+        );
+
+        assert.equal(credentials.getUserId(), 'user-token-user-id');
+      });
+
+      it('should prefer the supertoken over the user tokens', () => {
+        credentials.supertoken = makeToken(webex, {
+          access_token: buildToken('supertoken-user-id'),
+        });
+        credentials.userTokens.add(
+          makeToken(webex, {access_token: buildToken('user-token-user-id'), scope: 'scope1'})
+        );
+
+        assert.equal(credentials.getUserId(), 'supertoken-user-id');
+      });
+
+      it('should throw if no available token contains a userId', () => {
+        credentials.supertoken = makeToken(webex, {access_token: 'AT'});
+
+        expect(() => credentials.getUserId()).toThrow(
+          'could not extract the user ID from any available token'
+        );
+      });
+    });
+
     describe('#initialize()', () => {
       it('turns a portal auth string into a configuration object', () => {
         const webex = new MockWebex();
@@ -627,6 +709,37 @@ describe('webex-core', () => {
         webex.trigger('change:config');
 
         assert.isUndefined(credentials.refreshTimer);
+      });
+    });
+
+    describe('#getClientToken()', () => {
+      it('requests a client token without bypassing catalog URL validation', async () => {
+        const webex = new MockWebex();
+        const credentials = new Credentials(undefined, {parent: webex});
+        const uri = 'https://idbroker.webex.com/idb/oauth2/v1/access_token';
+        const scope = 'spark:all';
+
+        webex.request.resolves({body: {access_token: 'AT', token_type: 'Bearer'}});
+
+        const token = await credentials.getClientToken({uri, scope});
+
+        assert.calledOnceWithExactly(webex.request, {
+          method: 'POST',
+          uri,
+          form: {
+            grant_type: 'client_credentials',
+            scope,
+            self_contained_token: true,
+          },
+          auth: {
+            user: 'fake',
+            pass: 'fake',
+            sendImmediately: true,
+          },
+          shouldRefreshAccessToken: false,
+        });
+        assert.instanceOf(token, Token);
+        assert.equal(token.access_token, 'AT');
       });
     });
 

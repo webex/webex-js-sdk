@@ -503,7 +503,6 @@ describe('Registration Tests', () => {
       restoreCbExpected: false,
       retry429CbExpected: false,
       sessionSupersededCbExpected: true,
-      handledByCallback: true,
       logMsg: '409 Conflict: session superseded by another device for this user',
     },
     {
@@ -579,7 +578,6 @@ describe('Registration Tests', () => {
     });
 
     expect(result.finalError).toBe(codeObj.finalError);
-    expect(result.handledByCallback).toBe(!!codeObj.handledByCallback);
 
     if (codeObj.emitterCbExpected) {
       expect(mockEmitterCb).toBeCalledOnceWith(callClientError, codeObj.finalError);
@@ -622,18 +620,12 @@ describe('Registration Tests', () => {
     expect(result).toStrictEqual({
       finalError: false,
       shouldDisconnect: false,
-      handledByCallback: false,
     });
-    expect(mockEmitterCb).toBeCalledOnceWith(
-      new CallingClientError(
-        'Unknown error',
-        logObj,
-        ERROR_TYPE.DEFAULT,
-        RegistrationStatus.ACTIVE
-      ),
-      false
+    expect(mockEmitterCb).not.toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith(
+      '409 Conflict: ignored, caller does not handle a superseded session',
+      logObj
     );
-    expect(logSpy).toHaveBeenCalledWith('Unknown Error', logObj);
   });
 });
 

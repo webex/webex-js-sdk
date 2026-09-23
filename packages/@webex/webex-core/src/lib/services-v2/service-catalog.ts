@@ -4,6 +4,7 @@ import {union} from 'lodash';
 import ServiceDetail from './service-detail';
 import {IServiceDetail, ServiceGroup} from './types';
 import {matchAllowedDomain, normalizeAllowedDomains} from '../domains';
+import {matchesParsedCatalogUrl, parseCatalogUrl} from '../services/service-catalog';
 
 /**
  * @class
@@ -199,9 +200,17 @@ const ServiceCatalog = AmpState.extend({
   findServiceDetailFromUrl(url: string): IServiceDetail | undefined {
     const serviceDetails = this._getAllServiceDetails();
 
+    let candidateUrl: URL;
+
+    try {
+      candidateUrl = new URL(url);
+    } catch {
+      return undefined;
+    }
+
     return serviceDetails.find(({serviceUrls}) => {
       for (const serviceUrl of serviceUrls) {
-        if (url.startsWith(serviceUrl.baseUrl)) {
+        if (matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(serviceUrl.baseUrl))) {
           return true;
         }
       }
