@@ -10,7 +10,7 @@ generated_from: getting-started@0.3.0
 generated_by: cursor
 approved_by: pending
 updated_at: 2026-09-23T06:36:39Z
-validation_status: pending
+validation_status: pass
 -->
 
 # Getting started
