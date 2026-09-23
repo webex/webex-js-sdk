@@ -1,0 +1,402 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/storage-adapter-spec",
+    "purpose": "Defines the behavioral contract every Webex storage adapter must satisfy, as an executable conformance suite that consumer packages run against their own adapter."
+  },
+  "commands": {
+    "install": "yarn install",
+    "contract-verify": "yarn workspace @webex/webex-core test:unit --targets storage/storage-adapter.js",
+    "build": "yarn workspace @webex/storage-adapter-spec build",
+    "lint": "yarn workspace @webex/storage-adapter-spec test:style",
+    "deploy": "yarn workspace @webex/storage-adapter-spec deploy:npm",
+    "browser-test": "yarn workspace @webex/storage-adapter-spec test:browser"
+  },
+  "public_interfaces": [
+    {
+      "name": "runAbstractStorageAdapterSpec",
+      "kind": "package_export",
+      "source": "src/index.js",
+      "entrypoints": [
+        "import runAbstractStorageAdapterSpec from '@webex/storage-adapter-spec'"
+      ],
+      "audience": "Webex storage adapter packages and @webex/webex-core storage tests",
+      "notes": "Call it inside an active test-declaration context with an object exposing bind \u2014 either a constructed instance or a module object; it declares the contract cases into the caller's runner. Verify with the contract-verify command, since this package runs no tests itself."
+    },
+    {
+      "name": "package entry points",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "main",
+        "devMain"
+      ],
+      "audience": "Package consumers and workspace tooling",
+      "notes": "main resolves to the built output and devMain to the source module, so workspace consumers can run against source without a build."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "storage adapter contract",
+      "paths": [
+        "src/index.js"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "edit src/index.js directly; it is the only source file"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/storage-adapter-spec test:style"
+      ]
+    },
+    {
+      "surface": "package metadata and commands",
+      "paths": [
+        "package.json"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "edit package.json directly"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/storage-adapter-spec build"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/storage-adapter-spec build"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Re-run the Repo Standards template setup from the active Repo Annotation installation against this package as both target and SDD root."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/storage-adapter-spec test:style"
+      ],
+      "recommended": [
+        "yarn workspace @webex/storage-adapter-spec build",
+        "yarn workspace @webex/webex-core test:unit --targets storage/storage-adapter.js"
+      ]
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "minimum": [
+        "yarn workspace @webex/storage-adapter-spec build"
+      ],
+      "recommended": [
+        "yarn install"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "affects": [
+        "Every Webex storage adapter package in this workspace that runs this suite",
+        "@webex/webex-core storage adapter tests, the only Node route that executes it",
+        "src/docs/README.md requirements, invariants, failure modes, and verification tables"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/storage-adapter-spec build"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/webex-core test:unit --targets storage/storage-adapter.js"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Adding or loosening a case changes the contract for every consuming package, and no command in this package executes the suite. Only @webex/webex-core runs it under Node; the three browser adapters skip silently, so a green run from them proves nothing."
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "affects": [
+        "The published entry points and the commands recorded in .sdd/manifest.json"
+      ],
+      "refresh_with": [
+        "yarn install"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/storage-adapter-spec build"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "The entry points are part of the published contract; changing them affects every consumer's import resolution."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "adapter",
+      "definition": "The object under test. It binds a namespace and returns a handle onto a store; it is not itself the store.",
+      "notes": "Distinct from the bound handle it resolves."
+    },
+    {
+      "term": "bound handle",
+      "definition": "The object a successful bind resolves to. It owns put, get, del, and clear for exactly one namespace.",
+      "notes": "Created once per test group and shared by the cases beneath it."
+    },
+    {
+      "term": "namespace",
+      "definition": "The isolation boundary passed to bind. The same key in two namespaces refers to two independent values.",
+      "notes": "Required; a bind without one must reject."
+    },
+    {
+      "term": "conformance suite",
+      "definition": "The default-exported function itself: the set of cases an adapter must pass to be a valid Webex storage adapter.",
+      "notes": "It declares cases into the caller's runner rather than returning assertions."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "A command may be cited only when package.json defines it. The test and test:browser scripts are defined but non-functional here, and test:unit and test:integration are referenced by test without being defined.",
+      "notes": "Run the script through yarn in this workspace before citing it as usable."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src/index.js"
+      ],
+      "requirement": "A contract behavior may be claimed only when a case in src/index.js asserts it AND that case's promise chain is returned so the runner awaits it, AND the behavior is not equally explained by another operation in the same case.",
+      "notes": "A case whose inner chain is not returned cannot fail. A case that performs a removal before reading cannot isolate write-undefined semantics."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "package.json",
+        "src/index.js"
+      ],
+      "requirement": "Import surfaces must resolve through the entry points declared in package.json; the module has a single default export and no named exports."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not treat a green run from a browser-backed adapter package as verification.",
+      "why": "@webex/storage-adapter-local-storage, -local-forage, and -session-storage wrap their call in a Node skip. Measured 2026-09-23, the local-storage unit command exited zero with all 21 cases skipped."
+    },
+    {
+      "rule": "Do not infer that this package is verified by its own commands.",
+      "why": "It holds no test file. The suite is executed by the sibling package @webex/webex-core, not here."
+    },
+    {
+      "rule": "Do not treat commit history as rationale for why a case exists.",
+      "why": "The package owner confirmed during onboarding that history is not trustworthy for that purpose; rationale must come from the code and its consumer usage."
+    },
+    {
+      "rule": "Do not edit anything under the build output directory.",
+      "why": "It is regenerated from src by the build command and is git-ignored, so edits are silently lost."
+    },
+    {
+      "rule": "Do not assume a clean store at the start of a case.",
+      "why": "All cases share one bound handle and one key, so they are order-dependent by construction."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "The behavior is asserted by a returned promise chain in src/index.js and the change has been validated against at least one consumer adapter's unit run."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "The behavior is described by a case whose assertions are not fully isolated or awaited. Limit the change to what the code proves and record the remaining gap in src/docs/README.md."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "No case asserts the behavior and no consumer usage demonstrates it. Stop and report the gap rather than adding a case that binds every adapter."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "conformance suite",
+        "path": "src/index.js",
+        "purpose": "The single default export and the entire module.",
+        "notes": "Both declared package entry points resolve to this module, one through the build output."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/storage-adapter-spec",
+        "paths": [
+          "src"
+        ],
+        "notes": "One component of the webex-js-sdk monorepo. This documentation set is scoped to this component; its dependency and consumers are sibling workspace packages."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "contract source",
+        "paths": [
+          "src"
+        ],
+        "notes": "The only hand-written source. Every assertion here is a requirement for every consuming adapter."
+      },
+      {
+        "name": "package-local toolchain configuration",
+        "paths": [
+          ".eslintrc.js",
+          "babel.config.js",
+          "jest.config.js",
+          "process"
+        ],
+        "notes": "Thin re-exports of workspace configuration packages, plus the browser-target declaration."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/storage-adapter-spec build",
+        "notes": "Git-ignored and regenerated; never edited by hand."
+      },
+      {
+        "name": "repo-standards template snapshot",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Re-run the Repo Standards template setup from the active Repo Annotation installation against this package as both target and SDD root.",
+        "notes": "Checksum-verified authoring templates. They are consumed in place and never published into the visible documentation tree."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "src",
+        "targets": [
+          "dist"
+        ],
+        "mechanism": "yarn workspace @webex/storage-adapter-spec build",
+        "notes": "Transpiles with source maps using the configuration re-exported by babel.config.js."
+      },
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Re-run the Repo Standards template setup from the active Repo Annotation installation against this package as both target and SDD root.",
+        "notes": "Network-free: the templates are materialized from the checksum-verified snapshot bundled with the installed plugin."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/storage-adapter-spec test:style",
+        "scope": "Static analysis over src; the only verification command this package owns.",
+        "notes": "This package's eslint configuration is a lint root, so workspace configuration above it does not apply."
+      },
+      {
+        "name": "consumer contract run",
+        "command": "yarn workspace @webex/webex-core test:unit --targets storage/storage-adapter.js",
+        "scope": "Executes this package's conformance suite against the in-memory adapter of a sibling workspace package.",
+        "notes": "The only Node route that runs the suite; verified 21 of 21 passing on 2026-09-23."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose and boundary",
+      "structure and key files",
+      "public surface",
+      "requirements and verification"
+    ],
+    "rules": [
+      "Orient the reader before detailing behavior: say what the module owns and what it explicitly does not.",
+      "Every claim cites a repository file path; a claim with no evidence is recorded as a gap instead."
+    ],
+    "example_policy": "Show a usage example only when it reflects a real consumer call site; do not invent an illustrative adapter.",
+    "fallback": "When evidence for a section cannot be found in the code, record the gap explicitly rather than omitting the section or filling it with plausible text."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A contract case is found that cannot fail, because its assertion chain is not returned to the runner.",
+      "required_followups": [
+        "Return the inner chain so the runner awaits the assertions",
+        "Confirm every consuming adapter still passes once the case can actually fail",
+        "Update the affected requirement, invariant, and verification rows in src/docs/README.md"
+      ],
+      "notes": "Requirement MOD-010 and invariant INV-005 are the known open instances of this failure mode."
+    },
+    {
+      "trigger": "A case combines the behavior under test with another operation that would produce the same observable outcome.",
+      "required_followups": [
+        "Split the case so the described behavior is isolated",
+        "Record the previously unverified behavior as covered only once it is isolated"
+      ],
+      "notes": "Requirement MOD-013 is the known open instance."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "storage adapter contract",
+      "owner": "Webex JS SDK storage maintainers",
+      "edit_boundary": "Changes bind every consuming adapter package; coordinate before publishing."
+    },
+    {
+      "surface": "generated documentation set",
+      "owner": "Webex JS SDK storage maintainers",
+      "edit_boundary": "AGENTS.md, docs/, src/docs/README.md, and .sdd/manifest.json are kept in sync; update them in the same change that alters behavior."
+    }
+  ],
+  "do_not_edit": [
+    "dist"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      ".sdd/manifest.json",
+      ".sdd/templates/repo-standards"
+    ]
+  },
+  "fallback_rules": [
+    "When a command is missing or fails, stop and ask for the exact command rather than substituting a plausible one; this package's test and test:browser scripts are known not to work.",
+    "When behavior cannot be verified from src/index.js or a consumer call site, record it as a gap in src/docs/README.md instead of asserting it."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "AGENTS.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/specs/README.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/getting-started.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "task_playbooks",
+      "public_interfaces",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}

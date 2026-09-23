@@ -1,0 +1,8 @@
+# Repo Annotation canonical documentation.
+#
+# The repository-root .gitignore excludes `packages/**/docs/`, which would otherwise
+# drop this package's generated specification set from version control. These files
+# are canonical, version-controlled output routed by .sdd/manifest.json, not build
+# artifacts, so they are re-included here.
+!docs/
+!src/docs/

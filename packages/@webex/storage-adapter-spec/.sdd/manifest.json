@@ -1,0 +1,278 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/storage-adapter-spec",
+    "purpose": "Defines the behavioral contract every Webex storage adapter must satisfy, as an executable conformance suite that consumer packages run against their own adapter.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "javascript"
+    ]
+  },
+  "topology": "Orchestrator-plus-components",
+  "commands": {
+    "install": {
+      "command": "yarn install",
+      "source_file": "workspace:package.json",
+      "role": "install"
+    },
+    "compile": "[NEEDS HUMAN INPUT] -- no standalone compile step exists; transpilation happens inside the build:src command, which also emits the distributable output rather than compiling sources on their own.",
+    "unit-test": "[NEEDS HUMAN INPUT] -- this package defines no test:unit script and owns no test file; it ships the shared conformance suite that sibling workspace packages execute. The command that actually runs the suite is contract-verify below. Confirmed intentional by the package owner during bootstrap onboarding.",
+    "contract-verify": {
+      "command": "yarn workspace @webex/webex-core test:unit --targets storage/storage-adapter.js",
+      "source_file": "workspace:packages/@webex/webex-core/package.json",
+      "role": "unit-test",
+      "verified_at": "2026-09-23T07:40:00Z"
+    },
+    "build": {
+      "command": "yarn workspace @webex/storage-adapter-spec build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/storage-adapter-spec test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/storage-adapter-spec deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/storage-adapter-spec test:browser",
+      "source_file": "package.json",
+      "role": "other"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "contract-verify",
+      "dir": "workspace:packages/@webex/webex-core/test/unit/spec/storage",
+      "framework": "jest"
+    },
+    "qa": {
+      "location": "Sibling workspace packages in the same repository: @webex/webex-core executes the suite under Node against MemoryStoreAdapter, while @webex/storage-adapter-local-storage, @webex/storage-adapter-local-forage, and @webex/storage-adapter-session-storage wrap their call in skipInNode and therefore only exercise it in a browser runner.",
+      "notes": "This package owns no test file, so its unit tier is satisfied entirely by a sibling package. Verified 2026-09-23: contract-verify executed 21 of 21 cases and passed, while yarn workspace @webex/storage-adapter-local-storage test:unit exited zero with all 21 cases skipped. The package-level test script is stale: it invokes test:unit and test:integration, neither of which this package.json defines."
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "repository owner via bootstrap questionnaire, 2026-09-23: no coverage gate applies to this package"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% \u2014 spec is authoritative",
+    "partial": "40-80% specced \u2014 spec is a hint, cross-check code",
+    "untracked": "<40% specced \u2014 code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "rsarika@cisco.com",
+    "disposition_decided_at": "2026-09-23T06:45:42Z",
+    "decided_by": "rsarika@cisco.com",
+    "decided_at": "2026-09-23T06:45:42Z",
+    "decision_record": "No prior intent or design spec existed in this package. README.md is a repository-owned governance/usage document, preserved untouched and used only as corroborating evidence; it is not routed as spec source material."
+  },
+  "spec_sources": [],
+  "modules": [
+    {
+      "path": "src/",
+      "coverage_status": "Untracked",
+      "coverage_evidence": "Field measurement complete 2026-09-23, revised after independent validation: 95%, 21 of 22 mandatory spec fields PRESENT, test strategy WEAK. The canonical spec at src/docs/README.md records 14 requirements and 5 invariants, three of which carry Weak confidence: MOD-010 and MOD-013 have no case that observes them at all, and MOD-014 is partially verified - a case proves the single-key result while namespace-wide scope and the clear argument contract remain unresolved. INV-005 carries the same gap as MOD-010. The suite's declared cases are executed in this repository by the sibling package @webex/webex-core (21 of 21 passing, verified 2026-09-23); the remaining gap is that nothing pins the number or shape of the declarations, so deleting a case would reduce the contract without failing any run. Status is held at Untracked pending the human promotion decision recorded in the first coverage review, not because coverage is unmeasured.",
+      "canonical_spec": "src/docs/README.md",
+      "contracts": {
+        "provides": [
+          "storage-adapter-spec-suite"
+        ],
+        "requires": []
+      },
+      "last_assessed": "2026-09-23",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "holds_client_state": false,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-09-23T06:52:47Z",
+        "resolved_by": "claude-code/claude-opus-5[1m] (host metadata; bootstrap questionnaire)",
+        "resolved_at": "2026-09-23T06:45:42Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "storage-adapter-spec-suite": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "The package's single published surface: the default export runAbstractStorageAdapterSpec, invoked by consumer packages inside their own test declarations, together with the storage adapter interface it requires of its argument - bind(namespace, options) resolving to a handle owning put, get, del, and clear. package.json is the ecosystem-native manifest declaring the published entry points. The interface half has no machine-readable artifact of its own, so src/index.js remains its authoritative definition and the owning module spec specifies it in full."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5[1m]",
+    "generator_runtime_source": "host-metadata",
+    "validator_runtime": "codex",
+    "validator_model": "gpt-5",
+    "validator_runtime_source": "host-metadata",
+    "runtime_fallback_tier": "different-runtime",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "source_commit": "bc61c78ba5",
+    "base_ref": "next",
+    "head_ref": "next"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "The default source-local route was confirmed with the owner because src/ is the transpile input for the published output and the lint command globs all of src/. Both were checked: the build processes only js/ts sources, and the resolved eslint configuration ignores markdown, so the default route is safe and was kept.",
+      "decided_by": "rsarika@cisco.com (bootstrap questionnaire)",
+      "decided_at": "2026-09-23T06:45:42Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither the repository operational-context manifest nor its schema existed at its fixed path in this package; both were created from verified repository evidence.",
+      "decided_by": "claude-code (bootstrap questionnaire)",
+      "decided_at": "2026-09-23T06:45:42Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "This package is a library published to npm, not a deployable service. package.json declares no container, deployment manifest, or start command.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-09-23T06:45:42Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No docs-site publishing workflow exists in this package, and the owner chose to leave documentation-site ownership at the monorepo root.",
+        "decided_by": "rsarika@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-09-23T06:45:42Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "The package exposes no HTTP surface. Its published contract is an npm/SDK surface whose ecosystem-native authoritative source is src/index.js.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-09-23T06:45:42Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "Security policy is owned at the monorepo root; a package-local copy would duplicate or contradict it.",
+        "decided_by": "rsarika@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-09-23T06:45:42Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution instructions are owned at the monorepo root; a package-local copy would duplicate or contradict them.",
+        "decided_by": "rsarika@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-09-23T06:45:42Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "The workspace generates its changelog through its release tooling at the monorepo root; a package-local changelog would not be maintained by it.",
+        "decided_by": "rsarika@cisco.com (bootstrap questionnaire)",
+        "decided_at": "2026-09-23T06:45:42Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "The CTO readiness checklist is selected only for a deployable service; this package is a library.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-09-23T06:45:42Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Omitted together with CTO_CHECKLIST.yml, which the contract requires to be selected as a pair.",
+        "decided_by": "claude-code (code evidence)",
+        "decided_at": "2026-09-23T06:45:42Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "package-local eslint configuration extending the workspace lint config",
+      "package-local babel configuration re-exported from the workspace build config",
+      "package-local jest configuration re-exported from the workspace test config",
+      "the existing package README as repository-owned governance evidence"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": false,
+      "components_interact": false,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": false,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": true,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": false,
+      "security_arch_warranted": false,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code/claude-opus-5[1m] (host metadata; bootstrap questionnaire)",
+    "resolved_at": "2026-09-23T06:45:42Z"
+  }
+}
