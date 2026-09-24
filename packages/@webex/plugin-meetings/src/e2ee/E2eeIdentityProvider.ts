@@ -5,6 +5,7 @@
 import * as pkijs from 'pkijs';
 import * as asn1js from 'asn1js';
 
+import LoggerProxy from '../common/logs/logger-proxy';
 import {CERTIFICATE_AUTHORITY_SERVICE, WEBEX_CA_PRODUCTION_ROOTS} from './constants';
 import type {E2eeCredentials, E2eeTrustAnchors} from './types';
 
@@ -110,6 +111,8 @@ export default class E2eeIdentityProvider {
    * @returns {E2eeTrustAnchors} trust anchors for validating member certificates.
    */
   getTrustAnchors(): E2eeTrustAnchors {
+    LoggerProxy.logger.info('e2ee: E2eeIdentityProvider --> getTrustAnchors');
+
     return {
       webexCaRoots: WEBEX_CA_PRODUCTION_ROOTS,
       domainNameRoots: '',
@@ -126,10 +129,17 @@ export default class E2eeIdentityProvider {
     let credentials = this.credentialsCache.get(contactId);
 
     if (!credentials) {
+      LoggerProxy.logger.info(
+        'e2ee: E2eeIdentityProvider --> getCredentials: cache miss, requesting new credentials'
+      );
       credentials = this.requestCredentials(contactId);
       this.credentialsCache.set(contactId, credentials);
       // Don't cache a rejected attempt: allow a retry on the next call.
       credentials.catch(() => this.credentialsCache.delete(contactId));
+    } else {
+      LoggerProxy.logger.info(
+        'e2ee: E2eeIdentityProvider --> getCredentials: returning cached credentials'
+      );
     }
 
     return credentials;
@@ -140,8 +150,12 @@ export default class E2eeIdentityProvider {
    * @returns {Promise<E2eeCredentials>}
    */
   private async requestCredentials(contactId: string): Promise<E2eeCredentials> {
+    LoggerProxy.logger.info('e2ee: E2eeIdentityProvider --> requestCredentials: generating CSR');
     const {privKeyDer, csr} = await this.generateCsr(contactId);
 
+    LoggerProxy.logger.info(
+      'e2ee: E2eeIdentityProvider --> requestCredentials: requesting certificate from CA'
+    );
     const response = await this.webex.request({
       method: 'POST',
       service: CERTIFICATE_AUTHORITY_SERVICE,
@@ -150,6 +164,9 @@ export default class E2eeIdentityProvider {
       body: {csr},
     });
 
+    LoggerProxy.logger.info(
+      'e2ee: E2eeIdentityProvider --> requestCredentials: received signed certificate from CA'
+    );
     const privateKey = privKeyDer.slice(
       PKCS8_P256_RAW_KEY_OFFSET,
       PKCS8_P256_RAW_KEY_OFFSET + RAW_EC_P256_KEY_LENGTH

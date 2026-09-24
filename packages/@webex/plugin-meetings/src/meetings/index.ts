@@ -328,7 +328,7 @@ export default class Meetings extends WebexPlugin {
      * @memberof Meetings
      */
     // @ts-ignore
-    this.e2eeManager = new E2eeManager({config: this.config});
+    this.e2eeManager = new E2eeManager({webex: this.webex});
 
     /**
      * If the meetings plugin has been registered and listening via {@link Meetings#register}

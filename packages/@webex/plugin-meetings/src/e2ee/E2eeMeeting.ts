@@ -116,12 +116,21 @@ export default class E2eeMeeting {
    */
   async start(): Promise<void> {
     if (this.currentState !== 'disabled' && this.currentState !== 'left') {
+      LoggerProxy.logger.info(
+        `e2ee: E2eeMeeting#start --> ignoring, already in state: ${this.currentState}`
+      );
+
       return;
     }
     if (!this.required()) {
+      LoggerProxy.logger.info(
+        'e2ee: E2eeMeeting#start --> not required for this meeting, skipping'
+      );
+
       return;
     }
 
+    LoggerProxy.logger.info('e2ee: E2eeMeeting#start --> starting E2EE session');
     this.setState('initializing');
 
     try {
@@ -152,7 +161,7 @@ export default class E2eeMeeting {
       this.setState('joining');
       session.join();
     } catch (error) {
-      LoggerProxy.logger.error(`E2eeMeeting#start --> failed to start E2EE: ${error}`);
+      LoggerProxy.logger.error(`e2ee: E2eeMeeting#start --> failed to start E2EE: ${error}`);
       this.setState('failed');
       this.emit(EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason: 'startFailed'});
     }
@@ -163,12 +172,13 @@ export default class E2eeMeeting {
    * @returns {Promise<void>}
    */
   async stop(): Promise<void> {
+    LoggerProxy.logger.info('e2ee: E2eeMeeting#stop --> stopping E2EE session');
     this.signaling?.stop();
 
     try {
       this.session?.leave();
     } catch (error) {
-      LoggerProxy.logger.warn(`E2eeMeeting#stop --> error leaving MLS session: ${error}`);
+      LoggerProxy.logger.warn(`e2ee: E2eeMeeting#stop --> error leaving MLS session: ${error}`);
     }
 
     this.signaling = undefined;
@@ -240,6 +250,9 @@ export default class E2eeMeeting {
    * @returns {void}
    */
   private handleFatal(state: E2eeState, reason: string): void {
+    LoggerProxy.logger.error(
+      `e2ee: E2eeMeeting --> fatal E2EE error: state=${state} reason=${reason}`
+    );
     this.setState(state);
     this.emit(EVENT_TRIGGERS.MEETING_E2EE_FAILURE, {reason});
   }
@@ -261,6 +274,9 @@ export default class E2eeMeeting {
     if (this.currentState === state) {
       return;
     }
+    LoggerProxy.logger.info(
+      `e2ee: E2eeMeeting --> state changed: ${this.currentState} -> ${state}`
+    );
     this.currentState = state;
     this.emit(EVENT_TRIGGERS.MEETING_E2EE_STATE_CHANGED, {state});
   }
@@ -271,6 +287,7 @@ export default class E2eeMeeting {
    * @returns {void}
    */
   private emit(event: string, payload: object): void {
+    LoggerProxy.logger.info(`e2ee: E2eeMeeting --> emitting event: ${event}`);
     Trigger.trigger(this.meeting, TRIGGER_SCOPE, event, payload);
   }
 }

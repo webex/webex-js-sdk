@@ -90,7 +90,7 @@ export default class WasmLoader implements IWasmLoader {
     } catch (error) {
       // Reset so a failed load can be retried on the next get().
       this.moduleLoadPromise = null;
-      LoggerProxy.logger.error(`WasmLoader#load --> failed to load WASM module: ${error}`);
+      LoggerProxy.logger.error(`e2ee: WasmLoader#load --> failed to load WASM module: ${error}`);
 
       throw new Error(`Failed to load e2ee WASM module: ${error}`);
     }

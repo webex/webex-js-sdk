@@ -9,7 +9,10 @@ import WasmLoader from '@webex/plugin-meetings/src/e2ee/WasmLoader';
 
 describe('plugin-meetings', () => {
   describe('E2eeManager', () => {
-    const webex = {internal: {device: {}}};
+    const makeWebex = (enableE2ee?: boolean) => ({
+      internal: {device: {}},
+      config: {meetings: {enableE2ee}},
+    });
     let preloadStub;
 
     beforeEach(() => {
@@ -21,16 +24,16 @@ describe('plugin-meetings', () => {
     });
 
     describe('isEnabled', () => {
-      it('reflects config.enableE2ee', () => {
-        assert.isTrue(new E2eeManager({webex, config: {enableE2ee: true}}).isEnabled);
-        assert.isFalse(new E2eeManager({webex, config: {enableE2ee: false}}).isEnabled);
-        assert.isFalse(new E2eeManager({webex, config: {}}).isEnabled);
+      it('reflects webex.config.meetings.enableE2ee', () => {
+        assert.isTrue(new E2eeManager({webex: makeWebex(true)}).isEnabled);
+        assert.isFalse(new E2eeManager({webex: makeWebex(false)}).isEnabled);
+        assert.isFalse(new E2eeManager({webex: makeWebex()}).isEnabled);
       });
     });
 
     describe('preload', () => {
       it('warms the WASM module when enabled', async () => {
-        const manager = new E2eeManager({webex, config: {enableE2ee: true}});
+        const manager = new E2eeManager({webex: makeWebex(true)});
 
         await manager.preload();
 
@@ -38,7 +41,7 @@ describe('plugin-meetings', () => {
       });
 
       it('does nothing when disabled', async () => {
-        const manager = new E2eeManager({webex, config: {enableE2ee: false}});
+        const manager = new E2eeManager({webex: makeWebex(false)});
 
         await manager.preload();
 
@@ -48,7 +51,7 @@ describe('plugin-meetings', () => {
 
     describe('createE2eeMeeting', () => {
       it('returns a per-meeting E2EE facade', () => {
-        const manager = new E2eeManager({webex, config: {enableE2ee: true}});
+        const manager = new E2eeManager({webex: makeWebex(true)});
         const meeting = {};
 
         const e2eeMeeting = manager.createE2eeMeeting(meeting);

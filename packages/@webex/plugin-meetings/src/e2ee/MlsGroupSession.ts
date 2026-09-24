@@ -143,6 +143,7 @@ export default class MlsGroupSession {
     event: K,
     payload?: MlsGroupSessionEventMap[K]
   ): void {
+    this.logger.info(`e2ee: MlsGroupSession --> emitting event: ${event}`);
     this.emitter.emit(event, payload);
   }
 
@@ -153,6 +154,7 @@ export default class MlsGroupSession {
    * @returns {Promise<void>}
    */
   async initialize(config: MlsGroupSessionConfig): Promise<void> {
+    this.logger.info('e2ee: MlsGroupSession --> initialize: loading WASM and instantiating engine');
     const module = await this.wasmLoader.get();
 
     this.e2ee = new module.WebE2EE();
@@ -184,6 +186,8 @@ export default class MlsGroupSession {
 
     this.e2ee.setJoinTimeout(config.joinTimeout ?? DEFAULT_JOIN_TIMEOUT);
     this.e2ee.setCoalesceWindow(config.coalesceWindow ?? DEFAULT_COALESCE_WINDOW);
+
+    this.logger.info('e2ee: MlsGroupSession --> initialize: engine initialized');
   }
 
   /**
@@ -285,7 +289,7 @@ export default class MlsGroupSession {
 
     e2ee.setOnMissingCommit((mlsEpoch, useKeyEpoch) => {
       this.logger.warn(
-        `MlsGroupSession --> missing commit (mlsEpoch=${mlsEpoch}, useKeyEpoch=${useKeyEpoch})`
+        `e2ee: MlsGroupSession --> missing commit (mlsEpoch=${mlsEpoch}, useKeyEpoch=${useKeyEpoch})`
       );
     });
 
@@ -295,16 +299,16 @@ export default class MlsGroupSession {
       switch (level) {
         case 1:
         case 2:
-          this.logger.error(`[E2EE ${label}] ${message}`);
+          this.logger.error(`e2ee: [E2EE ${label}] ${message}`);
           break;
         case 4:
-          this.logger.warn(`[E2EE ${label}] ${message}`);
+          this.logger.warn(`e2ee: [E2EE ${label}] ${message}`);
           break;
         case 5:
-          this.logger.debug(`[E2EE ${label}] ${message}`);
+          this.logger.debug(`e2ee: [E2EE ${label}] ${message}`);
           break;
         default:
-          this.logger.info(`[E2EE ${label}] ${message}`);
+          this.logger.info(`e2ee: [E2EE ${label}] ${message}`);
       }
     });
   }
@@ -326,6 +330,7 @@ export default class MlsGroupSession {
    * @returns {void}
    */
   join(): void {
+    this.logger.info('e2ee: MlsGroupSession --> join: starting MLS join');
     this.assertInitialized().join();
   }
 
@@ -334,6 +339,7 @@ export default class MlsGroupSession {
    * @returns {void}
    */
   leave(): void {
+    this.logger.info('e2ee: MlsGroupSession --> leave: leaving MLS group');
     this.assertInitialized().leave();
   }
 
@@ -343,6 +349,9 @@ export default class MlsGroupSession {
    * @returns {void}
    */
   handleEvent(eventData: Uint8Array): void {
+    this.logger.info(
+      `e2ee: MlsGroupSession --> handleEvent: forwarding ${eventData.length} bytes to engine`
+    );
     this.assertInitialized().handle(new Uint8Array(eventData));
   }
 
@@ -352,6 +361,7 @@ export default class MlsGroupSession {
    * @returns {void}
    */
   setLlmConnectedBeforeJoin(connected: boolean): void {
+    this.logger.info(`e2ee: MlsGroupSession --> setLlmConnectedBeforeJoin: ${connected}`);
     this.assertInitialized().setLlmConnectedBeforeJoin(connected);
   }
 
@@ -360,6 +370,7 @@ export default class MlsGroupSession {
    * @returns {void}
    */
   notifyLlmConnected(): void {
+    this.logger.info('e2ee: MlsGroupSession --> notifyLlmConnected');
     this.assertInitialized().llmConnected();
   }
 
@@ -368,6 +379,7 @@ export default class MlsGroupSession {
    * @returns {void}
    */
   keepAlive(): void {
+    this.logger.info('e2ee: MlsGroupSession --> keepAlive');
     this.assertInitialized().keepAlive();
   }
 
