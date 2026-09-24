@@ -1,0 +1,33 @@
+{
+  "name": "@webex/kms-caroots",
+  "description": "Generate the Cisco Trusted Root Store CA roots used to validate the Webex KMS certificate.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/kms-caroots"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "commonjs",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "bin": {
+    "webex-kms-caroots": "./cli.js"
+  },
+  "devDependencies": {
+    "eslint": "^8.24.0"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "cli.js",
+    "README.md"
+  ],
+  "scripts": {
+    "build:src": "exit 0",
+    "deploy:npm": "yarn npm publish",
+    "test:style": "eslint ./*.js"
+  }
+}

@@ -1,5 +1,6 @@
 import Jest from './jest';
 import Karma from './karma';
+import KmsCaroots from './kms-caroots';
 import {
   startServer,
   stopServer,
@@ -11,6 +12,7 @@ import Mocha from './mocha';
 export {
   Jest,
   Karma,
+  KmsCaroots,
   Mocha,
   startServer,
   stopServer,

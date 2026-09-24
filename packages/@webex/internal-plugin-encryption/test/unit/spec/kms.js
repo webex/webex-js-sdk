@@ -263,6 +263,7 @@ describe('internal-plugin-encryption', () => {
 
       beforeEach(() => {
         webex.internal.metrics = {submitClientMetrics: sinon.stub()};
+        webex.internal.encryption.config.shouldValidateKMSCertificate = true;
         webex.internal.encryption.config.caroots = caroots;
         webex.internal.encryption.config.carootsReportOnly = undefined;
       });
@@ -273,6 +274,27 @@ describe('internal-plugin-encryption', () => {
           /INVALID KMS/
         );
 
+        assert.notCalled(webex.internal.metrics.submitClientMetrics);
+      });
+
+      it('rejects when validation is enabled but no caroots are configured', async () => {
+        webex.internal.encryption.config.caroots = undefined;
+
+        await assert.isRejected(
+          webex.internal.encryption.kms._validateKMSStaticPubKey(validKey),
+          /INVALID KMS/
+        );
+
+        assert.notCalled(webex.internal.metrics.submitClientMetrics);
+      });
+
+      it('resolves without validating when shouldValidateKMSCertificate is false', async () => {
+        webex.internal.encryption.config.shouldValidateKMSCertificate = false;
+        webex.internal.encryption.config.caroots = undefined;
+
+        const result = await webex.internal.encryption.kms._validateKMSStaticPubKey(validKey);
+
+        assert.equal(result, validKey);
         assert.notCalled(webex.internal.metrics.submitClientMetrics);
       });
 
