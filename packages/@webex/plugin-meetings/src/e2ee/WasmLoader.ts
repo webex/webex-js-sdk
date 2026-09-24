@@ -9,7 +9,59 @@ const DEFAULT_WASM_URL = '/wasm/e2ee.wasm';
 
 type ModuleImporter = (jsPath: string) => Promise<{default: ModuleFactory}>;
 
-const defaultImporter: ModuleImporter = (jsPath) => import(/* webpackIgnore: true */ jsPath);
+/**
+ * Performs a genuine, un-bundled ES dynamic import of the emscripten loader at runtime.
+ *
+ * A plain `import(jsPath)` cannot be used here: plugin-meetings ships pre-compiled to CommonJS, and
+ * Babel rewrites `import()` into a webpack `require()`, which then tries (and fails) to bundle the
+ * runtime-served `/wasm/e2ee.js`. Instead we inject a `type="module"` <script> loaded from a Blob
+ * URL (permitted by the app's `script-src blob:` CSP) whose body statically imports the target and
+ * hands its namespace back via a one-shot global callback. The `import` lives inside a string, so
+ * neither Babel nor webpack ever transforms or statically analyses it.
+ * @param {string} jsPath - URL of the emscripten loader module (e.g. '/wasm/e2ee.js').
+ * @returns {Promise<{default: ModuleFactory}>}
+ */
+function importModuleViaScriptTag(jsPath: string): Promise<{default: ModuleFactory}> {
+  return new Promise((resolve, reject) => {
+    const callbackKey = `__webexE2eeModule_${Math.random().toString(36).slice(2)}`;
+    // The blob module's base URL is the (non-hierarchical) blob: scheme, so the import specifier
+    // must be an absolute URL — a root-relative path like '/wasm/e2ee.js' cannot be resolved.
+    const absoluteJsUrl = new URL(jsPath, window.location.href).href;
+    const blobUrl = URL.createObjectURL(
+      new Blob(
+        [
+          `import * as module from ${JSON.stringify(absoluteJsUrl)};\nwindow[${JSON.stringify(
+            callbackKey
+          )}](module);`,
+        ],
+        {type: 'text/javascript'}
+      )
+    );
+    const script = document.createElement('script');
+
+    const cleanup = () => {
+      delete (window as any)[callbackKey];
+      URL.revokeObjectURL(blobUrl);
+      script.remove();
+    };
+
+    (window as any)[callbackKey] = (module: {default: ModuleFactory}) => {
+      cleanup();
+      resolve(module);
+    };
+
+    script.type = 'module';
+    script.src = blobUrl;
+    script.onerror = () => {
+      cleanup();
+      reject(new Error(`Failed to import module: ${jsPath}`));
+    };
+
+    document.head.appendChild(script);
+  });
+}
+
+const defaultImporter: ModuleImporter = importModuleViaScriptTag;
 
 /** The subset of WasmLoader consumed by the MLS engine, so it can be injected/faked in tests. */
 export interface IWasmLoader {
