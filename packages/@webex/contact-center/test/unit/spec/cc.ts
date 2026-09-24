@@ -20,7 +20,6 @@ import {StationLoginSuccess, AGENT_EVENTS} from '../../../src/services/agent/typ
 import {SetStateResponse} from '../../../src/types';
 import {
   AGENT,
-  RTD_SUBSCRIBE_API,
   SUBSCRIBE_API,
   WEB_RTC_PREFIX,
 } from '../../../src/services/constants';
@@ -54,7 +53,6 @@ import MetricsManager from '../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../src/metrics/constants';
 import Mercury from '@webex/internal-plugin-mercury';
 import WebexRequest from '../../../src/services/core/WebexRequest';
-import type {ConnectionLostDetails} from '../../../src/services/core/websocket/types';
 import {
   createDeferred,
   flushEventLoopTurn,
@@ -1480,7 +1478,7 @@ describe('webex.cc', () => {
       expect(mockTaskManager.handleRealtimeWebsocketEvent).toHaveBeenCalledWith('summary-frame');
     });
 
-    it('preserves active summary state across reconnect and clears it on deregister', async () => {
+    it('clears active summary state on deregister', async () => {
       jest.useFakeTimers();
 
       const harness = createSummaryHarness();
@@ -1516,33 +1514,16 @@ describe('webex.cc', () => {
       });
 
       dispatchFeatureEnablement(harness, {
-        interactionId: 'orphan-before-reconnect',
+        interactionId: 'orphan-before-deregister',
         postCallEnabled: true,
         midCallEnabled: true,
         actionTimestamp: 4,
       });
       harness.dispatchRtdFrame(CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT, {
-        conversationId: 'queued-before-reconnect',
+        conversationId: 'queued-before-deregister',
         summaryText: sentinels[0],
       });
       expect(jest.getTimerCount()).toBe(2);
-      harness.rtdWebSocketManager.isSocketClosed = true;
-      harness.rtdWebSocketManager.initWebSocket.mockClear();
-
-      await webex.cc['handleConnectionLost']({
-        isConnectionLost: false,
-        isSocketReconnected: true,
-      } as ConnectionLostDetails);
-
-      expect(harness.rtdWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        body: {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: false,
-        },
-        resource: RTD_SUBSCRIBE_API,
-      });
       expect(harness.task.aiSummaryCapabilities).toEqual({
         midCallEnabled: true,
         postCallEnabled: true,
@@ -1880,97 +1861,6 @@ describe('webex.cc', () => {
         process.off('unhandledRejection', unhandledRejectionListener);
         harness.taskManager.clearAISummaryState();
       }
-    });
-
-    it('reconnects a closed RTD websocket without clearing active summary state', async () => {
-      const silentReloginSpy = jest
-        .spyOn(webex.cc as any, 'silentRelogin')
-        .mockResolvedValue(undefined);
-
-      webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: true};
-      webex.cc.agentConfig = {
-        aiFeature: {
-          generatedSummaries: {
-            wrapUpSummariesEnabled: true,
-            consultTransferSummariesEnabled: false,
-          },
-        },
-      } as any;
-      webex.cc.services.rtdWebSocketManager.isSocketClosed = true;
-
-      await webex.cc['handleConnectionLost']({
-        isConnectionLost: false,
-        isSocketReconnected: true,
-      } as ConnectionLostDetails);
-
-      expect(webex.cc.services.rtdWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        body: {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: false,
-        },
-        resource: RTD_SUBSCRIBE_API,
-      });
-      expect(mockTaskManager.clearAISummaryState).not.toHaveBeenCalled();
-      expect(mockTaskManager.setConfigFlags).not.toHaveBeenCalled();
-      expect(
-        webex.cc.services.rtdWebSocketManager.initWebSocket.mock.invocationCallOrder[0]
-      ).toBeLessThan(
-        silentReloginSpy.mock.invocationCallOrder[0]
-      );
-    });
-
-    it.each([
-      {
-        title: 'the RTD socket is still open',
-        isSocketClosed: false,
-        aiFeature: {generatedSummaries: {wrapUpSummariesEnabled: true}},
-      },
-      {
-        title: 'no RTD-backed feature is enabled',
-        isSocketClosed: true,
-        aiFeature: {generatedSummaries: {wrapUpSummariesEnabled: false}},
-      },
-    ])('does not reconnect RTD when $title', async ({isSocketClosed, aiFeature}) => {
-      webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
-      webex.cc.agentConfig = {aiFeature} as any;
-      webex.cc.services.rtdWebSocketManager.isSocketClosed = isSocketClosed;
-
-      await webex.cc['handleConnectionLost']({
-        isConnectionLost: false,
-        isSocketReconnected: true,
-      } as ConnectionLostDetails);
-
-      expect(webex.cc.services.rtdWebSocketManager.initWebSocket).not.toHaveBeenCalled();
-      expect(mockTaskManager.clearAISummaryState).not.toHaveBeenCalled();
-    });
-
-    it('continues silent relogin when RTD reconnection fails', async () => {
-      const reconnectError = new Error('RTD reconnect failed');
-      const silentReloginSpy = jest
-        .spyOn(webex.cc as any, 'silentRelogin')
-        .mockResolvedValue(undefined);
-
-      webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: true};
-      webex.cc.agentConfig = {
-        aiFeature: {generatedSummaries: {consultTransferSummariesEnabled: true}},
-      } as any;
-      webex.cc.services.rtdWebSocketManager.isSocketClosed = true;
-      webex.cc.services.rtdWebSocketManager.initWebSocket.mockRejectedValueOnce(reconnectError);
-
-      await expect(
-        webex.cc['handleConnectionLost']({
-          isConnectionLost: false,
-          isSocketReconnected: true,
-        } as ConnectionLostDetails)
-      ).resolves.toBeUndefined();
-
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `Error reconnecting RTD websocket ${reconnectError}`,
-        {module: CC_FILE, method: 'handleConnectionLost'}
-      );
-      expect(silentReloginSpy).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -4320,11 +4210,17 @@ describe('webex.cc', () => {
       );
 
       expect(mockWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
-      expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenCalledWith(
+      expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenNthCalledWith(
+        1,
         false,
         'Unregistering the SDK'
       );
-      expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenCalledTimes(1);
+      expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenNthCalledWith(
+        2,
+        false,
+        'Unregistering the RTD websocket'
+      );
+      expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenCalledTimes(2);
       expect(webex.cc.agentConfig).toBeNull();
 
       expect(webex.internal.mercury.off).toHaveBeenCalledWith('online');
@@ -4446,8 +4342,17 @@ describe('webex.cc', () => {
       expect(webex.internal.mercury.off).not.toHaveBeenCalled();
       expect(mercuryDisconnectSpy).not.toHaveBeenCalled();
       expect(deviceUnregisterSpy).not.toHaveBeenCalled();
-      expect(mockRTDWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
-      expect(mockRTDWebSocketManager.close).toHaveBeenCalledTimes(1);
+      expect(mockRTDWebSocketManager.close).toHaveBeenNthCalledWith(
+        1,
+        false,
+        'Unregistering the SDK'
+      );
+      expect(mockRTDWebSocketManager.close).toHaveBeenNthCalledWith(
+        2,
+        false,
+        'Unregistering the RTD websocket'
+      );
+      expect(mockRTDWebSocketManager.close).toHaveBeenCalledTimes(2);
     });
 
     it('should skip internal mercury cleanup when loginVoiceOptions does not include BROWSER', async () => {
@@ -4465,8 +4370,17 @@ describe('webex.cc', () => {
       expect(deviceUnregisterSpy).not.toHaveBeenCalled();
 
       expect(mockWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
-      expect(mockRTDWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
-      expect(mockRTDWebSocketManager.close).toHaveBeenCalledTimes(1);
+      expect(mockRTDWebSocketManager.close).toHaveBeenNthCalledWith(
+        1,
+        false,
+        'Unregistering the SDK'
+      );
+      expect(mockRTDWebSocketManager.close).toHaveBeenNthCalledWith(
+        2,
+        false,
+        'Unregistering the RTD websocket'
+      );
+      expect(mockRTDWebSocketManager.close).toHaveBeenCalledTimes(2);
       expect(webex.cc.agentConfig).toBeNull();
     });
 

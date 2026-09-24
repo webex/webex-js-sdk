@@ -830,9 +830,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (!this.services.webSocketManager.isSocketClosed) {
         this.services.webSocketManager.close(false, 'Unregistering the SDK');
       }
-
       if (this.services.rtdWebSocketManager && !this.services.rtdWebSocketManager.isSocketClosed) {
         this.services.rtdWebSocketManager.close(false, 'Unregistering the SDK');
+      }
+
+      if (this.services.rtdWebSocketManager && !this.services.rtdWebSocketManager.isSocketClosed) {
+        this.services.rtdWebSocketManager.close(false, 'Unregistering the RTD websocket');
       }
 
       // Clear any cached agent configuration
@@ -2293,30 +2296,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         'event=handleConnectionReconnect | Connection reconnected attempting to request silent relogin',
         {module: CC_FILE, method: METHODS.HANDLE_CONNECTION_LOST}
       );
-      if (
-        this.agentConfig &&
-        this.services.rtdWebSocketManager.isSocketClosed &&
-        (this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||
-          this.agentConfig.aiFeature?.suggestedResponses?.enable ||
-          this.agentConfig.aiFeature?.generatedSummaries?.wrapUpSummariesEnabled === true ||
-          this.agentConfig.aiFeature?.generatedSummaries?.consultTransferSummariesEnabled === true)
-      ) {
-        try {
-          await this.services.rtdWebSocketManager.initWebSocket({
-            body: this.getConnectionConfig(),
-            resource: RTD_SUBSCRIBE_API,
-          });
-          LoggerProxy.log('RTD websocket reconnected successfully', {
-            module: CC_FILE,
-            method: METHODS.HANDLE_CONNECTION_LOST,
-          });
-        } catch (error) {
-          LoggerProxy.error(`Error reconnecting RTD websocket ${error}`, {
-            module: CC_FILE,
-            method: METHODS.HANDLE_CONNECTION_LOST,
-          });
-        }
-      }
       if (this.$config && this.$config.allowAutomatedRelogin) {
         await this.silentRelogin();
       }
