@@ -1,9 +1,9 @@
 import type {JsonValue} from './core/json';
-import type {LogSink} from './core/logger';
+import type {LogLevelSetting, LogSink} from './core/logger';
 
 export type {BridgeErrorCode, WireError} from './core/errors';
 export type {JsonValue} from './core/json';
-export type {LogContext, LogSink} from './core/logger';
+export type {LogContext, LogLevel, LogLevelSetting, LogSink} from './core/logger';
 
 export interface WebBridgeOptions {
   /**
@@ -14,7 +14,12 @@ export interface WebBridgeOptions {
   allowedOrigins?: string[];
   /** Namespace, so independent bridges can share a page. Must match the extension. */
   channel?: string;
-  /** Metadata-only logging. Never logs payloads or session tokens. */
+  /**
+   * Lowest severity to log: `'silent' | 'error' | 'warn' | 'info' | 'debug'`, default
+   * `'warn'`. Lifecycle events are `info`, per-message detail is `debug`.
+   */
+  logLevel?: LogLevelSetting;
+  /** Alias for `logLevel: 'debug'`. Ignored when `logLevel` is given. */
   debug?: boolean;
   /** Clamped to `[1, 1 MiB]`. */
   maxPayloadBytes?: number;
@@ -44,19 +49,43 @@ export type RequestHandler = (
 ) => JsonValue | Promise<JsonValue>;
 
 export interface WebBridge {
-  /** Fire-and-forget push to the extension. Throws rather than dropping silently. */
+  /**
+   * Fire-and-forget push to the extension. Throws rather than dropping silently.
+   *
+   * @param topic - Push topic.
+   * @param payload - Push payload.
+   */
   publish(topic: string, payload?: JsonValue): void;
   /**
    * Register the handler that answers on-demand requests for a topic.
    *
-   * @returns An unregister function.
+   * @param topic - Request topic to handle.
+   * @param handler - Called with each request's payload and metadata.
+   * @param opts - Validation and replace options.
+   * @returns An unsubscribe function that removes this handler.
    */
   requestHandler(topic: string, handler: RequestHandler, opts?: HandlerOptions): () => void;
-  /** Fires immediately when already connected. */
+  /**
+   * Fires immediately when already connected.
+   *
+   * @param listener - Called with no arguments on connect.
+   * @returns An unsubscribe function.
+   */
   onConnected(listener: () => void): () => void;
+  /**
+   * Fires whenever the extension-side peer goes away.
+   *
+   * @param listener - Called with the disconnect reason.
+   * @returns An unsubscribe function.
+   */
   onDisconnected(listener: (reason: string) => void): () => void;
+  /** Whether an extension-side peer is currently attached. */
   readonly isConnected: boolean;
-  /** Telemetry counters for the host application. The SDK performs no network I/O. */
+  /**
+   * Telemetry counters for the host application. The SDK performs no network I/O.
+   *
+   * @returns A snapshot of the current counts.
+   */
   getCounters(): Record<string, number>;
   /** Detach every listener and handler. Idempotent. */
   destroy(): void;
@@ -102,16 +131,17 @@ export interface ExtensionBridgeOptions {
    */
   allowedOrigins: string[];
   channel?: string;
+  /** As {@link WebBridgeOptions.logLevel}. */
+  logLevel?: LogLevelSetting;
+  /** Alias for `logLevel: 'debug'`. Ignored when `logLevel` is given. */
   debug?: boolean;
   defaultTimeoutMs?: number;
   maxPayloadBytes?: number;
   buffer?: {
     maxEntries?: number;
     ttlMs?: number;
-    /**
-     * Total serialised bytes the replay buffer may hold, enforced alongside
-     * `maxEntries`. Defaults to 4 MiB.
-     */
+    /** Total serialised bytes the buffer may hold, enforced alongside `maxEntries`.
+     * Defaults to 4 MiB. */
     maxBytes?: number;
   };
   rateLimit?: {
@@ -132,19 +162,48 @@ export type PushListener = (topic: string, payload: JsonValue, meta: PushMeta) =
 export type TopicPushListener = (payload: JsonValue, meta: PushMeta) => void;
 
 export interface ExtensionBridge {
-  /** Receive pushed messages. A listener that throws cannot break the others. */
+  /**
+   * Receive pushed messages. A listener that throws cannot break the others.
+   *
+   * @param listener - Called with the topic, payload and metadata of each push.
+   * @returns An unsubscribe function.
+   */
   subscribe(listener: PushListener): () => void;
-  /** Topic-filtered form of {@link ExtensionBridge.subscribe}. */
+  /**
+   * Topic-filtered form of {@link ExtensionBridge.subscribe}.
+   *
+   * @param topic - Topic to filter on.
+   * @param listener - Called with the payload and metadata of each matching push.
+   * @returns An unsubscribe function.
+   */
   subscribeTopic(topic: string, listener: TopicPushListener): () => void;
-  /** Pull from the page on demand. Always settles; rejects with a coded `BridgeError`. */
+  /**
+   * Pull from the page on demand. Always settles; rejects with a coded `BridgeError`.
+   *
+   * @param topic - Request topic.
+   * @param payload - Request payload.
+   * @param opts - Target tab, timeout and abort signal.
+   * @returns The page handler's result.
+   */
   request<T = JsonValue>(topic: string, payload?: JsonValue, opts?: RequestOptions): Promise<T>;
-  /** Live view of attached tabs, for FR5 target selection. */
+  /**
+   * Live view of attached tabs, for FR5 target selection.
+   *
+   * @returns Every tab currently attached to this channel.
+   */
   listConnections(): Promise<Connection[]>;
-  /** Bounded replay buffer of pushes received while no UI was open. */
+  /**
+   * Bounded replay buffer of pushes received while no UI was open.
+   *
+   * @param opts - Topic filter and max entries to return.
+   * @returns Matching buffered messages, oldest first.
+   */
   getBufferedMessages(opts?: {topic?: string; limit?: number}): Promise<BufferedMessage[]>;
   /**
    * Telemetry counters. Asynchronous because the counters live in the service worker,
    * and an extension page has to cross the runtime boundary to read them.
+   *
+   * @returns A snapshot of the worker's current counts.
    */
   getCounters(): Promise<Record<string, number>>;
 }

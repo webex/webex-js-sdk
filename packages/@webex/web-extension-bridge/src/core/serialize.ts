@@ -9,6 +9,7 @@ let encoder: TextEncoder | undefined;
  * @param text - String to measure.
  * @returns UTF-8 byte length. Size caps are specified in bytes, not code units,
  *   because a 256 KiB cap measured in `length` admits a 768 KiB message.
+ * @throws BridgeError `INSECURE_CONFIG` when the host has no `TextEncoder`.
  */
 export function utf8ByteLength(text: string): number {
   if (typeof TextEncoder === 'undefined') {
@@ -46,16 +47,13 @@ const REJECTION_FOR = new Map<JsonRejection, PayloadRejection>([
 ]);
 
 /**
- * Check a payload against everything that must hold on both send and receive:
- * inside the {@link JsonValue} grammar, within the byte cap, free of reserved keys,
- * and within the depth bound (T5, T9).
+ * Check a payload against every rule that must hold on both send and receive: the
+ * {@link JsonValue} grammar, the byte cap, reserved keys, and the depth bound (T5, T9).
  *
- * The structural walk runs *before* `JSON.stringify`, not after. A stringify that
- * returns a string is not evidence the payload is transportable: nested functions,
- * `undefined` and symbol values are dropped, `NaN`/`Infinity` become `null`, and the
- * bridge would go on to send the *original* object — which then either throws
- * `DataCloneError` inside `postMessage` or arrives at a handler holding values the
- * `JsonValue` contract says cannot occur.
+ * The structural walk runs *before* `JSON.stringify`, not after — a successful
+ * stringify isn't evidence the payload is transportable, since it silently drops
+ * functions/`undefined`/symbols and turns `NaN`/`Infinity` into `null` while the
+ * bridge would still send the *original* object.
  *
  * @param payload - Candidate payload. `undefined` is allowed and costs no bytes.
  * @param maxBytes - Already-clamped byte cap.
@@ -76,10 +74,9 @@ export function checkPayload(payload: unknown, maxBytes: number): PayloadCheck {
     // small DAG can expand exponentially.
     structure = inspectJson(payload, RESERVED_KEYS, maxBytes);
   } catch {
-    // `inspectJson` refuses accessors without invoking them, so nothing in a payload
-    // should be able to run code here. This guard exists because the alternative to
-    // being wrong about that is an arbitrary exception escaping a message handler and
-    // past the documented "always a BridgeError" contract.
+    // Belt-and-braces: `inspectJson` shouldn't be able to throw (it refuses accessors
+    // without invoking them), but if it ever did, this keeps the failure a BridgeError
+    // instead of an arbitrary exception escaping a message handler.
     return {ok: false, rejection: PayloadRejection.NOT_SERIALISABLE};
   }
 
@@ -123,6 +120,7 @@ export function checkPayload(payload: unknown, maxBytes: number): PayloadCheck {
  * @param payload - Candidate payload.
  * @param maxBytes - Already-clamped byte cap.
  * @param topic - Topic, for the error.
+ * @throws BridgeError `INVALID_PAYLOAD` when the payload fails any check.
  */
 export function assertPayload(payload: unknown, maxBytes: number, topic?: string): void {
   const result = checkPayload(payload, maxBytes);
@@ -144,6 +142,7 @@ export function isValidTopic(topic: unknown): topic is string {
  * Throwing form of {@link isValidTopic}, for the outbound path.
  *
  * @param topic - Candidate topic.
+ * @throws BridgeError `INVALID_TOPIC` when the topic fails the charset or length rule.
  */
 export function assertTopic(topic: unknown): void {
   if (!isValidTopic(topic)) {
