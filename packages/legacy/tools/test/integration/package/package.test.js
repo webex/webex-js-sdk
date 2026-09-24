@@ -4,6 +4,7 @@ const path = require('path');
 const {
   Jest,
   Karma,
+  KmsCaroots,
   Mocha,
   Package,
   PackageFile,
@@ -159,6 +160,13 @@ describe('Package', () => {
         spies.Karma = {
           test: spyOn(Karma, 'test').and.resolveTo(undefined),
         };
+
+        // Integration runs prepend a generated CA-roots bootstrap; stub it out
+        // so the tests do no network or file I/O.
+        spies.KmsCaroots = {
+          prepareTestBootstrap: spyOn(KmsCaroots, 'prepareTestBootstrap')
+            .and.resolveTo({ file: 'bootstrap.js', cleanup: () => undefined }),
+        };
       });
 
       it('should attempt to join the package root with the test directory', () => pack.test(config)
@@ -260,7 +268,7 @@ describe('Package', () => {
         .then(() => {
           expect(spies.Mocha.test).toHaveBeenCalledTimes(1);
           expect(spies.Mocha.test.calls.all()[0].args).toEqual([{
-            files: [...results.Package.getFiles, ...results.Package.getFiles],
+            files: ['bootstrap.js', ...results.Package.getFiles, ...results.Package.getFiles],
           }]);
         }));
 
@@ -288,7 +296,7 @@ describe('Package', () => {
             expect(spies.Karma.test.calls.all()[0].args[0].debug).toBe(karmaDebug);
             expect(spies.Karma.test.calls.all()[0].args[0].port).toBe(karmaPort);
             expect(spies.Karma.test.calls.all()[0].args[0].files)
-              .toEqual([...results.Package.getFiles, ...results.Package.getFiles]);
+              .toEqual(['bootstrap.js', ...results.Package.getFiles, ...results.Package.getFiles]);
           });
       });
 
