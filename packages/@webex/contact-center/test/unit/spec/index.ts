@@ -9,8 +9,12 @@ const CONFIG_TYPES_PATH = path.join(SRC_ROOT, 'services/config/types.ts');
 
 const EXPECTED_ROOT_EXPORTS = Object.freeze([
   'AGENT_EVENTS',
-  'AISummaryActionType',
+  'AISummaryAction',
+  'AISummary',
   'AISummaryFeedback',
+  'AISummaryResponse',
+  'AISummarySections',
+  'AISummaryState',
   'AI_SUMMARY_ERROR_CODES',
   'AddressBook',
   'AddressBookEntriesResponse',
@@ -53,7 +57,7 @@ const EXPECTED_ROOT_EXPORTS = Object.freeze([
   'EntryPointListResponse',
   'EntryPointRecord',
   'EntryPointSearchParams',
-  'FeatureEnablementEventPayload',
+  'AISummaryFeatureEnablement',
   'GenericError',
   'GetUserPreferenceParams',
   'IContactCenter',
@@ -67,18 +71,9 @@ const EXPECTED_ROOT_EXPORTS = Object.freeze([
   'LoginOption',
   'Logout',
   'LogoutSuccess',
-  'MidCallSummaryEventPayload',
-  'MidCallSummaryReceivingAgentPayload',
-  'MidCallSummaryResponsePayload',
-  'MidCallSummarySections',
-  'MidCallSummaryState',
   'MultimediaProfileResponse',
   'OrgInfo',
   'OrgSettings',
-  'PostCallSummaryEventPayload',
-  'PostCallSummaryResponsePayload',
-  'PostCallSummarySections',
-  'PostCallSummaryState',
   'Profile',
   'ReloginSuccess',
   'RespondToWellnessBreakParams',
@@ -128,14 +123,7 @@ const EXPECTED_ROOT_EXPORTS = Object.freeze([
 
 const INTERNAL_ROOT_EXPORTS = Object.freeze([
   'AIAssistantEventName',
-  'AISummaryInboundType',
-  'AISummaryPayloadByInboundType',
   'AISummaryTimeoutCodeByInboundType',
-  'SummaryResponseTimestamps',
-  'PostCallReceivedResponse',
-  'PostCallNotReceivedResponse',
-  'MidCallReceivedResponse',
-  'MidCallUnavailableResponse',
   'AI_SUMMARY_DURATION_MS',
   'AI_SUMMARY_REQUEST_CANCELLED',
   'AI_ASSISTANT_CLIENT_TYPE',
@@ -178,43 +166,42 @@ import {
   TASK_EVENTS,
 } from '../../../src';
 import type {
-  AISummaryActionType,
+  AISummaryAction,
   AISummaryFeedback,
-  FeatureEnablementEventPayload,
+  AISummaryResponse,
+  AISummaryFeatureEnablement,
   ITask,
-  MidCallSummaryResponsePayload,
-  PostCallSummaryResponsePayload,
 } from '../../../src';
 
-const action: AISummaryActionType = 'CONSULT';
-const transferAction: AISummaryActionType = 'TRANSFER';
+const action: AISummaryAction = 'CONSULT';
+const transferAction: AISummaryAction = 'TRANSFER';
 const feedback: AISummaryFeedback = 'thumbs_down';
-const postCallEnabledTrue: FeatureEnablementEventPayload = {
+const postCallEnabledTrue: AISummaryFeatureEnablement = {
   interactionId: 'post-call-true',
   postCallEnabled: true,
 };
-const postCallEnabledFalse: FeatureEnablementEventPayload = {
+const postCallEnabledFalse: AISummaryFeatureEnablement = {
   interactionId: 'post-call-false',
   postCallEnabled: false,
 };
-const postCallEnabledOmitted: FeatureEnablementEventPayload = {
+const postCallEnabledOmitted: AISummaryFeatureEnablement = {
   interactionId: 'post-call-omitted',
   midCallEnabled: true,
 };
-const midCallEnabledTrue: FeatureEnablementEventPayload = {
+const midCallEnabledTrue: AISummaryFeatureEnablement = {
   interactionId: 'mid-call-true',
   midCallEnabled: true,
 };
-const midCallEnabledFalse: FeatureEnablementEventPayload = {
+const midCallEnabledFalse: AISummaryFeatureEnablement = {
   interactionId: 'mid-call-false',
   midCallEnabled: false,
 };
-const midCallEnabledOmitted: FeatureEnablementEventPayload = {
+const midCallEnabledOmitted: AISummaryFeatureEnablement = {
   interactionId: 'mid-call-omitted',
   postCallEnabled: true,
 };
 
-const structuredPostCall: PostCallSummaryResponsePayload = {
+const structuredPostCall: AISummaryResponse = {
   summary: {
     initialContactReason: 'billing',
     additionalContactReasons: 'renewal',
@@ -231,7 +218,7 @@ const structuredPostCall: PostCallSummaryResponsePayload = {
   actionTimeStamp: 100,
   publishTimestamp: 200,
 };
-const textPostCall: PostCallSummaryResponsePayload = {
+const textPostCall: AISummaryResponse = {
   summary: 'plain post call summary',
   feedback: 'thumbs_up',
   state: 'IGNORED',
@@ -240,7 +227,7 @@ const textPostCall: PostCallSummaryResponsePayload = {
   numberOfTimesEdited: 1,
   numberOfTimesCopied: 1,
 };
-const noPostCallSummary: PostCallSummaryResponsePayload = {
+const noPostCallSummary: AISummaryResponse = {
   summary: '',
   feedback: 'none',
   state: 'NOT_RECEIVED',
@@ -252,7 +239,7 @@ const noPostCallSummary: PostCallSummaryResponsePayload = {
   publishTimestamp: 0,
 };
 
-const structuredMidCall: MidCallSummaryResponsePayload = {
+const structuredMidCall: AISummaryResponse = {
   summaryReceived: true,
   summary: {
     reasonForTransferOrConsult: 'expert needed',
@@ -266,7 +253,7 @@ const structuredMidCall: MidCallSummaryResponsePayload = {
   numberOfTimesCopied: 0,
   actionTimeStamp: 300,
 };
-const textMidCall: MidCallSummaryResponsePayload = {
+const textMidCall: AISummaryResponse = {
   summaryReceived: true,
   summary: 'plain mid call summary',
   feedback: 'thumbs_up',
@@ -276,7 +263,7 @@ const textMidCall: MidCallSummaryResponsePayload = {
   numberOfTimesCopied: 0,
   publishTimestamp: 400,
 };
-const unavailableMidCall: MidCallSummaryResponsePayload = {
+const unavailableMidCall: AISummaryResponse = {
   summaryReceived: false,
   summary: '',
   feedback: 'thumbs_down',
@@ -285,7 +272,7 @@ const unavailableMidCall: MidCallSummaryResponsePayload = {
   numberOfTimesEdited: 0,
   numberOfTimesCopied: 0,
 };
-const cancelledMidCall: MidCallSummaryResponsePayload = {
+const cancelledMidCall: AISummaryResponse = {
   summaryReceived: false,
   summary: '',
   feedback: 'none',
@@ -310,12 +297,12 @@ const taskSummaryMethods: Pick<
     void responseState;
   },
   requestMidCallSummary: async (requestedAction) => {
-    const selectedAction: AISummaryActionType = requestedAction;
+    const selectedAction: AISummaryAction = requestedAction;
     void selectedAction;
     return {conversationId: 'conversation-1'};
   },
   sendMidCallSummaryResponse: async (payload, requestedAction) => {
-    const selectedAction: AISummaryActionType = requestedAction;
+    const selectedAction: AISummaryAction = requestedAction;
     const responseState = payload.state;
     void selectedAction;
     void responseState;
@@ -358,52 +345,43 @@ ${INTERNAL_ROOT_EXPORTS.map((name) => `  ${name},`).join('\n')}
 
 const INVALID_PUBLIC_CONTRACT_FIXTURE = `
 import {
-  type AISummaryActionType,
-  type FeatureEnablementEventPayload,
-  type MidCallSummaryResponsePayload,
-  type PostCallSummaryResponsePayload,
+  type AISummaryAction,
+  type AISummaryResponse,
+  type AISummaryFeatureEnablement,
 } from '../../../src';
 
-let invalidAction: AISummaryActionType;
+let invalidAction: AISummaryAction;
 // @ts-expect-error invalid summary action type must not widen
 invalidAction = 'WRAP_UP';
 void invalidAction;
 
 // @ts-expect-error postCallEnabled must stay boolean; string values must not satisfy the public flag contract
-const invalidPostCallEnabledString: FeatureEnablementEventPayload = {interactionId: 'interaction-1', postCallEnabled: 'true'};
+const invalidPostCallEnabledString: AISummaryFeatureEnablement = {interactionId: 'interaction-1', postCallEnabled: 'true'};
 void invalidPostCallEnabledString;
 
 // @ts-expect-error postCallEnabled must stay boolean; number values must not satisfy the public flag contract
-const invalidPostCallEnabledNumber: FeatureEnablementEventPayload = {interactionId: 'interaction-2', postCallEnabled: 1};
+const invalidPostCallEnabledNumber: AISummaryFeatureEnablement = {interactionId: 'interaction-2', postCallEnabled: 1};
 void invalidPostCallEnabledNumber;
 
 // @ts-expect-error midCallEnabled must stay boolean; string values must not satisfy the public flag contract
-const invalidMidCallEnabledString: FeatureEnablementEventPayload = {interactionId: 'interaction-3', midCallEnabled: 'false'};
+const invalidMidCallEnabledString: AISummaryFeatureEnablement = {interactionId: 'interaction-3', midCallEnabled: 'false'};
 void invalidMidCallEnabledString;
 
 // @ts-expect-error midCallEnabled must stay boolean; number values must not satisfy the public flag contract
-const invalidMidCallEnabledNumber: FeatureEnablementEventPayload = {interactionId: 'interaction-4', midCallEnabled: 0};
+const invalidMidCallEnabledNumber: AISummaryFeatureEnablement = {interactionId: 'interaction-4', midCallEnabled: 0};
 void invalidMidCallEnabledNumber;
 
-// @ts-expect-error invalid post-call response state must not be accepted
-const invalidPostCallState: PostCallSummaryResponsePayload = {summary: 'x', feedback: 'none', state: 'EXCLUDED', wrapUpCode: 'wrap', numberOfTimesViewed: 1, numberOfTimesEdited: 0, numberOfTimesCopied: 0};
-void invalidPostCallState;
-
 // @ts-expect-error invalid summary feedback must not be accepted
-const invalidFeedback: PostCallSummaryResponsePayload = {summary: 'x', feedback: 'ok', state: 'DEFAULT', wrapUpCode: 'wrap', numberOfTimesViewed: 1, numberOfTimesEdited: 0, numberOfTimesCopied: 0};
+const invalidFeedback: AISummaryResponse = {summary: 'x', feedback: 'ok', state: 'DEFAULT', wrapUpCode: 'wrap', numberOfTimesViewed: 1, numberOfTimesEdited: 0, numberOfTimesCopied: 0};
 void invalidFeedback;
 
-// @ts-expect-error invalid mid-call summaryReceived discriminator must not be accepted
-const invalidDiscriminator: MidCallSummaryResponsePayload = {summaryReceived: 'true', summary: 'x', feedback: 'none', state: 'DEFAULT', agentName: 'Agent', numberOfTimesViewed: 1, numberOfTimesEdited: 0, numberOfTimesCopied: 0};
+// @ts-expect-error summaryReceived must stay boolean when supplied
+const invalidDiscriminator: AISummaryResponse = {summaryReceived: 'true', summary: 'x', feedback: 'none', state: 'DEFAULT', numberOfTimesViewed: 1, numberOfTimesEdited: 0, numberOfTimesCopied: 0};
 void invalidDiscriminator;
 
-// @ts-expect-error invalid mid-call response state must not be accepted
-const invalidMidCallState: MidCallSummaryResponsePayload = {summaryReceived: true, summary: 'x', feedback: 'none', state: 'POST_CALL_ONLY', agentName: 'Agent', numberOfTimesViewed: 1, numberOfTimesEdited: 0, numberOfTimesCopied: 0};
-void invalidMidCallState;
-
-// @ts-expect-error mid-call response object literal with wrapUpCode own key must not be accepted
-const invalidMidCallWrapUpCode: MidCallSummaryResponsePayload = {summaryReceived: true, summary: 'x', feedback: 'none', state: 'DEFAULT', agentName: 'Agent', wrapUpCode: 'wrap', numberOfTimesViewed: 1, numberOfTimesEdited: 0, numberOfTimesCopied: 0};
-void invalidMidCallWrapUpCode;
+// @ts-expect-error unknown summary states must not be accepted
+const invalidSummaryState: AISummaryResponse = {summaryReceived: true, summary: 'x', feedback: 'none', state: 'POST_CALL_ONLY', numberOfTimesViewed: 1, numberOfTimesEdited: 0, numberOfTimesCopied: 0};
+void invalidSummaryState;
 `;
 
 const LEGACY_TASK_CALL_CONTROL_CONTRACT_FIXTURE = `

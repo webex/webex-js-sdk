@@ -20,15 +20,11 @@ import {
   TASK_CHANNEL_TYPE,
   VOICE_VARIANT,
   CallId,
-  AISummaryActionType,
-  PostCallSummaryEventPayload,
-  MidCallSummaryEventPayload,
-  PostCallSummaryResponsePayload,
-  MidCallSummaryResponsePayload,
-  FeatureEnablementEventPayload,
+  AISummaryAction,
+  AISummary,
+  AISummaryResponse,
+  AISummaryFeatureEnablement,
   AISummaryCapabilities,
-  AISummaryInboundType,
-  AISummaryPayloadByInboundType,
   TaskToggleMuteOptions,
   TaskTransmitDtmfOptions,
 } from './types';
@@ -91,7 +87,7 @@ export default abstract class Task extends EventEmitter implements ITask {
     postCallEnabled: false,
   };
 
-  private pendingFeatureEnablement?: FeatureEnablementEventPayload;
+  private pendingFeatureEnablement?: AISummaryFeatureEnablement;
   private postCallSummaryResponseContext?: {conversationId: string; interactionId: string};
   private midCallSummaryResponseContext?: {conversationId: string; interactionId: string};
 
@@ -256,19 +252,19 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.getGeneratedSummaryFlags = getGeneratedSummaryFlags;
   }
 
-  public setFeatureEnablement(payload: FeatureEnablementEventPayload, emitEvent = true): void {
-    if (payload.interactionId !== this.data.interactionId) {
+  public setFeatureEnablement(enablement: AISummaryFeatureEnablement, emitEvent = true): void {
+    if (enablement.interactionId !== this.data.interactionId) {
       return;
     }
 
     this.aiSummaryCapabilities = {
-      midCallEnabled: payload.midCallEnabled === true,
-      postCallEnabled: payload.postCallEnabled === true,
+      midCallEnabled: enablement.midCallEnabled === true,
+      postCallEnabled: enablement.postCallEnabled === true,
     };
-    this.pendingFeatureEnablement = emitEvent ? undefined : payload;
+    this.pendingFeatureEnablement = emitEvent ? undefined : enablement;
 
     if (emitEvent) {
-      this.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, payload);
+      this.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, enablement);
     }
   }
 
@@ -290,24 +286,22 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.pendingFeatureEnablement = undefined;
   }
 
-  public requestPostCallSummary(): Promise<PostCallSummaryEventPayload> {
+  public requestPostCallSummary(): Promise<AISummary> {
     return this.requestSummary('POST_CALL_SUMMARY');
   }
 
-  public sendPostCallSummaryResponse(payload: PostCallSummaryResponsePayload): Promise<void> {
-    return this.sendSummaryResponse('POST_CALL_SUMMARY', payload);
+  public sendPostCallSummaryResponse(response: AISummaryResponse): Promise<void> {
+    return this.sendSummaryResponse('POST_CALL_SUMMARY', response);
   }
 
-  public requestMidCallSummary(
-    actionType: AISummaryActionType
-  ): Promise<MidCallSummaryEventPayload> {
-    return this.requestSummary('MID_CALL_SUMMARY', actionType);
+  public requestMidCallSummary(action: AISummaryAction): Promise<AISummary> {
+    return this.requestSummary('MID_CALL_SUMMARY', action);
   }
 
-  private async requestSummary<T extends AISummaryInboundType>(
-    summaryType: T,
-    actionType?: AISummaryActionType
-  ): Promise<AISummaryPayloadByInboundType[T]> {
+  private async requestSummary(
+    summaryType: 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY',
+    action?: AISummaryAction
+  ): Promise<AISummary> {
     const isPostCall = summaryType === 'POST_CALL_SUMMARY';
     const successMetric = isPostCall
       ? METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS
@@ -321,7 +315,7 @@ export default abstract class Task extends EventEmitter implements ITask {
 
     try {
       this.metricsManager.timeEvent([successMetric, failureMetric]);
-      if (actionType) Object.assign(metricFields, {actionType});
+      if (action) Object.assign(metricFields, {actionType: action});
 
       const interactionId = this.data.interactionId;
       const conversationId = this.data.interaction?.mainInteractionId || interactionId;
@@ -346,14 +340,12 @@ export default abstract class Task extends EventEmitter implements ITask {
       let eventName: AIAssistantEventName;
       if (isPostCall) {
         eventName = AIAssistantEventName.GET_POST_CALL_SUMMARY;
-      } else if (actionType === 'CONSULT') {
+      } else if (action === 'CONSULT') {
         eventName = AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY;
       } else {
         eventName = AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY;
       }
-      const result = await this.apiAIAssistant!.requestAndWaitForRtd<
-        AISummaryPayloadByInboundType[T]
-      >({
+      const result = await this.apiAIAssistant!.requestAndWaitForRtd<AISummary>({
         correlationId: conversationId,
         rtdEventType: summaryType,
         timeoutMs: AI_SUMMARY_DURATION_MS,
@@ -402,16 +394,16 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   public sendMidCallSummaryResponse(
-    payload: MidCallSummaryResponsePayload,
-    actionType: AISummaryActionType
+    response: AISummaryResponse,
+    action: AISummaryAction
   ): Promise<void> {
-    return this.sendSummaryResponse('MID_CALL_SUMMARY', payload, actionType);
+    return this.sendSummaryResponse('MID_CALL_SUMMARY', response, action);
   }
 
   private async sendSummaryResponse(
-    summaryType: AISummaryInboundType,
-    payload: PostCallSummaryResponsePayload | MidCallSummaryResponsePayload,
-    actionType?: AISummaryActionType
+    summaryType: 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY',
+    response: AISummaryResponse,
+    action?: AISummaryAction
   ): Promise<void> {
     const isPostCall = summaryType === 'POST_CALL_SUMMARY';
     const successMetric = isPostCall
@@ -428,7 +420,7 @@ export default abstract class Task extends EventEmitter implements ITask {
 
     try {
       this.metricsManager.timeEvent([successMetric, failureMetric]);
-      if (actionType) Object.assign(metricFields, {actionType});
+      if (action) Object.assign(metricFields, {actionType: action});
       const retainedContext = isPostCall
         ? this.postCallSummaryResponseContext
         : this.midCallSummaryResponseContext;
@@ -442,12 +434,12 @@ export default abstract class Task extends EventEmitter implements ITask {
       });
 
       const fallbackTimestamp = Date.now();
-      const actionTimeStamp = payload.actionTimeStamp ?? fallbackTimestamp;
-      const publishTimestamp = payload.publishTimestamp ?? fallbackTimestamp;
+      const actionTimeStamp = response.actionTimeStamp ?? fallbackTimestamp;
+      const publishTimestamp = response.publishTimestamp ?? fallbackTimestamp;
       let eventName: AIAssistantEventName;
       if (isPostCall) {
         eventName = AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE;
-      } else if (actionType === 'CONSULT') {
+      } else if (action === 'CONSULT') {
         eventName = AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE;
       } else {
         eventName = AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE;
@@ -457,15 +449,13 @@ export default abstract class Task extends EventEmitter implements ITask {
         clientType: AI_ASSISTANT_CLIENT_TYPE,
         action: eventName,
         actionTimeStamp,
-        summary: payload.summary,
-        numberOfTimesViewed: payload.numberOfTimesViewed,
-        numberOfTimesEdited: payload.numberOfTimesEdited,
-        numberOfTimesCopied: payload.numberOfTimesCopied,
-        feedback: payload.feedback,
-        state: payload.state,
-        ...(isPostCall
-          ? {wrapUpCode: (payload as PostCallSummaryResponsePayload).wrapUpCode}
-          : {agentName: this.agentName ?? ''}),
+        summary: response.summary,
+        numberOfTimesViewed: response.numberOfTimesViewed,
+        numberOfTimesEdited: response.numberOfTimesEdited,
+        numberOfTimesCopied: response.numberOfTimesCopied,
+        feedback: response.feedback,
+        state: response.state,
+        ...(isPostCall ? {wrapUpCode: response.wrapUpCode} : {agentName: this.agentName ?? ''}),
       };
       await this.apiAIAssistant!.sendEvent(
         this.agentId as string,

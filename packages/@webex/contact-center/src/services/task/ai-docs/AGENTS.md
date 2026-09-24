@@ -16,12 +16,9 @@ adapter.
 - `TaskManager.ts`: task registry, websocket-to-task lifecycle routing, RTD AI
   frame parsing, task-aware summary state, feature forwarding, and cleanup.
 - `TaskUtils.ts`: task state helpers plus AI summary correlation helpers.
-- `types.ts`: `ITask`, task data types, public summary payloads, and internal
-  summary payload types and RTD request contracts. The mid-call response payload is a discriminated union
-  on `summaryReceived`: `MidCallReceivedResponse` (`summaryReceived: true`,
-  states `DEFAULT | EXCLUDED | IGNORED | MID_CALL_CANCELLED`) and
-  `MidCallUnavailableResponse` (`summaryReceived: false`, states
-  `NOT_RECEIVED | MID_CALL_CANCELLED | IGNORED`).
+- `types.ts`: `ITask`, task data types, and the shared `AISummary`
+  and `AISummaryResponse` contracts. Flow-specific fields such as
+  `suggestedWrapUpCodes`, `wrapUpCode`, and `summaryReceived` are optional.
 - `constants.ts`: task API method names and package-internal summary timeout
   aliases.
 - `TaskFactory.ts`: media-channel task construction. It does not know about AI

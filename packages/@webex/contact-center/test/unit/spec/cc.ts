@@ -44,7 +44,7 @@ import TaskManager from '../../../src/services/task/TaskManager';
 import Task from '../../../src/services/task/Task';
 import {
   AgentContact,
-  PostCallSummaryResponsePayload,
+  AISummaryResponse,
   TASK_CHANNEL_TYPE,
   TASK_EVENTS,
   TaskData,
@@ -1778,7 +1778,7 @@ describe('webex.cc', () => {
         true
       );
 
-      const responsePayload: PostCallSummaryResponsePayload = {
+      const responsePayload: AISummaryResponse = {
         summary: {initialContactReason: 'resolved'},
         feedback: 'thumbs_up',
         state: 'DEFAULT',

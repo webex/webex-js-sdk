@@ -13,10 +13,8 @@ import {
   WebSocketMessage,
   TaskEventActions,
   EventContext,
-  BufferedReceivingSummary,
-  FeatureEnablementEventPayload,
-  MidCallSummaryReceivingAgentPayload,
-  PendingFeatureEnablement,
+  AISummaryFeatureEnablement,
+  AISummary,
 } from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
 import {AI_SUMMARY_DURATION_MS, METHODS, TRANSCRIPT_EVENT_MAP} from './constants';
@@ -64,6 +62,11 @@ const PARTICIPANT_LEAVE_WRAP_STATES = new Set<TaskState>([
   TaskState.CONFERENCING,
 ]);
 
+type TimedAISummaryPayload<Payload> = {
+  payload: Payload;
+  timeoutId?: ReturnType<typeof setTimeout>;
+};
+
 /** @internal */
 export default class TaskManager extends EventEmitter {
   private call: ICall;
@@ -86,8 +89,13 @@ export default class TaskManager extends EventEmitter {
   private webRtcEnabled: boolean;
   private answerCallOnWebexService?: AnswerCallOnWebexService;
   private apiAIAssistant?: ApiAIAssistant;
-  private receivingSummaryBuffer = new Map<string, BufferedReceivingSummary>();
-  private pendingFeatureEnablement = new Map<string, PendingFeatureEnablement>();
+  private receivingSummaryBuffer = new Map<string, TimedAISummaryPayload<AISummary>>();
+
+  private pendingFeatureEnablement = new Map<
+    string,
+    TimedAISummaryPayload<AISummaryFeatureEnablement>
+  >();
+
   private aiSummaryInboundActive = true;
 
   /**
@@ -203,7 +211,7 @@ export default class TaskManager extends EventEmitter {
     return entry;
   }
 
-  private handleFeatureEnablementEvent(payload?: FeatureEnablementEventPayload): void {
+  private handleFeatureEnablementEvent(payload?: AISummaryFeatureEnablement): void {
     if (!payload?.interactionId) {
       return;
     }
@@ -225,16 +233,18 @@ export default class TaskManager extends EventEmitter {
 
     const interactionId = payload.interactionId;
     this.removeTimedAISummaryEntry(this.pendingFeatureEnablement, interactionId);
-    const entry: PendingFeatureEnablement = {payload};
-    entry.timeoutId = setTimeout(() => {
-      this.removeTimedAISummaryEntry(this.pendingFeatureEnablement, interactionId);
-    }, AI_SUMMARY_DURATION_MS);
+    const entry = {
+      payload,
+      timeoutId: setTimeout(() => {
+        this.removeTimedAISummaryEntry(this.pendingFeatureEnablement, interactionId);
+      }, AI_SUMMARY_DURATION_MS),
+    };
     this.pendingFeatureEnablement.set(interactionId, entry);
   }
 
   private deliverReceivingSummary(
     conversationId: string,
-    payload: MidCallSummaryReceivingAgentPayload,
+    payload: AISummary,
     matchingTasks: ReadonlyArray<Pick<ITask, 'data' | 'emit'>>
   ): boolean {
     if (matchingTasks.length === 0) {
@@ -251,7 +261,7 @@ export default class TaskManager extends EventEmitter {
   }
 
   private routeReceivingSummary(
-    payload: MidCallSummaryReceivingAgentPayload,
+    payload: AISummary,
     matchingTasks: ReadonlyArray<Pick<ITask, 'data' | 'emit'>>
   ): void {
     const conversationId = payload.conversationId;
@@ -261,10 +271,12 @@ export default class TaskManager extends EventEmitter {
     }
 
     this.removeTimedAISummaryEntry(this.receivingSummaryBuffer, conversationId);
-    const entry: BufferedReceivingSummary = {payload};
-    entry.timeoutId = setTimeout(() => {
-      this.removeTimedAISummaryEntry(this.receivingSummaryBuffer, conversationId);
-    }, AI_SUMMARY_DURATION_MS);
+    const entry = {
+      payload,
+      timeoutId: setTimeout(() => {
+        this.removeTimedAISummaryEntry(this.receivingSummaryBuffer, conversationId);
+      }, AI_SUMMARY_DURATION_MS),
+    };
     this.receivingSummaryBuffer.set(conversationId, entry);
   }
 

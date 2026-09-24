@@ -6,9 +6,8 @@ import {
   TASK_CHANNEL_TYPE,
   TransferPayLoad,
   VOICE_VARIANT,
-  AISummaryActionType,
-  PostCallSummaryResponsePayload,
-  MidCallSummaryResponsePayload,
+  AISummaryAction,
+  AISummaryResponse,
 } from '../../../../../src/services/task/types';
 import {TaskEvent} from '../../../../../src/services/task/state-machine';
 import {ENTRY_POINT_TRANSFER_DESTINATION_TYPE} from '../../../../../src/services/task/constants';
@@ -996,8 +995,8 @@ const createMidCallSummaryPayload = () => ({
 });
 
 const createPostCallResponsePayloadWithoutTimestamps = (
-  overrides: Partial<PostCallSummaryResponsePayload> = {}
-): PostCallSummaryResponsePayload =>
+  overrides: Partial<AISummaryResponse> = {}
+): AISummaryResponse =>
   ({
     summary: {summarySectionKeySentinel: 'summary-section-value-sentinel'} as any,
     feedback: 'thumbs_up',
@@ -1007,11 +1006,11 @@ const createPostCallResponsePayloadWithoutTimestamps = (
     numberOfTimesEdited: 0,
     numberOfTimesCopied: 0,
     ...overrides,
-  } as PostCallSummaryResponsePayload);
+  } as AISummaryResponse);
 
 const createPostCallResponsePayload = (
-  overrides: Partial<PostCallSummaryResponsePayload> = {}
-): PostCallSummaryResponsePayload =>
+  overrides: Partial<AISummaryResponse> = {}
+): AISummaryResponse =>
   createPostCallResponsePayloadWithoutTimestamps({
     actionTimeStamp: 11,
     publishTimestamp: 12,
@@ -1019,8 +1018,8 @@ const createPostCallResponsePayload = (
   });
 
 const createMidCallResponsePayloadWithoutTimestamps = (
-  overrides: Partial<MidCallSummaryResponsePayload> = {}
-): MidCallSummaryResponsePayload =>
+  overrides: Partial<AISummaryResponse> = {}
+): AISummaryResponse =>
   ({
     summaryReceived: true,
     summary: {midCallSectionKeySentinel: 'mid-call-section-value-sentinel'} as any,
@@ -1030,11 +1029,11 @@ const createMidCallResponsePayloadWithoutTimestamps = (
     numberOfTimesEdited: 0,
     numberOfTimesCopied: 0,
     ...overrides,
-  } as MidCallSummaryResponsePayload);
+  } as AISummaryResponse);
 
 const createMidCallResponsePayload = (
-  overrides: Partial<MidCallSummaryResponsePayload> = {}
-): MidCallSummaryResponsePayload =>
+  overrides: Partial<AISummaryResponse> = {}
+): AISummaryResponse =>
   createMidCallResponsePayloadWithoutTimestamps({
     actionTimeStamp: 21,
     publishTimestamp: 22,
@@ -2423,11 +2422,11 @@ describe('Task AI summary APIs', () => {
 
   it.each([
     {
-      actionType: 'CONSULT' as AISummaryActionType,
+      actionType: 'CONSULT' as AISummaryAction,
       eventName: AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE,
     },
     {
-      actionType: 'TRANSFER' as AISummaryActionType,
+      actionType: 'TRANSFER' as AISummaryAction,
       eventName: AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE,
     },
   ])(
@@ -2438,8 +2437,8 @@ describe('Task AI summary APIs', () => {
       const consultSpy = jest.spyOn(task, 'consult').mockResolvedValue({} as any);
       const transferSpy = jest.spyOn(task, 'transfer').mockResolvedValue({} as any);
       const sendResponseThenHandoff = async (
-        payload: MidCallSummaryResponsePayload,
-        handoffActionType: AISummaryActionType
+        payload: AISummaryResponse,
+        handoffActionType: AISummaryAction
       ) => {
         await task.sendMidCallSummaryResponse(payload, handoffActionType);
 
