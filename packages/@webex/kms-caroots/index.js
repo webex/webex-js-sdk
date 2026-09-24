@@ -1,28 +1,5 @@
-#!/usr/bin/env node
 /*!
- * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
- */
-
-/* eslint-disable no-console */
-
-/**
- * Downloads, verifies, and decodes the Cisco Trusted Root Store "Union" bundle
- * into the format expected by the `encryption.caroots` SDK config option: an
- * array of raw base64-encoded (DER) certificates.
- *
- * The bundle is intentionally NOT committed to the package. Consuming apps (and
- * this repo's CI) run this tool to produce a fresh list so certificate updates
- * don't require an SDK upgrade. See the Cisco Trusted Root Store for details:
- * https://www.cisco.com/security/pki/trs/readme.html
- *
- * Usage:
- *   node tooling/generate-kms-caroots.js                # writes ./.kms-caroots.json
- *   node tooling/generate-kms-caroots.js --stdout       # prints JSON to stdout
- *   node tooling/generate-kms-caroots.js --out roots.json
- *   node tooling/generate-kms-caroots.js --url <bundle> # override bundle URL
- *
- * Requires the `openssl` binary on PATH (used to verify the signed PKCS#7
- * bundle and extract its certificates, as documented by Cisco).
+ * Copyright (c) 2026 Cisco Systems, Inc. See LICENSE file.
  */
 
 const crypto = require('crypto');
@@ -36,9 +13,9 @@ const {URL} = require('url');
 const DEFAULT_BUNDLE_URL =
   'https://www.cisco.com/security/pki/trs/current/ios_union/ios_union.p7b';
 
-// Trust anchors used to verify the signed bundle. Pinned by SHA-256 of the DER
-// certificate so a compromised or swapped anchor is rejected. New-style bundles
-// chain to the TRS Bundle Root CA; older bundles chain to Cisco Root CA M1.
+// Trust anchors used to verify the signed bundle, pinned by the SHA-256 of the
+// DER certificate so a compromised or swapped anchor is rejected. New-style
+// bundles chain to the TRS Bundle Root CA; older bundles chain to Cisco Root CA M1.
 const TRUST_ANCHORS = [
   {
     name: 'Cisco TRS Bundle Root CA',
@@ -56,49 +33,15 @@ const TRUST_ANCHORS = [
 
 const PEM_CERT_RE = /-----BEGIN CERTIFICATE-----([\s\S]*?)-----END CERTIFICATE-----/g;
 
-function parseArgs(argv) {
-  const options = {bundleUrl: DEFAULT_BUNDLE_URL, out: '.kms-caroots.json', stdout: false, verbose: false};
-
-  for (let i = 0; i < argv.length; i += 1) {
-    const arg = argv[i];
-
-    switch (arg) {
-      case '--stdout':
-        options.stdout = true;
-        break;
-      case '--out':
-        options.out = argv[(i += 1)];
-        break;
-      case '--url':
-        options.bundleUrl = argv[(i += 1)];
-        break;
-      case '-v':
-      case '--verbose':
-        options.verbose = true;
-        break;
-      case '-h':
-      case '--help':
-        options.help = true;
-        break;
-      default:
-        throw new Error(`Unknown argument: ${arg}`);
-    }
-  }
-
-  return options;
-}
-
-// Log to stderr so `--stdout` emits only the JSON payload.
-function log(verbose, ...args) {
-  if (verbose) {
-    console.error(...args);
-  }
-}
-
+/**
+ * Download a URL, following redirects.
+ * @param {string} url
+ * @returns {Promise<Buffer>}
+ */
 function download(url) {
   return new Promise((resolve, reject) => {
     https
-      .get(url, {headers: {'user-agent': 'webex-js-sdk-kms-caroots'}}, (res) => {
+      .get(url, {headers: {'user-agent': 'webex-kms-caroots'}}, (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           res.resume();
           resolve(download(new URL(res.headers.location, url).toString()));
@@ -122,7 +65,12 @@ function download(url) {
   });
 }
 
-// Downloads with a few retries to tolerate transient network errors in CI.
+/**
+ * Download a URL with retries to tolerate transient network errors.
+ * @param {string} url
+ * @param {number} [attempts]
+ * @returns {Promise<Buffer>}
+ */
 async function downloadWithRetry(url, attempts = 4) {
   for (let attempt = 1; ; attempt += 1) {
     try {
@@ -139,10 +87,20 @@ async function downloadWithRetry(url, attempts = 4) {
   }
 }
 
+/**
+ * Convert a PEM certificate to its DER Buffer.
+ * @param {string} pem
+ * @returns {Buffer}
+ */
 function pemToDer(pem) {
   return Buffer.from(pem.replace(/-----[^-]+-----/g, '').replace(/\s+/g, ''), 'base64');
 }
 
+/**
+ * Compute the colon-delimited SHA-256 fingerprint of a DER certificate.
+ * @param {Buffer} der
+ * @returns {string}
+ */
 function fingerprintOf(der) {
   return crypto
     .createHash('sha256')
@@ -153,6 +111,10 @@ function fingerprintOf(der) {
     .join(':');
 }
 
+/**
+ * Ensure the `openssl` binary is available.
+ * @returns {void}
+ */
 function ensureOpenssl() {
   try {
     execFileSync('openssl', ['version'], {stdio: 'ignore'});
@@ -163,10 +125,15 @@ function ensureOpenssl() {
   }
 }
 
-async function fetchVerifiedAnchors(verbose) {
+/**
+ * Download the pinned trust anchors and verify their fingerprints.
+ * @returns {Promise<string>} concatenated anchor PEMs
+ */
+async function fetchVerifiedAnchors() {
   const pems = [];
 
   for (const anchor of TRUST_ANCHORS) {
+    // eslint-disable-next-line no-await-in-loop
     const pem = (await downloadWithRetry(anchor.url)).toString('utf8');
     const actual = fingerprintOf(pemToDer(pem));
 
@@ -176,15 +143,20 @@ async function fetchVerifiedAnchors(verbose) {
       );
     }
 
-    log(verbose, `Verified trust anchor: ${anchor.name}`);
     pems.push(pem.trim());
   }
 
   return pems.join('\n');
 }
 
-// Verifies the signed bundle against the pinned anchors and returns the
-// contained certificates as PEM using the openssl pipeline documented by Cisco.
+/**
+ * Verify the signed bundle against the anchors and return the contained
+ * certificates as PEM, using the openssl pipeline documented by Cisco.
+ * @param {string} workDir
+ * @param {Buffer} bundle
+ * @param {string} anchorsPem
+ * @returns {string}
+ */
 function verifyAndExtract(workDir, bundle, anchorsPem) {
   const bundlePath = path.join(workDir, 'bundle.p7b');
   const anchorsPath = path.join(workDir, 'anchors.pem');
@@ -193,20 +165,11 @@ function verifyAndExtract(workDir, bundle, anchorsPem) {
   fs.writeFileSync(bundlePath, bundle);
   fs.writeFileSync(anchorsPath, anchorsPem);
 
-  execFileSync('openssl', [
-    'cms',
-    '-verify',
-    '-inform',
-    'DER',
-    '-purpose',
-    'any',
-    '-in',
-    bundlePath,
-    '-CAfile',
-    anchorsPath,
-    '-out',
-    contentPath,
-  ]);
+  execFileSync(
+    'openssl',
+    ['cms', '-verify', '-inform', 'DER', '-purpose', 'any', '-in', bundlePath, '-CAfile', anchorsPath, '-out', contentPath],
+    {stdio: ['ignore', 'ignore', 'ignore']}
+  );
 
   return execFileSync('openssl', [
     'pkcs7',
@@ -220,6 +183,11 @@ function verifyAndExtract(workDir, bundle, anchorsPem) {
   ]).toString('utf8');
 }
 
+/**
+ * Decode extracted PEM certificates into an array of raw base64 (DER) strings.
+ * @param {string} certsPem
+ * @returns {string[]}
+ */
 function decodeCertificates(certsPem) {
   const seen = new Set();
   const caroots = [];
@@ -229,9 +197,8 @@ function decodeCertificates(certsPem) {
   while ((match = PEM_CERT_RE.exec(certsPem))) {
     const base64 = match[1].replace(/\s+/g, '');
 
-    if (!base64 || seen.has(base64)) {
-      continue;
-    }
+    // eslint-disable-next-line no-continue
+    if (!base64 || seen.has(base64)) continue;
 
     const der = Buffer.from(base64, 'base64');
 
@@ -251,62 +218,35 @@ function decodeCertificates(certsPem) {
   return caroots;
 }
 
-async function generate(options) {
+/**
+ * Download, verify, and decode the Cisco Trusted Root Store "Union" bundle into
+ * the format expected by the `encryption.caroots` Webex SDK config option: an
+ * array of raw base64-encoded (DER) certificates.
+ *
+ * Requires the `openssl` binary on PATH.
+ *
+ * @param {{bundleUrl?: string}} [options]
+ * @returns {Promise<string[]>}
+ */
+async function generateKmsCaroots(options = {}) {
+  const bundleUrl = options.bundleUrl || DEFAULT_BUNDLE_URL;
+
   ensureOpenssl();
 
-  log(options.verbose, `Downloading bundle: ${options.bundleUrl}`);
-  const bundle = await downloadWithRetry(options.bundleUrl);
-
-  const anchorsPem = await fetchVerifiedAnchors(options.verbose);
-
+  const bundle = await downloadWithRetry(bundleUrl);
+  const anchorsPem = await fetchVerifiedAnchors();
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kms-caroots-'));
 
   try {
     const certsPem = verifyAndExtract(workDir, bundle, anchorsPem);
-    const caroots = decodeCertificates(certsPem);
 
-    log(options.verbose, `Verified bundle and extracted ${caroots.length} certificates`);
-
-    return caroots;
+    return decodeCertificates(certsPem);
   } finally {
     fs.rmSync(workDir, {recursive: true, force: true});
   }
 }
 
-const HELP = `Generate the KMS CA roots (Cisco Trusted Root Store Union bundle).
-
-Usage:
-  node tooling/generate-kms-caroots.js [options]
-
-Options:
-  --stdout        Print the JSON array to stdout instead of writing a file
-  --out <path>    Output file path (default: .kms-caroots.json)
-  --url <url>     Override the bundle URL
-  -v, --verbose   Log progress to stderr
-  -h, --help      Show this help
-`;
-
-async function main() {
-  const options = parseArgs(process.argv.slice(2));
-
-  if (options.help) {
-    process.stdout.write(HELP);
-
-    return;
-  }
-
-  const caroots = await generate(options);
-  const json = JSON.stringify(caroots);
-
-  if (options.stdout) {
-    process.stdout.write(json);
-  } else {
-    fs.writeFileSync(options.out, json);
-    console.error(`Wrote ${caroots.length} CA roots to ${options.out}`);
-  }
-}
-
-main().catch((error) => {
-  console.error(`generate-kms-caroots: ${error.message}`);
-  process.exit(1);
-});
+module.exports = {
+  generateKmsCaroots,
+  DEFAULT_BUNDLE_URL,
+};

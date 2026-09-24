@@ -8554,6 +8554,14 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@webex/kms-caroots@workspace:*, @webex/kms-caroots@workspace:packages/@webex/kms-caroots":
+  version: 0.0.0-use.local
+  resolution: "@webex/kms-caroots@workspace:packages/@webex/kms-caroots"
+  bin:
+    webex-kms-caroots: ./cli.js
+  languageName: unknown
+  linkType: soft
+
 "@webex/ladon-ts@npm:^5.10.0":
   version: 5.10.0
   resolution: "@webex/ladon-ts@npm:5.10.0"
@@ -8595,6 +8603,7 @@ __metadata:
     "@webex/esbuild-config": "workspace:*"
     "@webex/eslint-config": "workspace:*"
     "@webex/jasmine-config": "workspace:*"
+    "@webex/kms-caroots": "workspace:*"
     "@webex/nyc-config": "workspace:*"
     "@webex/typescript-config": "workspace:*"
     babelify: ^10.0.0

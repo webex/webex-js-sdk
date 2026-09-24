@@ -1,7 +1,9 @@
 import glob from 'glob';
 import path from 'path';
 
-import { Jest, Karma, Mocha } from '../../utils';
+import {
+  Jest, Karma, KmsCaroots, Mocha,
+} from '../../utils';
 
 import PackageFile from '../package-file';
 
@@ -124,32 +126,49 @@ class Package {
 
     return Promise.all([unitTestFileCollector, integrationTestFileCollector])
       .then(async ([unitFiles, integrationFiles]) => {
-        if (config.runner === 'jest') {
-          const testFiles = [...unitFiles];
+        // Integration tests validate the KMS certificate chain, so supply the
+        // real CA roots by configuring webex-core before any test constructs a
+        // WebexCore instance. Prepended so it runs first under mocha and karma.
+        const needsCaroots = config.integration
+          && integrationFiles.length > 0
+          && (config.runner === 'mocha' || config.runner === 'karma');
+        const carootsBootstrap = needsCaroots
+          ? await KmsCaroots.prepareTestBootstrap(this.data.packageRoot)
+          : undefined;
+        const bootstrapFiles = carootsBootstrap ? [carootsBootstrap.file] : [];
 
-          if (testFiles.length > 0) {
-            await Jest.test({ files: testFiles });
+        try {
+          if (config.runner === 'jest') {
+            const testFiles = [...unitFiles];
+
+            if (testFiles.length > 0) {
+              await Jest.test({ files: testFiles });
+            }
           }
-        }
 
-        if (config.runner === 'mocha') {
-          const testFiles = [...unitFiles, ...integrationFiles];
+          if (config.runner === 'mocha') {
+            const testFiles = [...unitFiles, ...integrationFiles];
 
-          if (testFiles.length > 0) {
-            await Mocha.test({ files: testFiles });
+            if (testFiles.length > 0) {
+              await Mocha.test({ files: [...bootstrapFiles, ...testFiles] });
+            }
           }
-        }
 
-        if (config.runner === 'karma') {
-          const testFiles = [...unitFiles, ...integrationFiles];
+          if (config.runner === 'karma') {
+            const testFiles = [...unitFiles, ...integrationFiles];
 
-          if (testFiles.length > 0) {
-            await Karma.test({
-              browsers: config.karmaBrowsers,
-              debug: config.karmaDebug,
-              files: testFiles,
-              port: config.karmaPort,
-            });
+            if (testFiles.length > 0) {
+              await Karma.test({
+                browsers: config.karmaBrowsers,
+                debug: config.karmaDebug,
+                files: [...bootstrapFiles, ...testFiles],
+                port: config.karmaPort,
+              });
+            }
+          }
+        } finally {
+          if (carootsBootstrap) {
+            carootsBootstrap.cleanup();
           }
         }
 

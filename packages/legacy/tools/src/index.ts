@@ -7,7 +7,7 @@
 import { build, runTests } from './commands';
 import { Package, PackageFile } from './models';
 import {
-  Jest, Karma, Mocha, startServer,
+  Jest, Karma, KmsCaroots, Mocha, startServer,
   stopServer, findWorkspaceRoot, getServerPath,
 } from './utils';
 
@@ -25,6 +25,7 @@ export {
   runTests,
   Jest,
   Karma,
+  KmsCaroots,
   Mocha,
   Package,
   PackageFile,

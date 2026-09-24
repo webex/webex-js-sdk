@@ -36,11 +36,8 @@ describe.skip('plugin-messages', function () {
       [actor] = user;
       [actorEU] = usersEU;
 
-      // These tests exercise messaging, not KMS certificate validation.
-      const config = {encryption: {shouldValidateKMSCertificate: false}};
-
-      webex = new WebexCore({ config, credentials: actor.token });
-      webexEU = new WebexCore({ config, credentials: actorEU.token });
+      webex = new WebexCore({ credentials: actor.token });
+      webexEU = new WebexCore({ credentials: actorEU.token });
 
       webex.people.get('me').then((person) => {
         actor = person;

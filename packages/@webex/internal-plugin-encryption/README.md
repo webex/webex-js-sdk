@@ -56,32 +56,35 @@ Trusted Root Store, using the **Union** bundle:
 
 ### Generating the CA roots
 
-This repo ships a tool that downloads the Cisco Union bundle, verifies its
-signature against the pinned Cisco trust anchors, and decodes it into the
-`caroots` format (an array of raw base64-encoded certificates):
+Use the [`@webex/kms-caroots`](https://github.com/webex/webex-js-sdk/tree/master/packages/%40webex/kms-caroots)
+package, which downloads the Cisco Union bundle, verifies its signature against
+the pinned Cisco trust anchors, and decodes it into the `caroots` format (an
+array of raw base64-encoded certificates). It requires the `openssl` binary on
+`PATH`.
 
 ```bash
-# Write ./.kms-caroots.json
-yarn caroots:generate
+# Print the JSON array to stdout
+npx webex-kms-caroots
 
-# Or print the JSON array to stdout
-node tooling/generate-kms-caroots.js --stdout
+# Or write it to a file
+npx webex-kms-caroots --out ./caroots.json
 ```
 
-It requires the `openssl` binary on `PATH`. The output is a JSON array that you
-pass to `config.encryption.caroots` when constructing the SDK. The SDK itself
-does no file or network I/O to obtain roots — supplying them is a build/config
-concern for the consuming application (which is important since a prebuilt
+```js
+const {generateKmsCaroots} = require('@webex/kms-caroots');
+
+const caroots = await generateKmsCaroots();
+const webex = new WebexCore({config: {encryption: {caroots}}});
+```
+
+The SDK itself does no file or network I/O to obtain roots — supplying them is a
+build/config concern for the consuming application (important since a prebuilt
 library cannot read files in the browser).
 
-For this repo's own tests, the `tooling/with-kms-caroots.sh` wrapper generates
-the roots into a test-only fixture that the encryption integration/browser tests
-bundle, then restores the placeholder afterwards. This is how CI runs those
-tests against the real KMS with validation enabled:
-
-```bash
-tooling/with-kms-caroots.sh yarn workspace @webex/internal-plugin-encryption test:integration
-```
+The SDK's own integration/browser tests generate these roots automatically: the
+test runner (`@webex/legacy-tools`) calls `@webex/kms-caroots` and configures
+webex-core before the tests run, so the KMS certificate is validated against the
+real trust store.
 
 ### Configuring manually
 
