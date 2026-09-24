@@ -38,14 +38,10 @@ class Karma {
     config.proxies['/upload'] = `http://localhost:${config.port - 1}/upload`;
 
     return KarmaRunner.config.parseConfig(null, config, { promiseConfig: true, throwErrors: true })
-      .then((parsedConfig: any) => new Promise((resolve, reject) => {
-        const server = new KarmaRunner.Server(parsedConfig, (code: number) => {
-          if (code !== 0) {
-            reject(new Error(`Karma exited with code ${code}`));
-
-            return;
-          }
-
+      .then((parsedConfig: any) => new Promise((resolve) => {
+        // Resolve on run completion (not after start) so callers can clean up
+        // generated files only once Karma has finished browserifying/running.
+        const server = new KarmaRunner.Server(parsedConfig, () => {
           resolve(undefined);
         });
 
