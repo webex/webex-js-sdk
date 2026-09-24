@@ -386,12 +386,18 @@ export async function transmitDtmfOnWebex(
   logWxAppTelephonyAction({action: 'dtmf', phase: 'success', interactionId});
 }
 
+export type WxAppAcceptRejectOptions = {
+  lineOwnerId?: string;
+  acceptReason?: WxAppAcceptReason;
+};
+
 export async function runWxAppAccept(
   deps: WxAppVoiceDependencies,
   lifecycle: WxAppVoiceLifecycle,
-  options?: {lineOwnerId?: string}
+  options?: WxAppAcceptRejectOptions
 ): Promise<void> {
   const taskId = getInteractionId(deps);
+  const acceptReason = options?.acceptReason ?? 'wxApp_offer_ready';
 
   deps.metricsManager.timeEvent([
     METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_SUCCESS,
@@ -407,7 +413,7 @@ export async function runWxAppAccept(
 
     deps.metricsManager.trackEvent(
       METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_SUCCESS,
-      {taskId, acceptReason: 'wxApp_offer_ready', ...getWxAppTelephonyMetricContext(deps)},
+      {taskId, acceptReason, ...getWxAppTelephonyMetricContext(deps)},
       ['operational', 'behavioral']
     );
   } catch (error) {
@@ -415,7 +421,7 @@ export async function runWxAppAccept(
     logTelephonyFailure('accept', deps, error);
     deps.metricsManager.trackEvent(
       METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_FAILED,
-      getWxAppTelephonyMetricFailurePayload(deps, error),
+      {acceptReason, ...getWxAppTelephonyMetricFailurePayload(deps, error)},
       ['operational', 'behavioral']
     );
     lifecycle.mapWxAppVoiceError(error, METHODS.ACCEPT);
@@ -427,9 +433,10 @@ export async function runWxAppAccept(
 export async function runWxAppReject(
   deps: WxAppVoiceDependencies,
   lifecycle: WxAppVoiceLifecycle,
-  options?: {lineOwnerId?: string}
+  options?: WxAppAcceptRejectOptions
 ): Promise<void> {
   const taskId = getInteractionId(deps);
+  const acceptReason = options?.acceptReason ?? 'wxApp_offer_ready';
 
   deps.metricsManager.timeEvent([
     METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
@@ -441,14 +448,14 @@ export async function runWxAppReject(
 
     deps.metricsManager.trackEvent(
       METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_SUCCESS,
-      {taskId, acceptReason: 'wxApp_offer_ready', ...getWxAppTelephonyMetricContext(deps)},
+      {taskId, acceptReason, ...getWxAppTelephonyMetricContext(deps)},
       ['operational', 'behavioral']
     );
   } catch (error) {
     logTelephonyFailure('decline', deps, error);
     deps.metricsManager.trackEvent(
       METRIC_EVENT_NAMES.WXAPP_TASK_DECLINE_FAILED,
-      getWxAppTelephonyMetricFailurePayload(deps, error),
+      {acceptReason, ...getWxAppTelephonyMetricFailurePayload(deps, error)},
       ['operational', 'behavioral']
     );
     lifecycle.mapWxAppVoiceError(error, METHODS.REJECT);

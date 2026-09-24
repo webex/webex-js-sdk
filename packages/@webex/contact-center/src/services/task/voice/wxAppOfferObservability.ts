@@ -41,8 +41,13 @@ export class WxAppOfferObservability {
   private lastLoggedWxAppAcceptReason?: WxAppAcceptReason;
   private lastLoggedWxAppParticipantMismatch = false;
   private wxAppParticipantMismatchGraceTimer?: ReturnType<typeof setTimeout>;
+  private disposed = false;
 
   public handleUiControlsUpdate(ctx: WxAppOfferObservabilityContext): void {
+    if (this.disposed) {
+      return;
+    }
+
     if (!ctx.getEnableWxBetterTogether()) {
       this.cancelGraceTimer();
 
@@ -103,6 +108,7 @@ export class WxAppOfferObservability {
   }
 
   public dispose(): void {
+    this.disposed = true;
     this.cancelGraceTimer();
   }
 
@@ -115,6 +121,7 @@ export class WxAppOfferObservability {
 
   private scheduleGraceTimer(ctx: WxAppOfferObservabilityContext): void {
     if (
+      this.disposed ||
       this.lastLoggedWxAppParticipantMismatch ||
       this.wxAppParticipantMismatchGraceTimer !== undefined
     ) {
@@ -128,7 +135,11 @@ export class WxAppOfferObservability {
   }
 
   private emitParticipantMismatchIfStillNeeded(ctx: WxAppOfferObservabilityContext): void {
-    if (!ctx.getEnableWxBetterTogether() || this.lastLoggedWxAppParticipantMismatch) {
+    if (
+      this.disposed ||
+      !ctx.getEnableWxBetterTogether() ||
+      this.lastLoggedWxAppParticipantMismatch
+    ) {
       return;
     }
 

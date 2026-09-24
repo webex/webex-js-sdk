@@ -49,7 +49,11 @@ import {
   WxAppVoiceDependencies,
   WxAppVoiceLifecycle,
 } from './wxAppVoiceMethods';
-import {logWxAppMercuryMuteSync, callIdSuffix} from '../../wxAppDiagnosticLogging';
+import {
+  logWxAppMercuryMuteSync,
+  callIdSuffix,
+  type WxAppAcceptReason,
+} from '../../wxAppDiagnosticLogging';
 import {WxAppOfferObservability, WxAppOfferObservabilityContext} from './wxAppOfferObservability';
 
 const hasNonemptyPendingWrapUp = (taskData?: TaskData): boolean =>
@@ -420,12 +424,26 @@ export default class Voice extends Task implements IVoice {
     return this.stateMachineService?.getSnapshot?.();
   }
 
+  private getWxAppAcceptReasonForMetrics(): WxAppAcceptReason {
+    if (this.wxAppAcceptInFlight) {
+      return 'wxApp_accept_in_flight';
+    }
+
+    if (this.wxAppAnswerPending) {
+      return 'wxApp_answer_pending';
+    }
+
+    return 'wxApp_offer_ready';
+  }
+
   /**
    * Accepts the task. Routes to wxApp telephony answer when `enableWxBetterTogether` and wxApp offer.
    */
   public async accept(): Promise<TaskResponse> {
     if (this.enableWxBetterTogether && this.isWebexAppCallingOffer()) {
-      await runWxAppAccept(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle());
+      await runWxAppAccept(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
+        acceptReason: this.getWxAppAcceptReasonForMetrics(),
+      });
 
       return Promise.resolve();
     }
@@ -438,7 +456,9 @@ export default class Voice extends Task implements IVoice {
    */
   public async decline(): Promise<TaskResponse> {
     if (this.enableWxBetterTogether && this.isWebexAppInboundCallingOffer()) {
-      await runWxAppReject(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle());
+      await runWxAppReject(this.getWxAppVoiceDependencies(), this.createWxAppLifecycle(), {
+        acceptReason: this.getWxAppAcceptReasonForMetrics(),
+      });
 
       return Promise.resolve();
     }

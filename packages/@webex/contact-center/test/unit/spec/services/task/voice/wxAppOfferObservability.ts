@@ -269,6 +269,25 @@ describe('WxAppOfferObservability', () => {
       expect(warnSpy).not.toHaveBeenCalled();
     });
 
+    it('does not reschedule diagnostics after dispose', () => {
+      const logSpy = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppOfferDecision');
+      const warnSpy = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppOfferParticipantMismatch');
+      const observability = new WxAppOfferObservability();
+      const ctx = makeContext();
+
+      observability.dispose();
+      observability.handleUiControlsUpdate(ctx);
+      jest.advanceTimersByTime(WXAPP_PARTICIPANT_MISMATCH_GRACE_MS);
+
+      expect(logSpy).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(ctx.getMetricsManager().trackEvent).not.toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING,
+        expect.anything(),
+        expect.anything()
+      );
+    });
+
     it('does not warn or emit metric for outdial offers with missing wxApp fields', () => {
       const warnSpy = jest.spyOn(wxAppDiagnosticLogging, 'logWxAppOfferParticipantMismatch');
       const observability = new WxAppOfferObservability();
