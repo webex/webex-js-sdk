@@ -16,6 +16,9 @@
   "bin": {
     "webex-kms-caroots": "./cli.js"
   },
+  "devDependencies": {
+    "eslint": "^8.24.0"
+  },
   "files": [
     "index.js",
     "index.d.ts",

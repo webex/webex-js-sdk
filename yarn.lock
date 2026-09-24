@@ -8557,6 +8557,8 @@ __metadata:
 "@webex/kms-caroots@workspace:*, @webex/kms-caroots@workspace:packages/@webex/kms-caroots":
   version: 0.0.0-use.local
   resolution: "@webex/kms-caroots@workspace:packages/@webex/kms-caroots"
+  dependencies:
+    eslint: ^8.24.0
   bin:
     webex-kms-caroots: ./cli.js
   languageName: unknown
