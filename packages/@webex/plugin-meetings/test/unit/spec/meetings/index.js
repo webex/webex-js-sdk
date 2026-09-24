@@ -1708,6 +1708,7 @@ describe('plugin-meetings', () => {
                 locusInfo: {
                   info: {globalMeetingId: 'gmid-other'},
                   sync: sinon.stub().resolves(),
+                  cleanUp: sinon.stub(),
                 },
                 sendCallAnalyzerMetrics: sinon.stub(),
               },
@@ -3462,6 +3463,16 @@ describe('plugin-meetings', () => {
             assert.equal(deletedMeetingInfo.correlationId, meetingIds.correlationId);
             assert.equal(deletedMeetingInfo.roles, meetingIds.roles);
             assert.equal(deletedMeetingInfo.callStateForMetrics, meetingIds.callStateForMetrics);
+          });
+
+          it('cleans up locusInfo (tearing down hash tree parsers) when destroying the meeting', async () => {
+            const meeting = await webex.meetings.createMeeting('test', 'test');
+            const locusInfoCleanUpSpy = sinon.spy(meeting.locusInfo, 'cleanUp');
+
+            webex.meetings.destroy(meeting, test1);
+
+            // hash tree parser teardown is deferred from MeetingUtil.cleanUp to Meetings#destroy
+            assert.calledOnce(locusInfoCleanUpSpy);
           });
         });
 

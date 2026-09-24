@@ -11,8 +11,8 @@
 | Doc kind | Module spec |
 | Coverage score | Partial (manifest-authoritative); 15/15 required document fields present |
 | Generated from | `module-spec` @ SDLC template library `0.2.1` |
-| generated_by / approved_by / updated_at | Codex generator / developer-approved follow-up review remediation / 2026-07-21 |
-| Validation status | Follow-up validation passed (independent Claude fallback, 2026-07-21); coverage remains Partial |
+| generated_by / approved_by / updated_at | Codex generator / developer-approved Agent Wellness Break delta / 2026-09-02 |
+| Validation status | Agent Wellness Break v0.4 delta independently validated by claude-code on 2026-09-07; coverage remains Partial until the remaining baseline promotion criteria are satisfied |
 
 ## Evidence Rules
 Every requirement cites stable source and test file paths. Code/tests are the behavioral referee; routed source text supplies explicit intent and rationale. Missing or contradictory evidence blocks promotion.
@@ -100,6 +100,8 @@ services/config/
 | Organization masking | `OrgSettings.maskSensitiveData` | `src/services/config/types.ts`, `src/services/config/Util.ts` |
 | Auxiliary-code list URL | includes `desktopProfileFilter=true` | `src/services/config/constants.ts` |
 | Outdial ANI entries | public wrapper through ContactCenter | `src/services/config/index.ts`, `src/cc.ts` |
+| `Profile.isWellnessBreakEnabled` | required effective flag derived from backend AI feature configuration and organization license quantity | `src/services/config/Util.ts`, `src/services/config/types.ts` |
+| `getWellbeingBreakIdleCode(orgId)` | paginated exact lookup for the active system idle code named `WellbeingBreak`, exposed and registration-cached by ContactCenter | `src/services/config/index.ts`, `src/services/config/constants.ts`, `src/cc.ts` |
 
 The service has no `TeamList.channelMap` contract. Exact package exports are indexed in root `CONTRACTS.md`.
 
@@ -116,6 +118,8 @@ The service has no `TeamList.channelMap` contract. Exact package exports are ind
 | CONFIG-R-003 | Paginate teams and auxiliary codes until completion and include `desktopProfileFilter=true` for auxiliary-code requests. | A partial or unfiltered set yields invalid profile/team/auxiliary choices. | `src/services/config/constants.ts` | `test/unit/spec/services/config/index.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CONFIG-R-004 | Expose current response/field names: `MultimediaProfileResponse`, `OrgSettings.maskSensitiveData`, and real TeamList fields only. | Type-name drift causes invalid consumer code and incorrect privacy behavior. | `src/services/config/types.ts` | `test/unit/spec/services/config/index.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CONFIG-R-005 | Reject the entire profile aggregation when any required dependent request fails. | Consumers must never receive an internally inconsistent partial Profile. | `src/services/config/index.ts` | `test/unit/spec/services/config/index.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| CONFIG-R-006 | Always populate `Profile.isWellnessBreakEnabled`; set it true only when `agentWellbeing.enable` is true, `wellnessBreakReminders` is `ENABLED`, and `OrgSettings.aiAssistantQuantity` is greater than zero. Missing or null inputs fail closed. | Hosts need one license-and-server-rollout-aware signal rather than reconstructing partial configuration. | `src/services/config/Util.ts`, `src/services/config/types.ts` | `test/unit/spec/services/config/Util.ts` | The supported SDK contracts expose no separate rollout response field; backend delivery of enabled `agentWellbeing` configuration is the rollout decision. | PRESENT |
+| CONFIG-R-007 | Retrieve the wellness idle code from `/v2/auxiliary-code` using `workType=IDLE_CODE`, `customFilter=isSystemCode==true`, and `desktopProfileFilter=false`; follow pagination and accept only the exact active system code name `WellbeingBreak`. | The dedicated state must be independent of desktop-profile filtering and must never fall back to a similarly named or non-system code. | `src/services/config/index.ts`, `src/services/config/constants.ts` | `test/unit/spec/services/config/index.ts` | None. | PRESENT |
 
 ## Design Overview
 Config separates its stable consumption boundary from collaborators so ownership and failure behavior stay explicit. Profile creation is all-or-nothing across dependent API calls so consumers never receive internally inconsistent partial configuration.
@@ -162,6 +166,7 @@ The AgentProfile is defined as the [`Profile`](../types.ts) type. This is not an
 | `accessQueue` | `'ALL' \| 'SPECIFIC' \| 'NONE'` | Collaboration tab queue access scope from Desktop Profile |
 | `accessEntryPoint` | `'ALL' \| 'SPECIFIC' \| 'NONE'` | Collaboration tab entry-point access scope from Desktop Profile |
 | `accessBuddyTeam` | `'ALL' \| 'SPECIFIC' \| 'NONE'` | Collaboration tab buddy-team access scope from Desktop Profile |
+| `isWellnessBreakEnabled` | boolean | Effective wellness gate derived from backend enablement/reminder configuration and positive AI Assistant license quantity |
 
 `parseAgentConfigs()` maps the three `access*` fields from `DesktopProfileResponse` onto the public `Profile` returned by `cc.register()`.
 
@@ -264,7 +269,7 @@ The service fetches data from multiple APIs with these response structures:
 | `getTenantData` | `TenantData` | `outdialEnabled`, `forceDefaultDn`, `privacyShieldVisible`, `timeoutDesktopInactivityEnabled` | Tenant-level feature flags |
 | `getOrgInfo` | `OrgInfo` | `tenantId`, `timezone` | Organization metadata |
 | `getAllAuxCodes` | `AuxCode[]` | `id`, `name`, `workTypeCode`, `active`, `isSystemCode`, `defaultCode` | Auxiliary codes for idle/wrap-up states |
-| `getOrganizationSetting` | `OrgSettings` | `webRtcEnabled`, `maskSensitiveData`, `campaignManagerEnabled` | Organization-level feature flags |
+| `getOrganizationSetting` | `OrgSettings` | `webRtcEnabled`, `maskSensitiveData`, `campaignManagerEnabled`, `aiAssistantQuantity` | Organization-level feature flags and AI Assistant license quantity |
 | `getDialPlanData` | `DialPlanEntity[]` | `id`, `name`, `regularExpression`, `prefix`, `strippedChars` | Dial plan rules for outbound calling |
 | `getURLMapping` | `URLMapping[]` | `name`, `url` | External service URL mappings |
 | `getSiteInfo` | `SiteInfo` | Site-specific configuration | Site details |
@@ -449,11 +454,14 @@ classDiagram
 - **UC-2 Paginated teams/aux codes:** follow backend page metadata to completion; auxiliary-code requests include `desktopProfileFilter=true`. Evidence: `src/services/config/index.ts`, `test/unit/spec/services/config/index.ts`.
 - **UC-3 Dial plan and URL mapping:** request dial-plan data only when the desktop profile enables it while always including URL mapping in profile aggregation. Evidence: `src/services/config/index.ts`, `test/unit/spec/services/config/index.ts`.
 - **UC-4 Outdial ANI retrieval:** return the organization-scoped ANI list through authenticated WebexRequest and propagate failures without a partial substitute. Evidence: `src/services/config/index.ts`, `test/unit/spec/services/config/index.ts`.
+- **UC-5 Wellness configuration:** produce one fail-closed effective profile flag and retrieve the exact system wellness idle code across pages. Evidence: `src/services/config/Util.ts`, `src/services/config/index.ts`, `test/unit/spec/services/config/Util.ts`, `test/unit/spec/services/config/index.ts`.
 
 ## Business Rules & Invariants
 - `getAgentConfig` rejects when any required dependent request rejects; it never returns a partial Profile.
 - `Profile.aiFeature` is derived from the AI-feature response, and sensitive-data masking uses the real `maskSensitiveData` field.
 - Team data has no `channelMap` contract; multimedia profile responses use `MultimediaProfileResponse`.
+- `isWellnessBreakEnabled` is always boolean and defaults false when any gate is absent, disabled, or unlicensed.
+- The system wellness code lookup is separate from profile auxiliary-code aggregation and uses `desktopProfileFilter=false`.
 
 ## Concurrency & Reactive Flow
 - The initial user lookup supplies identifiers for a ten-promise `Promise.all`; pagination loops await pages in order and stop from returned metadata.
@@ -465,6 +473,7 @@ All Config operations are authenticated REST calls through WebexRequest. Importa
 |---|---|
 | AI feature flags | `organization/{orgId}/v2/ai-feature?page=0&pageSize=100` |
 | Auxiliary codes | pagination/filter/attributes plus `desktopProfileFilter=true` |
+| Wellness system idle code | `organization/{orgId}/v2/auxiliary-code?page={page}&pageSize={pageSize}&workType=IDLE_CODE&customFilter=isSystemCode==true&desktopProfileFilter=false` |
 | Multimedia profile | organization-scoped multimedia-profile resource |
 | Dial plan | organization-scoped dial-plan resource when desktop profile enables it |
 
@@ -653,6 +662,8 @@ public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentRespon
 | `CONFIG-R-003` | `test/unit/spec/services/config/index.ts` | None. |
 | `CONFIG-R-004` | `test/unit/spec/services/config/index.ts` | None. |
 | `CONFIG-R-005` | `test/unit/spec/services/config/index.ts` | Keep an explicit rejection assertion for each required dependency category. |
+| `CONFIG-R-006` | `test/unit/spec/services/config/Util.ts` | None. |
+| `CONFIG-R-007` | `test/unit/spec/services/config/index.ts` | None. |
 
 ## Traceability
 - Repo architecture: `../../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../../ai-docs/SPEC_INDEX.md`

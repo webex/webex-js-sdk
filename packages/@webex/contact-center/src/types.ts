@@ -8,6 +8,7 @@ import * as Agent from './services/agent/types';
 import * as Contact from './services/task/types';
 import {
   AIFeatureFlags,
+  Entity,
   Profile,
   CreateUserPreferenceRequest,
   UpdateUserPreferenceRequest,
@@ -419,6 +420,9 @@ export interface IContactCenter {
    * cc.register().then(profile => { ... });
    */
   register(): Promise<Profile>;
+
+  /** Returns the system-managed WellbeingBreak idle code for the registered session. */
+  getWellbeingBreakIdleCode(): Promise<Entity>;
 }
 
 /**
@@ -948,6 +952,63 @@ export type RealTimeAssistanceUserActionParams = {
 };
 
 /**
+ * Wellness notification actions delivered by the Contact Center notification service.
+ * @public
+ */
+export const WELLNESS_BREAK_NOTIFICATION_ACTIONS = {
+  PROVIDE_WELLNESS_BREAK: 'PROVIDE_WELLNESS_BREAK',
+  SUGGEST_WELLNESS_BREAK: 'SUGGEST_WELLNESS_BREAK',
+  WELLNESS_BREAK_NOT_ALLOWED: 'WELLNESS_BREAK_NOT_ALLOWED',
+} as const;
+
+/** Union of supported wellness notification actions. @public */
+export type WellnessBreakNotificationAction = Enum<typeof WELLNESS_BREAK_NOTIFICATION_ACTIONS>;
+
+/**
+ * Agent actions accepted by the wellness action API.
+ * @public
+ */
+export const WELLNESS_BREAK_USER_ACTIONS = {
+  REQUESTED: 'REQUESTED',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  NO_RESPONSE: 'NO_RESPONSE',
+} as const;
+
+/** Union of supported wellness action API values. @public */
+export type WellnessBreakUserAction = Enum<typeof WELLNESS_BREAK_USER_ACTIONS>;
+
+/**
+ * Validated, agent-scoped wellness notification emitted by Contact Center.
+ * @public
+ */
+export interface WellnessBreakEvent {
+  /** Agent identifier */
+  agentId: string;
+  /** Organization identifier */
+  orgId: string;
+  /** Session identifier supplied by the notification; it may differ from the consumer's active session */
+  agentSessionId: string;
+  /** Backend wellness action */
+  actionEvent: WellnessBreakNotificationAction;
+  /** Optional untrusted plain-text message supplied by the backend */
+  actionText?: string;
+  /** Optional normalized interaction diagnostic */
+  interactionId?: string;
+  /** Notification diagnostic only; never an action-request correlation identifier */
+  trackingId?: string;
+}
+
+/**
+ * Parameters for responding to a backend-provided wellness offer.
+ * @public
+ */
+export interface RespondToWellnessBreakParams {
+  /** Agent response; REQUESTED is available only through requestWellnessBreak */
+  action: Exclude<WellnessBreakUserAction, typeof WELLNESS_BREAK_USER_ACTIONS.REQUESTED>;
+}
+
+/**
  * Supported AI Assistant event categories.
  * @public
  * @example
@@ -996,6 +1057,8 @@ export const AIAssistantEventName = {
   SUGGESTED_RESPONSES_DIGITAL: 'SUGGESTED_RESPONSES_DIGITAL',
   /** User action on a suggested response adaptive card */
   SUGGESTED_RESPONSES_USER_ACTION: 'SUGGESTED_RESPONSES_USER_ACTION',
+  /** Agent Wellness Break request/response action */
+  WELLNESS_BREAK_ACTION: 'WellnessBreakAction',
 } as const;
 
 /**

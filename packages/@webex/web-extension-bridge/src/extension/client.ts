@@ -4,7 +4,7 @@ import type {JsonValue} from '../core/json';
 import {readOwn} from '../core/json';
 import {ListenerSet} from '../core/listeners';
 import {createLogger} from '../core/logger';
-import type {LogSink} from '../core/logger';
+import type {LogLevelSetting, LogSink} from '../core/logger';
 import {assertPayload, assertTopic} from '../core/serialize';
 import {ClientCommand, asClientPushEvent} from './messages';
 import type {ClientCommandMessage} from './messages';
@@ -23,6 +23,9 @@ import type {
 
 export interface ExtensionClientOptions {
   channel?: string;
+  /** As {@link WebBridgeOptions.logLevel}. */
+  logLevel?: LogLevelSetting;
+  /** Alias for `logLevel: 'debug'`. Ignored when `logLevel` is given. */
   debug?: boolean;
   logSink?: LogSink;
 }
@@ -61,6 +64,7 @@ export function createExtensionClientWith(
 
   const logger = createLogger({
     debug: options.debug === true,
+    ...(options.logLevel === undefined ? {} : {logLevel: options.logLevel}),
     prefix: '[web-extension-bridge:client]',
     ...(options.logSink ? {sink: options.logSink} : {}),
   });
@@ -71,6 +75,8 @@ export function createExtensionClientWith(
         reason: error instanceof Error ? error.name : typeof error,
       }),
   });
+
+  logger.info('extension client created', {channel});
 
   let attached = false;
 
@@ -86,6 +92,7 @@ export function createExtensionClientWith(
       return;
     }
 
+    logger.debug('push received from worker', {channel, topic: event.topic});
     pushListeners.emit(event.topic, event.payload as JsonValue, event.meta as PushMeta);
   };
 
@@ -96,6 +103,7 @@ export function createExtensionClientWith(
 
     attached = true;
     chromeApi.runtime.onMessage.addListener(onRuntimeMessage);
+    logger.info('listening for worker broadcasts', {channel});
   };
 
   const send = async (command: ClientCommandMessage): Promise<unknown> => {
@@ -105,7 +113,16 @@ export function createExtensionClientWith(
       return readOwn(response, 'value');
     }
 
-    throw fromWireError(readOwn(response, 'error'), command.topic);
+    const error = fromWireError(readOwn(response, 'error'), command.topic);
+
+    logger.debug('worker command failed', {
+      channel,
+      kind: command.command,
+      ...(command.topic === undefined ? {} : {topic: command.topic}),
+      reason: error.code,
+    });
+
+    throw error;
   };
 
   const client: ExtensionBridge = {
