@@ -22,7 +22,7 @@ describe('KmsCaroots', () => {
 
     const result = await KmsCaroots.prepareTestBootstrap(packageRoot);
 
-    expect(result.file).toBe(path.join(packageRoot, '.kms-caroots.bootstrap.js'));
+    expect(result.file).toBe(path.join(packageRoot, 'kms-caroots.bootstrap.js'));
     expect(fs.readFileSync(result.file, 'utf8')).toContain(
       `config.encryption.caroots = ${JSON.stringify(caroots)};`,
     );
