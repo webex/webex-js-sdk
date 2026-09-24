@@ -41,7 +41,9 @@ class Karma {
       .then((parsedConfig: any) => new Promise((resolve, reject) => {
         const server = new KarmaRunner.Server(parsedConfig, (code: number) => {
           if (code !== 0) {
-            reject();
+            reject(new Error(`Karma exited with code ${code}`));
+
+            return;
           }
 
           resolve(undefined);
@@ -60,7 +62,12 @@ class Karma {
         }
 
         server.start();
-        resolve(server);
+
+        // In watch/debug mode the run never completes, so resolve immediately to
+        // avoid blocking; single-run resolves via the completion callback above.
+        if (debug) {
+          resolve(server);
+        }
       }));
   }
 

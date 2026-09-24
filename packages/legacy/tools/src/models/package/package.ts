@@ -167,7 +167,10 @@ class Package {
             }
           }
         } finally {
-          if (carootsBootstrap) {
+          // Karma.test resolves on run completion (single-run), so this runs
+          // after the run. In karma watch/debug mode it resolves early and the
+          // bootstrap must stay, so skip cleanup there (it is gitignored).
+          if (carootsBootstrap && !config.karmaDebug) {
             carootsBootstrap.cleanup();
           }
         }
