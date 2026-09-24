@@ -1767,8 +1767,6 @@ describe('webex.cc', () => {
         numberOfTimesViewed: 1,
         numberOfTimesEdited: 0,
         numberOfTimesCopied: 0,
-        actionTimeStamp: 11,
-        publishTimestamp: 12,
       };
 
       await expect(
@@ -1787,7 +1785,6 @@ describe('webex.cc', () => {
           conversationId,
           clientType: 'WxCC',
           action: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
-          actionTimeStamp: 11,
           summary: {initialContactReason: 'resolved'},
           feedback: 'thumbs_up',
           wrapUpCode: 'resolved',
@@ -1798,7 +1795,7 @@ describe('webex.cc', () => {
         },
         undefined,
         undefined,
-        12,
+        expect.any(Number),
         15000
       );
     });

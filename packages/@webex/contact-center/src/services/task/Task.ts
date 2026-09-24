@@ -87,8 +87,10 @@ export default abstract class Task extends EventEmitter implements ITask {
   };
 
   private pendingFeatureEnablement?: AISummaryFeatureEnablement;
-  private postCallSummaryResponseContext?: {conversationId: string; interactionId: string};
-  private midCallSummaryResponseContext?: {conversationId: string; interactionId: string};
+  private readonly summaryResponseContexts = new Map<
+    'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY',
+    {conversationId: string; interactionId: string}
+  >();
 
   constructor(
     contact: ReturnType<typeof routingContact>,
@@ -365,11 +367,7 @@ export default abstract class Task extends EventEmitter implements ITask {
         timeout: AI_SUMMARY_DURATION_MS,
       });
 
-      if (isPostCall) {
-        this.postCallSummaryResponseContext = {conversationId, interactionId};
-      } else {
-        this.midCallSummaryResponseContext = {conversationId, interactionId};
-      }
+      this.summaryResponseContexts.set(summaryType, {conversationId, interactionId});
 
       this.metricsManager.trackEvent(
         successMetric,
@@ -420,9 +418,7 @@ export default abstract class Task extends EventEmitter implements ITask {
     try {
       this.metricsManager.timeEvent([successMetric, failureMetric]);
       if (action) Object.assign(metricFields, {actionType: action});
-      const retainedContext = isPostCall
-        ? this.postCallSummaryResponseContext
-        : this.midCallSummaryResponseContext;
+      const retainedContext = this.summaryResponseContexts.get(summaryType);
       const context = retainedContext ?? {
         conversationId: this.data.interaction?.mainInteractionId || this.data.interactionId,
         interactionId: this.data.interactionId,
@@ -432,9 +428,7 @@ export default abstract class Task extends EventEmitter implements ITask {
         interactionId: context.interactionId,
       });
 
-      const fallbackTimestamp = Date.now();
-      const actionTimeStamp = response.actionTimeStamp ?? fallbackTimestamp;
-      const publishTimestamp = response.publishTimestamp ?? fallbackTimestamp;
+      const publishTimestamp = Date.now();
       let eventName: AIAssistantEventName;
       if (isPostCall) {
         eventName = AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE;
@@ -447,7 +441,6 @@ export default abstract class Task extends EventEmitter implements ITask {
         conversationId: context.conversationId,
         clientType: AI_ASSISTANT_CLIENT_TYPE,
         action: eventName,
-        actionTimeStamp,
         summary: response.summary,
         numberOfTimesViewed: response.numberOfTimesViewed,
         numberOfTimesEdited: response.numberOfTimesEdited,

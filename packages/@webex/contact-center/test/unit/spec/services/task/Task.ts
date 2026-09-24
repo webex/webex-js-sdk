@@ -994,7 +994,7 @@ const createMidCallSummaryPayload = () => ({
   sections: {reasonForTransferOrConsult: 'specialist'},
 });
 
-const createPostCallResponsePayloadWithoutTimestamps = (
+const createPostCallResponsePayload = (
   overrides: Partial<AISummaryResponse> = {}
 ): AISummaryResponse =>
   ({
@@ -1008,16 +1008,7 @@ const createPostCallResponsePayloadWithoutTimestamps = (
     ...overrides,
   } as AISummaryResponse);
 
-const createPostCallResponsePayload = (
-  overrides: Partial<AISummaryResponse> = {}
-): AISummaryResponse =>
-  createPostCallResponsePayloadWithoutTimestamps({
-    actionTimeStamp: 11,
-    publishTimestamp: 12,
-    ...overrides,
-  });
-
-const createMidCallResponsePayloadWithoutTimestamps = (
+const createMidCallResponsePayload = (
   overrides: Partial<AISummaryResponse> = {}
 ): AISummaryResponse =>
   ({
@@ -1030,15 +1021,6 @@ const createMidCallResponsePayloadWithoutTimestamps = (
     numberOfTimesCopied: 0,
     ...overrides,
   } as AISummaryResponse);
-
-const createMidCallResponsePayload = (
-  overrides: Partial<AISummaryResponse> = {}
-): AISummaryResponse =>
-  createMidCallResponsePayloadWithoutTimestamps({
-    actionTimeStamp: 21,
-    publishTimestamp: 22,
-    ...overrides,
-  });
 
 const summaryRequestCases: Array<{
   label: string;
@@ -1107,7 +1089,7 @@ describe('Task AI summary APIs', () => {
           requestOptions.interactionId,
           requestOptions.eventType,
           requestOptions.eventName,
-          {...requestOptions.eventMetaData, actionTimeStamp: publishTimestamp},
+          requestOptions.eventMetaData,
           undefined,
           undefined,
           publishTimestamp,
@@ -1206,7 +1188,7 @@ describe('Task AI summary APIs', () => {
           requestOptions.interactionId,
           requestOptions.eventType,
           requestOptions.eventName,
-          {...requestOptions.eventMetaData, actionTimeStamp: publishTimestamp},
+          requestOptions.eventMetaData,
           undefined,
           undefined,
           publishTimestamp,
@@ -1253,7 +1235,6 @@ describe('Task AI summary APIs', () => {
       expect.objectContaining({
         conversationId: 'conversation-1',
         clientType: 'WxCC',
-        actionTimeStamp: expect.any(Number),
       }),
       undefined,
       undefined,
@@ -1744,7 +1725,7 @@ describe('Task AI summary APIs', () => {
         requestOptions.interactionId,
         requestOptions.eventType,
         requestOptions.eventName,
-        {...requestOptions.eventMetaData, actionTimeStamp: Date.now()},
+        requestOptions.eventMetaData,
         undefined,
         undefined,
         Date.now(),
@@ -1837,7 +1818,7 @@ describe('Task AI summary APIs', () => {
             requestOptions.interactionId,
             requestOptions.eventType,
             requestOptions.eventName,
-            {...requestOptions.eventMetaData, actionTimeStamp: publishTimestamp},
+            requestOptions.eventMetaData,
             undefined,
             undefined,
             publishTimestamp,
@@ -1853,7 +1834,7 @@ describe('Task AI summary APIs', () => {
             requestOptions.interactionId,
             requestOptions.eventType,
             requestOptions.eventName,
-            {...requestOptions.eventMetaData, actionTimeStamp: publishTimestamp},
+            requestOptions.eventMetaData,
             undefined,
             undefined,
             publishTimestamp,
@@ -1930,8 +1911,7 @@ describe('Task AI summary APIs', () => {
       summary: {humanAuthoredSectionKeySentinel: 'human-authored-section-value-sentinel'},
       feedback: 'thumbs_up',
       wrapUpCode: 'resolved',
-      actionTimeStamp: 11,
-      publishTimestamp: 12,
+      publishTimestamp: expect.any(Number),
       numberOfTimesViewed: 1,
       numberOfTimesEdited: 0,
       numberOfTimesCopied: 0,
@@ -2022,6 +2002,54 @@ describe('Task AI summary APIs', () => {
     });
   });
 
+  it('retains independent response contexts when mid-call and post-call flows overlap', async () => {
+    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+    const {adapter} = createSummaryMocks(task);
+
+    await expect(task.requestMidCallSummary('CONSULT')).resolves.toBeDefined();
+
+    task.updateTaskData(
+      createAISummaryTaskData({
+        interactionId: 'post-call-interaction',
+        interaction: {mainInteractionId: 'post-call-conversation'} as any,
+      }),
+      true
+    );
+    task.setFeatureEnablement({
+      interactionId: 'post-call-interaction',
+      postCallEnabled: true,
+      midCallEnabled: true,
+    });
+
+    await expect(task.requestPostCallSummary()).resolves.toBeDefined();
+
+    task.updateTaskData(
+      createAISummaryTaskData({
+        interactionId: 'current-interaction',
+        interaction: {mainInteractionId: 'current-conversation'} as any,
+      }),
+      true
+    );
+
+    await expect(
+      task.sendMidCallSummaryResponse(createMidCallResponsePayload(), 'CONSULT')
+    ).resolves.toBeUndefined();
+    await expect(
+      task.sendPostCallSummaryResponse(createPostCallResponsePayload())
+    ).resolves.toBeUndefined();
+
+    expect(getSummaryEventPayload(adapter, 2)).toMatchObject({
+      interactionId: 'interaction-1',
+      conversationId: 'conversation-1',
+      eventName: AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE,
+    });
+    expect(getSummaryEventPayload(adapter, 3)).toMatchObject({
+      interactionId: 'post-call-interaction',
+      conversationId: 'post-call-conversation',
+      eventName: AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE,
+    });
+  });
+
   it('does not retain correlation when a post-call summary request fails', async () => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
     const {adapter} = createSummaryMocks(task);
@@ -2070,8 +2098,7 @@ describe('Task AI summary APIs', () => {
         summary: 'Caller reported a billing discrepancy.',
         feedback: 'thumbs_up',
         wrapUpCode: 'resolved',
-        actionTimeStamp: 11,
-        publishTimestamp: 12,
+        publishTimestamp: expect.any(Number),
         numberOfTimesViewed: 2,
         numberOfTimesEdited: 1,
         numberOfTimesCopied: 3,
@@ -2098,8 +2125,7 @@ describe('Task AI summary APIs', () => {
         summary: 'Caller reported a billing discrepancy.',
         feedback: 'none',
         agentName: 'Receiving Agent',
-        actionTimeStamp: 21,
-        publishTimestamp: 22,
+        publishTimestamp: expect.any(Number),
         numberOfTimesViewed: 2,
         numberOfTimesEdited: 1,
         numberOfTimesCopied: 3,
@@ -2119,7 +2145,7 @@ describe('Task AI summary APIs', () => {
     {
       label: 'post-call',
       invoke: (task: DummyTask) =>
-        task.sendPostCallSummaryResponse(createPostCallResponsePayloadWithoutTimestamps()),
+        task.sendPostCallSummaryResponse(createPostCallResponsePayload()),
       expected: {
         agentId: 'agent-1',
         interactionId: 'interaction-1',
@@ -2137,7 +2163,7 @@ describe('Task AI summary APIs', () => {
     {
       label: 'mid-call',
       invoke: (task: DummyTask) =>
-        task.sendMidCallSummaryResponse(createMidCallResponsePayloadWithoutTimestamps(), 'CONSULT'),
+        task.sendMidCallSummaryResponse(createMidCallResponsePayload(), 'CONSULT'),
       expected: {
         agentId: 'agent-1',
         interactionId: 'interaction-1',
@@ -2152,7 +2178,7 @@ describe('Task AI summary APIs', () => {
         state: 'DEFAULT',
       },
     },
-  ])('adds timestamps when $label response payload omits them', async ({invoke, expected}) => {
+  ])('generates the $label transport timestamp inside the SDK', async ({invoke, expected}) => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
     const {adapter} = createSummaryMocks(task);
 
@@ -2162,10 +2188,9 @@ describe('Task AI summary APIs', () => {
 
     expect(getSummaryEventPayload(adapter)).toMatchObject({
       ...expected,
-      actionTimeStamp: expect.any(Number),
       publishTimestamp: expect.any(Number),
     });
-    expect(Object.prototype.hasOwnProperty.call(transportPayload, 'actionTimeStamp')).toBe(true);
+    expect(Object.prototype.hasOwnProperty.call(transportPayload, 'actionTimeStamp')).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(transportPayload, 'publishTimestamp')).toBe(true);
   });
 
@@ -2183,8 +2208,6 @@ describe('Task AI summary APIs', () => {
           numberOfTimesViewed: 0,
           numberOfTimesEdited: 0,
           numberOfTimesCopied: 0,
-          actionTimeStamp: 31,
-          publishTimestamp: 32,
         })
       )
     ).resolves.toBeUndefined();
@@ -2197,8 +2220,7 @@ describe('Task AI summary APIs', () => {
       summary: '',
       feedback: 'none',
       wrapUpCode: 'resolved',
-      actionTimeStamp: 31,
-      publishTimestamp: 32,
+      publishTimestamp: expect.any(Number),
       numberOfTimesViewed: 0,
       numberOfTimesEdited: 0,
       numberOfTimesCopied: 0,
@@ -2231,8 +2253,7 @@ describe('Task AI summary APIs', () => {
       conversationId: 'conversation-1',
       agentName: 'Receiving Agent',
       numberOfTimesViewed: 0,
-      actionTimeStamp: 21,
-      publishTimestamp: 22,
+      publishTimestamp: expect.any(Number),
     });
     expect(consultPayload).not.toHaveProperty('summaryReceived');
     expect(consultPayload).not.toHaveProperty('wrapUpCode');

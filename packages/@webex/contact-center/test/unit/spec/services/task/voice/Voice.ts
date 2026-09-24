@@ -658,7 +658,7 @@ describe('Voice Task', () => {
             options.interactionId,
             options.eventType,
             options.eventName,
-            {...options.eventMetaData, actionTimeStamp: Date.now()},
+            options.eventMetaData,
             undefined,
             undefined,
             Date.now(),
@@ -825,7 +825,6 @@ describe('Voice Task', () => {
         expect.objectContaining({
           conversationId: 'int1',
           clientType: 'WxCC',
-          actionTimeStamp: expect.any(Number),
         }),
         undefined,
         undefined,

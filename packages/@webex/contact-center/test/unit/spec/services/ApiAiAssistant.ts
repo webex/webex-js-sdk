@@ -120,6 +120,14 @@ describe('ApiAIAssistant', () => {
     );
     await expect(request).resolves.toEqual({summary: 'ready'});
     expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    const requestBody = (mockWebex.request as jest.Mock).mock.calls[0][0].body;
+
+    expect(requestBody.publishTimestamp).toEqual(expect.any(Number));
+    expect(requestBody.eventDetails.data).toMatchObject({
+      conversationId: 'conversation-1',
+      interactionId: 'interaction-1',
+      actionTimeStamp: expect.any(String),
+    });
   });
 
   it('rejects an RTD request when its timeout expires', async () => {
@@ -171,7 +179,7 @@ describe('ApiAIAssistant', () => {
       'interaction-1',
       'CUSTOM_EVENT',
       'GET_TRANSCRIPTS',
-      {action: 'START'}
+      {action: 'START', actionTimeStamp: 'caller-supplied'}
     );
 
     expect(mockWebex.request).toHaveBeenCalledTimes(1);
@@ -186,6 +194,8 @@ describe('ApiAIAssistant', () => {
     expect(requestArgs.body.eventName).toBe('GET_TRANSCRIPTS');
     expect(requestArgs.body.eventDetails.data.interactionId).toBe('interaction-1');
     expect(requestArgs.body.eventDetails.data.action).toBe('START');
+    expect(requestArgs.body.eventDetails.data.actionTimeStamp).toEqual(expect.any(String));
+    expect(requestArgs.body.eventDetails.data.actionTimeStamp).not.toBe('caller-supplied');
     expect(result).toEqual({ok: true});
   });
 

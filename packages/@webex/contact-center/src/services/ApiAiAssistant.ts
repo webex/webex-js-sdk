@@ -280,10 +280,6 @@ export class ApiAIAssistant {
     }, options.timeoutMs);
     this.pendingRtdRequests.set(key, request as PendingRtdRequest<unknown>);
     const publishTimestamp = options.publishTimestamp ?? Date.now();
-    const eventMetaData = {
-      ...options.eventMetaData,
-      actionTimeStamp: options.eventMetaData?.actionTimeStamp ?? publishTimestamp,
-    };
     const acknowledgement = Promise.resolve()
       .then(() =>
         this.sendEvent(
@@ -291,7 +287,7 @@ export class ApiAIAssistant {
           options.interactionId,
           options.eventType,
           options.eventName,
-          eventMetaData,
+          options.eventMetaData,
           undefined,
           undefined,
           publishTimestamp,
@@ -365,13 +361,12 @@ export class ApiAIAssistant {
     try {
       const baseUrl = this.getBaseUrl();
       const orgId = this.webex.credentials.getOrgId();
-      const {actionTimeStamp, ...eventData} = eventMetaData ?? {};
       const data = {
-        ...eventData,
+        ...eventMetaData,
         interactionId,
-        actionTimeStamp: actionTimeStamp ?? String(Date.now()),
-        ...(languageCode !== undefined ? {languageCode} : {}),
-        ...(trackingId !== undefined ? {trackingId} : {}),
+        actionTimeStamp: String(Date.now()),
+        languageCode,
+        trackingId,
       };
       const response = (await this.webex.request({
         uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
