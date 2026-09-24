@@ -1,5 +1,3 @@
-import assert from 'assert';
-
 import uuid from 'uuid';
 import btoa from 'btoa';
 import _ from 'lodash';
@@ -280,6 +278,9 @@ export function loginTestUser(options) {
  * @returns {Promise}
  */
 export function removeTestUser(options = {}) {
+  const clientId = options.clientId || process.env.WEBEX_CLIENT_ID;
+  const clientSecret = options.clientSecret || process.env.WEBEX_CLIENT_SECRET;
+  const idbrokerUrl = options.idbrokerUrl || process.env.IDBROKER_BASE_URL;
   const cigServiceUrl =
     options.cigServiceUrl ||
     process.env.WEBEX_TEST_USERS_CI_GATEWAY_SERVICE_URL ||
@@ -295,31 +296,23 @@ export function removeTestUser(options = {}) {
     return Promise.reject(new Error('options.id is required'));
   }
 
-  if (!options.token) {
-    return loginTestUser(options).then((token) => {
-      options.token = token;
-
-      return removeTestUser(options);
-    });
-  }
-
-  assert(options.token.authorization, 'options.token.authorization must be defined');
-
-  return request({
-    method: 'POST',
-    json: true,
-    headers: {
-      authorization: options.token.authorization,
-    },
-    body: {
-      /* eslint-disable camelcase */
-      user_id: options.id,
-      refresh_token: options.token.refresh_token,
-      user_type: options.userType || 'PERSON',
-      /* eslint-enable camelcase */
-    },
-    uri: `${cigServiceUrl}${BASE_PATH}/delete`,
-  });
+  return getClientCredentials({clientId, clientSecret, idbrokerUrl}).then((authorization) =>
+    request({
+      method: 'POST',
+      json: true,
+      headers: {
+        authorization,
+      },
+      body: {
+        /* eslint-disable camelcase */
+        user_id: options.id,
+        refresh_token: options.token && options.token.refresh_token,
+        user_type: options.userType || 'PERSON',
+        /* eslint-enable camelcase */
+      },
+      uri: `${cigServiceUrl}${BASE_PATH}/delete`,
+    })
+  );
 }
 
 /**
