@@ -18,7 +18,7 @@ import {
   GenericError,
 } from '../types';
 import {getErrorDetails} from './core/Utils';
-import type {RtdRequestOptions} from './core/types';
+import type {PendingRtdRequest, RtdRequestOptions} from './core/types';
 import {
   AI_ASSISTANT_BASE_URL_TEMPLATE,
   AI_ASSISTANT_ENV_MAP,
@@ -26,14 +26,6 @@ import {
   WCC_API_GATEWAY,
 } from './constants';
 import {AIFeatureFlags} from './config/types';
-
-type PendingRtdRequest<T> = {
-  correlationId: string;
-  rtdEventType: string;
-  timeoutId?: ReturnType<typeof setTimeout>;
-  resolve: (payload: T) => void;
-  reject: (error: Error) => void;
-};
 
 type WellnessBreakContextProvider = () => {
   isWellnessBreakEnabled: boolean;

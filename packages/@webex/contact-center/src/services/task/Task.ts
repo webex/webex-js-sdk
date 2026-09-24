@@ -32,6 +32,7 @@ import {AI_SUMMARY_DURATION_MS, ENTRY_POINT_TRANSFER_DESTINATION_TYPE, METHODS} 
 import {
   AI_ASSISTANT_CLIENT_TYPE,
   AI_SUMMARY_ERROR_CODES,
+  AI_SUMMARY_INVALID_RESPONSE_PAYLOAD,
   CC_FILE,
   TASK_FILE,
 } from '../../constants';
@@ -63,8 +64,6 @@ import type ApiAIAssistant from '../ApiAiAssistant';
 type UIControlConfigInput = Omit<UIControlConfig, 'channelType'> & {
   channelType?: UIControlConfig['channelType'];
 };
-
-const AI_SUMMARY_INVALID_RESPONSE_PAYLOAD = 'AI_SUMMARY_INVALID_RESPONSE_PAYLOAD';
 
 export default abstract class Task extends EventEmitter implements ITask {
   protected contact: ReturnType<typeof routingContact>;

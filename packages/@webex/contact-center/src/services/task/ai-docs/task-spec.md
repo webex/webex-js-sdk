@@ -143,6 +143,7 @@ services/task/
 | `task.preview-campaign` | SDK/AQM API | `acceptPreviewContact`, `skipPreviewContact`, `removePreviewContact`, and `PreviewContactPayload`. | Accept, skip, or remove a reserved campaign preview contact; each method returns `Promise<TaskResponse>`. | Additive semver-public methods; removals or signature changes are breaking. | `src/cc.ts`, `src/services/task/dialer.ts`, `src/services/task/types.ts` | `../../../../ai-docs/CONTRACTS.md` |
 | `task.consult-transfer-controls` | SDK task controls | `TaskUIControls.consultTransferDestinations` with ordered `consult` and `transfer` arrays. | Surface default destination availability on every Task without an extra policy method. | Additive semver-public field/types; array order is meaningful and the first item is the default. | `src/services/task/types.ts`, `src/services/task/state-machine/uiControlsComputer.ts` | `../../../../ai-docs/CONTRACTS.md` |
 | `task.conference-participant-drop` | SDK/AQM API | `task.dropConferenceParticipant(payload: DropConferenceParticipantPayload): Promise<TaskResponse>`. | Remove a supported target from a voice conference after correlated routing completion. | Additive semver-public method and payload; removals or signature changes are breaking. | `src/services/task/voice/Voice.ts`, `src/services/task/contact.ts`, `src/services/task/types.ts` | `../../../../ai-docs/CONTRACTS.md` |
+| `task.ai-summary` | SDK/RTD API | Post-call and mid-call summary request/response methods, feature enablement, and receiving-agent summary events. | Provide task-scoped generated summaries without exposing RTD correlation to SDK consumers. | Additive semver-public methods, types, and events; removals or signature changes are breaking. | `src/services/task/Task.ts`, `src/services/task/TaskManager.ts`, `src/services/task/types.ts`, `src/services/ApiAiAssistant.ts` | `../../../../ai-docs/CONTRACTS.md` |
 
 Compatibility notes:
 - Do not remove or reinterpret exported symbols/events without a documented consumer migration.
@@ -150,6 +151,8 @@ Compatibility notes:
 - `TASK_EVENTS` enum (`types.ts`)
 
 - `TaskData`, `TaskId`, `TaskResponse`, `TaskUIControls` (`types.ts`)
+
+- `AISummary`, `AISummaryResponse`, `AISummaryAction`, `AISummaryFeatureEnablement`, and `AISummaryCapabilities` (`types.ts`)
 
 - `PreviewContactPayload` (`types.ts`) with `interactionId` and campaign-name `campaignId`
 
@@ -191,6 +194,8 @@ Compatibility notes:
 | `task:switchCall`                                                           | Switched between consult and main call           |
 | `task:outdialFailed`                                                        | Outdial operation failed                         |
 | `task:ui-controls-updated`                                                  | UI controls changed due to state transition      |
+| `task:midCallSummaryReceived`                                               | Mid-call summary delivered to a receiving agent  |
+| `task:featureEnablement`                                                    | Per-task AI summary enablement flags received     |
 | `task:cleanup`                                                              | Internal cleanup signal emitted by state machine |
 
 > Full list is defined in `TASK_EVENTS` (`types.ts`).
@@ -199,6 +204,15 @@ Compatibility notes:
 |---|---|
 | `REAL_TIME_TRANSCRIPTION` | A realtime transcript payload is received for the task interaction |
 | `SUGGESTED_RESPONSE` | A final AI Assistant suggestion payload is received for the task interaction |
+
+### AI summary APIs
+
+- `requestPostCallSummary(): Promise<AISummary>` requests a post-call summary.
+- `sendPostCallSummaryResponse(response: AISummaryResponse): Promise<void>` reports the agent's post-call summary outcome.
+- `requestMidCallSummary(action: AISummaryAction): Promise<AISummary>` requests a consult or transfer summary.
+- `sendMidCallSummaryResponse(response: AISummaryResponse, action: AISummaryAction): Promise<void>` reports the corresponding mid-call outcome.
+
+Summary requests require both the organization-level generated-summary flag and the task-level feature enablement flag. A request resolves only after the event POST succeeds and the matching RTD payload arrives; otherwise it rejects with the applicable disabled, transport, or timeout error. Receiving-agent summaries are delivered separately through `task:midCallSummaryReceived`. Summary content is application data and must not be written to logs or metrics.
 
 Initiate outbound call.
 
@@ -366,7 +380,7 @@ await task.dropConferenceParticipant({participantId});
 
 ### Complete TASK_EVENTS inventory
 
-The public `TASK_EVENTS` enum contains 51 members; every member is listed below from `src/services/task/types.ts`.
+The public `TASK_EVENTS` enum contains 52 members; every member is listed below from `src/services/task/types.ts`.
 
 | Constant | Event string |
 |---|---|
@@ -380,6 +394,7 @@ The public `TASK_EVENTS` enum contains 51 members; every member is listed below 
 | `TASK_CONSULT_QUEUE_CANCELLED` | `task:consultQueueCancelled` |
 | `TASK_CONSULT_QUEUE_FAILED` | `task:consultQueueFailed` |
 | `TASK_UI_CONTROLS_UPDATED` | `task:ui-controls-updated` |
+| `TASK_WXAPP_MUTE_STATE_UPDATED` | `task:wxapp-mute-state-updated` |
 | `TASK_CONSULT_ACCEPTED` | `task:consultAccepted` |
 | `TASK_CONSULTING` | `task:consulting` |
 | `TASK_CONSULT_CREATED` | `task:consultCreated` |
@@ -433,7 +448,7 @@ The public `TASK_EVENTS` enum contains 51 members; every member is listed below 
 | TASK-R-001 | Create only supported Voice/Digital Task implementations and throw `Unknown media type` for unsupported media. | Returning a generic task for unsupported channels would advertise controls the implementation cannot perform. | `src/services/task/TaskFactory.ts` | `test/unit/spec/services/task/TaskFactory.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | TASK-R-002 | Concrete Task/Voice `hold()` and `resume()` implementations remain parameterless while `ITask` retains its optional compatibility parameter. | Documentation must distinguish the broad public interface from concrete runtime signatures. | `src/services/task/Task.ts` | `test/unit/spec/services/task/Task.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | TASK-R-003 | Task and media subclasses must route contact/calling operations into typed state-machine events and emit the complete TASK_EVENTS contract. | Consumers coordinate UI and interaction lifecycle from those events. | `src/services/task/Task.ts` | `test/unit/spec/services/task/Task.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
-| TASK-R-004 | TaskManager must consume primary events and RTD messages forwarded by ContactCenter, and manage task creation, hydration, cleanup, campaign, and AI-assistant flows. | A single task owner prevents duplicate instances and inconsistent state across realtime sources without coupling TaskManager to RTD socket ownership. | `src/services/task/TaskManager.ts` | `test/unit/spec/services/task/TaskManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
+| TASK-R-004 | TaskManager must consume primary/RTD streams and manage task creation, hydration, cleanup, campaign, and AI-assistant flows. | A single task owner prevents duplicate instances and inconsistent state across realtime sources. | `src/services/task/TaskManager.ts` | `test/unit/spec/services/task/TaskManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | TASK-R-005 | The contact dependency belongs to Task/TaskFactory-created tasks; dialer is an AqmReqs request factory without that constructor. | Misattributing constructor dependencies causes invalid instantiation examples. | `src/services/task/TaskFactory.ts` | `test/unit/spec/services/task/dialer.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | TASK-R-006 | Keep credentials and authentication outside Task; remote operations delegate through contact/dialer routing, AqmReqs, and Core/WebexRequest. | Task lifecycle objects should never duplicate host token handling or leak authentication state into interaction data. | `src/services/task/Task.ts`, `src/services/task/contact.ts`, `src/services/core/WebexRequest.ts` | `test/unit/spec/services/task/Task.ts`, `test/unit/spec/services/task/contact.ts` | None; authentication ownership is explicit. | PRESENT |
 | TASK-R-007 | Route enabled preview-campaign accept, skip, and remove operations through the dialer AQM factory using `PreviewContactPayload`, returning `Promise<TaskResponse>` from the public ContactCenter methods. Before routing skip/remove, reject the operation when the matching task's disable flag is `'true'`. | Preview reservations require typed payloads and correlated backend completion, while campaign controls must block prohibited skip/remove requests before transport begins. | `src/cc.ts`, `src/services/task/dialer.ts`, `src/services/task/types.ts` | `test/unit/spec/cc.ts`, `test/unit/spec/services/task/dialer.ts` | Public delegation and dialer requests are covered; the `campaignPreviewSkipDisabled` and `campaignPreviewRemoveDisabled` early-exit guards lack direct unit coverage. Independent review identified this gap on 2026-07-15. | PRESENT |
@@ -479,7 +494,7 @@ TaskManager is a singleton that:
 
 ```typescript
 // Singleton access
-const taskManager = TaskManager.getTaskManager(apiAIAssistant, contact, webCallingService, webSocketManager);
+const taskManager = TaskManager.getTaskManager(contact, webCallingService, webSocketManager);
 ```
 
 Returns an object of AQM request methods wired to `TASK_API` and `TASK_MESSAGE_TYPE`.
@@ -1409,7 +1424,7 @@ await cc.stationLogin({ loginOption: 'BROWSER', ... });
 ## Pitfalls
 - Concrete `Task`/`Voice` hold and resume methods are parameterless even though the broader `ITask` declaration retains an optional compatibility argument.
 - AQM HTTP acknowledgement never completes a task operation; success/failure binds or timeout settle the promise and must stay aligned with actor events.
-- Primary and RTD WebSockets have different ownership: ContactCenter owns both sockets and forwards RTD messages to TaskManager, which handles transcript/suggestion events and must not emit acknowledgement payloads as public suggestions.
+- Primary and RTD WebSockets have different ownership: TaskManager uses the RTD stream for transcript/suggestion events and must not emit acknowledgement payloads as public suggestions.
 
 ## Module Do's / Don'ts
 - DO send initiating and success/failure events to the task actor around remote Voice operations.

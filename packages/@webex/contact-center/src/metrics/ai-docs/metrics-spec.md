@@ -337,11 +337,11 @@ Special events (no success/failure pair):
 
 - `WXAPP_SESSION_SKIPPED` — has behavioral taxonomy (`wxcc_sdk.user.webex_together_session_init.ignore`)
 
-Of the 116 defined metric names, 96 have behavioral taxonomy and 20 do not. The Agent Wellness Break names are intentionally operational-only and therefore have no `eventTaxonomyMap` entries.
+Of the 120 defined metric names, 96 have behavioral taxonomy and 24 do not. The Agent Wellness Break and AI summary names are intentionally operational-only and therefore have no `eventTaxonomyMap` entries.
 
 ### Complete METRIC_EVENT_NAMES catalog
 
-This table contains all 116 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 96 mapped and 20 unmapped.
+This table contains all 120 names from `src/metrics/constants.ts`; taxonomy presence is checked against `src/metrics/behavioral-events.ts`: 96 mapped and 24 unmapped.
 
 | Constant | Emitted name | Behavioral taxonomy? |
 |---|---|---|
@@ -449,6 +449,14 @@ This table contains all 116 names from `src/metrics/constants.ts`; taxonomy pres
 | `AI_ASSISTANT_WELLNESS_EVENT_INVALID` | `AI Assistant Wellness Event Invalid` | no |
 | `WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS` | `Wellbeing Break Idle Code Fetch Success` | no |
 | `WELLBEING_BREAK_IDLE_CODE_FETCH_FAILED` | `Wellbeing Break Idle Code Fetch Failed` | no |
+| `AI_SUMMARY_GET_POST_CALL_SUCCESS` | `Post Call Summary Get Success` | no |
+| `AI_SUMMARY_GET_POST_CALL_FAILED` | `Post Call Summary Get Failed` | no |
+| `AI_SUMMARY_GET_MID_CALL_SUCCESS` | `Mid Call Summary Get Success` | no |
+| `AI_SUMMARY_GET_MID_CALL_FAILED` | `Mid Call Summary Get Failed` | no |
+| `AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS` | `Post Call Summary Response Success` | no |
+| `AI_SUMMARY_POST_CALL_RESPONSE_FAILED` | `Post Call Summary Response Failed` | no |
+| `AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS` | `Mid Call Summary Response Success` | no |
+| `AI_SUMMARY_MID_CALL_RESPONSE_FAILED` | `Mid Call Summary Response Failed` | no |
 | `USER_PREFERENCE_GET_SUCCESS` | `User Preference Get Success` | yes |
 | `USER_PREFERENCE_GET_FAILED` | `User Preference Get Failed` | yes |
 | `USER_PREFERENCE_CREATE_SUCCESS` | `User Preference Create Success` | yes |
@@ -829,7 +837,7 @@ stateDiagram-v2
 - **metricsDisabled**: When `true`, `timeEvent` and all `track*` methods return early, and `clearPendingEvents()` empties all queues.
 
 ## Pitfalls
-- `METRIC_EVENT_NAMES` and `eventTaxonomyMap` are different inventories: 20 defined names intentionally have no behavioral taxonomy.
+- `METRIC_EVENT_NAMES` and `eventTaxonomyMap` are different inventories: 24 defined names intentionally have no behavioral taxonomy.
 - `setMetricsDisabled(true)` clears pending queues but does not create a delivery receipt; callers must not infer that previously submitted events were accepted.
 - Submission helpers hand events to `webex.internal.newMetrics` without a module-level retry/requeue policy, so telemetry must remain non-blocking and non-authoritative.
 
@@ -890,7 +898,7 @@ Use `test/unit/spec/metrics/MetricsManager.ts` for readiness queues, timing/trac
 | Behavior / Requirement | Existing test evidence | Gap |
 |---|---|---|
 | `METRICS-R-001` | `test/unit/spec/metrics/MetricsManager.ts` | Add a catalog parity assertion if constants change. |
-| `METRICS-R-002` | `test/unit/spec/metrics/behavioral-events.ts` | Keep explicit coverage for all 20 unmapped names. |
+| `METRICS-R-002` | `test/unit/spec/metrics/behavioral-events.ts` | Keep explicit coverage for all 24 unmapped names. |
 | `METRICS-R-003` | `test/unit/spec/metrics/MetricsManager.ts` | None. |
 | `METRICS-R-004` | `test/unit/spec/metrics/MetricsManager.ts` | None. |
 | `METRICS-R-005` | `test/unit/spec/metrics/MetricsManager.ts` | Authentication ownership is verified indirectly through the host metrics client. |
