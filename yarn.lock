@@ -8083,7 +8083,7 @@ __metadata:
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
     "@webex/webex-core": "workspace:*"
-    asn1js: ^2.0.26
+    asn1js: 3.0.10
     debug: ^4.3.4
     eslint: ^8.24.0
     isomorphic-webcrypto: ^2.3.8
@@ -8091,7 +8091,7 @@ __metadata:
     node-jose: ^2.2.0
     node-kms: ^0.4.1
     node-scr: ^0.3.0
-    pkijs: ^2.1.84
+    pkijs: 3.3.3
     prettier: ^2.7.1
     safe-buffer: ^5.2.0
     sinon: ^9.2.4
@@ -10951,16 +10951,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"asn1js@npm:^2.0.26":
-  version: 2.4.0
-  resolution: "asn1js@npm:2.4.0"
-  dependencies:
-    pvutils: ^1.1.3
-  checksum: 0aaa8d64d0824643f69826c31ed0d89fffd4832d93fd71f745b19d6af9d0e1b4e8e7c9f81fcd343ea7e2bd51858f5f80c31ed8381ecf782e44504ce554274b98
-  languageName: node
-  linkType: hard
-
-"asn1js@npm:^3.0.3, asn1js@npm:^3.0.5, asn1js@npm:^3.0.6":
+"asn1js@npm:^3.0.5, asn1js@npm:^3.0.6":
   version: 3.0.7
   resolution: "asn1js@npm:3.0.7"
   dependencies:
@@ -12480,13 +12471,6 @@ __metadata:
   version: 3.1.2
   resolution: "bytes@npm:3.1.2"
   checksum: e4bcd3948d289c5127591fbedf10c0b639ccbf00243504e4e127374a15c3bc8eed0d28d4aaab08ff6f1cf2abc0cce6ba3085ed32f4f90e82a5683ce0014e1b6e
-  languageName: node
-  linkType: hard
-
-"bytestreamjs@npm:^1.0.29":
-  version: 1.1.3
-  resolution: "bytestreamjs@npm:1.1.3"
-  checksum: 3f8482f25d7104c44aed94036113e5007a13f2400291c9b4709932d30491a13fc2a7f1b38b4b02e22dbe8a07da98c9c3d5c61123fa9db47e5cfa307c5f747b8b
   languageName: node
   linkType: hard
 
@@ -27681,17 +27665,6 @@ __metadata:
     pvutils: ^1.1.3
     tslib: ^2.8.1
   checksum: b1b12435af6f7150b2c66988b719c8e514bf66e241f1ffb76fdfb4fd9090192b296147ae84a27e0bf1ebd809ceec156ae3157f388dc5b90a6c2979d7a7f6ae15
-  languageName: node
-  linkType: hard
-
-"pkijs@npm:^2.1.84":
-  version: 2.4.0
-  resolution: "pkijs@npm:2.4.0"
-  dependencies:
-    asn1js: ^3.0.3
-    bytestreamjs: ^1.0.29
-    pvutils: ^1.1.3
-  checksum: 0534d3ff4eb50ebe93818cc93a5190d78d4702ba55c0ffd270e10fddc58659b75f5d52b17ac0b100ad65757d595e5cc2985e646db4b295a09fb0c37eed58cae3
   languageName: node
   linkType: hard
 
