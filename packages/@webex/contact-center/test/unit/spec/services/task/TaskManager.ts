@@ -192,6 +192,7 @@ describe('TaskManager', () => {
   let mockCall;
   let mockApiAIAssistant;
   let webSocketManagerMock;
+  let rtdWebSocketManagerMock;
   let onSpy;
   let offSpy;
   let taskManager;
@@ -492,6 +493,7 @@ describe('TaskManager', () => {
   beforeEach(() => {
     contactMock = contact;
     webSocketManagerMock = new EventEmitter();
+    rtdWebSocketManagerMock = new EventEmitter();
 
     webex = {
       logger: {
@@ -526,7 +528,8 @@ describe('TaskManager', () => {
       mockApiAIAssistant as any,
       contactMock,
       webCallingService,
-      webSocketManagerMock as any
+      webSocketManagerMock as any,
+      rtdWebSocketManagerMock as any
     );
     taskManager.taskCollection[taskId] = createStateMachineTask(taskDataMock);
     (taskManager as any).setupTaskListeners?.(taskManager.taskCollection[taskId]);
@@ -2491,7 +2494,8 @@ describe('TaskManager', () => {
       mockApiAIAssistant as any,
       contactMock,
       webCallingService,
-      webSocketManagerMock as any
+      webSocketManagerMock as any,
+      rtdWebSocketManagerMock as any
     );
 
     expect(
@@ -2499,7 +2503,8 @@ describe('TaskManager', () => {
         mockApiAIAssistant as any,
         contactMock,
         webCallingService,
-        webSocketManagerMock as any
+        webSocketManagerMock as any,
+        rtdWebSocketManagerMock as any
       )
     ).toBe(singleton);
   });

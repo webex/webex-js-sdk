@@ -76,6 +76,7 @@ export default class TaskManager extends EventEmitter {
   private taskCollection: Record<TaskId, ITask>;
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
+  private rtdWebSocketManager: WebSocketManager;
   // eslint-disable-next-line no-use-before-define
   private static taskManager: TaskManager;
   private configFlags?: ConfigFlags;
@@ -98,13 +99,15 @@ export default class TaskManager extends EventEmitter {
     apiAIAssistant: ApiAIAssistant,
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
-    webSocketManager: WebSocketManager
+    webSocketManager: WebSocketManager,
+    rtdWebSocketManager: WebSocketManager
   ) {
     super();
     this.apiAIAssistant = apiAIAssistant;
     this.contact = contact;
     this.webCallingService = webCallingService;
     this.webSocketManager = webSocketManager;
+    this.rtdWebSocketManager = rtdWebSocketManager;
     this.taskCollection = {};
     this.webRtcEnabled = false;
     this.registerTaskListeners();
@@ -1903,14 +1906,16 @@ export default class TaskManager extends EventEmitter {
     apiAIAssistant: ApiAIAssistant,
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
-    webSocketManager: WebSocketManager
+    webSocketManager: WebSocketManager,
+    rtdWebSocketManager?: WebSocketManager
   ): TaskManager {
     if (!TaskManager.taskManager) {
       TaskManager.taskManager = new TaskManager(
         apiAIAssistant,
         contact,
         webCallingService,
-        webSocketManager
+        webSocketManager,
+        rtdWebSocketManager
       );
     }
 

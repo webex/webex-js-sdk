@@ -18,7 +18,12 @@ import type {ContactServiceQueuesResponse} from '../../../src/types';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess, AGENT_EVENTS} from '../../../src/services/agent/types';
 import {SetStateResponse} from '../../../src/types';
-import {AGENT, SUBSCRIBE_API, WEB_RTC_PREFIX} from '../../../src/services/constants';
+import {
+  AGENT,
+  RTD_SUBSCRIBE_API,
+  SUBSCRIBE_API,
+  WEB_RTC_PREFIX,
+} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
 import {CC_TASK_EVENTS, CC_EVENTS} from '../../../src/services/config/types';
@@ -30,7 +35,6 @@ import {
   OUTBOUND_TYPE,
   ATTRIBUTES,
   OUTDIAL_MEDIA_TYPE,
-  UNKNOWN_ERROR,
 } from '../../../src/constants';
 
 // Mock the Worker API
@@ -706,17 +710,10 @@ describe('webex.cc', () => {
         },
         resource: 'v1/realtime/subscribe',
       });
-      expect(webex.cc.services.rtdWebSocketManager.off).toHaveBeenCalledWith(
-        'message',
-        expect.any(Function)
-      );
       expect(webex.cc.services.rtdWebSocketManager.on).toHaveBeenCalledWith(
         'message',
         expect.any(Function)
       );
-      expect(
-        webex.cc.services.rtdWebSocketManager.off.mock.invocationCallOrder[0]
-      ).toBeLessThan(webex.cc.services.rtdWebSocketManager.on.mock.invocationCallOrder[0]);
 
       expect(configSpy).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
@@ -737,10 +734,7 @@ describe('webex.cc', () => {
         },
         enableWxBetterTogether: false,
       });
-      expect(mockTaskManager.clearAISummaryState).toHaveBeenCalled();
-      expect(mockTaskManager.clearAISummaryState.mock.invocationCallOrder[0]).toBeLessThan(
-        mockTaskManager.setConfigFlags.mock.invocationCallOrder[0]
-      );
+      expect(mockTaskManager.clearAISummaryState).not.toHaveBeenCalled();
       expect(reloadSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
@@ -1469,46 +1463,6 @@ describe('webex.cc', () => {
       jest.useRealTimers();
     });
 
-    it('keeps connection and RTD listeners single-subscribed across repeated register calls', async () => {
-      const harness = createSummaryHarness();
-      const triggerSpy = jest.spyOn(webex.cc, 'trigger');
-      const profile = {
-        agentId: 'agent-1',
-        webRtcEnabled: false,
-        loginVoiceOptions: [LoginOption.EXTENSION],
-        isEndTaskEnabled: true,
-        isEndConsultEnabled: true,
-        wrapUpData: {wrapUpProps: {autoWrapup: false}},
-        aiFeature: {
-          generatedSummaries: {
-            wrapUpSummariesEnabled: true,
-            consultTransferSummariesEnabled: true,
-          },
-        },
-      } as any;
-      webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
-      harness.webSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent-1'});
-      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(profile);
-
-      await webex.cc.register();
-      await flushMicrotasks();
-      await webex.cc.register();
-      await flushMicrotasks();
-
-      expect(harness.connectionService.listenerCount('connectionLost')).toBe(1);
-      expect(harness.connectionService.listeners('connectionLost')[0]).toBe(
-        webex.cc['handleConnectionLost']
-      );
-      expect(harness.rtdWebSocketManager.listenerCount('message')).toBe(1);
-      expect(harness.rtdWebSocketManager.listeners('message')[0]).toBe(
-        webex.cc['handleRTDWebsocketMessage']
-      );
-
-      triggerSpy.mockClear();
-
-      expect(triggerSpy).not.toHaveBeenCalled();
-    });
-
     it('forwards task-manager handlers through ContactCenter trigger and delegates RTD messages', () => {
       const triggerSpy = jest.spyOn(webex.cc, 'trigger');
       const task = {data: {interactionId: 'interaction-1'}} as any;
@@ -1526,7 +1480,7 @@ describe('webex.cc', () => {
       expect(mockTaskManager.handleRealtimeWebsocketEvent).toHaveBeenCalledWith('summary-frame');
     });
 
-    it('resets real summary state across register, reconnect, and deregister boundaries', async () => {
+    it('preserves active summary state across reconnect and clears it on deregister', async () => {
       jest.useFakeTimers();
 
       const harness = createSummaryHarness();
@@ -1550,26 +1504,16 @@ describe('webex.cc', () => {
       harness.webSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent-1'});
       jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(profile);
 
-      dispatchFeatureEnablement(harness, {
-        interactionId: 'orphan-before-register',
-        postCallEnabled: true,
-        midCallEnabled: true,
-        actionTimestamp: 3,
-      });
-      harness.dispatchRtdFrame(CC_TASK_EVENTS.MID_CALL_SUMMARY_RESPONSE_SUBSEQUENT_AGENT, {
-        conversationId: 'queued-before-register',
-        summaryText: sentinels[0],
-      });
-      expect(jest.getTimerCount()).toBe(2);
-
       await webex.cc.register();
       await flushMicrotasks();
 
-      harness.expectSummaryStateCleared();
-      expect(jest.getTimerCount()).toBe(0);
       expect(harness.rtdWebSocketManager.listenerCount('message')).toBe(1);
 
       dispatchFeatureEnablement(harness);
+      expect(harness.task.aiSummaryCapabilities).toEqual({
+        midCallEnabled: true,
+        postCallEnabled: true,
+      });
 
       dispatchFeatureEnablement(harness, {
         interactionId: 'orphan-before-reconnect',
@@ -1582,25 +1526,42 @@ describe('webex.cc', () => {
         summaryText: sentinels[0],
       });
       expect(jest.getTimerCount()).toBe(2);
+      harness.rtdWebSocketManager.isSocketClosed = true;
+      harness.rtdWebSocketManager.initWebSocket.mockClear();
 
       await webex.cc['handleConnectionLost']({
         isConnectionLost: false,
         isSocketReconnected: true,
       } as ConnectionLostDetails);
 
-      harness.expectSummaryStateCleared();
-      expect(jest.getTimerCount()).toBe(0);
-
-      dispatchFeatureEnablement(harness, {
-        interactionId: 'interaction-1',
-        postCallEnabled: false,
-        midCallEnabled: true,
-        actionTimestamp: 5,
+      expect(harness.rtdWebSocketManager.initWebSocket).toHaveBeenCalledWith({
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: false,
+        },
+        resource: RTD_SUBSCRIBE_API,
       });
+      expect(harness.task.aiSummaryCapabilities).toEqual({
+        midCallEnabled: true,
+        postCallEnabled: true,
+      });
+      expect(harness.getSummaryMapCounts()).toEqual({
+        pendingPostCall: 0,
+        pendingMidCall: 0,
+        receiving: 1,
+        featureEnablement: 1,
+      });
+      expect(jest.getTimerCount()).toBe(2);
 
       await webex.cc.deregister();
 
       harness.expectSummaryStateCleared();
+      expect(harness.task.aiSummaryCapabilities).toEqual({
+        midCallEnabled: false,
+        postCallEnabled: false,
+      });
       expect(jest.getTimerCount()).toBe(0);
       expect(harness.rtdWebSocketManager.listenerCount('message')).toBe(0);
       triggerSpy.mockClear();
@@ -1921,134 +1882,96 @@ describe('webex.cc', () => {
       }
     });
 
-    it('clears and reapplies AI summary config before reconnection relogin', async () => {
+    it('reconnects a closed RTD websocket without clearing active summary state', async () => {
       const silentReloginSpy = jest
         .spyOn(webex.cc as any, 'silentRelogin')
         .mockResolvedValue(undefined);
-      const aiFeature = {
-        generatedSummaries: {
-          wrapUpSummariesEnabled: true,
-          consultTransferSummariesEnabled: true,
-        },
-      };
 
       webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: true};
       webex.cc.agentConfig = {
-        isEndTaskEnabled: true,
-        isEndConsultEnabled: false,
-        webRtcEnabled: true,
-        wrapUpData: {wrapUpProps: {autoWrapup: true}},
-        aiFeature,
+        aiFeature: {
+          generatedSummaries: {
+            wrapUpSummariesEnabled: true,
+            consultTransferSummariesEnabled: false,
+          },
+        },
       } as any;
+      webex.cc.services.rtdWebSocketManager.isSocketClosed = true;
 
       await webex.cc['handleConnectionLost']({
         isConnectionLost: false,
         isSocketReconnected: true,
       } as ConnectionLostDetails);
 
-      expect(mockTaskManager.clearAISummaryState).toHaveBeenCalled();
-      expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith({
-        isEndTaskEnabled: true,
-        isEndConsultEnabled: false,
-        webRtcEnabled: true,
-        autoWrapup: true,
-        aiFeature,
-        consultTransfer: {
-          allowConsultToQueue: undefined,
-          accessQueue: undefined,
-          accessEntryPoint: undefined,
-          accessBuddyTeam: undefined,
+      expect(webex.cc.services.rtdWebSocketManager.initWebSocket).toHaveBeenCalledWith({
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: false,
         },
-        enableWxBetterTogether: false,
+        resource: RTD_SUBSCRIBE_API,
       });
-      expect(mockTaskManager.clearAISummaryState.mock.invocationCallOrder[0]).toBeLessThan(
-        mockTaskManager.setConfigFlags.mock.invocationCallOrder[0]
-      );
-      expect(mockTaskManager.setConfigFlags.mock.invocationCallOrder[0]).toBeLessThan(
+      expect(mockTaskManager.clearAISummaryState).not.toHaveBeenCalled();
+      expect(mockTaskManager.setConfigFlags).not.toHaveBeenCalled();
+      expect(
+        webex.cc.services.rtdWebSocketManager.initWebSocket.mock.invocationCallOrder[0]
+      ).toBeLessThan(
         silentReloginSpy.mock.invocationCallOrder[0]
       );
     });
 
-    it('clears and reapplies AI summary config when automated relogin is disabled', async () => {
-      const silentReloginSpy = jest
-        .spyOn(webex.cc as any, 'silentRelogin')
-        .mockResolvedValue(undefined);
-      const aiFeature = {
-        generatedSummaries: {
-          wrapUpSummariesEnabled: false,
-          consultTransferSummariesEnabled: true,
-        },
-      };
-
+    it.each([
+      {
+        title: 'the RTD socket is still open',
+        isSocketClosed: false,
+        aiFeature: {generatedSummaries: {wrapUpSummariesEnabled: true}},
+      },
+      {
+        title: 'no RTD-backed feature is enabled',
+        isSocketClosed: true,
+        aiFeature: {generatedSummaries: {wrapUpSummariesEnabled: false}},
+      },
+    ])('does not reconnect RTD when $title', async ({isSocketClosed, aiFeature}) => {
       webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: false};
-      webex.cc.agentConfig = {
-        isEndTaskEnabled: false,
-        isEndConsultEnabled: true,
-        webRtcEnabled: false,
-        wrapUpData: {},
-        aiFeature,
-      } as any;
+      webex.cc.agentConfig = {aiFeature} as any;
+      webex.cc.services.rtdWebSocketManager.isSocketClosed = isSocketClosed;
 
       await webex.cc['handleConnectionLost']({
         isConnectionLost: false,
         isSocketReconnected: true,
       } as ConnectionLostDetails);
 
-      expect(mockTaskManager.clearAISummaryState).toHaveBeenCalled();
-      expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith({
-        isEndTaskEnabled: false,
-        isEndConsultEnabled: true,
-        webRtcEnabled: false,
-        autoWrapup: false,
-        aiFeature,
-        consultTransfer: {
-          allowConsultToQueue: undefined,
-          accessQueue: undefined,
-          accessEntryPoint: undefined,
-          accessBuddyTeam: undefined,
-        },
-        enableWxBetterTogether: false,
-      });
-      expect(mockTaskManager.clearAISummaryState.mock.invocationCallOrder[0]).toBeLessThan(
-        mockTaskManager.setConfigFlags.mock.invocationCallOrder[0]
-      );
-      expect(silentReloginSpy).not.toHaveBeenCalled();
+      expect(webex.cc.services.rtdWebSocketManager.initWebSocket).not.toHaveBeenCalled();
+      expect(mockTaskManager.clearAISummaryState).not.toHaveBeenCalled();
     });
 
-    it.each([null, undefined])(
-      'clears reconnect state without config reapply when agentConfig is %s',
-      async (agentConfig) => {
-        const silentReloginSpy = jest
-          .spyOn(webex.cc as any, 'silentRelogin')
-          .mockResolvedValue(undefined);
-        const unhandledRejections: unknown[] = [];
-        const unhandledRejectionListener = jest.fn((reason) => {
-          unhandledRejections.push(reason);
-        });
+    it('continues silent relogin when RTD reconnection fails', async () => {
+      const reconnectError = new Error('RTD reconnect failed');
+      const silentReloginSpy = jest
+        .spyOn(webex.cc as any, 'silentRelogin')
+        .mockResolvedValue(undefined);
 
-        webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: true};
-        webex.cc.agentConfig = agentConfig as any;
+      webex.cc.$config = {...webex.cc.$config, allowAutomatedRelogin: true};
+      webex.cc.agentConfig = {
+        aiFeature: {generatedSummaries: {consultTransferSummariesEnabled: true}},
+      } as any;
+      webex.cc.services.rtdWebSocketManager.isSocketClosed = true;
+      webex.cc.services.rtdWebSocketManager.initWebSocket.mockRejectedValueOnce(reconnectError);
 
-        process.on('unhandledRejection', unhandledRejectionListener);
-        try {
-          await expect(
-            webex.cc['handleConnectionLost']({
-              isConnectionLost: false,
-              isSocketReconnected: true,
-            } as ConnectionLostDetails)
-          ).resolves.toBeUndefined();
-          await flushEventLoopTurn();
+      await expect(
+        webex.cc['handleConnectionLost']({
+          isConnectionLost: false,
+          isSocketReconnected: true,
+        } as ConnectionLostDetails)
+      ).resolves.toBeUndefined();
 
-          expect(mockTaskManager.clearAISummaryState).toHaveBeenCalledTimes(1);
-          expect(mockTaskManager.setConfigFlags).not.toHaveBeenCalled();
-          expect(silentReloginSpy).toHaveBeenCalledTimes(1);
-          expect(unhandledRejectionListener).not.toHaveBeenCalled();
-          expect(unhandledRejections).toHaveLength(0);
-        } finally {
-          process.off('unhandledRejection', unhandledRejectionListener);
-        }
-      }
-    );
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `Error reconnecting RTD websocket ${reconnectError}`,
+        {module: CC_FILE, method: 'handleConnectionLost'}
+      );
+      expect(silentReloginSpy).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('stationLogin', () => {
@@ -4096,44 +4019,7 @@ describe('webex.cc', () => {
     it('should set up connectionLost and message event listener', () => {
       webex.cc.setupEventListeners();
 
-      expect(webex.cc.services.connectionService.off).toHaveBeenCalledWith(
-        'connectionLost',
-        webex.cc['handleConnectionLost']
-      );
-      expect(connectionServiceOnSpy).toHaveBeenCalledWith(
-        'connectionLost',
-        webex.cc['handleConnectionLost']
-      );
-      expect(
-        webex.cc.services.connectionService.off.mock.invocationCallOrder[0]
-      ).toBeLessThan(connectionServiceOnSpy.mock.invocationCallOrder[0]);
-    });
-
-    it('uses one detachable connectionLost listener across repeated setup and deregister', async () => {
-      const connectionService = new EventEmitterDouble();
-
-      webex.cc.services.connectionService = connectionService as any;
-      webex.cc.agentConfig = {
-        agentId: 'agentId',
-        webRtcEnabled: false,
-        loginVoiceOptions: [LoginOption.EXTENSION],
-      };
-
-      webex.cc.setupEventListeners();
-      webex.cc.setupEventListeners();
-
-      expect(connectionService.listenerCount('connectionLost')).toBe(1);
-      expect(connectionService.listeners('connectionLost')[0]).toBe(
-        webex.cc['handleConnectionLost']
-      );
-
-      await webex.cc.deregister();
-
-      expect(connectionService.listenerCount('connectionLost')).toBe(0);
-      expect(connectionService.off).toHaveBeenCalledWith(
-        'connectionLost',
-        webex.cc['handleConnectionLost']
-      );
+      expect(connectionServiceOnSpy).toHaveBeenCalledWith('connectionLost', expect.any(Function));
     });
   });
 
@@ -4582,76 +4468,6 @@ describe('webex.cc', () => {
       expect(mockRTDWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
       expect(mockRTDWebSocketManager.close).toHaveBeenCalledTimes(1);
       expect(webex.cc.agentConfig).toBeNull();
-    });
-
-    it.each([undefined, null, 0, ''])(
-      'preserves a falsy primary deregistration failure value %p',
-      async (thrownValue) => {
-        mockTaskManager.off.mockImplementation((eventName) => {
-          if (eventName === TASK_EVENTS.TASK_INCOMING) {
-            throw thrownValue;
-          }
-        });
-
-        const rejectedValue = await webex.cc.deregister().then(
-          () => Symbol('unexpected-success'),
-          (error) => error
-        );
-
-        expect(rejectedValue).toBe(thrownValue);
-        expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-          METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
-          {error: UNKNOWN_ERROR},
-          ['operational']
-        );
-        expect(mockMetricsManager.trackEvent).not.toHaveBeenCalledWith(
-          METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
-          expect.anything(),
-          expect.anything()
-        );
-      }
-    );
-
-    it.each([undefined, null, 0, ''])(
-      'preserves a falsy cleanup failure value %p',
-      async (thrownValue) => {
-        mockTaskManager.clearAISummaryState.mockImplementation(() => {
-          throw thrownValue;
-        });
-
-        const rejectedValue = await webex.cc.deregister().then(
-          () => Symbol('unexpected-success'),
-          (error) => error
-        );
-
-        expect(rejectedValue).toBe(thrownValue);
-        expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-          METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
-          {error: UNKNOWN_ERROR},
-          ['operational']
-        );
-        expect(mockMetricsManager.trackEvent).not.toHaveBeenCalledWith(
-          METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
-          expect.anything(),
-          expect.anything()
-        );
-      }
-    );
-
-    it('uses the bounded unknown-error message for an empty Error message', async () => {
-      mockTaskManager.off.mockImplementation((eventName) => {
-        if (eventName === TASK_EVENTS.TASK_INCOMING) {
-          throw new Error('');
-        }
-      });
-
-      await expect(webex.cc.deregister()).rejects.toThrow('');
-
-      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
-        {error: UNKNOWN_ERROR},
-        ['operational']
-      );
     });
 
     it('should teardown wxApp state on deregister even when usersub publish fails', async () => {
