@@ -2,7 +2,7 @@ import {v4 as uuidv4} from 'uuid';
 import LoggerProxy from '../logger-proxy';
 import MetricsManager from '../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
-import {CC_FILE, METHODS} from '../constants';
+import {AI_SUMMARY_ERROR_CODES, CC_FILE, METHODS} from '../constants';
 import {
   HTTP_METHODS,
   WebexSDK,
@@ -18,6 +18,7 @@ import {
   GenericError,
 } from '../types';
 import {getErrorDetails} from './core/Utils';
+import type {PendingRtdRequest, RtdRequestOptions} from './core/types';
 import {
   AI_ASSISTANT_BASE_URL_TEMPLATE,
   AI_ASSISTANT_ENV_MAP,
@@ -40,6 +41,7 @@ export class ApiAIAssistant {
   private webex: WebexSDK;
   private metricsManager: MetricsManager;
   private aiFeature: AIFeatureFlags;
+  private pendingRtdRequests = new Map<string, PendingRtdRequest<unknown>>();
   private readonly wellnessContextProvider?: WellnessBreakContextProvider;
 
   private createWellnessError(reason: string): GenericError {
@@ -197,7 +199,7 @@ export class ApiAIAssistant {
 
     if (!wccApiGatewayUrl) {
       const {error: detailedError} = getErrorDetails(
-        new Error('AI_ASSISTANT_BASE_URL_NOT_AVAILABLE'),
+        new Error(AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE),
         METHODS.GET_BASE_URL,
         CC_FILE
       );
@@ -212,9 +214,10 @@ export class ApiAIAssistant {
     }
 
     const resolvedEnv = AI_ASSISTANT_ENV_MAP[hostname];
+
     if (!resolvedEnv) {
       const {error: detailedError} = getErrorDetails(
-        new Error('AI_ASSISTANT_BASE_URL_NOT_AVAILABLE'),
+        new Error(AI_SUMMARY_ERROR_CODES.AI_ASSISTANT_BASE_URL_NOT_AVAILABLE),
         METHODS.GET_BASE_URL,
         CC_FILE
       );
@@ -222,6 +225,105 @@ export class ApiAIAssistant {
     }
 
     return AI_ASSISTANT_BASE_URL_TEMPLATE.replace('%s', resolvedEnv);
+  }
+
+  private static getRtdRequestKey(rtdEventType: string, correlationId: string): string {
+    return JSON.stringify([rtdEventType, correlationId]);
+  }
+
+  private removeRtdRequest<T>(
+    rtdEventType: string,
+    correlationId: string,
+    settle?: (request: PendingRtdRequest<T>) => void
+  ): PendingRtdRequest<T> | undefined {
+    const key = ApiAIAssistant.getRtdRequestKey(rtdEventType, correlationId);
+    const request = this.pendingRtdRequests.get(key) as PendingRtdRequest<T> | undefined;
+
+    if (!request) {
+      return undefined;
+    }
+
+    if (request.timeoutId) {
+      clearTimeout(request.timeoutId);
+    }
+
+    settle?.(request);
+    this.pendingRtdRequests.delete(key);
+
+    return request;
+  }
+
+  /** Sends an AI event and waits for its matching RTD response. @internal */
+  public async requestAndWaitForRtd<T>(options: RtdRequestOptions): Promise<T> {
+    const key = ApiAIAssistant.getRtdRequestKey(options.rtdEventType, options.correlationId);
+    let resolveResult: (payload: T) => void = () => undefined;
+    let rejectResult: (error: Error) => void = () => undefined;
+    const result = new Promise<T>((resolve, reject) => {
+      resolveResult = resolve;
+      rejectResult = reject;
+    });
+    const previousRequest = this.pendingRtdRequests.get(key);
+    if (previousRequest?.timeoutId) {
+      clearTimeout(previousRequest.timeoutId);
+    }
+    const request: PendingRtdRequest<T> = {
+      correlationId: options.correlationId,
+      rtdEventType: options.rtdEventType,
+      resolve: resolveResult,
+      reject: rejectResult,
+    };
+
+    request.timeoutId = setTimeout(() => {
+      this.removeRtdRequest<T>(options.rtdEventType, options.correlationId, (currentRequest) => {
+        currentRequest.reject(options.createTimeoutError());
+      });
+    }, options.timeoutMs);
+    this.pendingRtdRequests.set(key, request as PendingRtdRequest<unknown>);
+    const publishTimestamp = options.publishTimestamp ?? Date.now();
+    const acknowledgement = Promise.resolve()
+      .then(() =>
+        this.sendEvent(
+          options.agentId,
+          options.interactionId,
+          options.eventType,
+          options.eventName,
+          options.eventMetaData,
+          undefined,
+          undefined,
+          publishTimestamp,
+          options.timeout
+        )
+      )
+      .catch((error) => {
+        this.removeRtdRequest(options.rtdEventType, options.correlationId);
+        throw error;
+      });
+
+    const [payload] = await Promise.all([result, acknowledgement]);
+
+    return payload;
+  }
+
+  /** Resolves a pending request from a parsed RTD event. @internal */
+  public resolveFromRtdEvent<T>(
+    rtdEventType: string,
+    correlationId: string,
+    payload: T
+  ): 'resolved' | 'not-found' {
+    const request = this.removeRtdRequest<T>(rtdEventType, correlationId, (currentRequest) => {
+      currentRequest.resolve(payload);
+    });
+
+    return request ? 'resolved' : 'not-found';
+  }
+
+  /** Clears pending RTD requests when the RTD lifecycle ends. @internal */
+  public clearAllRtdRequests(): void {
+    Array.from(this.pendingRtdRequests.values()).forEach((request) => {
+      this.removeRtdRequest(request.rtdEventType, request.correlationId, (currentRequest) => {
+        currentRequest.reject(new Error('RTD request cleared'));
+      });
+    });
   }
 
   /**
@@ -241,7 +343,9 @@ export class ApiAIAssistant {
     eventName: AIAssistantEventName,
     eventMetaData?: Record<string, unknown>,
     languageCode?: string,
-    trackingId?: string
+    trackingId?: string,
+    publishTimestamp?: number,
+    timeout?: number
   ): Promise<Record<string, unknown>> {
     LoggerProxy.info('Sending event', {
       module: CC_FILE,
@@ -257,23 +361,26 @@ export class ApiAIAssistant {
     try {
       const baseUrl = this.getBaseUrl();
       const orgId = this.webex.credentials.getOrgId();
+      const data = {
+        ...eventMetaData,
+        interactionId,
+        actionTimeStamp: String(Date.now()),
+        languageCode,
+        trackingId,
+      };
       const response = (await this.webex.request({
         uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
         method: HTTP_METHODS.POST,
         addAuthHeader: true,
+        ...(timeout !== undefined ? {timeout} : {}),
         body: {
           agentId,
           orgId,
           eventType,
           eventName,
+          ...(publishTimestamp !== undefined ? {publishTimestamp} : {}),
           eventDetails: {
-            data: {
-              ...eventMetaData,
-              interactionId,
-              actionTimeStamp: String(Date.now()),
-              languageCode,
-              trackingId,
-            },
+            data,
           },
         },
       })) as IHttpResponse;

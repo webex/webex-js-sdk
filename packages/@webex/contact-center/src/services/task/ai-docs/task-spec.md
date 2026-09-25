@@ -143,6 +143,7 @@ services/task/
 | `task.preview-campaign` | SDK/AQM API | `acceptPreviewContact`, `skipPreviewContact`, `removePreviewContact`, and `PreviewContactPayload`. | Accept, skip, or remove a reserved campaign preview contact; each method returns `Promise<TaskResponse>`. | Additive semver-public methods; removals or signature changes are breaking. | `src/cc.ts`, `src/services/task/dialer.ts`, `src/services/task/types.ts` | `../../../../ai-docs/CONTRACTS.md` |
 | `task.consult-transfer-controls` | SDK task controls | `TaskUIControls.consultTransferDestinations` with ordered `consult` and `transfer` arrays. | Surface default destination availability on every Task without an extra policy method. | Additive semver-public field/types; array order is meaningful and the first item is the default. | `src/services/task/types.ts`, `src/services/task/state-machine/uiControlsComputer.ts` | `../../../../ai-docs/CONTRACTS.md` |
 | `task.conference-participant-drop` | SDK/AQM API | `task.dropConferenceParticipant(payload: DropConferenceParticipantPayload): Promise<TaskResponse>`. | Remove a supported target from a voice conference after correlated routing completion. | Additive semver-public method and payload; removals or signature changes are breaking. | `src/services/task/voice/Voice.ts`, `src/services/task/contact.ts`, `src/services/task/types.ts` | `../../../../ai-docs/CONTRACTS.md` |
+| `task.ai-summary` | SDK/RTD API | Post-call and mid-call summary request/response methods, feature enablement, and receiving-agent summary events. | Provide task-scoped generated summaries without exposing RTD correlation to SDK consumers. | Additive semver-public methods, types, and events; removals or signature changes are breaking. | `src/services/task/Task.ts`, `src/services/task/TaskManager.ts`, `src/services/task/types.ts`, `src/services/ApiAiAssistant.ts` | `../../../../ai-docs/CONTRACTS.md` |
 
 Compatibility notes:
 - Do not remove or reinterpret exported symbols/events without a documented consumer migration.
@@ -150,6 +151,8 @@ Compatibility notes:
 - `TASK_EVENTS` enum (`types.ts`)
 
 - `TaskData`, `TaskId`, `TaskResponse`, `TaskUIControls` (`types.ts`)
+
+- `AISummary`, `AISummaryResponse`, `AISummaryAction`, `AISummaryFeatureEnablement`, and `AISummaryCapabilities` (`types.ts`)
 
 - `PreviewContactPayload` (`types.ts`) with `interactionId` and campaign-name `campaignId`
 
@@ -191,6 +194,8 @@ Compatibility notes:
 | `task:switchCall`                                                           | Switched between consult and main call           |
 | `task:outdialFailed`                                                        | Outdial operation failed                         |
 | `task:ui-controls-updated`                                                  | UI controls changed due to state transition      |
+| `task:midCallSummaryReceived`                                               | Mid-call summary delivered to a receiving agent  |
+| `task:featureEnablement`                                                    | Per-task AI summary enablement flags received     |
 | `task:cleanup`                                                              | Internal cleanup signal emitted by state machine |
 
 > Full list is defined in `TASK_EVENTS` (`types.ts`).
@@ -199,6 +204,15 @@ Compatibility notes:
 |---|---|
 | `REAL_TIME_TRANSCRIPTION` | A realtime transcript payload is received for the task interaction |
 | `SUGGESTED_RESPONSE` | A final AI Assistant suggestion payload is received for the task interaction |
+
+### AI summary APIs
+
+- `requestPostCallSummary(): Promise<AISummary>` requests a post-call summary.
+- `sendPostCallSummaryResponse(response: AISummaryResponse): Promise<void>` reports the agent's post-call summary outcome.
+- `requestMidCallSummary(action: AISummaryAction): Promise<AISummary>` requests a consult or transfer summary.
+- `sendMidCallSummaryResponse(response: AISummaryResponse, action: AISummaryAction): Promise<void>` reports the corresponding mid-call outcome.
+
+Summary requests require both the organization-level generated-summary flag and the task-level feature enablement flag. A request resolves only after the event POST succeeds and the matching RTD payload arrives; otherwise it rejects with the applicable disabled, transport, or timeout error. Receiving-agent summaries are delivered separately through `task:midCallSummaryReceived`. Summary content is application data and must not be written to logs or metrics.
 
 Initiate outbound call.
 
@@ -366,7 +380,7 @@ await task.dropConferenceParticipant({participantId});
 
 ### Complete TASK_EVENTS inventory
 
-The public `TASK_EVENTS` enum contains 49 members; every member is listed below from `src/services/task/types.ts`.
+The public `TASK_EVENTS` enum contains 52 members; every member is listed below from `src/services/task/types.ts`.
 
 | Constant | Event string |
 |---|---|
@@ -380,6 +394,7 @@ The public `TASK_EVENTS` enum contains 49 members; every member is listed below 
 | `TASK_CONSULT_QUEUE_CANCELLED` | `task:consultQueueCancelled` |
 | `TASK_CONSULT_QUEUE_FAILED` | `task:consultQueueFailed` |
 | `TASK_UI_CONTROLS_UPDATED` | `task:ui-controls-updated` |
+| `TASK_WXAPP_MUTE_STATE_UPDATED` | `task:wxapp-mute-state-updated` |
 | `TASK_CONSULT_ACCEPTED` | `task:consultAccepted` |
 | `TASK_CONSULTING` | `task:consulting` |
 | `TASK_CONSULT_CREATED` | `task:consultCreated` |
@@ -419,6 +434,8 @@ The public `TASK_EVENTS` enum contains 49 members; every member is listed below 
 | `TASK_CAMPAIGN_PREVIEW_SKIP_FAILED` | `task:campaignPreviewSkipFailed` |
 | `TASK_CAMPAIGN_PREVIEW_REMOVE_FAILED` | `task:campaignPreviewRemoveFailed` |
 | `TASK_CAMPAIGN_CONTACT_UPDATED` | `task:campaignContactUpdated` |
+| `TASK_MID_CALL_SUMMARY_RECEIVED` | `task:midCallSummaryReceived` |
+| `TASK_FEATURE_ENABLEMENT` | `task:featureEnablement` |
 
 ## Requires (dependencies)
 - Services contact/dialer AQM factories
@@ -1149,7 +1166,7 @@ sequenceDiagram
 
 **API**
 
-- `createTask(contact, webCallingService, data, configFlags, wrapupData?, agentId?): Task`
+- `createTask(contact, webCallingService, data, configFlags, wrapupData?, agentId?, agentName?): Task`
 
 **Behavior**
 
@@ -1225,7 +1242,7 @@ classDiagram
     }
 
     class TaskFactory {
-      + createTask(contact, webCallingService, data, configFlags, wrapupData, agentId) Task
+      + createTask(contact, webCallingService, data, configFlags, wrapupData, agentId, agentName) Task
     }
 
     Task <|-- Voice

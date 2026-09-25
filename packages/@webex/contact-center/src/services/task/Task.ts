@@ -20,11 +20,22 @@ import {
   TASK_CHANNEL_TYPE,
   VOICE_VARIANT,
   CallId,
+  AISummaryAction,
+  AISummary,
+  AISummaryResponse,
+  AISummaryFeatureEnablement,
+  AISummaryCapabilities,
   TaskToggleMuteOptions,
   TaskTransmitDtmfOptions,
 } from './types';
-import {ENTRY_POINT_TRANSFER_DESTINATION_TYPE, METHODS} from './constants';
-import {CC_FILE, TASK_FILE} from '../../constants';
+import {AI_SUMMARY_DURATION_MS, ENTRY_POINT_TRANSFER_DESTINATION_TYPE, METHODS} from './constants';
+import {
+  AI_ASSISTANT_CLIENT_TYPE,
+  AI_SUMMARY_ERROR_CODES,
+  AI_SUMMARY_INVALID_RESPONSE_PAYLOAD,
+  CC_FILE,
+  TASK_FILE,
+} from '../../constants';
 import {getErrorDetails} from '../core/Utils';
 import routingContact from './contact';
 import MetricsManager from '../../metrics/MetricsManager';
@@ -45,7 +56,10 @@ import {
   haveUIControlsChanged,
 } from './state-machine/uiControlsComputer';
 import AutoWrapup from './AutoWrapup';
-import {WrapupData} from '../config/types';
+import {AIFeatureFlags, WrapupData} from '../config/types';
+import {AIAssistantEventName, AIAssistantEventType} from '../../types';
+import {createSummaryError} from './TaskUtils';
+import type ApiAIAssistant from '../ApiAiAssistant';
 
 type UIControlConfigInput = Omit<UIControlConfig, 'channelType'> & {
   channelType?: UIControlConfig['channelType'];
@@ -64,13 +78,27 @@ export default abstract class Task extends EventEmitter implements ITask {
   protected wrapupData?: WrapupData;
   public autoWrapup?: AutoWrapup;
   protected agentId?: string;
+  protected agentName?: string;
+  private apiAIAssistant?: ApiAIAssistant;
+  private getGeneratedSummaryFlags?: () => AIFeatureFlags['generatedSummaries'] | undefined;
+  public aiSummaryCapabilities: Readonly<AISummaryCapabilities> = {
+    midCallEnabled: false,
+    postCallEnabled: false,
+  };
+
+  private pendingFeatureEnablement?: AISummaryFeatureEnablement;
+  private readonly summaryResponseContexts = new Map<
+    'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY',
+    {conversationId: string; interactionId: string}
+  >();
 
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
     uiControlConfig: UIControlConfigInput,
     wrapupData?: WrapupData,
-    agentId?: string
+    agentId?: string,
+    agentName?: string
   ) {
     super();
     this.contact = contact;
@@ -80,6 +108,7 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.uiControlConfig = {...uiControlConfig, channelType, agentId};
     this.wrapupData = wrapupData;
     this.agentId = agentId;
+    this.agentName = agentName;
     this.metricsManager = MetricsManager.getInstance();
     this.webCallMap = {};
     this.currentUiControls = getDefaultUIControls();
@@ -214,6 +243,251 @@ export default abstract class Task extends EventEmitter implements ITask {
 
   public async holdResume(): Promise<TaskResponse> {
     this.unsupportedMethodError('holdResume');
+  }
+
+  public configureAISummary(
+    apiAIAssistant: ApiAIAssistant | undefined,
+    getGeneratedSummaryFlags: () => AIFeatureFlags['generatedSummaries'] | undefined
+  ): void {
+    this.apiAIAssistant = apiAIAssistant;
+    this.getGeneratedSummaryFlags = getGeneratedSummaryFlags;
+  }
+
+  public setFeatureEnablement(enablement: AISummaryFeatureEnablement, emitEvent = true): void {
+    if (enablement.interactionId !== this.data.interactionId) {
+      return;
+    }
+
+    this.aiSummaryCapabilities = {
+      midCallEnabled: enablement.midCallEnabled === true,
+      postCallEnabled: enablement.postCallEnabled === true,
+    };
+    this.pendingFeatureEnablement = emitEvent ? undefined : enablement;
+
+    if (emitEvent) {
+      this.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, enablement);
+    }
+  }
+
+  public emitPendingFeatureEnablement(): void {
+    if (!this.pendingFeatureEnablement) {
+      return;
+    }
+
+    const payload = this.pendingFeatureEnablement;
+    this.pendingFeatureEnablement = undefined;
+    this.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, payload);
+  }
+
+  public clearFeatureEnablement(): void {
+    this.aiSummaryCapabilities = {
+      midCallEnabled: false,
+      postCallEnabled: false,
+    };
+    this.pendingFeatureEnablement = undefined;
+  }
+
+  public requestPostCallSummary(): Promise<AISummary> {
+    return this.requestSummary('POST_CALL_SUMMARY');
+  }
+
+  public sendPostCallSummaryResponse(response: AISummaryResponse): Promise<void> {
+    return this.sendSummaryResponse('POST_CALL_SUMMARY', response);
+  }
+
+  public requestMidCallSummary(action: AISummaryAction): Promise<AISummary> {
+    return this.requestSummary('MID_CALL_SUMMARY', action);
+  }
+
+  private async requestSummary(
+    summaryType: 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY',
+    action?: AISummaryAction
+  ): Promise<AISummary> {
+    const isPostCall = summaryType === 'POST_CALL_SUMMARY';
+    const successMetric = isPostCall
+      ? METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_SUCCESS
+      : METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_SUCCESS;
+    const failureMetric = isPostCall
+      ? METRIC_EVENT_NAMES.AI_SUMMARY_GET_POST_CALL_FAILED
+      : METRIC_EVENT_NAMES.AI_SUMMARY_GET_MID_CALL_FAILED;
+    const metricFields: Record<string, unknown> = {
+      operation: isPostCall ? METHODS.REQUEST_POST_CALL_SUMMARY : METHODS.REQUEST_MID_CALL_SUMMARY,
+    };
+
+    try {
+      this.metricsManager.timeEvent([successMetric, failureMetric]);
+      if (action) Object.assign(metricFields, {actionType: action});
+
+      const interactionId = this.data.interactionId;
+      const conversationId = this.data.interaction?.mainInteractionId || interactionId;
+      Object.assign(metricFields, {conversationId, interactionId});
+
+      const generatedSummaries = this.getGeneratedSummaryFlags!();
+      const organizationEnabled = isPostCall
+        ? generatedSummaries?.wrapUpSummariesEnabled === true
+        : generatedSummaries?.consultTransferSummariesEnabled === true;
+      const interactionEnabled = isPostCall
+        ? this.aiSummaryCapabilities.postCallEnabled
+        : this.aiSummaryCapabilities.midCallEnabled;
+
+      if (!organizationEnabled || !interactionEnabled) {
+        throw createSummaryError(
+          isPostCall
+            ? AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_DISABLED
+            : AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_DISABLED
+        );
+      }
+
+      let eventName: AIAssistantEventName;
+      if (isPostCall) {
+        eventName = AIAssistantEventName.GET_POST_CALL_SUMMARY;
+      } else if (action === 'CONSULT') {
+        eventName = AIAssistantEventName.GET_MID_CALL_CONSULT_SUMMARY;
+      } else {
+        eventName = AIAssistantEventName.GET_MID_CALL_TRANSFER_SUMMARY;
+      }
+      const result = await this.apiAIAssistant!.requestAndWaitForRtd<AISummary>({
+        correlationId: conversationId,
+        rtdEventType: summaryType,
+        timeoutMs: AI_SUMMARY_DURATION_MS,
+        createTimeoutError: () =>
+          createSummaryError(
+            isPostCall
+              ? AI_SUMMARY_ERROR_CODES.POST_CALL_SUMMARY_TIMEOUT
+              : AI_SUMMARY_ERROR_CODES.MID_CALL_SUMMARY_TIMEOUT
+          ),
+        agentId: this.agentId as string,
+        interactionId,
+        eventType: AIAssistantEventType.CTI_EVENT,
+        eventName,
+        eventMetaData: {
+          conversationId,
+          clientType: AI_ASSISTANT_CLIENT_TYPE,
+        },
+        timeout: AI_SUMMARY_DURATION_MS,
+      });
+
+      this.summaryResponseContexts.set(summaryType, {conversationId, interactionId});
+
+      this.metricsManager.trackEvent(
+        successMetric,
+        {taskId: this.data?.interactionId, ...metricFields},
+        ['operational']
+      );
+
+      return result;
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        failureMetric,
+        {
+          taskId: this.data?.interactionId,
+          ...metricFields,
+          failureCode: Task.getAISummaryFailureCode(error),
+        },
+        ['operational']
+      );
+      throw error;
+    }
+  }
+
+  public sendMidCallSummaryResponse(
+    response: AISummaryResponse,
+    action: AISummaryAction
+  ): Promise<void> {
+    return this.sendSummaryResponse('MID_CALL_SUMMARY', response, action);
+  }
+
+  private async sendSummaryResponse(
+    summaryType: 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY',
+    response: AISummaryResponse,
+    action?: AISummaryAction
+  ): Promise<void> {
+    const isPostCall = summaryType === 'POST_CALL_SUMMARY';
+    const successMetric = isPostCall
+      ? METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_SUCCESS
+      : METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_SUCCESS;
+    const failureMetric = isPostCall
+      ? METRIC_EVENT_NAMES.AI_SUMMARY_POST_CALL_RESPONSE_FAILED
+      : METRIC_EVENT_NAMES.AI_SUMMARY_MID_CALL_RESPONSE_FAILED;
+    const metricFields: Record<string, unknown> = {
+      operation: isPostCall
+        ? METHODS.SEND_POST_CALL_SUMMARY_RESPONSE
+        : METHODS.SEND_MID_CALL_SUMMARY_RESPONSE,
+    };
+
+    try {
+      this.metricsManager.timeEvent([successMetric, failureMetric]);
+      if (action) Object.assign(metricFields, {actionType: action});
+      const retainedContext = this.summaryResponseContexts.get(summaryType);
+      const context = retainedContext ?? {
+        conversationId: this.data.interaction?.mainInteractionId || this.data.interactionId,
+        interactionId: this.data.interactionId,
+      };
+      Object.assign(metricFields, {
+        conversationId: context.conversationId,
+        interactionId: context.interactionId,
+      });
+
+      const publishTimestamp = Date.now();
+      let eventName: AIAssistantEventName;
+      if (isPostCall) {
+        eventName = AIAssistantEventName.POST_CALL_SUMMARY_RESPONSE;
+      } else if (action === 'CONSULT') {
+        eventName = AIAssistantEventName.MID_CALL_CONSULT_SUMMARY_RESPONSE;
+      } else {
+        eventName = AIAssistantEventName.MID_CALL_TRANSFER_SUMMARY_RESPONSE;
+      }
+      const eventPayload = {
+        conversationId: context.conversationId,
+        clientType: AI_ASSISTANT_CLIENT_TYPE,
+        action: eventName,
+        summary: response.summary,
+        numberOfTimesViewed: response.numberOfTimesViewed,
+        numberOfTimesEdited: response.numberOfTimesEdited,
+        numberOfTimesCopied: response.numberOfTimesCopied,
+        feedback: response.feedback,
+        state: response.state,
+        ...(isPostCall ? {wrapUpCode: response.wrapUpCode} : {agentName: this.agentName ?? ''}),
+      };
+      await this.apiAIAssistant!.sendEvent(
+        this.agentId as string,
+        context.interactionId,
+        AIAssistantEventType.CTI_EVENT,
+        eventName,
+        eventPayload,
+        undefined,
+        undefined,
+        publishTimestamp,
+        AI_SUMMARY_DURATION_MS
+      );
+
+      this.metricsManager.trackEvent(
+        successMetric,
+        {taskId: this.data?.interactionId, ...metricFields},
+        ['operational']
+      );
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        failureMetric,
+        {
+          taskId: this.data?.interactionId,
+          ...metricFields,
+          failureCode: Task.getAISummaryFailureCode(error),
+        },
+        ['operational']
+      );
+      throw error;
+    }
+  }
+
+  private static getAISummaryFailureCode(error: unknown): string {
+    const errorCode = (error as {data?: {errorCode?: unknown}})?.data?.errorCode;
+
+    if (typeof errorCode === 'string') {
+      return errorCode;
+    }
+
+    return AI_SUMMARY_INVALID_RESPONSE_PAYLOAD;
   }
 
   /**
@@ -650,7 +924,7 @@ export default abstract class Task extends EventEmitter implements ITask {
    * @param methodName - The name of the method that is unsupported
    * @throws Error
    */
-  protected unsupportedMethodError(methodName: string) {
+  protected unsupportedMethodError(methodName: string): never {
     LoggerProxy.error(`Unsupported operation`, {
       module: 'TASK',
       method: methodName,
@@ -669,7 +943,11 @@ export default abstract class Task extends EventEmitter implements ITask {
    * ```
    */
   public updateTaskData(updatedData: TaskData, shouldOverwrite = false): ITask {
+    const previousInteractionId = this.data?.interactionId;
     this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
+    if (previousInteractionId !== this.data?.interactionId) {
+      this.clearFeatureEnablement();
+    }
     if (!shouldOverwrite) {
       this.pruneStaleInteractionMaps(updatedData);
     }

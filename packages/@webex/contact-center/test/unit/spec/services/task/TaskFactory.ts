@@ -52,6 +52,23 @@ describe('TaskFactory', () => {
     }
   });
 
+  it('forwards agent name to Digital tasks', () => {
+    const svc = makeSvc(LoginOption.BROWSER);
+    const data = {...baseData, interaction: {mediaType: MEDIA_CHANNEL.CHAT}} as TaskData;
+
+    const task = TaskFactory.createTask(
+      dummyContact,
+      svc,
+      data,
+      configFlags,
+      undefined,
+      'agent-id',
+      'Agent Name'
+    );
+
+    expect((task as any).agentName).toBe('Agent Name');
+  });
+
   it('defaults undefined mediaType to TELEPHONY', () => {
     const svcBrowser = makeSvc(LoginOption.BROWSER);
     const svcExt = makeSvc(LoginOption.EXTENSION);
