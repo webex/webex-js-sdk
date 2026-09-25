@@ -1760,6 +1760,20 @@ export interface ITask extends IEventEmitter {
   syncWxAppMuteFromCallDetails?(): Promise<boolean | undefined>;
 
   /**
+   * Re-run OFFERED wxApp offer diagnostics without emitting UI controls.
+   * Voice tasks implement this; other channel types omit it.
+   * @internal
+   */
+  refreshWxAppOfferObservability?(): void;
+
+  /**
+   * Cancel pending wxApp offer observability timers (participant-mismatch grace).
+   * Voice tasks implement this; other channel types omit it.
+   * @internal
+   */
+  disposeWxAppOfferObservability?(): void;
+
+  /**
    * State machine instance for managing task state transitions and derived properties.
    * The state machine handles:
    * - State transitions (IDLE → OFFERED → CONNECTED → HELD, etc.)
@@ -2070,6 +2084,8 @@ export type VoiceUIControlOptions = {
   enableWxBetterTogether?: boolean;
   consultTransferConfig?: ConsultTransferDestinationConfig;
   answerCallOnWebexService?: import('../AnswerCallOnWebexService').default;
+  /** Read-only observability: whether usersub answer-calls-on-wxcc is active this session. */
+  getUsersubPublished?: () => boolean;
 };
 
 /**

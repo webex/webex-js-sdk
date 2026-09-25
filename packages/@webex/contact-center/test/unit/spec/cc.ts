@@ -177,6 +177,7 @@ describe('webex.cc', () => {
       getActiveTasks: jest.fn(),
       applyEnableWxBetterTogether: jest.fn(),
       syncWxAppMuteFromCallDetailsForAllTasks: jest.fn(),
+      refreshWxAppOfferObservabilityForAllTasks: jest.fn(),
       on: jest.fn(),
       off: jest.fn(),
       emit: jest.fn(),
@@ -406,20 +407,23 @@ describe('webex.cc', () => {
         module: CC_FILE,
         method: 'connectWebsocket',
       });
-      expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith({
-        isEndTaskEnabled: mockAgentProfile.isEndTaskEnabled,
-        isEndConsultEnabled: mockAgentProfile.isEndConsultEnabled,
-        webRtcEnabled: mockAgentProfile.webRtcEnabled,
-        autoWrapup: mockAgentProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
-        aiFeature: mockAgentProfile.aiFeature,
-        consultTransfer: {
-          allowConsultToQueue: mockAgentProfile.allowConsultToQueue,
-          accessQueue: mockAgentProfile.accessQueue,
-          accessEntryPoint: mockAgentProfile.accessEntryPoint,
-          accessBuddyTeam: mockAgentProfile.accessBuddyTeam,
-        },
-        enableWxBetterTogether: false,
-      });
+      expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isEndTaskEnabled: mockAgentProfile.isEndTaskEnabled,
+          isEndConsultEnabled: mockAgentProfile.isEndConsultEnabled,
+          webRtcEnabled: mockAgentProfile.webRtcEnabled,
+          autoWrapup: mockAgentProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
+          aiFeature: mockAgentProfile.aiFeature,
+          consultTransfer: {
+            allowConsultToQueue: mockAgentProfile.allowConsultToQueue,
+            accessQueue: mockAgentProfile.accessQueue,
+            accessEntryPoint: mockAgentProfile.accessEntryPoint,
+            accessBuddyTeam: mockAgentProfile.accessBuddyTeam,
+          },
+          enableWxBetterTogether: false,
+          getWxAppUsersubPublished: expect.any(Function),
+        })
+      );
       expect(reloadSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
@@ -1097,6 +1101,7 @@ describe('webex.cc', () => {
 
       expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
       expect(subscribeSpy).toHaveBeenCalledWith('agentId', expect.any(Function));
+      expect(mockTaskManager.refreshWxAppOfferObservabilityForAllTasks).toHaveBeenCalled();
     });
 
     it('should rollback wxApp config when post-station-login init fails', async () => {
@@ -1227,7 +1232,57 @@ describe('webex.cc', () => {
 
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
-        expect.objectContaining({skipReason: 'publish_failed'}),
+        expect.objectContaining({skipReason: 'publish_failed', usersubPublished: false}),
+        ['operational', 'behavioral']
+      );
+      expect(webex.cc.isWxBetterTogetherEnabled()).toBe(false);
+    });
+
+    it('should report retained usersub state when publish fails during re-init', async () => {
+      webex.cc.$config = {...webex.cc.$config, enableWxBetterTogether: true};
+      webex.internal.device = {userId: 'user-123', url: 'https://wdm.example.com/devices/dev-1'};
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        webRtcEnabled: false,
+        loginVoiceOptions: ['EXTENSION'],
+      };
+      webex.cc.webCallingService.loginOption = LoginOption.EXTENSION;
+      mockTaskManager.applyEnableWxBetterTogether(true);
+
+      jest.spyOn(webex.cc as any, 'ensureWxAppMercuryConnected').mockResolvedValue(undefined);
+      jest
+        .spyOn(webex.cc['wxAppTelephonyMercurySync'], 'subscribe')
+        .mockImplementation(() => {});
+      jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'isSubscribed').mockReturnValue(true);
+      jest
+        .spyOn(webex.cc['webexCrossClientService'], 'isAnswerCallsStateActive')
+        .mockReturnValue(true);
+      jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockRejectedValue(new Error('publish failed'));
+      jest
+        .spyOn(webex.cc as any, 'releaseWxAppMercuryResources')
+        .mockResolvedValue(undefined);
+      const metricSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
+
+      jest.spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue({
+        data: {
+          agentId: 'agentId',
+          teamId: 'teamId',
+          channelsMap: {chat: [], email: [], social: [], telephony: []},
+        },
+        trackingId: 'track-1',
+      } as StationLoginSuccess);
+
+      await webex.cc.stationLogin({
+        teamId: 'teamId',
+        loginOption: LoginOption.EXTENSION,
+        dialNumber: '1001',
+      });
+
+      expect(metricSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
+        expect.objectContaining({skipReason: 'publish_failed', usersubPublished: true}),
         ['operational', 'behavioral']
       );
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(false);
@@ -1639,7 +1694,61 @@ describe('webex.cc', () => {
       );
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
-        expect.objectContaining({skipReason: 'user_id_unavailable'}),
+        expect.objectContaining({skipReason: 'user_id_unavailable', usersubPublished: false}),
+        ['operational', 'behavioral']
+      );
+      expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
+    });
+
+    it('should report retained usersub state when userId is missing during re-init', async () => {
+      webex.cc.$config = {...webex.cc.$config, enableWxBetterTogether: true};
+      webex.internal.device = {
+        url: 'https://wdm.example.com/devices/dev-1',
+        registered: true,
+        register: jest.fn().mockResolvedValue(undefined),
+      };
+      webex.internal.mercury = {
+        connected: true,
+        connect: jest.fn().mockResolvedValue(undefined),
+        on: jest.fn(),
+        off: jest.fn(),
+      };
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        webRtcEnabled: false,
+        loginVoiceOptions: ['EXTENSION'],
+      };
+      webex.cc.webCallingService.loginOption = LoginOption.EXTENSION;
+      mockTaskManager.applyEnableWxBetterTogether(true);
+
+      jest
+        .spyOn(webex.cc['webexCrossClientService'], 'isAnswerCallsStateActive')
+        .mockReturnValue(true);
+      const publishSpy = jest
+        .spyOn(webex.cc['webexCrossClientService'], 'setManageWebexCallingInWxcc')
+        .mockResolvedValue(undefined);
+      jest.spyOn(webex.cc['wxAppTelephonyMercurySync'], 'isSubscribed').mockReturnValue(true);
+      const metricSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
+
+      jest.spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue({
+        data: {
+          agentId: 'agentId',
+          teamId: 'teamId',
+          channelsMap: {chat: [], email: [], social: [], telephony: []},
+        },
+        trackingId: 'track-1',
+      } as StationLoginSuccess);
+
+      await webex.cc.stationLogin({
+        teamId: 'teamId',
+        loginOption: LoginOption.EXTENSION,
+        dialNumber: '1001',
+      });
+
+      expect(publishSpy).not.toHaveBeenCalledWith(true, expect.anything());
+      expect(metricSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+        expect.objectContaining({skipReason: 'user_id_unavailable', usersubPublished: true}),
         ['operational', 'behavioral']
       );
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
@@ -2678,6 +2787,7 @@ describe('webex.cc', () => {
 
       expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
       expect(subscribeSpy).toHaveBeenCalledWith('agentId', expect.any(Function));
+      expect(mockTaskManager.refreshWxAppOfferObservabilityForAllTasks).toHaveBeenCalled();
     });
 
     it('should force-publish usersub false on silent relogin when enableWxBetterTogether is false at init', async () => {
@@ -4140,6 +4250,7 @@ describe('webex.cc', () => {
       expect(webex.cc.isWxBetterTogetherEnabled()).toBe(true);
       expect(mockTaskManager.applyEnableWxBetterTogether).toHaveBeenCalledWith(true);
       expect(publishSpy).toHaveBeenCalledWith(true, {userId: 'user-123', trackPublishMetrics: true});
+      expect(mockTaskManager.refreshWxAppOfferObservabilityForAllTasks).toHaveBeenCalled();
     });
 
     it('should publish false and update config when disabled after wxApp was enabled', async () => {
