@@ -16,6 +16,10 @@ const PW_BROWSER = process.env.PW_BROWSER || 'chrome';
 
 const baseChromiumArgs = [
   '--disable-site-isolation-trials', // Allow cross-origin iframes in the same process
+  // Test-only: retained because the e2e harness loads resources across origins
+  // from the local dev server, which requires bypassing CORS. Scoped to this
+  // chromium launchOptions.args list only; never applied to src/ runtime code
+  // or the published package.
   '--disable-web-security', // Bypass CORS for local dev server
   '--no-sandbox', // Required for CI containers without root
   '--disable-features=WebRtcHideLocalIpsWithMdns', // Expose real local IPs for WebRTC ICE candidates
@@ -24,6 +28,10 @@ const baseChromiumArgs = [
   '--use-fake-device-for-media-stream', // Use synthetic audio/video instead of real hardware
   '--disable-extensions', // Prevent extensions from interfering with tests
   '--disable-plugins', // Prevent plugins from interfering with tests
+  // Test-only: retained because the local dev server presents a self-signed
+  // certificate the browser would otherwise reject. Scoped to this chromium
+  // launchOptions.args list only; never applied to src/ runtime code or the
+  // published package.
   '--ignore-certificate-errors', // Accept self-signed certs from local dev server
   ...(process.env.CI ? [] : ['--auto-open-devtools-for-tabs']), // Open DevTools only in local runs
 ];
@@ -76,6 +84,9 @@ export default defineConfig({
     command: 'yarn samples:serve',
     cwd: path.resolve(__dirname, '../..'),
     url: BASE_URL,
+    // Test-only: retained because the spawned local dev server uses the same
+    // self-signed certificate as above; Playwright's readiness probe must not
+    // fail TLS verification. Scoped to this webServer block only.
     ignoreHTTPSErrors: true,
     reuseExistingServer: true,
     stdout: 'ignore',
@@ -87,6 +98,8 @@ export default defineConfig({
   reporter: 'html',
   use: {
     baseURL: BASE_URL,
+    // Test-only: retained because the test browser context must reach the
+    // same self-signed local dev server. Scoped to this use block only.
     ignoreHTTPSErrors: true,
     trace: 'retain-on-failure',
   },
