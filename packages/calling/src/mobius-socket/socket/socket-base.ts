@@ -31,6 +31,7 @@ import type {
   SocketTransport,
   SocketTransportConstructor,
 } from './types';
+import {isSocketResponse} from './types';
 
 const sockets = new WeakMap<Socket, SocketTransport>();
 
@@ -338,7 +339,15 @@ export default class Socket extends EventEmitter {
    */
   public onmessage(event: SocketMessageEvent<string>) {
     try {
-      const data = JSON.parse(event.data) as SocketResponse;
+      const parsed = JSON.parse(event.data);
+
+      if (!isSocketResponse(parsed)) {
+        this.logger.warn(`socket,${this.domain}: dropping malformed WebSocket frame`);
+
+        return;
+      }
+
+      const data = parsed as SocketResponse;
       const processedEvent = {data};
 
       if (data.type === 'async_event') {
