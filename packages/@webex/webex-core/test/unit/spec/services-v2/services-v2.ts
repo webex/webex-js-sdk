@@ -743,6 +743,17 @@ describe('webex-core', () => {
 
         assert.calledOnce(services.initServiceCatalogs);
       });
+
+      it('fetches the catalog and does not update active services when id belongs to another service', async () => {
+        services._updateActiveServices = sinon.stub();
+
+        await services.switchActiveClusterIds({
+          conversation: 'urn:TEAM:me-central-1_d:mercury',
+        });
+
+        assert.calledOnceWithExactly(services.initServiceCatalogs, true);
+        assert.notCalled(services._updateActiveServices);
+      });
     });
 
     describe('#updateCatalog', () => {
