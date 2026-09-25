@@ -2,6 +2,18 @@
 packages/**/docs/
 /packages/@webex/plugin-meetings/.generated/
 
+# SDD canonical specs for @webex/internal-plugin-call-ai-summary are tracked
+# documentation, not build output. Git cannot re-include a file under an
+# excluded directory, so each directory is un-excluded before its contents.
+!packages/@webex/internal-plugin-call-ai-summary/docs/
+!packages/@webex/internal-plugin-call-ai-summary/docs/**
+!packages/@webex/internal-plugin-call-ai-summary/src/docs/
+!packages/@webex/internal-plugin-call-ai-summary/src/docs/**
+# The pinned repo-standards template snapshot records which templates
+# generated those specs, so it is tracked alongside them.
+!packages/@webex/internal-plugin-call-ai-summary/.sdd/templates/repo-standards/docs/
+!packages/@webex/internal-plugin-call-ai-summary/.sdd/templates/repo-standards/docs/**
+
 /**/.generated/
 
 ~*

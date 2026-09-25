@@ -1,0 +1,381 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-call-ai-summary",
+    "purpose": "A Webex internal plugin for AI-generated call summary retrieval. Resolves a Pragya container for a call, fetches AI Bridge summary, notes, action-item, and transcript content, and returns it decrypted through the Webex KMS encryption plugin."
+  },
+  "commands": {
+    "install": "yarn install",
+    "build": "yarn build",
+    "lint": "yarn test:style",
+    "unit-test": "yarn test:unit",
+    "all-checks": "yarn test",
+    "compile": "yarn build:src",
+    "test-all": "yarn test",
+    "deploy": "yarn deploy:npm",
+    "manual-pragya-check": "node src/manual-pragya-api-test.js",
+    "manual-integration-check": "node src/manual-integration-test.js"
+  },
+  "public_interfaces": [
+    {
+      "name": "webex.internal.aisummary",
+      "kind": "package_export",
+      "source": "src/index.ts",
+      "entrypoints": [
+        "getContainer",
+        "getSummary",
+        "getNotes",
+        "getActionItems",
+        "getTranscriptUrl",
+        "getTranscript"
+      ],
+      "audience": "Webex SDK applications inside the monorepo",
+      "notes": "Registered by importing the package; verify declarations in src/ai-summary.ts."
+    },
+    {
+      "name": "TypeScript DTOs",
+      "kind": "package_export",
+      "source": "src/types.ts",
+      "entrypoints": [
+        "PragyaContainerResponse",
+        "SummaryContent",
+        "TranscriptContent"
+      ],
+      "audience": "TypeScript consumers",
+      "notes": "Ten exported interfaces; declarations are built to dist/."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "plugin implementation",
+      "paths": [
+        "src/ai-summary.ts",
+        "src/index.ts",
+        "src/config.ts",
+        "src/constants.ts"
+      ],
+      "generated_artifacts": [
+        "dist/"
+      ],
+      "refresh_with": [
+        "yarn build"
+      ],
+      "validate_with": [
+        "yarn test:style"
+      ]
+    },
+    {
+      "surface": "typed contract",
+      "paths": [
+        "src/types.ts"
+      ],
+      "generated_artifacts": [
+        "dist/"
+      ],
+      "refresh_with": [
+        "yarn build"
+      ],
+      "validate_with": [
+        "yarn test:style"
+      ]
+    },
+    {
+      "surface": "specifications",
+      "paths": [
+        "docs/",
+        "src/docs/README.md",
+        "AGENTS.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "python3 scripts/check_spec_index.py"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist/",
+      "generated_from": "src/",
+      "refresh_with": "yarn build"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "the org repo-readiness standards (the repo-standards substrate)",
+      "refresh_with": "setup-skills.sh --target . --sdd-root ."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**/*.ts"
+      ],
+      "minimum": [
+        "yarn test:style"
+      ],
+      "recommended": [
+        "yarn build",
+        "yarn test:unit"
+      ]
+    },
+    {
+      "paths": [
+        "docs/**",
+        "src/docs/README.md",
+        "AGENTS.md"
+      ],
+      "minimum": [
+        "python3 scripts/check_spec_index.py"
+      ],
+      "recommended": []
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/types.ts"
+      ],
+      "affects": [
+        "published TypeScript declarations",
+        "every consumer of webex.internal.aisummary"
+      ],
+      "refresh_with": [
+        "yarn build"
+      ],
+      "validate_with": [
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist/"
+      ],
+      "notes": "Type changes are contract changes even though the package is internal."
+    },
+    {
+      "paths": [
+        "src/constants.ts"
+      ],
+      "affects": [
+        "caller-visible error messages documented in src/docs/README.md"
+      ],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist/"
+      ],
+      "notes": "Callers branch on these exact message strings."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "container",
+      "definition": "A Pragya-owned record grouping the AI artifacts for one call, addressed by containerId.",
+      "notes": "Distinct from a Janus call session, which supplies the container ID."
+    },
+    {
+      "term": "Pragya",
+      "definition": "The AI container service that resolves container IDs into content URLs and an encryption key.",
+      "notes": "Discovered via U2C as serviceName 'pragya'."
+    },
+    {
+      "term": "AI Bridge",
+      "definition": "The service behind summaryUrl, notesUrl, actionItemsUrl, and transcriptUrl that serves encrypted content.",
+      "notes": "Addressed only by absolute URLs returned by Pragya; never resolved through the service catalog."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "A command must appear in package.json scripts before it is documented.",
+      "notes": "yarn test:unit runs 35 tests from test/unit/spec/ai-summary.ts."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src/ai-summary.ts",
+        "src/types.ts",
+        "src/constants.ts"
+      ],
+      "requirement": "Behavior must be traceable to a current declaration, not to prior design documents.",
+      "notes": "Specifications are canonical under docs/ and src/docs/README.md; the pre-SDD design documents were removed after migration."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not add service discovery for summary content URLs.",
+      "why": "Pragya returns region-correct absolute URLs; a second mechanism could disagree."
+    },
+    {
+      "rule": "Do not add test fixtures under test/unit/data/.",
+      "why": "Jest collects test/unit/** excluding only lib and fixture, so a data/ directory is picked up as a test suite and fails. Fixtures belong in test/unit/fixture/."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "The claim is traceable to a current file under src/ or package.json."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Omit unverifiable detail and state the gap rather than inferring upstream behavior."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Stop and report the gap; upstream Pragya and AI Bridge behavior cannot be verified from this repository."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "plugin entry",
+        "path": "src/index.ts",
+        "purpose": "Registers the plugin as aisummary and imports the encryption plugin for its side effects.",
+        "notes": "Importing the package is what performs registration."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/internal-plugin-call-ai-summary",
+        "paths": [
+          "src/"
+        ],
+        "notes": "Single module; scripts/module_tree.py computes has_submodules=false."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "plugin source",
+        "paths": [
+          "src/*.ts"
+        ],
+        "notes": "All behavior lives in one WebexPlugin.extend object in src/ai-summary.ts."
+      },
+      {
+        "name": "manual verification scripts",
+        "paths": [
+          "src/manual-pragya-api-test.js",
+          "src/manual-integration-test.js"
+        ],
+        "notes": "Require a live Webex token; not part of any automated tier."
+      },
+      {
+        "name": "unit tests",
+        "paths": [
+          "test/unit/spec/*.ts",
+          "test/unit/fixture/*.ts"
+        ],
+        "notes": "Fixtures must stay under fixture/; any other test/unit subdirectory is collected as a suite."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist/"
+        ],
+        "generated_from": "src/",
+        "refresh_with": "yarn build",
+        "notes": "Never edit directly."
+      },
+      {
+        "name": "repo-standards template snapshot",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "the org repo-readiness standards (the repo-standards substrate)",
+        "refresh_with": "setup-skills.sh --target . --sdd-root .",
+        "notes": "Resolved snapshot pinned by template-map.json; never edit in place."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "the org repo-readiness standards (the repo-standards substrate)",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "setup-skills.sh --target . --sdd-root .",
+        "notes": "Re-resolves the pinned Repo Standards template snapshot."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "lint",
+        "command": "yarn test:style",
+        "scope": "src/**/*",
+        "notes": "The only validation that currently exercises anything."
+      },
+      {
+        "name": "unit",
+        "command": "yarn test:unit",
+        "scope": "unit tests",
+        "notes": "35 tests in test/unit/spec/ai-summary.ts."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orient the reader before showing detail; link the owning specification rather than restating it."
+    ],
+    "example_policy": "Include a usage example only when it is verifiable against current declarations.",
+    "fallback": "Omit a section rather than inferring content that no source supports."
+  },
+  "surface_owners": [
+    {
+      "surface": "plugin implementation and typed contract",
+      "owner": "Webex JS SDK Team",
+      "edit_boundary": "src/ only; dist/ is generated."
+    },
+    {
+      "surface": "Pragya and AI Bridge HTTP contracts",
+      "owner": "Pragya and AI Bridge service teams",
+      "edit_boundary": "Externally owned; consumed here and not modifiable from this repository."
+    }
+  ],
+  "do_not_edit": [
+    "dist/",
+    ".sdd/templates/"
+  ],
+  "marker_scopes": {
+    "sdd": [
+      "sdd-generated-metadata"
+    ]
+  },
+  "fallback_rules": [
+    "When upstream Pragya or AI Bridge behavior cannot be verified from this repository, state the limit rather than inferring it.",
+    "When a command is missing, stop and ask rather than inventing an alternative."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/getting-started.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract"
+    ]
+  }
+}

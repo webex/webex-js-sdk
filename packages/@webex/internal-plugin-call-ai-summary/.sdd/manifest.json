@@ -1,0 +1,408 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/internal-plugin-call-ai-summary",
+    "purpose": "A Webex internal plugin for AI-generated call summary retrieval. Resolves a Pragya container for a call, fetches AI Bridge summary, notes, action-item, and transcript content, and returns it decrypted through the Webex KMS encryption plugin.",
+    "category": "cat1-legacy",
+    "primary_languages": [
+      "typescript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "role": "install"
+    },
+    "build": {
+      "command": "yarn build",
+      "source_file": "package.json",
+      "role": "build"
+    },
+    "compile": {
+      "command": "yarn build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "lint": {
+      "command": "yarn test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "unit-test": {
+      "command": "yarn test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "test-all": {
+      "command": "yarn test",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "deploy": {
+      "command": "yarn deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    },
+    "manual-pragya-check": {
+      "command": "node src/manual-pragya-api-test.js",
+      "source_file": "src/manual-pragya-api-test.js",
+      "role": "other"
+    },
+    "manual-integration-check": {
+      "command": "node src/manual-integration-test.js",
+      "source_file": "src/manual-integration-test.js",
+      "role": "other"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=16",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "berry (workspace protocol)",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "@riag (repository owner; verified in the 2026-09-23 bootstrap questionnaire that no repo-specific coverage gate applies to this package)"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% \u2014 spec is authoritative",
+    "partial": "40-80% specced \u2014 spec is a hint, cross-check code",
+    "untracked": "<40% specced \u2014 code is the source of truth"
+  },
+  "template_migration": {
+    "status": "validated",
+    "target_source": "repo-standards",
+    "target_source_commit": "d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "detected_footprints": [
+      "ai-docs"
+    ],
+    "old_template_disposition": "retain",
+    "decided_by": "@riag",
+    "decided_at": "2026-09-23T05:24:48Z"
+  },
+  "spec_source_policy": {
+    "mode": "reconcile",
+    "migrated_source_disposition": "delete-after-validation",
+    "disposition_decided_by": "@riag",
+    "disposition_decided_at": "2026-09-23T15:20:00Z",
+    "decided_by": "@riag",
+    "decided_at": "2026-09-23T05:24:48Z",
+    "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+  },
+  "spec_sources": [
+    {
+      "path": "ai-docs/ARCHITECTURE.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "1189-line pre-implementation design/intent document. This entry routes its repo-scope half: sections 1-3, 8, 10 and 13 reconcile into docs/architecture.md, and section 1.2 Key Design Decisions reconciles into docs/adr/. Its module-scope half is routed by the separate src/ entry below. Section 6.4 pseudo-code and section 11.1 test-suite block are executable-contract units routed under the Migrated Executable Contract Gate and are not copied into canonical documents. Retained permanently as the audit trail; never a deletion candidate. DELETED 2026-09-23 after independent validation passed (codex, 0 blocking): content reconciled into the canonical docs, the drafted unit-test suite salvaged into test/unit/spec/ai-summary.ts, and the upstream wire samples salvaged into test/unit/fixture/responses.ts. Recoverable from commit 3db31e87c7."
+    },
+    {
+      "path": "ai-docs/ARCHITECTURE.md",
+      "scope": "module",
+      "module": "src/",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "src/docs/README.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Module-scope half of the same design document. Sections 4-7, 9, 11 and 12 (SDK method interfaces, DTOs, low-level design, wire-level request/response detail, error handling, testing strategy, package structure) reconcile into the module spec. Per-unit routing across both halves is authoritative in the source-fidelity inventories, not in this single primary route. DELETED 2026-09-23 after independent validation passed (codex, 0 blocking): content reconciled into the canonical docs, the drafted unit-test suite salvaged into test/unit/spec/ai-summary.ts, and the upstream wire samples salvaged into test/unit/fixture/responses.ts. Recoverable from commit 3db31e87c7."
+    },
+    {
+      "path": "ai-docs/AGENTS.md",
+      "scope": "repo",
+      "role": "superseded",
+      "canonical": false,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "AGENTS.md",
+      "post_migration_action": "delete-after-validation",
+      "deletion_status": "deleted",
+      "notes": "Human-authored agent guidance plus API reference. Not a canonical overlap: it sits at ai-docs/AGENTS.md while the canonical agent entry is the package-root AGENTS.md, which does not currently exist. Documents only 5 public methods and omits getTranscript, which is corrected from src/ai-summary.ts. Retained permanently. DELETED 2026-09-23 after independent validation passed (codex, 0 blocking): content reconciled into the canonical docs, the drafted unit-test suite salvaged into test/unit/spec/ai-summary.ts, and the upstream wire samples salvaged into test/unit/fixture/responses.ts. Recoverable from commit 3db31e87c7."
+    },
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "docs/getting-started.md",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Native npm-facing package documentation and the only source documenting getTranscript, the error Cause/Recovery columns, the keyUrl-over-encryptionKeyUrl fallback rule, and the end-to-end Janus-to-Pragya usage example. Install/Prerequisites/Development/Manual Testing reconcile into docs/getting-started.md; Overview into docs/index.md; the API section is contract evidence for the module spec. Remains the authoritative npm readme in place and is never a deletion candidate. Its stale Package Structure block was corrected in place at publication on 2026-09-23: pre-correction sha256 6346708224c1d3ad8371e15190f6125571e70a85d64d00a50f4cad04a14908e7, post-correction sha256 981b206a902652e389cca97e74f8012ab919fc22ac63d7aa6d2d92147a821dce. The source-fidelity inventories record the pre-correction source state, which is the migration basis; unit SF-0050 is the stale record of the removed claim."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src/",
+      "coverage_status": "Specced",
+      "coverage_evidence": "Public surface 100% specced at src/docs/README.md: all six public methods and all ten exported types are documented, and independent validation (codex, 2026-09-23) reported B1 signature match and B4 type match PASS with no drift. Behavior is verified by 38 unit tests in test/unit/spec/ai-summary.ts covering plugin registration, every public method, the summaryData.data flattening transform, the keyUrl precedence rule, all validation branches and each normalized error mapping. No requirement is without unit evidence.",
+      "canonical_spec": "src/docs/README.md",
+      "contracts": {
+        "provides": [
+          "aisummary-sdk",
+          "aisummary-package-entry",
+          "aisummary-types"
+        ],
+        "requires": [
+          "pragya-containers-http",
+          "ai-bridge-content-http",
+          "webex-encryption-sdk"
+        ]
+      },
+      "last_assessed": "2026-09-23",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "enforces_domain_rules": false,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": false,
+        "published_package": true,
+        "embedded_in_host": false,
+        "holds_client_state": false,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-09-23T05:24:48Z",
+        "resolved_by": "claude-code/claude-opus-5[1m] (host metadata; code-grounded from src/ai-summary.ts, src/types.ts, src/index.ts and package.json)",
+        "resolved_at": "2026-09-23T05:24:48Z"
+      },
+      "source_policy": {
+        "mode": "reconcile",
+        "existing_sources": [
+          "ai-docs/ARCHITECTURE.md",
+          "ai-docs/AGENTS.md",
+          "README.md"
+        ],
+        "conflict_status": "resolved",
+        "decision_record": ".generated/sdd/spec-source-policy/decision.md"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "aisummary-sdk": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/ai-summary.ts",
+        "summary": "Internal Webex SDK plugin surface reached as webex.internal.aisummary, registered by registerInternalPlugin('aisummary', ...) in src/index.ts. Six public methods declared here: getContainer, getSummary, getNotes, getActionItems, getTranscriptUrl (synchronous) and getTranscript."
+      },
+      "aisummary-package-entry": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/index.ts",
+        "summary": "Package entry point. Calls registerInternalPlugin('aisummary', AISummary, {config}), imports @webex/internal-plugin-encryption for its side effects, and re-exports the plugin as the package default. Importing the package is what makes webex.internal.aisummary available."
+      },
+      "aisummary-types": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/types.ts",
+        "summary": "Ten exported TypeScript interfaces forming the typed request/response surface: PragyaSummaryData, PragyaContainerResponse, GetContainerOptions, GetSummaryContentOptions, SummaryContent, SummaryNotes, ActionItemSnippet, SummaryActionItems, TranscriptSnippet, TranscriptContent."
+      },
+      "pragya-containers-http": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "Webex service-catalog service 'pragya', resource 'containers/{containerId}' (AI_SUMMARY_SERVICE and AI_SUMMARY_CONTAINERS_RESOURCE in src/constants.ts)",
+        "summary": "Upstream Pragya container-lookup API consumed by getContainer. Owned by the Pragya service, not by this repository. The response nests summary URLs under summaryData.data, which getContainer flattens onto summaryData."
+      },
+      "ai-bridge-content-http": {
+        "kind": "http",
+        "publication": "published",
+        "source_kind": "external",
+        "source": "AI Bridge absolute URLs supplied at runtime by PragyaSummaryData: summaryUrl, notesUrl, actionItemsUrl and transcriptUrl",
+        "summary": "Upstream AI Bridge content endpoints consumed by getSummary, getNotes, getActionItems and getTranscript. Owned by AI Bridge, not by this repository. Returns KMS-encrypted content plus an optional per-response keyUrl that takes precedence over containerInfo.encryptionKeyUrl."
+      },
+      "webex-encryption-sdk": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/internal-plugin-encryption (workspace package; webex.internal.encryption.decryptText)",
+        "summary": "Sibling workspace plugin providing KMS/JWE decryption. Consumed by the private _decryptContent helper for every content field returned by this module. Declared as a workspace dependency in package.json and imported for side effects in src/index.ts."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5[1m]",
+    "generator_runtime_source": "host-metadata",
+    "validator_runtime": "codex",
+    "validator_runtime_source": "invocation-input",
+    "validator_run_id": "01a0cd0c-f017-7f92-9179-5c6f54d46814",
+    "minimum_independence": "different-runtime",
+    "runtime_fallback_tier": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "generator_run_id": "call-ai-summary-migration-20260923-052025",
+    "source_commit": "bc61c78ba5",
+    "base_ref": "main",
+    "head_ref": "ai-summary"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "The package has no pre-existing module-local documentation convention. ai-docs/ holds repo-scope design documents rather than module specs, and it cannot serve as the standing docs root: the filesystem is case-insensitive, so the canonical lowercase docs/architecture.md would collide with the existing ai-docs/ARCHITECTURE.md, which the policy refuses as a case-variant pair rather than an overlap. standing_docs_root is additionally enum-locked to docs by the manifest schema. The source-local default src/docs/README.md therefore applies unchanged.",
+      "decided_by": "@riag",
+      "decided_at": "2026-09-23T05:24:48Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "No repository operational-context manifest or schema exists in this package; both are created from verified repository evidence.",
+      "decided_by": "@riag",
+      "decided_at": "2026-09-23T05:24:48Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "This package is a published SDK plugin library, not a deployable service. It has no deployment surface, no runtime of its own, and no infrastructure configuration.",
+        "decided_by": "@riag",
+        "decided_at": "2026-09-23T05:24:48Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "No repository-owned HTTP API exists. The package is a consumer of two upstream services (Pragya, AI Bridge) and publishes a JS/TS SDK surface, so contracts stay on ecosystem-native artifacts. An empty paths scaffold is an explicit blocker.",
+        "decided_by": "@riag",
+        "decided_at": "2026-09-23T05:24:48Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No MkDocs publishing workflow exists for this package or the surrounding monorepo.",
+        "decided_by": "@riag",
+        "decided_at": "2026-09-23T05:24:48Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "Security policy is owned at the webex-js-sdk repository root, not per package.",
+        "decided_by": "@riag",
+        "decided_at": "2026-09-23T05:24:48Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "Contribution guidance is owned at the webex-js-sdk repository root, not per package.",
+        "decided_by": "@riag",
+        "decided_at": "2026-09-23T05:24:48Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "The monorepo generates changelogs centrally through its release tooling; a package-level changelog would diverge from it.",
+        "decided_by": "@riag",
+        "decided_at": "2026-09-23T05:24:48Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "No deployable service, so the package does not participate in the CTO readiness workflow.",
+        "decided_by": "@riag",
+        "decided_at": "2026-09-23T05:24:48Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "No CTO checklist is selected, so its matching schema is not required.",
+        "decided_by": "@riag",
+        "decided_at": "2026-09-23T05:24:48Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "tooling": {
+    "sdlc_skills": {
+      "install_mode": "copy",
+      "installed_at": "2026-09-23T05:24:48Z",
+      "plugins": [
+        "repo-annotation@2.0.3"
+      ]
+    }
+  },
+  "substrate": {
+    "source": "the org repo-readiness standards (the repo-standards substrate)",
+    "consumed": [
+      "lint/format configs",
+      "base AGENTS.md"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": false,
+      "components_interact": false,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": true,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "claude-code/claude-opus-5[1m] (host metadata; code-grounded from package.json, src/ and the routed source documents)",
+    "resolved_at": "2026-09-23T05:24:48Z"
+  },
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  }
+}
