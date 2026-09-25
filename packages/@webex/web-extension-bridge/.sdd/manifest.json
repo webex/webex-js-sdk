@@ -1,0 +1,408 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/web-extension-bridge",
+    "purpose": "Secure TypeScript SDK that bridges a web application and a Chrome MV3 extension over a validated postMessage and chrome.runtime protocol.",
+    "category": "cat1-legacy",
+    "primary_languages": [
+      "typescript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "install": {
+      "command": "yarn",
+      "source_file": "package.json",
+      "role": "install"
+    },
+    "compile": {
+      "command": "yarn workspace @webex/web-extension-bridge typecheck",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/web-extension-bridge test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/web-extension-bridge test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "build": {
+      "command": "yarn workspace @webex/web-extension-bridge build:src",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "build:samples": {
+      "command": "yarn workspace @webex/web-extension-bridge build:samples",
+      "source_file": "package.json",
+      "role": "other"
+    },
+    "deploy:npm": {
+      "command": "yarn workspace @webex/web-extension-bridge deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "node",
+      "version": "22.14",
+      "origin": "repo-config",
+      "source_file": "AGENTS.md"
+    },
+    {
+      "name": "typescript",
+      "version": "^4.9.5",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit",
+      "framework": "mocha"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "SPARK-853132 Stage 0: package.json has no coverage script or in-build coverage threshold"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% — spec is authoritative",
+    "partial": "40-80% specced — spec is a hint, cross-check code",
+    "untracked": "<40% specced — code is the source of truth"
+  },
+  "spec_source_policy": {
+    "mode": "reconcile",
+    "migrated_source_disposition": "retain",
+    "disposition_decided_by": "SPARK-853132 ticket owner",
+    "disposition_decided_at": "2026-09-16T10:06:00Z",
+    "decided_by": "SPARK-853132 ticket owner",
+    "decided_at": "2026-09-16T10:06:00Z",
+    "decision_record": "docs/adr/0001-spec-source-policy.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "repo",
+      "role": "source-material",
+      "canonical": false,
+      "use_by_agents": "source-for-reconciliation",
+      "canonical_target": "docs/architecture.md",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Product README preserved byte-for-byte. Architecture facts that still match code were reconciled into docs/architecture.md. Intake spec lives at JS SDK repo root WEB-EXTENSION-BRIDGE-INTAKE-SPEC.md and cannot be a spec_sources path from this package sdd-root. SECURITY.md is reused via layout.artifact_decisions and is not duplicated here."
+    },
+    {
+      "path": "package.json",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "post_migration_action": "retain",
+      "deletion_status": "not-applicable",
+      "notes": "Authoritative published export map for SDK contracts."
+    }
+  ],
+  "modules": [
+    {
+      "path": "src/core",
+      "coverage_status": "Partial",
+      "coverage_evidence": "First coverage-review 2026-09-16: 14/16 mandatory fields PRESENT (88%). Independent spec-validator has not run; last-5-PR spec/code sync is not yet established, so status stays Partial.",
+      "canonical_spec": "src/core/docs/README.md",
+      "contracts": {
+        "provides": [
+          "bridge-envelope"
+        ],
+        "requires": []
+      },
+      "last_assessed": "2026-09-16",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "holds_client_state": false,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-09-16T10:18:52Z",
+        "resolved_by": "cursor (SPARK-853132 Stage 0 plan plus package source)",
+        "resolved_at": "2026-09-16T10:06:00Z"
+      }
+    },
+    {
+      "path": "src/web",
+      "coverage_status": "Partial",
+      "coverage_evidence": "First coverage-review 2026-09-16: 14/16 mandatory fields PRESENT (88%). Independent spec-validator has not run; status stays Partial.",
+      "canonical_spec": "src/web/docs/README.md",
+      "contracts": {
+        "provides": [
+          "web-page-sdk"
+        ],
+        "requires": [
+          "bridge-envelope"
+        ]
+      },
+      "last_assessed": "2026-09-16",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": true,
+        "holds_client_state": true,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-09-16T10:18:52Z",
+        "resolved_by": "cursor (SPARK-853132 Stage 0 plan plus package source)",
+        "resolved_at": "2026-09-16T10:06:00Z"
+      }
+    },
+    {
+      "path": "src/extension",
+      "coverage_status": "Partial",
+      "coverage_evidence": "First coverage-review 2026-09-16: 13/16 mandatory fields PRESENT (81%). No browser e2e suite; independent spec-validator has not run; status stays Partial.",
+      "canonical_spec": "src/extension/docs/README.md",
+      "contracts": {
+        "provides": [
+          "extension-sdk",
+          "content-script-entry"
+        ],
+        "requires": [
+          "bridge-envelope"
+        ]
+      },
+      "last_assessed": "2026-09-16",
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": true,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": true,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": true,
+        "holds_client_state": true,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-09-16T10:18:52Z",
+        "resolved_by": "cursor (SPARK-853132 Stage 0 plan plus package source)",
+        "resolved_at": "2026-09-16T10:06:00Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "web-page-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Page API published at the package root specifier: createWebBridge plus shared BridgeError types."
+      },
+      "extension-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Extension facade published at ./extension: createExtensionBridge, createExtensionClient, startContentRelay."
+      },
+      "content-script-entry": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Manifest wiring entry published at ./content-script; importing it starts the default-channel relay as a side effect when window and chrome exist."
+      },
+      "bridge-envelope": {
+        "kind": "event",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/core/protocol.ts",
+        "summary": "Null-prototype Envelope shape and kinds for page-protocol hops (page, content-relay, worker). UI uses ClientCommandMessage / ClientPushEvent; relay CONNECT/DISCONNECT uses RelayToWorker."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/core/docs/README.md",
+      "src/web/docs/README.md",
+      "src/extension/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "cursor",
+    "generator_runtime_source": "invocation-input",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "generator_run_id": "spark-853132-sdd-stage0-2026-09-16",
+    "validator_runtime": "codex",
+    "validator_runtime_source": "invocation-input",
+    "runtime_fallback_tier": "different-runtime",
+    "source_commit": "1339dbaee6656c497bebd31f2e5c66673f145421",
+    "base_ref": "next",
+    "head_ref": "WEB-EXTENSION-BRIDGE_SDD_ANNOTATION"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "No existing module-local docs convention in this package; default source-local docs/README.md under each of src/core, src/web, src/extension.",
+      "decided_by": "cursor (SPARK-853132 Stage 0 plan)",
+      "decided_at": "2026-09-16T10:06:00Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "No existing .repo-context.json in this package.",
+      "decided_by": "cursor (SPARK-853132 Stage 0 plan)",
+      "decided_at": "2026-09-16T10:06:00Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "This package is a published client SDK, not a deployable service.",
+        "decided_by": "cursor (SPARK-853132 Stage 0 plan)",
+        "decided_at": "2026-09-16T10:06:00Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "This package has no MkDocs publishing workflow.",
+        "decided_by": "cursor (SPARK-853132 Stage 0 plan)",
+        "decided_at": "2026-09-16T10:06:00Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "Published surface is an npm SDK, not an HTTP API.",
+        "decided_by": "cursor (SPARK-853132 Stage 0 plan)",
+        "decided_at": "2026-09-16T10:06:00Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "reuse",
+        "reason": "Package already owns SECURITY.md; reuse without overwrite.",
+        "decided_by": "cursor (SPARK-853132 Stage 0 plan)",
+        "decided_at": "2026-09-16T10:06:00Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "No package-local CONTRIBUTING.md exists.",
+        "decided_by": "cursor (SPARK-853132 Stage 0 plan)",
+        "decided_at": "2026-09-16T10:06:00Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "No package-local CHANGELOG.md exists.",
+        "decided_by": "cursor (SPARK-853132 Stage 0 plan)",
+        "decided_at": "2026-09-16T10:06:00Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "Library SDK; no CTO checklist workflow for this package.",
+        "decided_by": "cursor (SPARK-853132 Stage 0 plan)",
+        "decided_at": "2026-09-16T10:06:00Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "CTO checklist omitted, so its schema is omitted.",
+        "decided_by": "cursor (SPARK-853132 Stage 0 plan)",
+        "decided_at": "2026-09-16T10:06:00Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "consumed": [
+      "lint/format configs",
+      "standard files (README/SECURITY)",
+      "bundled repo-standards templates"
+    ],
+    "compliance_tier": "baseline"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": true,
+      "components_interact": true,
+      "domain_data_across_components": true,
+      "caches_data": true,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": false,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": true,
+      "cross_repo_deps_material": false,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "cursor (SPARK-853132 Stage 0 plan plus package source)",
+    "resolved_at": "2026-09-16T10:06:00Z"
+  }
+}
