@@ -2222,6 +2222,70 @@ describe('Registration Tests', () => {
         );
       });
     });
+
+    describe('keepalive', () => {
+      const buildThresholdFailureEvent = () =>
+        ({
+          data: {
+            type: WorkerMessageType.KEEPALIVE_FAILURE,
+            err: {statusCode: 503},
+            keepAliveRetryCount: reg.isCCFlow ? 4 : 5,
+          },
+        }) as MessageEvent;
+
+      it('keepalive terminal failure is serialized under the mutex', async () => {
+        await beforeEachSetupForKeepalive();
+        lineEmitter.mockClear();
+
+        /* Something else (e.g. a concurrent recovery) already holds the shared mutex,
+         * so the terminal state mutation must queue behind it rather than running
+         * concurrently. */
+        const release = await reg.mutex.acquire();
+
+        const inFlight = reg.webWorker.onmessage(buildThresholdFailureEvent());
+        await flushPromises();
+
+        expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
+        expect(lineEmitter).not.toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+
+        release();
+        await inFlight;
+        await flushPromises();
+
+        expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+        expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      });
+
+      it('keepalive terminal failure does not deadlock', async () => {
+        await beforeEachSetupForKeepalive();
+        const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
+        const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
+        const restartRegSpy = jest.spyOn(reg, 'restartRegistration');
+        lineEmitter.mockClear();
+
+        /* A non-final failure at threshold triggers reconnectOnFailure ->
+         * restorePreviousRegistration -> restartRegistration. The terminal mutation
+         * queues on the mutex exactly like the previous test, and once the other
+         * holder releases, the whole reconnect chain must still run to completion -
+         * it must not nest a second runExclusive on the already-held mutex. */
+        const release = await reg.mutex.acquire();
+
+        const inFlight = reg.webWorker.onmessage(buildThresholdFailureEvent());
+        await flushPromises();
+
+        expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
+        expect(reconnectSpy).not.toHaveBeenCalled();
+
+        release();
+        await inFlight;
+        await flushPromises();
+
+        expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+        expect(reconnectSpy).toBeCalledOnceWith(RECONNECT_ON_FAILURE_UTIL);
+        expect(restoreSpy).toBeCalledOnceWith(RECONNECT_ON_FAILURE_UTIL);
+        expect(restartRegSpy).toBeCalledOnceWith(RECONNECT_ON_FAILURE_UTIL);
+      });
+    });
   });
 
   describe('409 Conflict outside the keepalive flow', () => {
