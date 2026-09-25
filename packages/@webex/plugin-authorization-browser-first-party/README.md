@@ -81,8 +81,8 @@ const Webex = require('webex');
 
 const webex = Webex.init({
   credentials: {
+    clientType: 'public',
     client_id: 'first-party-client-id',
-    client_secret: 'first-party-client-secret',
     redirect_uri: 'https://web.webex.com/auth/callback',
     scope: 'spark:all'
   }
@@ -95,6 +95,17 @@ webex.authorization.initiateLogin({
   separateWindow: { width: 600, height: 800 } // popup mode (optional)
 });
 ```
+
+For a public OAuth client, set `clientType` to `public` and omit
+`client_secret`. The authorization-code exchange and token refresh requests
+send `client_id` in the form without HTTP Basic client authentication.
+
+For an existing confidential client, set `clientType` to `confidential` and
+provide both `client_id` and `client_secret`. The plugin continues to use HTTP
+Basic client authentication for authorization-code exchange and token refresh.
+
+Public-client device authorization and token revocation are not changed by
+this support.
 
 ### Standard Login (Authorization Code + PKCE)
 
