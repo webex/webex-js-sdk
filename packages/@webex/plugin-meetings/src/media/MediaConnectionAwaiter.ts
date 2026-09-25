@@ -1,7 +1,7 @@
 import {Defer} from '@webex/common';
 import {ConnectionState, MediaConnectionEventNames} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
-import {ICE_AND_DTLS_CONNECTION_TIMEOUT} from '../constants';
+import {DTLS_CONNECTION_TIMEOUT, ICE_CONNECTION_TIMEOUT} from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import Metrics from '../metrics';
 
@@ -165,9 +165,31 @@ export default class MediaConnectionAwaiter {
 
     if (this.isIceConnected() && !this.iceConnected) {
       this.iceConnected = true;
+
+      // ICE has just connected, so only the DTLS handshake remains. That is
+      // normally very quick (1-3s), so switch to the shorter DTLS timeout.
+      if (!this.isConnected()) {
+        this.startDtlsTimer();
+      }
     }
 
     this.connectionStateChange();
+  }
+
+  /**
+   * Starts the (shorter) DTLS timeout, used once ICE is connected and only the
+   * DTLS handshake remains before the connection is fully connected.
+   *
+   * @returns {void}
+   */
+  private startDtlsTimer(): void {
+    LoggerProxy.logger.log(
+      'Media:MediaConnectionAwaiter#startDtlsTimer --> ICE connected, waiting for DTLS with the shorter timeout'
+    );
+
+    clearTimeout(this.timer);
+
+    this.timer = setTimeout(this.onTimeoutCallback, DTLS_CONNECTION_TIMEOUT);
   }
 
   /**
@@ -190,9 +212,15 @@ export default class MediaConnectionAwaiter {
       return;
     }
 
+    if (this.iceConnected) {
+      // ICE is already connected, so we are waiting for DTLS with the shorter
+      // DTLS timeout - don't restart it with the longer ICE timeout.
+      return;
+    }
+
     clearTimeout(this.timer);
 
-    this.timer = setTimeout(this.onTimeoutCallback, ICE_AND_DTLS_CONNECTION_TIMEOUT);
+    this.timer = setTimeout(this.onTimeoutCallback, ICE_CONNECTION_TIMEOUT);
   }
 
   /**
@@ -237,20 +265,30 @@ export default class MediaConnectionAwaiter {
 
     this.sendMetric();
 
-    if (!this.isIceGatheringCompleted()) {
-      if (!this.retried) {
-        LoggerProxy.logger.warn(
-          'Media:MediaConnectionAwaiter#onTimeout --> ICE gathering did not complete within the timeout for the first time, retrying once'
-        );
+    if (!this.isIceGatheringCompleted() && !this.retried) {
+      LoggerProxy.logger.warn(
+        'Media:MediaConnectionAwaiter#onTimeout --> ICE gathering did not complete within the timeout for the first time, retrying once'
+      );
 
-        // retry once if ICE gathering is not completed
-        this.retried = true;
-        clearTimeout(this.timer);
-        this.timer = setTimeout(this.onTimeoutCallback, ICE_AND_DTLS_CONNECTION_TIMEOUT);
+      // retry once if ICE gathering is not completed, keeping the current phase's
+      // timeout (shorter DTLS timeout if ICE is already connected)
+      this.retried = true;
+      clearTimeout(this.timer);
+      this.timer = setTimeout(
+        this.onTimeoutCallback,
+        this.iceConnected ? DTLS_CONNECTION_TIMEOUT : ICE_CONNECTION_TIMEOUT
+      );
 
-        return;
-      }
+      return;
+    }
 
+    if (this.iceConnected) {
+      // ICE connected, but the DTLS handshake did not complete within the
+      // shorter DTLS timeout, so there is nothing left to retry - reject.
+      LoggerProxy.logger.warn(
+        'Media:MediaConnectionAwaiter#onTimeout --> ICE connected but DTLS did not complete within the timeout, rejecting'
+      );
+    } else if (!this.isIceGatheringCompleted()) {
       LoggerProxy.logger.warn(
         'Media:MediaConnectionAwaiter#onTimeout --> ICE gathering did not complete within the timeout for the second time, rejecting'
       );
@@ -301,7 +339,12 @@ export default class MediaConnectionAwaiter {
       this.iceGatheringStateCallback
     );
 
-    this.timer = setTimeout(this.onTimeoutCallback, ICE_AND_DTLS_CONNECTION_TIMEOUT);
+    // if ICE is already connected, only the DTLS handshake remains, so use the
+    // shorter DTLS timeout, otherwise use the longer ICE timeout
+    this.timer = setTimeout(
+      this.onTimeoutCallback,
+      this.iceConnected ? DTLS_CONNECTION_TIMEOUT : ICE_CONNECTION_TIMEOUT
+    );
 
     return this.defer.promise;
   }
