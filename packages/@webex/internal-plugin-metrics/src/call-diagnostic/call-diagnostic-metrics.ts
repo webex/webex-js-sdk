@@ -299,6 +299,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const {
       browser: providedBrowser,
       browserVersion: providedBrowserVersion,
+      os: providedOs,
+      osVersion: providedOsVersion,
+      modelNumber,
       isSupportedBrowserFamily,
       isOutdatedBrowserVersion,
       // @ts-ignore
@@ -341,11 +344,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
                 ?.get(meetingId)
                 ?.statsAnalyzer?.getLocalIpAddress()
             ) || undefined,
-          osVersion: getOSVersion() || 'unknown',
+          osVersion: providedOsVersion || getOSVersion() || 'unknown',
           subClientType: options?.subClientType || defaultSubClientType,
-          os: getOSNameInternal(),
+          os: providedOs || getOSNameInternal(),
           browser: providedBrowser || getBrowserName(),
           browserVersion: providedBrowserVersion || getBrowserVersion(),
+          ...(modelNumber === undefined ? {} : {modelNumber}),
           ...(isSupportedBrowserFamily === undefined ? {} : {isSupportedBrowserFamily}),
           ...(isOutdatedBrowserVersion === undefined ? {} : {isOutdatedBrowserVersion}),
         },
