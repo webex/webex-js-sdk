@@ -5,6 +5,7 @@
 export const getClientAuthenticationOptions = (config) => {
   if (config.clientType === 'public') {
     return {
+      addAuthHeader: false,
       form: {
         client_id: config.client_id,
       },

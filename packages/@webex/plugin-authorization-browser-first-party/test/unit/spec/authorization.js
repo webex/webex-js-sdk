@@ -420,6 +420,7 @@ describe('plugin-authorization-browser-first-party', () => {
             code_verifier: 'code-verifier',
             client_id: 'public-client-id',
           },
+          addAuthHeader: false,
           shouldRefreshAccessToken: false,
         });
       });
@@ -487,6 +488,7 @@ describe('plugin-authorization-browser-first-party', () => {
             refresh_token: 'current-refresh-token',
             client_id: 'public-client-id',
           },
+          addAuthHeader: false,
           shouldRefreshAccessToken: false,
         });
         assert.deepEqual(response, tokenResponse);
