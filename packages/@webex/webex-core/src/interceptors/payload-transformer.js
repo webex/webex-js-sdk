@@ -72,6 +72,10 @@ export default class PayloadTransformerInterceptor extends Interceptor {
    * @returns {Object}
    */
   onResponseError(options, reason) {
+    if (options.disableTransform) {
+      return Promise.reject(reason);
+    }
+
     return this.webex.transform('inbound', reason).then((r) => Promise.reject(r || reason));
   }
 }
