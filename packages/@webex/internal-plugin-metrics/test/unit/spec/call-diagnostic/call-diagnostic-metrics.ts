@@ -4077,11 +4077,76 @@ describe('internal-plugin-metrics', () => {
           });
         });
 
+        it('should identify an unavailable Locus 503', () => {
+          const rawErrorMessage = 'Service unavailable';
+          const [res] = cd.generateClientEventErrorPayload({
+            message: rawErrorMessage,
+            statusCode: 503,
+            options: {uri: 'https://locus.example.com/locus/api/v1/loci/call'},
+          });
+
+          assert.deepEqual(res, {
+            category: 'signaling',
+            errorCode: 1003,
+            errorDescription: 'LocusUnavailable',
+            fatal: true,
+            name: 'locus.response',
+            rawErrorMessage,
+            serviceErrorCode: undefined,
+            shownToUser: false,
+            httpCode: 503,
+          });
+        });
+
+        it('should prefer a specific service error mapping over the Locus HTTP status', () => {
+          const rawErrorMessage = 'Fraud detected';
+          const [res] = cd.generateClientEventErrorPayload({
+            body: {errorCode: 2423012},
+            message: rawErrorMessage,
+            statusCode: 429,
+            options: {uri: 'https://locus.example.com/locus/api/v1/loci/call'},
+          });
+
+          assert.deepEqual(res, {
+            category: 'expected',
+            errorCode: 12000,
+            errorDescription: 'FraudDetection',
+            fatal: true,
+            name: 'locus.response',
+            rawErrorMessage,
+            serviceErrorCode: 2423012,
+            shownToUser: true,
+            httpCode: 429,
+          });
+        });
+
+        it('should retain an unmapped service error code on the Locus HTTP status payload', () => {
+          const rawErrorMessage = 'Locus rate limited';
+          const [res] = cd.generateClientEventErrorPayload({
+            body: {errorCode: 2429999},
+            message: rawErrorMessage,
+            statusCode: 429,
+            options: {uri: 'https://locus.example.com/locus/api/v1/loci/call'},
+          });
+
+          assert.deepEqual(res, {
+            category: 'signaling',
+            errorCode: 1002,
+            errorDescription: 'LocusRateLimitedOutgoing',
+            fatal: true,
+            name: 'locus.response',
+            rawErrorMessage,
+            serviceErrorCode: 2429999,
+            shownToUser: false,
+            httpCode: 429,
+          });
+        });
+
         it('should not identify a non-Locus 429 as a Locus rate limit', () => {
           const [res] = cd.generateClientEventErrorPayload({
             message: 'Too many requests',
             statusCode: 429,
-            options: {uri: 'https://example.com/api/v1/resource'},
+            options: {uri: 'https://example.com/api/v1/resource?redirect=/locus/'},
           });
 
           assert.deepEqual(res, {

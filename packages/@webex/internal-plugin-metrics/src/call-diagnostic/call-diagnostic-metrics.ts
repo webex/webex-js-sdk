@@ -65,9 +65,27 @@ import {
   CALL_FEATURE_LOG_IDENTIFIER,
   CALL_FEATURE_EVENT_FAILED_TO_SEND,
   LOCUS_RATE_LIMITED_OUTGOING_CLIENT_CODE,
+  LOCUS_UNAVAILABLE_CLIENT_CODE,
 } from './config';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
+
+const LOCUS_HTTP_STATUS_TO_CLIENT_ERROR_CODE: Partial<Record<number, number>> = {
+  429: LOCUS_RATE_LIMITED_OUTGOING_CLIENT_CODE,
+  503: LOCUS_UNAVAILABLE_CLIENT_CODE,
+};
+
+const isLocusRequest = (url?: string) => {
+  if (!url) {
+    return false;
+  }
+
+  try {
+    return new URL(url, 'https://localhost').pathname.includes('/locus/');
+  } catch {
+    return false;
+  }
+};
 
 type GetOriginOptions = {
   clientType: ClientType;
@@ -920,19 +938,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     const rawErrorMessage = rawError.message;
     const httpCode = rawError.statusCode;
+    const serviceErrorCode =
+      rawError?.error?.body?.errorCode ||
+      rawError?.body?.errorCode ||
+      rawError?.body?.code ||
+      rawError?.body?.reason?.reasonCode;
+    const locusHttpClientErrorCode = [rawError.options?.uri, rawError.options?.url].some(
+      isLocusRequest
+    )
+      ? LOCUS_HTTP_STATUS_TO_CLIENT_ERROR_CODE[httpCode]
+      : undefined;
     let payload;
-
-    if (
-      httpCode === 429 &&
-      [rawError.options?.uri, rawError.options?.url].some((url) => url?.includes('/locus/'))
-    ) {
-      payload = this.getErrorPayloadForClientErrorCode({
-        clientErrorCode: LOCUS_RATE_LIMITED_OUTGOING_CLIENT_CODE,
-        serviceErrorCode: undefined,
-        rawErrorMessage,
-        httpCode,
-      });
-    }
 
     if (rawError.name) {
       if (isBrowserMediaErrorName(rawError.name)) {
@@ -960,12 +976,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       });
     }
 
-    const serviceErrorCode =
-      rawError?.error?.body?.errorCode ||
-      rawError?.body?.errorCode ||
-      rawError?.body?.code ||
-      rawError?.body?.reason?.reasonCode;
-
     if (serviceErrorCode) {
       const clientErrorCode = SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP[serviceErrorCode];
       if (clientErrorCode && !payload) {
@@ -976,7 +986,18 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           httpCode,
         });
       }
+    }
 
+    if (locusHttpClientErrorCode && !payload) {
+      payload = this.getErrorPayloadForClientErrorCode({
+        clientErrorCode: locusHttpClientErrorCode,
+        serviceErrorCode,
+        rawErrorMessage,
+        httpCode,
+      });
+    }
+
+    if (serviceErrorCode) {
       // by default, if it is locus error, return new locus err
       if (isLocusServiceErrorCode(serviceErrorCode) && !payload) {
         payload = this.getErrorPayloadForClientErrorCode({
