@@ -1,0 +1,536 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/common-timers",
+    "purpose": "Timer primitives for the Cisco Webex JS SDK that never hold a Node process open: unref-ing wrappers over setTimeout and setInterval, plus a restartable one-shot Timer with a guarded init-running-done lifecycle."
+  },
+  "commands": {
+    "install": "yarn install",
+    "compile": "yarn workspace @webex/common-timers build:src",
+    "build": "yarn workspace @webex/common-timers build",
+    "unit-test": "yarn workspace @webex/common-timers test:unit",
+    "lint": "yarn workspace @webex/common-timers test:style",
+    "deploy": "yarn workspace @webex/common-timers deploy:npm"
+  },
+  "public_interfaces": [
+    {
+      "name": "package exports",
+      "kind": "package_export",
+      "source": "package.json",
+      "entrypoints": [
+        "safeSetTimeout",
+        "safeSetInterval",
+        "Timer"
+      ],
+      "audience": "Ten workspace packages inside the Webex JS SDK plus external npm consumers of @webex/common-timers.",
+      "notes": "Verify names and types against src/index.ts, and the compatibility commitments against the Public surface and Export stability sections of src/docs/README.md. The exported handle type is the union number or NodeJS.Timeout."
+    },
+    {
+      "name": "package scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:unit",
+        "test:style",
+        "deploy:npm"
+      ],
+      "audience": "Contributors and CI jobs operating on this package from the workspace root.",
+      "notes": "The declared aggregate test script chains test:integration and test:browser, neither of which this package defines, so it cannot succeed. Use test:unit and test:style individually."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "timer primitives",
+      "paths": [
+        "src/index.ts"
+      ],
+      "generated_artifacts": [
+        "dist"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/common-timers build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/common-timers test:unit",
+        "yarn workspace @webex/common-timers test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's spec-drift-changed skill on the current diff"
+      ]
+    },
+    {
+      "surface": "package standing documentation",
+      "paths": [
+        "docs/index.md",
+        "docs/architecture.md",
+        "docs/getting-started.md",
+        "docs/specs/README.md",
+        "docs/adr/index.md",
+        "AGENTS.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's check_spec_index.py and check_repo_context.py against this package"
+      ]
+    },
+    {
+      "surface": "unit test suite",
+      "paths": [
+        "test/unit/spec/index.ts",
+        "test/unit/spec/characterization.ts"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/common-timers test:unit"
+      ]
+    },
+    {
+      "surface": "build, lint, and test configuration",
+      "paths": [
+        "jest.config.js",
+        "babel.config.js",
+        ".eslintrc.js"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/common-timers test:unit",
+        "yarn workspace @webex/common-timers test:style"
+      ]
+    },
+    {
+      "surface": "SDD routing and coverage state",
+      "paths": [
+        ".sdd/manifest.json"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's check_manifest.py against this package"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+      "refresh_with": "Run the active Repo Annotation installation's setup-skills.sh against this package to re-materialize the bundled Repo Standards snapshot"
+    },
+    {
+      "path": "dist",
+      "generated_from": "src",
+      "refresh_with": "yarn workspace @webex/common-timers build:src"
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/index.ts"
+      ],
+      "minimum": [
+        "yarn workspace @webex/common-timers test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/common-timers test:style",
+        "yarn workspace @webex/common-timers build:src"
+      ]
+    },
+    {
+      "paths": [
+        "test/unit/spec/index.ts",
+        "test/unit/spec/characterization.ts"
+      ],
+      "minimum": [
+        "yarn workspace @webex/common-timers test:unit"
+      ],
+      "recommended": []
+    },
+    {
+      "paths": [
+        "package.json",
+        "jest.config.js",
+        "babel.config.js",
+        ".eslintrc.js"
+      ],
+      "minimum": [
+        "yarn workspace @webex/common-timers test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/common-timers test:style",
+        "yarn workspace @webex/common-timers build:src"
+      ]
+    },
+    {
+      "paths": [
+        "src/docs/README.md",
+        "docs",
+        "AGENTS.md",
+        ".sdd/manifest.json"
+      ],
+      "minimum": [
+        "Run the active Repo Annotation installation's check_manifest.py, check_spec_index.py, and check_repo_context.py against this package"
+      ],
+      "recommended": [
+        "Run the active Repo Annotation installation's spec-drift-changed skill on the current diff"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/index.ts"
+      ],
+      "affects": [
+        "@webex/internal-plugin-mercury",
+        "@webex/internal-plugin-metrics",
+        "@webex/internal-plugin-device",
+        "@webex/internal-plugin-encryption",
+        "@webex/internal-plugin-avatar",
+        "@webex/internal-plugin-dss",
+        "@webex/internal-plugin-ai-assistant",
+        "@webex/internal-plugin-scheduler",
+        "@webex/webex-core",
+        "@webex/calling",
+        "@webex/plugin-meetings",
+        "external npm consumers of @webex/common-timers"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/common-timers build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/common-timers test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Any change to safeSetTimeout, safeSetInterval, or Timer is a published surface change. Behavior changes must update the Requirements, State machine, Caller-visible failure modes, and Verification sections of src/docs/README.md in the same commit. The affects list is derived from source imports, not manifests alone: internal-plugin-scheduler declares the dependency without importing it, and plugin-meetings imports it without declaring it."
+    },
+    {
+      "paths": [
+        ".sdd/manifest.json"
+      ],
+      "affects": [
+        "docs/specs/README.md",
+        "src/docs/README.md",
+        "docs/architecture.md"
+      ],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's check_manifest.py and check_spec_index.py against this package"
+      ],
+      "avoid_direct_edits": [
+        ".sdd/templates/repo-standards"
+      ],
+      "notes": "The manifest is authoritative for module routing, coverage state, contracts, and artifact decisions. The specification registry is its human-readable mirror and must be regenerated alongside it."
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "affects": [
+        ".repo-context.json",
+        ".sdd/manifest.json",
+        "docs/getting-started.md",
+        "AGENTS.md"
+      ],
+      "refresh_with": [],
+      "validate_with": [
+        "Run the active Repo Annotation installation's check_repo_context.py against this package"
+      ],
+      "avoid_direct_edits": [
+        "dist"
+      ],
+      "notes": "Command strings are duplicated between the manifest and this context by contract and must stay identical; the checker fails on any divergence."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "unref",
+      "definition": "Asking a Node timer handle to stop counting toward process liveness, so a pending timer cannot prevent the process from exiting.",
+      "notes": "Available only on Node timer handles. Browsers return a number with no such method, which is why every wrapper feature-detects it."
+    },
+    {
+      "term": "safe",
+      "definition": "In safeSetTimeout and safeSetInterval, specifically safe against wedging a process open.",
+      "notes": "It implies nothing about error handling, argument validation, or type safety."
+    },
+    {
+      "term": "handle",
+      "definition": "The value the host scheduler returns: a Timeout object in Node, a number in a browser. The package returns it unchanged after unref-ing it.",
+      "notes": "Callers pass it to the platform clearTimeout or clearInterval; the package exports no clear function."
+    },
+    {
+      "term": "arm",
+      "definition": "Move a Timer from init to running by scheduling its callback.",
+      "notes": "Only start arms a timer. Construction schedules nothing."
+    },
+    {
+      "term": "reset",
+      "definition": "Clear a running Timer and re-arm it for the full original timeout.",
+      "notes": "It is an idle deadline, not a pause or a resume; the remaining time is discarded."
+    },
+    {
+      "term": "done",
+      "definition": "The terminal Timer state, reached by either expiry or cancellation.",
+      "notes": "It is not recoverable, and the two causes are indistinguishable to a caller."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "Emit a command only when its script exists in package.json and the workspace-scoped invocation was verified to run.",
+      "notes": "The declared aggregate test script is the counterexample: it is present in package.json but cannot succeed, so it is never emitted as a runnable command."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.ts",
+        "package.json"
+      ],
+      "requirement": "Emit an export name only when it is declared in src/index.ts and reachable through the entry point declared by main or devMain."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src/index.ts",
+        "test/unit/spec/index.ts"
+      ],
+      "requirement": "Ground every behavior claim in the implementation, and state separately whether a test observes it. Nine Timer lifecycle branches are tested; the unref behavior is not.",
+      "notes": "Commit history is not acceptable rationale evidence for this package."
+    },
+    {
+      "claim_category": "placeholder_token",
+      "sources": [
+        ".sdd/templates/repo-standards/template-map.json"
+      ],
+      "requirement": "Never ship a template placeholder in a generated document; replace it with verified repository evidence or surface the gap as a blocking question."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not infer the runtime platform; feature-detect unref on the returned handle.",
+      "why": "One module and one build serve both Node and the browser. A platform branch would add a conditional export or bundler shim the package has deliberately avoided."
+    },
+    {
+      "rule": "Do not turn an invalid Timer transition into a silent no-op.",
+      "why": "Consumers rely on the throw being loud, and the message wording is asserted by regular expression in the unit suite."
+    },
+    {
+      "rule": "Do not treat reset as a pause or resume.",
+      "why": "It restores the full original timeout by design; both production consumers use it as an idle deadline."
+    },
+    {
+      "rule": "Do not add a runtime dependency without escalating.",
+      "why": "The package currently declares none, which is what removes every cycle and third-party failure mode from the eleven workspace packages that consume it."
+    },
+    {
+      "rule": "Do not cite commit or pull-request history as rationale for current behavior.",
+      "why": "The package owner verified during onboarding that its history is dominated by release chores and repo-wide sweeps, so it cannot explain why behavior exists."
+    },
+    {
+      "rule": "Do not publish a Repo Standards template out of .sdd/templates into docs.",
+      "why": "Authoring templates stay hidden; only instantiated, repository-grounded documents belong in the visible documentation tree."
+    },
+    {
+      "rule": "Do not edit test/unit/spec/characterization.ts to make a build pass.",
+      "why": "It is the module's characterization baseline: a golden master of current observable behaviour. A red result means behaviour changed, which is a decision to make deliberately and record, not a test to adjust."
+    },
+    {
+      "rule": "Do not trust a green unit run after changing src without rebuilding first.",
+      "why": "Both suites import the package by name, which resolves through main to dist/, so they validate the built artifact rather than the source."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "The claim is backed by src/index.ts or test/unit/spec/index.ts and the affected specification sections are updated in the same change."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Implementation evidence exists but no test observes the behavior, as with the unref calls. Record the gap in the Verification section rather than asserting verified coverage."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither code nor tests establish the fact. Stop and ask the package owner; do not fall back to commit history or to a plausible default."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package entry point",
+        "path": "src/index.ts",
+        "purpose": "Declares the entire public surface: safeSetTimeout, safeSetInterval, and Timer.",
+        "notes": "Resolved directly by workspace consumers through devMain; published consumers resolve the built dist output through main."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/common-timers",
+        "paths": [
+          "package.json"
+        ],
+        "notes": "A single published library package inside the Webex JS SDK yarn workspace, with no runtime dependencies."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "module source",
+        "paths": [
+          "src"
+        ],
+        "notes": "One file. The whole module is src/index.ts; src/docs holds its canonical specification."
+      },
+      {
+        "name": "unit tests",
+        "paths": [
+          "test/unit"
+        ],
+        "notes": "Mirrors the src layout one-to-one, as every package in this workspace does. 13 jest cases using sinon fake timers."
+      },
+      {
+        "name": "inherited configuration",
+        "paths": [
+          "jest.config.js",
+          "babel.config.js",
+          ".eslintrc.js",
+          "process"
+        ],
+        "notes": "Three files re-export shared workspace configuration; process is a one-line browser shim for the browserify transform."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "Repo Standards template snapshot",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "refresh_with": "Run the active Repo Annotation installation's setup-skills.sh against this package",
+        "notes": "Hidden authoring templates. Never edited by hand and never published into the visible documentation tree."
+      },
+      {
+        "name": "build output",
+        "paths": [
+          "dist"
+        ],
+        "generated_from": "src",
+        "refresh_with": "yarn workspace @webex/common-timers build:src",
+        "notes": "Transpiled module, type declarations, and source maps. Ignored by version control and never edited directly."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Run the active Repo Annotation installation's setup-skills.sh against this package",
+        "notes": "The seeded snapshot is checksum-verified against the bundled upstream inventory before it is applied."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit tests",
+        "command": "yarn workspace @webex/common-timers test:unit",
+        "scope": "Behavior of safeSetTimeout, safeSetInterval, and every Timer lifecycle transition.",
+        "notes": "Coverage collection is disabled by the resolved jest configuration, so no threshold gates this package."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/common-timers test:style",
+        "scope": "ESLint over src, using the shared workspace rule set."
+      },
+      {
+        "name": "build",
+        "command": "yarn workspace @webex/common-timers build:src",
+        "scope": "Transpilation and declaration emission for the published artifact."
+      }
+    ]
+  },
+  "surface_owners": [
+    {
+      "surface": "timer primitives and the published export surface",
+      "owner": "Cisco Webex for Developers",
+      "edit_boundary": "src/index.ts is the only implementation file. A change here is a published surface change and must update src/docs/README.md in the same commit."
+    },
+    {
+      "surface": "module specification and package standing documentation",
+      "owner": "Cisco Webex for Developers",
+      "edit_boundary": "Generated from the Repo Standards templates and routed by .sdd/manifest.json. Edit the generated documents in place; never edit the hidden templates."
+    },
+    {
+      "surface": "build, lint, and test configuration",
+      "owner": "Webex JS SDK workspace",
+      "edit_boundary": "Owned by the shared @webex legacy config packages. There is no package-local knob; change the shared configuration instead."
+    },
+    {
+      "surface": "release, changelog, contribution policy, and security policy",
+      "owner": "Webex JS SDK workspace root",
+      "edit_boundary": "Not owned by this package. It intentionally ships no CHANGELOG.md, CONTRIBUTING.md, or SECURITY.md."
+    }
+  ],
+  "do_not_edit": [
+    "dist",
+    ".sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd-generated-metadata": [
+      "AGENTS.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/getting-started.md",
+      "docs/specs/README.md",
+      "docs/adr/index.md",
+      "src/docs/README.md"
+    ]
+  },
+  "fallback_rules": [
+    "When code and this context disagree, the code wins; correct the context and the affected specification sections in the same change.",
+    "When a fact cannot be established from src/index.ts, test/unit/spec/index.ts, or package.json, stop and ask the package owner rather than inferring it from commit history.",
+    "When a required command is missing, say so and stop; do not substitute a plausible alternative.",
+    "When a change would alter the published export surface, treat it as breaking until a dependent-package review proves otherwise."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/getting-started.md",
+      "docs/architecture.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md",
+      "src/docs/README.md"
+    ],
+    "required_machine_readable_surface": ".repo-context.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "source_of_truth",
+      "generated_artifacts",
+      "validation_matrix",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "surface_owners"
+    ]
+  }
+}
