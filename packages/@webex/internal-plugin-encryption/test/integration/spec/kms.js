@@ -149,7 +149,9 @@ describe('Encryption', function () {
             assert.equal(auth.resourceUri, kro.uri);
             assert.equal(auth.authId, mccoy.webex.internal.device.userId);
 
-            return mccoy.webex.internal.encryption.kms.fetchKey({uri: boundedKeyUri});
+            return fetchKeyWithRetry(mccoy.webex.internal.encryption.kms, {
+              uri: boundedKeyUri,
+            });
           }));
 
       it('authorizes a resource to a key', () =>
