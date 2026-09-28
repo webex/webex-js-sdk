@@ -656,6 +656,85 @@ legend {
   cursor: pointer;
 }
 
+.task-keypad-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.task-keypad-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  left: 0;
+  box-sizing: border-box;
+  width: 280px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.task-keypad-panel[hidden] {
+  display: none;
+}
+
+.task-keypad-panel input {
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+  text-align: left;
+}
+
+.task-keypad-keys {
+  display: grid;
+  grid-template-columns: repeat(3, 64px);
+  justify-content: center;
+  gap: 8px;
+}
+
+.task-keypad-panel .task-keypad-key {
+  box-sizing: border-box;
+  display: flex;
+  appearance: none;
+  box-shadow: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  max-width: 64px;
+  height: 64px;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #111;
+  color: #fff;
+  font-size: 16px;
+  line-height: 1.1;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.task-keypad-digit {
+  font-size: 16px;
+  line-height: 1.1;
+}
+
+.task-keypad-letters {
+  font-size: 8px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.task-keypad-panel .task-keypad-key:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .dropdown {
   margin-top: 10px;
 }

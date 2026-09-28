@@ -160,6 +160,9 @@ const callControlListener = document.querySelector('#callcontrolsection');
 const taskControlsCardsElm = document.querySelector('#taskControlsCards');
 const holdResumeElm = document.querySelector('#hold-resume');
 const muteElm = document.querySelector('#mute-unmute');
+const keypadElm = document.querySelector('#keypad-toggle');
+const keypadPanelElm = document.querySelector('#task-keypad-panel');
+const keypadInputElm = document.querySelector('#task-keypad-input');
 const pauseResumeRecordingElm = document.querySelector('#pause-resume-recording');
 const endElm = document.querySelector('#end');
 const wrapupElm = document.querySelector('#wrapup');
@@ -2196,18 +2199,13 @@ async function removePreviewContact() {
   }
 }
 
-// Function to press a key during an active call
+// Function to press a key on the Outdial keypad (destination number only)
 function pressKey(value) {
     // Allow only digits, #, *, and +
     if (!/^[\d#*+]$/.test(value)) {
       console.warn('Invalid keypad input:', value);
       return;
     }
-  if (currentTask?.uiControls?.main?.keypad?.isEnabled) {
-    transmitInCallDtmf(value);
-
-    return;
-  }
   document.getElementById('outBoundDialNumber').value += value;
 }
 
@@ -2913,6 +2911,7 @@ function updateCallControlUI(task) {
     decline: uiControls.decline,
     hold: uiControls.hold,
     mute: uiControls.mute,
+    keypad: uiControls.keypad,
     consult: uiControls.consult,
     transfer: uiControls.transfer,
     end: uiControls.end,
@@ -2953,6 +2952,7 @@ function applyAllControlsFromUIControls(uiControls) {
   // Core call controls
   applyControlState(holdResumeElm, controls.hold);
   applyControlState(muteElm, controls.mute);
+  applyControlState(keypadElm, controls.keypad);
   applyControlState(consultTabBtn, controls.consult);
   applyControlState(transferElm, controls.transfer);
   applyControlState(endElm, controls.end);
@@ -2975,6 +2975,8 @@ function applyAllControlsFromUIControls(uiControls) {
   if (wrapupCodesDropdownElm) {
     wrapupCodesDropdownElm.disabled = !(controls.wrapup?.isEnabled);
   }
+
+  syncTaskKeypadPanel(controls.keypad);
 }
 
 function isWxAppTask(task) {
@@ -4554,14 +4556,102 @@ async function decline() {
   updateTaskList();
 }
 
+let dtmfTransmitQueue = Promise.resolve();
+
+function getMainKeypadControl(task = currentTask) {
+  return getTaskLegControls(task, 'main')?.keypad || getActiveUIControls(task)?.keypad;
+}
+
+function closeTaskKeypad(options = {}) {
+  const {clearInput = false} = options;
+
+  if (keypadPanelElm) {
+    keypadPanelElm.hidden = true;
+  }
+
+  if (clearInput && keypadInputElm) {
+    keypadInputElm.value = '';
+  }
+}
+
+function syncTaskKeypadPanel(keypadControl) {
+  const isVisible = keypadControl?.isVisible ?? false;
+  const isEnabled = keypadControl?.isEnabled ?? false;
+  const keys = keypadPanelElm?.querySelectorAll('.task-keypad-key') || [];
+
+  keys.forEach((key) => {
+    key.disabled = !isEnabled;
+  });
+
+  if (keypadInputElm) {
+    keypadInputElm.disabled = !isEnabled;
+  }
+
+  if (!isVisible) {
+    closeTaskKeypad({clearInput: true});
+  }
+}
+
+function toggleTaskKeypad() {
+  if (!keypadPanelElm || !keypadElm || keypadElm.disabled) {
+    return;
+  }
+
+  keypadPanelElm.hidden = !keypadPanelElm.hidden;
+}
+
+function handleTaskKeypadInputKeydown(event) {
+  if (event.key === 'Backspace' || event.key === 'Delete') {
+    return;
+  }
+
+  if (/^[0-9*#]$/.test(event.key)) {
+    event.preventDefault();
+    pressTaskKeypadDigit(event.key);
+    return;
+  }
+
+  if (event.key.length === 1) {
+    event.preventDefault();
+  }
+}
+
+function pressTaskKeypadDigit(value) {
+  if (!/^[0-9*#]$/.test(value)) {
+    console.warn('Invalid DTMF keypad input:', value);
+    return;
+  }
+
+  if (!currentTask || !getMainKeypadControl()?.isEnabled) {
+    return;
+  }
+
+  if (keypadInputElm) {
+    keypadInputElm.value += value;
+  }
+
+  transmitInCallDtmf(value);
+}
+
 async function transmitInCallDtmf(digit) {
   if (!currentTask) return;
-  try {
-    await currentTask.transmitDtmf({dtmf: digit});
-    console.log('DTMF sent:', digit);
-  } catch (e) {
-    console.error('transmitDtmf failed', e);
-  }
+  if (!getMainKeypadControl()?.isEnabled) return;
+
+  const task = currentTask;
+
+  dtmfTransmitQueue = dtmfTransmitQueue
+    .then(async () => {
+      if (currentTask !== task) {
+        return;
+      }
+      await task.transmitDtmf({dtmf: digit});
+      console.log('DTMF sent');
+    })
+    .catch((e) => {
+      console.error('transmitDtmf failed', e);
+    });
+
+  return dtmfTransmitQueue;
 }
 
 const allCollapsibleElements = document.querySelectorAll('.collapsible');
