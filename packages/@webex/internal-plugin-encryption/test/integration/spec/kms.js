@@ -42,6 +42,18 @@ describe('Encryption', function () {
       return window.btoa(binary);
     }
 
+    function fetchKeyWithRetry(kms, options, retries = 2) {
+      return kms.fetchKey(options).catch((error) => {
+        if (error.status !== 404 || retries === 0) {
+          throw error;
+        }
+
+        return new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
+          fetchKeyWithRetry(kms, options, retries - 1)
+        );
+      });
+    }
+
     before('create test user', () =>
       testUsers.create({count: 2, config: {roles: [{name: 'id_full_admin'}]}}).then((users) => {
         spock = users[0];
@@ -509,7 +521,7 @@ describe('Encryption', function () {
           .then(([k]) => {
             key = k;
 
-            return webex.internal.encryption.kms.fetchKey({uri: key.uri});
+            return fetchKeyWithRetry(webex.internal.encryption.kms, {uri: key.uri});
           })
           .then((key2) => {
             assert.property(key2, 'uri');
@@ -555,7 +567,10 @@ describe('Encryption', function () {
             key = k;
 
             // Compliance Officer Jim fetches a key on behalf of Spock
-            return jim.webex.internal.encryption.kms.fetchKey({uri: key.uri, onBehalfOf: spock.id});
+            return fetchKeyWithRetry(jim.webex.internal.encryption.kms, {
+              uri: key.uri,
+              onBehalfOf: spock.id,
+            });
           })
           .then((key2) => {
             assert.property(key2, 'uri');
