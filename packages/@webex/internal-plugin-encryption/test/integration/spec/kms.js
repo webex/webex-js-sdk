@@ -211,7 +211,9 @@ describe('Encryption', function () {
             assert.equal(auth.resourceUri, kro.uri);
             assert.equal(auth.authId, mccoy.webex.internal.device.userId);
 
-            return mccoy.webex.internal.encryption.kms.fetchKey({uri: boundedKeyUri});
+            return fetchKeyWithRetry(mccoy.webex.internal.encryption.kms, {
+              uri: boundedKeyUri,
+            });
           })
       );
 
@@ -597,7 +599,10 @@ describe('Encryption', function () {
 
             // Compliance Officer Jim fetches a key on behalf of himself
             // This covers an edge case documented by https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-240862.
-            return jim.webex.internal.encryption.kms.fetchKey({uri: key.uri, onBehalfOf: jim.id});
+            return fetchKeyWithRetry(jim.webex.internal.encryption.kms, {
+              uri: key.uri,
+              onBehalfOf: jim.id,
+            });
           })
           .then((key2) => {
             assert.property(key2, 'uri');
@@ -614,7 +619,10 @@ describe('Encryption', function () {
             key = k;
 
             // Compliance Officer Jim fetches a key on behalf of himself but he is not in the KRO
-            return jim.webex.internal.encryption.kms.fetchKey({uri: key.uri, onBehalfOf: jim.id});
+            return fetchKeyWithRetry(jim.webex.internal.encryption.kms, {
+              uri: key.uri,
+              onBehalfOf: jim.id,
+            });
           })
           .then(() => {
             expect.fail(
@@ -633,7 +641,7 @@ describe('Encryption', function () {
             key = k;
 
             // Normal user McCoy fails to fetch a key on behalf of Spock
-            return mccoy.webex.internal.encryption.kms.fetchKey({
+            return fetchKeyWithRetry(mccoy.webex.internal.encryption.kms, {
               uri: key.uri,
               onBehalfOf: spock.id,
             });
@@ -661,8 +669,14 @@ describe('Encryption', function () {
 
             // Compliance Officer Jim fetches keys on behalf of users
             return Promise.all([
-              jim.webex.internal.encryption.kms.fetchKey({uri: spockKey.uri, onBehalfOf: spock.id}),
-              jim.webex.internal.encryption.kms.fetchKey({uri: mccoyKey.uri, onBehalfOf: mccoy.id}),
+              fetchKeyWithRetry(jim.webex.internal.encryption.kms, {
+                uri: spockKey.uri,
+                onBehalfOf: spock.id,
+              }),
+              fetchKeyWithRetry(jim.webex.internal.encryption.kms, {
+                uri: mccoyKey.uri,
+                onBehalfOf: mccoy.id,
+              }),
             ]);
           })
           .then(([spockK, mccoyK]) => {
