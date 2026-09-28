@@ -802,7 +802,7 @@ describe('Encryption', function () {
               key,
             });
           })
-          .then(() => fedWebex.internal.encryption.kms.fetchKey({uri: key.uri}))
+          .then(() => fetchKeyWithRetry(fedWebex.internal.encryption.kms, {uri: key.uri}))
           .then((fedKey) => assert.equal(fedKey.keyUri, key.keyUri)));
 
       let fedKey;
@@ -818,7 +818,7 @@ describe('Encryption', function () {
               key: fedKey,
             });
           })
-          .then(() => webex.internal.encryption.kms.fetchKey({uri: fedKey.uri}))
+          .then(() => fetchKeyWithRetry(webex.internal.encryption.kms, {uri: fedKey.uri}))
           .then((key) => assert.equal(key.keyUri, fedKey.keyUri)));
     });
   });
