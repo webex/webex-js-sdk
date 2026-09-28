@@ -384,6 +384,7 @@ const KMS = WebexPlugin.extend({
    */
   deleteAllCustomerMasterKeys({assignedOrgId, awsKms = false}) {
     this.logger.info('kms: delete all customer master keys at the same time');
+    this.logger.info('kms: delete all customer master keys at the same time2');
 
     return this.request({
       method: 'delete',
