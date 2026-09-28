@@ -5891,18 +5891,21 @@ export default class Meeting extends StatelessWebexPlugin {
 
       const shouldRetryMediaWithOnlyTurnTLS = await this.shouldRetryMediaWithOnlyTurnTLS(prevError);
 
-      const mediaResponse = await this.addMediaInternal(
-        () => {
-          // callback is not called when UserNotJoinedError is thrown
-          return this.joinWithMediaRetryInfo.retryCount >= 1
-            ? 'JOIN_MEETING_FINAL'
-            : 'JOIN_MEETING_RETRY';
-        },
-        forceTurnDiscovery,
-        turnServerInfo,
-        shouldRetryMediaWithOnlyTurnTLS ? 'relay' : undefined,
-        mediaOptions
-      );
+      // temp hack: for now as we don't have media e2ee working yet, we don't add the media connection
+      // const mediaResponse = await this.addMediaInternal(
+      //   () => {
+      //     // callback is not called when UserNotJoinedError is thrown
+      //     return this.joinWithMediaRetryInfo.retryCount >= 1
+      //       ? 'JOIN_MEETING_FINAL'
+      //       : 'JOIN_MEETING_RETRY';
+      //   },
+      //   forceTurnDiscovery,
+      //   turnServerInfo,
+      //   shouldRetryMediaWithOnlyTurnTLS ? 'relay' : undefined,
+      //   mediaOptions
+      // );
+      const mediaResponse = {};
+      LoggerProxy.logger.info('Meeting:index#joinWithMedia --> skipping addMedia');
 
       this.joinWithMediaRetryInfo = {retryCount: 0, prevJoinResponse: undefined};
 
