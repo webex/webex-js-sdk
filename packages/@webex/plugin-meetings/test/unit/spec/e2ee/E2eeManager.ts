@@ -52,7 +52,13 @@ describe('plugin-meetings', () => {
     describe('createE2eeMeeting', () => {
       it('returns a per-meeting E2EE facade', () => {
         const manager = new E2eeManager({webex: makeWebex(true)});
-        const meeting = {};
+        const meeting = {
+          members: {
+            membersCollection: {get: () => undefined},
+            setMembersUpdateProcessor: () => {},
+            reportMembersUpdated: () => {},
+          },
+        };
 
         const e2eeMeeting = manager.createE2eeMeeting(meeting);
 

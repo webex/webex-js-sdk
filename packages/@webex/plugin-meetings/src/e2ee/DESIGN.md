@@ -280,38 +280,45 @@ Moves `WEBEX_CA_PRODUCTION_ROOTS`, `generateCsrWithPkijs`, and the PEM helpers h
 ### `E2eeRosterReconciler`
 
 ```ts
-constructor(deps: { meeting; onVerificationChanged: () => void });
-applyRosterAdded(added: E2eeRosterMember[]): void;   // store then reconcile
+constructor(deps: { membersCollection; reportMembersUpdated: (members) => void });
+processMembersUpdate(payload: {delta}): void; // from the Members pre-emit processor
+applyRosterAdded(added: E2eeRosterMember[]): void;
 applyRosterRemoved(urls: string[]): void;
-onMembersUpdate(): void;                             // subscribed to MEMBERS_UPDATE
 getDeviceVerification(url: string): E2eeDeviceVerification | undefined;
 reset(): void;
 ```
 
-State: `rosterByDeviceUrl: Map<string, E2eeRosterMember>` — independent of `Member`.
+The reconciler holds only `rosterByDeviceUrl: Map<string, E2eeRosterMember>` (the MLS roster).
+The `deviceUrl -> Member` reverse index lives in **`MembersCollection`**
+(`getMemberByDeviceUrl`, maintained in `set`/`remove`/`setAll`/`reset`), so it's always current and
+reusable. Verification lives on each `Member` (`setE2eeDeviceVerification` /
+`removeE2eeDeviceVerification` return whether they changed). Every path iterates its argument once.
 
-Algorithm (runs on **every** roster change **and every** `MEMBERS_UPDATE`):
+There is **no separate `MEETING_E2EE_MEMBERS_VERIFICATION_UPDATED` event**. Verification is
+surfaced through the existing `members:update`, which is always emitted by `Members`:
 
-```
-for each member in members.membersCollection.getAll():
-  for each device in member.participant?.devices ?? []:
-    const entry = rosterByDeviceUrl.get(device.url)
-    if entry:
-      member.setE2eeDeviceVerification(device.url, {
-        verified: entry.validationResult === 0,
-        validationResult: entry.validationResult,
-        displayName: entry.displayName,
-        deviceType: entry.deviceType,
-      })
-  member.recomputeE2eeVerificationState()   // verified | unverified | partiallyVerified | unknown
-onVerificationChanged()                     // facade emits MEETING_E2EE_MEMBERS_VERIFICATION_UPDATED
-```
+- **Member-driven** (a Locus participant update): `Members.locusParticipantsUpdate` invokes a
+  registered pre-emit processor (`setMembersUpdateProcessor`) right before it triggers
+  `members:update`. The reconciler registers `processMembersUpdate` as that processor; it stamps
+  verification onto the (recreated) delta members from the roster, so it's present in that event.
+- **Roster-driven** (MLS validation completes, no Locus update): `applyRosterAdded/Removed` look up
+  each affected member via `membersCollection.getMemberByDeviceUrl` and update just that device;
+  members whose verification actually changed are handed to `reportMembersUpdated`, which asks
+  `Members` to emit a `members:update` (with those members in `delta.updated`).
 
-Matching key: **`MLS RosterMember.url === Member.participant.devices[i].url`**. A member
-can have multiple devices; exactly one device matches a roster entry, so verification is
-**per-device**. Out-of-order updates are solved because the MLS data lives in the
-reconciler map (surviving `Member` recreation) and is reapplied on each `MEMBERS_UPDATE`;
-roster entries with no matching member yet simply remain pending in the map.
+Matching key: **`MLS RosterMember.url === Member.participant.devices[i].url`** (per-device).
+Verified rule: `validationResult === 0`. Ordering between MLS roster events and Locus member
+updates does not matter — roster entries with no matching member yet remain pending in the map and
+are applied when that member is next processed.
+
+Matching key: **`MLS RosterMember.url === Member.participant.devices[i].url`** (per-device).
+Verified rule: `validationResult === 0`. Ordering between MLS roster events and Locus member
+updates does not matter — roster entries with no matching member yet remain pending in the map and
+are applied when that member is next processed.
+
+The `E2eeMeeting` facade creates the reconciler in its **constructor** (gated on
+`config.enableE2ee`) and registers the processor there, so member verification is stamped for the
+whole meeting lifetime — even for member changes that occur outside a joined meeting.
 
 ### `IE2eeMediaConnection` (contract; implemented by `internal-media-core`, out of scope)
 
@@ -391,8 +398,8 @@ detachMediaConnection(): void;
    `  deviceType: 'WEB', correlationId: meeting.correlationId, displayName: <self name>,`
    `  serviceUrl: meeting.locusInfo.info.mediaEncryptionGroupUrl, credentials: creds,`
    `  trustAnchors: identityProvider.getTrustAnchors(), joinTimeout, coalesceWindow })`
-7. `reconciler = new E2eeRosterReconciler({ meeting, onVerificationChanged });`
-   subscribe `MEMBERS_UPDATE` → `reconciler.onMembersUpdate()`
+7. the reconciler is already created + registered as the Members pre-emit processor in the facade
+   constructor (see `E2eeRosterReconciler`); `start()` only wires its roster events
 8. `mediaController = new E2eeMediaController();` if
    `meeting.mediaProperties.webrtcMediaConnection` present → attach
 9. wire session events:
@@ -512,9 +519,10 @@ to surface the meeting's zero-trust state.
 - `constants.ts` `EVENT_TRIGGERS`:
   - `MEETING_E2EE_SECURITY_CODE_UPDATED: 'meeting:e2ee:securityCodeUpdated'`
   - `MEETING_E2EE_STATE_CHANGED: 'meeting:e2ee:stateChanged'`
-  - `MEETING_E2EE_MEMBERS_VERIFICATION_UPDATED: 'meeting:e2ee:membersVerificationUpdated'`
   - `MEETING_E2EE_MEDIA_SERVICES_CHANGED: 'meeting:e2ee:mediaServicesChanged'` (payload `{ hasMediaServices }`)
   - `MEETING_E2EE_FAILURE: 'meeting:e2ee:failure'` (payload `{ reason }`)
+  - Member verification is surfaced via the existing `members:update` (no dedicated event); see
+    `E2eeRosterReconciler`.
 - `constants.ts` `MEETING_REMOVED_REASON`: add `E2EE_JOIN_FAILURE`, `E2EE_EVICTED`,
   `E2EE_TIMEOUT` (used as leave/removed reasons on force-leave, so `meeting:removed`
   carries the cause).

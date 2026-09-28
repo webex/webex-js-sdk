@@ -52,6 +52,22 @@ export interface E2eeRosterMember {
   validationResult: number;
 }
 
+/** Per-device E2EE verification result, derived from the MLS roster and applied onto a Member. */
+export interface E2eeDeviceVerification {
+  deviceUrl: string;
+  verified: boolean;
+  validationResult: number;
+  displayName?: string;
+  deviceType?: string;
+}
+
+/** A member's aggregate E2EE verification state across all of their devices. */
+export type E2eeMemberVerificationState =
+  | 'unknown'
+  | 'verified'
+  | 'unverified'
+  | 'partiallyVerified';
+
 /** X.509 credentials (private key + certificate chain) used to join the MLS group. */
 export interface E2eeCredentials {
   privateKey: Uint8Array;

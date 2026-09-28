@@ -8,6 +8,7 @@ import {EVENT_TRIGGERS} from '../constants';
 import MlsGroupSession from './MlsGroupSession';
 import MediaEncryptionService from './MediaEncryptionService';
 import E2eeSignaling from './E2eeSignaling';
+import E2eeRosterReconciler from './E2eeRosterReconciler';
 import {MEDIA_SERVICE_DEVICE_TYPE} from './constants';
 import type E2eeIdentityProvider from './E2eeIdentityProvider';
 import type {IWasmLoader} from './WasmLoader';
@@ -36,6 +37,8 @@ export default class E2eeMeeting {
   private session?: MlsGroupSession;
 
   private signaling?: E2eeSignaling;
+
+  private reconciler?: E2eeRosterReconciler;
 
   private currentState: E2eeState = 'disabled';
 
@@ -69,6 +72,19 @@ export default class E2eeMeeting {
     this.wasmLoader = wasmLoader;
     this.identityProvider = identityProvider;
     this.config = config;
+
+    if (config.enableE2ee) {
+      // Created eagerly (not on join) and registered as the Members pre-emit processor, so member
+      // verification is stamped into every members:update - even for member changes outside a
+      // joined meeting. Roster-driven verification changes are reported back through Members too.
+      this.reconciler = new E2eeRosterReconciler({
+        membersCollection: meeting.members.membersCollection,
+        reportMembersUpdated: (members) => meeting.members.reportMembersUpdated(members),
+      });
+      meeting.members.setMembersUpdateProcessor((payload) =>
+        this.reconciler?.processMembersUpdate(payload)
+      );
+    }
   }
 
   /**
@@ -181,6 +197,8 @@ export default class E2eeMeeting {
       LoggerProxy.logger.warn(`e2ee: E2eeMeeting#stop --> error leaving MLS session: ${error}`);
     }
 
+    this.reconciler?.reset();
+
     this.signaling = undefined;
     this.session = undefined;
     this.securityCode = undefined;
@@ -207,8 +225,14 @@ export default class E2eeMeeting {
       this.emit(EVENT_TRIGGERS.MEETING_E2EE_SECURITY_CODE_UPDATED, {securityCode: code});
     });
 
-    session.on('rosterAdded', () => this.updateFromRoster());
-    session.on('rosterRemoved', () => this.updateFromRoster());
+    session.on('rosterAdded', (added) => {
+      this.reconciler?.applyRosterAdded(added);
+      this.updateFromRoster();
+    });
+    session.on('rosterRemoved', ({urls}) => {
+      this.reconciler?.applyRosterRemoved(urls);
+      this.updateFromRoster();
+    });
 
     session.on('joinFailure', ({reason}) => this.handleFatal('failed', reason));
     session.on('evicted', () => this.handleFatal('evicted', 'evicted'));
