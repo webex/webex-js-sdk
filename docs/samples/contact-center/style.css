@@ -2,6 +2,94 @@
   --video-grid-max-width: 100%;
 }
 
+.wellness-card {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid #d7d7d7;
+  border-radius: 0.75rem;
+  background: #f8fbff;
+}
+
+.wellness-card__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.wellness-card__heading h3,
+.wellness-card__heading p {
+  margin: 0 0 0.35rem;
+}
+
+.wellness-badge {
+  flex: none;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: #e5e5e5;
+  color: #3b3b3b;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.wellness-badge[data-ready='true'] {
+  background: #d7f5e3;
+  color: #075c2d;
+}
+
+.wellness-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.wellness-status-grid div {
+  padding: 0.65rem;
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.wellness-status-grid dt {
+  color: #5b5b5b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.wellness-status-grid dd {
+  margin: 0.2rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.wellness-message {
+  min-height: 1.5rem;
+  padding: 0.65rem;
+  border-left: 4px solid #1170cf;
+  background: #fff;
+}
+
+.wellness-message[data-error='true'] {
+  border-left-color: #b00020;
+  color: #8a0018;
+}
+
+.wellness-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.wellness-event-details {
+  margin-top: 0.75rem;
+}
+
+.wellness-event-details pre {
+  max-height: 14rem;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
 body {
   max-width: 100%;
   margin: 1rem;

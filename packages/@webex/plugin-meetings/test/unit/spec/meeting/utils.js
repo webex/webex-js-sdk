@@ -93,7 +93,8 @@ describe('plugin-meetings', () => {
         });
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
-        assert.calledOnce(meeting.locusInfo.cleanUp);
+        // locusInfo.cleanUp (hash tree parser teardown) is deferred to Meetings#destroy
+        assert.notCalled(meeting.locusInfo.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
         assert.calledOnceWithExactly(
           meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId,
@@ -126,7 +127,8 @@ describe('plugin-meetings', () => {
         assert.notCalled(meeting.cleanupLLMConneciton);
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
-        assert.calledOnce(meeting.locusInfo.cleanUp);
+        // locusInfo.cleanUp (hash tree parser teardown) is deferred to Meetings#destroy
+        assert.notCalled(meeting.locusInfo.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
         assert.calledOnceWithExactly(
           meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId,
@@ -147,7 +149,8 @@ describe('plugin-meetings', () => {
         assert.notCalled(meeting.cleanupLLMConneciton);
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
-        assert.calledOnce(meeting.locusInfo.cleanUp);
+        // locusInfo.cleanUp (hash tree parser teardown) is deferred to Meetings#destroy
+        assert.notCalled(meeting.locusInfo.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
         assert.calledOnceWithExactly(
           meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId,
@@ -1426,12 +1429,16 @@ describe('plugin-meetings', () => {
         MeetingUtil.parseInterpretationInfo(meeting, meetingInfo);
         assert.calledWith(meeting.simultaneousInterpretation.updateMeetingSIEnabled, true, true);
         assert.calledWith(meeting.simultaneousInterpretation.updateHostSIEnabled, true);
-        assert.calledWith(meeting.simultaneousInterpretation.updateInterpretation, {
-          siLanguages: [
-            {languageName: 'en', languageCode: 1},
-            {languageName: 'es', languageCode: 2},
-          ],
-        });
+        assert.calledWith(
+          meeting.simultaneousInterpretation.updateInterpretation,
+          {
+            siLanguages: [
+              {languageName: 'en', languageCode: 1},
+              {languageName: 'es', languageCode: 2},
+            ],
+          },
+          {preserveSiEnabled: true}
+        );
       });
 
       it('should update simultaneous interpretation settings with host SI disabled', () => {
@@ -1440,12 +1447,16 @@ describe('plugin-meetings', () => {
         MeetingUtil.parseInterpretationInfo(meeting, meetingInfo);
         assert.calledWith(meeting.simultaneousInterpretation.updateMeetingSIEnabled, true, false);
         assert.calledWith(meeting.simultaneousInterpretation.updateHostSIEnabled, false);
-        assert.calledWith(meeting.simultaneousInterpretation.updateInterpretation, {
-          siLanguages: [
-            {languageName: 'en', languageCode: 1},
-            {languageName: 'es', languageCode: 2},
-          ],
-        });
+        assert.calledWith(
+          meeting.simultaneousInterpretation.updateInterpretation,
+          {
+            siLanguages: [
+              {languageName: 'en', languageCode: 1},
+              {languageName: 'es', languageCode: 2},
+            ],
+          },
+          {preserveSiEnabled: true}
+        );
       });
       it('should update simultaneous interpretation settings with SI disabled', () => {
         meetingInfo.turnOnSimultaneousInterpretation = false;
