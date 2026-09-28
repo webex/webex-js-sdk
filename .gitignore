@@ -1,5 +1,6 @@
 # Documentation
 packages/**/docs/
+/packages/@webex/plugin-meetings/.generated/
 
 # SDD canonical specs for @webex/internal-plugin-call-ai-summary are tracked
 # documentation, not build output. Git cannot re-include a file under an

@@ -1,0 +1,197 @@
+{
+  "schema_version": 2,
+  "template_source": "repo-standards",
+  "library_version": "0.3.0",
+  "registry": {
+    "heading": "Module registry",
+    "columns": 4,
+    "module_column": 0,
+    "coverage_column": 2,
+    "spec_column": 3
+  },
+  "module_spec_marker": {
+    "field": "Doc kind",
+    "value": "Module spec"
+  },
+  "generated_metadata_position": "after-frontmatter",
+  "artifact_policy": {
+    "repo_context": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "write_policy": "create-if-missing",
+      "existing_policy": "reuse-without-overwrite",
+      "schema_write_policy": "create-if-missing",
+      "schema_existing_policy": "reuse-without-overwrite",
+      "manifest_decision": "layout.repo_context_decision"
+    },
+    "conditional_artifacts": {
+      "manifest_decision": "layout.artifact_decisions",
+      "actions": [
+        "create",
+        "reuse",
+        "omit"
+      ],
+      "existing_policy": "reuse-without-overwrite",
+      "required_targets": [
+        "docs/service.md",
+        "mkdocs.yml",
+        "api-specs/openapi.yaml",
+        "SECURITY.md",
+        "CONTRIBUTING.md",
+        "CHANGELOG.md",
+        "CTO_CHECKLIST.yml",
+        "schemas/cto-checklist.schema.json"
+      ]
+    },
+    "not_managed": [
+      ".github/**",
+      "repository reports"
+    ]
+  },
+  "provenance": {
+    "source_repo": "WebexTools/repo-standards",
+    "source_commit": "d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
+    "resolved_from": "bundled Repo Standards snapshot",
+    "source_commit_date": "2026-08-24"
+  },
+  "templates": [
+    {
+      "template_id": "agents",
+      "template": "agents/AGENTS.template.md",
+      "generates": "AGENTS.md",
+      "origin": "WebexTools/repo-standards:templates/agents/AGENTS.md"
+    },
+    {
+      "template_id": "docs-index",
+      "template": "docs/index.template.md",
+      "generates": "docs/index.md",
+      "origin": "WebexTools/repo-standards:templates/docs/index.md"
+    },
+    {
+      "template_id": "architecture",
+      "template": "docs/architecture.template.md",
+      "generates": "docs/architecture.md",
+      "origin": "WebexTools/repo-standards:templates/docs/architecture.md"
+    },
+    {
+      "template_id": "getting-started",
+      "template": "docs/getting-started.template.md",
+      "generates": "docs/getting-started.md",
+      "origin": "WebexTools/repo-standards:templates/docs/getting-started.md"
+    },
+    {
+      "template_id": "service",
+      "template": "docs/service.template.md",
+      "generates": "docs/service.md",
+      "origin": "WebexTools/repo-standards:templates/docs/service.md",
+      "handling": "manifest-controlled-instantiate"
+    },
+    {
+      "template_id": "spec-index",
+      "template": "docs/specs/README.template.md",
+      "generates": "docs/specs/README.md",
+      "origin": "WebexTools/repo-standards:templates/docs/specs/index.md"
+    },
+    {
+      "template_id": "module-spec",
+      "template": "docs/specs/module/README.template.md",
+      "generates": "<module-path>/docs/README.md",
+      "origin": "WebexTools/repo-standards:templates/docs/specs/module/README.md"
+    },
+    {
+      "template_id": "adr-index",
+      "template": "docs/adr/index.template.md",
+      "generates": "docs/adr/index.md",
+      "origin": "WebexTools/repo-standards:templates/docs/adr/index.md"
+    },
+    {
+      "template_id": "adr",
+      "template": "docs/adr/NNNN-decision-title.template.md",
+      "generates": "docs/adr/NNNN-<kebab-title>.md",
+      "origin": "WebexTools/repo-standards:templates/docs/adr/NNNN-decision-title.md"
+    }
+  ],
+  "support_files": [
+    {
+      "file": "mkdocs.yml",
+      "target": "mkdocs.yml",
+      "handling": "instantiate-if-selected-and-missing",
+      "catalog_owner": "user-owned",
+      "catalog_management": "create-only",
+      "catalog_sync_operation": "copy_if_missing",
+      "origin": "WebexTools/repo-standards:templates/docs/mkdocs.yml"
+    },
+    {
+      "file": "api-specs/openapi.yaml",
+      "target": "api-specs/openapi.yaml",
+      "handling": "instantiate-if-selected-and-missing",
+      "catalog_owner": "user-owned",
+      "catalog_management": "create-only",
+      "catalog_sync_operation": "copy_if_missing",
+      "origin": "WebexTools/repo-standards:templates/docs/api-specs/openapi.yaml"
+    },
+    {
+      "file": ".repo-context.json",
+      "target": ".repo-context.json",
+      "handling": "manifest-controlled-instantiate",
+      "catalog_owner": "user-owned",
+      "catalog_management": "create-only",
+      "catalog_sync_operation": "copy_if_missing",
+      "origin": "WebexTools/repo-standards:templates/repository/.repo-context.json"
+    },
+    {
+      "file": "SECURITY.md",
+      "target": "SECURITY.md",
+      "handling": "manifest-controlled-instantiate",
+      "catalog_owner": "user-owned",
+      "catalog_management": "create-only",
+      "catalog_sync_operation": "copy_if_missing",
+      "origin": "WebexTools/repo-standards:templates/repository/SECURITY.md"
+    },
+    {
+      "file": "CONTRIBUTING.md",
+      "target": "CONTRIBUTING.md",
+      "handling": "manifest-controlled-instantiate",
+      "catalog_owner": "user-owned",
+      "catalog_management": "create-only",
+      "catalog_sync_operation": "copy_if_missing",
+      "origin": "WebexTools/repo-standards:templates/repository/CONTRIBUTING.md"
+    },
+    {
+      "file": "CHANGELOG.md",
+      "target": "CHANGELOG.md",
+      "handling": "manifest-controlled-instantiate",
+      "catalog_owner": "user-owned",
+      "catalog_management": "create-only",
+      "catalog_sync_operation": "copy_if_missing",
+      "origin": "WebexTools/repo-standards:templates/repository/CHANGELOG.md"
+    },
+    {
+      "file": "CTO_CHECKLIST.yml",
+      "target": "CTO_CHECKLIST.yml",
+      "handling": "manifest-controlled-instantiate",
+      "catalog_owner": "repo-standards",
+      "catalog_management": "replaceable",
+      "catalog_sync_operation": "copy",
+      "origin": "WebexTools/repo-standards:templates/repository/CTO_CHECKLIST.yml"
+    },
+    {
+      "file": "schemas/repo-context.schema.json",
+      "target": "schemas/repo-context.schema.json",
+      "handling": "manifest-controlled-copy",
+      "catalog_owner": "repo-standards",
+      "catalog_management": "replaceable",
+      "catalog_sync_operation": "copy",
+      "origin": "WebexTools/repo-standards:schemas/repo-context.schema.json"
+    },
+    {
+      "file": "schemas/cto-checklist.schema.json",
+      "target": "schemas/cto-checklist.schema.json",
+      "handling": "manifest-controlled-copy",
+      "catalog_owner": "repo-standards",
+      "catalog_management": "replaceable",
+      "catalog_sync_operation": "copy",
+      "origin": "WebexTools/repo-standards:schemas/cto-checklist.schema.json"
+    }
+  ]
+}
