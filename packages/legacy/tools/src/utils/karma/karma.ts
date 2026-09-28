@@ -38,11 +38,15 @@ class Karma {
     config.proxies['/upload'] = `http://localhost:${config.port - 1}/upload`;
 
     return KarmaRunner.config.parseConfig(null, config, { promiseConfig: true, throwErrors: true })
-      .then((parsedConfig: any) => new Promise((resolve) => {
+      .then((parsedConfig: any) => new Promise((resolve, reject) => {
         // Resolve on run completion (not after start) so callers can clean up
         // generated files only once Karma has finished browserifying/running.
-        const server = new KarmaRunner.Server(parsedConfig, () => {
-          resolve(undefined);
+        const server = new KarmaRunner.Server(parsedConfig, (code) => {
+          if (code === 0) {
+            resolve(undefined);
+          } else {
+            reject(code);
+          }
         });
 
         if (files && files[0].includes('@webex')) {
