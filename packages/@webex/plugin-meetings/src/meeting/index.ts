@@ -4826,6 +4826,10 @@ export default class Meeting extends StatelessWebexPlugin {
           isAnonymizeDisplayNamesEnabled: MeetingUtil.isAnonymizeDisplayNamesEnabled(
             this.userDisplayHints
           ),
+          isSupportParticipantList: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_PARTICIPANT_LIST],
+            policies: this.selfUserPolicies,
+          }),
           canViewTheParticipantList: MeetingUtil.canViewTheParticipantList(
             this.userDisplayHints,
             this.canNotViewTheParticipantList ?? false

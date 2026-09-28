@@ -539,6 +539,39 @@ describe('Task state machine', () => {
         } as any,
       });
 
+    it('hydrates a recovered active conference from IDLE to CONFERENCING', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        agentId: 'agent-1',
+        interactionId: 'interaction-1',
+        mediaResourceId: 'interaction-1',
+        interaction: {
+          state: 'conference',
+          interactionId: 'interaction-1',
+          mainInteractionId: 'interaction-1',
+          owner: 'agent-1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'Agent', hasLeft: false},
+            'agent-2': {id: 'agent-2', pType: 'Agent', hasLeft: false},
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['agent-1', 'agent-2', 'customer-1'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+      service.send({type: TaskEvent.HYDRATE, taskData});
+
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+      expect(service.getSnapshot().context.taskData).toEqual(taskData);
+    });
+
     it('boots from IDLE to CONSULTING on CONSULTING_ACTIVE for split-leg ordering', () => {
       const service = startMachine();
       const taskData = createTaskData({

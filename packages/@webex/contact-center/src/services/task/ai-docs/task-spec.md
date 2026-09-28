@@ -924,15 +924,17 @@ guards. The state-machine transition table lives in
 Primary-Agent promotion remains backend-authoritative and follows the two-event
 desktop contract. `ContactOwnerChanged` updates the promoted Agent; TaskManager
 prefers an exact task, then one unique related task resolved through nested
-main/parent identifiers or the `mainCall` media-map identity. A related
-candidate is eligible when its current
+main/parent identifiers, the task collection key, or the `mainCall` media-map
+identity. A related candidate is eligible when its current
 snapshot contains the current Agent's participant entry with `hasLeft !== true`
 and membership on the `mType: mainCall` leg. The incoming snapshot can provide
 that evidence only when it also names the current Agent as `interaction.owner`;
 this permits an authoritative promotion payload to repair a stale child-keyed
 snapshot while still excluding consult-only tasks. The update keeps the
 surviving main interaction identity even when the notification names a
-promoted-Agent child interaction.
+promoted-Agent child interaction. Conflicting main identifiers, ambiguous
+matches, and a canonical key occupied by a distinct task are ignored rather
+than replacing an existing task.
 
 If no related task exists, TaskManager recovers only the promoted current Agent
 from a non-terminal telephony `ContactOwnerChanged` payload that provides the same
