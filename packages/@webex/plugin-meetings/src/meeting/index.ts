@@ -2857,6 +2857,20 @@ export default class Meeting extends StatelessWebexPlugin {
 
       // If user moved to a JOINED state and there is a pending floor grant trigger it
       this.requestScreenShareFloorIfPending();
+
+      // Start the E2EE MLS join only once Locus confirms self has transitioned to JOINED. Joining
+      // earlier (e.g. right after the join request, or while in the lobby) is too early and fails.
+      const wasSelfJoined = payload.oldSelf?.state === MEETING_STATE.STATES.JOINED;
+      const isSelfJoined = payload.newSelf?.state === MEETING_STATE.STATES.JOINED;
+
+      if (!wasSelfJoined && isSelfJoined) {
+        this.e2ee?.start().catch((error) => {
+          LoggerProxy.logger.error(
+            'Meeting:index#setUpLocusSelfListener --> E2EE start failed',
+            error
+          );
+        });
+      }
     });
   }
 
@@ -6688,10 +6702,6 @@ export default class Meeting extends StatelessWebexPlugin {
               );
             });
         }
-
-        this.e2ee?.start().catch((error) => {
-          LoggerProxy.logger.error('Meeting:index#join --> E2EE start failed', error);
-        });
 
         return join;
       });

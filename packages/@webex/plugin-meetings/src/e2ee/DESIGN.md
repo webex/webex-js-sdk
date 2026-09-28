@@ -468,8 +468,12 @@ to surface the meeting's zero-trust state.
 - Constructor: `this.e2ee = attrs.e2eeManager?.createE2eeMeeting(this)` (or an
   undefined-safe no-op facade). Because `createE2eeMeeting` returns a facade whose `start()`
   no-ops when E2EE is disabled, call sites stay unconditional.
-- `join()`: after the `saveDataChannelToken` / LLM setup block, call
-  `this.e2ee.start().catch(log)` (self-guarded; safe for non-E2EE meetings).
+- **MLS join is gated on Locus confirming self `JOINED`.** In `setUpLocusSelfListener` (the
+  `LOCUS_INFO_UPDATE_SELF` handler), when self transitions to `JOINED`
+  (`oldSelf.state !== JOINED && newSelf.state === JOINED`), call `this.e2ee.start().catch(log)`.
+  Starting earlier — right after the join request response — is too early and also never fires
+  while the user sits in the meeting lobby (self is not `JOINED` until admitted). `start()` is
+  idempotent and self-guarded, so the edge check only keeps logs clean.
 - `createMediaConnection()`: after `setMediaPeerConnection(mc)`, call
   `this.e2ee.attachMediaConnection(this.mediaProperties.webrtcMediaConnection)`.
 - `closePeerConnections()`: `this.e2ee.detachMediaConnection()` before `mc.close()`.
