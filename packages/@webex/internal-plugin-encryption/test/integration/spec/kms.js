@@ -10,7 +10,7 @@ import sinon from 'sinon';
 import WebexCore from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
-import {browserOnly} from '@webex/test-helper-mocha';
+import {browserOnly, skipInFirefox} from '@webex/test-helper-mocha';
 
 const debug = require('debug')('kms');
 
@@ -425,7 +425,8 @@ describe('Encryption', function () {
     describe('upload customer master key', () => {
       let uploadedkeyId;
 
-      browserOnly(it)('upload customer master key', () =>
+      // Chrome and Firefox share an org, so running both would race on the org-wide CMK cleanup.
+      skipInFirefox(browserOnly(it))('upload customer master key', () =>
         webex.internal.encryption.kms
           .deleteAllCustomerMasterKeys({assignedOrgId: spock.orgId})
           .then(() => webex.internal.encryption.kms.fetchPublicKey({assignedOrgId: spock.orgId}))
