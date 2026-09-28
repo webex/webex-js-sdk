@@ -2809,6 +2809,11 @@ describe('TaskManager', () => {
       return {...data, type: CC_EVENTS.CONTACT_OWNER_CHANGED};
     };
 
+    const clearTasksAndFactoryHistory = () => {
+      taskManager.taskCollection = {};
+      (TaskFactory.createTask as jest.Mock).mockClear();
+    };
+
     it('emits one hydrate when ContactUpdated changes interaction.owner', () => {
       const task = installTask(createConferenceTaskData(taskId, previousOwnerId));
       const hydrateHandler = jest.fn();
@@ -2922,6 +2927,72 @@ describe('TaskManager', () => {
       expect(hydrateHandler).toHaveBeenCalledTimes(1);
     });
 
+    it('reuses a task identified by the incoming main-call media key', () => {
+      const mainMediaInteractionId = 'main-media-interaction-id';
+      const promotedChildId = 'promoted-child-without-main-id';
+      const task = installTask(
+        createConferenceTaskData(
+          mainMediaInteractionId,
+          previousOwnerId,
+          mainMediaInteractionId
+        )
+      );
+      const hydrateHandler = jest.fn();
+      taskManager.on(TASK_EVENTS.TASK_HYDRATE, hydrateHandler);
+      const ownerChangeData = createPromotedAgentOwnerChangeData(
+        promotedChildId,
+        mainMediaInteractionId
+      );
+      delete ownerChangeData.interaction.mainInteractionId;
+
+      webSocketManagerMock.emit('message', JSON.stringify({data: ownerChangeData}));
+
+      expect(task.sendStateMachineEvent).toHaveBeenCalledTimes(1);
+      expectLastStateMachineEvent(task.sendStateMachineEvent, TaskEvent.CONTACT_OWNER_CHANGED);
+      expect(TaskFactory.createTask).not.toHaveBeenCalled();
+      expect(taskManager.taskCollection[mainMediaInteractionId]).toBe(task);
+      expect(taskManager.taskCollection[promotedChildId]).toBeUndefined();
+      expect(Object.values(taskManager.taskCollection)).toEqual([task]);
+      expect(task.listenerCount(TASK_EVENTS.TASK_HYDRATE)).toBe(1);
+      expect(hydrateHandler).toHaveBeenCalledTimes(1);
+      expect(hydrateHandler).toHaveBeenCalledWith(task);
+    });
+
+    it('reuses a stale task through its collection key and the incoming main-call media key', () => {
+      const mainMediaInteractionId = 'collection-main-interaction-id';
+      const staleChildId = 'stale-collection-child-id';
+      const promotedChildId = 'promoted-collection-child-id';
+      const staleTaskData = createConferenceTaskData(
+        staleChildId,
+        previousOwnerId,
+        staleChildId
+      );
+      staleTaskData.interaction.media[staleChildId].mType = 'consult';
+      const task = createMockTask(staleTaskData);
+      taskManager.taskCollection = {[mainMediaInteractionId]: task};
+      (taskManager as any).setupTaskListeners(task);
+      const hydrateHandler = jest.fn();
+      taskManager.on(TASK_EVENTS.TASK_HYDRATE, hydrateHandler);
+      const ownerChangeData = createPromotedAgentOwnerChangeData(
+        promotedChildId,
+        mainMediaInteractionId
+      );
+      delete ownerChangeData.interaction.mainInteractionId;
+
+      webSocketManagerMock.emit('message', JSON.stringify({data: ownerChangeData}));
+
+      expectLastStateMachineEvent(task.sendStateMachineEvent, TaskEvent.CONTACT_OWNER_CHANGED);
+      expect(task.data.interactionId).toBe(mainMediaInteractionId);
+      expect(task.data.interaction.owner).toBe(currentAgentId);
+      expect(TaskFactory.createTask).not.toHaveBeenCalled();
+      expect(taskManager.taskCollection[mainMediaInteractionId]).toBe(task);
+      expect(taskManager.taskCollection[staleChildId]).toBeUndefined();
+      expect(taskManager.taskCollection[promotedChildId]).toBeUndefined();
+      expect(Object.values(taskManager.taskCollection)).toEqual([task]);
+      expect(task.listenerCount(TASK_EVENTS.TASK_HYDRATE)).toBe(1);
+      expect(hydrateHandler).toHaveBeenCalledTimes(1);
+    });
+
     it('prefers the exact task for ContactOwnerChanged over related child tasks', () => {
       const exactTask = installTask(createConferenceTaskData(taskId, previousOwnerId));
       const childTaskId = 'related-child-id';
@@ -2968,6 +3039,78 @@ describe('TaskManager', () => {
       expect(taskManager.taskCollection[childTaskId]).toBe(childTask);
     });
 
+    it('ignores a related owner change with conflicting explicit main interaction IDs', () => {
+      const childTaskId = 'conflicting-main-child-id';
+      const existingMainId = 'existing-main-id';
+      const incomingMainId = 'incoming-main-id';
+      const sharedParentId = 'shared-parent-id';
+      const taskData = createConferenceTaskData(
+        childTaskId,
+        previousOwnerId,
+        existingMainId
+      );
+      taskData.interaction.parentInteractionId = sharedParentId;
+      const task = installTask(taskData);
+      const ownerChangeData = createConferenceTaskData(
+        'different-child-id',
+        promotedOwnerId,
+        incomingMainId
+      );
+      ownerChangeData.interaction.parentInteractionId = sharedParentId;
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {...ownerChangeData, type: CC_EVENTS.CONTACT_OWNER_CHANGED},
+        })
+      );
+
+      expect(task.sendStateMachineEvent).not.toHaveBeenCalled();
+      expect(taskManager.taskCollection[childTaskId]).toBe(task);
+      expect(taskManager.taskCollection[existingMainId]).toBeUndefined();
+      expect(taskManager.taskCollection[incomingMainId]).toBeUndefined();
+      expect(TaskFactory.createTask).not.toHaveBeenCalled();
+    });
+
+    it('does not replace a distinct task already stored at the canonical main key', () => {
+      const childTaskId = 'related-active-child-id';
+      const canonicalMainId = 'occupied-canonical-main-id';
+      const candidate = createMockTask(
+        createConferenceTaskData(childTaskId, previousOwnerId, canonicalMainId)
+      );
+      const occupiedData = createConferenceTaskData(
+        'occupied-task-child-id',
+        previousOwnerId,
+        canonicalMainId
+      );
+      occupiedData.interaction.media[canonicalMainId].mType = 'consult';
+      const occupiedTask = createMockTask(occupiedData);
+      taskManager.taskCollection = {
+        [childTaskId]: candidate,
+        [canonicalMainId]: occupiedTask,
+      };
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            ...createConferenceTaskData(
+              'incoming-related-child-id',
+              promotedOwnerId,
+              canonicalMainId
+            ),
+            type: CC_EVENTS.CONTACT_OWNER_CHANGED,
+          },
+        })
+      );
+
+      expect(candidate.sendStateMachineEvent).not.toHaveBeenCalled();
+      expect(occupiedTask.sendStateMachineEvent).not.toHaveBeenCalled();
+      expect(taskManager.taskCollection[childTaskId]).toBe(candidate);
+      expect(taskManager.taskCollection[canonicalMainId]).toBe(occupiedTask);
+      expect(TaskFactory.createTask).not.toHaveBeenCalled();
+    });
+
     it('ignores a related ContactOwnerChanged task whose current agent is consult-only', () => {
       const childTaskId = 'consult-only-child-id';
       const data = createConferenceTaskData(childTaskId, previousOwnerId, taskId);
@@ -2993,6 +3136,36 @@ describe('TaskManager', () => {
       expect(task.sendStateMachineEvent).not.toHaveBeenCalled();
       expect(taskManager.taskCollection[childTaskId]).toBe(task);
       expect(TaskFactory.createTask).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [
+        'the current agent is marked departed',
+        (data) => {
+          data.interaction.participants[currentAgentId].hasLeft = true;
+        },
+      ],
+      [
+        'the current agent participant is missing',
+        (data) => {
+          delete data.interaction.participants[currentAgentId];
+        },
+      ],
+      [
+        'the current agent is present only on a consult leg',
+        (data) => {
+          data.interaction.media[taskId].mType = 'consult';
+        },
+      ],
+    ])('does not recover a promoted task when %s', (_description, mutatePayload) => {
+      clearTasksAndFactoryHistory();
+      const ownerChangeData = createPromotedAgentOwnerChangeData();
+      mutatePayload(ownerChangeData);
+
+      webSocketManagerMock.emit('message', JSON.stringify({data: ownerChangeData}));
+
+      expect(TaskFactory.createTask).not.toHaveBeenCalled();
+      expect(taskManager.getAllTasks()).toEqual({});
     });
 
     it('ignores ambiguous active main-call matches for ContactOwnerChanged', () => {
@@ -3022,6 +3195,71 @@ describe('TaskManager', () => {
 
       expect(firstTask.sendStateMachineEvent).not.toHaveBeenCalled();
       expect(secondTask.sendStateMachineEvent).not.toHaveBeenCalled();
+    });
+
+    it('ignores ambiguous main-call media-key matches without creating a task', () => {
+      const mainMediaInteractionId = 'ambiguous-main-media-id';
+      const createMediaRelatedTask = (interactionId: string) => {
+        const data = createConferenceTaskData(interactionId, previousOwnerId, interactionId);
+        data.interaction.media = {
+          [mainMediaInteractionId]: {
+            mediaResourceId: mainMediaInteractionId,
+            mediaType: 'telephony',
+            mType: 'mainCall',
+            participants: [currentAgentId, previousOwnerId, promotedOwnerId],
+          },
+        };
+
+        return createMockTask(data);
+      };
+      const firstTask = createMediaRelatedTask('first-media-child-id');
+      const secondTask = createMediaRelatedTask('second-media-child-id');
+      taskManager.taskCollection = {
+        'first-media-child-id': firstTask,
+        'second-media-child-id': secondTask,
+      };
+      (TaskFactory.createTask as jest.Mock).mockClear();
+      const ownerChangeData = createPromotedAgentOwnerChangeData(
+        'promoted-media-child-id',
+        mainMediaInteractionId
+      );
+      delete ownerChangeData.interaction.mainInteractionId;
+
+      webSocketManagerMock.emit('message', JSON.stringify({data: ownerChangeData}));
+
+      expect(firstTask.sendStateMachineEvent).not.toHaveBeenCalled();
+      expect(secondTask.sendStateMachineEvent).not.toHaveBeenCalled();
+      expect(TaskFactory.createTask).not.toHaveBeenCalled();
+      expect(Object.values(taskManager.taskCollection)).toEqual([firstTask, secondTask]);
+    });
+
+    it('does not recover a new task when multiple stale related tasks exist', () => {
+      const createStaleRelatedTask = (interactionId: string) => {
+        const data = createConferenceTaskData(interactionId, previousOwnerId, taskId);
+        data.interaction.media[taskId].participants = [previousOwnerId, promotedOwnerId];
+
+        return createMockTask(data);
+      };
+      const firstTask = createStaleRelatedTask('first-stale-child-id');
+      const secondTask = createStaleRelatedTask('second-stale-child-id');
+      taskManager.taskCollection = {
+        'first-stale-child-id': firstTask,
+        'second-stale-child-id': secondTask,
+      };
+      (TaskFactory.createTask as jest.Mock).mockClear();
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({data: createPromotedAgentOwnerChangeData()})
+      );
+
+      expect(firstTask.sendStateMachineEvent).not.toHaveBeenCalled();
+      expect(secondTask.sendStateMachineEvent).not.toHaveBeenCalled();
+      expect(TaskFactory.createTask).not.toHaveBeenCalled();
+      expect(Object.keys(taskManager.taskCollection)).toEqual([
+        'first-stale-child-id',
+        'second-stale-child-id',
+      ]);
     });
 
     it('ignores ContactOwnerChanged when different direct nested IDs match active tasks', () => {
@@ -3071,17 +3309,168 @@ describe('TaskManager', () => {
       expect(task.sendStateMachineEvent).not.toHaveBeenCalled();
     });
 
-    it('does not create a task from ContactOwnerChanged when no task exists', () => {
-      taskManager.taskCollection = {};
-      (TaskFactory.createTask as jest.Mock).mockClear();
+    it('recovers a missing promoted-agent task under the main interaction and emits one hydrate', () => {
+      clearTasksAndFactoryHistory();
+      const hydrateHandler = jest.fn();
+      const incomingHandler = jest.fn();
+      taskManager.on(TASK_EVENTS.TASK_HYDRATE, hydrateHandler);
+      taskManager.on(TASK_EVENTS.TASK_INCOMING, incomingHandler);
 
       webSocketManagerMock.emit(
         'message',
         JSON.stringify({data: createPromotedAgentOwnerChangeData()})
       );
 
+      expect(TaskFactory.createTask).toHaveBeenCalledTimes(1);
+      expect(TaskFactory.createTask).toHaveBeenCalledWith(
+        contactMock,
+        webCallingService,
+        expect.objectContaining({
+          interactionId: taskId,
+          isAutoAnswering: false,
+          isConsulted: false,
+          isConferenceInProgress: true,
+          wrapUpRequired: false,
+        }),
+        undefined,
+        undefined,
+        currentAgentId,
+        undefined
+      );
+
+      const recoveredTask = (TaskFactory.createTask as jest.Mock).mock.results[0].value;
+      expect(recoveredTask.sendStateMachineEvent).toHaveBeenCalledTimes(2);
+      expect(recoveredTask.sendStateMachineEvent).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          type: TaskEvent.HYDRATE,
+          agentId: currentAgentId,
+          taskData: expect.objectContaining({
+            interactionId: taskId,
+            interaction: expect.objectContaining({state: 'conference'}),
+          }),
+        })
+      );
+      expect(recoveredTask.sendStateMachineEvent).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          type: TaskEvent.CONTACT_OWNER_CHANGED,
+          taskData: expect.objectContaining({interactionId: taskId}),
+        })
+      );
+      expect(taskManager.taskCollection[taskId]).toBe(recoveredTask);
+      expect(taskManager.taskCollection['promoted-child-interaction-id']).toBeUndefined();
+      expect(Object.values(taskManager.taskCollection)).toEqual([recoveredTask]);
+      expect(recoveredTask.data.interaction.owner).toBe(currentAgentId);
+      expect(recoveredTask.listenerCount(TASK_EVENTS.TASK_HYDRATE)).toBe(1);
+      expect(hydrateHandler).toHaveBeenCalledTimes(1);
+      expect(hydrateHandler).toHaveBeenCalledWith(recoveredTask);
+      expect(incomingHandler).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [
+        'another agent owns the interaction',
+        (data) => {
+          data.interaction.owner = promotedOwnerId;
+          data.owner = promotedOwnerId;
+        },
+      ],
+      [
+        'the payload has no main-call media',
+        (data) => {
+          data.interaction.media = {};
+        },
+      ],
+      [
+        'the interaction is explicitly terminated',
+        (data) => {
+          data.interaction.isTerminated = true;
+        },
+      ],
+      [
+        'the interaction is not telephony',
+        (data) => {
+          data.interaction.mediaType = 'chat';
+        },
+      ],
+      [
+        'the payload has no stable interaction identifier',
+        (data) => {
+          data.interactionId = undefined;
+          data.interaction.interactionId = undefined;
+          delete data.interaction.mainInteractionId;
+          data.interaction.media = {};
+        },
+      ],
+    ])('does not create a missing task when %s', (_description, mutatePayload) => {
+      clearTasksAndFactoryHistory();
+      const ownerChangeData = createPromotedAgentOwnerChangeData();
+      mutatePayload(ownerChangeData);
+
+      webSocketManagerMock.emit('message', JSON.stringify({data: ownerChangeData}));
+
       expect(TaskFactory.createTask).not.toHaveBeenCalled();
       expect(taskManager.getAllTasks()).toEqual({});
+    });
+
+    it('does not create a missing task for an owner-changing ContactUpdated event', () => {
+      clearTasksAndFactoryHistory();
+      const contactUpdatedData = {
+        ...createPromotedAgentOwnerChangeData(),
+        type: CC_EVENTS.CONTACT_UPDATED,
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify({data: contactUpdatedData}));
+
+      expect(TaskFactory.createTask).not.toHaveBeenCalled();
+      expect(taskManager.getAllTasks()).toEqual({});
+    });
+
+    it('reuses a recovered task for later AgentContact and ContactMerged events', () => {
+      clearTasksAndFactoryHistory();
+      const hydrateHandler = jest.fn();
+      const mergedHandler = jest.fn();
+      taskManager.on(TASK_EVENTS.TASK_HYDRATE, hydrateHandler);
+      taskManager.on(TASK_EVENTS.TASK_MERGED, mergedHandler);
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({data: createPromotedAgentOwnerChangeData()})
+      );
+
+      const recoveredTask = taskManager.taskCollection[taskId];
+      expect(recoveredTask).toBeDefined();
+      expect(recoveredTask.listenerCount(TASK_EVENTS.TASK_HYDRATE)).toBe(1);
+
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            ...createConferenceTaskData(taskId, currentAgentId),
+            type: CC_EVENTS.AGENT_CONTACT,
+          },
+        })
+      );
+      webSocketManagerMock.emit(
+        'message',
+        JSON.stringify({
+          data: {
+            ...createConferenceTaskData(taskId, currentAgentId),
+            type: CC_EVENTS.CONTACT_MERGED,
+            childInteractionId: 'promoted-child-interaction-id',
+          },
+        })
+      );
+
+      expect(TaskFactory.createTask).toHaveBeenCalledTimes(1);
+      expect(taskManager.taskCollection[taskId]).toBe(recoveredTask);
+      expect(taskManager.taskCollection['promoted-child-interaction-id']).toBeUndefined();
+      expect(Object.values(taskManager.taskCollection)).toEqual([recoveredTask]);
+      expect(recoveredTask.listenerCount(TASK_EVENTS.TASK_HYDRATE)).toBe(1);
+      expect(hydrateHandler).toHaveBeenCalledTimes(2);
+      expect(mergedHandler).toHaveBeenCalledTimes(1);
+      expect(mergedHandler).toHaveBeenCalledWith(recoveredTask);
     });
 
     it('does not let a late ParticipantLeftConference restore a departed owner', () => {
