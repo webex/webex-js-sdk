@@ -62,7 +62,7 @@ describe('Encryption', function () {
         responseType: 'buffer',
       })
       .then((res) => {
-        FILE = res.body;
+        FILE = Buffer.from(res.body);
       })
   );
 
