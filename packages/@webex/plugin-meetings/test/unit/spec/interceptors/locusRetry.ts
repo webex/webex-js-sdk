@@ -192,6 +192,30 @@ describe('plugin-meetings', () => {
               });
             });
 
+            it('rejects the HTTP error after a locus retry is exhausted', async () => {
+              const reason429 = new WebexHttpError.TooManyRequests({
+                statusCode: 429,
+                options: {
+                  headers: {trackingid: 'test', 'retry-after': 1000},
+                  uri: options.uri,
+                },
+                body: {message: 'Locus rate limited'},
+              });
+              const handleRetryStub = sinon
+                .stub(interceptor, 'handleRetryRequestLocusServiceError')
+                .resolves();
+
+              await interceptor.onResponseError(options, reason429);
+
+              return interceptor.onResponseError(options, reason429).then(
+                () => assert.fail('Expected promise to be rejected'),
+                (error) => {
+                  expect(error).to.equal(reason429);
+                  handleRetryStub.restore();
+                }
+              );
+            });
+
             describe('URI parsing edge cases', () => {
               const make503Reason = (uri) =>
                 new WebexHttpError.MethodNotAllowed({
@@ -330,4 +354,3 @@ describe('plugin-meetings', () => {
     });
     });
 });
-

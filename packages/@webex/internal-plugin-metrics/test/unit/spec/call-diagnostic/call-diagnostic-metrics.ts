@@ -3784,7 +3784,7 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: undefined,
           errorCode: 1026,
           rawErrorMessage: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
-          httpStatusCode: 0,
+          httpCode: 0,
         });
       });
 
@@ -3901,7 +3901,7 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: undefined,
           errorCode: 1026,
           rawErrorMessage: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
-          httpStatusCode: 0,
+          httpCode: 0,
         });
       });
 
@@ -3923,7 +3923,7 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: undefined,
           errorCode: 1010,
           rawErrorMessage: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
-          httpStatusCode: 0,
+          httpCode: 0,
         });
       });
 
@@ -3949,7 +3949,7 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: undefined,
           errorCode: 1010,
           rawErrorMessage: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
-          httpStatusCode: 0,
+          httpCode: 0,
         });
       });
 
@@ -4054,8 +4054,50 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      describe('httpStatusCode', () => {
-        it('should include httpStatusCode for browser media errors', () => {
+      describe('httpCode', () => {
+        it('should identify an outgoing Locus 429', () => {
+          const rawErrorMessage =
+            'partition 371 on PARALLEL_EXECUTOR_PARTITION_KEY_QUEUE_FULL state';
+          const [res] = cd.generateClientEventErrorPayload({
+            message: rawErrorMessage,
+            statusCode: 429,
+            options: {uri: 'https://locus.example.com/locus/api/v1/loci/call'},
+          });
+
+          assert.deepEqual(res, {
+            category: 'signaling',
+            errorCode: 1002,
+            errorDescription: 'LocusRateLimitedOutgoing',
+            fatal: true,
+            name: 'locus.response',
+            rawErrorMessage,
+            serviceErrorCode: undefined,
+            shownToUser: false,
+            httpCode: 429,
+          });
+        });
+
+        it('should not identify a non-Locus 429 as a Locus rate limit', () => {
+          const [res] = cd.generateClientEventErrorPayload({
+            message: 'Too many requests',
+            statusCode: 429,
+            options: {uri: 'https://example.com/api/v1/resource'},
+          });
+
+          assert.deepEqual(res, {
+            category: 'other',
+            errorCode: 9999,
+            errorDescription: 'UnknownError',
+            fatal: true,
+            name: 'other',
+            rawErrorMessage: 'Too many requests',
+            serviceErrorCode: 9999,
+            shownToUser: false,
+            httpCode: 429,
+          });
+        });
+
+        it('should include httpCode for browser media errors', () => {
           const [res, cached] = cd.generateClientEventErrorPayload({
             name: 'PermissionDeniedError',
             message: 'bad times',
@@ -4073,11 +4115,11 @@ describe('internal-plugin-metrics', () => {
             rawErrorMessage: 'bad times',
             serviceErrorCode: undefined,
             shownToUser: false,
-            httpStatusCode: 401,
+            httpCode: 401,
           });
         });
 
-        it('should include httpStatusCode for SdpOfferCreationErrors', () => {
+        it('should include httpCode for SdpOfferCreationErrors', () => {
           const [res, cached] = cd.generateClientEventErrorPayload({
             name: 'SdpOfferCreationError',
             message: 'bad times',
@@ -4095,11 +4137,11 @@ describe('internal-plugin-metrics', () => {
             rawErrorMessage: 'bad times',
             serviceErrorCode: undefined,
             shownToUser: true,
-            httpStatusCode: 404,
+            httpCode: 404,
           });
         });
 
-        it('should include httpStatusCode for service error codes', () => {
+        it('should include httpCode for service error codes', () => {
           const [res, cached] = cd.generateClientEventErrorPayload({
             body: {errorCode: 58400},
             message: 'bad times',
@@ -4114,11 +4156,11 @@ describe('internal-plugin-metrics', () => {
             rawErrorMessage: 'bad times',
             serviceErrorCode: 58400,
             shownToUser: false,
-            httpStatusCode: 400,
+            httpCode: 400,
           });
         });
 
-        it('should include httpStatusCode for locus service error codes', () => {
+        it('should include httpCode for locus service error codes', () => {
           const [res, cached] = cd.generateClientEventErrorPayload({
             body: {errorCode: 2403001},
             message: 'bad times',
@@ -4133,11 +4175,11 @@ describe('internal-plugin-metrics', () => {
             rawErrorMessage: 'bad times',
             serviceErrorCode: 2403001,
             shownToUser: false,
-            httpStatusCode: 400,
+            httpCode: 400,
           });
         });
 
-        it('should include httpStatusCode for meetingInfo service error codes', () => {
+        it('should include httpCode for meetingInfo service error codes', () => {
           const [res, cached] = cd.generateClientEventErrorPayload({
             body: {data: {meetingInfo: {}}},
             message: 'bad times',
@@ -4152,11 +4194,11 @@ describe('internal-plugin-metrics', () => {
             rawErrorMessage: 'bad times',
             serviceErrorCode: undefined,
             shownToUser: false,
-            httpStatusCode: 400,
+            httpCode: 400,
           });
         });
 
-        it('should include httpStatusCode for network errors', () => {
+        it('should include httpCode for network errors', () => {
           const error = new WebexHttpError.NetworkOrCORSError({
             statusCode: 400,
             options: {service: '', headers: {}},
@@ -4171,11 +4213,11 @@ describe('internal-plugin-metrics', () => {
             rawErrorMessage: 'undefined\nundefined /undefined\nWEBEX_TRACKING_ID: undefined\n',
             serviceErrorCode: undefined,
             shownToUser: false,
-            httpStatusCode: 400,
+            httpCode: 400,
           });
         });
 
-        it('should include httpStatusCode for unauthorized errors', () => {
+        it('should include httpCode for unauthorized errors', () => {
           const error = new WebexHttpError.Unauthorized({
             statusCode: 401,
             options: {service: '', headers: {}},
@@ -4190,11 +4232,11 @@ describe('internal-plugin-metrics', () => {
             rawErrorMessage: 'undefined\nundefined /undefined\nWEBEX_TRACKING_ID: undefined\n',
             serviceErrorCode: undefined,
             shownToUser: false,
-            httpStatusCode: 401,
+            httpCode: 401,
           });
         });
 
-        it('should include httpStatusCode for unknown errors', () => {
+        it('should include httpCode for unknown errors', () => {
           const [res, cached] = cd.generateClientEventErrorPayload({
             message: 'bad times',
             statusCode: 404,
@@ -4208,7 +4250,7 @@ describe('internal-plugin-metrics', () => {
             serviceErrorCode: 9999,
             errorDescription: 'UnknownError',
             rawErrorMessage: 'bad times',
-            httpStatusCode: 404,
+            httpCode: 404,
           });
         });
       });
