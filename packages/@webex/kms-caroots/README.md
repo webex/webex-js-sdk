@@ -16,13 +16,28 @@ Requires the `openssl` binary on `PATH`.
 
 ## CLI
 
+For a one-time run in a consuming application, invoke the published scoped
+package directly:
+
 ```bash
 # Print the JSON array to stdout
-npx webex-kms-caroots
+npx @webex/kms-caroots
 
 # Write it to a file
+npx @webex/kms-caroots --out ./caroots.json
+```
+
+For a repeatable build step, install `@webex/kms-caroots` as a development
+dependency and run its `webex-kms-caroots` binary. Refresh the generated file
+as part of your application's build or configuration process, then supply its
+JSON array as `config.encryption.caroots`:
+
+```bash
+npm install --save-dev @webex/kms-caroots
 npx webex-kms-caroots --out ./caroots.json
 ```
+
+From this repository's root, use `yarn caroots:generate --out ./caroots.json`.
 
 ## Programmatic
 

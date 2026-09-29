@@ -64,11 +64,16 @@ array of raw base64-encoded certificates). It requires the `openssl` binary on
 
 ```bash
 # Print the JSON array to stdout
-npx webex-kms-caroots
+npx @webex/kms-caroots
 
 # Or write it to a file
-npx webex-kms-caroots --out ./caroots.json
+npx @webex/kms-caroots --out ./caroots.json
 ```
+
+For a repeatable build step, install `@webex/kms-caroots` as a development
+dependency and run its `webex-kms-caroots` binary. Refresh the generated file
+as part of your application's build or configuration process, then load its
+JSON array into `config.encryption.caroots`.
 
 ```js
 const {generateKmsCaroots} = require('@webex/kms-caroots');

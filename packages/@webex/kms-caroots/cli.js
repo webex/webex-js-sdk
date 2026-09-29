@@ -34,6 +34,10 @@ async function main() {
   const outIndex = args.indexOf('--out');
   const out = outIndex === -1 ? undefined : args[outIndex + 1];
 
+  if (outIndex !== -1 && (!out || out.startsWith('-'))) {
+    throw new Error('--out requires a file path');
+  }
+
   const caroots = await generateKmsCaroots();
   const json = JSON.stringify(caroots);
 

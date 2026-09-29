@@ -12,6 +12,8 @@ const {URL} = require('url');
 
 const DEFAULT_BUNDLE_URL =
   'https://www.cisco.com/security/pki/trs/current/ios_union/ios_union.p7b';
+const DOWNLOAD_TIMEOUT_MS = 30000;
+const MAX_REDIRECTS = 5;
 
 // Trust anchors used to verify the signed bundle, pinned by the SHA-256 of the
 // DER certificate so a compromised or swapped anchor is rejected. New-style
@@ -36,32 +38,74 @@ const PEM_CERT_RE = /-----BEGIN CERTIFICATE-----([\s\S]*?)-----END CERTIFICATE--
 /**
  * Download a URL, following redirects.
  * @param {string} url
+ * @param {number} [redirects]
  * @returns {Promise<Buffer>}
  */
-function download(url) {
+function download(url, redirects = 0) {
   return new Promise((resolve, reject) => {
-    https
-      .get(url, {headers: {'user-agent': 'webex-kms-caroots'}}, (res) => {
-        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          res.resume();
-          resolve(download(new URL(res.headers.location, url).toString()));
+    const target = new URL(url);
+
+    if (target.protocol !== 'https:') {
+      reject(new Error(`Cannot download CA roots from a non-HTTPS URL: ${url}`));
+
+      return;
+    }
+
+    let timeout;
+    const resolveDownload = (value) => {
+      clearTimeout(timeout);
+      resolve(value);
+    };
+    const rejectDownload = (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    };
+    const request = https.get(target, {headers: {'user-agent': 'webex-kms-caroots'}}, (res) => {
+      res.on('error', rejectDownload);
+      res.on('close', () => {
+        if (!res.complete) {
+          rejectDownload(new Error(`Download from ${url} ended before the response was complete`));
+        }
+      });
+
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        res.resume();
+
+        if (redirects >= MAX_REDIRECTS) {
+          rejectDownload(new Error(`Too many redirects downloading ${url}`));
 
           return;
         }
 
-        if (res.statusCode !== 200) {
-          res.resume();
-          reject(new Error(`Failed to download ${url}: HTTP ${res.statusCode}`));
-
-          return;
+        try {
+          resolveDownload(download(new URL(res.headers.location, target).toString(), redirects + 1));
+        } catch (error) {
+          rejectDownload(error);
         }
 
-        const chunks = [];
+        return;
+      }
 
-        res.on('data', (chunk) => chunks.push(chunk));
-        res.on('end', () => resolve(Buffer.concat(chunks)));
-      })
-      .on('error', reject);
+      if (res.statusCode !== 200) {
+        res.resume();
+        rejectDownload(new Error(`Failed to download ${url}: HTTP ${res.statusCode}`));
+
+        return;
+      }
+
+      const chunks = [];
+
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => resolveDownload(Buffer.concat(chunks)));
+    });
+
+    request.on('error', rejectDownload);
+    timeout = setTimeout(() => {
+      const error = new Error(`Timed out downloading ${url} after ${DOWNLOAD_TIMEOUT_MS} ms`);
+
+      rejectDownload(error);
+      request.destroy(error);
+    }, DOWNLOAD_TIMEOUT_MS);
   });
 }
 
