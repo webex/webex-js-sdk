@@ -54,7 +54,7 @@ const KmsBatcher = Batcher.extend({
 
       const timer = safeSetTimeout(() => {
         this.logger.warn(
-          `kms: request timed out; request id: ${item.requestId}; timeout: ${timeout}`
+          `kms: request timed out; method: ${item.method}; uri: ${item.uri}; request id: ${item.requestId}; timeout: ${timeout}`
         );
         this.handleItemFailure(
           item,
