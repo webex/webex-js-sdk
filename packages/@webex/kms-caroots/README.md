@@ -7,7 +7,8 @@ roots supplied via `config.encryption.caroots`. The SDK does not ship a bundle,
 so that certificate updates don't require an SDK upgrade. This tool downloads the
 Cisco Trusted Root Store **Union** bundle, verifies its signature against the
 pinned Cisco trust anchors, and decodes it into the `caroots` format (an array of
-raw base64-encoded certificates).
+raw base64-encoded certificates). Verification excludes OpenSSL's default CA
+locations, so the downloaded bundle must chain to the pinned anchors.
 
 See <https://www.cisco.com/security/pki/trs/readme.html> for the Cisco Trusted
 Root Store.

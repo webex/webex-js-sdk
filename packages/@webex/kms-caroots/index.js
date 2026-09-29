@@ -3,7 +3,7 @@
  */
 
 const crypto = require('crypto');
-const {execFileSync} = require('child_process');
+const {execFileSync, spawnSync} = require('child_process');
 const fs = require('fs');
 const https = require('https');
 const os = require('os');
@@ -170,6 +170,31 @@ function ensureOpenssl() {
 }
 
 /**
+ * Disable OpenSSL's default trust locations while keeping the pinned CA file.
+ * OpenSSL 1.1.1 has no CA store option, so include it only when supported.
+ * @returns {string[]}
+ */
+function cmsTrustOptions() {
+  const {error, stdout, stderr} = spawnSync('openssl', ['cms', '-help'], {encoding: 'utf8'});
+
+  if (error) {
+    throw error;
+  }
+
+  const help = `${stdout || ''}${stderr || ''}`;
+
+  if (!help.includes('-no-CAfile') || !help.includes('-no-CApath')) {
+    throw new Error('OpenSSL cms cannot disable its default CA file and directory');
+  }
+
+  return [
+    '-no-CAfile',
+    '-no-CApath',
+    ...(help.includes('-no-CAstore') ? ['-no-CAstore'] : []),
+  ];
+}
+
+/**
  * Download the pinned trust anchors and verify their fingerprints.
  * @returns {Promise<string>} concatenated anchor PEMs
  */
@@ -211,7 +236,13 @@ function verifyAndExtract(workDir, bundle, anchorsPem) {
 
   execFileSync(
     'openssl',
-    ['cms', '-verify', '-inform', 'DER', '-purpose', 'any', '-in', bundlePath, '-CAfile', anchorsPath, '-out', contentPath],
+    [
+      'cms', '-verify', '-inform', 'DER', '-purpose', 'any',
+      '-in', bundlePath,
+      '-CAfile', anchorsPath,
+      ...cmsTrustOptions(),
+      '-out', contentPath,
+    ],
     {stdio: ['ignore', 'ignore', 'ignore']}
   );
 
