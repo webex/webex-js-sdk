@@ -10,7 +10,6 @@ import sinon from 'sinon';
 import WebexCore from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
-import {browserOnly, skipInFirefox} from '@webex/test-helper-mocha';
 
 const debug = require('debug')('kms');
 
@@ -462,8 +461,8 @@ describe('Encryption', function () {
     describe('upload customer master key', () => {
       let uploadedkeyId;
 
-      // Chrome and Firefox share an org, so running both would race on the org-wide CMK cleanup.
-      skipInFirefox(browserOnly(it))('upload customer master key', () =>
+      // This deletes org-wide CMK state and invalidates ECDHE sessions used by other tests.
+      it.skip('upload customer master key', () =>
         webex.internal.encryption.kms
           .deleteAllCustomerMasterKeys({assignedOrgId: spock.orgId})
           .then(() => webex.internal.encryption.kms.fetchPublicKey({assignedOrgId: spock.orgId}))
