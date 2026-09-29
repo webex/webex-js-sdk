@@ -1030,7 +1030,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.wellbeingBreakIdleCode = undefined;
       this.updateWellnessSession();
 
-      /** Connect the RTD websocket when any feature that receives its messages is enabled. */
+      /**
+       * RTD websocket currently supports realtime transcripts and suggested responses.
+       * Extend this condition when additional AI RTD features are introduced.
+       * Wellness break notifications also arrive on this websocket.
+       */
       if (
         this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||
         this.agentConfig.aiFeature?.suggestedResponses?.enable ||
