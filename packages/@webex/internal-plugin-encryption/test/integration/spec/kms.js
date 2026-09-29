@@ -342,9 +342,11 @@ describe('Encryption', function () {
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
           .then(([key]) =>
-            webex.internal.encryption.kms.createResource({
-              key,
-            })
+            fetchKeyWithRetry(webex.internal.encryption.kms, {uri: key.uri}).then(() =>
+              webex.internal.encryption.kms.createResource({
+                key,
+              })
+            )
           )
           .then((k) => {
             kro = k;
@@ -357,9 +359,11 @@ describe('Encryption', function () {
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
           .then(([key]) =>
-            webex.internal.encryption.kms.createResource({
-              key,
-            })
+            fetchKeyWithRetry(webex.internal.encryption.kms, {uri: key.uri}).then(() =>
+              webex.internal.encryption.kms.createResource({
+                key,
+              })
+            )
           )
           .then((k) => {
             otherKro = k;
