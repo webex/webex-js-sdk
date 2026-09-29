@@ -787,36 +787,46 @@ const KMS = WebexPlugin.extend({
 
   /**
    * Validates the KMS static public key against the configured CA roots. The
-   * enforced `caroots` bundle rejects on failure. When a `carootsReportOnly`
-   * bundle is also configured, it is validated in addition to `caroots`, but a
-   * failure against it is only reported as a metric so a new bundle can be
-   * trialled without risking failure.
+   * enforced `caroots` bundle reports and rejects on failure. When a
+   * `carootsReportOnly` bundle is also configured, it is validated after
+   * `caroots`; its failure is reported without rejecting.
    * @private
    * @param {Object} kmsStaticPubKey
    * @returns {Promise<Object>} the KMS static public key
    */
   _validateKMSStaticPubKey(kmsStaticPubKey) {
     const {caroots, carootsReportOnly} = this.config;
+    const reportValidationFailure = (reason, validationMode) => {
+      this.logger.warn(`kms: ${validationMode} certificate validation failed`, reason);
 
-    return validateKMS(caroots)(kmsStaticPubKey).then((jwt) => {
-      if (!carootsReportOnly) {
-        return jwt;
+      try {
+        this.webex.internal.metrics.submitClientMetrics(JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED, {
+          fields: {success: false},
+          tags: {
+            reason: reason.message,
+            kid: kmsStaticPubKey && kmsStaticPubKey.kid,
+            validationMode,
+          },
+        });
+      } catch (error) {
+        this.logger.warn('kms: failed to submit certificate validation metric', error);
       }
+    };
 
-      return validateKMS(carootsReportOnly)(kmsStaticPubKey)
-        .catch((reason) => {
-          this.logger.warn('kms: report-only certificate validation failed', reason);
+    return validateKMS(caroots)(kmsStaticPubKey)
+      .catch((reason) => {
+        reportValidationFailure(reason, 'enforced');
+        throw reason;
+      })
+      .then((jwt) => {
+        if (!carootsReportOnly) {
+          return jwt;
+        }
 
-          this.webex.internal.metrics.submitClientMetrics(
-            JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED,
-            {
-              fields: {success: false},
-              tags: {reason: reason.message, kid: kmsStaticPubKey && kmsStaticPubKey.kid},
-            }
-          );
-        })
-        .then(() => jwt);
-    });
+        return validateKMS(carootsReportOnly)(kmsStaticPubKey)
+          .catch((reason) => reportValidationFailure(reason, 'report-only'))
+          .then(() => jwt);
+      });
   },
 
   /**
