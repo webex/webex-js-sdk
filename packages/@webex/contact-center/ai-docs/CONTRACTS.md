@@ -30,6 +30,12 @@
 | `rtd.events` | Task | realtime transcription/suggestion | consume then publish per task | task spec | websocket best-effort according to remote service | additive payloads | `src/services/task/TaskManager.ts` |
 | `wellness.notification.events` | Contact Center | `CC_AGENT_EVENTS.WELLNESS_BREAK` | consume validated wellness payloads from the primary data-notification socket, then publish normalized application events | Contact Center spec/types | exact current agent/org; notification session is diagnostic and is not compared with the active session; canonical optional `actionText` is normalized to public `actionText`; malformed/stale payloads are ignored | additive | `src/cc.ts`, `src/types.ts`, `src/services/config/types.ts` |
 
+### Telemetry / Metrics Events
+
+| Contract ID | Owner module | Event constant | Wire name | Payload schema link | Tags | Defined at |
+|---|---|---|---|---|---|---|
+| `metrics.wxapp-offer-participant-fields-missing` | Task / Metrics | `WXAPP_OFFER_PARTICIPANT_FIELDS_MISSING` | `WxApp Offer Participant Fields Missing` | `src/metrics/ai-docs/metrics-spec.md` | operational, behavioral | `src/metrics/constants.ts`, `src/services/task/voice/wxAppOfferObservability.ts` |
+
 ## Requires — what this repo depends on
 
 | Dependency | What is consumed | Schema / detail link | Availability assumption | Fallback on failure | Version floor |
