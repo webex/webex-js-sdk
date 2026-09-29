@@ -5,7 +5,7 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import Encryption from '@webex/internal-plugin-encryption';
-import {KmsError} from '../../../dist/kms-errors';
+import {KmsError, KmsTimeoutError} from '../../../dist/kms-errors';
 
 describe('internal-plugin-encryption', () => {
   describe('kms', () => {
@@ -346,6 +346,22 @@ describe('internal-plugin-encryption', () => {
             'KMS_REQUEST_ID: 3434343\n' +
             'KMS_ErrorCode: 30005'
         );
+      });
+
+      it.only('includes the Webex tracking ID in KMS timeout errors', () => {
+        const error = new KmsTimeoutError({
+          timeout: 6000,
+          trackingId: 'webex-js-sdk_test_1',
+          request: {
+            method: 'create',
+            uri: '/keys',
+            requestId: 'kms-request-id',
+          },
+        });
+
+        assert.include(error.message, 'KMS_REQUEST: create /keys');
+        assert.include(error.message, 'KMS_REQUEST_ID: kms-request-id');
+        assert.include(error.message, 'WEBEX_TRACKING_ID: webex-js-sdk_test_1');
       });
     });
   });

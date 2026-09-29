@@ -74,10 +74,11 @@ export class KmsError extends Exception {
 export class KmsTimeoutError extends KmsError {
   /**
    * @param {KmsRequest} options.request
-   * @param {KmsRequest} options.timeout
+   * @param {number} options.timeout
+   * @param {string} options.trackingId
    * @returns {string}
    */
-  parse({request = {}, timeout} = {}) {
+  parse({request = {}, timeout, trackingId} = {}) {
     let message = `The KMS did not respond within ${
       timeout ? `${timeout} milliseconds` : 'a timely fashion'
     }`;
@@ -90,6 +91,10 @@ export class KmsTimeoutError extends KmsError {
       if (request.requestId) {
         message += `\nKMS_REQUEST_ID: ${request.requestId}`;
       }
+    }
+
+    if (trackingId) {
+      message += `\nWEBEX_TRACKING_ID: ${trackingId}`;
     }
 
     return message;
