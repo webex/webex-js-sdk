@@ -22,18 +22,6 @@ describe('Encryption', function () {
     'Admiral, if we go "by the book". like Lieutenant Saavik, hours could seem like days.';
   let FILE = makeLocalUrl('/sample-image-small-one.png');
 
-  function fetchKeyWithRetry(kms, options, retries = 2) {
-    return kms.fetchKey(options).catch((error) => {
-      if (error.status !== 404 || retries === 0) {
-        throw error;
-      }
-
-      return new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
-        fetchKeyWithRetry(kms, options, retries - 1)
-      );
-    });
-  }
-
   before('create test user', () =>
     testUsers.create({count: 1}).then((users) => {
       user = users[0];
@@ -49,7 +37,7 @@ describe('Encryption', function () {
   before('create unbound key', () =>
     webex.internal.encryption.kms
       .createUnboundKeys({count: 1})
-      .then(([k]) => fetchKeyWithRetry(webex.internal.encryption.kms, {uri: k.uri}))
+      .then(([k]) => webex.internal.encryption.kms.fetchKey({uri: k.uri}))
       .then((k) => {
         key = k;
       })

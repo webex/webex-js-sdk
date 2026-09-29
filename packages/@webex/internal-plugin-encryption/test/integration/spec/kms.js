@@ -41,10 +41,6 @@ describe('Encryption', function () {
       return window.btoa(binary);
     }
 
-    function fetchKeyWithRetry(kms, options) {
-      return kms.fetchKey(options);
-    }
-
     before('create test user', () =>
       testUsers.create({count: 2, config: {roles: [{name: 'id_full_admin'}]}}).then((users) => {
         spock = users[0];
@@ -117,7 +113,7 @@ describe('Encryption', function () {
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
           .then(([key]) =>
-            fetchKeyWithRetry(webex.internal.encryption.kms, {uri: key.uri}).then(() =>
+            webex.internal.encryption.kms.fetchKey({uri: key.uri}).then(() =>
               webex.internal.encryption.kms.createResource({
                 key,
               })
@@ -140,7 +136,7 @@ describe('Encryption', function () {
             assert.equal(auth.resourceUri, kro.uri);
             assert.equal(auth.authId, mccoy.webex.internal.device.userId);
 
-            return fetchKeyWithRetry(mccoy.webex.internal.encryption.kms, {
+            return mccoy.webex.internal.encryption.kms.fetchKey({
               uri: boundedKeyUri,
             });
           }));
@@ -179,7 +175,7 @@ describe('Encryption', function () {
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
           .then(([key]) =>
-            fetchKeyWithRetry(webex.internal.encryption.kms, {uri: key.uri}).then(() =>
+            webex.internal.encryption.kms.fetchKey({uri: key.uri}).then(() =>
               webex.internal.encryption.kms.createResource({
                 key,
               })
@@ -202,7 +198,7 @@ describe('Encryption', function () {
             assert.equal(auth.resourceUri, kro.uri);
             assert.equal(auth.authId, mccoy.webex.internal.device.userId);
 
-            return fetchKeyWithRetry(mccoy.webex.internal.encryption.kms, {
+            return mccoy.webex.internal.encryption.kms.fetchKey({
               uri: boundedKeyUri,
             });
           })
@@ -212,7 +208,7 @@ describe('Encryption', function () {
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
           .then(([key]) =>
-            fetchKeyWithRetry(webex.internal.encryption.kms, {uri: key.uri}).then(() =>
+            webex.internal.encryption.kms.fetchKey({uri: key.uri}).then(() =>
               webex.internal.encryption.kms.createResource({key})
             )
           )
@@ -333,7 +329,7 @@ describe('Encryption', function () {
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
           .then(([key]) =>
-            fetchKeyWithRetry(webex.internal.encryption.kms, {uri: key.uri}).then(() =>
+            webex.internal.encryption.kms.fetchKey({uri: key.uri}).then(() =>
               webex.internal.encryption.kms.createResource({
                 key,
               })
@@ -350,7 +346,7 @@ describe('Encryption', function () {
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
           .then(([key]) =>
-            fetchKeyWithRetry(webex.internal.encryption.kms, {uri: key.uri}).then(() =>
+            webex.internal.encryption.kms.fetchKey({uri: key.uri}).then(() =>
               webex.internal.encryption.kms.createResource({
                 key,
               })
@@ -528,7 +524,7 @@ describe('Encryption', function () {
           .then(([k]) => {
             key = k;
 
-            return fetchKeyWithRetry(webex.internal.encryption.kms, {uri: key.uri});
+            return webex.internal.encryption.kms.fetchKey({uri: key.uri});
           })
           .then((key2) => {
             assert.property(key2, 'uri');
@@ -574,7 +570,7 @@ describe('Encryption', function () {
             key = k;
 
             // Compliance Officer Jim fetches a key on behalf of Spock
-            return fetchKeyWithRetry(jim.webex.internal.encryption.kms, {
+            return jim.webex.internal.encryption.kms.fetchKey({
               uri: key.uri,
               onBehalfOf: spock.id,
             });
@@ -594,7 +590,7 @@ describe('Encryption', function () {
 
             // Compliance Officer Jim fetches a key on behalf of himself
             // This covers an edge case documented by https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-240862.
-            return fetchKeyWithRetry(jim.webex.internal.encryption.kms, {
+            return jim.webex.internal.encryption.kms.fetchKey({
               uri: key.uri,
               onBehalfOf: jim.id,
             });
@@ -614,7 +610,7 @@ describe('Encryption', function () {
             key = k;
 
             // Compliance Officer Jim fetches a key on behalf of himself but he is not in the KRO
-            return fetchKeyWithRetry(jim.webex.internal.encryption.kms, {
+            return jim.webex.internal.encryption.kms.fetchKey({
               uri: key.uri,
               onBehalfOf: jim.id,
             });
@@ -636,7 +632,7 @@ describe('Encryption', function () {
             key = k;
 
             // Normal user McCoy fails to fetch a key on behalf of Spock
-            return fetchKeyWithRetry(mccoy.webex.internal.encryption.kms, {
+            return mccoy.webex.internal.encryption.kms.fetchKey({
               uri: key.uri,
               onBehalfOf: spock.id,
             });
@@ -664,11 +660,11 @@ describe('Encryption', function () {
 
             // Compliance Officer Jim fetches keys on behalf of users
             return Promise.all([
-              fetchKeyWithRetry(jim.webex.internal.encryption.kms, {
+              jim.webex.internal.encryption.kms.fetchKey({
                 uri: spockKey.uri,
                 onBehalfOf: spock.id,
               }),
-              fetchKeyWithRetry(jim.webex.internal.encryption.kms, {
+              jim.webex.internal.encryption.kms.fetchKey({
                 uri: mccoyKey.uri,
                 onBehalfOf: mccoy.id,
               }),
@@ -811,7 +807,7 @@ describe('Encryption', function () {
               key,
             });
           })
-          .then(() => fetchKeyWithRetry(fedWebex.internal.encryption.kms, {uri: key.uri}))
+          .then(() => fedWebex.internal.encryption.kms.fetchKey({uri: key.uri}))
           .then((fedKey) => assert.equal(fedKey.keyUri, key.keyUri)));
 
       let fedKey;
@@ -827,7 +823,7 @@ describe('Encryption', function () {
               key: fedKey,
             });
           })
-          .then(() => fetchKeyWithRetry(webex.internal.encryption.kms, {uri: fedKey.uri}))
+          .then(() => webex.internal.encryption.kms.fetchKey({uri: fedKey.uri}))
           .then((key) => assert.equal(key.keyUri, fedKey.keyUri)));
     });
   });
