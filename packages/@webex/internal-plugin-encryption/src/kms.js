@@ -800,13 +800,17 @@ const KMS = WebexPlugin.extend({
       this.logger.warn(`kms: ${validationMode} certificate validation failed`, reason);
 
       try {
-        this.webex.internal.metrics.submitClientMetrics(JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED, {
-          fields: {success: false},
-          tags: {
-            reason: reason.message,
-            kid: kmsStaticPubKey && kmsStaticPubKey.kid,
-            validationMode,
-          },
+        Promise.resolve(
+          this.webex.internal.metrics.submitClientMetrics(JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED, {
+            fields: {success: false},
+            tags: {
+              reason: reason.message,
+              kid: kmsStaticPubKey && kmsStaticPubKey.kid,
+              validationMode,
+            },
+          })
+        ).catch((error) => {
+          this.logger.warn('kms: failed to submit certificate validation metric', error);
         });
       } catch (error) {
         this.logger.warn('kms: failed to submit certificate validation metric', error);

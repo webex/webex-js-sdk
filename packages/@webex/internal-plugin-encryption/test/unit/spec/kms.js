@@ -287,6 +287,37 @@ describe('internal-plugin-encryption', () => {
         );
       });
 
+      it('preserves the validation error when metric submission rejects', async () => {
+        const metricError = new Error('clientmetrics request failed');
+        const {warn} = webex.internal.encryption.kms.logger;
+
+        warn.resetHistory();
+        webex.internal.metrics.submitClientMetrics.rejects(metricError);
+
+        await assert.isRejected(
+          webex.internal.encryption.kms._validateKMSStaticPubKey(invalidKey),
+          "INVALID KMS: 'kty' header must be 'RSA'"
+        );
+
+        assert.calledOnceWithExactly(
+          webex.internal.metrics.submitClientMetrics,
+          'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED',
+          {
+            fields: {success: false},
+            tags: {
+              reason: "INVALID KMS: 'kty' header must be 'RSA'",
+              kid: 'kms://kms.example.com',
+              validationMode: 'enforced',
+            },
+          }
+        );
+        assert.calledWithExactly(
+          warn,
+          'kms: failed to submit certificate validation metric',
+          metricError
+        );
+      });
+
       it('resolves without a metric when no report-only bundle is configured', async () => {
         const result = await webex.internal.encryption.kms._validateKMSStaticPubKey(validKey);
 
