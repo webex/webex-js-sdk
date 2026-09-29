@@ -268,13 +268,55 @@ describe('internal-plugin-encryption', () => {
         webex.internal.encryption.config.carootsReportOnly = undefined;
       });
 
-      it('rejects and does not report when validation against caroots fails', async () => {
+      it('rejects and reports when validation against caroots fails', async () => {
         await assert.isRejected(
           webex.internal.encryption.kms._validateKMSStaticPubKey(invalidKey),
           /INVALID KMS/
         );
 
-        assert.notCalled(webex.internal.metrics.submitClientMetrics);
+        assert.calledOnceWithExactly(
+          webex.internal.metrics.submitClientMetrics,
+          'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED',
+          {
+            fields: {success: false},
+            tags: {
+              reason: "INVALID KMS: 'kty' header must be 'RSA'",
+              kid: 'kms://kms.example.com',
+              validationMode: 'enforced',
+            },
+          }
+        );
+      });
+
+      it('preserves the validation error when metric submission rejects', async () => {
+        const metricError = new Error('clientmetrics request failed');
+        const {warn} = webex.internal.encryption.kms.logger;
+
+        warn.resetHistory();
+        webex.internal.metrics.submitClientMetrics.rejects(metricError);
+
+        await assert.isRejected(
+          webex.internal.encryption.kms._validateKMSStaticPubKey(invalidKey),
+          "INVALID KMS: 'kty' header must be 'RSA'"
+        );
+
+        assert.calledOnceWithExactly(
+          webex.internal.metrics.submitClientMetrics,
+          'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED',
+          {
+            fields: {success: false},
+            tags: {
+              reason: "INVALID KMS: 'kty' header must be 'RSA'",
+              kid: 'kms://kms.example.com',
+              validationMode: 'enforced',
+            },
+          }
+        );
+        assert.calledWithExactly(
+          warn,
+          'kms: failed to submit certificate validation metric',
+          metricError
+        );
       });
 
       it('rejects when validation is enabled but no caroots are configured', async () => {
@@ -285,7 +327,18 @@ describe('internal-plugin-encryption', () => {
           /INVALID KMS/
         );
 
-        assert.notCalled(webex.internal.metrics.submitClientMetrics);
+        assert.calledOnceWithExactly(
+          webex.internal.metrics.submitClientMetrics,
+          'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED',
+          {
+            fields: {success: false},
+            tags: {
+              reason: 'INVALID KMS: no CA roots configured to validate the KMS certificate against',
+              kid: 'kms://kms.example.com',
+              validationMode: 'enforced',
+            },
+          }
+        );
       });
 
       it('resolves without validating when shouldValidateKMSCertificate is false', async () => {
@@ -327,6 +380,7 @@ describe('internal-plugin-encryption', () => {
         assert.equal(name, 'JS_SDK_KMS_CERTIFICATE_VALIDATION_FAILED');
         assert.deepEqual(payload.fields, {success: false});
         assert.equal(payload.tags.kid, 'kms://kms.example.com');
+        assert.equal(payload.tags.validationMode, 'report-only');
         assert.match(payload.tags.reason, /INVALID KMS/);
       });
     });
