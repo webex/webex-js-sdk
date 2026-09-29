@@ -768,6 +768,7 @@ export default class Meeting extends StatelessWebexPlugin {
   voiceaListenerCallbacks: object = {
     [VOICEAEVENTS.VOICEA_ANNOUNCEMENT]: (payload: Transcription['languageOptions']) => {
       this.transcription.languageOptions = payload;
+      const eventPayload = {...payload};
 
       LoggerProxy.logger.debug(
         `${EventsUtil.getScopeLog({
@@ -777,11 +778,11 @@ export default class Meeting extends StatelessWebexPlugin {
       );
 
       if (this.getCurUserType() !== 'host') {
-        delete payload.spokenLanguages;
+        delete eventPayload.spokenLanguages;
       }
 
       // @ts-ignore
-      this.trigger(EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION, payload);
+      this.trigger(EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION, eventPayload);
     },
     [VOICEAEVENTS.CAPTIONS_TURNED_ON]: () => {
       this.transcription.status = TURN_ON_CAPTION_STATUS.ENABLED;
