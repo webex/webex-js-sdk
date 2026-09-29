@@ -43,15 +43,24 @@ describe('Encryption', function () {
     }
 
     function fetchKeyWithRetry(kms, options, retries = 2) {
-      return kms.fetchKey(options).catch((error) => {
-        if (error.status !== 404 || retries === 0) {
-          throw error;
-        }
+      return kms
+        .fetchKey(options)
+        .then((key) => {
+          debug(`fetchKeyWithRetry: successfully fetched ${options.uri}`);
 
-        return new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
-          fetchKeyWithRetry(kms, options, retries - 1)
-        );
-      });
+          return key;
+        })
+        .catch((error) => {
+          if (error.status !== 404 || retries === 0) {
+            debug(`fetchKeyWithRetry: failed to fetch ${options.uri}, no retries left`);
+
+            throw error;
+          }
+
+          return new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
+            fetchKeyWithRetry(kms, options, retries - 1)
+          );
+        });
     }
 
     before('create test user', () =>
