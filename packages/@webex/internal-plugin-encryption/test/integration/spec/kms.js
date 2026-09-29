@@ -41,25 +41,8 @@ describe('Encryption', function () {
       return window.btoa(binary);
     }
 
-    function fetchKeyWithRetry(kms, options, retries = 2) {
-      return kms
-        .fetchKey(options)
-        .then((key) => {
-          debug(`fetchKeyWithRetry: successfully fetched ${options.uri}`);
-
-          return key;
-        })
-        .catch((error) => {
-          if (error.status !== 404 || retries === 0) {
-            debug(`fetchKeyWithRetry: failed to fetch ${options.uri}, no retries left`);
-
-            throw error;
-          }
-
-          return new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
-            fetchKeyWithRetry(kms, options, retries - 1)
-          );
-        });
+    function fetchKeyWithRetry(kms, options) {
+      return kms.fetchKey(options);
     }
 
     before('create test user', () =>
