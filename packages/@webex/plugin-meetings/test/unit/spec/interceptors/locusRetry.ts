@@ -192,9 +192,12 @@ describe('plugin-meetings', () => {
               });
             });
 
-            [429, 503].forEach((statusCode) => {
+            [
+              [429, WebexHttpError.TooManyRequests],
+              [503, WebexHttpError.ServiceUnavailable],
+            ].forEach(([statusCode, ErrorType]) => {
               it(`rejects the HTTP ${statusCode} error after a locus retry is exhausted`, async () => {
-                const reason = new WebexHttpError.MethodNotAllowed({
+                const reason = new ErrorType({
                   statusCode,
                   options: {
                     headers: {trackingid: 'test', 'retry-after': 1000},

@@ -4162,6 +4162,16 @@ describe('internal-plugin-metrics', () => {
           });
         });
 
+        it('should keep the fallback classification when a 429 has no request URL', () => {
+          const [res] = cd.generateClientEventErrorPayload({
+            message: 'Too many requests',
+            statusCode: 429,
+          });
+
+          assert.equal(res.errorCode, 9999);
+          assert.equal(res.httpCode, 429);
+        });
+
         it('should include httpCode for browser media errors', () => {
           const [res, cached] = cd.generateClientEventErrorPayload({
             name: 'PermissionDeniedError',

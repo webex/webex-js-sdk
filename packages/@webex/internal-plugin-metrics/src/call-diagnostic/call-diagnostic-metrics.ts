@@ -75,18 +75,6 @@ const LOCUS_HTTP_STATUS_TO_CLIENT_ERROR_CODE: Partial<Record<number, number>> = 
   503: LOCUS_UNAVAILABLE_CLIENT_CODE,
 };
 
-const isLocusRequest = (url?: string) => {
-  if (!url) {
-    return false;
-  }
-
-  try {
-    return new URL(url, 'https://localhost').pathname.includes('/locus/');
-  } catch {
-    return false;
-  }
-};
-
 type GetOriginOptions = {
   clientType: ClientType;
   subClientType: SubClientType;
@@ -943,11 +931,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       rawError?.body?.errorCode ||
       rawError?.body?.code ||
       rawError?.body?.reason?.reasonCode;
-    const locusHttpClientErrorCode = [rawError.options?.uri, rawError.options?.url].some(
-      isLocusRequest
-    )
-      ? LOCUS_HTTP_STATUS_TO_CLIENT_ERROR_CODE[httpCode]
-      : undefined;
     let payload;
 
     if (rawError.name) {
@@ -988,13 +971,23 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       }
     }
 
+    const locusHttpClientErrorCode = LOCUS_HTTP_STATUS_TO_CLIENT_ERROR_CODE[httpCode];
     if (locusHttpClientErrorCode && !payload) {
-      payload = this.getErrorPayloadForClientErrorCode({
-        clientErrorCode: locusHttpClientErrorCode,
-        serviceErrorCode,
-        rawErrorMessage,
-        httpCode,
-      });
+      let requestPath = '';
+      try {
+        requestPath = new URL(rawError.options?.uri || rawError.options?.url).pathname;
+      } catch {
+        // Missing or invalid URLs retain the existing error classification.
+      }
+
+      if (requestPath.includes('/locus/')) {
+        payload = this.getErrorPayloadForClientErrorCode({
+          clientErrorCode: locusHttpClientErrorCode,
+          serviceErrorCode,
+          rawErrorMessage,
+          httpCode,
+        });
+      }
     }
 
     if (serviceErrorCode) {
