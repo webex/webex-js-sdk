@@ -348,7 +348,7 @@ describe('internal-plugin-encryption', () => {
         );
       });
 
-      it.only('includes the Webex tracking ID in KMS timeout errors', () => {
+      it('includes the Webex tracking ID in KMS timeout errors', () => {
         const error = new KmsTimeoutError({
           timeout: 6000,
           trackingId: 'webex-js-sdk_test_1',
