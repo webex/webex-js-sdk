@@ -659,8 +659,47 @@ describe('webex.cc', () => {
       expect(result).toEqual(mockAgentProfile);
     });
 
-    it('should not connect RTD websocket when realtime transcripts feature is disabled', async () => {
-      mockAgentProfile.aiFeature = {realtimeTranscripts: {enable: false}} as any;
+    it('should connect RTD websocket when only wellness breaks are enabled', async () => {
+      mockAgentProfile.aiFeature = {
+        realtimeTranscripts: {enable: false},
+        suggestedResponses: {enable: false},
+      } as any;
+      mockAgentProfile.isWellnessBreakEnabled = true;
+      jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
+      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
+          deviceType: LoginOption.EXTENSION,
+          dn: '12345',
+        },
+      });
+      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(mockAgentProfile);
+      mockWebSocketManager.initWebSocket.mockResolvedValue({agentId: 'agent123'});
+
+      await webex.cc.register();
+
+      expect(webex.cc.services.rtdWebSocketManager.initWebSocket).toHaveBeenCalledWith({
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: false,
+        },
+        resource: 'v1/realtime/subscribe',
+      });
+      expect(webex.cc.services.rtdWebSocketManager.on).toHaveBeenCalledWith(
+        'message',
+        expect.any(Function)
+      );
+    });
+
+    it('should not connect RTD websocket when transcripts, suggestions, and wellness are disabled', async () => {
+      mockAgentProfile.aiFeature = {
+        realtimeTranscripts: {enable: false},
+        suggestedResponses: {enable: false},
+      } as any;
+      mockAgentProfile.isWellnessBreakEnabled = false;
       jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
       jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
         data: {
