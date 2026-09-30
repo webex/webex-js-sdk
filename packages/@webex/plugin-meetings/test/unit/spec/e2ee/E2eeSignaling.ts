@@ -12,8 +12,6 @@ import {
 
 describe('plugin-meetings', () => {
   describe('E2eeSignaling', () => {
-    let webex;
-    let meeting;
     let session;
     let llm;
     let signaling;
@@ -25,14 +23,12 @@ describe('plugin-meetings', () => {
         isConnected: sinon.stub().returns(false),
         getLocusUrl: sinon.stub().returns('locus-1'),
       };
-      webex = {internal: {llm}};
-      meeting = {locusInfo: {url: 'locus-1'}};
       session = {
         handleEvent: sinon.stub(),
         setLlmConnectedBeforeJoin: sinon.stub(),
         notifyLlmConnected: sinon.stub(),
       };
-      signaling = new E2eeSignaling({webex, meeting, session});
+      signaling = new E2eeSignaling({llm, getLocusUrl: () => 'locus-1', session});
     });
 
     afterEach(() => {

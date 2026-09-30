@@ -173,7 +173,11 @@ export default class E2eeMeeting {
         trustAnchors: this.identityProvider.getTrustAnchors(),
       });
 
-      this.signaling = new E2eeSignaling({webex: this.webex, meeting: this.meeting, session});
+      this.signaling = new E2eeSignaling({
+        llm: this.webex.internal.llm,
+        getLocusUrl: () => this.meeting.locusInfo?.url,
+        session,
+      });
       this.signaling.start();
 
       this.setState('joining');

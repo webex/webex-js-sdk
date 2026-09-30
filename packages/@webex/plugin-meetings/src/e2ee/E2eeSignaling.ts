@@ -11,15 +11,23 @@ export interface IMlsSignalingTarget {
   notifyLlmConnected(): void;
 }
 
+/** The subset of `webex.internal.llm` the signaling adapter uses. */
+export interface ILlmChannel {
+  on(event: string, handler: (envelope: any) => void): void;
+  off(event: string, handler: (envelope: any) => void): void;
+  isConnected(): boolean;
+  getLocusUrl(): string;
+}
+
 /**
  * LLM (Low Latency Mercury) adapter for the MLS engine. Subscribes to this meeting's
  * media_encryption.* mercury events and forwards them to the engine, and tracks whether the
  * signaling channel is connected so the engine knows when it can proceed with its join.
  */
 export default class E2eeSignaling {
-  private readonly webex: any;
+  private readonly llm: ILlmChannel;
 
-  private readonly meeting: any;
+  private readonly getLocusUrl: () => string | undefined;
 
   private readonly session: IMlsSignalingTarget;
 
@@ -27,13 +35,22 @@ export default class E2eeSignaling {
 
   /**
    * @param {Object} deps
-   * @param {Object} deps.webex - The parent webex instance.
-   * @param {Object} deps.meeting - The owning meeting (for locus-url matching).
+   * @param {ILlmChannel} deps.llm - The mercury (LLM) channel (webex.internal.llm).
+   * @param {Function} deps.getLocusUrl - Returns the meeting's current locus url (read live, as it
+   *   can change, e.g. when moving between breakout sessions).
    * @param {IMlsSignalingTarget} deps.session - The MLS engine to drive.
    */
-  constructor({webex, meeting, session}: {webex: any; meeting: any; session: IMlsSignalingTarget}) {
-    this.webex = webex;
-    this.meeting = meeting;
+  constructor({
+    llm,
+    getLocusUrl,
+    session,
+  }: {
+    llm: ILlmChannel;
+    getLocusUrl: () => string | undefined;
+    session: IMlsSignalingTarget;
+  }) {
+    this.llm = llm;
+    this.getLocusUrl = getLocusUrl;
     this.session = session;
   }
 
@@ -48,13 +65,13 @@ export default class E2eeSignaling {
     this.started = true;
 
     MEDIA_ENCRYPTION_MERCURY_EVENTS.forEach((event) => {
-      this.webex.internal.llm.on(event, this.onMercuryEvent);
+      this.llm.on(event, this.onMercuryEvent);
     });
 
     if (this.isLlmOnlineForThisMeeting()) {
       this.session.setLlmConnectedBeforeJoin(true);
     } else {
-      this.webex.internal.llm.on(LLM_ONLINE_EVENT, this.onLlmOnline);
+      this.llm.on(LLM_ONLINE_EVENT, this.onLlmOnline);
     }
   }
 
@@ -69,9 +86,9 @@ export default class E2eeSignaling {
     this.started = false;
 
     MEDIA_ENCRYPTION_MERCURY_EVENTS.forEach((event) => {
-      this.webex.internal.llm.off(event, this.onMercuryEvent);
+      this.llm.off(event, this.onMercuryEvent);
     });
-    this.webex.internal.llm.off(LLM_ONLINE_EVENT, this.onLlmOnline);
+    this.llm.off(LLM_ONLINE_EVENT, this.onLlmOnline);
   }
 
   /**
@@ -98,9 +115,10 @@ export default class E2eeSignaling {
    * @returns {boolean} whether the LLM is connected for this specific meeting (locus-url matched).
    */
   private isLlmOnlineForThisMeeting(): boolean {
-    const {llm} = this.webex.internal;
-    const meetingLocusUrl = this.meeting?.locusInfo?.url;
+    const meetingLocusUrl = this.getLocusUrl();
 
-    return !!meetingLocusUrl && llm.isConnected() && meetingLocusUrl === llm.getLocusUrl();
+    return (
+      !!meetingLocusUrl && this.llm.isConnected() && meetingLocusUrl === this.llm.getLocusUrl()
+    );
   }
 }
