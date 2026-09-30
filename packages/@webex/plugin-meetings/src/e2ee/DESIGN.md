@@ -1,6 +1,6 @@
 # E2EE / MLS integration into `plugin-meetings` — Design
 
-> Status: **Design approved (high-level); detailed design under review.**
+> Status: **Under review.**
 > This document describes how end-to-end-encrypted (E2EE) meetings, backed by MLS,
 > are integrated into `@webex/plugin-meetings` so that SDK clients join an E2EE
 > meeting exactly like any other meeting — the plugin handles all E2EE concerns.
@@ -8,8 +8,8 @@
 ## Goal / Requirements
 
 Move E2EE (MLS) handling from the web-app proof-of-concept
-(`webex-web-client/src/lib/mls.ts`) into `plugin-meetings`, so any JS-SDK client
-just calls `meeting.join()` as usual. The SDK must:
+(`webex-web-client/src/lib/mls.ts` from this [POC PR](https://github.com/WebexServices/webex-web-client/pull/10231)) into `plugin-meetings`, so any JS-SDK client
+just calls `meeting.joinWithMedia()` as usual. The SDK must:
 
 1. Let a client query the meeting **Security Code**.
 2. Let a client query per-**Member** identity-verification status + certificate
@@ -26,14 +26,14 @@ just calls `meeting.join()` as usual. The SDK must:
    Locus DTO E2EE flags, the E2EE (MLS) state, and `hasMediaServices`. `Calculating` is
    reported while a zero-trust meeting's MLS join is still in progress.
 
-The WASM MLS engine is assumed already relocated into the SDK; moving it is **not**
-part of this effort.
+The WASM MLS engine is assumed already relocated into the SDK; moving it and decision on 
+how/where it will be hosted is **not** part of this design doc.
 
 ## Confirmed decisions
 
 | # | Decision |
 |---|----------|
-| D1 | Media-key injection: **define the interface** `plugin-meetings` needs; assume `@webex/internal-media-core` implements it. The media-core implementation is **out of scope**. The new media-core method will be something like `MultistreamConnection.setEncryptionKeys(...)` (NOT the existing `setupEncodedTransform`). |
+| D1 | Media-key injection: **define the interface** `plugin-meetings` needs; assume `@webex/internal-media-core` implements it. The internal-media-core implementation is **out of scope**. The new internal-media-core method will be something like `MultistreamConnection.setEncryptionKeys(...)`. |
 | D2 | Ownership: E2EE is a **per-meeting component** composed inside `Meeting` (`this.e2ee`), analogous to `this.members` / `this.roap`. |
 | D3 | Member verification: public API **extends `Member`**, but internally MLS roster data lives in a **separate registry keyed by device URL**, because Locus member updates and MLS roster updates arrive independently, in any order, and either can be delayed. A reconciler merges them. |
 | D4 | Security Code: `meeting.getSecurityCode()` getter **plus** a change event. |
@@ -113,6 +113,11 @@ Key property: `MlsGroupSession` (the WASM protocol engine) has **no** webex / LL
 HTTP dependencies — all I/O flows through injected adapters, so the engine is fully
 unit-testable. The media-core coupling is isolated behind `IE2eeMediaConnection`.
 
+The adapters themselves take only the slice of webex they need, not the whole object: the HTTP
+adapters (`MediaEncryptionService`, `E2eeIdentityProvider`) receive a **bound `webex.request`**
+(the shared `WebexRequestMethod` type), and `E2eeSignaling` receives `webex.internal.llm` plus a
+`getLocusUrl()` callback (so it tracks the live locus URL across breakout moves).
+
 ## File layout
 
 ```
@@ -134,9 +139,11 @@ packages/@webex/plugin-meetings/src/e2ee/
 └── wasm.d.ts                 # existing WASM typings (keep)
 ```
 
-- The current `e2ee/mls.ts` becomes `MlsGroupSession.ts` (stripped of webex/HTTP/LLM).
+- The `e2ee/mls.ts` from POC code becomes `MlsGroupSession.ts` (stripped of webex/HTTP/LLM).
 - `loadWasmModule` (and the module-cache globals) become `WasmLoader.preload()` / `get()`,
   warmed once per session.
+- The shared `WebexRequestMethod` type (a bound `webex.request`) lives in `common/types.ts`
+  (reused by `hashTree` and the e2ee HTTP adapters), not under `e2ee/`.
 
 ## Shared types (`types.ts`)
 
@@ -200,8 +207,8 @@ instance state.
 ### `E2eeManager` (Meetings-level singleton)
 
 ```ts
-constructor(deps: { webex; config });
-get isEnabled(): boolean;         // config.enableE2ee
+constructor(deps: { webex });      // reads enableE2ee lazily from webex.config.meetings
+get isEnabled(): boolean;         // webex.config.meetings.enableE2ee
 preload(): Promise<void>;         // called from Meetings.register(); if isEnabled ->
                                   //   wasmLoader.preload() only; must NOT block/fail registration
                                   //   (credentials stay lazy - cached on first E2EE meeting)
@@ -256,10 +263,10 @@ interface IMlsHttpClient { request(url: string, body: Uint8Array): Promise<Uint8
 ### `MediaEncryptionService` (implements `IMlsHttpClient`)
 
 ```ts
-constructor(deps: { webex });
+constructor(deps: { webexRequest: WebexRequestMethod }); // a bound webex.request, not the whole webex
 request(url: string, body: Uint8Array): Promise<Uint8Array>;
-//  -> webex.request({ method:'POST', service:'media-encryption', url,
-//                     body: JSON.parse(decode(body)) })
+//  -> webexRequest({ method:'POST', service:'media-encryption', url,
+//                    body: JSON.parse(decode(body)) })
 //     then re-encode response.body to Uint8Array (matches the PoC makeHttpRequest).
 ```
 
@@ -269,12 +276,16 @@ webex-core), matching the PoC — no custom auth header is needed.
 ### `E2eeSignaling` (LLM adapter)
 
 ```ts
-constructor(deps: { webex; meeting; session: MlsGroupSession });
+constructor(deps: {
+  llm;                              // webex.internal.llm (ILlmChannel: on/off/isConnected/getLocusUrl)
+  getLocusUrl: () => string | undefined; // reads the meeting's live locus url (callback, not a ref)
+  session: MlsGroupSession;
+});
 start(): void;
 stop(): void;
 ```
 
-Subscribes `webex.internal.llm` to the `media_encryption.*` mercury events
+Subscribes `llm` to the `media_encryption.*` mercury events
 (`leader_nominated`, `welcome`, `annotated_welcome`, `multi_welcome`, `group_update`,
 `annotated_commit`, `large_group_update`, `use_key`, `join_request`, `leave_request`,
 `join_failure`, `leader_changed`) and forwards each envelope to `session.handleEvent`.
@@ -282,16 +293,17 @@ Subscribes `webex.internal.llm` to the `media_encryption.*` mercury events
 Online handling: if `llm.isConnected()` and the locus URL matches this meeting, call
 `session.setLlmConnectedBeforeJoin(true)`; otherwise listen once for `'online'`
 (locus-URL matched, like the PoC `onceLLMOnline`) and call `session.notifyLlmConnected()`.
-Guard: `meeting.locusInfo.url === webex.internal.llm.getLocusUrl()`.
+Guard: `getLocusUrl() === llm.getLocusUrl()`. `getLocusUrl` is a callback (not a stored meeting
+reference) so the check stays correct when the locus URL changes, e.g. moving between breakouts.
 
 ### `E2eeIdentityProvider` (credentials; singleton owned by `E2eeManager`)
 
 ```ts
-constructor(deps: { webex });
+constructor(deps: { webexRequest: WebexRequestMethod; generateCsr? }); // bound webex.request; generateCsr injectable for tests
 getCredentials(contactId: string): Promise<{ privateKey: Uint8Array; certChain: ArrayBuffer[] }>;
 //  -> generate EC P-256 CSR (pkijs/asn1js)
-//  -> webex.request({ service:'webex-certificate-authority', resource:'certificates',
-//                     headers:{ 'include-root-cert':'true' } })
+//  -> webexRequest({ service:'webex-certificate-authority', resource:'certificates',
+//                    headers:{ 'include-root-cert':'true' } })
 //  -> parse PEM chain; CACHE result (per device/user) for reuse across meetings.
 getTrustAnchors(): { webexCaRoots; domainNameRoots; userIdentityRoots };
 ```
@@ -327,11 +339,6 @@ surfaced through the existing `members:update`, which is always emitted by `Memb
   each affected member via `membersCollection.getMemberByDeviceUrl` and update just that device;
   members whose verification actually changed are handed to `reportMembersUpdated`, which asks
   `Members` to emit a `members:update` (with those members in `delta.updated`).
-
-Matching key: **`MLS RosterMember.url === Member.participant.devices[i].url`** (per-device).
-Verified rule: `validationResult === 0`. Ordering between MLS roster events and Locus member
-updates does not matter — roster entries with no matching member yet remain pending in the map and
-are applied when that member is next processed.
 
 Matching key: **`MLS RosterMember.url === Member.participant.devices[i].url`** (per-device).
 Verified rule: `validationResult === 0`. Ordering between MLS roster events and Locus member
@@ -414,7 +421,7 @@ detachMediaConnection(): void;
    `config.enableE2ee` + `isV2E2EEncrypted` + `mediaEncryptionGroupUrl`)
 2. `await wasmLoader.get()` (already preloaded in `register()` → fast)
 3. `creds = await identityProvider.getCredentials(webex.internal.device.userId)` (cached)
-4. `httpClient = new MediaEncryptionService({ webex })`
+4. `httpClient = new MediaEncryptionService({ webexRequest: webex.request.bind(webex) })`
 5. `session = new MlsGroupSession({ httpClient, wasmLoader })`
 6. `await session.initialize({ participantId: device.userId, deviceUrl: device.url,`
    `  deviceType: 'WEB', correlationId: meeting.correlationId, displayName: <self name>,`
@@ -436,7 +443,8 @@ detachMediaConnection(): void;
      and Meeting emits `STATE_CHANGED` (this is what flips the trust state to `ZeroTrust`).
    - `securityCodeChanged` → Meeting emits `SECURITY_CODE_UPDATED`
    - `joinFailure` / `evicted` / `timeout` → `handleFatal(reason)`
-10. `signaling = new E2eeSignaling({ webex, meeting, session }); signaling.start();`
+10. `signaling = new E2eeSignaling({ llm: webex.internal.llm,`
+    `  getLocusUrl: () => meeting.locusInfo?.url, session }); signaling.start();`
     then `session.join()`
 
 `stop()`: `signaling.stop()`; `session.leave()`; `reconciler.reset()`;
@@ -483,12 +491,14 @@ to surface the meeting's zero-trust state.
 
 ## `Meetings`-plugin integration (`meetings/index.ts`)
 
-- Constructor: `this.e2eeManager = new E2eeManager({ webex: this.webex, config: this.config });`
-- `register()`: add a step (or fire-and-forget after device register) calling
-  `this.e2eeManager.preload()`, wrapped in a non-blocking `catch` (like `startReachability`), so
-  it never blocks/fails registration. This warms the WASM module. Runs only when
-  `config.enableE2ee`. (Credentials are not pre-warmed here — they are generated + cached lazily
-  on the first E2EE meeting.)
+- `onReady()` (the `READY` handler): `this.e2eeManager = new E2eeManager({ webex: this.webex });`.
+  Created here — **not** in the plugin constructor — because `webex.request` isn't available yet at
+  construction time, and `E2eeManager` binds `webex.request` for its HTTP adapters. `onReady` runs
+  before any meeting is created from a locus event, so `createMeeting` always has the manager.
+- `register()`: after a successful register, fire-and-forget `this.e2eeManager?.preload()`, wrapped
+  in a non-blocking `catch` (like `startReachability`), so it never blocks/fails registration. This
+  warms the WASM module (no-op when `enableE2ee` is false). Credentials are not pre-warmed here —
+  they are generated + cached lazily on the first E2EE meeting.
 - `createMeeting()`: pass `e2eeManager` into `Meeting` attrs alongside
   `userId` / `deviceUrl` / `orgId`.
 
@@ -584,10 +594,10 @@ mock webex. (Filenames below are illustrative — each maps to a spec under `tes
   enabled, and never rejects; `createE2eeMeeting` injects shared singletons; disabled → no-op facade.
 - `MlsGroupSession.test.ts` — mock `WasmLoader` returning a fake `WebE2EE`; assert callbacks
   map to emitted events; HTTP/wait routed to injected deps. Pure, no webex.
-- `MediaEncryptionService.test.ts` — mock `webex.request`; assert service/url/body encode+decode.
-- `E2eeSignaling.test.ts` — mock `webex.internal.llm` `on/once/off` + `isConnected/getLocusUrl`;
-  assert subscription, locus-URL guard, forwarding, teardown.
-- `E2eeIdentityProvider.test.ts` — mock CA request; assert CSR built, caching, trust anchors.
+- `MediaEncryptionService.test.ts` — mock `webexRequest`; assert service/url/body encode+decode.
+- `E2eeSignaling.test.ts` — mock `llm` (`on/off/isConnected/getLocusUrl`) + a `getLocusUrl`
+  callback; assert subscription, locus-URL guard, forwarding, teardown.
+- `E2eeIdentityProvider.test.ts` — mock `webexRequest` (CA request); assert CSR built, caching, trust anchors.
 - `E2eeRosterReconciler.test.ts` — fake members collection + roster; assert out-of-order both
   directions, per-device match by URL, aggregate state, reapply on `MEMBERS_UPDATE`.
 - `E2eeMediaController.test.ts` — fake `IE2eeMediaConnection`; keys-before-media buffering,
