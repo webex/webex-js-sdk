@@ -3535,7 +3535,7 @@ function startWellnessOfferTimer(sessionId) {
 }
 
 function handleWellnessBreak(event) {
-  wellnessEventOutputElm.textContent = JSON.stringify(event, null, 2);
+  wellnessEventOutputElm.textContent = event.actionEvent;
 
   if (event.actionEvent === WELLNESS_BREAK_NOTIFICATION_ACTIONS.PROVIDE_WELLNESS_BREAK) {
     if (wellnessState.pendingManualRequest) {
@@ -3730,6 +3730,7 @@ async function enterWellnessBreak(sendAccepted) {
     return;
   }
 
+  wellnessState.canRequest = false;
   wellnessState.lifecycle = 'ChangingToBreak';
   setWellnessMessage(
     `${areAllTasksSafe(getWellnessTaskList()) ? WELLNESS_COPY.acceptedNotEngaged : WELLNESS_COPY.acceptedEngaged} Requesting Idle / WellbeingBreak.`
@@ -4057,6 +4058,14 @@ function register() {
         const listTeams = agentProfile.teams;
         agentId = agentProfile.agentId;
         agentName = agentProfile.agentName;
+        if (agentProfile.isAgentLoggedIn && agentProfile.agentSessionId && !wellnessState.agentSessionId) {
+          captureWellnessSession({
+            agentSessionId: agentProfile.agentSessionId,
+            ...(typeof agentProfile.lastStateAuxCodeId === 'string'
+              ? {auxCodeId: agentProfile.lastStateAuxCodeId}
+              : {}),
+          });
+        }
         void initializeWellnessProfile(agentProfile);
         wrapupCodes = agentProfile.wrapupCodes;
         agentDeviceType = agentProfile.deviceType;
