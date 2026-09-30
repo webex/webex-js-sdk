@@ -4,7 +4,7 @@ generated_from: agents@0.3.0
 generated_by: cursor
 approved_by: repository user
 updated_at: 2026-09-16T10:06:00Z
-validation_status: pass-with-warnings
+validation_status: pending
 -->
 
 # AI Agent Instructions
@@ -41,13 +41,13 @@ Use only documented commands. Do not invent alternatives when a command is missi
 | Task                   | Command                                                      |
 | ---------------------- | ------------------------------------------------------------ |
 | Install dependencies   | `yarn`                                                       |
-| Start dev environment  | `[NEEDS HUMAN INPUT] -- this package has no dedicated dev server script` |
+| Start dev environment  | N/A — no package dev-server script; samples follow README after `build:samples` |
 | Run tests              | `yarn workspace @webex/web-extension-bridge test:unit`       |
 | Run linters            | `yarn workspace @webex/web-extension-bridge test:style`      |
 | Typecheck              | `yarn workspace @webex/web-extension-bridge typecheck`       |
 | Build/release artifact | `yarn workspace @webex/web-extension-bridge build:src`       |
 | Build local samples    | `yarn workspace @webex/web-extension-bridge build:samples`   |
-| Format code            | `[NEEDS HUMAN INPUT] -- no standalone format script; eslint runs via test:style` |
+| Format code            | N/A — no standalone format script; eslint runs via `test:style` |
 
 If a required command is unknown, stop and ask for the exact command.
 
