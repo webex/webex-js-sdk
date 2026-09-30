@@ -25,8 +25,8 @@ const DEFAULT_JOIN_TIMEOUT = 180_000;
 const DEFAULT_COALESCE_WINDOW = 500;
 const DEFAULT_DEVICE_TYPE = 'WEB';
 
-// WASM log levels, indexed by the numeric level the engine emits.
-const WASM_LOG_LEVELS = ['', 'FATAL', 'ERROR', 'INFO', 'WARN', 'DEBUG'];
+// WASM log levels, indexed by the numeric level the engine emits (see LogLevel in libe2ee).
+const WASM_LOG_LEVELS = ['', 'FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG'];
 
 /** Minimal logger the engine needs; defaults to the plugin logger. */
 export interface ILogger {
@@ -301,7 +301,7 @@ export default class MlsGroupSession {
         case 2:
           this.logger.error(`e2ee: [E2EE ${label}] ${message}`);
           break;
-        case 4:
+        case 3:
           this.logger.warn(`e2ee: [E2EE ${label}] ${message}`);
           break;
         case 5:

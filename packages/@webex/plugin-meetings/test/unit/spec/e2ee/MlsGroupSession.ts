@@ -339,15 +339,18 @@ describe('plugin-meetings', () => {
       });
 
       it('maps WASM log levels to the logger', () => {
+        // Engine LogLevel: fatal=1, error=2, warn=3, info=4, debug=5.
+        callbacks.log(1, 'a fatal');
         callbacks.log(2, 'an error');
-        callbacks.log(4, 'a warning');
+        callbacks.log(3, 'a warning');
+        callbacks.log(4, 'an info');
         callbacks.log(5, 'a debug');
-        callbacks.log(3, 'an info');
 
+        assert.calledWithMatch(logger.error, 'a fatal');
         assert.calledWithMatch(logger.error, 'an error');
         assert.calledWithMatch(logger.warn, 'a warning');
-        assert.calledWithMatch(logger.debug, 'a debug');
         assert.calledWithMatch(logger.info, 'an info');
+        assert.calledWithMatch(logger.debug, 'a debug');
       });
     });
 
