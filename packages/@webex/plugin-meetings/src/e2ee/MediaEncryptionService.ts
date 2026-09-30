@@ -3,6 +3,7 @@
  */
 
 import {MEDIA_ENCRYPTION_SERVICE} from './constants';
+import type {WebexRequestMethod} from '../common/types';
 import type {IMlsHttpClient} from './types';
 
 /**
@@ -11,14 +12,14 @@ import type {IMlsHttpClient} from './types';
  * Requests use standard webex auth (Authorization bearer token) — no custom header is needed.
  */
 export default class MediaEncryptionService implements IMlsHttpClient {
-  private readonly webex: any;
+  private readonly webexRequest: WebexRequestMethod;
 
   /**
    * @param {Object} deps
-   * @param {Object} deps.webex - The parent webex instance.
+   * @param {WebexRequestMethod} deps.webexRequest - The (bound) webex.request method.
    */
-  constructor({webex}: {webex: any}) {
-    this.webex = webex;
+  constructor({webexRequest}: {webexRequest: WebexRequestMethod}) {
+    this.webexRequest = webexRequest;
   }
 
   /**
@@ -27,7 +28,7 @@ export default class MediaEncryptionService implements IMlsHttpClient {
    * @returns {Promise<Uint8Array>} JSON response payload as bytes.
    */
   async request(url: string, body: Uint8Array): Promise<Uint8Array> {
-    const response = await this.webex.request({
+    const response = await this.webexRequest({
       method: 'POST',
       service: MEDIA_ENCRYPTION_SERVICE,
       url,

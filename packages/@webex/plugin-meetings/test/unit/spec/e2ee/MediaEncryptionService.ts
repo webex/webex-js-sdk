@@ -8,12 +8,12 @@ import MediaEncryptionService from '@webex/plugin-meetings/src/e2ee/MediaEncrypt
 
 describe('plugin-meetings', () => {
   describe('MediaEncryptionService', () => {
-    let webex;
+    let webexRequest;
     let service;
 
     beforeEach(() => {
-      webex = {request: sinon.stub().resolves({body: {result: 'ok', n: 1}})};
-      service = new MediaEncryptionService({webex});
+      webexRequest = sinon.stub().resolves({body: {result: 'ok', n: 1}});
+      service = new MediaEncryptionService({webexRequest});
     });
 
     afterEach(() => {
@@ -26,8 +26,8 @@ describe('plugin-meetings', () => {
 
       const result = await service.request('https://mes.webex.com/op', bodyBytes);
 
-      assert.calledOnce(webex.request);
-      const args = webex.request.firstCall.args[0];
+      assert.calledOnce(webexRequest);
+      const args = webexRequest.firstCall.args[0];
 
       assert.equal(args.method, 'POST');
       assert.equal(args.service, 'media-encryption');
@@ -39,7 +39,7 @@ describe('plugin-meetings', () => {
     });
 
     it('rejects when webex.request rejects', async () => {
-      webex.request.rejects(new Error('boom'));
+      webexRequest.rejects(new Error('boom'));
 
       await assert.isRejected(
         service.request('https://mes.webex.com/op', new TextEncoder().encode('{}')),

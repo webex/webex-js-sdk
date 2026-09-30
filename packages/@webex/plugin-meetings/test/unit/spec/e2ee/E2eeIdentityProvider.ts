@@ -13,7 +13,7 @@ const ROOT_PEM = '-----BEGIN CERTIFICATE-----\nREVG\n-----END CERTIFICATE-----';
 
 describe('plugin-meetings', () => {
   describe('E2eeIdentityProvider', () => {
-    let webex;
+    let webexRequest;
     let generateCsr;
     let provider;
     let privKeyDer;
@@ -24,8 +24,8 @@ describe('plugin-meetings', () => {
         privKeyDer[i] = i;
       }
       generateCsr = sinon.stub().resolves({privKeyDer, csr: 'BASE64CSR'});
-      webex = {request: sinon.stub().resolves({body: `${LEAF_PEM}\n${ROOT_PEM}`})};
-      provider = new E2eeIdentityProvider({webex, generateCsr});
+      webexRequest = sinon.stub().resolves({body: `${LEAF_PEM}\n${ROOT_PEM}`});
+      provider = new E2eeIdentityProvider({webexRequest, generateCsr});
     });
 
     afterEach(() => {
@@ -48,7 +48,7 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(generateCsr, 'user-1');
 
-        const args = webex.request.firstCall.args[0];
+        const args = webexRequest.firstCall.args[0];
 
         assert.equal(args.method, 'POST');
         assert.equal(args.service, 'webex-certificate-authority');
@@ -69,12 +69,12 @@ describe('plugin-meetings', () => {
 
         assert.equal(first, second);
         assert.calledOnce(generateCsr);
-        assert.calledOnce(webex.request);
+        assert.calledOnce(webexRequest);
       });
 
       it('does not cache a failed attempt', async () => {
-        webex.request.onFirstCall().rejects(new Error('CA down'));
-        webex.request.onSecondCall().resolves({body: LEAF_PEM});
+        webexRequest.onFirstCall().rejects(new Error('CA down'));
+        webexRequest.onSecondCall().resolves({body: LEAF_PEM});
 
         await assert.isRejected(provider.getCredentials('user-1'), /CA down/);
 

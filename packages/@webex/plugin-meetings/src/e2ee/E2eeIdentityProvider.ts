@@ -7,6 +7,7 @@ import * as asn1js from 'asn1js';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import {CERTIFICATE_AUTHORITY_SERVICE, WEBEX_CA_PRODUCTION_ROOTS} from './constants';
+import type {WebexRequestMethod} from '../common/types';
 import type {E2eeCredentials, E2eeTrustAnchors} from './types';
 
 // PKCS#8 P-256: the raw 32-byte EC private key starts at this offset in the DER encoding.
@@ -91,7 +92,7 @@ function pemToArrayBuffers(pemString: string): ArrayBuffer[] {
  * per user for reuse across meetings) plus the MLS trust anchors.
  */
 export default class E2eeIdentityProvider {
-  private readonly webex: any;
+  private readonly webexRequest: WebexRequestMethod;
 
   private readonly generateCsr: CsrGenerator;
 
@@ -99,11 +100,17 @@ export default class E2eeIdentityProvider {
 
   /**
    * @param {Object} deps
-   * @param {Object} deps.webex - The parent webex instance.
+   * @param {WebexRequestMethod} deps.webexRequest - The (bound) webex.request method.
    * @param {CsrGenerator} [deps.generateCsr] - CSR generator override (used by tests).
    */
-  constructor({webex, generateCsr}: {webex: any; generateCsr?: CsrGenerator}) {
-    this.webex = webex;
+  constructor({
+    webexRequest,
+    generateCsr,
+  }: {
+    webexRequest: WebexRequestMethod;
+    generateCsr?: CsrGenerator;
+  }) {
+    this.webexRequest = webexRequest;
     this.generateCsr = generateCsr ?? generateCsrWithPkijs;
   }
 
@@ -156,7 +163,7 @@ export default class E2eeIdentityProvider {
     LoggerProxy.logger.info(
       'e2ee: E2eeIdentityProvider --> requestCredentials: requesting certificate from CA'
     );
-    const response = await this.webex.request({
+    const response = await this.webexRequest({
       method: 'POST',
       service: CERTIFICATE_AUTHORITY_SERVICE,
       resource: 'certificates',

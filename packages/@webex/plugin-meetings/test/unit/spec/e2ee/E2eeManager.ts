@@ -12,6 +12,7 @@ describe('plugin-meetings', () => {
     const makeWebex = (enableE2ee?: boolean) => ({
       internal: {device: {}},
       config: {meetings: {enableE2ee}},
+      request: sinon.stub().resolves({body: ''}),
     });
     let preloadStub;
 

@@ -154,7 +154,9 @@ export default class E2eeMeeting {
 
       const {device} = this.webex.internal;
       const credentials = await this.identityProvider.getCredentials(device.userId);
-      const httpClient = new MediaEncryptionService({webex: this.webex});
+      const httpClient = new MediaEncryptionService({
+        webexRequest: this.webex.request.bind(this.webex),
+      });
       const session = new MlsGroupSession({httpClient, wasmLoader: this.wasmLoader});
 
       this.session = session;

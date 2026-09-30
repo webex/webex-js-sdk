@@ -26,7 +26,9 @@ export default class E2eeManager {
   constructor({webex}: {webex: any}) {
     this.webex = webex;
     this.wasmLoader = new WasmLoader();
-    this.identityProvider = new E2eeIdentityProvider({webex});
+    this.identityProvider = new E2eeIdentityProvider({
+      webexRequest: webex.request.bind(webex),
+    });
   }
 
   /**
