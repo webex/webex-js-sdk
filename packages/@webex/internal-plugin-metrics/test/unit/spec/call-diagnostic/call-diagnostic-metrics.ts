@@ -4077,6 +4077,25 @@ describe('internal-plugin-metrics', () => {
           });
         });
 
+        [
+          ['media', 'https://example.com/locus/api/v1/loci/123/media'],
+          ['hashtree', 'https://example.com/locus/api/v1/loci/123/hashtree'],
+          ['host-only Locus URL', 'https://locus.example.com/api/v1/resource'],
+          ['query-only Locus URL', 'https://example.com/api/v1/resource?service=locus'],
+        ].forEach(([operation, uri]) => {
+          it(`should identify a Locus 429 for ${operation}`, () => {
+            const [res] = cd.generateClientEventErrorPayload({
+              message: 'Locus rate limited',
+              statusCode: 429,
+              options: {uri},
+            });
+
+            assert.equal(res.errorCode, 1002);
+            assert.equal(res.errorDescription, 'LocusRateLimitedOutgoing');
+            assert.equal(res.httpCode, 429);
+          });
+        });
+
         it('should identify an unavailable Locus 503', () => {
           const rawErrorMessage = 'Service unavailable';
           const [res] = cd.generateClientEventErrorPayload({
@@ -4146,7 +4165,7 @@ describe('internal-plugin-metrics', () => {
           const [res] = cd.generateClientEventErrorPayload({
             message: 'Too many requests',
             statusCode: 429,
-            options: {uri: 'https://example.com/api/v1/resource?redirect=/locus/'},
+            options: {uri: 'https://example.com/api/v1/resource'},
           });
 
           assert.deepEqual(res, {

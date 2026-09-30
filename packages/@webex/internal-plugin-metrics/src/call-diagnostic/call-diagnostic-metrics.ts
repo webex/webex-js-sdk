@@ -972,22 +972,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     }
 
     const locusHttpClientErrorCode = LOCUS_HTTP_STATUS_TO_CLIENT_ERROR_CODE[httpCode];
-    if (locusHttpClientErrorCode && !payload) {
-      let requestPath = '';
-      try {
-        requestPath = new URL(rawError.options?.uri || rawError.options?.url).pathname;
-      } catch {
-        // Missing or invalid URLs retain the existing error classification.
-      }
-
-      if (requestPath.includes('/locus/')) {
-        payload = this.getErrorPayloadForClientErrorCode({
-          clientErrorCode: locusHttpClientErrorCode,
-          serviceErrorCode,
-          rawErrorMessage,
-          httpCode,
-        });
-      }
+    const requestUrl = rawError.options?.uri || rawError.options?.url;
+    if (locusHttpClientErrorCode && !payload && requestUrl?.includes('locus')) {
+      payload = this.getErrorPayloadForClientErrorCode({
+        clientErrorCode: locusHttpClientErrorCode,
+        serviceErrorCode,
+        rawErrorMessage,
+        httpCode,
+      });
     }
 
     if (serviceErrorCode) {

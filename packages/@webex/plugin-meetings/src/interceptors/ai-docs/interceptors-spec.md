@@ -93,10 +93,10 @@ Webex core Interceptor/request pipeline, JWT decoding/verification helpers, Meet
 
 | ID | WHAT | WHY | Source Evidence | Test / Example Evidence | Assumptions / Gaps | Confidence |
 |---|---|---|---|---|---|---|
-| `INTERCEPTORS-R-001` | retry eligible Locus failures using status and request-header delay rules. | Provides Webex-core request middleware for bounded Locus retries, Locus route-token propagation, and data-channel auth-token refresh. | `src/interceptors/index.ts` | `test/unit/spec/interceptors/dataChannelAuthToken.ts` | none | PRESENT |
+| `INTERCEPTORS-R-001` | retry eligible Locus failures using status-based rules. | Provides Webex-core request middleware for bounded Locus retries, Locus route-token propagation, and data-channel auth-token refresh. | `src/interceptors/index.ts` | `test/unit/spec/interceptors/dataChannelAuthToken.ts` | none | PRESENT |
 | `INTERCEPTORS-R-002` | capture and attach route tokens keyed by Locus id. | A route or auth token attached to the wrong request can leak authority across meetings or retry indefinitely. | `src/interceptors/index.ts`, `src/interceptors/dataChannelAuthToken.ts` | `test/unit/spec/interceptors/dataChannelAuthToken.ts` | 30-second JWT boundary and refresh-key removal need explicit boundary coverage | PRESENT |
 | `INTERCEPTORS-R-003` | Failures outside the eligible retry branches reject with the original reason. For an eligible Locus 429/503 after this interceptor instance has already retried once, `LocusRetryStatusInterceptor.onResponseError()` clears its retry flag and rejects with the original HTTP reason. Locus retries are bounded per interceptor; token-refresh retries are tracked through request options. | Rejecting the original reason preserves the terminal HTTP status and response details for callers. | `src/interceptors/locusRetry.ts`, `src/interceptors/dataChannelAuthToken.ts` | `test/unit/spec/interceptors/locusRetry.ts`, `test/unit/spec/interceptors/dataChannelAuthToken.ts` | none | PRESENT |
-| `INTERCEPTORS-R-004` | Locus retry handles one eligible 429/503 retry per interceptor instance using the `WeakMap` flag and the request options' `retry-after` header (default 2000 ms); Locus `/hashtree` and `/sync` 429/5xx responses are excluded. | Global request middleware must not amplify synchronization storms, retry terminal failures, or loop indefinitely. | `src/interceptors/locusRetry.ts` | `test/unit/spec/interceptors/locusRetry.ts` | none | PRESENT |
+| `INTERCEPTORS-R-004` | Locus retry handles one eligible 429/503 retry per interceptor instance using the `WeakMap` flag and the existing delay selection (default 2000 ms); Locus `/hashtree` and `/sync` 429/5xx responses are excluded. | Global request middleware must not amplify synchronization storms, retry terminal failures, or loop indefinitely. | `src/interceptors/locusRetry.ts` | `test/unit/spec/interceptors/locusRetry.ts` | none | PRESENT |
 | `INTERCEPTORS-R-005` | Route tokens are extracted from supported Locus responses, keyed by Locus id, and attached only to matching requests. | Loose routing could omit a required token or leak it to an unrelated request. | `src/interceptors/locusRouteToken.ts` | `test/unit/spec/interceptors/locusRouteToken.ts` | none | PRESENT |
 | `INTERCEPTORS-R-006` | Data-channel JWTs are treated as expired when `exp` is within the 30-second (`30 * 1000`) buffer, refreshed when needed, and retried once after 2000 ms on eligible 401/403 responses. | Refreshing before expiry avoids a request racing token expiration without creating an authentication retry storm. | `src/interceptors/dataChannelAuthToken.ts`, `src/interceptors/utils.ts`, `src/interceptors/constant.ts` | `test/unit/spec/interceptors/dataChannelAuthToken.ts`, `test/unit/spec/interceptors/utils.ts` | none | PRESENT |
 
@@ -154,7 +154,7 @@ sequenceDiagram
   participant T as Token refresh
   W->>I: response failure or authenticated request
   alt eligible Locus 429/503 outside /hashtree and /sync with no prior retry
-    I->>I: wait request-header retry-after or 2000 ms; retry once
+    I->>I: wait selected delay or 2000 ms; retry once
     I-->>W: retry result or rejection
   else eligible Locus request was already retried
     I--xW: reject with the original HTTP reason
