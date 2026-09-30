@@ -41,7 +41,7 @@
     "build": "yarn build:src",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
     "deploy:npm": "yarn npm publish",
-    "prepack": "yarn workspace @webex/legacy-tools build:src && yarn build",
+    "prepack": "yarn workspace @webex/cli-tools build:src && yarn workspace @webex/legacy-tools build:src && yarn build",
     "test": "yarn test:style && yarn test:unit",
     "test:style": "eslint ./src/**/*.*",
     "test:unit": "webex-legacy-tools test --unit --runner jest"
