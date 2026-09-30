@@ -380,7 +380,7 @@
     "consumed": [
       "lint/format configs",
       "standard files (README/SECURITY)",
-      "bundled repo-standards templates"
+      "bundled repo-standards templates at repo-root .sdd/templates/repo-standards"
     ],
     "compliance_tier": "baseline"
   },
