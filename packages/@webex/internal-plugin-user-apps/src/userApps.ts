@@ -1,0 +1,826 @@
+/* eslint-disable no-underscore-dangle, require-jsdoc */
+import {WebexPlugin} from '@webex/webex-core';
+
+import {
+  CATCHUP_RESOURCE,
+  DEFAULT_SECTION_ORDER,
+  FAVORITES_SECTION_ID,
+  HIGH_WATER_HEADER,
+  OTHER_SECTION_ID,
+  RECOVERABLE_CATCHUP_STATUS_CODES,
+  SECTIONS_APP,
+  USER_APP_ITEM_EVENT,
+  USER_APP_METADATA_EVENT,
+  USER_APPS_REGISTERED,
+  USER_APPS_SECTIONS_CHANGED,
+  USER_APPS_SERVICE,
+  USER_APPS_SYNC_ERROR,
+  USER_APPS_UNREGISTERED,
+} from './constants';
+import {
+  CatchupResetRequiredError,
+  UserAppsEncryptionError,
+  UserAppsSyncError,
+  UserAppsValidationError,
+} from './errors';
+import type {
+  SectionChangeSource,
+  SectionMembership,
+  SpaceListSection,
+  SpaceListSectionsSnapshot,
+  SyncOptions,
+  UserAppChangeWire,
+  UserAppDerivedWire,
+  UserAppsCatchupWire,
+  UserAppsDataWire,
+  UserAppsMetadataWire,
+  UserAppSectionWire,
+} from './types';
+import {
+  applyChangeToWireData,
+  buildSnapshot,
+  createEmptyWireData,
+  extractCursor,
+  extractNextFromLink,
+  getHeader,
+  getMetadata,
+  getSectionsApp,
+  getStatusCode,
+  isSectionsAppName,
+} from './userApps.utils';
+
+const CONVERSATION_PATH = /\/conversations\/([0-9a-f-]{36})\/?$/i;
+const SERVICE_METADATA_FIELDS = new Set([
+  'default-encryption-key',
+  'encryption-key',
+  'kms-message',
+  'kms-resource-object',
+]);
+
+const UserApps = WebexPlugin.extend({
+  namespace: 'UserApps',
+  registered: false,
+
+  initialize(...args) {
+    Reflect.apply(WebexPlugin.prototype.initialize, this, args);
+    this._appsData = createEmptyWireData();
+    this._snapshot = null;
+    this._syncPromise = null;
+    this._metadataPromise = null;
+    this._catchupTimer = null;
+    this._queuedChanges = [];
+    this._hydrating = false;
+    this._catalogReadyPromise = null;
+    this._itemEventHandler = (envelope) => this._handleMercuryEnvelope('user.app_item', envelope);
+    this._metadataEventHandler = (envelope) =>
+      this._handleMercuryEnvelope('user.app_metadata', envelope);
+  },
+
+  async register(): Promise<SpaceListSectionsSnapshot> {
+    if (!this.webex.canAuthorize) {
+      throw new UserAppsValidationError('SDK cannot authorize user-app synchronization');
+    }
+
+    if (this.registered) {
+      return this.getSections();
+    }
+
+    await this.webex.internal.mercury.connect();
+    this._listenForEvents();
+    this.registered = true;
+    this._hydrating = true;
+    this.trigger(USER_APPS_REGISTERED);
+
+    try {
+      const snapshot = await this.sync({forceFull: true});
+
+      if (this.registered) {
+        this._scheduleCatchup();
+      }
+
+      return snapshot;
+    } catch (error) {
+      await this.unregister();
+      throw error;
+    }
+  },
+
+  async unregister(): Promise<void> {
+    if (!this.registered) {
+      return;
+    }
+
+    this.stopListening(this.webex.internal.mercury, USER_APP_ITEM_EVENT, this._itemEventHandler);
+    this.stopListening(
+      this.webex.internal.mercury,
+      USER_APP_METADATA_EVENT,
+      this._metadataEventHandler
+    );
+    this._clearCatchupTimer();
+    this._queuedChanges = [];
+    this._hydrating = false;
+    this.registered = false;
+    this.trigger(USER_APPS_UNREGISTERED);
+  },
+
+  async sync(options: SyncOptions = {}): Promise<SpaceListSectionsSnapshot> {
+    if (this._syncPromise) {
+      return this._syncPromise;
+    }
+
+    this._syncPromise = (async () => {
+      try {
+        if (!options.forceFull && this._snapshot?.highWaterMark) {
+          return await this._catchup(this._snapshot.highWaterMark, true);
+        }
+
+        return await this._fullSync(true);
+      } catch (error) {
+        const syncError =
+          error instanceof UserAppsSyncError
+            ? error
+            : new UserAppsSyncError('User-app synchronization failed', {
+                cause: error,
+                statusCode: getStatusCode(error),
+              });
+
+        this.trigger(USER_APPS_SYNC_ERROR, syncError);
+        throw syncError;
+      } finally {
+        this._syncPromise = null;
+      }
+    })();
+
+    return this._syncPromise;
+  },
+
+  async getSections(options: {force?: boolean} = {}): Promise<SpaceListSectionsSnapshot> {
+    const cacheTtlMs = this.config.cacheTtlMs ?? 300_000;
+    const cacheIsFresh =
+      this._snapshot && !options.force && this._snapshot.syncedAt + cacheTtlMs > Date.now();
+
+    if (cacheIsFresh) {
+      return this._snapshot;
+    }
+
+    return this.sync({forceFull: options.force || !this._snapshot});
+  },
+
+  async createSection({title}: {title: string}): Promise<SpaceListSection> {
+    const normalizedTitle = this._validateTitle(title);
+    const metadata = await this._ensureMetadata();
+    const encryptionKey = metadata['default-encryption-key'];
+
+    if (!encryptionKey) {
+      throw new UserAppsEncryptionError('Sections metadata has no default encryption key');
+    }
+
+    const content = await this.webex.internal.encryption.encryptText(
+      encryptionKey,
+      normalizedTitle
+    );
+    const response = await this.webex.request({
+      service: USER_APPS_SERVICE,
+      resource: `/${SECTIONS_APP}`,
+      method: 'POST',
+      body: {
+        content,
+        'encryption-key': encryptionKey,
+      },
+    });
+    const section = response.body as UserAppSectionWire;
+    const order = this._getCustomOrder();
+
+    this._upsertSection(section);
+
+    if (!order.includes(section.id)) {
+      await this._tryUpdateSectionOrder([...order, section.id]);
+    }
+
+    const snapshot = await this._publishSnapshot('mutation');
+
+    return this._requireSection(snapshot, section.id);
+  },
+
+  async renameSection({
+    sectionId,
+    title,
+  }: {
+    sectionId: string;
+    title: string;
+  }): Promise<SpaceListSection> {
+    this._validateCustomSectionId(sectionId);
+    const section = this._getSectionWire(sectionId);
+    const normalizedTitle = this._validateTitle(title);
+    const content = await this.webex.internal.encryption.encryptText(
+      section['encryption-key'],
+      normalizedTitle
+    );
+    const response = await this.webex.request({
+      service: USER_APPS_SERVICE,
+      resource: `/${SECTIONS_APP}/${encodeURIComponent(sectionId)}`,
+      method: 'PUT',
+      body: {
+        content,
+        'encryption-key': section['encryption-key'],
+        ...(section.clientSpecificData ? {clientSpecificData: section.clientSpecificData} : {}),
+      },
+    });
+
+    this._upsertSection({...section, ...response.body, content});
+    const snapshot = await this._publishSnapshot('mutation');
+
+    return this._requireSection(snapshot, sectionId);
+  },
+
+  async deleteSection({sectionId}: {sectionId: string}): Promise<void> {
+    this._validateCustomSectionId(sectionId);
+    this._getSectionWire(sectionId);
+    await this.webex.request({
+      service: USER_APPS_SERVICE,
+      resource: `/${SECTIONS_APP}/${encodeURIComponent(sectionId)}`,
+      method: 'DELETE',
+    });
+    this._deleteSectionWire(sectionId);
+    await this._tryUpdateSectionOrder(this._getCustomOrder().filter((id) => id !== sectionId));
+    await this._publishSnapshot('mutation');
+  },
+
+  async moveConversationToSection({
+    sectionId,
+    conversationUrl,
+  }: {
+    sectionId: string;
+    conversationUrl: string;
+  }): Promise<SectionMembership> {
+    this._validateCustomSectionId(sectionId);
+    const section = this._getSectionWire(sectionId);
+
+    await this._validateConversationUrl(conversationUrl);
+    const response = await this.webex.request({
+      service: USER_APPS_SERVICE,
+      resource: `/${encodeURIComponent(section['list-app-name'])}`,
+      method: 'POST',
+      body: {'conversation-url': conversationUrl},
+    });
+
+    this._removeMembershipByConversationUrl(conversationUrl);
+    this._upsertMembership(section['list-app-name'], response.body);
+    const snapshot = await this._publishSnapshot('mutation');
+    const membership = snapshot.membershipsByConversationUrl[conversationUrl];
+
+    if (!membership) {
+      throw new UserAppsSyncError('Created section membership was missing from the snapshot');
+    }
+
+    return membership;
+  },
+
+  async removeConversationFromSection({
+    sectionId,
+    conversationUrl,
+  }: {
+    sectionId: string;
+    conversationUrl: string;
+  }): Promise<void> {
+    this._validateCustomSectionId(sectionId);
+    await this._validateConversationUrl(conversationUrl);
+    const membership = this._snapshot?.membershipsByConversationUrl[conversationUrl];
+
+    if (!membership || membership.sectionId !== sectionId) {
+      throw new UserAppsValidationError('Conversation is not a member of the requested section');
+    }
+
+    await this.webex.request({
+      service: USER_APPS_SERVICE,
+      resource: `/${encodeURIComponent(membership.listAppName)}/${encodeURIComponent(
+        membership.id
+      )}`,
+      method: 'DELETE',
+    });
+    this._removeMembershipByConversationUrl(conversationUrl);
+    await this._publishSnapshot('mutation');
+  },
+
+  _listenForEvents() {
+    this.listenTo(this.webex.internal.mercury, USER_APP_ITEM_EVENT, this._itemEventHandler);
+    this.listenTo(this.webex.internal.mercury, USER_APP_METADATA_EVENT, this._metadataEventHandler);
+  },
+
+  _handleMercuryEnvelope(eventType: UserAppChangeWire['eventType'], envelope: any) {
+    const data = envelope?.data ?? envelope;
+    const change = {...data, eventType} as UserAppChangeWire;
+
+    if (!isSectionsAppName(change.appName) || !change.action || !change.appData) {
+      return;
+    }
+
+    if (this._hydrating) {
+      this._queuedChanges.push(change);
+
+      return;
+    }
+
+    this._applyRealtimeChange(change).catch((error) => {
+      this.trigger(
+        USER_APPS_SYNC_ERROR,
+        new UserAppsSyncError('Unable to apply a user-app event', {cause: error})
+      );
+    });
+  },
+
+  async _applyRealtimeChange(change: UserAppChangeWire) {
+    applyChangeToWireData(this._appsData, change);
+    await this._publishSnapshot('mercury', change);
+  },
+
+  async _fullSync(allowRecovery: boolean): Promise<SpaceListSectionsSnapshot> {
+    const startedAt = Date.now();
+    const response = await this.webex.request({
+      service: USER_APPS_SERVICE,
+      resource: '/',
+      method: 'GET',
+    });
+
+    this._appsData = (response.body ?? createEmptyWireData()) as UserAppsDataWire;
+    await this._loadAdvertisedPages();
+    await this._filterInvalidMemberships();
+
+    const queuedChanges = this._queuedChanges;
+
+    this._queuedChanges = [];
+    queuedChanges.forEach((change) => applyChangeToWireData(this._appsData, change));
+
+    try {
+      const snapshot = await this._catchup(startedAt, allowRecovery, false);
+
+      this._hydrating = false;
+      const trailingChanges = this._queuedChanges;
+
+      this._queuedChanges = [];
+      trailingChanges.forEach((change) => applyChangeToWireData(this._appsData, change));
+
+      return trailingChanges.length
+        ? this._publishSnapshot('full-sync', undefined, snapshot.highWaterMark)
+        : snapshot;
+    } catch (error) {
+      this._hydrating = false;
+      throw error;
+    }
+  },
+
+  async _catchup(
+    sinceDate: number,
+    allowRecovery: boolean,
+    publish = true
+  ): Promise<SpaceListSectionsSnapshot> {
+    let response;
+
+    try {
+      response = await this.webex.request({
+        service: USER_APPS_SERVICE,
+        resource: CATCHUP_RESOURCE,
+        method: 'GET',
+        qs: {sinceDate},
+      });
+    } catch (error) {
+      const statusCode = getStatusCode(error);
+
+      if (statusCode && RECOVERABLE_CATCHUP_STATUS_CODES.has(statusCode)) {
+        if (allowRecovery) {
+          return this._fullSync(false);
+        }
+
+        throw new CatchupResetRequiredError(statusCode, error);
+      }
+
+      throw error;
+    }
+
+    const body = (response.body ?? {}) as UserAppsCatchupWire | UserAppChangeWire[];
+    const changes = Array.isArray(body) ? body : body.items ?? body.changes ?? [];
+
+    changes
+      .filter((change) => isSectionsAppName(change.appName))
+      .forEach((change) => applyChangeToWireData(this._appsData, change));
+
+    const highWaterValue = getHeader(response.headers, HIGH_WATER_HEADER);
+    const highWaterMark = highWaterValue ? Number(highWaterValue) : Date.now();
+
+    if (!Number.isFinite(highWaterMark)) {
+      throw new UserAppsSyncError('User-app catch-up returned an invalid high-water mark');
+    }
+
+    return this._publishSnapshot(publish ? 'catch-up' : 'full-sync', undefined, highWaterMark);
+  },
+
+  async _loadAdvertisedPages() {
+    const apps = [
+      ...(this._appsData.items?.dynamicTop ?? []).filter((app) => app['app-name'] === SECTIONS_APP),
+      ...(this._appsData.items?.dynamicDerived ?? []).filter(
+        (app) => app['app-type'] === 'sections' && isSectionsAppName(app['app-name'])
+      ),
+    ];
+
+    await Promise.all(apps.filter((app) => app.next).map((app) => this._loadPagesForApp(app)));
+  },
+
+  async _loadPagesForApp(app: UserAppDerivedWire) {
+    const appName = app['app-name'];
+    let {next} = app;
+    const seenCursors = new Set<string>();
+
+    while (next) {
+      // Pagination is cursor-dependent, so pages must be fetched in order.
+      // eslint-disable-next-line no-await-in-loop
+      await this._validateContinuationHost(next);
+      const cursor = extractCursor(next, appName);
+
+      if (seenCursors.has(cursor)) {
+        throw new UserAppsValidationError('User-app continuation repeated a cursor');
+      }
+      seenCursors.add(cursor);
+
+      // eslint-disable-next-line no-await-in-loop
+      const response = await this.webex.request({
+        service: USER_APPS_SERVICE,
+        resource: `/${encodeURIComponent(appName)}`,
+        method: 'GET',
+        qs: {cursor},
+      });
+      const body = response.body ?? {};
+
+      app.items = [...(app.items ?? []), ...(body.items ?? [])] as never;
+      next = body.next ?? extractNextFromLink(getHeader(response.headers, 'link'));
+    }
+
+    app.next = undefined;
+  },
+
+  async _validateContinuationHost(next: string) {
+    if (!/^https?:\/\//i.test(next)) {
+      return;
+    }
+
+    await this._ensureCatalog();
+    const service = this.webex.internal.services.getServiceFromUrl(next);
+
+    if (service?.name !== USER_APPS_SERVICE) {
+      throw new UserAppsValidationError('User-app continuation used an unrecognized host');
+    }
+  },
+
+  async _ensureCatalog() {
+    if (!this._catalogReadyPromise) {
+      this._catalogReadyPromise = this.webex.internal.services.waitForCatalog('postauth');
+    }
+
+    await this._catalogReadyPromise;
+  },
+
+  async _validateConversationUrl(conversationUrl: string) {
+    let parsed: URL;
+
+    try {
+      parsed = new URL(conversationUrl);
+    } catch (error) {
+      throw new UserAppsValidationError('Conversation URL is invalid');
+    }
+
+    const match = parsed.pathname.match(CONVERSATION_PATH);
+
+    if (!match) {
+      throw new UserAppsValidationError('Conversation URL is invalid');
+    }
+
+    await this._ensureCatalog();
+    const servicePath = parsed.pathname.slice(0, match.index);
+    const service = this.webex.internal.services.getServiceFromUrl(
+      `${parsed.origin}${servicePath}`
+    );
+
+    if (service?.name !== 'conversation') {
+      throw new UserAppsValidationError('Conversation URL uses an unrecognized service');
+    }
+  },
+
+  async _filterInvalidMemberships() {
+    await this._ensureCatalog();
+    await Promise.all(
+      (this._appsData.items?.dynamicDerived ?? [])
+        .filter((app) => app['app-type'] === 'sections' && isSectionsAppName(app['app-name']))
+        .map(async (app) => {
+          const validatedMemberships = await Promise.all(
+            (app.items ?? []).map(async (membership) => {
+              try {
+                await this._validateConversationUrl(membership['conversation-url']);
+
+                return membership;
+              } catch (error) {
+                this.logger.warn('userApps: ignored an invalid section membership URL');
+
+                return null;
+              }
+            })
+          );
+
+          app.items = validatedMemberships.filter(Boolean);
+        })
+    );
+  },
+
+  async _publishSnapshot(
+    source: SectionChangeSource,
+    change?: UserAppChangeWire,
+    highWaterMark = this._snapshot?.highWaterMark ?? null
+  ): Promise<SpaceListSectionsSnapshot> {
+    const decryptedTitles = new Map<string, string>();
+    const unavailableSectionIds = new Set<string>();
+
+    await Promise.all(
+      (getSectionsApp(this._appsData)?.items ?? []).map(async (section) => {
+        try {
+          const title = await this.webex.internal.encryption.decryptText(
+            section['encryption-key'],
+            section.content
+          );
+
+          decryptedTitles.set(section.id, title);
+        } catch (error) {
+          unavailableSectionIds.add(section.id);
+          this.trigger(
+            USER_APPS_SYNC_ERROR,
+            new UserAppsEncryptionError('Unable to decrypt a section title', {
+              cause: error,
+              sectionId: section.id,
+            })
+          );
+        }
+      })
+    );
+
+    this._snapshot = buildSnapshot({
+      data: this._appsData,
+      decryptedTitles,
+      unavailableSectionIds,
+      syncedAt: Date.now(),
+      highWaterMark,
+    });
+    this.trigger(USER_APPS_SECTIONS_CHANGED, {source, snapshot: this._snapshot, change});
+
+    return this._snapshot;
+  },
+
+  async _ensureMetadata(): Promise<UserAppsMetadataWire> {
+    const existingMetadata = getMetadata(this._appsData);
+
+    if (existingMetadata?.['default-encryption-key']) {
+      return existingMetadata;
+    }
+
+    if (this._metadataPromise) {
+      return this._metadataPromise;
+    }
+
+    this._metadataPromise = (async () => {
+      try {
+        const [key] = await this.webex.internal.encryption.kms.createUnboundKeys({count: 1});
+        const request = await this.webex.internal.encryption.kms.prepareRequest({
+          method: 'create',
+          uri: '/resources',
+          ...(this.webex.internal.device.userId
+            ? {userIds: [this.webex.internal.device.userId]}
+            : {}),
+          keyUris: [key.uri],
+        });
+        const clientSpecificData = {
+          sortedSections: DEFAULT_SECTION_ORDER,
+          Default_Sections_Settings: [
+            {section_name: FAVORITES_SECTION_ID, settings: []},
+            {section_name: OTHER_SECTION_ID, settings: []},
+          ],
+        };
+        const response = await this.webex.request({
+          service: USER_APPS_SERVICE,
+          resource: `/${SECTIONS_APP}`,
+          method: 'PUT',
+          body: {
+            'kms-message': request.wrapped,
+            'encryption-key': key.uri,
+            clientSpecificData,
+          },
+        });
+        const metadata = (response.body?.metadata ?? response.body) as UserAppsMetadataWire;
+
+        this._setMetadata(metadata);
+
+        return metadata;
+      } finally {
+        this._metadataPromise = null;
+      }
+    })();
+
+    return this._metadataPromise;
+  },
+
+  async _updateSectionOrder(customSectionIds: string[]) {
+    const metadata = await this._ensureMetadata();
+    const sectionOrder = [FAVORITES_SECTION_ID, ...customSectionIds, OTHER_SECTION_ID];
+    const clientMetadata = Object.fromEntries(
+      Object.entries(metadata).filter(([key]) => !SERVICE_METADATA_FIELDS.has(key))
+    );
+    const body = {
+      ...clientMetadata,
+      clientSpecificData: {
+        ...metadata.clientSpecificData,
+        sortedSections: sectionOrder,
+      },
+    };
+    const response = await this.webex.request({
+      service: USER_APPS_SERVICE,
+      resource: `/${SECTIONS_APP}`,
+      method: 'PUT',
+      body,
+    });
+
+    this._setMetadata((response.body?.metadata ?? response.body ?? body) as UserAppsMetadataWire);
+  },
+
+  async _tryUpdateSectionOrder(customSectionIds: string[]) {
+    try {
+      await this._updateSectionOrder(customSectionIds);
+    } catch (error) {
+      this.logger.warn('userApps: section mutation succeeded but order metadata update failed');
+      this.trigger(
+        USER_APPS_SYNC_ERROR,
+        new UserAppsSyncError('Unable to update section order metadata', {
+          cause: error,
+          statusCode: getStatusCode(error),
+        })
+      );
+    }
+  },
+
+  _setMetadata(metadata: UserAppsMetadataWire) {
+    if (!this._appsData.items) {
+      this._appsData.items = {};
+    }
+    const {items} = this._appsData;
+
+    if (!items.dynamicTop) {
+      items.dynamicTop = [];
+    }
+    const {dynamicTop: topApps} = items;
+    let sectionsApp = topApps.find((app) => app['app-name'] === SECTIONS_APP);
+
+    if (!sectionsApp) {
+      sectionsApp = {'app-name': SECTIONS_APP, items: []};
+      topApps.push(sectionsApp);
+    }
+
+    sectionsApp.metadata = metadata;
+  },
+
+  _upsertSection(section: UserAppSectionWire) {
+    if (!this._appsData.items) {
+      this._appsData.items = {};
+    }
+    const {items} = this._appsData;
+
+    if (!items.dynamicTop) {
+      items.dynamicTop = [];
+    }
+    const {dynamicTop: topApps} = items;
+    let sectionsApp = topApps.find((app) => app['app-name'] === SECTIONS_APP);
+
+    if (!sectionsApp) {
+      sectionsApp = {'app-name': SECTIONS_APP, items: []};
+      topApps.push(sectionsApp);
+    }
+
+    if (!sectionsApp.items) {
+      sectionsApp.items = [];
+    }
+    const {items: sections} = sectionsApp;
+    const index = sections.findIndex(({id}) => id === section.id);
+
+    if (index >= 0) {
+      sections[index] = {...sections[index], ...section};
+    } else {
+      sections.push(section);
+    }
+  },
+
+  _deleteSectionWire(sectionId: string) {
+    const section = this._getSectionWire(sectionId);
+    const sectionsApp = getSectionsApp(this._appsData);
+
+    if (!sectionsApp || !this._appsData.items) {
+      return;
+    }
+
+    sectionsApp.items = (sectionsApp.items ?? []).filter(({id}) => id !== sectionId);
+    this._appsData.items.dynamicDerived = (this._appsData.items.dynamicDerived ?? []).filter(
+      (app) => app['app-name'] !== section['list-app-name']
+    );
+  },
+
+  _upsertMembership(listAppName: string, membership: Record<string, unknown>) {
+    if (!this._appsData.items) {
+      this._appsData.items = {};
+    }
+    const {items} = this._appsData;
+
+    if (!items.dynamicDerived) {
+      items.dynamicDerived = [];
+    }
+    const {dynamicDerived: derivedApps} = items;
+    let app = derivedApps.find((candidate) => candidate['app-name'] === listAppName);
+
+    if (!app) {
+      app = {'app-name': listAppName, 'app-type': 'sections', items: []};
+      derivedApps.push(app);
+    }
+
+    if (!app.items) {
+      app.items = [];
+    }
+    const {items: memberships} = app;
+    const index = memberships.findIndex(({id}) => id === membership.id);
+
+    if (index >= 0) {
+      memberships[index] = {...memberships[index], ...membership} as never;
+    } else {
+      memberships.push(membership as never);
+    }
+  },
+
+  _removeMembershipByConversationUrl(conversationUrl: string) {
+    for (const app of this._appsData.items?.dynamicDerived ?? []) {
+      app.items = (app.items ?? []).filter(
+        (membership) => membership['conversation-url'] !== conversationUrl
+      );
+    }
+  },
+
+  _getCustomOrder(): string[] {
+    const customIds = new Set((getSectionsApp(this._appsData)?.items ?? []).map(({id}) => id));
+    const configuredOrder = getMetadata(this._appsData)?.clientSpecificData?.sortedSections ?? [];
+
+    return Array.from(
+      new Set([...configuredOrder.filter((id) => customIds.has(id)), ...Array.from(customIds)])
+    );
+  },
+
+  _getSectionWire(sectionId: string): UserAppSectionWire {
+    const section = getSectionsApp(this._appsData)?.items?.find(({id}) => id === sectionId);
+
+    if (!section) {
+      throw new UserAppsValidationError('Section does not exist');
+    }
+
+    return section;
+  },
+
+  _requireSection(snapshot: SpaceListSectionsSnapshot, sectionId: string): SpaceListSection {
+    const section = snapshot.sections.find(({id}) => id === sectionId);
+
+    if (!section) {
+      throw new UserAppsSyncError('Section was missing from the normalized snapshot');
+    }
+
+    return section;
+  },
+
+  _validateCustomSectionId(sectionId: string) {
+    if (!sectionId || [FAVORITES_SECTION_ID, OTHER_SECTION_ID].includes(sectionId)) {
+      throw new UserAppsValidationError('A custom section ID is required');
+    }
+  },
+
+  _validateTitle(title: string): string {
+    const normalizedTitle = title?.trim();
+
+    if (!normalizedTitle) {
+      throw new UserAppsValidationError('A non-empty section title is required');
+    }
+
+    return normalizedTitle;
+  },
+
+  _scheduleCatchup() {
+    this._clearCatchupTimer();
+    this._catchupTimer = setInterval(() => {
+      this.sync().catch(() => undefined);
+    }, this.config.catchupIntervalMs ?? 14_400_000);
+  },
+
+  _clearCatchupTimer() {
+    if (this._catchupTimer) {
+      clearInterval(this._catchupTimer);
+      this._catchupTimer = null;
+    }
+  },
+});
+
+export default UserApps;
