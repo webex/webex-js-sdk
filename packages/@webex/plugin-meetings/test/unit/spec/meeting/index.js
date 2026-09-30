@@ -2635,11 +2635,39 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.trigger, EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED);
         });
 
-        it('should trigger meeting:receiveTranscription:started event', () => {
-          meeting.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT]({});
-          assert.calledWith(
+        it('should retain and emit spoken languages for a host announcement', () => {
+          const payload = {
+            currentSpokenLanguage: 'en',
+            spokenLanguages: ['en', 'fr'],
+          };
+
+          sinon.stub(meeting, 'getCurUserType').returns('host');
+
+          meeting.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT](payload);
+
+          assert.deepEqual(meeting.transcription.languageOptions, payload);
+          assert.calledWithExactly(
             meeting.trigger,
-            EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION
+            EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION,
+            payload
+          );
+        });
+
+        it('should emit without spoken languages for a non-host while preserving them internally', () => {
+          const payload = {
+            currentSpokenLanguage: 'en',
+            spokenLanguages: ['en', 'fr'],
+          };
+
+          sinon.stub(meeting, 'getCurUserType').returns('attendee');
+
+          meeting.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT](payload);
+
+          assert.deepEqual(meeting.transcription.languageOptions.spokenLanguages, ['en', 'fr']);
+          assert.calledWithExactly(
+            meeting.trigger,
+            EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION,
+            {currentSpokenLanguage: 'en'}
           );
         });
 
