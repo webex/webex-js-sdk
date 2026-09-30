@@ -284,7 +284,7 @@
     "validator_runtime": "codex",
     "validator_runtime_source": "invocation-input",
     "runtime_fallback_tier": "different-runtime",
-    "source_commit": "e05610c5434392645f38c39b41d15c4c3f77308b",
+    "source_commit": "9b428867fd1b5cafe21a3a2c109e276450db6d62",
     "base_ref": "next",
     "head_ref": "WEB-EXTENSION-BRIDGE_SDD_ANNOTATION"
   },
