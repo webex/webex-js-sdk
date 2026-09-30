@@ -1,0 +1,394 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/media-helpers",
+    "purpose": "Wraps internal-media-core local media streams with Webex server-mute authority and unmute gating, and re-exports the media and effects surface as one published SDK entry point."
+  },
+  "commands": {
+    "clone": "git clone https://github.com/webex/webex-js-sdk.git",
+    "install": "yarn install",
+    "compile": "yarn workspace @webex/media-helpers build",
+    "package": "yarn workspace @webex/media-helpers build:src",
+    "unit-test": "yarn workspace @webex/media-helpers test:unit",
+    "lint": "yarn workspace @webex/media-helpers test:style"
+  },
+  "public_interfaces": [
+    {
+      "name": "media-helpers-package-export",
+      "kind": "package_export",
+      "source": "package.json",
+      "entrypoints": [
+        "@webex/media-helpers"
+      ],
+      "audience": "npm consumers and the Webex first-party clients, including the meetings plugin and the calling package",
+      "notes": "src/index.ts is authoritative for the exact export list; build:src emits the declarations that consumers type-check against."
+    },
+    {
+      "name": "media-helpers-npm-scripts",
+      "kind": "npm_scripts",
+      "source": "package.json",
+      "entrypoints": [
+        "build",
+        "build:src",
+        "test:unit",
+        "test:style"
+      ],
+      "audience": "contributors and CI",
+      "notes": "test:broken and test:browser reference an integration suite this package does not define; neither is a working gate."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "module-source",
+      "paths": [
+        "src/index.ts",
+        "src/webrtc-core.ts",
+        "src/constants.ts"
+      ],
+      "generated_artifacts": [
+        "dist/"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/media-helpers build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/media-helpers test:unit",
+        "yarn workspace @webex/media-helpers test:style"
+      ]
+    },
+    {
+      "surface": "behavior-baseline",
+      "paths": [
+        "test/unit/spec/webrtc-core.js"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "yarn workspace @webex/media-helpers test:unit"
+      ]
+    },
+    {
+      "surface": "sdd-documentation",
+      "paths": [
+        "AGENTS.md",
+        "docs/index.md",
+        "docs/architecture.md",
+        "docs/getting-started.md",
+        "docs/specs/README.md",
+        "docs/README.md",
+        "docs/adr/index.md",
+        ".sdd/manifest.json"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "spec-drift-changed over the changed source files and their owning module spec"
+      ]
+    },
+    {
+      "surface": "published-readme",
+      "paths": [
+        "README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [],
+      "validate_with": [
+        "human review against docs/README.md"
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist/",
+      "generated_from": "src/",
+      "refresh_with": "yarn workspace @webex/media-helpers build:src"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards",
+      "refresh_with": "Re-run Repo Annotation template setup against the bundled Repo Standards snapshot"
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/media-helpers test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/media-helpers test:style",
+        "yarn workspace @webex/media-helpers build:src"
+      ]
+    },
+    {
+      "paths": [
+        "test/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/media-helpers test:unit"
+      ],
+      "recommended": []
+    },
+    {
+      "paths": [
+        "docs/**",
+        "AGENTS.md",
+        ".sdd/manifest.json"
+      ],
+      "minimum": [
+        "human review against the cited source paths"
+      ],
+      "recommended": [
+        "spec-drift-changed for the affected module spec"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/webrtc-core.ts"
+      ],
+      "affects": [
+        "the published package surface",
+        "the internal server-mute contract consumed by the meetings plugin"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/media-helpers build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/media-helpers test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist/"
+      ],
+      "notes": "The internal mute methods are stripped from published declarations, so a signature change breaks the meetings plugin without any published type break."
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "affects": [
+        "the exact pinned upstream media and effects versions, which define most of the public surface"
+      ],
+      "refresh_with": [
+        "yarn install"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/media-helpers test:unit"
+      ],
+      "avoid_direct_edits": [
+        "dist/"
+      ],
+      "notes": "Both media dependencies are exact pins, so moving one is a deliberate public-surface change."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "server mute",
+      "definition": "A mute state imposed by the Webex server rather than by the local user.",
+      "notes": "Distinct from a local mute, which the user initiates."
+    },
+    {
+      "term": "unmute allowed",
+      "definition": "Whether the server currently permits the local user to unmute; when false, unmuting throws.",
+      "notes": "Held per stream instance and never persisted."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json"
+      ],
+      "requirement": "A command must exist as a script in package.json before it is documented; test:broken and test:browser are known non-working and must not be cited as gates.",
+      "notes": "The full build-with-tests role is recorded as unresolved in the SDD manifest."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "src/index.ts"
+      ],
+      "requirement": "Only symbols exported from the barrel may be documented as part of the published surface.",
+      "notes": "Members marked internal are stripped from published declarations."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src/webrtc-core.ts",
+        "test/unit/spec/webrtc-core.js"
+      ],
+      "requirement": "A behavior claim must cite the implementing source and, where it exists, the pinning test; uncovered behavior is recorded as a gap.",
+      "notes": "Commit and pull-request history are not accepted as evidence for this package."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not infer that this package implements media effects.",
+      "why": "The barrel re-exports them from the upstream effects package; the package README's claim that they are included here is recorded as stale."
+    },
+    {
+      "rule": "Do not treat test:broken or test:browser as runnable verification.",
+      "why": "test:broken chains a test:integration script this package never defines, and no integration test directory exists."
+    },
+    {
+      "rule": "Do not change one stream subclass without the other.",
+      "why": "The microphone and camera classes hold deliberately duplicated logic; editing one diverges audio and video mute behavior."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "The claim is backed by a cited source file and, for behavior, a passing test."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Source evidence exists but no test pins it; document the behavior and record the coverage gap."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Neither source nor test supports the claim; stop and report the gap rather than inferring it."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "package-barrel",
+        "path": "src/index.ts",
+        "purpose": "The single published entry point for the package.",
+        "notes": "package.json points main at the built dist/index.js and devMain at this file."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "stream-adapters",
+        "paths": [
+          "src/webrtc-core.ts"
+        ],
+        "notes": "Holds all behavior this package adds over its upstream dependencies."
+      },
+      {
+        "name": "value-presets",
+        "paths": [
+          "src/constants.ts"
+        ],
+        "notes": "Facing mode, display surface, and camera resolution presets."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build-output",
+        "paths": [
+          "dist/"
+        ],
+        "generated_from": "module-source",
+        "refresh_with": "yarn workspace @webex/media-helpers build:src",
+        "notes": "Git-ignored; produced per build and published to npm."
+      },
+      {
+        "name": "repo-standards-templates",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards",
+        "refresh_with": "Re-run Repo Annotation template setup against the bundled Repo Standards snapshot",
+        "notes": ".sdd/templates is a symlink to the monorepo-root template set, so this package holds no template copies of its own."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "unit",
+        "command": "yarn workspace @webex/media-helpers test:unit",
+        "scope": "The whole package; 31 tests covering the mute state machine and the stream factories.",
+        "notes": "The only runnable verification gate this package has."
+      },
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/media-helpers test:style",
+        "scope": "TypeScript sources under src/.",
+        "notes": "Runs ESLint with automatic fixing, so it rewrites the working tree."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/media-helpers",
+        "paths": [
+          "."
+        ],
+        "notes": "A single workspace member of the webex-js-sdk monorepo; install and build run from the monorepo root."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Repo Annotation template setup, resolved from the bundled checksum-verified snapshot",
+        "notes": "Reached through the .sdd/templates symlink to the monorepo root; never seeded per package."
+      }
+    ]
+  },
+  "surface_owners": [
+    {
+      "surface": "module-source",
+      "owner": "@webex/web-client, @webex/web-sdk",
+      "edit_boundary": "Behavioral changes must update docs/README.md and the unit suite in the same change."
+    },
+    {
+      "surface": "sdd-documentation",
+      "owner": "@webex/web-client, @webex/web-sdk",
+      "edit_boundary": "docs/README.md is a protected canonical spec; changes go through spec reconciliation rather than in-place overwrite."
+    },
+    {
+      "surface": "published-readme",
+      "owner": "@webex/web-client, @webex/web-sdk",
+      "edit_boundary": "Owner-authored npm landing page; not generated and never rewritten by documentation tooling."
+    }
+  ],
+  "do_not_edit": [
+    "dist/",
+    "node_modules/"
+  ],
+  "marker_scopes": {
+    "sdd-generated": [
+      "AGENTS.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/getting-started.md",
+      "docs/specs/README.md",
+      "docs/README.md",
+      "docs/adr/index.md"
+    ]
+  },
+  "fallback_rules": [
+    "When a command role has no committed command, record it as needing human input rather than inventing one.",
+    "When source and the package README disagree, follow the source and record the README statement as stale.",
+    "When a behavior has no test, document it and record the coverage gap instead of asserting it is verified."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "README.md",
+      "docs/index.md",
+      "docs/getting-started.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/architecture.md",
+      "docs/README.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".repo-context.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology"
+    ]
+  }
+}
