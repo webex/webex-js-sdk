@@ -2,9 +2,9 @@
 doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: cursor
-approved_by: pending
+approved_by: repository user
 updated_at: 2026-09-16T10:06:00Z
-validation_status: pass
+validation_status: pending
 -->
 
 # AI Agent Instructions

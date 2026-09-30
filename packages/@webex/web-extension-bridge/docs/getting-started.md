@@ -8,9 +8,9 @@ tags: [onboarding]
 doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: cursor
-approved_by: pending
+approved_by: repository user
 updated_at: 2026-09-23T06:36:39Z
-validation_status: pass
+validation_status: pending
 -->
 
 # Getting started

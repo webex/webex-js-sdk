@@ -8,9 +8,9 @@ tags: [module, specification]
 doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: cursor
-approved_by: pending
+approved_by: repository user
 updated_at: 2026-09-23T06:36:39Z
-validation_status: pass
+validation_status: pending
 -->
 
 # web
@@ -32,7 +32,7 @@ Related context: [documentation index](../../../docs/index.md) · [package agent
 | Parent spec   | — |
 | Doc kind      | Module spec |
 | Coverage score | 88% assessed 2026-09-16 |
-| Validation status | pass |
+| Validation status | pending |
 
 ## Applicability
 
@@ -132,9 +132,12 @@ flowchart LR
   App[Host app] --> Bridge[createWebBridge]
   Bridge -->|INSECURE_CONFIG| CfgFail[wildcard empty list or missing documentOrigin]
   Bridge -->|postMessage documentOrigin| Relay[Content relay]
+  Relay -->|chrome.runtime.sendMessage| Worker[createExtensionBridge]
+  Worker -->|tabs.sendMessage REQUEST| Relay
   Relay -->|REQUEST| Bridge
   Bridge --> Handler[requestHandler]
   Bridge -->|drop inbound| Drop[other window or origin not allow-listed]
+  Worker -->|NO_TAB NOT_CONNECTED TIMEOUT DISCONNECTED| WorkerErr[coded BridgeError]
 ```
 
 ## Class and component relationships
