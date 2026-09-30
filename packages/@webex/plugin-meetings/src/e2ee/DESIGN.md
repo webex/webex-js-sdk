@@ -51,40 +51,62 @@ part of this effort.
 
 ## Architecture overview
 
-All new code lives under `packages/@webex/plugin-meetings/src/e2ee/`.
+All new code lives under `packages/@webex/plugin-meetings/src/e2ee/`. The design is shown as three
+focused views: **ownership/composition**, the **per-meeting components**, and the **runtime data
+flow** across the engine and external boundaries.
+
+### Ownership & composition
+
+Who creates and owns what. `E2eeManager` is a Meetings-plugin singleton; each `Meeting` owns a
+per-meeting `E2eeMeeting` facade (alongside `Members` and `MediaProperties`).
 
 ```mermaid
 graph TD
-    App[SDK client / web app] -->|getSecurityCode / getMembers / events| Meeting
-    Meetings[Meetings plugin] -->|owns singleton| Mgr[E2eeManager]
-    Meetings -->|creates| Meeting
-    Meeting -->|owns this.e2ee| E2eeMeeting[E2eeMeeting facade]
-    Meeting --- Members
-    Meeting --- MediaProps[MediaProperties.webrtcMediaConnection]
-
+    Meetings[Meetings plugin] -->|creates| Meeting[Meeting]
+    Meetings -->|owns singleton| Mgr[E2eeManager]
     Mgr -->|owns| WasmLoader
     Mgr -->|owns| Ident[E2eeIdentityProvider]
-    Mgr -->|factory| E2eeMeeting
+    Mgr -->|createE2eeMeeting| E2eeMeeting[E2eeMeeting facade]
+    Meeting -->|owns this.e2ee| E2eeMeeting
+    App[SDK client / web app] -->|join / getSecurityCode / events| Meeting
+    Meeting --- Members
+    Meeting --- MediaProps[MediaProperties.webrtcMediaConnection]
+```
 
-    E2eeMeeting --> MLS[MlsGroupSession WASM engine]
-    E2eeMeeting --> Sig[E2eeSignaling LLM]
-    E2eeMeeting --> Svc[MediaEncryptionService HTTP]
+### Per-meeting E2EE components
+
+The `E2eeMeeting` facade orchestrates five collaborators and reuses the two shared singletons
+(`E2eeIdentityProvider`, `WasmLoader`) owned by `E2eeManager`.
+
+```mermaid
+graph TD
+    E2eeMeeting[E2eeMeeting facade] --> MLS[MlsGroupSession WASM engine]
+    E2eeMeeting --> Sig[E2eeSignaling LLM adapter]
+    E2eeMeeting --> Svc[MediaEncryptionService HTTP adapter]
     E2eeMeeting --> Recon[E2eeRosterReconciler]
     E2eeMeeting --> MediaCtl[E2eeMediaController]
-    E2eeMeeting -.uses shared.-> Ident
-    E2eeMeeting -.uses shared.-> WasmLoader
-
-    MLS -->|keys| MediaCtl
-    MLS -->|roster| Recon
-    Recon <-->|match by device.url / apply verification| Members
-    MediaCtl -->|IE2eeMediaConnection contract| MediaProps
-    Sig --> LLM[webex.internal.llm]
-    Svc --> SvcCat[webex.request media-encryption]
-    Ident --> CA[webex.request certificate-authority]
+    E2eeMeeting -.->|shared singleton| Ident[E2eeIdentityProvider]
+    E2eeMeeting -.->|shared singleton| WasmLoader
 
     style MLS fill:#e8f5e9
-    style MediaCtl fill:#fff3e0
     style Recon fill:#e3f2fd
+    style MediaCtl fill:#fff3e0
+```
+
+### Runtime data flow & external boundaries
+
+How the MLS engine's outputs reach media and members, and how the adapters reach external services.
+
+```mermaid
+graph LR
+    MLS[MlsGroupSession] -->|SFrame keys| MediaCtl[E2eeMediaController]
+    MediaCtl -->|IE2eeMediaConnection| MediaProps[MediaProperties.webrtcMediaConnection]
+    MLS -->|roster updates| Recon[E2eeRosterReconciler]
+    Recon <-->|verify by device.url| Members
+
+    Sig[E2eeSignaling] -->|media_encryption.* events| LLM[webex.internal.llm]
+    Svc[MediaEncryptionService] -->|POST| MES[webex.request media-encryption]
+    Ident[E2eeIdentityProvider] -->|CSR / cert| CA[webex.request certificate-authority]
 ```
 
 Key property: `MlsGroupSession` (the WASM protocol engine) has **no** webex / LLM /
