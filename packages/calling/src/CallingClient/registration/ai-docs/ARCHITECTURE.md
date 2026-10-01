@@ -34,6 +34,7 @@ registration/
 | Failover (primary → backup) | `startFailoverTimer()` with exponential backoff |
 | Failback (backup → primary) | `initiateFailback()` → `executeFailback()` |
 | 429 handling | `Retry-After` header with retry budget |
+| 409 handling on keepalive | `handleRegistrationErrors()` → `sessionSupersededCb` → `handle409KeepaliveFailure()` → hard stop, no re-registration |
 | Reconnection | `handleConnectionRestoration()` / `reconnectOnFailure()` |
 | Deregistration | `DELETE /devices/{id}` + worker termination |
 | Mobius WSS connect/disconnect (when `apiRequest.isSocketEnabled()`) | Per-server `apiRequest.connectToMobiusSocket(wssNormalizedUrl)` inside `attemptRegistrationWithServers`; `apiRequest.disconnectFromMobiusSocket({code: 3050, reason: 'done (permanent)'})` on failover, failback, registration-down, restore-previous-registration, and deregister-with-`closeMobiusWss=true`. |
@@ -488,7 +489,7 @@ When `apiRequest.isSocketEnabled()` is true (driven by `isMobiusWssEnabled(webex
 | `startFailoverTimer` switching primary → backup | disconnect primary WSS before backup re-registration | `register.ts ~ L508–L520` |
 | `executeFailback` primary recovered + no active calls | disconnect backup WSS before primary re-registration | `register.ts ~ L713–L725` |
 | `deregister(closeMobiusWss = true)` | disconnect WSS after DELETE returns | `register.ts ~ L1264–L1270` |
-| `performRegistrationDownCleanup` (after Mobius async `registration.down`) | disconnect WSS as final cleanup step | `register.ts ~ L1411–L1419` |
+| `registrationCleanup` (after Mobius async `registration.down`, or a keepalive `409 Conflict`) | disconnect WSS as final cleanup step | `register.ts` — `registrationCleanup` |
 
 ### Constants Used
 
@@ -515,7 +516,7 @@ sequenceDiagram
     CC->>Reg: line.registration.handleRegistrationDownEvent(event)
 
     Reg->>CM: getActiveCalls() → end first active call
-    Reg->>Reg: performRegistrationDownCleanup()
+    Reg->>Reg: registrationCleanup(REGISTRATION_DOWN)
 
     Reg->>Reg: mutex.runExclusive(...)
     Reg->>Reg: clearFailbackTimer + clearKeepaliveTimer

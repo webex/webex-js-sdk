@@ -1,10 +1,14 @@
 import * as Agent from '../agent/types';
+import {COLLABORATION_ACCESS} from './constants';
 
 /**
  * Generic type for converting a const enum object into a union type of its values
  * @internal
  */
 type Enum<T extends Record<string, unknown>> = T[keyof T];
+
+/** Desktop Profile access level for a collaboration destination category. */
+export type CollaborationAccess = Enum<typeof COLLABORATION_ACCESS>;
 
 /**
  * Events emitted on task objects
@@ -57,6 +61,8 @@ export const CC_TASK_EVENTS = {
   PARTICIPANT_LEFT_CONFERENCE: 'ParticipantLeftConference',
   /** Event emitted when participant leaving conference fails */
   PARTICIPANT_LEFT_CONFERENCE_FAILED: 'ParticipantLeftConferenceFailed',
+  /** Event emitted when dropping another conference participant fails */
+  PARTICIPANT_DROP_CONFERENCE_FAILED: 'ParticipantDropConferenceFailed',
   /** Event emitted when consultation conference end fails */
   AGENT_CONSULT_CONFERENCE_END_FAILED: 'AgentConsultConferenceEndFailed',
   /** Event emitted when conference is successfully transferred */
@@ -144,8 +150,7 @@ export const CC_TASK_EVENTS = {
 /**
  * Events emitted on Contact Center agent operations
  * @enum {string}
- * @private
- * @ignore
+ * @public
  */
 export const CC_AGENT_EVENTS = {
   /** Welcome event when agent connects to websocket/backend */
@@ -184,6 +189,8 @@ export const CC_AGENT_EVENTS = {
   AGENT_BUDDY_AGENTS_RETRIEVE_FAILED: 'BuddyAgentsRetrieveFailed',
   /** Event emitted when contact is reserved for agent */
   AGENT_CONTACT_RESERVED: 'AgentContactReserved',
+  /** Agent-level Agent Wellness Break notification */
+  WELLNESS_BREAK: 'WellnessBreak',
 } as const;
 
 /**
@@ -404,9 +411,9 @@ export type DesktopProfileResponse = {
   allowAutoWrapUpExtension: boolean;
 
   /**
-   * Access control for queues assigned to the agent (ALL or SPECIFIC).
+   * Access control for queues assigned to the agent (ALL, SPECIFIC, or NONE).
    */
-  accessQueue: string;
+  accessQueue: CollaborationAccess;
 
   /**
    * Queue identifiers available to the agent when access is SPECIFIC.
@@ -416,7 +423,7 @@ export type DesktopProfileResponse = {
   /**
    * Access control for entry points assigned to the agent.
    */
-  accessEntryPoint: string;
+  accessEntryPoint: CollaborationAccess;
 
   /**
    * Entry point identifiers available to the agent when access is SPECIFIC.
@@ -426,7 +433,7 @@ export type DesktopProfileResponse = {
   /**
    * Access control for buddy teams assigned to the agent.
    */
-  accessBuddyTeam: string;
+  accessBuddyTeam: CollaborationAccess;
 
   /**
    * Buddy team identifiers available to the agent when access is SPECIFIC.
@@ -723,6 +730,8 @@ export type OrgSettings = {
   maskSensitiveData: boolean;
   /** Whether campaign manager features are enabled */
   campaignManagerEnabled: boolean;
+  /** Number of AI Assistant licenses assigned to the organization */
+  aiAssistantQuantity?: number | null;
 };
 
 /**
@@ -1169,6 +1178,12 @@ export type Profile = {
   agentAnalyzerId?: string;
   /** Whether consult to queue is allowed */
   allowConsultToQueue: boolean;
+  /** Access control for queues on Desktop Profile Collaboration tab */
+  accessQueue?: CollaborationAccess;
+  /** Access control for entry points on Desktop Profile Collaboration tab */
+  accessEntryPoint?: CollaborationAccess;
+  /** Access control for buddy teams on Desktop Profile Collaboration tab */
+  accessBuddyTeam?: CollaborationAccess;
   /** Additional campaign manager information */
   campaignManagerAdditionalInfo?: string;
   /** Whether personal statistics are enabled */
@@ -1225,6 +1240,8 @@ export type Profile = {
   maskSensitiveData?: boolean;
   /** Whether agent is currently logged in */
   isAgentLoggedIn?: boolean;
+  /** Active station session after a successful registered relogin. */
+  agentSessionId?: string;
   /** Last auxiliary code ID used for state change */
   lastStateAuxCodeId?: string;
   /** Timestamp of last state change */
@@ -1233,6 +1250,12 @@ export type Profile = {
   lastIdleCodeChangeTimestamp?: number;
   /** AI feature flags resolved from organization config */
   aiFeature?: AIFeatureFlags;
+  /**
+   * Whether Agent Wellness Break is effectively enabled for this profile.
+   * This combines the organization wellbeing configuration with AI Assistant licensing;
+   * Server-side rollout remains enforced by the backend configuration and notification delivery.
+   */
+  isWellnessBreakEnabled?: boolean;
 };
 
 /**

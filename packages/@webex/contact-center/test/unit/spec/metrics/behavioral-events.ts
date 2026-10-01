@@ -152,6 +152,24 @@ describe('metrics/behavioral-events', () => {
         verb: 'fail',
       });
 
+      expect(
+        getEventTaxonomy(METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_SUCCESS)
+      ).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_conference_participant_drop',
+        verb: 'complete',
+      });
+
+      expect(
+        getEventTaxonomy(METRIC_EVENT_NAMES.TASK_CONFERENCE_PARTICIPANT_DROP_FAILED)
+      ).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_conference_participant_drop',
+        verb: 'fail',
+      });
+
       expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_AUTO_ANSWER_SUCCESS)).toEqual({
         product,
         agent: 'user',
@@ -163,6 +181,48 @@ describe('metrics/behavioral-events', () => {
         product,
         agent: 'user',
         target: 'task_auto_answer',
+        verb: 'fail',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.WXAPP_TASK_ACCEPT_SUCCESS)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_accept_webex_together',
+        verb: 'complete',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.WXAPP_SESSION_SKIPPED)).toEqual({
+        product,
+        agent: 'user',
+        target: 'webex_together_session_init',
+        verb: 'ignore',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_SUCCESS)).toEqual({
+        product,
+        agent: 'user',
+        target: 'webex_together_usersub_publish',
+        verb: 'complete',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED)).toEqual({
+        product,
+        agent: 'user',
+        target: 'webex_together_mercury_subscribe',
+        verb: 'fail',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.WXAPP_TASK_MUTE_SUCCESS)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_mute_webex_together',
+        verb: 'complete',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.WXAPP_TASK_DTMF_FAILED)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_dtmf_webex_together',
         verb: 'fail',
       });
 

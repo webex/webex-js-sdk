@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Minified SDK Demo</title>
+    <script src="assets/js/imi-environments.js"></script>
+    <script type="text/javascript" src="include_sdk_scripts.js"></script>
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+
+    <link href="acme.css" rel="stylesheet" />
+    <script src="assets/app/app.utility.js"></script>
+    <script src="assets/app/imi-app.js"></script>
+    <script src="custom-elements/imi-toast/imi-toast.js"></script>
+
+    <script src="custom-elements/imi-svg-icon.js"></script>
+    <script src="custom-elements/date-time.js"></script>
+    <script src="custom-elements/imi-progress-bar/progress-bar.js"></script>
+    <script src="custom-elements/imi-media/imi-media-view.js"></script>
+    <script src="custom-elements/imi-timestamp/imi-timestamp.js"></script>
+    <script src="custom-elements/imi-fab/imi-fab.js"></script>
+    <script src="custom-elements/imi-quick-replies/imi-quick-replies.js"></script>
+
+    <script src="pages/imi-threads-page.js"></script>
+    <script src="pages/imi-messages-page.js"></script>
+    <script src="pages/imi-login-page.js"></script>
+    <script src="assets/app/imi-utility.js"></script>
+    <script src="custom-elements/imi-type-writer/imi-type-writer.js"></script>
+    <script src="custom-elements/imi-connection-status-view/imi-connection-status-view.js"></script>
+</head>
+
+<body>
+
+    <style>
+        #dynamicConfigPanel {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: rgb(52, 52, 52);
+            margin: 0; padding: 0;
+        }
+        #dynamicConfigPanel .dc-header {
+            background-color: rgb(69, 55, 113);
+            color: white;
+            font-weight: 300;
+            font-size: 1.5em;
+            padding: 14px 20px;
+            margin: 0;
+        }
+        #dynamicConfigPanel .dc-body {
+            padding: 24px 20px;
+            max-width: 700px;
+        }
+        #dynamicConfigPanel .dc-hint {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        #dynamicConfigPanel textarea {
+            width: 100%;
+            font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+            font-size: 12px;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid rgb(185, 174, 220);
+            border-radius: 5px;
+            resize: vertical;
+        }
+        #dynamicConfigPanel button {
+            background-color: rgb(69, 55, 113);
+            color: white;
+            border: none;
+            padding: 0 20px;
+            min-height: 3em;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 6px;
+            font-size: 0.9em;
+        }
+        #dynamicConfigPanel button:hover {
+            background-color: rgb(185, 174, 220);
+        }
+        #dynamicConfigPanel button:active {
+            background-color: rgb(41, 22, 101);
+        }
+        #btnUninit {
+            background-color: rgb(69, 55, 113);
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            position: fixed; top: 10px; right: 10px; z-index: 9999;
+        }
+        #btnUninit:hover { background-color: rgb(185, 174, 220); }
+        #btnUninit:active { background-color: rgb(41, 22, 101); }
+    </style>
+    <div id="dynamicConfigPanel" style="display:none;">
+        <div class="dc-header">SDK Initialization</div>
+        <div class="dc-body">
+            <p class="dc-hint">Paste a config JSON to initialize with a dynamic config, or click "Use Default" to use imi-environments.js.</p>
+            <textarea id="txtDynamicConfig" rows="10" placeholder='{"asset":{"appId":"...","appSecret":"..."},"imiclient":{"authdomain":"https://...","rtmsdomain":"..."},"sw":{"config":{"appid":"...","serverUrl":"https://..."}}}'></textarea>
+            <div style="margin-top:14px;">
+                <button onclick="initWithDynamicConfig()">Initialize</button>
+                <button onclick="skipDynamicConfig()">Use Default</button>
+            </div>
+        </div>
+    </div>
+    <button id="btnUninit" onclick="uninitAndShowConfig()">Uninit</button>
+    <div class="acme" style="display:none;">
+        <!-- Sample components -->
+        <!-- <imi-threads-page id="page-threads"></imi-threads-page> -->
+        <!-- <imi-messages-page></imi-messages-page> -->
+    </div>
+    <imi-fab target=".acme"></imi-fab>
+    <script>
+        function setBase() {
+            //required for svginject when deployed on connectFB.
+            let a = window.location.href.replace(window.location.hash, '').split('/');
+            a.pop();
+            let b = document.createElement('base');
+            b.setAttribute('href', a.join('/') + "/");
+            document.body.append(b);
+        }
+        setBase();
+
+        let acme = document.querySelector('.acme');
+        let nav = new IMINav(acme);
+
+        let pageThreads;
+        function showMessagesPage(threadId) {
+            let pageMessages = document.createElement("imi-messages-page");
+            pageMessages.setThreadId(threadId);
+            nav.show(pageMessages);
+        }
+        function showThreadsPage() {
+            if (!pageThreads)
+                pageThreads = document.createElement("imi-threads-page");
+            pageThreads.setAttribute('id', 'threadsPage');
+            nav.show(pageThreads);
+        }
+        function showNewThreadPage() {
+            let pageNewThread = document.createElement("imi-messages-page");
+            nav.show(pageNewThread);
+        }
+        function showLoginPage() {
+            let pageLogin = document.createElement("imi-login-page");
+            nav.show(pageLogin);
+        }
+        function goBack() {
+            nav.pop();
+        }
+
+    </script>
+    <script>
+        function onLocationHashChanged(e) {
+
+            let hash = window.location.hash;
+            if (hash === "#/login") {
+                showLoginPage();
+                return;
+            }
+            else if (hash === "" || hash === "/" || hash === "/#" || hash === "#/threads/" || hash === "#/threads") {
+                showThreadsPage();
+            }
+            else if (hash === "#/threads/new") {
+                showNewThreadPage();
+            }
+            else if (hash.indexOf("#/threads/messages/") != -1) {
+                let threadId = hash.replace("#/threads/messages/", "");
+                showMessagesPage(threadId);
+            }
+            registerMessageListener();
+        }
+
+
+
+        var messageListenerCallback = {
+            onConnectionStatusChanged: (statuscode) => {
+                //since there can only be one listener, hence dispatching at document level.
+                let ev = new CustomEvent(IMIEvent.onConnectionStatusChanged, { detail: statuscode });
+                document.dispatchEvent(ev);
+            },
+            onMessageReceived: (message) => {
+                // console.log('onMessageReceived ->message --->', message);
+                //since there can only be one listener, hence dispatching at document level.
+                let ev = new CustomEvent(IMIEvent.onMessageReceived, { detail: message });
+                document.dispatchEvent(ev);
+            },
+        };
+        function registerMessageListener() {
+            if (IMI.IMIconnect.isRegistered()) {
+                var messaging = IMI.ICMessaging.getInstance();
+                messaging.setICMessagingReceiver(messageListenerCallback);
+                if (!messaging.isConnected())
+                    messaging.connect();
+                //There can only be one listener.
+            }
+        }
+        var _appStarted = false;
+        function startApp(configObj) {
+            if (_appStarted) return;
+            if (!window.IMI || !window.IMI.IMIconnect || typeof window.IMI.IMIconnect.startupLogger !== 'function') {
+                document.addEventListener('IMISdkReady', function onReady() {
+                    document.removeEventListener('IMISdkReady', onReady);
+                    startApp(configObj);
+                });
+                return;
+            }
+            _appStarted = true;
+            document.querySelector('#dynamicConfigPanel').style.display = 'none';
+            document.querySelector('.acme').style.display = '';
+            IMI.IMIconnect.startupLogger();
+            IMI.IMIconnect.startup(null, configObj || undefined);
+            
+            IMI.log = console.log;
+         
+            history.replaceState(null, '', '#/login');
+            window.onhashchange = onLocationHashChanged;
+            onLocationHashChanged();
+            var appId = configObj ? configObj.asset.appId : imiEnvironments[imiEnvironments.target].asset.appId;
+            document.querySelector('title').textContent = appId + "-" + "Minified SDK Demo";
+        }
+
+        function initWithDynamicConfig() {
+            var raw = document.querySelector('#txtDynamicConfig').value.trim();
+            if (!raw) { alert('Please paste a config JSON'); return; }
+            try {
+                var configObj = JSON.parse(raw);
+            } catch (e) {
+                alert('Invalid JSON: ' + e.message);
+                return;
+            }
+            sessionStorage.setItem('_imi_dynamic_config', raw);
+            startApp(configObj);
+        }
+
+        function skipDynamicConfig() {
+            sessionStorage.removeItem('_imi_dynamic_config');
+            startApp(null);
+        }
+
+        function uninitAndShowConfig() {
+            IMI.IMIconnect.uninit();
+            sessionStorage.removeItem('_imi_dynamic_config');
+            document.querySelector('.acme').innerHTML = '';
+            document.querySelector('.acme').style.display = 'none';
+            document.querySelector('#dynamicConfigPanel').style.display = 'block';
+            document.querySelector('title').textContent = 'Minified SDK Demo';
+            pageThreads = null;
+            window.location.hash = '';
+            window.onhashchange = null;
+            _appStarted = false;
+        }
+
+        window.addEventListener("load", function (e) {
+            if (_appStarted) return;
+            var savedConfig = sessionStorage.getItem('_imi_dynamic_config');
+            if (savedConfig) {
+                try {
+                    startApp(JSON.parse(savedConfig));
+                } catch (ex) {
+                    document.querySelector('#dynamicConfigPanel').style.display = 'block';
+                }
+            } else {
+                document.querySelector('#dynamicConfigPanel').style.display = 'block';
+            }
+        });
+    </script>
+    <imi-toast></imi-toast>
+</body>
+
+</html>

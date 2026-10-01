@@ -16,6 +16,10 @@ import {
 import {PARTICIPANT_TYPES, STATE_CONSULT} from './constants';
 import {DialPlan} from '../config/types';
 
+/** Returns whether a value is a non-null object with string keys. */
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
 /**
  * Extracts common error details from a Webex request payload.
  *

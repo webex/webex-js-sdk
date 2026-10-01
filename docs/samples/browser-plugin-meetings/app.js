@@ -22,6 +22,14 @@ let isBrb = false;
 // cached state for local microphone and camera muted state
 let localMediaMicMuted = undefined;
 let localMediaCameraMuted = undefined;
+let breakoutSessionConfiguration;
+let breakoutSessionsCreated = false;
+let breakoutSessionsStarted = false;
+let breakoutBroadcastDraft = {
+  targetSessionId: 'all',
+  role: 'all',
+  message: '',
+};
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -38,9 +46,14 @@ const integrationEnv = document.getElementById('integration-env');
 const eventsList = document.getElementById('events-list');
 const multistreamLayoutElm = document.querySelector('#multistream-layout');
 const preferLiveVideoElm = document.querySelector('#prefer-live-video');
-const breakoutsList = document.getElementById('breakouts-list');
-const breakoutTable = document.getElementById('breakout-table');
-const breakoutHostOperation = document.getElementById('breakout-host-operation');
+const enableBreakoutElm = document.getElementById('enable-breakout');
+const breakoutConfigurationElm = document.getElementById('breakout-configuration');
+const breakoutAutomaticOptionsElm = document.getElementById('breakout-automatic-options');
+const breakoutStatusElm = document.getElementById('breakout-status');
+const breakoutCreateButtonElm = document.getElementById('breakout-create-sessions');
+const breakoutStartButtonElm = document.getElementById('breakout-start-sessions');
+const breakoutResetButtonElm = document.getElementById('breakout-reset-sessions');
+const breakoutTableElm = document.getElementById('breakout-table');
 const getStatsButton = document.getElementById('get-stats');
 const tcpReachabilityConfigElm = document.getElementById('enable-tcp-reachability');
 const tlsReachabilityConfigElm = document.getElementById('enable-tls-reachability');
@@ -710,8 +723,8 @@ async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevi
       populateStageSelector();
     });
 
-    meeting.on('meeting:breakouts:update', (res) => {
-      viewBreakouts();
+    meeting.on('meeting:breakouts:update', () => {
+      refreshBreakoutSessions();
     });
 
     meeting.on('meeting:stoppedSharingRemote', () => {
@@ -739,7 +752,6 @@ async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevi
       updatePublishedEvents(payload);
     });
 
-    createBreakoutOperations();
   } catch(err) {
     console.error(`failed to join a meeting (withMedia=${withMedia} withDevice=${withDevice}): `, err);
     // join failed, so allow  user decide on multistream again
@@ -775,8 +787,10 @@ function leaveMeeting(meetingId) {
       meetingsJoinCaptchaElm.value = '';
       meetingsJoinMultistreamElm.disabled = false;
       enableMultistreamControls(false);
-      breakoutHostOperation.innerHTML = '';
-      breakoutTable.innerHTML = '';
+      enableBreakoutElm.checked = false;
+      breakoutConfigurationElm.classList.add('hidden');
+      resetBreakoutSessions();
+      setBreakoutStatus('');
       clearVideoResolutionCheckInterval(remoteVideoResElm, remoteVideoResolutionInterval);
       // disabling screen share publish/unpublish buttons
       publishShareBtn.disabled = true;
@@ -3400,148 +3414,1437 @@ const createButton = (text, func, props = {}) => {
   return button;
 }
 
-const createBreakoutOperations = ()=>{
-  const isHostUser = meeting.members.hostId === meeting.userId;
-  const hostOperationsEl = document.createElement('div');
-  let groupId = '';
-  let sessionList = [];
-  let currentGroup;
-  if(isHostUser && meetingsBreakoutSupportElm.checked){
-    breakoutHostOperation.innerHTML = '';
-    const hostOperationsTitleEl = document.createElement('h3');
-    hostOperationsTitleEl.innerText = 'Host Operations';
-    hostOperationsTitleEl.setAttribute('style', 'margin-top:0');
-    const createSessionRow = ()=>{
-      if(!breakoutTable.querySelector('table')){
-        viewBreakouts();
+function updateBreakoutAssignmentOptions() {
+  const assignmentMethod = document.querySelector('input[name="breakout-assignment-method"]:checked')?.value;
+
+  breakoutAutomaticOptionsElm.classList.toggle('hidden', assignmentMethod !== 'automatic');
+}
+
+function setBreakoutStatus(message, isError = false) {
+  breakoutStatusElm.innerText = message;
+  breakoutStatusElm.style.color = isError ? '#b70303' : '';
+}
+
+function resetBreakoutSessions() {
+  breakoutSessionConfiguration = undefined;
+  breakoutSessionsCreated = false;
+  breakoutSessionsStarted = false;
+  breakoutBroadcastDraft = {
+    targetSessionId: 'all',
+    role: 'all',
+    message: '',
+  };
+  document.getElementById('breakout-session-count').value = 1;
+  document.getElementById('breakout-assignment-automatic').checked = true;
+  document.getElementById('breakout-assignment-manual').checked = false;
+  document.getElementById('breakout-assignment-choose').checked = false;
+  document.getElementById('breakout-assign-cohosts').checked = false;
+  document.getElementById('breakout-include-lobby').checked = false;
+  breakoutCreateButtonElm.disabled = false;
+  breakoutStartButtonElm.disabled = false;
+  breakoutStartButtonElm.classList.add('hidden');
+  breakoutResetButtonElm.disabled = false;
+  breakoutResetButtonElm.classList.add('hidden');
+  breakoutTableElm.classList.add('hidden');
+  breakoutTableElm.innerHTML = '';
+  updateBreakoutAssignmentOptions();
+}
+
+function waitForBreakoutSessionsToClose(currentMeeting) {
+  if (!currentMeeting.breakouts.isBreakoutInProgress()) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve, reject) => {
+    let timeoutId;
+    const handleBreakoutUpdate = () => {
+      if (!currentMeeting.breakouts.isBreakoutInProgress()) {
+        window.clearTimeout(timeoutId);
+        currentMeeting.off('meeting:breakouts:update', handleBreakoutUpdate);
+        resolve();
       }
-      breakoutTable.querySelector('table').lastChild.innerHTML = '';
-      sessionList.forEach((session)=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${session.name}</td><td>YES</td><td>YES</td><td>NO</td><td>NO</td><td>NO</td><td></td>`;
-        breakoutTable.querySelector('table').lastChild.appendChild(tr);
-      })
+    };
+
+    timeoutId = window.setTimeout(() => {
+      currentMeeting.off('meeting:breakouts:update', handleBreakoutUpdate);
+      reject(new Error('Timed out waiting for active breakout sessions to close.'));
+    }, 10000);
+    currentMeeting.on('meeting:breakouts:update', handleBreakoutUpdate);
+    handleBreakoutUpdate();
+  });
+}
+
+async function resetBreakoutSessionSetup() {
+  const currentMeeting = getCurrentMeeting();
+
+  if (!currentMeeting) {
+    setBreakoutStatus('Select and join a meeting before resetting breakout sessions.', true);
+
+    return;
+  }
+
+  breakoutResetButtonElm.disabled = true;
+  breakoutStartButtonElm.disabled = true;
+  breakoutCreateButtonElm.disabled = true;
+  setBreakoutStatus('Resetting breakout sessions...');
+
+  try {
+    if (breakoutSessionsStarted && currentMeeting.breakouts.isBreakoutInProgress()) {
+      setBreakoutStatus('Ending active breakout sessions before reset...');
+      await currentMeeting.breakouts.end({delayCloseTime: 0});
+      await waitForBreakoutSessionsToClose(currentMeeting);
     }
-    const createGroup = async (newGroup)=>{
-      await meeting.breakouts.getBreakout().then((res)=>{
-        if(!newGroup){
-          createBtn.disabled = true;
-          deleteBtn.disabled = false;
-          startBtn.disabled = false;
-        }
 
-        const existedGroup = res.body.groups?.length && res.body.groups[0];
-        if(existedGroup && existedGroup.status !== 'CLOSED'){
-          const group = res.body.groups[0];
-          const {id, sessions} = group;
-          groupId = id;
-          sessionList = sessions;
-        }else{
-          sessionList = [{'name':'session1', "anyoneCanJoin" : true}, {'name':'session2', "anyoneCanJoin" : false}];
-          meeting.breakouts.create(newGroup || {
-            allowBackToMain: true,
-            allowToJoinLater: true,
-            delayCloseTime: 60,
-            sessions: sessionList
-          }).then((res)=>{
-            groupId = res.body.groups[0].id;
-          })
-        }
-      })
+    if (breakoutSessionsCreated) {
+      setBreakoutStatus('Deleting breakout sessions...');
+      await currentMeeting.breakouts.clearSessions();
     }
-    const createBtn = createButton('Create Breakout Sessions', async ()=>{
-      await createGroup();
-      createSessionRow();
-    });
-    const startBtn = createButton('Start Breakout Sessions', ()=>{
-      endBtn.disabled = false;
-      startBtn.disabled = true;
-      deleteBtn.disabled = true;
-      meeting.breakouts.getBreakout().then((res)=>{
-        const groups = res?.body?.groups;
-        if (!groups.length) {
-          return;
-        }
-        currentGroup = groups[0];
-        meeting.breakouts.start(currentGroup);
-      });
-    });
-    const endBtn = createButton('End Breakout Sessions', ()=>{
-      let countDown = meeting.breakouts.delayCloseTime;
-      countDown = countDown<0?0:countDown;
-      meeting.breakouts.end().then(()=>{
-        setTimeout(async () => {
-          const {sessions} = currentGroup;
-          const newSessions = sessions.map((session)=>{
-            const newSession = {...session};
-            delete newSession.id;
-            delete newSession.locusUrl;
-            return newSession;
-          })
-          const newGroup = {...currentGroup, sessions: newSessions};
-          delete newGroup.id;
-          delete newGroup.status;
-          delete newGroup.duration;
-          delete newGroup.type;
 
-          await createGroup(newGroup)
-          createSessionRow();
-        }, 500);
-      });
-      setTimeout(()=>{
-        endBtn.disabled = true;
-        startBtn.disabled = false;
-        deleteBtn.disabled = false;
-      }, countDown*1000);
-      if(countDown>0){
-        const intervalId = setInterval(()=>{
-          endBtn.innerText = `End Breakout Sessions in (${--countDown}s)`;
-          endBtn.disabled = true;
-          if(countDown === 0){
-            clearInterval(intervalId);
-            endBtn.innerText = 'End Breakout Sessions';
-          }
-        }, 1000)
-      }
-    })
-
-    const deleteBtn = createButton('Delete Breakout Sessions',() => {
-      meeting.breakouts.clearSessions().then((result) => {
-        if (result.body) {
-          createBtn.disabled = false;
-          deleteBtn.disabled = true;
-          startBtn.disabled = true;
-          endBtn.disabled = true;
-          breakoutTable.querySelector('table').lastChild.innerHTML = '';
-        }
-      }).catch((error) => {
-        console.error('Breatout#createBreakoutSessions :: ', error.sdkMessage);
-      });
-    });
-
-    createBtn.disabled = true;
-    deleteBtn.disabled = true;
-    startBtn.disabled = true;
-    endBtn.disabled = true;
-    startBtn.id = 'startBO';
-    endBtn.id = 'endBO';
-    createBtn.id = 'createBO';
-    deleteBtn.id = 'deleteBO';
-    hostOperationsEl.appendChild(hostOperationsTitleEl);
-    hostOperationsEl.appendChild(createBtn);
-    hostOperationsEl.appendChild(deleteBtn);
-    hostOperationsEl.appendChild(startBtn);
-    hostOperationsEl.appendChild(endBtn);
-    breakoutHostOperation.appendChild(hostOperationsEl);
+    resetBreakoutSessions();
+    breakoutConfigurationElm.classList.remove('hidden');
+    setBreakoutStatus('Breakout sessions reset. Create a new configuration.');
+  }
+  catch (error) {
+    breakoutResetButtonElm.disabled = false;
+    breakoutStartButtonElm.disabled = false;
+    breakoutCreateButtonElm.disabled = breakoutSessionsCreated;
+    setBreakoutStatus('Unable to reset breakout sessions. See the console for details.', true);
+    console.error('Breakout#resetBreakoutSessionSetup :: ', error);
   }
 }
-function toggleBreakout() {
-  const enableBox = document.getElementById("enable-breakout"),
-        meeting = getCurrentMeeting();
 
-  if (meeting) {
-    meeting.breakouts.toggleBreakout(enableBox.checked);
-    document.getElementById('createBO').disabled = !enableBox.checked;
+async function toggleBreakout() {
+  const currentMeeting = getCurrentMeeting();
+  const shouldEnable = enableBreakoutElm.checked;
+
+  if (!currentMeeting) {
+    enableBreakoutElm.checked = false;
+    breakoutConfigurationElm.classList.add('hidden');
+    setBreakoutStatus('Select and join a meeting before enabling breakout sessions.', true);
+
+    return;
+  }
+
+  enableBreakoutElm.disabled = true;
+  setBreakoutStatus(`${shouldEnable ? 'Enabling' : 'Disabling'} breakout sessions...`);
+
+  try {
+    await currentMeeting.breakouts.toggleBreakout(shouldEnable);
+    breakoutConfigurationElm.classList.toggle('hidden', !shouldEnable);
+
+    if (shouldEnable) {
+      updateBreakoutAssignmentOptions();
+      setBreakoutStatus('Breakout sessions enabled. Configure the sessions below.');
+    }
+    else {
+      resetBreakoutSessions();
+      setBreakoutStatus('Breakout sessions disabled.');
+    }
+  }
+  catch (error) {
+    enableBreakoutElm.checked = !shouldEnable;
+    breakoutConfigurationElm.classList.toggle('hidden', shouldEnable);
+    setBreakoutStatus('Unable to update breakout sessions. See the console for details.', true);
+    console.error('Breakout#toggleBreakout :: ', error);
+  }
+  finally {
+    enableBreakoutElm.disabled = false;
+  }
+}
+
+function prepareBreakoutSessions() {
+  const currentMeeting = getCurrentMeeting();
+  const sessionCount = Number(document.getElementById('breakout-session-count').value);
+  const assignmentMethod = document.querySelector('input[name="breakout-assignment-method"]:checked')?.value;
+
+  if (!currentMeeting) {
+    setBreakoutStatus('Select and join a meeting before creating breakout sessions.', true);
+
+    return;
+  }
+
+  if (!Number.isInteger(sessionCount) || sessionCount < 1) {
+    setBreakoutStatus('Enter a valid number of breakout sessions.', true);
+
+    return;
+  }
+
+  const sessions = Array.from({length: sessionCount}, (_, index) => ({
+    name: `Session ${index + 1}`,
+    anyoneCanJoin: assignmentMethod === 'choose',
+  }));
+
+  breakoutSessionConfiguration = {
+    sessionCount,
+    assignmentMethod,
+    assignCohostsAutomatically: assignmentMethod === 'automatic' &&
+      document.getElementById('breakout-assign-cohosts').checked,
+    includeLobbyParticipants: assignmentMethod === 'automatic' &&
+      document.getElementById('breakout-include-lobby').checked,
+    sessions,
+  };
+
+  breakoutTableElm.classList.add('hidden');
+  breakoutTableElm.innerHTML = '';
+  breakoutStartButtonElm.disabled = false;
+  breakoutStartButtonElm.classList.remove('hidden');
+  breakoutResetButtonElm.disabled = false;
+  breakoutResetButtonElm.classList.remove('hidden');
+  renderBreakoutSessions(currentMeeting);
+
+  console.log('Breakout#prepareBreakoutSessions :: ', breakoutSessionConfiguration);
+  setBreakoutStatus(
+    `Configuration ready for ${sessionCount} breakout session${sessionCount === 1 ? '' : 's'}. Click Start Breakout Sessions.`
+  );
+}
+
+function getBreakoutSessionId(session) {
+  return session?.sessionId || session?.id;
+}
+
+function getBreakoutConfiguredSession(session) {
+  const sessionId = getBreakoutSessionId(session);
+  const configuredSessions = breakoutSessionConfiguration?.sessions || [];
+
+  if (!sessionId) {
+    return configuredSessions.find((configuredSession) => configuredSession === session);
+  }
+
+  return configuredSessions.find((configuredSession) =>
+    getBreakoutSessionId(configuredSession) === sessionId
+  );
+}
+
+function getBreakoutManagedSession(currentMeeting, session) {
+  const sessionId = getBreakoutSessionId(session);
+  const groups = currentMeeting.breakouts.manageGroups || [];
+
+  return groups
+    .flatMap((group) => group.sessions || [])
+    .find((managedSession) => getBreakoutSessionId(managedSession) === sessionId);
+}
+
+function doesBreakoutSessionAllowAnyone(currentMeeting, session) {
+  const configuredSession = getBreakoutConfiguredSession(session);
+  const managedSession = getBreakoutManagedSession(currentMeeting, session);
+
+  return Boolean(
+    configuredSession?.anyoneCanJoin ||
+    managedSession?.anyoneCanJoin ||
+    session?.anyoneCanJoin
+  );
+}
+
+function applyBreakoutSessionChanges(currentMeeting, session, changes) {
+  const configuredSession = getBreakoutConfiguredSession(session);
+  const managedSession = getBreakoutManagedSession(currentMeeting, session);
+
+  if (Object.prototype.hasOwnProperty.call(changes, 'name')) {
+    if (typeof session.set === 'function') {
+      session.set('name', changes.name);
+    }
+    else {
+      session.name = changes.name;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(changes, 'anyoneCanJoin')) {
+    session.anyoneCanJoin = changes.anyoneCanJoin;
+  }
+
+  if (configuredSession && configuredSession !== session) {
+    Object.assign(configuredSession, changes);
+  }
+  if (managedSession && managedSession !== session && managedSession !== configuredSession) {
+    Object.assign(managedSession, changes);
+  }
+}
+
+async function updateBreakoutSession(currentMeeting, session, changes) {
+  const sessionId = getBreakoutSessionId(session);
+
+  if (!sessionId) {
+    throw new Error('The breakout session ID is unavailable.');
+  }
+
+  try {
+    await currentMeeting.breakouts.getBreakout(true);
+
+    const groupId = session.groupId || currentMeeting.breakouts.breakoutGroupId;
+
+    if (!groupId) {
+      throw new Error('The breakout group ID is unavailable.');
+    }
+
+    await currentMeeting.breakouts.update({
+      id: groupId,
+      sessions: [{id: sessionId, ...changes}],
+    }, true);
+    applyBreakoutSessionChanges(currentMeeting, session, changes);
+  }
+  catch (error) {
+    if (currentMeeting.breakouts.editLock?.token) {
+      currentMeeting.breakouts.unLockEditBreakout();
+    }
+
+    throw error;
+  }
+}
+
+function getBreakoutSessionModels(currentMeeting) {
+  const sessionModels = currentMeeting.breakouts.breakouts?.models || [];
+  const configuredSessionIds = new Set(
+    (breakoutSessionConfiguration?.sessions || [])
+      .map((session) => getBreakoutSessionId(session))
+      .filter(Boolean)
+  );
+  const shouldScopeToConfiguredSessions = breakoutSessionsStarted &&
+    breakoutSessionConfiguration?.assignmentMethod === 'manual' &&
+    configuredSessionIds.size > 0;
+  const breakoutSessions = sessionModels.filter((session) =>
+    !session.isMain &&
+    (!shouldScopeToConfiguredSessions ||
+      configuredSessionIds.has(getBreakoutSessionId(session)))
+  );
+  const currentSession = currentMeeting.breakouts.currentBreakoutSession;
+  const currentSessionId = getBreakoutSessionId(currentSession);
+  const isConfiguredSession = !shouldScopeToConfiguredSessions ||
+    configuredSessionIds.has(currentSessionId);
+
+  if (currentSessionId && !currentSession.isMain && isConfiguredSession &&
+    !breakoutSessions.some((session) => getBreakoutSessionId(session) === currentSessionId)) {
+    breakoutSessions.unshift(currentSession);
+  }
+
+  return breakoutSessions;
+}
+
+function getBreakoutDisplaySessions(currentMeeting) {
+  const sessionModels = getBreakoutSessionModels(currentMeeting);
+  const configuredSessions = breakoutSessionConfiguration?.sessions || [];
+  const sessionModelsById = new Map(
+    sessionModels.map((session) => [getBreakoutSessionId(session), session])
+  );
+  const hasConfiguredSessionIds = configuredSessions.some((session) =>
+    getBreakoutSessionId(session)
+  );
+
+  if (!breakoutSessionsCreated) {
+    return configuredSessions;
+  }
+
+  if (breakoutSessionsStarted &&
+    breakoutSessionConfiguration?.assignmentMethod === 'manual' &&
+    hasConfiguredSessionIds) {
+    return configuredSessions.map((session) =>
+      sessionModelsById.get(getBreakoutSessionId(session)) || session
+    );
+  }
+
+  return sessionModels.length ? sessionModels : configuredSessions;
+}
+
+function getBreakoutSessionMembers(currentMeeting, session) {
+  const currentSession = currentMeeting.breakouts.currentBreakoutSession;
+  const isCurrentSession = getBreakoutSessionId(currentSession) === getBreakoutSessionId(session);
+  const membersCollection = isCurrentSession ?
+    currentMeeting.members?.membersCollection : session.members?.membersCollection;
+  const members = membersCollection?.getAll?.() || {};
+
+  return Object.values(members).filter((member) => member.status !== 'NOT_IN_MEETING');
+}
+
+function isBreakoutCurrentUser(currentMeeting, member) {
+  const selfIds = [currentMeeting.selfId, currentMeeting.userId, currentMeeting.members?.selfId];
+
+  return member.isSelf || selfIds.includes(member.id);
+}
+
+function getBreakoutAutomaticParticipants(currentMeeting) {
+  const members = currentMeeting.members?.membersCollection?.getAll?.() || {};
+  const {assignCohostsAutomatically, includeLobbyParticipants} = breakoutSessionConfiguration;
+
+  return Object.values(members).filter((member) => {
+    const isCohost = member.roles?.cohost || member.isModerator;
+
+    return !isBreakoutCurrentUser(currentMeeting, member) &&
+      !member.isHost &&
+      !member.isDevice &&
+      member.status !== 'NOT_IN_MEETING' &&
+      member.supportsBreakouts !== false &&
+      (includeLobbyParticipants || !member.isInLobby) &&
+      (assignCohostsAutomatically || !isCohost);
+  });
+}
+
+function createBreakoutAutomaticAssignments(currentMeeting, sessions) {
+  const participants = getBreakoutAutomaticParticipants(currentMeeting);
+  const assignments = sessions.map((session) => ({
+    id: getBreakoutSessionId(session),
+    memberIds: [],
+    anyone: false,
+  }));
+
+  if (!assignments.length || assignments.some((assignment) => !assignment.id)) {
+    throw new Error('The breakout service did not return IDs for the created sessions.');
+  }
+
+  participants.forEach((participant, index) => {
+    assignments[index % assignments.length].memberIds.push(participant.id);
+  });
+
+  return {assignments, participants};
+}
+
+function isBreakoutHostInSession(currentMeeting, session) {
+  const selfIds = [currentMeeting.selfId, currentMeeting.userId, currentMeeting.members?.selfId];
+  const isHost = selfIds.includes(currentMeeting.members?.hostId);
+  const currentSession = currentMeeting.breakouts.currentBreakoutSession;
+
+  return isHost && !currentSession?.isMain &&
+    getBreakoutSessionId(currentSession) === getBreakoutSessionId(session);
+}
+
+function getBreakoutMemberRole(currentMeeting, member) {
+  const roles = [];
+
+  if (member.isHost) {
+    roles.push('Host');
+  }
+  if (member.roles?.cohost) {
+    roles.push('Cohost');
+  }
+  if (member.roles?.presenter) {
+    roles.push('Presenter');
+  }
+  if (isBreakoutCurrentUser(currentMeeting, member)) {
+    roles.push('me');
+  }
+
+  return roles.length ? roles.join(', ') : 'Participant';
+}
+
+function refreshBreakoutRostersAfterAction(currentMeeting) {
+  if (!currentMeeting?.breakouts?.queryRosters) {
+    return;
+  }
+
+  currentMeeting.breakouts.queryRosters();
+  window.setTimeout(() => {
+    if (getCurrentMeeting() === currentMeeting) {
+      currentMeeting.breakouts.queryRosters();
+    }
+  }, 1500);
+}
+
+async function runBreakoutParticipantAction(actionName, operation) {
+  const currentMeeting = getCurrentMeeting();
+
+  setBreakoutStatus(`${actionName}...`);
+
+  try {
+    await operation(currentMeeting);
+    setBreakoutStatus(`${actionName} completed.`);
+
+    return true;
+  }
+  catch (error) {
+    setBreakoutStatus(`${actionName} failed. See the console for details.`, true);
+    console.error(`Breakout#${actionName} :: `, error);
+
+    return false;
+  }
+  finally {
+    refreshBreakoutRostersAfterAction(currentMeeting);
+  }
+}
+
+function createBreakoutDynamicAssignment(sessionId, participantIds) {
+  const participants = Array.isArray(participantIds) ? participantIds : [participantIds];
+
+  if (!sessionId || !participants.length || participants.some((participantId) => !participantId)) {
+    throw new Error('A breakout session and participant are required for this action.');
+  }
+
+  return {
+    id: sessionId,
+    participants,
+    targetState: 'JOINED',
+  };
+}
+
+function exchangeBreakoutParticipants(
+  currentMeeting,
+  sourceSession,
+  sourceMember,
+  targetSession,
+  targetMember
+) {
+  const sourceSessionId = getBreakoutSessionId(sourceSession);
+  const targetSessionId = getBreakoutSessionId(targetSession);
+
+  if (sourceSessionId === targetSessionId) {
+    throw new Error('Exchange participants must be in different breakout sessions.');
+  }
+
+  if (sourceMember.id === targetMember.id) {
+    throw new Error('Select two different participants to exchange.');
+  }
+
+  const moveTargetMemberToSource = createBreakoutDynamicAssignment(
+    sourceSessionId,
+    targetMember.id
+  );
+  const moveSourceMemberToTarget = createBreakoutDynamicAssignment(
+    targetSessionId,
+    sourceMember.id
+  );
+
+  return currentMeeting.breakouts.dynamicAssign([
+    moveTargetMemberToSource,
+    moveSourceMemberToTarget,
+  ]);
+}
+
+function getBreakoutExchangeOptions(currentMeeting, sourceSession, sourceMember) {
+  const sourceSessionId = getBreakoutSessionId(sourceSession);
+
+  return getBreakoutSessionModels(currentMeeting)
+    .filter((targetSession) => getBreakoutSessionId(targetSession) !== sourceSessionId)
+    .flatMap((targetSession) => getBreakoutSessionMembers(currentMeeting, targetSession)
+      .filter((targetMember) => targetMember.id && targetMember.id !== sourceMember.id)
+      .map((targetMember) => ({
+        label: `${targetMember.name} (${targetSession.name})`,
+        value: {targetMember, targetSession},
+      })));
+}
+
+function getBreakoutUnassignedParticipants(currentMeeting) {
+  const meetingMembers = currentMeeting.members?.membersCollection?.getAll?.() || {};
+  const sessionModels = currentMeeting.breakouts.breakouts?.models || [];
+  const mainSession = sessionModels.find((session) => session.isMain);
+  const mainSessionMembers = mainSession?.members?.membersCollection?.getAll?.() || {};
+  const candidateMembers = new Map();
+  const assignedParticipantIds = new Set();
+
+  [...Object.values(meetingMembers), ...Object.values(mainSessionMembers)].forEach((member) => {
+    if (member.id) {
+      candidateMembers.set(member.id, member);
+    }
+  });
+
+  getBreakoutSessionModels(currentMeeting).forEach((session) => {
+    getBreakoutSessionMembers(currentMeeting, session).forEach((member) => {
+      if (member.id) {
+        assignedParticipantIds.add(member.id);
+      }
+    });
+  });
+
+  const unassignedParticipants = [...candidateMembers.values()].filter((member) =>
+    !assignedParticipantIds.has(member.id) &&
+    !member.isDevice &&
+    member.supportsBreakouts !== false &&
+    member.status !== 'NOT_IN_MEETING'
+  );
+
+  return {
+    inMeeting: unassignedParticipants.filter((member) => !member.isInLobby),
+    inLobby: unassignedParticipants.filter((member) => member.isInLobby),
+  };
+}
+
+async function moveBreakoutParticipantsToSession(currentMeeting, targetSession, participants) {
+  const targetSessionId = getBreakoutSessionId(targetSession);
+  const currentUser = participants.find((participant) =>
+    isBreakoutCurrentUser(currentMeeting, participant)
+  );
+  const otherParticipantIds = participants
+    .filter((participant) => participant !== currentUser)
+    .map((participant) => participant.id);
+
+  if (otherParticipantIds.length) {
+    await currentMeeting.breakouts.dynamicAssign([
+      createBreakoutDynamicAssignment(targetSessionId, otherParticipantIds),
+    ]);
+  }
+
+  if (currentUser) {
+    const targetSessionModel = getBreakoutSessionModels(currentMeeting)
+      .find((session) => getBreakoutSessionId(session) === targetSessionId) || targetSession;
+
+    if (typeof targetSessionModel.join !== 'function') {
+      throw new Error(`Unable to join ${targetSession.name}; the breakout session is not active.`);
+    }
+
+    await targetSessionModel.join();
+  }
+}
+
+function showBreakoutActionPicker(container, options, actionLabel, onConfirm) {
+  const existingPicker = container.querySelector('.breakout-action-picker');
+
+  if (existingPicker) {
+    existingPicker.remove();
+  }
+
+  if (!options.length) {
+    setBreakoutStatus(`No available target for ${actionLabel.toLowerCase()}.`, true);
+
+    return;
+  }
+
+  const picker = document.createElement('div');
+  const select = document.createElement('select');
+  const confirmButton = createButton(actionLabel, async (button) => {
+    const selectedOption = options[Number(select.value)];
+
+    button.disabled = true;
+    select.disabled = true;
+    const completed = await onConfirm(selectedOption.value);
+
+    if (completed) {
+      picker.remove();
+    }
+    else {
+      button.disabled = false;
+      select.disabled = false;
+    }
+  });
+  const cancelButton = createButton('Cancel', () => picker.remove());
+
+  picker.classList.add('breakout-action-picker');
+  select.setAttribute('aria-label', `${actionLabel} target`);
+
+  options.forEach((option, index) => {
+    const selectOption = document.createElement('option');
+
+    selectOption.value = index;
+    selectOption.innerText = option.label;
+    select.appendChild(selectOption);
+  });
+
+  picker.appendChild(select);
+  picker.appendChild(confirmButton);
+  picker.appendChild(cancelButton);
+  container.appendChild(picker);
+}
+
+function createBreakoutUnassignedGroup(currentMeeting, title, members) {
+  const group = document.createElement('div');
+  const heading = document.createElement('h4');
+  const table = document.createElement('table');
+  const tableHead = document.createElement('thead');
+  const tableBody = document.createElement('tbody');
+  const headerRow = document.createElement('tr');
+
+  group.classList.add('breakout-unassigned-group');
+  heading.innerText = `${title} (${members.length})`;
+  table.classList.add('breakout-unassigned-table');
+
+  ['Select', 'Participant', 'Role'].forEach((header) => {
+    const headerCell = document.createElement('th');
+
+    headerCell.innerText = header;
+    headerRow.appendChild(headerCell);
+  });
+
+  if (!members.length) {
+    const emptyRow = document.createElement('tr');
+    const emptyCell = document.createElement('td');
+
+    emptyCell.colSpan = 3;
+    emptyCell.innerText = `No unassigned participants ${title.toLowerCase()}.`;
+    emptyRow.appendChild(emptyCell);
+    tableBody.appendChild(emptyRow);
+  }
+  else {
+    members.forEach((member) => {
+      const row = document.createElement('tr');
+      const selectCell = document.createElement('td');
+      const nameCell = document.createElement('td');
+      const roleCell = document.createElement('td');
+      const checkbox = document.createElement('input');
+
+      checkbox.type = 'checkbox';
+      checkbox.name = 'breakout-unassigned-participant';
+      checkbox.value = member.id;
+      checkbox.setAttribute('aria-label', `Select ${member.name}`);
+      nameCell.innerText = member.name;
+      roleCell.innerText = getBreakoutMemberRole(currentMeeting, member);
+
+      selectCell.appendChild(checkbox);
+      row.appendChild(selectCell);
+      row.appendChild(nameCell);
+      row.appendChild(roleCell);
+      tableBody.appendChild(row);
+    });
+  }
+
+  tableHead.appendChild(headerRow);
+  table.appendChild(tableHead);
+  table.appendChild(tableBody);
+  group.appendChild(heading);
+  group.appendChild(table);
+
+  return group;
+}
+
+function createBreakoutUnassignedParticipantsTable(currentMeeting, sessions) {
+  const {inMeeting, inLobby} = getBreakoutUnassignedParticipants(currentMeeting);
+  const participants = [...inMeeting, ...inLobby];
+  const container = document.createElement('div');
+  const title = document.createElement('h3');
+  const actions = document.createElement('div');
+  const selectAllLabel = document.createElement('label');
+  const selectAllCheckbox = document.createElement('input');
+  const moveControls = document.createElement('div');
+
+  function getParticipantCheckboxes() {
+    return [...container.querySelectorAll('input[name="breakout-unassigned-participant"]')];
+  }
+
+  function updateSelectionControls() {
+    const checkboxes = getParticipantCheckboxes();
+    const selectedCount = checkboxes.filter((checkbox) => checkbox.checked).length;
+
+    selectAllCheckbox.checked = Boolean(checkboxes.length) && selectedCount === checkboxes.length;
+    selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < checkboxes.length;
+    moveButton.disabled = selectedCount === 0;
+  }
+
+  container.classList.add('breakout-unassigned');
+  title.innerText = `Not Assigned Participants (${participants.length})`;
+  actions.classList.add('breakout-unassigned-actions');
+  moveControls.classList.add('breakout-unassigned-move-controls');
+  selectAllCheckbox.type = 'checkbox';
+  selectAllCheckbox.disabled = participants.length === 0;
+  selectAllLabel.appendChild(selectAllCheckbox);
+  selectAllLabel.appendChild(document.createTextNode('Select all'));
+
+  container.appendChild(title);
+  container.appendChild(createBreakoutUnassignedGroup(currentMeeting, 'In the meeting', inMeeting));
+  container.appendChild(createBreakoutUnassignedGroup(currentMeeting, 'In the lobby', inLobby));
+
+  const moveButton = createButton('Move to session', () => {
+    const selectedParticipantIds = getParticipantCheckboxes()
+      .filter((checkbox) => checkbox.checked)
+      .map((checkbox) => checkbox.value);
+    const selectedParticipants = participants.filter((participant) =>
+      selectedParticipantIds.includes(participant.id)
+    );
+    const options = sessions
+      .filter((session) => getBreakoutSessionId(session))
+      .map((session) => ({label: session.name, value: session}));
+
+    if (!selectedParticipantIds.length) {
+      setBreakoutStatus('Select at least one unassigned participant.', true);
+
+      return;
+    }
+
+    showBreakoutActionPicker(moveControls, options, 'Move', async (targetSession) => {
+      const completed = await runBreakoutParticipantAction(
+        `Moving ${selectedParticipantIds.length} participant${selectedParticipantIds.length === 1 ? '' : 's'} to ${targetSession.name}`,
+        (meeting) => moveBreakoutParticipantsToSession(
+          meeting,
+          targetSession,
+          selectedParticipants
+        )
+      );
+
+      if (completed) {
+        getParticipantCheckboxes().forEach((checkbox) => {
+          checkbox.checked = false;
+        });
+        updateSelectionControls();
+      }
+
+      return completed;
+    });
+  });
+
+  selectAllCheckbox.addEventListener('change', () => {
+    getParticipantCheckboxes().forEach((checkbox) => {
+      checkbox.checked = selectAllCheckbox.checked;
+    });
+    updateSelectionControls();
+  });
+  container.addEventListener('change', (event) => {
+    if (event.target.name === 'breakout-unassigned-participant') {
+      updateSelectionControls();
+    }
+  });
+
+  moveButton.disabled = true;
+  moveControls.appendChild(moveButton);
+  actions.appendChild(selectAllLabel);
+  actions.appendChild(moveControls);
+  container.appendChild(actions);
+
+  return container;
+}
+
+function createBreakoutParticipantControls(currentMeeting, session, member) {
+  const controls = document.createElement('div');
+
+  controls.classList.add('breakout-participant-controls');
+
+  const moveButton = createButton('Move to', () => {
+    const sourceSessionId = getBreakoutSessionId(session);
+    const options = getBreakoutSessionModels(currentMeeting)
+      .filter((targetSession) => getBreakoutSessionId(targetSession) !== sourceSessionId)
+      .map((targetSession) => ({
+        label: targetSession.name,
+        value: targetSession,
+      }));
+
+    showBreakoutActionPicker(controls, options, 'Move', (targetSession) =>
+      runBreakoutParticipantAction(`Moving ${member.name}`, (meeting) =>
+        moveBreakoutParticipantsToSession(meeting, targetSession, [member])
+      )
+    );
+  });
+  const exchangeButton = createButton('Exchange', () => {
+    const options = getBreakoutExchangeOptions(currentMeeting, session, member);
+
+    showBreakoutActionPicker(controls, options, 'Exchange', ({targetMember, targetSession}) =>
+      runBreakoutParticipantAction(
+        `Exchanging ${member.name} and ${targetMember.name}`,
+        (meeting) => exchangeBreakoutParticipants(
+          meeting,
+          session,
+          member,
+          targetSession,
+          targetMember
+        )
+      )
+    );
+  });
+  const removeButton = createButton('Remove', () =>
+    runBreakoutParticipantAction(`Removing ${member.name}`, (meeting) =>
+      meeting.breakouts.removeFromBreakout([member.id])
+    )
+  );
+
+  controls.appendChild(moveButton);
+  controls.appendChild(exchangeButton);
+  controls.appendChild(removeButton);
+
+  return controls;
+}
+
+function createBreakoutParticipantsTable(currentMeeting, session, members) {
+  const container = document.createElement('div');
+
+  container.classList.add('breakout-participants');
+
+  if (!members.length) {
+    container.innerText = 'No participants in this session.';
+
+    return container;
+  }
+
+  const table = document.createElement('table');
+  const tableHead = document.createElement('thead');
+  const tableBody = document.createElement('tbody');
+  const headerRow = document.createElement('tr');
+
+  table.classList.add('breakout-participants-table');
+  ['Participant', 'Role', 'Actions'].forEach((header) => {
+    const headerCell = document.createElement('th');
+
+    headerCell.innerText = header;
+    headerRow.appendChild(headerCell);
+  });
+
+  members.forEach((member) => {
+    const row = document.createElement('tr');
+    const nameCell = document.createElement('td');
+    const roleCell = document.createElement('td');
+    const controlsCell = document.createElement('td');
+
+    nameCell.innerText = member.name;
+    roleCell.innerText = getBreakoutMemberRole(currentMeeting, member);
+    controlsCell.appendChild(createBreakoutParticipantControls(currentMeeting, session, member));
+    row.appendChild(nameCell);
+    row.appendChild(roleCell);
+    row.appendChild(controlsCell);
+    tableBody.appendChild(row);
+  });
+
+  tableHead.appendChild(headerRow);
+  table.appendChild(tableHead);
+  table.appendChild(tableBody);
+  container.appendChild(table);
+
+  return container;
+}
+
+function createBreakoutSessionActionButton(currentMeeting, session) {
+  const shouldLeave = isBreakoutHostInSession(currentMeeting, session);
+  const currentSession = currentMeeting.breakouts.currentBreakoutSession;
+  const actionButton = createButton(shouldLeave ? 'Leave' : 'Join', async (button) => {
+    button.disabled = true;
+    setBreakoutStatus(`${shouldLeave ? 'Leaving' : 'Joining'} ${session.name}...`);
+
+    try {
+      if (shouldLeave) {
+        await currentSession.leave();
+      }
+      else {
+        await session.join();
+      }
+      setBreakoutStatus(`${shouldLeave ? 'Leave' : 'Join'} request completed.`);
+    }
+    catch (error) {
+      button.disabled = false;
+      setBreakoutStatus(`Unable to ${shouldLeave ? 'leave' : 'join'} ${session.name}.`, true);
+      console.error('Breakout#createBreakoutSessionActionButton :: ', error);
+    }
+  });
+
+  actionButton.disabled = shouldLeave ? typeof currentSession?.leave !== 'function' : typeof session.join !== 'function';
+
+  return actionButton;
+}
+
+function startBreakoutSessionRename(currentMeeting, session, nameCell) {
+  const originalName = session.name;
+  const input = document.createElement('input');
+  let isSaving = false;
+  let isCancelled = false;
+
+  input.classList.add('breakout-session-name-input');
+  input.type = 'text';
+  input.value = originalName;
+  input.setAttribute('aria-label', `Rename ${originalName}`);
+  nameCell.innerHTML = '';
+  nameCell.appendChild(input);
+  input.focus();
+  input.select();
+
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      input.blur();
+    }
+    else if (event.key === 'Escape') {
+      isCancelled = true;
+      renderBreakoutSessions(currentMeeting);
+    }
+  });
+
+  input.addEventListener('blur', async () => {
+    if (isSaving || isCancelled) {
+      return;
+    }
+
+    const updatedName = input.value.trim();
+
+    if (!updatedName) {
+      renderBreakoutSessions(currentMeeting);
+      setBreakoutStatus('A breakout session name cannot be empty.', true);
+
+      return;
+    }
+
+    if (updatedName === originalName) {
+      renderBreakoutSessions(currentMeeting);
+
+      return;
+    }
+
+    isSaving = true;
+    input.disabled = true;
+    setBreakoutStatus(`Renaming ${originalName}...`);
+
+    try {
+      await updateBreakoutSession(currentMeeting, session, {name: updatedName});
+      renderBreakoutSessions(currentMeeting);
+      setBreakoutStatus(`${originalName} renamed to ${updatedName}.`);
+    }
+    catch (error) {
+      renderBreakoutSessions(currentMeeting);
+      setBreakoutStatus(`Unable to rename ${originalName}. See the console for details.`, true);
+      console.error('Breakout#startBreakoutSessionRename :: ', error);
+    }
+  });
+}
+
+function createBreakoutSessionMorePicker(currentMeeting, session, nameCell) {
+  const picker = document.createElement('select');
+  const moreOption = document.createElement('option');
+  const renameOption = document.createElement('option');
+  const anyoneCanJoinOption = document.createElement('option');
+
+  picker.classList.add('breakout-session-more');
+  picker.setAttribute('aria-label', `More actions for ${session.name}`);
+  moreOption.value = '';
+  moreOption.text = 'More';
+  renameOption.value = 'rename';
+  renameOption.text = 'Rename';
+  anyoneCanJoinOption.value = 'anyone-can-join';
+  anyoneCanJoinOption.text = 'Let anyone join';
+  anyoneCanJoinOption.disabled = doesBreakoutSessionAllowAnyone(currentMeeting, session);
+  picker.appendChild(moreOption);
+  picker.appendChild(renameOption);
+  picker.appendChild(anyoneCanJoinOption);
+
+  picker.addEventListener('change', async () => {
+    const selectedAction = picker.value;
+
+    picker.value = '';
+
+    if (selectedAction === 'rename') {
+      picker.disabled = true;
+      startBreakoutSessionRename(currentMeeting, session, nameCell);
+
+      return;
+    }
+
+    if (selectedAction !== 'anyone-can-join') {
+      return;
+    }
+
+    picker.disabled = true;
+    setBreakoutStatus(`Allowing anyone to join ${session.name}...`);
+
+    try {
+      await updateBreakoutSession(currentMeeting, session, {anyoneCanJoin: true});
+      renderBreakoutSessions(currentMeeting);
+      setBreakoutStatus(`Anyone can now join ${session.name}.`);
+    }
+    catch (error) {
+      picker.disabled = false;
+      setBreakoutStatus(
+        `Unable to let anyone join ${session.name}. See the console for details.`,
+        true
+      );
+      console.error('Breakout#createBreakoutSessionMorePicker :: ', error);
+    }
+  });
+
+  return picker;
+}
+
+function getBreakoutBroadcastOptions(role) {
+  switch (role) {
+    case 'presenters':
+      return {presenters: true};
+    case 'cohosts':
+      return {cohosts: true};
+    case 'cohosts-and-presenters':
+      return {cohosts: true, presenters: true};
+    default:
+      return undefined;
+  }
+}
+
+function createBreakoutBroadcastControls(currentMeeting, sessions) {
+  const container = document.createElement('div');
+  const title = document.createElement('h3');
+  const controls = document.createElement('div');
+  const sessionPicker = document.createElement('select');
+  const rolePicker = document.createElement('select');
+  const messageInput = document.createElement('input');
+  const askAllReturnButton = createButton('Ask all return', async (button) => {
+    button.disabled = true;
+    setBreakoutStatus('Asking all participants to return to the main session...');
+
+    try {
+      await currentMeeting.breakouts.askAllToReturn();
+      setBreakoutStatus('Return-to-main request sent to all breakout participants.');
+    }
+    catch (error) {
+      setBreakoutStatus(
+        'Unable to ask participants to return. See the console for details.',
+        true
+      );
+      console.error('Breakout#createBreakoutBroadcastControls#askAllReturn :: ', error);
+    }
+    finally {
+      button.disabled = false;
+    }
+  });
+  const broadcastButton = createButton('Broadcast', async (button) => {
+    const message = messageInput.value.trim();
+
+    if (!message) {
+      setBreakoutStatus('Enter a message before broadcasting.', true);
+      messageInput.focus();
+
+      return;
+    }
+
+    const targetSessionId = sessionPicker.value;
+    const options = getBreakoutBroadcastOptions(rolePicker.value);
+
+    button.disabled = true;
+    sessionPicker.disabled = true;
+    rolePicker.disabled = true;
+    messageInput.disabled = true;
+    setBreakoutStatus('Broadcasting message...');
+
+    try {
+      if (targetSessionId === 'all') {
+        await currentMeeting.breakouts.broadcast(message, options);
+      }
+      else {
+        const targetSession = getBreakoutSessionModels(currentMeeting)
+          .find((session) => getBreakoutSessionId(session) === targetSessionId);
+
+        if (!targetSession || typeof targetSession.broadcast !== 'function') {
+          throw new Error('The selected breakout session is unavailable.');
+        }
+
+        await targetSession.broadcast(message, options);
+      }
+
+      messageInput.value = '';
+      breakoutBroadcastDraft.message = '';
+      setBreakoutStatus('Message broadcast completed.');
+    }
+    catch (error) {
+      setBreakoutStatus('Unable to broadcast the message. See the console for details.', true);
+      console.error('Breakout#createBreakoutBroadcastControls :: ', error);
+    }
+    finally {
+      button.disabled = false;
+      sessionPicker.disabled = false;
+      rolePicker.disabled = false;
+      messageInput.disabled = false;
+    }
+  });
+  const allSessionsOption = document.createElement('option');
+  const roleOptions = [
+    {value: 'all', label: 'All participants in session'},
+    {value: 'presenters', label: 'All presenters'},
+    {value: 'cohosts', label: 'All cohosts'},
+    {value: 'cohosts-and-presenters', label: 'All cohosts and presenters'},
+  ];
+  const addedSessionIds = new Set();
+
+  container.classList.add('breakout-broadcast');
+  controls.classList.add('breakout-broadcast-controls');
+  title.innerText = 'Broadcast Message';
+  allSessionsOption.value = 'all';
+  allSessionsOption.text = 'All breakout sessions';
+  sessionPicker.setAttribute('aria-label', 'Breakout session recipients');
+  sessionPicker.appendChild(allSessionsOption);
+
+  sessions.forEach((session) => {
+    const sessionId = getBreakoutSessionId(session);
+
+    if (!sessionId || addedSessionIds.has(sessionId)) {
+      return;
+    }
+
+    const option = document.createElement('option');
+
+    option.value = sessionId;
+    option.text = session.name;
+    sessionPicker.appendChild(option);
+    addedSessionIds.add(sessionId);
+  });
+
+  if (breakoutBroadcastDraft.targetSessionId !== 'all' &&
+    !addedSessionIds.has(breakoutBroadcastDraft.targetSessionId)) {
+    breakoutBroadcastDraft.targetSessionId = 'all';
+  }
+  sessionPicker.value = breakoutBroadcastDraft.targetSessionId;
+  sessionPicker.addEventListener('change', () => {
+    breakoutBroadcastDraft.targetSessionId = sessionPicker.value;
+  });
+
+  rolePicker.setAttribute('aria-label', 'Broadcast participant type');
+  roleOptions.forEach(({value, label}) => {
+    const option = document.createElement('option');
+
+    option.value = value;
+    option.text = label;
+    rolePicker.appendChild(option);
+  });
+  rolePicker.value = breakoutBroadcastDraft.role;
+  rolePicker.addEventListener('change', () => {
+    breakoutBroadcastDraft.role = rolePicker.value;
+  });
+
+  messageInput.type = 'text';
+  messageInput.placeholder = 'Message';
+  messageInput.value = breakoutBroadcastDraft.message;
+  messageInput.setAttribute('aria-label', 'Broadcast message');
+  messageInput.addEventListener('input', () => {
+    breakoutBroadcastDraft.message = messageInput.value;
+  });
+  messageInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      broadcastButton.click();
+    }
+  });
+
+  controls.appendChild(sessionPicker);
+  controls.appendChild(rolePicker);
+  controls.appendChild(messageInput);
+  controls.appendChild(broadcastButton);
+  controls.appendChild(askAllReturnButton);
+  container.appendChild(title);
+  container.appendChild(controls);
+
+  return container;
+}
+
+function addBreakoutSession(button) {
+  const currentMeeting = getCurrentMeeting();
+
+  if (!currentMeeting || !breakoutSessionConfiguration) {
+    setBreakoutStatus('Create the breakout session configuration before adding a session.', true);
+
+    return;
+  }
+
+  if (breakoutSessionsCreated || breakoutSessionsStarted) {
+    button.disabled = true;
+    setBreakoutStatus('Sessions cannot be added after breakout sessions are started. Reset first.', true);
+
+    return;
+  }
+
+  const addedSession = {
+    name: `Session ${breakoutSessionConfiguration.sessions.length + 1}`,
+    anyoneCanJoin: breakoutSessionConfiguration.assignmentMethod === 'choose',
+  };
+
+  breakoutSessionConfiguration.sessions.push(addedSession);
+  breakoutSessionConfiguration.sessionCount = breakoutSessionConfiguration.sessions.length;
+  document.getElementById('breakout-session-count').value =
+    breakoutSessionConfiguration.sessionCount;
+  renderBreakoutSessions(currentMeeting);
+  setBreakoutStatus(
+    `${addedSession.name} added to the configuration. It will be created when breakout sessions start.`
+  );
+}
+
+function renderBreakoutSessions(currentMeeting) {
+  const sessions = getBreakoutDisplaySessions(currentMeeting);
+  const sessionsHeader = document.createElement('div');
+  const title = document.createElement('h3');
+  const addSessionButton = createButton('+ Add session', addBreakoutSession, {
+    id: 'breakout-add-session',
+  });
+  const table = document.createElement('table');
+  const tableHead = document.createElement('thead');
+  const tableBody = document.createElement('tbody');
+  const headerRow = document.createElement('tr');
+  const headers = ['Name', 'Active', 'Allowed', 'Assigned', 'Assigned Current', 'Requested', 'Controls'];
+
+  sessionsHeader.classList.add('breakout-sessions-header');
+  addSessionButton.classList.add('btn-code');
+  addSessionButton.disabled = breakoutSessionsCreated || breakoutSessionsStarted;
+  title.innerText = 'Breakout Sessions';
+  sessionsHeader.appendChild(title);
+  sessionsHeader.appendChild(addSessionButton);
+  table.classList.add('breakout-sessions-table');
+
+  headers.forEach((header) => {
+    const headerCell = document.createElement('th');
+
+    headerCell.innerText = header;
+    headerRow.appendChild(headerCell);
+  });
+
+  sessions.forEach((session) => {
+    const members = getBreakoutSessionMembers(currentMeeting, session);
+    const row = document.createElement('tr');
+    let nameCell;
+    const values = [
+      `${session.name} (${members.length})`,
+      session.active,
+      session.allowed ?? session.anyoneCanJoin,
+      session.assigned,
+      session.assignedCurrent,
+      session.requested,
+    ];
+
+    row.classList.add('breakout-session-row');
+
+    values.forEach((value, index) => {
+      const cell = document.createElement('td');
+
+      if (index === 0) {
+        cell.innerText = value;
+        nameCell = cell;
+      }
+      else {
+        const hasValue = Array.isArray(value) ? value.length > 0 : Boolean(value);
+
+        cell.innerText = hasValue ? 'YES' : 'NO';
+      }
+      row.appendChild(cell);
+    });
+
+    const controlsCell = document.createElement('td');
+    const controls = document.createElement('div');
+
+    controls.classList.add('breakout-session-controls');
+
+    if (breakoutSessionsStarted) {
+      controls.appendChild(createBreakoutSessionActionButton(currentMeeting, session));
+      controls.appendChild(
+        createBreakoutSessionMorePicker(currentMeeting, session, nameCell)
+      );
+    }
+    else {
+      controls.innerText = 'Available after start';
+    }
+
+    controlsCell.appendChild(controls);
+    row.appendChild(controlsCell);
+    tableBody.appendChild(row);
+
+    if (breakoutSessionsStarted) {
+      const participantsRow = document.createElement('tr');
+      const participantsCell = document.createElement('td');
+
+      participantsRow.classList.add('breakout-participants-row');
+      participantsCell.colSpan = headers.length;
+      participantsCell.appendChild(createBreakoutParticipantsTable(currentMeeting, session, members));
+      participantsRow.appendChild(participantsCell);
+      tableBody.appendChild(participantsRow);
+    }
+  });
+
+  tableHead.appendChild(headerRow);
+  table.appendChild(tableHead);
+  table.appendChild(tableBody);
+  breakoutTableElm.innerHTML = '';
+
+  if (breakoutSessionsStarted) {
+    breakoutTableElm.appendChild(
+      createBreakoutBroadcastControls(currentMeeting, sessions)
+    );
+    breakoutTableElm.appendChild(
+      createBreakoutUnassignedParticipantsTable(currentMeeting, sessions)
+    );
+  }
+  breakoutTableElm.appendChild(sessionsHeader);
+  breakoutTableElm.appendChild(table);
+  breakoutTableElm.classList.remove('hidden');
+}
+
+function refreshBreakoutSessions() {
+  const currentMeeting = getCurrentMeeting();
+  const broadcastControls = breakoutTableElm.querySelector('.breakout-broadcast-controls');
+  const isRenamingSession = Boolean(
+    breakoutTableElm.querySelector('.breakout-session-name-input')
+  );
+  const isUsingBroadcastControls = broadcastControls?.contains(document.activeElement);
+
+  if (currentMeeting && breakoutSessionsStarted &&
+    !isRenamingSession && !isUsingBroadcastControls) {
+    renderBreakoutSessions(currentMeeting);
+  }
+}
+
+async function startBreakoutSessions() {
+  const currentMeeting = getCurrentMeeting();
+
+  if (!currentMeeting) {
+    setBreakoutStatus('Select and join a meeting before starting breakout sessions.', true);
+
+    return;
+  }
+
+  if (!breakoutSessionConfiguration) {
+    setBreakoutStatus('Create the breakout session configuration before starting.', true);
+
+    return;
+  }
+
+  breakoutStartButtonElm.disabled = true;
+  breakoutResetButtonElm.disabled = true;
+  const addSessionButton = document.getElementById('breakout-add-session');
+
+  if (addSessionButton) {
+    addSessionButton.disabled = true;
+  }
+  setBreakoutStatus('Creating and starting breakout sessions...');
+
+  try {
+    const createResult = await currentMeeting.breakouts.create({
+      allowBackToMain: true,
+      allowToJoinLater: true,
+      delayCloseTime: 60,
+      sessions: breakoutSessionConfiguration.sessions,
+    });
+    let createdGroup = createResult?.body?.groups?.[0];
+    let assignedParticipantCount = 0;
+
+    if (!createdGroup?.sessions?.length ||
+      createdGroup.sessions.some((session) => !getBreakoutSessionId(session))) {
+      const breakoutResult = await currentMeeting.breakouts.getBreakout();
+
+      createdGroup = breakoutResult?.body?.groups?.find((group) => group.status !== 'CLOSED') ||
+        breakoutResult?.body?.groups?.[0];
+    }
+
+    if (!createdGroup?.id || !createdGroup.sessions?.length) {
+      throw new Error('The breakout service did not return the created sessions.');
+    }
+
+    breakoutSessionsCreated = true;
+
+    if (breakoutSessionConfiguration.assignmentMethod === 'automatic') {
+      const {assignments, participants} = createBreakoutAutomaticAssignments(
+        currentMeeting,
+        createdGroup.sessions
+      );
+
+      if (participants.length) {
+        await currentMeeting.breakouts.assign(assignments);
+        assignedParticipantCount = participants.length;
+      }
+    }
+
+    const startResult = await currentMeeting.breakouts.start({
+      id: createdGroup.id,
+      allowBackToMain: true,
+      allowToJoinLater: breakoutSessionConfiguration.assignmentMethod !== 'automatic',
+    });
+    const startedGroup = startResult?.body?.groups?.[0];
+    const sessions = startedGroup?.sessions || createdGroup.sessions || breakoutSessionConfiguration.sessions;
+
+    breakoutSessionConfiguration.sessions = sessions;
+    breakoutSessionsStarted = true;
+    breakoutCreateButtonElm.disabled = true;
+    breakoutResetButtonElm.disabled = false;
+    renderBreakoutSessions(currentMeeting);
+    currentMeeting.breakouts.queryRosters();
+    let assignmentStatus = '';
+
+    if (breakoutSessionConfiguration.assignmentMethod === 'automatic') {
+      assignmentStatus = ` ${assignedParticipantCount} participant${assignedParticipantCount === 1 ? '' : 's'} assigned automatically.`;
+    }
+    else if (breakoutSessionConfiguration.assignmentMethod === 'manual') {
+      const {inMeeting, inLobby} = getBreakoutUnassignedParticipants(currentMeeting);
+      const unassignedParticipantCount = inMeeting.length + inLobby.length;
+
+      assignmentStatus = ` ${unassignedParticipantCount} eligible participant${unassignedParticipantCount === 1 ? '' : 's'} available under Not Assigned Participants.`;
+    }
+
+    setBreakoutStatus(
+      `${sessions.length} breakout session${sessions.length === 1 ? '' : 's'} created and started.${assignmentStatus}`
+    );
+  }
+  catch (error) {
+    breakoutStartButtonElm.disabled = false;
+    breakoutResetButtonElm.disabled = false;
+
+    if (addSessionButton) {
+      addSessionButton.disabled = breakoutSessionsCreated;
+    }
+    setBreakoutStatus('Unable to create and start breakout sessions. See the console for details.', true);
+    console.error('Breakout#startBreakoutSessions :: ', error);
   }
 }
 
@@ -3699,292 +5002,6 @@ const createAdmitDiv = () => {
 
   return containerDiv;
 };
-function viewBreakouts(event) {
-  const meeting = getCurrentMeeting();
-
-  const table = document.createElement('table');
-  const thead = document.createElement('thead');
-  const tbody = document.createElement('tbody');
-
-  const theadRow = document.createElement('tr');
-  const thName = document.createElement('th');
-  const th1 = document.createElement('th');
-  const th2 = document.createElement('th');
-  const th3 = document.createElement('th');
-  const th4 = document.createElement('th');
-  const th5 = document.createElement('th');
-  const th6 = document.createElement('th');
-
-  thName.innerText = 'Name';
-  th1.innerText = 'Active';
-  th2.innerText = 'Allowed';
-  th3.innerText = 'Assigned';
-  th4.innerText = 'Assigned Current';
-  th5.innerText = 'Requested';
-  th6.innerText = 'Controls';
-
-  theadRow.appendChild(thName);
-  theadRow.appendChild(th1);
-  theadRow.appendChild(th2);
-  theadRow.appendChild(th3);
-  theadRow.appendChild(th4);
-  theadRow.appendChild(th5);
-  theadRow.appendChild(th6);
-
-  const tbodyRow = document.createElement('tr');
-  const tdName = document.createElement('td');
-  const tdActive = document.createElement('td');
-  const tdAllowed = document.createElement('td');
-  const tdAssigned = document.createElement('td');
-  const tdAssignedCurrent = document.createElement('td');
-  const tdRequested = document.createElement('td');
-  const tdControls = document.createElement('td');
-  const assignControls = document.createElement('td');
-  const moveControls = document.createElement('td');
-
-  tbodyRow.appendChild(tdName);
-  tbodyRow.appendChild(tdActive);
-  tbodyRow.appendChild(tdAllowed);
-  tbodyRow.appendChild(tdAssigned);
-  tbodyRow.appendChild(tdAssignedCurrent);
-  tbodyRow.appendChild(tdRequested);
-  tbodyRow.appendChild(tdControls);
-  tbodyRow.appendChild(assignControls);
-  tbodyRow.appendChild(moveControls);
-
-  const createJoinSessionButton = (breakoutSession) => {
-    const button = document.createElement('button');
-
-    button.innerText = 'Join';
-
-    button.onclick = () => {
-      breakoutSession.join();
-    };
-
-    return button;
-  };
-
-  const createLeaveSessionButton = (breakoutSession) => {
-    const button = document.createElement('button');
-
-    button.innerText = 'Leave';
-
-    button.onclick = () => {
-      breakoutSession.leave();
-    };
-
-    return button;
-  };
-  const createAskForHelpButton = (breakoutSession) => {
-    const button = document.createElement('button');
-
-    button.innerText = 'Ask for help';
-
-    button.onclick = () => {
-      breakoutSession.askForHelp();
-    };
-
-    return button;
-  };
-  const createAskAllReturnButton = (breakoutSession) => {
-    const button = document.createElement('button');
-
-    button.innerText = 'Ask all return';
-
-    button.onclick = () => {
-      meeting.breakouts.askAllToReturn();
-    };
-
-    return button;
-  };
-  const getTextByRoleKey = (roleKey) => {
-    switch (roleKey) {
-      case 'all':
-        return 'All participants in session';
-      case 'presenters':
-        return 'All presenters';
-      case 'cohosts':
-        return 'All cohosts';
-      case 'cohpres':
-        return 'All cohosts and presenters';
-      default:
-        return '';
-    }
-  }
-  const getOptionsByRoleKey = (roleKey) => {
-    switch (roleKey) {
-      case 'presenters':
-        return {presenters: true};
-      case 'cohosts':
-        return {cohosts: true};
-      case 'cohpres':
-        return {presenters: true, cohosts: true};
-      default:
-        return;
-    }
-  }
-  const createBroadcastDiv = (breakoutSession) => {
-    const containerDiv = document.createElement('div');
-    const boSelector = document.createElement('select');
-    boSelector.style.display = 'inline-block';
-    const allSession = document.createElement('option');
-    allSession.value = 'all';
-    allSession.text = 'All breakout sessions';
-    boSelector.appendChild(allSession);
-    if (!meeting.breakouts.currentBreakoutSession.isMain) {
-      const breakoutSession = meeting.breakouts.currentBreakoutSession;
-      const option = document.createElement('option');
-      option.value = breakoutSession.sessionId;
-      option.text = breakoutSession.name;
-      boSelector.appendChild(option);
-    }
-    meeting.breakouts.breakouts.forEach((breakoutSession) => {
-      if (breakoutSession.isMain) {
-        return;
-      }
-      const option = document.createElement('option');
-      option.value = breakoutSession.sessionId;
-      option.text = breakoutSession.name;
-      boSelector.appendChild(option);
-    })
-    const roleSelector = document.createElement('select');
-    roleSelector.style.display = 'inline-block';
-    ['all', 'presenters', 'cohosts', 'cohpres'].forEach((key) => {
-      const option = document.createElement('option');
-      option.value = key;
-      option.text = getTextByRoleKey(key);
-      roleSelector.appendChild(option);
-    })
-    const msgInput = document.createElement('input');
-    msgInput.style.display = 'inline-block';
-    msgInput.placeholder = 'message';
-    const button = document.createElement('button');
-
-    button.innerText = 'broadcast';
-
-    button.onclick = () => {
-      const targetBo = boSelector.value;
-      const targetRole = roleSelector.value;
-      const message = msgInput.value;
-      const options = getOptionsByRoleKey(targetRole);
-
-      if (targetBo === 'all') {
-        meeting.breakouts.broadcast(message, options);
-      } else {
-        const boInstance = meeting.breakouts.sessionId === targetBo ?
-          meeting.breakouts.currentBreakoutSession : meeting.breakouts.breakouts.get(targetBo);
-        boInstance.broadcast(message, options);
-      }
-    };
-    containerDiv.appendChild(boSelector);
-    containerDiv.appendChild(roleSelector);
-    containerDiv.appendChild(msgInput);
-    containerDiv.appendChild(button);
-    return containerDiv;
-  };
-
-  const createAssignSessionButton = (breakoutSession) => {
-    const button = document.createElement('button');
-
-    button.innerText = 'Assign';
-    const {members} = meeting.members.membersCollection;
-    const assigned = Object.values(members).map(member=>member.id)
-    button.onclick = () => {
-      meeting.breakouts.assign([{
-        id: breakoutSession.sessionId,
-        memberIds: assigned,
-        anyone: true,
-      }]);
-    };
-
-    return button;
-  }
-
-  const createMoveSessionButton = (breakoutSession) => {
-    const button = document.createElement('button');
-
-    button.innerText = 'Move';
-    const {members} = meeting.members.membersCollection;
-    const assigned = Object.values(members).map(member=>member.id);
-    button.onclick = () => {
-      meeting.breakouts.breakouts.forEach(bo => {
-        if (bo.sessionId !== breakoutSession.sessionId && !bo.isMain){
-          // move to main
-          meeting.breakouts.assign([{
-            id: breakoutSession.sessionId,
-            memberIds:[],
-          },{
-            id: bo.sessionId,
-            memberIds: assigned,
-          }])
-        }
-      });
-
-
-    };
-
-    return button;
-  }
-
-  const appendSession = (parentElement, isTrue) => {
-    const sessionBooleanEl = document.createElement('div');
-
-    sessionBooleanEl.innerText = isTrue ? 'YES' : 'NO';
-    parentElement.appendChild(sessionBooleanEl);
-  };
-
-  meeting.breakouts.breakouts.forEach((breakoutSession) => {
-    const nameEl = document.createElement('div');
-
-    nameEl.innerText = breakoutSession.isMain ? 'Main Session' : breakoutSession.name;
-    tdName.appendChild(nameEl);
-
-    appendSession(tdActive, breakoutSession.active);
-
-    appendSession(tdAllowed, breakoutSession.allowed);
-
-    appendSession(tdAssigned, breakoutSession.assigned);
-
-    appendSession(tdAssignedCurrent, breakoutSession.assignedCurrent);
-
-    appendSession(tdRequested, breakoutSession.requested);
-
-    tdControls.appendChild(createJoinSessionButton(breakoutSession));
-    assignControls.appendChild(createAssignSessionButton(breakoutSession));
-    moveControls.appendChild(createMoveSessionButton(breakoutSession));
-
-  });
-  thead.appendChild(theadRow);
-  tbody.appendChild(tbodyRow);
-  table.appendChild(thead);
-  table.appendChild(tbody);
-
-  const currentBreakoutInformationEl = document.createElement('div');
-  const currentBreakoutInformationTitleEl = document.createElement('h3');
-
-  currentBreakoutInformationTitleEl.innerText = 'Current Breakout Session';
-  currentBreakoutInformationTitleEl.setAttribute('style', 'margin-top:0');
-  currentBreakoutInformationEl.appendChild(currentBreakoutInformationTitleEl);
-  const currentBreakoutSessionName = document.createElement('div');
-
-  currentBreakoutSessionName.innerText = meeting.breakouts.isInMainSession ? 'Main Session' : meeting.breakouts.name;
-  currentBreakoutInformationEl.appendChild(currentBreakoutSessionName);
-  const selfIsHost = meeting.moderator;
-  const hasBreakoutSessions = meeting.breakouts.breakouts.length > 0;
-  !meeting.breakouts.isInMainSession && !selfIsHost && currentBreakoutInformationEl.appendChild(createAskForHelpButton(meeting.breakouts.currentBreakoutSession));
-  selfIsHost && currentBreakoutInformationEl.appendChild(createAskAllReturnButton(meeting.breakouts.currentBreakoutSession));
-  currentBreakoutInformationEl.appendChild(createLeaveSessionButton(meeting.breakouts.currentBreakoutSession));
-
-  selfIsHost && hasBreakoutSessions && currentBreakoutInformationEl.appendChild(createBroadcastDiv(meeting.breakouts.currentBreakoutSession));
-  breakoutTable.innerHTML = '';
-  breakoutTable.appendChild(currentBreakoutInformationEl);
-  const breakoutTableTitle = document.createElement('h3');
-
-  breakoutTableTitle.innerText = 'Other Sessions';
-  breakoutTable.appendChild(breakoutTableTitle);
-  breakoutTable.appendChild(table);
-}
-
 function createMembersTable(members) {
   function createLabel(id, value = '') {
     const label = document.createElement('label');

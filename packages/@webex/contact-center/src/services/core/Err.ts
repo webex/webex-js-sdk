@@ -30,6 +30,7 @@ export type TaskErrorIds =
   | {'Service.aqm.err.trackingId': {trackingId: string}}
   | {'Service.aqm.task.consultAccept': Failure}
   | {'Service.aqm.task.consultConference': Failure}
+  | {'Service.aqm.task.dropConferenceParticipant': Failure}
   | {'Service.aqm.task.consultEnd': Failure}
   | {'Service.aqm.task.cancelCtq': Failure}
   | {'Service.aqm.task.hold': Failure}

@@ -102,7 +102,7 @@ export const processNewCaptions = ({
 
       interimTranscriptionIds.push(interimId);
     } else {
-      transcriptData.interimCaptions[transcriptId].forEach((innerInterimId) => {
+      (transcriptData.interimCaptions[transcriptId] ?? []).forEach((innerInterimId) => {
         const interimTranscriptIndex = transcriptData.captions.findIndex(
           (transcript) => transcript.id === innerInterimId
         );

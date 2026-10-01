@@ -55,8 +55,12 @@
             <input type="checkbox" id="disableWebRTCRegistrationFlag" onchange="toggleWebRTCRegistration()">
             Disable WebRTC Registration
           </label>
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-top: 8px;">
+            <input type="checkbox" id="enableWxBetterTogetherFlag" onchange="toggleWxBetterTogether()">
+            Enable Answer on Webex App
+          </label>
           <p class="note" style="margin-top: 5px;">
-            NOTE: Toggle before initializing SDK. Persisted across page reloads.
+            NOTE: Set before SDK init; re-init to change after login. Persisted across page reloads.
           </p>
         </fieldset>
 
@@ -271,11 +275,24 @@
         <fieldset>
           <legend>Incoming Task</legend>
           <div class="u-mv">
-            <pre id="incoming-task"> No Incoming Tasks</pre>
+            <pre id="incoming-task" tabindex="-1"> No Incoming Tasks</pre>
             <button onclick="answer()" disabled="" id="answer" class="btn--green">Answer</button>
             <button onclick="decline()" disabled="" id="decline" class="btn--red">Decline</button>
           </div>
-          <div id="participant-list"></div>
+          <p id="participant-drop-status" class="sr-only" aria-live="polite"></p>
+          <p id="participant-drop-error" class="conference-roster__error" role="alert" aria-live="assertive"></p>
+          <section id="participant-list" class="conference-roster" aria-labelledby="participant-list-heading" hidden>
+            <h3 id="participant-list-heading" tabindex="-1">Conference participants</h3>
+            <div id="participant-roster-content"></div>
+          </section>
+          <dialog id="customer-drop-dialog" aria-labelledby="customer-drop-dialog-heading" aria-describedby="customer-drop-dialog-description">
+            <h3 id="customer-drop-dialog-heading">Drop customer?</h3>
+            <p id="customer-drop-dialog-description">The customer will be removed from this conference.</p>
+            <div class="conference-roster__dialog-actions">
+              <button type="button" id="cancel-customer-drop">Cancel</button>
+              <button type="button" id="confirm-customer-drop" class="btn--red">Drop customer</button>
+            </div>
+          </dialog>
         </fieldset>
         <fieldset>
           <legend>Remote Audio</legend>
@@ -290,6 +307,59 @@
           <div class="u-mv">
             <button onclick="holdResumeCall()" id="hold-resume" class="btn--yellow" disabled>Hold</button>
             <button onclick="muteUnmute()" id="mute-unmute" class="btn--yellow" disabled>Mute</button>
+            <span class="task-keypad-wrap">
+              <button onclick="toggleTaskKeypad()" id="keypad-toggle" class="btn--yellow" disabled>Keypad</button>
+              <div id="task-keypad-panel" class="task-keypad-panel" hidden>
+                <input id="task-keypad-input" placeholder="Enter the number" autocomplete="off" aria-label="Enter the number" onkeydown="handleTaskKeypadInputKeydown(event)">
+                <div class="task-keypad-keys">
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('1')">
+                    <span class="task-keypad-digit">1</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('2')">
+                    <span class="task-keypad-digit">2</span>
+                    <span class="task-keypad-letters">ABC</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('3')">
+                    <span class="task-keypad-digit">3</span>
+                    <span class="task-keypad-letters">DEF</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('4')">
+                    <span class="task-keypad-digit">4</span>
+                    <span class="task-keypad-letters">GHI</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('5')">
+                    <span class="task-keypad-digit">5</span>
+                    <span class="task-keypad-letters">JKL</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('6')">
+                    <span class="task-keypad-digit">6</span>
+                    <span class="task-keypad-letters">MNO</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('7')">
+                    <span class="task-keypad-digit">7</span>
+                    <span class="task-keypad-letters">PQRS</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('8')">
+                    <span class="task-keypad-digit">8</span>
+                    <span class="task-keypad-letters">TUV</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('9')">
+                    <span class="task-keypad-digit">9</span>
+                    <span class="task-keypad-letters">WXYZ</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('*')">
+                    <span class="task-keypad-digit">*</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('0')">
+                    <span class="task-keypad-digit">0</span>
+                    <span class="task-keypad-letters">+</span>
+                  </button>
+                  <button type="button" class="task-keypad-key" onclick="pressTaskKeypadDigit('#')">
+                    <span class="task-keypad-digit">#</span>
+                  </button>
+                </div>
+              </div>
+            </span>
             <button onclick="showInitiateConsultDialog()" id="consult" class="btn--blue" disabled>Consult</button>
             <button onclick="toggleTransferOptions()" id="transfer" class="btn--blue" disabled>Transfer</button>
             <button onclick="endConsult()" id="end-consult" class="btn--red" style="display: none;">End Consult</button>
@@ -455,6 +525,37 @@
       <div id="aiAssistantSection">
         <fieldset>
           <legend>Cisco AI Assistant</legend>
+          <section class="wellness-card" aria-labelledby="wellness-heading">
+            <div class="wellness-card__heading">
+              <div>
+                <h3 id="wellness-heading">Agent Wellness Break</h3>
+                <p>Exercises the agent-level SDK API with live registration and notifications.</p>
+              </div>
+              <span id="wellness-ready-badge" class="wellness-badge">Unavailable</span>
+            </div>
+
+            <dl class="wellness-status-grid">
+              <div><dt>Effective gate</dt><dd id="wellness-enabled-status">Not registered</dd></div>
+              <div><dt>Agent session</dt><dd id="wellness-session-status">Not logged in</dd></div>
+              <div><dt>System code</dt><dd id="wellness-code-status">Not loaded</dd></div>
+              <div><dt>Lifecycle</dt><dd id="wellness-lifecycle-status">Unavailable</dd></div>
+            </dl>
+
+            <p id="wellness-message" class="wellness-message" aria-live="polite">
+              Register and log in to test this feature.
+            </p>
+            <div class="wellness-actions">
+              <button id="wellness-request" type="button" class="btn--green" disabled>Take wellbeing break</button>
+              <button id="wellness-accept" type="button" class="btn--green" disabled>Take a break</button>
+              <button id="wellness-reject" type="button" class="btn--red" disabled>Later</button>
+              <button id="wellness-no-response" type="button" disabled>Send no response</button>
+              <button id="wellness-restore" type="button" disabled>Restore previous state</button>
+            </div>
+            <details class="wellness-event-details">
+              <summary>Latest wellness event action</summary>
+              <pre id="wellness-event-output">No wellness event received.</pre>
+            </details>
+          </section>
           <div class="assistant-card">
             <div id="ai-assistant-content" class="assistant-content"></div>
             <div class="assistant-actions">
@@ -518,6 +619,7 @@
   </script>
 
   <script src="../contact-center.min.js"></script>
+  <script src="wellness-utils.js"></script>
   <script id="imi-controller-bundle" dc="produs1" src="https://wc.imiengage.io/engage.js" defer></script>
   <script src="https://wc.imiengage.io/v0.9.11/momentum/momentum.js" defer></script>
   <script src="app.js"></script>

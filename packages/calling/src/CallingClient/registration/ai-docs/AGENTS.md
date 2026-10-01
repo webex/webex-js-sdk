@@ -89,6 +89,8 @@ A dedicated Web Worker manages keepalive requests to ensure a responsive and rel
 
 - Worker posts `KEEPALIVE_SUCCESS` **only when recovering** from a previous failure (`retryCount > 0` before the success). Normal successes silently reset the counter.
 - On **429**: `handle429Retry` clears the current worker and schedules a new keepalive timer after the `Retry-After` delay.
+- On **409**: `handleRegistrationErrors` invokes the keepalive-only `sessionSupersededCb`, so `handle409KeepaliveFailure` treats the failure as a hard stop on the very first occurrence — the retry count is ignored, the worker is terminated, no registration is attempted, and the consumer receives `UNREGISTERED` carrying the superseded reason. A terminal `409` makes the keepalive branch return before its generic failure handling, and latches `sessionSuperseded` immediately — before cleanup waits on the shared mutex — so that no automatic recovery path (network flap, calls cleared, an already-scheduled failover or failback) re-registers the session. The latch is checked in one place, `attemptRegistrationWithServers`, which every registration attempt funnels through; it returns `abort = true` there, and because each caller's `if (!abort …)` guard short-circuits, no failover timer is rescheduled either. Only an explicit `triggerRegistration()` clears it.
+- A keepalive whose result arrives after its worker was replaced (failback, connection restoration) is discarded, so a stale `409` cannot tear down the registration that replaced it.
 - On **fatal error** (abort) or **retries exceeded** (retryCount >= threshold, 4 for CC / 5 otherwise): the worker is terminated and the main thread either calls `reconnectOnFailure` (non-fatal threshold) or attempts fresh registration (404).
 - On **non-fatal error below threshold**: only `LINE_EVENTS.RECONNECTING` is emitted; the worker keeps running.
 
@@ -103,6 +105,7 @@ Robust error handling is built in for registration and keepalive via `handleRegi
 - **403 (Device Creation Disabled, code 102):** Fatal — `abort = true`.
 - **429 Too Many Requests:** Non-fatal — stores `Retry-After` value via `handle429Retry`. During initial registration, the loop continues to the next server; the stored value influences `startFailoverTimer` interval. During failback, retries up to `REG_FAILBACK_429_MAX_RETRIES` (5).
 - **500 / 503 / Other:** Non-fatal — the loop in `attemptRegistrationWithServers` continues to the next server. If all servers fail, `startFailoverTimer` schedules retries with exponential backoff.
+- **409 Conflict (keepalive only):** Hard stop — `handleRegistrationErrors` builds the `SESSION_SUPERSEDED` error and hands it to `handle409KeepaliveFailure` through `sessionSupersededCb`, so no server loop, failover, or restore is attempted. Flows that do not pass that handler (registration, restoration, failover, failback) log the `409` and ignore it — non-final, no consumer event, no metric — and continue to the next server.
 
 ---
 
@@ -111,7 +114,7 @@ Robust error handling is built in for registration and keepalive via `handleRegi
 When Mobius emits a `REGISTRATION_DOWN` async event, `CallingClient` forwards it to `Registration.handleRegistrationDownEvent`:
 
 1. Retrieves the first active call (if any) from `CallManager` and immediately calls `activeCall?.end()` to tear it down.
-2. Calls `performRegistrationDownCleanup` unconditionally — there is no deferral, no `registrationDownPending` flag, and no polling interval.
+2. Calls `registrationCleanup` unconditionally — there is no deferral, no `registrationDownPending` flag, and no polling interval.
 
 Cleanup (under the shared mutex) performs:
 - `clearFailbackTimer()` and `clearKeepaliveTimer()`
@@ -119,8 +122,11 @@ Cleanup (under the shared mutex) performs:
 - `clearFailoverState()` and `setStatus(RegistrationStatus.INACTIVE)`
 - Disconnects the Mobius WebSocket when `apiRequest.isSocketEnabled()` (code `3050`, reason `'done (permanent)'`)
 - Emits `LINE_EVENTS.UNREGISTERED` via `lineEmitter` so the SDK consumer is notified
+- For a superseded session, that event carries the `LineError` describing why the line stays unregistered
 
 No `DELETE /devices/{id}` is sent because Mobius has already signaled that the registration is gone.
+
+`registrationCleanup(caller, hardStop)` is shared with the keepalive `409 Conflict` path. The `HardStop` discriminated union (`src/CallingClient/registration/types.ts`) selects the log label (`registration-down` / `session-superseded`) and requires the `LineError` for a superseded session, so the terminal event and its payload cannot be mismatched.
 
 ---
 

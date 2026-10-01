@@ -26,6 +26,9 @@ import {
   UpdateDeviceTypeResponse,
   GenericError,
   ConfigFlags,
+  WellnessBreakEvent,
+  WellnessBreakNotificationAction,
+  WELLNESS_BREAK_NOTIFICATION_ACTIONS,
 } from './types';
 import {
   READY,
@@ -38,6 +41,7 @@ import {
   UNKNOWN_ERROR,
   MERCURY_DISCONNECTED_SUCCESS,
   METHODS,
+  WELLNESS_BREAK_HANDLER,
 } from './constants';
 import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
 import {AGENT, RTD_SUBSCRIBE_API, SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
@@ -45,17 +49,22 @@ import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
-import {getErrorDetails, isValidDialNumber} from './services/core/Utils';
+import {getErrorDetails, isRecord, isValidDialNumber} from './services/core/Utils';
 import {
   Profile,
   WelcomeEvent,
   CC_EVENTS,
   OutdialAniEntriesResponse,
   OutdialAniParams,
+  Entity,
 } from './services/config/types';
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
+import AnswerCallOnWebexService from './services/AnswerCallOnWebexService';
+import WebexCrossClientService from './services/WebexCrossClientService';
+import WxAppTelephonyMercurySync from './services/WxAppTelephonyMercurySync';
+import {logWxAppSessionReadiness} from './services/wxAppDiagnosticLogging';
 import {
   ITask,
   TASK_EVENTS,
@@ -233,6 +242,34 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private webCallingService: WebCallingService;
 
   /**
+   * REST telephony for wxApp thick-client answer (WXCC-6026)
+   * @private
+   */
+  private answerCallOnWebexService: AnswerCallOnWebexService;
+
+  /**
+   * usersub cross-client state for Webex App toast suppression
+   * @private
+   */
+  private webexCrossClientService: WebexCrossClientService;
+
+  /**
+   * Mercury telephony mute sync for wxApp thick-client answer
+   * @private
+   */
+  private wxAppTelephonyMercurySync: WxAppTelephonyMercurySync;
+
+  /** True when wxApp mute sync opened Mercury (Extension/DN-only profiles). */
+  private wxAppMercuryConnectedByCc = false;
+
+  /** True when wxApp mute sync registered the Webex device. */
+  private wxAppDeviceRegisteredByCc = false;
+
+  private static readonly WXAPP_FALSE_PUBLISH_RETRY_DELAY_MS = 30_000;
+  private static readonly WXAPP_FALSE_PUBLISH_MAX_RETRIES = 3;
+  private wxAppFalsePublishRetryTimer?: ReturnType<typeof setTimeout>;
+
+  /**
    * Core service managers for Contact Center operations
    * Includes agent, connection, and configuration services
    * @type {Services}
@@ -263,6 +300,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private metricsManager: MetricsManager;
+
+  /** Current login/relogin session used for agent-scoped wellness validation. */
+  private currentAgentSessionId?: string;
+
+  /** Registered-session cache for the system WellbeingBreak idle code. */
+  private wellbeingBreakIdleCode?: Entity;
+
+  /** Registration generation that owns the wellness idle-code cache and in-flight lookups. */
+  private wellnessRegistrationGeneration = 0;
+
+  private updateWellnessSession(agentSessionId?: string): void {
+    this.currentAgentSessionId = agentSessionId;
+  }
 
   /**
    * API instance for managing Webex Contact Center entry points
@@ -405,7 +455,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       });
 
       this.webCallingService = new WebCallingService(this.$webex);
-      this.apiAIAssistant = new ApiAIAssistant(this.$webex);
+      this.answerCallOnWebexService = new AnswerCallOnWebexService(this.$webex);
+      this.webexCrossClientService = new WebexCrossClientService(this.$webex);
+      this.wxAppTelephonyMercurySync = new WxAppTelephonyMercurySync(this.$webex);
+      this.apiAIAssistant = new ApiAIAssistant(this.$webex, () => ({
+        isWellnessBreakEnabled: this.agentConfig?.isWellnessBreakEnabled === true,
+        agentId: this.agentConfig?.agentId,
+        agentSessionId: this.currentAgentSessionId,
+      }));
       this.metricsManager = MetricsManager.getInstance({webex: this.$webex});
       this.taskManager = TaskManager.getTaskManager(
         this.apiAIAssistant,
@@ -414,6 +471,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.services.webSocketManager,
         this.services.rtdWebSocketManager
       );
+      this.taskManager.setAnswerCallOnWebexService(this.answerCallOnWebexService);
       this.incomingTaskListener();
 
       // Initialize API instances
@@ -476,7 +534,126 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.trigger(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, task);
   };
 
+  private trackInvalidWellnessEvent(reason: string): void {
+    this.metricsManager.trackEvent(
+      METRIC_EVENT_NAMES.AI_ASSISTANT_WELLNESS_EVENT_INVALID,
+      {reason},
+      ['operational']
+    );
+  }
+
+  private normalizeWellnessBreakEvent(payload: Record<string, unknown>): WellnessBreakEvent | null {
+    if (this.agentConfig?.isWellnessBreakEnabled !== true) {
+      this.trackInvalidWellnessEvent('wellness_disabled');
+
+      return null;
+    }
+
+    const notificationData = isRecord(payload.data) ? payload.data : null;
+    const notificationDetails =
+      notificationData && isRecord(notificationData.notifDetails)
+        ? notificationData.notifDetails
+        : null;
+    const sessionData =
+      notificationData && isRecord(notificationData.data) ? notificationData.data : null;
+    const actionEvent = notificationDetails?.actionEvent;
+
+    if (
+      payload.type !== WELLNESS_BREAK_HANDLER ||
+      notificationData?.notifType !== WELLNESS_BREAK_HANDLER ||
+      typeof actionEvent !== 'string'
+    ) {
+      this.trackInvalidWellnessEvent('malformed_wellness_event');
+
+      return null;
+    }
+
+    if (
+      !Object.values(WELLNESS_BREAK_NOTIFICATION_ACTIONS).includes(
+        actionEvent as WellnessBreakNotificationAction
+      )
+    ) {
+      this.trackInvalidWellnessEvent('unknown_wellness_action');
+
+      return null;
+    }
+
+    const agentId = notificationData.agentId;
+    const eventOrgId = notificationData.orgId;
+    const sessionOrgId = sessionData?.orgId;
+    const envelopeOrgId = payload.orgId;
+    const agentSessionId = sessionData?.agentSessionId;
+    const currentOrgId = this.$webex.credentials.getOrgId();
+
+    if (
+      typeof agentId !== 'string' ||
+      typeof eventOrgId !== 'string' ||
+      typeof sessionOrgId !== 'string' ||
+      typeof envelopeOrgId !== 'string' ||
+      typeof agentSessionId !== 'string' ||
+      !agentId ||
+      !eventOrgId ||
+      !sessionOrgId ||
+      !envelopeOrgId ||
+      !agentSessionId
+    ) {
+      this.trackInvalidWellnessEvent('missing_wellness_identity');
+
+      return null;
+    }
+
+    if (
+      agentId !== this.agentConfig?.agentId ||
+      eventOrgId !== currentOrgId ||
+      sessionOrgId !== currentOrgId ||
+      envelopeOrgId !== currentOrgId
+    ) {
+      this.trackInvalidWellnessEvent('mismatched_wellness_identity');
+
+      return null;
+    }
+
+    const interactionValue = sessionData.interactionId ?? sessionData.InteractionId;
+    const actionText = notificationDetails.actionText;
+    const trackingId = payload.trackingId;
+
+    return {
+      agentId,
+      orgId: currentOrgId,
+      agentSessionId,
+      actionEvent: actionEvent as WellnessBreakNotificationAction,
+      ...(typeof actionText === 'string' ? {actionText} : {}),
+      ...(typeof interactionValue === 'string' ? {interactionId: interactionValue} : {}),
+      ...(typeof trackingId === 'string' ? {trackingId} : {}),
+    };
+  }
+
+  private handleWellnessBreakWebsocketPayload(payload: Record<string, unknown>): boolean {
+    if (payload.type !== WELLNESS_BREAK_HANDLER) {
+      return false;
+    }
+
+    const wellnessEvent = this.normalizeWellnessBreakEvent(payload);
+    if (wellnessEvent) {
+      // @ts-ignore - WebexPlugin emit is available at runtime but absent from its declaration.
+      this.emit(CC_EVENTS.WELLNESS_BREAK, wellnessEvent);
+    }
+
+    return true;
+  }
+
   private handleRTDWebsocketMessage = (event: string) => {
+    let payload: unknown;
+    try {
+      payload = JSON.parse(event);
+    } catch {
+      // TaskManager retains its existing malformed RTD message handling.
+    }
+
+    if (isRecord(payload) && this.handleWellnessBreakWebsocketPayload(payload)) {
+      return;
+    }
+
     this.taskManager.handleRealtimeWebsocketEvent(event);
   };
 
@@ -533,6 +710,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async register(): Promise<Profile> {
+    this.wellnessRegistrationGeneration += 1;
+    this.wellbeingBreakIdleCode = undefined;
     LoggerProxy.log('Starting CC SDK registration', {
       module: CC_FILE,
       method: METHODS.REGISTER,
@@ -562,7 +741,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         method: METHODS.REGISTER,
       });
 
-      return resp;
+      // Registration can silently restore a station session without emitting a
+      // relogin event. Project the active session for consumers that must
+      // recover session-scoped state after a page refresh.
+      return resp.isAgentLoggedIn && this.currentAgentSessionId
+        ? {...resp, agentSessionId: this.currentAgentSessionId}
+        : resp;
     } catch (error) {
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
@@ -615,6 +799,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
    */
   public async deregister(): Promise<void> {
+    this.wellnessRegistrationGeneration += 1;
+    this.wellbeingBreakIdleCode = undefined;
+    this.updateWellnessSession();
     try {
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
@@ -633,6 +820,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
       this.services.rtdWebSocketManager.off('message', this.handleRTDWebsocketMessage);
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
+
+      const {publishError: wxAppPublishError} = await this.teardownWxAppLocalState({
+        clearInitFlag: true,
+      });
 
       if (
         this.agentConfig.webRtcEnabled &&
@@ -663,7 +854,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
 
       // Clear any cached agent configuration
+      this.wellbeingBreakIdleCode = undefined;
       this.agentConfig = null;
+      this.updateWellnessSession();
+
+      if (wxAppPublishError) {
+        throw wxAppPublishError;
+      }
 
       LoggerProxy.log('Deregistered successfully', {
         module: CC_FILE,
@@ -727,6 +924,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse> {
+    const {action, state, mediaType = 'telephony'} = data;
+    const buddyAgentState = state ?? (action === 'Transfer' ? AGENT_STATE_AVAILABLE : undefined);
+
     LoggerProxy.info('Fetching buddy agents', {
       module: CC_FILE,
       method: METHODS.GET_BUDDY_AGENTS,
@@ -737,15 +937,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_FAILED,
       ]);
       const resp = await this.services.agent.buddyAgents({
-        data: {agentProfileId: this.agentConfig.agentProfileID, ...data},
+        data: {
+          agentProfileId: this.agentConfig.agentProfileID,
+          mediaType,
+          ...(buddyAgentState ? {state: buddyAgentState} : {}),
+        },
       });
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_SUCCESS,
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
-          mediaType: data.mediaType,
-          buddyAgentState: data.state,
+          mediaType,
+          buddyAgentState,
           buddyAgentCount: resp.data.agentList.length,
         },
         ['operational']
@@ -765,8 +969,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_FAILED,
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failureResp),
-          mediaType: data.mediaType,
-          buddyAgentState: data.state,
+          mediaType,
+          buddyAgentState,
         },
         ['operational']
       );
@@ -808,6 +1012,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webRtcEnabled: this.agentConfig.webRtcEnabled,
         autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
         aiFeature: this.agentConfig.aiFeature,
+        consultTransfer: {
+          allowConsultToQueue: this.agentConfig.allowConsultToQueue,
+          accessQueue: this.agentConfig.accessQueue,
+          accessEntryPoint: this.agentConfig.accessEntryPoint,
+          accessBuddyTeam: this.agentConfig.accessBuddyTeam,
+        },
+        enableWxBetterTogether: this.isWxBetterTogetherEnabled(),
+        getWxAppUsersubPublished: () => this.webexCrossClientService.isAnswerCallsStateActive(),
       };
       this.taskManager.setConfigFlags(configFlags);
       // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
@@ -815,14 +1027,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.taskManager.setAgentId(this.agentConfig.agentId);
       this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
       this.apiAIAssistant.setAIFeatureFlags(this.agentConfig.aiFeature);
+      this.wellbeingBreakIdleCode = undefined;
+      this.updateWellnessSession();
 
       /**
        * RTD websocket currently supports realtime transcripts and suggested responses.
        * Extend this condition when additional AI RTD features are introduced.
+       * Wellness break notifications also arrive on this websocket.
        */
       if (
         this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||
-        this.agentConfig.aiFeature?.suggestedResponses?.enable
+        this.agentConfig.aiFeature?.suggestedResponses?.enable ||
+        this.agentConfig.isWellnessBreakEnabled
       ) {
         LoggerProxy.info('Connecting to RTD websocket', {
           module: CC_FILE,
@@ -887,6 +1103,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return this.agentConfig;
     } catch (error) {
+      this.updateWellnessSession();
       LoggerProxy.error(`Error during register: ${error}`, {
         module: CC_FILE,
         method: METHODS.CONNECT_WEBSOCKET,
@@ -958,14 +1175,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       }
 
+      const deviceId = this.getDeviceId(data.loginOption, data.dialNumber);
       const loginResponse = await this.services.agent.stationLogin({
         data: {
-          dialNumber:
-            data.loginOption === LoginOption.BROWSER ? this.agentConfig.agentId : data.dialNumber,
+          // BROWSER DN must be webrtc-{agentId} so VPOP/RTMS do not treat a bare UUID as PSTN.
+          dialNumber: data.loginOption === LoginOption.BROWSER ? deviceId : data.dialNumber,
           teamId: data.teamId,
           deviceType: data.loginOption,
           isExtension: data.loginOption === LoginOption.EXTENSION,
-          deviceId: this.getDeviceId(data.loginOption, data.dialNumber),
+          deviceId,
           roles: [AGENT],
           teamName: EMPTY_STRING,
           siteId: EMPTY_STRING,
@@ -996,6 +1214,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       const resp = await loginResponse;
       const {channelsMap, ...loginData} = resp.data;
+      this.updateWellnessSession(resp.data.agentSessionId);
       this.agentConfig.currentTeamId = resp.data.teamId;
       const response = {
         ...loginData,
@@ -1009,6 +1228,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       };
 
       this.webCallingService.setLoginOption(data.loginOption);
+      if (this.agentConfig) {
+        this.agentConfig.deviceType = data.loginOption;
+        if (
+          data.loginOption === LoginOption.AGENT_DN ||
+          data.loginOption === LoginOption.EXTENSION
+        ) {
+          this.agentConfig.defaultDn = data.dialNumber;
+          this.agentConfig.dn = data.dialNumber;
+        }
+      }
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
         {
@@ -1029,6 +1258,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           trackingId: resp.trackingId,
         }
       );
+
+      await this.ensureWxAppPostStationLogin();
 
       return response;
     } catch (error) {
@@ -1097,6 +1328,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (this.webCallingService) {
         this.webCallingService.deregisterWebCallingLine();
       }
+
+      await this.teardownWxAppLocalState();
+      this.updateWellnessSession();
 
       LoggerProxy.log(`Agent station logout completed successfully`, {
         module: CC_FILE,
@@ -1235,6 +1469,77 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
+   * Returns the system-managed `WellbeingBreak` idle code for the current registration.
+   * The value is fetched outside Desktop Profile filtering and cached until deregistration.
+   * @returns The normalized system idle-code entity
+   * @throws Structured Contact Center error when wellness is disabled or the code is unavailable
+   * @example
+   * const idleCode = await webex.cc.getWellbeingBreakIdleCode();
+   * @public
+   */
+  public async getWellbeingBreakIdleCode(): Promise<Entity> {
+    const method = METHODS.GET_WELLBEING_BREAK_IDLE_CODE;
+    try {
+      if (!this.agentConfig?.isWellnessBreakEnabled) {
+        const validationError = new Error('WELLNESS_BREAK_NOT_ENABLED') as GenericError;
+        validationError.details = {
+          type: 'SDK_VALIDATION_ERROR',
+          orgId: this.$webex.credentials.getOrgId(),
+          trackingId: EMPTY_STRING,
+          data: {reason: 'WELLNESS_BREAK_NOT_ENABLED'},
+        };
+        throw validationError;
+      }
+
+      if (this.wellbeingBreakIdleCode) {
+        return this.wellbeingBreakIdleCode;
+      }
+
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS,
+        METRIC_EVENT_NAMES.WELLBEING_BREAK_IDLE_CODE_FETCH_FAILED,
+      ]);
+      const registrationGeneration = this.wellnessRegistrationGeneration;
+      const orgId = this.$webex.credentials.getOrgId();
+      const idleCode = await this.services.config.getWellbeingBreakIdleCode(orgId);
+
+      if (
+        registrationGeneration !== this.wellnessRegistrationGeneration ||
+        orgId !== this.$webex.credentials.getOrgId() ||
+        !this.agentConfig?.isWellnessBreakEnabled
+      ) {
+        const staleRegistrationError = new Error(
+          'WELLNESS_BREAK_REGISTRATION_CHANGED'
+        ) as GenericError;
+        staleRegistrationError.details = {
+          type: 'SDK_VALIDATION_ERROR',
+          orgId,
+          trackingId: EMPTY_STRING,
+          data: {reason: 'WELLNESS_BREAK_REGISTRATION_CHANGED'},
+        };
+        throw staleRegistrationError;
+      }
+
+      this.wellbeingBreakIdleCode = idleCode;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WELLBEING_BREAK_IDLE_CODE_FETCH_SUCCESS,
+        {},
+        ['operational']
+      );
+
+      return idleCode;
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WELLBEING_BREAK_IDLE_CODE_FETCH_FAILED,
+        {reason: error instanceof Error ? error.message : UNKNOWN_ERROR},
+        ['operational']
+      );
+      const {error: detailedError} = getErrorDetails(error, method, CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  /**
    * Processes incoming websocket messages and emits corresponding events
    * Handles various event types including agent state changes, login events,
    * and other agent-related notifications
@@ -1272,8 +1577,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       ]);
     }
 
+    if (this.handleWellnessBreakWebsocketPayload(eventData)) {
+      return;
+    }
+
     switch (eventData.type) {
       case CC_EVENTS.AGENT_MULTI_LOGIN:
+        if (
+          eventData.data?.type === 'AgentMultiLoginCloseSession' &&
+          (!eventData.data.agentSessionId ||
+            eventData.data.agentSessionId === this.currentAgentSessionId)
+        ) {
+          this.updateWellnessSession();
+        }
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_MULTI_LOGIN, eventData.data);
         break;
@@ -1292,6 +1608,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     switch (eventData.data.type) {
       case CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS: {
         const {channelsMap, ...loginData} = eventData.data;
+        this.updateWellnessSession(loginData.agentSessionId);
         const stationLoginData = {
           ...loginData,
           mmProfile: {
@@ -1307,23 +1624,23 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, stationLoginData);
         break;
       }
-      case CC_EVENTS.AGENT_RELOGIN_SUCCESS:
-        {
-          const {channelsMap, ...loginData} = eventData.data;
-          const stationReLoginData = {
-            ...loginData,
-            mmProfile: {
-              chat: channelsMap.chat?.length,
-              email: channelsMap.email?.length,
-              social: channelsMap.social?.length,
-              telephony: channelsMap.telephony?.length,
-            },
-            notifsTrackingId: eventData.trackingId,
-          };
-          // @ts-ignore
-          this.emit(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, stationReLoginData);
-        }
+      case CC_EVENTS.AGENT_RELOGIN_SUCCESS: {
+        const {channelsMap, ...loginData} = eventData.data;
+        this.updateWellnessSession(loginData.agentSessionId);
+        const stationReLoginData = {
+          ...loginData,
+          mmProfile: {
+            chat: channelsMap.chat?.length,
+            email: channelsMap.email?.length,
+            social: channelsMap.social?.length,
+            telephony: channelsMap.telephony?.length,
+          },
+          notifsTrackingId: eventData.trackingId,
+        };
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, stationReLoginData);
         break;
+      }
       case CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS:
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, eventData.data);
@@ -1337,6 +1654,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_FAILED, eventData.data);
         break;
       case CC_EVENTS.AGENT_LOGOUT_SUCCESS:
+        if (
+          !eventData.data.agentSessionId ||
+          eventData.data.agentSessionId === this.currentAgentSessionId
+        ) {
+          this.updateWellnessSession();
+        }
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_LOGOUT_SUCCESS, eventData.data);
         break;
@@ -1374,6 +1697,593 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       throw new Error(
         'Invalid Contact Center configuration: disableWebRTCRegistration cannot be true when allowMultiLogin is false. Enable allowMultiLogin or allow WebRTC registration so an SDK instance can receive Mobius/WebRTC task events.'
       );
+    }
+  }
+
+  /**
+   * Whether wxApp thick-client answer is enabled for this SDK instance.
+   * @public
+   */
+  public isWxBetterTogetherEnabled(): boolean {
+    return this.$config?.enableWxBetterTogether === true;
+  }
+
+  /**
+   * Current station login option (Extension, Dial Number, or Browser/Desktop).
+   * Prefer webCallingService — updated on every stationLogin before wxApp hooks run.
+   * @private
+   */
+  private getCurrentStationLoginOption(): LoginOption | undefined {
+    return this.webCallingService?.loginOption ?? this.agentConfig?.deviceType;
+  }
+
+  /**
+   * wxApp thick-client answer is supported for Extension and Dial Number station login only —
+   * not Browser/Desktop (WebRTC) login.
+   * @private
+   */
+  private assertWxAppStationLoginSupportedForEnable(): void {
+    const loginOption = this.getCurrentStationLoginOption();
+    if (loginOption !== LoginOption.EXTENSION && loginOption !== LoginOption.AGENT_DN) {
+      throw new Error(
+        'setManageWebexCallingInWxcc requires EXTENSION or AGENT_DN station login. Complete station login before enabling.'
+      );
+    }
+  }
+
+  /**
+   * Clears runtime wxApp config after logout/deregister so stale flags do not apply on relogin.
+   * @private
+   */
+  private resetEnableWxBetterTogetherConfig(): void {
+    if (this.$config) {
+      this.$config.enableWxBetterTogether = false;
+    }
+    this.taskManager.applyEnableWxBetterTogether(false);
+  }
+
+  /**
+   * Runtime enable/disable for wxApp Better Together (toast suppression + Mercury mute sync).
+   *
+   * **Phase 1 (WXCC-6026 / MMT): NOT part of the public host contract.**
+   * Hosts must set `webexConfig.cc.enableWxBetterTogether` before `webex.init()` / `cc.register()`.
+   * To change the flag after the SDK is initialized, re-init the SDK with the updated config.
+   *
+   * **Supported public read API:** {@link isWxBetterTogetherEnabled}.
+   * **Supported telephony API:** unified `task.accept()`, `task.decline()`, `task.toggleMute()`,
+   * `task.transmitDtmf()` — SDK routes wxApp calls internally when the init flag is active.
+   *
+   * **Production lifecycle does not call this method.** Station login, silent relogin, logout,
+   * and deregister use {@link ensureWxAppPostStationLogin} and {@link teardownWxAppLocalState}
+   * (usersub publish + Mercury subscribe/unsubscribe based on the init flag).
+   *
+   * This setter remains as a **private implementation** for Phase 2 runtime toggle and unit tests.
+   * It updates `$config.enableWxBetterTogether`, TaskManager flags, cross-client usersub
+   * (`answer-calls-on-wxcc`), and Mercury mute sync; rolls back config on publish/connect failure.
+   *
+   * @param enabled - `true` to enable wxApp answer + usersub suppression; `false` to disable and tear down.
+   * @throws When enabling without login, on unsupported BROWSER station login, or when usersub/Mercury init fails.
+   * @internal
+   * @see enableWxBetterTogether (CCPluginConfig init flag)
+   * @see ensureWxAppPostStationLogin
+   * @see teardownWxAppLocalState
+   */
+  private async setManageWebexCallingInWxcc(enabled: boolean): Promise<void> {
+    if (enabled && !this.$webex.internal.device?.userId) {
+      throw new Error('Cannot publish answer-calls-on-wxcc: user is not logged in');
+    }
+
+    if (enabled) {
+      this.assertWxAppStationLoginSupportedForEnable();
+    }
+
+    const previousEnabled = this.isWxBetterTogetherEnabled();
+
+    if (this.$config) {
+      this.$config.enableWxBetterTogether = enabled;
+    }
+
+    this.taskManager.applyEnableWxBetterTogether(enabled);
+
+    let publishedEnable = false;
+
+    try {
+      if (enabled) {
+        await this.ensureWxAppMercuryAndSubscribe();
+        await this.publishAnswerOnWebexCrossClientState(true);
+        publishedEnable = true;
+        this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
+        this.taskManager.refreshWxAppOfferObservabilityForAllTasks();
+      } else {
+        await this.publishAnswerOnWebexCrossClientState(false);
+        this.wxAppTelephonyMercurySync.unsubscribe();
+        await this.releaseWxAppMercuryResources();
+      }
+    } catch (error) {
+      if (publishedEnable) {
+        await this.revertWxAppCrossClientPublish();
+      } else if (enabled) {
+        this.wxAppTelephonyMercurySync.unsubscribe();
+        await this.releaseWxAppMercuryResources();
+      }
+
+      if (this.$config) {
+        this.$config.enableWxBetterTogether = previousEnabled;
+      }
+      this.taskManager.applyEnableWxBetterTogether(previousEnabled);
+      throw error;
+    }
+  }
+
+  private getWxAppTelephonyTaskType(): 'Voice' | 'WebRTC' | 'unknown' {
+    const loginOption = this.getCurrentStationLoginOption();
+
+    if (loginOption === LoginOption.BROWSER) {
+      return 'WebRTC';
+    }
+
+    if (loginOption === LoginOption.EXTENSION || loginOption === LoginOption.AGENT_DN) {
+      return 'Voice';
+    }
+
+    return 'unknown';
+  }
+
+  private async ensureWxAppPostStationLogin(): Promise<void> {
+    const loginOption = this.getCurrentStationLoginOption();
+    const flagEnabled = this.isWxBetterTogetherEnabled();
+    const telephonyTaskType = this.getWxAppTelephonyTaskType();
+
+    if (loginOption === LoginOption.BROWSER) {
+      if (flagEnabled) {
+        logWxAppSessionReadiness({
+          enableWxBetterTogether: true,
+          loginOption,
+          wxAppHooksApplied: false,
+          usersubPublished: false,
+          mercurySubscribed: false,
+          telephonyTaskType,
+          skipReason: 'unsupported_browser_login',
+        });
+
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WXAPP_SESSION_SKIPPED,
+          {
+            loginOption,
+            enableWxBetterTogether: true,
+            skipReason: 'unsupported_browser_login',
+          },
+          ['operational', 'behavioral']
+        );
+      }
+
+      return;
+    }
+
+    let publishedEnable = false;
+    let wxAppInitStage: 'mercury' | 'publish' = 'mercury';
+
+    try {
+      if (flagEnabled) {
+        this.metricsManager.timeEvent([
+          METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS,
+          METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
+        ]);
+
+        await this.ensureWxAppMercuryAndSubscribe();
+        wxAppInitStage = 'publish';
+        await this.publishAnswerOnWebexCrossClientState(true);
+        publishedEnable = true;
+        this.taskManager.syncWxAppMuteFromCallDetailsForAllTasks();
+        this.taskManager.refreshWxAppOfferObservabilityForAllTasks();
+
+        const mercurySubscribed = this.wxAppTelephonyMercurySync.isSubscribed();
+        const usersubPublished = this.webexCrossClientService.isAnswerCallsStateActive();
+
+        logWxAppSessionReadiness({
+          enableWxBetterTogether: true,
+          loginOption,
+          wxAppHooksApplied: true,
+          usersubPublished,
+          mercurySubscribed,
+          telephonyTaskType,
+        });
+
+        const sessionInitReady = mercurySubscribed && usersubPublished;
+
+        if (sessionInitReady) {
+          this.metricsManager.trackEvent(
+            METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_SUCCESS,
+            {
+              loginOption,
+              enableWxBetterTogether: true,
+              usersubPublished,
+              mercurySubscribed,
+              telephonyTaskType,
+            },
+            ['operational', 'behavioral']
+          );
+        } else {
+          this.metricsManager.trackEvent(
+            METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
+            {
+              loginOption,
+              enableWxBetterTogether: true,
+              usersubPublished,
+              mercurySubscribed,
+              telephonyTaskType,
+              skipReason: !usersubPublished ? 'usersub_not_published' : 'mercury_not_subscribed',
+            },
+            ['operational', 'behavioral']
+          );
+        }
+      } else {
+        await this.ensureWxAppDeviceRegistered();
+        await this.publishAnswerOnWebexCrossClientState(false, {force: true});
+        this.webexCrossClientService.teardown();
+        this.wxAppTelephonyMercurySync.unsubscribe();
+        await this.releaseWxAppMercuryResources();
+
+        logWxAppSessionReadiness({
+          enableWxBetterTogether: false,
+          loginOption,
+          wxAppHooksApplied: true,
+          usersubPublished: false,
+          mercurySubscribed: false,
+          telephonyTaskType,
+          skipReason: 'flag_disabled',
+        });
+
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WXAPP_SESSION_SKIPPED,
+          {loginOption, enableWxBetterTogether: false, skipReason: 'flag_disabled'},
+          ['operational', 'behavioral']
+        );
+      }
+    } catch (error) {
+      LoggerProxy.error(`Failed to initialize wxApp post-station-login: ${error}`, {
+        module: CC_FILE,
+        method: METHODS.STATION_LOGIN,
+      });
+
+      if (flagEnabled) {
+        const sessionInitFailureReason =
+          wxAppInitStage === 'mercury' ? 'mercury_subscribe_failed' : 'publish_failed';
+
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WXAPP_SESSION_INIT_FAILED,
+          {
+            loginOption,
+            enableWxBetterTogether: true,
+            usersubPublished: this.webexCrossClientService.isAnswerCallsStateActive(),
+            mercurySubscribed: this.wxAppTelephonyMercurySync.isSubscribed(),
+            telephonyTaskType,
+            skipReason: sessionInitFailureReason,
+            error: error instanceof Error ? error.toString() : String(error),
+          },
+          ['operational', 'behavioral']
+        );
+
+        logWxAppSessionReadiness({
+          enableWxBetterTogether: true,
+          loginOption,
+          wxAppHooksApplied: false,
+          usersubPublished: this.webexCrossClientService.isAnswerCallsStateActive(),
+          mercurySubscribed: this.wxAppTelephonyMercurySync.isSubscribed(),
+          telephonyTaskType,
+          skipReason: sessionInitFailureReason,
+        });
+
+        if (publishedEnable) {
+          await this.revertWxAppCrossClientPublish();
+        } else {
+          this.wxAppTelephonyMercurySync.unsubscribe();
+          await this.releaseWxAppMercuryResources();
+        }
+        this.resetEnableWxBetterTogetherConfig();
+      } else {
+        this.scheduleForcedFalsePublishRetry();
+      }
+    }
+  }
+
+  private clearWxAppFalsePublishRetryTimer(): void {
+    if (this.wxAppFalsePublishRetryTimer) {
+      clearTimeout(this.wxAppFalsePublishRetryTimer);
+      this.wxAppFalsePublishRetryTimer = undefined;
+    }
+  }
+
+  private scheduleForcedFalsePublishRetry(retryAttempt = 0): void {
+    this.scheduleFalsePublishRetry(retryAttempt, {requireDisabled: true});
+  }
+
+  /**
+   * Retries compensating false publish after rollback failure, regardless of enabled flag.
+   * @private
+   */
+  private scheduleCompensatingFalsePublishRetry(retryAttempt = 0): void {
+    this.scheduleFalsePublishRetry(retryAttempt);
+  }
+
+  private scheduleFalsePublishRetry(
+    retryAttempt = 0,
+    options: {requireDisabled?: boolean} = {}
+  ): void {
+    if (retryAttempt >= ContactCenter.WXAPP_FALSE_PUBLISH_MAX_RETRIES) {
+      return;
+    }
+
+    if (options?.requireDisabled && this.isWxBetterTogetherEnabled()) {
+      return;
+    }
+
+    this.clearWxAppFalsePublishRetryTimer();
+
+    this.wxAppFalsePublishRetryTimer = setTimeout(async () => {
+      this.wxAppFalsePublishRetryTimer = undefined;
+
+      if (options?.requireDisabled && this.isWxBetterTogetherEnabled()) {
+        return;
+      }
+
+      if (
+        !options?.requireDisabled &&
+        this.isWxBetterTogetherEnabled() &&
+        this.webexCrossClientService.isAnswerCallsStateActive()
+      ) {
+        return;
+      }
+
+      try {
+        await this.ensureWxAppDeviceRegistered();
+        await this.publishAnswerOnWebexCrossClientState(false, {force: true});
+        this.webexCrossClientService.teardown();
+        this.wxAppTelephonyMercurySync.unsubscribe();
+        await this.releaseWxAppMercuryResources();
+      } catch (retryError) {
+        LoggerProxy.error(
+          `Failed to retry forced answer-calls-on-wxcc false publish: ${retryError}`,
+          {
+            module: CC_FILE,
+            method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+          }
+        );
+        this.scheduleFalsePublishRetry(retryAttempt + 1, options);
+      }
+    }, ContactCenter.WXAPP_FALSE_PUBLISH_RETRY_DELAY_MS);
+  }
+
+  /**
+   * Best-effort rollback when usersub true was published but wxApp setup did not complete.
+   * @private
+   */
+  private async revertWxAppCrossClientPublish(): Promise<void> {
+    try {
+      await this.publishAnswerOnWebexCrossClientState(false, {force: true});
+    } catch (error) {
+      LoggerProxy.error(
+        `Failed to publish compensating answer-calls-on-wxcc false during wxApp rollback: ${error}`,
+        {
+          module: CC_FILE,
+          method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+        }
+      );
+      this.scheduleCompensatingFalsePublishRetry();
+    }
+
+    this.webexCrossClientService.teardown();
+    this.wxAppTelephonyMercurySync.unsubscribe();
+    await this.releaseWxAppMercuryResources();
+  }
+
+  private async ensureWxAppDeviceRegistered(): Promise<void> {
+    const device = this.$webex.internal.device;
+
+    if (device && !device.registered && device.register) {
+      await device.register();
+      this.wxAppDeviceRegisteredByCc = true;
+      LoggerProxy.log('WxApp: device registered for cross-client publish', {
+        module: CC_FILE,
+        method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+      });
+    }
+  }
+
+  private async ensureWxAppMercuryConnected(): Promise<void> {
+    const mercury = this.$webex.internal.mercury;
+
+    await this.ensureWxAppDeviceRegistered();
+
+    if (mercury && !mercury.connected) {
+      await mercury.connect();
+      this.wxAppMercuryConnectedByCc = true;
+      LoggerProxy.log('WxApp mute sync: mercury connected', {
+        module: CC_FILE,
+        method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+      });
+    }
+  }
+
+  /**
+   * Disconnects Mercury and unregisters the device when wxApp mute sync opened them.
+   * @private
+   */
+  private async releaseWxAppMercuryResources(): Promise<void> {
+    const mercury = this.$webex.internal.mercury;
+    const device = this.$webex.internal.device;
+
+    if (this.wxAppMercuryConnectedByCc && mercury?.connected) {
+      try {
+        await mercury.disconnect();
+        this.wxAppMercuryConnectedByCc = false;
+        LoggerProxy.log('WxApp mute sync: mercury disconnected', {
+          module: CC_FILE,
+          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+        });
+      } catch (error) {
+        LoggerProxy.error(`Failed to disconnect wxApp Mercury: ${error}`, {
+          module: CC_FILE,
+          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+        });
+      }
+    }
+
+    if (this.wxAppDeviceRegisteredByCc && device?.registered && device.unregister) {
+      try {
+        // @ts-ignore
+        await device.unregister();
+        this.wxAppDeviceRegisteredByCc = false;
+        LoggerProxy.log('WxApp mute sync: device unregistered', {
+          module: CC_FILE,
+          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+        });
+      } catch (error) {
+        LoggerProxy.error(`Failed to unregister wxApp device: ${error}`, {
+          module: CC_FILE,
+          method: METHODS.ENSURE_WXAPP_MERCURY_CONNECTED,
+        });
+      }
+    } else if (this.wxAppDeviceRegisteredByCc) {
+      this.wxAppDeviceRegisteredByCc = false;
+    }
+  }
+
+  /**
+   * Clears wxApp runtime state and feature-owned resources. Publish failures are logged;
+   * optional rethrow for deregister when callers need to surface usersub errors.
+   * @private
+   */
+  private async teardownWxAppLocalState(options?: {
+    rethrowPublishError?: boolean;
+    clearInitFlag?: boolean;
+  }): Promise<{publishError?: unknown}> {
+    this.clearWxAppFalsePublishRetryTimer();
+    let publishError: unknown;
+
+    try {
+      const shouldForceFalsePublish =
+        this.isWxBetterTogetherEnabled() || this.webexCrossClientService.isAnswerCallsStateActive();
+
+      await this.publishAnswerOnWebexCrossClientState(false, {
+        force: shouldForceFalsePublish,
+      });
+    } catch (error) {
+      publishError = error;
+      LoggerProxy.error(
+        `Failed to publish answer-calls-on-wxcc false during wxApp teardown: ${error}`,
+        {
+          module: CC_FILE,
+          method: METHODS.SET_MANAGE_WEBEX_CALLING_IN_WXCC,
+        }
+      );
+    }
+
+    this.webexCrossClientService.teardown();
+    this.wxAppTelephonyMercurySync.unsubscribe();
+    await this.releaseWxAppMercuryResources();
+
+    if (options?.clearInitFlag) {
+      this.resetEnableWxBetterTogetherConfig();
+    }
+
+    if (publishError) {
+      this.scheduleCompensatingFalsePublishRetry();
+    }
+
+    if (options?.rethrowPublishError && publishError) {
+      throw publishError;
+    }
+
+    return {publishError: publishError ?? undefined};
+  }
+
+  private async ensureWxAppMercuryAndSubscribe(): Promise<void> {
+    if (!this.isWxBetterTogetherEnabled()) {
+      return;
+    }
+
+    if (this.getCurrentStationLoginOption() === LoginOption.BROWSER) {
+      return;
+    }
+
+    const agentId = this.agentConfig?.agentId;
+    if (!agentId) {
+      LoggerProxy.error('Cannot subscribe wxApp mute sync: agentId unavailable', {
+        module: CC_FILE,
+        method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
+      });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED,
+        {error: 'agentId unavailable', mercurySubscribed: false},
+        ['operational', 'behavioral']
+      );
+
+      return;
+    }
+
+    try {
+      await this.ensureWxAppMercuryConnected();
+      this.wxAppTelephonyMercurySync.subscribe(agentId, (callId, muted) => {
+        this.taskManager.applyWxAppMuteStateFromSync(callId, muted);
+      });
+    } catch (error) {
+      LoggerProxy.error(`Failed to ensure wxApp Mercury mute sync: ${error}`, {
+        module: CC_FILE,
+        method: METHODS.SYNC_WXAPP_MUTE_FROM_MERCURY,
+      });
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WXAPP_MERCURY_SUBSCRIBE_FAILED,
+        {
+          error: error instanceof Error ? error.toString() : String(error),
+          mercurySubscribed: false,
+        },
+        ['operational', 'behavioral']
+      );
+      this.wxAppTelephonyMercurySync.unsubscribe();
+      await this.releaseWxAppMercuryResources();
+      throw error;
+    }
+  }
+
+  private async publishAnswerOnWebexCrossClientState(
+    enable: boolean,
+    options?: {force?: boolean}
+  ): Promise<void> {
+    if (enable && !this.isWxBetterTogetherEnabled()) {
+      return;
+    }
+
+    if (!enable && !options?.force && !this.webexCrossClientService.isAnswerCallsStateActive()) {
+      return;
+    }
+
+    const userId = this.$webex.internal.device?.userId;
+    if (!userId) {
+      if (enable && this.isWxBetterTogetherEnabled()) {
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.WXAPP_USERSUB_PUBLISH_FAILED,
+          {
+            enableWxBetterTogether: true,
+            usersubPublished: this.webexCrossClientService.isAnswerCallsStateActive(),
+            skipReason: 'user_id_unavailable',
+            error: 'User ID is unavailable for cross-client publish',
+          },
+          ['operational', 'behavioral']
+        );
+      }
+
+      return;
+    }
+
+    await this.webexCrossClientService.setManageWebexCallingInWxcc(enable, {
+      userId,
+      trackPublishMetrics: true,
+    });
+
+    if (enable) {
+      this.clearWxAppFalsePublishRetryTimer();
     }
   }
 
@@ -1436,6 +2346,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     try {
       const reLoginResponse = await this.services.agent.reload();
+      this.updateWellnessSession(reLoginResponse.data.agentSessionId);
+
       const {
         agentId,
         lastStateChangeReason,
@@ -1480,6 +2392,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
       this.agentConfig.lastStateAuxCodeId = auxCodeId;
       this.agentConfig.isAgentLoggedIn = true;
+
+      await this.ensureWxAppPostStationLogin();
 
       LoggerProxy.log(
         `Silent relogin process completed successfully with login Option: ${reLoginResponse.data.deviceType} teamId: ${reLoginResponse.data.teamId}`,
@@ -2199,8 +3113,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Returns paginated entry points for the organization.
-   * Thin wrapper around internal EntryPoint instance.
+   * Returns paginated entry points using the EntryPoint service defaults.
+   * Existing request parameters can override those defaults.
    * @public
    */
   public async getEntryPoints(
@@ -2210,8 +3124,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Returns paginated contact service queues for the organization.
-   * Thin wrapper around internal Queue instance.
+   * Returns paginated contact service queues using the Queue service defaults.
+   * Existing request parameters can override those defaults.
    * @public
    */
   public async getQueues(

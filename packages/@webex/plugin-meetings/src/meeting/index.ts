@@ -187,7 +187,7 @@ import {ReachabilityMetrics} from '../reachability/reachability.types';
 import {SetStageOptions, SetStageVideoLayout, UnsetStageVideoLayout} from './request.type';
 import {Invitee} from './type';
 import {DataSet, HashTreeMessage, Metadata} from '../hashTree/hashTreeParser';
-import {LocusDTO} from '../locus-info/types';
+import {LocusDTO, LocusErrorCodes} from '../locus-info/types';
 import AIEnableRequest from '../aiEnableRequest';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
@@ -2092,7 +2092,7 @@ export default class Meeting extends StatelessWebexPlugin {
         this.config.installedOrgID,
         this.locusId,
         extraParams,
-        {meetingId: this.id, sendCAevents},
+        {meetingId: this.id, sendCAevents, correlationId: this.correlationId},
         registrationId,
         null,
         classificationId
@@ -4828,6 +4828,10 @@ export default class Meeting extends StatelessWebexPlugin {
           isAnonymizeDisplayNamesEnabled: MeetingUtil.isAnonymizeDisplayNamesEnabled(
             this.userDisplayHints
           ),
+          isSupportParticipantList: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_PARTICIPANT_LIST],
+            policies: this.selfUserPolicies,
+          }),
           canViewTheParticipantList: MeetingUtil.canViewTheParticipantList(
             this.userDisplayHints,
             this.canNotViewTheParticipantList ?? false
@@ -5864,10 +5868,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
       if (
         CallDiagnosticUtils.isSdpOfferCreationError(error) ||
-        CallDiagnosticUtils.isWebrtcApiNotAvailableError(error)
+        CallDiagnosticUtils.isWebrtcApiNotAvailableError(error) ||
+        this.isLocusUserFullError(error)
       ) {
         // errors related to offer creation (for example missing H264 codec) will happen again no matter how many times we try,
         // so there is no point doing a retry
+        // when the locus is full, we also don't want to retry, because it will just fail again
         shouldRetry = false;
       }
 
@@ -5933,7 +5939,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.locusInfo.suspendDestroyMeeting(false);
 
-      throw firstError ?? error;
+      // LOCUS_USER_FULL is a definitive capacity error the client must surface, so it takes
+      // precedence over any earlier retryable error stored in firstError.
+      throw this.isLocusUserFullError(error) ? error : firstError ?? error;
     }
   }
 
@@ -8204,6 +8212,10 @@ export default class Meeting extends StatelessWebexPlugin {
     return (
       statusCode === 409 || statusCode === 403 || causeStatusCode === 409 || causeStatusCode === 403
     );
+  }
+
+  private isLocusUserFullError(error: Error | undefined): boolean {
+    return (error as any)?.error?.body?.errorCode === LocusErrorCodes.LOCUS_USER_FULL;
   }
 
   /**

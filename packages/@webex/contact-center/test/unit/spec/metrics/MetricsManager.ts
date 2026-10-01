@@ -252,6 +252,31 @@ describe('MetricsManagerImplementation', () => {
     });
   });
 
+  describe('cancelTimedEvent', () => {
+    it('should clear a running timer without attaching duration to a later unrelated event', () => {
+      jest.spyOn(MetricsManager.prototype as any, 'isMetricsDisabled').mockReturnValue(false);
+      metricsManager.timeEvent(['timedSuccess', 'timedFailed']);
+      metricsManager.cancelTimedEvent(['timedSuccess', 'timedFailed']);
+
+      const result = metricsManager['addDurationIfTimed']('timedFailed');
+
+      expect(result).toEqual({});
+      expect(metricsManager['runningEvents']['timedSuccess']).toBeUndefined();
+    });
+
+    it('should not clear timers when metrics are disabled', () => {
+      jest.spyOn(MetricsManager.prototype as any, 'isMetricsDisabled').mockReturnValue(true);
+      metricsManager['runningEvents']['event1'] = {
+        startTime: 100,
+        keys: new Set(['event1']),
+      };
+
+      metricsManager.cancelTimedEvent('event1');
+
+      expect(metricsManager['runningEvents']['event1']).toBeDefined();
+    });
+  });
+
   describe('addDurationIfTimed', () => {
     it('should return options when event name is not in runningEvents', () => {
       const options: EventPayload = {key: 'value'};

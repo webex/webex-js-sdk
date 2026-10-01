@@ -1,0 +1,311 @@
+<html>
+
+<head>
+  <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-messaging-compat.js"></script>
+  <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+  <script src="assets/js/imi-environments.js"></script>
+  <!-- Canonical build (aes + IMIClient) from packages/webexconnect. MQTT (mqttws31)
+       lives in the service worker (sw.min.js), not the page. -->
+  <script src="webex-connect-sdk.min.js"></script>
+  <script src="assets/app/imi-utility.js"></script>
+  <script src="assets/app/imi-app.js"></script>
+  <script src="custom-elements/imi-progress-bar/progress-bar.js"></script>
+  <script src="custom-elements/imi-connection-status-view/imi-connection-status-view.js"></script>
+  <script src="custom-elements/imi-toast/imi-toast.js"></script>
+  <link rel="stylesheet" href="api-demo.css">
+</head>
+
+<body>
+  <div>
+    <a href="javascript:void(0)">
+      <h1 style="text-align: center">Security Token</h1>
+    </a>
+    <script>
+      function setBase() {
+        //required for svginject when deployed on connectFB.
+        let a = window.location.href.replace(window.location.hash, '').split('/');
+        a.pop();
+        let b = document.createElement('base');
+        b.setAttribute('href', a.join('/') + "/");
+        document.body.append(b);
+      }
+      setBase();
+      IMI.IMIconnect.startupLogger();
+      IMI.IMIconnect.startup();
+      var env = imiEnvironments[imiEnvironments["target"]];
+      IMI.log = console.log;
+    </script>
+    <div class="page-content">
+      <a href="#">
+        <h2>Register<imi-connection-status-view></imi-connection-status-view></h2>
+      </a>
+      <div class="item">
+        <span id="spnTokenExpiry">Token Expiry comes here</span>
+        <input type="button" value="setSecurityToken" onclick="setSecurityToken()" />
+        <input type="text" id="txtRegisterUserID" name="userID" placeholder="userId" value="1" />
+        <input type="button" value="registerWithUserId" onclick="register()">
+        <input type="button" onclick="registerMessageListener()" value="registerMessageListener" />
+        <input type="button" value="Connect" onclick="connect()">
+        <input type="button" value="Disconnect" onclick="disconnect()">
+        <input type="button" onclick="unregister()" value="unregister" />
+        <input type="button" value="getConnectionStatus" onclick="getConnectionStatus()">
+        <input type="button" value=".StartMessageDeliveryStatusRetry"
+          onclick="IMI.IMIconnect.backgroundService.postMessage(IMI.EventType.StartMessageDeliveryStatusRetry)">
+        <script>
+          var messageListenerCallback = {
+            onConnectionStatusChanged: (statuscode) => {
+              //since there can only be one listener, hence dispatching at document level.
+              let ev = new CustomEvent(IMIEvent.onConnectionStatusChanged, { detail: statuscode });
+              document.dispatchEvent(ev);
+            },
+            onMessageReceived: (message) => {
+              console.log('message: ', message);
+              //since there can only be one listener, hence dispatching at document level.
+              let ev = new CustomEvent(IMIEvent.onMessageReceived, { detail: message });
+              document.dispatchEvent(ev);
+            },
+          };
+          function registerMessageListener() {
+            console.log('registerMessageListener: ');
+            if (!IMI.IMIconnect.isRegistered()) throw "Please register first";
+
+            var messaging = IMI.ICMessaging.getInstance();
+            messaging.setICMessagingReceiver(messageListenerCallback);
+            //There can only be one listener.
+          }
+          function getConnectionStatus() {
+            if (!IMI.IMIconnect.isRegistered()) throw "Please register first";
+            var messaging = IMI.ICMessaging.getInstance();
+
+            console.log('getConnectionStatus --->', messaging.getConnectionStatus(), IMI.ICConnectionStatus);
+          }
+          function connect() {
+            console.log('✌️connect 1 --->',);
+            if (!IMI.IMIconnect.isRegistered()) throw "Please register first";
+            var messaging = IMI.ICMessaging.getInstance();
+            if (!messaging.isConnected())
+              messaging.connect();
+          }
+          function disconnect() {
+            console.log('disconnect: ');
+            var messaging = IMI.ICMessaging.getInstance();
+            if (messaging.isConnected())
+              messaging.disconnect();
+          }
+
+          const TOKEN_EXPIRY_IN_MINUTES = 1;
+          const TOKEN_EXPIRY_IN_SECONDS = 30;
+          function setSecurityToken() {
+            let expiry = new Date();
+            // expiry.setMinutes(expiry.getMinutes() + TOKEN_EXPIRY_IN_MINUTES);
+            expiry.setSeconds(expiry.getSeconds() + TOKEN_EXPIRY_IN_SECONDS);
+
+            let userID = document.querySelector('#txtRegisterUserID').value.trim();
+            generateJWTToken(userID, expiry.getTime())
+              .then((result) => {
+                console.log('generateJWTToken result --->', result);
+                if (result.code == "0") {
+                  IMI.IMIconnect.setSecurityToken(result.token);
+                  document.querySelector('#spnTokenExpiry').innerText = " Token Expiry: " + new Date(expiry);
+                  setTimeout(() => {
+                    document.querySelector('#spnTokenExpiry').innerText = " Token Expired";
+                  },
+                    // TOKEN_EXPIRY_IN_MINUTES * 60 * 1000);
+                    TOKEN_EXPIRY_IN_SECONDS * 1000);
+                }
+              })
+              .catch((error) => IMIToast.show("error: " + JSON.stringify(error)));
+          }
+
+
+          function generateJWTToken(userId, expiry, customerId) {
+            // let url = "https://" + env.imiclient.rtmsdomain + "/jwtsimulator/api/v1/apps/" + env.asset.appId + "/jwttoken";
+            let url = env.sw.config.serverUrl + "/jwtsimulator/api/v1/apps/" + env.asset.appId + "/jwttoken";
+            var myHeaders = new Headers();
+            myHeaders.append("Content-Type", "application/json");
+            let postData = {
+              appId: env.asset.appId,
+              customerId: customerId,
+              userId: userId,
+              exp: expiry
+            };
+            var raw = JSON.stringify(postData);
+            var requestOptions = {
+              method: "POST",
+              headers: myHeaders,
+              body: raw,
+              redirect: "follow",
+            };
+
+            return fetch(url, requestOptions)
+              .then((response) => response.json());
+
+          }
+
+          var securityTokenListener = {
+            onFailure: function (error) {
+              console.log("securityTokenListener::onFailure:: ", error);
+            }
+          }
+
+          IMI.IMIconnect.registerSecurityTokenListener(securityTokenListener);
+
+          function register(userID) {
+            console.log("register", userID);
+            if (!userID) {
+              if (document.querySelector('#txtRegisterUserID').value.length == 0) {
+                err(document.querySelector('#txtRegisterUserID'), "Please enter registerUserID ");
+              }
+              else
+                userID = document.querySelector('#txtRegisterUserID').value;
+            }
+            var deviceID = new Date().getTime(); //any random no.
+            var deviceProfile = new IMI.ICDeviceProfile(deviceID, userID);
+            var registerCallback = {
+              onSuccess: (data) => {
+                console.log('success:user registered', data);
+              },
+              onFailure: (err) => {
+                console.log('failure:user register', err);
+              },
+            };
+            IMI.IMIconnect.register(deviceProfile, registerCallback);
+          }
+
+          function unregister() {
+            console.log("unregister");
+            IMI.IMIconnect.unregister(cb);
+          }
+          var cb = {
+            onSuccess: function (data) {
+              console.log(arguments.callee.caller.name + " SUCCESS", data);
+            },
+            onFailure: (err) => console.log("onFailure ERROR", err),
+          };
+
+
+        </script>
+      </div>
+      <a href="#">
+        <h2>MTs and MOs</h2>
+      </a>
+      <div class="item">
+        Latest thread ID is auto-populated.<br>
+        <input type="text" name="threadId" placeholder="Thread id" id="txtMTThreadId"
+          value="f9084be7-e960-42dd-8b1b-0cd37f6d1690" />
+        <input type="text" placeholder="Type message here" id="txtMTText" value="This is a message" />
+        <br>
+        <input type="button" id="btnSendMO" value="sendMO" onclick="sendMO2();" />
+        <input type="button" id="btnSendMT" value="Send MT" onclick="sendMT();" />
+        <input type="button" id="btnSendMT" value="sendMultipleMTs" onclick="sendMultipleMTs();" />
+
+        <script>
+
+          let publishMO2Callback = {
+            onSuccess: (message) => {
+              console.log("publishMO2Callback:onSuccess:message ", message);
+            },
+            onFailure: (errormsg) => {
+              console.log("publishMO2Callback:onFailure:err ", errormsg);
+            },
+          };
+          function sendMO2() {
+            let threadId = document.querySelector('#txtMTThreadId').value;
+            if (threadId.trim().length == 0)
+              throw "Provide thread Id";
+
+            let thread = new IMI.ICThread();
+            thread.setId(threadId);
+            thread.setType(IMI.ICThreadType.Conversation);
+
+            let text = document.querySelector('#txtMTText').value;
+            if (text.trim().length == 0)
+              throw "Please provide text to send";
+            let message = new IMI.ICMessage();
+            message.setMessage(text);
+            message.setThread(thread);
+
+            var messaging = IMI.ICMessaging.getInstance();
+            messaging.publishMessage(message, publishMO2Callback);
+          }
+
+          function sendMT() {
+            let threadId = document.querySelector('#txtMTThreadId').value;
+            if (threadId.trim().length == 0)
+              throw "Provide thread Id";
+
+            let text = document.querySelector('#txtMTText').value;
+            if (text.trim().length == 0)
+              throw "Please provide text to send";
+            IMIApi.sendMT(text, threadId);
+          }
+          function sendMultipleMTs() {
+            for (var i = 0; i < 500; i++) {
+              document.querySelector('#txtMTText').value = "MT message " + i;
+              sendMT();
+            }
+          }
+        </script>
+      </div>
+      <a href="#">
+        <h2>Fetch Thread</h2>
+      </a>
+      <div class="item">
+        <input type="button" onclick="fetchThreads()" value="fetchThreads(Multiple)" />
+        <script>
+          function fetchThreads(offset, limit) {
+            // console.log('fetchThreads:called ');
+
+            if (!IMI.IMIconnect.isRegistered())
+              return;
+
+            limit = limit || 10;
+            var messaging = IMI.ICMessaging.getInstance();
+            messaging.fetchThreads(0, limit, fetchThreadsCallback1);
+          }
+          fetchThreadsCallback1 = {
+            onSuccess: (threads, hasMore) => {
+              console.log('fetchThreads:onSuccess:threads ', threads, hasMore);
+              let threadInputs = document.querySelectorAll('input[name=thread]');
+              if (threads.length > 0) {
+                threadInputs.forEach(input => input.value = threads[0].getId());
+              }
+            },
+            onFailure: (error) => {
+              console.log('fetchThreadsCallback: errormsg: ', error);
+            },
+          };
+
+          function fetchMessages() {
+            let threadId = document.querySelector('#txtThreadIdForFetchThread').value;
+            var messaging = IMI.ICMessaging.getInstance();
+            messaging.fetchMessages(
+              threadId,
+              new Date(),
+              100, fetchMessagesCallback
+            );
+          }
+
+
+        </script>
+      </div>
+
+      <!-- <div><iframe style="float:right;min-width:400px;min-height:100vh;border:solid 1px grey;position:fixed;"
+      src="/qa-demo-app/"></iframe>
+  </div> -->
+</body>
+<script>
+  window.addEventListener("load", function () {
+    if (IMI.IMIconnect.isRegistered()) {
+      document.querySelectorAll('input[name="userID"]').forEach(input => {
+        input.value = IMI.IMIconnect.getDeviceProfile().getUserId();
+
+      }
+      );
+    }
+  })
+
+</script>
+
+</html>

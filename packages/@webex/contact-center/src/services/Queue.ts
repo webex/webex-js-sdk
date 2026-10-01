@@ -70,14 +70,16 @@ export class Queue {
   }
 
   /**
-   * Fetches contact service queues for the organization
-   * @param {ContactServiceQueueSearchParams} [params] - Search and pagination parameters
+   * Fetches contact service queues for the organization. By default, returns active inbound
+   * telephony queues in backend name-ascending order using the agent's desktop profile views.
+   * Existing filter, sort, and desktop-profile parameters override those defaults.
+   * @param {ContactServiceQueueSearchParams} [params] - Search, pagination, and override parameters
    * @returns {Promise<ContactServiceQueuesResponse>} Promise resolving to contact service queues
    * @throws {Error} If the API call fails
    * @public
    * @example
    * ```typescript
-   * // Get all queues with default pagination
+   * // Get queues using the default list policy and pagination
    * const response = await queueAPI.getQueues();
    *
    * // Get queues with specific pagination
@@ -101,17 +103,29 @@ export class Queue {
       page = PAGINATION_DEFAULTS.PAGE,
       pageSize = PAGINATION_DEFAULTS.PAGE_SIZE,
       search,
-      filter,
+      filter = 'queueType==INBOUND;channelType==TELEPHONY;active==true',
       attributes,
-      sortBy,
-      sortOrder,
-      desktopProfileFilter,
+      sortBy = 'name',
+      sortOrder = 'asc',
+      desktopProfileFilter = true,
       provisioningView,
       singleObjectResponse,
     } = params;
+    const agentView = desktopProfileFilter;
+    const firstLevelView = desktopProfileFilter;
 
     const orgId = this.webex.credentials.getOrgId();
-    const isSearchRequest = !!(search || filter || attributes || sortBy);
+    const effectiveSortBy = sortBy ?? (sortOrder ? 'name' : undefined);
+    const isSearchRequest = !!(search || filter || attributes || effectiveSortBy);
+    const canUseCache = this.pageCache.canUseCache({
+      search,
+      filter,
+      attributes,
+      sortBy: effectiveSortBy,
+      desktopProfileFilter,
+      provisioningView,
+      singleObjectResponse,
+    });
 
     LoggerProxy.info('Fetching contact service queues', {
       module: 'Queue',
@@ -125,7 +139,7 @@ export class Queue {
     });
 
     // Check if we can use cache for simple pagination (no search/filter/attributes/sort)
-    if (this.pageCache.canUseCache({search, filter, attributes, sortBy})) {
+    if (canUseCache) {
       const cacheKey = this.pageCache.buildCacheKey(orgId, page, pageSize);
       const cachedPage = this.pageCache.getCachedPage(cacheKey);
 
@@ -170,14 +184,17 @@ export class Queue {
       if (filter) queryParams.append('filter', filter);
       if (attributes) queryParams.append('attributes', attributes);
       if (search) queryParams.append('search', search);
-      if (sortBy) queryParams.append('sortBy', sortBy);
-      if (sortOrder) queryParams.append('sortOrder', sortOrder);
+      if (effectiveSortBy)
+        queryParams.append('sort', `${effectiveSortBy},${(sortOrder ?? 'asc').toUpperCase()}`);
       if (desktopProfileFilter !== undefined)
         queryParams.append('desktopProfileFilter', desktopProfileFilter.toString());
       if (provisioningView !== undefined)
         queryParams.append('provisioningView', provisioningView.toString());
       if (singleObjectResponse !== undefined)
         queryParams.append('singleObjectResponse', singleObjectResponse.toString());
+      if (agentView !== undefined) queryParams.append('agentView', agentView.toString());
+      if (firstLevelView !== undefined)
+        queryParams.append('firstLevelView', firstLevelView.toString());
 
       const resource = endPointMap.queueList(orgId, queryParams.toString());
 
@@ -232,7 +249,7 @@ export class Queue {
       }
 
       // Cache the page data for simple pagination (no search/filter/attributes/sort)
-      if (this.pageCache.canUseCache({search, filter, attributes, sortBy}) && response.body?.data) {
+      if (canUseCache && response.body?.data) {
         const cacheKey = this.pageCache.buildCacheKey(orgId, page, pageSize);
         this.pageCache.cachePage(cacheKey, response.body.data, response.body.meta);
 

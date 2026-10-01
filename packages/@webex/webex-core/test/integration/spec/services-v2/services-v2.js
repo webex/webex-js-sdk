@@ -5,7 +5,7 @@
 import '@webex/internal-plugin-device';
 
 import {assert} from '@webex/test-helper-chai';
-import {flaky} from '@webex/test-helper-mocha';
+import {flaky, retryOn429} from '@webex/test-helper-mocha';
 import WebexCore, {
   ServiceCatalogV2,
   ServiceDetail,
@@ -354,7 +354,10 @@ describe('webex-core', () => {
         // Before init settles, webex.ready must be false because services.ready
         // is a dependency and starts false in the gated path.
         assert.isFalse(gatedWebex.internal.services.ready, 'services.ready should start false');
-        assert.isFalse(gatedWebex.ready, 'webex.ready should not fire while services.ready is false');
+        assert.isFalse(
+          gatedWebex.ready,
+          'webex.ready should not fire while services.ready is false'
+        );
 
         // Wait up to 30s for services init to complete and flip ready.
         await new Promise((resolve, reject) => {
@@ -374,7 +377,10 @@ describe('webex-core', () => {
           });
         });
 
-        assert.isTrue(gatedWebex.internal.services.ready, 'services.ready should flip true after init settles');
+        assert.isTrue(
+          gatedWebex.internal.services.ready,
+          'services.ready should flip true after init settles'
+        );
         assert.isTrue(gatedWebex.ready, 'webex.ready should fire once services.ready flips');
       });
     });
@@ -826,18 +832,22 @@ describe('webex-core', () => {
           }));
 
       it('validates an authorized user and webex instance', () =>
-        services.validateUser({email: webexUser.email}).then((r) => {
-          assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-          assert.equal(r.activated, true);
-          assert.equal(r.exists, true);
-        }));
+        retryOn429(() =>
+          services.validateUser({email: webexUser.email}).then((r) => {
+            assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+            assert.equal(r.activated, true);
+            assert.equal(r.exists, true);
+          })
+        ));
 
       it('validates an authorized EU user and webex instance', () =>
-        servicesEU.validateUser({email: webexUserEU.email}).then((r) => {
-          assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-          assert.equal(r.activated, true);
-          assert.equal(r.exists, true);
-        }));
+        retryOn429(() =>
+          servicesEU.validateUser({email: webexUserEU.email}).then((r) => {
+            assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+            assert.equal(r.activated, true);
+            assert.equal(r.exists, true);
+          })
+        ));
 
       it("returns a rejected promise if the provided email isn't valid", () =>
         unauthServices
@@ -850,113 +860,134 @@ describe('webex-core', () => {
           }));
 
       it('validates a non-existing user', () =>
-        unauthServices
-          .validateUser({email: createActivationEmail()})
-          .then((r) => {
+        retryOn429(() =>
+          unauthServices.validateUser({email: createActivationEmail()}).then((r) => {
             assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
             assert.equal(r.activated, false);
             assert.equal(r.exists, false);
-          }));
+          })
+        ));
 
       it('validates new user with activationOptions suppressEmail false', () =>
-        unauthServices
-          .validateUser({
-            email: createActivationEmail(),
-            activationOptions: {suppressEmail: false},
-          })
-          .then((r) => {
-            assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-            assert.equal(r.activated, false);
-            assert.equal(r.exists, false);
-            assert.equal(r.user.verificationEmailTriggered, true);
-          }));
+        retryOn429(() =>
+          unauthServices
+            .validateUser({
+              email: createActivationEmail(),
+              activationOptions: {suppressEmail: false},
+            })
+            .then((r) => {
+              assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+              assert.equal(r.activated, false);
+              assert.equal(r.exists, false);
+              assert.equal(r.user.verificationEmailTriggered, true);
+            })
+        ));
 
       it('validates new user with activationOptions suppressEmail true', () =>
-        unauthServices
-          .validateUser({
-            email: createActivationEmail(),
-            activationOptions: {suppressEmail: true},
-          })
-          .then((r) => {
-            assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-            assert.equal(r.activated, false);
-            assert.equal(r.exists, false);
-            assert.equal(r.user.verificationEmailTriggered, false);
-          }));
+        retryOn429(() =>
+          unauthServices
+            .validateUser({
+              email: createActivationEmail(),
+              activationOptions: {suppressEmail: true},
+            })
+            .then((r) => {
+              assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+              assert.equal(r.activated, false);
+              assert.equal(r.exists, false);
+              assert.equal(r.user.verificationEmailTriggered, false);
+            })
+        ));
 
       it('validates an inactive user', () => {
         const inactive = 'webex.web.client+nonactivated@gmail.com';
 
-        return unauthServices
-          .validateUser({email: inactive, activationOptions: {suppressEmail: true}})
-          .then((r) => {
-            assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-            assert.equal(r.activated, false, 'activated');
-            assert.equal(r.exists, true, 'exists');
-          })
-          .catch(() => {
-            assert(true);
-          });
+        return retryOn429(() =>
+          unauthServices
+            .validateUser({email: inactive, activationOptions: {suppressEmail: true}})
+            .then((r) => {
+              assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+              assert.equal(r.activated, false, 'activated');
+              assert.equal(r.exists, true, 'exists');
+            })
+        ).catch(() => {
+          assert(true);
+        });
       });
 
       it('validates an existing user', () =>
-        unauthServices.validateUser({email: webexUser.email}).then((r) => {
-          assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-          assert.equal(r.activated, true);
-          assert.equal(r.exists, true);
-        }));
+        retryOn429(() =>
+          unauthServices.validateUser({email: webexUser.email}).then((r) => {
+            assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+            assert.equal(r.activated, true);
+            assert.equal(r.exists, true);
+          })
+        ));
 
       it('validates an existing EU user', () =>
-        unauthServices.validateUser({email: webexUserEU.email}).then((r) => {
-          assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-          assert.equal(r.activated, true);
-          assert.equal(r.exists, true);
-        }));
+        retryOn429(() =>
+          unauthServices.validateUser({email: webexUserEU.email}).then((r) => {
+            assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+            assert.equal(r.activated, true);
+            assert.equal(r.exists, true);
+          })
+        ));
 
       it('sends the prelogin user id as undefined when not specified', () => {
         const requestStub = sandbox.spy(unauthServices, 'request');
 
-        return unauthServices
-          .validateUser({
-            email: createActivationEmail(),
-            activationOptions: {suppressEmail: true},
-          })
-          .then(() => {
-            assert.isUndefined(getActivationRequest(requestStub).headers['x-prelogin-userid']);
-          });
+        return retryOn429(() => {
+          requestStub.resetHistory();
+
+          return unauthServices
+            .validateUser({
+              email: createActivationEmail(),
+              activationOptions: {suppressEmail: true},
+            })
+            .then(() => {
+              assert.isUndefined(getActivationRequest(requestStub).headers['x-prelogin-userid']);
+            });
+        });
       });
 
       it('sends the prelogin user id as provided when specified', () => {
         const requestStub = sandbox.spy(unauthServices, 'request');
         const preloginUserId = uuid.v4();
 
-        return unauthServices
-          .validateUser({
-            email: createActivationEmail(),
-            activationOptions: {suppressEmail: true},
-            preloginUserId,
-          })
-          .then(() => {
-            assert.strictEqual(
-              getActivationRequest(requestStub).headers['x-prelogin-userid'],
-              preloginUserId
-            );
-          });
+        return retryOn429(() => {
+          requestStub.resetHistory();
+
+          return unauthServices
+            .validateUser({
+              email: createActivationEmail(),
+              activationOptions: {suppressEmail: true},
+              preloginUserId,
+            })
+            .then(() => {
+              assert.strictEqual(
+                getActivationRequest(requestStub).headers['x-prelogin-userid'],
+                preloginUserId
+              );
+            });
+        });
       });
 
       it('uses the license service by default', () => {
         const requestStub = sandbox.spy(unauthServices, 'request');
 
-        return unauthServices
-          .validateUser({
-            email: createActivationEmail(),
-            activationOptions: {suppressEmail: true},
-          })
-          .then(() => {
-            const request = getActivationRequest(requestStub, false);
-            assert.strictEqual(request.service, 'license');
-            assert.strictEqual(request.resource, 'users/activations');
-          });
+        return retryOn429(() => {
+          requestStub.resetHistory();
+
+          return unauthServices
+            .validateUser({
+              email: createActivationEmail(),
+              activationOptions: {suppressEmail: true},
+            })
+            .then(() => {
+              const request = getActivationRequest(requestStub, false);
+              assert.strictEqual(request.service, 'license');
+              assert.strictEqual(request.resource, 'users/activations');
+            });
+        });
       });
 
       it('uses the user-onboarding service when useUserOnboardingServiceForActivations config is true', () => {
@@ -970,16 +1001,20 @@ describe('webex-core', () => {
         const userOnboardingServices = userOnboardingWebex.internal.services;
         const requestStub = sandbox.spy(userOnboardingServices, 'request');
 
-        return userOnboardingServices
-          .validateUser({
-            email: createActivationEmail(),
-            activationOptions: {suppressEmail: true},
-          })
-          .then(() => {
-            const request = getActivationRequest(requestStub, true);
-            assert.strictEqual(request.service, 'user-onboarding');
-            assert.strictEqual(request.resource, 'api/v1/users/activations');
-          });
+        return retryOn429(() => {
+          requestStub.resetHistory();
+
+          return userOnboardingServices
+            .validateUser({
+              email: createActivationEmail(),
+              activationOptions: {suppressEmail: true},
+            })
+            .then(() => {
+              const request = getActivationRequest(requestStub, true);
+              assert.strictEqual(request.service, 'user-onboarding');
+              assert.strictEqual(request.resource, 'api/v1/users/activations');
+            });
+        });
       });
     });
 

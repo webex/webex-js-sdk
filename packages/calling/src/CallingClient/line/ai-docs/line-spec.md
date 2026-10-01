@@ -122,7 +122,7 @@ Compatibility notes:
 |-------|------|---------|---------|
 | `connecting` | `LINE_EVENTS.CONNECTING` | _(none)_ | `register()` called |
 | `registered` | `LINE_EVENTS.REGISTERED` | `ILine` | Device registration succeeded |
-| `unregistered` | `LINE_EVENTS.UNREGISTERED` | _(none)_ | Device deregistered |
+| `unregistered` | `LINE_EVENTS.UNREGISTERED` | `LineError` (optional) | Device deregistered, registration down, or session superseded. The `LineError` is present only when the SDK will not re-register — currently a `409 Conflict` on keepalive, reported as `ERROR_TYPE.SESSION_SUPERSEDED` |
 | `reconnecting` | `LINE_EVENTS.RECONNECTING` | _(none)_ | Keepalive failure, attempting recovery |
 | `reconnected` | `LINE_EVENTS.RECONNECTED` | _(none)_ | Recovery succeeded |
 | `error` | `LINE_EVENTS.ERROR` | `LineError` | Registration or line error |
@@ -314,12 +314,12 @@ flowchart TD
   E --> F[emit REGISTERED with Line instance]
   C -- No --> Z[No-op]
 
-  B -->|UNREGISTERED| G[emit UNREGISTERED]
+  B -->|UNREGISTERED| G[emit UNREGISTERED with optional LineError reason]
   B -->|RECONNECTED| H[emit RECONNECTED]
   B -->|RECONNECTING| I[emit RECONNECTING]
 
   B -->|ERROR| J{lineError provided?}
-  J -- Yes --> K[emit ERROR with LineError]
+  J -- Yes --> K[emit event with LineError]
   J -- No --> Z
 
   F --> APP[Application receives event]

@@ -158,6 +158,8 @@ const Breakouts = WebexPlugin.extend({
     this.listenToCurrentSessionTypeChange();
     this.listenToBreakoutRosters();
     this.listenToBreakoutHelp();
+    // LLM may connect after locusUrlUpdate has already run, so re-check the broadcast subscription on connect
+    this.listenTo(this.webex.internal.llm, 'online', () => this.listenToBroadcastMessages());
     // @ts-ignore
     this.breakoutRequest = new BreakoutRequest({webex: this.webex});
   },
@@ -264,7 +266,16 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   listenToBroadcastMessages() {
-    if (!this.webex.internal.llm.isConnected() || this.hasSubscribedToMessage) {
+    // Only subscribe when the connected LLM session belongs to this meeting's locus. locusUrl is
+    // populated before the socket emits 'online', so it is reliable even on the first connection
+    // where the owner meeting id has not been tagged yet.
+    const isLLMForThisMeeting = this.webex.internal.llm.getLocusUrl() === this.locusUrl;
+
+    if (
+      !this.webex.internal.llm.isConnected() ||
+      !isLLMForThisMeeting ||
+      this.hasSubscribedToMessage
+    ) {
       return;
     }
 

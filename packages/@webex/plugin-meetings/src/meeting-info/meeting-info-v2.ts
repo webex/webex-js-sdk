@@ -649,12 +649,12 @@ export default class MeetingInfoV2 {
     installedOrgID = null,
     locusId = null,
     extraParams: object = {},
-    options: {meetingId?: string; sendCAevents?: boolean} = {},
+    options: {meetingId?: string; sendCAevents?: boolean; correlationId?: string} = {},
     registrationId: string = null,
     fullSiteUrl: string = null,
     classificationId: string = null
   ) {
-    const {meetingId, sendCAevents} = options;
+    const {meetingId, sendCAevents, correlationId} = options;
 
     const destinationType = await MeetingInfoUtil.getDestinationType({
       destination,
@@ -705,6 +705,10 @@ export default class MeetingInfoV2 {
       method: HTTP_VERBS.POST,
       body,
     };
+
+    if (meetingId && sendCAevents && correlationId) {
+      requestOptions.headers = {correlationId};
+    }
 
     const directURI = await MeetingInfoUtil.getDirectMeetingInfoURI(destinationType);
 

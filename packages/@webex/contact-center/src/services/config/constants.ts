@@ -1,6 +1,13 @@
 // making query params configurable for List Teams and List Aux Codes API
 export const DEFAULT_PAGE = 0;
 
+/** Desktop Profile access levels for collaboration destination categories. */
+export const COLLABORATION_ACCESS = {
+  ALL: 'ALL',
+  SPECIFIC: 'SPECIFIC',
+  NONE: 'NONE',
+} as const;
+
 /**
  * Default page size for paginated API requests.
  * @type {number}
@@ -26,6 +33,12 @@ export const AGENT_STATE_AVAILABLE_ID = '0';
  * @ignore
  */
 export const AGENT_STATE_AVAILABLE = 'Available';
+
+/** System idle-code name reserved for Agent Wellness Break. */
+export const WELLBEING_BREAK_IDLE_CODE = 'WellbeingBreak';
+
+/** Backend sentinel indicating wellness-break reminders are enabled. @internal */
+export const WELLNESS_BREAK_REMINDERS_ENABLED = 'ENABLED';
 
 /**
  * Description for the 'Available' agent state.
@@ -68,6 +81,7 @@ export const METHODS = {
   GET_URL_MAPPING: 'getURLMapping',
   GET_DIAL_PLAN_DATA: 'getDialPlanData',
   GET_AI_FEATURE_FLAGS: 'getAIFeatureFlags',
+  GET_WELLBEING_BREAK_IDLE_CODE: 'getWellbeingBreakIdleCode',
   GET_QUEUES: 'getQueues',
 
   // Util methods
@@ -168,6 +182,11 @@ export const endPointMap = {
       filter && filter.length > 0 ? `&filter=id=in=(${filter})` : ''
     }&attributes=${attributes}&desktopProfileFilter=true`,
 
+  /** Lists system idle codes without applying the agent Desktop Profile filter. */
+  systemIdleCodes: (orgId: string, page: number, pageSize: number) =>
+    `organization/${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}` +
+    '&workType=IDLE_CODE&customFilter=isSystemCode==true&desktopProfileFilter=false',
+
   /**
    * Gets the endpoint for organization info.
    * @param orgId - Organization ID.
@@ -258,17 +277,14 @@ export const endPointMap = {
   queueList: (orgId: string, queryParams: string) =>
     `/organization/${orgId}/v2/contact-service-queue?${queryParams}`,
   /**
-   * Gets the endpoint for entry points list with custom query parameters.
+   * Gets the desktop-profile-filtered dial-number mappings used by entry-point destination lists.
    * @param orgId - Organization ID.
    * @param queryParams - Query parameters string.
    * @returns The endpoint URL string.
-   * @public
-   * @example
-   * const url = endPointMap.entryPointList('org123', 'page=0&pageSize=10');
    * @ignore
    */
-  entryPointList: (orgId: string, queryParams: string) =>
-    `/organization/${orgId}/v2/entry-point?${queryParams}`,
+  entryPointDialNumberList: (orgId: string, queryParams: string) =>
+    `/organization/${orgId}/v3/dial-number?${queryParams}`,
   /**
    * Gets the endpoint for address book entries with custom query parameters.
    * @param orgId - Organization ID.

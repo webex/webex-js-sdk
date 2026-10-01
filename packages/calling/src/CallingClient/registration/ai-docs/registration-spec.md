@@ -97,6 +97,7 @@ registration/
 | Failover (primary → backup) | `startFailoverTimer()` with exponential backoff |
 | Failback (backup → primary) | `initiateFailback()` → `executeFailback()` |
 | 429 handling | `Retry-After` header with retry budget |
+| 409 handling on keepalive | `handleRegistrationErrors()` → `sessionSupersededCb` → `handle409KeepaliveFailure()` → hard stop, no re-registration |
 | Reconnection | `handleConnectionRestoration()` / `reconnectOnFailure()` |
 | Deregistration | `DELETE /devices/{id}` + worker termination |
 | Mobius WSS connect/disconnect (when `apiRequest.isSocketEnabled()`) | Per-server `apiRequest.connectToMobiusSocket(wssNormalizedUrl)` inside `attemptRegistrationWithServers`; `apiRequest.disconnectFromMobiusSocket({code: 3050, reason: 'done (permanent)'})` on failover, failback, registration-down, restore-previous-registration, and deregister-with-`closeMobiusWss=true`. |
@@ -179,7 +180,7 @@ sequenceDiagram
     CC->>Reg: line.registration.handleRegistrationDownEvent(event)
 
     Reg->>CM: getActiveCalls() → end first active call
-    Reg->>Reg: performRegistrationDownCleanup()
+    Reg->>Reg: registrationCleanup(REGISTRATION_DOWN)
 
     Reg->>Reg: mutex.runExclusive(...)
     Reg->>Reg: clearFailbackTimer + clearKeepaliveTimer
@@ -195,6 +196,39 @@ sequenceDiagram
 ```
 
 > **Note:** The synthetic `MOBIUS_SOCKET_4001_EVENT` envelope emitted when the server closes the socket with code `4001` carries `eventType: 'registration.down'` and therefore drives the **same** cleanup path as a server-pushed async `registration.down`. See [`mobius-socket/ai-docs/ARCHITECTURE.md`](../../../mobius-socket/ai-docs/ARCHITECTURE.md) for the close-code matrix.
+
+### Keepalive `409 Conflict` — Session Superseded
+
+```mermaid
+sequenceDiagram
+    participant WW as Keepalive Worker
+    participant Reg as Registration
+    participant HRE as handleRegistrationErrors
+    participant MM as MetricManager
+    participant API as APIRequest
+    participant MS as MobiusSocket
+    participant Line as Line
+
+    WW-->>Reg: KEEPALIVE_FAILURE {err.statusCode: 409, keepAliveRetryCount}
+    Reg->>HRE: handleRegistrationErrors(err, emitterCb, ctx,<br/>{retry429Cb, sessionSupersededCb})
+    Note over HRE: case ERROR_CODE.CONFLICT → LineError with<br/>SESSION_SUPERSEDED_MESSAGE, ERROR_TYPE.SESSION_SUPERSEDED, INACTIVE
+    HRE->>Reg: sessionSupersededCb(lineError) → handle409KeepaliveFailure
+    Reg->>WW: clearKeepaliveTimer() → CLEAR_KEEPALIVE + terminate()
+    Reg->>MM: submitRegistrationMetric(KEEPALIVE_ERROR, KEEPALIVE_FAILURE, ...)
+    Reg->>Reg: registrationCleanup(SESSION_SUPERSEDED)
+
+    opt apiRequest.isSocketEnabled()
+        Reg->>API: disconnectFromMobiusSocket({code:3050, reason:'done (permanent)'})
+        API->>MS: disconnect
+    end
+
+    Reg->>Line: lineEmitter(LINE_EVENTS.UNREGISTERED, undefined, lineError)
+    Reg->>Reg: uploadLogs()
+    HRE-->>Reg: {finalError: true}
+    Note over Reg: finalError + status 409 → skip the generic keepalive failure handling
+```
+
+Status-code classification stays in `handleRegistrationErrors`; the hard stop is scoped to keepalive because only that flow passes `sessionSupersededCb`. Registration, restoration, failover, and failback have nothing to act on, so for them a `409` is logged and ignored: no `LINE_EVENTS.UNREGISTERED`, no registration-error metric, and `shouldDisconnect` stays `false`. The error is non-final, so the server loop and failover proceed as they would for any non-fatal status. Keepalive `404` / `429` / `5xx` handling is unchanged.
 
 ---
 
@@ -218,6 +252,7 @@ sequenceDiagram
 | REGISTRATION-R-007 | `deregister(closeMobiusWss?)` deletes the active device, emits the unregistered lifecycle signal, stops keepalive, clears failover state, sets status to `INACTIVE`, and optionally closes Mobius WSS. | Complete cleanup prevents stale device registrations, timers, retry state, or transport sessions from surviving deregistration. | `src/CallingClient/registration/register.ts` | `src/CallingClient/registration/register.test.ts` | Direct tests do not isolate both values of `closeMobiusWss`; delete behavior is exercised through restoration/failback flows | PRESENT |
 | REGISTRATION-R-008 | Each server group selects HTTP or Mobius WSS from its URI scheme; WSS connects before registration and is disconnected with code `3050` / reason `done (permanent)` during lifecycle transitions that require a new session. | Aligning transport selection with the active server group prevents HTTP endpoints from being routed over WSS and avoids carrying an obsolete socket across failover, failback, or cleanup. | `src/CallingClient/registration/register.ts`; `src/CallingClient/utils/request.ts` | `src/CallingClient/registration/register.test.ts`; `src/CallingClient/utils/request.test.ts` | none identified | PRESENT |
 | REGISTRATION-R-009 | A `registration.down` event ends the first active call, clears registration timers and transient retry state under the shared mutex, sets status to `INACTIVE`, optionally closes WSS, and emits `LINE_EVENTS.UNREGISTERED` without deleting a device already removed by Mobius. | Immediate, serialized cleanup prevents the SDK from retaining a registration or call that the server has declared invalid. | `src/CallingClient/registration/register.ts` | `src/CallingClient/registration/register.test.ts` | none identified | PRESENT |
+| REGISTRATION-R-010 | A keepalive answered with `409 Conflict` is a hard stop on first occurrence: `handleRegistrationErrors` classifies the status code and delegates to the keepalive-only session-superseded handler, the keepalive worker is terminated, every re-registration path is skipped, hard-stop cleanup closes WSS and sets status to `INACTIVE`, and the consumer receives a single `LINE_EVENTS.UNREGISTERED` carrying a `SESSION_SUPERSEDED` `LineError` as the reason; a `KEEPALIVE_ERROR` metric is submitted and logs are uploaded. The superseded state is latched before cleanup waits on the shared mutex and enforced in exactly one place, `attemptRegistrationWithServers`, the choke point every registration attempt passes through; it returns a final error there, so no automatic recovery path — connection restoration, calls cleared, or a failover/failback timer already scheduled when the `409` arrived — re-registers the session or reschedules a retry until the consumer registers explicitly. A keepalive result whose worker has since been replaced is discarded, and a `409` reaching a flow that passes no session-superseded handler is logged and ignored — non-final, no consumer event, no metric. | Mobius returns `409` when the same user registered elsewhere (typically a second browser tab), so re-registering would unregister that other device and start a registration ping-pong between the two. | `src/CallingClient/registration/register.ts` | `src/CallingClient/registration/register.test.ts` | none identified | PRESENT |
 
 ### Key Capabilities
 
@@ -231,6 +266,7 @@ The Registration module handles:
 - **429 Retry** — Respect `Retry-After` with context-specific registration, failback, and keepalive scheduling
 - **Deregistration** — `DELETE /devices/{deviceId}` to clean up the device on Mobius, with optional Mobius WebSocket teardown
 - **Registration-Down Cleanup** — End the first active call, clear registration-side timers/retry state, optionally close WSS, and emit `UNREGISTERED` without sending a redundant device DELETE
+- **Session-Superseded Hard Stop** — A keepalive answered with `409 Conflict` stops the keepalive worker, skips re-registration, closes WSS, and emits `UNREGISTERED` carrying the superseded reason
 - **Mobius WSS Lifecycle (when `apiRequest.isSocketEnabled()`)** — Connect to the per-server WSS URL before `POST /device`, and disconnect with `{code: 3050, reason: 'done (permanent)'}` on failover, failback, registration-down cleanup, restore-previous-registration, and `deregister(closeMobiusWss = true)`. See [`mobius-socket/ai-docs/AGENTS.md`](../../../mobius-socket/ai-docs/AGENTS.md) for the close-code policy.
 
 ## Design Overview
@@ -256,7 +292,7 @@ This section provides an overview of the core concepts and flows managed by the 
 When Mobius emits a `REGISTRATION_DOWN` async event, `CallingClient` forwards it to `Registration.handleRegistrationDownEvent`:
 
 1. Retrieves the first active call (if any) from `CallManager` and immediately calls `activeCall?.end()` to tear it down.
-2. Calls `performRegistrationDownCleanup` unconditionally — there is no deferral, no `registrationDownPending` flag, and no polling interval.
+2. Calls `registrationCleanup` unconditionally — there is no deferral, no `registrationDownPending` flag, and no polling interval.
 
 Cleanup (under the shared mutex) performs:
 - `clearFailbackTimer()` and `clearKeepaliveTimer()`
@@ -264,8 +300,11 @@ Cleanup (under the shared mutex) performs:
 - `clearFailoverState()` and `setStatus(RegistrationStatus.INACTIVE)`
 - Disconnects the Mobius WebSocket when `apiRequest.isSocketEnabled()` (code `3050`, reason `'done (permanent)'`)
 - Emits `LINE_EVENTS.UNREGISTERED` via `lineEmitter` so the SDK consumer is notified
+- For a superseded session, that event carries the `LineError` describing why the line stays unregistered
 
 No `DELETE /devices/{id}` is sent because Mobius has already signaled that the registration is gone.
+
+`registrationCleanup(caller, hardStop)` is shared with the keepalive `409 Conflict` path. The `HardStop` discriminated union (`src/CallingClient/registration/types.ts`) selects the log label (`registration-down` / `session-superseded`) and requires the `LineError` for a superseded session, so the terminal event and its payload cannot be mismatched.
 
 ### 5. Metrics and Observability
 
@@ -375,7 +414,7 @@ When `apiRequest.isSocketEnabled()` is true (driven by `isMobiusWssEnabled(webex
 | `startFailoverTimer` switching primary → backup | disconnect primary WSS before backup re-registration | `register.ts ~ L508–L520` |
 | `executeFailback` primary recovered + no active calls | disconnect backup WSS before primary re-registration | `register.ts ~ L713–L725` |
 | `deregister(closeMobiusWss = true)` | disconnect WSS after DELETE returns | `register.ts ~ L1264–L1270` |
-| `performRegistrationDownCleanup` (after Mobius async `registration.down`) | disconnect WSS as final cleanup step | `register.ts ~ L1411–L1419` |
+| `registrationCleanup` (after Mobius async `registration.down`, or a keepalive `409 Conflict`) | disconnect WSS as final cleanup step | `register.ts` — `registrationCleanup` |
 
 ### Constants Used
 
@@ -403,6 +442,8 @@ A dedicated Web Worker manages keepalive requests to ensure a responsive and rel
 
 - Worker posts `KEEPALIVE_SUCCESS` **only when recovering** from a previous failure (`retryCount > 0` before the success). Normal successes silently reset the counter.
 - On **429**: `handle429Retry` clears the current worker and schedules a new keepalive timer after the `Retry-After` delay.
+- On **409**: `handleRegistrationErrors` invokes the keepalive-only `sessionSupersededCb`, so `handle409KeepaliveFailure` treats the failure as a hard stop on the very first occurrence — the retry count is ignored, the worker is terminated, no registration is attempted, and the consumer receives `UNREGISTERED` carrying the superseded reason. A terminal `409` makes the keepalive branch return before its generic failure handling, and latches `sessionSuperseded` immediately — before cleanup waits on the shared mutex — so that no automatic recovery path (network flap, calls cleared, an already-scheduled failover or failback) re-registers the session. The latch is checked in one place, `attemptRegistrationWithServers`, which every registration attempt funnels through; it returns `abort = true` there, and because each caller's `if (!abort …)` guard short-circuits, no failover timer is rescheduled either. Only an explicit `triggerRegistration()` clears it.
+- A keepalive whose result arrives after its worker was replaced (failback, connection restoration) is discarded, so a stale `409` cannot tear down the registration that replaced it.
 - On **fatal error** (abort) or **retries exceeded** (retryCount >= threshold, 4 for CC / 5 otherwise): the worker is terminated and the main thread either calls `reconnectOnFailure` (non-fatal threshold) or attempts fresh registration (404).
 - On **non-fatal error below threshold**: only `LINE_EVENTS.RECONNECTING` is emitted; the worker keeps running.
 
@@ -749,6 +790,7 @@ Robust error handling is built in for registration and keepalive via `handleRegi
 - **403 (Device Creation Disabled, code 102):** Fatal — `abort = true`.
 - **429 Too Many Requests:** Non-fatal — stores `Retry-After` value via `handle429Retry`. During initial registration, the loop continues to the next server; the stored value influences `startFailoverTimer` interval. During failback, retries up to `REG_FAILBACK_429_MAX_RETRIES` (5).
 - **500 / 503 / Other:** Non-fatal — the loop in `attemptRegistrationWithServers` continues to the next server. If all servers fail, `startFailoverTimer` schedules retries with exponential backoff.
+- **409 Conflict (keepalive only):** Hard stop — `handleRegistrationErrors` builds the `SESSION_SUPERSEDED` error and hands it to `handle409KeepaliveFailure` through `sessionSupersededCb`, so no server loop, failover, or restore is attempted. Flows that do not pass that handler (registration, restoration, failover, failback) log the `409` and ignore it — non-final, no consumer event, no metric — and continue to the next server.
 
 ### 429 Retry Logic
 
@@ -943,6 +985,7 @@ Unit tests are co-located under `src/CallingClient/registration/` and exercise p
 | REGISTRATION-R-007 | `src/CallingClient/registration/register.test.ts` | Add isolated coverage for `deregister(false)` and `deregister(true)`, including WSS teardown failure |
 | REGISTRATION-R-008 | `src/CallingClient/registration/register.test.ts`; `src/CallingClient/utils/request.test.ts` | Re-check negative/error edge coverage during independent validation |
 | REGISTRATION-R-009 | `src/CallingClient/registration/register.test.ts` | Re-check negative/error edge coverage during independent validation |
+| REGISTRATION-R-010 | `src/CallingClient/registration/register.test.ts` | Re-check negative/error edge coverage during independent validation |
 
 ## Traceability
 

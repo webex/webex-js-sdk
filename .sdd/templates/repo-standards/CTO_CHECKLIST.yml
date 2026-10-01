@@ -1,0 +1,211 @@
+# CTO Architecture Checklist
+#
+# Purpose:
+# - Track architecture-readiness controls in a normalized, machine-readable shape.
+# - Keep implementation detail in canonical documents instead of duplicating long text.
+#
+# Primary evidence documents:
+# - docs/architecture.md
+# - docs/service.md (deployable services only)
+# - SECURITY.md
+# - CONTRIBUTING.md
+# - CHANGELOG.md
+
+metadata:
+  service: your-service-name
+  owner: '@team-handle'
+  reviewed_on: 2026-02-19
+  checklist_version: 1
+
+document_evidence:
+  architecture: docs/architecture.md
+  security: SECURITY.md
+  contributing: CONTRIBUTING.md
+  changelog: CHANGELOG.md
+
+# Status values:
+# - not_started
+# - in_progress
+# - completed
+# - not_applicable
+controls:
+  - id: COST-001
+    domain: cost
+    title: Cost requirements are captured and periodically reviewed
+    status: not_started
+    evidence:
+      - docs/architecture.md#quality-attributes
+    notes: ''
+
+  - id: COST-002
+    domain: cost
+    title: Capacity and scaling decisions are cost-informed
+    status: not_started
+    evidence:
+      - docs/architecture.md#quality-attributes
+    notes: ''
+
+  - id: DATA-001
+    domain: data
+    title: Sensitive data classes and handling rules are documented
+    status: not_started
+    evidence:
+      - docs/architecture.md#security
+    notes: ''
+
+  - id: DATA-002
+    domain: data
+    title: Data residency and deletion obligations are addressed
+    status: not_started
+    evidence:
+      - docs/architecture.md#repository-data-and-schema
+    notes: ''
+
+  - id: SCALE-001
+    domain: scale
+    title: Service is designed for horizontal scaling and bounded resources
+    status: not_started
+    evidence:
+      - docs/architecture.md#quality-attributes
+    notes: ''
+
+  - id: SCALE-002
+    domain: scale
+    title: Backpressure and asynchronous processing strategy is defined
+    status: not_started
+    evidence:
+      - docs/architecture.md#quality-attributes
+    notes: ''
+
+  - id: ENV-001
+    domain: environments
+    title: Environment-specific controls and constraints are documented
+    status: not_started
+    evidence:
+      - docs/architecture.md#runtime-and-infrastructure
+    notes: ''
+
+  - id: ENV-002
+    domain: environments
+    title: Feature-flag governance exists for regulated environments
+    status: not_started
+    evidence:
+      - CONTRIBUTING.md#pull-requests
+    notes: ''
+
+  - id: HA-001
+    domain: availability
+    title: High-availability design removes single points of failure
+    status: not_started
+    evidence:
+      - docs/architecture.md#quality-attributes
+    notes: ''
+
+  - id: HA-002
+    domain: availability
+    title: Health checks and upgrade strategy avoid customer-visible downtime
+    status: not_started
+    evidence:
+      - docs/architecture.md#runtime-and-infrastructure
+      - docs/architecture.md#observability-and-operations
+    notes: ''
+
+  - id: OBS-001
+    domain: observability
+    title: Golden signals and alert thresholds are defined
+    status: not_started
+    evidence:
+      - docs/architecture.md#observability-and-operations
+    notes: ''
+
+  - id: OBS-002
+    domain: observability
+    title: Metrics, logs, and traces avoid sensitive data leakage
+    status: not_started
+    evidence:
+      - docs/architecture.md#security
+    notes: ''
+
+  - id: PLAT-001
+    domain: platform
+    title: Platform and dependency standards are explicitly documented
+    status: not_started
+    evidence:
+      - docs/architecture.md#resource-inventory-and-responsibilities
+      - docs/architecture.md#dependency-topology
+    notes: ''
+
+  - id: PLAT-002
+    domain: platform
+    title: Integration boundaries and ownership are clear
+    status: not_started
+    evidence:
+      - .github/CODEOWNERS
+    notes: ''
+
+  - id: TEST-001
+    domain: validation
+    title: Functional and regression test expectations are defined
+    status: not_started
+    evidence:
+      - CONTRIBUTING.md#development-workflow
+    notes: ''
+
+  - id: TEST-002
+    domain: validation
+    title: Security and performance testing expectations are documented
+    status: not_started
+    evidence:
+      - SECURITY.md
+      - CONTRIBUTING.md#pull-requests
+    notes: ''
+
+  - id: RES-001
+    domain: resilience
+    title: Failure-mode handling and degradation strategy are documented
+    status: not_started
+    evidence:
+      - docs/architecture.md#interaction-and-execution-flows
+    notes: ''
+
+  - id: RES-002
+    domain: resilience
+    title: Dependency timeouts and retry behavior are explicitly bounded
+    status: not_started
+    evidence:
+      - docs/architecture.md#dependency-topology
+    notes: ''
+
+  - id: SEC-001
+    domain: security
+    title: Security workflow and disclosure path are defined
+    status: completed
+    evidence:
+      - SECURITY.md
+    notes: 'Security disclosure process is defined and monitored.'
+
+  - id: SEC-002
+    domain: security
+    title: Ownership for security review and remediation is explicit
+    status: completed
+    evidence:
+      - .github/CODEOWNERS
+      - SECURITY.md
+    notes: 'Ownership and escalation paths are in place.'
+
+  - id: DR-001
+    domain: disaster_recovery
+    title: Backup and restore expectations are documented and testable
+    status: not_started
+    evidence:
+      - docs/architecture.md#repository-data-and-schema
+      - docs/architecture.md#observability-and-operations
+    notes: ''
+
+  - id: DR-002
+    domain: disaster_recovery
+    title: Recovery objectives and drills are documented
+    status: not_started
+    evidence:
+      - docs/architecture.md#observability-and-operations
+    notes: ''

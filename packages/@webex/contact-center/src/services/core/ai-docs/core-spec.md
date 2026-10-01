@@ -259,6 +259,7 @@ connectionService.on('connectionLost', (details: ConnectionLostDetails) => {
 | CORE-R-004 | ConnectionService must emit transport-state details and retry `initWebSocket({body, resource})`; ContactCenter owns relogin policy. | Separating transport detection from agent recovery prevents Core from mutating package-level session state. | `src/services/core/websocket/connection-service.ts` | `test/unit/spec/services/core/websocket/connection-service.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CORE-R-005 | The keepalive worker must use the configured 4-second interval and 16-second close-socket timeout; AQM defaults to 20 seconds unless disabled/overridden. | Accurate timing is required for predictable recovery and request failure behavior. | `src/services/core/constants.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None; source and test evidence rechecked during the 2026-07-09 remediation; independent document revalidation pending. | PRESENT |
 | CORE-R-006 | Treat Core timeout, keepalive, and recovery constants as fixed behavior controls, not rollout flags; Core owns no feature-gate evaluation. | Conflating operational constants with rollout policy could disable transport or correlation paths unexpectedly. | `src/services/core/constants.ts`, `src/services/index.ts` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | None; rollout applicability is explicitly N/A for Core. | PRESENT |
+| CORE-R-007 | When an AQM request sets `redactSensitiveLogs`, routing-failure and timeout logs must omit the request URL, bind key, response, and raw routing payload while preserving settlement and cleanup behavior. | Dynamic request paths and routing messages can contain participant identifiers or phone numbers that must not enter diagnostic logs. | `src/services/core/aqm-reqs.ts`, `src/services/core/types.ts` | `test/unit/spec/services/core/aqm-reqs.ts` | The flag is internal and opt-in; ordinary AQM logging remains backward compatible. | PRESENT |
 
 ## Design Overview
 Core separates four responsibilities:
@@ -293,7 +294,7 @@ const setState = aqmReqs.req((p: {data: Agent.StateChange}) => ({
 await setState({data: stateChangePayload});
 ```
 
-`CLOSE_SOCKET_TIMEOUT` is 16000 ms. `CONNECTIVITY_CHECK_INTERVAL` drives reconnect attempts separately. `TIMEOUT_REQ` is the 20000 ms default AQM timeout; `WEBSOCKET_EVENT_TIMEOUT` is not the active AqmReqs default.
+`CLOSE_SOCKET_TIMEOUT` is 16000 ms. `CONNECTIVITY_CHECK_INTERVAL` drives reconnect attempts separately. `TIMEOUT_REQ` is the 20000 ms default AQM timeout; `WEBSOCKET_EVENT_TIMEOUT` is not the active AqmReqs default. A request configuration may set internal `redactSensitiveLogs: true`; this changes only routing-failure and timeout diagnostics, not correlation, errors, timing, or cleanup.
 
 ## Data Flow
 ```mermaid
@@ -711,11 +712,13 @@ export const generateTaskErrorObject = (
 ## Pitfalls
 - `initWebSocket` requires both `body` and `resource`; omitting `resource` registers against no durable subscription endpoint.
 - AqmReqs installs notification binds before HTTP and never resolves from acknowledgement; duplicate binds, timeout, and cleanup ordering are correctness-critical.
+- Sensitive AQM configurations must use the opt-in redaction flag so dynamic URLs and raw routing messages are not included in timeout/failure logs.
 - Keepalive closure (16 seconds), lost-connection detection (8 seconds), reconnect interval (5 seconds), and recovery timeout (50 seconds) are separate controls and must not be conflated.
 
 ## Module Do's / Don'ts
 - DO keep authentication and service resolution in the host Webex request layer; `WebexRequest.request` is a thin delegating wrapper.
 - DO mask authorization headers in the `AqmReqs` HTTP-error/timeout paths before those details are logged or surfaced.
+- DO enable `redactSensitiveLogs` for AQM requests whose dynamic URL or event payload can contain identity/PII.
 - DO clear success/failure/cancel bind entries together when an AQM request settles.
 - DON'T move silent-relogin policy into ConnectionService; it emits transport state only.
 - DON'T treat timeout constants as feature flags or reuse one timer for another lifecycle purpose.
@@ -747,6 +750,7 @@ Unit tests mirror module paths under `test/unit/spec/services/core`. Preserve po
 | `CORE-R-004` | `test/unit/spec/services/core/websocket/connection-service.ts` | None. |
 | `CORE-R-005` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | Keep timer-value assertions synchronized with constants. |
 | `CORE-R-006` | `test/unit/spec/services/core/websocket/WebSocketManager.ts` | Feature-gate absence is verified from construction/source rather than a dedicated negative test. |
+| `CORE-R-007` | `test/unit/spec/services/core/aqm-reqs.ts` | None. |
 
 ## Traceability
 - Repo architecture: `../../../../ai-docs/ARCHITECTURE.md` · Registry: `../../../../ai-docs/SPEC_INDEX.md`

@@ -4,6 +4,8 @@
 
 import {Interceptor} from '@webex/http-core';
 
+const inboundTransformPromise = Symbol('inboundTransformPromise');
+
 /**
  * @class
  */
@@ -40,7 +42,27 @@ export default class PayloadTransformerInterceptor extends Interceptor {
       return response;
     }
 
-    return this.webex.transform('inbound', response);
+    if (!this.webex.config.payloadTransformer.skipRepeatedInboundTransforms) {
+      return this.webex.transform('inbound', response);
+    }
+
+    if (response[inboundTransformPromise]) {
+      return response[inboundTransformPromise];
+    }
+
+    const transformPromise = this.webex.transform('inbound', response).catch((error) => {
+      Reflect.deleteProperty(response, inboundTransformPromise);
+
+      throw error;
+    });
+
+    // Store the in-flight promise so concurrent interceptor pipelines share the same transform.
+    Object.defineProperty(response, inboundTransformPromise, {
+      configurable: true,
+      value: transformPromise,
+    });
+
+    return transformPromise;
   }
 
   /**
