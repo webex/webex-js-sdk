@@ -151,7 +151,7 @@ is per-request option keys, and there are no rollout or feature flags gating any
 | `src/lib/xhr.js` (`http-core-xhr-fork`)        | The browser transport's XHR wrapper                                    | Its error callback produces a `statusCode: 0` response                          |
 | `src/lib/interceptor.js` (`http-core-interceptor-extension`) | Type and `logOptions` contract for the fold in `utils.ts` | Compile-time dependency in TypeScript; `logOptions` is called per interceptor |
 | `src/progress-event.js` (`http-core-progress-events`) | The payload emitted for download progress                       | Emitted on the caller's emitter; no effect on the response promise              |
-| `src/lib/detect.js`                            | MIME detection for buffer and blob bodies before sending                | Falls back to `application/octet-stream` rather than failing                    |
+| `src/lib/detect.js`                            | MIME detection for buffer and blob request bodies. Awaited before dispatch by the Node transport only; the browser call is not awaited, see `MOD-024` | Falls back to `application/octet-stream` rather than failing                    |
 | `@webex/common` (`isBuffer`)                   | Buffer detection for request and response bodies in the Node transport | Load-time dependency                                                            |
 | `qs`                                           | Query-string and urlencoded-form serialization in the browser          | Load-time dependency                                                            |
 | `safe-buffer`                                  | Reconstructs buffers the `request` library returns in a degraded form  | Load-time dependency                                                            |
@@ -184,6 +184,7 @@ is per-request option keys, and there are no rollout or feature flags gating any
 | `MOD-021` | The browser transport attempts a JSON parse of the response body when `params.json` was not set                              | The XHR wrapper will not deserialize without that flag, and services reply with JSON regardless              | `src/request/request.shim.js` | none found                                   | Gap: untested, including the swallowed parse failure                          | Present    |
 | `MOD-022` | The browser transport logs the request at `debug`, a `>= 400` result with its body at `warn`, and a success at `debug`       | Gives operators a failure signal without logging every successful body                                       | `src/request/request.shim.js` | none found                                   | Gap: log levels are unasserted                                                | Present    |
 | `MOD-023` | The transport file is selected at build time by the `browser` field, not by a runtime check                                  | Bundlers exclude the Node transport and the `request` library from browser builds entirely                   | `package.json`                | none found                                   | Gap: no test asserts the mapping stays correct                                | Present    |
+| `MOD-024` | The browser transport's `setContentType` is `async` but is called without `await`, so for a `Blob` or `ArrayBuffer` body only the synchronous `json: false` assignment lands before dispatch; the detected `content-type` header is written after `xhr()` has already been invoked | Not deliberate. The Node transport awaits the same detection before dispatch (`MOD-013`), so the platforms disagree; recorded as current behavior rather than as intent | `src/request/request.shim.js` | none found                                   | Defect: a buffer or blob upload from the browser can leave without the detected `content-type`. Neither branch is tested | Present    |
 
 ## Design overview
 
@@ -455,18 +456,23 @@ rules the Node jar is not.
 | `MOD-021`                | —                   | none found                                                                | none found                                                          | Including the deliberately swallowed parse failure                                  |
 | `MOD-022`                | —                   | none found                                                                | none found                                                          | Log levels are unasserted                                                           |
 | `MOD-023`                | —                   | none found                                                                | none found                                                          | No test would catch a broken `browser` mapping in `package.json`                    |
+| `MOD-024`                | —                   | none found                                                                | none found                                                          | The unawaited call is unasserted, and no test observes the outgoing `content-type` in the browser |
 
 **Coverage gaps worth acting on.** The concentration is one-sided: the Node transport is reachable
 by the Jest unit tier and the Mocha integration tier, while most browser-transport behavior is
-verified only by the Karma tier, which runs the same integration specs. Seven requirements have no
-test at all — `MOD-009`, `MOD-017`, and `MOD-020` through `MOD-023` — and all but one are
+verified only by the Karma tier, which runs the same integration specs. Eight requirements have no
+test at all — `MOD-009`, `MOD-017`, and `MOD-020` through `MOD-024` — and all but one are
 browser-side.
 
-Two deserve attention beyond the count. `MOD-017` governs whether cookies are sent on a
+Three deserve attention beyond the count. `MOD-017` governs whether cookies are sent on a
 cross-origin request, and it is entirely unasserted. `MOD-014`'s browser half is knowingly untested;
 `test/integration/spec/request.js` says so in a comment and suggests moving the error-reformatting
 logic out of the platform-specific implementations to make it testable — a refactor that would
-reduce exactly the parity risk this module's constraints are built around.
+reduce exactly the parity risk this module's constraints are built around. `MOD-024` is not a
+coverage gap but a defect the absence of coverage hides: `setContentType` in
+`src/request/request.shim.js` is `async` and is called without `await`, so the detected
+`content-type` is assigned after the request has been dispatched. This specification records the
+behavior as it is; correcting it is a transport change and belongs with a browser-tier test.
 
 Generator-side field measurement is complete for this module and every critical field is present.
 What remains is not measurement: independent semantic validation by `codex` ran on 2026-09-23 and

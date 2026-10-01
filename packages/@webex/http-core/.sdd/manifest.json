@@ -354,7 +354,7 @@
       "embedded_in_host": false,
       "cross_repo_deps_material": false,
       "security_arch_warranted": true,
-      "exposes_commands_or_artifacts": false
+      "exposes_commands_or_artifacts": true
     },
     "resolved_by": "claude-code/claude-opus-5 (host metadata; bootstrap questionnaire)",
     "resolved_at": "2026-09-23T00:00:00Z"

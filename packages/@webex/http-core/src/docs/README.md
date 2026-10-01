@@ -50,7 +50,7 @@ Related context: [repository architecture](../../docs/architecture.md) ·
 | `module.crosses_service_boundaries`  | Applicable | The exported clients issue network requests through `src/request/index.js`                              | Cross-boundary use-case flow  |
 | `module.holds_client_state`          | N/A        | No state store; `src/index.js` builds clients by currying, holding no mutable state between calls        | Client state model            |
 | `module.enforces_domain_rules`       | N/A        | No domain entities or invariants; payloads are opaque to this module                                    | Business rules and invariants |
-| `module.is_concurrent_async` | Applicable | Every public operation is promise-returning; `src/lib/detect.js` is async and `src/index.js` wraps fetch | Concurrency and reactive flow |
+| `module.is_concurrent_async` | Applicable | The request, protoprepareFetchOptions, setTimingsAndFetch, and detect exports are promise-returning; `src/request/utils.ts` and `src/lib/detect.js` are async and `src/index.js` wraps fetch | Concurrency and reactive flow |
 | `module.owns_persistence`            | N/A        | No store, schema, or migration                                                                          | Data, schema, and migration   |
 | `module.stateful_transitions`        | N/A        | Stateless per call; no lifecycle to transition through                                                  | State machine                 |
 | `module.exposes_wire_protocol`       | N/A        | Speaks standard HTTP; defines no protocol or binary format of its own                                   | Protocol and wire format      |
@@ -339,7 +339,7 @@ Subtypes are abbreviated; `src/http-error-subtypes.js` is authoritative for the 
 | `UC-003` | Plugin adding behavior       | Subclass `Interceptor`, implement `create()` and the needed hooks, pass it in `options.interceptors`                     | Omitting `create()` throws; unimplemented hooks pass through untouched                   | `src/lib/interceptor.js`                                              |
 | `UC-004` | Caller handling failures     | `catch` a rejection and branch with `instanceof HttpError.NotFound` or a parent such as `BadRequest`                      | An unmapped status still yields the category default, so the branch never misses         | `src/http-error-subtypes.js`, `test/integration/spec/http-error.js`   |
 | `UC-005` | Metrics submission           | Build options with `protoprepareFetchOptions`, hold them, then send later with `setTimingsAndFetch`                       | Timings are re-stamped at send so latency is measured from dispatch, not from build      | `src/index.js`, `test/unit/spec/index.js`                             |
-| `UC-006` | Caller uploading a buffer    | Pass a buffer body; `detect()` resolves its MIME type and the transport sets `content-type`                              | An unrecognized buffer becomes `application/octet-stream`; a wrong type is never guessed | `src/lib/detect.js`                                                   |
+| `UC-006` | Caller uploading a buffer    | Pass a buffer body; `detect()` resolves its MIME type and the Node transport sets `content-type` before dispatch        | An unrecognized buffer becomes `application/octet-stream`; a wrong type is never guessed. The browser transport does not await the detection, so the header can miss the request — see `MOD-024` in the sub-module spec | `src/lib/detect.js`, `src/request/request.shim.js`                    |
 
 ### Cross-boundary use-case flow
 
@@ -354,8 +354,11 @@ The metrics path is the important asymmetry: it bypasses `HttpStatusInterceptor`
 ## Concurrency and reactive flow
 
 - **Execution model:** promise-based on the host event loop. There are no threads, workers, or
-  background jobs. `detect()` is `async`; every other public function returns a promise created by
-  the layer beneath it.
+  background jobs. Four exports are asynchronous: `request()` and `protoprepareFetchOptions()` return
+  promises created by the layer beneath them, `setTimingsAndFetch()` returns the `fetch` promise, and
+  `detect()` is `async`. The rest of the public surface is synchronous — `defaults()` returns a
+  function, `Interceptor.create()` and `HttpStatusInterceptor.create()` return (or throw) at once,
+  `HttpError.select()` returns a class, and `ProgressEvent` and `HttpError` are constructors.
 - **Ordering guarantees:** within one request, request interceptors run in array order and response
   interceptors in reverse, as folded by `src/request/utils.ts`. Across concurrent requests there is
   no ordering guarantee and none is needed — no state is shared between them.

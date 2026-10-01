@@ -41,7 +41,7 @@ conditional section only when repository evidence satisfies its condition.
 | `repo.multi_platform`                | Applicable | `package.json` swaps the Node transport for the browser shim; `src/request/request.js` and `src/request/request.shim.js` | Platform matrix                     |
 | `repo.published_package`             | Applicable | `package.json` declares `main`, `browser`, and a `deploy:npm` script                | Release and versioning              |
 | `repo.embedded_in_host`              | N/A        | Consumed as a dependency, not mounted into a host application                       | Host integration and theming        |
-| `repo.exposes_commands_or_artifacts` | N/A        | No CLI binary, generator, or stable file output; `package.json` declares no `bin`   | Commands and generated artifacts    |
+| `repo.exposes_commands_or_artifacts` | Applicable | `package.json` declares no bin, but its scripts are the committed build, test, and publish entry points and build:src emits the published dist artifact | Commands and generated artifacts    |
 | `repo.cross_repo_deps_material`      | N/A        | Every internal dependency resolves inside the same workspace; the rest are public npm packages per `package.json` | Cross-repository topology           |
 | `repo.security_arch_warranted`       | Applicable | The package constructs `Authorization` headers and controls cookie credentials in `src/request/request.shim.js` and `src/request/request.js` | Security architecture               |
 
@@ -262,6 +262,28 @@ without any test failing on the platform you happen to be running. Changes to on
 The published entry point is `dist/index.js` (`main`), built by `build:src`. `devMain` points at
 `src/index.js` for in-workspace development. Removing an export, renaming an `HttpError` subtype, or
 changing the `ProgressEvent` payload shape are the breaking changes consumers would notice first.
+
+<!-- Include if: the repository exposes commands, generators, or stable file outputs. [condition-id: repo.exposes_commands_or_artifacts] -->
+
+## Commands and generated artifacts
+
+The package declares no `bin`, so it contributes no CLI. What it does expose is a script set in
+`package.json`, addressed through the yarn workspace form naming `@webex/http-core`, and one
+generated file tree.
+
+| Command or artifact | Owner          | Inputs                    | Output or side effect                                                              | Compatibility boundary                                                                     |
+| ------------------- | -------------- | ------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `build:src`         | `package.json` | `src`                     | Runs `webex-legacy-tools build` and writes `dist` as JavaScript plus source maps     | The only producer of the published artifact. `build` is a thin alias for it and runs no tests  |
+| `test:unit`         | `package.json` | `test/unit/spec`          | Jest run                                                                            | Self-contained; needs no external dependency                                                   |
+| `test:integration`  | `package.json` | `test/integration/spec`   | Mocha run                                                                           | Needs a local fixture server and provisioned Webex test users                                  |
+| `test:browser`      | `package.json` | `test/integration/spec`   | Karma run in a browser                                                              | The only tier that exercises `src/request/request.shim.js` and `src/lib/xhr.js`                |
+| `test:style`        | `package.json` | `src`                     | eslint run                                                                          | `src/lib/xhr.js` is exempt by a whole-file disable                                             |
+| `test`              | `package.json` | the four tiers above      | Chains style, unit, integration, and browser                                        | Builds nothing first, so it exercises `src` and never `dist`                                   |
+| `deploy:npm`        | `package.json` | `dist`, `package.json`    | `yarn npm publish` to the registry in `publishConfig`                                | Publishes `dist/index.js` as `main`; see [Release and versioning](#release-and-versioning)     |
+| `dist`              | `build:src`    | `src`                     | Build output referenced by `main` and by the `browser` field                        | Generated and not committed; never edit by hand                                                |
+
+No committed command runs the build and its tests together: `build` delegates to `build:src`, and
+`test` chains the four tiers without building.
 
 <!-- Include if: trust boundaries or identity flows warrant a dedicated architectural view. [condition-id: repo.security_arch_warranted] -->
 
