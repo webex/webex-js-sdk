@@ -65,9 +65,11 @@ const UserApps = WebexPlugin.extend({
     this._syncPromise = null;
     this._syncGeneration = null;
     this._metadataPromise = null;
+    this._metadataGeneration = null;
     this._metadataWritePromise = Promise.resolve();
     this._changePromise = Promise.resolve();
     this._publicationPromise = Promise.resolve();
+    this._decryptedTitleCache = new Map();
     this._lifecycleGeneration = 0;
     this._catchupTimer = null;
     this._queuedChanges = [];
@@ -147,6 +149,11 @@ const UserApps = WebexPlugin.extend({
     this._registerPromise = null;
     this._syncPromise = null;
     this._syncGeneration = null;
+    this._metadataPromise = null;
+    this._metadataGeneration = null;
+    this._metadataWritePromise = Promise.resolve();
+    this._changePromise = Promise.resolve();
+    this._publicationPromise = Promise.resolve();
 
     this.stopListening(this.webex.internal.mercury, USER_APP_ITEM_EVENT, this._itemEventHandler);
     this.stopListening(
@@ -225,8 +232,11 @@ const UserApps = WebexPlugin.extend({
   },
 
   async createSection({title}: {title: string}): Promise<SpaceListSection> {
+    const lifecycleGeneration = this._lifecycleGeneration;
     const normalizedTitle = this._validateTitle(title);
-    const metadata = await this._ensureMetadata();
+    const metadata = await this._ensureMetadata(lifecycleGeneration);
+
+    this._assertLifecycleCurrent(lifecycleGeneration);
     const encryptionKey = metadata['default-encryption-key'];
 
     if (!encryptionKey) {
@@ -237,6 +247,8 @@ const UserApps = WebexPlugin.extend({
       encryptionKey,
       normalizedTitle
     );
+
+    this._assertLifecycleCurrent(lifecycleGeneration);
     const response = await this.webex.request({
       service: USER_APPS_SERVICE,
       resource: `/${SECTIONS_APP}`,
@@ -246,15 +258,24 @@ const UserApps = WebexPlugin.extend({
         'encryption-key': encryptionKey,
       },
     });
+
+    this._assertLifecycleCurrent(lifecycleGeneration);
     const section = response.body as UserAppSectionWire;
     this._upsertSection(section);
     const sectionOrder = this._insertSectionIntoOrder(this._getSectionOrder(), section.id);
 
     if (!this._getConfiguredSectionOrder().includes(section.id)) {
-      await this._tryUpdateSectionOrder(sectionOrder);
+      await this._tryUpdateSectionOrder(sectionOrder, lifecycleGeneration);
     }
 
-    const snapshot = await this._publishSnapshot('mutation');
+    this._assertLifecycleCurrent(lifecycleGeneration);
+    const snapshot = await this._publishSnapshot(
+      'mutation',
+      undefined,
+      undefined,
+      undefined,
+      lifecycleGeneration
+    );
 
     return this._requireSection(snapshot, section.id);
   },
@@ -266,6 +287,8 @@ const UserApps = WebexPlugin.extend({
     sectionId: string;
     title: string;
   }): Promise<SpaceListSection> {
+    const lifecycleGeneration = this._lifecycleGeneration;
+
     this._validateCustomSectionId(sectionId);
     const section = this._getSectionWire(sectionId);
     const normalizedTitle = this._validateTitle(title);
@@ -273,6 +296,8 @@ const UserApps = WebexPlugin.extend({
       section['encryption-key'],
       normalizedTitle
     );
+
+    this._assertLifecycleCurrent(lifecycleGeneration);
     const response = await this.webex.request({
       service: USER_APPS_SERVICE,
       resource: `/${SECTIONS_APP}/${encodeURIComponent(sectionId)}`,
@@ -284,13 +309,22 @@ const UserApps = WebexPlugin.extend({
       },
     });
 
+    this._assertLifecycleCurrent(lifecycleGeneration);
     this._upsertSection({...section, ...response.body, content});
-    const snapshot = await this._publishSnapshot('mutation');
+    const snapshot = await this._publishSnapshot(
+      'mutation',
+      undefined,
+      undefined,
+      undefined,
+      lifecycleGeneration
+    );
 
     return this._requireSection(snapshot, sectionId);
   },
 
   async deleteSection({sectionId}: {sectionId: string}): Promise<void> {
+    const lifecycleGeneration = this._lifecycleGeneration;
+
     this._validateCustomSectionId(sectionId);
     const listAppName = getSectionListAppName(this._getSectionWire(sectionId));
 
@@ -299,16 +333,22 @@ const UserApps = WebexPlugin.extend({
       resource: `/${SECTIONS_APP}/${encodeURIComponent(sectionId)}`,
       method: 'DELETE',
     });
+
+    this._assertLifecycleCurrent(lifecycleGeneration);
     this._deleteSectionWire(sectionId, listAppName);
-    await this._tryUpdateSectionOrder(this._getSectionOrder());
-    await this._publishSnapshot('mutation');
+    await this._tryUpdateSectionOrder(this._getSectionOrder(), lifecycleGeneration);
+    this._assertLifecycleCurrent(lifecycleGeneration);
+    await this._publishSnapshot('mutation', undefined, undefined, undefined, lifecycleGeneration);
   },
 
   async reorderSections({sectionIds}: {sectionIds: string[]}): Promise<SpaceListSectionsSnapshot> {
-    this._validateSectionOrder(sectionIds);
-    await this._updateSectionOrder(sectionIds);
+    const lifecycleGeneration = this._lifecycleGeneration;
 
-    return this._publishSnapshot('mutation');
+    this._validateSectionOrder(sectionIds);
+    await this._updateSectionOrder(sectionIds, lifecycleGeneration);
+    this._assertLifecycleCurrent(lifecycleGeneration);
+
+    return this._publishSnapshot('mutation', undefined, undefined, undefined, lifecycleGeneration);
   },
 
   async moveConversationToSection({
@@ -318,6 +358,8 @@ const UserApps = WebexPlugin.extend({
     sectionId: string;
     conversationUrl: string;
   }): Promise<SectionMembership> {
+    const lifecycleGeneration = this._lifecycleGeneration;
+
     this._validateCustomSectionId(sectionId);
     const section = this._getSectionWire(sectionId);
     const listAppName = getSectionListAppName(section);
@@ -327,6 +369,7 @@ const UserApps = WebexPlugin.extend({
     }
 
     await this._validateConversationUrl(conversationUrl);
+    this._assertLifecycleCurrent(lifecycleGeneration);
     const response = await this.webex.request({
       service: USER_APPS_SERVICE,
       resource: `/${encodeURIComponent(listAppName)}`,
@@ -334,9 +377,16 @@ const UserApps = WebexPlugin.extend({
       body: {'conversation-url': conversationUrl},
     });
 
+    this._assertLifecycleCurrent(lifecycleGeneration);
     this._removeMembershipByConversationUrl(conversationUrl);
     this._upsertMembership(listAppName, response.body);
-    const snapshot = await this._publishSnapshot('mutation');
+    const snapshot = await this._publishSnapshot(
+      'mutation',
+      undefined,
+      undefined,
+      undefined,
+      lifecycleGeneration
+    );
     const membership = snapshot.membershipsByConversationUrl[conversationUrl];
 
     if (!membership) {
@@ -353,8 +403,11 @@ const UserApps = WebexPlugin.extend({
     sectionId: string;
     conversationUrl: string;
   }): Promise<void> {
+    const lifecycleGeneration = this._lifecycleGeneration;
+
     this._validateCustomSectionId(sectionId);
     await this._validateConversationUrl(conversationUrl);
+    this._assertLifecycleCurrent(lifecycleGeneration);
     const membership = this._snapshot?.membershipsByConversationUrl[conversationUrl];
 
     if (!membership || membership.sectionId !== sectionId) {
@@ -368,8 +421,10 @@ const UserApps = WebexPlugin.extend({
       )}`,
       method: 'DELETE',
     });
+
+    this._assertLifecycleCurrent(lifecycleGeneration);
     this._removeMembershipByConversationUrl(conversationUrl);
-    await this._publishSnapshot('mutation');
+    await this._publishSnapshot('mutation', undefined, undefined, undefined, lifecycleGeneration);
   },
 
   _listenForEvents() {
@@ -708,9 +763,25 @@ const UserApps = WebexPlugin.extend({
   ): Promise<SpaceListSectionsSnapshot> {
     const decryptedTitles = new Map<string, string>();
     const unavailableSectionIds = new Set<string>();
+    const nextTitleCache = new Map<
+      string,
+      {content: string; encryptionKey: string; title: string}
+    >();
 
     await Promise.all(
       (getSectionsApp(appsData)?.items ?? []).map(async (section) => {
+        const cachedTitle = this._decryptedTitleCache.get(section.id);
+
+        if (
+          cachedTitle?.content === section.content &&
+          cachedTitle.encryptionKey === section['encryption-key']
+        ) {
+          decryptedTitles.set(section.id, cachedTitle.title);
+          nextTitleCache.set(section.id, cachedTitle);
+
+          return;
+        }
+
         try {
           const title = await this.webex.internal.encryption.decryptText(
             section['encryption-key'],
@@ -718,6 +789,11 @@ const UserApps = WebexPlugin.extend({
           );
 
           decryptedTitles.set(section.id, title);
+          nextTitleCache.set(section.id, {
+            content: section.content,
+            encryptionKey: section['encryption-key'],
+            title,
+          });
         } catch (error) {
           unavailableSectionIds.add(section.id);
           this.trigger(
@@ -741,6 +817,7 @@ const UserApps = WebexPlugin.extend({
 
     if (this._canCommitLifecycle(lifecycleGeneration)) {
       this._appsData = appsData;
+      this._decryptedTitleCache = nextTitleCache;
       this._snapshot = snapshot;
       this.trigger(USER_APPS_SECTIONS_CHANGED, {source, snapshot, change});
     }
@@ -748,64 +825,81 @@ const UserApps = WebexPlugin.extend({
     return snapshot;
   },
 
-  async _ensureMetadata(): Promise<UserAppsMetadataWire> {
+  async _ensureMetadata(lifecycleGeneration?: number): Promise<UserAppsMetadataWire> {
     const existingMetadata = getMetadata(this._appsData);
 
     if (existingMetadata?.['default-encryption-key']) {
       return existingMetadata;
     }
 
-    if (this._metadataPromise) {
+    if (this._metadataPromise && this._metadataGeneration === lifecycleGeneration) {
       return this._metadataPromise;
     }
 
-    this._metadataPromise = (async () => {
-      try {
-        const [key] = await this.webex.internal.encryption.kms.createUnboundKeys({count: 1});
-        const request = await this.webex.internal.encryption.kms.prepareRequest({
-          method: 'create',
-          uri: '/resources',
-          ...(this.webex.internal.device.userId
-            ? {userIds: [this.webex.internal.device.userId]}
-            : {}),
-          keyUris: [key.uri],
-        });
-        const clientSpecificData = {
-          sortedSections: DEFAULT_SECTION_ORDER,
-          Default_Sections_Settings: [
-            {section_name: FAVORITES_SECTION_ID, settings: []},
-            {section_name: OTHER_SECTION_ID, settings: []},
-          ],
-        };
-        const response = await this.webex.request({
-          service: USER_APPS_SERVICE,
-          resource: `/${SECTIONS_APP}`,
-          method: 'PUT',
-          body: {
-            'kms-message': request.wrapped,
-            'encryption-key': key.uri,
-            clientSpecificData,
-          },
-        });
-        const metadata = (response.body?.metadata ?? response.body) as UserAppsMetadataWire;
+    const metadataPromise = (async () => {
+      const [key] = await this.webex.internal.encryption.kms.createUnboundKeys({count: 1});
+      const request = await this.webex.internal.encryption.kms.prepareRequest({
+        method: 'create',
+        uri: '/resources',
+        ...(this.webex.internal.device.userId
+          ? {userIds: [this.webex.internal.device.userId]}
+          : {}),
+        keyUris: [key.uri],
+      });
+      const clientSpecificData = {
+        sortedSections: DEFAULT_SECTION_ORDER,
+        Default_Sections_Settings: [
+          {section_name: FAVORITES_SECTION_ID, settings: []},
+          {section_name: OTHER_SECTION_ID, settings: []},
+        ],
+      };
+      const response = await this.webex.request({
+        service: USER_APPS_SERVICE,
+        resource: `/${SECTIONS_APP}`,
+        method: 'PUT',
+        body: {
+          'kms-message': request.wrapped,
+          'encryption-key': key.uri,
+          clientSpecificData,
+        },
+      });
+      const metadata = (response.body?.metadata ?? response.body) as UserAppsMetadataWire;
 
+      if (lifecycleGeneration === undefined || this._isLifecycleCurrent(lifecycleGeneration)) {
         this._setMetadata(metadata);
-
-        return metadata;
-      } finally {
-        this._metadataPromise = null;
       }
+
+      return metadata;
     })();
 
-    return this._metadataPromise;
+    this._metadataPromise = metadataPromise;
+    this._metadataGeneration = lifecycleGeneration;
+
+    try {
+      return await metadataPromise;
+    } finally {
+      if (this._metadataPromise === metadataPromise) {
+        this._metadataPromise = null;
+        this._metadataGeneration = null;
+      }
+    }
   },
 
-  async _updateSectionOrder(sectionIds: string[]) {
+  async _updateSectionOrder(sectionIds: string[], lifecycleGeneration?: number) {
     const orderUpdate = this._metadataWritePromise
       .catch(() => undefined)
       .then(async () => {
+        if (lifecycleGeneration !== undefined && !this._isLifecycleCurrent(lifecycleGeneration)) {
+          return;
+        }
+
         this._validateSectionOrder(sectionIds);
-        const metadata = await this._ensureMetadata();
+        const metadata = await this._ensureMetadata(lifecycleGeneration);
+
+        if (lifecycleGeneration !== undefined && !this._isLifecycleCurrent(lifecycleGeneration)) {
+          return;
+        }
+
         const body = {
           ...metadata.clientSpecificData,
           sortedSections: sectionIds,
@@ -817,6 +911,10 @@ const UserApps = WebexPlugin.extend({
           body,
         });
 
+        if (lifecycleGeneration !== undefined && !this._isLifecycleCurrent(lifecycleGeneration)) {
+          return;
+        }
+
         this._setMetadata(
           (response.body?.metadata ?? response.body ?? body) as UserAppsMetadataWire
         );
@@ -827,9 +925,9 @@ const UserApps = WebexPlugin.extend({
     return orderUpdate;
   },
 
-  async _tryUpdateSectionOrder(sectionIds: string[]) {
+  async _tryUpdateSectionOrder(sectionIds: string[], lifecycleGeneration?: number) {
     try {
-      await this._updateSectionOrder(sectionIds);
+      await this._updateSectionOrder(sectionIds, lifecycleGeneration);
     } catch (error) {
       this.logger.warn('userApps: section mutation succeeded but order metadata update failed');
       this.trigger(
@@ -1046,8 +1144,14 @@ const UserApps = WebexPlugin.extend({
     return this.registered && this._isLifecycleCurrent(lifecycleGeneration);
   },
 
+  _assertLifecycleCurrent(lifecycleGeneration: number) {
+    if (!this._isLifecycleCurrent(lifecycleGeneration)) {
+      throw new UserAppsSyncError('User-app lifecycle changed during mutation');
+    }
+  },
+
   _canCommitLifecycle(lifecycleGeneration?: number): boolean {
-    return lifecycleGeneration === undefined || this._isLifecycleActive(lifecycleGeneration);
+    return lifecycleGeneration === undefined || this._isLifecycleCurrent(lifecycleGeneration);
   },
 
   _getInactiveSnapshot(): SpaceListSectionsSnapshot {

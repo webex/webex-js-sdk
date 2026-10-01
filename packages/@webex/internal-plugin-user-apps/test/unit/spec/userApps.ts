@@ -426,15 +426,15 @@ describe('plugin-user-apps', () => {
           resolveFirstDecryptionStarted();
         })
     );
-    webex.internal.encryption.decryptText.onSecondCall().resolves('Project Alpha');
-
-    mercuryCallbacks[USER_APP_METADATA_EVENT]({
+    mercuryCallbacks[USER_APP_ITEM_EVENT]({
       data: {
         appName: 'sections',
         action: 'update',
         appData: {
-          'default-encryption-key': 'kms://default-key',
-          clientSpecificData: {sortedSections: ['OTHER', 'FAVORITES', 'section-1']},
+          id: 'section-1',
+          content: 'updated-ciphertext',
+          'encryption-key': 'kms://default-key',
+          'list-app-name': 'sections_section-1',
         },
       },
     });
@@ -462,6 +462,49 @@ describe('plugin-user-apps', () => {
     ]);
   });
 
+  it('reuses decrypted section titles for membership-only changes at the section limit', async () => {
+    const appsData = createAppsData();
+    const sections = Array.from({length: 50}, (_, index) => ({
+      id: `section-${index + 1}`,
+      content: `ciphertext-${index + 1}`,
+      'encryption-key': 'kms://default-key',
+      'list-app-name': `sections_section-${index + 1}`,
+    }));
+
+    appsData.items.dynamicTop[0].items = sections;
+    appsData.items.dynamicTop[0].metadata.clientSpecificData.sortedSections = [
+      'FAVORITES',
+      ...sections.map(({id}) => id),
+      'OTHER',
+    ];
+    stubInitialSync(appsData);
+    await webex.internal.userApps.register();
+    assert.callCount(webex.internal.encryption.decryptText, 50);
+    webex.internal.encryption.decryptText.resetHistory();
+    const changed = new Promise<void>((resolve) => {
+      webex.internal.userApps.once(USER_APPS_SECTIONS_CHANGED, ({source}) => {
+        if (source === 'mercury') {
+          resolve();
+        }
+      });
+    });
+
+    mercuryCallbacks[USER_APP_ITEM_EVENT]({
+      data: {
+        appName: 'sections_section-1',
+        action: 'create',
+        appData: {
+          id: 'membership-2',
+          'conversation-url':
+            'https://conversation.example/conversation/api/v1/conversations/00000000-0000-0000-0000-000000000002',
+        },
+      },
+    });
+    await changed;
+
+    assert.notCalled(webex.internal.encryption.decryptText);
+  });
+
   it('discards an in-flight Mercury publication after unregistering', async () => {
     stubInitialSync();
     await webex.internal.userApps.register();
@@ -481,21 +524,25 @@ describe('plugin-user-apps', () => {
         })
     );
     webex.internal.userApps.on(USER_APPS_SECTIONS_CHANGED, changed);
-    mercuryCallbacks[USER_APP_METADATA_EVENT]({
+    mercuryCallbacks[USER_APP_ITEM_EVENT]({
       data: {
         appName: 'sections',
         action: 'update',
         appData: {
-          'default-encryption-key': 'kms://default-key',
-          clientSpecificData: {sortedSections: ['OTHER', 'section-1', 'FAVORITES']},
+          id: 'section-1',
+          content: 'updated-ciphertext',
+          'encryption-key': 'kms://default-key',
+          'list-app-name': 'sections_section-1',
         },
       },
     });
 
     await decryptionStarted;
+    const changePromise = webex.internal.userApps._changePromise;
+
     await webex.internal.userApps.unregister();
     resolveDecryption('Project Alpha');
-    await webex.internal.userApps._changePromise;
+    await changePromise;
 
     assert.notCalled(changed);
   });
@@ -833,6 +880,62 @@ describe('plugin-user-apps', () => {
 
     assert.isUndefined(snapshot.sections.find(({id}) => id === 'section-1'));
     assert.isUndefined(snapshot.membershipsByConversationUrl[CONVERSATION_URL]);
+  });
+
+  it('does not publish an in-flight mutation into a later registration lifecycle', async () => {
+    stubInitialSync();
+    let resolveRename;
+
+    webex.request.onCall(2).returns(
+      new Promise((resolve) => {
+        resolveRename = resolve;
+      })
+    );
+    await webex.internal.userApps.register();
+    const rename = webex.internal.userApps.renameSection({
+      sectionId: 'section-1',
+      title: 'Stale rename',
+    });
+
+    while (webex.request.callCount < 3) {
+      await Promise.resolve();
+    }
+    await webex.internal.userApps.unregister();
+    const freshAppsData = createAppsData();
+    const freshSection = freshAppsData.items.dynamicTop[0].items[0];
+
+    freshSection.id = 'section-2';
+    freshSection.content = 'fresh-ciphertext';
+    freshSection['list-app-name'] = 'sections_section-2';
+    freshAppsData.items.dynamicTop[0].metadata.clientSpecificData.sortedSections = [
+      'FAVORITES',
+      'section-2',
+      'OTHER',
+    ];
+    freshAppsData.items.dynamicDerived = [];
+    webex.request.onCall(3).resolves({body: freshAppsData});
+    webex.request.onCall(4).resolves({
+      body: {items: []},
+      headers: {'x-cisco-endDate': '300'},
+    });
+    await webex.internal.userApps.register();
+    const changed = sinon.spy();
+
+    webex.internal.userApps.on(USER_APPS_SECTIONS_CHANGED, changed);
+    resolveRename({
+      body: {
+        id: 'section-1',
+        content: 'encrypted-title',
+        'encryption-key': 'kms://default-key',
+        'list-app-name': 'sections_section-1',
+      },
+    });
+    await assert.isRejected(rename, /lifecycle changed/);
+    const snapshot = await webex.internal.userApps.getSections();
+
+    assert.isUndefined(snapshot.sections.find(({id}) => id === 'section-1'));
+    assert.isDefined(snapshot.sections.find(({id}) => id === 'section-2'));
+    assert.notCalled(changed);
   });
 
   it('returns a confirmed create when only the secondary order update fails', async () => {
