@@ -70,6 +70,18 @@ export interface GetSummaryContentOptions {
 // --- Summary Response DTOs ---
 
 /**
+ * Single action item snippet.
+ */
+export interface ActionItemSnippet {
+  /** Unique identifier */
+  id: string;
+  /** User-edited version (if available) */
+  editedContent?: string;
+  /** Decrypted AI-generated content */
+  aiGeneratedContent: string;
+}
+
+/**
  * Decrypted AI-generated summary content.
  * Contains all three content types returned by the summary API.
  */
@@ -96,18 +108,6 @@ export interface SummaryNotes {
   content: string;
   /** Feedback URL (if available) */
   feedbackUrl?: string;
-}
-
-/**
- * Single action item snippet.
- */
-export interface ActionItemSnippet {
-  /** Unique identifier */
-  id: string;
-  /** User-edited version (if available) */
-  editedContent?: string;
-  /** Decrypted AI-generated content */
-  aiGeneratedContent: string;
 }
 
 /**
