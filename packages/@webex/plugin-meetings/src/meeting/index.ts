@@ -57,6 +57,7 @@ import {
   isBrowserMediaError,
   isBrowserMediaErrorName,
 } from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics.util';
+import type {MetricEventMeetingJoinPhase} from '@webex/internal-plugin-metrics/src/metrics.types';
 import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 import {processNewCaptions} from './voicea-meeting';
 
@@ -277,6 +278,7 @@ export type CallStateForMetrics = {
   userNameInput?: string;
   emailInput?: string;
   pstnCorrelationId?: string;
+  meetingJoinPhase?: MetricEventMeetingJoinPhase;
 };
 
 export const MEDIA_UPDATE_TYPE = {
