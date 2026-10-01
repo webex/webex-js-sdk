@@ -1,5 +1,2 @@
-# Large e2ee WASM build artifacts are not committed to the SDK repo.
-# They are served by the consuming app (copied from this folder at build time).
-# See README.md in this folder for how to (re)generate/place them.
-e2ee.wasm
+# e2ee.wasm
 e2ee.wasm.map
