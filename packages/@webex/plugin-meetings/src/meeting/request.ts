@@ -28,6 +28,7 @@ import {
   ANNOTATION,
   INTERPRETATION,
 } from '../constants';
+import {E2EE_1K_SUPPORTED} from '../e2ee/constants';
 import {
   SendReactionOptions,
   BrbOptions,
@@ -205,6 +206,10 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         INTERPRETATION.CAPABILITIES.SI_HANDOVER_SUPPORTED,
         INTERPRETATION.CAPABILITIES.SIGN_INTERPRETER_SUPPORTED
       );
+    }
+    // @ts-ignore - config comes from registerPlugin
+    if (this.config.meetings.enableE2ee) {
+      deviceCapabilities.push(E2EE_1K_SUPPORTED);
     }
 
     // append installationId to device config if it exists

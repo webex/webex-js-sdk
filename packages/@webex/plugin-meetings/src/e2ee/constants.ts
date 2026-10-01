@@ -28,6 +28,9 @@ export const CERTIFICATE_AUTHORITY_SERVICE = 'webex-certificate-authority';
 /** MLS roster device type identifying a media service (breaks zero-trust). */
 export const MEDIA_SERVICE_DEVICE_TYPE = 'MEDIA_SERVICE';
 
+/** Locus join-request device capability advertising support for large (1K) E2EE meetings. */
+export const E2EE_1K_SUPPORTED = 'E2EE_1K_SUPPORTED';
+
 /**
  * Webex Microservices production root CA, used as an MLS trust anchor for verifying member
  * certificates.

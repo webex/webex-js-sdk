@@ -562,9 +562,12 @@ to surface the meeting's zero-trust state.
   `reason` field; surfaced on the force-leave path.
 - Config: add `enableE2ee` (default `false`) to the plugin-meetings config and
   `meetings.types`; read via `this.config.enableE2ee`.
-- Join request (`meeting/request.ts` `joinMeeting`): set `supportsV2E2EEncryption` from the
-  E2EE config flag (`enableE2ee`) instead of the current hardcoded `true` (a temporary hack).
-  Only advertise V2 E2EE support to Locus when the SDK's E2EE config is enabled.
+- Join request (`meeting/request.ts` `joinMeeting`), both gated on the E2EE config flag
+  (`enableE2ee`) so E2EE is only advertised to Locus when the SDK's E2EE config is enabled:
+  - set `supportsV2E2EEncryption` from `enableE2ee`.
+  - push the `E2EE_1K_SUPPORTED` device capability (constant in `e2ee/constants.ts`) onto
+    `deviceCapabilities` when `enableE2ee` is set. This advertises support for large (1K) E2EE
+    meetings
 - `locus-info/infoUtils.ts`: parse `isV2E2EEncrypted`, `isBestEffortE2EEncryption`, and
   `mediaEncryptionGroupUrl` from the Locus DTO `info` onto `locusInfo.info`.
 

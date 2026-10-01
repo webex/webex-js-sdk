@@ -367,6 +367,24 @@ describe('plugin-meetings', () => {
         assert.deepEqual(requestParams.body.deviceCapabilities, undefined);
       });
 
+      it('adds E2EE_1K_SUPPORTED and sets supportsV2E2EEncryption when enableE2ee is set', async () => {
+        webex.meetings.config.enableE2ee = true;
+
+        await meetingsRequest.joinMeeting({});
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, ['E2EE_1K_SUPPORTED']);
+        assert.equal(requestParams.body.supportsV2E2EEncryption, true);
+      });
+
+      it('does not add E2EE_1K_SUPPORTED and leaves supportsV2E2EEncryption false when enableE2ee is not set', async () => {
+        await meetingsRequest.joinMeeting({});
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.deviceCapabilities, undefined);
+        assert.equal(requestParams.body.supportsV2E2EEncryption, false);
+      });
+
       it('adds deviceCapabilities and locale to request when they are provided', async () => {
         await meetingsRequest.joinMeeting({
           locale: 'en_UK',
