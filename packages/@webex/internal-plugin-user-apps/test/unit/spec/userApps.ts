@@ -317,6 +317,121 @@ describe('plugin-user-apps', () => {
     assert.isFalse(webex.internal.userApps.registered);
   });
 
+  it('does not recover a periodic catch-up after unregistering', async () => {
+    let rejectCatchup;
+
+    stubInitialSync();
+    await webex.internal.userApps.register();
+    webex.request.onCall(2).returns(
+      new Promise((_, reject) => {
+        rejectCatchup = reject;
+      })
+    );
+
+    const sync = webex.internal.userApps.sync();
+
+    while (webex.request.callCount < 3) {
+      await Promise.resolve();
+    }
+    await webex.internal.userApps.unregister();
+    rejectCatchup({statusCode: 400});
+    await sync;
+
+    assert.callCount(webex.request, 3);
+    assert.isFalse(webex.internal.userApps.registered);
+  });
+
+  it('queues Mercury events while a periodic catch-up is in flight', async () => {
+    let resolveCatchup;
+    const currentOrder = ['FAVORITES', 'section-1', 'OTHER'];
+
+    stubInitialSync();
+    await webex.internal.userApps.register();
+    webex.request.onCall(2).returns(
+      new Promise((resolve) => {
+        resolveCatchup = resolve;
+      })
+    );
+
+    const sync = webex.internal.userApps.sync();
+
+    while (webex.request.callCount < 3) {
+      await Promise.resolve();
+    }
+    mercuryCallbacks[USER_APP_METADATA_EVENT]({
+      timestamp: 300,
+      data: {
+        appName: 'sections',
+        action: 'update',
+        appData: {sortedSections: currentOrder},
+      },
+    });
+    assert.lengthOf(webex.internal.userApps._queuedChanges, 1);
+    resolveCatchup({
+      body: {
+        items: [
+          {
+            eventType: 'user.app_metadata',
+            appName: 'sections',
+            action: 'update',
+            appData: {sortedSections: ['OTHER', 'section-1', 'FAVORITES']},
+          },
+        ],
+      },
+      headers: {'x-cisco-endDate': '250'},
+    });
+
+    const snapshot = await sync;
+
+    assert.deepEqual(snapshot.sectionOrder, currentOrder);
+    assert.calledWithExactly(webex.request.getCall(2), {
+      service: 'userApps',
+      resource: '/catchup',
+      method: 'GET',
+      qs: {sinceDate: 200},
+    });
+  });
+
+  it('rejects a catch-up response without a valid high-water mark', async () => {
+    stubInitialSync();
+    await webex.internal.userApps.register();
+    webex.request.onCall(2).resolves({body: {items: []}});
+
+    await assert.isRejected(webex.internal.userApps.sync(), /valid high-water mark/);
+
+    assert.isFalse(webex.internal.userApps._hydrating);
+  });
+
+  it('ignores an untimestamped Mercury event during hydration', async () => {
+    let resolveCatchup;
+
+    webex.request.onFirstCall().resolves({body: createAppsData()});
+    webex.request.onSecondCall().returns(
+      new Promise((resolve) => {
+        resolveCatchup = resolve;
+      })
+    );
+
+    const registration = webex.internal.userApps.register();
+
+    while (webex.request.callCount < 2) {
+      await Promise.resolve();
+    }
+    mercuryCallbacks[USER_APP_METADATA_EVENT]({
+      data: {
+        appName: 'sections',
+        action: 'update',
+        appData: {sortedSections: ['OTHER', 'section-1', 'FAVORITES']},
+      },
+    });
+    assert.lengthOf(webex.internal.userApps._queuedChanges, 0);
+    resolveCatchup({body: {items: []}, headers: {'x-cisco-endDate': '200'}});
+
+    const snapshot = await registration;
+
+    assert.deepEqual(snapshot.sectionOrder, ['FAVORITES', 'section-1', 'OTHER']);
+  });
+
   it('queues a section event received during hydration', async () => {
     let resolveFullSync;
 
