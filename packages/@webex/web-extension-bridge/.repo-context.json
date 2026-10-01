@@ -41,7 +41,7 @@
     {
       "path": ".sdd/templates/repo-standards/template-map.json",
       "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
-      "refresh_with": "repo-annotation setup-skills.sh (bodies at JS SDK root .sdd/templates/repo-standards; this package keeps the map only)"
+      "refresh_with": "repo-annotation setup-skills.sh (no package copy; map and bodies live at JS SDK root .sdd/templates/repo-standards from PR 5246)"
     },
     {
       "path": "dist/",
@@ -266,7 +266,7 @@
         "paths": [".sdd/templates/repo-standards"],
         "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
         "refresh_with": "repo-annotation setup-skills.sh",
-        "notes": "Package keeps template-map.json only. Template bodies are the JS SDK root snapshot from PR 5246."
+        "notes": "No package copy. Template map and bodies live at JS SDK root .sdd/templates/repo-standards from PR 5246."
       }
     ],
     "sync_paths": [
@@ -274,7 +274,7 @@
         "source": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
         "targets": [".sdd/templates/repo-standards"],
         "mechanism": "setup-skills.sh resolve_templates.py",
-        "notes": "Template bodies live at JS SDK root after PR 5246; do not recopy them into this package."
+        "notes": "Shared snapshot is JS SDK root after PR 5246; do not copy templates into this package."
       }
     ],
     "validation_entrypoints": [

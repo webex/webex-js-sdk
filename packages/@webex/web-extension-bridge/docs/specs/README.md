@@ -10,7 +10,7 @@ generated_from: spec-index@0.3.0
 generated_by: cursor
 approved_by: repository user
 updated_at: 2026-09-16T10:06:00Z
-validation_status: pass
+validation_status: pending
 -->
 
 # Specification registry
