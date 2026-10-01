@@ -122,7 +122,7 @@ export default class E2eeIdentityProvider {
 
     return {
       webexCaRoots: WEBEX_CA_PRODUCTION_ROOTS,
-      domainNameRoots: '',
+      domainNameRoots: '', // todo (ucf uses domain_name_roots.p7b file)
       userIdentityRoots: '',
     };
   }
