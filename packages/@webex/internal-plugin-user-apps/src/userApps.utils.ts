@@ -178,14 +178,22 @@ export const buildSnapshot = ({
   const metadata = sectionsApp?.metadata;
   const configuredOrder = metadata?.clientSpecificData?.sortedSections ?? DEFAULT_SECTION_ORDER;
   const customIds = new Set(customSections.map(({id}) => id));
-  const sectionOrder = Array.from(
-    new Set([
-      FAVORITES_SECTION_ID,
-      ...configuredOrder.filter((id) => customIds.has(id)),
-      ...customSections.map(({id}) => id),
-      OTHER_SECTION_ID,
-    ])
-  );
+  const availableIds = new Set([FAVORITES_SECTION_ID, ...customIds, OTHER_SECTION_ID]);
+  const sectionOrder = Array.from(new Set(configuredOrder.filter((id) => availableIds.has(id))));
+  const otherSectionIndex = sectionOrder.indexOf(OTHER_SECTION_ID);
+  const missingCustomIds = customSections
+    .map(({id}) => id)
+    .filter((id) => !sectionOrder.includes(id));
+
+  if (!sectionOrder.includes(FAVORITES_SECTION_ID)) {
+    sectionOrder.unshift(FAVORITES_SECTION_ID);
+  }
+
+  if (otherSectionIndex >= 0) {
+    sectionOrder.splice(sectionOrder.indexOf(OTHER_SECTION_ID), 0, ...missingCustomIds);
+  } else {
+    sectionOrder.push(...missingCustomIds, OTHER_SECTION_ID);
+  }
   const sectionByListAppName = new Map<string, UserAppSectionWire>(
     customSections.map((section) => [section['list-app-name'], section])
   );

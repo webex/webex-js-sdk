@@ -127,6 +127,39 @@ describe('plugin-user-apps', () => {
     assert.equal(snapshot.membershipsByConversationUrl[CONVERSATION_URL].sectionId, 'section-1');
   });
 
+  it('coalesces concurrent registrations', async () => {
+    stubInitialSync();
+
+    const first = webex.internal.userApps.register();
+    const second = webex.internal.userApps.register();
+    const [firstSnapshot, secondSnapshot] = await Promise.all([first, second]);
+
+    assert.strictEqual(firstSnapshot, secondSnapshot);
+    assert.calledOnce(webex.internal.mercury.connect);
+    assert.callCount(webex.internal.mercury.on, 2);
+    assert.calledTwice(webex.request);
+  });
+
+  it('cancels registration before listeners or synchronization start', async () => {
+    let resolveConnect;
+
+    webex.internal.mercury.connect.returns(
+      new Promise((resolve) => {
+        resolveConnect = resolve;
+      })
+    );
+    const registration = webex.internal.userApps.register();
+
+    await webex.internal.userApps.unregister();
+    resolveConnect();
+    const snapshot = await registration;
+
+    assert.deepEqual(snapshot.sectionOrder, ['FAVORITES', 'OTHER']);
+    assert.notCalled(webex.internal.mercury.on);
+    assert.notCalled(webex.request);
+    assert.isFalse(webex.internal.userApps.registered);
+  });
+
   it('shares concurrent sync work', async () => {
     let resolveFullSync;
 
@@ -367,6 +400,106 @@ describe('plugin-user-apps', () => {
     assert.equal(event.source, 'mercury');
   });
 
+  it('publishes Mercury changes in arrival order', async () => {
+    stubInitialSync();
+    await webex.internal.userApps.register();
+    let resolveFirstDecryption;
+    let resolveFirstDecryptionStarted;
+    const firstDecryptionStarted = new Promise<void>((resolve) => {
+      resolveFirstDecryptionStarted = resolve;
+    });
+    let changedCount = 0;
+    const changed = new Promise<void>((resolve) => {
+      webex.internal.userApps.on(USER_APPS_SECTIONS_CHANGED, ({source}) => {
+        if (source === 'mercury' && ++changedCount === 2) {
+          resolve();
+        }
+      });
+    });
+
+    webex.internal.encryption.decryptText.resetBehavior();
+    webex.internal.encryption.decryptText.resetHistory();
+    webex.internal.encryption.decryptText.onFirstCall().callsFake(
+      () =>
+        new Promise((resolve) => {
+          resolveFirstDecryption = resolve;
+          resolveFirstDecryptionStarted();
+        })
+    );
+    webex.internal.encryption.decryptText.onSecondCall().resolves('Project Alpha');
+
+    mercuryCallbacks[USER_APP_METADATA_EVENT]({
+      data: {
+        appName: 'sections',
+        action: 'update',
+        appData: {
+          'default-encryption-key': 'kms://default-key',
+          clientSpecificData: {sortedSections: ['OTHER', 'FAVORITES', 'section-1']},
+        },
+      },
+    });
+    mercuryCallbacks[USER_APP_METADATA_EVENT]({
+      data: {
+        appName: 'sections',
+        action: 'update',
+        appData: {
+          'default-encryption-key': 'kms://default-key',
+          clientSpecificData: {sortedSections: ['section-1', 'FAVORITES', 'OTHER']},
+        },
+      },
+    });
+
+    await firstDecryptionStarted;
+    assert.calledOnce(webex.internal.encryption.decryptText);
+
+    resolveFirstDecryption('Project Alpha');
+    await changed;
+
+    assert.deepEqual(webex.internal.userApps._snapshot.sectionOrder, [
+      'section-1',
+      'FAVORITES',
+      'OTHER',
+    ]);
+  });
+
+  it('discards an in-flight Mercury publication after unregistering', async () => {
+    stubInitialSync();
+    await webex.internal.userApps.register();
+    let resolveDecryption;
+    let resolveDecryptionStarted;
+    const decryptionStarted = new Promise<void>((resolve) => {
+      resolveDecryptionStarted = resolve;
+    });
+    const changed = sinon.spy();
+
+    webex.internal.encryption.decryptText.resetBehavior();
+    webex.internal.encryption.decryptText.callsFake(
+      () =>
+        new Promise((resolve) => {
+          resolveDecryption = resolve;
+          resolveDecryptionStarted();
+        })
+    );
+    webex.internal.userApps.on(USER_APPS_SECTIONS_CHANGED, changed);
+    mercuryCallbacks[USER_APP_METADATA_EVENT]({
+      data: {
+        appName: 'sections',
+        action: 'update',
+        appData: {
+          'default-encryption-key': 'kms://default-key',
+          clientSpecificData: {sortedSections: ['OTHER', 'section-1', 'FAVORITES']},
+        },
+      },
+    });
+
+    await decryptionStarted;
+    await webex.internal.userApps.unregister();
+    resolveDecryption('Project Alpha');
+    await webex.internal.userApps._changePromise;
+
+    assert.notCalled(changed);
+  });
+
   it('keeps a corrupt section title unavailable without exposing ciphertext', async () => {
     stubInitialSync();
     webex.internal.encryption.decryptText.rejects(new Error('decrypt failed'));
@@ -407,6 +540,9 @@ describe('plugin-user-apps', () => {
     });
 
     const registration = webex.internal.userApps.register();
+    const changed = sinon.spy();
+
+    webex.internal.userApps.on(USER_APPS_SECTIONS_CHANGED, changed);
 
     while (webex.request.callCount < 1) {
       await Promise.resolve();
@@ -416,6 +552,8 @@ describe('plugin-user-apps', () => {
     await registration;
 
     assert.notCalled(setIntervalSpy);
+    assert.notCalled(changed);
+    assert.calledOnce(webex.request);
     assert.equal(webex.internal.userApps.registered, false);
   });
 
@@ -498,6 +636,113 @@ describe('plugin-user-apps', () => {
       body: {'conversation-url': CONVERSATION_URL},
     });
     assert.equal(membership.id, 'membership-2');
+  });
+
+  it('persists a complete section order without service metadata fields', async () => {
+    const appsData = createAppsData();
+
+    appsData.items.dynamicTop[0].metadata.clientSpecificData.Default_Sections_Settings = [
+      {section_name: 'FAVORITES', settings: []},
+      {section_name: 'OTHER', settings: []},
+    ];
+    stubInitialSync(appsData);
+    webex.request.onCall(2).resolves({
+      body: {
+        metadata: {
+          ...appsData.items.dynamicTop[0].metadata,
+          clientSpecificData: {
+            ...appsData.items.dynamicTop[0].metadata.clientSpecificData,
+            sortedSections: ['OTHER', 'section-1', 'FAVORITES'],
+          },
+        },
+      },
+    });
+    await webex.internal.userApps.register();
+
+    const snapshot = await webex.internal.userApps.reorderSections({
+      sectionIds: ['OTHER', 'section-1', 'FAVORITES'],
+    });
+
+    assert.calledWithExactly(webex.request.getCall(2), {
+      service: 'userApps',
+      resource: '/sections',
+      method: 'PUT',
+      body: {
+        clientSpecificData: {
+          sortedSections: ['OTHER', 'section-1', 'FAVORITES'],
+          Default_Sections_Settings: [
+            {section_name: 'FAVORITES', settings: []},
+            {section_name: 'OTHER', settings: []},
+          ],
+        },
+      },
+    });
+    assert.deepEqual(snapshot.sectionOrder, ['OTHER', 'section-1', 'FAVORITES']);
+  });
+
+  it('serializes consecutive section order writes', async () => {
+    stubInitialSync();
+    let resolveFirstOrder;
+
+    webex.request.onCall(2).returns(
+      new Promise((resolve) => {
+        resolveFirstOrder = resolve;
+      })
+    );
+    webex.request.onCall(3).resolves({
+      body: {
+        metadata: {
+          ...createAppsData().items.dynamicTop[0].metadata,
+          clientSpecificData: {
+            sortedSections: ['FAVORITES', 'OTHER', 'section-1'],
+            Default_Sections_Settings: [],
+          },
+        },
+      },
+    });
+    await webex.internal.userApps.register();
+
+    const first = webex.internal.userApps.reorderSections({
+      sectionIds: ['OTHER', 'section-1', 'FAVORITES'],
+    });
+    const second = webex.internal.userApps.reorderSections({
+      sectionIds: ['FAVORITES', 'OTHER', 'section-1'],
+    });
+
+    while (webex.request.callCount < 3) {
+      await Promise.resolve();
+    }
+    assert.equal(webex.request.callCount, 3);
+    resolveFirstOrder({
+      body: {
+        metadata: {
+          ...createAppsData().items.dynamicTop[0].metadata,
+          clientSpecificData: {
+            sortedSections: ['OTHER', 'section-1', 'FAVORITES'],
+            Default_Sections_Settings: [],
+          },
+        },
+      },
+    });
+    await Promise.all([first, second]);
+
+    assert.calledWithMatch(webex.request.getCall(2), {
+      body: {clientSpecificData: {sortedSections: ['OTHER', 'section-1', 'FAVORITES']}},
+    });
+    assert.calledWithMatch(webex.request.getCall(3), {
+      body: {clientSpecificData: {sortedSections: ['FAVORITES', 'OTHER', 'section-1']}},
+    });
+  });
+
+  it('rejects an incomplete section order before network access', async () => {
+    stubInitialSync();
+    await webex.internal.userApps.register();
+
+    await assert.isRejected(
+      webex.internal.userApps.reorderSections({sectionIds: ['section-1']}),
+      /every section exactly once/
+    );
+    assert.calledTwice(webex.request);
   });
 
   it('renames, detaches, and deletes through confirmed service operations', async () => {

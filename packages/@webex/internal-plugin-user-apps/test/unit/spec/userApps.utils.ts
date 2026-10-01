@@ -121,4 +121,49 @@ describe('userApps utils', () => {
       'membership-1'
     );
   });
+
+  it('preserves the complete native section order', () => {
+    const data = createEmptyWireData();
+
+    data.items?.dynamicTop?.push({
+      'app-name': 'sections',
+      metadata: {
+        clientSpecificData: {
+          sortedSections: ['section-2', 'OTHER', 'FAVORITES', 'section-1'],
+        },
+      },
+      items: [
+        {
+          id: 'section-1',
+          content: 'ciphertext-1',
+          'encryption-key': 'kms://key',
+          'list-app-name': 'sections_section-1',
+        },
+        {
+          id: 'section-2',
+          content: 'ciphertext-2',
+          'encryption-key': 'kms://key',
+          'list-app-name': 'sections_section-2',
+        },
+      ],
+    });
+
+    const snapshot = buildSnapshot({
+      data,
+      decryptedTitles: new Map([
+        ['section-1', 'One'],
+        ['section-2', 'Two'],
+      ]),
+      unavailableSectionIds: new Set(),
+      syncedAt: 100,
+      highWaterMark: 90,
+    });
+
+    assert.deepEqual(snapshot.sectionOrder, [
+      'section-2',
+      'OTHER',
+      'FAVORITES',
+      'section-1',
+    ]);
+  });
 });

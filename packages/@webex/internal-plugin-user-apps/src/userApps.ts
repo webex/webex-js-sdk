@@ -65,8 +65,14 @@ const UserApps = WebexPlugin.extend({
     Reflect.apply(WebexPlugin.prototype.initialize, this, args);
     this._appsData = createEmptyWireData();
     this._snapshot = null;
+    this._registerPromise = null;
     this._syncPromise = null;
+    this._syncGeneration = null;
     this._metadataPromise = null;
+    this._metadataWritePromise = Promise.resolve();
+    this._changePromise = Promise.resolve();
+    this._publicationPromise = Promise.resolve();
+    this._lifecycleGeneration = 0;
     this._catchupTimer = null;
     this._queuedChanges = [];
     this._hydrating = false;
@@ -76,39 +82,75 @@ const UserApps = WebexPlugin.extend({
       this._handleMercuryEnvelope('user.app_metadata', envelope);
   },
 
-  async register(): Promise<SpaceListSectionsSnapshot> {
+  register(): Promise<SpaceListSectionsSnapshot> {
     if (!this.webex.canAuthorize) {
-      throw new UserAppsValidationError('SDK cannot authorize user-app synchronization');
+      return Promise.reject(
+        new UserAppsValidationError('SDK cannot authorize user-app synchronization')
+      );
+    }
+
+    if (this._registerPromise) {
+      return this._registerPromise;
     }
 
     if (this.registered) {
       return this.getSections();
     }
 
-    await this.webex.internal.mercury.connect();
-    this._listenForEvents();
-    this.registered = true;
-    this._hydrating = true;
-    this.trigger(USER_APPS_REGISTERED);
+    this._lifecycleGeneration += 1;
+    const lifecycleGeneration = this._lifecycleGeneration;
+    const registration = (async () => {
+      await this.webex.internal.mercury.connect();
 
-    try {
-      const snapshot = await this.sync({forceFull: true});
-
-      if (this.registered) {
-        this._scheduleCatchup();
+      if (!this._isLifecycleCurrent(lifecycleGeneration)) {
+        return this._getInactiveSnapshot();
       }
 
-      return snapshot;
-    } catch (error) {
-      await this.unregister();
-      throw error;
-    }
+      this._listenForEvents();
+      this.registered = true;
+      this._hydrating = true;
+      this.trigger(USER_APPS_REGISTERED);
+
+      try {
+        const snapshot = await this.sync({forceFull: true}, lifecycleGeneration);
+
+        if (this._isLifecycleActive(lifecycleGeneration)) {
+          this._scheduleCatchup();
+        }
+
+        return snapshot;
+      } catch (error) {
+        if (this._isLifecycleCurrent(lifecycleGeneration)) {
+          await this.unregister();
+        }
+        throw error;
+      }
+    })();
+
+    this._registerPromise = registration;
+    registration.then(
+      () => {
+        if (this._registerPromise === registration) {
+          this._registerPromise = null;
+        }
+      },
+      () => {
+        if (this._registerPromise === registration) {
+          this._registerPromise = null;
+        }
+      }
+    );
+
+    return registration;
   },
 
   async unregister(): Promise<void> {
-    if (!this.registered) {
-      return;
-    }
+    const wasRegistered = this.registered;
+
+    this._lifecycleGeneration += 1;
+    this._registerPromise = null;
+    this._syncPromise = null;
+    this._syncGeneration = null;
 
     this.stopListening(this.webex.internal.mercury, USER_APP_ITEM_EVENT, this._itemEventHandler);
     this.stopListening(
@@ -120,22 +162,34 @@ const UserApps = WebexPlugin.extend({
     this._queuedChanges = [];
     this._hydrating = false;
     this.registered = false;
-    this.trigger(USER_APPS_UNREGISTERED);
+
+    if (wasRegistered) {
+      this.trigger(USER_APPS_UNREGISTERED);
+    }
   },
 
-  async sync(options: SyncOptions = {}): Promise<SpaceListSectionsSnapshot> {
-    if (this._syncPromise) {
+  async sync(
+    options?: SyncOptions,
+    lifecycleGeneration?: number
+  ): Promise<SpaceListSectionsSnapshot> {
+    const syncOptions = options ?? {};
+
+    if (this._syncPromise && this._syncGeneration === lifecycleGeneration) {
       return this._syncPromise;
     }
 
-    this._syncPromise = (async () => {
+    const syncPromise = (async () => {
       try {
-        if (!options.forceFull && this._snapshot?.highWaterMark) {
-          return await this._catchup(this._snapshot.highWaterMark, true);
+        if (!syncOptions.forceFull && this._snapshot?.highWaterMark) {
+          return await this._catchup(this._snapshot.highWaterMark, true, true, lifecycleGeneration);
         }
 
-        return await this._fullSync(true);
+        return await this._fullSync(true, lifecycleGeneration);
       } catch (error) {
+        if (!this._canCommitLifecycle(lifecycleGeneration)) {
+          return this._getInactiveSnapshot();
+        }
+
         const syncError =
           error instanceof UserAppsSyncError
             ? error
@@ -146,12 +200,20 @@ const UserApps = WebexPlugin.extend({
 
         this.trigger(USER_APPS_SYNC_ERROR, syncError);
         throw syncError;
-      } finally {
-        this._syncPromise = null;
       }
     })();
 
-    return this._syncPromise;
+    this._syncPromise = syncPromise;
+    this._syncGeneration = lifecycleGeneration;
+
+    try {
+      return await syncPromise;
+    } finally {
+      if (this._syncPromise === syncPromise) {
+        this._syncPromise = null;
+        this._syncGeneration = null;
+      }
+    }
   },
 
   async getSections(options: {force?: boolean} = {}): Promise<SpaceListSectionsSnapshot> {
@@ -189,12 +251,11 @@ const UserApps = WebexPlugin.extend({
       },
     });
     const section = response.body as UserAppSectionWire;
-    const order = this._getCustomOrder();
-
     this._upsertSection(section);
+    const sectionOrder = this._insertSectionIntoOrder(this._getSectionOrder(), section.id);
 
-    if (!order.includes(section.id)) {
-      await this._tryUpdateSectionOrder([...order, section.id]);
+    if (!this._getConfiguredSectionOrder().includes(section.id)) {
+      await this._tryUpdateSectionOrder(sectionOrder);
     }
 
     const snapshot = await this._publishSnapshot('mutation');
@@ -242,8 +303,15 @@ const UserApps = WebexPlugin.extend({
       method: 'DELETE',
     });
     this._deleteSectionWire(sectionId);
-    await this._tryUpdateSectionOrder(this._getCustomOrder().filter((id) => id !== sectionId));
+    await this._tryUpdateSectionOrder(this._getSectionOrder());
     await this._publishSnapshot('mutation');
+  },
+
+  async reorderSections({sectionIds}: {sectionIds: string[]}): Promise<SpaceListSectionsSnapshot> {
+    this._validateSectionOrder(sectionIds);
+    await this._updateSectionOrder(sectionIds);
+
+    return this._publishSnapshot('mutation');
   },
 
   async moveConversationToSection({
@@ -321,20 +389,41 @@ const UserApps = WebexPlugin.extend({
       return;
     }
 
-    this._applyRealtimeChange(change).catch((error) => {
-      this.trigger(
-        USER_APPS_SYNC_ERROR,
-        new UserAppsSyncError('Unable to apply a user-app event', {cause: error})
-      );
+    const lifecycleGeneration = this._lifecycleGeneration;
+    const changePromise = this._changePromise
+      .catch(() => undefined)
+      .then(async () => {
+        if (this._isLifecycleActive(lifecycleGeneration)) {
+          await this._applyRealtimeChange(change, lifecycleGeneration);
+        }
+      });
+
+    this._changePromise = changePromise;
+    changePromise.catch((error) => {
+      if (this._isLifecycleActive(lifecycleGeneration)) {
+        this.trigger(
+          USER_APPS_SYNC_ERROR,
+          new UserAppsSyncError('Unable to apply a user-app event', {cause: error})
+        );
+      }
     });
   },
 
-  async _applyRealtimeChange(change: UserAppChangeWire) {
+  async _applyRealtimeChange(change: UserAppChangeWire, lifecycleGeneration: number) {
     applyChangeToWireData(this._appsData, change);
-    await this._publishSnapshot('mercury', change);
+    await this._publishSnapshot(
+      'mercury',
+      change,
+      this._snapshot?.highWaterMark ?? null,
+      this._appsData,
+      lifecycleGeneration
+    );
   },
 
-  async _fullSync(allowRecovery: boolean): Promise<SpaceListSectionsSnapshot> {
+  async _fullSync(
+    allowRecovery: boolean,
+    lifecycleGeneration?: number
+  ): Promise<SpaceListSectionsSnapshot> {
     const startedAt = Date.now();
     const response = await this.webex.request({
       service: USER_APPS_SERVICE,
@@ -342,29 +431,56 @@ const UserApps = WebexPlugin.extend({
       method: 'GET',
     });
 
-    this._appsData = (response.body ?? createEmptyWireData()) as UserAppsDataWire;
-    await this._loadAdvertisedPages();
-    await this._filterInvalidMemberships();
+    if (!this._canCommitLifecycle(lifecycleGeneration)) {
+      return this._getInactiveSnapshot();
+    }
+
+    const appsData = (response.body ?? createEmptyWireData()) as UserAppsDataWire;
+
+    await this._loadAdvertisedPages(appsData, lifecycleGeneration);
+    await this._filterInvalidMemberships(appsData, lifecycleGeneration);
+
+    if (!this._canCommitLifecycle(lifecycleGeneration)) {
+      return this._getInactiveSnapshot();
+    }
 
     const queuedChanges = this._queuedChanges;
 
     this._queuedChanges = [];
-    queuedChanges.forEach((change) => applyChangeToWireData(this._appsData, change));
+    queuedChanges.forEach((change) => applyChangeToWireData(appsData, change));
 
     try {
-      const snapshot = await this._catchup(startedAt, allowRecovery, false);
+      const snapshot = await this._catchup(
+        startedAt,
+        allowRecovery,
+        false,
+        lifecycleGeneration,
+        appsData
+      );
+
+      if (!this._canCommitLifecycle(lifecycleGeneration)) {
+        return this._getInactiveSnapshot();
+      }
 
       this._hydrating = false;
       const trailingChanges = this._queuedChanges;
 
       this._queuedChanges = [];
-      trailingChanges.forEach((change) => applyChangeToWireData(this._appsData, change));
+      trailingChanges.forEach((change) => applyChangeToWireData(appsData, change));
 
       return trailingChanges.length
-        ? this._publishSnapshot('full-sync', undefined, snapshot.highWaterMark)
+        ? this._publishSnapshot(
+            'full-sync',
+            undefined,
+            snapshot.highWaterMark,
+            appsData,
+            lifecycleGeneration
+          )
         : snapshot;
     } catch (error) {
-      this._hydrating = false;
+      if (this._canCommitLifecycle(lifecycleGeneration)) {
+        this._hydrating = false;
+      }
       throw error;
     }
   },
@@ -372,8 +488,12 @@ const UserApps = WebexPlugin.extend({
   async _catchup(
     sinceDate: number,
     allowRecovery: boolean,
-    publish = true
+    publish?: boolean,
+    lifecycleGeneration?: number,
+    appsData?: UserAppsDataWire
   ): Promise<SpaceListSectionsSnapshot> {
+    const data = appsData ?? this._appsData;
+    const shouldPublish = publish ?? true;
     let response;
 
     try {
@@ -388,7 +508,7 @@ const UserApps = WebexPlugin.extend({
 
       if (statusCode && RECOVERABLE_CATCHUP_STATUS_CODES.has(statusCode)) {
         if (allowRecovery) {
-          return this._fullSync(false);
+          return this._fullSync(false, lifecycleGeneration);
         }
 
         throw new CatchupResetRequiredError(statusCode, error);
@@ -397,12 +517,16 @@ const UserApps = WebexPlugin.extend({
       throw error;
     }
 
+    if (!this._canCommitLifecycle(lifecycleGeneration)) {
+      return this._getInactiveSnapshot();
+    }
+
     const body = (response.body ?? {}) as UserAppsCatchupWire | UserAppChangeWire[];
     const changes = Array.isArray(body) ? body : body.items ?? body.changes ?? [];
 
     changes
       .filter((change) => isSectionsAppName(change.appName))
-      .forEach((change) => applyChangeToWireData(this._appsData, change));
+      .forEach((change) => applyChangeToWireData(data, change));
 
     const highWaterValue = getHeader(response.headers, HIGH_WATER_HEADER);
     const highWaterMark = highWaterValue ? Number(highWaterValue) : Date.now();
@@ -411,21 +535,30 @@ const UserApps = WebexPlugin.extend({
       throw new UserAppsSyncError('User-app catch-up returned an invalid high-water mark');
     }
 
-    return this._publishSnapshot(publish ? 'catch-up' : 'full-sync', undefined, highWaterMark);
+    return this._publishSnapshot(
+      shouldPublish ? 'catch-up' : 'full-sync',
+      undefined,
+      highWaterMark,
+      data,
+      lifecycleGeneration
+    );
   },
 
-  async _loadAdvertisedPages() {
+  async _loadAdvertisedPages(appsData?: UserAppsDataWire, lifecycleGeneration?: number) {
+    const data = appsData ?? this._appsData;
     const apps = [
-      ...(this._appsData.items?.dynamicTop ?? []).filter((app) => app['app-name'] === SECTIONS_APP),
-      ...(this._appsData.items?.dynamicDerived ?? []).filter(
+      ...(data.items?.dynamicTop ?? []).filter((app) => app['app-name'] === SECTIONS_APP),
+      ...(data.items?.dynamicDerived ?? []).filter(
         (app) => app['app-type'] === 'sections' && isSectionsAppName(app['app-name'])
       ),
     ];
 
-    await Promise.all(apps.filter((app) => app.next).map((app) => this._loadPagesForApp(app)));
+    await Promise.all(
+      apps.filter((app) => app.next).map((app) => this._loadPagesForApp(app, lifecycleGeneration))
+    );
   },
 
-  async _loadPagesForApp(app: UserAppDerivedWire) {
+  async _loadPagesForApp(app: UserAppDerivedWire, lifecycleGeneration?: number) {
     const appName = app['app-name'];
     let {next} = app;
     const seenCursors = new Set<string>();
@@ -448,6 +581,10 @@ const UserApps = WebexPlugin.extend({
         method: 'GET',
         qs: {cursor},
       });
+
+      if (!this._canCommitLifecycle(lifecycleGeneration)) {
+        return;
+      }
       const body = response.body ?? {};
 
       app.items = [...(app.items ?? []), ...(body.items ?? [])] as never;
@@ -504,10 +641,12 @@ const UserApps = WebexPlugin.extend({
     }
   },
 
-  async _filterInvalidMemberships() {
+  async _filterInvalidMemberships(appsData?: UserAppsDataWire, lifecycleGeneration?: number) {
+    const data = appsData ?? this._appsData;
+
     await this._ensureCatalog();
     await Promise.all(
-      (this._appsData.items?.dynamicDerived ?? [])
+      (data.items?.dynamicDerived ?? [])
         .filter((app) => app['app-type'] === 'sections' && isSectionsAppName(app['app-name']))
         .map(async (app) => {
           const validatedMemberships = await Promise.all(
@@ -524,7 +663,9 @@ const UserApps = WebexPlugin.extend({
             })
           );
 
-          app.items = validatedMemberships.filter(Boolean);
+          if (this._canCommitLifecycle(lifecycleGeneration)) {
+            app.items = validatedMemberships.filter(Boolean);
+          }
         })
     );
   },
@@ -532,13 +673,42 @@ const UserApps = WebexPlugin.extend({
   async _publishSnapshot(
     source: SectionChangeSource,
     change?: UserAppChangeWire,
-    highWaterMark = this._snapshot?.highWaterMark ?? null
+    highWaterMark?: number | null,
+    appsData?: UserAppsDataWire,
+    lifecycleGeneration?: number
+  ): Promise<SpaceListSectionsSnapshot> {
+    const snapshotHighWaterMark =
+      highWaterMark === undefined ? this._snapshot?.highWaterMark ?? null : highWaterMark;
+    const data = appsData ?? this._appsData;
+    const publication = this._publicationPromise
+      .catch(() => undefined)
+      .then(() =>
+        this._buildAndPublishSnapshot(
+          source,
+          change,
+          snapshotHighWaterMark,
+          data,
+          lifecycleGeneration
+        )
+      );
+
+    this._publicationPromise = publication;
+
+    return publication;
+  },
+
+  async _buildAndPublishSnapshot(
+    source: SectionChangeSource,
+    change: UserAppChangeWire | undefined,
+    highWaterMark: number | null,
+    appsData: UserAppsDataWire,
+    lifecycleGeneration?: number
   ): Promise<SpaceListSectionsSnapshot> {
     const decryptedTitles = new Map<string, string>();
     const unavailableSectionIds = new Set<string>();
 
     await Promise.all(
-      (getSectionsApp(this._appsData)?.items ?? []).map(async (section) => {
+      (getSectionsApp(appsData)?.items ?? []).map(async (section) => {
         try {
           const title = await this.webex.internal.encryption.decryptText(
             section['encryption-key'],
@@ -559,16 +729,21 @@ const UserApps = WebexPlugin.extend({
       })
     );
 
-    this._snapshot = buildSnapshot({
-      data: this._appsData,
+    const snapshot = buildSnapshot({
+      data: appsData,
       decryptedTitles,
       unavailableSectionIds,
       syncedAt: Date.now(),
       highWaterMark,
     });
-    this.trigger(USER_APPS_SECTIONS_CHANGED, {source, snapshot: this._snapshot, change});
 
-    return this._snapshot;
+    if (this._canCommitLifecycle(lifecycleGeneration)) {
+      this._appsData = appsData;
+      this._snapshot = snapshot;
+      this.trigger(USER_APPS_SECTIONS_CHANGED, {source, snapshot, change});
+    }
+
+    return snapshot;
   },
 
   async _ensureMetadata(): Promise<UserAppsMetadataWire> {
@@ -623,32 +798,42 @@ const UserApps = WebexPlugin.extend({
     return this._metadataPromise;
   },
 
-  async _updateSectionOrder(customSectionIds: string[]) {
-    const metadata = await this._ensureMetadata();
-    const sectionOrder = [FAVORITES_SECTION_ID, ...customSectionIds, OTHER_SECTION_ID];
-    const clientMetadata = Object.fromEntries(
-      Object.entries(metadata).filter(([key]) => !SERVICE_METADATA_FIELDS.has(key))
-    );
-    const body = {
-      ...clientMetadata,
-      clientSpecificData: {
-        ...metadata.clientSpecificData,
-        sortedSections: sectionOrder,
-      },
-    };
-    const response = await this.webex.request({
-      service: USER_APPS_SERVICE,
-      resource: `/${SECTIONS_APP}`,
-      method: 'PUT',
-      body,
-    });
+  async _updateSectionOrder(sectionIds: string[]) {
+    const orderUpdate = this._metadataWritePromise
+      .catch(() => undefined)
+      .then(async () => {
+        this._validateSectionOrder(sectionIds);
+        const metadata = await this._ensureMetadata();
+        const clientMetadata = Object.fromEntries(
+          Object.entries(metadata).filter(([key]) => !SERVICE_METADATA_FIELDS.has(key))
+        );
+        const body = {
+          ...clientMetadata,
+          clientSpecificData: {
+            ...metadata.clientSpecificData,
+            sortedSections: sectionIds,
+          },
+        };
+        const response = await this.webex.request({
+          service: USER_APPS_SERVICE,
+          resource: `/${SECTIONS_APP}`,
+          method: 'PUT',
+          body,
+        });
 
-    this._setMetadata((response.body?.metadata ?? response.body ?? body) as UserAppsMetadataWire);
+        this._setMetadata(
+          (response.body?.metadata ?? response.body ?? body) as UserAppsMetadataWire
+        );
+      });
+
+    this._metadataWritePromise = orderUpdate;
+
+    return orderUpdate;
   },
 
-  async _tryUpdateSectionOrder(customSectionIds: string[]) {
+  async _tryUpdateSectionOrder(sectionIds: string[]) {
     try {
-      await this._updateSectionOrder(customSectionIds);
+      await this._updateSectionOrder(sectionIds);
     } catch (error) {
       this.logger.warn('userApps: section mutation succeeded but order metadata update failed');
       this.trigger(
@@ -763,13 +948,63 @@ const UserApps = WebexPlugin.extend({
     }
   },
 
-  _getCustomOrder(): string[] {
-    const customIds = new Set((getSectionsApp(this._appsData)?.items ?? []).map(({id}) => id));
-    const configuredOrder = getMetadata(this._appsData)?.clientSpecificData?.sortedSections ?? [];
+  _getConfiguredSectionOrder(): string[] {
+    return getMetadata(this._appsData)?.clientSpecificData?.sortedSections ?? [];
+  },
 
-    return Array.from(
-      new Set([...configuredOrder.filter((id) => customIds.has(id)), ...Array.from(customIds)])
+  _getSectionOrder(): string[] {
+    const customIds = new Set((getSectionsApp(this._appsData)?.items ?? []).map(({id}) => id));
+    const availableIds = new Set([FAVORITES_SECTION_ID, ...customIds, OTHER_SECTION_ID]);
+    const sectionOrder = Array.from(
+      new Set(this._getConfiguredSectionOrder().filter((id) => availableIds.has(id)))
     );
+    const missingCustomIds = Array.from(customIds).filter((id) => !sectionOrder.includes(id));
+
+    if (!sectionOrder.includes(FAVORITES_SECTION_ID)) {
+      sectionOrder.unshift(FAVORITES_SECTION_ID);
+    }
+
+    if (sectionOrder.includes(OTHER_SECTION_ID)) {
+      sectionOrder.splice(sectionOrder.indexOf(OTHER_SECTION_ID), 0, ...missingCustomIds);
+    } else {
+      sectionOrder.push(...missingCustomIds, OTHER_SECTION_ID);
+    }
+
+    return sectionOrder;
+  },
+
+  _insertSectionIntoOrder(sectionOrder: string[], sectionId: string): string[] {
+    if (sectionOrder.includes(sectionId)) {
+      return sectionOrder;
+    }
+
+    const nextOrder = [...sectionOrder];
+    const otherSectionIndex = nextOrder.indexOf(OTHER_SECTION_ID);
+
+    if (otherSectionIndex >= 0) {
+      nextOrder.splice(otherSectionIndex, 0, sectionId);
+    } else {
+      nextOrder.push(sectionId);
+    }
+
+    return nextOrder;
+  },
+
+  _validateSectionOrder(sectionIds: string[]) {
+    const expectedIds = new Set([
+      FAVORITES_SECTION_ID,
+      ...(getSectionsApp(this._appsData)?.items ?? []).map(({id}) => id),
+      OTHER_SECTION_ID,
+    ]);
+    const suppliedIds = new Set(sectionIds);
+
+    if (
+      suppliedIds.size !== sectionIds.length ||
+      suppliedIds.size !== expectedIds.size ||
+      Array.from(expectedIds).some((id) => !suppliedIds.has(id))
+    ) {
+      throw new UserAppsValidationError('Section order must contain every section exactly once');
+    }
   },
 
   _getSectionWire(sectionId: string): UserAppSectionWire {
@@ -806,6 +1041,31 @@ const UserApps = WebexPlugin.extend({
     }
 
     return normalizedTitle;
+  },
+
+  _isLifecycleCurrent(lifecycleGeneration: number): boolean {
+    return lifecycleGeneration === this._lifecycleGeneration;
+  },
+
+  _isLifecycleActive(lifecycleGeneration: number): boolean {
+    return this.registered && this._isLifecycleCurrent(lifecycleGeneration);
+  },
+
+  _canCommitLifecycle(lifecycleGeneration?: number): boolean {
+    return lifecycleGeneration === undefined || this._isLifecycleActive(lifecycleGeneration);
+  },
+
+  _getInactiveSnapshot(): SpaceListSectionsSnapshot {
+    return (
+      this._snapshot ??
+      buildSnapshot({
+        data: createEmptyWireData(),
+        decryptedTitles: new Map(),
+        unavailableSectionIds: new Set(),
+        syncedAt: Date.now(),
+        highWaterMark: null,
+      })
+    );
   },
 
   _scheduleCatchup() {
