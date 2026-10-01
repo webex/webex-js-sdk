@@ -5,7 +5,13 @@ import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {EffectEvent} from '@webex/media-helpers';
 import {ERROR_TYPE, ERROR_LAYER} from '../../Errors/types';
 import * as Utils from '../../common/Utils';
-import {CALL_EVENT_KEYS, CallEvent, RoapEvent, RoapMessage} from '../../Events/types';
+import {
+  CALL_EVENT_KEYS,
+  CallEvent,
+  RoapEvent,
+  RoapMessage,
+  RoapMessageEvent,
+} from '../../Events/types';
 import {
   DEFAULT_LOCAL_CALL_ID,
   DEFAULT_SESSION_TIMER,
@@ -1398,6 +1404,57 @@ describe('Call Tests', () => {
       call.sendCallStateMachineEvt(dummyEvent as CallEvent);
       const requestArgs = requestSpy.mock.calls[0][0];
       expect('callee' in requestArgs.body).toBe(false);
+    });
+  });
+
+  describe('Call media ROAP event handling', () => {
+    it('handleMediaRoapEvent does not log SDP/ICE credentials', async () => {
+      const call = new Call(
+        activeUrl,
+        webex,
+        CallDirection.OUTBOUND,
+        deviceId,
+        mockLineId,
+        () => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const dummy = 10;
+        },
+        defaultServiceIndicator,
+        dest
+      );
+
+      const infoSpy = jest.spyOn(log, 'info');
+      const warnSpy = jest.spyOn(log, 'warn');
+      const logSpy = jest.spyOn(log, 'log');
+      const errorSpy = jest.spyOn(log, 'error');
+
+      const iceUfrag = 'a=ice-ufrag:9sensitiveUfrag';
+      const icePwd = 'a=ice-pwd:supersecretIcePwd12345';
+      const sdpWithIceCredentials = `v=0\r\n${iceUfrag}\r\n${icePwd}\r\n`;
+
+      await call['handleMediaRoapEvent']({
+        roapMessage: {
+          messageType: 'OK',
+          seq: 7,
+          version: '2',
+          sdp: sdpWithIceCredentials,
+        },
+      } as RoapMessageEvent);
+
+      const allLogCalls = [...infoSpy.mock.calls, ...warnSpy.mock.calls, ...logSpy.mock.calls, ...errorSpy.mock.calls];
+
+      allLogCalls.forEach((callArgs) => {
+        const message = String(callArgs[0]);
+
+        expect(message).not.toContain(sdpWithIceCredentials);
+        expect(message).not.toContain(iceUfrag);
+        expect(message).not.toContain(icePwd);
+      });
+
+      expect(infoSpy).toHaveBeenCalledWith(
+        expect.stringContaining('type:  OK, seq: 7 , version: 2'),
+        expect.objectContaining({file: 'call', method: 'mediaRoapEventsListener'})
+      );
     });
   });
 });

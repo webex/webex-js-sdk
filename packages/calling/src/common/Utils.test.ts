@@ -44,6 +44,7 @@ import {
   parseMediaQualityStatistics,
   getSortedVoicemailList,
   resolveContact,
+  resolveCallerIdByName,
   storeVoicemailList,
   fetchVoicemailList,
   inferIdFromUuid,
@@ -1358,6 +1359,46 @@ describe('Voicemail Sorting Tests', () => {
       getDescVoicemailListJsonWXC.body.VoiceMessagingMessages.messageInfoList.messageInfo;
 
     expect(sortedVoicemail).toStrictEqual(voiceMailListDescOrder);
+  });
+});
+
+describe('resolveCallerIdByName', () => {
+  it('resolveCallerIdByName does not log caller PII', async () => {
+    const peopleListResponse = getSamplePeopleListResponse();
+    const {displayName, phoneNumbers, avatar, id} = peopleListResponse.items[0];
+
+    jest.spyOn(webex.people, 'list').mockResolvedValueOnce(peopleListResponse);
+
+    const infoSpy = jest.spyOn(log, 'info');
+    const warnSpy = jest.spyOn(log, 'warn');
+    const logSpy = jest.spyOn(log, 'log');
+    const errorSpy = jest.spyOn(log, 'error');
+
+    const displayResult = await resolveCallerIdByName('Krishna Kumar Rai');
+
+    const expectedNumber = phoneNumbers.find((num) => num.type === 'work')?.value;
+    const expectedId = Buffer.from(id, 'base64').toString('binary').split('/').pop();
+
+    expect(displayResult.name).toStrictEqual(displayName);
+    expect(displayResult.num).toStrictEqual(expectedNumber);
+    expect(displayResult.avatarSrc).toStrictEqual(avatar);
+    expect(displayResult.id).toStrictEqual(expectedId);
+
+    const allLogCalls = [
+      ...infoSpy.mock.calls,
+      ...warnSpy.mock.calls,
+      ...logSpy.mock.calls,
+      ...errorSpy.mock.calls,
+    ];
+
+    allLogCalls.forEach((callArgs) => {
+      const message = String(callArgs[0]);
+
+      expect(message).not.toContain(displayName);
+      expect(message).not.toContain(expectedNumber);
+      expect(message).not.toContain(avatar);
+      expect(message).not.toContain(expectedId as string);
+    });
   });
 });
 

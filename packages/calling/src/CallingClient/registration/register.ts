@@ -1360,12 +1360,22 @@ export class Registration implements IRegistration {
               }
 
               if (abort || event.data.keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
-                this.failoverImmediately = this.isCCFlow;
-                this.setStatus(RegistrationStatus.INACTIVE);
-                this.clearKeepaliveTimer();
-                this.clearFailbackTimer();
-                this.lineEmitter(LINE_EVENTS.UNREGISTERED);
-                await uploadLogs();
+                /*
+                 * Serialize the terminal state mutation under the shared mutex so it
+                 * cannot race another registration flow's state changes (R1). The
+                 * mutex is acquired exactly once here and released before calling
+                 * reconnectOnFailure/handle404KeepaliveFailure below, which must not
+                 * run inside this block since async-mutex is non-reentrant and those
+                 * calls may themselves need the mutex.
+                 */
+                await this.mutex.runExclusive(async () => {
+                  this.failoverImmediately = this.isCCFlow;
+                  this.setStatus(RegistrationStatus.INACTIVE);
+                  this.clearKeepaliveTimer();
+                  this.clearFailbackTimer();
+                  this.lineEmitter(LINE_EVENTS.UNREGISTERED);
+                  await uploadLogs();
+                });
 
                 if (!abort) {
                   /* In case of non-final error, re-attempt registration */
