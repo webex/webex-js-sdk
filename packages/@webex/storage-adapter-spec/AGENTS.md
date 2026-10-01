@@ -61,10 +61,15 @@ Three commands must not be used to verify a change:
   after the lint step. This is a known stale aggregate script, not a missing dependency.
 - `test:browser` is defined, but there is no test file in this package for a browser runner to
   collect.
-- `yarn workspace @webex/storage-adapter-local-storage test:unit` **looks** like it verifies the suite
-  and exits zero, but that consumer wraps its call in a Node skip: measured 2026-09-23, it reported 21
-  tests and skipped all 21. The same is true of the local-forage and session-storage adapters. Do not
-  treat a green run from any of them as evidence.
+- `yarn workspace @webex/storage-adapter-local-storage test:unit` and
+  `yarn workspace @webex/storage-adapter-session-storage test:unit` **look** like they verify the
+  suite and exit zero, but both consumers wrap their calls in a Node skip: measured 2026-10-01, each
+  reported 21 tests and skipped all 21.
+- `yarn workspace @webex/storage-adapter-local-forage test:unit` cannot run because that package has
+  no `test:unit` script. Measured 2026-10-01, Yarn stopped before collection. Its test source also
+  uses `skipInNode`, so its defined conformance route is browser-only.
+
+Do not treat any of those three packages as Node verification evidence.
 
 ## 2. Agent Persona and Scope
 

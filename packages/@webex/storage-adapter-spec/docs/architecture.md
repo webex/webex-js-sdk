@@ -213,9 +213,11 @@ The dependency direction is one-way and must stay that way: consumers depend on 
 this package must never depend on an adapter.
 
 The load is not evenly distributed, and that matters for verification. Of the four consumers, only
-`@webex/webex-core` executes the suite under Node — the three browser-backed adapters wrap their call
-in a Node skip, so their unit commands exit zero without running a single case. Under Node, one
-sibling package carries the entire contract. Verified 2026-09-23; see
+`@webex/webex-core` executes the suite under Node. Local-storage and session-storage wrap their calls
+in a Node skip, so their unit commands exit zero without running a single case. Local-forage also
+uses the Node-skip wrapper in its test source but defines no unit command, so invoking `test:unit`
+fails before collection. Under Node, one sibling package carries the entire contract. Verified
+2026-10-01; see
 [getting started](getting-started.md) for the exact commands and their measured behavior.
 
 Because the verifying package is a sibling rather than this package, no command declared in this

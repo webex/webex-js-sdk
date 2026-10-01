@@ -477,14 +477,17 @@ evidence agree with the implementation.
 The cases named as evidence above are this module's *output* — the declarations it emits. They are
 executed, in this repository, by a sibling workspace package:
 
-| Route | Measured result (2026-09-23) |
+| Route | Latest measured result |
 | --- | --- |
 | `yarn workspace @webex/webex-core test:unit --targets storage/storage-adapter.js` | **21 of 21 cases executed and passed** against that package's in-memory adapter |
 | `yarn workspace @webex/storage-adapter-local-storage test:unit` | Exits zero with **all 21 cases skipped** — the consumer wraps its call in a Node skip, so this proves nothing |
+| `yarn workspace @webex/storage-adapter-session-storage test:unit` | Exits zero with **all 21 cases skipped** — the consumer wraps its call in a Node skip, so this proves nothing |
+| `yarn workspace @webex/storage-adapter-local-forage test:unit` | Fails before collection because the package defines no `test:unit` script; its defined conformance route is browser-only |
 
-The three browser-backed adapter packages all skip under Node, so `@webex/webex-core` is the only
-Node route that exercises the contract. Commands are recorded in `.sdd/manifest.json` under
-`contract-verify` and the `unit` test tier.
+Measured adapter results were refreshed on 2026-10-01. The local-storage and session-storage
+packages skip under Node, while local-forage has no Node unit-test command and its test source also
+uses `skipInNode`. Therefore `@webex/webex-core` is the only Node route that exercises the contract.
+Commands are recorded in `.sdd/manifest.json` under `contract-verify` and the `unit` test tier.
 
 **The residual gap is narrower than "untested".** Every case that exists is exercised by the run
 above. What nothing checks is the *set* of declarations: no assertion pins how many cases this module

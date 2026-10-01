@@ -80,7 +80,8 @@ and await re-validation.
 One routing caveat is specific to this package: its unit tier is satisfied by a sibling workspace
 package, not by any command declared here. Any change to `src/` is verified with the manifest's
 `contract-verify` command, which runs the suite inside `@webex/webex-core`. The three browser-backed
-adapter packages skip under Node and cannot serve as the verification route. See
+adapter packages cannot serve as the Node verification route: local-storage and session-storage
+skip all cases, while local-forage defines no `test:unit` command. See
 [getting started](../getting-started.md).
 
 ## Module and contract registration

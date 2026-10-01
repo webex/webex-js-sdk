@@ -11,7 +11,8 @@
     "build": "yarn workspace @webex/storage-adapter-spec build",
     "lint": "yarn workspace @webex/storage-adapter-spec test:style",
     "deploy": "yarn workspace @webex/storage-adapter-spec deploy:npm",
-    "browser-test": "yarn workspace @webex/storage-adapter-spec test:browser"
+    "browser-test": "yarn workspace @webex/storage-adapter-spec test:browser",
+    "test": "yarn workspace @webex/storage-adapter-spec test"
   },
   "public_interfaces": [
     {
@@ -120,7 +121,7 @@
       "avoid_direct_edits": [
         "dist"
       ],
-      "notes": "Adding or loosening a case changes the contract for every consuming package, and no command in this package executes the suite. Only @webex/webex-core runs it under Node; the three browser adapters skip silently, so a green run from them proves nothing."
+      "notes": "Adding or loosening a case changes the contract for every consuming package, and no command in this package executes the suite. Only @webex/webex-core runs it under Node. The local-storage and session-storage unit commands skip all 21 cases, while local-forage has no test:unit script, so none provides Node verification."
     },
     {
       "paths": [
@@ -192,7 +193,7 @@
   "negative_guidance": [
     {
       "rule": "Do not treat a green run from a browser-backed adapter package as verification.",
-      "why": "@webex/storage-adapter-local-storage, -local-forage, and -session-storage wrap their call in a Node skip. Measured 2026-09-23, the local-storage unit command exited zero with all 21 cases skipped."
+      "why": "Measured 2026-10-01, the @webex/storage-adapter-local-storage and @webex/storage-adapter-session-storage unit commands each exited zero with all 21 cases skipped. @webex/storage-adapter-local-forage has no test:unit script; invoking it fails before collection, although its browser test source also wraps the suite call in skipInNode."
     },
     {
       "rule": "Do not infer that this package is verified by its own commands.",

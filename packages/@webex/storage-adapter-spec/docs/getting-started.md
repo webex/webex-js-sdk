@@ -70,10 +70,16 @@ Three commands will not do what their names suggest:
   defines neither `test:unit` nor `test:integration`. It fails after the lint step with
   `Couldn't find a script named "test:unit"`.
 - `test:browser` is defined, but this package contains no test file for the runner to collect.
-- `yarn workspace @webex/storage-adapter-local-storage test:unit` exits zero and looks like a pass,
-  but that consumer wraps its call in a Node skip. Measured 2026-09-23: it reported 21 tests and
-  **skipped all 21**. The local-forage and session-storage adapters behave the same way. A green run
-  from any of the three is not evidence that the contract holds.
+- `yarn workspace @webex/storage-adapter-local-storage test:unit` and
+  `yarn workspace @webex/storage-adapter-session-storage test:unit` both exit zero and look like
+  passes, but each consumer wraps its call in a Node skip. Measured 2026-10-01: each reported 21
+  tests and **skipped all 21**.
+- `yarn workspace @webex/storage-adapter-local-forage test:unit` does not run at all because that
+  package defines no `test:unit` script. Measured 2026-10-01: Yarn stopped with
+  `Couldn't find a script named "test:unit"`. Its test source also uses `skipInNode`, and its defined
+  conformance route is the browser runner.
+
+None of those three commands provides Node evidence that the contract holds.
 
 Use the table as the repository-level test router. List only tiers that
 actually exist; behavioral intent belongs in the owning module specifications and exact

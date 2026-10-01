@@ -42,6 +42,10 @@
       "command": "yarn workspace @webex/storage-adapter-spec test:browser",
       "source_file": "package.json",
       "role": "other"
+    },
+    "test": {
+      "command": "yarn workspace @webex/storage-adapter-spec test",
+      "source_file": "package.json"
     }
   },
   "toolchain": [
@@ -59,8 +63,8 @@
       "framework": "jest"
     },
     "qa": {
-      "location": "Sibling workspace packages in the same repository: @webex/webex-core executes the suite under Node against MemoryStoreAdapter, while @webex/storage-adapter-local-storage, @webex/storage-adapter-local-forage, and @webex/storage-adapter-session-storage wrap their call in skipInNode and therefore only exercise it in a browser runner.",
-      "notes": "This package owns no test file, so its unit tier is satisfied entirely by a sibling package. Verified 2026-09-23: contract-verify executed 21 of 21 cases and passed, while yarn workspace @webex/storage-adapter-local-storage test:unit exited zero with all 21 cases skipped. The package-level test script is stale: it invokes test:unit and test:integration, neither of which this package.json defines."
+      "location": "Sibling workspace packages in the same repository: @webex/webex-core executes the suite under Node against MemoryStoreAdapter. @webex/storage-adapter-local-storage and @webex/storage-adapter-session-storage define test:unit but wrap their suite calls in skipInNode. @webex/storage-adapter-local-forage also uses skipInNode in its test source but defines only a browser test command, not test:unit.",
+      "notes": "This package owns no test file, so its unit tier is satisfied entirely by a sibling package. Verified 2026-10-01: contract-verify executed 21 of 21 cases and passed; the local-storage and session-storage test:unit commands each exited zero with all 21 cases skipped; and local-forage test:unit failed before collection because that script is not defined. The package-level test script is stale: it invokes test:unit and test:integration, neither of which this package.json defines."
     }
   },
   "quality_gates": {
