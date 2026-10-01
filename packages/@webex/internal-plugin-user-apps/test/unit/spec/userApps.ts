@@ -528,74 +528,10 @@ describe('plugin-user-apps', () => {
     });
   });
 
-  it('uses the request start as a catch-up high-water mark when the header is unavailable', async () => {
+  it('rejects a catch-up response without a valid high-water mark', async () => {
     stubInitialSync();
     await webex.internal.userApps.register();
-    const beforeSync = Date.now();
-
     webex.request.onCall(2).resolves({body: {items: []}});
-
-    const snapshot = await webex.internal.userApps.sync();
-
-    assert.isTrue(snapshot.highWaterMark >= beforeSync);
-    assert.isTrue(snapshot.highWaterMark <= Date.now());
-    assert.isFalse(webex.internal.userApps._hydrating);
-  });
-
-  it('replays queued events when the catch-up high-water header is unavailable', async () => {
-    let resolveCatchup;
-    const currentOrder = ['FAVORITES', 'section-1', 'OTHER'];
-
-    stubInitialSync();
-    await webex.internal.userApps.register();
-    const beforeSync = Date.now();
-
-    webex.request.onCall(2).returns(
-      new Promise((resolve) => {
-        resolveCatchup = resolve;
-      })
-    );
-
-    const sync = webex.internal.userApps.sync();
-
-    while (webex.request.callCount < 3) {
-      await Promise.resolve();
-    }
-    mercuryCallbacks[USER_APP_METADATA_EVENT]({
-      timestamp: 1,
-      data: {
-        appName: 'sections',
-        action: 'update',
-        appData: {sortedSections: currentOrder},
-      },
-    });
-    resolveCatchup({
-      body: {
-        items: [
-          {
-            eventType: 'user.app_metadata',
-            appName: 'sections',
-            action: 'update',
-            appData: {sortedSections: ['OTHER', 'section-1', 'FAVORITES']},
-          },
-        ],
-      },
-    });
-
-    const snapshot = await sync;
-
-    assert.isTrue(snapshot.highWaterMark >= beforeSync);
-    assert.isTrue(snapshot.highWaterMark <= Date.now());
-    assert.deepEqual(snapshot.sectionOrder, currentOrder);
-  });
-
-  it('rejects a catch-up response with an invalid high-water mark', async () => {
-    stubInitialSync();
-    await webex.internal.userApps.register();
-    webex.request.onCall(2).resolves({
-      body: {items: []},
-      headers: {'x-cisco-endDate': 'invalid'},
-    });
 
     await assert.isRejected(webex.internal.userApps.sync(), /valid high-water mark/);
 
