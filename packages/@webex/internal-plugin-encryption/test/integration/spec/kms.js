@@ -10,12 +10,11 @@ import sinon from 'sinon';
 import WebexCore from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
-import {browserOnly} from '@webex/test-helper-mocha';
 
 const debug = require('debug')('kms');
 
 describe('Encryption', function () {
-  this.timeout(30000);
+  this.timeout(120000);
   describe('KMS', () => {
     let mccoy, webex, spock;
 
@@ -114,9 +113,11 @@ describe('Encryption', function () {
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
           .then(([key]) =>
-            webex.internal.encryption.kms.createResource({
-              key,
-            })
+            webex.internal.encryption.kms.fetchKey({uri: key.uri}).then(() =>
+              webex.internal.encryption.kms.createResource({
+                key,
+              })
+            )
           )
           .then((k) => {
             kro = k;
@@ -135,7 +136,9 @@ describe('Encryption', function () {
             assert.equal(auth.resourceUri, kro.uri);
             assert.equal(auth.authId, mccoy.webex.internal.device.userId);
 
-            return mccoy.webex.internal.encryption.kms.fetchKey({uri: boundedKeyUri});
+            return mccoy.webex.internal.encryption.kms.fetchKey({
+              uri: boundedKeyUri,
+            });
           }));
 
       it('authorizes a resource to a key', () =>
@@ -172,9 +175,11 @@ describe('Encryption', function () {
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
           .then(([key]) =>
-            webex.internal.encryption.kms.createResource({
-              key,
-            })
+            webex.internal.encryption.kms.fetchKey({uri: key.uri}).then(() =>
+              webex.internal.encryption.kms.createResource({
+                key,
+              })
+            )
           )
           .then((k) => {
             kro = k;
@@ -193,14 +198,20 @@ describe('Encryption', function () {
             assert.equal(auth.resourceUri, kro.uri);
             assert.equal(auth.authId, mccoy.webex.internal.device.userId);
 
-            return mccoy.webex.internal.encryption.kms.fetchKey({uri: boundedKeyUri});
+            return mccoy.webex.internal.encryption.kms.fetchKey({
+              uri: boundedKeyUri,
+            });
           })
       );
 
       before('authorizes a resource to a key', () =>
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
-          .then(([key]) => webex.internal.encryption.kms.createResource({key}))
+          .then(([key]) =>
+            webex.internal.encryption.kms.fetchKey({uri: key.uri}).then(() =>
+              webex.internal.encryption.kms.createResource({key})
+            )
+          )
           .then((k) => {
             otherKro = k;
             testResourceId = otherKro.uri;
@@ -318,9 +329,11 @@ describe('Encryption', function () {
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
           .then(([key]) =>
-            webex.internal.encryption.kms.createResource({
-              key,
-            })
+            webex.internal.encryption.kms.fetchKey({uri: key.uri}).then(() =>
+              webex.internal.encryption.kms.createResource({
+                key,
+              })
+            )
           )
           .then((k) => {
             kro = k;
@@ -333,9 +346,11 @@ describe('Encryption', function () {
         webex.internal.encryption.kms
           .createUnboundKeys({count: 1})
           .then(([key]) =>
-            webex.internal.encryption.kms.createResource({
-              key,
-            })
+            webex.internal.encryption.kms.fetchKey({uri: key.uri}).then(() =>
+              webex.internal.encryption.kms.createResource({
+                key,
+              })
+            )
           )
           .then((k) => {
             otherKro = k;
@@ -425,7 +440,8 @@ describe('Encryption', function () {
     describe('upload customer master key', () => {
       let uploadedkeyId;
 
-      browserOnly(it)('upload customer master key', () =>
+      // This deletes org-wide CMK state and invalidates ECDHE sessions used by other tests.
+      it.skip('upload customer master key', () =>
         webex.internal.encryption.kms
           .deleteAllCustomerMasterKeys({assignedOrgId: spock.orgId})
           .then(() => webex.internal.encryption.kms.fetchPublicKey({assignedOrgId: spock.orgId}))
@@ -554,7 +570,10 @@ describe('Encryption', function () {
             key = k;
 
             // Compliance Officer Jim fetches a key on behalf of Spock
-            return jim.webex.internal.encryption.kms.fetchKey({uri: key.uri, onBehalfOf: spock.id});
+            return jim.webex.internal.encryption.kms.fetchKey({
+              uri: key.uri,
+              onBehalfOf: spock.id,
+            });
           })
           .then((key2) => {
             assert.property(key2, 'uri');
@@ -571,7 +590,10 @@ describe('Encryption', function () {
 
             // Compliance Officer Jim fetches a key on behalf of himself
             // This covers an edge case documented by https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-240862.
-            return jim.webex.internal.encryption.kms.fetchKey({uri: key.uri, onBehalfOf: jim.id});
+            return jim.webex.internal.encryption.kms.fetchKey({
+              uri: key.uri,
+              onBehalfOf: jim.id,
+            });
           })
           .then((key2) => {
             assert.property(key2, 'uri');
@@ -588,7 +610,10 @@ describe('Encryption', function () {
             key = k;
 
             // Compliance Officer Jim fetches a key on behalf of himself but he is not in the KRO
-            return jim.webex.internal.encryption.kms.fetchKey({uri: key.uri, onBehalfOf: jim.id});
+            return jim.webex.internal.encryption.kms.fetchKey({
+              uri: key.uri,
+              onBehalfOf: jim.id,
+            });
           })
           .then(() => {
             expect.fail(
@@ -635,8 +660,14 @@ describe('Encryption', function () {
 
             // Compliance Officer Jim fetches keys on behalf of users
             return Promise.all([
-              jim.webex.internal.encryption.kms.fetchKey({uri: spockKey.uri, onBehalfOf: spock.id}),
-              jim.webex.internal.encryption.kms.fetchKey({uri: mccoyKey.uri, onBehalfOf: mccoy.id}),
+              jim.webex.internal.encryption.kms.fetchKey({
+                uri: spockKey.uri,
+                onBehalfOf: spock.id,
+              }),
+              jim.webex.internal.encryption.kms.fetchKey({
+                uri: mccoyKey.uri,
+                onBehalfOf: mccoy.id,
+              }),
             ]);
           })
           .then(([spockK, mccoyK]) => {

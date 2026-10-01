@@ -284,6 +284,7 @@ async function initCalling(e) {
         kmsMaxTimeout: 40000,
         batcherMaxCalls: 30,
         caroots: null,
+        shouldValidateKMSCertificate: false,
       },
       dss: {},
     },
