@@ -410,8 +410,8 @@ The behavior of `makeCall` varies by `ServiceIndicator`:
 flowchart TD
   A["makeCall(dest?)"] --> B{dest provided?}
 
-  B -- Yes --> C{dest.address matches VALID_PHONE_REGEX?}
-  C -- Yes --> D[Sanitize number: strip non-digits,<br/>remove spaces/hyphens]
+  B -- Yes --> C{dest.address fully matches MAKE_CALL_PHONE_REGEX?}
+  C -- Yes --> D[Sanitize number: retain only valid dial<br/>characters +, *, #, and digits]
   D --> E["Format as tel: URI"]
   E --> F["callManager.createCall(OUTBOUND,<br/>deviceId, lineId, formattedDest)"]
   F --> G[Return ICall]
@@ -547,7 +547,7 @@ A `Line` owns provisioned line/device fields, registration status through its `R
 ## Business Rules & Invariants
 
 - `register()` is mutex-protected and emits CONNECTING before delegating to Registration.
-- `makeCall()` validates/normalizes the destination and uses CallManager; guest calling may omit a destination because the JWE supplies it.
+- `makeCall()` strictly validates an untrusted `dest.address` against a fully-anchored phone match (`MAKE_CALL_PHONE_REGEX`) and sanitizes it by retaining only valid dial characters (`+`, `*`, `#`, and digits) before forming the `tel:` URI; malformed or injection input is rejected by emitting `LINE_EVENTS.ERROR` with a `LineError` and no call is created, while valid numbers preserve existing behavior. Guest calling may omit a destination because the JWE supplies it.
 - Incoming calls and registration events are re-emitted with the declared `LINE_EVENTS` payloads.
 - Registration credentials/JWE are delegated to Registration/APIRequest and must not be logged by Line. Evidence: `src/CallingClient/line/index.ts`, `src/CallingClient/line/line.test.ts`.
 
