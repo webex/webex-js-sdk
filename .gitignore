@@ -1,12 +1,4 @@
 # Documentation
-packages/**/docs/
-/packages/@webex/plugin-meetings/.generated/
-# SDD specifications are authored sources, not build output. They are generated into docs/
-# folders by the repo-annotation workflow and routed by each package's .sdd/manifest.json.
-!packages/@webex/common-timers/docs/
-!packages/@webex/common-timers/src/docs/
-!packages/@webex/common-timers/.sdd/templates/repo-standards/docs/
-
 /**/.generated/
 
 ~*
