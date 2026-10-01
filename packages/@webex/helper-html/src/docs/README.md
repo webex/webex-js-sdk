@@ -10,7 +10,7 @@ generated_from: module-spec@0.3.0
 generated_by: cursor
 approved_by: repository user
 updated_at: 2026-10-01T11:15:00Z
-validation_status: not-run
+validation_status: pass-with-warnings
 -->
 
 # HTML helper
@@ -32,7 +32,7 @@ Related context: [documentation index](../../docs/index.md) · [package agent in
 | Parent spec   | —                                                            |
 | Doc kind      | Module spec                                                  |
 | Coverage score | 93.3% assessed 2026-10-01 — 14 of 15 mandatory fields PRESENT; test strategy is WEAK because the unit spec is skipped in Node |
-| Validation status | not-run |
+| Validation status | pass-with-warnings |
 
 ## Applicability
 
