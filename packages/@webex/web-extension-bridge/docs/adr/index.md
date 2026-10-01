@@ -4,7 +4,7 @@ generated_from: adr-index@0.3.0
 generated_by: cursor
 approved_by: repository user
 updated_at: 2026-09-16T10:06:00Z
-validation_status: pending
+validation_status: pass-with-warnings
 -->
 
 # Architectural decision records
