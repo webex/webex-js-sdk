@@ -66,6 +66,41 @@ describe('userApps utils', () => {
     ]);
   });
 
+  it('preserves encryption metadata when a partial metadata event arrives', () => {
+    const data = createEmptyWireData();
+
+    applyChangeToWireData(data, {
+      eventType: 'user.app_metadata',
+      appName: 'sections',
+      action: 'create',
+      appData: {
+        'default-encryption-key': 'kms://key',
+        'kms-message': 'wrapped-key',
+        clientSpecificData: {
+          sortedSections: ['FAVORITES', 'OTHER'],
+          Default_Sections_Settings: [{section_name: 'OTHER', settings: []}],
+        },
+      },
+    });
+    applyChangeToWireData(data, {
+      eventType: 'user.app_metadata',
+      appName: 'sections',
+      action: 'update',
+      appData: {
+        clientSpecificData: {sortedSections: ['OTHER', 'FAVORITES']},
+      },
+    });
+
+    assert.deepEqual(data.items?.dynamicTop?.[0].metadata, {
+      'default-encryption-key': 'kms://key',
+      'kms-message': 'wrapped-key',
+      clientSpecificData: {
+        sortedSections: ['OTHER', 'FAVORITES'],
+        Default_Sections_Settings: [{section_name: 'OTHER', settings: []}],
+      },
+    });
+  });
+
   it('reduces section changes and keeps the first membership for duplicate conversations', () => {
     const data = createEmptyWireData();
 

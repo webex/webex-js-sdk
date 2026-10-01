@@ -48,6 +48,7 @@ import {
   getSectionsApp,
   getStatusCode,
   isSectionsAppName,
+  mergeMetadata,
 } from './userApps.utils';
 
 const CONVERSATION_PATH = /\/conversations\/([0-9a-f-]{36})\/?$/i;
@@ -869,7 +870,7 @@ const UserApps = WebexPlugin.extend({
       topApps.push(sectionsApp);
     }
 
-    sectionsApp.metadata = metadata;
+    sectionsApp.metadata = mergeMetadata(sectionsApp.metadata, metadata);
   },
 
   _upsertSection(section: UserAppSectionWire) {

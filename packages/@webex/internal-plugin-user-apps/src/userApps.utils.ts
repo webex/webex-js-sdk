@@ -29,6 +29,22 @@ export const getSectionsApp = (data: UserAppsDataWire): UserAppTopWire | undefin
 export const getMetadata = (data: UserAppsDataWire): UserAppsMetadataWire | undefined =>
   getSectionsApp(data)?.metadata;
 
+export const mergeMetadata = (
+  current: UserAppsMetadataWire | undefined,
+  update: UserAppsMetadataWire
+): UserAppsMetadataWire => ({
+  ...current,
+  ...update,
+  ...(current?.clientSpecificData || update.clientSpecificData
+    ? {
+        clientSpecificData: {
+          ...current?.clientSpecificData,
+          ...update.clientSpecificData,
+        },
+      }
+    : {}),
+});
+
 export const isSectionsAppName = (appName?: string): boolean =>
   appName === SECTIONS_APP || Boolean(appName?.startsWith(DERIVED_SECTIONS_PREFIX));
 
@@ -136,7 +152,7 @@ export const applyChangeToWireData = (
       app.metadata =
         change.action === USER_APP_ACTIONS.DELETE
           ? undefined
-          : (change.appData as UserAppsMetadataWire);
+          : mergeMetadata(app.metadata, change.appData as UserAppsMetadataWire);
     }
 
     return data;
