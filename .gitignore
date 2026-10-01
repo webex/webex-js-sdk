@@ -1,10 +1,4 @@
 # Documentation
-packages/**/docs/
-# SDD: @webex/helper-image keeps its generated specs tracked (see its .sdd/manifest.json)
-!packages/@webex/helper-image/docs/
-!packages/@webex/helper-image/src/docs/
-/packages/@webex/plugin-meetings/.generated/
-
 /**/.generated/
 
 ~*

@@ -1,0 +1,294 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/common",
+    "purpose": "Zero-Webex-dependency shared helpers that more than one Webex JS SDK plugin needs. Sits at the bottom of the workspace dependency graph: src/ imports no @webex/* package at runtime.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "JavaScript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "compile": {
+      "command": "yarn workspace @webex/common build:src",
+      "source_file": "package.json",
+      "role": "compile"
+    },
+    "build": {
+      "command": "yarn workspace @webex/common build",
+      "source_file": "package.json",
+      "role": "package"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/common test:unit",
+      "source_file": "package.json",
+      "role": "unit-test"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/common test:style",
+      "source_file": "package.json",
+      "role": "lint"
+    },
+    "deploy": {
+      "command": "yarn workspace @webex/common deploy:npm",
+      "source_file": "package.json",
+      "role": "deploy"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=16",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "babel",
+      "version": "^7.17.10",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "eslint",
+      "version": "^8.24.0",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    },
+    {
+      "name": "prettier",
+      "version": "^2.7.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "unknown"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% - spec is authoritative",
+    "partial": "40-80% specced - spec is a hint, cross-check code",
+    "untracked": "<40% specced - code is the source of truth"
+  },
+  "modules": [
+    {
+      "path": "src",
+      "canonical_spec": "src/docs/README.md",
+      "coverage_status": "Partial",
+      "coverage_evidence": "Measured at bootstrap: 39 of 39 public exports from src/index.js are enumerated and summarised in src/docs/README.md (100% surface named), with 11 MOD requirements and 5 invariants carrying source evidence. Held at Partial rather than Specced because the partial_to_specced promotion also requires a clean spec-drift record across the last 5 touching PRs, which cannot exist for a spec created in this change. Test evidence is the weaker axis: 8 of 25 source files have a dedicated unit spec, and src/uuid-utils.js \u2014 which owns the frozen Hydra encoding \u2014 has none.",
+      "last_assessed": "2026-09-21",
+      "contracts": {
+        "provides": [
+          "webex-common-js-api",
+          "hydra-id-format"
+        ],
+        "requires": [
+          "webex-client-host"
+        ]
+      },
+      "section_profile": {
+        "has_tiers": false,
+        "has_ui": false,
+        "crosses_service_boundaries": true,
+        "holds_client_state": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": false,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": true,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "returns_caller_errors": true,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": false,
+        "has_design_tradeoff": true,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-09-21T06:31:00Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "webex-common-js-api": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package surface declared by package.json (main: dist/index.js, browser field remapping in-browser/node.js). The barrel src/index.js re-exports 39 named symbols; no .d.ts is emitted, so package.json plus the ES module declarations are the ecosystem-native artifact. README.md documents 6 of the 39 as the externally supported subset; the rest is internal-consumer surface that is still breaking for 33 workspace packages."
+      },
+      "hydra-id-format": {
+        "kind": "file",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "src/uuid-utils.js",
+        "summary": "base64url encoding of ciscospark://<cluster>/<TYPE>/<id>, decoded by deconstructHydraId. Content URLs compose https://api.ciscospark.com/v1/contents/<id>. Encoding changes are breaking for every consumer that persists or compares these ids."
+      },
+      "webex-client-host": {
+        "kind": "rpc",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "@webex/webex-core (host client supplying webex.people and webex.internal)",
+        "summary": "Injected webex client contract consumed by this module: webex.people.get('me'), webex.internal.me.{id,orgId}, and webex.internal.services.getClusterId(url)."
+      }
+    }
+  },
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "README.md"
+    ]
+  },
+  "spec_sources": [],
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5",
+    "generator_runtime_source": "host-metadata",
+    "generator_run_id": "92447ec3-0458-438b-b301-647643c3abfb",
+    "validator_runtime": "codex",
+    "validator_runtime_source": "invocation-input",
+    "validator_run_id": "01a0c2be-8975-7fb1-aa25-07b0653ca45d",
+    "runtime_fallback_tier": "different-runtime",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "source_commit": "b46e941f296f84d7f279acf28a6a5f4e4f38e4f3"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "Single module rooted at src/. The default source-local route src/docs/README.md was unambiguous and verified safe: test:style runs `eslint ./src/**/*.*` and eslint reports Markdown under src/ as ignored (exit 0), so the spec cannot break the lint gate; build:src processes -js -ts only.",
+      "decided_by": "rarajes2@cisco.com",
+      "decided_at": "2026-09-21T06:30:51Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither file exists at the SDD root or the monorepo root; both created and populated from package evidence.",
+      "decided_by": "rarajes2@cisco.com",
+      "decided_at": "2026-09-21T06:30:51Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Library package, not a deployable service: no Dockerfile, k8s manifest, IaC, or runtime entry point.",
+        "decided_by": "rarajes2@cisco.com",
+        "decided_at": "2026-09-21T06:30:51Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "No package-level docs site. The monorepo publishes its own docs/ site; a second mkdocs root here would compete with it.",
+        "decided_by": "rarajes2@cisco.com",
+        "decided_at": "2026-09-21T06:30:51Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "This package serves no HTTP surface. As a published SDK package it retains its ecosystem-native API artifact (src/index.js declarations).",
+        "decided_by": "rarajes2@cisco.com",
+        "decided_at": "2026-09-21T06:30:51Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "Repository-wide governance, not package-scoped; absent at the monorepo root too, so creating it here would misplace the authority.",
+        "decided_by": "rarajes2@cisco.com",
+        "decided_at": "2026-09-21T06:30:51Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "The monorepo root CONTRIBUTING.md already exists and README.md links to it.",
+        "decided_by": "rarajes2@cisco.com",
+        "decided_at": "2026-09-21T06:30:51Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "The monorepo root CHANGELOG.md already exists; releases are produced centrally by the Webex Publisher automation.",
+        "decided_by": "rarajes2@cisco.com",
+        "decided_at": "2026-09-21T06:30:51Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "Repository-wide governance artifact, not package-scoped.",
+        "decided_by": "rarajes2@cisco.com",
+        "decided_at": "2026-09-21T06:30:51Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Only required when CTO_CHECKLIST.yml is created; it is omitted.",
+        "decided_by": "rarajes2@cisco.com",
+        "decided_at": "2026-09-21T06:30:51Z"
+      }
+    ],
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "repo_skills_root": ".sdd/skills",
+    "contract_index_path": "docs/architecture.md"
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards",
+    "consumed": [
+      "agents",
+      "docs-index",
+      "architecture",
+      "spec-index",
+      "module-spec",
+      "adr-index"
+    ],
+    "compliance_tier": "legacy"
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": false,
+      "holds_client_state": false,
+      "components_interact": false,
+      "domain_data_across_components": false,
+      "caches_data": true,
+      "observability_convention": false,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": false,
+      "multi_platform": true,
+      "published_package": true,
+      "embedded_in_host": false,
+      "cross_repo_deps_material": true,
+      "security_arch_warranted": true,
+      "exposes_commands_or_artifacts": true
+    },
+    "resolved_by": "brownfield-questionnaire",
+    "resolved_at": "2026-09-21T06:30:51Z"
+  }
+}
