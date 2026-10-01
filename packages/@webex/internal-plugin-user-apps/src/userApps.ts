@@ -53,30 +53,19 @@ import {
 
 const CONVERSATION_PATH = /\/conversations\/([0-9a-f-]{36})\/?$/i;
 
-const serializeWireValue = (value: unknown): string => {
-  if (Array.isArray(value)) {
-    return `[${value.map(serializeWireValue).join(',')}]`;
+type QueuedChange = {change: UserAppChangeWire; timestamp: number | null};
+
+const getMercuryTimestamp = (envelope: any): number | null => {
+  const rawTimestamp = envelope?.timestamp;
+
+  if (typeof rawTimestamp !== 'number' && typeof rawTimestamp !== 'string') {
+    return null;
   }
 
-  if (value && typeof value === 'object') {
-    return `{${Object.entries(value)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, item]) => `${JSON.stringify(key)}:${serializeWireValue(item)}`)
-      .join(',')}}`;
-  }
+  const timestamp = Number(rawTimestamp);
 
-  return JSON.stringify(value) ?? String(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
 };
-
-const getChangeKey = (change: UserAppChangeWire): string =>
-  serializeWireValue([
-    change.eventType,
-    change.appName,
-    change.action,
-    change.eventType === 'user.app_metadata'
-      ? mergeMetadata(undefined, change.appData as UserAppsMetadataWire)
-      : change.appData,
-  ]);
 
 const UserApps = WebexPlugin.extend({
   namespace: 'UserApps',
@@ -97,8 +86,8 @@ const UserApps = WebexPlugin.extend({
     this._decryptedTitleCache = new Map();
     this._lifecycleGeneration = 0;
     this._catchupTimer = null;
-    this._queuedChanges = [];
-    this._hydrationCoveredChangeKeys = new Set();
+    this._queuedChanges = [] as QueuedChange[];
+    this._hydrationHighWaterMark = null;
     this._hydrating = false;
     this._catalogReadyPromise = null;
     this._itemEventHandler = (envelope) => this._handleMercuryEnvelope('user.app_item', envelope);
@@ -133,7 +122,7 @@ const UserApps = WebexPlugin.extend({
       this._listenForEvents();
       this.registered = true;
       this._hydrating = true;
-      this._hydrationCoveredChangeKeys.clear();
+      this._hydrationHighWaterMark = null;
       this.trigger(USER_APPS_REGISTERED);
 
       try {
@@ -190,7 +179,7 @@ const UserApps = WebexPlugin.extend({
     );
     this._clearCatchupTimer();
     this._queuedChanges = [];
-    this._hydrationCoveredChangeKeys.clear();
+    this._hydrationHighWaterMark = null;
     this._hydrating = false;
     this.registered = false;
 
@@ -469,8 +458,14 @@ const UserApps = WebexPlugin.extend({
     }
 
     if (this._hydrating) {
-      if (!this._hydrationCoveredChangeKeys.has(getChangeKey(change))) {
-        this._queuedChanges.push(change);
+      const timestamp = getMercuryTimestamp(envelope);
+
+      if (
+        timestamp === null ||
+        this._hydrationHighWaterMark === null ||
+        timestamp > this._hydrationHighWaterMark
+      ) {
+        this._queuedChanges.push({change, timestamp});
       }
 
       return;
@@ -511,40 +506,38 @@ const UserApps = WebexPlugin.extend({
     allowRecovery: boolean,
     lifecycleGeneration?: number
   ): Promise<SpaceListSectionsSnapshot> {
-    const startedAt = Date.now();
-    const response = await this.webex.request({
-      service: USER_APPS_SERVICE,
-      resource: '/',
-      method: 'GET',
-    });
-
-    if (!this._canCommitLifecycle(lifecycleGeneration)) {
-      return this._getInactiveSnapshot();
-    }
-
-    const appsData = (response.body ?? createEmptyWireData()) as UserAppsDataWire;
-    const fullSyncHighWaterValue = getHeader(response.headers, HIGH_WATER_HEADER);
-    const fullSyncHighWaterMark = fullSyncHighWaterValue
-      ? Number(fullSyncHighWaterValue)
-      : startedAt;
-
-    if (!Number.isFinite(fullSyncHighWaterMark)) {
-      throw new UserAppsSyncError('User-app full sync returned an invalid high-water mark');
-    }
-
-    await this._loadAdvertisedPages(appsData, lifecycleGeneration);
-    await this._filterInvalidMemberships(appsData, lifecycleGeneration);
-
-    if (!this._canCommitLifecycle(lifecycleGeneration)) {
-      return this._getInactiveSnapshot();
-    }
-
-    const queuedChanges = this._queuedChanges;
-
-    this._queuedChanges = [];
-    queuedChanges.forEach((change) => applyChangeToWireData(appsData, change));
+    this._hydrating = true;
+    this._hydrationHighWaterMark = null;
 
     try {
+      const startedAt = Date.now();
+      const response = await this.webex.request({
+        service: USER_APPS_SERVICE,
+        resource: '/',
+        method: 'GET',
+      });
+
+      if (!this._canCommitLifecycle(lifecycleGeneration)) {
+        return this._getInactiveSnapshot();
+      }
+
+      const appsData = (response.body ?? createEmptyWireData()) as UserAppsDataWire;
+      const fullSyncHighWaterValue = getHeader(response.headers, HIGH_WATER_HEADER);
+      const fullSyncHighWaterMark = fullSyncHighWaterValue
+        ? Number(fullSyncHighWaterValue)
+        : startedAt;
+
+      if (!Number.isFinite(fullSyncHighWaterMark)) {
+        throw new UserAppsSyncError('User-app full sync returned an invalid high-water mark');
+      }
+
+      await this._loadAdvertisedPages(appsData, lifecycleGeneration);
+      await this._filterInvalidMemberships(appsData, lifecycleGeneration);
+
+      if (!this._canCommitLifecycle(lifecycleGeneration)) {
+        return this._getInactiveSnapshot();
+      }
+
       const snapshot = await this._catchup(
         fullSyncHighWaterMark,
         allowRecovery,
@@ -558,8 +551,8 @@ const UserApps = WebexPlugin.extend({
       }
 
       this._hydrating = false;
-      this._hydrationCoveredChangeKeys.clear();
-      const trailingChanges = this._queuedChanges;
+      this._hydrationHighWaterMark = null;
+      const trailingChanges = this._queuedChanges.map(({change}) => change);
 
       this._queuedChanges = [];
       trailingChanges.forEach((change) => applyChangeToWireData(appsData, change));
@@ -576,7 +569,7 @@ const UserApps = WebexPlugin.extend({
     } catch (error) {
       if (this._canCommitLifecycle(lifecycleGeneration)) {
         this._hydrating = false;
-        this._hydrationCoveredChangeKeys.clear();
+        this._hydrationHighWaterMark = null;
       }
       throw error;
     }
@@ -625,24 +618,21 @@ const UserApps = WebexPlugin.extend({
     const body = (response.body ?? {}) as UserAppsCatchupWire | UserAppChangeWire[];
     const changes = Array.isArray(body) ? body : body.items ?? body.changes ?? [];
     const sectionChanges = changes.filter((change) => isSectionsAppName(change.appName));
-
-    if (this._hydrating) {
-      sectionChanges.forEach((change) =>
-        this._hydrationCoveredChangeKeys.add(getChangeKey(change))
-      );
-      this._queuedChanges = this._queuedChanges.filter(
-        (change) => !this._hydrationCoveredChangeKeys.has(getChangeKey(change))
-      );
-    }
-
-    sectionChanges.forEach((change) => applyChangeToWireData(data, change));
-
     const highWaterValue = getHeader(response.headers, HIGH_WATER_HEADER);
     const highWaterMark = highWaterValue ? Number(highWaterValue) : Date.now();
 
     if (!Number.isFinite(highWaterMark)) {
       throw new UserAppsSyncError('User-app catch-up returned an invalid high-water mark');
     }
+
+    if (this._hydrating) {
+      this._hydrationHighWaterMark = highWaterMark;
+      this._queuedChanges = this._queuedChanges.filter(
+        ({timestamp}) => timestamp === null || timestamp > highWaterMark
+      );
+    }
+
+    sectionChanges.forEach((change) => applyChangeToWireData(data, change));
 
     return this._publishSnapshot(
       shouldPublish ? 'catch-up' : 'full-sync',
