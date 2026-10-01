@@ -12,6 +12,8 @@ const ServiceUrl = AmpState.extend({
   props: {
     defaultUrl: ['string', true, undefined],
     hosts: ['array', false, () => []],
+    // Canonical host derived from defaultUrl for safe lookup prefiltering.
+    matchHost: ['string', false, ''],
     name: ['string', true, undefined],
   },
 

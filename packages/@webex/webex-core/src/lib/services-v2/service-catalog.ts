@@ -2,9 +2,17 @@ import AmpState from 'ampersand-state';
 
 import {union} from 'lodash';
 import ServiceDetail from './service-detail';
-import {IServiceDetail, ServiceGroup} from './types';
+import {IServiceDetail, ServiceGroup, ServiceMatch, ServiceUrl} from './types';
 import {matchAllowedDomain, normalizeAllowedDomains} from '../domains';
 import {matchesParsedCatalogUrl, parseCatalogUrl} from '../services/service-catalog';
+
+const getMatchHost = (baseUrl: string): string | undefined => {
+  try {
+    return new URL(baseUrl).host;
+  } catch {
+    return undefined;
+  }
+};
 
 /**
  * @class
@@ -198,8 +206,18 @@ const ServiceCatalog = AmpState.extend({
    * @returns {IServiceDetail} - ServiceDetail assocated with provided url
    */
   findServiceDetailFromUrl(url: string): IServiceDetail | undefined {
+    return this.findServiceMatchFromUrl(url)?.serviceDetail;
+  },
+
+  /**
+   * Find a service and its matching catalog URL in a single scan.
+   * @param {string} url - Must be parsable by `URL`
+   * @returns {ServiceMatch} - Matched service detail and catalog URL
+   */
+  findServiceMatchFromUrl(url: string): ServiceMatch | undefined {
     const serviceDetails = this._getAllServiceDetails();
 
+    // Parse the candidate once because a catalog lookup may inspect thousands of entries.
     let candidateUrl: URL;
 
     try {
@@ -208,15 +226,23 @@ const ServiceCatalog = AmpState.extend({
       return undefined;
     }
 
-    return serviceDetails.find(({serviceUrls}) => {
-      for (const serviceUrl of serviceUrls) {
-        if (matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(serviceUrl.baseUrl))) {
-          return true;
-        }
-      }
+    // Retain the exact matching URL so callers can reuse it without scanning the service again.
+    let matchedServiceUrl: ServiceUrl | undefined;
+    const serviceDetail = serviceDetails.find(({serviceUrls}) => {
+      // Trusted host metadata is a cheap rejection check. Missing metadata falls through to the
+      // full comparison for older, invalid, or directly injected catalog entries.
+      matchedServiceUrl = serviceUrls.find(
+        (serviceUrl) =>
+          (!serviceUrl.matchHost || serviceUrl.matchHost === candidateUrl.host) &&
+          matchesParsedCatalogUrl(candidateUrl, parseCatalogUrl(serviceUrl.baseUrl))
+      );
 
-      return false;
+      return Boolean(matchedServiceUrl);
     });
+
+    return serviceDetail && matchedServiceUrl
+      ? {serviceDetail, serviceUrl: matchedServiceUrl}
+      : undefined;
   },
 
   /**
@@ -323,7 +349,13 @@ const ServiceCatalog = AmpState.extend({
 
     serviceDetails?.forEach((serviceObj) => {
       const serviceDetail = this._getServiceDetail(serviceObj.id, serviceGroup);
-      serviceObj?.serviceUrls?.sort((a, b) => {
+      // Derive canonical metadata from baseUrl instead of trusting the separate host field.
+      const serviceUrls = (serviceObj.serviceUrls || []).map((serviceUrl) => ({
+        ...serviceUrl,
+        matchHost: getMatchHost(serviceUrl.baseUrl),
+      }));
+
+      serviceUrls.sort((a, b) => {
         if (a.priority < 0 && b.priority < 0) return 0;
         if (a.priority < 0) return 1;
         if (b.priority < 0) return -1;
@@ -331,9 +363,9 @@ const ServiceCatalog = AmpState.extend({
         return a.priority - b.priority;
       });
       if (serviceDetail) {
-        serviceDetail.serviceUrls = serviceObj.serviceUrls || [];
+        serviceDetail.serviceUrls = serviceUrls;
       } else {
-        this._loadServiceDetails(serviceGroup, [new ServiceDetail(serviceObj)]);
+        this._loadServiceDetails(serviceGroup, [new ServiceDetail({...serviceObj, serviceUrls})]);
       }
     });
 
