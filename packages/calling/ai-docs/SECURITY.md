@@ -35,6 +35,8 @@
 ## Input Validation & Output Encoding Posture
 
 - Validate caller options, identifiers, dates, URLs, state transitions, and backend responses at the owning module boundary. Preserve typed output/event shapes.
+- **SCIM filter-value escaping (AC-1 / CAI-8461):** `externalId` (from the SIP `x-broadworks-remote-party-info` header, `CallerId/index.ts`) and `userExternalId.$` (from SCIM payloads, `Utils.ts:resolveContact`) are passed through `escapeScimFilterValue` before interpolation into `id eq "..."` SCIM filter strings. The helper escapes `\` and `"` so neither value can terminate the quoted literal or inject additional filter clauses. `scimQuery` retains its URL-transport `encodeURIComponent`; the value-layer escape is enforced by the callers.
+- **Mobius WSS trusted-host allowlist (AC-2 / CAI-8461):** The Webex SDK bearer token may only be transmitted over a WSS socket whose hostname ends with a suffix in `MOBIUS_WSS_ALLOWED_DOMAINS` (`constants.ts`). This is enforced at two layers: `filterMobiusUris` (`Utils.ts`) drops discovery-provided `wss` entries with non-allowlisted hosts before they reach the socket layer, and `Socket#open` (`socket-base.ts`) rejects the connection with a typed error before `authorize(token)` runs when the target host is not allowlisted.
 
 ## Transport & Headers
 
