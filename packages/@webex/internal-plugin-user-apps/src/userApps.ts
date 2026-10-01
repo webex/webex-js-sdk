@@ -87,6 +87,7 @@ const UserApps = WebexPlugin.extend({
     this._lifecycleGeneration = 0;
     this._catchupTimer = null;
     this._queuedChanges = [] as QueuedChange[];
+    this._inflightRealtimeChanges = new Set<QueuedChange>();
     this._hydrationHighWaterMark = null;
     this._hydrating = false;
     this._catalogReadyPromise = null;
@@ -179,6 +180,7 @@ const UserApps = WebexPlugin.extend({
     );
     this._clearCatchupTimer();
     this._queuedChanges = [];
+    this._inflightRealtimeChanges.clear();
     this._hydrationHighWaterMark = null;
     this._hydrating = false;
     this.registered = false;
@@ -202,7 +204,7 @@ const UserApps = WebexPlugin.extend({
     const syncPromise = (async () => {
       try {
         if (!syncOptions.forceFull && this._snapshot?.highWaterMark) {
-          return await this._catchup(this._snapshot.highWaterMark, true, true, activeGeneration);
+          return await this._syncCatchup(this._snapshot.highWaterMark, activeGeneration);
         }
 
         return await this._fullSync(true, activeGeneration);
@@ -472,6 +474,13 @@ const UserApps = WebexPlugin.extend({
     }
 
     const lifecycleGeneration = this._lifecycleGeneration;
+    const timestamp = getMercuryTimestamp(envelope);
+    const inflightChange = timestamp === null ? null : {change, timestamp};
+
+    if (inflightChange) {
+      this._inflightRealtimeChanges.add(inflightChange);
+    }
+
     const changePromise = this._changePromise
       .catch(() => undefined)
       .then(async () => {
@@ -481,6 +490,12 @@ const UserApps = WebexPlugin.extend({
       });
 
     this._changePromise = changePromise;
+    if (inflightChange) {
+      changePromise.then(
+        () => this._inflightRealtimeChanges.delete(inflightChange),
+        () => this._inflightRealtimeChanges.delete(inflightChange)
+      );
+    }
     changePromise.catch((error) => {
       if (this._isLifecycleActive(lifecycleGeneration)) {
         this.trigger(
@@ -500,6 +515,42 @@ const UserApps = WebexPlugin.extend({
       this._appsData,
       lifecycleGeneration
     );
+  },
+
+  async _syncCatchup(
+    sinceDate: number,
+    lifecycleGeneration: number
+  ): Promise<SpaceListSectionsSnapshot> {
+    this._hydrating = true;
+    this._hydrationHighWaterMark = null;
+    const inflightChanges = [...this._inflightRealtimeChanges];
+
+    try {
+      await this._changePromise.catch(() => undefined);
+
+      if (!this._canCommitLifecycle(lifecycleGeneration)) {
+        return this._getInactiveSnapshot();
+      }
+
+      this._queuedChanges.push(...inflightChanges);
+      const snapshot = await this._catchup(sinceDate, true, true, lifecycleGeneration);
+
+      if (!this._canCommitLifecycle(lifecycleGeneration)) {
+        return this._getInactiveSnapshot();
+      }
+
+      if (!this._hydrating) {
+        return snapshot;
+      }
+
+      return this._completeHydration(snapshot, this._appsData, 'catch-up', lifecycleGeneration);
+    } catch (error) {
+      if (this._hydrating && this._canCommitLifecycle(lifecycleGeneration)) {
+        await this._abortHydration(lifecycleGeneration);
+      }
+
+      throw error;
+    }
   },
 
   async _fullSync(
@@ -568,13 +619,7 @@ const UserApps = WebexPlugin.extend({
   ): Promise<SpaceListSectionsSnapshot> {
     const data = appsData ?? this._appsData;
     const shouldPublish = publish ?? true;
-    const completesHydration = !this._hydrating;
     let response;
-
-    if (completesHydration) {
-      this._hydrating = true;
-      this._hydrationHighWaterMark = null;
-    }
 
     try {
       response = await this.webex.request({
@@ -598,10 +643,6 @@ const UserApps = WebexPlugin.extend({
         throw new CatchupResetRequiredError(statusCode, error);
       }
 
-      if (completesHydration) {
-        await this._abortHydration(lifecycleGeneration);
-      }
-
       throw error;
     }
 
@@ -616,10 +657,6 @@ const UserApps = WebexPlugin.extend({
     const highWaterMark = Number(highWaterValue);
 
     if (!highWaterValue || !Number.isFinite(highWaterMark)) {
-      if (completesHydration) {
-        await this._abortHydration(lifecycleGeneration);
-      }
-
       throw new UserAppsSyncError('User-app catch-up did not return a valid high-water mark');
     }
 
@@ -632,25 +669,13 @@ const UserApps = WebexPlugin.extend({
 
     sectionChanges.forEach((change) => applyChangeToWireData(data, change));
 
-    try {
-      const snapshot = await this._publishSnapshot(
-        shouldPublish ? 'catch-up' : 'full-sync',
-        undefined,
-        highWaterMark,
-        data,
-        lifecycleGeneration
-      );
-
-      return completesHydration
-        ? this._completeHydration(snapshot, data, 'catch-up', lifecycleGeneration)
-        : snapshot;
-    } catch (error) {
-      if (completesHydration && this._canCommitLifecycle(lifecycleGeneration)) {
-        await this._abortHydration(lifecycleGeneration);
-      }
-
-      throw error;
-    }
+    return this._publishSnapshot(
+      shouldPublish ? 'catch-up' : 'full-sync',
+      undefined,
+      highWaterMark,
+      data,
+      lifecycleGeneration
+    );
   },
 
   async _abortHydration(lifecycleGeneration?: number): Promise<void> {
