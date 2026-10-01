@@ -643,6 +643,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   private handleRTDWebsocketMessage = (event: string) => {
+    let payload: unknown;
+    try {
+      payload = JSON.parse(event);
+    } catch {
+      // TaskManager retains its existing malformed RTD message handling.
+    }
+
+    if (isRecord(payload) && this.handleWellnessBreakWebsocketPayload(payload)) {
+      return;
+    }
+
     this.taskManager.handleRealtimeWebsocketEvent(event);
   };
 
@@ -730,7 +741,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         method: METHODS.REGISTER,
       });
 
-      return resp;
+      // Registration can silently restore a station session without emitting a
+      // relogin event. Project the active session for consumers that must
+      // recover session-scoped state after a page refresh.
+      return resp.isAgentLoggedIn && this.currentAgentSessionId
+        ? {...resp, agentSessionId: this.currentAgentSessionId}
+        : resp;
     } catch (error) {
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
@@ -1017,10 +1033,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       /**
        * RTD websocket currently supports realtime transcripts and suggested responses.
        * Extend this condition when additional AI RTD features are introduced.
+       * Wellness break notifications also arrive on this websocket.
        */
       if (
         this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||
-        this.agentConfig.aiFeature?.suggestedResponses?.enable
+        this.agentConfig.aiFeature?.suggestedResponses?.enable ||
+        this.agentConfig.isWellnessBreakEnabled
       ) {
         LoggerProxy.info('Connecting to RTD websocket', {
           module: CC_FILE,
