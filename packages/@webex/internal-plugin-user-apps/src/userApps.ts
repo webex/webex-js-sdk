@@ -52,12 +52,6 @@ import {
 } from './userApps.utils';
 
 const CONVERSATION_PATH = /\/conversations\/([0-9a-f-]{36})\/?$/i;
-const SERVICE_METADATA_FIELDS = new Set([
-  'default-encryption-key',
-  'encryption-key',
-  'kms-message',
-  'kms-resource-object',
-]);
 
 const UserApps = WebexPlugin.extend({
   namespace: 'UserApps',
@@ -811,15 +805,9 @@ const UserApps = WebexPlugin.extend({
       .then(async () => {
         this._validateSectionOrder(sectionIds);
         const metadata = await this._ensureMetadata();
-        const clientMetadata = Object.fromEntries(
-          Object.entries(metadata).filter(([key]) => !SERVICE_METADATA_FIELDS.has(key))
-        );
         const body = {
-          ...clientMetadata,
-          clientSpecificData: {
-            ...metadata.clientSpecificData,
-            sortedSections: sectionIds,
-          },
+          ...metadata.clientSpecificData,
+          sortedSections: sectionIds,
         };
         const response = await this.webex.request({
           service: USER_APPS_SERVICE,

@@ -609,9 +609,7 @@ describe('plugin-user-apps', () => {
       resource: '/sections',
       method: 'PUT',
       body: {
-        clientSpecificData: {
-          sortedSections: ['FAVORITES', 'section-1', 'section-2', 'OTHER'],
-        },
+        sortedSections: ['FAVORITES', 'section-1', 'section-2', 'OTHER'],
       },
     });
     assert.equal(section.id, 'section-2');
@@ -673,13 +671,11 @@ describe('plugin-user-apps', () => {
       resource: '/sections',
       method: 'PUT',
       body: {
-        clientSpecificData: {
-          sortedSections: ['OTHER', 'section-1', 'FAVORITES'],
-          Default_Sections_Settings: [
-            {section_name: 'FAVORITES', settings: []},
-            {section_name: 'OTHER', settings: []},
-          ],
-        },
+        sortedSections: ['OTHER', 'section-1', 'FAVORITES'],
+        Default_Sections_Settings: [
+          {section_name: 'FAVORITES', settings: []},
+          {section_name: 'OTHER', settings: []},
+        ],
       },
     });
     assert.deepEqual(snapshot.sectionOrder, ['OTHER', 'section-1', 'FAVORITES']);
@@ -732,10 +728,10 @@ describe('plugin-user-apps', () => {
     await Promise.all([first, second]);
 
     assert.calledWithMatch(webex.request.getCall(2), {
-      body: {clientSpecificData: {sortedSections: ['OTHER', 'section-1', 'FAVORITES']}},
+      body: {sortedSections: ['OTHER', 'section-1', 'FAVORITES']},
     });
     assert.calledWithMatch(webex.request.getCall(3), {
-      body: {clientSpecificData: {sortedSections: ['FAVORITES', 'OTHER', 'section-1']}},
+      body: {sortedSections: ['FAVORITES', 'OTHER', 'section-1']},
     });
   });
 
