@@ -618,7 +618,12 @@ describe('plugin-user-apps', () => {
   });
 
   it('moves a validated conversation with one target POST and updates membership', async () => {
-    stubInitialSync();
+    const appsData = createAppsData();
+    const section = appsData.items.dynamicTop[0].items[0];
+
+    delete section['list-app-name'];
+    section.list = 'https://user-apps.example/user/api/v1/apps/sections_section-1';
+    stubInitialSync(appsData);
     webex.request.onCall(2).resolves({
       body: {id: 'membership-2', 'conversation-url': CONVERSATION_URL},
     });

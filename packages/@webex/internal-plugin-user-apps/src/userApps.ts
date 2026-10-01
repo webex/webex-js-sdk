@@ -44,6 +44,7 @@ import {
   extractNextFromLink,
   getHeader,
   getMetadata,
+  getSectionListAppName,
   getSectionsApp,
   getStatusCode,
   isSectionsAppName,
@@ -323,17 +324,22 @@ const UserApps = WebexPlugin.extend({
   }): Promise<SectionMembership> {
     this._validateCustomSectionId(sectionId);
     const section = this._getSectionWire(sectionId);
+    const listAppName = getSectionListAppName(section);
+
+    if (!listAppName) {
+      throw new UserAppsSyncError('Section list app was missing from the snapshot');
+    }
 
     await this._validateConversationUrl(conversationUrl);
     const response = await this.webex.request({
       service: USER_APPS_SERVICE,
-      resource: `/${encodeURIComponent(section['list-app-name'])}`,
+      resource: `/${encodeURIComponent(listAppName)}`,
       method: 'POST',
       body: {'conversation-url': conversationUrl},
     });
 
     this._removeMembershipByConversationUrl(conversationUrl);
-    this._upsertMembership(section['list-app-name'], response.body);
+    this._upsertMembership(listAppName, response.body);
     const snapshot = await this._publishSnapshot('mutation');
     const membership = snapshot.membershipsByConversationUrl[conversationUrl];
 
@@ -898,6 +904,7 @@ const UserApps = WebexPlugin.extend({
 
   _deleteSectionWire(sectionId: string) {
     const section = this._getSectionWire(sectionId);
+    const listAppName = getSectionListAppName(section);
     const sectionsApp = getSectionsApp(this._appsData);
 
     if (!sectionsApp || !this._appsData.items) {
@@ -906,7 +913,7 @@ const UserApps = WebexPlugin.extend({
 
     sectionsApp.items = (sectionsApp.items ?? []).filter(({id}) => id !== sectionId);
     this._appsData.items.dynamicDerived = (this._appsData.items.dynamicDerived ?? []).filter(
-      (app) => app['app-name'] !== section['list-app-name']
+      (app) => app['app-name'] !== listAppName
     );
   },
 

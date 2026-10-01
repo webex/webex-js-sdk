@@ -122,6 +122,49 @@ describe('userApps utils', () => {
     );
   });
 
+  it('maps section memberships when Raindrop provides a list URL', () => {
+    const data = createEmptyWireData();
+
+    data.items?.dynamicTop?.push({
+      'app-name': 'sections',
+      items: [
+        {
+          id: 'section-1',
+          content: 'ciphertext',
+          'encryption-key': 'kms://key',
+          list: 'https://user-apps.example/user/api/v1/apps/sections_section-1',
+        },
+      ],
+    });
+    data.items?.dynamicDerived?.push({
+      'app-name': 'sections_section-1',
+      'app-type': 'sections',
+      items: [
+        {
+          id: 'membership-1',
+          'conversation-url':
+            'https://conversation.example/conversation/api/v1/conversations/00000000-0000-0000-0000-000000000001',
+        },
+      ],
+    });
+
+    const snapshot = buildSnapshot({
+      data,
+      decryptedTitles: new Map([['section-1', 'Project Alpha']]),
+      unavailableSectionIds: new Set(),
+      syncedAt: 100,
+      highWaterMark: 90,
+    });
+
+    assert.equal(snapshot.sections[1].listAppName, 'sections_section-1');
+    assert.equal(
+      snapshot.membershipsByConversationUrl[
+        'https://conversation.example/conversation/api/v1/conversations/00000000-0000-0000-0000-000000000001'
+      ].sectionId,
+      'section-1'
+    );
+  });
+
   it('preserves the complete native section order', () => {
     const data = createEmptyWireData();
 

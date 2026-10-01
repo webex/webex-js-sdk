@@ -22,7 +22,7 @@ export interface UserAppSectionWire {
   id: string;
   url?: string;
   list?: string;
-  'list-app-name': string;
+  'list-app-name'?: string;
   content: string;
   'encryption-key': string;
   'date-created'?: string;

@@ -32,6 +32,25 @@ export const getMetadata = (data: UserAppsDataWire): UserAppsMetadataWire | unde
 export const isSectionsAppName = (appName?: string): boolean =>
   appName === SECTIONS_APP || Boolean(appName?.startsWith(DERIVED_SECTIONS_PREFIX));
 
+export const getSectionListAppName = (section: UserAppSectionWire): string | undefined => {
+  if (section['list-app-name']) {
+    return section['list-app-name'];
+  }
+
+  if (!section.list) {
+    return undefined;
+  }
+
+  try {
+    const parsed = new URL(section.list, 'https://user-apps.invalid');
+    const appName = decodeURIComponent(parsed.pathname.split('/').filter(Boolean).pop() ?? '');
+
+    return appName.startsWith(DERIVED_SECTIONS_PREFIX) ? appName : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 export const getStatusCode = (error: any): number | undefined =>
   error?.statusCode ?? error?.response?.statusCode ?? error?.response?.status ?? error?.status;
 
@@ -194,9 +213,15 @@ export const buildSnapshot = ({
   } else {
     sectionOrder.push(...missingCustomIds, OTHER_SECTION_ID);
   }
-  const sectionByListAppName = new Map<string, UserAppSectionWire>(
-    customSections.map((section) => [section['list-app-name'], section])
-  );
+  const sectionByListAppName = new Map<string, UserAppSectionWire>();
+
+  customSections.forEach((section) => {
+    const listAppName = getSectionListAppName(section);
+
+    if (listAppName) {
+      sectionByListAppName.set(listAppName, section);
+    }
+  });
   const membershipsByConversationUrl: Record<string, SectionMembership> = {};
   const conversationsBySectionId = new Map<string, string[]>();
 
@@ -249,7 +274,7 @@ export const buildSnapshot = ({
         titleState: unavailableSectionIds.has(section.id)
           ? ('unavailable' as const)
           : ('decrypted' as const),
-        listAppName: section['list-app-name'],
+        listAppName: getSectionListAppName(section),
         conversationUrls: conversationsBySectionId.get(section.id) ?? [],
       },
     ])
