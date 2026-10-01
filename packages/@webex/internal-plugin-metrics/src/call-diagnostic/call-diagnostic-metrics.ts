@@ -1136,9 +1136,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       commonEventObject.meetingJoinedTime = meetingJoinedTime;
     }
 
-    if (options.meetingJoinPhase) {
+    const meetingJoinPhase =
+      options.meetingJoinPhase ?? meeting.callStateForMetrics?.meetingJoinPhase;
+    if (meetingJoinPhase) {
       // @ts-ignore
-      commonEventObject.meetingJoinPhase = options.meetingJoinPhase;
+      commonEventObject.meetingJoinPhase = meetingJoinPhase;
     }
 
     return commonEventObject;
@@ -1253,9 +1255,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       clientEventObject.joinFlowVersion = options.joinFlowVersion;
     }
 
-    if (options.meetingJoinPhase) {
-      clientEventObject.meetingJoinPhase = options.meetingJoinPhase;
-    }
+    // No meeting exists yet for pre-meeting events, so the join phase is pre-join by construction
+    clientEventObject.meetingJoinPhase = options.meetingJoinPhase ?? 'pre-join';
 
     if (options.userNameInput) {
       clientEventObject.userNameInput = options.userNameInput;
