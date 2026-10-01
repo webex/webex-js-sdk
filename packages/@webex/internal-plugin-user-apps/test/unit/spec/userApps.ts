@@ -90,7 +90,10 @@ describe('plugin-user-apps', () => {
   });
 
   const stubInitialSync = (appsData = createAppsData()) => {
-    webex.request.onFirstCall().resolves({body: appsData});
+    webex.request.onFirstCall().resolves({
+      body: appsData,
+      headers: {'x-cisco-endDate': '100'},
+    });
     webex.request.onSecondCall().resolves({
       body: {items: []},
       headers: {'x-cisco-endDate': '200'},
@@ -120,7 +123,7 @@ describe('plugin-user-apps', () => {
       service: 'userApps',
       resource: '/catchup',
       method: 'GET',
-      qs: {sinceDate: sinon.match.number},
+      qs: {sinceDate: 100},
     });
     assert.equal(snapshot.highWaterMark, 200);
     assert.equal(snapshot.sections[1].title, 'Project Alpha');
@@ -291,6 +294,29 @@ describe('plugin-user-apps', () => {
     });
   });
 
+  it('does not recover a catch-up after unregistering', async () => {
+    let rejectCatchup;
+
+    webex.request.onFirstCall().resolves({body: createAppsData()});
+    webex.request.onSecondCall().returns(
+      new Promise((_, reject) => {
+        rejectCatchup = reject;
+      })
+    );
+
+    const registration = webex.internal.userApps.register();
+
+    while (webex.request.callCount < 2) {
+      await Promise.resolve();
+    }
+    await webex.internal.userApps.unregister();
+    rejectCatchup({statusCode: 400});
+    await registration;
+
+    assert.calledTwice(webex.request);
+    assert.isFalse(webex.internal.userApps.registered);
+  });
+
   it('queues a section event received during hydration', async () => {
     let resolveFullSync;
 
@@ -328,6 +354,11 @@ describe('plugin-user-apps', () => {
 
   it('applies a section event received while catch-up is publishing', async () => {
     let resolveCatchup;
+    let resolveDecryption;
+    let resolveDecryptionStarted;
+    const decryptionStarted = new Promise<void>((resolve) => {
+      resolveDecryptionStarted = resolve;
+    });
     const sectionCreatedChange = {
       eventType: 'user.app_item',
       appName: 'sections',
@@ -346,32 +377,58 @@ describe('plugin-user-apps', () => {
         resolveCatchup = resolve;
       })
     );
-    webex.request.onThirdCall().resolves({
-      body: {items: [sectionCreatedChange]},
-      headers: {'x-cisco-endDate': '300'},
-    });
+    webex.internal.encryption.decryptText.onFirstCall().callsFake(
+      () =>
+        new Promise((resolve) => {
+          resolveDecryption = resolve;
+          resolveDecryptionStarted();
+        })
+    );
 
     const registration = webex.internal.userApps.register();
 
     while (webex.request.callCount < 2) {
       await Promise.resolve();
     }
+    resolveCatchup({body: {items: []}, headers: {'x-cisco-endDate': '200'}});
+    await decryptionStarted;
     mercuryCallbacks[USER_APP_ITEM_EVENT]({
       data: sectionCreatedChange,
     });
     assert.lengthOf(webex.internal.userApps._queuedChanges, 1);
-    resolveCatchup({body: {items: []}, headers: {'x-cisco-endDate': '200'}});
+    resolveDecryption('Project Alpha');
 
     const snapshot = await registration;
 
-    assert.callCount(webex.request, 3);
+    assert.calledTwice(webex.request);
     assert.isDefined(snapshot.sections.find(({id}) => id === 'section-2'));
-    assert.equal(snapshot.highWaterMark, 300);
+    assert.equal(snapshot.highWaterMark, 200);
   });
 
   it('does not replay stale metadata received while catch-up is publishing', async () => {
     let resolveCatchup;
+    let resolveDecryption;
+    let resolveDecryptionStarted;
+    const decryptionStarted = new Promise<void>((resolve) => {
+      resolveDecryptionStarted = resolve;
+    });
     const appsData = createAppsData();
+    const staleMetadataChange = {
+      eventType: 'user.app_metadata',
+      appName: 'sections',
+      action: 'update',
+      appData: {
+        sortedSections: ['FAVORITES', 'section-1', 'section-2', 'OTHER'],
+      },
+    };
+    const currentMetadataChange = {
+      eventType: 'user.app_metadata',
+      appName: 'sections',
+      action: 'update',
+      appData: {
+        sortedSections: ['FAVORITES', 'section-2', 'section-1', 'OTHER'],
+      },
+    };
 
     appsData.items.dynamicTop[0].items.push({
       id: 'section-2',
@@ -391,16 +448,24 @@ describe('plugin-user-apps', () => {
         resolveCatchup = resolve;
       })
     );
-    webex.request.onThirdCall().resolves({
-      body: {items: []},
-      headers: {'x-cisco-endDate': '300'},
-    });
+    webex.internal.encryption.decryptText.onFirstCall().callsFake(
+      () =>
+        new Promise((resolve) => {
+          resolveDecryption = resolve;
+          resolveDecryptionStarted();
+        })
+    );
 
     const registration = webex.internal.userApps.register();
 
     while (webex.request.callCount < 2) {
       await Promise.resolve();
     }
+    resolveCatchup({
+      body: {items: [staleMetadataChange, currentMetadataChange]},
+      headers: {'x-cisco-endDate': '200'},
+    });
+    await decryptionStarted;
     mercuryCallbacks[USER_APP_METADATA_EVENT]({
       data: {
         appName: 'sections',
@@ -412,19 +477,19 @@ describe('plugin-user-apps', () => {
         },
       },
     });
-    assert.lengthOf(webex.internal.userApps._queuedChanges, 1);
-    resolveCatchup({body: {items: []}, headers: {'x-cisco-endDate': '200'}});
+    assert.lengthOf(webex.internal.userApps._queuedChanges, 0);
+    resolveDecryption('Project Alpha');
 
     const snapshot = await registration;
 
-    assert.callCount(webex.request, 3);
+    assert.calledTwice(webex.request);
     assert.deepEqual(snapshot.sectionOrder, [
       'FAVORITES',
       'section-2',
       'section-1',
       'OTHER',
     ]);
-    assert.equal(snapshot.highWaterMark, 300);
+    assert.equal(snapshot.highWaterMark, 200);
   });
 
   it('ignores unrelated user-app events', async () => {
@@ -765,13 +830,12 @@ describe('plugin-user-apps', () => {
     stubInitialSync(appsData);
     webex.request.onCall(2).resolves({
       body: {
-        metadata: {
-          ...appsData.items.dynamicTop[0].metadata,
-          clientSpecificData: {
-            ...appsData.items.dynamicTop[0].metadata.clientSpecificData,
-            sortedSections: ['OTHER', 'section-1', 'FAVORITES'],
-          },
-        },
+        ...appsData.items.dynamicTop[0].metadata,
+        sortedSections: ['OTHER', 'section-1', 'FAVORITES'],
+        Default_Sections_Settings: [
+          {section_name: 'FAVORITES', settings: []},
+          {section_name: 'OTHER', settings: []},
+        ],
       },
     });
     await webex.internal.userApps.register();

@@ -6,6 +6,7 @@ import {
   createEmptyWireData,
   extractCursor,
   extractNextFromLink,
+  mergeMetadata,
 } from '@webex/internal-plugin-user-apps/src/userApps.utils';
 
 describe('userApps utils', () => {
@@ -99,6 +100,32 @@ describe('userApps utils', () => {
         Default_Sections_Settings: [{section_name: 'OTHER', settings: []}],
       },
     });
+  });
+
+  it('normalizes service metadata fields into client-specific data', () => {
+    assert.deepEqual(
+      mergeMetadata(
+        {
+          'default-encryption-key': 'kms://key',
+          clientSpecificData: {
+            sortedSections: ['FAVORITES', 'OTHER'],
+            customSetting: true,
+          },
+        },
+        {
+          sortedSections: ['OTHER', 'FAVORITES'],
+          Default_Sections_Settings: [{section_name: 'OTHER', settings: []}],
+        }
+      ),
+      {
+        'default-encryption-key': 'kms://key',
+        clientSpecificData: {
+          sortedSections: ['OTHER', 'FAVORITES'],
+          Default_Sections_Settings: [{section_name: 'OTHER', settings: []}],
+          customSetting: true,
+        },
+      }
+    );
   });
 
   it('reduces section changes and keeps the first membership for duplicate conversations', () => {

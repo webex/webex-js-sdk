@@ -53,6 +53,31 @@ import {
 
 const CONVERSATION_PATH = /\/conversations\/([0-9a-f-]{36})\/?$/i;
 
+const serializeWireValue = (value: unknown): string => {
+  if (Array.isArray(value)) {
+    return `[${value.map(serializeWireValue).join(',')}]`;
+  }
+
+  if (value && typeof value === 'object') {
+    return `{${Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${JSON.stringify(key)}:${serializeWireValue(item)}`)
+      .join(',')}}`;
+  }
+
+  return JSON.stringify(value) ?? String(value);
+};
+
+const getChangeKey = (change: UserAppChangeWire): string =>
+  serializeWireValue([
+    change.eventType,
+    change.appName,
+    change.action,
+    change.eventType === 'user.app_metadata'
+      ? mergeMetadata(undefined, change.appData as UserAppsMetadataWire)
+      : change.appData,
+  ]);
+
 const UserApps = WebexPlugin.extend({
   namespace: 'UserApps',
   registered: false,
@@ -73,6 +98,7 @@ const UserApps = WebexPlugin.extend({
     this._lifecycleGeneration = 0;
     this._catchupTimer = null;
     this._queuedChanges = [];
+    this._hydrationCoveredChangeKeys = new Set();
     this._hydrating = false;
     this._catalogReadyPromise = null;
     this._itemEventHandler = (envelope) => this._handleMercuryEnvelope('user.app_item', envelope);
@@ -107,6 +133,7 @@ const UserApps = WebexPlugin.extend({
       this._listenForEvents();
       this.registered = true;
       this._hydrating = true;
+      this._hydrationCoveredChangeKeys.clear();
       this.trigger(USER_APPS_REGISTERED);
 
       try {
@@ -163,6 +190,7 @@ const UserApps = WebexPlugin.extend({
     );
     this._clearCatchupTimer();
     this._queuedChanges = [];
+    this._hydrationCoveredChangeKeys.clear();
     this._hydrating = false;
     this.registered = false;
 
@@ -441,7 +469,9 @@ const UserApps = WebexPlugin.extend({
     }
 
     if (this._hydrating) {
-      this._queuedChanges.push(change);
+      if (!this._hydrationCoveredChangeKeys.has(getChangeKey(change))) {
+        this._queuedChanges.push(change);
+      }
 
       return;
     }
@@ -493,6 +523,14 @@ const UserApps = WebexPlugin.extend({
     }
 
     const appsData = (response.body ?? createEmptyWireData()) as UserAppsDataWire;
+    const fullSyncHighWaterValue = getHeader(response.headers, HIGH_WATER_HEADER);
+    const fullSyncHighWaterMark = fullSyncHighWaterValue
+      ? Number(fullSyncHighWaterValue)
+      : startedAt;
+
+    if (!Number.isFinite(fullSyncHighWaterMark)) {
+      throw new UserAppsSyncError('User-app full sync returned an invalid high-water mark');
+    }
 
     await this._loadAdvertisedPages(appsData, lifecycleGeneration);
     await this._filterInvalidMemberships(appsData, lifecycleGeneration);
@@ -508,7 +546,7 @@ const UserApps = WebexPlugin.extend({
 
     try {
       const snapshot = await this._catchup(
-        startedAt,
+        fullSyncHighWaterMark,
         allowRecovery,
         false,
         lifecycleGeneration,
@@ -520,22 +558,25 @@ const UserApps = WebexPlugin.extend({
       }
 
       this._hydrating = false;
-      const hasTrailingChanges = this._queuedChanges.length > 0;
+      this._hydrationCoveredChangeKeys.clear();
+      const trailingChanges = this._queuedChanges;
 
       this._queuedChanges = [];
+      trailingChanges.forEach((change) => applyChangeToWireData(appsData, change));
 
-      return hasTrailingChanges
-        ? this._catchup(
-            snapshot.highWaterMark ?? startedAt,
-            allowRecovery,
-            true,
-            lifecycleGeneration,
-            appsData
+      return trailingChanges.length
+        ? this._publishSnapshot(
+            'full-sync',
+            undefined,
+            snapshot.highWaterMark,
+            appsData,
+            lifecycleGeneration
           )
         : snapshot;
     } catch (error) {
       if (this._canCommitLifecycle(lifecycleGeneration)) {
         this._hydrating = false;
+        this._hydrationCoveredChangeKeys.clear();
       }
       throw error;
     }
@@ -560,6 +601,10 @@ const UserApps = WebexPlugin.extend({
         qs: {sinceDate},
       });
     } catch (error) {
+      if (!this._canCommitLifecycle(lifecycleGeneration)) {
+        return this._getInactiveSnapshot();
+      }
+
       const statusCode = getStatusCode(error);
 
       if (statusCode && RECOVERABLE_CATCHUP_STATUS_CODES.has(statusCode)) {
@@ -579,10 +624,18 @@ const UserApps = WebexPlugin.extend({
 
     const body = (response.body ?? {}) as UserAppsCatchupWire | UserAppChangeWire[];
     const changes = Array.isArray(body) ? body : body.items ?? body.changes ?? [];
+    const sectionChanges = changes.filter((change) => isSectionsAppName(change.appName));
 
-    changes
-      .filter((change) => isSectionsAppName(change.appName))
-      .forEach((change) => applyChangeToWireData(data, change));
+    if (this._hydrating) {
+      sectionChanges.forEach((change) =>
+        this._hydrationCoveredChangeKeys.add(getChangeKey(change))
+      );
+      this._queuedChanges = this._queuedChanges.filter(
+        (change) => !this._hydrationCoveredChangeKeys.has(getChangeKey(change))
+      );
+    }
+
+    sectionChanges.forEach((change) => applyChangeToWireData(data, change));
 
     const highWaterValue = getHeader(response.headers, HIGH_WATER_HEADER);
     const highWaterMark = highWaterValue ? Number(highWaterValue) : Date.now();

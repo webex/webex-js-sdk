@@ -32,18 +32,34 @@ export const getMetadata = (data: UserAppsDataWire): UserAppsMetadataWire | unde
 export const mergeMetadata = (
   current: UserAppsMetadataWire | undefined,
   update: UserAppsMetadataWire
-): UserAppsMetadataWire => ({
-  ...current,
-  ...update,
-  ...(current?.clientSpecificData || update.clientSpecificData
-    ? {
-        clientSpecificData: {
-          ...current?.clientSpecificData,
-          ...update.clientSpecificData,
-        },
-      }
-    : {}),
-});
+): UserAppsMetadataWire => {
+  const {
+    sortedSections,
+    Default_Sections_Settings: defaultSectionsSettings,
+    clientSpecificData,
+    ...metadata
+  } = update;
+  const normalizedClientSpecificData = {
+    ...clientSpecificData,
+    ...(Array.isArray(sortedSections) ? {sortedSections} : {}),
+    ...(Array.isArray(defaultSectionsSettings)
+      ? {Default_Sections_Settings: defaultSectionsSettings}
+      : {}),
+  };
+
+  return {
+    ...current,
+    ...metadata,
+    ...(current?.clientSpecificData || Object.keys(normalizedClientSpecificData).length
+      ? {
+          clientSpecificData: {
+            ...current?.clientSpecificData,
+            ...normalizedClientSpecificData,
+          },
+        }
+      : {}),
+  };
+};
 
 export const isSectionsAppName = (appName?: string): boolean =>
   appName === SECTIONS_APP || Boolean(appName?.startsWith(DERIVED_SECTIONS_PREFIX));
