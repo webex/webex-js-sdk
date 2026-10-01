@@ -292,13 +292,14 @@ const UserApps = WebexPlugin.extend({
 
   async deleteSection({sectionId}: {sectionId: string}): Promise<void> {
     this._validateCustomSectionId(sectionId);
-    this._getSectionWire(sectionId);
+    const listAppName = getSectionListAppName(this._getSectionWire(sectionId));
+
     await this.webex.request({
       service: USER_APPS_SERVICE,
       resource: `/${SECTIONS_APP}/${encodeURIComponent(sectionId)}`,
       method: 'DELETE',
     });
-    this._deleteSectionWire(sectionId);
+    this._deleteSectionWire(sectionId, listAppName);
     await this._tryUpdateSectionOrder(this._getSectionOrder());
     await this._publishSnapshot('mutation');
   },
@@ -891,9 +892,7 @@ const UserApps = WebexPlugin.extend({
     }
   },
 
-  _deleteSectionWire(sectionId: string) {
-    const section = this._getSectionWire(sectionId);
-    const listAppName = getSectionListAppName(section);
+  _deleteSectionWire(sectionId: string, listAppName?: string) {
     const sectionsApp = getSectionsApp(this._appsData);
 
     if (!sectionsApp || !this._appsData.items) {

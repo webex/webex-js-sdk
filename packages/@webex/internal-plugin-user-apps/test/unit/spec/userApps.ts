@@ -792,6 +792,49 @@ describe('plugin-user-apps', () => {
     assert.isUndefined(snapshot.membershipsByConversationUrl[CONVERSATION_URL]);
   });
 
+  it('completes a delete when its Mercury event arrives before the response', async () => {
+    stubInitialSync();
+    let resolveDelete;
+
+    webex.request.onCall(2).returns(
+      new Promise((resolve) => {
+        resolveDelete = resolve;
+      })
+    );
+    webex.request.onCall(3).resolves({body: createAppsData().items.dynamicTop[0].metadata});
+    await webex.internal.userApps.register();
+
+    const deletion = webex.internal.userApps.deleteSection({sectionId: 'section-1'});
+
+    while (webex.request.callCount < 3) {
+      await Promise.resolve();
+    }
+    const mercuryApplied = new Promise((resolve) => {
+      webex.internal.userApps.once(USER_APPS_SECTIONS_CHANGED, resolve);
+    });
+
+    mercuryCallbacks[USER_APP_ITEM_EVENT]({
+      data: {
+        appName: 'sections',
+        action: 'delete',
+        appData: {id: 'section-1'},
+      },
+    });
+    await mercuryApplied;
+    resolveDelete({body: {}});
+    await deletion;
+
+    assert.calledWithMatch(webex.request.getCall(3), {
+      resource: '/sections',
+      method: 'PUT',
+      body: {sortedSections: ['FAVORITES', 'OTHER']},
+    });
+    const snapshot = await webex.internal.userApps.getSections();
+
+    assert.isUndefined(snapshot.sections.find(({id}) => id === 'section-1'));
+    assert.isUndefined(snapshot.membershipsByConversationUrl[CONVERSATION_URL]);
+  });
+
   it('returns a confirmed create when only the secondary order update fails', async () => {
     stubInitialSync();
     webex.request.onCall(2).resolves({
