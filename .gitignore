@@ -1,7 +1,4 @@
 # Documentation
-packages/**/docs/
-/packages/@webex/plugin-meetings/.generated/
-
 /**/.generated/
 
 ~*
