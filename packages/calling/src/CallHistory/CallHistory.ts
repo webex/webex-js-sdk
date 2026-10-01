@@ -280,7 +280,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     };
 
     log.info(
-      `${METHOD_START_MESSAGE} with sessions: ${JSON.stringify(santizedSessionIds)}`,
+      `${METHOD_START_MESSAGE} with sessions count: ${santizedSessionIds.length}`,
       loggerContext
     );
     try {

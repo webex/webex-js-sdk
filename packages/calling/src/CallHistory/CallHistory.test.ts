@@ -271,8 +271,12 @@ describe('Call history tests', () => {
 
       // Verify logs were called with correct information
       expect(infoSpy).toHaveBeenCalledWith(
-        `${METHOD_START_MESSAGE} with sessions: ${JSON.stringify(convertedEndTimeSessionIds)}`,
+        `${METHOD_START_MESSAGE} with sessions count: ${convertedEndTimeSessionIds.length}`,
         methodDetails
+      );
+      expect(infoSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining(endTimeSessionIds[0].sessionId),
+        expect.anything()
       );
       expect(logSpy).toHaveBeenCalledWith(
         'Missed calls are successfully read by the user',
