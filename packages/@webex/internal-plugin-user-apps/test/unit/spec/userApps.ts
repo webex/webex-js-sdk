@@ -392,8 +392,79 @@ describe('plugin-user-apps', () => {
     });
   });
 
-  it('replays an in-flight Mercury event after an older periodic catch-up', async () => {
+  it('replays in-flight Mercury events in order after an older periodic catch-up', async () => {
     let resolveCatchup;
+    let resolveFreshDecryption;
+    let resolveFreshDecryptionStarted;
+    const freshDecryptionStarted = new Promise<void>((resolve) => {
+      resolveFreshDecryptionStarted = resolve;
+    });
+    const firstFreshChange = {
+      eventType: 'user.app_item',
+      appName: 'sections',
+      action: 'update',
+      appData: {
+        id: 'section-1',
+        content: 'fresh-ciphertext',
+        'encryption-key': 'kms://default-key',
+        'list-app-name': 'sections_section-1',
+      },
+    };
+    const latestChange = {
+      ...firstFreshChange,
+      appData: {...firstFreshChange.appData, content: 'latest-ciphertext'},
+    };
+
+    stubInitialSync();
+    await webex.internal.userApps.register();
+    webex.internal.encryption.decryptText.resetBehavior();
+    webex.internal.encryption.decryptText.resetHistory();
+    webex.internal.encryption.decryptText.onFirstCall().callsFake(
+      () =>
+        new Promise((resolve) => {
+          resolveFreshDecryption = resolve;
+          resolveFreshDecryptionStarted();
+        })
+    );
+    webex.internal.encryption.decryptText.onSecondCall().resolves('Old title');
+    webex.internal.encryption.decryptText.onThirdCall().resolves('Latest title');
+    webex.request.onCall(2).returns(
+      new Promise((resolve) => {
+        resolveCatchup = resolve;
+      })
+    );
+
+    mercuryCallbacks[USER_APP_ITEM_EVENT]({timestamp: 300, data: firstFreshChange});
+    await freshDecryptionStarted;
+    const sync = webex.internal.userApps.sync();
+
+    await Promise.resolve();
+    assert.callCount(webex.request, 2);
+    mercuryCallbacks[USER_APP_ITEM_EVENT]({timestamp: 350, data: latestChange});
+    resolveFreshDecryption('First fresh title');
+    while (webex.request.callCount < 3) {
+      await Promise.resolve();
+    }
+    resolveCatchup({
+      body: {
+        items: [
+          {
+            ...firstFreshChange,
+            appData: {...firstFreshChange.appData, content: 'old-ciphertext'},
+          },
+        ],
+      },
+      headers: {'x-cisco-endDate': '250'},
+    });
+
+    const snapshot = await sync;
+
+    assert.equal(snapshot.sections.find(({id}) => id === 'section-1').title, 'Latest title');
+    assert.callCount(webex.internal.encryption.decryptText, 3);
+    assert.equal(webex.internal.userApps._inflightRealtimeChanges.size, 0);
+  });
+
+  it('replays an in-flight Mercury event after a forced full sync', async () => {
     let resolveFreshDecryption;
     let resolveFreshDecryptionStarted;
     const freshDecryptionStarted = new Promise<void>((resolve) => {
@@ -424,39 +495,37 @@ describe('plugin-user-apps', () => {
     );
     webex.internal.encryption.decryptText.onSecondCall().resolves('Old title');
     webex.internal.encryption.decryptText.onThirdCall().resolves('Fresh title');
-    webex.request.onCall(2).returns(
-      new Promise((resolve) => {
-        resolveCatchup = resolve;
-      })
-    );
+    webex.request.onCall(2).resolves({
+      body: createAppsData(),
+      headers: {'x-cisco-endDate': '250'},
+    });
+    webex.request.onCall(3).resolves({
+      body: {items: []},
+      headers: {'x-cisco-endDate': '250'},
+    });
 
     mercuryCallbacks[USER_APP_ITEM_EVENT]({timestamp: 300, data: freshChange});
     await freshDecryptionStarted;
-    const sync = webex.internal.userApps.sync();
+    const sync = webex.internal.userApps.sync({forceFull: true});
 
     await Promise.resolve();
     assert.callCount(webex.request, 2);
     resolveFreshDecryption('Fresh title');
-    while (webex.request.callCount < 3) {
-      await Promise.resolve();
-    }
-    resolveCatchup({
-      body: {
-        items: [
-          {
-            ...freshChange,
-            appData: {...freshChange.appData, content: 'old-ciphertext'},
-          },
-        ],
-      },
-      headers: {'x-cisco-endDate': '250'},
-    });
 
     const snapshot = await sync;
 
     assert.equal(snapshot.sections.find(({id}) => id === 'section-1').title, 'Fresh title');
-    assert.callCount(webex.internal.encryption.decryptText, 3);
-    assert.equal(webex.internal.userApps._inflightRealtimeChanges.size, 0);
+    assert.calledWithExactly(webex.request.getCall(2), {
+      service: 'userApps',
+      resource: '/',
+      method: 'GET',
+    });
+    assert.calledWithExactly(webex.request.getCall(3), {
+      service: 'userApps',
+      resource: '/catchup',
+      method: 'GET',
+      qs: {sinceDate: 250},
+    });
   });
 
   it('rejects a catch-up response without a valid high-water mark', async () => {

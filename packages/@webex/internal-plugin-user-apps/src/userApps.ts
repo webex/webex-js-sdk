@@ -207,7 +207,7 @@ const UserApps = WebexPlugin.extend({
           return await this._syncCatchup(this._snapshot.highWaterMark, activeGeneration);
         }
 
-        return await this._fullSync(true, activeGeneration);
+        return await this._syncFull(activeGeneration);
       } catch (error) {
         if (!this._canCommitLifecycle(activeGeneration)) {
           return this._getInactiveSnapshot();
@@ -521,18 +521,11 @@ const UserApps = WebexPlugin.extend({
     sinceDate: number,
     lifecycleGeneration: number
   ): Promise<SpaceListSectionsSnapshot> {
-    this._hydrating = true;
-    this._hydrationHighWaterMark = null;
-    const inflightChanges = [...this._inflightRealtimeChanges];
-
     try {
-      await this._changePromise.catch(() => undefined);
-
-      if (!this._canCommitLifecycle(lifecycleGeneration)) {
+      if (!(await this._beginHydration(lifecycleGeneration))) {
         return this._getInactiveSnapshot();
       }
 
-      this._queuedChanges.push(...inflightChanges);
       const snapshot = await this._catchup(sinceDate, true, true, lifecycleGeneration);
 
       if (!this._canCommitLifecycle(lifecycleGeneration)) {
@@ -551,6 +544,27 @@ const UserApps = WebexPlugin.extend({
 
       throw error;
     }
+  },
+
+  async _syncFull(lifecycleGeneration: number): Promise<SpaceListSectionsSnapshot> {
+    if (!(await this._beginHydration(lifecycleGeneration))) {
+      return this._getInactiveSnapshot();
+    }
+
+    return this._fullSync(true, lifecycleGeneration);
+  },
+
+  async _beginHydration(lifecycleGeneration: number): Promise<boolean> {
+    if (this._hydrating) {
+      return this._canCommitLifecycle(lifecycleGeneration);
+    }
+
+    this._hydrating = true;
+    this._hydrationHighWaterMark = null;
+    this._queuedChanges.push(...this._inflightRealtimeChanges);
+    await this._changePromise.catch(() => undefined);
+
+    return this._canCommitLifecycle(lifecycleGeneration);
   },
 
   async _fullSync(
