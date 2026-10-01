@@ -79,7 +79,7 @@
     {
       "path": ".sdd/templates/repo-standards/template-map.json",
       "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
-      "refresh_with": "copy the workspace-root template map; do not copy template bodies into this package"
+      "refresh_with": "The template snapshot is shared from the workspace root and reached through the .sdd/templates symlink. Do not copy template files into this package."
     }
   ],
   "validation_matrix": [
@@ -241,8 +241,8 @@
           ".sdd/templates/repo-standards"
         ],
         "generated_from": "WebexTools/repo-standards@d89a7fe59126ae3ad9bac9ca352aa7f12b4c85dc",
-        "refresh_with": "copy the workspace-root template map; do not copy template bodies into this package",
-        "notes": "This package keeps template-map.json only. Template bodies stay at the workspace root."
+        "refresh_with": "The template snapshot is shared from the workspace root and reached through the .sdd/templates symlink. Do not copy template files into this package.",
+        "notes": "Reached through the .sdd/templates symlink to the shared snapshot at the workspace root, so this package holds no template copy of its own."
       }
     ],
     "validation_entrypoints": [
@@ -265,8 +265,8 @@
         "targets": [
           ".sdd/templates/repo-standards"
         ],
-        "mechanism": "copy template-map.json from the workspace root snapshot",
-        "notes": "Do not vendor the template bodies into this package."
+        "mechanism": "symlink .sdd/templates to the workspace-root .sdd/templates snapshot",
+        "notes": "Do not copy template files into this package."
       }
     ]
   },
@@ -293,7 +293,7 @@
   ],
   "do_not_edit": [
     "dist",
-    ".sdd/templates/repo-standards/template-map.json"
+    ".sdd/templates"
   ],
   "marker_scopes": {
     "sdd": [

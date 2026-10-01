@@ -171,4 +171,4 @@ PR checklist:
 - Edit `dist/` by hand.
 - Commit secrets, tokens, or credentials.
 - Invent error strings, exports, or schemes that are not in `src/`.
-- Copy repo-standards template bodies into this package. Only `.sdd/templates/repo-standards/template-map.json` belongs here.
+- Copy repo-standards template files into this package. `.sdd/templates` is a symlink to the workspace snapshot.
