@@ -633,6 +633,7 @@ const UserApps = WebexPlugin.extend({
   ): Promise<SpaceListSectionsSnapshot> {
     const data = appsData ?? this._appsData;
     const shouldPublish = publish ?? true;
+    const startedAt = Date.now();
     let response;
 
     try {
@@ -668,17 +669,23 @@ const UserApps = WebexPlugin.extend({
     const changes = Array.isArray(body) ? body : body.items ?? body.changes ?? [];
     const sectionChanges = changes.filter((change) => isSectionsAppName(change.appName));
     const highWaterValue = getHeader(response.headers, HIGH_WATER_HEADER);
-    const highWaterMark = Number(highWaterValue);
+    const hasServiceHighWaterMark = highWaterValue !== undefined && highWaterValue !== '';
+    const highWaterMark = hasServiceHighWaterMark ? Number(highWaterValue) : startedAt;
 
-    if (!highWaterValue || !Number.isFinite(highWaterMark)) {
+    if (!Number.isFinite(highWaterMark)) {
       throw new UserAppsSyncError('User-app catch-up did not return a valid high-water mark');
     }
 
     if (this._hydrating) {
-      this._hydrationHighWaterMark = highWaterMark;
-      this._queuedChanges = this._queuedChanges.filter(
-        ({timestamp}) => timestamp === null || timestamp > highWaterMark
-      );
+      this._hydrationHighWaterMark = hasServiceHighWaterMark ? highWaterMark : null;
+
+      // Browsers cannot read the service high-water header unless CORS exposes it.
+      // Only a service-provided value can safely deduplicate queued events.
+      if (hasServiceHighWaterMark) {
+        this._queuedChanges = this._queuedChanges.filter(
+          ({timestamp}) => timestamp === null || timestamp > highWaterMark
+        );
+      }
     }
 
     sectionChanges.forEach((change) => applyChangeToWireData(data, change));
