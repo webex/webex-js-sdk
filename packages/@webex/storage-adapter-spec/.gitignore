@@ -6,3 +6,6 @@
 # artifacts, so they are re-included here.
 !docs/
 !src/docs/
+
+# Repo Annotation authoring templates are reproducible local tool output.
+.sdd/templates/
