@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-09-23T09:08:18Z
-validation_status: not-run
+updated_at: 2026-10-01T04:15:02Z
+validation_status: pass-with-warnings
 -->
 
 # @webex/storage-adapter-spec architecture

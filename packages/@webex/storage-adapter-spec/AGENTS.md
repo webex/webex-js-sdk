@@ -3,8 +3,8 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-09-23T07:36:44Z
-validation_status: not-run
+updated_at: 2026-10-01T04:15:02Z
+validation_status: pass-with-warnings
 -->
 
 # AI Agent Instructions
@@ -48,7 +48,7 @@ Use only documented commands. Do not invent alternatives when a command is missi
 | ---------------------- | ------------------- |
 | Install dependencies   | `yarn install` (run from the workspace root) |
 | Start dev environment  | Not applicable — this package has no runnable process; it is a library consumed by other packages' test suites. |
-| Run tests              | `yarn workspace @webex/webex-core test:unit --targets storage/storage-adapter.js` — runs this package's suite; verified 21/21 on 2026-09-23 |
+| Run tests              | `yarn workspace @webex/webex-core test:unit --targets storage/storage-adapter.js` — runs this package's suite; verified 21/21 on 2026-10-01 |
 | Run linters            | `yarn workspace @webex/storage-adapter-spec test:style` |
 | Build/release artifact | `yarn workspace @webex/storage-adapter-spec build` |
 | Format code            | Not applicable — no dedicated format script; `prettier` is a devDependency used through lint tooling. |

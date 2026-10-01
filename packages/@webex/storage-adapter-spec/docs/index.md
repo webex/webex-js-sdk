@@ -6,8 +6,8 @@ doc_kind: standing-doc
 generated_from: docs-index@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-09-23T06:45:42Z
-validation_status: not-run
+updated_at: 2026-10-01T04:15:02Z
+validation_status: pass-with-warnings
 -->
 
 # @webex/storage-adapter-spec documentation

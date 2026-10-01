@@ -9,8 +9,8 @@ doc_kind: module-spec
 generated_from: module-spec@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-09-23T09:08:18Z
-validation_status: not-run
+updated_at: 2026-10-01T04:15:02Z
+validation_status: pass-with-warnings
 -->
 
 # Abstract storage-adapter conformance suite
@@ -31,12 +31,12 @@ Related context: [documentation index](../../docs/index.md) ·
 | Source path   | `src/`                                                       |
 | Resource kind | package                                                      |
 | Status        | Active                                                       |
-| Last verified | 2026-09-23 at `bc61c78ba5`                                   |
+| Last verified | 2026-10-01 after merging `upstream/next`                      |
 | Module id     | `storage-adapter-spec`                                       |
 | Parent spec   | — |
 | Doc kind      | Module spec                                                  |
 | Coverage score | 95% assessed 2026-09-23 — 21 of 22 mandatory spec fields PRESENT; test strategy scored WEAK because nothing pins the number or shape of the declarations this module emits |
-| Validation status | not-run |
+| Validation status | Pass with warnings — independent gate passed with 0 Blocking findings |
 
 ## Applicability
 

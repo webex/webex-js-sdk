@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-09-23T07:36:44Z
-validation_status: not-run
+updated_at: 2026-10-01T04:15:02Z
+validation_status: pass-with-warnings
 -->
 
 # Getting started
@@ -59,7 +59,7 @@ test time. `package.json` declares no start command.
 yarn workspace @webex/webex-core test:unit --targets storage/storage-adapter.js
 ```
 
-That sibling command is what actually executes this package's suite. Measured 2026-09-23: **21 of 21
+That sibling command is what actually executes this package's suite. Measured 2026-10-01: **21 of 21
 cases executed and passed.**
 
 The only verification command this package itself owns is `test:style`, and it only lints.

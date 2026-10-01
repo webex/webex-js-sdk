@@ -21,7 +21,7 @@
       "command": "yarn workspace @webex/webex-core test:unit --targets storage/storage-adapter.js",
       "source_file": "workspace:packages/@webex/webex-core/package.json",
       "role": "unit-test",
-      "verified_at": "2026-09-23T07:40:00Z"
+      "verified_at": "2026-10-01T04:15:02Z"
     },
     "build": {
       "command": "yarn workspace @webex/storage-adapter-spec build",
@@ -92,7 +92,7 @@
     {
       "path": "src/",
       "coverage_status": "Untracked",
-      "coverage_evidence": "Field measurement complete 2026-09-23, revised after independent validation: 95%, 21 of 22 mandatory spec fields PRESENT, test strategy WEAK. The canonical spec at src/docs/README.md records 14 requirements and 5 invariants, three of which carry Weak confidence: MOD-010 and MOD-013 have no case that observes them at all, and MOD-014 is partially verified - a case proves the single-key result while namespace-wide scope and the clear argument contract remain unresolved. INV-005 carries the same gap as MOD-010. The suite's declared cases are executed in this repository by the sibling package @webex/webex-core (21 of 21 passing, verified 2026-09-23); the remaining gap is that nothing pins the number or shape of the declarations, so deleting a case would reduce the contract without failing any run. Status is held at Untracked pending the human promotion decision recorded in the first coverage review, not because coverage is unmeasured.",
+      "coverage_evidence": "Field measurement complete 2026-09-23, revised after independent validation: 95%, 21 of 22 mandatory spec fields PRESENT, test strategy WEAK. The canonical spec at src/docs/README.md records 14 requirements and 5 invariants, three of which carry Weak confidence: MOD-010 and MOD-013 have no case that observes them at all, and MOD-014 is partially verified - a case proves the single-key result while namespace-wide scope and the clear argument contract remain unresolved. INV-005 carries the same gap as MOD-010. The suite's declared cases are executed in this repository by the sibling package @webex/webex-core (21 of 21 passing, reverified 2026-10-01); the remaining gap is that nothing pins the number or shape of the declarations, so deleting a case would reduce the contract without failing any run. Status is held at Untracked pending the human promotion decision recorded in the first coverage review, not because coverage is unmeasured.",
       "canonical_spec": "src/docs/README.md",
       "contracts": {
         "provides": [

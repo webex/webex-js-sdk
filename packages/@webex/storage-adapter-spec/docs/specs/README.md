@@ -9,8 +9,8 @@ doc_kind: standing-doc
 generated_from: spec-index@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-09-23T09:08:18Z
-validation_status: not-run
+updated_at: 2026-10-01T04:15:02Z
+validation_status: pass-with-warnings
 -->
 
 # Specification registry
@@ -37,9 +37,9 @@ as omitted in `.sdd/manifest.json`.
 
 | Resource   | Role                       | Canonical path         | Owner          | Status                                  | Last verified |
 | ---------- | -------------------------- | ---------------------- | -------------- | --------------------------------------- | ------------- |
-| Repository | Architecture               | `docs/architecture.md` | Webex JS SDK storage maintainers | Active | 2026-09-23 |
-| Abstract storage-adapter conformance suite | Module | `src/docs/README.md` | Webex JS SDK storage maintainers | Active | 2026-09-23 |
-| `storage-adapter-spec-suite` | Contract | `package.json` | Webex JS SDK storage maintainers | Active | 2026-09-23 |
+| Repository | Architecture               | `docs/architecture.md` | Webex JS SDK storage maintainers | Active | 2026-10-01 |
+| Abstract storage-adapter conformance suite | Module | `src/docs/README.md` | Webex JS SDK storage maintainers | Active | 2026-10-01 |
+| `storage-adapter-spec-suite` | Contract | `package.json` | Webex JS SDK storage maintainers | Active | 2026-10-01 |
 
 ### Module registry
 
@@ -64,9 +64,10 @@ and takes a single marker.
 
 Generator-side field measurement is complete: the module scored 95% (21 of 22 mandatory spec fields
 PRESENT) on 2026-09-23. The module remains `Untracked` because a promotion to `Specced` is a manifest
-change awaiting human approval, not because coverage is unmeasured. Independent validation ran on a
-different runtime on 2026-09-23 and returned blocked; these documents were regenerated in response
-and await re-validation.
+change awaiting human approval, not because coverage is unmeasured. Independent validation reran on
+a different runtime after the 2026-10-01 `upstream/next` merge and passed the gate with warnings and
+zero Blocking findings. The warnings cover reasoned absent lifecycle commands and validator template
+materialization; neither changes the module's documented behavior.
 
 ## Change and verification routing
 
