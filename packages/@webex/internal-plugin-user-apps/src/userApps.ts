@@ -520,18 +520,17 @@ const UserApps = WebexPlugin.extend({
       }
 
       this._hydrating = false;
-      const trailingChanges = this._queuedChanges;
+      const hasTrailingChanges = this._queuedChanges.length > 0;
 
       this._queuedChanges = [];
-      trailingChanges.forEach((change) => applyChangeToWireData(appsData, change));
 
-      return trailingChanges.length
-        ? this._publishSnapshot(
-            'full-sync',
-            undefined,
-            snapshot.highWaterMark,
-            appsData,
-            lifecycleGeneration
+      return hasTrailingChanges
+        ? this._catchup(
+            snapshot.highWaterMark ?? startedAt,
+            allowRecovery,
+            true,
+            lifecycleGeneration,
+            appsData
           )
         : snapshot;
     } catch (error) {

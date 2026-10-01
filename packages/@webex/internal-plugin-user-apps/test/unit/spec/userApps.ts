@@ -328,6 +328,17 @@ describe('plugin-user-apps', () => {
 
   it('applies a section event received while catch-up is publishing', async () => {
     let resolveCatchup;
+    const sectionCreatedChange = {
+      eventType: 'user.app_item',
+      appName: 'sections',
+      action: 'create',
+      appData: {
+        id: 'section-2',
+        content: 'ciphertext-2',
+        'encryption-key': 'kms://default-key',
+        'list-app-name': 'sections_section-2',
+      },
+    };
 
     webex.request.onFirstCall().resolves({body: createAppsData()});
     webex.request.onSecondCall().returns(
@@ -335,6 +346,10 @@ describe('plugin-user-apps', () => {
         resolveCatchup = resolve;
       })
     );
+    webex.request.onThirdCall().resolves({
+      body: {items: [sectionCreatedChange]},
+      headers: {'x-cisco-endDate': '300'},
+    });
 
     const registration = webex.internal.userApps.register();
 
@@ -342,22 +357,74 @@ describe('plugin-user-apps', () => {
       await Promise.resolve();
     }
     mercuryCallbacks[USER_APP_ITEM_EVENT]({
-      data: {
-        appName: 'sections',
-        action: 'create',
-        appData: {
-          id: 'section-2',
-          content: 'ciphertext-2',
-          'encryption-key': 'kms://default-key',
-          'list-app-name': 'sections_section-2',
-        },
-      },
+      data: sectionCreatedChange,
     });
+    assert.lengthOf(webex.internal.userApps._queuedChanges, 1);
     resolveCatchup({body: {items: []}, headers: {'x-cisco-endDate': '200'}});
 
     const snapshot = await registration;
 
+    assert.callCount(webex.request, 3);
     assert.isDefined(snapshot.sections.find(({id}) => id === 'section-2'));
+    assert.equal(snapshot.highWaterMark, 300);
+  });
+
+  it('does not replay stale metadata received while catch-up is publishing', async () => {
+    let resolveCatchup;
+    const appsData = createAppsData();
+
+    appsData.items.dynamicTop[0].items.push({
+      id: 'section-2',
+      content: 'ciphertext-2',
+      'encryption-key': 'kms://default-key',
+      'list-app-name': 'sections_section-2',
+    });
+    appsData.items.dynamicTop[0].metadata.clientSpecificData.sortedSections = [
+      'FAVORITES',
+      'section-2',
+      'section-1',
+      'OTHER',
+    ];
+    webex.request.onFirstCall().resolves({body: appsData});
+    webex.request.onSecondCall().returns(
+      new Promise((resolve) => {
+        resolveCatchup = resolve;
+      })
+    );
+    webex.request.onThirdCall().resolves({
+      body: {items: []},
+      headers: {'x-cisco-endDate': '300'},
+    });
+
+    const registration = webex.internal.userApps.register();
+
+    while (webex.request.callCount < 2) {
+      await Promise.resolve();
+    }
+    mercuryCallbacks[USER_APP_METADATA_EVENT]({
+      data: {
+        appName: 'sections',
+        action: 'update',
+        appData: {
+          clientSpecificData: {
+            sortedSections: ['FAVORITES', 'section-1', 'section-2', 'OTHER'],
+          },
+        },
+      },
+    });
+    assert.lengthOf(webex.internal.userApps._queuedChanges, 1);
+    resolveCatchup({body: {items: []}, headers: {'x-cisco-endDate': '200'}});
+
+    const snapshot = await registration;
+
+    assert.callCount(webex.request, 3);
+    assert.deepEqual(snapshot.sectionOrder, [
+      'FAVORITES',
+      'section-2',
+      'section-1',
+      'OTHER',
+    ]);
+    assert.equal(snapshot.highWaterMark, 300);
   });
 
   it('ignores unrelated user-app events', async () => {
