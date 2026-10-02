@@ -6,6 +6,8 @@ import {inBrowser, patterns} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, has, isArray, isObject, isString} from 'lodash';
 
+import {createWebexLogRecord, LOG_SOURCES} from './log-record';
+
 const precedence = {
   silent: 0,
   group: 1,
@@ -36,6 +38,9 @@ const LOG_TYPES = {
 const SDK_LOG_TYPE_NAME = 'wx-js-sdk';
 
 const authTokenKeyPattern = /[Aa]uthorization/;
+const authTokenValuePattern = /\b(Basic|Bearer)\s+[A-Za-z0-9._~+/-]+=*/gi;
+const legacyLineByRecord = new WeakMap();
+const orderByRecord = new WeakMap();
 
 /**
  * Recursively strips "authorization" fields from the specified object
@@ -57,6 +62,7 @@ function walkAndFilter(object, visited = []) {
   }
   if (!isObject(object)) {
     if (isString(object)) {
+      object = object.replace(authTokenValuePattern, '$1 [REDACTED]');
       if (patterns.containsEmails.test(object)) {
         return object.replace(patterns.containsEmails, '[REDACTED]');
       }
@@ -322,6 +328,145 @@ const Logger = WebexPlugin.extend({
 
     return buffer.join('\n');
   },
+
+  /**
+   * Formats canonical records using their original legacy support-log lines.
+   * @param {Array<Object>} records canonical records from this logger
+   * @returns {string} legacy upload body
+   */
+  formatLogRecords(records) {
+    return records
+      .map((record) => legacyLineByRecord.get(record))
+      .filter(Boolean)
+      .join('\n');
+  },
+
+  /**
+   * Replaces the configured destination set. Records continue to enter the
+   * existing bounded SDK buffer until flushTransports acknowledges them.
+   * @param {Object} options transport configuration
+   * @param {Array<Object>} options.transports exact destination set
+   * @returns {void}
+   */
+  configureTransports({transports}) {
+    if (!isArray(transports)) {
+      throw new TypeError('Logger transports must be an array');
+    }
+
+    transports.forEach((transport) => {
+      if (!transport || !isString(transport.name) || typeof transport.export !== 'function') {
+        throw new TypeError('Logger transports require a name and export function');
+      }
+    });
+
+    this._logTransports = transports.slice();
+    this._transportsShutdown = false;
+  },
+
+  /**
+   * Exports one ordered immutable snapshot and removes it only after every
+   * configured transport acknowledges success.
+   * @param {Object} options flush options
+   * @param {number} options.maxRecords maximum records in this snapshot
+   * @returns {Promise<Object>} exported and remaining counts
+   */
+  flushTransports({maxRecords = Number.MAX_SAFE_INTEGER} = {}) {
+    const run = async () => {
+      const transports = this._logTransports || [];
+      const bufferRefs = this.config.separateLogBuffers
+        ? [this.sdkBuffer, this.clientBuffer]
+        : [this.buffer];
+      const orderedEntries = bufferRefs
+        .flatMap((bufferRef, bufferOrder) =>
+          bufferRef.buffer.map((entry, entryOrder) => ({bufferOrder, bufferRef, entry, entryOrder}))
+        )
+        .sort(
+          (left, right) =>
+            left.entry.record.timestamp - right.entry.record.timestamp ||
+            orderByRecord.get(left.entry.record) - orderByRecord.get(right.entry.record) ||
+            left.bufferOrder - right.bufferOrder ||
+            left.entryOrder - right.entryOrder
+        );
+      const boundedMaxRecords = Number.isFinite(maxRecords)
+        ? Math.max(0, Math.floor(maxRecords))
+        : orderedEntries.length;
+      const selectedEntries = orderedEntries.slice(0, boundedMaxRecords);
+
+      if (!transports.length || (!selectedEntries.length && !this._pendingTransportFlush)) {
+        return {exported: 0, remaining: orderedEntries.length};
+      }
+
+      const pending = this._pendingTransportFlush || {
+        entries: selectedEntries,
+        records: Object.freeze(selectedEntries.map(({entry}) => entry.record)),
+        transports: transports.slice(),
+      };
+
+      this._pendingTransportFlush = pending;
+
+      const results = await Promise.all(
+        pending.transports.map((transport) =>
+          transport.export(pending.records).then(
+            () => ({succeeded: true, transport}),
+            (error) => ({error, succeeded: false, transport})
+          )
+        )
+      );
+      const failedResults = results.filter(({succeeded}) => !succeeded);
+
+      pending.transports = failedResults.map(({transport}) => transport);
+
+      if (failedResults.length) {
+        throw failedResults[0].error;
+      }
+
+      const selected = new Set(pending.entries.map(({entry}) => entry));
+
+      bufferRefs.forEach((bufferRef) => {
+        const removedBeforeNextIndex = bufferRef.buffer
+          .slice(0, bufferRef.nextIndex)
+          .filter((entry) => selected.has(entry)).length;
+
+        bufferRef.buffer = bufferRef.buffer.filter((entry) => !selected.has(entry));
+        bufferRef.nextIndex = Math.max(0, bufferRef.nextIndex - removedBeforeNextIndex);
+      });
+
+      this._pendingTransportFlush = undefined;
+
+      return {
+        exported: pending.entries.length,
+        remaining: orderedEntries.length - pending.entries.length,
+      };
+    };
+
+    this._transportFlush = (this._transportFlush || Promise.resolve()).catch(() => {}).then(run);
+
+    return this._transportFlush;
+  },
+
+  /**
+   * Performs one final bounded flush and shuts down every configured transport.
+   * @param {Object} options shutdown options
+   * @param {number} options.maxRecords maximum records in the final snapshot
+   * @returns {Promise<Object>} final flush result
+   */
+  async shutdownTransports(options) {
+    if (this._transportsShutdown) {
+      return {exported: 0, remaining: 0};
+    }
+
+    this._transportsShutdown = true;
+    const transports = this._logTransports || [];
+    let result;
+
+    try {
+      result = await this.flushTransports(options);
+    } finally {
+      await Promise.all(transports.map((transport) => transport.shutdown?.()));
+    }
+
+    return result;
+  },
 });
 
 /**
@@ -343,6 +488,7 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
   // Much of the complexity in the following function is due to a test-mode-only
   // helper
   return function wrappedConsoleMethod(...args) {
+    const structuredRecord = this._structuredLogRecord;
     // it would be easier to just pass in the name and buffer here, but the config isn't completely initialized
     // in Ampersand, even if the initialize method is used to set this up.  so we keep the type to achieve
     // a sort of late binding to allow retrieving a name from config.
@@ -374,7 +520,7 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
       const filtered = [clientName, ...this.filter(...args)];
       const stringified = filtered.map((item) => {
         if (item instanceof Error) {
-          return item.toString();
+          return walkAndFilter(item.toString());
         }
         if (typeof item === 'object') {
           let cache = [];
@@ -420,9 +566,27 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
 
       if (shouldBuffer) {
         const logDate = new Date();
+        const record = createWebexLogRecord({
+          level,
+          source: logType === LOG_TYPES.SDK ? LOG_SOURCES.SDK : LOG_SOURCES.CLIENT,
+          loggerName: clientName,
+          timestamp: logDate.getTime(),
+          body: stringified.slice(1).join(' '),
+          eventName: structuredRecord?.eventName,
+          eventId: structuredRecord?.eventId,
+          eventIdPrefix: structuredRecord?.eventIdPrefix,
+          traceId: structuredRecord?.traceId,
+          spanId: structuredRecord?.spanId,
+          attributes: structuredRecord?.attributes,
+          filter: (value) => this.filter(value)[0],
+        });
 
         stringified.unshift(logDate.toISOString());
         stringified.unshift('|  '.repeat(this.groupLevel));
+        Object.defineProperty(stringified, 'record', {value: record});
+        legacyLineByRecord.set(record, stringified);
+        this._logRecordSequence = (this._logRecordSequence || 0) + 1;
+        orderByRecord.set(record, this._logRecordSequence);
         bufferRef.buffer.push(stringified);
         if (bufferRef.buffer.length > historyLength) {
           // we've gone over the buffer limit, trim it down
@@ -480,5 +644,19 @@ Logger.prototype.logToBuffer = makeLoggerMethod(
   true,
   true
 );
+
+Logger.prototype.client_logRecord = function clientLogRecord(record) {
+  if (!record || !levels.includes(record.level) || !isString(record.message)) {
+    throw new TypeError('Structured log record requires a supported level and string message');
+  }
+
+  this._structuredLogRecord = record;
+
+  try {
+    return this[`client_${record.level}`](record.message);
+  } finally {
+    this._structuredLogRecord = undefined;
+  }
+};
 
 export default Logger;

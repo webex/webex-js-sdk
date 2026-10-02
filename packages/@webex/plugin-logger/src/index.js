@@ -13,3 +13,9 @@ registerPlugin('logger', Logger, {
 });
 
 export {default, levels} from './logger';
+export {
+  LOG_ATTRIBUTE_KEYS,
+  LOG_RECORD_SCHEMA_NAME,
+  LOG_RECORD_SCHEMA_VERSION,
+  LOG_SOURCES,
+} from './log-record';

@@ -1265,4 +1265,164 @@ describe('plugin-logger', () => {
       assert.lengthOf(webex.logger.buffer.buffer, 5);
     });
   });
+
+  describe('structured transport buffer', () => {
+    beforeEach(() => {
+      webex.config.logger.separateLogBuffers = false;
+    });
+
+    it('exports and acknowledges one ordered bounded snapshot', async () => {
+      const transport = {name: 'otlp', export: sinon.stub().resolves()};
+
+      webex.logger.configureTransports({transports: [transport]});
+      webex.logger.info('first');
+      webex.logger.client_logRecord({
+        level: 'warn',
+        message: 'second',
+        eventName: 'webex.test.second',
+        attributes: {trackingId: 'tracking-id'},
+      });
+
+      const result = await webex.logger.flushTransports({maxRecords: 1});
+      const [snapshot] = transport.export.firstCall.args;
+
+      assert.deepEqual(result, {exported: 1, remaining: 1});
+      assert.lengthOf(snapshot, 1);
+      assert.equal(snapshot[0].body, 'first');
+      assert.equal(snapshot[0].attributes['webex.schema.version'], '1.0.0');
+      assert.equal(snapshot[0].attributes['webex.log.source'], 'sdk');
+      assert.match(snapshot[0].attributes['log.record.uid'], /^[0-9a-f-]{36}$/);
+      assert.isTrue(Object.isFrozen(snapshot));
+      assert.isTrue(Object.isFrozen(snapshot[0]));
+    });
+
+    it('passes the same immutable snapshot to every configured transport', async () => {
+      const legacy = {name: 'legacy', export: sinon.stub().resolves()};
+      const otlp = {name: 'otlp', export: sinon.stub().resolves()};
+
+      webex.logger.configureTransports({transports: [legacy, otlp]});
+      webex.logger.client_info('shared');
+
+      await webex.logger.flushTransports();
+
+      assert.strictEqual(legacy.export.firstCall.args[0], otlp.export.firstCall.args[0]);
+      assert.equal(legacy.export.firstCall.args[0][0].attributes['webex.log.source'], 'client');
+      assert.equal(webex.logger.formatLogs(), '');
+    });
+
+    it('does not export or remove records without configured transports', async () => {
+      webex.logger.info('buffered');
+
+      const result = await webex.logger.flushTransports();
+
+      assert.deepEqual(result, {exported: 0, remaining: 1});
+      assert.include(webex.logger.formatLogs(), 'buffered');
+    });
+
+    it('retains a rejected snapshot and removes it after a later success', async () => {
+      const transport = {name: 'otlp', export: sinon.stub()};
+
+      transport.export.onFirstCall().rejects(new Error('export failed'));
+      transport.export.onSecondCall().resolves();
+      webex.logger.configureTransports({transports: [transport]});
+      webex.logger.info('retry me');
+
+      await assert.isRejected(webex.logger.flushTransports(), 'export failed');
+      assert.include(webex.logger.formatLogs(), 'retry me');
+
+      assert.deepEqual(await webex.logger.flushTransports(), {exported: 1, remaining: 0});
+      assert.equal(webex.logger.formatLogs(), '');
+    });
+
+    it('retries only destinations that did not acknowledge the snapshot', async () => {
+      const legacy = {name: 'legacy', export: sinon.stub().resolves()};
+      const otlp = {name: 'otlp', export: sinon.stub()};
+
+      otlp.export.onFirstCall().rejects(new Error('otlp failed'));
+      otlp.export.onSecondCall().resolves();
+      webex.logger.configureTransports({transports: [legacy, otlp]});
+      webex.logger.info('retry only otlp');
+
+      await assert.isRejected(webex.logger.flushTransports(), 'otlp failed');
+      assert.include(webex.logger.formatLogs(), 'retry only otlp');
+
+      assert.deepEqual(await webex.logger.flushTransports(), {exported: 1, remaining: 0});
+      assert.calledOnce(legacy.export);
+      assert.calledTwice(otlp.export);
+      assert.strictEqual(legacy.export.firstCall.args[0], otlp.export.secondCall.args[0]);
+    });
+
+    it('serializes concurrent flushes without exporting a snapshot twice', async () => {
+      let resolveExport;
+      let markExportStarted;
+      const firstExport = new Promise((resolve) => {
+        resolveExport = resolve;
+      });
+      const exportStarted = new Promise((resolve) => {
+        markExportStarted = resolve;
+      });
+      const transport = {
+        name: 'otlp',
+        export: sinon.stub().callsFake(() => {
+          markExportStarted();
+
+          return firstExport;
+        }),
+      };
+
+      webex.logger.configureTransports({transports: [transport]});
+      webex.logger.info('once');
+
+      const firstFlush = webex.logger.flushTransports();
+      const secondFlush = webex.logger.flushTransports();
+
+      await exportStarted;
+      assert.calledOnce(transport.export);
+      resolveExport();
+      await Promise.all([firstFlush, secondFlush]);
+      assert.calledOnce(transport.export);
+    });
+
+    it('redacts credentials before legacy and OTLP transports observe the record', async () => {
+      const legacy = {name: 'legacy', export: sinon.stub().resolves()};
+      const otlp = {name: 'otlp', export: sinon.stub().resolves()};
+
+      webex.logger.configureTransports({transports: [legacy, otlp]});
+      webex.logger.client_logRecord({
+        level: 'info',
+        message: 'Bearer secret-token',
+        eventName: 'webex.test.redaction',
+        attributes: {Authorization: 'Bearer other-secret', owner: 'person@example.com'},
+      });
+
+      await webex.logger.flushTransports();
+
+      const [record] = legacy.export.firstCall.args[0];
+
+      assert.equal(record.body, 'Bearer [REDACTED]');
+      assert.notProperty(record.attributes, 'Authorization');
+      assert.equal(record.attributes.owner, '[REDACTED]');
+      assert.strictEqual(legacy.export.firstCall.args[0], otlp.export.firstCall.args[0]);
+    });
+
+    it('performs a final flush and shuts down transports once', async () => {
+      const transport = {
+        name: 'otlp',
+        export: sinon.stub().resolves(),
+        shutdown: sinon.stub().resolves(),
+      };
+
+      webex.logger.configureTransports({transports: [transport]});
+      webex.logger.info('final');
+
+      assert.deepEqual(await webex.logger.shutdownTransports({maxRecords: 1}), {
+        exported: 1,
+        remaining: 0,
+      });
+      await webex.logger.shutdownTransports({maxRecords: 1});
+
+      assert.calledOnce(transport.export);
+      assert.calledOnce(transport.shutdown);
+    });
+  });
 });
