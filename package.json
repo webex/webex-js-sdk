@@ -80,7 +80,8 @@
     "package-tools": "webex-package-tools"
   },
   "resolutions": {
-    "@webex/json-multistream": "2.4.3"
+    "@webex/json-multistream": "2.4.3",
+    "pkijs/asn1js": "3.0.10"
   },
   "devDependencies": {
     "@babel/cli": "^7.17.10",

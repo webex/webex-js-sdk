@@ -3931,6 +3931,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@noble/hashes@npm:1.4.0":
+  version: 1.4.0
+  resolution: "@noble/hashes@npm:1.4.0"
+  checksum: 8ba816ae26c90764b8c42493eea383716396096c5f7ba6bea559993194f49d80a73c081f315f4c367e51bd2d5891700bcdfa816b421d24ab45b41cb03e4f3342
+  languageName: node
+  linkType: hard
+
 "@noble/hashes@npm:^1.1.5":
   version: 1.8.0
   resolution: "@noble/hashes@npm:1.8.0"
@@ -8076,7 +8083,7 @@ __metadata:
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
     "@webex/webex-core": "workspace:*"
-    asn1js: ^2.0.26
+    asn1js: 3.0.10
     debug: ^4.3.4
     eslint: ^8.24.0
     isomorphic-webcrypto: ^2.3.8
@@ -8084,7 +8091,7 @@ __metadata:
     node-jose: ^2.2.0
     node-kms: ^0.4.1
     node-scr: ^0.3.0
-    pkijs: ^2.1.84
+    pkijs: 3.3.3
     prettier: ^2.7.1
     safe-buffer: ^5.2.0
     sinon: ^9.2.4
@@ -8935,6 +8942,7 @@ __metadata:
     "@webex/web-capabilities": ^1.13.1
     "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
+    asn1js: 3.0.10
     bowser: ^2.11.0
     btoa: ^1.2.1
     chai: ^4.3.4
@@ -8949,6 +8957,7 @@ __metadata:
     jsdom-global: 3.0.2
     jwt-decode: 3.1.2
     lodash: ^4.17.21
+    pkijs: 3.3.3
     prettier: ^2.7.1
     sinon: ^9.2.4
     typed-emitter: ^2.1.0
@@ -10931,16 +10940,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"asn1js@npm:^2.0.26":
-  version: 2.4.0
-  resolution: "asn1js@npm:2.4.0"
+"asn1js@npm:3.0.10":
+  version: 3.0.10
+  resolution: "asn1js@npm:3.0.10"
   dependencies:
-    pvutils: ^1.1.3
-  checksum: 0aaa8d64d0824643f69826c31ed0d89fffd4832d93fd71f745b19d6af9d0e1b4e8e7c9f81fcd343ea7e2bd51858f5f80c31ed8381ecf782e44504ce554274b98
+    pvtsutils: ^1.3.6
+    pvutils: ^1.1.5
+    tslib: ^2.8.1
+  checksum: 4194e332bb066d664f5b2d2fffb33f786e558397399a87439185f80280c453c505a9d429c1e792c25ecce2f9f877f291933428f85bb24c02c3ad635478febc1d
   languageName: node
   linkType: hard
 
-"asn1js@npm:^3.0.3, asn1js@npm:^3.0.5, asn1js@npm:^3.0.6":
+"asn1js@npm:^3.0.5, asn1js@npm:^3.0.6":
   version: 3.0.7
   resolution: "asn1js@npm:3.0.7"
   dependencies:
@@ -12463,10 +12474,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bytestreamjs@npm:^1.0.29":
-  version: 1.1.3
-  resolution: "bytestreamjs@npm:1.1.3"
-  checksum: 3f8482f25d7104c44aed94036113e5007a13f2400291c9b4709932d30491a13fc2a7f1b38b4b02e22dbe8a07da98c9c3d5c61123fa9db47e5cfa307c5f747b8b
+"bytestreamjs@npm:^2.0.1":
+  version: 2.0.1
+  resolution: "bytestreamjs@npm:2.0.1"
+  checksum: db4cb039794675a0ec1f097d228e4897378cdf5f794dca04fc3bff63efb466524fcfac95e59e89e928822a80fad7574734c02b8eace9e841d8599da43c82768a
   languageName: node
   linkType: hard
 
@@ -27643,14 +27654,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pkijs@npm:^2.1.84":
-  version: 2.4.0
-  resolution: "pkijs@npm:2.4.0"
+"pkijs@npm:3.3.3":
+  version: 3.3.3
+  resolution: "pkijs@npm:3.3.3"
   dependencies:
-    asn1js: ^3.0.3
-    bytestreamjs: ^1.0.29
+    "@noble/hashes": 1.4.0
+    asn1js: ^3.0.6
+    bytestreamjs: ^2.0.1
+    pvtsutils: ^1.3.6
     pvutils: ^1.1.3
-  checksum: 0534d3ff4eb50ebe93818cc93a5190d78d4702ba55c0ffd270e10fddc58659b75f5d52b17ac0b100ad65757d595e5cc2985e646db4b295a09fb0c37eed58cae3
+    tslib: ^2.8.1
+  checksum: b1b12435af6f7150b2c66988b719c8e514bf66e241f1ffb76fdfb4fd9090192b296147ae84a27e0bf1ebd809ceec156ae3157f388dc5b90a6c2979d7a7f6ae15
   languageName: node
   linkType: hard
 
@@ -28196,6 +28210,13 @@ __metadata:
   version: 1.1.5
   resolution: "pvutils@npm:1.1.5"
   checksum: b86a8d1e74aa430faea75b510e33e5d5315213616e3c2870c2a3c0c152fd5eab08a52d3fdda3a4c711990d5e8e43918b5bc364fba531f81192146c5cbb9b7aa6
+  languageName: node
+  linkType: hard
+
+"pvutils@npm:^1.1.5":
+  version: 1.2.0
+  resolution: "pvutils@npm:1.2.0"
+  checksum: 83c17ca6cba0c05bc523377afc8b0d604a250168000a4d2a7e0c922cceb37e7afc7d07f3610635a9ff790a1af2c8f18c5625df46ade45e3b1e0f83e8aa075a03
   languageName: node
   linkType: hard
 
