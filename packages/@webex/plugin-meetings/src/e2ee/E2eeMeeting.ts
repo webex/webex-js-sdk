@@ -175,6 +175,7 @@ export default class E2eeMeeting {
 
       this.signaling = new E2eeSignaling({
         llm: this.webex.internal.llm,
+        mercury: this.webex.internal.mercury,
         getLocusUrl: () => this.meeting.locusInfo?.url,
         session,
       });

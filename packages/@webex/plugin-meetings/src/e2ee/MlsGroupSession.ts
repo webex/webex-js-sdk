@@ -9,6 +9,7 @@ import type {IWasmLoader} from './WasmLoader';
 import type {
   E2eeKey,
   E2eeRosterMember,
+  E2eeSignalingSource,
   IMlsHttpClient,
   MlsGroupSessionConfig,
   SframeParams,
@@ -346,11 +347,12 @@ export default class MlsGroupSession {
   /**
    * Forwards an incoming MLS protocol event (from the signaling channel) to the engine.
    * @param {Uint8Array} eventData
+   * @param {E2eeSignalingSource} source - Which channel the event arrived on, logged for diagnostics.
    * @returns {void}
    */
-  handleEvent(eventData: Uint8Array): void {
+  handleEvent(eventData: Uint8Array, source: E2eeSignalingSource): void {
     this.logger.info(
-      `e2ee: MlsGroupSession --> handleEvent: forwarding ${eventData.length} bytes to engine`
+      `e2ee: MlsGroupSession --> handleEvent: forwarding ${eventData.length} bytes from ${source} to engine`
     );
     this.assertInitialized().handle(new Uint8Array(eventData));
   }

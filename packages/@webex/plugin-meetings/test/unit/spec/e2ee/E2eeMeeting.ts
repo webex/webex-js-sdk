@@ -73,6 +73,7 @@ describe('plugin-meetings', () => {
         internal: {
           device: {userId: 'user-1', url: OWN_DEVICE_URL},
           llm: {on: sinon.stub(), off: sinon.stub(), isConnected: sinon.stub().returns(false)},
+          mercury: {on: sinon.stub(), off: sinon.stub()},
         },
         request: sinon.stub().resolves({body: ''}),
       };

@@ -14,6 +14,7 @@ describe('plugin-meetings', () => {
   describe('E2eeSignaling', () => {
     let session;
     let llm;
+    let mercury;
     let signaling;
 
     beforeEach(() => {
@@ -23,12 +24,16 @@ describe('plugin-meetings', () => {
         isConnected: sinon.stub().returns(false),
         getLocusUrl: sinon.stub().returns('locus-1'),
       };
+      mercury = {
+        on: sinon.stub(),
+        off: sinon.stub(),
+      };
       session = {
         handleEvent: sinon.stub(),
         setLlmConnectedBeforeJoin: sinon.stub(),
         notifyLlmConnected: sinon.stub(),
       };
-      signaling = new E2eeSignaling({llm, getLocusUrl: () => 'locus-1', session});
+      signaling = new E2eeSignaling({llm, mercury, getLocusUrl: () => 'locus-1', session});
     });
 
     afterEach(() => {
@@ -40,10 +45,11 @@ describe('plugin-meetings', () => {
 
       MEDIA_ENCRYPTION_MERCURY_EVENTS.forEach((event) => {
         assert.calledWith(llm.on, event, sinon.match.func);
+        assert.calledWith(mercury.on, event, sinon.match.func);
       });
     });
 
-    it('forwards mercury event data to the session as JSON bytes', () => {
+    it('forwards mercury event data to the session as JSON bytes, tagged with the llm source', () => {
       signaling.start();
 
       const handler = llm.on.getCall(0).args[1];
@@ -51,10 +57,26 @@ describe('plugin-meetings', () => {
       handler({data: {foo: 'bar'}});
 
       assert.calledOnce(session.handleEvent);
-      const bytes = session.handleEvent.firstCall.args[0];
+      const [bytes, source] = session.handleEvent.firstCall.args;
 
       assert.instanceOf(bytes, Uint8Array);
       assert.deepEqual(JSON.parse(new TextDecoder().decode(bytes)), {foo: 'bar'});
+      assert.equal(source, 'llm');
+    });
+
+    it('forwards events coming from the mercury channel to the session, tagged with the mercury source', () => {
+      signaling.start();
+
+      const handler = mercury.on.getCall(0).args[1];
+
+      handler({data: {foo: 'baz'}});
+
+      assert.calledOnce(session.handleEvent);
+      const [bytes, source] = session.handleEvent.firstCall.args;
+
+      assert.instanceOf(bytes, Uint8Array);
+      assert.deepEqual(JSON.parse(new TextDecoder().decode(bytes)), {foo: 'baz'});
+      assert.equal(source, 'mercury');
     });
 
     it('tells the engine the channel is already connected when online for this meeting', () => {
@@ -93,6 +115,7 @@ describe('plugin-meetings', () => {
 
       MEDIA_ENCRYPTION_MERCURY_EVENTS.forEach((event) => {
         assert.calledWith(llm.off, event, sinon.match.func);
+        assert.calledWith(mercury.off, event, sinon.match.func);
       });
       assert.calledWith(llm.off, LLM_ONLINE_EVENT, sinon.match.func);
     });

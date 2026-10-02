@@ -102,3 +102,6 @@ export interface MlsGroupSessionConfig {
 export interface IMlsHttpClient {
   request(url: string, body: Uint8Array): Promise<Uint8Array>;
 }
+
+/** Which signaling channel an incoming MLS protocol event arrived on. */
+export type E2eeSignalingSource = 'llm' | 'mercury';

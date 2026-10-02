@@ -16,6 +16,7 @@ export const MEDIA_ENCRYPTION_MERCURY_EVENTS = [
   'event:media_encryption.leave_request',
   'event:media_encryption.join_failure',
   'event:media_encryption.leader_changed',
+  'event:media_encryption.message_segment',
 ];
 
 /** LLM lifecycle event fired when the signaling channel connects. */

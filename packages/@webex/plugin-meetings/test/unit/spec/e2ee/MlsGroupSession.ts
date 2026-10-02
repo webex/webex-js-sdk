@@ -364,7 +364,7 @@ describe('plugin-meetings', () => {
 
         session.join();
         session.leave();
-        session.handleEvent(event);
+        session.handleEvent(event, 'llm');
         session.keepAlive();
         session.setLlmConnectedBeforeJoin(true);
         session.notifyLlmConnected();
@@ -400,7 +400,7 @@ describe('plugin-meetings', () => {
         assert.isFalse(session.isLeader());
         assert.throws(() => session.join(), /not initialized/);
         assert.throws(() => session.leave(), /not initialized/);
-        assert.throws(() => session.handleEvent(new Uint8Array()), /not initialized/);
+        assert.throws(() => session.handleEvent(new Uint8Array(), 'llm'), /not initialized/);
       });
     });
   });

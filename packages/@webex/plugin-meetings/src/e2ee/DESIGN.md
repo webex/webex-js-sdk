@@ -105,6 +105,7 @@ graph LR
     Recon <-->|verify by device.url| Members
 
     Sig[E2eeSignaling] -->|media_encryption.* events| LLM[webex.internal.llm]
+    Sig -->|media_encryption.* events| Mercury[webex.internal.mercury]
     Svc[MediaEncryptionService] -->|POST| MES[webex.request media-encryption]
     Ident[E2eeIdentityProvider] -->|CSR / cert| CA[webex.request certificate-authority]
 ```
@@ -115,8 +116,9 @@ unit-testable. The media-core coupling is isolated behind `IE2eeMediaConnection`
 
 The adapters themselves take only the slice of webex they need, not the whole object: the HTTP
 adapters (`MediaEncryptionService`, `E2eeIdentityProvider`) receive a **bound `webex.request`**
-(the shared `WebexRequestMethod` type), and `E2eeSignaling` receives `webex.internal.llm` plus a
-`getLocusUrl()` callback (so it tracks the live locus URL across breakout moves).
+(the shared `WebexRequestMethod` type), and `E2eeSignaling` receives `webex.internal.llm` and
+`webex.internal.mercury` plus a `getLocusUrl()` callback (so it tracks the live locus URL across
+breakout moves).
 
 ## File layout
 
@@ -235,7 +237,7 @@ initialize(cfg: {
 
 join(): void;
 leave(): void;
-handleEvent(bytes: Uint8Array): void;
+handleEvent(bytes: Uint8Array, source: E2eeSignalingSource): void;
 setLlmConnectedBeforeJoin(b: boolean): void;
 notifyLlmConnected(): void;
 keepAlive(): void;
@@ -273,11 +275,12 @@ request(url: string, body: Uint8Array): Promise<Uint8Array>;
 Requests use the standard webex auth (`Authorization` bearer token added by
 webex-core), matching the PoC — no custom auth header is needed.
 
-### `E2eeSignaling` (LLM adapter)
+### `E2eeSignaling` (LLM + mercury adapter)
 
 ```ts
 constructor(deps: {
   llm;                              // webex.internal.llm (ILlmChannel: on/off/isConnected/getLocusUrl)
+  mercury;                          // webex.internal.mercury (IMercuryChannel: on/off)
   getLocusUrl: () => string | undefined; // reads the meeting's live locus url (callback, not a ref)
   session: MlsGroupSession;
 });
@@ -285,12 +288,14 @@ start(): void;
 stop(): void;
 ```
 
-Subscribes `llm` to the `media_encryption.*` mercury events
+Subscribes **both** `llm` and `mercury` to the `media_encryption.*` events
 (`leader_nominated`, `welcome`, `annotated_welcome`, `multi_welcome`, `group_update`,
 `annotated_commit`, `large_group_update`, `use_key`, `join_request`, `leave_request`,
-`join_failure`, `leader_changed`) and forwards each envelope to `session.handleEvent`.
+`join_failure`, `leader_changed`) — the same events can arrive on either channel — and forwards
+each envelope to `session.handleEvent(bytes, source)`, tagging `source` as `'llm'` or `'mercury'`
+(via per-channel handlers) so the engine's receive logs show which channel delivered the event.
 
-Online handling: if `llm.isConnected()` and the locus URL matches this meeting, call
+Online handling (LLM-only): if `llm.isConnected()` and the locus URL matches this meeting, call
 `session.setLlmConnectedBeforeJoin(true)`; otherwise listen once for `'online'`
 (locus-URL matched, like the PoC `onceLLMOnline`) and call `session.notifyLlmConnected()`.
 Guard: `getLocusUrl() === llm.getLocusUrl()`. `getLocusUrl` is a callback (not a stored meeting
