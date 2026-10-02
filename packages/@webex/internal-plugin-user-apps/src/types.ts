@@ -2,19 +2,21 @@ export type UserAppAction = 'create' | 'update' | 'delete';
 export type SectionKind = 'custom' | 'favorites' | 'other';
 export type SectionChangeSource = 'full-sync' | 'catch-up' | 'mercury' | 'mutation';
 
-export interface UserAppsMetadataWire {
+export interface UserAppsClientSpecificData {
+  sortedSections?: string[];
+  Default_Sections_Settings?: Array<{
+    section_name: string;
+    settings: Array<{name: string; value: string}>;
+  }>;
+  [key: string]: unknown;
+}
+
+export interface UserAppsMetadataWire extends UserAppsClientSpecificData {
   'default-encryption-key'?: string;
   'encryption-key'?: string;
   'kms-message'?: string;
   'kms-resource-object'?: string;
-  clientSpecificData?: {
-    sortedSections?: string[];
-    Default_Sections_Settings?: Array<{
-      section_name: string;
-      settings: Array<{name: string; value: string}>;
-    }>;
-    [key: string]: unknown;
-  };
+  clientSpecificData?: UserAppsClientSpecificData;
   [key: string]: unknown;
 }
 

@@ -26,19 +26,13 @@ export const createEmptyWireData = (): UserAppsDataWire => ({
 export const getSectionsApp = (data: UserAppsDataWire): UserAppTopWire | undefined =>
   data.items?.dynamicTop?.find((app) => app['app-name'] === SECTIONS_APP);
 
-export const getMetadata = (data: UserAppsDataWire): UserAppsMetadataWire | undefined =>
-  getSectionsApp(data)?.metadata;
-
-export const mergeMetadata = (
-  current: UserAppsMetadataWire | undefined,
-  update: UserAppsMetadataWire
-): UserAppsMetadataWire => {
+const normalizeMetadata = (metadata: UserAppsMetadataWire): UserAppsMetadataWire => {
   const {
     sortedSections,
     Default_Sections_Settings: defaultSectionsSettings,
     clientSpecificData,
-    ...metadata
-  } = update;
+    ...serviceMetadata
+  } = metadata;
   const normalizedClientSpecificData = {
     ...clientSpecificData,
     ...(Array.isArray(sortedSections) ? {sortedSections} : {}),
@@ -48,17 +42,41 @@ export const mergeMetadata = (
   };
 
   return {
-    ...current,
-    ...metadata,
-    ...(current?.clientSpecificData || Object.keys(normalizedClientSpecificData).length
+    ...serviceMetadata,
+    ...(Object.keys(normalizedClientSpecificData).length
+      ? {clientSpecificData: normalizedClientSpecificData}
+      : {}),
+  };
+};
+
+export const mergeMetadata = (
+  current: UserAppsMetadataWire | undefined,
+  update: UserAppsMetadataWire
+): UserAppsMetadataWire => {
+  const normalizedCurrent = current ? normalizeMetadata(current) : undefined;
+  const normalizedUpdate = normalizeMetadata(update);
+  const {clientSpecificData: currentClientSpecificData, ...currentMetadata} =
+    normalizedCurrent ?? {};
+  const {clientSpecificData: updatedClientSpecificData, ...updatedMetadata} = normalizedUpdate;
+
+  return {
+    ...currentMetadata,
+    ...updatedMetadata,
+    ...(currentClientSpecificData || updatedClientSpecificData
       ? {
           clientSpecificData: {
-            ...current?.clientSpecificData,
-            ...normalizedClientSpecificData,
+            ...currentClientSpecificData,
+            ...updatedClientSpecificData,
           },
         }
       : {}),
   };
+};
+
+export const getMetadata = (data: UserAppsDataWire): UserAppsMetadataWire | undefined => {
+  const metadata = getSectionsApp(data)?.metadata;
+
+  return metadata ? normalizeMetadata(metadata) : undefined;
 };
 
 export const isSectionsAppName = (appName?: string): boolean =>
@@ -198,7 +216,19 @@ export const applyChangeToWireData = (
 
   if (change.action === USER_APP_ACTIONS.DELETE) {
     if (existingIndex >= 0) {
+      const deletedItem = appItems[existingIndex] as unknown as UserAppSectionWire;
+
       appItems.splice(existingIndex, 1);
+
+      if (change.appName === SECTIONS_APP) {
+        const deletedListAppName = getSectionListAppName(deletedItem);
+
+        if (deletedListAppName) {
+          items.dynamicDerived = items.dynamicDerived.filter(
+            (derivedApp) => derivedApp['app-name'] !== deletedListAppName
+          );
+        }
+      }
     }
   } else if (existingIndex >= 0) {
     appItems[existingIndex] = {...appItems[existingIndex], ...change.appData};
@@ -226,7 +256,7 @@ export const buildSnapshot = ({
 }): SpaceListSectionsSnapshot => {
   const sectionsApp = getSectionsApp(data);
   const customSections = sectionsApp?.items ?? [];
-  const metadata = sectionsApp?.metadata;
+  const metadata = getMetadata(data);
   const configuredOrder = metadata?.clientSpecificData?.sortedSections ?? DEFAULT_SECTION_ORDER;
   const customIds = new Set(customSections.map(({id}) => id));
   const availableIds = new Set([FAVORITES_SECTION_ID, ...customIds, OTHER_SECTION_ID]);

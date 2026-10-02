@@ -55,6 +55,16 @@ const CONVERSATION_PATH = /\/conversations\/([0-9a-f-]{36})\/?$/i;
 
 type QueuedChange = {change: UserAppChangeWire; timestamp: number | null};
 
+const getSectionClientData = (section: UserAppSectionWire): Record<string, unknown> => {
+  const data: Record<string, unknown> = {...section};
+
+  ['id', 'url', 'list', 'list-app-name', 'app-type', 'date-created', 'date-updated'].forEach(
+    (property) => delete data[property]
+  );
+
+  return data;
+};
+
 const getMercuryTimestamp = (envelope: any): number | null => {
   const rawTimestamp = envelope?.timestamp;
 
@@ -323,9 +333,9 @@ const UserApps = WebexPlugin.extend({
       resource: `/${SECTIONS_APP}/${encodeURIComponent(sectionId)}`,
       method: 'PUT',
       body: {
+        ...getSectionClientData(section),
         content,
         'encryption-key': section['encryption-key'],
-        ...(section.clientSpecificData ? {clientSpecificData: section.clientSpecificData} : {}),
       },
     });
 
@@ -575,7 +585,6 @@ const UserApps = WebexPlugin.extend({
     this._hydrationHighWaterMark = null;
 
     try {
-      const startedAt = Date.now();
       const response = await this.webex.request({
         service: USER_APPS_SERVICE,
         resource: '/',
@@ -588,12 +597,10 @@ const UserApps = WebexPlugin.extend({
 
       const appsData = (response.body ?? createEmptyWireData()) as UserAppsDataWire;
       const fullSyncHighWaterValue = getHeader(response.headers, HIGH_WATER_HEADER);
-      const fullSyncHighWaterMark = fullSyncHighWaterValue
-        ? Number(fullSyncHighWaterValue)
-        : startedAt;
+      const fullSyncHighWaterMark = Number(fullSyncHighWaterValue);
 
-      if (!Number.isFinite(fullSyncHighWaterMark)) {
-        throw new UserAppsSyncError('User-app full sync returned an invalid high-water mark');
+      if (!fullSyncHighWaterValue || !Number.isFinite(fullSyncHighWaterMark)) {
+        throw new UserAppsSyncError('User-app full sync did not return a valid high-water mark');
       }
 
       await this._loadAdvertisedPages(appsData, lifecycleGeneration);
@@ -1031,7 +1038,7 @@ const UserApps = WebexPlugin.extend({
         body: {
           'kms-message': request.wrapped,
           'encryption-key': key.uri,
-          clientSpecificData,
+          ...clientSpecificData,
         },
       });
       const metadata = (response.body?.metadata ?? response.body) as UserAppsMetadataWire;

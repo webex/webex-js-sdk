@@ -51,6 +51,11 @@ const createAppsData = ({withMetadata = true} = {}) => ({
   },
 });
 
+const createFullSyncResponse = (appsData = createAppsData(), highWaterMark = 100) => ({
+  body: appsData,
+  headers: {'x-cisco-endDate': String(highWaterMark)},
+});
+
 describe('plugin-user-apps', () => {
   let webex;
   let mercuryCallbacks;
@@ -90,10 +95,7 @@ describe('plugin-user-apps', () => {
   });
 
   const stubInitialSync = (appsData = createAppsData()) => {
-    webex.request.onFirstCall().resolves({
-      body: appsData,
-      headers: {'x-cisco-endDate': '100'},
-    });
+    webex.request.onFirstCall().resolves(createFullSyncResponse(appsData));
     webex.request.onSecondCall().resolves({
       body: {items: []},
       headers: {'x-cisco-endDate': '200'},
@@ -128,6 +130,31 @@ describe('plugin-user-apps', () => {
     assert.equal(snapshot.highWaterMark, 200);
     assert.equal(snapshot.sections[1].title, 'Project Alpha');
     assert.equal(snapshot.membershipsByConversationUrl[CONVERSATION_URL].sectionId, 'section-1');
+  });
+
+  it('normalizes top-level client metadata during full sync', async () => {
+    const appsData = createAppsData();
+    const metadata = appsData.items.dynamicTop[0].metadata as any;
+
+    metadata.sortedSections = ['OTHER', 'section-1', 'FAVORITES'];
+    metadata.Default_Sections_Settings = metadata.clientSpecificData.Default_Sections_Settings;
+    delete metadata.clientSpecificData;
+    stubInitialSync(appsData);
+
+    const snapshot = await webex.internal.userApps.register();
+
+    assert.deepEqual(snapshot.sectionOrder, ['OTHER', 'section-1', 'FAVORITES']);
+  });
+
+  it('rejects a full sync without a server high-water mark', async () => {
+    webex.request.onFirstCall().resolves({body: createAppsData()});
+
+    await assert.isRejected(
+      webex.internal.userApps.sync({forceFull: true}),
+      /full sync did not return a valid high-water mark/
+    );
+
+    assert.calledOnce(webex.request);
   });
 
   it('coalesces concurrent registrations', async () => {
@@ -179,7 +206,7 @@ describe('plugin-user-apps', () => {
     const first = webex.internal.userApps.sync({forceFull: true});
     const second = webex.internal.userApps.sync({forceFull: true});
 
-    resolveFullSync({body: createAppsData()});
+    resolveFullSync(createFullSyncResponse());
     await Promise.all([first, second]);
     assert.calledTwice(webex.request);
   });
@@ -189,7 +216,7 @@ describe('plugin-user-apps', () => {
 
     appsData.items.dynamicDerived[0].next =
       'https://user-apps.example/user/api/v1/apps/sections_section-1?cursor=page-2';
-    webex.request.onCall(0).resolves({body: appsData});
+    webex.request.onCall(0).resolves(createFullSyncResponse(appsData));
     webex.request.onCall(1).resolves({
       body: {
         items: [
@@ -248,7 +275,7 @@ describe('plugin-user-apps', () => {
     webex.internal.services.getServiceFromUrl = sinon
       .stub()
       .callsFake((url) => ({name: url.includes('user-apps.example') ? 'userApps' : 'unknown'}));
-    webex.request.resolves({body: invalidAppsData});
+    webex.request.resolves(createFullSyncResponse(invalidAppsData));
 
     let rejectedError: any;
 
@@ -264,13 +291,16 @@ describe('plugin-user-apps', () => {
 
   it('does not cache a failed sync promise', async () => {
     webex.request.onCall(0).rejects({statusCode: 503});
-    webex.request.onCall(1).resolves({body: createAppsData()});
+    webex.request.onCall(1).resolves(createFullSyncResponse());
     webex.request.onCall(2).resolves({
       body: {items: []},
       headers: {'x-cisco-endDate': '200'},
     });
 
-    await assert.isRejected(webex.internal.userApps.sync({forceFull: true}), /synchronization failed/);
+    await assert.isRejected(
+      webex.internal.userApps.sync({forceFull: true}),
+      /synchronization failed/
+    );
     const snapshot = await webex.internal.userApps.sync({forceFull: true});
 
     assert.equal(snapshot.highWaterMark, 200);
@@ -279,9 +309,9 @@ describe('plugin-user-apps', () => {
 
   [400, 413].forEach((statusCode) => {
     it(`performs one full-sync recovery after catch-up ${statusCode}`, async () => {
-      webex.request.onCall(0).resolves({body: createAppsData()});
+      webex.request.onCall(0).resolves(createFullSyncResponse());
       webex.request.onCall(1).rejects({statusCode});
-      webex.request.onCall(2).resolves({body: createAppsData()});
+      webex.request.onCall(2).resolves(createFullSyncResponse(createAppsData(), 250));
       webex.request.onCall(3).resolves({
         body: {items: []},
         headers: {'x-cisco-endDate': '300'},
@@ -297,7 +327,7 @@ describe('plugin-user-apps', () => {
   it('does not recover a catch-up after unregistering', async () => {
     let rejectCatchup;
 
-    webex.request.onFirstCall().resolves({body: createAppsData()});
+    webex.request.onFirstCall().resolves(createFullSyncResponse());
     webex.request.onSecondCall().returns(
       new Promise((_, reject) => {
         rejectCatchup = reject;
@@ -541,7 +571,7 @@ describe('plugin-user-apps', () => {
   it('ignores an untimestamped Mercury event during hydration', async () => {
     let resolveCatchup;
 
-    webex.request.onFirstCall().resolves({body: createAppsData()});
+    webex.request.onFirstCall().resolves(createFullSyncResponse());
     webex.request.onSecondCall().returns(
       new Promise((resolve) => {
         resolveCatchup = resolve;
@@ -597,7 +627,7 @@ describe('plugin-user-apps', () => {
         },
       },
     });
-    resolveFullSync({body: createAppsData()});
+    resolveFullSync(createFullSyncResponse());
 
     const snapshot = await registration;
 
@@ -623,7 +653,7 @@ describe('plugin-user-apps', () => {
       },
     };
 
-    webex.request.onFirstCall().resolves({body: createAppsData()});
+    webex.request.onFirstCall().resolves(createFullSyncResponse());
     webex.request.onSecondCall().returns(
       new Promise((resolve) => {
         resolveCatchup = resolve;
@@ -695,7 +725,7 @@ describe('plugin-user-apps', () => {
       'section-1',
       'OTHER',
     ];
-    webex.request.onFirstCall().resolves({body: appsData});
+    webex.request.onFirstCall().resolves(createFullSyncResponse(appsData));
     webex.request.onSecondCall().returns(
       new Promise((resolve) => {
         resolveCatchup = resolve;
@@ -737,12 +767,7 @@ describe('plugin-user-apps', () => {
     const snapshot = await registration;
 
     assert.calledTwice(webex.request);
-    assert.deepEqual(snapshot.sectionOrder, [
-      'FAVORITES',
-      'section-2',
-      'section-1',
-      'OTHER',
-    ]);
+    assert.deepEqual(snapshot.sectionOrder, ['FAVORITES', 'section-2', 'section-1', 'OTHER']);
     assert.equal(snapshot.highWaterMark, 200);
   });
 
@@ -795,12 +820,7 @@ describe('plugin-user-apps', () => {
 
     const snapshot = await registration;
 
-    assert.deepEqual(snapshot.sectionOrder, [
-      'FAVORITES',
-      'section-2',
-      'section-1',
-      'OTHER',
-    ]);
+    assert.deepEqual(snapshot.sectionOrder, ['FAVORITES', 'section-2', 'section-1', 'OTHER']);
     assert.lengthOf(webex.internal.userApps._queuedChanges, 0);
   });
 
@@ -822,7 +842,7 @@ describe('plugin-user-apps', () => {
       'list-app-name': 'sections_section-2',
     });
     appsData.items.dynamicTop[0].metadata.clientSpecificData.sortedSections = secondOrder;
-    webex.request.onFirstCall().resolves({body: appsData});
+    webex.request.onFirstCall().resolves(createFullSyncResponse(appsData));
     webex.request.onSecondCall().returns(
       new Promise((resolve) => {
         resolveCatchup = resolve;
@@ -1115,7 +1135,7 @@ describe('plugin-user-apps', () => {
       await Promise.resolve();
     }
     await webex.internal.userApps.unregister();
-    resolveFullSync({body: createAppsData()});
+    resolveFullSync(createFullSyncResponse());
     await registration;
 
     assert.notCalled(setIntervalSpy);
@@ -1130,7 +1150,11 @@ describe('plugin-user-apps', () => {
       body: {
         'default-encryption-key': 'kms://new-key',
         'kms-message': 'wrapped-kms-message',
-        clientSpecificData: {sortedSections: ['FAVORITES', 'OTHER']},
+        sortedSections: ['FAVORITES', 'OTHER'],
+        Default_Sections_Settings: [
+          {section_name: 'FAVORITES', settings: []},
+          {section_name: 'OTHER', settings: []},
+        ],
       },
     });
     webex.request.onCall(3).resolves({
@@ -1165,11 +1189,19 @@ describe('plugin-user-apps', () => {
       'kms://new-key',
       'Project Beta'
     );
-    assert.calledWithMatch(webex.request.getCall(2), {
+    assert.calledWithExactly(webex.request.getCall(2), {
       service: 'userApps',
       resource: '/sections',
       method: 'PUT',
-      body: {'kms-message': 'wrapped-kms-message', 'encryption-key': 'kms://new-key'},
+      body: {
+        'kms-message': 'wrapped-kms-message',
+        'encryption-key': 'kms://new-key',
+        sortedSections: ['FAVORITES', 'OTHER'],
+        Default_Sections_Settings: [
+          {section_name: 'FAVORITES', settings: []},
+          {section_name: 'OTHER', settings: []},
+        ],
+      },
     });
     assert.calledWithExactly(webex.request.getCall(4), {
       service: 'userApps',
@@ -1177,6 +1209,10 @@ describe('plugin-user-apps', () => {
       method: 'PUT',
       body: {
         sortedSections: ['FAVORITES', 'section-1', 'section-2', 'OTHER'],
+        Default_Sections_Settings: [
+          {section_name: 'FAVORITES', settings: []},
+          {section_name: 'OTHER', settings: []},
+        ],
       },
     });
     assert.equal(section.id, 'section-2');
@@ -1313,13 +1349,23 @@ describe('plugin-user-apps', () => {
   });
 
   it('renames, detaches, and deletes through confirmed service operations', async () => {
-    stubInitialSync();
+    const appsData = createAppsData();
+    const section = appsData.items.dynamicTop[0].items[0] as any;
+
+    Object.assign(section, {
+      url: 'https://user-apps.example/user/api/v1/apps/sections/section-1',
+      list: 'https://user-apps.example/user/api/v1/apps/sections_section-1',
+      'date-created': '2026-01-01T00:00:00.000Z',
+      'date-updated': '2026-01-02T00:00:00.000Z',
+      filterType: 'unread',
+      nextSectionId: 'OTHER',
+      clientSpecificData: {customSetting: true},
+    });
+    stubInitialSync(appsData);
     webex.request.onCall(2).resolves({
       body: {
-        id: 'section-1',
+        ...section,
         content: 'encrypted-title',
-        'encryption-key': 'kms://default-key',
-        'list-app-name': 'sections_section-1',
       },
     });
     webex.request.onCall(3).resolves({body: {}});
@@ -1333,9 +1379,17 @@ describe('plugin-user-apps', () => {
     });
 
     assert.equal(renamed.title, 'Project Alpha');
-    assert.calledWithMatch(webex.request.getCall(2), {
+    assert.calledWithExactly(webex.request.getCall(2), {
+      service: 'userApps',
       resource: '/sections/section-1',
       method: 'PUT',
+      body: {
+        content: 'encrypted-title',
+        'encryption-key': 'kms://default-key',
+        filterType: 'unread',
+        nextSectionId: 'OTHER',
+        clientSpecificData: {customSetting: true},
+      },
     });
 
     await webex.internal.userApps.removeConversationFromSection({
@@ -1387,6 +1441,11 @@ describe('plugin-user-apps', () => {
       },
     });
     await mercuryApplied;
+    assert.isUndefined(
+      webex.internal.userApps._appsData.items.dynamicDerived.find(
+        (app) => app['app-name'] === 'sections_section-1'
+      )
+    );
     resolveDelete({body: {}});
     await deletion;
 
@@ -1432,7 +1491,7 @@ describe('plugin-user-apps', () => {
       'OTHER',
     ];
     freshAppsData.items.dynamicDerived = [];
-    webex.request.onCall(3).resolves({body: freshAppsData});
+    webex.request.onCall(3).resolves(createFullSyncResponse(freshAppsData, 250));
     webex.request.onCall(4).resolves({
       body: {items: []},
       headers: {'x-cisco-endDate': '300'},
