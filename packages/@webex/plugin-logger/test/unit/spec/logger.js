@@ -128,6 +128,19 @@ describe('plugin-logger', () => {
       assert.equal(webex.logger.buffer.buffer[1][3], 3);
     });
 
+    it('keeps the last successful upload cursor valid when the buffer overflows', () => {
+      webex.config.logger.historyLength = 2;
+      webex.logger.log('submitted');
+      webex.logger.formatLogs({diff: true});
+      webex.logger.updateLastSubmittedIndex();
+
+      webex.logger.log('second');
+      webex.logger.log('third');
+      webex.logger.log('fourth');
+
+      assert.equal(webex.logger.buffer.lastSubmitted, 0);
+    });
+
     it('prevents the client and sdk buffer from overflowing', () => {
       webex.config.logger.historyLength = 2;
       webex.config.logger.separateLogBuffers = true;
@@ -1294,6 +1307,23 @@ describe('plugin-logger', () => {
       assert.match(snapshot[0].attributes['log.record.uid'], /^[0-9a-f-]{36}$/);
       assert.isTrue(Object.isFrozen(snapshot));
       assert.isTrue(Object.isFrozen(snapshot[0]));
+    });
+
+    it('keeps legacy upload cursors valid when acknowledged records are removed', async () => {
+      const transport = {name: 'legacy', export: sinon.stub().resolves()};
+
+      webex.logger.info('first');
+      webex.logger.info('second');
+      webex.logger.formatLogs({diff: true});
+      webex.logger.updateLastSubmittedIndex();
+      webex.logger.configureTransports({transports: [transport]});
+
+      await webex.logger.flushTransports({maxRecords: 1});
+
+      assert.equal(webex.logger.buffer.nextIndex, 1);
+      assert.equal(webex.logger.buffer.lastSubmitted, 1);
+      webex.logger.resetBufferToLastSuccessfulUpload();
+      assert.equal(webex.logger.formatLogs({diff: true}), '');
     });
 
     it('passes the same immutable snapshot to every configured transport', async () => {

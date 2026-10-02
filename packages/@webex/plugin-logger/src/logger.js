@@ -113,6 +113,7 @@ const Logger = WebexPlugin.extend({
         return {
           buffer: [],
           nextIndex: 0,
+          lastSubmitted: 0,
         };
       },
     },
@@ -129,6 +130,7 @@ const Logger = WebexPlugin.extend({
         return {
           buffer: [],
           nextIndex: 0,
+          lastSubmitted: 0,
         };
       },
     },
@@ -138,6 +140,7 @@ const Logger = WebexPlugin.extend({
         return {
           buffer: [],
           nextIndex: 0,
+          lastSubmitted: 0,
         };
       },
     },
@@ -330,6 +333,32 @@ const Logger = WebexPlugin.extend({
   },
 
   /**
+   * Marks the current diff cursor as successfully uploaded.
+   * @returns {void}
+   */
+  updateLastSubmittedIndex() {
+    if (this.config.separateLogBuffers) {
+      this.clientBuffer.lastSubmitted = this.clientBuffer.nextIndex;
+      this.sdkBuffer.lastSubmitted = this.sdkBuffer.nextIndex;
+    } else {
+      this.buffer.lastSubmitted = this.buffer.nextIndex;
+    }
+  },
+
+  /**
+   * Restores the diff cursor to the last successful legacy upload.
+   * @returns {void}
+   */
+  resetBufferToLastSuccessfulUpload() {
+    if (this.config.separateLogBuffers) {
+      this.clientBuffer.nextIndex = this.clientBuffer.lastSubmitted;
+      this.sdkBuffer.nextIndex = this.sdkBuffer.lastSubmitted;
+    } else {
+      this.buffer.nextIndex = this.buffer.lastSubmitted;
+    }
+  },
+
+  /**
    * Formats canonical records using their original legacy support-log lines.
    * @param {Array<Object>} records canonical records from this logger
    * @returns {string} legacy upload body
@@ -426,9 +455,13 @@ const Logger = WebexPlugin.extend({
         const removedBeforeNextIndex = bufferRef.buffer
           .slice(0, bufferRef.nextIndex)
           .filter((entry) => selected.has(entry)).length;
+        const removedBeforeLastSubmitted = bufferRef.buffer
+          .slice(0, bufferRef.lastSubmitted)
+          .filter((entry) => selected.has(entry)).length;
 
         bufferRef.buffer = bufferRef.buffer.filter((entry) => !selected.has(entry));
         bufferRef.nextIndex = Math.max(0, bufferRef.nextIndex - removedBeforeNextIndex);
+        bufferRef.lastSubmitted = Math.max(0, bufferRef.lastSubmitted - removedBeforeLastSubmitted);
       });
 
       this._pendingTransportFlush = undefined;
@@ -598,6 +631,11 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
           bufferRef.nextIndex -= deleteCount;
           if (bufferRef.nextIndex < 0) {
             bufferRef.nextIndex = 0;
+          }
+
+          bufferRef.lastSubmitted -= deleteCount;
+          if (bufferRef.lastSubmitted < 0) {
+            bufferRef.lastSubmitted = 0;
           }
         }
         if (level === 'group') this.groupLevel += 1;
