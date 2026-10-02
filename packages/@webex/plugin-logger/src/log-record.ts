@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import uuid from 'uuid';
+import {v4 as uuidV4} from 'uuid';
 
 export const LOG_RECORD_SCHEMA_NAME = 'webex.log';
 export const LOG_RECORD_SCHEMA_VERSION = '1.0.0';
@@ -118,7 +118,7 @@ export const createWebexLogRecord = ({
           {}
         )
       : {};
-  const recordUid = uuid.v4();
+  const recordUid = uuidV4();
   const recordAttributes: WebexLogAttributes = {
     ...sanitizedAttributes,
     [LOG_ATTRIBUTE_KEYS.SCHEMA_NAME]: LOG_RECORD_SCHEMA_NAME,
@@ -151,7 +151,7 @@ export const createWebexLogRecord = ({
     if (eventId !== undefined) {
       recordAttributes[LOG_ATTRIBUTE_KEYS.EVENT_ID] = String(filter(eventId));
     } else if (typeof prefix === 'string' && eventIdPrefixPattern.test(prefix)) {
-      recordAttributes[LOG_ATTRIBUTE_KEYS.EVENT_ID] = `${prefix}_${uuid.v4()}`;
+      recordAttributes[LOG_ATTRIBUTE_KEYS.EVENT_ID] = `${prefix}_${uuidV4()}`;
     }
   }
 
