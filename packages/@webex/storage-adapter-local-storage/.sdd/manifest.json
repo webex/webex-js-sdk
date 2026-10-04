@@ -1,0 +1,314 @@
+{
+  "manifest_version": 1,
+  "repository": {
+    "name": "@webex/storage-adapter-local-storage",
+    "purpose": "Browser localStorage-backed bounded storage adapter for the Webex SDK webex-core storage layer.",
+    "category": "cat2-legacy",
+    "primary_languages": [
+      "JavaScript"
+    ]
+  },
+  "topology": "Single-repo",
+  "commands": {
+    "compile": "[NEEDS HUMAN INPUT] -- The package has no standalone compile step; `build:src` transpiles and emits in one operation via webex-legacy-tools, and package.json declares no separate compile script.",
+    "build": {
+      "command": "yarn workspace @webex/storage-adapter-local-storage build:src",
+      "source_file": "packages/@webex/storage-adapter-local-storage/package.json",
+      "role": "package",
+      "verified_at": "2026-10-01T06:20:02Z"
+    },
+    "unit-test": {
+      "command": "yarn workspace @webex/storage-adapter-local-storage test:unit",
+      "source_file": "packages/@webex/storage-adapter-local-storage/package.json",
+      "role": "unit-test",
+      "verified_at": "2026-10-01T06:20:02Z"
+    },
+    "browser-test": {
+      "command": "yarn workspace @webex/storage-adapter-local-storage test:browser",
+      "source_file": "packages/@webex/storage-adapter-local-storage/package.json",
+      "role": "other",
+      "verified_at": "2026-10-01T06:20:02Z"
+    },
+    "lint": {
+      "command": "yarn workspace @webex/storage-adapter-local-storage test:style",
+      "source_file": "packages/@webex/storage-adapter-local-storage/package.json",
+      "role": "lint",
+      "verified_at": "2026-10-01T06:20:02Z"
+    },
+    "test": {
+      "command": "yarn workspace @webex/storage-adapter-local-storage test",
+      "source_file": "packages/@webex/storage-adapter-local-storage/package.json",
+      "role": "other",
+      "verified_at": "2026-10-01T06:20:02Z"
+    },
+    "publish": {
+      "command": "yarn workspace @webex/storage-adapter-local-storage deploy:npm",
+      "source_file": "packages/@webex/storage-adapter-local-storage/package.json",
+      "role": "other"
+    },
+    "install": {
+      "command": "yarn install",
+      "source_file": "package.json",
+      "role": "install",
+      "verified_at": "2026-10-04T00:00:00Z"
+    }
+  },
+  "toolchain": [
+    {
+      "name": "node",
+      "version": ">=18",
+      "origin": "repo-config",
+      "source_file": "packages/@webex/storage-adapter-local-storage/package.json"
+    },
+    {
+      "name": "yarn",
+      "version": "3.4.1",
+      "origin": "repo-config",
+      "source_file": "package.json"
+    }
+  ],
+  "tests": {
+    "unit": {
+      "command_ref": "unit-test",
+      "dir": "test/unit/spec",
+      "framework": "jest via @webex/jest-config-legacy, executing the mocha-authored abstract suite from @webex/storage-adapter-spec"
+    }
+  },
+  "quality_gates": {
+    "code_coverage": {
+      "origin": "none",
+      "declared_by": "rsarika@cisco.com"
+    }
+  },
+  "coverage_status_definitions": {
+    "specced": ">=80% public surface specced, drift <5% — spec is authoritative",
+    "partial": "40-80% specced — spec is a hint, cross-check code",
+    "untracked": "<40% specced — code is the source of truth"
+  },
+  "modules": [
+    {
+      "path": "src",
+      "coverage_status": "Partial",
+      "coverage_evidence": "The canonical spec at src/docs/README.md is structurally complete against the module-spec template, with every public surface, invariant, and failure mode mapped to a source file. Coverage is held at Partial rather than Specced because neither of this package's own test routes executes a case: test:unit skips all 21 declared cases under Node (skipInNode) and test:browser completes 0 tests because the shared abstract suite calls the Jest global beforeAll under mocha, both measured 2026-10-01 and confirmed independently 2026-10-04. That measurement covers this package's routes only; a repository-wide claim that nothing anywhere executes the adapter is not established, since authorization-browser automation fixtures also import it. Holding at Partial also reflects the recorded thresholds: the partial_to_specced rule requires a clean drift record across touching PRs, and independent validation has so far returned blocked. Requiring an executing verification route before promotion is a recommendation from this assessment, not a threshold in coverage_status_definitions.",
+      "canonical_spec": "src/docs/README.md",
+      "last_assessed": "2026-10-04",
+      "contracts": {
+        "provides": [
+          "storage-adapter-local-storage-sdk",
+          "local-storage-bounded-document"
+        ],
+        "requires": [
+          "webex-core-store-adapter-interface"
+        ]
+      },
+      "section_profile": {
+        "has_ui": false,
+        "crosses_service_boundaries": false,
+        "enforces_domain_rules": true,
+        "is_concurrent_async": true,
+        "owns_persistence": true,
+        "returns_caller_errors": true,
+        "has_design_tradeoff": true,
+        "stateful_transitions": false,
+        "exposes_wire_protocol": false,
+        "ui_multi_screen": false,
+        "large_data_model": false,
+        "has_tiers": false,
+        "module_specific_conventions": true,
+        "published_package": true,
+        "embedded_in_host": true,
+        "holds_client_state": false,
+        "has_submodules": false,
+        "has_submodules_computed_by": "scripts/module_tree.py",
+        "has_submodules_computed_at": "2026-10-01T06:31:07Z",
+        "resolved_by": "rsarika@cisco.com",
+        "resolved_at": "2026-10-01T06:20:02Z"
+      }
+    }
+  ],
+  "contract_catalog": {
+    "index_path": "docs/architecture.md",
+    "definitions": {
+      "storage-adapter-local-storage-sdk": {
+        "kind": "sdk",
+        "publication": "published",
+        "source_kind": "repository-path",
+        "source": "package.json",
+        "summary": "Published npm package @webex/storage-adapter-local-storage. Its ecosystem-native declaration is package.json (main dist/index.js, devMain src/index.js); the implementation is src/index.js, which default-exports the StorageAdapterLocalStorage class. The constructor takes a basekey and bind(namespace, options) resolves a bound store exposing get, put, del, and clear. The package ships no .d.ts or API report, so package.json is the only machine-readable declaration."
+      },
+      "local-storage-bounded-document": {
+        "kind": "file",
+        "publication": "internal",
+        "source_kind": "repository-path",
+        "source": "src/index.js",
+        "summary": "At-rest JSON document written to localStorage under the constructor basekey, shaped {namespace: {key: value}}. Read by _getRawData/_load and written by _save. It survives page reloads and releases, and the code carries no version field, no migration step, and no schema validation. Whether cross-release readability is a committed promise is an unresolved owner decision recorded in src/docs/README.md; this entry states current behavior only."
+      },
+      "webex-core-store-adapter-interface": {
+        "kind": "sdk",
+        "publication": "internal",
+        "source_kind": "external",
+        "source": "packages/@webex/webex-core/src/lib/storage/make-webex-store.js",
+        "summary": "The storage-adapter interface the webex-core storage layer calls. WebexStore._getBinding invokes adapter.bind(namespace, {logger}) and then calls get, put, del, and clear on the resolved binding. Owned by @webex/webex-core, outside this SDD root."
+      }
+    }
+  },
+  "spec_source_policy": {
+    "mode": "keep-separate",
+    "decided_by": "rsarika@cisco.com",
+    "decided_at": "2026-10-01T06:20:02Z",
+    "decision_record": ".generated/sdd/decision-log.md"
+  },
+  "spec_sources": [
+    {
+      "path": "README.md",
+      "scope": "reference",
+      "role": "reference-only",
+      "canonical": false,
+      "use_by_agents": "context-only",
+      "notes": "Package install/usage reference. Left byte-for-byte unchanged under keep-separate. Known conflict with code: it describes clear() as clearing data for the bound namespace, but src/index.js:77 removes the whole basekey across every namespace. Treat src/docs/README.md as authoritative for behavior."
+    }
+  ],
+  "spec_policy": {
+    "require_what_and_why": true,
+    "require_provenance": true,
+    "protected_specs": [
+      "src/docs/README.md"
+    ]
+  },
+  "validation": {
+    "generator_runtime": "claude-code",
+    "generator_model": "claude-opus-5[1m]",
+    "generator_run_id": "e8887ad7-222e-4457-a435-0f4676db3f8d",
+    "generator_runtime_source": "host-metadata",
+    "minimum_independence": "different-runtime",
+    "blocking_severities": [
+      "Blocking"
+    ],
+    "source_commit": "c622eb661258aaeccbfa06ed9dee3c18be0f4d40",
+    "base_ref": "next"
+  },
+  "layout": {
+    "sdd_root": ".sdd",
+    "docs_root": "docs",
+    "agent_entry_path": "AGENTS.md",
+    "standing_docs_root": "docs",
+    "spec_index_path": "docs/specs/README.md",
+    "module_docs_strategy": "source-local",
+    "module_docs_relative_path": "docs/README.md",
+    "contract_index_path": "docs/architecture.md",
+    "repo_skills_root": "../../../.agents/skills",
+    "template_roots": {
+      "canonical": ".sdd/templates/repo-standards"
+    },
+    "module_docs_decision": {
+      "basis": "repo-standards-default",
+      "reason": "The package contained no docs directory, documentation tooling, or protected file before this run, so the repo-standards source-local default <module-path>/docs/README.md applies without conflict.",
+      "decided_by": "rsarika@cisco.com",
+      "decided_at": "2026-10-01T06:20:02Z"
+    },
+    "repo_context_decision": {
+      "path": ".repo-context.json",
+      "schema_path": "schemas/repo-context.schema.json",
+      "action": "create",
+      "schema_action": "create",
+      "reason": "Neither target existed in the package before this run, so both are created from the bundled Repo Standards snapshot and populated from repository evidence.",
+      "decided_by": "rsarika@cisco.com",
+      "decided_at": "2026-10-01T06:20:02Z"
+    },
+    "artifact_decisions": [
+      {
+        "path": "docs/service.md",
+        "action": "omit",
+        "reason": "Not a deployable service. The package is a published npm library consumed in-process; it has no runtime, endpoint, or operating posture of its own.",
+        "decided_by": "rsarika@cisco.com",
+        "decided_at": "2026-10-01T06:20:02Z"
+      },
+      {
+        "path": "mkdocs.yml",
+        "action": "omit",
+        "reason": "The package has no documentation-site tooling and the repository publishes no mkdocs site.",
+        "decided_by": "rsarika@cisco.com",
+        "decided_at": "2026-10-01T06:20:02Z"
+      },
+      {
+        "path": "api-specs/openapi.yaml",
+        "action": "omit",
+        "reason": "No HTTP surface exists. The published contract is the package's ecosystem-native ES module export (src/index.js, registered as storage-adapter-local-storage-sdk), which Repo Standards treats as the authoritative source for a published SDK.",
+        "decided_by": "rsarika@cisco.com",
+        "decided_at": "2026-10-01T06:20:02Z"
+      },
+      {
+        "path": "SECURITY.md",
+        "action": "omit",
+        "reason": "Security disclosure is governed at the repository root, not per workspace package. No package-local file existed and creating one would fork repository governance.",
+        "decided_by": "rsarika@cisco.com",
+        "decided_at": "2026-10-01T06:20:02Z"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "action": "omit",
+        "reason": "The repository root owns CONTRIBUTING.md, which this package's README.md already links. A package-local copy would duplicate repository governance.",
+        "decided_by": "rsarika@cisco.com",
+        "decided_at": "2026-10-01T06:20:02Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "action": "omit",
+        "reason": "Releases are produced by the repository-level automated release pipeline; the package carries no hand-maintained changelog.",
+        "decided_by": "rsarika@cisco.com",
+        "decided_at": "2026-10-01T06:20:02Z"
+      },
+      {
+        "path": "CTO_CHECKLIST.yml",
+        "action": "omit",
+        "reason": "Selected only for a deployable service; this package is an in-process library. Omitted together with its schema, as the template map requires the pair to be selected together.",
+        "decided_by": "rsarika@cisco.com",
+        "decided_at": "2026-10-01T06:20:02Z"
+      },
+      {
+        "path": "schemas/cto-checklist.schema.json",
+        "action": "omit",
+        "reason": "Paired with CTO_CHECKLIST.yml, which is omitted.",
+        "decided_by": "rsarika@cisco.com",
+        "decided_at": "2026-10-01T06:20:02Z"
+      }
+    ]
+  },
+  "substrate": {
+    "source": "WebexTools/repo-standards",
+    "consumed": [
+      "lint config (.eslintrc.js extending @webex/eslint-config-legacy)",
+      "babel config (babel.config.js extending @webex/babel-config-legacy)",
+      "jest config (jest.config.js extending @webex/jest-config-legacy)",
+      "package manifest and scripts (package.json)",
+      "repository ownership (.github/CODEOWNERS)",
+      "repository CI workflows (.github/workflows/pull-request.yml)",
+      "existing package reference documentation (README.md, reference-only)"
+    ]
+  },
+  "coverage_ratchet": {
+    "enabled": true,
+    "waivers": []
+  },
+  "section_profiles": {
+    "repo": {
+      "owns_datastore": true,
+      "holds_client_state": false,
+      "components_interact": false,
+      "domain_data_across_components": false,
+      "caches_data": false,
+      "observability_convention": true,
+      "deploys_to_infra": false,
+      "shared_base_libs": true,
+      "is_monorepo": true,
+      "multi_platform": false,
+      "published_package": true,
+      "embedded_in_host": true,
+      "exposes_commands_or_artifacts": true,
+      "cross_repo_deps_material": false,
+      "security_arch_warranted": true
+    },
+    "resolved_by": "rsarika@cisco.com",
+    "resolved_at": "2026-10-01T06:20:02Z"
+  }
+}

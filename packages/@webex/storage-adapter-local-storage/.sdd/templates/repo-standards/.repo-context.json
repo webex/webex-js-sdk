@@ -1,0 +1,202 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "<repository-name>",
+    "purpose": "<one-sentence repository purpose>"
+  },
+  "commands": {
+    "<command-id>": "<command-to-run>"
+  },
+  "task_playbooks": [
+    {
+      "task": "<task-id>",
+      "reference": "docs/agentic/playbooks/<playbook>.md",
+      "when_to_use": "<when-this-playbook-applies>",
+      "start_with": ["<source-of-truth-doc>"],
+      "evidence_required": ["<evidence-source>"],
+      "allowed_edits": ["<editable-surface>"],
+      "refresh_with": ["<refresh-command-if-needed>"],
+      "validate_with": ["<validation-command>"],
+      "fallback": "<when-to-noop-or-omit>"
+    }
+  ],
+  "public_interfaces": [
+    {
+      "name": "<interface-name>",
+      "kind": "<npm_scripts|shell_entrypoint|cli_binary|package_export>",
+      "source": "<authoritative-source>",
+      "entrypoints": ["<command-or-import-surface>"],
+      "audience": "<who-uses-this>",
+      "notes": "<how-to-verify-it>"
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "<surface-name>",
+      "paths": ["<path-owned-by-surface>"],
+      "generated_artifacts": [],
+      "refresh_with": ["<how-to-refresh-this-surface>"],
+      "validate_with": ["<validation-command>"]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "<generated-artifact-path>",
+      "generated_from": "<source-path>",
+      "refresh_with": "<command-to-regenerate>"
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": ["<changed-path-glob-or-file>"],
+      "minimum": ["<minimum-validation-command>"],
+      "recommended": ["<additional-recommended-validation>"]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": ["<changed-path-glob-or-file>"],
+      "affects": ["<downstream-impact>"],
+      "refresh_with": ["<refresh-command-if-needed>"],
+      "validate_with": ["<validation-command>"],
+      "avoid_direct_edits": ["<generated-or-runtime-copy>"],
+      "notes": "<why-this-impact-row-exists>"
+    }
+  ],
+  "glossary": [
+    {
+      "term": "<canonical-term>",
+      "definition": "<single authoritative definition>",
+      "notes": "<optional distinction or contrast>"
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "<command_name|import_path|behavior_claim|placeholder_token>",
+      "sources": ["<authoritative-evidence-source>"],
+      "requirement": "<what-must-be-proven-before-emitting-the-claim>",
+      "notes": "<optional fallback-or-contrast>"
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "<short do-not-infer rule>",
+      "why": "<why-this-rule-exists>"
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "<update>",
+      "expectation": "<when-high-confidence-work-is-allowed>"
+    },
+    "medium": {
+      "action": "<narrow-scope>",
+      "expectation": "<what-to-omit-when-evidence-is-partial>"
+    },
+    "low": {
+      "action": "<noop>",
+      "expectation": "<when-to-stop-and-report-gaps>"
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "<entrypoint-name>",
+        "path": "<path>",
+        "purpose": "<why-it-exists>",
+        "notes": "<optional notes>"
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "<package-or-boundary-name>",
+        "paths": ["<path-pattern>"],
+        "notes": "<boundary-notes>"
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "<source-surface-name>",
+        "paths": ["<path-pattern>"],
+        "notes": "<why-this-surface-matters>"
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "<generated-surface-name>",
+        "paths": ["<generated-path>"],
+        "generated_from": "<source-surface>",
+        "refresh_with": "<regeneration-command>",
+        "notes": "<optional notes>"
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "<source-surface>",
+        "targets": ["<target-surface>"],
+        "mechanism": "<sync-command-or-workflow>",
+        "notes": "<optional notes>"
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "<validation-name>",
+        "command": "<command-to-run>",
+        "scope": "<what-it-validates>",
+        "notes": "<optional notes>"
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "<purpose>",
+      "<boundaries>",
+      "<key-files>",
+      "<common-tasks>"
+    ],
+    "rules": ["<orientation-first-rule>"],
+    "example_policy": "<when-examples-are-allowed>",
+    "fallback": "<when-to-omit-or-noop>"
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "<recurring-review-failure-or-benchmark-regression>",
+      "required_followups": [
+        "<workflow-rule>",
+        "<regression-test>",
+        "<machine-readable-rule-when-stable>"
+      ],
+      "notes": "<optional notes>"
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "<surface-name>",
+      "owner": "<owner-or-team>",
+      "edit_boundary": "<editing-boundary-notes>"
+    }
+  ],
+  "do_not_edit": ["<generated-or-managed-path>"],
+  "marker_scopes": {
+    "<scope-name>": ["<managed-marker-scope>"]
+  },
+  "fallback_rules": ["<fallback-rule-1>", "<fallback-rule-2>"],
+  "downstream_context_pack": {
+    "required_human_surfaces": ["<human-facing-doc-path>"],
+    "required_agent_operational_surfaces": ["<operational-surface-1>"],
+    "required_machine_readable_surface": "<machine-readable-surface-path>",
+    "recommended_machine_readable_sections": [
+      "task_playbooks",
+      "public_interfaces",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
