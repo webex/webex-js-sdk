@@ -91,10 +91,8 @@ export default class TaskManager extends EventEmitter {
   private apiAIAssistant?: ApiAIAssistant;
   private receivingSummaryBuffer = new Map<string, TimedAISummaryPayload<AISummary>>();
 
-  private pendingFeatureEnablement = new Map<
-    string,
-    TimedAISummaryPayload<AISummaryFeatureEnablement>
-  >();
+  // RTD feature frames can arrive before AQM creates the task.
+  private pendingFeatureEnablement = new Map<string, AISummaryFeatureEnablement>();
 
   private aiSummaryInboundActive = true;
 
@@ -221,25 +219,14 @@ export default class TaskManager extends EventEmitter {
     });
 
     if (matchingTask) {
-      this.removeTimedAISummaryEntry(this.pendingFeatureEnablement, payload.interactionId);
-      if (matchingTask.setFeatureEnablement) {
-        matchingTask.setFeatureEnablement(payload);
-      } else {
-        matchingTask.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, payload);
-      }
+      this.pendingFeatureEnablement.delete(payload.interactionId);
+      matchingTask.setFeatureEnablement?.(payload);
+      matchingTask.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, payload);
 
       return;
     }
 
-    const interactionId = payload.interactionId;
-    this.removeTimedAISummaryEntry(this.pendingFeatureEnablement, interactionId);
-    const entry = {
-      payload,
-      timeoutId: setTimeout(() => {
-        this.removeTimedAISummaryEntry(this.pendingFeatureEnablement, interactionId);
-      }, AI_SUMMARY_DURATION_MS),
-    };
-    this.pendingFeatureEnablement.set(interactionId, entry);
+    this.pendingFeatureEnablement.set(payload.interactionId, payload);
   }
 
   private deliverReceivingSummary(
@@ -309,16 +296,7 @@ export default class TaskManager extends EventEmitter {
     Array.from(this.receivingSummaryBuffer.keys()).forEach((conversationId) => {
       this.removeTimedAISummaryEntry(this.receivingSummaryBuffer, conversationId);
     });
-    Array.from(this.pendingFeatureEnablement.keys()).forEach((interactionId) => {
-      this.removeTimedAISummaryEntry(this.pendingFeatureEnablement, interactionId);
-    });
-  }
-
-  private configureTaskAISummary(task: ITask): void {
-    task.configureAISummary?.(
-      this.apiAIAssistant,
-      () => this.configFlags?.aiFeature?.generatedSummaries
-    );
+    this.pendingFeatureEnablement.clear();
   }
 
   private selectReceivingSummaryTasks(conversationId: string): ITask[] {
@@ -359,9 +337,22 @@ export default class TaskManager extends EventEmitter {
       return;
     }
 
-    const entry = this.removeTimedAISummaryEntry(this.pendingFeatureEnablement, interactionId);
-    if (entry) {
-      task.setFeatureEnablement?.(entry.payload, false);
+    const payload = this.pendingFeatureEnablement.get(interactionId);
+    if (payload) {
+      task.setFeatureEnablement?.(payload);
+    }
+  }
+
+  private flushPendingFeatureEnablement(task: ITask): void {
+    const interactionId = task?.data?.interactionId;
+    if (!interactionId) {
+      return;
+    }
+
+    const payload = this.pendingFeatureEnablement.get(interactionId);
+    if (payload) {
+      this.pendingFeatureEnablement.delete(interactionId);
+      task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, payload);
     }
   }
 
@@ -1015,7 +1006,7 @@ export default class TaskManager extends EventEmitter {
         // Re-key the task under the new interaction ID and remove the old entry
         delete this.taskCollection[reservationInteractionId];
         this.taskCollection[interactionId] = task;
-        this.removeTimedAISummaryEntry(this.pendingFeatureEnablement, reservationInteractionId);
+        this.pendingFeatureEnablement.delete(reservationInteractionId);
       }
     }
 
@@ -1403,10 +1394,10 @@ export default class TaskManager extends EventEmitter {
       this.wrapupData,
       this.agentId,
       this.agentName,
-      this.answerCallOnWebexService
+      this.answerCallOnWebexService,
+      this.apiAIAssistant
     );
 
-    this.configureTaskAISummary(task);
     this.taskCollection[stableInteractionId] = task;
 
     // Restore the actor before installing listeners so the internal hydrate does
@@ -1517,9 +1508,9 @@ export default class TaskManager extends EventEmitter {
         this.wrapupData,
         this.agentId,
         this.agentName,
-        this.answerCallOnWebexService
+        this.answerCallOnWebexService,
+        this.apiAIAssistant
       );
-      this.configureTaskAISummary(task);
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
       this.applyPendingFeatureEnablement(task);
@@ -1559,10 +1550,10 @@ export default class TaskManager extends EventEmitter {
       this.wrapupData,
       this.agentId,
       this.agentName,
-      this.answerCallOnWebexService
+      this.answerCallOnWebexService,
+      this.apiAIAssistant
     );
 
-    this.configureTaskAISummary(task);
     this.setupTaskListeners(task);
     this.taskCollection[payload.interactionId] = task;
     this.applyPendingFeatureEnablement(task);
@@ -1603,9 +1594,9 @@ export default class TaskManager extends EventEmitter {
         this.wrapupData,
         this.agentId,
         this.agentName,
-        this.answerCallOnWebexService
+        this.answerCallOnWebexService,
+        this.apiAIAssistant
       );
-      this.configureTaskAISummary(task);
       this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
       this.applyPendingFeatureEnablement(task);
@@ -1661,7 +1652,7 @@ export default class TaskManager extends EventEmitter {
       });
 
       this.emit(TASK_EVENTS.TASK_INCOMING, t);
-      task.emitPendingFeatureEnablement?.();
+      this.flushPendingFeatureEnablement(task);
     });
 
     task.on(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, (t: ITask) => {
@@ -1672,18 +1663,18 @@ export default class TaskManager extends EventEmitter {
       });
 
       this.emit(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, t);
-      task.emitPendingFeatureEnablement?.();
+      this.flushPendingFeatureEnablement(task);
     });
 
     // Listen for TASK_HYDRATE on the task and re-emit on TaskManager
     task.on(TASK_EVENTS.TASK_HYDRATE, (t: ITask) => {
       // Task data is already updated by the task itself before emitting
       this.emit(TASK_EVENTS.TASK_HYDRATE, t);
-      task.emitPendingFeatureEnablement?.();
+      this.flushPendingFeatureEnablement(task);
     });
 
     task.on(TASK_EVENTS.TASK_ASSIGNED, () => {
-      task.emitPendingFeatureEnablement?.();
+      this.flushPendingFeatureEnablement(task);
     });
 
     task.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, (t: ITask) => {
@@ -1710,6 +1701,7 @@ export default class TaskManager extends EventEmitter {
       task.cancelAutoWrapupTimer();
     }
     if (task?.data?.interactionId) {
+      this.pendingFeatureEnablement.delete(task.data.interactionId);
       Object.entries(this.taskCollection).forEach(([taskId, candidate]) => {
         if (candidate === task) {
           delete this.taskCollection[taskId];
@@ -1773,9 +1765,9 @@ export default class TaskManager extends EventEmitter {
         this.wrapupData,
         this.agentId,
         this.agentName,
-        this.answerCallOnWebexService
+        this.answerCallOnWebexService,
+        this.apiAIAssistant
       );
-      this.configureTaskAISummary(task);
       this.taskCollection[payload.interactionId] = task;
 
       // Transition the new task out of IDLE immediately so UI controls are
@@ -1795,7 +1787,7 @@ export default class TaskManager extends EventEmitter {
 
     if (task) {
       this.emit(TASK_EVENTS.TASK_MERGED, task);
-      task.emitPendingFeatureEnablement?.();
+      this.flushPendingFeatureEnablement(task);
       const conversationId = task.data.interaction?.mainInteractionId || task.data.interactionId;
       this.flushReceivingSummary(conversationId);
     }

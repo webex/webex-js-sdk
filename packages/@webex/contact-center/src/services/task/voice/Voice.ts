@@ -30,7 +30,8 @@ import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 import {TaskState, TaskEvent, TaskActionArgs, type TaskContext} from '../state-machine';
 import {shouldWrapUpForThisAgent} from '../state-machine/guards';
-import {WrapupData} from '../../config/types';
+import type {WrapupData} from '../../config/types';
+import type ApiAIAssistant from '../../ApiAiAssistant';
 import {getConsultMediaResourceId, getIsConferenceInProgress} from '../TaskUtils';
 import AnswerCallOnWebexService from '../../AnswerCallOnWebexService';
 import {isWxAppCallNotFoundError} from '../../wxAppTelephonyUtils';
@@ -95,7 +96,8 @@ export default class Voice extends Task implements IVoice {
     callOptions?: VoiceUIControlOptions,
     wrapupData?: WrapupData,
     agentId?: string,
-    agentName?: string
+    agentName?: string,
+    apiAIAssistant?: ApiAIAssistant
   ) {
     const resolvedOptions = {
       isEndTaskEnabled: callOptions?.isEndTaskEnabled ?? true,
@@ -114,7 +116,8 @@ export default class Voice extends Task implements IVoice {
       },
       wrapupData,
       agentId,
-      agentName
+      agentName,
+      apiAIAssistant
     );
 
     this.enableWxBetterTogether = resolvedOptions.enableWxBetterTogether;

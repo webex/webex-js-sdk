@@ -66,6 +66,15 @@ export class ApiAIAssistant {
     this.aiFeature = aiFeature;
   }
 
+  /** @internal Whether the organization enables this summary request. */
+  public isGeneratedSummaryEnabled(type: 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY'): boolean {
+    const flags = this.aiFeature?.generatedSummaries;
+
+    return type === 'POST_CALL_SUMMARY'
+      ? flags?.wrapUpSummariesEnabled === true
+      : flags?.consultTransferSummariesEnabled === true;
+  }
+
   private async sendWellnessBreakAction(
     action: WellnessBreakUserAction,
     method: string

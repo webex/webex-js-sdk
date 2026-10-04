@@ -27,6 +27,7 @@ import {
   createDeferred,
   flushEventLoopTurn,
 } from '../../../fixtures/aiSummaryTestUtils';
+import type ApiAIAssistant from '../../../../../src/services/ApiAiAssistant';
 
 const AI_SUMMARY_TRANSPORT_ERROR_CODES = {
   VALIDATION_FAILED: 'AI_SUMMARY_TRANSPORT_VALIDATION_FAILED',
@@ -40,7 +41,8 @@ class DummyTask extends Task {
     data: TaskData,
     wrapupData?: any,
     agentId = 'agent-1',
-    agentName = 'Receiving Agent'
+    agentName = 'Receiving Agent',
+    apiAIAssistant?: ApiAIAssistant
   ) {
     super(
       contact,
@@ -52,7 +54,8 @@ class DummyTask extends Task {
       },
       wrapupData,
       agentId,
-      agentName
+      agentName,
+      apiAIAssistant
     );
   }
 
@@ -1054,6 +1057,18 @@ const summaryRequestCases: Array<{
 
 describe('Task AI summary APIs', () => {
   const dummyContact = {} as any;
+  const injectSummaryDependencies = (
+    task: DummyTask,
+    apiAIAssistant: any,
+    flags: {wrapUpSummariesEnabled?: boolean; consultTransferSummariesEnabled?: boolean}
+  ) => {
+    apiAIAssistant.isGeneratedSummaryEnabled = jest.fn((type) =>
+      type === 'POST_CALL_SUMMARY'
+        ? flags.wrapUpSummariesEnabled === true
+        : flags.consultTransferSummariesEnabled === true
+    );
+    (task as any).apiAIAssistant = apiAIAssistant;
+  };
 
   const createSummaryMocks = (
     task: DummyTask,
@@ -1155,19 +1170,19 @@ describe('Task AI summary APIs', () => {
       ? options.consultTransferSummariesEnabled
       : true;
 
-    const getGeneratedSummaryFlags = jest.fn(() => ({
+    const generatedSummaryFlags = {
       wrapUpSummariesEnabled,
       consultTransferSummariesEnabled,
-    }));
+    };
 
     task.setFeatureEnablement({
       interactionId: task.data.interactionId,
       postCallEnabled,
       midCallEnabled,
     });
-    task.configureAISummary(adapter, getGeneratedSummaryFlags);
+    injectSummaryDependencies(task, adapter, generatedSummaryFlags);
 
-    return {adapter, coordinator, getGeneratedSummaryFlags};
+    return {adapter, coordinator};
   };
 
   const createRealSummaryMocks = (task: DummyTask) => {
@@ -1207,19 +1222,19 @@ describe('Task AI summary APIs', () => {
       clearAll: jest.fn(() => result.reject(new Error(AI_SUMMARY_REQUEST_CANCELLED))),
       clear: jest.fn(),
     } as any;
-    const getGeneratedSummaryFlags = jest.fn(() => ({
+    const generatedSummaryFlags = {
       wrapUpSummariesEnabled: true,
       consultTransferSummariesEnabled: true,
-    }));
+    };
 
     task.setFeatureEnablement({
       interactionId: task.data.interactionId,
       postCallEnabled: true,
       midCallEnabled: true,
     });
-    task.configureAISummary(adapter, getGeneratedSummaryFlags);
+    injectSummaryDependencies(task, adapter, generatedSummaryFlags);
 
-    return {adapter, coordinator: adapter, result, getGeneratedSummaryFlags};
+    return {adapter, coordinator: adapter, result};
   };
 
   const expectSummaryGetEvent = (
@@ -1303,13 +1318,12 @@ describe('Task AI summary APIs', () => {
     const task = new DummyTask(dummyContact, createAISummaryTaskData());
     const metrics = spyOnAISummaryMetrics(task);
     const postCallResult = createPostCallSummaryPayload();
-    const {adapter, coordinator, getGeneratedSummaryFlags} = createSummaryMocks(task, {
+    const {adapter, coordinator} = createSummaryMocks(task, {
         registrationResult: Promise.resolve(postCallResult),
       });
 
     await expect(task.requestPostCallSummary()).resolves.toBe(postCallResult);
 
-    expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(1);
     expect(coordinator.requestAndWaitForRtd).toHaveBeenCalledWith(
       expect.objectContaining({
         correlationId: 'conversation-1',
@@ -1677,12 +1691,7 @@ describe('Task AI summary APIs', () => {
       };
       const coordinator = adapter;
       const registerSpy = jest.spyOn(coordinator, 'requestAndWaitForRtd');
-      const getGeneratedSummaryFlags = jest.fn(() => flags);
-
-      task.configureAISummary(
-        adapter,
-        getGeneratedSummaryFlags
-      );
+      injectSummaryDependencies(task, adapter, flags);
       task.setFeatureEnablement({
         interactionId: task.data.interactionId,
         ...(featureEnablement ?? {}),
@@ -1698,8 +1707,7 @@ describe('Task AI summary APIs', () => {
     }
   );
 
-  it('calls the injected generated-summary accessor on each request so live config changes are observed', async () => {
-    const task = new DummyTask(dummyContact, createAISummaryTaskData());
+  it('uses the assistant’s current generated-summary flags for each request', async () => {
     const firstFlags = {
       wrapUpSummariesEnabled: false,
       consultTransferSummariesEnabled: true,
@@ -1708,11 +1716,16 @@ describe('Task AI summary APIs', () => {
       wrapUpSummariesEnabled: true,
       consultTransferSummariesEnabled: true,
     };
-    let generatedSummaryFlags = firstFlags;
     const adapter: any = {
       sendEvent: jest.fn().mockResolvedValue(undefined),
       pendingRequests: new Map(),
     };
+    let currentFlags = firstFlags;
+    adapter.isGeneratedSummaryEnabled = jest.fn((type) =>
+      type === 'POST_CALL_SUMMARY'
+        ? currentFlags.wrapUpSummariesEnabled
+        : currentFlags.consultTransferSummariesEnabled
+    );
     const featureEnablement = {interactionId: 'interaction-1', postCallEnabled: true};
     const coordinator = adapter;
     let resolveResult: (payload: any) => void = () => undefined;
@@ -1737,9 +1750,14 @@ describe('Task AI summary APIs', () => {
       resolveResult(createPostCallSummaryPayload());
       return 'resolved';
     });
-    const getGeneratedSummaryFlags = jest.fn(() => generatedSummaryFlags);
-
-    task.configureAISummary(adapter, getGeneratedSummaryFlags);
+    const task = new DummyTask(
+      dummyContact,
+      createAISummaryTaskData(),
+      undefined,
+      'agent-1',
+      'Receiving Agent',
+      adapter
+    );
     task.setFeatureEnablement({interactionId: task.data.interactionId, ...featureEnablement});
 
     await expect(task.requestPostCallSummary()).rejects.toMatchObject(
@@ -1747,7 +1765,7 @@ describe('Task AI summary APIs', () => {
     );
     expect(adapter.sendEvent).not.toHaveBeenCalled();
 
-    generatedSummaryFlags = secondFlags;
+    currentFlags = secondFlags;
     const request = task.requestPostCallSummary();
 
     await Promise.resolve();
@@ -1760,7 +1778,6 @@ describe('Task AI summary APIs', () => {
       )
     ).toBe('resolved');
     await expect(request).resolves.toEqual(createPostCallSummaryPayload());
-    expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(2);
   });
 
   it('cleans up only the accepted request token when the request acknowledgement rejects', async () => {
@@ -1875,7 +1892,7 @@ describe('Task AI summary APIs', () => {
     const taskRegistry: Record<string, DummyTask> = {'interaction-1': task};
     const metrics = spyOnAISummaryMetrics(task);
     const postCallResult = createPostCallSummaryPayload();
-    const {adapter, coordinator, result, getGeneratedSummaryFlags} = createRealSummaryMocks(task);
+    const {adapter, coordinator, result} = createRealSummaryMocks(task);
 
     const postCallRequest = task.requestPostCallSummary();
     await flushEventLoopTurn();
@@ -1883,7 +1900,6 @@ describe('Task AI summary APIs', () => {
     expectSummaryGetEvent(adapter, AIAssistantEventName.GET_POST_CALL_SUMMARY);
     result.resolve(postCallResult);
     await expect(postCallRequest).resolves.toBe(postCallResult);
-    expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(1);
 
     delete taskRegistry['interaction-1'];
     coordinator.clear('task-owner-1', 'conversation-1');
@@ -1901,7 +1917,6 @@ describe('Task AI summary APIs', () => {
     await expect(task.sendPostCallSummaryResponse(responsePayload)).resolves.toBeUndefined();
 
     expect(taskRegistry['interaction-1']).toBeUndefined();
-    expect(getGeneratedSummaryFlags).toHaveBeenCalledTimes(1);
     expect(adapter.sendEvent).toHaveBeenCalledTimes(2);
     expect(getSummaryEventPayload(adapter, 1)).toStrictEqual({
       agentId: 'agent-1',

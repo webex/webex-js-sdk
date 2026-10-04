@@ -674,7 +674,7 @@ describe('Voice Task', () => {
       return adapter;
     };
 
-    const configureAISummary = (
+    const injectAISummaryDependencies = (
       voice: Voice,
       adapter = createSummaryAdapter(),
       featureEnablement = {
@@ -683,14 +683,9 @@ describe('Voice Task', () => {
         midCallEnabled: true,
       }
     ) => {
-      voice.configureAISummary(
-        adapter as any,
-        jest.fn(() => ({
-          wrapUpSummariesEnabled: true,
-          consultTransferSummariesEnabled: true,
-        }))
-      );
-      voice.setFeatureEnablement(featureEnablement, false);
+      (adapter as any).isGeneratedSummaryEnabled = jest.fn(() => true);
+      (voice as any).apiAIAssistant = adapter;
+      voice.setFeatureEnablement(featureEnablement);
 
       return {adapter, coordinator: adapter};
     };
@@ -844,7 +839,7 @@ describe('Voice Task', () => {
       {
         label: 'while the matching AI summary request is pending',
         prepare: async (harness: VoiceHarnessWithCase) => {
-          const {adapter, coordinator} = configureAISummary(harness.voice);
+          const {adapter, coordinator} = injectAISummaryDependencies(harness.voice);
           const summaryRequest = harness.testCase.requestSummary(harness.voice);
           const summaryObserver = jest.fn();
 
@@ -864,7 +859,7 @@ describe('Voice Task', () => {
       {
         label: 'after coordinator owner cancellation',
         prepare: async (harness: VoiceHarnessWithCase) => {
-          const {adapter, coordinator} = configureAISummary(harness.voice);
+          const {adapter, coordinator} = injectAISummaryDependencies(harness.voice);
           const summaryRequest = harness.testCase.requestSummary(harness.voice);
 
           await flushMicrotasks();
@@ -885,7 +880,7 @@ describe('Voice Task', () => {
           );
 
           adapter.sendEvent.mockRejectedValueOnce(adapterError);
-          configureAISummary(harness.voice, adapter);
+          injectAISummaryDependencies(harness.voice, adapter);
 
           await expect(harness.testCase.requestSummary(harness.voice)).rejects.toBe(adapterError);
           expectSummaryGetRequest(adapter, harness.testCase.summaryEventName);

@@ -3,8 +3,7 @@ import type {AnyActorRef} from 'xstate';
 import {TaskEventPayload} from './state-machine';
 import {Msg} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
-import type {AIFeatureFlags, CollaborationAccess} from '../config/types';
-import type ApiAIAssistant from '../ApiAiAssistant';
+import type {CollaborationAccess} from '../config/types';
 
 /**
  * Unique identifier for a task in the contact center system
@@ -1891,25 +1890,10 @@ export interface ITask extends IEventEmitter {
   cancelAutoWrapupTimer(): void;
 
   /**
-   * Configure the shared AI Summary dependencies used by this task.
-   * @internal
-   */
-  configureAISummary?(
-    apiAIAssistant: ApiAIAssistant | undefined,
-    getGeneratedSummaryFlags: () => AIFeatureFlags['generatedSummaries'] | undefined
-  ): void;
-
-  /**
    * Applies the AI-summary feature flags received for this task's interaction.
    * @internal
    */
-  setFeatureEnablement?(enablement: AISummaryFeatureEnablement, emitEvent?: boolean): void;
-
-  /**
-   * Emits a feature-enablement event retained until the task lifecycle event was published.
-   * @internal
-   */
-  emitPendingFeatureEnablement?(): void;
+  setFeatureEnablement?(enablement: AISummaryFeatureEnablement): void;
 
   /**
    * Clears the task-local AI-summary feature flags during session cleanup.

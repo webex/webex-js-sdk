@@ -49,6 +49,8 @@ import {
   TaskData,
 } from '../../../src/services/task/types';
 import {AI_SUMMARY_REQUEST_CANCELLED} from '../../../src/services/task/constants';
+import type {ApiAIAssistant} from '../../../src/services/ApiAiAssistant';
+import type {AIFeatureFlags} from '../../../src/types';
 import MetricsManager from '../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../src/metrics/constants';
 import Mercury from '@webex/internal-plugin-mercury';
@@ -299,7 +301,7 @@ class EventEmitterDouble extends EventEmitter {
 }
 
 class AISummaryLifecycleTask extends Task {
-  public constructor(data: TaskData, agentId = 'agent-1') {
+  public constructor(data: TaskData, apiAIAssistant?: ApiAIAssistant, agentId = 'agent-1') {
     super(
       {} as any,
       data,
@@ -309,7 +311,9 @@ class AISummaryLifecycleTask extends Task {
         isEndConsultEnabled: true,
       },
       undefined,
-      agentId
+      agentId,
+      undefined,
+      apiAIAssistant
     );
   }
 
@@ -319,8 +323,9 @@ class AISummaryLifecycleTask extends Task {
 }
 
 const createAISummaryLifecycleTask = (
-  data: TaskData = createAISummaryLifecycleTaskData()
-): AISummaryLifecycleTask => new AISummaryLifecycleTask(data);
+  data: TaskData = createAISummaryLifecycleTaskData(),
+  apiAIAssistant?: ApiAIAssistant
+): AISummaryLifecycleTask => new AISummaryLifecycleTask(data, apiAIAssistant);
 
 const createAISummaryLifecycleTaskData = (
   overrides: Partial<TaskData> & {conversationId?: string} = {}
@@ -1169,10 +1174,24 @@ describe('webex.cc', () => {
       const webCallingService = new EventEmitterDouble();
       const transportDeferreds: Deferred<void>[] = [];
       const pendingRequests = new Map<string, any>();
+      let aiFeatureFlags: AIFeatureFlags = {
+        id: 'test-ai-feature',
+        generatedSummaries: {
+          wrapUpSummariesEnabled: true,
+          consultTransferSummariesEnabled: true,
+        },
+      };
       const apiAIAssistant: any = {
         getSuggestedResponse: jest.fn(),
         fetchHistoricTranscripts: jest.fn(),
-        setAIFeatureFlags: jest.fn(),
+        setAIFeatureFlags: jest.fn((flags: AIFeatureFlags) => {
+          aiFeatureFlags = flags;
+        }),
+        isGeneratedSummaryEnabled: jest.fn((type: 'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY') =>
+          type === 'POST_CALL_SUMMARY'
+            ? aiFeatureFlags.generatedSummaries?.wrapUpSummariesEnabled === true
+            : aiFeatureFlags.generatedSummaries?.consultTransferSummariesEnabled === true
+        ),
         setAgentId: jest.fn(),
         pendingRequests,
         sendEvent: jest.fn((_agentId: string, _interactionId: string, _eventType: string, eventName: string) => {
@@ -1254,10 +1273,19 @@ describe('webex.cc', () => {
         .default as {createTask: jest.Mock};
 
       taskFactory.createTask.mockImplementation(
-        (_contact, _webCallingService, taskData: TaskData) =>
-          createAISummaryLifecycleTask(taskData)
+        (
+          _contact,
+          _webCallingService,
+          taskData: TaskData,
+          _configFlags,
+          _wrapupData,
+          _agentId,
+          _agentName,
+          _answerCallService,
+          taskApiAIAssistant: ApiAIAssistant
+        ) => createAISummaryLifecycleTask(taskData, taskApiAIAssistant)
       );
-      const task = createAISummaryLifecycleTask();
+      const task = createAISummaryLifecycleTask(undefined, apiAIAssistant);
 
       taskManager.setConfigFlags({
         isEndTaskEnabled: true,
@@ -1274,7 +1302,6 @@ describe('webex.cc', () => {
       taskManager.setAgentId('agent-1');
       taskManager.setWebRtcEnabled(false);
       (taskManager as any).taskCollection[task.data.interactionId] = task;
-      (taskManager as any).configureTaskAISummary(task);
 
       (webex.cc as any).taskManager = taskManager;
       webex.cc.apiAIAssistant = apiAIAssistant as any;
@@ -1523,7 +1550,7 @@ describe('webex.cc', () => {
         conversationId: 'queued-before-deregister',
         summaryText: sentinels[0],
       });
-      expect(jest.getTimerCount()).toBe(2);
+      expect(jest.getTimerCount()).toBe(1);
       expect(harness.task.aiSummaryCapabilities).toEqual({
         midCallEnabled: true,
         postCallEnabled: true,
@@ -1534,7 +1561,7 @@ describe('webex.cc', () => {
         receiving: 1,
         featureEnablement: 1,
       });
-      expect(jest.getTimerCount()).toBe(2);
+      expect(jest.getTimerCount()).toBe(1);
 
       await webex.cc.deregister();
 

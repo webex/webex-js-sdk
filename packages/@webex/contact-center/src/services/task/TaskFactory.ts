@@ -7,7 +7,8 @@ import WebRTC from './voice/WebRTC';
 import Digital from './digital/Digital';
 import {MEDIA_CHANNEL, TaskData} from './types';
 import {ConfigFlags, LoginOption} from '../../types';
-import {WrapupData} from '../config/types';
+import type {WrapupData} from '../config/types';
+import type ApiAIAssistant from '../ApiAiAssistant';
 
 export default class TaskFactory {
   /**
@@ -21,7 +22,8 @@ export default class TaskFactory {
     wrapupData?: WrapupData,
     agentId?: string,
     agentName?: string,
-    answerCallOnWebexService?: AnswerCallOnWebexService
+    answerCallOnWebexService?: AnswerCallOnWebexService,
+    apiAIAssistant?: ApiAIAssistant
   ): Task {
     const mediaType = data.interaction.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
     const {isEndTaskEnabled, isEndConsultEnabled, consultTransfer} = configFlags;
@@ -44,16 +46,33 @@ export default class TaskFactory {
             voiceControlOptions,
             wrapupData,
             agentId,
-            agentName
+            agentName,
+            apiAIAssistant
           );
         }
 
-        return new Voice(contact, data, voiceControlOptions, wrapupData, agentId, agentName);
+        return new Voice(
+          contact,
+          data,
+          voiceControlOptions,
+          wrapupData,
+          agentId,
+          agentName,
+          apiAIAssistant
+        );
 
       case MEDIA_CHANNEL.CHAT:
       case MEDIA_CHANNEL.EMAIL:
       case MEDIA_CHANNEL.SOCIAL:
-        return new Digital(contact, data, wrapupData, agentId, consultTransfer, agentName);
+        return new Digital(
+          contact,
+          data,
+          wrapupData,
+          agentId,
+          consultTransfer,
+          agentName,
+          apiAIAssistant
+        );
 
       default:
         throw new Error(`Unknown media type: ${mediaType}`);

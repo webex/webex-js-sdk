@@ -1,7 +1,8 @@
 import {CC_FILE, METHODS} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
 import {ConsultTransferDestinationConfig, IDigital, TaskResponse, TaskData} from '../types';
-import {WrapupData} from '../../config/types';
+import type {WrapupData} from '../../config/types';
+import type ApiAIAssistant from '../../ApiAiAssistant';
 import Task from '../Task';
 import routingContact from '../contact';
 import LoggerProxy from '../../../logger-proxy';
@@ -15,7 +16,8 @@ export default class Digital extends Task implements IDigital {
     wrapupData?: WrapupData,
     agentId?: string,
     consultTransferConfig?: ConsultTransferDestinationConfig,
-    agentName?: string
+    agentName?: string,
+    apiAIAssistant?: ApiAIAssistant
   ) {
     super(
       contact,
@@ -28,7 +30,8 @@ export default class Digital extends Task implements IDigital {
       },
       wrapupData,
       agentId,
-      agentName
+      agentName,
+      apiAIAssistant
     );
   }
 

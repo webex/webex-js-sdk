@@ -56,7 +56,7 @@ import {
   haveUIControlsChanged,
 } from './state-machine/uiControlsComputer';
 import AutoWrapup from './AutoWrapup';
-import {AIFeatureFlags, WrapupData} from '../config/types';
+import type {WrapupData} from '../config/types';
 import {AIAssistantEventName, AIAssistantEventType} from '../../types';
 import {createSummaryError} from './TaskUtils';
 import type ApiAIAssistant from '../ApiAiAssistant';
@@ -80,13 +80,11 @@ export default abstract class Task extends EventEmitter implements ITask {
   protected agentId?: string;
   protected agentName?: string;
   private apiAIAssistant?: ApiAIAssistant;
-  private getGeneratedSummaryFlags?: () => AIFeatureFlags['generatedSummaries'] | undefined;
   public aiSummaryCapabilities: Readonly<AISummaryCapabilities> = {
     midCallEnabled: false,
     postCallEnabled: false,
   };
 
-  private pendingFeatureEnablement?: AISummaryFeatureEnablement;
   private readonly summaryResponseContexts = new Map<
     'POST_CALL_SUMMARY' | 'MID_CALL_SUMMARY',
     {conversationId: string; interactionId: string}
@@ -98,7 +96,8 @@ export default abstract class Task extends EventEmitter implements ITask {
     uiControlConfig: UIControlConfigInput,
     wrapupData?: WrapupData,
     agentId?: string,
-    agentName?: string
+    agentName?: string,
+    apiAIAssistant?: ApiAIAssistant
   ) {
     super();
     this.contact = contact;
@@ -109,6 +108,7 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.wrapupData = wrapupData;
     this.agentId = agentId;
     this.agentName = agentName;
+    this.apiAIAssistant = apiAIAssistant;
     this.metricsManager = MetricsManager.getInstance();
     this.webCallMap = {};
     this.currentUiControls = getDefaultUIControls();
@@ -245,15 +245,7 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.unsupportedMethodError('holdResume');
   }
 
-  public configureAISummary(
-    apiAIAssistant: ApiAIAssistant | undefined,
-    getGeneratedSummaryFlags: () => AIFeatureFlags['generatedSummaries'] | undefined
-  ): void {
-    this.apiAIAssistant = apiAIAssistant;
-    this.getGeneratedSummaryFlags = getGeneratedSummaryFlags;
-  }
-
-  public setFeatureEnablement(enablement: AISummaryFeatureEnablement, emitEvent = true): void {
+  public setFeatureEnablement(enablement: AISummaryFeatureEnablement): void {
     if (enablement.interactionId !== this.data.interactionId) {
       return;
     }
@@ -262,21 +254,6 @@ export default abstract class Task extends EventEmitter implements ITask {
       midCallEnabled: enablement.midCallEnabled === true,
       postCallEnabled: enablement.postCallEnabled === true,
     };
-    this.pendingFeatureEnablement = emitEvent ? undefined : enablement;
-
-    if (emitEvent) {
-      this.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, enablement);
-    }
-  }
-
-  public emitPendingFeatureEnablement(): void {
-    if (!this.pendingFeatureEnablement) {
-      return;
-    }
-
-    const payload = this.pendingFeatureEnablement;
-    this.pendingFeatureEnablement = undefined;
-    this.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, payload);
   }
 
   public clearFeatureEnablement(): void {
@@ -284,7 +261,6 @@ export default abstract class Task extends EventEmitter implements ITask {
       midCallEnabled: false,
       postCallEnabled: false,
     };
-    this.pendingFeatureEnablement = undefined;
   }
 
   public requestPostCallSummary(): Promise<AISummary> {
@@ -322,10 +298,7 @@ export default abstract class Task extends EventEmitter implements ITask {
       const conversationId = this.data.interaction?.mainInteractionId || interactionId;
       Object.assign(metricFields, {conversationId, interactionId});
 
-      const generatedSummaries = this.getGeneratedSummaryFlags!();
-      const organizationEnabled = isPostCall
-        ? generatedSummaries?.wrapUpSummariesEnabled === true
-        : generatedSummaries?.consultTransferSummariesEnabled === true;
+      const organizationEnabled = this.apiAIAssistant?.isGeneratedSummaryEnabled(summaryType);
       const interactionEnabled = isPostCall
         ? this.aiSummaryCapabilities.postCallEnabled
         : this.aiSummaryCapabilities.midCallEnabled;

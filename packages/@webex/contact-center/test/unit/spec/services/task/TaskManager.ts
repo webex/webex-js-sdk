@@ -313,7 +313,6 @@ describe('TaskManager', () => {
   const createEventEmitterTask = (data = taskDataMock) => {
     const task = new EventEmitter() as any;
     const originalOn = task.on.bind(task);
-    let pendingFeatureEnablement;
 
     const updateTaskData = jest.fn().mockImplementation((newData) => {
       task.data = {...task.data, ...newData};
@@ -326,20 +325,7 @@ describe('TaskManager', () => {
       accept: jest.fn(),
       decline: jest.fn(),
       updateTaskData,
-      configureAISummary: jest.fn(),
-      setFeatureEnablement: jest.fn((payload, emitEvent = true) => {
-        pendingFeatureEnablement = emitEvent ? undefined : payload;
-        if (emitEvent) {
-          task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, payload);
-        }
-      }),
-      emitPendingFeatureEnablement: jest.fn(() => {
-        if (pendingFeatureEnablement) {
-          const payload = pendingFeatureEnablement;
-          pendingFeatureEnablement = undefined;
-          task.emit(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, payload);
-        }
-      }),
+      setFeatureEnablement: jest.fn(),
       unregisterWebCallListeners: jest.fn(),
       cancelAutoWrapupTimer: jest.fn(),
     });
@@ -903,15 +889,18 @@ describe('TaskManager', () => {
     taskManager.taskCollection[newInteractionId] = orphanTask;
 
     (taskManager as any).applyPendingFeatureEnablement(orphanTask);
-    orphanTask.emitPendingFeatureEnablement();
+    expect(orphanTask.setFeatureEnablement).toHaveBeenCalledWith(featurePayload);
+    expect((taskManager as any).pendingFeatureEnablement.get(newInteractionId)).toEqual(featurePayload);
+    (taskManager as any).flushPendingFeatureEnablement(orphanTask);
 
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_FEATURE_ENABLEMENT, featurePayload);
+    expect((taskManager as any).pendingFeatureEnablement.has(newInteractionId)).toBe(false);
 
     taskManager.clearAISummaryState();
     jest.useRealTimers();
   });
 
-  it('should expire an unmatched feature enablement snapshot', () => {
+  it('should retain an unmatched feature enablement snapshot until session cleanup', () => {
     jest.useFakeTimers();
     const interactionId = 'unmatched-feature-interaction';
     const featurePayload = {
@@ -927,12 +916,14 @@ describe('TaskManager', () => {
       })
     );
 
-    expect((taskManager as any).pendingFeatureEnablement.get(interactionId)?.payload).toEqual(
-      featurePayload
-    );
-    expect(jest.getTimerCount()).toBe(1);
+    expect((taskManager as any).pendingFeatureEnablement.get(interactionId)).toEqual(featurePayload);
+    expect(jest.getTimerCount()).toBe(0);
 
     jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS);
+
+    expect((taskManager as any).pendingFeatureEnablement.get(interactionId)).toEqual(featurePayload);
+
+    taskManager.clearAISummaryState();
 
     expect((taskManager as any).pendingFeatureEnablement.get(interactionId)).toBeUndefined();
     expect(jest.getTimerCount()).toBe(0);
@@ -969,9 +960,7 @@ describe('TaskManager', () => {
       })
     );
 
-    expect((taskManager as any).pendingFeatureEnablement.get(conversationId)?.payload).toEqual(
-      featurePayload
-    );
+    expect((taskManager as any).pendingFeatureEnablement.get(conversationId)).toEqual(featurePayload);
     expect(
       (taskManager as any).pendingFeatureEnablement.get(childInteractionId)
     ).toBeUndefined();
@@ -1659,10 +1648,10 @@ describe('TaskManager', () => {
       })
     );
 
-    expect((taskManager as any).pendingFeatureEnablement.get(assignedInteractionId)?.payload).toEqual(
+    expect((taskManager as any).pendingFeatureEnablement.get(assignedInteractionId)).toEqual(
       assignedFeaturePayload
     );
-    expect(jest.getTimerCount()).toBe(1);
+    expect(jest.getTimerCount()).toBe(0);
 
     taskManager.handleRealtimeWebsocketEvent(
       JSON.stringify({
@@ -1671,7 +1660,7 @@ describe('TaskManager', () => {
       })
     );
 
-    expect(jest.getTimerCount()).toBe(2);
+    expect(jest.getTimerCount()).toBe(1);
 
     webSocketManagerMock.emit(
       'message',
@@ -1950,7 +1939,7 @@ describe('TaskManager', () => {
       {conversationId: 'conversation-1', summaryText: 'summary'},
       []
     );
-    expect(jest.getTimerCount()).toBe(4);
+    expect(jest.getTimerCount()).toBe(3);
 
     taskManager.clearAISummaryState();
 
@@ -2057,82 +2046,6 @@ describe('TaskManager', () => {
     });
     jest.advanceTimersByTime(AI_SUMMARY_DURATION_MS);
     jest.useRealTimers();
-  });
-
-  it('should expose generated summary flags through the bound accessor and basic setters', () => {
-    const wrapupData: WrapupData = {wrapUpProps: {wrapUpReasonList: []}};
-    const generatedSummaries: NonNullable<
-      NonNullable<ConfigFlags['aiFeature']>['generatedSummaries']
-    > = {
-      wrapUpSummariesEnabled: true,
-      consultTransferSummariesEnabled: false,
-    };
-    const updatedGeneratedSummaries: NonNullable<
-      NonNullable<ConfigFlags['aiFeature']>['generatedSummaries']
-    > = {
-      wrapUpSummariesEnabled: false,
-      consultTransferSummariesEnabled: true,
-    };
-    const configFlags: ConfigFlags = {
-      isEndTaskEnabled: true,
-      isEndConsultEnabled: true,
-      webRtcEnabled: true,
-      autoWrapup: false,
-      aiFeature: {
-        id: 'ai-feature-1',
-        generatedSummaries,
-      },
-    };
-    const configuredInteractionId = 'generated-summary-flags-task';
-
-    taskManager.taskCollection = {};
-    taskManager.setWrapupData(wrapupData);
-    taskManager.setAgentId('agent-id-1');
-    taskManager.setWebRtcEnabled(true);
-    taskManager.setConfigFlags(configFlags);
-
-    webSocketManagerMock.emit(
-      'message',
-      JSON.stringify({
-        data: {
-          ...taskDataMock,
-          interactionId: configuredInteractionId,
-          mediaResourceId: configuredInteractionId,
-          type: CC_EVENTS.AGENT_CONTACT_RESERVED,
-        },
-      })
-    );
-
-    const configuredTask = taskManager.getTask(configuredInteractionId);
-
-    expect(taskManager.getAgentId()).toBe('agent-id-1');
-    expect(configuredTask.configureAISummary).toHaveBeenCalledWith(
-      mockApiAIAssistant,
-      expect.any(Function)
-    );
-    const injectedGeneratedSummaryFlagsAccessor =
-      configuredTask.configureAISummary.mock.calls[0][1];
-
-    expect(injectedGeneratedSummaryFlagsAccessor()).toBe(generatedSummaries);
-    taskManager.setConfigFlags({
-      ...configFlags,
-      aiFeature: {
-        ...configFlags.aiFeature,
-        generatedSummaries: updatedGeneratedSummaries,
-      },
-    });
-    expect(injectedGeneratedSummaryFlagsAccessor()).toBe(updatedGeneratedSummaries);
-    expect(configuredTask.configureAISummary).toHaveBeenCalledTimes(1);
-    expect(TaskFactory.createTask).toHaveBeenLastCalledWith(
-      contactMock,
-      webCallingService,
-      expect.objectContaining({interactionId: configuredInteractionId}),
-      configFlags,
-      wrapupData,
-      'agent-id-1',
-      undefined,
-      undefined
-    );
   });
 
   it.each([
@@ -2263,16 +2176,8 @@ describe('TaskManager', () => {
     );
   });
 
-  const expectTaskConfiguredForAISummary = (task) => {
-    expect(task.configureAISummary).toHaveBeenCalledTimes(1);
-    expect(task.configureAISummary).toHaveBeenCalledWith(
-      mockApiAIAssistant,
-      expect.any(Function)
-    );
-    expect(task.on).toHaveBeenCalled();
-    expect(task.configureAISummary.mock.invocationCallOrder[0]).toBeLessThan(
-      task.on.mock.invocationCallOrder[0]
-    );
+  const expectTaskConstructedForAISummary = () => {
+    expect((TaskFactory.createTask as jest.Mock).mock.calls.at(-1)?.[8]).toBe(mockApiAIAssistant);
   };
 
   it.each([
@@ -2321,21 +2226,31 @@ describe('TaskManager', () => {
       },
     ],
   ] as const)(
-    'should configure AI summary on factory-created task before publishing %s',
+    'should pass AI summary dependencies into task construction before publishing %s',
     (_name, publicationEvent, payload) => {
       taskManager.taskCollection = {};
       (TaskFactory.createTask as jest.Mock).mockClear();
       const publishedTasks: any[] = [];
-      let registryEntryDuringConfiguration: unknown = 'not-observed';
+      let registryEntryDuringConstruction: unknown = 'not-observed';
+      let injectedApiAIAssistant;
       const taskManagerEmitSpy = jest.spyOn(taskManager, 'emit');
 
       (TaskFactory.createTask as jest.Mock).mockImplementationOnce(
-        (_contact, _webCallingService, data) => {
+        (
+          _contact,
+          _webCallingService,
+          data,
+          _configFlags,
+          _wrapupData,
+          _agentId,
+          _agentName,
+          _answerCallService,
+          apiAIAssistant
+        ) => {
           const createdTask = createStateMachineTask(data);
 
-          createdTask.configureAISummary.mockImplementationOnce(() => {
-            registryEntryDuringConfiguration = taskManager.getTask(payload.interactionId);
-          });
+          registryEntryDuringConstruction = taskManager.getTask(payload.interactionId);
+          injectedApiAIAssistant = apiAIAssistant;
 
           return createdTask;
         }
@@ -2344,7 +2259,7 @@ describe('TaskManager', () => {
       taskManager.on(publicationEvent, (publishedTask) => {
         publishedTasks.push(publishedTask);
         expect(publishedTask).toBe((TaskFactory.createTask as jest.Mock).mock.results[0].value);
-        expectTaskConfiguredForAISummary(publishedTask);
+        expectTaskConstructedForAISummary();
       });
 
       webSocketManagerMock.emit('message', JSON.stringify({data: payload}));
@@ -2354,16 +2269,14 @@ describe('TaskManager', () => {
       expect(TaskFactory.createTask).toHaveBeenCalledTimes(1);
       expect(taskManager.getTask(payload.interactionId)).toBe(createdTask);
       expect(publishedTasks).toEqual([createdTask]);
-      expectTaskConfiguredForAISummary(createdTask);
-      expect(registryEntryDuringConfiguration).toBeUndefined();
+      expectTaskConstructedForAISummary();
+      expect(registryEntryDuringConstruction).toBeUndefined();
+      expect(injectedApiAIAssistant).toBe(mockApiAIAssistant);
       const publicationCallIndex = taskManagerEmitSpy.mock.calls.findIndex(
         ([eventName]) => eventName === publicationEvent
       );
 
       expect(publicationCallIndex).toBeGreaterThanOrEqual(0);
-      expect(createdTask.configureAISummary.mock.invocationCallOrder[0]).toBeLessThan(
-        taskManagerEmitSpy.mock.invocationCallOrder[publicationCallIndex]
-      );
     }
   );
 
@@ -2451,7 +2364,8 @@ describe('TaskManager', () => {
       undefined,
       'test-agent-id',
       undefined,
-      undefined
+      undefined,
+      mockApiAIAssistant
     );
   });
 
@@ -5428,11 +5342,12 @@ describe('TaskManager', () => {
         undefined,
         currentAgentId,
         undefined,
-        undefined
+        undefined,
+        mockApiAIAssistant
       );
 
       const recoveredTask = (TaskFactory.createTask as jest.Mock).mock.results[0].value;
-      expectTaskConfiguredForAISummary(recoveredTask);
+      expectTaskConstructedForAISummary();
       expect(recoveredTask.sendStateMachineEvent).toHaveBeenCalledTimes(2);
       expect(recoveredTask.sendStateMachineEvent).toHaveBeenNthCalledWith(
         1,
