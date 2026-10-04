@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: architecture@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-03T20:17:51Z
+updated_at: 2026-10-04T00:00:00Z
 validation_status: not-run
 -->
 
@@ -64,10 +64,16 @@ this adapter (`../../../webex/src/config-storage.shim.js` line 9). A Node bundle
 safely assume a browser global.
 
 The one consequential internal decision is that every namespace shares a single `localStorage`
-entry named by the constructor `basekey`. It makes a full purge trivial and namespace isolation
-free of key-naming conventions, at the cost of whole-document reads and writes and a `clear()`
-whose blast radius exceeds the binding that calls it. Detail lives in the
-[module specification](../src/docs/README.md).
+entry named by the constructor `basekey`. It makes a full purge trivial and needs no key-prefixing
+convention, at the cost of whole-document reads and rewrites on `get`/`put`/`del`, a `clear()`
+whose blast radius exceeds the binding that calls it, and an isolation guarantee that is weaker than
+it looks. A rewrite round-trips sibling namespaces through `JSON.parse`/`JSON.stringify`; namespace
+and key lookup do not check own properties, so `Object.prototype` names are not usable; and the
+document shape is never validated, so valid JSON written by another script on the origin in a
+different shape is processed rather than rejected — which can fabricate a read or let a write resolve
+without storing anything. The isolation and not-found guarantees therefore hold for a
+schema-conforming document and ordinary key names, not unconditionally.
+Detail lives in the [module specification](../src/docs/README.md).
 
 Three adapter behaviors differ from the default `MemoryStoreAdapter` in ways consumers must know
 about: `clear()` scope, synchronous failure on a missing global, and JSON-only value fidelity. All
@@ -77,7 +83,7 @@ three are specified in the module document.
 
 | Resource | Kind | Responsibility | Owner | Source | Detailed specification |
 | -------- | ---- | -------------- | ----- | ------ | ---------------------- |
-| `@webex/storage-adapter-local-storage` | package | Published npm library wrapping the browser `localStorage` API as a webex-core storage adapter | `@webex/web-client` (`.github/CODEOWNERS:28`) | `package.json` | `../src/docs/README.md` |
+| `@webex/storage-adapter-local-storage` | package | Published npm library wrapping the browser `localStorage` API as a webex-core storage adapter | `@webex/web-client`, per `.github/CODEOWNERS` | `package.json` | `../src/docs/README.md` |
 | `src` | module | The adapter implementation: constructor, `bind`, and the bound store (`get`, `put`, `del`, `clear`) | `@webex/web-client` | `src/index.js` | `../src/docs/README.md` |
 
 ## Interaction and execution flows
@@ -169,7 +175,7 @@ uses the separate basekey `web-client-internal`.
   (`src/index.js` lines 75, 87, 103, 123 and 150). There is no correlation id; the host logger supplies context.
 - Metrics, traces, and audit signals: none. The package emits no metrics and no traces, and records
   no audit trail of reads or writes.
-- Ownership and operational entry points: owned by `@webex/web-client` (`.github/CODEOWNERS:28`).
+- Ownership and operational entry points: owned by `@webex/web-client`, assigned in `.github/CODEOWNERS`.
   There is no dashboard, alert, or runbook; the package has no runtime of its own to operate.
 
 ### Quality attributes
@@ -181,9 +187,10 @@ Expectations that fit a published browser SDK package:
 - Compatibility: the published constructor and bound-store shape are stable surfaces; the at-rest
   document currently carries no version field and no migration step; whether cross-release
   readability is a committed promise is an open owner decision (see the module specification).
-- Main-thread cost: reads parse the entire document and writes additionally re-serialize and rewrite
-  all of it, so operation cost scales with total stored size across all namespaces rather than with
-  the value being written. `clear()` is exempt — it only calls `removeItem`.
+- Main-thread cost: `get` parses the entire document and `put`/`del` additionally re-serialize and
+  rewrite all of it, so their cost scales with total stored size across all namespaces rather than
+  with the value being written. `bind` and `clear` are exempt — `bind` touches no storage and
+  `clear` only calls `removeItem`.
 - Verification: **currently unmet.** No automated test executes this package in either route — the
   Node route skips all 21 declared cases and the browser route completes 0 tests while exiting 0.
   See the module specification's Verification section.
@@ -234,7 +241,7 @@ release pipeline; all internal ranges are `workspace:*`.
 | Artifact | Publish target | Versioning rule | Deprecation window | Changelog or migration obligation |
 | -------- | -------------- | --------------- | ------------------ | --------------------------------- |
 | `@webex/storage-adapter-local-storage` | npm (`deploy:npm` → `yarn npm publish`) | Versioned and released by the monorepo's automated release pipeline, not hand-maintained in this package | Not defined at package level | No package-local `CHANGELOG.md`; release notes are produced repository-wide. A change to the constructor signature, the bound-store method set, or the at-rest document layout is a breaking change for the consumers listed above. |
-| `dist/index.js`, `dist/index.js.map` | Build output bundled into the npm artifact | Regenerated by `build:src` on every release | — | Not version-controlled (`.gitignore:24`) |
+| `dist/index.js`, `dist/index.js.map` | Build output bundled into the npm artifact | Regenerated by `build:src` on every release | — | Not version-controlled — the repository-root `.gitignore` ignores `dist` |
 
 ## Host integration and theming
 

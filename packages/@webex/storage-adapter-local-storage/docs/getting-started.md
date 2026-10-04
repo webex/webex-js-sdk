@@ -9,7 +9,7 @@ doc_kind: standing-doc
 generated_from: getting-started@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-03T20:17:51Z
+updated_at: 2026-10-04T00:00:00Z
 validation_status: not-run
 -->
 
@@ -43,7 +43,7 @@ yarn workspace @webex/storage-adapter-local-storage build:src
 ```
 
 Emits `dist/index.js` and `dist/index.js.map`. Measured 2026-10-01: exit 0, 1 file emitted. `dist/`
-is not version-controlled (`.gitignore:24`).
+is not version-controlled — the repository-root `.gitignore` ignores `dist`.
 
 ## Run
 

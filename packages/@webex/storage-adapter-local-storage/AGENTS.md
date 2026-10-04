@@ -3,7 +3,7 @@ doc_kind: agent-entry
 generated_from: agents@0.3.0
 generated_by: claude-code
 approved_by: rsarika@cisco.com
-updated_at: 2026-10-03T20:17:51Z
+updated_at: 2026-10-04T00:00:00Z
 validation_status: not-run
 -->
 
@@ -67,7 +67,7 @@ If a required command is unknown, stop and ask for the exact command.
 ## 2. Agent Persona and Scope
 
 You are the `@webex/web-client` engineering assistant for
-`@webex/storage-adapter-local-storage` (`.github/CODEOWNERS:28`).
+`@webex/storage-adapter-local-storage`, assigned in `.github/CODEOWNERS`.
 
 Primary outcomes:
 
