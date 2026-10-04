@@ -1,0 +1,527 @@
+{
+  "$schema": "./schemas/repo-context.schema.json",
+  "version": 1,
+  "repository": {
+    "name": "@webex/storage-adapter-local-storage",
+    "purpose": "Browser localStorage-backed bounded storage adapter for the Webex SDK webex-core storage layer."
+  },
+  "commands": {
+    "build": "yarn workspace @webex/storage-adapter-local-storage build:src",
+    "lint": "yarn workspace @webex/storage-adapter-local-storage test:style",
+    "unit-test": "yarn workspace @webex/storage-adapter-local-storage test:unit",
+    "browser-test": "yarn workspace @webex/storage-adapter-local-storage test:browser",
+    "publish": "yarn workspace @webex/storage-adapter-local-storage deploy:npm",
+    "test": "yarn workspace @webex/storage-adapter-local-storage test",
+    "install": "yarn install"
+  },
+  "task_playbooks": [
+    {
+      "task": "change-adapter-behavior",
+      "reference": "src/docs/README.md",
+      "when_to_use": "Any change to src/index.js that alters observable behavior of bind, get, put, del, or clear.",
+      "start_with": [
+        "src/docs/README.md",
+        "docs/architecture.md"
+      ],
+      "evidence_required": [
+        "src/index.js",
+        "package.json"
+      ],
+      "allowed_edits": [
+        "src/index.js",
+        "src/docs/README.md",
+        "docs/architecture.md"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/storage-adapter-local-storage build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/storage-adapter-local-storage test:style"
+      ],
+      "fallback": "No automated test executes this module, so verify manually in a browser and state in the PR that no suite observed the change. If the behavior in question is clear() scope, the at-rest document layout, or the published constructor signature, stop and escalate to @webex/web-client before editing."
+    }
+  ],
+  "public_interfaces": [
+    {
+      "name": "StorageAdapterLocalStorage",
+      "kind": "package_export",
+      "source": "package.json",
+      "entrypoints": [
+        "import StorageAdapterLocalStorage from '@webex/storage-adapter-local-storage'",
+        "new StorageAdapterLocalStorage(basekey)",
+        "adapter.bind(namespace, {logger})"
+      ],
+      "audience": "Webex SDK host configuration: @webex/webex browser bundle, @webex/recipe-private-web-client, and the authorization-browser automation fixtures.",
+      "notes": "The published surface is the default export declared through package.json main (dist/index.js). The package ships no .d.ts and no API report, so package.json is the only machine-readable declaration. Verify by reading src/index.js and the consumer call sites."
+    }
+  ],
+  "source_of_truth": [
+    {
+      "surface": "adapter implementation",
+      "paths": [
+        "src/index.js"
+      ],
+      "generated_artifacts": [
+        "dist/index.js",
+        "dist/index.js.map"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/storage-adapter-local-storage build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/storage-adapter-local-storage test:style"
+      ]
+    },
+    {
+      "surface": "module specification",
+      "paths": [
+        "src/docs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "Edited by hand in the same change as the code it describes."
+      ],
+      "validate_with": [
+        "No executable check; reviewed by a human in the same change."
+      ]
+    },
+    {
+      "surface": "package standing documentation",
+      "paths": [
+        "AGENTS.md",
+        "docs/index.md",
+        "docs/architecture.md",
+        "docs/getting-started.md",
+        "docs/specs/README.md"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "Edited by hand in the same change as the code it describes."
+      ],
+      "validate_with": [
+        "No executable check; reviewed by a human in the same change."
+      ]
+    },
+    {
+      "surface": "SDD manifest",
+      "paths": [
+        ".sdd/manifest.json"
+      ],
+      "generated_artifacts": [],
+      "refresh_with": [
+        "Edited by hand in the same change as the code it describes."
+      ],
+      "validate_with": [
+        "No executable check; reviewed by a human in the same change."
+      ]
+    }
+  ],
+  "generated_artifacts": [
+    {
+      "path": "dist/index.js",
+      "generated_from": "src/index.js",
+      "refresh_with": "yarn workspace @webex/storage-adapter-local-storage build:src"
+    },
+    {
+      "path": "dist/index.js.map",
+      "generated_from": "src/index.js",
+      "refresh_with": "yarn workspace @webex/storage-adapter-local-storage build:src"
+    },
+    {
+      "path": ".sdd/templates/repo-standards/template-map.json",
+      "generated_from": "WebexTools/repo-standards",
+      "refresh_with": "Re-run the Repo Annotation plugin's setup-skills.sh with --target . and --sdd-root . from the active plugin installation; the snapshot is plugin-owned and never hand-edited."
+    }
+  ],
+  "validation_matrix": [
+    {
+      "paths": [
+        "src/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/storage-adapter-local-storage test:style"
+      ],
+      "recommended": [
+        "yarn workspace @webex/storage-adapter-local-storage build:src",
+        "yarn workspace @webex/storage-adapter-local-storage test:browser"
+      ]
+    },
+    {
+      "paths": [
+        "test/**"
+      ],
+      "minimum": [
+        "yarn workspace @webex/storage-adapter-local-storage test:unit"
+      ],
+      "recommended": [
+        "yarn workspace @webex/storage-adapter-local-storage test:browser"
+      ]
+    },
+    {
+      "paths": [
+        "package.json"
+      ],
+      "minimum": [
+        "yarn workspace @webex/storage-adapter-local-storage build:src"
+      ],
+      "recommended": [
+        "yarn workspace @webex/storage-adapter-local-storage test:style"
+      ]
+    }
+  ],
+  "change_impact": [
+    {
+      "paths": [
+        "src/index.js"
+      ],
+      "affects": [
+        "@webex/webex browser bundle bounded storage",
+        "@webex/recipe-private-web-client bounded storage",
+        "@webex/plugin-authorization-browser automation fixtures",
+        "@webex/plugin-authorization-browser-first-party automation fixtures",
+        "persisted Credentials, Device, and User records already in users' browsers"
+      ],
+      "refresh_with": [
+        "yarn workspace @webex/storage-adapter-local-storage build:src"
+      ],
+      "validate_with": [
+        "yarn workspace @webex/storage-adapter-local-storage test:style"
+      ],
+      "avoid_direct_edits": [
+        "dist/index.js",
+        "dist/index.js.map"
+      ],
+      "notes": "Neither of this package's own test routes executes a case, so a behavior change must be verified manually in a browser. The at-rest document layout has no version field and no migration step; whether it must stay readable for documents written by earlier releases is an unresolved owner decision, not an established rule."
+    },
+    {
+      "paths": [
+        "src/index.js",
+        "src/docs/README.md"
+      ],
+      "affects": [
+        "the canonical module specification"
+      ],
+      "refresh_with": [
+        "Edited by hand in the same change as the behavior change."
+      ],
+      "validate_with": [
+        "No executable check; reviewed by a human in the same change."
+      ],
+      "avoid_direct_edits": [
+        "README.md"
+      ],
+      "notes": "Update src/docs/README.md in the same change as any behavior change; it is the authoritative record of this module's contract because no test suite pins it."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "basekey",
+      "definition": "The single localStorage key under which one adapter instance stores every namespace.",
+      "notes": "Fixed at construction and captured in a closure, so it cannot be reassigned after bindings exist."
+    },
+    {
+      "term": "namespace",
+      "definition": "The host's isolation unit within the stored document, one per webex plugin.",
+      "notes": "Isolates get, put, and del. It does NOT isolate clear(), which removes the whole basekey entry."
+    },
+    {
+      "term": "binding",
+      "definition": "A namespace-scoped store returned by bind(), implemented by the inner Bound class.",
+      "notes": "Holds no data; its namespace and logger live in module-level WeakMaps."
+    },
+    {
+      "term": "bounded adapter",
+      "definition": "The webex-core storage role this package fills: durable, size-limited storage selected via config.storage.boundedAdapter.",
+      "notes": "Contrast with the unbounded adapter, which this package does not provide."
+    }
+  ],
+  "evidence_rules": [
+    {
+      "claim_category": "command_name",
+      "sources": [
+        "package.json",
+        ".sdd/manifest.json"
+      ],
+      "requirement": "Only cite a script that exists in package.json scripts. Do not cite test:integration or test:coverage; neither is defined in this package.",
+      "notes": "The aggregate test script is defined but broken: it chains the undefined test:integration and exits 1."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src/index.js",
+        "src/docs/README.md"
+      ],
+      "requirement": "Ground every behavior claim in src/index.js. Do not cite README.md as evidence; it is registered reference-only and contradicts the code on clear() scope.",
+      "notes": "Commit history is not admissible rationale for this package; its manifest category is cat2-legacy."
+    },
+    {
+      "claim_category": "behavior_claim",
+      "sources": [
+        "src/docs/README.md"
+      ],
+      "requirement": "Do not claim a behavior is verified by tests. No automated test executes this module: the Node route skips all 21 cases and the browser route completes 0 tests while exiting 0.",
+      "notes": "Check the reported test count, never the exit code."
+    },
+    {
+      "claim_category": "import_path",
+      "sources": [
+        "package.json",
+        "src/index.js"
+      ],
+      "requirement": "Resolve imports against package.json dependencies. The only runtime import is NotFoundError from @webex/webex-core.",
+      "notes": "The browser localStorage global is used directly with no import and no feature detection."
+    }
+  ],
+  "negative_guidance": [
+    {
+      "rule": "Do not describe clear() as namespace-scoped.",
+      "why": "It removes the entire basekey entry and therefore every namespace. README.md states otherwise and is wrong."
+    },
+    {
+      "rule": "Do not treat a passing test:unit or test:browser run as verification.",
+      "why": "Both exit 0 without executing anything, so they mask regressions rather than catching them."
+    },
+    {
+      "rule": "Do not use truthiness to test whether a stored value exists.",
+      "why": "Only typeof value !== 'undefined' preserves legitimately stored 0, false, null, and empty string."
+    },
+    {
+      "rule": "Do not add a test:unit case that assumes localStorage.",
+      "why": "The shared jest config pins testEnvironment to node, which is why the existing suite is wrapped in skipInNode."
+    },
+    {
+      "rule": "Do not assume this adapter is interchangeable with MemoryStoreAdapter.",
+      "why": "MemoryStoreAdapter scopes clear() to its own map; swapping adapters changes data-destruction behavior."
+    },
+    {
+      "rule": "Do not log stored values or widen what is persisted.",
+      "why": "In a browser bundle this adapter holds OAuth access and refresh tokens as plaintext JSON."
+    },
+    {
+      "rule": "Do not run or cite the aggregate test script.",
+      "why": "It chains test:integration, which this package does not define, so it exits 1 before reaching the browser suite. It is recorded here only for manifest parity."
+    }
+  ],
+  "confidence_policy": {
+    "high": {
+      "action": "update",
+      "expectation": "The claim is grounded in src/index.js or package.json and the affected consumers are named."
+    },
+    "medium": {
+      "action": "narrow-scope",
+      "expectation": "Omit rationale that only commit history would supply; this package's category is cat2-legacy, so history is not admissible evidence."
+    },
+    "low": {
+      "action": "noop",
+      "expectation": "Stop and report the gap. Mark it [NEEDS HUMAN INPUT] rather than inferring intent, and route it to @webex/web-client."
+    }
+  },
+  "repository_topology": {
+    "main_entrypoints": [
+      {
+        "name": "StorageAdapterLocalStorage",
+        "path": "src/index.js",
+        "purpose": "The adapter class: constructor captures the basekey, bind() returns a namespace-scoped store.",
+        "notes": "Browser-only; uses the localStorage global with no feature detection."
+      }
+    ],
+    "workspace_packages": [
+      {
+        "name": "@webex/storage-adapter-local-storage",
+        "paths": [
+          "."
+        ],
+        "notes": "A leaf workspace package under the root workspaces glob ./packages/@webex/*. Nothing in the workspace imports it except host configuration."
+      }
+    ],
+    "source_surfaces": [
+      {
+        "name": "adapter implementation",
+        "paths": [
+          "src/index.js"
+        ],
+        "notes": "The entire module; no internal layering."
+      },
+      {
+        "name": "tests",
+        "paths": [
+          "test/unit/spec/storage-adapter-local-storage.js"
+        ],
+        "notes": "Delegates to the shared abstract suite in @webex/storage-adapter-spec and skips it under Node."
+      },
+      {
+        "name": "build and lint configuration",
+        "paths": [
+          "babel.config.js",
+          "jest.config.js",
+          ".eslintrc.js",
+          "process"
+        ],
+        "notes": "Thin re-exports of shared legacy configs; process exports {browser: true} for the browserify/envify transform."
+      }
+    ],
+    "generated_surfaces": [
+      {
+        "name": "build output",
+        "paths": [
+          "dist/index.js",
+          "dist/index.js.map"
+        ],
+        "generated_from": "adapter implementation",
+        "refresh_with": "yarn workspace @webex/storage-adapter-local-storage build:src",
+        "notes": "Not version-controlled; the repository .gitignore excludes dist."
+      },
+      {
+        "name": "repo-standards template snapshot",
+        "paths": [
+          ".sdd/templates/repo-standards"
+        ],
+        "generated_from": "WebexTools/repo-standards",
+        "refresh_with": "Re-run the Repo Annotation plugin's setup-skills.sh with --target . and --sdd-root . from the active plugin installation; the snapshot is plugin-owned and never hand-edited.",
+        "notes": "Plugin-owned, checksum-verified snapshot seeded by Repo Annotation. Never hand-edit; regenerate it instead."
+      }
+    ],
+    "sync_paths": [
+      {
+        "source": "WebexTools/repo-standards",
+        "targets": [
+          ".sdd/templates/repo-standards"
+        ],
+        "mechanism": "Re-run the Repo Annotation plugin's setup-skills.sh with --target . and --sdd-root . from the active plugin installation; the snapshot is plugin-owned and never hand-edited.",
+        "notes": "One-way. The snapshot is an input to documentation generation, not a repository-authored surface."
+      }
+    ],
+    "validation_entrypoints": [
+      {
+        "name": "lint",
+        "command": "yarn workspace @webex/storage-adapter-local-storage test:style",
+        "scope": "src/**",
+        "notes": "The only check in this package that both executes and reports meaningfully. Measured 2026-10-01: exit 0, no findings."
+      },
+      {
+        "name": "build",
+        "command": "yarn workspace @webex/storage-adapter-local-storage build:src",
+        "scope": "src/** to dist/**",
+        "notes": "Measured 2026-10-01: exit 0, 1 file emitted."
+      },
+      {
+        "name": "unit (non-verifying)",
+        "command": "yarn workspace @webex/storage-adapter-local-storage test:unit",
+        "scope": "test/unit/**",
+        "notes": "Measured 2026-10-01: exit 0 with 21 skipped and 0 executed. Reports success while verifying nothing."
+      },
+      {
+        "name": "browser (non-verifying)",
+        "command": "yarn workspace @webex/storage-adapter-local-storage test:browser",
+        "scope": "test/unit/**",
+        "notes": "Measured 2026-10-01: exit 0 with 0 tests completed; both browsers report beforeAll is not defined. Reports success while verifying nothing."
+      }
+    ]
+  },
+  "folder_readme_contract": {
+    "required_sections": [
+      "purpose",
+      "boundaries",
+      "key-files",
+      "common-tasks"
+    ],
+    "rules": [
+      "Orientation first: say what the folder owns before describing how to use it.",
+      "Link the canonical module specification at src/docs/README.md rather than restating behavior.",
+      "Never present the package README.md as authoritative; it is registered reference-only."
+    ],
+    "example_policy": "Examples are allowed only when copied from a real consumer call site such as packages/webex/src/config-storage.shim.js.",
+    "fallback": "Omit a section rather than inventing content; mark an unresolved fact [NEEDS HUMAN INPUT]."
+  },
+  "regression_feedback_rules": [
+    {
+      "trigger": "A behavior change lands in src/index.js without any executing test observing it.",
+      "required_followups": [
+        "State explicitly in the PR that no automated test executed and describe the manual browser verification performed",
+        "Update the Verification section of src/docs/README.md",
+        "Reassess whether the browser route can be repaired in @webex/storage-adapter-spec"
+      ],
+      "notes": "This is the standing condition for the package, not an exceptional case."
+    },
+    {
+      "trigger": "A reviewer or tool cites README.md as the behavior contract.",
+      "required_followups": [
+        "Redirect to src/docs/README.md",
+        "Reconfirm that the source policy is still keep-separate before editing README.md"
+      ],
+      "notes": "README.md misdescribes clear() scope and is protected reference-only material."
+    }
+  ],
+  "surface_owners": [
+    {
+      "surface": "adapter implementation",
+      "owner": "@webex/web-client",
+      "edit_boundary": "Owned here. Changes to the constructor signature, the bound-store method set, clear() scope, or the at-rest document layout are breaking changes requiring consumer review."
+    },
+    {
+      "surface": "package standing documentation and module specification",
+      "owner": "@webex/web-client",
+      "edit_boundary": "Owned here. Update in the same change as any behavior change."
+    },
+    {
+      "surface": "package README.md",
+      "owner": "@webex/web-client",
+      "edit_boundary": "Protected reference-only material under a keep-separate source policy. Do not edit it to match the code without an explicit source-policy decision."
+    },
+    {
+      "surface": "shared abstract adapter contract",
+      "owner": "@webex/web-client",
+      "edit_boundary": "Defined in @webex/storage-adapter-spec, outside this package. It has four consumers; treat any change as cross-package."
+    },
+    {
+      "surface": "webex-core storage layer and error taxonomy",
+      "owner": "@webex/web-sdk",
+      "edit_boundary": "Defined in @webex/webex-core, outside this package. Consumed here, not owned."
+    }
+  ],
+  "do_not_edit": [
+    "dist/index.js",
+    "dist/index.js.map",
+    ".sdd/templates/repo-standards"
+  ],
+  "marker_scopes": {
+    "sdd-generated-metadata": [
+      "AGENTS.md",
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/getting-started.md",
+      "docs/specs/README.md",
+      "src/docs/README.md"
+    ]
+  },
+  "fallback_rules": [
+    "When evidence is missing, mark the statement [NEEDS HUMAN INPUT] and route it to @webex/web-client rather than inferring intent.",
+    "When a test result is cited, report the executed test count rather than the exit code; both test routes in this package exit 0 without running anything.",
+    "When a behavior claim conflicts between README.md and src/index.js, the code wins and src/docs/README.md records the conflict.",
+    "When asked to repair the browser test route, treat it as a change to @webex/storage-adapter-spec and escalate; it is outside this package's boundary."
+  ],
+  "downstream_context_pack": {
+    "required_human_surfaces": [
+      "docs/index.md",
+      "docs/architecture.md",
+      "docs/getting-started.md",
+      "src/docs/README.md"
+    ],
+    "required_agent_operational_surfaces": [
+      "AGENTS.md",
+      "docs/specs/README.md"
+    ],
+    "required_machine_readable_surface": ".sdd/manifest.json",
+    "recommended_machine_readable_sections": [
+      "public_interfaces",
+      "change_impact",
+      "glossary",
+      "evidence_rules",
+      "negative_guidance",
+      "confidence_policy",
+      "repository_topology",
+      "folder_readme_contract",
+      "regression_feedback_rules"
+    ]
+  }
+}
